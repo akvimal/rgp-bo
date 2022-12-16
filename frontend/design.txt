@@ -1,0 +1,22 @@
+[{
+	"resource": "product",
+	"permissions": [
+		{
+		"action": "read",
+		"created": "self/role",
+		"assigned": "self/role"
+		},
+		{
+			"action": "update",
+			"properties": [],
+			"created": "self/role",
+			"assigned": "self/role"
+		},
+		{
+			"action": "create",
+			"properties": [],
+			"created": "self/role",
+			"assigned": "self/role"
+		}
+	]
+}]

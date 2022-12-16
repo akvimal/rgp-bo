@@ -1,0 +1,71 @@
+<div class="card">
+    <div class="card-body bill-view">
+        <div class="row">
+            <table class="bill-head">
+                <tr>
+                    <td colspan="2" style="text-align: center;">
+                        <h6>Ramesh Generic Pharmacy</h6>
+                        License Id | GSTIN<br>
+                1/256 Kalamegam Salai, Mogappair West, Chennai<br>
+                72990 72725 | sales@rameshgenericpharmacy.com
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        No: {{sale.id}}<br>
+                        Date: {{sale.billdate | date: 'short'}}
+                    </td>
+                    <td style="text-align: right;">
+                        Name: {{sale.customer?.name}}<br>
+                        Phone: {{sale.customer?.mobile}}
+                    </td>
+                </tr>
+            </table>
+            <table class="table table-bordered mt-3">
+                <tr>
+                    <th>Product</th>
+                    <th style="text-align: center;">Batch / Exp</th>
+                    <!-- <th>MRP</th> -->
+                    <th style="text-align: right;">MRP</th>
+                    <th style="text-align: right;">Qty</th>
+                    <th style="text-align: right;">Price</th>
+                    <th style="text-align: right;">Tax</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            <tr *ngFor="let i of sale.items">
+                <td>
+                    <strong>{{i.title}}</strong><br>
+                    <i>{{i.props?.composition}}</i>
+                </td>
+                <td style="text-align: center;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
+                <!-- <td>{{i.purchaseitem.mrpcost}}</td> -->
+                <td style="text-align: right;width:8%">{{i.mrp}}</td>
+                <td style="text-align: right;width:6%">{{i.qty}}</td>
+                <td style="text-align: right;width:8%">{{i.price}}</td>
+                <td style="text-align: right;width:6%">{{i.taxpcnt}}%</td>
+                <td style="text-align: right;width:8%">{{i.total}}</td>
+            </tr>
+            <tr style="font-weight: bolder;">
+                <td colspan="5">Total</td>
+                <!-- <td>{{sale.total?.tax}}</td> -->
+                <td colspan="2" style="text-align: right;font-size: large;">
+                    <i class="bi bi-currency-rupee"></i>
+                        {{sale.total}}
+                </td>
+            </tr>
+            <!-- <tr>
+                <td>Saving: {{sale.total?.saving}}%</td>
+            </tr> -->
+            </table>
+        </div>
+       
+    </div>
+</div>
+<div class="non-print" style="text-align:center">
+    <button type="button" class="btn  btn-primary m-2" onclick="javascript:window.print();">Print</button>
+    
+    <a *isAuth="'sales.add'" [routerLink]="['../../new']">
+        <button type="submit" class="btn btn-success no-print m-2">New Sale</button></a>
+         
+    <button type="button" (click)="cancel()" class="btn btn-outline-primary m-2">Back to List</button>    
+</div>

@@ -1,0 +1,108 @@
+[{
+  "category": "Drug",
+  "props":[
+    {
+      "id": "composition",
+      "label": "Composition"
+    },{
+      "id": "formulation",
+      "label": "Formulation",
+      "type": "SINGLE-SELECT",
+      "choices": [
+        {
+          "label": "Tablet",
+          "value": "TAB"
+        },
+        {
+          "label": "Capsule",
+          "value": "CAP"
+        },
+        {
+          "label": "Syrup",
+          "value": "SYP"
+        },
+        {
+          "label": "Oinment",
+          "value": "OIN"
+        },
+        {
+          "label": "Drops",
+          "value": "DROP"
+        },
+        {
+          "label": "Needles",
+          "value": "NED"
+        }
+      ]
+    },{
+      "id": "packing",
+      "label": "Packing"
+    },{
+      "id": "schedule",
+      "label": "Schedule",
+      "type": "SINGLE-SELECT",
+      "default": "H",
+      "filter":true,
+      "choices": [
+        {
+          "label": "H",
+          "value": "H"
+        },
+        {
+          "label": "H1",
+          "value": "H1"
+        },
+        {
+          "label": "X",
+          "value": "X"
+        },
+        {
+          "label": "H1 Anti TB",
+          "value": "H1 Anti TB"
+        }
+      ]
+    },{
+      "id": "purpose",
+      "label": "Purpose",
+      "type": "SINGLE-SELECT",
+      "choices": [
+        {
+          "label": "Diabetic",
+          "value": "Diabetic"
+        },
+        {
+          "label": "Cardio",
+          "value": "Cardio"
+        },
+        {
+          "label": "ENT",
+          "value": "ENT"
+        },
+        {
+          "label": "Skin",
+          "value": "Skin"
+        },
+        {
+          "label": "Ortho",
+          "value": "Ortho"
+        },
+        {
+          "label": "Surgicals",
+          "value": "Surgical"
+        }]
+    },
+    {
+      "id": "generic",
+      "label": "Generic",
+      "type": "CHECK"
+    }
+  ]
+},{
+  "category": "Surgicals",
+  "props":[
+    {
+      "id": "type",
+      "label": "Type"
+    }
+  ]
+}]

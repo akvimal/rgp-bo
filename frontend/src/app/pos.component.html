@@ -1,0 +1,11 @@
+<a href="javascript:void(0);" (click)="showLogin()">Login</a>
+<div *ngIf="loginInput">
+    <input type="text" name="userid" id="userid" [(ngModel)]="login.userid" placeholder="user id">
+    <input type="password" name="pin" id="pin" [(ngModel)]="login.pin" placeholder="PIN">
+    <button (click)="loginUser()">Login</button>
+</div>
+<ul>
+    <li *ngFor="let u of users">
+       <div *ngIf="u.authenticated"> {{u.id}} <a href="javascript:void(0);" (click)="logout(u.id)">X</a></div>
+    </li>
+</ul>

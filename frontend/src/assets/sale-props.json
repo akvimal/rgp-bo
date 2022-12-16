@@ -1,0 +1,32 @@
+[{
+  "category": "H1",
+  "props":[
+    {
+      "id": "prescno",
+      "label": "ID"
+    },
+    {
+      "id": "prescdate",
+      "label": "Date"
+    },
+    {
+      "id": "prescdoctor",
+      "label": "Doctor",
+      "required":true
+    },
+    {
+      "id": "ptntname",
+      "label": "Patient Name",
+      "required": true
+    },
+    {
+      "id": "ptntmobile",
+      "label": "Patient Phone",
+      "required": true
+    },
+    {
+      "id": "ptntaddr",
+      "label": "Patient Address"
+    }
+  ]
+}]

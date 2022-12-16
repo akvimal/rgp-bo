@@ -1,0 +1,65 @@
+<div class="pagetitle no-print">
+  <h1>Sales</h1>
+</div>
+
+<a *isAuth="'sales.add'" [routerLink]="['../new']">
+  <button type="submit" class="btn btn-primary no-print">New Sale</button></a>
+  <p-tabView>
+    <p-tabPanel header="Invoice Level" headerStyleClass="no-print">
+    <div class="row mt-3 no-print">
+      <div class="col-md-2">
+        <label for="fromdate">Date</label>
+        <input type="date" id="fromdate" name="filterbydate" class="form-control" 
+              [(ngModel)]="criteria.date" (input)="fetchSales()">
+      </div>
+      <div class="col-md-2">
+        <label for="sustomer">Customer</label>
+        <app-customer-select id="customer" (customerSelected)="selectCustomer($event)"></app-customer-select>
+      </div>
+      <div class="col-md-2">
+        <label for="status">Status</label>
+        <select name="filterbystatus" id="status" class="form-control" [(ngModel)]="criteria.status" (change)="fetchSales()">
+          <option value=""></option>
+          <option value="PENDING">PENDING</option>
+          <option value="COMPLETE">COMPLETE</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
+      </div>
+    </div>
+    <table class="table table-bordered mt-4">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Sale Person</th>
+          <th>Status</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+        <tbody>
+          <tr *ngFor="let s of sales">
+            <td>
+              <a *ngIf="s.status !== 'COMPLETE'" [routerLink]="['../edit',s.id]">{{s.id}}</a>
+              <a *ngIf="s.status === 'COMPLETE'" [routerLink]="['../view',s.id]">{{s.id}}</a>
+            </td>
+            <td>{{s.billdate | date: 'dd/MM, hh:mm a'}}</td>
+            <td>{{s.customer ? s.customer.name : ''}}</td>
+            <td>{{s.created ? s.created.fullname : ''}}</td>
+            <td>{{s.status}}</td>
+            <td>{{s.total}}</td>
+          </tr>  
+        </tbody>
+      </table>
+
+    </p-tabPanel>
+    <p-tabPanel header="Product Level" headerStyleClass="no-print">
+      <app-sale-items></app-sale-items>
+<!-- 
+      <app-sale-items [category]="'Drug'" [props]="[{id:'schedule',value:'H1'}]"></app-sale-items>
+   --></p-tabPanel>
+  </p-tabView>
+
+

@@ -1,0 +1,28 @@
+<div class="pagetitle">
+    <h1>Roles</h1>
+</div>
+<a *isAuth="'roles.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+<table *isAuth="'roles.read'" class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th *isAuth="'roles.read$name'" scope="col">Name</th>
+            <th *isAuth="'roles.read$permissions'" scope="col">Permissions</th>
+            <th scopr="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let p of roles">
+            <td>{{p.id}}</td>
+            <td *isAuth="'roles.read$name'">{{p.name}}</td>
+            <td *isAuth="'roles.read$permissions'">{{p.permissions}}</td>
+            <td>
+                <a *isAuth="'roles.edit'" [routerLink]="['../edit', p.id]">
+                <i class="bi bi-pencil text-primary"></i></a>
+                <a *isAuth="'roles.delete'" (click)="delete(p.id)">
+                    <i class="bi bi-trash text-danger"></i>
+                </a>
+            </td>
+        </tr>
+    </tbody>
+</table>

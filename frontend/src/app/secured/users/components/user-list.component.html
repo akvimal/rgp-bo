@@ -1,0 +1,34 @@
+<div class="pagetitle">
+    <h1>Users</h1>
+  </div>
+  
+<a *isAuth="'users.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+<table *isAuth="'users.read'" class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <!-- <th scope="col">ID</th> -->
+            <th *isAuth="'users.read$fullname'" scope="col">Full Name</th>
+            <th *isAuth="'users.read$email'" scope="col">Email</th>
+            <th *isAuth="'users.read$phone'" scope="col">Phone</th>
+            <th *isAuth="'users.read$location'" scope="col">Location</th>
+            <th scope="col">Role</th>
+            <th scopr="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let p of users">
+            <!-- <td>{{p.id}}</td> -->
+            <td *isAuth="'users.read$fullname'">{{p.fullname}}</td>
+            <td *isAuth="'users.read$email'">{{p.email}}</td>
+            <td *isAuth="'users.read$phone'">{{p.phone}}</td>
+            <td *isAuth="'users.read$location'">{{p.location}}</td>
+            <td>{{p.role}}</td>
+            <td>
+                <a *isAuth="'users.edit'" [routerLink]="['../edit', p.id]">
+                <i class="bi bi-pencil text-primary"></i></a>
+                <a *isAuth="'users.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
+                
+            </td>
+        </tr>
+    </tbody>
+</table>

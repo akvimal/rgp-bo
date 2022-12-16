@@ -1,0 +1,37 @@
+import { HttpClient } from "@angular/common/http";
+import { Injectable } from "@angular/core";
+import { Observable } from "rxjs";
+import { User } from "./user.model";
+
+@Injectable({
+    providedIn: 'root'
+})
+export class UsersService {
+
+    API_SERVER = "http://localhost:3000";
+
+    constructor(private http:HttpClient){}
+
+    public findAll() {
+        return this.http.get(`${this.API_SERVER}/users`);
+    }
+
+    public findById(id:any){
+      return this.http.get(`${this.API_SERVER}/users/${id}`);
+  }  
+  
+    public getCurrentUser():Observable <User>{
+        return this.http.get<User>(`${this.API_SERVER}/auth/me`);
+      }
+  
+      public save(user:any){
+        return this.http.post(`${this.API_SERVER}/users`,user);
+      }
+      
+      public update(id:number, user:User){
+        return this.http.put(`${this.API_SERVER}/users/${id}`, user);
+      }
+      public remove(id:any){
+        return this.http.delete(`${this.API_SERVER}/users/${id}`);
+      }
+}

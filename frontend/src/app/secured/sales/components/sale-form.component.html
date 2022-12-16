@@ -1,0 +1,99 @@
+<div class="card">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-4">Date: {{this.sale.billdate | date: 'short'}}</div>
+            <div class="col-lg-4"><span *ngIf="this.sale.id">No: {{this.sale.id}}</span></div>
+            <div class="col-lg-4">Status: {{this.sale.status}}</div>
+        </div>
+        <div class="row mt-3 mb-3" *ngIf="newCustomer; else saleCustomer">
+            <div class="col-lg-3">
+                <app-customer-select 
+                    (customerSelected)="selectCustomer($event)">
+                    </app-customer-select>
+                    <a href="javascript:void(0)" (click)="closeChangeCustomer()">
+                        <i class="bi bi-x-square text-primary"></i></a>
+            </div>
+            <div class="col-lg-3">
+                <input type="text" name="custName" id="custName" placeholder="Name"
+                [value]="sale.customer?.name||''" (input)="updateName($event)">
+            </div>
+            <div class="col-lg-3">
+                <input type="text" name="custEmail" id="custEmail" placeholder="Email"
+                [value]="sale.customer?.email||''" (input)="updateEmail($event)">
+            </div>
+            <div class="col-lg-3">
+                    <input type="text" name="custAddr" id="custAdde" placeholder="Address"
+                [value]="sale.customer?.address||''" (input)="updateAddr($event)">
+            </div>
+        </div>
+           
+            <ng-template #saleCustomer>
+            <div class="row">
+                <div class="col-lg-3">Mobile: {{sale.customer?.mobile}}
+                    <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
+                        <a href="javascript:void(0)" (click)="changeCustomer()">
+                        <i class="bi bi-pencil text-primary"></i></a>
+                    </span>
+                    <!-- <button type="button" *ngIf="!newCustomer" (click)="showDialog()" class="btn btn-primary">
+                        Copy</button> -->
+                        <a *ngIf="!newCustomer" (click)="showPrevSalesCopy()">
+                            <i class="bi bi-files text-success"></i>
+                            </a>
+                </div>
+                <div class="col-lg-3">Name: {{sale.customer?.name}}</div>
+                <div class="col-lg-3">Email: {{sale.customer?.email}}</div>
+                <div class="col-lg-3">Addr: {{sale.customer?.address}}</div>
+            </div>
+            </ng-template>
+            <app-sale-form-items [items]="sale.items" 
+            [sale]="sale"
+            (removed)="removeItem($event)"
+            (recalculateTotal)="recalculateTotal($event)"></app-sale-form-items>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-6" *ngIf="sale.status === 'NEW' || sale.status === 'PENDING'">
+        <button type="button" (click)="submit('PENDING')" class="btn btn-primary m-2">Save</button>    
+        <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" [disabled]="!completeAllowed()">Complete</button>    
+    </div>
+    <div class="col-6">
+        <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">Discard</button>
+        <button type="button" (click)="cancel()" class="btn btn-outline-primary m-2">Cancel</button>        
+    </div>
+</div>
+
+<p-dialog header="Prescription" [(visible)]="displaySalePropsForm" [modal]="true">
+    <form [formGroup]="form" (ngSubmit)="onSubmitSaleProps()">
+        <div class="row g-2 bg-light pb-3 mt-3" formGroupName="props" *ngIf="saleprops.length > 0">
+            <div class="col-md-12">
+                <input type="checkbox" name="selectCu" (change)="copyCustomerInfo($event)">Copy Customer Info to Patient
+            </div>
+            <div class="col-md-4" *ngFor="let pp of saleprops">
+                <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
+                <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'">
+                    <option value="">Select</option>
+                    <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
+                </select> 
+                <input *ngIf="!pp.type" type="text"
+                        class="form-control" formControlName={{pp.id}}>
+                <div *ngIf="pp.type === 'CHECK'">
+                <input type="checkbox" class="form-check-input" formControlName={{pp.id}}> Yes
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
+    </form>
+</p-dialog>
+<p-dialog header="Copy" [(visible)]="displayPrevSalesCopy" [modal]="true">
+    <h5>{{this.sale?.customer?.name}} ({{this.sale?.customer?.mobile}})</h5>
+    <div *ngFor="let s of previousSaleItems">
+        {{s.billdate | date : 'dd/MM'}} | ${{s.total}}
+            <ul class="list-group mt-2">
+                <li class="list-group-item" *ngFor="let i of s.items">
+                    <input type="checkbox" (change)="selectItem(i.id,$event)" [checked]="i.selected">&nbsp;
+                    {{i.title}} ({{i.qty}})</li>
+            </ul>
+    </div>
+    <button type="button" class="btn btn-primary mt-2 text-center" (click)="copySelectedItem()">Submit</button>
+</p-dialog>

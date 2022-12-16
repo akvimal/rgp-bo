@@ -1,0 +1,32 @@
+<div class="pagetitle">
+    <h1>Vendors</h1>
+</div>
+  <!-- <button class="btn btn-primary btn-sm" type="button" (click)="goToAddNew()">Add</button> -->
+<a *isAuth="'vendors.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+<table *isAuth="'vendors.read'" class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Business Name</th>
+            <th scope="col">Contact Name</th>
+            <th scope="col">Contact Phone</th>
+            <th scope="col">Address</th>
+            <th scope="col">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let p of vendors">
+            <td>{{p.id}}</td>
+            <td>{{p.name}}</td>
+            <td>{{p.contactname}}</td>
+            <td>{{p.contactphone}}</td>
+            <td>{{p.address}}</td>
+            <td>
+                <a *isAuth="'vendors.edit'" [routerLink]="['../edit', p.id]">
+                <i class="bi bi-pencil text-primary"></i></a>
+                <a *isAuth="'vendors.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
+                
+            </td>
+        </tr>
+    </tbody>
+</table>

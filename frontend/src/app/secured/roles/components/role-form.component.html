@@ -1,0 +1,29 @@
+<div class="pagetitle">
+  <h1>Roles</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+      <h5 class="card-title">New Role</h5>
+
+      <!-- Multi Columns Form -->
+      <form class="row g-3" [formGroup]="form" (ngSubmit)="onSave()">
+        <div class="col-md-12" *isAuth="'roles.add$name'">
+          <label for="title" class="form-label">Name</label>
+          <input type="text" class="form-control" id="name" formControlName="name">
+        </div>
+        <div class="col-md-12" *isAuth="'roles.add$permissions'">
+          <label for="permissions" class="form-label">Permissions</label>
+          <textarea class="form-control" id="permissions" formControlName="permissions" 
+            style="height: 100px;"></textarea>
+        </div>
+       
+        <div class="text-center">
+          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+          <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+          <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
+        </div>
+      </form><!-- End Multi Columns Form -->
+
+    </div>
+  </div>

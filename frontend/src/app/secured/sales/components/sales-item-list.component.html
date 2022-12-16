@@ -1,0 +1,69 @@
+
+<div class="row no-print">
+<div class="col-md-2">
+    Category
+    <select name="filterbycategory" class="form-control" [(ngModel)]="criteria.category" 
+          (change)="fetchFilterProps($event)">
+      <option value=""></option>
+      <option value="Drug">Drug</option>
+      <option value="Surgicals">Surgicals</option>
+    </select>
+</div>
+<div class="col-md-2">
+    From Date
+    <input type="date" name="fromdate"  class="form-control" id="fromdate" [(ngModel)]="criteria.fromdate">
+  </div>
+  <div class="col-md-2">
+    To Date
+    <input type="date" name="todate"  class="form-control" id="todate" [(ngModel)]="criteria.todate">
+  </div>
+
+    <div *ngFor="let p of criteria.props"  class="col-md-2">
+      
+        <div *ngIf="p.type === 'SINGLE-SELECT'">
+            {{p.label}}<select [(ngModel)]="p.value" class="form-control">
+                <option value=""></option>
+                <option *ngFor="let c of p.choices" [value]="c.value">{{c.label}}</option>
+            </select>
+        </div>
+    </div>
+    
+  <div class="col-md-3">
+    <button type="button" class="btn btn-primary m-2" (click)="fetchSaleItems()">Filter</button>
+    <button type="button" class="btn btn-outline-primary m-2" (click)="clearFilter()">Clear</button>
+  </div>
+  <div class="col-md-1">
+    <button type="button" class="btn  btn-primary" onclick="javascript:window.print();">Print</button>
+  </div>
+</div>
+
+    <table class="table table-bordered mt-4 sale-items">
+        <thead>
+          <tr>
+            <th class="billdt">Bill Date</th>
+            <th class="billno">Bill No.</th>
+            <th  class="doctor" *ngIf="isH1DrugFilter()">Doctor</th>
+            <th class="customer">Customer</th>
+            <th class="phone">Phone</th>
+            <th class="address">Address</th>
+            <th class="product">Product</th>
+            <th class="batch">Batch/Exp</th>
+            <th class="qty">Qty</th>
+            <th class="signature">Sign</th>
+          </tr>
+        </thead>
+          <tbody>
+            <tr *ngFor="let item of items">
+              <td>{{item.sale.billdate | date :'dd/MM/yy'}}</td>
+              <td>{{item.sale.id}}</td>
+              <td *ngIf="isH1DrugFilter()">{{item.sale.props['prescdoctor']}}</td>
+                <td>{{ isH1DrugFilter() ? item.sale.props['ptntname'] : item.sale.customer?.name}}</td>
+                <td>{{ isH1DrugFilter() ? item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td>
+                <td>{{ isH1DrugFilter() ? item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td>
+                <td>{{item.purchaseitem.product.title}}</td>
+                <td>{{item.purchaseitem.batch}} / {{item.purchaseitem.expdate | date : 'MMM-yy'}}</td>
+                <td>{{item.qty}}</td>
+                <td></td>
+            </tr>  
+          </tbody>
+        </table>

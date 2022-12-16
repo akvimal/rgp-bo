@@ -1,0 +1,132 @@
+<div class="pagetitle">
+    <h1>Stock</h1>
+  </div>
+  
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            Filter by : Expiry | Product (title, category, purpose) | Price (not set, scheduled)
+        </div>
+    </div>
+<div class="row">
+    <div class="col-md-12">
+        <p-table #dt1 [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
+        [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+            [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+            [rowsPerPageOptions]="[10,25,50]">
+            <ng-template pTemplate="header">
+                <tr>
+                    <th pSortableColumn="title">Product
+                        <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
+                        <p-sortIcon field="product"></p-sortIcon>
+                    </th>
+                    <th pSortableColumn="batch">Batch
+                        <p-columnFilter type="text" field="batch" display="menu"></p-columnFilter>
+                        <p-sortIcon field="batch"></p-sortIcon>
+                    </th>
+                    <th pSortableColumn="expdate">Expiry
+                        <p-columnFilter type="date" field="expdate" display="menu"></p-columnFilter>
+                        <p-sortIcon field="expdate"></p-sortIcon>
+                    </th>
+                    <th pSortableColumn="purchase_qty">Qty
+                        <p-columnFilter type="numeric" field="purchase_qty" display="menu"></p-columnFilter>
+                        <p-sortIcon field="purchase_qty"></p-sortIcon>
+                    </th>
+                    <th pSortableColumn="available_qty">Available
+                        <p-columnFilter type="numeric" field="available_qty" display="menu"></p-columnFilter>
+                        <p-sortIcon field="available_qty"></p-sortIcon>
+                    </th>
+                    <!-- <th pSortableColumn="mrp_cost">MRP
+                        <p-columnFilter type="numeric" field="mrp_cost" display="menu"></p-columnFilter>
+                        <p-sortIcon field="mrp_cost"></p-sortIcon>
+                    </th> -->
+                    <th pSortableColumn="ptr_cost">PTR
+                        <p-columnFilter type="numeric" field="ptr_cost" display="menu"></p-columnFilter>
+                        <p-sortIcon field="ptr_cost"></p-sortIcon>
+                    </th>
+                    <th pSortableColumn="sale_price">Price
+                        <p-columnFilter type="numeric" field="sale_price" display="menu"></p-columnFilter>
+                        <p-sortIcon field="sale_price"></p-sortIcon>
+                    </th>
+                    <!-- <th pSortableColumn="old_with_us">Age
+                        <p-columnFilter type="numeric" field="old_with_us" display="menu"></p-columnFilter>
+                        <p-sortIcon field="old_with_us"></p-sortIcon>
+                    </th> -->
+                    <th pSortableColumn="life_left">Life
+                        <p-columnFilter type="numeric" field="life_left" display="menu"></p-columnFilter>
+                        <p-sortIcon field="life_left"></p-sortIcon>
+                    </th>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-i>
+                <tr>
+                    <td>{{i.title}}</td>
+                    <td>{{i.batch}}</td>
+                    <td>{{i.expdate | date :'MMM-yy'}}</td>
+                    <td>{{i.purchase_qty}}</td>
+                    <td>{{i.available_qty}}</td>
+                    <!-- <td>{{i.mrp_cost}}</td> -->
+                    <td>{{i.ptr_cost}}</td>
+                    <td>{{i.sale_price}}
+                        <span class="ml-2">
+                            <a href="javascript:void(0)" (click)="showDialog(i)">
+                            <i class="bi bi-pencil text-primary"></i></a>
+                        </span>
+                    </td>
+                    <!-- <td>{{i.old_with_us}}</td> -->
+                    <td>{{i.life_left}}</td>
+                </tr>
+            </ng-template>
+        </p-table>    
+</div>
+</div>
+</div>
+<p-dialog header="Adjust Price" [(visible)]="display" [modal]="true">
+    <div class="container">
+        <form [formGroup]="adjustForm" (ngSubmit)="onAdjustSubmit()">
+            <div class="row">
+            <div class="col-md-12">
+                <h5>{{selectedItem?.title}}</h5>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12 m-0 p-0">
+                            <strong>Batch:</strong>{{selectedItem?.batch}}
+                            <strong>Exp date:</strong>{{selectedItem?.expdate | date: 'MMM-yy'}}
+                            <strong>Qty:</strong>{{selectedItem?.purchase_qty}}
+                            <strong>PTR:</strong>{{selectedItem?.ptr_cost}}
+                            <strong>MRP:</strong>{{selectedItem?.mrp_cost}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-4"><label for="price">Current</label><br>
+                    {{selectedItem?.sale_price}}
+                </div>
+                <div class="col-md-4">
+                    <label for="price">New</label>
+                    <input type="text" class="form-control" id="price" 
+                    formControlName="price" (input)="limitMRP($event)">
+                </div>
+                <div class="col-md-4">
+                    <label for="effdate">Eff Date</label>
+                    <input type="date" class="form-control" id="effdate" formControlName="effdate">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <label for="Reason">Reason</label>
+                    <textarea class="form-control" id="reason" 
+                    formControlName="comments"></textarea>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary" [disabled]="!adjustForm.valid">Submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+</p-dialog>

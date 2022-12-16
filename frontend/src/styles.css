@@ -1,0 +1,78 @@
+@media print {
+    body {
+        font-size: smaller;
+    }
+    .pagetitle,
+    .header,
+    .sidebar,
+    .non-print {
+        visibility: hidden;
+    }
+    body,
+    .main,
+    .pagetitle,
+    .bill-view {
+        padding: 0;
+        margin: 0;
+    }
+    .bill-view {
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+    .bill-head{
+        font-size: smaller;
+    }
+    .no-print {
+        visibility: hidden;
+    }
+    .sale-items {
+        font-size: xx-small;
+        /* font-weight: bolder; */
+        position: fixed;
+        top: 0;
+        width: 100%;
+     margin: 0px auto;
+    }
+    .sale-items th.billdt {
+        width:6%
+    }
+    .sale-items th.billno {
+        width:6%
+    }
+    .sale-items th.doctor {
+        width:10%
+    }
+    .sale-items th.customer {
+        width:10%
+    }
+    .sale-items th.phone {
+        width:8%
+    }
+    .sale-items th.address {
+        width:10%
+    }.sale-items th.batch {
+        width:12%
+    }.sale-items th.product {
+        width:20%
+    }.sale-items th.qty {
+        width:4%
+    }
+    .p-tabview-panels {
+        margin:0;
+        padding:0;
+    }
+    /* .bill-view table{
+        width: 100%;
+    }
+    .bill-view cen {
+        text-align: center;
+    }
+    .bill-view right {
+        text-align: right;
+    }
+    .bill-view left {
+        text-align: left;
+    } */
+  }
+  

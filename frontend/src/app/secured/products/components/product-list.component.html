@@ -1,0 +1,78 @@
+<div class="pagetitle">
+    <h1>Products</h1>
+</div>
+
+<a *isAuth="'products.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+<div class="row">
+    <div class="col-md-2">
+        Category: <select class="form-control" id="category" [(ngModel)]="category"
+        (change)="selectCategory($event)">
+          <option value="">Select</option>
+          <option value="Drug">Drug</option>
+          <option value="Surgicals">Surgicals</option>
+        </select>
+    </div>
+</div>
+
+<p-table #dt1 [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
+[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    [rowsPerPageOptions]="[10,25,50]">
+    <!-- <ng-template pTemplate="caption">
+        <div class="flex">
+            <button pButton label="Clear" class="p-button-outlined" icon="pi pi-filter-slash" (click)="clear(dt1)"></button>
+            <span class="p-input-icon-left ml-auto">
+                <i class="pi pi-search"></i>
+                <input pInputText type="text" 
+                (input)="applyFilterGlobal($event, 'contains')"
+                placeholder="Search keyword" />
+            </span>
+        </div>
+    </ng-template> -->
+    <ng-template pTemplate="header">
+        <tr>
+            <th pSortableColumn="code">Code 
+                <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
+                <p-sortIcon field="code"></p-sortIcon>
+            </th>  
+            <th pSortableColumn="hsn">HSN
+                <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
+                <p-sortIcon field="hsn"></p-sortIcon>
+            </th>
+            <th pSortableColumn="category">Category 
+                <p-columnFilter type="text" field="category" display="menu"></p-columnFilter>
+                <p-sortIcon field="category"></p-sortIcon>
+            </th>
+            <th pSortableColumn="title">Title 
+                <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
+                <p-sortIcon field="title"></p-sortIcon>
+            </th>
+            <th pSortableColumn="brand">Brand 
+                <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
+                <p-sortIcon field="brand"></p-sortIcon>
+            </th>
+            <th pSortableColumn="mfr">Manufacturer
+                <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
+                <p-sortIcon field="mfr"></p-sortIcon>
+            </th>
+            <!-- <th *ngFor="let dynPropHead of propHeads">{{dynPropHead.label}}</th> -->
+            <th>Actions</th>
+        </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-product>
+        <tr>
+            <td>{{product.code}}</td>
+            <td>{{product.hsn}}</td>
+            <td>{{product.category}}</td>
+            <td>{{product.title}}</td>
+            <td>{{product.brand}}</td>
+            <td>{{product.mfr}}</td>
+            <!-- <td *ngFor="let dynProp of product.attrs">{{dynProp.value}}</td> -->
+            <td>
+                <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
+                <i class="bi bi-pencil text-primary"></i></a>
+                <a *isAuth="'products.delete'" (click)="delete(product.id)"><i class="bi bi-trash text-danger"></i></a>
+            </td>
+        </tr>
+    </ng-template>
+</p-table>

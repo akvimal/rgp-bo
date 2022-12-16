@@ -1,0 +1,42 @@
+<div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Payment Info</h5>
+
+      <!-- Multi Columns Form -->
+      <form class="row g-3" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="row">
+        <div class="col-md-4">
+          <label for="paydate" class="form-label">Date</label>
+          <input type="date" class="form-control" id="paydate" formControlName="paydate">
+        </div>
+        <div class="col-md-4">
+          <label for="paymode" class="form-label">Mode</label>
+          <select class="form-select" id="paymode" formControlName="paymode" aria-label="Mode">
+            <option>Select</option>
+            <option value="Cash">Cash</option>
+            <option value="Transfer">Transfer</option>
+          </select>
+          </div>
+          <div class="col-md-4">
+            <label for="payrefno" class="form-label">Reference No.</label>
+            <input type="text" class="form-control" id="payrefno" formControlName="payrefno">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-4">
+            <label for="payamount" class="form-label">Amount</label>
+            <input type="text" class="form-control" id="payamount" formControlName="payamount">
+          </div>
+          <div class="col-md-8">
+            <label for="paycomments" class="form-label">Comments</label>
+            <textarea class="form-control" id="paycomments" formControlName="paycomments"></textarea>
+          </div>
+
+        </div>
+        <div class="text-center">
+          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
+        </div>
+      </form><!-- End Multi Columns Form -->
+
+    </div>
+  </div>
