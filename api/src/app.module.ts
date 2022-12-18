@@ -14,13 +14,15 @@ import { VendorModule } from './modules/vendors/vendor.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ErrorsInterceptor } from './core/errors.interceptor';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
-  controllers: [  ],
+  controllers: [ AppController ],
   providers: [ {
     provide: APP_INTERCEPTOR,
     useClass: ErrorsInterceptor,
-  }, ],
+  }, AppService],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
