@@ -1,13 +1,13 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { BehaviorSubject } from "rxjs";
+import { environment } from "./../../../../environments/environment";
 
 @Injectable({
     providedIn: 'root'
 })
 export class StockService {
 
-    apiurl = 'http://localhost:3000';
+    apiurl = environment.apiHost;
 
     constructor(private http:HttpClient){ }
 

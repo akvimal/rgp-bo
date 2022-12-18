@@ -21,25 +21,25 @@ import { InventoryModule } from './modules/inventory/inventory.module';
     provide: APP_INTERCEPTOR,
     useClass: ErrorsInterceptor,
   }, ],
-  imports: [ConfigModule.forRoot({
-    isGlobal: true,
-    load: [
-      databaseConfig
-    ],
-    envFilePath: ['.env'],
-  }),
-  TypeOrmModule.forFeature([  ]),
-  TypeOrmModule.forRootAsync({
-    useClass: TypeOrmConfigService,
-  }),
-  RoleModule,
-  UserModule,
-  ProductModule,
-  VendorModule,
-  PurchaseInvoiceModule,
-  CustomerModule,
-  SaleModule,
-  InventoryModule
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [
+        databaseConfig
+      ],
+      envFilePath: ['.env'],
+    }),
+    TypeOrmModule.forRootAsync({
+      useClass: TypeOrmConfigService,
+    }),
+    RoleModule,
+    UserModule,
+    ProductModule,
+    VendorModule,
+    PurchaseInvoiceModule,
+    CustomerModule,
+    SaleModule,
+    InventoryModule
   ]
 })
 export class AppModule {}

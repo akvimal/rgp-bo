@@ -1,28 +1,27 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Observable } from "rxjs";
+import { environment } from './../../../environments/environment';
 
 @Injectable({
     providedIn: "root"
 })
 export class AuthService {
 
-  API_SERVER = "http://localhost:3000";
-
   permissions = []
 
   constructor(private http: HttpClient) {}
     
   public login(cred:any):Observable<any>{
-    return this.http.post<any>(`${this.API_SERVER}/auth/login`,cred);
+    return this.http.post<any>(`${environment.apiHost}/auth/login`,cred);
   }
     
   public register(user:any):Observable<any>{
-    return this.http.post<any>(`${this.API_SERVER}/auth/register`,user);
+    return this.http.post<any>(`${environment.apiHost}/auth/register`,user);
   }
     
   public changepwd(passwords:any):Observable<any>{
-    return this.http.post<any>(`${this.API_SERVER}/auth/changepwd`,passwords);
+    return this.http.post<any>(`${environment.apiHost}/auth/changepwd`,passwords);
   }
     
   public getPermissions(){

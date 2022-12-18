@@ -3,6 +3,7 @@ import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
 import { SaleItem } from "./sale-item.model";
 import { Sale } from "./sale.model";
+import { environment } from "./../../../environments/environment";
 
 @Injectable({
     providedIn: 'root'
@@ -12,7 +13,7 @@ export class SaleService {
     items = new BehaviorSubject<SaleItem[]>([]);
     totalState = new BehaviorSubject(0);
 
-    apiurl = 'http://localhost:3000/sales';
+    apiurl = `${environment.apiHost}/sales`;
 
     constructor(private http:HttpClient){}
 

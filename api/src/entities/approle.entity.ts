@@ -1,4 +1,3 @@
-import { Exclude } from "class-transformer";
 import {
   Column,
   Entity,
@@ -6,12 +5,13 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
+
 import { AppUser } from "./AppUser.entity";
 import { BaseEntity } from "./base.entity";
 
 @Index("app_role_un", ["name"], { unique: true })
 @Index("app_role_pk", ["id"], { unique: true })
-@Entity("app_role", { schema: "pharma4" })
+@Entity("app_role", { schema: "pharma4"})
 export class AppRole extends BaseEntity {
 
   @PrimaryGeneratedColumn({ type: "integer", name: "id" })

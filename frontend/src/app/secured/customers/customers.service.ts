@@ -2,6 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
 import { Customer } from "./customer.model";
+import { environment } from "./../../../environments/environment";
 
 @Injectable({
     providedIn: 'root'
@@ -9,7 +10,7 @@ import { Customer } from "./customer.model";
 export class CustomersService {
 
     state = new BehaviorSubject([])
-    apiurl = 'http://localhost:3000/customers';
+    apiurl = `${environment.apiHost}/customers`;
 
     constructor(private http:HttpClient){}
 

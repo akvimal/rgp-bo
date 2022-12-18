@@ -14,8 +14,8 @@ export class LoginComponent {
     error?:any;
 
     form = new FormGroup({
-        email: new FormControl('vimal@test.com',Validators.required),
-        password: new FormControl('test123',Validators.required)
+        email: new FormControl('',Validators.required),
+        password: new FormControl('',Validators.required)
     });
 
     constructor(

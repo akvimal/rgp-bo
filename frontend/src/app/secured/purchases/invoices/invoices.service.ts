@@ -1,15 +1,16 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { BehaviorSubject } from "rxjs";
+
 import { InvoiceItem } from "./invoice-item.model";
 import { Invoice } from "./invoice.model";
+import { environment } from "./../../../../environments/environment";
 
 @Injectable({
     providedIn: 'root'
 })
 export class InvoiceService {
 
-    apiurl = 'http://localhost:3000';
+    apiurl = environment.apiHost;
 
     constructor(private http:HttpClient){}
 
