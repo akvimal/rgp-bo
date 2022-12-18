@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  apiHost: 'http://www.easy7.in/api'
+  apiHost: 'http://localhost:3000'
 };
 
 /*

@@ -97,7 +97,7 @@ export class SaleService {
     async findAllByCustomerId(custid,limit){
         const saleids = await this.manager.query(`
         select s.id
-        from pharma4.sale s where s.status = 'COMPLETE' and s.customer_id = ${custid} order by s.bill_date desc limit ${limit}`);
+        from sale s where s.status = 'COMPLETE' and s.customer_id = ${custid} order by s.bill_date desc limit ${limit}`);
         const ids = saleids.map(i => i.id);
         
         return await this.saleRepository.createQueryBuilder("sale")
@@ -113,9 +113,9 @@ export class SaleService {
     async getSales(){
         return await this.manager.query(`   
         select s.id, s.bill_date, s.status , s.customer_id, c.name, c.mobile, ss.itemcount, ss.total 
-        from pharma4.sale s inner join 
-        (select sale_id, count(*) as itemcount, sum(qty * price) as total from pharma4.sale_item group by sale_id) ss on ss.sale_id = s.id
-        inner join pharma4.customer c on c.id = s.customer_id `);
+        from sale s inner join 
+        (select sale_id, count(*) as itemcount, sum(qty * price) as total from sale_item group by sale_id) ss on ss.sale_id = s.id
+        inner join customer c on c.id = s.customer_id `);
     }
 
     async findById(id:string){

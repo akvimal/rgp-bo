@@ -9,15 +9,15 @@ export class StockService {
     
     async findAll(){
         return await this.manager.query(`
-        select * from pharma4.stock_view where life_left >= 0`);
+        select * from stock_view where life_left >= 0`);
     }    
     async findByItem(id){
         return await this.manager.query(`
-        select * from pharma4.stock_view where id = ${id}`);
+        select * from stock_view where id = ${id}`);
     }    
     
     // async findByCriteria(criteria){
-    //     let query = `select * from pharma4.stock_view`;
+    //     let query = `select * from stock_view`;
     //     if(criteria) {
     //         query += `where `
     //         query += criteria.expired && `life_left > 0`

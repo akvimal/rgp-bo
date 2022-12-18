@@ -13,7 +13,7 @@ import { Customer } from "./customer.entity";
 import { SaleItem } from "./sale-item.entity";
 
 @Index("sale_pk", ["id"], { unique: true })
-@Entity("sale", { schema: "pharma4" })
+@Entity("sale")
 export class Sale extends BaseEntity {
   @PrimaryGeneratedColumn({ type: "integer", name: "id" })
   id: number;

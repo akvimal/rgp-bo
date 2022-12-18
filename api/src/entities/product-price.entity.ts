@@ -8,7 +8,7 @@ import { BaseEntity } from "./base.entity";
 
 @Index("product_price_pk", ["id"], { unique: true })
 @Index("product_price_un", ["itemid"], { unique: true })
-@Entity("product_price", { schema: "pharma4" })
+@Entity("product_price")
 export class ProductPrice extends BaseEntity {
 
   @PrimaryGeneratedColumn({ type: "integer", name: "id" })

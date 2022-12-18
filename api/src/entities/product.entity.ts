@@ -9,7 +9,7 @@ import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
   
   @Index("product_pk", ["id"], { unique: true })
   @Index("product_un", ["title"], { unique: true })
-  @Entity("product", { schema: "pharma4" })
+  @Entity("product")
 
   export class Product extends BaseEntity {
   

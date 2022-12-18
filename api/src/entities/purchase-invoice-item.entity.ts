@@ -14,7 +14,7 @@ import { SaleItem } from "./sale-item.entity";
   
   @Index("pur_invitem_un", ["batch", "invoiceid", "productid"], { unique: true })
   @Index("pur_invitem_pk", ["id"], { unique: true })
-  @Entity("purchase_invoice_item", { schema: "pharma4" })
+  @Entity("purchase_invoice_item")
   export class PurchaseInvoiceItem extends BaseEntity {
 
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })

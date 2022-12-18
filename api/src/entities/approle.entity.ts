@@ -11,7 +11,7 @@ import { BaseEntity } from "./base.entity";
 
 @Index("app_role_un", ["name"], { unique: true })
 @Index("app_role_pk", ["id"], { unique: true })
-@Entity("app_role", { schema: "pharma4"})
+@Entity("app_role")
 export class AppRole extends BaseEntity {
 
   @PrimaryGeneratedColumn({ type: "integer", name: "id" })
