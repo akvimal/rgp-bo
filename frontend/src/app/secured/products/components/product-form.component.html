@@ -9,15 +9,27 @@
       <!-- Multi Columns Form -->
       <form [formGroup]="form" (ngSubmit)="onSave()">
         <div class="row">
-          <div class="col-md-12">
+          <div class="col-md-3">
             <label for="category" class="form-label">Category</label>          
             <select formControlName="category" class="form-control" id="category" 
             (change)="selectProps($event,undefined)">
-              <option value=""></option>
               <option value="Drug">Drug</option>
-              <option value="Surgicals">Surgicals</option>
+              <option value="OTC">OTC</option>
             </select>
           </div>
+          <div class="col-md-4">
+            <label for="brand" class="form-label">Brand</label>
+            <input id="brand" class="form-control" type="text" formControlName="brand" (input)="dataInput(undefined, 'brand', $event)">
+          </div>
+          <div class="col-md-5">
+            <label for="mfr" class="form-label">Manufacturer</label>
+            <input id="mfr" class="form-control" type="text" formControlName="mfr">
+          </div>
+          <!-- <div class="col-md-3">
+            <label for="productcode" class="form-label">Product Code</label>
+            <input id="productcode" class="form-control" type="text" formControlName="code">
+          </div> -->
+  
         </div>
 
         <div class="row g-2 bg-light pb-3 mt-3" formGroupName="props" *ngIf="props.length > 0">
@@ -31,33 +43,20 @@
             <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)" 
                       class="form-control" formControlName={{pp.id}}>
             <div *ngIf="pp.type === 'CHECK'">
-              <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)"
+              <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)" [checked]="pp.default"
               class="form-check-input" formControlName={{pp.id}}> Yes
               </div>
             </div>
         </div>
 
         <div class="row g-3 mt-2">
-          <div class="col-md-2">
-            <label for="brand" class="form-label">Brand</label>
-            <input id="brand" class="form-control" type="text" formControlName="brand" (input)="dataInput(undefined, 'brand', $event)">
-          </div>
-          <div class="col-md-2">
-            <label for="mfr" class="form-label">Manufacturer</label>
-            <input id="mfr" class="form-control" type="text" formControlName="mfr">
-          </div>
-        <div class="col-md-2">
-          <label for="productcode" class="form-label">Product Code</label>
-          <input id="productcode" class="form-control" type="text" formControlName="code">
+        <div class="col-md-8" *isAuth="'products.add$title'">
+          <label for="title" class="form-label">Title</label>
+          <input type="text" class="form-control" id="title" formControlName="title">
         </div>
         <div class="col-md-2">
           <label for="hsncode" class="form-label">HSN Code</label>
-          <input id="hsncode" class="form-control" type="text" formControlName="hsn">
-        </div>
-
-        <div class="col-md-12" *isAuth="'products.add$title'">
-          <label for="title" class="form-label">Title</label>
-          <input type="text" class="form-control" id="title" formControlName="title">
+          <input id="hsncode" class="form-control" type="text" formControlName="hsn" maxlength="8">
         </div>
         <div class="col-md-12" *isAuth="'products.add$description'">
           <label for="description" class="form-label">Description</label>

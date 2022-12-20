@@ -14,7 +14,7 @@ export class ProductFormComponent{
         title: new FormControl('',Validators.required),
         hsn: new FormControl(''),
         code: new FormControl(''),
-        category: new FormControl(''),
+        category: new FormControl('Drug'),
         mfr: new FormControl(''),
         brand: new FormControl(''),
         description: new FormControl(''),
@@ -29,6 +29,7 @@ export class ProductFormComponent{
         private route:ActivatedRoute, private httpClient: HttpClient){}
 
       ngOnInit(){
+        this.populateProps(this.form.controls['category'].value,undefined);
         const id = this.route.snapshot.paramMap.get('id'); 
         id && this.service.findById(id).subscribe((data:any) => {
           this.form.controls['id'].setValue(id);
@@ -41,7 +42,7 @@ export class ProductFormComponent{
           this.form.controls['description'].setValue(data.description);
 
           this.props = data.props;
-          this.populateProps(data.category,data.props)
+          this.populateProps(data.category,data.props);
         })
       }
 
@@ -79,9 +80,16 @@ export class ProductFormComponent{
           this.pdata.packing = event.target.value;
         }
 
-        this.form.controls['title'].setValue((this.brand.toUpperCase()||'') + ' ' + (this.pdata.formulation||'') + ' ' + (this.pdata.packing||''))
+        this.form.controls['title'].setValue((this.brand.toUpperCase()||'') + ' ' + (this.pdata.formulation||'') + ' ' + this.isPluralPacking(this.pdata.packing,this.pdata.formulation))
       }
   
+      isPluralPacking(count:number,formulation:string){
+        if(formulation === 'TAB' || formulation === 'CAP') {
+          return count !== undefined ? count + "'s" : '';
+        }
+        return "";
+      }
+
       onRemove(id:any) {
         this.service.remove(id);
       }

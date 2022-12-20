@@ -12,8 +12,9 @@
         </select>
       </div>
       <div class="col-md-3">
-        <label for="invdate" class="col-form-label">Invoice Date</label>
-        <input type="date" class="form-control" formControlName="invoicedate" id="invdate">
+        <label for="invdate" class="col-form-label">Invoice Date</label><br>
+        <!-- <input type="string" class="form-control" formControlName="invoicedate" id="invdate"> -->
+        <p-calendar formControlName="invoicedate"  dateFormat="dd/mm/yy" [maxDate]="currentDate"></p-calendar>
       </div>
       <div class="col-md-3">
         <label for="invno" class="col-form-label">Invoice No.</label>

@@ -11,7 +11,7 @@ import { StockService } from "../../../purchases/stock/stock.service";
                     <ng-template let-stock pTemplate="item">
                         <h6 style="margin:0;padding:0;font-weight:bold">{{stock.title}}</h6>
                         <p style="margin:0;padding:0;color:#666">{{stock.more_props.composition}}</p>
-                        <span style="margin:0;padding:0;font-size:smaller;color:#999">
+                        <span style="margin:0;padding:0;color:#39f">
                         {{stock.batch}} / {{stock.expdate|date:'MMM-yy'}} ({{stock.available_qty}})
                         </span>
                     </ng-template>
@@ -49,7 +49,7 @@ export class StockSelectComponent {
         for(let i = 0; i < this.items.length; i++) {
             let st = this.items[i];
             const present = this.itemsSelected.find(i => i.itemid === st.id);
-            if ((st.title.toLowerCase().indexOf(query.toLowerCase()) == 0 
+            if ((st.title.toLowerCase().indexOf(query.toLowerCase()) >= 0 
                 || (st.more_props && st.more_props.composition.toLowerCase().indexOf(query.toLowerCase()) >= 0) )
                 && !present 
                 && st.available_qty != '0') {

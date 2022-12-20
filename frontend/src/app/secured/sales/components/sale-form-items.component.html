@@ -42,6 +42,7 @@
             <td colspan="5">
                 <div class="row">
                     <div class="col-md-3">
+                        {{sale.paymode}}
                         <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
                             <option value="">Select</option>
                             <option *ngFor="let pm of paymodes" [value]="pm.key">{{pm.value}}</option>

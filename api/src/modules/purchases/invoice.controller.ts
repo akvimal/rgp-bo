@@ -14,14 +14,24 @@ export class PurchaseInvoiceController {
 
     constructor(private purchaseInvoiceService:PurchaseInvoiceService){}
 
-    @Get()
-    async findAll() {
-      return this.purchaseInvoiceService.findAll();
-    }
+    // @Get()
+    // async findAll() {
+    //   return this.purchaseInvoiceService.findAll();
+    // }
 
     @Get('/:id')
     async findById(@Param('id') id: string) {
       return this.purchaseInvoiceService.findById(id);
+    }
+
+    @Get()
+    async findByUnique(@Query() query: any) {
+      console.log('Query: ',query);
+      
+      if(Object.keys(query).length > 0)
+      return this.purchaseInvoiceService.findByUnique(query);
+      else
+      return this.purchaseInvoiceService.findAll();
     }
 
     @Post()

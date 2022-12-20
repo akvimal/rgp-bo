@@ -15,6 +15,7 @@ export class InvoiceFormComponent {
     vendors:any = [];
     products:any = [];
     total:number = 0;
+    currentDate = new Date()
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -57,6 +58,14 @@ export class InvoiceFormComponent {
 
       this.vendorService.findAll().subscribe(data => this.vendors = data);
       this.prodService.findAll(null).subscribe(data => this.products = data);
+    }
+
+    getCurrentDateStr(){
+      const dt = new Date();
+      const str = ''//dt.getDate() + '/' +(dt.getMonth()+1) + '/' + dt.getFullYear();
+      console.log('date: ',str);
+      
+      return str;
     }
 
     calculateTotal(qty?:number,price?:number,tax?:number){

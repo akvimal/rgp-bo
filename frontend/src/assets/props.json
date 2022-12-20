@@ -2,9 +2,22 @@
   "category": "Drug",
   "props":[
     {
+      "id": "generic",
+      "label": "Generic",
+      "type": "CHECK",
+      "default": true
+    },
+    {
+      "id": "chronic",
+      "label": "Chronic",
+      "type": "CHECK",
+      "default": true
+    },
+    {
       "id": "composition",
       "label": "Composition"
-    },{
+    },
+    {
       "id": "formulation",
       "label": "Formulation",
       "type": "SINGLE-SELECT",
@@ -18,25 +31,42 @@
           "value": "CAP"
         },
         {
+          "label": "Oral",
+          "value": "ORL"
+        },
+        {
           "label": "Syrup",
           "value": "SYP"
         },
         {
-          "label": "Oinment",
-          "value": "OIN"
+          "label": "Cream",
+          "value": "CRM"
+        },
+        {
+          "label": "Spray",
+          "value": "SRY"
         },
         {
           "label": "Drops",
           "value": "DROP"
         },
         {
-          "label": "Needles",
-          "value": "NED"
+          "label": "Sachet",
+          "value": "SCT"
+        },
+        {
+          "label": "Injectable",
+          "value": "INJ"
+        },
+        {
+          "label": "Powder",
+          "value": "PDR"
         }
       ]
     },{
       "id": "packing",
-      "label": "Packing"
+      "label": "Packing",
+      "default": 1
     },{
       "id": "schedule",
       "label": "Schedule",
@@ -61,48 +91,58 @@
           "value": "H1 Anti TB"
         }
       ]
-    },{
-      "id": "purpose",
-      "label": "Purpose",
-      "type": "SINGLE-SELECT",
-      "choices": [
-        {
-          "label": "Diabetic",
-          "value": "Diabetic"
-        },
-        {
-          "label": "Cardio",
-          "value": "Cardio"
-        },
-        {
-          "label": "ENT",
-          "value": "ENT"
-        },
-        {
-          "label": "Skin",
-          "value": "Skin"
-        },
-        {
-          "label": "Ortho",
-          "value": "Ortho"
-        },
-        {
-          "label": "Surgicals",
-          "value": "Surgical"
-        }]
-    },
-    {
-      "id": "generic",
-      "label": "Generic",
-      "type": "CHECK"
     }
   ]
 },{
   "category": "Surgicals",
   "props":[
     {
-      "id": "type",
-      "label": "Type"
+      "id": "category",
+      "label": "Category",
+      "type": "SINGLE-SELECT",
+      "choices": [
+        {
+          "label": "Syringe",
+          "value": "SNG"
+        },
+        {
+          "label": "Masks",
+          "value": "MSK"
+        }, {
+          "label": "Gloves",
+          "value": "GLV"
+        }
+      ]
+    }
+  ]
+},{
+  "category": "OTC",
+  "props":[
+    {
+      "id": "category",
+      "label": "Category",
+      "type": "SINGLE-SELECT",
+      "choices": [
+        {
+          "label": "Soap",
+          "value": "SOP"
+        },{
+          "label": "Cream",
+          "value": "CRM"
+        },
+        {
+          "label": "Diapers",
+          "value": "DPR"
+        },
+        {
+          "label": "Monitoring",
+          "value": "MNR"
+        },
+        {
+          "label": "Oil",
+          "value": "OIL"
+        }
+      ]
     }
   ]
 }]

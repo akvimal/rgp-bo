@@ -1,0 +1,19 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.2.1",
+    "html-pdf": "^3.0.1",
+    "pdf-creator-node": "^2.3.5",
+    "pdf-lib": "^1.17.1",
+    "ssh2-sftp-client": "^9.0.4",
+    "xlsx": "^0.18.5"
+  }
+}

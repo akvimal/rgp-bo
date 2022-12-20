@@ -27,6 +27,17 @@ export class PurchaseInvoiceService {
           .where('invoice.active = :flag', { flag:true })
           .getMany();
     }
+    async findByUnique(query:any){
+      const qb = this.purchaseInvoiceRepository.createQueryBuilder(`i`)
+          .where('i.isActive = :flag', { flag: true });
+          if(query.invoiceno){
+            qb.andWhere(`i.invoiceno = :iid`, { iid:query.invoiceno });
+          }
+          if(query.vendorid){
+            qb.andWhere(`i.vendorid = :vid`, { vid:query.vendorid });
+          }
+        return qb.getOne();
+  }
 
     async findById(id:string){
         return this.purchaseInvoiceRepository.createQueryBuilder('invoice')

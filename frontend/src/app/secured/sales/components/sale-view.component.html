@@ -25,37 +25,47 @@
                 <tr>
                     <th>Product</th>
                     <th style="text-align: center;">Batch / Exp</th>
-                    <!-- <th>MRP</th> -->
                     <th style="text-align: right;">MRP</th>
                     <th style="text-align: right;">Qty</th>
-                    <th style="text-align: right;">Price</th>
+                    <th style="text-align: right;">Rate</th>
                     <th style="text-align: right;">Tax</th>
                     <th style="text-align: right;">Amount</th>
                 </tr>
             <tr *ngFor="let i of sale.items">
                 <td>
-                    <strong>{{i.title}}</strong><br>
+                    {{i.title}}<br>
                     <i>{{i.props?.composition}}</i>
                 </td>
                 <td style="text-align: center;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
-                <!-- <td>{{i.purchaseitem.mrpcost}}</td> -->
                 <td style="text-align: right;width:8%">{{i.mrp}}</td>
                 <td style="text-align: right;width:6%">{{i.qty}}</td>
                 <td style="text-align: right;width:8%">{{i.price}}</td>
                 <td style="text-align: right;width:6%">{{i.taxpcnt}}%</td>
                 <td style="text-align: right;width:8%">{{i.total}}</td>
             </tr>
-            <tr style="font-weight: bolder;">
-                <td colspan="5">Total</td>
+            <tr>
+                <td colspan="4">No. of items: {{itemsCount}}</td>
                 <!-- <td>{{sale.total?.tax}}</td> -->
-                <td colspan="2" style="text-align: right;font-size: large;">
+                <td colspan="3" style="text-align: right;">
+                    
+                    <label>Total: </label>
                     <i class="bi bi-currency-rupee"></i>
                         {{sale.total}}
                 </td>
             </tr>
-            <!-- <tr>
-                <td>Saving: {{sale.total?.saving}}%</td>
-            </tr> -->
+            <tr>
+                <td colspan="4">
+                    <strong>MRP Total:</strong> {{mrpTotal}}
+                    <strong>Sale Total:</strong> {{sale.total}}
+                    <span *ngIf="saving > 0"><label for="saving"></label>
+                       <strong>Saving:</strong> {{saving}}%</span>
+                </td>
+                <td colspan="3" style="text-align: right;">
+                    <label>Net Total: </label>
+                    <i class="bi bi-currency-rupee"></i>
+                    <strong>{{finalAmt}}</strong>
+                </td>
+            </tr>
             </table>
         </div>
        

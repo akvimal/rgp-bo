@@ -22,12 +22,12 @@ export class SaleFormItemsComponent{
   newSaleItem = {purchaseitemid:'',price:'',qty:''};
 
   ngOnChanges(changes: SimpleChanges) {
+    this.total = 0;
     if(changes['items']){
-      const old = this.total || 0;
       changes['items'].currentValue.forEach((i:any) => {
         const itemtotal = this.calculateTotal(i.qty, i.price, i.taxpcnt);
         i['total'] = itemtotal;
-        this.total = this.total - old + itemtotal;
+        this.total = Math.round(this.total + itemtotal);
       });
       this.recalculateTotal.emit(true)
     }
@@ -35,7 +35,7 @@ export class SaleFormItemsComponent{
     
   calculateTotal(qty:number,price:number,tax:number):number{
     const total = qty * ((price||0) * (1 + ((tax||0) / 100)));
-    return isNaN(total) ? 0 : Math.round(+total);//.toFixed(2);
+    return isNaN(total) ? 0 : +total.toFixed(2);
   }
 
   calculate(itemid:any,event:any){      
@@ -49,7 +49,7 @@ export class SaleFormItemsComponent{
         
     const old = item.total || 0; //previous total
         item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
-        this.total = this.total - old + item.total;
+        this.total = Math.round(this.total - old + item.total);
         this.recalculateTotal.emit(true);
       }
   

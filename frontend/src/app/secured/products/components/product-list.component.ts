@@ -9,16 +9,11 @@ import { PropsService } from "../props.service";
 export class ProductListComponent {
 
     products:any;
-    propHeads:{id:string,label:string}[] = [];
-    category:any;
+    category:any = '';
 
     @ViewChild('dt') dt: Table | undefined;
 
-    constructor(private service:ProductsService,private propsService:PropsService){
-        this.propsService.fetch().subscribe((d:any) => {
-            this.propHeads = d.map((c:any)=>{return {id:c.id,label:c.label}})
-        });            
-    }
+    constructor(private service:ProductsService,private propsService:PropsService){}
 
     ngOnInit(){ 
         this.fetchList()
@@ -44,14 +39,10 @@ export class ProductListComponent {
         this.service.findAll(this.category && {category:this.category}).subscribe((data:any) => {
             this.products = [...data].map(p => {
                 let attrs:any[] = [];
-                this.propsService.fetch().forEach((c:any) => {
-                    if(p.props) {
-                        c.forEach((i:any) => {
-                            attrs.push({label: i.label, value:p.props[i.id]});
-                        });
-                    }
-                });
-                return {...p, attrs};
+                for (const [key, value] of Object.entries(p.props)) {
+                    attrs.push({key:key.toUpperCase(),value});
+                }
+                return {...p,attrs};
             });
         });
     }

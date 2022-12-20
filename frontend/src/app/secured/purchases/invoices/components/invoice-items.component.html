@@ -108,21 +108,21 @@
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
                             <td>{{i.expdate | date: 'MMM-yy'}}</td>
-                            <td>{{i.mrpcost}}</td>
-                            <td>{{i.qty}}</td>
-                            <td>{{i.ptrcost}}</td>
+                            <td style="text-align: right;">{{i.mrpcost}}</td>
+                            <td style="text-align: right;">{{i.qty}}</td>
+                            <td style="text-align: right;">{{i.ptrcost}}</td>
                             <td>{{i.taxpcnt}}%</td>
                             <td style="text-align: right;">{{i.total}}</td>
                             <td>{{i.status}}</td>
                         </tr>
                         <tr>
-                            <td colspan="8" style="text-align: right;">Total</td>
+                            <td colspan="4">{{invoice.items?.length}} Items</td>
+                            <td colspan="4" style="text-align: right;">Total</td>
                             <td style="text-align: right;">{{invoice.total}}</td>
                             <td></td>
                         </tr>
                     </tbody>
                 </table>
-
             </div>
         </div>
 

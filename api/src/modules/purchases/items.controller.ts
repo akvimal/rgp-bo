@@ -39,6 +39,7 @@ export class PurchaseItemController {
           })
           await this.purchaseInvoiceService.update([item.invoiceid],{total},currentUser.id)  
         })
+        return item;
     }
 
     @Put()

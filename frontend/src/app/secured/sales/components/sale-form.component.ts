@@ -14,6 +14,7 @@ export class SaleFormComponent {
     
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
+    displayNewLead:boolean = false;
     salePropValues:any;
 
     total:number = 0;
@@ -114,13 +115,15 @@ export class SaleFormComponent {
     recalculateTotal(event:any){
       this.total = 0;
       this.sale.items?.forEach((i:any) => {
-        if(i.itemid != '')
-        this.total += i.total;
+        if(i.itemid != '') {
+          this.total += i.total;
+        }
       });
       this.addNewItem();
     }
 
     selectCustomer(customer:any){
+      
       const {id,name,mobile,email,address} = customer;
       if(customer.existing){
         this.sale.customer = {id,name,mobile,email,address};
@@ -139,6 +142,12 @@ export class SaleFormComponent {
     return this.total > 0 && (this.sale.paymode != undefined && this.sale.paymode != '');
   }
   
+  doneEnterCustomer(event:any){
+    console.log('event: ',event.target.value);
+    
+    this.sale.customer = {mobile:event.target.value,name:''};
+  }
+
   removeItem(id:any){
     if(this.sale.items) {
       this.sale.items = [...this.sale.items].filter((i:any) => i.id !== id)
@@ -159,6 +168,14 @@ export class SaleFormComponent {
       if(requireAdditionalProps && requireAdditionalProps.length > 0){
         this.populateSalePropsForm('H1',null);
         this.displaySalePropsForm = true;
+        return;
+      }
+    }
+
+    if(this.newCustomer){
+      // console.log(this.sale.customer);
+      if(this.sale.customer && this.sale.customer.mobile !== ''){
+        this.displayNewLead = true;
         return;
       }
     }
@@ -197,6 +214,10 @@ export class SaleFormComponent {
     this.router.navigateByUrl(`/secure/sales`); 
   }
 
+  saveLeadInfo(){
+    this.displayNewLead = true;
+  }
+
   showPrevSalesCopy() {
 
     const addedItemsToSale = this.sale.items?.map((i:any) => i.itemid)
@@ -223,7 +244,6 @@ export class SaleFormComponent {
           });
 
           this.previousSaleItems.push({billdate:ps.billdate,total:ps.total,items});
-          // this.fetchCustomerPrevSales = false;
         });
       }
     });

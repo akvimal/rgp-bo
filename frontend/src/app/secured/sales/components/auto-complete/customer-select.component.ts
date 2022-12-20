@@ -6,6 +6,7 @@ import { CustomersService } from "../../../customers/customers.service";
     template: `
     <p-autoComplete [(ngModel)]="customer" [showEmptyMessage]="true" 
                 (onSelect)="selected($event)"
+                (onBlur)="focusOut($event)"
                 field="mobile" placeholder="Mobile"
                 [disabled]="disabled"
                 [suggestions]="filteredCustomer" 
@@ -19,6 +20,7 @@ import { CustomersService } from "../../../customers/customers.service";
 export class CustomerSelectComponent {
 
     @Output() customerSelected = new EventEmitter();
+    @Output() focusLeave = new EventEmitter();
     @Input() disabled:boolean = false;
 
     customer:any;
@@ -32,6 +34,10 @@ export class CustomerSelectComponent {
         this.customerService.findAllApi().subscribe(data => this.items = data);
     }
 
+    focusOut(event:any){
+        this.focusLeave.emit(event);
+    }
+    
     selected(event:any){
         this.customerSelected.emit({
             existing:true,
