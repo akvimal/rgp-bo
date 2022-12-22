@@ -10,7 +10,7 @@ import { CustomersService } from "../../../customers/customers.service";
                 field="mobile" placeholder="Mobile"
                 [disabled]="disabled"
                 [suggestions]="filteredCustomer" 
-                (completeMethod)="filterCustomer($event)" [minLength]="1">
+                (completeMethod)="filterCustomer($event)" [minLength]="3">
                 <ng-template let-customer pTemplate="item">
                     <div>{{customer.name}} - {{customer.mobile}}</div>
                 </ng-template>
@@ -50,7 +50,7 @@ export class CustomerSelectComponent {
 
     filterCustomer(event:any) {
         let query = event.query;
-        this.filteredCustomer = this.items.filter((c:any) => 
+        this.filteredCustomer = this.items && this.items.filter((c:any) => 
             (c.name && c.name.toLowerCase().indexOf(query.toLowerCase()) == 0) ||
             (c.mobile && c.mobile.indexOf(query.toLowerCase()) == 0));
         this.customerSelected.emit({existing:false,mobile:query});

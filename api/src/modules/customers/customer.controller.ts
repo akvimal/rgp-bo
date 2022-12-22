@@ -14,12 +14,17 @@ export class CustomerController {
 
     @Post()
     async create(@Body() createCustomerDto: CreateCustomerDto) {
-        return this.customerService.create(createCustomerDto);
+        return this.customerService.save(createCustomerDto);
     }
 
     @Get()
     async findAll() {
       return this.customerService.findAll();
+    }
+
+    @Get(':id')
+    async findOne(@Param('id') id: string) {
+      return this.customerService.findById(id);
     }
 
     @Delete(':id')

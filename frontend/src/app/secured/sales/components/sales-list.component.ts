@@ -18,8 +18,6 @@ export class SalesListComponent {
     }
 
     openH1Drugs(event:any){
-      console.log('cjamge tab');
-      
       this.openH1DrugsTab = true;
     }
     fetchSales(){

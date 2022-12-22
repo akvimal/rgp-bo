@@ -14,9 +14,12 @@ import { SalesListComponent } from "./components/sales-list.component";
 import { SalesComponent } from "./components/sales.component";
 import { StockSelectComponent } from "./components/auto-complete/stock-select.component";
 import { CustomerSelectComponent } from "./components/auto-complete/customer-select.component";
-import {DialogModule} from 'primeng/dialog';
-import {TabViewModule} from 'primeng/tabview';
+import { DialogModule } from 'primeng/dialog';
+import { TabViewModule } from 'primeng/tabview';
+import {InputNumberModule} from 'primeng/inputnumber';
 import { SalesItemListComponent } from "./components/sales-item-list.component";
+import { CustomersModule } from "../customers/customers.module";
+import { CustomerFormComponent } from "../customers/components/customer-form.component";
 
 const routes: Routes = [
   {path: '', redirectTo: 'list'},
@@ -35,6 +38,7 @@ const routes: Routes = [
       SaleFormComponent,
       SaleFormItemsComponent,
       StockSelectComponent,
+      // CustomerFormComponent,
       CustomerSelectComponent
     ],
     imports: [
@@ -45,6 +49,8 @@ const routes: Routes = [
         CalendarModule,
         DialogModule,
         TabViewModule,
+        InputNumberModule,
+        // CustomersModule,
         RouterModule.forChild(routes),
         SharedModule
     ],

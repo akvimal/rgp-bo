@@ -1,99 +1,43 @@
 <div class="pagetitle">
   <h1>Customers</h1>
 </div>
+<a *isAuth="'customers.new'" [routerLink]="['new']"><button type="submit" class="btn btn-primary">Add New</button></a>
 
-<div class="card">
-  <div class="card-body">
-    <h5 class="card-title">New Customer</h5>
-
-    <form class="row g-3" [formGroup]="form" (ngSubmit)="onSave()">
-      <div class="col-md-3">
-        <label for="name" class="form-label">Name</label>
-        <input id="name" type="text" class="form-control" formControlName="name">
-      </div>
-      <div class="col-md-3">
-        <label for="mobile" class="form-label">Mobile</label>
-        <input id="mobile" type="text" class="form-control" formControlName="mobile">
-      </div>
-      <div class="col-md-3">
-        <label for="email" class="form-label">Email</label>
-        <input id="email" type="text" class="form-control" formControlName="email">
-      </div>
-      <div class="col-md-3">
-        <label for="location" class="form-label">Location</label>
-        <input type="text" id="location"  class="form-control" formControlName="location">
-      </div>
-      <div class="col-md-3">
-        <label for="address" class="form-label">Address</label>
-        <input type="text" id="address"  class="form-control" formControlName="address">
-      </div>
-      <div class="col-md-3">
-        <label for="city" class="form-label">City</label>
-        <input type="text" id="city"  class="form-control" formControlName="city">
-      </div>
-      <div class="col-md-3">
-        <label for="state" class="form-label">State</label>
-        <input type="text" id="state"  class="form-control" formControlName="state">
-      </div>
-      <div class="col-md-3">
-        <label for="pincode" class="form-label">PIN Code</label>
-        <input type="text" id="pincode" class="form-control" formControlName="pincode">
-      </div>
-      <div class="col-md-3">
-        <label for="srctype" class="form-label">Source Type</label>
-        <select id="srctype" class="form-control" formControlName="srctype">
-          <option value="">Select</option>
-          <option value="Customer-Referral">Customer Referral</option>
-          <option value="Partner-Referral">Partner-Referral</option>
-          <option value="Advertisement">Advertisement</option>
-          <option value="Digital-Marketing">Digital Marketing</option>
-          <option value="Pass-by">Pass by</option>
-          <option value="Campaign">Campaign</option>
-          <option value="Online-Search">Online Search</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label for="srcdesc" class="form-label">Source Text</label>
-        <input type="text" id="srcdesc" class="form-control" formControlName="srcdesc">
-      </div>
-      <div class="text-center">
-        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Save</button>
-        <button type="button" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
-      </div>
-    </form>
-  </div>
-</div>
-<div class="card">
-  <div class="card-body">
-<table class="table table-bordered">
+<table class="table table-bordered mt-3">
   <thead>
-  <tr>
-    <th scope="col">ID</th>
-    <th scope="col">Name</th>
-    <th scope="col">Mobile</th>
-    <th scope="col">Email</th>
-    <th scope="col">Address</th>
-    <th scope="col">Actions</th>
-  </tr>
-</thead>
-<tbody>
-  <tr *ngFor="let c of customers">
-    <td>{{c.id}}</td>
-    <td>{{c.name}}</td>
-    <td>{{c.mobile}}</td>
-    <td>{{c.email}}</td>
-    <td>{{c.address}}</td>
-    <td>
-      <a (click)="onEdit(c.id)">
-        <i class="bi bi-pencil text-primary"></i>
-      </a>
-      <a (click)="onRemove(c.id)">
-        <i class="bi bi-trash text-danger"></i>
-      </a>
-    </td>
-  </tr>
-</tbody>
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col">Name</th>
+      <th scope="col">Mobile</th>
+      <th scope="col">Email</th>
+      <th scope="col">Area</th>
+      <th scope="col">Locality</th>
+      <th scope="col">Source Type</th>
+      <th scope="col">Source Info</th>
+      <th scope="col">Date</th>
+      <th scope="col">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let c of customers">
+      <td>{{c.id}}</td>
+      <td>{{c.name}}</td>
+      <td>{{c.mobile}}</td>
+      <td>{{c.email}}</td>
+      <td>{{c.area}}</td>
+      <td>{{c.locality}}</td>
+      <td>{{c.srctype}}</td>
+      <td>{{c.srcdesc}}</td>
+      <td>{{c.createdon | date : 'dd/MM/yy'}}</td>
+      <td>
+        <a *isAuth="'customers.edit'" [routerLink]="['edit',c.id]">
+          <i class="bi bi-pencil text-primary"></i>
+        </a>
+  <!--       
+        <a (click)="onRemove(c.id)">
+          <i class="bi bi-trash text-danger"></i>
+        </a> -->
+      </td>
+    </tr>
+  </tbody>
 </table>
-</div>
-</div>

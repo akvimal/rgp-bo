@@ -1,3 +1,7 @@
+body {
+    background-color: aqua;
+}
+
 @media print {
     body {
         font-size: smaller;

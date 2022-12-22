@@ -1,0 +1,51 @@
+<h1>Customer</h1>
+<form [formGroup]="form" (ngSubmit)="onSave()">
+  <div class="row">
+    <div class="col-md-4">
+      <label for="name" class="form-label">Name <span class="required">*</span></label>
+      <input id="name" type="text" class="form-control" formControlName="name">
+    </div>
+    <div class="col-md-4">
+      <label for="mobile" class="form-label">Mobile<span class="required">*</span></label>
+      <input id="mobile" type="text" class="form-control" formControlName="mobile">
+    </div>
+    <div class="col-md-4">
+      <label for="email" class="form-label">Email</label>
+      <input id="email" type="text" class="form-control" formControlName="email">
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-4">
+      <label for="area" class="form-label">Area</label>
+      <input type="text" id="area"  class="form-control" formControlName="area">
+    </div>
+    <div class="col-md-4">
+      <label for="locality" class="form-label">Locality</label>
+      <input type="text" id="locality"  class="form-control" formControlName="locality">
+    </div>
+    <div class="col-md-4">
+      <label for="address" class="form-label">Address</label>
+      <textarea id="address"  class="form-control" formControlName="address" rows="3"></textarea>
+    </div>
+  </div>
+    <div class="row">
+    <div class="col-md-3">
+      <label for="srctype" class="form-label">Source Type <span class="required">*</span></label>
+      <select id="srctype" class="form-control" formControlName="srctype">
+        <option value="">Select</option>
+        <option *ngFor="let t of custLeadTypes" [value]="t.value">{{t.label}}</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="srcdesc" class="form-label">Source Text</label>
+      <input type="text" id="srcdesc" class="form-control" formControlName="srcdesc">
+    </div>
+  </div>
+  <div class="row mt-3">
+    <div class="col-md-12">
+      <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Save</button>
+      <button type="button" *ngIf="customer.id === 0" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+      <a [routerLink]="['/secure/customers']"><button type="submit" class="btn btn-outline-secondary">Cancel</button></a>
+    </div>
+  </div>
+  </form>

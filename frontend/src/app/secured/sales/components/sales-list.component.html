@@ -12,8 +12,8 @@
         <input type="date" id="fromdate" name="filterbydate" class="form-control" 
               [(ngModel)]="criteria.date" (input)="fetchSales()">
       </div>
-      <div class="col-md-2">
-        <label for="sustomer">Customer</label>
+      <div class="col-md-3">
+        <label for="sustomer">Customer</label><br>
         <app-customer-select id="customer" (customerSelected)="selectCustomer($event)"></app-customer-select>
       </div>
       <div class="col-md-2">

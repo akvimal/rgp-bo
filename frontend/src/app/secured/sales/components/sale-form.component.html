@@ -5,16 +5,16 @@
             <div class="col-lg-4"><span *ngIf="this.sale.id">No: {{this.sale.id}}</span></div>
             <div class="col-lg-4">Status: {{this.sale.status}}</div>
         </div>
-        <div class="row mt-3 mb-3" *ngIf="newCustomer; else saleCustomer">
+        <div class="row mt-3 mb-3" *ngIf="isNewCustomer(); else saleCustomer">
             <div class="col-lg-3">
                 <app-customer-select 
                     (customerSelected)="selectCustomer($event)"
                     (focusLeave)="doneEnterCustomer($event)">
                     </app-customer-select>
-                    <a href="javascript:void(0)" (click)="closeChangeCustomer()">
-                        <i class="bi bi-x-square text-primary"></i></a>
+                    <!-- <a href="javascript:void(0)" (click)="closeChangeCustomer()">
+                        <i class="bi bi-x-square text-primary"></i></a> -->
             </div>
-            <div class="col-lg-3">
+            <!-- <div class="col-lg-3">
                 <input type="text" name="custName" id="custName" placeholder="Name"
                 [value]="sale.customer?.name||''" (input)="updateName($event)">
             </div>
@@ -25,19 +25,19 @@
             <div class="col-lg-3">
                     <input type="text" name="custAddr" id="custAdde" placeholder="Address"
                 [value]="sale.customer?.address||''" (input)="updateAddr($event)">
-            </div>
+            </div> -->
         </div>
            
         <ng-template #saleCustomer>
             <div class="row">
                 <div class="col-lg-3">Mobile: {{sale.customer?.mobile}}
                     <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
-                        <a href="javascript:void(0)" (click)="changeCustomer()">
+                        <a href="javascript:void(0)" (click)="showChangeCustomer()">
                         <i class="bi bi-pencil text-primary"></i></a>
                     </span>
                     <!-- <button type="button" *ngIf="!newCustomer" (click)="showDialog()" class="btn btn-primary">
                         Copy</button> -->
-                        <a *ngIf="!newCustomer" (click)="showPrevSalesCopy()">
+                        <a *ngIf="!isNewCustomer()" (click)="showPrevSalesCopy()">
                             <i class="bi bi-files text-success"></i>
                         </a>
                 </div>
@@ -55,11 +55,16 @@
 
 <div class="row">
     <div class="col-6" *ngIf="sale.status === 'NEW' || sale.status === 'PENDING'">
-        <button type="button" (click)="submit('PENDING')" class="btn btn-primary m-2">Save</button>    
-        <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" [disabled]="!completeAllowed()">Complete</button>    
+        <button type="button" (click)="submit('PENDING')" class="btn btn-primary m-2" 
+                    [disabled]="total === 0">Save</button>    
+        <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
+                    [disabled]="!completeAllowed()">Complete</button>    
     </div>
     <div class="col-6">
         <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">Discard</button>
+        
+        <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
+            <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
         <button type="button" (click)="cancel()" class="btn btn-outline-primary m-2">Cancel</button>        
     </div>
 </div>
@@ -87,8 +92,9 @@
     </form>
 </p-dialog>
 
-<p-dialog header="Copy" [(visible)]="displayPrevSalesCopy" [modal]="true">
-    <h5>{{this.sale?.customer?.name}} ({{this.sale?.customer?.mobile}})</h5>
+<p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
+        [(visible)]="displayPrevSalesCopy" [modal]="true">
+    
     <div *ngFor="let s of previousSaleItems">
         {{s.billdate | date : 'dd/MM'}} | ${{s.total}}
             <ul class="list-group mt-2">
@@ -97,11 +103,56 @@
                     {{i.title}} ({{i.qty}})</li>
             </ul>
     </div>
-    <button type="button" class="btn btn-primary mt-2 text-center" (click)="copySelectedItem()">Submit</button>
+    <button type="button" class="btn btn-primary mt-2 text-center" [disabled]="!copyItemSelected()" (click)="copySelectedItem()">Copy</button>
 </p-dialog>
 
-<p-dialog header="NewLead" [(visible)]="displayNewLead" [modal]="true">
-    <h5>{{this.sale?.customer?.name}} ({{this.sale?.customer?.mobile}})</h5>
-   
-    <button type="button" class="btn btn-primary mt-2 text-center" (click)="saveLeadInfo()">Submit</button>
+<p-dialog [header]="(this.sale?.customer?.name || 'New Customer') + ' (' + this.sale?.customer?.mobile + ')'" 
+            [(visible)]="displayNewCustomer" [modal]="true">
+        <div class="row">
+            <div class="col-lg-4">
+                <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
+                [value]="sale.customer?.name||''" (input)="updateCustomer('name',$event)">
+            </div>
+            <div class="col-lg-4">
+                <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
+                [value]="sale.customer?.email||''" (input)="updateCustomer('email',$event)">
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-lg-4">
+                    <input type="text" name="custArea" id="custArea" class="form-control" placeholder="Area"
+                [value]="sale.customer?.area||''" (input)="updateCustomer('area',$event)">
+            </div>
+            <div class="col-lg-4">
+                    <input type="text" name="custLocal" id="custLocal" class="form-control" placeholder="Locality"
+                [value]="sale.customer?.locality||''" (input)="updateCustomer('locality',$event)">
+            </div>
+            <div class="col-lg-4">
+                    <textarea name="custAddr" id="custAddr" class="form-control" placeholder="Address"
+                (input)="updateCustomer('address',$event)">{{sale.customer?.address||''}}</textarea>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-lg-4">
+                <select name="srctype" [value]="sale.customer?.srctype"  class="form-control" 
+                            (change)="updateCustomer('srctype',$event)">
+                    <option value="">Select</option>
+                    <option *ngFor="let st of custCustomerTypes" [value]="st.value">{{st.label}}</option>
+                </select>
+            </div>
+            <div class="col-lg-4">
+                    <input type="text" name="custSrcText" id="custSrcText" class="form-control"
+                    [value]="sale.customer?.srcdesc||''" (input)="updateCustomer('srcdesc',$event)">
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-lg-12">
+                <button type="button" class="btn btn-primary m-2 text-center" 
+                (click)="saveCustomerInfo('PENDING')">Save</button>
+                <button type="button" class="btn btn-primary m-2 text-center" 
+                [disabled]="sale.customer?.name === '' || sale.customer?.mobile === ''" 
+                (click)="saveCustomerInfo('COMPLETE')">Save & Complete</button>
+            </div>
+        </div>
+    
 </p-dialog>

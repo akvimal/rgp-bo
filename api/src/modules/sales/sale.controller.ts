@@ -28,13 +28,13 @@ export class SaleController {
           await this.saleService.removeItems(createSaleDto);
         }
         // else {
-          let custAdded = createSaleDto.customer;
-          if(custAdded && !custAdded.id){ //if customer not present before
-            custAdded = await this.custService.create(createSaleDto.customer);
+          let customer = createSaleDto.customer;
+          if(customer){ //if customer not present before
+            customer = await this.custService.save(createSaleDto.customer);
           }
           // console.log('items: ',createSaleDto.items);
           
-          return this.saleService.create({...createSaleDto, customer:custAdded}, currentUser.id);
+          return this.saleService.create({...createSaleDto, customer}, currentUser.id);
         // }
     }
 

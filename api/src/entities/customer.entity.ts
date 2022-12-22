@@ -24,16 +24,13 @@ export class Customer extends BaseEntity {
   @Column("character varying", { name: "email", nullable: true, unique: true })
   email: string | null;
 
-  @Column("character varying", { name: "location", nullable: true })
-  location: string | null;
+  @Column("character varying", { name: "locality", nullable: true })
+  locality: string | null;
   @Column("character varying", { name: "address", nullable: true })
   address: string | null;
-  @Column("character varying", { name: "city", nullable: true })
-  city: string | null;
-  @Column("character varying", { name: "state", nullable: true })
-  state: string | null;
-  @Column("character varying", { name: "pincode", nullable: true })
-  pincode: string | null;
+  @Column("character varying", { name: "area", nullable: true })
+  area: string | null;
+  
   @Column("character varying", { name: "source_type", nullable: true })
   srctype: string | null;
   @Column("character varying", { name: "source_desc", nullable: true })

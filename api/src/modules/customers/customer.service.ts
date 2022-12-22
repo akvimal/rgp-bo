@@ -9,13 +9,16 @@ export class CustomerService {
 
     constructor(@InjectRepository(Customer) private readonly customerRepository: Repository<Customer>) { }
 
-    async create(createCustomerDto: CreateCustomerDto) {
+    async save(createCustomerDto: CreateCustomerDto) {
         return this.customerRepository.save(createCustomerDto);
       }
     
     async findAll(){
         return this.customerRepository.createQueryBuilder('c')
             .where('c.active = :flag', { flag: true }).getMany();
+    }
+    async findById(id:string) {
+        return this.customerRepository.findOne(id);
     }
 
     async update(id:any, values:any){

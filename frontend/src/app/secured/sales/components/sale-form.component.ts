@@ -14,14 +14,14 @@ export class SaleFormComponent {
     
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
-    displayNewLead:boolean = false;
+    displayNewCustomer:boolean = false;
     salePropValues:any;
 
     total:number = 0;
     customers:any = []
 
     filteredCustomers: any[] = [];
-    newCustomer:boolean = true;
+    //newCustomer:boolean = true;
     allowCustomerSelect:boolean = false;
     newSaleItem = {id:0,itemid:'',price:'',qty:''}
 
@@ -31,6 +31,17 @@ export class SaleFormComponent {
     salePropSchema:any[] = []
     saleprops:any[] = []
     form:FormGroup = new FormGroup({});
+
+    custCustomerTypes:any[] = [
+      { value: 'Walkin', label: 'Walk in' },
+      { value: 'Online', label: 'Online Search' },
+      { value: 'Banner', label: 'Banner' },
+      { value: 'PaperAd', label: 'Paper Ad' },
+      { value: 'Referral', label: 'Referral' },
+      { value: 'Campaign', label: 'Campaign' },
+      { value: 'Other', label: 'Other' },
+      { value: 'Unknown', label: 'Unknown' },
+    ]
 
     constructor(private route: ActivatedRoute,
       private router: Router, 
@@ -44,7 +55,7 @@ export class SaleFormComponent {
 
       if(saleId){
           this.service.find(saleId).subscribe((data:any) => {
-            this.newCustomer = data.customer === null;
+            // this.newCustomer = data.customer === null;
             this.sale.id = data.id;
             this.sale.customer = data.customer;
             this.sale.billdate = data.billdate;
@@ -68,14 +79,22 @@ export class SaleFormComponent {
   
             this.sale.items && this.sale.items.forEach(item => {
               this.total += item.total || 0;
-            })          
+            });
+            
         });        
       }
       else {
         this.allowCustomerSelect = true;
         this.sale.billdate = new Date();
       } 
+    }
 
+    isNewCustomer() {
+      if(this.sale.customer && (this.sale.customer.name && this.sale.customer.name !== '') && 
+        (this.sale.customer.mobile && this.sale.customer.mobile !== '')){
+        return false;
+      }
+      return true;
     }
 
     populateSalePropsForm(type:any,values:any){
@@ -98,8 +117,8 @@ export class SaleFormComponent {
 
     }
 
-    changeCustomer(){
-      this.newCustomer = true;
+    showChangeCustomer(){
+      this.displayNewCustomer = true;
     }
 
     addNewItem(){
@@ -107,7 +126,7 @@ export class SaleFormComponent {
       !newItemFound && this.sale.items?.push({...this.newSaleItem, id:Math.round((Math.random()*1000))});  
     }
 
-    calculateTotal(qty:string,price:string,tax:string):number{
+    calculateTotal(qty:string,price:string,tax:string){
       const total = +qty * ((+price||0) * (1 + ((+tax||0) / 100)));
       return isNaN(total) ? 0 : +total.toFixed(2);
     }
@@ -128,24 +147,22 @@ export class SaleFormComponent {
       if(customer.existing){
         this.sale.customer = {id,name,mobile,email,address};
 
-        this.newCustomer = false;
+        // this.newCustomer = false;
         this.showPrevSalesCopy();
       }
       else {
         this.sale.customer = {mobile,name:''};
-        this.newCustomer = true;
+        // this.newCustomer = true;
       }
       this.fetchCustomerPrevSales = true;
     }
 
-    completeAllowed(){
+  completeAllowed(){
     return this.total > 0 && (this.sale.paymode != undefined && this.sale.paymode != '');
   }
   
   doneEnterCustomer(event:any){
-    console.log('event: ',event.target.value);
-    
-    this.sale.customer = {mobile:event.target.value,name:''};
+    this.sale.customer = {mobile:event.target.value};
   }
 
   removeItem(id:any){
@@ -171,22 +188,19 @@ export class SaleFormComponent {
         return;
       }
     }
-
-    if(this.newCustomer){
-      // console.log(this.sale.customer);
-      if(this.sale.customer && this.sale.customer.mobile !== ''){
-        this.displayNewLead = true;
+    
+    if(this.isNewCustomer()){
+      // if(this.sale.customer && this.sale.customer.mobile !== ''){
+        this.displayNewCustomer = true;
         return;
-      }
+      // }
     }
 
     let total = 0;
     validItems && validItems.forEach((i:any) => {
       total += i.total;
       i.id = null;
-    });    
-    // console.log('validitems: ',validItems);
-
+    });
     
     this.service.save({...this.sale, total, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
@@ -198,24 +212,32 @@ export class SaleFormComponent {
     });
   }
 
-  updateName(event:any){
-    this.sale.customer.name = event.target.value
-  }
-  
-  updateEmail(event:any){
-    this.sale.customer.email = event.target.value
-  }
-
-  updateAddr(event:any){
-    this.sale.customer.address = event.target.value
+  updateCustomer(attr:string,event:any){
+    if(attr === 'srctype'){
+      this.sale.customer.srctype = event.target.value;
+    } else if(attr === 'srcdesc'){
+      this.sale.customer.srcdesc = event.target.value;
+    } else if(attr === 'address'){
+      this.sale.customer.address = event.target.value
+    } else if(attr === 'area'){
+      this.sale.customer.area = event.target.value
+    } else if(attr === 'locality'){
+      this.sale.customer.locality = event.target.value
+    } else if(attr === 'email'){
+      this.sale.customer.email = event.target.value
+    } else if(attr === 'name'){
+      this.sale.customer.name = event.target.value
+    }
   }
 
   cancel(){
     this.router.navigateByUrl(`/secure/sales`); 
   }
 
-  saveLeadInfo(){
-    this.displayNewLead = true;
+  saveCustomerInfo(status:string){
+    // this.newCustomer = false;
+    this.submit(status);
+    this.displayNewCustomer = false;
   }
 
   showPrevSalesCopy() {
@@ -267,6 +289,12 @@ export class SaleFormComponent {
     })
   }
 
+  copyItemSelected(){
+    return this.previousSaleItems.filter(p => {
+      return p.items.filter((i:any) => i.selected).length > 0
+    }).length > 0
+  }
+
   onSubmitSaleProps(){
     this.displaySalePropsForm = false;
     this.salePropValues = this.form.controls['props'].value;
@@ -286,7 +314,7 @@ export class SaleFormComponent {
     this.displayPrevSalesCopy = false;
   }
 
-  closeChangeCustomer(){
-    this.newCustomer = false;
-  }
+  // closeChangeCustomer(){
+  //   this.newCustomer = false;
+  // }
 }

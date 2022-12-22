@@ -27,7 +27,7 @@
                 {{item.batch}} / {{item.expdate | date : 'MMM-yy'}}
             </td>
             <td width="12%">
-                <input type="text" [value]="item.qty" maxlength="4" size="4"
+                <input type="number" [value]="item.qty" maxlength="6"
                 [disabled]="item.maxqty == 0"
                 [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : 'inherit'}"
                 (input)="calculate(item.itemid,$event)">
@@ -42,13 +42,12 @@
             <td colspan="5">
                 <div class="row">
                     <div class="col-md-3">
-                        {{sale.paymode}}
                         <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
                             <option value="">Select</option>
                             <option *ngFor="let pm of paymodes" [value]="pm.key">{{pm.value}}</option>
                         </select>
                     </div>  
-                    <div class="col-md-5">
+                    <div class="col-md-9">
                         <input *ngIf="sale.paymode === 'digital'" type="text" class="form-control" 
                         [(ngModel)]="sale.payrefno" placeholder="Reference No">
                         <div *ngIf="sale.paymode === 'cash'" style="font-size: larger;">

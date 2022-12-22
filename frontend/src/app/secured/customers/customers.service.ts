@@ -1,6 +1,5 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { BehaviorSubject } from "rxjs";
 import { Customer } from "./customer.model";
 import { environment } from "./../../../environments/environment";
 
@@ -9,21 +8,20 @@ import { environment } from "./../../../environments/environment";
 })
 export class CustomersService {
 
-    state = new BehaviorSubject([])
     apiurl = `${environment.apiHost}/customers`;
 
     constructor(private http:HttpClient){}
 
     save(customer:Customer){
-        this.http.post(`${this.apiurl}`,customer).subscribe(data => this.findAll());
+        return this.http.post(`${this.apiurl}`,customer);
     }
 
     remove(id:number){
-        this.http.delete(`${this.apiurl}/${id}`).subscribe(data => this.findAll());
+        return this.http.delete(`${this.apiurl}/${id}`);
     }
 
     find(id:any){
-        return this.state.value.find((item:any) => item.id === id);
+        return this.http.get(`${this.apiurl}/${id}`);
     }
 
     findAllApi(){
@@ -31,8 +29,6 @@ export class CustomersService {
     }
     
     findAll(){
-        this.http.get(`${this.apiurl}`).subscribe((data:any) => {
-           this.state.next(data)
-        })
+        return this.http.get(`${this.apiurl}`);
     }
 }
