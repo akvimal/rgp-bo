@@ -14,36 +14,24 @@
                     <!-- <a href="javascript:void(0)" (click)="closeChangeCustomer()">
                         <i class="bi bi-x-square text-primary"></i></a> -->
             </div>
-            <!-- <div class="col-lg-3">
-                <input type="text" name="custName" id="custName" placeholder="Name"
-                [value]="sale.customer?.name||''" (input)="updateName($event)">
-            </div>
-            <div class="col-lg-3">
-                <input type="text" name="custEmail" id="custEmail" placeholder="Email"
-                [value]="sale.customer?.email||''" (input)="updateEmail($event)">
-            </div>
-            <div class="col-lg-3">
-                    <input type="text" name="custAddr" id="custAdde" placeholder="Address"
-                [value]="sale.customer?.address||''" (input)="updateAddr($event)">
-            </div> -->
         </div>
            
         <ng-template #saleCustomer>
             <div class="row">
                 <div class="col-lg-3">Mobile: {{sale.customer?.mobile}}
+                   <div *ngIf="!sale.customer?.mobile.startsWith('000')">
                     <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
-                        <a href="javascript:void(0)" (click)="showChangeCustomer()">
+                        <a href="javascript:void(0)" (click)="showChangeCustomer('Edit')">
                         <i class="bi bi-pencil text-primary"></i></a>
                     </span>
-                    <!-- <button type="button" *ngIf="!newCustomer" (click)="showDialog()" class="btn btn-primary">
-                        Copy</button> -->
                         <a *ngIf="!isNewCustomer()" (click)="showPrevSalesCopy()">
                             <i class="bi bi-files text-success"></i>
                         </a>
+                    </div>
                 </div>
-                <div class="col-lg-3">Name: {{sale.customer?.name}}</div>
-                <div class="col-lg-3">Email: {{sale.customer?.email}}</div>
-                <div class="col-lg-3">Addr: {{sale.customer?.address}}</div>
+                <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Name: {{sale.customer?.name}}</div>
+                <!-- <div class="col-lg-3">Email: {{sale.customer?.email}}</div> -->
+                <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Address: {{sale.customer?.address}}</div>
             </div>
             </ng-template>
             <app-sale-form-items [items]="sale.items" 
@@ -109,38 +97,42 @@
 <p-dialog [header]="(this.sale?.customer?.name || 'New Customer') + ' (' + this.sale?.customer?.mobile + ')'" 
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                 <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
                 [value]="sale.customer?.name||''" (input)="updateCustomer('name',$event)">
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-6">
+                <input type="text" name="custMobile" id="custMobile" class="form-control" placeholder="Mobile"
+                [value]="sale.customer?.mobile||''" (input)="updateCustomer('mobile',$event)">
+            </div>
+            <!-- <div class="col-lg-4">
                 <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
                 [value]="sale.customer?.email||''" (input)="updateCustomer('email',$event)">
-            </div>
+            </div> -->
         </div>
         <div class="row mt-2">
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                     <input type="text" name="custArea" id="custArea" class="form-control" placeholder="Area"
                 [value]="sale.customer?.area||''" (input)="updateCustomer('area',$event)">
             </div>
-            <div class="col-lg-4">
+            <!-- <div class="col-lg-4">
                     <input type="text" name="custLocal" id="custLocal" class="form-control" placeholder="Locality"
                 [value]="sale.customer?.locality||''" (input)="updateCustomer('locality',$event)">
-            </div>
-            <div class="col-lg-4">
+            </div> -->
+            <div class="col-lg-6">
                     <textarea name="custAddr" id="custAddr" class="form-control" placeholder="Address"
                 (input)="updateCustomer('address',$event)">{{sale.customer?.address||''}}</textarea>
             </div>
         </div>
         <div class="row mt-2">
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                 <select name="srctype" [value]="sale.customer?.srctype"  class="form-control" 
                             (change)="updateCustomer('srctype',$event)">
                     <option value="">Select</option>
                     <option *ngFor="let st of custCustomerTypes" [value]="st.value">{{st.label}}</option>
                 </select>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                     <input type="text" name="custSrcText" id="custSrcText" class="form-control"
                     [value]="sale.customer?.srcdesc||''" (input)="updateCustomer('srcdesc',$event)">
             </div>
@@ -149,7 +141,7 @@
             <div class="col-lg-12">
                 <button type="button" class="btn btn-primary m-2 text-center" 
                 (click)="saveCustomerInfo('PENDING')">Save</button>
-                <button type="button" class="btn btn-primary m-2 text-center" 
+                <button type="button" *ngIf="!customerEditOnly" class="btn btn-primary m-2 text-center" 
                 [disabled]="sale.customer?.name === '' || sale.customer?.mobile === ''" 
                 (click)="saveCustomerInfo('COMPLETE')">Save & Complete</button>
             </div>
