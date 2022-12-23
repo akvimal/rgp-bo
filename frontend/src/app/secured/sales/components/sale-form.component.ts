@@ -15,6 +15,7 @@ export class SaleFormComponent {
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
     displayNewCustomer:boolean = false;
+    customerEditOnly:boolean = false;
     salePropValues:any;
 
     total:number = 0;
@@ -114,7 +115,8 @@ export class SaleFormComponent {
 
     }
 
-    showChangeCustomer(){
+    showChangeCustomer(mode:string){
+      this.customerEditOnly = true;
       this.displayNewCustomer = true;
     }
 
@@ -143,7 +145,7 @@ export class SaleFormComponent {
       const {id,name,mobile,email,address} = customer;
       if(customer.existing){
         this.sale.customer = {id,name,mobile,email,address};
-        this.showPrevSalesCopy();
+        !mobile.startsWith('000') && this.showPrevSalesCopy();
       }
       else {
         this.sale.customer = {mobile,name:''};
@@ -185,6 +187,10 @@ export class SaleFormComponent {
     
     if(this.isNewCustomer()){
         this.displayNewCustomer = true;
+        this.customerEditOnly = false;
+        if(status === 'PENDING'){
+          this.customerEditOnly = true;
+        }
         return;
     }
 
@@ -193,7 +199,6 @@ export class SaleFormComponent {
       total += i.total;
       i.id = null;
     });
-    console.log('TOTAL: ',total);
     
     this.service.save({...this.sale, total, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
@@ -220,6 +225,8 @@ export class SaleFormComponent {
       this.sale.customer.email = event.target.value
     } else if(attr === 'name'){
       this.sale.customer.name = event.target.value
+    }else if(attr === 'mobile'){
+      this.sale.customer.mobile = event.target.value
     }
   }
 
@@ -228,7 +235,13 @@ export class SaleFormComponent {
   }
 
   saveCustomerInfo(status:string) {
-    this.submit(status);
+    // this.customerEditOnly = false;
+    if(status === 'COMPLETE') {
+      this.submit(status);
+    }
+    // else if(status === 'PENDING'){
+    //   this.customerEditOnly = false;
+    // }
     this.displayNewCustomer = false;
   }
 
