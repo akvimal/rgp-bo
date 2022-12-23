@@ -50,7 +50,7 @@ export class StockSelectComponent {
             let st = this.items[i];
             const present = this.itemsSelected.find(i => i.itemid === st.id);
             if ((st.title.toLowerCase().indexOf(query.toLowerCase()) >= 0 
-                || (st.more_props && st.more_props.composition.toLowerCase().indexOf(query.toLowerCase()) >= 0) )
+                || (st.more_props && st.more_props.composition && st.more_props.composition.toLowerCase().indexOf(query.toLowerCase()) >= 0) )
                 && !present 
                 && st.available_qty != '0') {
                 filtered.push(st);

@@ -5,6 +5,7 @@
             <th>Product</th>
             <th>Batch / Exp</th>
             <th>Qty</th>
+            <th>MRP</th>
             <th>Price</th>
             <th>Tax</th>
             <th>Total</th>
@@ -33,6 +34,7 @@
                 (input)="calculate(item.itemid,$event)">
                 <span class="m-2">{{(item.maxqty||0)-(item.qty||0)}}</span>
             </td>
+            <td width="7%" style="text-align: right;">{{item.mrp_cost}}</td>
             <td width="7%" style="text-align: right;">{{item.price}}</td>
             <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td>
             <td width="10%" style="text-align: right;">{{item.total}}</td>
@@ -57,7 +59,7 @@
                     </div>
                 </div>
             </td>
-            <td style="text-align: right; background-color: royalblue;">
+            <td  colspan="2" style="text-align: right; background-color: royalblue;">
                 <span style="font-size: larger;color: white;">
                 <i class="bi bi-currency-rupee"></i>{{total}}</span></td>
         </tr>

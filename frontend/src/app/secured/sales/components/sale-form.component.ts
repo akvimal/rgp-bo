@@ -50,12 +50,9 @@ export class SaleFormComponent {
       }
 
     ngOnInit(){
-      
       const saleId = this.route.snapshot.paramMap.get('id'); 
-
       if(saleId){
           this.service.find(saleId).subscribe((data:any) => {
-            // this.newCustomer = data.customer === null;
             this.sale.id = data.id;
             this.sale.customer = data.customer;
             this.sale.billdate = data.billdate;
@@ -146,13 +143,10 @@ export class SaleFormComponent {
       const {id,name,mobile,email,address} = customer;
       if(customer.existing){
         this.sale.customer = {id,name,mobile,email,address};
-
-        // this.newCustomer = false;
         this.showPrevSalesCopy();
       }
       else {
         this.sale.customer = {mobile,name:''};
-        // this.newCustomer = true;
       }
       this.fetchCustomerPrevSales = true;
     }
@@ -190,10 +184,8 @@ export class SaleFormComponent {
     }
     
     if(this.isNewCustomer()){
-      // if(this.sale.customer && this.sale.customer.mobile !== ''){
         this.displayNewCustomer = true;
         return;
-      // }
     }
 
     let total = 0;
@@ -201,6 +193,7 @@ export class SaleFormComponent {
       total += i.total;
       i.id = null;
     });
+    console.log('TOTAL: ',total);
     
     this.service.save({...this.sale, total, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
@@ -234,8 +227,7 @@ export class SaleFormComponent {
     this.router.navigateByUrl(`/secure/sales`); 
   }
 
-  saveCustomerInfo(status:string){
-    // this.newCustomer = false;
+  saveCustomerInfo(status:string) {
     this.submit(status);
     this.displayNewCustomer = false;
   }
@@ -314,7 +306,4 @@ export class SaleFormComponent {
     this.displayPrevSalesCopy = false;
   }
 
-  // closeChangeCustomer(){
-  //   this.newCustomer = false;
-  // }
 }
