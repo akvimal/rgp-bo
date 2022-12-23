@@ -4,16 +4,16 @@
             <table class="bill-head">
                 <tr>
                     <td colspan="2" style="text-align: center;">
-                        <h6>Ramesh Generic Pharmacy</h6>
-                        License Id | GSTIN<br>
-                1/256 Kalamegam Salai, Mogappair West, Chennai<br>
-                72990 72725 | sales@rameshgenericpharmacy.com
+                        <h6 style="font-size: larger;font-weight: bolder;">Ramesh Generic Pharmacy</h6>
+                        <p style="margin: 0;">DL#: TN/Z04/21/00446, TN/Z04/20/00446</p>
+                        <p>15A 36th Street, Thillai Ganga Nagar, Nanganallur, Chennai - 600061<br>
+                    Call: (044) 4769 3960 | 88593 35933</p>
                     </td>
                 </tr>
                 <tr>
                     <td>
                         No: {{sale.id}}<br>
-                        Date: {{sale.billdate | date: 'short'}}
+                        Date: {{sale.billdate | date: 'dd/MM/yyyy hh:mm a'}}
                     </td>
                     <td style="text-align: right;">
                         Name: {{sale.customer?.name}}<br>
@@ -49,20 +49,21 @@
                 <td colspan="3" style="text-align: right;">
                     
                     <label>Total: </label>
-                    <i class="bi bi-currency-rupee"></i>
+                    <i class="bi bi-currency-rupee" style="padding:0"></i>
                         {{sale.total}}
                 </td>
             </tr>
             <tr>
                 <td colspan="4">
-                    <strong>MRP Total:</strong> {{mrpTotal}}
-                    <strong>Sale Total:</strong> {{sale.total}}
+                    <strong>Total</strong>
+                    <span>MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal}}</span>
+                    <span style="margin-left: 1em;">Sale: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total}}</span>
                     <span *ngIf="saving > 0"><label for="saving"></label>
                        <strong>Saving:</strong> {{saving}}%</span>
                 </td>
                 <td colspan="3" style="text-align: right;">
-                    <label>Net Total: </label>
-                    <i class="bi bi-currency-rupee"></i>
+                    <label>Net: </label>
+                    <i class="bi bi-currency-rupee" style="padding:0"></i>
                     <strong>{{finalAmt}}</strong>
                 </td>
             </tr>

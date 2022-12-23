@@ -27,7 +27,7 @@ export class SaleFormItemsComponent{
       changes['items'].currentValue.forEach((i:any) => {
         const itemtotal = this.calculateTotal(i.qty, i.price, i.taxpcnt);
         i['total'] = itemtotal;
-        this.total = Math.round(this.total + itemtotal);
+        this.total = Math.trunc(this.total + itemtotal);
       });
       this.recalculateTotal.emit(true)
     }
@@ -62,6 +62,7 @@ export class SaleFormItemsComponent{
           item.expdate = pi.expdate;
           item.maxqty = pi.available_qty;
           item.itemid = pi.id;
+          item.mrp_cost = pi.mrp_cost;
           item.price = pi.sale_price || pi.mrp_cost;
           item.taxpcnt = pi.tax_pcnt;
           item.more_props = event.more_props;
