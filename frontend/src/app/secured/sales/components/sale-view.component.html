@@ -47,7 +47,7 @@
                 <td colspan="2">No. of items: {{itemsCount}}</td>
                 <!-- <td>{{sale.total?.tax}}</td> -->
                 <td colspan="3">
-                    <span *ngIf="sale.discount" style="margin-left: 2em;color: blue;text-align: right;">OFFER: <i class="bi bi-currency-rupee" style="padding:0"></i> -{{sale.discount}}</span>
+                    <span *ngIf="sale.discount && sale.discount > 0" style="margin-left: 2em;color: blue;text-align: right;">OFFER: <i class="bi bi-currency-rupee" style="padding:0"></i> -{{sale.discount}}</span>
                 </td>
                 <td colspan="2" style="text-align: right;">
                     

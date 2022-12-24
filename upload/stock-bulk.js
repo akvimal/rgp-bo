@@ -2,11 +2,11 @@ const axios = require('axios');
 const reader = require('xlsx');
 
 const apihost = 'http://localhost:3000'
-const email = 'vimal@test.com';
-const password = 'test123';
+const email = 'admin@rgp.com';
+const password = 'admin123';
 
-const vendorid = 4;
-const path = './Evergreen-final.xlsx'
+const vendorid = 5;
+const path = './Lehar-final.xlsx'
 // const vendorid = 2;
 // const path = './Lehar-final.xlsx'
 

@@ -285,7 +285,7 @@ CREATE TABLE vendor_pricelist (
 CREATE TABLE product_price (
 	id serial4 NOT NULL,
 	item_id int4 NOT NULL,
-	price int4 NOT NULL,
+	price float4 NOT NULL,
 	"comments" varchar NULL,
 	active bool NOT NULL DEFAULT true,
 	archive bool NOT NULL DEFAULT false,
@@ -351,3 +351,11 @@ VALUES('Admin', '[{"resource":"site","path":["/secure/dashboard","/secure/profil
 INSERT INTO app_role
 ("name", permissions, "locked", active, archive, created_on, updated_on, created_by, updated_by)
 VALUES('User', '[{"resource":"site","path":["/secure/dashboard","/secure/profile"]},{"resource":"sales","path":"/secure/sales","policies":[{"action":"read","properties":[]},{"action":"add","path":"/new","properties":[]}]}]', false, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0);
+
+insert into vendor (business_name) values ('Karthikeyan Drug House');
+insert into vendor (business_name) values ('Seyon Pharmaceuticals');
+insert into vendor (business_name) values ('Marudhars');
+insert into vendor (business_name) values ('Evergreen Pharma');
+insert into vendor (business_name) values ('Lehar Pharma');
+
+insert into customer ("name",mobile) values ('Anonymous','00000');
