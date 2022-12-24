@@ -5,8 +5,8 @@ const apihost = 'http://localhost:3000'
 const email = 'vimal@test.com';
 const password = 'test123';
 
-const vendorid = 1;
-const path = './Karthikeyan-final.xlsx'
+const vendorid = 4;
+const path = './Evergreen-final.xlsx'
 // const vendorid = 2;
 // const path = './Lehar-final.xlsx'
 
@@ -42,17 +42,27 @@ axios.post(apihost+'/auth/login',{email,password})
                 if(item.Schedule){
                     props['schedule'] = item.Schedule;
                 }
-                const productRes = await axios.post(apihost+'/products',{
-                        title:item.Product,
-                        mfr: item.MFR,
-                        hsn:item.HSN,
-                        category:item.Category,
-                        props
-                    },{
-                        headers: getAuthHeader(token)
-                    });
+
+                const resProd = await axios.post(`${apihost}/products/title`,{title:item.Product},{
+                    headers: getAuthHeader(token)
+                });
+
+                product = resProd.data;
+
+                if(!resProd.data) {
+                    const productRes = await axios.post(apihost+'/products',{
+                            title:item.Product,
+                            mfr: item.MFR,
+                            hsn:item.HSN,
+                            category:item.Category,
+                            props
+                        },{
+                            headers: getAuthHeader(token)
+                        });
+                        
+                    product = productRes.data;
+                }
                 
-                product = productRes.data;
             } catch(error){
                 console.log('Product Insert Error: ',error);
             }
@@ -70,8 +80,7 @@ axios.post(apihost+'/auth/login',{email,password})
                 
                 if(invoice !== undefined && invoice.message !== undefined && invoice.message.endsWith('exists.')) {
                     let inv = await axios.get(`${apihost}/purchases?invoiceno=${item.Inv_No}&vendorid=${vendorid}`,
-                    {headers: getAuthHeader(token)});    
-
+                    {headers: getAuthHeader(token)});
                     invoice = inv.data;
                 }
             } catch(error){
@@ -88,6 +97,7 @@ axios.post(apihost+'/auth/login',{email,password})
                         expdate: item.Expiry ? parseExpDate(item.Expiry) : null,
                         ptrcost: (getRateAfterTax(rateAfterDisc,item.Tax)/item.Pack).toFixed(2),
                         mrpcost: (item.MRP/item.Pack).toFixed(2),
+                        discpcnt:item.Disc_pcnt,
                         taxpcnt: item.Tax,
                         qty: (item.Qty*item.Pack),
                         total: getTotal(item.Qty,rateAfterDisc,item.Tax),

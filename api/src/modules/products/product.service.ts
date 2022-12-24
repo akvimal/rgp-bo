@@ -25,9 +25,22 @@ export class ProductService {
             .where('p.isActive = :flag', { flag: true });
             if(query.category){
               qb.andWhere(`p.category = :ctg`, { ctg:query.category });
-          }
+            }
+            if(query.title){
+              qb.andWhere(`p.title = :ttl`, { ttl:query.title });
+            }
           return qb.getMany();
     }
+
+    
+    async findByTitle(title:any){
+      const qb = this.productRepository.createQueryBuilder(`p`)
+          .where('p.isActive = :flag', { flag: true });
+        
+            qb.andWhere(`p.title = :ttl`, { ttl:title });
+          
+        return qb.getOne();
+  }
 
     async findAllPriceByItem(id:number){
         return this.priceRepository.createQueryBuilder(`p`)

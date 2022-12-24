@@ -38,6 +38,13 @@ export class ProductController {
       return this.productService.findAll(query,currentUser);
     }
     
+    @Post('/title')
+    findByTitle(@Body() body:any) {
+      console.log('BODY: ',body);
+      
+      return this.productService.findByTitle(body.title);
+    }
+    
     @Get(':id')
     async findOne(@Param('id') id: string) {
       return this.productService.findById(id);

@@ -37,7 +37,7 @@ export class PurchaseItemController {
           items.forEach(item => {
             total += item.total && +item.total;
           })
-          await this.purchaseInvoiceService.update([item.invoiceid],{total},currentUser.id)  
+          await this.purchaseInvoiceService.update([item.invoiceid],{total:Math.round(total)},currentUser.id)  
         })
         return item;
     }
