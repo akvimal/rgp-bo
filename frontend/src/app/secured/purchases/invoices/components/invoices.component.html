@@ -19,7 +19,7 @@
     <tr *ngFor="let p of invoices">
       <!-- <td>{{p.id}}</td> -->
       <td><a [routerLink]="['../items',p.id]">{{p.invoiceno}}</a></td>
-      <td>{{p.invoicedate}}</td>
+      <td>{{p.invoicedate | date : 'dd-MMM'}}</td>
       <td>{{p.vendor.name}}</td>
       <td>{{p.total}}</td>
       <td>{{p.status}}</td>

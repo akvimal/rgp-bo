@@ -5,9 +5,11 @@
                 <tr>
                     <td colspan="2" style="text-align: center;">
                         <h6 style="font-size: larger;font-weight: bolder;">Ramesh Generic Pharmacy</h6>
+                        <div style="font-size: small;">
                         <p style="margin: 0;">DL#: TN/Z04/21/00446, TN/Z04/20/00446</p>
                         <p>15A 36th Street, Thillai Ganga Nagar, Nanganallur, Chennai - 600061<br>
-                    Call: (044) 4769 3960 | 88593 35933</p>
+                            Call: (044) 4769 3960 | 88593 35933</p>
+                        </div>
                     </td>
                 </tr>
                 <tr>
@@ -59,8 +61,8 @@
             <tr>
                 <td colspan="4">
                     <strong>Total</strong>
-                    <span>MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal}}</span>
-                    <span style="margin-left: 1em;">Sale: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total}}</span>
+                    <span>MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
+                    <span style="margin-left: 1em;">Sale: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span>
                     <span *ngIf="saving > 0"><label for="saving"></label>
                        <strong>Saving:</strong> {{saving}}%</span>
                 </td>

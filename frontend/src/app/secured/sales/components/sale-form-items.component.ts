@@ -27,6 +27,7 @@ export class SaleFormItemsComponent{
 
   customerTotalOrders = 0;
   customerTotalSaleAmount = 0;
+  customerLastBillDate:any;
 
   constructor(private saleService:SaleService){}
 
@@ -51,6 +52,7 @@ export class SaleFormItemsComponent{
               data.forEach((s:any) => {
                 this.customerTotalSaleAmount += s.total;
               });
+              this.customerLastBillDate = data[0].billdate;
             })
       }
     }
@@ -59,10 +61,15 @@ export class SaleFormItemsComponent{
   applyOffer(){
     // console.log('applyoffer: this.total: ',this.total );
     this.offer = null;
+
+    const lastDt = Date.parse(this.customerLastBillDate);
+    const currentDt = Date.parse((new Date()).toISOString());
+    const days = (currentDt - lastDt)/1000/60/60/24;
+
     //if previous bill amount or first month bill amount is greater than rs.250
     if(this.sale.customer && this.sale.customer.id && 
       this.customerTotalOrders == 1 && this.customerTotalSaleAmount >= 250 &&
-      this.total >= 250) {
+      this.total >= 250 && days > 7) {
         this.offer = {code:'FIRST_NEW',amount:250};
     }
   }
@@ -94,9 +101,7 @@ export class SaleFormItemsComponent{
   }
 
   getItemsTotal(){
-    console.log('>>>>>>');
     let total = 0;
-    console.log(this.items);
     this.items.forEach((i:any) => {
       if(i.itemid !== ''){
         total += i.total

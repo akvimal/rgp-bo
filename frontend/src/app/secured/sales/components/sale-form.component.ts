@@ -20,7 +20,7 @@ export class SaleFormComponent {
 
     total:number = 0;
     customers:any = []
-    offer:any;
+    offer:{code?:string,amount?:number} = {};
 
     filteredCustomers: any[] = [];
     //newCustomer:boolean = true;
@@ -203,7 +203,7 @@ export class SaleFormComponent {
     });
 
     if(this.offer){
-      total = total - this.offer.amount;
+      total = total - (this.offer.amount||0);
     }
     
     this.service.save({...this.sale, total, discount:(this.offer?.amount||0), status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
