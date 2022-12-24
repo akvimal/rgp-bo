@@ -44,9 +44,12 @@
                 <td style="text-align: right;width:8%">{{i.total}}</td>
             </tr>
             <tr>
-                <td colspan="4">No. of items: {{itemsCount}}</td>
+                <td colspan="2">No. of items: {{itemsCount}}</td>
                 <!-- <td>{{sale.total?.tax}}</td> -->
-                <td colspan="3" style="text-align: right;">
+                <td colspan="3">
+                    <span *ngIf="sale.discount" style="margin-left: 2em;color: blue;text-align: right;">OFFER: <i class="bi bi-currency-rupee" style="padding:0"></i> -{{sale.discount}}</span>
+                </td>
+                <td colspan="2" style="text-align: right;">
                     
                     <label>Total: </label>
                     <i class="bi bi-currency-rupee" style="padding:0"></i>
@@ -62,7 +65,7 @@
                        <strong>Saving:</strong> {{saving}}%</span>
                 </td>
                 <td colspan="3" style="text-align: right;">
-                    <label>Net: </label>
+                    <label>Net Total: </label>
                     <i class="bi bi-currency-rupee" style="padding:0"></i>
                     <strong>{{finalAmt}}</strong>
                 </td>

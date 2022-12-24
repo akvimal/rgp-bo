@@ -41,12 +41,14 @@ export class InvoiceService {
     }
 
     saveItem(item:InvoiceItem){
-        return this.http.post(`${this.apiurl}/purchaseitems`,item);
+        const obj:any ={}
+        for (const [key, value] of Object.entries(item)) {
+            if(value !== ''){
+                obj[key] = value
+            }
+          }
+        return this.http.post(`${this.apiurl}/purchaseitems`,obj);
     }
-
-    // findAllItemsApi(criteria:any){
-    //     return this.http.get(`${this.apiurl}/purchaseitems`,{params:criteria});
-    // }
 
     updateItems(ids:any, values:any){
         return this.http.put(`${this.apiurl}/purchaseitems`,{ids,values});

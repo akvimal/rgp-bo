@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CreateSaleItemDto } from './create-saleitem.dto';
 
 export class CreateSaleDto {
 
@@ -24,6 +23,4 @@ export class CreateSaleDto {
     @ApiProperty({ description: 'customer', example: {} })
     readonly customer: any;
   
-    // @ApiProperty({ description: 'items', example: [] })
-    // readonly items: CreateSaleItemDto[]
 }

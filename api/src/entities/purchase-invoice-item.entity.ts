@@ -38,6 +38,9 @@ import { SaleItem } from "./sale-item.entity";
     @Column("double precision", { name: "mrp_cost", precision: 53 })
     mrpcost: number;
    
+    @Column("double precision", { name: "disc_pcnt", precision: 53 })
+    discpcnt: number;
+   
     @Column("double precision", {
       name: "tax_pcnt",
       nullable: true,

@@ -13,6 +13,12 @@ export class InvoiceItemsComponent {
     products:any = []
     invoice: Invoice = {};
     total:any;
+    sale_price:number = 0;
+
+    //constants to calc sale price
+    maxm = 2.5
+    minm = 0.3
+    mins = 0.5
 
     selectedProduct: any;
     filteredProducts: any[] = [];
@@ -27,12 +33,13 @@ export class InvoiceItemsComponent {
     form:FormGroup = new FormGroup({
         invoiceid: new FormControl('',Validators.required),
         productid: new FormControl('',Validators.required),
-        batch: new FormControl('',Validators.required),
-        expdate: new FormControl('',Validators.required),
+        batch: new FormControl(''),
+        expdate: new FormControl(''),
         qty: new FormControl('',Validators.required),
         ptrcost: new FormControl('',Validators.required),
         mrpcost: new FormControl('',Validators.required),
-        taxpcnt: new FormControl('',Validators.required)
+        discpcnt: new FormControl(''),
+        taxpcnt: new FormControl('')
       });
 
     constructor(private route:ActivatedRoute,
@@ -55,7 +62,7 @@ export class InvoiceItemsComponent {
         for(let i = 0; i < this.products.length; i++) {
             let prod = this.products[i];
             if ((prod.title.toLowerCase().indexOf(query.toLowerCase()) == 0) || 
-             (prod.props && prod.props.composition.toLowerCase().indexOf(query.toLowerCase()) >= 0) ) {
+             (prod.category ==='Drug' && prod.props && prod.props.composition && prod.props.composition.toLowerCase().indexOf(query.toLowerCase()) >= 0) ) {
                 filtered.push(prod);
             }
         }
@@ -84,6 +91,20 @@ export class InvoiceItemsComponent {
         });
     }
 
+    calcSalePrice(rate:number,mrp:number){
+        
+        let maxmargin = rate * (1+this.maxm);
+        let minmargin = rate * (1+this.minm);        
+        let minsaving = mrp - (mrp * this.mins);
+
+        let price = maxmargin;
+        if(maxmargin > minsaving ) {
+            price = (minsaving <= minmargin) ? minmargin : minsaving;
+        }
+        // if(price > mrp)
+        return price > mrp ? mrp : price.toFixed(2);
+    }
+
     selectItem(event:any,id:any){
         this.invoice.items && this.invoice.items.forEach((i:any) => {
             if(i.id === id) 
@@ -96,7 +117,7 @@ export class InvoiceItemsComponent {
     }
 
     submit(){
-        this.invService.saveItem({...this.form.value, total: this.total}).subscribe(data => {
+        this.invService.saveItem({...this.form.value, saleprice:this.sale_price, total: this.total}).subscribe(data => {
           this.selectedProduct = null;  
           this.form.reset();
           this.total = '';
@@ -142,13 +163,15 @@ export class InvoiceItemsComponent {
         this.fetchItems(this.invoice.id);
     }
 
-    calculateTotal(qty:number,price:number,tax:number):number{
-        const total = qty * ((price||0) * (1 + ((tax||0) / 100)));
+    calculateTotal(qty:number,price:number,disc:number,tax:number):number{
+        const priceAfterDisc = price - (price * (disc/100));
+        const total = qty * ((priceAfterDisc||0) * (1 + ((tax||0) / 100)));
         return isNaN(total) ? 0 : +total.toFixed(2);
       }
     
     calculate(){
-        this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrcost, this.form.value.taxpcnt);       
+        this.sale_price = +this.calcSalePrice(this.form.value.ptrcost,this.form.value.mrpcost);
+        this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrcost, this.form.value.discpcnt, this.form.value.taxpcnt);
     }
 
     onPaid(event:any){

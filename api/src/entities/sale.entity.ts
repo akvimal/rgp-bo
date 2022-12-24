@@ -33,6 +33,9 @@ export class Sale extends BaseEntity {
   @Column("character varying", { name: "payrefno", nullable: true })
   payrefno: string | null;
 
+  @Column("double precision", { name: "discount", precision: 53 })
+  discount: number;
+  
   @Column("double precision", { name: "total", precision: 53 })
   total: number;
   

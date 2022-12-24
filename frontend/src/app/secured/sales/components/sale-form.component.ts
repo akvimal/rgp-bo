@@ -20,6 +20,7 @@ export class SaleFormComponent {
 
     total:number = 0;
     customers:any = []
+    offer:any;
 
     filteredCustomers: any[] = [];
     //newCustomer:boolean = true;
@@ -130,13 +131,14 @@ export class SaleFormComponent {
       return isNaN(total) ? 0 : +total.toFixed(2);
     }
 
-    recalculateTotal(event:any){
+    recalculateTotal(offer:any){
       this.total = 0;
       this.sale.items?.forEach((i:any) => {
         if(i.itemid != '') {
           this.total += i.total;
         }
       });
+      this.offer = offer;
       this.addNewItem();
     }
 
@@ -199,8 +201,12 @@ export class SaleFormComponent {
       total += i.total;
       i.id = null;
     });
+
+    if(this.offer){
+      total = total - this.offer.amount;
+    }
     
-    this.service.save({...this.sale, total, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
+    this.service.save({...this.sale, total, discount:(this.offer?.amount||0), status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
       if(data.status === 'COMPLETE')
         this.router.navigateByUrl(`/secure/sales/view/${data.id}`); 
@@ -211,6 +217,10 @@ export class SaleFormComponent {
   }
 
   updateCustomer(attr:string,event:any){
+    if(!this.sale.customer){
+      this.sale.customer = {}
+    }
+
     if(attr === 'srctype'){
       this.sale.customer.srctype = event.target.value;
     } else if(attr === 'srcdesc'){
@@ -256,6 +266,8 @@ export class SaleFormComponent {
 
         prevSale.forEach((ps:any) => {
           const items = ps.items.map((i:any) => {
+            console.log('ITEM: ',i);
+            
             return {
               id:i.id,
               itemid:i.purchaseitem.id,
@@ -264,6 +276,7 @@ export class SaleFormComponent {
               selected:addedItemsToSale?.includes(i.purchaseitem.id),
               maxqty:i.maxqty,
               qty:i.qty,
+              mrp:i.purchaseitem.mrpcost,
               title:i.purchaseitem.product.title,
               more_props:i.purchaseitem.product.props,
               batch:i.purchaseitem.batch,

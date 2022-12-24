@@ -32,12 +32,17 @@
                 [disabled]="item.maxqty == 0"
                 [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : 'inherit'}"
                 (input)="calculate(item.itemid,$event)">
-                <span class="m-2">{{(item.maxqty||0)-(item.qty||0)}}</span>
+                <span class="m-2">{{(item.maxqty||0)}}</span>
             </td>
-            <td width="7%" style="text-align: right;">{{item.mrp_cost}}</td>
+            <td width="7%" style="text-align: right;">{{item.mrp}}</td>
             <td width="7%" style="text-align: right;">{{item.price}}</td>
             <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td>
             <td width="10%" style="text-align: right;">{{item.total}}</td>
+        </tr>
+        <tr *ngIf="offer">
+            <td></td>
+            <td colspan="5">Offer Applied: {{offer?.code}}</td>
+            <td colspan="2" style="text-align:right">-{{offer?.amount}}</td>
         </tr>
         <tr>
             <td></td>

@@ -52,6 +52,7 @@ export class SaleViewComponent {
           // this.roundDecimal = (data.total - Math.round(data.total)).toFixed(2); 
           this.itemsCount = this.sale.items?.length || 0;
           this.sale.total = data.total;
+          this.sale.discount = data.discount;
           this.finalAmt = Math.round(data.total);
           
           this.saving = Math.round(((this.mrpTotal - Math.round(data.total)) / this.mrpTotal) * 100);

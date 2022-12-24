@@ -4,10 +4,13 @@ const reader = require('xlsx');
 const apihost = 'http://localhost:3000'
 const email = 'vimal@test.com';
 const password = 'test123';
-const path = './Karthikeyan.xlsx'
+
+const vendorid = 1;
+const path = './Karthikeyan-final.xlsx'
+// const vendorid = 2;
+// const path = './Lehar-final.xlsx'
 
 let items = []
-const vendorid = 1;
 const todayDt= new Date();
 const todayStr = todayDt.getFullYear() + '-' + ((+todayDt.getMonth())+1) + '-' +todayDt.getDate();
 
@@ -29,12 +32,25 @@ axios.post(apihost+'/auth/login',{email,password})
             let invoice;
             // console.log('item: ',item);
             try {
+                const props = {}
+                if(item.Composition){
+                    props['composition'] = item.Composition;
+                }
+                if(item.Pack){
+                    props['packing'] = item.Pack;
+                }
+                if(item.Schedule){
+                    props['schedule'] = item.Schedule;
+                }
                 const productRes = await axios.post(apihost+'/products',{
-                    title:item.Product,
-                    mfr: item.MFR,
-                    hsn:item.HSN,
-                    props: {composition:item.Composition,packing:item.Pack}},{
-                    headers: getAuthHeader(token)});
+                        title:item.Product,
+                        mfr: item.MFR,
+                        hsn:item.HSN,
+                        category:item.Category,
+                        props
+                    },{
+                        headers: getAuthHeader(token)
+                    });
                 
                 product = productRes.data;
             } catch(error){
@@ -63,23 +79,24 @@ axios.post(apihost+'/auth/login',{email,password})
             }
 
             try {
+                const rateAfterDisc = (item.Disc_pcnt && item.Disc_pcnt > 0) ? item.Rate - (item.Rate * (item.Disc_pcnt/100)) : item.Rate
                 const invoiceItemRes = await axios.post(apihost+'/purchaseitems', 
                     {
                         invoiceid: invoice.id,
                         productid: product.id,
                         batch: item.Batch,
-                        expdate: parseExpDate(item.Expiry),
-                        ptrcost: (getRateAfterTax(item.Rate,item.Tax)/item.Pack).toFixed(2),
+                        expdate: item.Expiry ? parseExpDate(item.Expiry) : null,
+                        ptrcost: (getRateAfterTax(rateAfterDisc,item.Tax)/item.Pack).toFixed(2),
                         mrpcost: (item.MRP/item.Pack).toFixed(2),
                         taxpcnt: item.Tax,
                         qty: (item.Qty*item.Pack),
-                        total: getTotal(item.Qty,item.Rate,item.Tax),
+                        total: getTotal(item.Qty,rateAfterDisc,item.Tax),
                         status: 'VERIFIED',
                         comments: 'Batch Upload'
                 },{headers: getAuthHeader(token)});
                 // console.log('item: ',invoiceItemRes.data);
                 const sale_price = getSalePrice(getRateAfterTax(item.Rate,item.Tax),item.MRP);
-                console.log(`Rate: ${item.Rate} MRP: ${item.MRP}  Sale: ${sale_price}, Save: ${Math.round(((item.MRP-sale_price)/item.MRP)*100)}%, Margin: ${((sale_price-item.Rate)/item.Rate)*100}`);
+                // console.log(`Rate: ${item.Rate} MRP: ${item.MRP}  Sale: ${sale_price}, Save: ${Math.round(((item.MRP-sale_price)/item.MRP)*100)}%, Margin: ${((sale_price-item.Rate)/item.Rate)*100}`);
                 const price = await axios.post(apihost+'/products/price', 
                     {
                         itemid: invoiceItemRes.data.id,
@@ -94,10 +111,9 @@ axios.post(apihost+'/auth/login',{email,password})
     })
 
     function getRateAfterTax(rate,tax){
-        console.log(`rate: ${rate}, tax: ${tax}`);
+        // console.log(`rate: ${rate}, tax: ${tax}`);
         return rate*(1+(tax/100));
     }
-
 
     function calcSale(rate,mrp){
         
@@ -109,12 +125,12 @@ axios.post(apihost+'/auth/login',{email,password})
         if(maxmargin > minsaving ) {
             price = (minsaving <= minmargin) ? minmargin : minsaving;
         }  
-        return price;
+        return price > mrp ? mrp : price.toFixed(2);
     }
 
     function getSalePrice(ptr,mrp){
         const price = ((mrp - ptr) / ptr) <= minm ? mrp: calcSale(ptr,mrp);
-        console.log(`ptr: ${ptr}, mrp: ${mrp}, sale: ${price}`);
+        // console.log(`ptr: ${ptr}, mrp: ${mrp}, sale: ${price}`);
         return price;
     }
 
