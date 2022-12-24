@@ -35,6 +35,7 @@
             </div>
             </ng-template>
             <app-sale-form-items [items]="sale.items" 
+            [customer]="sale.customer"
             [sale]="sale"
             (removed)="removeItem($event)"
             (recalculateTotal)="recalculateTotal($event)"></app-sale-form-items>
@@ -94,7 +95,7 @@
     <button type="button" class="btn btn-primary mt-2 text-center" [disabled]="!copyItemSelected()" (click)="copySelectedItem()">Copy</button>
 </p-dialog>
 
-<p-dialog [header]="(this.sale?.customer?.name || 'New Customer') + ' (' + this.sale?.customer?.mobile + ')'" 
+<p-dialog [header]="(this.sale?.customer?.name || 'New Customer') + ' (' + (this.sale?.customer?.mobile || '') + ')'" 
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
             <div class="col-lg-6">

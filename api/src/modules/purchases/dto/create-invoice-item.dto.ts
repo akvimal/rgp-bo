@@ -20,6 +20,9 @@ export class CreatePurchaseInvoiceItemDto {
     @ApiProperty({ description: 'mrp cost', example: 0 })
     readonly mrpcost: number;
 
+    @ApiProperty({ description: 'disc percent', example: 0 })
+    readonly discpcnt: number;
+    
     @ApiProperty({ description: 'tax percent', example: 0 })
     readonly taxpcnt: number;
 

@@ -26,7 +26,7 @@ export class PurchaseInvoiceController {
 
     @Get()
     async findByUnique(@Query() query: any) {
-      console.log('Query: ',query);
+      // console.log('Query: ',query);
       
       if(Object.keys(query).length > 0)
       return this.purchaseInvoiceService.findByUnique(query);
