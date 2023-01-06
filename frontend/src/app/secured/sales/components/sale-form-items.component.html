@@ -22,13 +22,13 @@
                 <app-stock-select *ngIf="item.itemid == ''" 
                 [item]="item" (stockSelected)="selectProduct(item.id,$event)"
                 [itemsSelected]="items"></app-stock-select>
-                <p><strong>{{item.title}}</strong><br><span style="font-style: italic;">{{item.more_props?.composition}}</span></p>
+                <p *ngIf="item.title"><strong>{{item.title}}</strong><br><span style="font-style: italic;">{{item.more_props?.composition}}</span></p>
             </td>
             <td width="15%">
                 {{item.batch}} / {{item.expdate | date : 'MMM-yy'}}
             </td>
             <td width="12%">
-                <input type="number" [value]="item.qty" maxlength="6"
+                <input type="number" [value]="item.qty"
                 [disabled]="item.maxqty == 0"
                 [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : 'inherit'}"
                 (input)="calculate(item.itemid,$event)">

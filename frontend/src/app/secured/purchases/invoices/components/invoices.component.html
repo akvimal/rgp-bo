@@ -10,9 +10,9 @@
       <th scope="col">No</th>
       <th scope="col">Date</th>
       <th scope="col">Vendor</th>
-      <th scope="col">Amount</th>
       <th scope="col">Status</th>
-      <th scope="col">Actions</th>
+      <th scope="col">Amount</th>
+      <!-- <th scope="col">Actions</th> -->
     </tr>
   </thead>
   <tbody>
@@ -21,16 +21,16 @@
       <td><a [routerLink]="['../items',p.id]">{{p.invoiceno}}</a></td>
       <td>{{p.invoicedate | date : 'dd-MMM'}}</td>
       <td>{{p.vendor.name}}</td>
-      <td>{{p.total}}</td>
       <td>{{p.status}}</td>
-      <td>
+      <td style="text-align:right">{{p.total}}</td>
+      <!-- <td>
         <span *ngIf="p.status === 'NEW'">
       <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">
         <i class="bi bi-pencil text-primary"></i>
       </a>
         <a *isAuth="'purchases.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
       </span>
-      </td>
+      </td> -->
     </tr>
   </tbody>
 </table>

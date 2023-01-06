@@ -2,6 +2,8 @@ import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
+import { Observable } from "rxjs";
+import { ConfigService } from "src/app/shared/config.service";
 import { ProductsService } from "../products.service";
 
 @Component({
@@ -9,12 +11,14 @@ import { ProductsService } from "../products.service";
 })
 export class ProductFormComponent{
 
+    productProps$?:Observable<any>;
+
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
         title: new FormControl('',Validators.required),
         hsn: new FormControl(''),
         code: new FormControl(''),
-        category: new FormControl('Drug'),
+        category: new FormControl(''),
         mfr: new FormControl(''),
         brand: new FormControl(''),
         description: new FormControl(''),
@@ -25,10 +29,14 @@ export class ProductFormComponent{
       props:any = [];
       brand:string = '';
       
-      constructor(private service:ProductsService, private router:Router,
-        private route:ActivatedRoute, private httpClient: HttpClient){}
+      constructor(private configService:ConfigService, 
+        private service:ProductsService, 
+        private router:Router,
+        private route:ActivatedRoute){}
 
       ngOnInit(){
+        this.productProps$ = this.configService.props;
+
         this.populateProps(this.form.controls['category'].value,undefined);
         const id = this.route.snapshot.paramMap.get('id'); 
         id && this.service.findById(id).subscribe((data:any) => {
@@ -47,11 +55,12 @@ export class ProductFormComponent{
       }
 
       populateProps(category:any,values:any){
-        this.httpClient.get("/assets/props.json").subscribe((data:any) => {
+        this.configService.props.subscribe((data:any) => {
+          this.props = [];
           const catProps = data.find((d:any) => d.category === category);
           if(catProps){
             this.props = catProps.props;
-            let pps = {};
+            let pps = {};  
             for(let i=0;i<this.props.length;i++){
               const pname = this.props[i].id;
               const value = values ? values[pname] : this.props[i].default;
@@ -61,8 +70,9 @@ export class ProductFormComponent{
               }
               pps = {...pps, [pname]:fc}
             }
-            this.form.setControl('props', new FormGroup(pps));
+            this.form.setControl('props', new FormGroup(pps));  
           }
+          
         });
       }
 

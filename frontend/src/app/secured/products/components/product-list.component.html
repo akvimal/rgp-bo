@@ -5,12 +5,10 @@
 <a *isAuth="'products.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
 <div class="row mt-2">
     <div class="col-md-2">
-        Category
-        <select class="form-control" id="category" [(ngModel)]="category"
-        (change)="selectCategory($event)">
+        <label for="category">Category</label>
+        <select class="form-control" id="category" [(ngModel)]="category" (change)="selectCategory($event)">
           <option value="">Select</option>
-          <option value="Drug">Drug</option>
-          <option value="Surgicals">Surgicals</option>
+          <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
         </select>
     </div>
 </div>
@@ -32,18 +30,18 @@
     </ng-template> -->
     <ng-template pTemplate="header">
         <tr>
-            <!-- <th pSortableColumn="code">Code 
+            <th pSortableColumn="category">Category 
+                <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
+                <p-sortIcon field="category"></p-sortIcon>
+            </th>
+            <th pSortableColumn="code">Code 
                 <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
                 <p-sortIcon field="code"></p-sortIcon>
-            </th>   -->
+            </th>  
             <th pSortableColumn="hsn">HSN
                 <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
                 <p-sortIcon field="hsn"></p-sortIcon>
             </th>
-            <!-- <th pSortableColumn="category">Category 
-                <p-columnFilter type="text" field="category" display="menu"></p-columnFilter>
-                <p-sortIcon field="category"></p-sortIcon>
-            </th> -->
             <th pSortableColumn="title">Title 
                 <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                 <p-sortIcon field="title"></p-sortIcon>
@@ -56,23 +54,24 @@
                 <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
                 <p-sortIcon field="mfr"></p-sortIcon>
             </th>
-            <th>Additional Props</th>
             <th>Actions</th>
         </tr>
     </ng-template>
     <ng-template pTemplate="body" let-product>
         <tr>
-            <!-- <td>{{product.code}}</td> -->
+            <td>{{product.category}}</td>
+            <td>{{product.code}}</td>
             <td>{{product.hsn}}</td>
-            <!-- <td>{{product.category}}</td> -->
-            <td>{{product.title}}</td>
+            <td>
+                <h6>{{product.title}}
+                    <a href="#" (click)="toggleProps(product,$event)">({{product.attrs.length}})</a>
+                </h6>
+                <ul [ngStyle]="{'display': product.showProps ? 'inline' : 'none','margin':0,'padding':0}">
+                    <li style="list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>
+                </ul>
+            </td>
             <td>{{product.brand}}</td>
             <td>{{product.mfr}}</td>
-            <td>
-                <ul style="margin:0;padding: 0;">
-                <li style="float:left;list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>
-            </ul>
-            </td>
             <td>
                 <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
                 <i class="bi bi-pencil text-primary"></i></a>

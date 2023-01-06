@@ -22,7 +22,20 @@ export class StockComponent {
     constructor(private service:StockService){}
 
     ngOnInit(){
-        this.service.findAll().subscribe(data => this.items = data);
+        this.service.findAll().subscribe((data:any) => {
+            this.items = data.map((s:any) => {
+                const margin = Math.round(((s.sale_price - s.ptr_cost)/s.ptr_cost)*100);
+                const saving = Math.round(((s.mrp_cost - s.sale_price)/s.mrp_cost)*100);
+                return {...s, mrp_cost: this.padDecimal(s.mrp_cost,2), 
+                    ptr_cost: this.padDecimal(s.ptr_cost,2),
+                    sale_price: this.padDecimal(s.sale_price,2),
+                    margin, saving };
+            });
+        });
+    }
+
+    padDecimal(value:any,cnt:number){
+        return Number(value).toFixed(cnt);
     }
 
     showDialog(item:any) {
@@ -41,10 +54,6 @@ export class StockComponent {
     }
 
     limitMRP(event:any){
-        console.log(event.target.value);
-        console.log(this.selectedItem);
-        
-        
         if(+event.target.value > +this.selectedItem.mrp_cost){
             this.adjustForm.controls['price'].setValue(this.selectedItem.mrp_cost);
             event.target.value = this.selectedItem.mrp_cost; //prevent entering value over max qty

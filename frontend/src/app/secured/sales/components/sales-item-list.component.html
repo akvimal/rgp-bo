@@ -1,40 +1,40 @@
-
 <div class="row no-print">
-<div class="col-md-2">
-    Category
+  <div class="col-md-2">
+    <label for="category">Category</label>
     <select name="filterbycategory" class="form-control" [(ngModel)]="criteria.category" 
           (change)="fetchFilterProps($event)">
       <option value=""></option>
       <option value="Drug">Drug</option>
       <option value="Surgicals">Surgicals</option>
     </select>
-</div>
-<div class="col-md-2">
-    From Date
+  </div>
+  <div class="col-md-2">
+    <label for="fromdate">From Date</label>
     <input type="date" name="fromdate"  class="form-control" id="fromdate" [(ngModel)]="criteria.fromdate">
   </div>
   <div class="col-md-2">
-    To Date
-    <input type="date" name="todate"  class="form-control" id="todate" [(ngModel)]="criteria.todate">
+    <label for="todate">To Date</label>
+    <input type="date" name="todate" class="form-control" id="todate" [(ngModel)]="criteria.todate">
   </div>
-
-    <div *ngFor="let p of criteria.props"  class="col-md-2">
-      
+  <div *ngFor="let p of criteria.props"  class="col-md-2">
         <div *ngIf="p.type === 'SINGLE-SELECT'">
-            {{p.label}}<select [(ngModel)]="p.value" class="form-control">
+            <label>{{p.label}}</label>
+            <select [(ngModel)]="p.value" class="form-control">
                 <option value=""></option>
                 <option *ngFor="let c of p.choices" [value]="c.value">{{c.label}}</option>
             </select>
         </div>
     </div>
     
-  <div class="col-md-3">
-    <button type="button" class="btn btn-primary m-2" (click)="fetchSaleItems()">Filter</button>
-    <button type="button" class="btn btn-outline-primary m-2" (click)="clearFilter()">Clear</button>
-  </div>
-  <div class="col-md-1">
+  <div class="col-md-4">
+    <label>&nbsp;</label><br>
+    <button type="button" class="btn btn-primary mx-auto" (click)="fetchSaleItems()">Filter</button>
+    <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
     <button type="button" class="btn  btn-primary" onclick="javascript:window.print();">Print</button>
   </div>
+  <!-- <div class="col-md-1">
+    <button type="button" class="btn  btn-primary" onclick="javascript:window.print();">Print</button>
+  </div> -->
 </div>
 
     <table class="table table-bordered mt-4 sale-items">

@@ -35,8 +35,8 @@
                 </tr>
             <tr *ngFor="let i of sale.items">
                 <td>
-                    {{i.title}}<br>
-                    <i>{{i.props?.composition}}</i>
+                    {{i.title}}
+                    <i *ngIf="i.props?.composition">{{i.props?.composition}}</i>
                 </td>
                 <td style="text-align: center;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
                 <td style="text-align: right;width:8%">{{i.mrp}}</td>
@@ -52,7 +52,6 @@
                     <span *ngIf="sale.discount && sale.discount > 0" style="margin-left: 2em;color: blue;text-align: right;">OFFER: <i class="bi bi-currency-rupee" style="padding:0"></i> -{{sale.discount}}</span>
                 </td>
                 <td colspan="2" style="text-align: right;">
-                    
                     <label>Total: </label>
                     <i class="bi bi-currency-rupee" style="padding:0"></i>
                         {{sale.total}}
@@ -74,7 +73,6 @@
             </tr>
             </table>
         </div>
-       
     </div>
 </div>
 <div class="non-print" style="text-align:center">

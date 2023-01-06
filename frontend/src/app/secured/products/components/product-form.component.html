@@ -10,29 +10,34 @@
       <form [formGroup]="form" (ngSubmit)="onSave()">
         <div class="row">
           <div class="col-md-3">
-            <label for="category" class="form-label">Category</label>          
-            <select formControlName="category" class="form-control" id="category" 
-            (change)="selectProps($event,undefined)">
-              <option value="Drug">Drug</option>
-              <option value="OTC">OTC</option>
-            </select>
-          </div>
-          <div class="col-md-4">
             <label for="brand" class="form-label">Brand</label>
             <input id="brand" class="form-control" type="text" formControlName="brand" (input)="dataInput(undefined, 'brand', $event)">
           </div>
-          <div class="col-md-5">
+          <div class="col-md-4">
             <label for="mfr" class="form-label">Manufacturer</label>
             <input id="mfr" class="form-control" type="text" formControlName="mfr">
           </div>
-          <!-- <div class="col-md-3">
+          <div class="col-md-2">
+            <label for="hsncode" class="form-label">HSN Code</label>
+            <input id="hsncode" class="form-control" type="text" formControlName="hsn" maxlength="8">
+          </div>
+          <div class="col-md-3">
             <label for="productcode" class="form-label">Product Code</label>
             <input id="productcode" class="form-control" type="text" formControlName="code">
-          </div> -->
-  
+          </div>
         </div>
 
-        <div class="row g-2 bg-light pb-3 mt-3" formGroupName="props" *ngIf="props.length > 0">
+        <div class="row mt-3">
+          <div class="col-md-3">
+            <label for="category" class="form-label">Category</label>          
+            <select formControlName="category" class="form-control" id="category" 
+            (change)="selectProps($event,undefined)">
+            <option value="">Select</option>
+            <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 bg-light pb-3 mt-3" formGroupName="props">
             <div class="col-md-4" *ngFor="let pp of props">
             <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
             <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
@@ -50,20 +55,16 @@
         </div>
 
         <div class="row g-3 mt-2">
-        <div class="col-md-8" *isAuth="'products.add$title'">
-          <label for="title" class="form-label">Title</label>
-          <input type="text" class="form-control" id="title" formControlName="title">
+          <div class="col-md-12" *isAuth="'products.add$title'">
+            <label for="title" class="form-label">Title</label>
+            <input type="text" class="form-control" id="title" formControlName="title">
+          </div>
+          <div class="col-md-12" *isAuth="'products.add$description'">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" formControlName="description" 
+              style="height: 100px;"></textarea>
+          </div>
         </div>
-        <div class="col-md-2">
-          <label for="hsncode" class="form-label">HSN Code</label>
-          <input id="hsncode" class="form-control" type="text" formControlName="hsn" maxlength="8">
-        </div>
-        <div class="col-md-12" *isAuth="'products.add$description'">
-          <label for="description" class="form-label">Description</label>
-          <textarea class="form-control" id="description" formControlName="description" 
-            style="height: 100px;"></textarea>
-        </div>
-      </div>
       
       <div class="row mt-4">
         <div class="col-md-12 text-center">

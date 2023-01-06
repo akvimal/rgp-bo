@@ -98,7 +98,7 @@
   "props":[
     {
       "id": "category",
-      "label": "Category",
+      "label": "Sub Category",
       "type": "SINGLE-SELECT",
       "choices": [
         {
@@ -120,7 +120,7 @@
   "props":[
     {
       "id": "category",
-      "label": "Category",
+      "label": "Sub Category",
       "type": "SINGLE-SELECT",
       "choices": [
         {

@@ -1,5 +1,7 @@
 import { Component, ViewChild } from "@angular/core";
 import { Table } from "primeng/table";
+import { Observable } from "rxjs";
+import { ConfigService } from "src/app/shared/config.service";
 import { ProductsService } from "../products.service";
 import { PropsService } from "../props.service";
 
@@ -10,12 +12,15 @@ export class ProductListComponent {
 
     products:any;
     category:any = '';
+    productProps$?:Observable<any>;
 
     @ViewChild('dt') dt: Table | undefined;
 
-    constructor(private service:ProductsService,private propsService:PropsService){}
+    constructor(private service:ProductsService,
+        private configService:ConfigService){}
 
     ngOnInit(){ 
+        this.productProps$ = this.configService.props;
         this.fetchList()
     }
     
@@ -42,8 +47,18 @@ export class ProductListComponent {
                 for (const [key, value] of Object.entries(p.props)) {
                     attrs.push({key:key.toUpperCase(),value});
                 }
-                return {...p,attrs};
+                return {...p,attrs,showProps:false};
             });
         });
+    }
+
+    toggleProps(prod:any,event:any){
+        console.log('product: ',prod);
+        this.products.forEach((p:any) => {
+            if(p.id === prod.id){
+                p.showProps = !p.showProps
+            }
+        });
+        event.preventDefault()
     }
 }

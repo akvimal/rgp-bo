@@ -89,7 +89,8 @@ export class SaleFormComponent {
     }
 
     isNewCustomer() {
-      if(this.sale.customer && (this.sale.customer.name && this.sale.customer.name !== '') && 
+      if(this.sale.customer && 
+        (this.sale.customer.name && this.sale.customer.name !== '') && 
         (this.sale.customer.mobile && this.sale.customer.mobile !== '')){
         return false;
       }
@@ -160,7 +161,14 @@ export class SaleFormComponent {
   }
   
   doneEnterCustomer(event:any){
-    this.sale.customer = {mobile:event.target.value};
+    const inputval = event.target.value;
+    if(inputval.length > 0){
+      if(inputval.length !== 10) {
+        event.target.value = inputval.substring(0,10)
+        event.target.focus();
+      }
+    } 
+    this.sale.customer = {mobile:inputval};
   }
 
   removeItem(id:any){
@@ -245,13 +253,13 @@ export class SaleFormComponent {
   }
 
   saveCustomerInfo(status:string) {
-    // this.customerEditOnly = false;
     if(status === 'COMPLETE') {
+      if(!this.sale.customer.name){
+        this.sale.customer['name'] = 'Unknown'
+      }
       this.submit(status);
     }
-    // else if(status === 'PENDING'){
-    //   this.customerEditOnly = false;
-    // }
+    
     this.displayNewCustomer = false;
   }
 

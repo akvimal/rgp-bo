@@ -3,6 +3,7 @@ import { NgModule } from "@angular/core";
 import { ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "../@core/auth/auth.guard";
+import { CustInquiryComponent } from "../custinquiry.component";
 import { SharedModule } from "../shared/shared.module";
 import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
@@ -18,6 +19,8 @@ const routes: Routes = [
   { path: '', component: SecuredComponent, children: [
     { path: 'dashboard', canActivate:[AuthGuard], component: DashboardComponent },
     { path: 'profile', canActivate:[AuthGuard], component: ProfileComponent },
+
+  { path: 'custinquiry', component: CustInquiryComponent },
     {
       path: 'roles', canActivate:[AuthGuard],
       loadChildren: () => import('./roles/roles.module').then(m => m.RolesModule)
