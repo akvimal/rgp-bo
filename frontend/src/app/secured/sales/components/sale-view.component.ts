@@ -15,6 +15,7 @@ export class SaleViewComponent {
     mrpTotal:number = 0;
     finalAmt:number = 0;
     itemsCount:number = 0;
+    itemsTotal:number = 0;
     // roundDecimal:string = '';
 
 
@@ -29,7 +30,8 @@ export class SaleViewComponent {
       this.service.find(saleId).subscribe((data:any) => {
         
           this.sale.items = data.items.map((i:any) => {
-            this.mrpTotal += +(i.purchaseitem.mrpcost * i.qty * (1 + i.purchaseitem.taxpcnt/100)).toFixed(2);
+            this.mrpTotal += +(i.purchaseitem.mrpcost * i.qty * (1 + i.purchaseitem.taxpcnt/100)).toFixed(0);
+            this.itemsTotal += +i.total;
             return {
               title: i.purchaseitem.product.title,
               props: i.purchaseitem.product.props,
@@ -52,10 +54,11 @@ export class SaleViewComponent {
           // this.roundDecimal = (data.total - Math.round(data.total)).toFixed(2); 
           this.itemsCount = this.sale.items?.length || 0;
           this.sale.total = data.total;
-          this.sale.discount = data.discount;
+          this.sale.disccode = data.disccode;
+          this.sale.discamount = data.discamount;
           this.finalAmt = Math.round(data.total);
           
-          this.saving = Math.round(((this.mrpTotal - Math.round(data.total)) / this.mrpTotal) * 100);
+          this.saving = Math.round(((this.mrpTotal - (this.finalAmt - +(data.discamount || 0))) / this.mrpTotal) * 100);
         });
     }
 

@@ -139,6 +139,8 @@ export class SaleFormComponent {
           this.total += i.total;
         }
       });
+      // this.total += offer.amount;
+
       this.offer = offer;
       this.addNewItem();
     }
@@ -210,11 +212,19 @@ export class SaleFormComponent {
       i.id = null;
     });
 
+    let discamt  = this.offer.amount||0;
     if(this.offer){
-      total = total - (this.offer.amount||0);
+      const newTotal = total - discamt;
+      if(newTotal < 0){
+        discamt = total;
+        total = 0;
+      }
+      else 
+        total = newTotal;
+      
     }
     
-    this.service.save({...this.sale, total, discount:(this.offer?.amount||0), status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
+    this.service.save({...this.sale, total, disccode:(this.offer?.code), discamount:discamt, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
       if(data.status === 'COMPLETE')
         this.router.navigateByUrl(`/secure/sales/view/${data.id}`); 
@@ -242,10 +252,15 @@ export class SaleFormComponent {
     } else if(attr === 'email'){
       this.sale.customer.email = event.target.value
     } else if(attr === 'name'){
-      this.sale.customer.name = event.target.value
+      this.sale.customer.name = this.capitalize(event.target.value)
     }else if(attr === 'mobile'){
       this.sale.customer.mobile = event.target.value
     }
+  }
+
+  capitalize(word:string){
+      const lower = word.toLowerCase();
+      return word.charAt(0).toUpperCase() + lower.slice(1);
   }
 
   cancel(){
@@ -274,8 +289,6 @@ export class SaleFormComponent {
 
         prevSale.forEach((ps:any) => {
           const items = ps.items.map((i:any) => {
-            console.log('ITEM: ',i);
-            
             return {
               id:i.id,
               itemid:i.purchaseitem.id,
@@ -284,7 +297,7 @@ export class SaleFormComponent {
               selected:addedItemsToSale?.includes(i.purchaseitem.id),
               maxqty:i.maxqty,
               qty:i.qty,
-              mrp:i.purchaseitem.mrpcost,
+              mrp_cost:i.purchaseitem.mrpcost,
               title:i.purchaseitem.product.title,
               more_props:i.purchaseitem.product.props,
               batch:i.purchaseitem.batch,

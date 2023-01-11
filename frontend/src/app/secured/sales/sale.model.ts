@@ -9,7 +9,8 @@ export interface Sale {
     status?:string,
     items?:SaleItem[],
     total?: number,
-    discount?:number,
+    disccode?:string,
+    discamount?:number,
     paymode?:string,
     payrefno?:string,
     props?:any

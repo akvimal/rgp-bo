@@ -20,27 +20,27 @@
                         <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                         <p-sortIcon field="product"></p-sortIcon>
                     </th>
-                    <th pSortableColumn="invoice_no">Invoice No
+                    <th pSortableColumn="invoice_no">Invoice
                         <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
                         <p-sortIcon field="invoice_no"></p-sortIcon>
                     </th>
-                    <th pSortableColumn="batch">Batch
+                    <!-- <th pSortableColumn="batch">Batch
                         <p-columnFilter type="text" field="batch" display="menu"></p-columnFilter>
                         <p-sortIcon field="batch"></p-sortIcon>
-                    </th>
-                    <th pSortableColumn="expdate">Expiry
+                    </th> -->
+                    <!-- <th pSortableColumn="expdate">Expiry
                         <p-columnFilter type="date" field="expdate" display="menu"></p-columnFilter>
                         <p-sortIcon field="expdate"></p-sortIcon>
-                    </th>
+                    </th> -->
                     <th pSortableColumn="life_left">Life
                         <p-columnFilter type="numeric" field="life_left" display="menu"></p-columnFilter>
                         <p-sortIcon field="life_left"></p-sortIcon>
                     </th>
-                    <th pSortableColumn="purchase_qty">Qty
+                    <!-- <th pSortableColumn="purchase_qty">Qty
                         <p-columnFilter type="numeric" field="purchase_qty" display="menu"></p-columnFilter>
                         <p-sortIcon field="purchase_qty"></p-sortIcon>
-                    </th>
-                    <th pSortableColumn="available_qty">Available
+                    </th> -->
+                    <th pSortableColumn="available_qty">Qty
                         <p-columnFilter type="numeric" field="available_qty" display="menu"></p-columnFilter>
                         <p-sortIcon field="available_qty"></p-sortIcon>
                     </th>
@@ -57,11 +57,11 @@
                         <p-sortIcon field="sale_price"></p-sortIcon>
                     </th>
                     <th pSortableColumn="margin">Margin
-                        <p-columnFilter type="numeric" field="margin" display="menu"></p-columnFilter>
+                        <!-- <p-columnFilter type="numeric" field="margin" display="menu"></p-columnFilter> -->
                         <p-sortIcon field="margin"></p-sortIcon>
                     </th>
                     <th pSortableColumn="saving">Discount
-                        <p-columnFilter type="numeric" field="saving" display="menu"></p-columnFilter>
+                        <!-- <p-columnFilter type="numeric" field="saving" display="menu"></p-columnFilter> -->
                         <p-sortIcon field="saving"></p-sortIcon>
                     </th>
                     <!-- <th pSortableColumn="old_with_us">Age
@@ -73,11 +73,12 @@
             <ng-template pTemplate="body" let-i>
                 <tr>
                     <td>{{i.title}}</td>
-                    <td>{{i.invoice_no}}</td>
-                    <td>{{i.batch}}</td>
-                    <td>{{i.expdate | date :'MMM-yy'}}</td>
+                    <td><a [routerLink]="['../items',i.invoice_id]">{{i.invoice_no}}</a></td>
+                    
+                    <!-- <td>{{i.batch}}</td> -->
+                    <!-- <td>{{i.expdate | date :'MMM-yy'}}</td> -->
                     <td>{{i.life_left}}</td>
-                    <td>{{i.purchase_qty}}</td>
+                    <!-- <td>{{i.purchase_qty}}</td> -->
                     <td>{{i.available_qty}}</td>
                     <td style="text-align: right;">{{i.mrp_cost}}</td>
                     <td style="text-align: right;">{{i.ptr_cost}}</td>
