@@ -35,7 +35,7 @@
                 </tr>
             <tr *ngFor="let i of sale.items">
                 <td>
-                    {{i.title}}
+                    {{i.title}}<br>
                     <i *ngIf="i.props?.composition">{{i.props?.composition}}</i>
                 </td>
                 <td style="text-align: center;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
