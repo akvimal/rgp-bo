@@ -1,4 +1,6 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { Offer } from "../offer.model";
+import { OfferService } from "../offer.service";
 import { SaleService } from "../sales.service";
 
 @Component({
@@ -10,8 +12,9 @@ export class SaleFormItemsComponent{
   @Input() items:any;
   @Input() sale:any;
   @Input() customer:any;
-  @Output() offers = new EventEmitter()
-  offer:any;
+  
+  offers:Offer[] = [];
+  offer:Offer = {};
 
   paymodes = [
     {key:'digital',value:'Digital'},
@@ -29,54 +32,87 @@ export class SaleFormItemsComponent{
   customerTotalSaleAmount = 0;
   customerLastBillDate:any;
 
-  constructor(private saleService:SaleService){}
+  constructor(private saleService:SaleService, private offerService:OfferService){}
+
+  ngOnInit(){
+    this.offerService.state.subscribe(data => {
+      this.offers = data.filter(d => d.available);
+    });
+    
+  }
 
   ngOnChanges(changes: SimpleChanges) {
-    this.total = 0;
-    console.log('changes:',changes);
     
     if(changes['items']){
-      changes['items'].currentValue.forEach((i:any) => {
-        const itemtotal = this.calculateTotal(i.qty, i.price, i.taxpcnt);
-        i['total'] = itemtotal;
-        this.total = Math.round(this.total + itemtotal);
-      });
-      
-      this.recalculateTotal.emit(true)
+      this.refreshTotal(changes['items'].currentValue);
+      this.recalculateTotal.emit(true);
     }
+
     if(changes['customer'] && changes['customer'].currentValue){
       if(changes['customer'].currentValue.id){
         this.saleService.getSalesByCustomer(changes['customer'].currentValue.id).subscribe((data:any) => {
-              console.log('customer sale: ',data);
+              // console.log('customer sale: ',data);
               this.customerTotalOrders = data.length;
               data.forEach((s:any) => {
                 this.customerTotalSaleAmount += s.total;
               });
               this.customerLastBillDate = data[0].billdate;
-            })
+            });
       }
     }
+
+    this.offerService.state.subscribe(data => {
+      this.offers = data.filter(d => d.available);
+    });
   }
 
-  applyOffer(){
-    // console.log('applyoffer: this.total: ',this.total );
-    this.offer = null;
+  applyDiscount(){
+    this.refreshTotal(this.items);  
+  }
 
-    const lastDt = Date.parse(this.customerLastBillDate);
-    const currentDt = Date.parse((new Date()).toISOString());
-    const days = (currentDt - lastDt)/1000/60/60/24;
+  refreshTotal(saleItems:any){
+    this.total = 0;
+    saleItems.forEach((i:any) => {
+      const itemtotal = this.calculateTotal(i.qty, i.price, i.taxpcnt);
+      i['total'] = itemtotal;
+      i['qtyready'] = true;
+      this.total = Math.round(this.total + itemtotal);
+    });
+    
+    const newTotal = this.total - (this.offer.amount||0);
+    this.total = newTotal > 0 ? newTotal : 0;
+  }
 
-    //if previous bill amount or first month bill amount is greater than rs.250
-    if(this.sale.customer && this.sale.customer.id && 
-      this.customerTotalOrders == 1 && this.customerTotalSaleAmount >= 250 &&
-      this.total >= 250 && days > 7) {
-        this.offer = {code:'FIRST_NEW',amount:250};
-    }
+  // applyOffer(){
+  //   // console.log('applyoffer: this.total: ',this.total );
+  //   this.offer = null;
+
+  //   const lastDt = Date.parse(this.customerLastBillDate);
+  //   const currentDt = Date.parse((new Date()).toISOString());
+  //   const days = (currentDt - lastDt)/1000/60/60/24;
+
+  //   //if previous bill amount or first month bill amount is greater than rs.250
+  //   if(this.sale.customer && this.sale.customer.id && 
+  //     this.customerTotalOrders == 1 && this.customerTotalSaleAmount >= 250 &&
+  //     this.total >= 250 && days > 7) {
+  //       this.offer = {code:'FIRST_NEW',amount:250};
+  //   }
+  // }
+
+  selectOffer(event:any){
+    const selected = event.target.value;
+      const found = this.offers.find(o => o.code === selected);      
+      if(found){
+        this.offer = {...found}
+      }
+    this.refreshTotal(this.items);
+
+    this.recalculateTotal.emit(this.offer);
   }
     
   calculateTotal(qty:number,price:number,tax:number):number{
     let total = qty * ((price||0) * (1 + ((tax||0) / 100)));
-    return isNaN(total) ? 0 : +total.toFixed(2);
+    return isNaN(total) ? 0 : Math.round(total);
   }
 
   calculate(itemid:any,event:any){      
@@ -92,11 +128,11 @@ export class SaleFormItemsComponent{
     item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
 
     this.total = Math.round(this.total - old + item.total);
-
-    this.applyOffer();
-      
-    this.total = +( (this.getItemsTotal() - (this.offer?.amount || 0)).toFixed(2));
-
+    let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
+    if(newTotal < 0)
+    newTotal = 0;
+    this.total = newTotal;
+    
     this.recalculateTotal.emit(this.offer);
   }
 
@@ -113,8 +149,6 @@ export class SaleFormItemsComponent{
       selectProduct(itemid:number,event:any) {
         const item = this.items.find((i:any) => i.id == itemid);
         if(item){
-          console.log('event: ',event);
-          
           const pi = event;
           item.title = event.title;
           item.batch = pi.batch;
@@ -125,6 +159,7 @@ export class SaleFormItemsComponent{
           item.price = pi.sale_price || pi.mrp_cost;
           item.taxpcnt = pi.tax_pcnt;
           item.more_props = event.more_props;
+          item['qtyready'] = true
         }
       }
 

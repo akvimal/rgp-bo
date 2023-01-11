@@ -22,27 +22,39 @@
                 <app-stock-select *ngIf="item.itemid == ''" 
                 [item]="item" (stockSelected)="selectProduct(item.id,$event)"
                 [itemsSelected]="items"></app-stock-select>
-                <p *ngIf="item.title"><strong>{{item.title}}</strong><br><span style="font-style: italic;">{{item.more_props?.composition}}</span></p>
+                <p *ngIf="item.title" style="margin:0;padding:0;"><strong>{{item.title}}</strong><br><span style="font-style: italic;">{{item.more_props?.composition}}</span></p>
             </td>
             <td width="15%">
                 {{item.batch}} / {{item.expdate | date : 'MMM-yy'}}
             </td>
             <td width="12%">
-                <input type="number" [value]="item.qty"
+                <div class="input-group mb-3" *ngIf="item.qtyready">
+                <input type="text" [value]="item.qty" class="form-control"
                 [disabled]="item.maxqty == 0"
-                [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : 'inherit'}"
+                [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#9df'}"
                 (input)="calculate(item.itemid,$event)">
-                <span class="m-2">{{(item.maxqty||0)}}</span>
+                <!-- <span class="m-2">{{(item.maxqty||0)}}</span> -->
+                <div class="input-group-append">
+                    <span class="input-group-text" id="basic-addon2">{{(item.maxqty||0)}}</span>
+                  </div>
+                </div>
             </td>
-            <td width="7%" style="text-align: right;">{{item.mrp}}</td>
+            <td width="7%" style="text-align: right;">{{item.mrp_cost}}</td>
             <td width="7%" style="text-align: right;">{{item.price}}</td>
             <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td>
             <td width="10%" style="text-align: right;">{{item.total}}</td>
         </tr>
-        <tr *ngIf="offer">
+        <tr>
             <td></td>
-            <td colspan="5">Offer Applied: {{offer?.code}}</td>
-            <td colspan="2" style="text-align:right">-{{offer?.amount}}</td>
+            <td colspan="5">
+                Discount: <select [(ngModel)]="offer.code" class="form-control" (change)="selectOffer($event)">
+                <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
+                </select>
+            </td>
+            <td colspan="2" style="text-align:right">
+                <input type="text" [(ngModel)]="offer.amount" 
+                (input)="applyDiscount()"
+                [disabled]="!offer.input"></td>
         </tr>
         <tr>
             <td></td>
@@ -50,7 +62,7 @@
                 <div class="row">
                     <div class="col-md-3">
                         <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
-                            <option value="">Select</option>
+                            <option>Select</option>
                             <option *ngFor="let pm of paymodes" [value]="pm.key">{{pm.value}}</option>
                         </select>
                     </div>  

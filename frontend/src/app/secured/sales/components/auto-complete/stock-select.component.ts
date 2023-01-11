@@ -7,7 +7,8 @@ import { StockService } from "../../../purchases/stock/stock.service";
                     (onSelect)="selected($event)"
                     field="title"
                     [suggestions]="filteredStock" 
-                    (completeMethod)="filterStock($event)" [minLength]="2">
+                    (completeMethod)="filterStock($event)" [minLength]="2"
+                    [inputStyle]="{'background-color':'#9df'}">
                     <ng-template let-stock pTemplate="item">
                         <h6 style="margin:0;padding:0;font-weight:bold">{{stock.title}}</h6>
                         <p style="margin:0;padding:0;color:#666">{{stock.more_props.composition}}</p>

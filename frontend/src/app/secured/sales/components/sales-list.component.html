@@ -47,7 +47,7 @@
               <a *ngIf="s.status !== 'COMPLETE'" [routerLink]="['../edit',s.id]">{{s.id}}</a>
               <a *ngIf="s.status === 'COMPLETE'" [routerLink]="['../view',s.id]">{{s.id}}</a>
             </td>
-            <td>{{s.billdate | date: 'dd/MM, hh:mm a'}}</td>
+            <td>{{s.billdate | date: 'dd-MMM, hh:mm a'}}</td>
             <td>{{s.customer ? s.customer.name : ''}}</td>
             <td>{{s.customer ? s.customer.mobile : ''}}</td>
             <!-- <td>{{s.created ? s.created.fullname : ''}}</td> -->

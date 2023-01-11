@@ -1,4 +1,3 @@
-import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -90,7 +89,7 @@ export class ProductFormComponent{
           this.pdata.packing = event.target.value;
         }
 
-        this.form.controls['title'].setValue((this.brand.toUpperCase()||'') + ' ' + (this.pdata.formulation||'') + ' ' + this.isPluralPacking(this.pdata.packing,this.pdata.formulation))
+        this.form.controls['title'].setValue(((this.brand.trim().toUpperCase()||'') + ' ' + (this.pdata.formulation||'') + ' ' + this.isPluralPacking(this.pdata.packing,this.pdata.formulation)).trim())
       }
   
       isPluralPacking(count:number,formulation:string){
@@ -106,22 +105,18 @@ export class ProductFormComponent{
 
       onSave(){
         const obj = { 
-          title: this.form.value.title, 
-          hsn:this.form.value.hsn, 
-          code:this.form.value.code, 
+          title: this.form.value.title.trim(), 
+          hsn:this.form.value.hsn.trim(), 
+          code:this.form.value.code.trim(), 
           category:this.form.value.category, 
-          mfr:this.form.value.mfr, 
-          brand:this.form.value.brand, 
+          mfr:this.form.value.mfr.trim(), 
+          brand:this.form.value.brand.trim(), 
           props: this.form.value.props, 
-          description: this.form.value.description }
+          description: this.form.value.description.trim() }
   
         const id = this.form.value.id;
         if(id) {
-          this.service.update(id, obj).subscribe(data => {
-            // console.log('data: ',data);
-            // console.log('redirecting ,,');
-            this.gotoList()
-          });
+          this.service.update(id, obj).subscribe(data => this.gotoList());
         }
         else {
           this.service.save(obj).subscribe(data => this.gotoList());

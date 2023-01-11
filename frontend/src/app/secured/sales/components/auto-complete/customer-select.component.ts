@@ -10,6 +10,7 @@ import { CustomersService } from "../../../customers/customers.service";
                 field="mobile" placeholder="Mobile"
                 [disabled]="disabled"
                 [suggestions]="filteredCustomer" 
+                [inputStyle]="{'background-color':'#9df'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="2">
                 <ng-template let-customer pTemplate="item">
                     <div>{{customer.name}} - {{customer.mobile}}</div>

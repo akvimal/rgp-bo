@@ -33,12 +33,14 @@
                 <!-- <div class="col-lg-3">Email: {{sale.customer?.email}}</div> -->
                 <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Address: {{sale.customer?.address}}</div>
             </div>
-            </ng-template>
-            <app-sale-form-items [items]="sale.items" 
+        </ng-template>
+
+        <app-sale-form-items [items]="sale.items" 
             [customer]="sale.customer"
             [sale]="sale"
             (removed)="removeItem($event)"
-            (recalculateTotal)="recalculateTotal($event)"></app-sale-form-items>
+            (recalculateTotal)="recalculateTotal($event)">
+        </app-sale-form-items>
     </div>
 </div>
 
