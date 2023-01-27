@@ -1,4 +1,4 @@
-<div class="card">
+<div class="card p-2">
     <div class="card-body bill-view">
         <div class="row">
             <table class="bill-head" style="font-size: small;">
@@ -14,8 +14,8 @@
                 </tr>
                 <tr>
                     <td>
-                        No: {{sale.id}}<br>
-                        Date: {{sale.billdate | date: 'dd/MM/yyyy hh:mm a'}}
+                        Bill No.: {{sale.id}}<br>
+                        Bill Date: {{sale.billdate | date: 'dd-MMM hh:mm a'}}
                     </td>
                     <td style="text-align: right;">
                         Name: {{sale.customer?.name}}<br>
@@ -36,14 +36,14 @@
             <tr *ngFor="let i of sale.items">
                 <td>
                     {{i.title}}
-                    <i *ngIf="i.props?.composition">{{i.props?.composition}}</i>
+                    <p style="margin:0;padding:0;font-style:italic" *ngIf="i.props?.composition">{{i.props?.composition}}</p>
                 </td>
-                <td style="text-align: center;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
-                <td style="text-align: right;width:8%">{{i.mrp}}</td>
-                <td style="text-align: right;width:6%">{{i.qty}}</td>
-                <td style="text-align: right;width:8%">{{i.price}}</td>
-                <td style="text-align: right;width:6%">{{i.taxpcnt}}%</td>
-                <td style="text-align: right;width:8%">{{i.total}}</td>
+                <td style="vertical-align: text-top; text-align: center;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
+                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.mrp}}</td>
+                <td style="vertical-align: text-top; text-align: right;width:6%">{{i.qty}}</td>
+                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.price}}</td>
+                <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td>
+                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.total}}</td>
             </tr>
             <tr>
                 <td colspan="5">No. of items: {{itemsCount}}</td>
@@ -58,7 +58,7 @@
             </tr>
             <tr>
                 <td colspan="4">
-                    <span>MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
+                    <span style="margin:0;padding:0">MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
                     
                     <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span>
                     <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue;margin:0;padding:0">
