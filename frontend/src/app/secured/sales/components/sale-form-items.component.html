@@ -25,11 +25,11 @@
                 <p *ngIf="item.title" style="margin:0;padding:0;"><strong>{{item.title}}</strong><br><span style="font-style: italic;">{{item.more_props?.composition}}</span></p>
             </td>
             <td width="15%">
-                {{item.batch}} / {{item.expdate | date : 'MMM-yy'}}
+                {{item.batch}} <span *ngIf="item.expdate">/</span> {{item.expdate | date : 'MMM-yy'}}
             </td>
             <td width="12%">
                 <div class="input-group mb-3" *ngIf="item.qtyready">
-                <input type="text" [value]="item.qty" class="form-control"
+                <input type="number" [value]="item.qty" class="form-control"
                 [disabled]="item.maxqty == 0"
                 [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#9df'}"
                 (input)="calculate(item.itemid,$event)">
@@ -47,12 +47,15 @@
         <tr>
             <td></td>
             <td colspan="5">
-                Discount: <select [(ngModel)]="offer.code" class="form-control" (change)="selectOffer($event)">
-                <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
-                </select>
+                <div class="d-flex flex-row-reverse">
+                    <select [(ngModel)]="offer.code" class="m-1" (change)="selectOffer($event)">
+                        <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
+                    </select>
+                    <label for="offer" class="m-1">Discount</label>
+                </div>
             </td>
-            <td colspan="2" style="text-align:right">
-                <input type="text" [(ngModel)]="offer.amount" 
+            <td colspan="2">
+                <input type="number" [(ngModel)]="offer.amount" style="text-align:right"
                 (input)="applyDiscount()"
                 [disabled]="!offer.input"></td>
         </tr>
