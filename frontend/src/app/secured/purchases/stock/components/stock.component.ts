@@ -54,11 +54,14 @@ export class StockComponent {
     }
 
     limitMRP(event:any){
-        if(+event.target.value > +this.selectedItem.mrp_cost){
-            this.adjustForm.controls['price'].setValue(this.selectedItem.mrp_cost);
-            event.target.value = this.selectedItem.mrp_cost; //prevent entering value over max qty
-          }
-              
+        // console.log('this.selectedItem: ',this.selectedItem);
+        const mrpAfterTaxDedcut = (this.selectedItem.mrp_cost / (1 + (this.selectedItem.tax_pcnt/100))).toFixed(2);
+        // console.log('mrpAfterTaxDedcut: ',mrpAfterTaxDedcut);
+        
+        if(+event.target.value > +mrpAfterTaxDedcut){
+            this.adjustForm.controls['price'].setValue(mrpAfterTaxDedcut);
+            event.target.value = mrpAfterTaxDedcut; //prevent entering value over max qty
+        }      
     }
 
 }

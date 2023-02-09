@@ -56,7 +56,7 @@
                         {{itemsTotal}}
                 </td>
             </tr>
-            <tr>
+            <tr *ngIf="saving > 0" >
                 <td colspan="4">
                     <span style="margin:0;padding:0">MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
                     

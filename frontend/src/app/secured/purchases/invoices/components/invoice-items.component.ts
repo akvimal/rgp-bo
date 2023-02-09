@@ -1,6 +1,7 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
+import { LoginComponent } from "src/app/@core/auth/login/login.component";
 import { ProductsService } from "../../../products/products.service";
 import { Invoice } from "../invoice.model";
 import { InvoiceService } from "../invoices.service";
@@ -13,12 +14,9 @@ export class InvoiceItemsComponent {
     products:any = []
     invoice: Invoice = {};
     total:any;
-    sale_price:number = 0;
 
     //constants to calc sale price
-    maxm = 2.5
-    minm = 0.3
-    mins = 0.5
+   
 
     selectedProduct: any;
     filteredProducts: any[] = [];
@@ -27,6 +25,9 @@ export class InvoiceItemsComponent {
     allVerified:boolean = false;
     feedback:string = '';
     grn:string = '';
+
+    sellermargin:number = 0;
+    customersaving:number = 0;
 
     product:any;
 
@@ -39,7 +40,10 @@ export class InvoiceItemsComponent {
         ptrcost: new FormControl('',Validators.required),
         mrpcost: new FormControl('',Validators.required),
         discpcnt: new FormControl(''),
-        taxpcnt: new FormControl('')
+        taxpcnt: new FormControl(''),
+        saleprice: new FormControl(''),
+        sellermargin: new FormControl(''),
+        customersaving: new FormControl(''),
       });
 
     constructor(private route:ActivatedRoute,
@@ -91,18 +95,56 @@ export class InvoiceItemsComponent {
         });
     }
 
-    calcSalePrice(rate:number,mrp:number){
+    // adjustSavingMargin(event:any){
+    //     const sp = (this.form.value.mrpcost * (this.form.value.customersaving/100))/(1 + (this.form.value.taxpcnt/100));
+    //     console.log('sp: ',sp);
+    //     console.log('getPTRAfterTax: ',this.getPTRAfterTax());
         
-        let maxmargin = rate * (1+this.maxm);
-        let minmargin = rate * (1+this.minm);        
-        let minsaving = mrp - (mrp * this.mins);
+    //     if(sp >= this.getPTRAfterTax())
+    //         this.form.controls['saleprice'].setValue(sp);
+    //     else {
+    //         this.form.controls['saleprice'].setValue(this.getPTRAfterTax());
+    //         // event.target.value = 0;
+    //     }
+    //     // this.form.controls['sellermargin'].setValue(sp);
+    //     this.sellermargin = Math.round(((this.form.value.saleprice - this.getPTRAfterTax())/this.getPTRAfterTax())*100);
+    //     this.form.controls['sellermargin'].setValue(this.sellermargin);
+        
+    // }
 
+    // adjustSellerMargin(){
+    //     const ptrAfterTax = this.getPTRAfterTax();
+    //     const sp = ptrAfterTax+(ptrAfterTax * (this.form.value.sellermargin/100));
+    //     this.form.controls['saleprice'].setValue(sp.toFixed(2));
+    //     // this.form.controls['sellermargin'].setValue(this.form.value.mrpcost - (this.form.value.mrpcost * (this.form.value.customersaving/100)));
+    //     this.customersaving = Math.round(((this.form.value.mrpcost - sp)/this.form.value.mrpcost)*100);
+    //     console.log('this.customersaving: ',this.customersaving);
+        
+    //     this.form.controls['customersaving'].setValue(this.customersaving);
+    // }
+
+    calcSalePrice(rate:number,mrp:number){
+        const maxm = 2.5
+        const minm = 1.3
+        const mins = 0.5
+        
+        let ptrAfterTax = this.getPTRAfterTax();
+
+        let maxmargin = ptrAfterTax * maxm;
+        let minmargin = ptrAfterTax * minm;
+        let minsaving = mrp - (mrp * mins);
+
+        
         let price = maxmargin;
         if(maxmargin > minsaving ) {
             price = (minsaving <= minmargin) ? minmargin : minsaving;
         }
-        // if(price > mrp)
-        return price > mrp ? mrp : price.toFixed(2);
+        
+        return price > this.getMRPBeforeTax() ? this.getMRPBeforeTax() : price.toFixed(2);
+    }
+
+    getMRPBeforeTax(){
+       return +((this.form.value.mrpcost / (1 + (this.form.value.taxpcnt/100))).toFixed(2));
     }
 
     selectItem(event:any,id:any){
@@ -111,16 +153,18 @@ export class InvoiceItemsComponent {
                 i.selected = event.target.checked;
         });
 
-        if(this.invoice.items) 
+        if(this.invoice.items) {
             this.itemSelected = this.invoice.items.filter((i:any) => i.selected).length > 0;
-        
+        }
     }
 
     submit(){
-        this.invService.saveItem({...this.form.value, saleprice:this.sale_price, total: this.total}).subscribe(data => {
+        this.invService.saveItem({...this.form.value, total: this.total}).subscribe(data => {
           this.selectedProduct = null;  
           this.form.reset();
-          this.total = '';
+          this.total = 0;
+          this.sellermargin = 0;
+          this.customersaving = 0;
           this.fetchItems(this.invoice.id);
         });
         //TODO: show saved confirmation properly
@@ -167,11 +211,50 @@ export class InvoiceItemsComponent {
         const priceAfterDisc = price - (price * (disc/100));
         const total = qty * ((priceAfterDisc||0) * (1 + ((tax||0) / 100)));
         return isNaN(total) ? 0 : +total.toFixed(2);
-      }
+    }
     
+    getPTRAfterTax(){
+        return this.form.value.ptrcost*(1+(this.form.value.taxpcnt/100));
+    }
+
+    calculateMargin(){
+        let sp = +this.form.value.saleprice * (1 + (this.form.value.taxpcnt/100));
+        const mrpBeforeTax = this.getMRPBeforeTax();
+        
+        // if(sp < this.getPTRAfterTax()) {
+        //     sp = +this.getPTRAfterTax().toFixed(2);
+        // } else if (sp > mrpBeforeTax) {
+        //     sp = mrpBeforeTax;
+        // }
+
+        // this.form.controls['saleprice'].setValue(sp);
+        
+        this.sellermargin = Math.round(((sp - this.getPTRAfterTax())/this.getPTRAfterTax())*100);
+        this.form.controls['sellermargin'].setValue(this.sellermargin);
+        this.customersaving = Math.round(((this.form.value.mrpcost - sp)/this.form.value.mrpcost)*100);
+        this.form.controls['customersaving'].setValue(this.customersaving);
+    }
+
     calculate(){
-        this.sale_price = +this.calcSalePrice(this.form.value.ptrcost,this.form.value.mrpcost);
+        
+        const ptrAfterTax = this.form.value.ptrcost * (1 + (this.form.value.taxpcnt/100))
+        if(ptrAfterTax > this.form.value.mrpcost){
+            this.form.controls['ptrcost'].setValue(this.getMRPBeforeTax())
+        }
+        
+        const sp = +this.calcSalePrice(this.getPTRAfterTax(),this.form.value.mrpcost);
+        
+        this.form.controls['saleprice'].setValue(sp);
+        if(sp < this.form.value.ptrcost){
+            this.form.controls['saleprice'].setValue(this.form.value.ptrcost);
+            this.form.controls['ptrcost'].setErrors({ptrcostsalesameerror:true})
+        }
+        else {
+            this.form.controls['ptrcost'].setErrors(null)
+        }
+
         this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrcost, this.form.value.discpcnt, this.form.value.taxpcnt);
+        this.calculateMargin();
     }
 
     onPaid(event:any){

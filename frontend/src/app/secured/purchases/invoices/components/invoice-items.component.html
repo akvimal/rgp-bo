@@ -7,7 +7,7 @@
         <div class="row">
             <div class="col-lg-4 col-md-4 label">Vendor: {{invoice.vendor?.name}}</div>
             <div class="col-lg-4 col-md-4 label">Invoice No: {{invoice.invoiceno}}</div>
-            <div class="col-lg-4 col-md-4 label">Invoice Date: {{invoice.invoicedate}}</div>
+            <div class="col-lg-4 col-md-4 label">Invoice Date: {{invoice.invoicedate | date : 'dd/MM/yyyy'}}</div>
         </div>
         <div class="row">
             <div class="col-lg-4 col-md-4 label">PO ID: {{invoice.purchaseorderid}}</div>
@@ -25,61 +25,113 @@
             <form class="mt-3" [formGroup]="form" (ngSubmit)="submit()">
                 <div class="row">
                     <div class="col-md-12">
-                        <p-autoComplete formControlName="productid" [showEmptyMessage]="true" field="title"
-                    [suggestions]="filteredProducts" (completeMethod)="filterProduct($event)" 
-                    (onSelect)="selected($event)" [minLength]="2">
-                        <ng-template let-product pTemplate="item">
-                            <h6 class="m-0">{{product.title}}</h6>
-                                <span style="color:red;font-style: italic;">{{product.props?.composition}}</span>
-                                <p class="m-0"><span style="color:blue;">{{product.props?.mfr}}</span></p>
-                        </ng-template>
-                    </p-autoComplete>
+                        <p-autoComplete formControlName="productid" [showEmptyMessage]="true" field="title" 
+                            placeholder="Enter minimum 2 characters to search Product "
+                            [suggestions]="filteredProducts" (completeMethod)="filterProduct($event)" type="search"
+                            (onSelect)="selected($event)" [minLength]="2" [size]="40"
+                            [inputStyle]="{'background-color':'#9df'}">
+                                <ng-template let-product pTemplate="item">
+                                    <h6 class="m-0">{{product.title}}</h6>
+                                        <span style="color:red;font-style: italic;">{{product.props?.composition}}</span>
+                                        <p class="m-0"><span style="color:blue;">{{product.props?.mfr}}</span></p>
+                                </ng-template>
+                        </p-autoComplete>
+                    <br>
+                    <strong>{{selectedProduct?.title}}</strong><br>
+                    <span style="font-style: italic;color:red;">{{selectedProduct?.props?.composition}}</span>
                     </div>
-                    <div class="col-md-3">
+                           <div class="col-md-12">
+                            <ul style="background-color:ivory;font-size:small">
+                                <li>Enter value in QTY in multiples on one sellable item</li>
+                                <li>Enter value in PTR & MRP for one sellable item</li>
+                            </ul>
+                            
+                           </div>     
+                    <!-- <div class="col-md-3">
                         <label for="batch" class="form-label">Product</label><br>
-                        <span>{{selectedProduct?.title}}</span><br>
+                        <strong>{{selectedProduct?.title}}</strong><br>
                         <span style="font-style: italic;color:red;">{{selectedProduct?.props?.composition}}</span>
-                    </div>    
-                <div class="col-md-2">
+                    </div>     -->
+                <div class="col-md-1">
                     <label for="batch" class="form-label">Batch</label>
                     <input id="batch" type="text" class="form-control" formControlName="batch" size="8">
                 </div>
                 <div class="col-md-1">
-                    <label for="expdate" class="form-label">Exp Date</label><br>
+                    <label for="expdate" class="form-label">Expiry</label><br>
                     <p-calendar formControlName="expdate" view="month" dateFormat="mm/yy" [minDate]="minExpDate()"
                     [yearNavigator]="true" yearRange="2000:2030"></p-calendar>
                 </div>
                 <div class="col-md-1">
                     <label for="mrp" class="form-label">MRP</label>
-                    <input type="text" id="mrp" class="form-control" formControlName="mrpcost" (input)="calculate()">
+                    <input type="number" id="mrp" class="form-control" formControlName="mrpcost" (input)="calculate()">
                 </div>
                 <!-- </div>
                 <div class="row"> -->
                     <div class="col-md-1">
                         <label for="qty" class="form-label">QTY</label>
-                        <input type="text" id="qty" class="form-control" formControlName="qty" (input)="calculate()">
+                        <input type="number" id="qty" class="form-control" formControlName="qty" (input)="calculate()">
                     </div>
                     <div class="col-md-1">
                         <label for="ptr" class="form-label">PTR</label>
-                        <input type="text" id="ptr" class="form-control" formControlName="ptrcost" size="6" (input)="calculate()">
+                        <input type="number" id="ptr" class="form-control" formControlName="ptrcost" size="6" (input)="calculate()">
+                        
                     </div>
-                    <div class="col-md-1">
+                    <!-- <div class="col-md-1">
                         <label for="disc" class="form-label">Disc %</label>
                         <input type="text" id="disc" class="form-control" formControlName="discpcnt" size="6" (input)="calculate()">
-                    </div>
+                    </div> -->
                     <div class="col-md-1">
                         <label for="taxpcnt" class="form-label">Tax %</label>
-                        <input type="text" id="taxpcnt" class="form-control" formControlName="taxpcnt" size="4" (input)="calculate()">
+                        <input type="number" id="taxpcnt" class="form-control" formControlName="taxpcnt" size="4" (input)="calculate()">
                     </div>
-                    <div class="col-md-2">
+                    <!-- <div class="col-md-1">
+                        <label for="total" class="form-label" style="color: blue">Free</label>
+                        <input type="number" class="form-control">
+                    </div>
+                    <div class="col-md-1">
+                        <label for="disc" class="form-label" style="color: blue">Disc %</label>
+                        <input type="number" id="disc" class="form-control" formControlName="discpcnt" size="6" (input)="calculate()">
+                    </div> -->
+                    <!-- <div class="col-md-1">
+                        <label for="disc" class="form-label">Adj Qty</label>
+                        
+                    </div> -->
+                    <div class="col-md-1">
                         <label for="total" class="form-label">Total</label>
                         <br>
                         <span>{{total || 0}}</span>
-                    </div> <div class="col-md-2">
-                        <label for="salep" class="form-label">Sale Price</label>
-                        <br>
-                        <span>{{sale_price || 0}}</span>
                     </div>
+                </div>
+                    <div class="row mt-3">
+                        <!-- <div class="col-md-1">
+                            <label for="disc" class="form-label">Adj PTR</label> 
+                        </div> -->
+                        <div class="col-md-1">
+                            <label for="salep" class="form-label">Sale</label>
+                            <input type="number" id="saleprice" class="form-control" 
+                            formControlName="saleprice" (input)="calculateMargin()">
+                            <a (click)="calculate()">
+                                <i class="bi bi-pin-angle-fill text-danger"></i>
+                                </a>
+                            <!-- <br>
+                            <span>{{form.value.saleprice || 0}}</span> -->
+                        </div>
+                        <div class="col-md-1">
+                            <label for="sellermargin" class="form-label">Margin</label>
+                            <br>
+                            <!-- <input type="number" id="sellermargin" class="form-control" formControlName="sellermargin" 
+                            (input)="adjustSellerMargin()"> -->
+                            <span>{{form.value.sellermargin}}%</span>
+                        </div>
+                        <div class="col-md-1">
+                            <label for="custdisc" class="form-label">Discount</label>
+                            <br>
+                            <!-- <input type="number" id="custsaving" class="form-control" formControlName="customersaving" (input)="adjustSavingMargin($event)"> -->
+                            <span>{{form.value.customersaving}}%</span>
+                        </div>
+                </div>
+                <div class="row" *ngIf="form.errors">
+                    <p *ngIf="form.get('ptrcost')?.hasError('ptrcostsalesameerror')">Sale Price & PTR same</p>
                 </div>
             <div class="row mt-3">
                 <div class="col-lg-12">

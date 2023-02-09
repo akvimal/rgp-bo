@@ -44,6 +44,7 @@ export class InvoiceFormComponent {
         this.form.controls['vendorid'].setValue(data.vendorid);
         this.form.controls['invoiceno'].setValue(data.invoiceno);
         this.form.controls['invoicedate'].setValue(data.invoicedate);
+        
         this.form.controls['purchaseorderid'].setValue(data.purchaseorderid);
         this.form.controls['grn'].setValue(data.grn);
 
@@ -61,13 +62,13 @@ export class InvoiceFormComponent {
       this.prodService.findAll(null).subscribe(data => this.products = data);
     }
 
-    getCurrentDateStr(){
-      const dt = new Date();
-      const str = ''//dt.getDate() + '/' +(dt.getMonth()+1) + '/' + dt.getFullYear();
-      console.log('date: ',str);
+    // getCurrentDateStr(){
+    //   const dt = new Date();
+    //   const str = '';//dt.getDate() + '/' +(dt.getMonth()+1) + '/' + dt.getFullYear();
+    //   console.log('date: ',str);
       
-      return str;
-    }
+    //   return str;
+    // }
 
     calculateTotal(qty?:number,price?:number,tax?:number){
       const total = (qty||0) * ((price||0) * (1 + ((tax||0) / 100)));
@@ -86,6 +87,7 @@ export class InvoiceFormComponent {
         vendorid: this.form.value.vendorid,
         purchaseorderid: this.form.value.purchaseorderid,
         grn: this.form.value.grn }
+        
       const id = this.form.value.id;
       if(id)
         this.service.save({id, ...obj}).subscribe(data => this.gotoEdit(id));

@@ -30,7 +30,7 @@ export class SaleViewComponent {
       this.service.find(saleId).subscribe((data:any) => {
         
           this.sale.items = data.items.map((i:any) => {
-            this.mrpTotal += +(i.purchaseitem.mrpcost * i.qty * (1 + i.purchaseitem.taxpcnt/100)).toFixed(0);
+            this.mrpTotal += +(i.purchaseitem.mrpcost * i.qty).toFixed(0);
             this.itemsTotal += +i.total;
             return {
               title: i.purchaseitem.product.title,
