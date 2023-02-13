@@ -3,11 +3,11 @@
   </div>
   
 <div class="container">
-    <div class="row">
+    <!-- <div class="row">
         <div class="col-md-12">
             Filter by : Expiry | Product (title, category, purpose) | Price (not set, scheduled)
         </div>
-    </div>
+    </div> -->
 <div class="row">
     <div class="col-md-12">
         <p-table #dt1 [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
@@ -32,15 +32,15 @@
                         <p-columnFilter type="date" field="expdate" display="menu"></p-columnFilter>
                         <p-sortIcon field="expdate"></p-sortIcon>
                     </th> -->
-                    <th pSortableColumn="life_left">Life
+                    <!-- <th pSortableColumn="life_left">Life
                         <p-columnFilter type="numeric" field="life_left" display="menu"></p-columnFilter>
                         <p-sortIcon field="life_left"></p-sortIcon>
-                    </th>
-                    <!-- <th pSortableColumn="purchase_qty">Qty
+                    </th> -->
+                    <th pSortableColumn="purchase_qty">IN Qty
                         <p-columnFilter type="numeric" field="purchase_qty" display="menu"></p-columnFilter>
                         <p-sortIcon field="purchase_qty"></p-sortIcon>
-                    </th> -->
-                    <th pSortableColumn="available_qty">Qty
+                    </th>
+                    <th pSortableColumn="available_qty">Bal Qty
                         <p-columnFilter type="numeric" field="available_qty" display="menu"></p-columnFilter>
                         <p-sortIcon field="available_qty"></p-sortIcon>
                     </th>
@@ -77,15 +77,15 @@
                     
                     <!-- <td>{{i.batch}}</td> -->
                     <!-- <td>{{i.expdate | date :'MMM-yy'}}</td> -->
-                    <td>{{i.life_left}}</td>
-                    <!-- <td>{{i.purchase_qty}}</td> -->
-                    <td>{{i.available_qty}}</td>
+                    <!-- <td>{{i.life_left}}</td> -->
+                    <td style="text-align: right;">{{i.purchase_qty}}</td>
+                    <td style="text-align: right;">{{i.available_qty}}</td>
                     <td style="text-align: right;">{{i.mrp_cost}}</td>
                     <td style="text-align: right;">{{i.ptr_cost}}</td>
                     <td style="text-align: right;">{{i.sale_price}}
                         <span class="ml-2">
                             <a href="javascript:void(0)" (click)="showDialog(i)">
-                            <i class="bi bi-pencil text-primary"></i></a>
+                            <i class="bi bi-pencil-square text-primary"></i></a>
                         </span>
                     </td>
                     <td>{{i.margin}}%</td>

@@ -29,41 +29,59 @@
   <div class="col-md-4">
     <label>&nbsp;</label><br>
     <button type="button" class="btn btn-primary mx-auto" (click)="fetchSaleItems()">Filter</button>
+    &nbsp;
     <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
-    <button type="button" class="btn  btn-primary" onclick="javascript:window.print();">Print</button>
+    &nbsp;
+    <button type="button" class="btn  btn-secondary" onclick="javascript:window.print();">Print</button>
   </div>
   <!-- <div class="col-md-1">
     <button type="button" class="btn  btn-primary" onclick="javascript:window.print();">Print</button>
   </div> -->
 </div>
-
-    <table class="table table-bordered mt-4 sale-items">
-        <thead>
+<p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
+[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+[tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+[rowsPerPageOptions]="[10,25,50]">
+    <!-- <table class="table table-bordered mt-4 sale-items"> -->
+        <!-- <thead> -->
+          <ng-template pTemplate="header">
           <tr>
-            <th class="billdt">Bill Date</th>
-            <th class="billno">Bill No.</th>
-            <th  class="doctor" *ngIf="isH1DrugFilter()">Doctor</th>
+            <th pSortableColumn="sale.id" class="billno">No.
+              <p-columnFilter type="text" field="sale.id" display="menu"></p-columnFilter>
+              <p-sortIcon field="sale.id"></p-sortIcon>
+            </th>
+            <th pSortableColumn="sale.billdate" class="billdt">Date
+              <p-columnFilter type="date" field="sale.billdate" display="menu"></p-columnFilter>
+              <p-sortIcon field="sale.billdate"></p-sortIcon>
+            </th>
+            <th class="doctor" *ngIf="isH1DrugFilter()">Doctor</th>
             <th class="customer">Customer</th>
             <th class="phone">Phone</th>
-            <th class="address">Address</th>
+            <th class="address" *ngIf="isH1DrugFilter()">Address</th>
             <th class="product">Product</th>
             <th class="batch">Batch/Exp</th>
             <th class="qty">Qty</th>
-            <th class="signature">Sign</th>
+            <th class="signature" *ngIf="isH1DrugFilter()">Sign</th>
           </tr>
-        </thead>
-          <tbody>
-            <tr *ngFor="let item of items">
-              <td>{{item.sale.billdate | date :'dd/MM/yy'}}</td>
+        <!-- </thead>
+          <tbody> -->
+          </ng-template>
+          <ng-template pTemplate="body" let-item>
+            <!-- <tr *ngFor="let item of items"> -->
+              <tr>
               <td>{{item.sale.id}}</td>
+              <td>{{item.sale.billdate | date :'dd/MM/yy'}}</td>
               <td *ngIf="isH1DrugFilter()">{{item.sale.props['prescdoctor']}}</td>
                 <td>{{ isH1DrugFilter() ? item.sale.props['ptntname'] : item.sale.customer?.name}}</td>
                 <td>{{ isH1DrugFilter() ? item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td>
-                <td>{{ isH1DrugFilter() ? item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td>
+                <td *ngIf="isH1DrugFilter()">{{ isH1DrugFilter() ? item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td>
                 <td>{{item.purchaseitem.product.title}}</td>
                 <td>{{item.purchaseitem.batch}} / {{item.purchaseitem.expdate | date : 'MMM-yy'}}</td>
                 <td>{{item.qty}}</td>
-                <td></td>
+                <td *ngIf="isH1DrugFilter()"></td>
             </tr>  
-          </tbody>
-        </table>
+          <!-- </tbody>
+        </table> -->
+
+      </ng-template>
+    </p-table>

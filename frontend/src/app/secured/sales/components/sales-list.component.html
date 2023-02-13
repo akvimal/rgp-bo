@@ -29,20 +29,45 @@
         <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
       </div>
     </div>
-    <table class="table table-bordered mt-4">
-      <thead>
+    <!-- <table class="table table-bordered mt-4">
+      <thead> -->
+  <p-table #dt1 [value]="sales" [resizableColumns]="true" columnResizeMode="expand" 
+    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    [rowsPerPageOptions]="[10,25,50]">
+    <ng-template pTemplate="header">
         <tr>
-          <th>No.</th>
-          <th>Date</th>
-          <th>Cust. Name</th>
-          <th>Cust. Mobile</th>
+          <th pSortableColumn="id">No.
+            <p-columnFilter type="text" field="id" display="menu"></p-columnFilter>
+            <p-sortIcon field="id"></p-sortIcon>
+          </th>
+          <th pSortableColumn="billdate">Date
+            <p-columnFilter type="date" field="billdate" display="menu"></p-columnFilter>
+            <p-sortIcon field="billdate"></p-sortIcon>
+          </th>
+          <th pSortableColumn="customer.name">Cust. Name
+            <p-columnFilter type="text" field="customer.name" display="menu"></p-columnFilter>
+            <p-sortIcon field="customer.name"></p-sortIcon>
+          </th>
+          <th pSortableColumn="customer.mobile">Cust. Mobile
+            <p-columnFilter type="text" field="customer.mobile" display="menu"></p-columnFilter>
+            <p-sortIcon field="customer.mobile"></p-sortIcon>
+          </th>
           <!-- <th>Sale Person</th> -->
-          <th>Status</th>
-          <th>Total</th>
+          <th pSortableColumn="status">Status
+            <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
+            <p-sortIcon field="status"></p-sortIcon>
+          </th>
+          <th pSortableColumn="total">Total
+            <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
+            <p-sortIcon field="total"></p-sortIcon>
+          </th>
         </tr>
-      </thead>
-        <tbody>
-          <tr *ngFor="let s of sales">
+      <!-- </thead>
+        <tbody> -->
+        </ng-template>
+        <ng-template pTemplate="body" let-s>
+          <tr>
             <td>
               <a *ngIf="s.status !== 'COMPLETE'" [routerLink]="['../edit',s.id]">{{s.id}}</a>
               <a *ngIf="s.status === 'COMPLETE'" [routerLink]="['../view',s.id]">{{s.id}}</a>
@@ -54,9 +79,10 @@
             <td>{{s.status}}</td>
             <td style="text-align: right;">{{s.total}}</td>
           </tr>  
-        </tbody>
-      </table>
-
+        <!-- </tbody>
+      </table> -->
+    </ng-template>
+  </p-table>
     </p-tabPanel>
     <p-tabPanel header="Product Level" headerStyleClass="no-print">
       <app-sale-items></app-sale-items>

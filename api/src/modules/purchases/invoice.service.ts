@@ -27,6 +27,7 @@ export class PurchaseInvoiceService {
           .where('invoice.active = :flag', { flag:true }).orderBy('invoice.created_on','DESC')
           .getMany();
     }
+
     async findByUnique(query:any){
       const qb = this.purchaseInvoiceRepository.createQueryBuilder(`i`)
           .where('i.isActive = :flag', { flag: true });
@@ -49,11 +50,23 @@ export class PurchaseInvoiceService {
           .getOne();
     }
 
+    async remove(id:number){
+      await this.purchaseInvoiceItemRepository.createQueryBuilder('item')
+      .delete()
+      .from(PurchaseInvoiceItem)
+      .where("invoiceid =:id", { id })
+      .execute();
+      return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
+      .delete()
+      .from(PurchaseInvoice)
+      .where("id =:id", { id })
+      .execute();
+    }
+
     async findItemById(id:string){
         return this.purchaseInvoiceItemRepository.createQueryBuilder('item')
-        // .innerJoinAndSelect("item.invoice", "invoice")
-        // .leftJoinAndSelect("item.product", "product")
-        //   .select(['product'])
+        .leftJoinAndSelect("item.product", "product")
+          .select(['item','product'])
           .where('item.id = :id', { id })
           .getOne();
     }
@@ -73,8 +86,6 @@ export class PurchaseInvoiceService {
     }
 
       async update(ids:number[], values:any, userid:number){
-        console.log('USER id: ',userid);
-        
         return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
         .update(PurchaseInvoice, {...values, updatedby: userid})
         .where("id in (:...ids)", { ids })

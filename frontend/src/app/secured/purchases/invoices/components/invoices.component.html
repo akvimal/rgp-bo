@@ -3,26 +3,51 @@
 </div>
 
 <a *isAuth="'purchases.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
-<table *isAuth="'purchases.read'" class="table table-bordered mt-3">
-  <thead>
+
+<p-table #dt1 [value]="invoices" [resizableColumns]="true" columnResizeMode="expand" 
+[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    [rowsPerPageOptions]="[10,25,50]">
+<!-- <table *isAuth="'purchases.read'" class="table table-bordered mt-3"> -->
+  <!-- <thead> -->
+    <ng-template pTemplate="header">
     <tr>
-      <!-- <th scope="col">ID</th> -->
-      <th scope="col">No</th>
-      <th scope="col">Date</th>
-      <th scope="col">Vendor</th>
-      <th scope="col">Status</th>
-      <th scope="col">Amount</th>
-      <!-- <th scope="col">Actions</th> -->
+      <!-- <th  pSortableColumn="category">ID</th> -->
+      <th pSortableColumn="invoiceno">Invoice No.
+        <p-sortIcon field="invoiceno"></p-sortIcon>
+        <p-columnFilter type="text" field="invoiceno" display="menu"></p-columnFilter>
+      </th>
+      <th pSortableColumn="invoicedate">Invoice Date
+        <p-sortIcon field="invoicedate"></p-sortIcon>
+        <p-columnFilter type="date" field="invoicedate" display="menu"></p-columnFilter>
+      </th>
+      <th pSortableColumn="vendor.name">Vendor Name
+        <p-sortIcon field="vendor.name"></p-sortIcon>
+        <p-columnFilter type="text" field="vendor.name" display="menu"></p-columnFilter>
+      </th>
+      <th pSortableColumn="status">Status
+        <p-sortIcon field="status"></p-sortIcon>
+        <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
+      </th>
+      <th pSortableColumn="total">Amount
+        <p-sortIcon field="total"></p-sortIcon>
+        <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
+      </th>
+      <!-- <th  pSortableColumn="category">Actions</th> -->
+      <th></th>
     </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let p of invoices">
+  </ng-template>
+  <!-- </thead>
+  <tbody> -->
+    <ng-template pTemplate="body" let-p>
+    <!-- <tr *ngFor="let p of invoices"> -->
       <!-- <td>{{p.id}}</td> -->
+      <tr>
       <td><a [routerLink]="['../items',p.id]">{{p.invoiceno}}</a></td>
       <td>{{p.invoicedate | date : 'dd-MMM'}}</td>
       <td>{{p.vendor.name}}</td>
       <td>{{p.status}}</td>
-      <td style="text-align:right">{{p.total}}</td>
+      <td style="text-align:right">{{p.total | number:'0.0-9'}}</td>
       <!-- <td>
         <span *ngIf="p.status === 'NEW'">
       <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">
@@ -31,6 +56,13 @@
         <a *isAuth="'purchases.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
       </span>
       </td> -->
+      <td>
+        <a (click)="delete(p.id)">
+          <i class="bi bi-trash text-danger"></i>
+      </a>
+      </td>
     </tr>
-  </tbody>
-</table>
+  <!-- </tbody>
+</table> -->
+</ng-template>
+</p-table>

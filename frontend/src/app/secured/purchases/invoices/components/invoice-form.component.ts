@@ -21,7 +21,7 @@ export class InvoiceFormComponent {
         id: new FormControl(''),
         vendorid: new FormControl('',Validators.required),
         invoiceno: new FormControl('',Validators.required),
-        invoicedate: new FormControl('',Validators.required),
+        invoicedate: new FormControl(this.getCurrentDateStr(),Validators.required),
         purchaseorderid: new FormControl(''),
         grn: new FormControl('')
       });
@@ -62,13 +62,14 @@ export class InvoiceFormComponent {
       this.prodService.findAll(null).subscribe(data => this.products = data);
     }
 
-    // getCurrentDateStr(){
-    //   const dt = new Date();
-    //   const str = '';//dt.getDate() + '/' +(dt.getMonth()+1) + '/' + dt.getFullYear();
-    //   console.log('date: ',str);
+    getCurrentDateStr(){
+      const dt = new Date();
+      const mon = dt.getMonth()+1;
+      const str = dt.getFullYear()+'-'+(mon < 10 ? '0'+mon : ''+mon)+'-'+dt.getDate();
+      console.log('Date: ',str);
       
-    //   return str;
-    // }
+      return str;
+    }
 
     calculateTotal(qty?:number,price?:number,tax?:number){
       const total = (qty||0) * ((price||0) * (1 + ((tax||0) / 100)));

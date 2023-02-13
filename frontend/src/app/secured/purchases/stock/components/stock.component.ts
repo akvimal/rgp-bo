@@ -24,8 +24,11 @@ export class StockComponent {
     ngOnInit(){
         this.service.findAll().subscribe((data:any) => {
             this.items = data.map((s:any) => {
-                const margin = Math.round(((s.sale_price - s.ptr_cost)/s.ptr_cost)*100);
-                const saving = Math.round(((s.mrp_cost - s.sale_price)/s.mrp_cost)*100);
+                console.log('s:',s);
+                
+                const salePriceAfterTax = s.sale_price * (1 + (s.tax_pcnt/100));
+                const margin = Math.round(((salePriceAfterTax - s.ptr_cost)/s.ptr_cost)*100);
+                const saving = Math.round(((s.mrp_cost - salePriceAfterTax)/s.mrp_cost)*100);
                 return {...s, mrp_cost: this.padDecimal(s.mrp_cost,2), 
                     ptr_cost: this.padDecimal(s.ptr_cost,2),
                     sale_price: this.padDecimal(s.sale_price,2),

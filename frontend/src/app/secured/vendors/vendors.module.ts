@@ -7,7 +7,7 @@ import { SharedModule } from "src/app/shared/shared.module";
 import { VendorFormComponent } from "./components/vendor-form.component";
 import { VendorListComponent } from "./components/vendor-list.component";
 import { VendorsComponent } from "./components/vendors.component";
-
+import {TableModule} from 'primeng/table';
 
 const routes: Routes = [
   { path: '', redirectTo: 'list'},
@@ -26,7 +26,8 @@ const routes: Routes = [
         CommonModule,
         ReactiveFormsModule,
         RouterModule.forChild(routes),
-        SharedModule
+        SharedModule,
+        TableModule
     ],
     exports: [RouterModule]
   })

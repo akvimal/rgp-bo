@@ -22,7 +22,6 @@ export class SaleController {
 
     @Post()
     async create(@Body() createSaleDto: CreateSaleDto, @User() currentUser: any) {
-        console.log('createSaleDto: ',createSaleDto);
         
         if(createSaleDto.id ){
           await this.saleService.removeItems(createSaleDto);

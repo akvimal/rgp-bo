@@ -18,8 +18,8 @@ import { DialogModule } from 'primeng/dialog';
 import { TabViewModule } from 'primeng/tabview';
 import {InputNumberModule} from 'primeng/inputnumber';
 import { SalesItemListComponent } from "./components/sales-item-list.component";
-import { CustomersModule } from "../customers/customers.module";
-import { CustomerFormComponent } from "../customers/components/customer-form.component";
+import { TableModule } from "primeng/table";
+import { SaleDashboardComponent } from "./components/sale-dashboard.component";
 
 const routes: Routes = [
   {path: '', redirectTo: 'list'},
@@ -32,6 +32,7 @@ const routes: Routes = [
 @NgModule({
     declarations: [
       SalesComponent,
+      SaleDashboardComponent,
       SalesListComponent,
       SalesItemListComponent,
       SaleViewComponent,
@@ -50,6 +51,7 @@ const routes: Routes = [
         DialogModule,
         TabViewModule,
         InputNumberModule,
+        TableModule,
         // CustomersModule,
         RouterModule.forChild(routes),
         SharedModule

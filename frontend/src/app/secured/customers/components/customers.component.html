@@ -3,12 +3,24 @@
 </div>
 <a [routerLink]="['new']"><button type="submit" class="btn btn-primary">Add New</button></a>
 
-<table class="table table-bordered mt-3">
-  <thead>
+<p-table [value]="customers" [resizableColumns]="true" columnResizeMode="expand" 
+[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+[tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+[rowsPerPageOptions]="[10,25,50]">
+<ng-template pTemplate="header">
+
+<!-- <table class="table table-bordered mt-3">
+  <thead> -->
     <tr>
       <th scope="col">ID</th>
-      <th scope="col">Name</th>
-      <th scope="col">Mobile</th>
+      <th pSortableColumn="name">Name
+        <p-sortIcon field="name"></p-sortIcon>
+        <p-columnFilter type="text" field="name" display="menu"></p-columnFilter>
+      </th>
+      <th pSortableColumn="mobile">Mobile
+        <p-sortIcon field="mobile"></p-sortIcon>
+        <p-columnFilter type="text" field="mobile" display="menu"></p-columnFilter>
+      </th>
       <!-- <th scope="col">Email</th> -->
       <th scope="col">Area</th>
       <th scope="col">Address</th>
@@ -18,9 +30,11 @@
       <th scope="col">Date</th>
       <th scope="col">Actions</th>
     </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let c of customers">
+  <!-- </thead>
+  <tbody> -->
+  </ng-template>
+  <ng-template pTemplate="body" let-c>
+    <tr>
       <td>{{c.id}}</td>
       <td>{{c.name}}</td>
       <td>{{c.mobile}}</td>
@@ -31,9 +45,9 @@
       <td>{{c.srctype}}</td>
       <td>{{c.srcdesc}}</td>
       <td>{{c.createdon | date : 'dd/MM/yy'}}</td>
-      <td>
-        <a *isAuth="'customers.edit'" [routerLink]="['edit',c.id]">
-          <i class="bi bi-pencil text-primary"></i>
+      <td style="text-align: center;">
+        <a [routerLink]="['edit',c.id]">
+          <i class="bi bi-pencil-square text-primary"></i>
         </a>
   <!--       
         <a (click)="onRemove(c.id)">
@@ -41,5 +55,7 @@
         </a> -->
       </td>
     </tr>
-  </tbody>
-</table>
+  <!-- </tbody>
+</table> -->
+</ng-template>
+</p-table>

@@ -26,7 +26,14 @@ export class InvoicesComponent {
 
 
     delete(id:any) {
-      this.service.remove(id).subscribe(data => this.fetchInvoices());
+      this.service.remove(id).subscribe((data:any) => { 
+        if(data.status && data.status === 'ERROR'){
+          console.log('ERROR:',data.message);
+          
+        }
+        else
+          this.fetchInvoices() 
+      });
     }
 
    

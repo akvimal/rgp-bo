@@ -21,6 +21,7 @@ import {ButtonModule} from 'primeng/button';
 import {DropdownModule} from 'primeng/dropdown';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
+import { InvoiceItemFormComponent } from "./invoices/components/invoice-item-form.component";
 
 const routes: Routes = [
   { path: '', redirectTo: 'list'},
@@ -36,6 +37,7 @@ const routes: Routes = [
       InvoicesComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,
+      InvoiceItemFormComponent,
       InvoicePaymentComponent,
       StockComponent
     ],

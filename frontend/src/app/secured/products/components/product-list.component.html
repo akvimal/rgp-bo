@@ -34,10 +34,10 @@
                 <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
                 <p-sortIcon field="category"></p-sortIcon>
             </th>
-            <th pSortableColumn="code">Code 
+            <!-- <th pSortableColumn="code">Code 
                 <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
                 <p-sortIcon field="code"></p-sortIcon>
-            </th>  
+            </th>   -->
             <th pSortableColumn="hsn">HSN
                 <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
                 <p-sortIcon field="hsn"></p-sortIcon>
@@ -60,7 +60,7 @@
     <ng-template pTemplate="body" let-product>
         <tr>
             <td>{{product.category}}</td>
-            <td>{{product.code}}</td>
+            <!-- <td>{{product.code}}</td> -->
             <td>{{product.hsn}}</td>
             <td>
                 <h6>{{product.title}}
@@ -72,10 +72,13 @@
             </td>
             <td>{{product.brand}}</td>
             <td>{{product.mfr}}</td>
-            <td>
+            <td style="text-align: center;">
                 <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
-                <i class="bi bi-pencil text-primary"></i></a>
-                <a *isAuth="'products.delete'" (click)="delete(product.id)"><i class="bi bi-trash text-danger"></i></a>
+                    <i class="bi bi-pencil-square text-primary"></i>
+                </a>&nbsp;
+                <a *isAuth="'products.delete'" (click)="delete(product.id)">
+                    <i class="bi bi-trash text-danger"></i>
+                </a>
             </td>
         </tr>
     </ng-template>

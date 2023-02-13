@@ -64,7 +64,7 @@ import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
   
     @OneToMany(
       () => PurchaseInvoiceItem,
-      (purchaseInvoiceItem) => purchaseInvoiceItem.invoice, {cascade:true}
+      (purchaseInvoiceItem) => purchaseInvoiceItem.invoice
     )
     items: PurchaseInvoiceItem[];
   }

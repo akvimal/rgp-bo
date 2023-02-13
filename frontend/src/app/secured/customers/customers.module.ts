@@ -7,6 +7,7 @@ import { SharedModule } from "src/app/shared/shared.module";
 import { CustomerFormComponent } from "./components/customer-form.component";
 import { CustomersComponent } from "./components/customers.component";
 import { DialogModule } from 'primeng/dialog';
+import { TableModule } from "primeng/table";
 
 const routes: Routes = [
   { path: '', component: CustomersComponent, canActivate:[AuthGuard]},
@@ -23,6 +24,7 @@ const routes: Routes = [
         CommonModule,
         ReactiveFormsModule,
         DialogModule,
+        TableModule,
         RouterModule.forChild(routes),
         SharedModule
     ],

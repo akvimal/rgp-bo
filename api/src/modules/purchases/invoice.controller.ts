@@ -48,7 +48,8 @@ export class PurchaseInvoiceController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: any, @User() currentUser: any) {
-      return this.purchaseInvoiceService.update([id], {isActive:false}, currentUser.id);
+    remove(@Param('id') id: any) {
+      // return this.purchaseInvoiceService.update([id], {isActive:false}, currentUser.id);
+      return this.purchaseInvoiceService.remove(id);
     }
 }

@@ -1,32 +1,44 @@
 <div class="pagetitle">
     <h1>Vendors</h1>
 </div>
-  <!-- <button class="btn btn-primary btn-sm" type="button" (click)="goToAddNew()">Add</button> -->
 <a *isAuth="'vendors.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
-<table *isAuth="'vendors.read'" class="table table-bordered mt-3">
-    <thead>
+
+<p-table #dt1 [value]="vendors" [resizableColumns]="true" columnResizeMode="expand" 
+    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    [rowsPerPageOptions]="[10,25,50]">
+    <ng-template pTemplate="header">
         <tr>
-            <th scope="col">ID</th>
-            <th scope="col">Business Name</th>
-            <th scope="col">Contact Name</th>
-            <th scope="col">Contact Phone</th>
-            <th scope="col">Address</th>
-            <th scope="col">Actions</th>
+            <th pSortableColumn="id">ID
+                <p-sortIcon field="id"></p-sortIcon>
+            </th>
+            <th pSortableColumn="name">Business Name
+                <p-sortIcon field="name"></p-sortIcon>
+            </th>
+            <th pSortableColumn="contactname">Contact Name
+                <p-sortIcon field="contactname"></p-sortIcon>
+            </th>
+            <th pSortableColumn="contactphone">Contact Phone
+                <p-sortIcon field="contactphone"></p-sortIcon>
+            </th>
+            <th pSortableColumn="address">Address
+                <p-sortIcon field="address"></p-sortIcon>
+            </th>
+            <th>Actions</th>
         </tr>
-    </thead>
-    <tbody>
-        <tr *ngFor="let p of vendors">
-            <td>{{p.id}}</td>
-            <td>{{p.name}}</td>
-            <td>{{p.contactname}}</td>
-            <td>{{p.contactphone}}</td>
-            <td>{{p.address}}</td>
-            <td>
-                <a *isAuth="'vendors.edit'" [routerLink]="['../edit', p.id]">
-                <i class="bi bi-pencil text-primary"></i></a>
-                <a *isAuth="'vendors.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
-                
+    </ng-template>
+    <ng-template pTemplate="body" let-vendor>
+        <tr>
+            <td>{{vendor.id}}</td>
+            <td>{{vendor.name}}</td>
+            <td>{{vendor.contactname}}</td>
+            <td>{{vendor.contactphone}}</td>
+            <td>{{vendor.address}}</td>
+            <td style="text-align: center;">
+                <a *isAuth="'vendors.edit'" [routerLink]="['../edit', vendor.id]">
+                <i class="bi bi-pencil-square text-primary"></i></a>&nbsp;
+                <a *isAuth="'vendors.delete'" (click)="delete(vendor.id)"><i class="bi bi-trash text-danger"></i></a>
             </td>
         </tr>
-    </tbody>
-</table>
+    </ng-template>
+</p-table>
