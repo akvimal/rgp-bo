@@ -16,6 +16,7 @@ export class InvoiceItemsComponent {
     allVerified:boolean = false;
     feedback:string = '';
     grn:string = '';
+    total:number = 0;
 
     constructor(private route:ActivatedRoute,
         private invService: InvoiceService){}
@@ -27,10 +28,8 @@ export class InvoiceItemsComponent {
     fetchItems(id:any){
         this.invService.find(id).subscribe((inv:any) => { 
             this.invoice = inv;
-            // this.invoice.items = inv.items.map((i:any) => {
-            //     return {...i, selected:false}
-            // });
             this.items = inv.items.map((i:any) => {
+                this.total += +i.total;
                 return {...i, selected:false}
             });
 
@@ -75,12 +74,13 @@ export class InvoiceItemsComponent {
     updateFeedback(event:any){
         this.feedback = event.target.value;
     }
+    
     updateGrn(event:any){
         this.grn = event.target.value;
     }
 
     confirmInvoice(){
-        this.invService.update([this.invoice.id],{status:'RECEIVED',grn:this.grn,comments:this.feedback}).subscribe(data => {
+        this.invService.confirm([this.invoice.id],{status:'RECEIVED',comments:this.feedback}).subscribe(data => {
             this.fetchItems(this.invoice.id);
         });
     }

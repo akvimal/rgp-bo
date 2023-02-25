@@ -13,22 +13,23 @@
     <ng-template pTemplate="header">
     <tr>
       <!-- <th  pSortableColumn="category">ID</th> -->
-      <th pSortableColumn="invoiceno">Invoice No.
-        <p-sortIcon field="invoiceno"></p-sortIcon>
-        <p-columnFilter type="text" field="invoiceno" display="menu"></p-columnFilter>
+      <th pSortableColumn="invoice_no">Invoice No.
+        <p-sortIcon field="invoice_no"></p-sortIcon>
+        <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
       </th>
-      <th pSortableColumn="invoicedate">Invoice Date
-        <p-sortIcon field="invoicedate"></p-sortIcon>
-        <p-columnFilter type="date" field="invoicedate" display="menu"></p-columnFilter>
+      <th pSortableColumn="invoice_date">Invoice Date
+        <p-sortIcon field="invoice_date"></p-sortIcon>
+        <p-columnFilter type="date" field="invoice_date" display="menu"></p-columnFilter>
       </th>
-      <th pSortableColumn="vendor.name">Vendor Name
-        <p-sortIcon field="vendor.name"></p-sortIcon>
-        <p-columnFilter type="text" field="vendor.name" display="menu"></p-columnFilter>
+      <th pSortableColumn="business_name">Vendor Name
+        <p-sortIcon field="business_name"></p-sortIcon>
+        <p-columnFilter type="text" field="business_name" display="menu"></p-columnFilter>
       </th>
       <th pSortableColumn="status">Status
         <p-sortIcon field="status"></p-sortIcon>
         <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
       </th>
+      <th pSortableColumn="items">Items</th>
       <th pSortableColumn="total">Amount
         <p-sortIcon field="total"></p-sortIcon>
         <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
@@ -43,10 +44,11 @@
     <!-- <tr *ngFor="let p of invoices"> -->
       <!-- <td>{{p.id}}</td> -->
       <tr>
-      <td><a [routerLink]="['../items',p.id]">{{p.invoiceno}}</a></td>
-      <td>{{p.invoicedate | date : 'dd-MMM'}}</td>
-      <td>{{p.vendor.name}}</td>
+      <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
+      <td>{{p.invoice_date | date : 'dd-MMM'}}</td>
+      <td>{{p.business_name}}</td>
       <td>{{p.status}}</td>
+      <td>{{p.items}}</td>
       <td style="text-align:right">{{p.total | number:'0.0-9'}}</td>
       <!-- <td>
         <span *ngIf="p.status === 'NEW'">

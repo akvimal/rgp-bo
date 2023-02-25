@@ -16,7 +16,7 @@ export class SaleService {
 
     async create(sale:any,userid:any) {
         return this.saleRepository.save({...sale, createdby:userid}).then(data => {
-            console.log('data: ',data);
+            // console.log('data: ',data);
             data.items.forEach(i => {
                 i.saleid = data.id;
             })

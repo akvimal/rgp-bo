@@ -360,3 +360,29 @@ insert into vendor (business_name) values ('Evergreen Pharma');
 insert into vendor (business_name) values ('Lehar Pharma');
 
 insert into customer ("name",mobile) values ('Anonymous','00000');
+
+create sequence grn_seq;
+
+CREATE OR REPLACE FUNCTION public.generate_grn(text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE STRICT
+AS $function$select $1||to_char(current_date, 'YYMM')||lpad(nextval('grn_seq')::text,3,'0');$function$
+;
+
+
+
+CREATE OR REPLACE VIEW public.invoices_view
+AS 
+SELECT pi.id,
+    pi.invoice_no,
+    pi.invoice_date,
+    v.business_name,
+    pi.status,
+    count(pii.id) AS items,
+    round(sum(pii.total)) AS total
+   FROM purchase_invoice pi
+     JOIN vendor v ON v.id = pi.vendor_id
+     JOIN purchase_invoice_item pii ON pii.invoice_id = pi.id
+  GROUP BY pi.id, pi.invoice_no, pi.invoice_date, v.business_name, pi.status
+  ORDER BY pi.invoice_date desc;

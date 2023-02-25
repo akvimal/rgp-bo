@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
+import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 
@@ -10,7 +10,9 @@ import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 export class PurchaseInvoiceService {
 
     constructor(@InjectRepository(PurchaseInvoice) private readonly purchaseInvoiceRepository: Repository<PurchaseInvoice>,
-    @InjectRepository(PurchaseInvoiceItem) private readonly purchaseInvoiceItemRepository: Repository<PurchaseInvoiceItem>) { }
+    @InjectRepository(PurchaseInvoiceItem) private readonly purchaseInvoiceItemRepository: Repository<PurchaseInvoiceItem>,
+    // @InjectRepository(ProductPrice) private readonly priceRepository: Repository<ProductPrice>,
+    @InjectEntityManager() private manager: EntityManager) { }
 
     async create(dto: CreatePurchaseInvoiceDto, userid:any) {
         return this.purchaseInvoiceRepository.save({...dto, createdby:userid});
@@ -21,11 +23,12 @@ export class PurchaseInvoiceService {
     }
     
     async findAll(){
-        return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
-          .innerJoinAndSelect("invoice.vendor", "vendor")
-          .select(['invoice','vendor.name'])
-          .where('invoice.active = :flag', { flag:true }).orderBy('invoice.created_on','DESC')
-          .getMany();
+        // return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
+        //   .innerJoinAndSelect("invoice.vendor", "vendor")
+        //   .select(['invoice','vendor.name'])
+        //   .where('invoice.active = :flag', { flag:true }).orderBy('invoice.created_on','DESC')
+        //   .getMany();
+        return await this.manager.query(`select * from invoices_view`);
     }
 
     async findByUnique(query:any){
@@ -50,7 +53,16 @@ export class PurchaseInvoiceService {
           .getOne();
     }
 
+    async getGRN(key:string){  
+      return await this.manager.query(`select generate_grn('${key}')`);
+    }
+
     async remove(id:number){
+      
+      await this.manager.query(`
+      delete from product_price where 
+      item_id in (select id from purchase_invoice_item where invoice_id = ${id})`);
+
       await this.purchaseInvoiceItemRepository.createQueryBuilder('item')
       .delete()
       .from(PurchaseInvoiceItem)

@@ -68,7 +68,7 @@
                             <td style="text-align: right;">{{i.ptrcost}}</td>
                             <!-- <td>{{i.discpcnt}}%</td> -->
                             <td>{{i.taxpcnt}}%</td>
-                            <td style="text-align: right;">{{i.total}}</td>
+                            <td style="text-align: right;">{{i.total | number:'0.0-9'}}</td>
                             <td>{{i.status}}</td>
                             <td>
                                 <a (click)="showItemEdit(i.id)">
@@ -87,7 +87,7 @@
 
     </ng-template>
 </p-table>
-Total: {{invoice.total| number:'0.0-9'}} ({{invoice.items?.length}} Items)
+Total: {{total | number:'0.0-9'}} ({{invoice.items?.length}} Items)
                             
             </div>
         </div>
@@ -101,15 +101,15 @@ Total: {{invoice.total| number:'0.0-9'}} ({{invoice.items?.length}} Items)
         <!-- </div></div> -->
 <!-- <div class="card">
     <div class="card-body"> -->
-        <div class="row" *ngIf="allVerified && invoice.status === 'NEW'">
-            <div class="col-lg-6">
+        <div class="row mt-4" *ngIf="allVerified && invoice.status === 'NEW'">
+            <!-- <div class="col-lg-6">
                 <label for="grn" class="col-sm-2 col-form-label">GRN</label>
                 <input type="text" id="grn" class="form-control" name="grn" [value]="grn"  (change)="updateGrn($event)">
-            </div>
+            </div> -->
             <div class="col-lg-6">
                 <label for="feedback">Comments</label>
                 <textarea name="feedback" [value]="feedback" (change)="updateFeedback($event)" 
-                id="feedback"  class="form-control" cols="30" rows="10"></textarea>
+                id="feedback"  class="form-control" cols="30" rows="2"></textarea>
             </div>
             <div class="col-lg-12 mt-2">
                 <button type="button" class="btn btn-primary"  (click)="confirmInvoice()">Complete</button>

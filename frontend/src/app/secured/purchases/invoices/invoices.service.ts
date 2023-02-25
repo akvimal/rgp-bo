@@ -26,6 +26,10 @@ export class InvoiceService {
         return this.http.post(`${this.apiurl}/purchases`,invoice);
     }
 
+    confirm(ids:any, values:any){
+        return this.http.put(`${this.apiurl}/purchases/confirm`,{ids,values});
+    }
+
     update(ids:any, values:any){
         return this.http.put(`${this.apiurl}/purchases`,{ids,values});
     }
