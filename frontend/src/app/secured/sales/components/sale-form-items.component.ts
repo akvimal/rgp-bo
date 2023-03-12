@@ -111,8 +111,9 @@ export class SaleFormItemsComponent{
   }
     
   calculateTotal(qty:number,price:number,tax:number):number{
-    let total = qty * ((price||0) * (1 + ((tax||0) / 100)));
-    return isNaN(total) ? 0 : Math.round(total);
+    // let total = qty * ((price||0) * (1 + ((tax||0) / 100)));
+    let total = qty * (price||0);
+    return isNaN(total) ? 0 : +total.toFixed(2);
   }
 
   calculate(itemid:any,event:any){      

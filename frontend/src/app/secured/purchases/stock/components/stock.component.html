@@ -36,9 +36,9 @@
                         <p-columnFilter type="numeric" field="life_left" display="menu"></p-columnFilter>
                         <p-sortIcon field="life_left"></p-sortIcon>
                     </th> -->
-                    <th pSortableColumn="purchase_qty">IN Qty
-                        <p-columnFilter type="numeric" field="purchase_qty" display="menu"></p-columnFilter>
-                        <p-sortIcon field="purchase_qty"></p-sortIcon>
+                    <th pSortableColumn="sale_qty">IN Qty
+                        <p-columnFilter type="numeric" field="sale_qty" display="menu"></p-columnFilter>
+                        <p-sortIcon field="sale_qty"></p-sortIcon>
                     </th>
                     <th pSortableColumn="available_qty">Bal Qty
                         <p-columnFilter type="numeric" field="available_qty" display="menu"></p-columnFilter>
@@ -78,7 +78,7 @@
                     <!-- <td>{{i.batch}}</td> -->
                     <!-- <td>{{i.expdate | date :'MMM-yy'}}</td> -->
                     <!-- <td>{{i.life_left}}</td> -->
-                    <td style="text-align: right;">{{i.purchase_qty}}</td>
+                    <td style="text-align: right;">{{i.sale_qty}}</td>
                     <td style="text-align: right;">{{i.available_qty}}</td>
                     <td style="text-align: right;">{{i.mrp_cost}}</td>
                     <td style="text-align: right;">{{i.ptr_cost}}</td>
@@ -114,7 +114,7 @@
                             <label>PTR:</label>{{selectedItem?.ptr_cost}}
                         </div>
                         <div class="col-md-4 m-0 p-0">
-                            <label>Qty:</label>{{selectedItem?.purchase_qty}}
+                            <label>Qty:</label>{{selectedItem?.sale_qty}}
                         </div>
                     </div>
                 </div>

@@ -42,8 +42,9 @@
                             <th pSortableColumn="expdate">Expiry
                                 <p-sortIcon field="expdate"></p-sortIcon>
                             </th>
-                            <th>MRP</th>
+                            <th>Pack</th>
                             <th>Qty</th>
+                            <th>MRP</th>
                             <th>PTR</th>
                             <!-- <th>Disc</th> -->
                             <th>Tax</th>
@@ -63,9 +64,10 @@
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
                             <td>{{i.expdate | date: 'MMM-yy'}}</td>
-                            <td style="text-align: right;">{{i.mrpcost}}</td>
+                            <td style="text-align: right;">{{i.pack}}</td>
                             <td style="text-align: right;">{{i.qty}}</td>
-                            <td style="text-align: right;">{{i.ptrcost}}</td>
+                            <td style="text-align: right;">{{i.mrpcost}}</td>
+                            <td style="text-align: right;">{{i.ptrvalue}}</td>
                             <!-- <td>{{i.discpcnt}}%</td> -->
                             <td>{{i.taxpcnt}}%</td>
                             <td style="text-align: right;">{{i.total | number:'0.0-9'}}</td>
@@ -87,7 +89,7 @@
 
     </ng-template>
 </p-table>
-Total: {{total | number:'0.0-9'}} ({{invoice.items?.length}} Items)
+Total ({{invoice.items?.length}} items) Value: {{grosstotal | number:'0.0-0'}} | Tax: {{taxtotal | number:'0.0-0'}}  | Invoice: {{nettotal | number:'0.0-0'}} 
                             
             </div>
         </div>

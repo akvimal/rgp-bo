@@ -11,7 +11,7 @@ export class SecuredComponent {
   
     user:any;
     state$!:Observable<AppState>;
-
+    
     constructor(
       private appStateService:AppStateService, 
       private userService:UsersService){

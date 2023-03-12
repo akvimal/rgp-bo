@@ -177,7 +177,13 @@ CREATE TABLE purchase_invoice (
 
 -- DROP TABLE purchase_invoice_item;
 
-CREATE TABLE purchase_invoice_item (
+-- public.purchase_invoice_item definition
+
+-- Drop table
+
+-- DROP TABLE public.purchase_invoice_item;
+
+CREATE TABLE public.purchase_invoice_item (
 	id serial4 NOT NULL,
 	invoice_id int4 NOT NULL,
 	product_id int4 NOT NULL,
@@ -198,11 +204,17 @@ CREATE TABLE purchase_invoice_item (
 	created_by int4 NULL,
 	updated_by int4 NULL,
 	total numeric(12, 2) NULL,
+	pack int4 NOT NULL DEFAULT 1,
+	ptr_value float4 NULL,
 	CONSTRAINT pur_invitem_pk PRIMARY KEY (id),
-	CONSTRAINT pur_invitem_un UNIQUE (invoice_id, product_id, batch),
-	CONSTRAINT pur_invitem_inv_fk FOREIGN KEY (invoice_id) REFERENCES purchase_invoice(id),
-	CONSTRAINT pur_invitem_prod_fk FOREIGN KEY (product_id) REFERENCES product(id)
+	CONSTRAINT pur_invitem_un UNIQUE (invoice_id, product_id, batch)
 );
+
+
+-- public.purchase_invoice_item foreign keys
+
+ALTER TABLE public.purchase_invoice_item ADD CONSTRAINT pur_invitem_inv_fk FOREIGN KEY (invoice_id) REFERENCES public.purchase_invoice(id);
+ALTER TABLE public.purchase_invoice_item ADD CONSTRAINT pur_invitem_prod_fk FOREIGN KEY (product_id) REFERENCES public.product(id);
 
 -- sale definition
 
@@ -302,21 +314,24 @@ CREATE TABLE product_price (
 
 -- stock_view source
 
-CREATE OR REPLACE VIEW stock_view
+CREATE OR REPLACE VIEW public.stock_view
 AS SELECT pii.id,
     pi.invoice_no,
     pi.invoice_date,
     pii.invoice_id,
     p.title,
     p.more_props,
+    pii.pack,
     pii.batch,
     pii.exp_date AS expdate,
-    pii.mrp_cost,
-    pii.ptr_cost,
-    pii.sale_price,
+    round((pii.mrp_cost / pii.pack::double precision)::numeric, 2) AS mrp_cost,
+    round((pii.ptr_value / pii.pack::double precision)::numeric, 2) AS ptr_value,
+    round((pii.ptr_cost / pii.pack::double precision)::numeric, 2) AS ptr_cost,
+    round((pii.sale_price / pii.pack::double precision)::numeric, 2) AS sale_price,
     pii.tax_pcnt,
+    pii.qty * pii.pack AS sale_qty,
     pii.qty AS purchase_qty,
-    pii.qty - COALESCE(x.total_qty, 0::bigint) AS available_qty,
+    pii.qty * pii.pack - COALESCE(x.total_qty, 0::bigint) AS available_qty,
     (date_part('year'::text, now()) - date_part('year'::text, pi.invoice_date)) * 12::double precision + (date_part('month'::text, now()) - date_part('month'::text, pi.invoice_date)) AS old_with_us,
     (date_part('year'::text, pii.exp_date) - date_part('year'::text, now())) * 12::double precision + (date_part('month'::text, pii.exp_date) - date_part('month'::text, now())) AS life_left
    FROM purchase_invoice_item pii
@@ -329,7 +344,9 @@ AS SELECT pii.id,
           WHERE s.status::text = 'COMPLETE'::text
           GROUP BY si.purchase_item_id) x ON x.purchase_item_id = pii.id
   WHERE pii.status::text = 'VERIFIED'::text AND (pi.status::text = ANY (ARRAY['RECEIVED'::text, 'PAID'::text]));
-  
+
+
+
   CREATE OR REPLACE FUNCTION months(dt character varying)
    RETURNS integer
    LANGUAGE plpgsql
@@ -370,19 +387,36 @@ CREATE OR REPLACE FUNCTION public.generate_grn(text)
 AS $function$select $1||to_char(current_date, 'YYMM')||lpad(nextval('grn_seq')::text,3,'0');$function$
 ;
 
-
+-- public.invoices_view source
 
 CREATE OR REPLACE VIEW public.invoices_view
-AS 
-SELECT pi.id,
+AS SELECT pi.id,
     pi.invoice_no,
     pi.invoice_date,
     v.business_name,
     pi.status,
     count(pii.id) AS items,
-    round(sum(pii.total)) AS total
+    COALESCE(round(sum(pii.ptr_cost * pii.qty::double precision)), 0::numeric::double precision) AS total
    FROM purchase_invoice pi
      JOIN vendor v ON v.id = pi.vendor_id
-     JOIN purchase_invoice_item pii ON pii.invoice_id = pi.id
+     LEFT JOIN purchase_invoice_item pii ON pii.invoice_id = pi.id
   GROUP BY pi.id, pi.invoice_no, pi.invoice_date, v.business_name, pi.status
-  ORDER BY pi.invoice_date desc;
+  ORDER BY pi.invoice_date DESC;
+
+  CREATE OR REPLACE VIEW public.sales_view
+AS SELECT s.id AS bill_no,
+    s.bill_date,
+    c.name AS cust_name,
+    c.mobile,
+    p.title,
+    pii.batch,
+    pii.exp_date,
+    si.qty,
+    round((pii.ptr_cost / pii.pack::double precision * si.qty::double precision)::numeric, 2) AS purchase_price,
+    si.total AS sale_price,
+    round((si.total::double precision - pii.ptr_cost / pii.pack::double precision * si.qty::double precision)::numeric, 2) AS profit
+   FROM sale_item si
+     JOIN sale s ON s.id = si.sale_id
+     JOIN customer c ON s.customer_id = c.id
+     JOIN purchase_invoice_item pii ON pii.id = si.purchase_item_id
+     JOIN product p ON p.id = pii.product_id;

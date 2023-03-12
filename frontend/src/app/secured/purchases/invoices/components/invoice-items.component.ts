@@ -16,7 +16,9 @@ export class InvoiceItemsComponent {
     allVerified:boolean = false;
     feedback:string = '';
     grn:string = '';
-    total:number = 0;
+    grosstotal:number = 0;
+    taxtotal:number = 0;
+    nettotal:number = 0;
 
     constructor(private route:ActivatedRoute,
         private invService: InvoiceService){}
@@ -26,12 +28,21 @@ export class InvoiceItemsComponent {
     }
 
     fetchItems(id:any){
+        
+        this.nettotal = 0;
+        this.grosstotal = 0;
+        this.taxtotal = 0;
+
         this.invService.find(id).subscribe((inv:any) => { 
             this.invoice = inv;
             this.items = inv.items.map((i:any) => {
-                this.total += +i.total;
+
+                this.grosstotal += +i.total;
+                this.taxtotal += (i.qty * (i.ptrvalue * (i.taxpcnt/100)));
+                
                 return {...i, selected:false}
             });
+            this.nettotal = this.grosstotal + this.taxtotal;
 
             if(this.items) {
                 this.itemSelected =  this.items.filter((i:any) => i.selected).length > 0;

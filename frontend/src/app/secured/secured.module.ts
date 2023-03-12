@@ -2,6 +2,7 @@ import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
+import { NgxChartsModule } from "@swimlane/ngx-charts";
 import { AuthGuard } from "../@core/auth/auth.guard";
 import { CustInquiryComponent } from "../custinquiry.component";
 import { SharedModule } from "../shared/shared.module";
@@ -63,6 +64,7 @@ const routes: Routes = [
         ReactiveFormsModule,
         RouterModule.forChild(routes),
         SharedModule,
+        NgxChartsModule,
         RolesModule,
         UsersModule,
         ProductsModule,

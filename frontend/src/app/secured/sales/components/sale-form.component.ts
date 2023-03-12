@@ -224,7 +224,7 @@ export class SaleFormComponent {
       
     }
     
-    this.service.save({...this.sale, total, disccode:(this.offer?.code), discamount:discamt, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
+    this.service.save({...this.sale, total:Math.round(total), disccode:(this.offer?.code), discamount:discamt, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
       if(data.status === 'COMPLETE')
         this.router.navigateByUrl(`/secure/sales/view/${data.id}`); 

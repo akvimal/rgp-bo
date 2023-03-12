@@ -65,9 +65,8 @@ export class InvoiceFormComponent {
     getCurrentDateStr(){
       const dt = new Date();
       const mon = dt.getMonth()+1;
-      const str = dt.getFullYear()+'-'+(mon < 10 ? '0'+mon : ''+mon)+'-'+dt.getDate();
-      console.log('Date: ',str);
-      
+      const date = dt.getDate();
+      const str = dt.getFullYear()+'-'+(mon < 10 ? '0'+mon : ''+mon)+'-'+(date < 10 ? '0'+date : date);
       return str;
     }
 
@@ -83,7 +82,7 @@ export class InvoiceFormComponent {
 
     submit(){      
       const obj = { 
-        invoiceno: this.form.value.invoiceno, 
+        invoiceno: this.form.value.invoiceno.toUpperCase(), 
         invoicedate: this.form.value.invoicedate,
         vendorid: this.form.value.vendorid,
         purchaseorderid: this.form.value.purchaseorderid,

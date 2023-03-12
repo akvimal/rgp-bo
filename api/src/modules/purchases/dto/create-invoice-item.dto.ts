@@ -17,6 +17,9 @@ export class CreatePurchaseInvoiceItemDto {
     @ApiProperty({ description: 'exp date', example: '' })
     readonly expdate: string;
   
+    @ApiProperty({ description: 'ptr value', example: 0 })
+    readonly ptrvalue: number;
+    
     @ApiProperty({ description: 'ptr cost', example: 0 })
     readonly ptrcost: number;
 
@@ -32,6 +35,9 @@ export class CreatePurchaseInvoiceItemDto {
     @ApiProperty({ description: 'sale price', example: 0 })
     readonly saleprice: number;
   
+    @ApiProperty({ description: 'pack', example: 0 })
+    readonly pack: number;
+
     @ApiProperty({ description: 'quantity', example: 0 })
     readonly qty: number;
 

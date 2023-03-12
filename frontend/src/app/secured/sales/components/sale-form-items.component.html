@@ -4,11 +4,11 @@
             <th></th>
             <th>Product</th>
             <th>Batch / Exp</th>
-            <th>Qty</th>
             <th>MRP</th>
-            <th>Price</th>
-            <th>Tax</th>
-            <th>Total</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <!-- <th>Tax</th> -->
+            <th>Amount</th>
         </tr>
     </thead>
     <tbody>
@@ -27,6 +27,7 @@
             <td width="15%">
                 {{item.batch}} <span *ngIf="item.expdate">/</span> {{item.expdate | date : 'MMM-yy'}}
             </td>
+            <td width="7%" style="text-align: right;">{{item.mrp_cost}}</td>
             <td width="12%">
                 <div class="input-group mb-3" *ngIf="item.qtyready">
                 <input type="number" [value]="item.qty" class="form-control"
@@ -39,29 +40,13 @@
                   </div>
                 </div>
             </td>
-            <td width="7%" style="text-align: right;">{{item.mrp_cost}}</td>
             <td width="7%" style="text-align: right;">{{item.price}}</td>
-            <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td>
+            <!-- <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td> -->
             <td width="10%" style="text-align: right;">{{item.total}}</td>
         </tr>
         <tr>
             <td></td>
-            <td colspan="5">
-                <div class="d-flex flex-row-reverse">
-                    <select [(ngModel)]="offer.code" class="m-1" (change)="selectOffer($event)">
-                        <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
-                    </select>
-                    <label for="offer" class="m-1">Discount</label>
-                </div>
-            </td>
-            <td colspan="2">
-                <input type="number" [(ngModel)]="offer.amount" style="text-align:right"
-                (input)="applyDiscount()"
-                [disabled]="!offer.input"></td>
-        </tr>
-        <tr>
-            <td></td>
-            <td colspan="5">
+            <td colspan="4">
                 <div class="row">
                     <div class="col-md-3">
                         <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
@@ -78,6 +63,39 @@
                         </div>
                     </div>
                 </div>
+            </td>
+            <td colspan="1">
+                <div class="d-flex flex-row-reverse">
+                    <select [(ngModel)]="offer.code" class="m-1" (change)="selectOffer($event)">
+                        <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
+                    </select>
+                    <!-- <label for="offer" class="m-1">Discount</label> -->
+                </div>
+            </td>
+            <td colspan="2">
+                <input type="number" [(ngModel)]="offer.amount" style="text-align:right"
+                (input)="applyDiscount()"
+                [disabled]="!offer.input"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td colspan="5">
+                <!-- <div class="row">
+                    <div class="col-md-3">
+                        <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
+                            <option>Select</option>
+                            <option *ngFor="let pm of paymodes" [value]="pm.key">{{pm.value}}</option>
+                        </select>
+                    </div>  
+                    <div class="col-md-9">
+                        <input *ngIf="sale.paymode === 'digital'" type="text" class="form-control" 
+                        [(ngModel)]="sale.payrefno" placeholder="Reference No">
+                        <div *ngIf="sale.paymode === 'cash'" style="font-size: larger;">
+                            Received <i class="bi bi-currency-rupee"></i> <input type="text" size="5" (input)="calcTender($event)">&nbsp;
+                            Balance <i class="bi bi-currency-rupee"></i> <input type="text" size="5" [value]="tender" [disabled]="true">
+                        </div>
+                    </div>
+                </div> -->
             </td>
             <td  colspan="2" style="text-align: right; background-color: royalblue;">
                 <span style="font-size: larger;color: white;">

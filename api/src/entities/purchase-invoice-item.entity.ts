@@ -32,6 +32,8 @@ import { SaleItem } from "./sale-item.entity";
     @Column("date", { name: "exp_date", nullable: true })
     expdate: string | null;
   
+    @Column("double precision", { name: "ptr_value", precision: 53 })
+    ptrvalue: number;
     @Column("double precision", { name: "ptr_cost", precision: 53 })
     ptrcost: number;
   
@@ -55,6 +57,8 @@ import { SaleItem } from "./sale-item.entity";
     })
     saleprice: number | null;
   
+    @Column("integer", { name: "pack" })
+    pack: number;
     @Column("integer", { name: "qty" })
     qty: number;
   

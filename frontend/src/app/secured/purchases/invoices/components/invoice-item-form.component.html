@@ -40,20 +40,23 @@
         [yearNavigator]="true" yearRange="2000:2030"
         ></p-calendar>
     </div>
-    <div class="col-md-1">
-        <label for="mrp" class="form-label">MRP</label>
-        <input type="number" id="mrp" class="form-control" formControlName="mrpcost" (input)="calculate()">
-    </div>
     <!-- </div>
     <div class="row"> -->
+        <div class="col-md-1">
+            <label for="pk" class="form-label">Pack</label>
+            <input type="number" id="pk" class="form-control" formControlName="pack">
+        </div>
         <div class="col-md-1">
             <label for="qty" class="form-label">QTY</label>
             <input type="number" id="qty" class="form-control" formControlName="qty" (input)="calculate()">
         </div>
         <div class="col-md-1">
-            <label for="ptr" class="form-label">PTR</label>
-            <input type="number" id="ptr" class="form-control" formControlName="ptrcost" size="6" (input)="calculate()">
-            
+            <label for="mrp" class="form-label">MRP</label>
+            <input type="number" id="mrp" class="form-control" formControlName="mrpcost" (input)="calculate()">
+        </div>
+        <div class="col-md-1">
+            <label for="ptr" class="form-label">PTR Value</label>
+            <input type="number" id="ptr" class="form-control" formControlName="ptrvalue" size="6" (input)="calculate()">
         </div>
         <!-- <div class="col-md-1">
             <label for="disc" class="form-label">Disc %</label>
@@ -78,7 +81,7 @@
         <div class="col-md-1">
             <label for="total" class="form-label">Total</label>
             <br>
-            <span>{{total || 0}}</span>
+            <span>{{total | number:'0.0-9'}}</span>
         </div>
     </div>
         <div class="row mt-3">
@@ -110,11 +113,11 @@
             </div>
     </div>
     <div class="row" *ngIf="form.errors">
-        <p *ngIf="form.get('ptrcost')?.hasError('ptrcostsalesameerror')">Sale Price & PTR same</p>
+        <p *ngIf="form.get('ptrvaue')?.hasError('ptrcostsalesameerror')">Sale Price & PTR same</p>
     </div>
     <div class="row mt-3">
         <div class="col-lg-12">
-            <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Save</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Add</button>
         </div>
     </div>
 </form>

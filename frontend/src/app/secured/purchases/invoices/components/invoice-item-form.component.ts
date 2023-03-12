@@ -15,8 +15,9 @@ export class InvoiceItemFormComponent {
         productid: new FormControl('',Validators.required),
         batch: new FormControl(''),
         expdate: new FormControl(''),
+        pack: new FormControl('1',Validators.required),
         qty: new FormControl('',Validators.required),
-        ptrcost: new FormControl('',Validators.required),
+        ptrvalue: new FormControl('',Validators.required),
         mrpcost: new FormControl('',Validators.required),
         // discpcnt: new FormControl(''),
         taxpcnt: new FormControl(''),
@@ -54,7 +55,8 @@ export class InvoiceItemFormComponent {
                 data.batch && this.form.controls['batch'].setValue(data.batch);
                 data.expdate && this.form.controls['expdate'].setValue(this.formatExpDate(data.expdate));
                 this.form.controls['mrpcost'].setValue(data.mrpcost);
-                this.form.controls['ptrcost'].setValue(data.ptrcost);
+                this.form.controls['ptrvalue'].setValue(data.ptrvalue);
+                this.form.controls['pack'].setValue(data.pack);
                 this.form.controls['qty'].setValue(data.qty);
                 this.form.controls['taxpcnt'].setValue(data.taxpcnt);
                 // this.form.controls['total'].setValue(data.total);
@@ -90,63 +92,66 @@ export class InvoiceItemFormComponent {
 
     selected(event:any){
         this.selectedProduct = event;
+        this.form.controls['productid'].setValue(this.selectedProduct.id);
     }
 
-    calculateTotal(qty:number,price:number,tax:number):number{
+    calculateTotal(pack:number,qty:number,price:number):number{
         // const priceAfterDisc = price - (price * (disc/100));
-        const total = qty * (price * (1 + ((tax||0) / 100)));
+        const total = qty * price;// * (1 + ((tax||0) / 100)));
         return isNaN(total) ? 0 : +total.toFixed(2);
     }
     
     getPTRAfterTax(){
-        return this.form.value.ptrcost*(1+(this.form.value.taxpcnt/100));
+        return (this.form.value.ptrvalue/this.form.value.pack) *(1+(this.form.value.taxpcnt/100));
     }
 
     calculateMargin(){
-        let sp = +this.form.value.saleprice * (1 + (this.form.value.taxpcnt/100));
+        let sp = +this.form.value.saleprice;// * (1 + (this.form.value.taxpcnt/100));
         
         this.sellermargin = Math.round(((sp - this.getPTRAfterTax())/this.getPTRAfterTax())*100);
         // this.form.controls['sellermargin'].setValue(this.sellermargin);
-        this.customersaving = Math.round(((this.form.value.mrpcost - sp)/this.form.value.mrpcost)*100);
+        this.customersaving = Math.round((((this.form.value.mrpcost/this.form.value.pack) - sp)/(this.form.value.mrpcost/this.form.value.pack))*100);
         // this.form.controls['customersaving'].setValue(this.customersaving);
     }
 
     calculate(){
         
-        const ptrAfterTax = this.form.value.ptrcost * (1 + (this.form.value.taxpcnt/100))
-        if(ptrAfterTax > this.form.value.mrpcost){
-            this.form.controls['ptrcost'].setValue(this.getMRPBeforeTax())
-        }
+        // const ptrAfterTax = this.form.value.ptrvalue * (1 + (this.form.value.taxpcnt/100))
+        // if(ptrAfterTax > this.form.value.mrpcost){
+        //     this.form.controls['ptrvalue'].setValue(this.getMRPBeforeTax())
+        // }
         
-        const sp = +this.calcSalePrice(this.getPTRAfterTax(),this.form.value.mrpcost);
+        const sp = +this.calcSalePrice();
+        console.log(sp);
+        console.log(this.getPTRAfterTax());
         
         this.form.controls['saleprice'].setValue(sp);
-        if(sp < this.form.value.ptrcost){
-            this.form.controls['saleprice'].setValue(this.form.value.ptrcost);
-            this.form.controls['ptrcost'].setErrors({ptrcostsalesameerror:true})
+        if(sp < this.getPTRAfterTax()){
+            this.form.controls['saleprice'].setValue(this.getPTRAfterTax());
+            // this.form.controls['ptrvalue'].setErrors({ptrvaluesalesameerror:true})
         }
-        else {
-            this.form.controls['ptrcost'].setErrors(null)
-        }
+        // else {
+        //     this.form.controls['ptrvalue'].setErrors(null)
+        // }
 
-        this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrcost, this.form.value.taxpcnt);
+        this.total = this.calculateTotal(this.form.value.pack, this.form.value.qty, this.form.value.ptrvalue);
         
         // this.form.controls['total'].setValue(this.total);
         this.calculateMargin();
     }
 
-    calcSalePrice(rate:number,mrp:number){
+    calcSalePrice(){
         const maxm = 2.5
         const minm = 1.3
         const mins = 0.5
         
-        let ptrAfterTax = this.getPTRAfterTax();
+        let ptrcost = this.getPTRAfterTax();
+        let mrp = this.form.value.mrpcost/this.form.value.pack;
 
-        let maxmargin = ptrAfterTax * maxm;
-        let minmargin = ptrAfterTax * minm;
+        let maxmargin = ptrcost * maxm;
+        let minmargin = ptrcost * minm;
         let minsaving = mrp - (mrp * mins);
 
-        
         let price = maxmargin;
         if(maxmargin > minsaving ) {
             price = (minsaving <= minmargin) ? minmargin : minsaving;
@@ -156,20 +161,22 @@ export class InvoiceItemFormComponent {
     }
 
     getMRPBeforeTax(){
-       return +((this.form.value.mrpcost / (1 + (this.form.value.taxpcnt/100))).toFixed(2));
+       return +(((this.form.value.mrpcost/this.form.value.pack) / (1 + (this.form.value.taxpcnt/100))).toFixed(2));
     }
 
     submit(){
         if(this.itemid){
             this.invService.updateItems([this.form.value.id],{...this.form.value,
                 expdate:this.parseExpDate(this.form.value.expdate),
+                ptrcost:this.getPTRAfterTax(),
                 total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);
                 this.resetValues();
             });
         }
         else {
-            this.invService.saveItem({...this.form.value, total: this.total}).subscribe(data => {
+            this.invService.saveItem({...this.form.value,
+                ptrcost:this.getPTRAfterTax(), total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);
                 this.resetValues();
             });

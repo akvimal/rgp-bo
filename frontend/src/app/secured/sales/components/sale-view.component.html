@@ -30,7 +30,7 @@
                     <th style="text-align: right;">MRP</th>
                     <th style="text-align: right;">Qty</th>
                     <th style="text-align: right;">Rate</th>
-                    <th style="text-align: right;">Tax</th>
+                    <!-- <th style="text-align: right;">Tax</th> -->
                     <th style="text-align: right;">Amount</th>
                 </tr>
             <tr *ngFor="let i of sale.items">
@@ -42,11 +42,11 @@
                 <td style="vertical-align: text-top; text-align: right;width:8%">{{i.mrp}}</td>
                 <td style="vertical-align: text-top; text-align: right;width:6%">{{i.qty}}</td>
                 <td style="vertical-align: text-top; text-align: right;width:8%">{{i.price}}</td>
-                <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td>
+                <!-- <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td> -->
                 <td style="vertical-align: text-top; text-align: right;width:8%">{{i.total}}</td>
             </tr>
             <tr>
-                <td colspan="5">No. of items: {{itemsCount}}</td>
+                <td colspan="4">No. of items: {{itemsCount}}</td>
                 <!-- <td>{{sale.total?.tax}}</td> -->
                 
                 

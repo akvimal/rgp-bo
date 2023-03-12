@@ -10,6 +10,7 @@ export interface SaleItem {
     expdate?:string,
     taxpcnt?:string,
     mrp?:string,
+    pack?:number,
     price?:string,
     status?:string,
     comments?:string,
