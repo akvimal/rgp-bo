@@ -21,6 +21,7 @@
                         <p-columnFilter type="text" field="batch" display="menu"></p-columnFilter>
                         <p-sortIcon field="batch"></p-sortIcon>
                     </th> -->
+                    <th>Pack</th>
                     <!-- <th pSortableColumn="expdate">Expiry
                         <p-columnFilter type="date" field="expdate" display="menu"></p-columnFilter>
                         <p-sortIcon field="expdate"></p-sortIcon>
@@ -68,6 +69,7 @@
                     <td>{{i.title}}</td>
                     <td><a [routerLink]="['../items',i.invoice_id]">{{i.invoice_no}}</a></td>
                     
+                    <td>{{i.pack}}</td>
                     <!-- <td>{{i.batch}}</td> -->
                     <!-- <td>{{i.expdate | date :'MMM-yy'}}</td> -->
                     <!-- <td>{{i.life_left}}</td> -->

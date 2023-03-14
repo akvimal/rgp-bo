@@ -1,6 +1,6 @@
 import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
-import { ReactiveFormsModule } from "@angular/forms";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { NgxChartsModule } from "@swimlane/ngx-charts";
 import { AuthGuard } from "../@core/auth/auth.guard";
@@ -61,6 +61,7 @@ const routes: Routes = [
     ],
     imports: [
         CommonModule,
+        FormsModule,
         ReactiveFormsModule,
         RouterModule.forChild(routes),
         SharedModule,

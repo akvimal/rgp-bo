@@ -47,6 +47,13 @@ export class SaleController {
       return this.saleService.getSales();
     }
 
+    @Post('/data')
+    async getSalesByFreq(@Body() criteria: any) {
+      return this.saleService.getSalesByFreq(criteria.fromdate,criteria.freq,criteria.count);
+    }
+
+    
+
     @Get()
     async findAll(@Query() query: any, @User() currentUser: any) {
       

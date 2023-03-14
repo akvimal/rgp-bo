@@ -1,21 +1,28 @@
-Frequency: <select>
-    <option value="day">Daily</option>
-    <option value="week">Weekly</option>
-    <option value="month">Monthly</option>
-    <option value="quarter">Quarterly</option>
-  </select>
-  From: <select><option value="2023-02-02">2-Feb</option></select>
-  Range: <select><option value="7">7</option></select>
-  <ngx-charts-bar-vertical 
-[view]="[1000,400]"
-[results]="saleData"
-[xAxisLabel]="'Date'"
-[legendTitle]="'Daily Sale Chart'"
-[yAxisLabel]="'Sale'"
-[legend]="false"
-[showXAxisLabel]="true"
-[showYAxisLabel]="true"
-[xAxis]="true"
-[yAxis]="true"
-[gradient]="false">
-</ngx-charts-bar-vertical>
+<div class="container">
+  <div class="row">
+    <div class="col-12">
+      Frequency: <select [(ngModel)]="freq">
+        <option value="daily">Daily</option>
+        <option value="week">Weekly</option>
+        <option value="month">Monthly</option>
+        <option value="quarter">Quarterly</option>
+      </select>
+      From: <input type="date" [(ngModel)]="fromdate" (input)="view()">
+      Range: <input type="number" [(ngModel)]="count" (input)="view()">
+      <button (click)="view()">View</button>
+        <ngx-charts-bar-vertical 
+      [view]="[1000,400]"
+      [results]="saleData"
+      [xAxisLabel]="'Date'"
+      [legendTitle]="'Daily Sale Chart'"
+      [yAxisLabel]="'Sale'"
+      [legend]="false"
+      [showXAxisLabel]="true"
+      [showYAxisLabel]="true"
+      [xAxis]="true"
+      [yAxis]="true"
+      [gradient]="false">
+      </ngx-charts-bar-vertical>
+    </div>
+  </div>
+</div>

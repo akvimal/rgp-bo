@@ -57,5 +57,7 @@ export class SaleService {
         this.totalState.next(this.totalState.value - prev + now)
     }
 
-    
+    getSaleData(criteria:any){
+        return this.http.post(`${this.apiurl}/data`,criteria);
+    }    
 }

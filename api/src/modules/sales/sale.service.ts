@@ -94,6 +94,32 @@ export class SaleService {
         return qb.getMany();
     }
 
+    getFormatDate(dt:Date){
+        let mon = dt.getMonth()+1;
+        let dat = dt.getDate();
+        return dt.getFullYear() + '-' + (mon < 10 ? ('0'+mon) : mon) 
+        + '-' + (dat < 10 ? ('0'+dat) : dat);
+    }
+
+    async getSalesByFreq(fromdate:string,freq:string,count:number){
+        console.log(fromdate);
+        const dt = new Date(fromdate)
+        const date = new Date(dt.setDate(dt.getDate()+1));
+        // const fromdtstr = this.getFormatDate(date);
+        const other = date.setDate(date.getDate()-count);
+        const todate = this.getFormatDate(new Date(other));
+        
+        let freqstr = freq === 'daily' ? '1 day' : '1 month'
+
+        
+        const data = await this.manager.query(`select to_char(x.dt,'yyyy-mm-dd') as date, 
+        sum(sv.sale_total) as sale
+        from (select date(generate_series('${todate}'::date,'${fromdate}','${freqstr}')) as dt)x 
+        left join sale_view sv on x.dt = sv.sale_date 
+        group by x.dt order by x.dt`);
+        return data;
+    }
+
     async findAllByCustomerId(custid,limit){
         const saleids = await this.manager.query(`
         select s.id

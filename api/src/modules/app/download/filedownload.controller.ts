@@ -48,6 +48,6 @@ export class FileDownloadController {
 
    
     return ''+(day < 10 ? '0'+day : day) + '/' +
-    (month < 10 ? '0'+(month+1) : (month+1)) + '/' + year;
+    (month < 10 ? '0'+(month+1) : (month+1)) + '/' + (year%2000);
   }
 }
