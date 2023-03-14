@@ -16,13 +16,15 @@ import { ErrorsInterceptor } from './core/errors.interceptor';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { FileDownloadController } from './modules/app/download/filedownload.controller';
+import { PdfGenerateService } from './modules/app/download/pdfgenerate.service';
 
 @Module({
-  controllers: [ AppController ],
+  controllers: [ AppController, FileDownloadController ],
   providers: [ {
     provide: APP_INTERCEPTOR,
     useClass: ErrorsInterceptor,
-  }, AppService],
+  }, AppService, PdfGenerateService],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,

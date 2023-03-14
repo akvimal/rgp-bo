@@ -44,6 +44,10 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchaseitems/${id}`);
     }
 
+    findItemSalePrice(productid:any,batch:any){
+        return this.http.post(`${this.apiurl}/purchaseitems/saleprice`,{productid,batch});
+    }
+
     saveItem(item:InvoiceItem){
         const obj:any ={}
         for (const [key, value] of Object.entries(item)) {

@@ -23,13 +23,25 @@ export class PurchaseInvoiceService {
     }
     
     async findAll(){
-        // return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
-        //   .innerJoinAndSelect("invoice.vendor", "vendor")
-        //   .select(['invoice','vendor.name'])
-        //   .where('invoice.active = :flag', { flag:true }).orderBy('invoice.created_on','DESC')
-        //   .getMany();
-        return await this.manager.query(`select * from invoices_view`);
-    }
+      // return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
+      //   .innerJoinAndSelect("invoice.vendor", "vendor")
+      //   .select(['invoice','vendor.name'])
+      //   .where('invoice.active = :flag', { flag:true }).orderBy('invoice.created_on','DESC')
+      //   .getMany();
+      return await this.manager.query(`select * from invoices_view`);
+  }    
+  
+  async findSalePrice(input){
+    return await this.manager.query(`select 
+    pii.exp_date, pii.batch, p.pack, pii.mrp_cost, pii.sale_price, product_id, tax_pcnt, pii.created_on,
+    round(ptr_value::numeric ,2) as ptr_value
+    from purchase_invoice_item pii 
+    inner join product p on p.id = pii.product_id 
+    where product_id = ${input.productid}
+    and upper(batch) = '${input.batch.toUpperCase()}'
+    order by pii.created_on desc 
+    limit 1`);
+}
 
     async findByUnique(query:any){
       const qb = this.purchaseInvoiceRepository.createQueryBuilder(`i`)

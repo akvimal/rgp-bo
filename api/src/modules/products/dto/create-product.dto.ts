@@ -26,6 +26,9 @@ export class CreateProductDto {
     @IsOptional()
     readonly brand: string;
 
+    @ApiPropertyOptional({ description: 'pack', example: 0 })
+    readonly pack: number;
+
     @ApiPropertyOptional({ description: 'category', example: '' })
     @IsOptional()
     readonly category: string;

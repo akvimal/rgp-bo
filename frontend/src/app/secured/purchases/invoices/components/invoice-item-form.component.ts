@@ -34,7 +34,7 @@ export class InvoiceItemFormComponent {
     total:any;
     selectedProduct: any;
     filteredProducts: any[] = [];
-
+      batchfound:boolean = false;
     sellermargin:number = 0;
     customersaving:number = 0;
 
@@ -93,6 +93,7 @@ export class InvoiceItemFormComponent {
     selected(event:any){
         this.selectedProduct = event;
         this.form.controls['productid'].setValue(this.selectedProduct.id);
+        this.form.controls['pack'].setValue(this.selectedProduct.pack);
     }
 
     calculateTotal(pack:number,qty:number,price:number):number{
@@ -114,30 +115,85 @@ export class InvoiceItemFormComponent {
         // this.form.controls['customersaving'].setValue(this.customersaving);
     }
 
+    loadexist(){
+        
+        this.form.controls['ptrvalue'].setValue('')
+        this.form.controls['taxpcnt'].setValue('')
+        // this.form.controls['pack'].setValue('')
+        this.form.controls['mrpcost'].setValue('')
+        this.form.controls['expdate'].setValue('')
+        this.form.controls['saleprice'].setValue('')
+        this.form.controls['qty'].setValue('')
+        // this.form.controls['ptrvalue'].enable();
+        // this.form.controls['taxpcnt'].enable();
+        // this.form.controls['mrpcost'].enable();
+        // this.form.controls['expdate'].enable();
+        // this.form.controls['saleprice'].enable();
+
+        this.sellermargin = 0
+        this.customersaving = 0
+        this.total = 0
+        this.batchfound = false;
+
+        this.invService.findItemSalePrice(this.form.value.productid,this.form.value.batch).subscribe((data:any) => {
+            if(data.length == 1) {
+                this.batchfound = true;
+                const item = data[0];
+                this.form.controls['ptrvalue'].setValue(item.ptr_value);
+                this.form.controls['taxpcnt'].setValue(item.tax_pcnt);
+                this.form.controls['mrpcost'].setValue(item.mrp_cost);
+                this.form.controls['expdate'].setValue(new Date(item.exp_date));
+                this.form.controls['saleprice'].setValue(item.sale_price);
+
+                // this.form.controls['ptrvalue'].disable();
+                // this.form.controls['taxpcnt'].disable();
+                // this.form.controls['mrpcost'].disable();
+                // this.form.controls['expdate'].disable();
+                // this.form.controls['saleprice'].disable();
+                this.calculateMargin();
+                // this.calculate()
+                this.total = this.calculateTotal(this.form.value.pack, this.form.value.qty, this.form.value.ptrvalue);
+            }
+        });
+    }
+    calculateSP(){
+        let sp = +this.calcSalePrice();
+            if(sp < this.getPTRAfterTax()){
+                sp = this.getPTRAfterTax();
+            }
+            this.form.controls['saleprice'].setValue(sp);
+        this.calculateMargin();
+    }
     calculate(){
+        this.total = this.calculateTotal(this.form.value.pack, this.form.value.qty, this.form.value.ptrvalue);
         
-        // const ptrAfterTax = this.form.value.ptrvalue * (1 + (this.form.value.taxpcnt/100))
-        // if(ptrAfterTax > this.form.value.mrpcost){
-        //     this.form.controls['ptrvalue'].setValue(this.getMRPBeforeTax())
+    //    this.invService.findItemSalePrice(this.form.value.productid,this.form.value.batch).subscribe((data:any) => {
+        // let sp = 0;
+        // console.log('data:',data);
+        
+        // if(data.length == 1) { 
+        //     sp = data[0].sale_price;
+        //     this.spfound = true;
         // }
+        // else {
+        //     let sp = +this.calcSalePrice();
+        //     if(sp < this.getPTRAfterTax()){
+        //         sp = this.getPTRAfterTax();
+        //     }
+        //     this.spfound = false;
+        // // }
+        // this.form.controls['saleprice'].setValue(sp);
+        // this.calculateMargin();
+    //    })
+       
         
-        const sp = +this.calcSalePrice();
-        console.log(sp);
-        console.log(this.getPTRAfterTax());
-        
-        this.form.controls['saleprice'].setValue(sp);
-        if(sp < this.getPTRAfterTax()){
-            this.form.controls['saleprice'].setValue(this.getPTRAfterTax());
-            // this.form.controls['ptrvalue'].setErrors({ptrvaluesalesameerror:true})
-        }
         // else {
         //     this.form.controls['ptrvalue'].setErrors(null)
         // }
 
-        this.total = this.calculateTotal(this.form.value.pack, this.form.value.qty, this.form.value.ptrvalue);
         
         // this.form.controls['total'].setValue(this.total);
-        this.calculateMargin();
+        
     }
 
     calcSalePrice(){
@@ -167,6 +223,7 @@ export class InvoiceItemFormComponent {
     submit(){
         if(this.itemid){
             this.invService.updateItems([this.form.value.id],{...this.form.value,
+                batch:this.form.value.batch.toUpperCase(),
                 expdate:this.parseExpDate(this.form.value.expdate),
                 ptrcost:this.getPTRAfterTax(),
                 total: this.total}).subscribe(data => {
@@ -176,6 +233,7 @@ export class InvoiceItemFormComponent {
         }
         else {
             this.invService.saveItem({...this.form.value,
+                batch:this.form.value.batch.toUpperCase(),
                 ptrcost:this.getPTRAfterTax(), total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);
                 this.resetValues();

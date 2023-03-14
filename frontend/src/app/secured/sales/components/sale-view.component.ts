@@ -16,8 +16,6 @@ export class SaleViewComponent {
     finalAmt:number = 0;
     itemsCount:number = 0;
     itemsTotal:number = 0;
-    // roundDecimal:string = '';
-
 
     constructor(private route: ActivatedRoute,
       private router: Router, 
@@ -58,7 +56,7 @@ export class SaleViewComponent {
           this.sale.discamount = data.discamount;
           this.finalAmt = Math.round(data.total);
           
-          this.saving = Math.round(((this.mrpTotal - (this.finalAmt - +(data.discamount || 0))) / this.mrpTotal) * 100);
+          this.saving = Math.round( (data.total / this.mrpTotal) * 100);
         });
     }
 

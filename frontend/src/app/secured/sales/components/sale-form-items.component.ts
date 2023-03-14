@@ -38,7 +38,6 @@ export class SaleFormItemsComponent{
     this.offerService.state.subscribe(data => {
       this.offers = data.filter(d => d.available);
     });
-    
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -51,7 +50,6 @@ export class SaleFormItemsComponent{
     if(changes['customer'] && changes['customer'].currentValue){
       if(changes['customer'].currentValue.id){
         this.saleService.getSalesByCustomer(changes['customer'].currentValue.id).subscribe((data:any) => {
-              // console.log('customer sale: ',data);
               this.customerTotalOrders = data.length;
               data.forEach((s:any) => {
                 this.customerTotalSaleAmount += s.total;
@@ -112,6 +110,7 @@ export class SaleFormItemsComponent{
     
   calculateTotal(qty:number,price:number,tax:number):number{
     // let total = qty * ((price||0) * (1 + ((tax||0) / 100)));
+
     let total = qty * (price||0);
     return isNaN(total) ? 0 : +total.toFixed(2);
   }

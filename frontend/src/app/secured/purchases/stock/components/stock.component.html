@@ -2,14 +2,7 @@
     <h1>Stock</h1>
   </div>
   
-<div class="container">
-    <!-- <div class="row">
-        <div class="col-md-12">
-            Filter by : Expiry | Product (title, category, purpose) | Price (not set, scheduled)
-        </div>
-    </div> -->
-<div class="row">
-    <div class="col-md-12">
+
         <p-table #dt1 [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
         [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
             [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
@@ -94,9 +87,7 @@
                 </tr>
             </ng-template>
         </p-table>    
-</div>
-</div>
-</div>
+
 <p-dialog header="Adjust Price" [(visible)]="display" [modal]="true">
     <div class="container">
         <form [formGroup]="adjustForm" (ngSubmit)="onAdjustSubmit()">

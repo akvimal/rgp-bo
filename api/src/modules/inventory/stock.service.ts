@@ -9,7 +9,7 @@ export class StockService {
     
     async findAll(){
         return await this.manager.query(`
-        select * from stock_view where (life_left is null or life_left >= 0)`);
+        select * from stock_view where (life_left is null or life_left >= 0) order by title`);
     }    
     async findByItem(id){
         return await this.manager.query(`

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <mate charest="utf-8" />
+    <title>H1 Schedule Report</title>
+    <style>
+      body {
+        font-size: 9px;
+      }
+      body, h1, h2, h3, h4, h5, h6, ul, li, p {
+        margin:0;
+        padding: 0;
+      }
+      table, tr, td, th {
+        border:1px solid;
+        border-collapse: collapse;
+      }
+      td, th {
+        padding: 5px;
+      }
+      #data {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="text-align: center;">
+    <h4>H1 Schedule Report</h4>
+    <p>Period: {{this.fromdate}} - {{this.todate}}</p>
+  </div>
+    <table id="data">
+      <thead>
+      <tr>
+        <th>No.</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Doctor</th>
+        <th>Drug</th>
+        <th>Qty</th>
+        <th>Pharmacist</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>{{this.id}}</td>
+        <td>{{this.date}}</td>
+        <td>{{this.customer}}
+          ({{this.mobile}})
+          <br>{{this.address}}
+        </td>
+        <td>{{this.doctor}}</td>
+        <td>{{this.product}}</td>
+        <td>{{this.qty}}</td>
+        <td></td>
+      </tr>
+      {{/each}}
+    </tbody>
+    </table>
+   
+    
+  </body>
+</html>

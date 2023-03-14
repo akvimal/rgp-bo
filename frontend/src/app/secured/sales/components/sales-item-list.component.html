@@ -32,7 +32,9 @@
     &nbsp;
     <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
     &nbsp;
-    <button type="button" class="btn  btn-secondary" onclick="javascript:window.print();">Print</button>
+    <button type="button" class="btn btn-outline-primary" *ngIf="isH1DrugFilter()" (click)="downloadh1()">Download H1</button>
+    <!-- &nbsp;
+    <button type="button" class="btn  btn-secondary" onclick="javascript:window.print();">Print</button> -->
   </div>
   <!-- <div class="col-md-1">
     <button type="button" class="btn  btn-primary" onclick="javascript:window.print();">Print</button>
@@ -64,7 +66,6 @@
             </th>
             <th class="batch">Batch/Exp</th>
             <th class="qty">Qty</th>
-            <th class="signature" *ngIf="isH1DrugFilter()">Sign</th>
           </tr>
         <!-- </thead>
           <tbody> -->
@@ -76,14 +77,13 @@
                   <a [routerLink]="['../view',item.sale.id]">{{item.sale.id}}</a>
                 </td>
                 <td>{{item.sale.billdate | date :'dd/MM/yy'}}</td>
-                <td *ngIf="isH1DrugFilter()">{{item.sale.props['prescdoctor']}}</td>
-                <td>{{ isH1DrugFilter() ? item.sale.props['ptntname'] : item.sale.customer?.name}}</td>
-                <td>{{ isH1DrugFilter() ? item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td>
-                <td *ngIf="isH1DrugFilter()">{{ isH1DrugFilter() ? item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td>
+                <td *ngIf="isH1DrugFilter()">{{item.sale.props && item.sale.props['prescdoctor']}}</td>
+                <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntname'] : item.sale.customer?.name}}</td>
+                <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td>
+                <td *ngIf="isH1DrugFilter()">{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td>
                 <td>{{item.purchaseitem.product.title}}</td>
                 <td>{{item.purchaseitem.batch}} / {{item.purchaseitem.expdate | date : 'MMM-yy'}}</td>
                 <td>{{item.qty}}</td>
-                <td *ngIf="isH1DrugFilter()"></td>
             </tr>  
           <!-- </tbody>
         </table> -->

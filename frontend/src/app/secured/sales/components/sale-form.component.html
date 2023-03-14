@@ -85,7 +85,6 @@
 
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
         [(visible)]="displayPrevSalesCopy" [modal]="true">
-    
     <div *ngFor="let s of previousSaleItems">
         {{s.billdate | date : 'dd/MM'}} | ${{s.total}}
             <ul class="list-group mt-2">

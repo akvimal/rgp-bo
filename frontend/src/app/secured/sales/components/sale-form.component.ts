@@ -134,11 +134,18 @@ export class SaleFormComponent {
 
     recalculateTotal(offer:any){
       this.total = 0;
+      let mrptotal = 0;
       this.sale.items?.forEach((i:any) => {
         if(i.itemid != '') {
           this.total += i.total;
+          console.log('calc saving',i);
+           mrptotal += ((+i.mrp_cost||0)*i.qty)
         }
       });
+
+      this.sale.total = this.total;
+      this.sale.mrptotal = mrptotal;
+      this.sale.saving = Math.round((this.total / mrptotal) * 100);
       // this.total += offer.amount;
 
       this.offer = offer;

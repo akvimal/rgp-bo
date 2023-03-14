@@ -24,6 +24,11 @@ export class PurchaseItemController {
       return this.purchaseInvoiceService.findItemById(id);
     }
 
+    @Post('/saleprice')
+    async findSalePrice(@Body() input:{productid:string,batch:string}) {
+      return this.purchaseInvoiceService.findSalePrice(input);
+    }
+
     // @Get('/:id/items')
     // async findItemsByInvoice(@Param('id') id: string) {
     //   return this.purchaseInvoiceService.findAllItemsByInvoice(id);

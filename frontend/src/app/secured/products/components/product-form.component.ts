@@ -17,6 +17,7 @@ export class ProductFormComponent{
         title: new FormControl('',Validators.required),
         hsn: new FormControl(''),
         code: new FormControl(''),
+        pack: new FormControl(''),
         category: new FormControl(''),
         mfr: new FormControl(''),
         brand: new FormControl(''),
@@ -43,6 +44,7 @@ export class ProductFormComponent{
           this.form.controls['title'].setValue(data.title);
           this.form.controls['hsn'].setValue(data.hsn);
           this.form.controls['code'].setValue(data.code);
+          this.form.controls['pack'].setValue(data.pack);
           this.form.controls['category'].setValue(data.category);
           this.form.controls['mfr'].setValue(data.mfr);
           this.form.controls['brand'].setValue(data.brand);
@@ -85,11 +87,9 @@ export class ProductFormComponent{
           this.brand = event.target.value;
         } else if(key === 'formulation'){
           this.pdata.formulation = event.target.value;
-        } else if(key === 'packing'){
-          this.pdata.packing = event.target.value;
-        }
+        } 
 
-        this.form.controls['title'].setValue(((this.brand.trim().toUpperCase()||'') + ' ' + (this.pdata.formulation||'') + ' ' + this.isPluralPacking(this.pdata.packing,this.pdata.formulation)).trim())
+        this.form.controls['title'].setValue(((this.brand.trim().toUpperCase()||'') + ' ' + (this.pdata.formulation||'')))
       }
   
       isPluralPacking(count:number,formulation:string){
@@ -108,6 +108,7 @@ export class ProductFormComponent{
           title: this.form.value.title.trim(), 
           hsn:this.form.value.hsn.trim(), 
           code:this.form.value.code.trim(), 
+          pack:this.form.value.pack, 
           category:this.form.value.category, 
           mfr:this.form.value.mfr.trim(), 
           brand:this.form.value.brand.trim(), 

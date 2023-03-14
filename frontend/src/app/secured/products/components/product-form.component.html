@@ -55,9 +55,13 @@
         </div>
 
         <div class="row g-3 mt-2">
-          <div class="col-md-12" *isAuth="'products.add$title'">
+          <div class="col-md-10" *isAuth="'products.add$title'">
             <label for="title" class="form-label">Title</label>
             <input type="text" class="form-control" id="title" formControlName="title">
+          </div> 
+          <div class="col-md-2">
+            <label for="title" class="form-label">Pack</label>
+            <input type="number" class="form-control" id="pack" formControlName="pack">
           </div>
           <div class="col-md-12" *isAuth="'products.add$description'">
             <label for="description" class="form-label">Description</label>

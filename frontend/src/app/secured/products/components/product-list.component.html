@@ -46,6 +46,9 @@
                 <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                 <p-sortIcon field="title"></p-sortIcon>
             </th>
+            <th pSortableColumn="pack">Pack 
+                <p-sortIcon field="pack"></p-sortIcon>
+            </th>
             <th pSortableColumn="brand">Brand 
                 <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
                 <p-sortIcon field="brand"></p-sortIcon>
@@ -70,6 +73,7 @@
                     <li style="list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>
                 </ul>
             </td>
+            <td>{{product.pack}}</td>
             <td>{{product.brand}}</td>
             <td>{{product.mfr}}</td>
             <td style="text-align: center;">

@@ -1,8 +1,8 @@
 import { HttpClient } from "@angular/common/http";
-import { Component, Input, SimpleChanges } from "@angular/core";
+import { Component, Input } from "@angular/core";
 import { SaleItem } from "../sale-item.model";
-import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
+import {saveAs as importedSaveAs} from "file-saver";
 
 @Component({
     selector: 'app-sale-items',
@@ -26,16 +26,10 @@ export class SalesItemListComponent {
     }
     this.fetchSaleItems();
   }
-  // ngOnChanges(changes: SimpleChanges) {
-  //   console.log(changes)
-  //   this.fetchSaleItems();
-  // }
+
   isH1DrugFilter(){
-    // this.fetchSaleItems();
-    const present = this.criteria.props.filter(p => (p.id === 'schedule' && p.value === 'H1'))
-    // console.log('present: ',present);
-    return present.length > 0
-    
+    const present = this.criteria.props.filter(p => (p.id === 'schedule' && p.value === 'H1'));
+    return present.length > 0;
   }
 
     fetchFilterProps(event:any){
@@ -63,5 +57,14 @@ export class SalesItemListComponent {
         this.criteria.props = [];
         
         this.fetchSaleItems();
+      }
+
+      downloadh1(){
+        this.httpClient.post("http://localhost:3000/download/h1schedule", 
+        this.criteria,
+        {responseType: "blob"}).subscribe((data:any) => {
+          const blob = new Blob([data]);
+          importedSaveAs(blob, `h1schedule.pdf`);
+        });
       }
 }

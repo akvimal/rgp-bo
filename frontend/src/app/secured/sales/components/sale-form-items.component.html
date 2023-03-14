@@ -80,6 +80,15 @@
         <tr>
             <td></td>
             <td colspan="5">
+                <span style="margin:0;padding:0">MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal | number:'1.0-0'}}</span>
+                    
+                <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
+                <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue;margin:0;padding:0">
+                    Discount({{sale.disccode}}):<i class="bi bi-currency-rupee" style="padding:0"></i> {{sale.discamount}}</span>
+                <span *ngIf="sale.saving > 0">&nbsp;
+                    <label for="saving"></label>
+                   <strong>Saving:</strong> {{sale.saving}}%</span>
+
                 <!-- <div class="row">
                     <div class="col-md-3">
                         <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">

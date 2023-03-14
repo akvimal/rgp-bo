@@ -33,15 +33,20 @@
     "class-sanitizer": "1.0.1",
     "class-transformer": "0.5.1",
     "class-validator": "0.13.2",
+    "handlebars": "^4.7.7",
+    "html-pdf": "^3.0.1",
     "passport": "0.5.2",
     "passport-jwt": "4.0.0",
+    "pdf-node": "^1.0.1",
+    "pdfmake": "^0.2.7",
     "pg": "8.7.3",
     "reflect-metadata": "0.1.13",
     "rimraf": "3.0.2",
     "rxjs": "7.2.0",
     "swagger-ui-express": "4.3.0",
     "typeorm": "0.2.45",
-    "typeorm-seeding": "1.6.1"
+    "typeorm-seeding": "1.6.1",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^8.0.0",

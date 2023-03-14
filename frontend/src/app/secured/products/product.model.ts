@@ -4,5 +4,6 @@ export interface Product {
     description?:string,
     category?:string,
     mfr?:string,
+    pack?:number,
     brand?:string
 }

@@ -21,6 +21,8 @@ import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
     
     @Column("character varying", { name: "product_code", length: 40 })
     code: string;
+    @Column("double precision", { name: "pack" })
+    pack: number;
     
     @Column("character varying", { name: "hsn_code", length: 40 })
     hsn: string;    

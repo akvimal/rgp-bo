@@ -13,5 +13,7 @@ export interface Sale {
     discamount?:number,
     paymode?:string,
     payrefno?:string,
-    props?:any
+    props?:any,
+    mrptotal?:number,
+    saving?:number
 }
