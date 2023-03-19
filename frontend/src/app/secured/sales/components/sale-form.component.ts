@@ -2,6 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
+import { CalculatorService } from "../../calculator.service";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
 
@@ -47,7 +48,9 @@ export class SaleFormComponent {
 
     constructor(private route: ActivatedRoute,
       private router: Router, 
-      private service:SaleService,private http:HttpClient){
+      private service: SaleService,
+      private calc: CalculatorService,
+      private http: HttpClient){
         this.http.get("/assets/sale-props.json").subscribe((data:any) => this.salePropSchema = data);
       }
 
@@ -61,11 +64,19 @@ export class SaleFormComponent {
             this.sale.status = data.status;
   
             this.sale.items = data.items.map((i:any) => {
+              const pack = i.purchaseitem.product.pack;
+              console.log('items: ',i);
+              
               return {
                 id:i.id,
                 itemid:i.purchaseitem.id,
                 price:i.price,
                 qty:i.qty,
+                box: Math.trunc(i.qty / pack),
+                boxbal: i.qty % pack,
+                balqty: Math.trunc(i.qty/pack) + '.' + (i.qty%pack),
+                pack,
+                mrp_cost: i.purchaseitem.mrpcost/pack,
                 title: i.purchaseitem.product.title,
                 taxpcnt:i.purchaseitem.taxpcnt,
                 batch:i.purchaseitem.batch,
@@ -114,7 +125,6 @@ export class SaleFormComponent {
         }
         this.form.setControl('props', new FormGroup(pps));
       }
-
     }
 
     showChangeCustomer(mode:string){
@@ -138,16 +148,15 @@ export class SaleFormComponent {
       this.sale.items?.forEach((i:any) => {
         if(i.itemid != '') {
           this.total += i.total;
-          console.log('calc saving',i);
            mrptotal += ((+i.mrp_cost||0)*i.qty)
         }
       });
 
       this.sale.total = this.total;
       this.sale.mrptotal = mrptotal;
-      this.sale.saving = Math.round((this.total / mrptotal) * 100);
-      // this.total += offer.amount;
-
+      
+      this.sale.saving = this.calc.getSaving(mrptotal,Math.round(this.total));
+      
       this.offer = offer;
       this.addNewItem();
     }
@@ -193,7 +202,7 @@ export class SaleFormComponent {
       })
       return;
     }
-    const validItems = this.sale.items && this.sale.items.filter((i:any) => (i.itemid !== '' && i.qty !== ''));
+    const validItems = this.sale.items && this.sale.items.filter((i:any) => (i.itemid !== '' && ((i.box * i.pack) + i.boxbal) > 0));
     
     const requireAdditionalProps = validItems?.filter((i:any) => i.more_props.schedule === 'H1');
     if(status === 'COMPLETE' && !this.salePropValues){

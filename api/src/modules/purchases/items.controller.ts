@@ -19,8 +19,13 @@ export class PurchaseItemController {
       return this.purchaseInvoiceService.findAllItems({status});
     }
 
+    @Get('/product/:id')
+    async findItemsByProduct(@Param('id') id: number) { //accept query params
+      return this.purchaseInvoiceService.findItemsByProduct(id);
+    }
+
     @Get('/:id')
-    async findItemById(@Param('id') id: string) {
+    async findItemById(@Param('id') id: number) {
       return this.purchaseInvoiceService.findItemById(id);
     }
 

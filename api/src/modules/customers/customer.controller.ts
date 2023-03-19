@@ -22,6 +22,11 @@ export class CustomerController {
       return this.customerService.findAll();
     }
 
+    @Get('/sale')
+    async findSaleData() {
+      return this.customerService.findSaleData();
+    }
+
     @Get(':id')
     async findOne(@Param('id') id: string) {
       return this.customerService.findById(id);

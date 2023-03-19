@@ -17,7 +17,7 @@ export class ProductFormComponent{
         title: new FormControl('',Validators.required),
         hsn: new FormControl(''),
         code: new FormControl(''),
-        pack: new FormControl(''),
+        pack: new FormControl('1'),
         category: new FormControl(''),
         mfr: new FormControl(''),
         brand: new FormControl(''),
@@ -28,6 +28,7 @@ export class ProductFormComponent{
       pdata:any = {};
       props:any = [];
       brand:string = '';
+      pack:string = '';
       
       constructor(private configService:ConfigService, 
         private service:ProductsService, 
@@ -87,17 +88,22 @@ export class ProductFormComponent{
           this.brand = event.target.value;
         } else if(key === 'formulation'){
           this.pdata.formulation = event.target.value;
+        } else if(key === 'pack'){
+          this.pack = event.target.value;
         } 
+        let formattedTitle = (this.brand.trim().toUpperCase()||'') + ' ' + (this.pdata.formulation||'');
+        if(this.form.value.pack > 1)
+          formattedTitle += ` ${this.pack}'s`;
 
-        this.form.controls['title'].setValue(((this.brand.trim().toUpperCase()||'') + ' ' + (this.pdata.formulation||'')))
+        this.form.controls['title'].setValue(formattedTitle);
       }
   
-      isPluralPacking(count:number,formulation:string){
-        if(formulation === 'TAB' || formulation === 'CAP') {
-          return count !== undefined ? count + "'s" : '';
-        }
-        return "";
-      }
+      // isPluralPacking(count:number,formulation:string){
+      //   if(formulation === 'TAB' || formulation === 'CAP') {
+      //     return count !== undefined ? count + "'s" : '';
+      //   }
+      //   return "";
+      // }
 
       onRemove(id:any) {
         this.service.remove(id);

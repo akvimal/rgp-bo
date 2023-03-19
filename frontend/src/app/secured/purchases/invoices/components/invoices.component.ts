@@ -1,6 +1,5 @@
 import { Component } from "@angular/core";
 import { InvoiceService } from "../invoices.service";
-import { Invoice } from "../invoice.model";
 
 @Component({
     selector: 'app2-invoices',
@@ -9,6 +8,8 @@ import { Invoice } from "../invoice.model";
 export class InvoicesComponent {
 
     invoices:any = [];
+    displayError:boolean = false;
+    errorMessage:string = '';
     
     constructor(private service:InvoiceService){}
 
@@ -24,17 +25,19 @@ export class InvoicesComponent {
       });
     }
 
-
     delete(id:any) {
       this.service.remove(id).subscribe((data:any) => { 
         if(data.status && data.status === 'ERROR'){
-          console.log('ERROR:',data.message);
-          
+          this.displayError = true;
+          this.errorMessage = `Items sold, unable to delete`;
         }
         else
           this.fetchInvoices() 
       });
     }
-
+    closeDeleteWarn(){
+      this.displayError = false;
+      this.errorMessage = '';
+    }
    
 }

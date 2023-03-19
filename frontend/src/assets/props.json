@@ -2,18 +2,6 @@
   "category": "Drug",
   "props":[
     {
-      "id": "generic",
-      "label": "Generic",
-      "type": "CHECK",
-      "default": true
-    },
-    {
-      "id": "chronic",
-      "label": "Chronic",
-      "type": "CHECK",
-      "default": true
-    },
-    {
       "id": "composition",
       "label": "Composition"
     },
@@ -64,10 +52,6 @@
         }
       ]
     },{
-      "id": "packing",
-      "label": "Packing",
-      "default": 1
-    },{
       "id": "schedule",
       "label": "Schedule",
       "type": "SINGLE-SELECT",
@@ -91,6 +75,16 @@
           "value": "H1 Anti TB"
         }
       ]
+    },
+    {
+      "id": "generic",
+      "label": "Generic",
+      "type": "CHECK"
+    },
+    {
+      "id": "chronic",
+      "label": "Chronic",
+      "type": "CHECK"
     }
   ]
 },{
@@ -117,10 +111,6 @@
           "value": "OTR"
         }
       ]
-    },{
-      "id": "packing",
-      "label": "Packing",
-      "default": 1
     }
   ]
 },{
@@ -155,10 +145,6 @@
           "value": "OTR"
         }
       ]
-    },{
-      "id": "packing",
-      "label": "Packing",
-      "default": 1
     }
   ]
 }]

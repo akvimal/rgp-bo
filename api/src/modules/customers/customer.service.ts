@@ -1,13 +1,14 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
+import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { Customer } from "src/entities/customer.entity";
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 
 @Injectable()
 export class CustomerService {
 
-    constructor(@InjectRepository(Customer) private readonly customerRepository: Repository<Customer>) { }
+    constructor(@InjectRepository(Customer) private readonly customerRepository: Repository<Customer>,
+    @InjectEntityManager() private manager: EntityManager) { }
 
     async save(createCustomerDto: CreateCustomerDto) {
         return this.customerRepository.save(createCustomerDto);
@@ -17,8 +18,14 @@ export class CustomerService {
         return this.customerRepository.createQueryBuilder('c')
             .where('c.active = :flag', { flag: true }).getMany();
     }
+    
     async findById(id:string) {
         return this.customerRepository.findOne(id);
+    }
+
+    async findSaleData() {
+        const query = `select * from customer_sale_view`;
+        return await this.manager.query(query);
     }
 
     async update(id:any, values:any){

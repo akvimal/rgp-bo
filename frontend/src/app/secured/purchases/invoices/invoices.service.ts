@@ -44,6 +44,10 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchaseitems/${id}`);
     }
 
+    findItemsByProduct(productid:any){
+        return this.http.get(`${this.apiurl}/purchaseitems/product/${productid}`);
+    }
+
     findItemSalePrice(productid:any,batch:any){
         return this.http.post(`${this.apiurl}/purchaseitems/saleprice`,{productid,batch});
     }

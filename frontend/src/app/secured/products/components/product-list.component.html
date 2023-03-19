@@ -49,11 +49,11 @@
             <th pSortableColumn="pack">Pack 
                 <p-sortIcon field="pack"></p-sortIcon>
             </th>
-            <th pSortableColumn="brand">Brand 
+            <!-- <th pSortableColumn="brand">Brand 
                 <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
                 <p-sortIcon field="brand"></p-sortIcon>
-            </th>
-            <th pSortableColumn="mfr">Manufacturer
+            </th> -->
+            <th pSortableColumn="mfr">MFR/Dist
                 <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
                 <p-sortIcon field="mfr"></p-sortIcon>
             </th>
@@ -73,8 +73,8 @@
                     <li style="list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>
                 </ul>
             </td>
-            <td>{{product.pack}}</td>
-            <td>{{product.brand}}</td>
+            <td style="text-align: center;">{{product.pack}}</td>
+            <!-- <td>{{product.brand}}</td> -->
             <td>{{product.mfr}}</td>
             <td style="text-align: center;">
                 <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">

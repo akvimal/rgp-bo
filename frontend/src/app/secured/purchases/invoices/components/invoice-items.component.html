@@ -17,20 +17,20 @@
         <a *ngIf="invoice.status === 'NEW'" [routerLink]="['../../edit',invoice.id]">Edit</a>
     </div>
 </div>
-<div class="card" *ngIf="invoice.status === 'NEW'">
+<div class="card p-0" *ngIf="invoice.status === 'NEW'">
     <div class="card-body">
             <app-invoice-item-form [invoiceid]="invoice.id" (added)="fetchItems($event)"></app-invoice-item-form>
         </div>
     </div>
     <div class="card">
         <div class="card-body">
-        <div class="row mt-3">
+        <div class="row">
             <div class="col-lg-12">
                 <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
-    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-    [rowsPerPageOptions]="[10,25,50]">
-    <ng-template pTemplate="header">
+                    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+                    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+                    [rowsPerPageOptions]="[10,25,50]">
+                <ng-template pTemplate="header">
                 <!-- <table class="table table-bordered">
                     <thead> -->
                         <tr>
@@ -64,7 +64,7 @@
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
                             <td>{{i.expdate | date: 'MMM-yy'}}</td>
-                            <td style="text-align: right;">{{i.pack}}</td>
+                            <td style="text-align: right;">{{i.product.pack}}</td>
                             <td style="text-align: right;">{{i.qty}}</td>
                             <td style="text-align: right;">{{i.mrpcost}}</td>
                             <td style="text-align: right;">{{i.ptrvalue}}</td>
@@ -87,10 +87,11 @@
                     <!-- </tbody>
                 </table> -->
 
-    </ng-template>
-</p-table>
-Total ({{invoice.items?.length}} items) Value: {{grosstotal | number:'0.0-0'}} | Tax: {{taxtotal | number:'0.0-0'}}  | Invoice: {{nettotal | number:'0.0-0'}} 
-                            
+                </ng-template>
+            </p-table>
+            </div>
+            <div class="col-lg-12">
+                Total ({{invoice.items?.length}} items) Value: {{grosstotal | number:'0.0-0'}} | Tax: {{taxtotal | number:'0.0-0'}}  | Invoice: {{nettotal | number:'0.0-0'}} 
             </div>
         </div>
 
@@ -131,7 +132,7 @@ Total ({{invoice.items?.length}} items) Value: {{grosstotal | number:'0.0-0'}} |
                 <h5>Payment Info</h5>
                 <ul>
                     <li>Date: {{invoice.paydate}}</li>
-                    <li>Mode: {{invoice.paydate}}</li>
+                    <li>Mode: {{invoice.paymode}}</li>
                     <li>Amount: {{invoice.payamount}}</li>
                     <li>Ref #: {{invoice.payrefno}}</li>
                     <li>Comments: {{invoice.paycomments}}</li>

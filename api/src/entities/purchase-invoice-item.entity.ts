@@ -57,8 +57,6 @@ import { SaleItem } from "./sale-item.entity";
     })
     saleprice: number | null;
   
-    @Column("integer", { name: "pack" })
-    pack: number;
     @Column("integer", { name: "qty" })
     qty: number;
   

@@ -19,6 +19,24 @@ export class DashboardComponent {
         this.fetch()
     }
     
+    view(){
+        this.fetch()
+    }
+
+    fetch(){
+        this.saleService.getSaleData({fromdate:this.fromdate,freq:this.freq,count:this.count})
+        .subscribe((data:any) => {
+            this.saleData = data.map((dt:any) => {
+                const obj = {
+                    name:this.freq==='daily'?this.getDateMonth(dt.date):this.getMonthYear(dt.date),
+                    value:dt.sale||0
+                }
+                
+                return obj
+            })
+        })
+    }
+
     getFormatDate(dt:Date){
         let mon = dt.getMonth()+1;
         let dat = dt.getDate();
@@ -26,16 +44,61 @@ export class DashboardComponent {
         + '-' + (dat < 10 ? ('0'+dat) : dat);
     }
 
-    view(){
-        this.fetch()
+    getMonthYear(dtstr:string){
+        const dt = new Date(dtstr+'-01');
+        let mon = dt.getMonth()+1;
+        return this.parseMonthText(mon) + '-' + dt.getFullYear()%2000;
     }
 
-    fetch(){
-        this.saleService.getSaleData({fromdate:this.fromdate,freq:this.freq,count:this.count}).subscribe((data:any) => {
-            this.saleData = data.map((dt:any) => {
-                return {name:dt.date,value:dt.sale||0}
-            })
-        })
+    getDateMonth(dtstr:string){
+        const dt = new Date(dtstr);
+        let mon = dt.getMonth()+1;
+        return dt.getDate() +'-'+this.parseMonthText(mon);
+    }
+    parseMonthText(mon:number){
+        let text = ''
+        switch (mon) {
+            case 1:
+                text = 'Jan'
+                break;
+            case 2:
+                text = 'Feb'
+                break;
+            case 3:
+                text = 'Mar'
+                break;
+            case 4:
+                text = 'Apr'
+                break;
+            case 5:
+                text = 'May'
+                break;
+            case 6:
+                text = 'Jun'
+                break;
+            case 7:
+                text = 'Jul'
+                break;
+            case 8:
+                text = 'Aug'
+                break;
+            case 9:
+                text = 'Sep'
+                break;
+            case 10:
+                text = 'Oct'
+                break;
+            case 11:
+                text = 'Nov'
+                break;
+            case 12:
+                text = 'Dec'
+                break;
+                        
+            default:
+                break;
+        }
+        return text;
     }
 
 }

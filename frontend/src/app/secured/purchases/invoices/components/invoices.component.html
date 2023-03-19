@@ -13,15 +13,15 @@
     <ng-template pTemplate="header">
     <tr>
       <!-- <th  pSortableColumn="category">ID</th> -->
-      <th pSortableColumn="invoice_no">Invoice No.
+      <th pSortableColumn="invoice_no">ID
         <p-sortIcon field="invoice_no"></p-sortIcon>
         <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
       </th>
-      <th pSortableColumn="invoice_date">Invoice Date
+      <th pSortableColumn="invoice_date">Date
         <p-sortIcon field="invoice_date"></p-sortIcon>
         <p-columnFilter type="date" field="invoice_date" display="menu"></p-columnFilter>
       </th>
-      <th pSortableColumn="business_name">Vendor Name
+      <th pSortableColumn="business_name">Vendor
         <p-sortIcon field="business_name"></p-sortIcon>
         <p-columnFilter type="text" field="business_name" display="menu"></p-columnFilter>
       </th>
@@ -45,11 +45,11 @@
       <!-- <td>{{p.id}}</td> -->
       <tr>
       <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
-      <td>{{p.invoice_date | date : 'dd-MMM'}}</td>
+      <td style="text-align: center;">{{p.invoice_date | date : 'dd-MMM'}}</td>
       <td>{{p.business_name}}</td>
-      <td>{{p.status}}</td>
-      <td>{{p.items}}</td>
-      <td style="text-align:right">{{p.total | number:'0.0-9'}}</td>
+      <td style="text-align: center;">{{p.status}}</td>
+      <td style="text-align: center;">{{p.items}}</td>
+      <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
       <!-- <td>
         <span *ngIf="p.status === 'NEW'">
       <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">
@@ -68,3 +68,7 @@
 </table> -->
 </ng-template>
 </p-table>
+<p-dialog [header]="'Warning'" (onHide)="closeDeleteWarn()"
+[(visible)]="displayError" [modal]="true">
+    ERROR: {{errorMessage}}
+</p-dialog>

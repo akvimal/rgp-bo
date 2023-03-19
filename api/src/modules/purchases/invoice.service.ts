@@ -87,7 +87,7 @@ export class PurchaseInvoiceService {
       .execute();
     }
 
-    async findItemById(id:string){
+    async findItemById(id:number){
         return this.purchaseInvoiceItemRepository.createQueryBuilder('item')
         .leftJoinAndSelect("item.product", "product")
           .select(['item','product'])
@@ -102,13 +102,18 @@ export class PurchaseInvoiceService {
     }
 
     async findAllItems(criteria:any){
-        return this.purchaseInvoiceItemRepository.createQueryBuilder('item')
-        .innerJoinAndSelect("item.product", "product")
-        .select(['item','product'])
-        .where("status = :status",{status:criteria.status||'NEW'})
-        .getMany();
+      return this.purchaseInvoiceItemRepository.createQueryBuilder('item')
+      .innerJoinAndSelect("item.product", "product")
+      .select(['item','product'])
+      .where("status = :status",{status:criteria.status||'NEW'})
+      .getMany();
     }
 
+   async findItemsByProduct(id:number){
+      return this.purchaseInvoiceItemRepository.createQueryBuilder('i')
+      .where('i.productid = :id', { id }).orderBy('i.createdon','DESC')
+      .getMany();
+    }
       async update(ids:number[], values:any, userid:number){
         return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
         .update(PurchaseInvoice, {...values, updatedby: userid})

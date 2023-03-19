@@ -3,25 +3,23 @@
     <div class="col-12">
       Frequency: <select [(ngModel)]="freq">
         <option value="daily">Daily</option>
-        <option value="week">Weekly</option>
         <option value="month">Monthly</option>
-        <option value="quarter">Quarterly</option>
       </select>
       From: <input type="date" [(ngModel)]="fromdate" (input)="view()">
       Range: <input type="number" [(ngModel)]="count" (input)="view()">
       <button (click)="view()">View</button>
         <ngx-charts-bar-vertical 
-      [view]="[1000,400]"
-      [results]="saleData"
-      [xAxisLabel]="'Date'"
-      [legendTitle]="'Daily Sale Chart'"
-      [yAxisLabel]="'Sale'"
-      [legend]="false"
-      [showXAxisLabel]="true"
-      [showYAxisLabel]="true"
-      [xAxis]="true"
-      [yAxis]="true"
-      [gradient]="false">
+          [view]="[800,350]"
+          [results]="saleData"
+          [xAxisLabel]="'Period'"
+          [legendTitle]="'Sale Trend'"
+          [yAxisLabel]="'Sale'"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="true"
+          [xAxis]="true"
+          [yAxis]="true"
+          [gradient]="false">
       </ngx-charts-bar-vertical>
     </div>
   </div>

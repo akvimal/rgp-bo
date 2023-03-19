@@ -66,7 +66,6 @@ export class SaleService {
         return qb.getMany();
     }
 
-
     async findAllItems(query:any,userid:any){        
        const qb = await this.saleItemRepository.createQueryBuilder("item")
                     .leftJoinAndSelect("item.sale", "sale")
@@ -102,22 +101,32 @@ export class SaleService {
     }
 
     async getSalesByFreq(fromdate:string,freq:string,count:number){
-        console.log(fromdate);
-        const dt = new Date(fromdate)
-        const date = new Date(dt.setDate(dt.getDate()+1));
-        // const fromdtstr = this.getFormatDate(date);
-        const other = date.setDate(date.getDate()-count);
-        const todate = this.getFormatDate(new Date(other));
-        
-        let freqstr = freq === 'daily' ? '1 day' : '1 month'
+   
+        const dt = new Date(fromdate);
+        let query = ''
 
-        
-        const data = await this.manager.query(`select to_char(x.dt,'yyyy-mm-dd') as date, 
-        sum(sv.sale_total) as sale
-        from (select date(generate_series('${todate}'::date,'${fromdate}','${freqstr}')) as dt)x 
-        left join sale_view sv on x.dt = sv.sale_date 
-        group by x.dt order by x.dt`);
-        return data;
+        if(freq === 'daily'){
+            const date = new Date(dt.setDate(dt.getDate()+1));
+            const other = date.setDate(date.getDate()-count);
+            const todate = this.getFormatDate(new Date(other));
+            query = `select to_char(x.dt,'yyyy-mm-dd') as date, 
+            sum(sv.sale_total) as sale
+            from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
+            left join sale_view sv on x.dt = sv.sale_date 
+            group by x.dt order by x.dt`
+        }
+        else {
+            const date = new Date();
+            const other = date.setMonth((date.getMonth()-1)-count);
+            const todate = this.getFormatDate(new Date(other));
+            query = `select x.d2 as date, 
+            sum(sv.sale_total) as sale
+            from (select months('${fromdate}','${todate}') as d2) x
+            left join sale_view sv on x.d2 = date_part('year',sv.sale_date)||'-'||lpad(date_part('month',sv.sale_date)::text,2,'0')
+            group by x.d2
+            order by x.d2`
+        }
+        return await this.manager.query(query);
     }
 
     async findAllByCustomerId(custid,limit){
