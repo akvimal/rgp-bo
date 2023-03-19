@@ -1,0 +1,1 @@
+create sequence grn_seq;
