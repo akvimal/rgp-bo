@@ -1,0 +1,70 @@
+<app-sale-header></app-sale-header>
+
+Sale Reminder
+
+
+<p-table #dt1 [value]="customers" [resizableColumns]="true" columnResizeMode="expand" 
+[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    [rowsPerPageOptions]="[10,25,50]">
+    <!-- <ng-template pTemplate="caption">
+        <div class="flex">
+            <button pButton label="Clear" class="p-button-outlined" icon="pi pi-filter-slash" (click)="clear(dt1)"></button>
+            <span class="p-input-icon-left ml-auto">
+                <i class="pi pi-search"></i>
+                <input pInputText type="text" 
+                (input)="applyFilterGlobal($event, 'contains')"
+                placeholder="Search keyword" />
+            </span>
+        </div>
+    </ng-template> -->
+    <ng-template pTemplate="header">
+        <tr>
+            <th pSortableColumn="custname">Name 
+                <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
+                <p-sortIcon field="custname"></p-sortIcon>
+            </th>
+            <th pSortableColumn="custmobile">Mobile 
+                <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
+                <p-sortIcon field="custmobile"></p-sortIcon>
+            </th>
+            <!-- <th pSortableColumn="code">Code 
+                <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
+                <p-sortIcon field="code"></p-sortIcon>
+            </th>   -->
+            
+            <th pSortableColumn="agewithus">Period
+                <p-columnFilter type="numeric" field="agewithus" display="menu"></p-columnFilter>
+                <p-sortIcon field="agewithus"></p-sortIcon>
+            </th>
+            <th pSortableColumn="monthsago">Last Seen
+                <p-columnFilter type="numeric" field="monthsago" display="menu"></p-columnFilter>
+                <p-sortIcon field="monthsago"></p-sortIcon>
+            </th>
+            <th pSortableColumn="lastbilldt">Last Bill
+                <p-columnFilter type="date" field="lastbilldt" display="menu"></p-columnFilter>
+                <p-sortIcon field="lastbilldt"></p-sortIcon>
+            </th>
+            <th>Actions</th>
+        </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-customer>
+        <tr>
+            <td>{{customer.custname}}</td>
+            <!-- <td>{{product.code}}</td> -->
+            <td>{{customer.custmobile}}</td>
+            <td>{{customer.agewithus}}</td>
+            <td>{{customer.monthsago}}</td>
+            <td>{{customer.lastbilldt | date: 'dd-MMM'}}</td>
+            
+            <td style="text-align: center;">
+                <!-- <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
+                    <i class="bi bi-pencil-square text-primary"></i>
+                </a>&nbsp;
+                <a *isAuth="'products.delete'" (click)="delete(product.id)">
+                    <i class="bi bi-trash text-danger"></i>
+                </a> -->
+            </td>
+        </tr>
+    </ng-template>
+</p-table>

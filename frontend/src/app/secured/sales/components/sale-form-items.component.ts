@@ -26,7 +26,7 @@ export class SaleFormItemsComponent{
   @Output() recalculateTotal = new EventEmitter();
 
   total:number = 0;
-  newSaleItem = {purchaseitemid:'',price:'',qty:''};
+  newSaleItem = {purchaseitemid:'',price:'',box:'',boxbal:''};
 
   customerTotalOrders = 0;
   customerTotalSaleAmount = 0;
@@ -45,7 +45,6 @@ export class SaleFormItemsComponent{
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    
     if(changes['items']){
       this.refreshTotal(changes['items'].currentValue);
       this.recalculateTotal.emit(true);
@@ -113,8 +112,6 @@ export class SaleFormItemsComponent{
   }
     
   calculateTotal(qty:number,price:number,tax:number):number{
-    // let total = qty * ((price||0) * (1 + ((tax||0) / 100)));
-
     let total = qty * (price||0);
     return isNaN(total) ? 0 : +total.toFixed(2);
   }
@@ -148,43 +145,43 @@ export class SaleFormItemsComponent{
 
     this.total = Math.round(this.total - old + item.total);
     let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
-    
+        
     if(newTotal < 0)
       newTotal = 0;
 
-    this.total = newTotal;
+    this.total = Math.round(newTotal);
 
     this.recalculateTotal.emit(this.offer);
   }
 
-  calculate(itemid:any,event:any){      
-    const item = this.items.find((i:any) => i.itemid === itemid);
-    item.qty = event.target.value;
+  // calculate(itemid:any,event:any){      
+  //   const item = this.items.find((i:any) => i.itemid === itemid);
+  //   item.qty = event.target.value;
         
-    if(+event.target.value > +item.maxqty){
-      item.qty = item.maxqty;
-      event.target.value = item.maxqty; //prevent entering value over max qty
-    }
+  //   if(+event.target.value > +item.maxqty){
+  //     item.qty = item.maxqty;
+  //     event.target.value = item.maxqty; //prevent entering value over max qty
+  //   }
         
-    const old = item.total || 0; //previous total
-    item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
+  //   const old = item.total || 0; //previous total
+  //   item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
 
-    this.total = Math.round(this.total - old + item.total);
-    let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
+  //   this.total = Math.round(this.total - old + item.total);
+  //   let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
     
-    if(newTotal < 0) newTotal = 0;
-    this.total = newTotal;
+  //   if(newTotal < 0) newTotal = 0;
+  //   this.total = newTotal;
     
-    this.recalculateTotal.emit(this.offer);
-  }
+  //   this.recalculateTotal.emit(this.offer);
+  // }
 
   getItemsTotal(){
     let total = 0;
     this.items.forEach((i:any) => {
-      if(i.itemid !== ''){
+      if(i.itemid > 0){
         total += i.total;
       }
-    })
+    });
     return total;
   }
   
@@ -225,7 +222,12 @@ export class SaleFormItemsComponent{
         }
 
         let totalbalqty = availqty - totalinputqty;
-        item['balqty'] = this.getBalQty(totalbalqty,item.pack);
+        if(totalbalqty < 0) {
+          item['balqty'] = 0;  
+        }
+        else {
+          item['balqty'] = this.getBalQty(totalbalqty,item.pack);
+        }
         
         this.onItemQtyChange(itemid, (item.box * pack) + item.boxbal);
       }

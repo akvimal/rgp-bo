@@ -23,7 +23,7 @@ export class CustomerService {
         return this.customerRepository.findOne(id);
     }
 
-    async findSaleData() {
+    async findSaleData(criteria:any) {
         const query = `select * from customer_sale_view`;
         return await this.manager.query(query);
     }

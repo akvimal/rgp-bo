@@ -14,7 +14,7 @@
     <tbody>
         <tr *ngFor="let item of items">
             <td width="3%">
-                <a *ngIf="item.itemid !== ''" (click)="removeItem(item.id)">
+                <a *ngIf="item.itemid > 0" (click)="removeItem(item.id)">
                 <i class="bi bi-trash text-danger"></i>
                 </a>
             </td>
@@ -27,7 +27,7 @@
             <td width="15%">
                 {{item.batch}} <span *ngIf="item.expdate">/</span> {{item.expdate | date : 'MMM-yy'}}
             </td>
-            <td width="7%" style="text-align: right;">{{(item.mrp_cost*item.pack)||''}}</td>
+            <td width="7%" style="text-align: right;">{{(item.mrp_cost * item.pack||0).toFixed(2)||''}}</td>
             <td width="25%">
                 <div class="input-group mb-3" *ngIf="item.qtyready">
                     <input type="number" min="0" name="box" class="form-control"
@@ -44,9 +44,9 @@
                     </div>
                 </div>
             </td>
-            <td width="5%" style="text-align: right;">{{(item.price*item.pack)||''}}</td>
+            <td width="5%" style="text-align: right;">{{(item.price * item.pack||0).toFixed(2)||''}}</td>
             <!-- <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td> -->
-            <td width="10%" style="text-align: right;">{{item.total}}</td>
+            <td width="10%" style="text-align: right;">{{(item.total||0).toFixed(2)}}</td>
         </tr>
         <tr>
             <td></td>

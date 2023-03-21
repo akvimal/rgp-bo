@@ -27,12 +27,10 @@ export class DashboardComponent {
         this.saleService.getSaleData({fromdate:this.fromdate,freq:this.freq,count:this.count})
         .subscribe((data:any) => {
             this.saleData = data.map((dt:any) => {
-                const obj = {
+                return {
                     name:this.freq==='daily'?this.getDateMonth(dt.date):this.getMonthYear(dt.date),
-                    value:dt.sale||0
+                    value:Math.round(dt.sale)||0
                 }
-                
-                return obj
             })
         })
     }

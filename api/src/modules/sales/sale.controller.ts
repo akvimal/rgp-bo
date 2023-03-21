@@ -100,7 +100,7 @@ export class SaleController {
         });
       })      
       
-      return sales
+      return sales;
     }
 
     @Get('/:id/items')

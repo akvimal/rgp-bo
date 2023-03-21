@@ -3,6 +3,7 @@ import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { CalculatorService } from "../../calculator.service";
+import { SaleItem } from "../sale-item.model";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
 
@@ -26,9 +27,9 @@ export class SaleFormComponent {
     filteredCustomers: any[] = [];
     //newCustomer:boolean = true;
     allowCustomerSelect:boolean = false;
-    newSaleItem = {id:0,itemid:'',price:'',qty:''}
+    newSaleItem = {id:0,itemid:0,price:0,qty:0,qtyready:false}
 
-    previousSaleItems:any[] = []
+    prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
 
     salePropSchema:any[] = []
@@ -65,8 +66,6 @@ export class SaleFormComponent {
   
             this.sale.items = data.items.map((i:any) => {
               const pack = i.purchaseitem.product.pack;
-              console.log('items: ',i);
-              
               return {
                 id:i.id,
                 itemid:i.purchaseitem.id,
@@ -83,7 +82,7 @@ export class SaleFormComponent {
                 expdate:i.purchaseitem.expdate,
                 maxqty: i.maxqty,
                 more_props: i.purchaseitem.product.props,
-                total: this.calculateTotal(i.qty||'',i.price||'',i.purchaseitem.taxpcnt||'')
+                total: this.calculateTotal(i.qty,i.price,i.purchaseitem.taxpcnt)
               }
             });
   
@@ -134,21 +133,22 @@ export class SaleFormComponent {
 
     addNewItem(){
       const newItemFound = this.sale.items?.find((i:any) => (i.itemid == 0 || i.itemid == ''));
-      !newItemFound && this.sale.items?.push({...this.newSaleItem, id:Math.round((Math.random()*1000))});  
+      !newItemFound && this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
     }
 
-    calculateTotal(qty:string,price:string,tax:string){
-      const total = +qty * ((+price||0) * (1 + ((+tax||0) / 100)));
+    calculateTotal(qty:number,price:number,tax:number) {
+      const total = qty * (price * (1 + (tax / 100)));
       return isNaN(total) ? 0 : +total.toFixed(2);
     }
 
     recalculateTotal(offer:any){
       this.total = 0;
       let mrptotal = 0;
-      this.sale.items?.forEach((i:any) => {
-        if(i.itemid != '') {
+      this.sale.items?.forEach((i:any) => {        
+        if(i.itemid > 0) {
           this.total += i.total;
-           mrptotal += ((+i.mrp_cost||0)*i.qty)
+          const qty = (i.box * i.pack) + i.boxbal;
+          mrptotal += ((+i.mrp_cost||0)*qty)
         }
       });
 
@@ -156,13 +156,12 @@ export class SaleFormComponent {
       this.sale.mrptotal = mrptotal;
       
       this.sale.saving = this.calc.getSaving(mrptotal,Math.round(this.total));
-      
+  
       this.offer = offer;
       this.addNewItem();
     }
 
     selectCustomer(customer:any){
-      
       const {id,name,mobile,email,address} = customer;
       if(customer.existing){
         this.sale.customer = {id,name,mobile,email,address};
@@ -237,7 +236,6 @@ export class SaleFormComponent {
       }
       else 
         total = newTotal;
-      
     }
     
     this.service.save({...this.sale, total:Math.round(total), disccode:(this.offer?.code), discamount:discamt, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
@@ -301,26 +299,41 @@ export class SaleFormComponent {
     this.fetchCustomerPrevSales && this.service.getSalesByCustomer(this.sale.customer.id).subscribe((prevSale:any) => {
       
       if(!prevSale.status) {
-        this.previousSaleItems = [];
+        this.prevCustSales = [];
 
         prevSale.forEach((ps:any) => {
           const items = ps.items.map((i:any) => {
+
+            const box = Math.trunc(i.qty / i.purchaseitem.product.pack);
+            const boxbal = i.qty % i.purchaseitem.product.pack;
+            
+            let totalbalqty = i.maxqty - i.qty;
+            let balqty = Math.trunc(totalbalqty / i.purchaseitem.product.pack) + '.' + (totalbalqty % i.purchaseitem.product.pack);
+
+            if(totalbalqty < 0) {
+              balqty = '0';
+            }
+
             return {
               id:i.id,
               itemid:i.purchaseitem.id,
               taxpcnt: i.purchaseitem.taxpcnt,
-              price: i.purchaseitem.saleprice,
+              price: (i.purchaseitem.saleprice/i.purchaseitem.product.pack),
               selected:addedItemsToSale?.includes(i.purchaseitem.id),
               maxqty:i.maxqty,
               qty:i.qty,
-              mrp_cost:i.purchaseitem.mrpcost,
+              pack:i.purchaseitem.product.pack,
+              box,
+              boxbal,
+              balqty,
+              mrp_cost:(i.purchaseitem.mrpcost/i.purchaseitem.product.pack),
               title:i.purchaseitem.product.title,
               more_props:i.purchaseitem.product.props,
               batch:i.purchaseitem.batch,
               expdate:i.purchaseitem.expdate};
           });
 
-          this.previousSaleItems.push({billdate:ps.billdate,total:ps.total,items});
+          this.prevCustSales.push({billdate:ps.billdate,total:ps.total,items});
         });
       }
     });
@@ -335,8 +348,8 @@ export class SaleFormComponent {
   }
 
   selectItem(itemid:any,event:any){
-    this.previousSaleItems.forEach(s => {
-      s.items.forEach((i:any) => {
+    this.prevCustSales.forEach((s:Sale) => {
+      s.items && s.items.forEach((i:any) => {
         if(i.id === itemid){
           i['selected'] = event.target.checked;
         }
@@ -345,8 +358,8 @@ export class SaleFormComponent {
   }
 
   copyItemSelected(){
-    return this.previousSaleItems.filter(p => {
-      return p.items.filter((i:any) => i.selected).length > 0
+    return this.prevCustSales.filter((s:Sale) => {
+      return s.items && s.items.filter((i:any) => i.selected).length > 0
     }).length > 0
   }
 
@@ -358,15 +371,20 @@ export class SaleFormComponent {
 
   copySelectedItem(){
     const arr:any[] = [];
-     this.previousSaleItems.forEach(s => {
-      s.items.forEach((i:any) => {
-        i.selected && arr.push(i)
+     this.prevCustSales.forEach((s:Sale) => {
+      s.items && s.items.forEach((i:any) => {
+        i.selected && arr.push(i);
       })
-     })
-
+     });
     this.sale.items = arr;
-    this.addNewItem()
+    this.addNewItem();
     this.displayPrevSalesCopy = false;
+  }
+
+  toggleAll(event:any){
+    this.prevCustSales[0].items?.forEach(i => {
+      i.selected = event.target.checked
+    });
   }
 
 }

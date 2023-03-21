@@ -1,3 +1,4 @@
+<app-sale-header></app-sale-header>
 <div class="card">
     <div class="card-body">
         <div class="row">
@@ -17,16 +18,18 @@
         </div>
            
         <ng-template #saleCustomer>
-            <div class="row">
+            <div class="row mt-2">
                 <div class="col-lg-3">Mobile: {{sale.customer?.mobile}}
-                   <div *ngIf="!sale.customer?.mobile.startsWith('000')">
-                    <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
-                        <a href="javascript:void(0)" (click)="showChangeCustomer('Edit')">
-                        <i class="bi bi-pencil text-primary"></i></a>
-                    </span>
-                        <a *ngIf="!isNewCustomer()" (click)="showPrevSalesCopy()">
-                            <i class="bi bi-files text-success"></i>
-                        </a>
+                    <div *ngIf="!sale.customer?.mobile.startsWith('000')">
+                        <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
+                            <a (click)="showChangeCustomer('Edit')">
+                            <i class="bi bi-pencil text-primary"></i></a>
+                        </span>
+                        <span class="ml-2">
+                            <a *ngIf="!isNewCustomer()" (click)="showPrevSalesCopy()">
+                                <i class="bi bi-files text-success"></i>
+                            </a>
+                        </span>
                     </div>
                 </div>
                 <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Name: {{sale.customer?.name}}</div>
@@ -83,17 +86,22 @@
     </form>
 </p-dialog>
 
+<!-- Customer Previous Sales -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
         [(visible)]="displayPrevSalesCopy" [modal]="true">
-    <div *ngFor="let s of previousSaleItems">
-        {{s.billdate | date : 'dd/MM'}} | ${{s.total}}
+    <div *ngFor="let s of prevCustSales">
+        {{s.billdate | date : 'dd-MMM'}} | <i class="bi bi-currency-rupee" style="padding:0"></i>{{s.total}}
             <ul class="list-group mt-2">
+                <li class="list-group-item"><input type="checkbox" (change)="toggleAll($event)">
+                    <span class="p-2 text-primary">All</span>
+                </li>
                 <li class="list-group-item" *ngFor="let i of s.items">
-                    <input type="checkbox" (change)="selectItem(i.id,$event)" [checked]="i.selected">&nbsp;
-                    {{i.title}} ({{i.qty}})</li>
+                    <input type="checkbox" (change)="selectItem(i.id,$event)" [checked]="i.selected">
+                    <span class="p-2">{{i.title}} ({{i.qty}})</span></li>
             </ul>
     </div>
-    <button type="button" class="btn btn-primary mt-2 text-center" [disabled]="!copyItemSelected()" (click)="copySelectedItem()">Copy</button>
+    <button type="button" class="btn btn-primary mt-2 text-center" [disabled]="!copyItemSelected()" 
+            (click)="copySelectedItem()">Copy</button>
 </p-dialog>
 
 <p-dialog [header]="(this.sale?.customer?.name || 'New Customer') + ' (' + (this.sale?.customer?.mobile || '') + ')'" 
@@ -147,5 +155,4 @@
                 (click)="saveCustomerInfo('COMPLETE')">Save & Complete</button>
             </div>
         </div>
-    
 </p-dialog>

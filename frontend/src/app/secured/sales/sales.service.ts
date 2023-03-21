@@ -62,5 +62,6 @@ export class SaleService {
 
     getSaleData(criteria:any){
         return this.http.post(`${this.apiurl}/data`,criteria);
-    }    
+    }   
+     
 }

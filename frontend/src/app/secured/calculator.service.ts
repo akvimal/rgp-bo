@@ -28,6 +28,7 @@ export class CalculatorService {
             mon = arr[0] + 1;
             yr = arr[1];
         }
+        
         return yr+'-'+(mon < 10 ? '0'+mon : ''+mon)+'-01';;
     }
 

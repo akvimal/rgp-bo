@@ -22,9 +22,9 @@ export class CustomerController {
       return this.customerService.findAll();
     }
 
-    @Get('/sale')
-    async findSaleData() {
-      return this.customerService.findSaleData();
+    @Post('/sale')
+    async findSaleData(@Body() criteria: any) {
+      return this.customerService.findSaleData(criteria);
     }
 
     @Get(':id')

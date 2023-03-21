@@ -11,10 +11,14 @@ export interface SaleItem {
     taxpcnt?:string,
     mrp?:string,
     pack?:number,
-    price?:string,
+    price?:number,
     status?:string,
     comments?:string,
-    qty?:string,
+    qty?:number,
     total?: number,
-    maxqty?:number
+    maxqty?:number,
+    box?:number,
+    boxbal?:number,
+    selected?:boolean,
+    qtyready?:boolean
 }

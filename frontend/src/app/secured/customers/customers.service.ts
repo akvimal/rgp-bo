@@ -31,4 +31,8 @@ export class CustomersService {
     findAll(){
         return this.http.get(`${this.apiurl}`);
     }
+
+    getSaleData(criteria:any){
+        return this.http.post(`${this.apiurl}/sale`,criteria);
+    }   
 }
