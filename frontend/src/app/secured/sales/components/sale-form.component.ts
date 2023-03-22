@@ -60,6 +60,7 @@ export class SaleFormComponent {
       if(saleId){
           this.service.find(saleId).subscribe((data:any) => {
             this.sale.id = data.id;
+            this.sale.consumeweeks = data.consumeweeks;
             this.sale.customer = data.customer;
             this.sale.billdate = data.billdate;
             this.sale.status = data.status;
@@ -172,10 +173,6 @@ export class SaleFormComponent {
       }
       this.fetchCustomerPrevSales = true;
     }
-
-  completeAllowed(){
-    return this.total > 0 && (this.sale.paymode != undefined && this.sale.paymode != '');
-  }
   
   doneEnterCustomer(event:any){
     const inputval = event.target.value;

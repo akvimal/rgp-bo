@@ -2,88 +2,107 @@
     <h1>Products</h1>
 </div>
 
-<a *isAuth="'products.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
-<div class="row mt-2">
-    <div class="col-md-2">
-        <label for="category">Category</label>
-        <select class="form-control" id="category" [(ngModel)]="category" (change)="selectCategory($event)">
-          <option value="">Select</option>
-          <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
-        </select>
+<div class="container">
+    <div class="row mt-2">
+        <div class="col-md-10 d-flex d-inline-flex">
+            <div>
+                <select class="form-control" id="category" [(ngModel)]="category" (change)="selectCategory($event)">
+                <option value="">Category</option>
+                <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex justify-content-end">
+            <div>
+                <a *isAuth="'products.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+            <div class="col-12">
+            <p-table #dt1 [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
+                [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+                [rowsPerPageOptions]="[10,25,50]">
+                <!-- <ng-template pTemplate="caption">
+                    <div class="flex">
+                        <button pButton label="Clear" class="p-button-outlined" icon="pi pi-filter-slash" (click)="clear(dt1)"></button>
+                        <span class="p-input-icon-left ml-auto">
+                            <i class="pi pi-search"></i>
+                            <input pInputText type="text" 
+                            (input)="applyFilterGlobal($event, 'contains')"
+                            placeholder="Search keyword" />
+                        </span>
+                    </div>
+                </ng-template> -->
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th pSortableColumn="id">ID 
+                            <p-sortIcon field="id"></p-sortIcon>
+                        </th>  
+                        <th pSortableColumn="category">Category 
+                            <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
+                            <p-sortIcon field="category"></p-sortIcon>
+                        </th>
+                        <!-- <th pSortableColumn="code">Code 
+                            <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
+                            <p-sortIcon field="code"></p-sortIcon>
+                        </th>   -->
+                        <th pSortableColumn="hsn">HSN
+                            <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
+                            <p-sortIcon field="hsn"></p-sortIcon>
+                        </th>
+                        <th pSortableColumn="title">Title 
+                            <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
+                            <p-sortIcon field="title"></p-sortIcon>
+                        </th>
+                        <th pSortableColumn="pack">Pack 
+                            <p-sortIcon field="pack"></p-sortIcon>
+                        </th>
+                        <!-- <th pSortableColumn="brand">Brand 
+                            <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
+                            <p-sortIcon field="brand"></p-sortIcon>
+                        </th> -->
+                        <th pSortableColumn="mfr">MFR
+                            <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
+                            <p-sortIcon field="mfr"></p-sortIcon>
+                        </th>
+                        <th pSortableColumn="createdon">Date 
+                            <p-sortIcon field="createdon"></p-sortIcon>
+                        </th>  
+                        <th>Actions</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-product>
+                    <tr>
+                        <td>{{product.id}}</td>
+                        <td>{{product.category}}</td>
+                        <!-- <td>{{product.code}}</td> -->
+                        <td>{{product.hsn}}</td>
+                        <td>
+                            <h6>{{product.title}}
+                                <a href="#" (click)="toggleProps(product,$event)">({{product.attrs.length}})</a>
+                            </h6>
+                            <ul [ngStyle]="{'display': product.showProps ? 'inline' : 'none','margin':0,'padding':0}">
+                                <li style="list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>
+                            </ul>
+                        </td>
+                        <td style="text-align: center;">{{product.pack}}</td>
+                        <!-- <td>{{product.brand}}</td> -->
+                        <td>{{product.mfr}}</td>
+                        <td>{{product.createdon | date : 'dd/MM/yy'}}</td>
+                        <td style="text-align: center;">
+                            <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
+                                <i class="bi bi-pencil-square text-primary"></i>
+                            </a>&nbsp;&nbsp;
+                            <a *isAuth="'products.delete'" (click)="delete(product.id)">
+                                <i class="bi bi-trash text-danger"></i>
+                            </a>
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
     </div>
 </div>
-
-<p-table #dt1 [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
-[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-    [rowsPerPageOptions]="[10,25,50]">
-    <!-- <ng-template pTemplate="caption">
-        <div class="flex">
-            <button pButton label="Clear" class="p-button-outlined" icon="pi pi-filter-slash" (click)="clear(dt1)"></button>
-            <span class="p-input-icon-left ml-auto">
-                <i class="pi pi-search"></i>
-                <input pInputText type="text" 
-                (input)="applyFilterGlobal($event, 'contains')"
-                placeholder="Search keyword" />
-            </span>
-        </div>
-    </ng-template> -->
-    <ng-template pTemplate="header">
-        <tr>
-            <th pSortableColumn="category">Category 
-                <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
-                <p-sortIcon field="category"></p-sortIcon>
-            </th>
-            <!-- <th pSortableColumn="code">Code 
-                <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
-                <p-sortIcon field="code"></p-sortIcon>
-            </th>   -->
-            <th pSortableColumn="hsn">HSN
-                <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
-                <p-sortIcon field="hsn"></p-sortIcon>
-            </th>
-            <th pSortableColumn="title">Title 
-                <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
-                <p-sortIcon field="title"></p-sortIcon>
-            </th>
-            <th pSortableColumn="pack">Pack 
-                <p-sortIcon field="pack"></p-sortIcon>
-            </th>
-            <!-- <th pSortableColumn="brand">Brand 
-                <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
-                <p-sortIcon field="brand"></p-sortIcon>
-            </th> -->
-            <th pSortableColumn="mfr">MFR/Dist
-                <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
-                <p-sortIcon field="mfr"></p-sortIcon>
-            </th>
-            <th>Actions</th>
-        </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-product>
-        <tr>
-            <td>{{product.category}}</td>
-            <!-- <td>{{product.code}}</td> -->
-            <td>{{product.hsn}}</td>
-            <td>
-                <h6>{{product.title}}
-                    <a href="#" (click)="toggleProps(product,$event)">({{product.attrs.length}})</a>
-                </h6>
-                <ul [ngStyle]="{'display': product.showProps ? 'inline' : 'none','margin':0,'padding':0}">
-                    <li style="list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>
-                </ul>
-            </td>
-            <td style="text-align: center;">{{product.pack}}</td>
-            <!-- <td>{{product.brand}}</td> -->
-            <td>{{product.mfr}}</td>
-            <td style="text-align: center;">
-                <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
-                    <i class="bi bi-pencil-square text-primary"></i>
-                </a>&nbsp;
-                <a *isAuth="'products.delete'" (click)="delete(product.id)">
-                    <i class="bi bi-trash text-danger"></i>
-                </a>
-            </td>
-        </tr>
-    </ng-template>
-</p-table>

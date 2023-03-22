@@ -29,7 +29,7 @@
             </td>
             <td width="7%" style="text-align: right;">{{(item.mrp_cost * item.pack||0).toFixed(2)||''}}</td>
             <td width="25%">
-                <div class="input-group mb-3" *ngIf="item.qtyready">
+                <div class="input-group mb-3"  *ngIf="item.itemid > 0">
                     <input type="number" min="0" name="box" class="form-control"
                     [value]="item.box == 0 ? '' : item.box" (input)="boxInputValidate($event,item.maxqty,item.pack,item.id)">
                     <input type="number" min="0" class="form-control" name="boxitem" 
@@ -50,40 +50,30 @@
         </tr>
         <tr>
             <td></td>
-            <td colspan="4">
-                <div class="row">
-                    <div class="col-md-3">
-                        <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
-                            <option>Select</option>
-                            <option *ngFor="let pm of paymodes" [value]="pm.key">{{pm.value}}</option>
-                        </select>
-                    </div>  
-                    <div class="col-md-9">
-                        <input *ngIf="sale.paymode === 'digital'" type="text" class="form-control" 
-                        [(ngModel)]="sale.payrefno" placeholder="Reference No">
-                        <div *ngIf="sale.paymode === 'cash'" style="font-size: larger;">
-                            Received <i class="bi bi-currency-rupee"></i> <input type="text" size="5" (input)="calcTender($event)">&nbsp;
-                            Balance <i class="bi bi-currency-rupee"></i> <input type="text" size="5" [value]="tender" [disabled]="true">
-                        </div>
-                    </div>
+            <td colspan="5">
+                <div class="d-flex justify-content-end">
+                <div>
+                <span>Discount</span>
+                </div>
+                <div>
+                <select [(ngModel)]="offer.code" class="form-control" (change)="selectOffer($event)">
+                    <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
+                </select>
+            </div>
                 </div>
             </td>
-            <td colspan="1">
-                <div class="d-flex flex-row-reverse">
-                    <select [(ngModel)]="offer.code" class="m-1" (change)="selectOffer($event)">
-                        <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
-                    </select>
-                    <!-- <label for="offer" class="m-1">Discount</label> -->
-                </div>
-            </td>
-            <td colspan="2">
-                <input type="number" [(ngModel)]="offer.amount" style="text-align:right"
+            <td>
+                <input type="number" class="form-control" [(ngModel)]="offer.amount" size="4"
                 (input)="applyDiscount()"
-                [disabled]="!offer.input"></td>
+                [disabled]="!offer.input">
+            </td>
         </tr>
         <tr>
-            <td></td>
-            <td colspan="5">
+            <td colspan="6">
+                <div class="row">
+                   
+                    <!-- <label for="offer" class="m-1">Discount</label> -->
+                    <div class="col-4 d-flex flex-row">
                 <span style="margin:0;padding:0">MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal | number:'1.0-0'}}</span>
                     
                 <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
@@ -92,7 +82,8 @@
                 <span *ngIf="sale.saving > 0">&nbsp;
                     <label for="saving"></label>
                    <strong>Saving:</strong> {{sale.saving}}%</span>
-
+                </div>
+                
                 <!-- <div class="row">
                     <div class="col-md-3">
                         <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
@@ -108,11 +99,30 @@
                             Balance <i class="bi bi-currency-rupee"></i> <input type="text" size="5" [value]="tender" [disabled]="true">
                         </div>
                     </div>
-                </div> -->
+                </div> -->                    
+            
+                <div class="col-2 d-flex flex-row">
+                    <input type="number" class="form-control" size="5" (input)="calcTender($event)" placeholder="Cash">
+                    <!-- <span>{{tender}}</span> -->
+                    <div class="input-group-append">
+                        <span class="input-group-text">{{tender}}</span>
+                    </div>
+                </div>
+                <div class="col-3 d-flex flex-row">
+                    <select name="paymode" class="form-select" [(ngModel)]="sale.paymode">
+                            <option *ngFor="let pm of paymodes" [value]="pm.key">{{pm.value}}</option>
+                        </select>
+                        <input type="text" class="form-control" 
+                        [(ngModel)]="sale.payrefno" placeholder="Ref #">
+                </div>
+                <input type="text" class="form-control" 
+                    [(ngModel)]="sale.consumeweeks" placeholder="Weeks">
+                </div>
             </td>
-            <td  colspan="2" style="text-align: right; background-color: royalblue;">
+            <td style="text-align: right; background-color: royalblue;">
                 <span style="font-size: larger;color: white;">
-                <i class="bi bi-currency-rupee"></i>{{total}}</span></td>
+                <i class="bi bi-currency-rupee"></i>{{total}}</span>
+            </td>
         </tr>
     </tbody>
 </table>

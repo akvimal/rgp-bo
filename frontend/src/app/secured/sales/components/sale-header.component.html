@@ -32,28 +32,32 @@
     </div>
 </div> -->
 
-
+<div>Sales</div>
 <nav class="navbar navbar-light bg-light justify-content-between">
     
     <ul class="nav">
         <li class="nav-item">
-          <a class="nav-link active" routerLink="/secure/sales">Home</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/secure/sales/list">Sales</a>
+          <a class="nav-link active" routerLink="/secure/sales">Dashboard</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" routerLink="/secure/sales/reminder">Reminders</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/secure/sales/list">Report</a>
         </li>
       </ul>
     <!-- <form class="form-inline"> -->
         <ul class="list-inline">
             <!-- <li class="list-inline-item">
                 <input class="form-control" type="search" placeholder="Product">
-            </li>
+            </li>-->
             <li class="list-inline-item">
-                <input class="form-control" type="search" placeholder="Customer">
-            </li> -->
+                <!-- <input class="form-control" type="search" placeholder="Customer"> -->
+                <!-- <app-customer-select 
+                (customerSelected)="selectCustomer($event)"
+                (focusLeave)="doneEnterCustomer($event)">
+                </app-customer-select> -->
+            </li> 
             <li class="list-inline-item">
                 <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
                     <button class="btn btn-primary no-print">New Sale</button>

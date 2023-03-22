@@ -17,9 +17,11 @@ export class SaleFormItemsComponent{
   offer:Offer = {};
 
   paymodes = [
-    {key:'digital',value:'Digital'},
-    {key:'cash',value:'Cash'}
+    {key:'Other',value:'Other'},
+    {key:'UPI',value:'UPI'},
+    {key:'Transfer',value:'Transfer'}
   ]
+  
   tender:number = 0;
 
   @Output() removed = new EventEmitter();
@@ -74,7 +76,8 @@ export class SaleFormItemsComponent{
   refreshTotal(saleItems:any){
     this.total = 0;
     saleItems.forEach((i:any) => {
-      const itemtotal = this.calculateTotal(i.qty, i.price, i.taxpcnt);
+      const qty = (i.box * i.pack) + i.boxbal;
+      const itemtotal = this.calculateTotal(qty, i.price, i.taxpcnt);
       i['total'] = itemtotal;
       i['qtyready'] = true;
       this.total = Math.round(this.total + itemtotal);
@@ -108,7 +111,7 @@ export class SaleFormItemsComponent{
       }
     this.refreshTotal(this.items);
 
-    this.recalculateTotal.emit(this.offer);
+    // this.recalculateTotal.emit(this.offer);
   }
     
   calculateTotal(qty:number,price:number,tax:number):number{

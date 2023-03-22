@@ -41,6 +41,8 @@ export class Sale extends BaseEntity {
   
   @Column("double precision", { name: "total", precision: 53 })
   total: number;
+  @Column("double precision", { name: "consume_weeks", precision: 53 })
+  consumeweeks: number;
   
   @Column("json", { name: "more_props", nullable: true })
   props: object | null;

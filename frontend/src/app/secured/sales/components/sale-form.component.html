@@ -48,14 +48,13 @@
 </div>
 
 <div class="row">
-    <div class="col-6" *ngIf="sale.status === 'NEW' || sale.status === 'PENDING'">
-        <button type="button" (click)="submit('PENDING')" class="btn btn-primary m-2" 
-                    [disabled]="total === 0">Save</button>    
+    <div class="col-12 text-align-right" *ngIf="sale.status === 'NEW' || sale.status === 'PENDING'">
         <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
-                    [disabled]="!completeAllowed()">Complete</button>    
-    </div>
-    <div class="col-6">
-        <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">Discard</button>
+                    [disabled]="!(total > 0)">Complete</button>    
+        <button type="button" (click)="submit('PENDING')" class="btn btn-outline-primary m-2" 
+                    [disabled]="total === 0">Save</button>    
+        <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" 
+            class="btn btn-primary m-2">Discard</button>
         
         <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
             <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->

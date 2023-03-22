@@ -15,5 +15,6 @@ export interface Sale {
     payrefno?:string,
     props?:any,
     mrptotal?:number,
-    saving?:number
+    saving?:number,
+    consumeweeks?:number
 }

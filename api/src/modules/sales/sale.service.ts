@@ -110,7 +110,7 @@ export class SaleService {
             const other = date.setDate(date.getDate()-count);
             const todate = this.getFormatDate(new Date(other));
             query = `select to_char(x.dt,'yyyy-mm-dd') as date, 
-            sum(sv.sale_total) as sale
+            sum(sv.sale_total) as sale, count(sv.id) as orders 
             from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
             left join sale_view sv on x.dt = sv.sale_date 
             group by x.dt order by x.dt`
@@ -120,11 +120,41 @@ export class SaleService {
             const other = date.setMonth((date.getMonth()-1)-count);
             const todate = this.getFormatDate(new Date(other));
             query = `select x.d2 as date, 
-            sum(sv.sale_total) as sale
+            sum(sv.sale_total) as sale, count(sv.id) as orders 
             from (select months('${fromdate}','${todate}') as d2) x
             left join sale_view sv on x.d2 = date_part('year',sv.sale_date)||'-'||lpad(date_part('month',sv.sale_date)::text,2,'0')
             group by x.d2
             order by x.d2`
+        }
+        return await this.manager.query(query);
+    }
+
+    async getCustomerVisitByFreq(fromdate:string,freq:string,count:number){
+   
+        const dt = new Date(fromdate);
+        let query = ''
+
+        if(freq === 'daily'){
+            const date = new Date(dt.setDate(dt.getDate()+1));
+            const other = date.setDate(date.getDate()-count);
+            const todate = this.getFormatDate(new Date(other));
+            query = `select to_char(x.dt,'yyyy-mm-dd') as date, scv.return_status, count(scv.recent_sale_id)
+             from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
+             left join sale_customer_view scv on x.dt = scv.recent_visit
+             where scv.mobile != '00000'
+             group by x.dt, scv.return_status 
+              order by x.dt`
+        }
+        else {
+            const date = new Date();
+            const other = date.setMonth((date.getMonth()-1)-count);
+            const todate = this.getFormatDate(new Date(other));
+            query = `select x.dt as date, scv.return_status, count(scv.recent_sale_id)
+            from (select months('${fromdate}','${todate}')::text as dt) x
+            left join sale_customer_view scv on x.dt = date_part('year',scv.recent_visit::date)||'-'||lpad(date_part('month',scv.recent_visit::date)::text,2,'0')
+            where scv.mobile != '00000'
+            group by x.dt, scv.return_status 
+             order by x.dt`
         }
         return await this.manager.query(query);
     }

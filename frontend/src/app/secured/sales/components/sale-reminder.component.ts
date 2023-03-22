@@ -19,10 +19,25 @@ export class SaleReminderComponent {
                 return {
                     custname: item.name,
                     custmobile: item.mobile,
-                    agewithus: item.age_in_months,
-                    lastbilldt: item.last_bill_date,
-                    monthsago: item.visit_months_ago
+                    customerid: item.customer_id,
+                    sincedate: item.since,
+                    sincemonths: Math.round(item.since_months),
+                    tilldatetotal: item.tilldate_total,
+                    recentvisit: item.recent_visit,
+                    recentsaleid: item.recent_sale_id,
+                    recenttotal: item.recent_total,
+                    sincerecentweeks: Math.round(item.since_recent_weeks),
+                    consumeweeks: item.consume_weeks,
+                    remindcustomer: (item.consume_weeks - item.since_recent_weeks) < 0 
+                    // agewithus: item.age_in_months,
+                    // lastbillid: item.last_bill_id,
+                    // lastbilldt: item.last_bill_date,
+                    // monthsago: item.visit_months_ago,
+                
                 }
+                {
+                    
+                  }
             }
         )});
     }

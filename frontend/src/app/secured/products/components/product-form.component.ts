@@ -17,10 +17,10 @@ export class ProductFormComponent{
         title: new FormControl('',Validators.required),
         hsn: new FormControl(''),
         code: new FormControl(''),
-        pack: new FormControl('1'),
+        pack: new FormControl('1', Validators.required),
         category: new FormControl(''),
         mfr: new FormControl(''),
-        brand: new FormControl(''),
+        brand: new FormControl('', Validators.required),
         description: new FormControl(''),
         props: new FormControl('')
       });

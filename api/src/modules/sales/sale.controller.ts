@@ -52,7 +52,10 @@ export class SaleController {
       return this.saleService.getSalesByFreq(criteria.fromdate,criteria.freq,criteria.count);
     }
 
-    
+    @Post('/visits')
+    async getCustomerByFreq(@Body() criteria: any) {
+      return this.saleService.getCustomerVisitByFreq(criteria.fromdate,criteria.freq,criteria.count);
+    }
 
     @Get()
     async findAll(@Query() query: any, @User() currentUser: any) {

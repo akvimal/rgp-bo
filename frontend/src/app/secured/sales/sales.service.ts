@@ -63,5 +63,8 @@ export class SaleService {
     getSaleData(criteria:any){
         return this.http.post(`${this.apiurl}/data`,criteria);
     }   
+    getCustomerData(criteria:any){
+        return this.http.post(`${this.apiurl}/visits`,criteria);
+    }   
      
 }

@@ -27,23 +27,26 @@ Sale Reminder
             <th pSortableColumn="custmobile">Mobile 
                 <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
                 <p-sortIcon field="custmobile"></p-sortIcon>
+            </th>           
+            <th pSortableColumn="sincemonths">Period
+                <p-columnFilter type="numeric" field="sincemonths" display="menu"></p-columnFilter>
+                <p-sortIcon field="sincemonths"></p-sortIcon>
             </th>
-            <!-- <th pSortableColumn="code">Code 
-                <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
-                <p-sortIcon field="code"></p-sortIcon>
-            </th>   -->
-            
-            <th pSortableColumn="agewithus">Period
-                <p-columnFilter type="numeric" field="agewithus" display="menu"></p-columnFilter>
-                <p-sortIcon field="agewithus"></p-sortIcon>
+            <th pSortableColumn="recentvisit">Last Seen
+                <p-columnFilter type="numeric" field="recentvisit" display="menu"></p-columnFilter>
+                <p-sortIcon field="recentvisit"></p-sortIcon>
             </th>
-            <th pSortableColumn="monthsago">Last Seen
-                <p-columnFilter type="numeric" field="monthsago" display="menu"></p-columnFilter>
-                <p-sortIcon field="monthsago"></p-sortIcon>
+            <th pSortableColumn="sincerecentweeks">Weeks Ago
+                <p-columnFilter type="numeric" field="sincerecentweeks" display="menu"></p-columnFilter>
+                <p-sortIcon field="sincerecentweeks"></p-sortIcon>
             </th>
-            <th pSortableColumn="lastbilldt">Last Bill
-                <p-columnFilter type="date" field="lastbilldt" display="menu"></p-columnFilter>
-                <p-sortIcon field="lastbilldt"></p-sortIcon>
+            <th pSortableColumn="recenttotal">Bill Amt
+                <p-columnFilter type="numeric" field="recenttotal" display="menu"></p-columnFilter>
+                <p-sortIcon field="recenttotal"></p-sortIcon>
+            </th>
+            <th pSortableColumn="consumeweeks">Last Dose
+                <p-columnFilter type="numeric" field="consumeweeks" display="menu"></p-columnFilter>
+                <p-sortIcon field="consumeweeks"></p-sortIcon>
             </th>
             <th>Actions</th>
         </tr>
@@ -53,9 +56,11 @@ Sale Reminder
             <td>{{customer.custname}}</td>
             <!-- <td>{{product.code}}</td> -->
             <td>{{customer.custmobile}}</td>
-            <td>{{customer.agewithus}}</td>
-            <td>{{customer.monthsago}}</td>
-            <td>{{customer.lastbilldt | date: 'dd-MMM'}}</td>
+            <td>{{customer.sincemonths}}</td>
+            <td>{{customer.recentvisit | date: 'dd-MMM'}}</td>
+            <td>{{customer.sincerecentweeks}}</td>
+            <td>{{customer.recenttotal}}</td>
+            <td>{{customer.consumeweeks}}</td>
             
             <td style="text-align: center;">
                 <!-- <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
@@ -64,6 +69,8 @@ Sale Reminder
                 <a *isAuth="'products.delete'" (click)="delete(product.id)">
                     <i class="bi bi-trash text-danger"></i>
                 </a> -->
+                <a [routerLink]="['/secure/sales/view',customer.recentsaleid]">View</a>
+                <span *ngIf="customer.remindcustomer">Remind</span>
             </td>
         </tr>
     </ng-template>

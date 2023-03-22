@@ -15,12 +15,13 @@ export class CreateSaleDto {
     readonly paymode: string;
 
     @ApiProperty({ description: 'payment refno', example: '' })
-    readonly payrefno: string;
+    readonly payrefno: string;    
+    @ApiProperty({ description: 'consume weeks', example: 0 })
+    readonly consumeweeks: number;
 
     @ApiProperty({ description: 'customer id', example: 0 })
     readonly customerid: number;
 
     @ApiProperty({ description: 'customer', example: {} })
     readonly customer: any;
-  
 }

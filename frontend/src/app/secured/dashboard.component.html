@@ -1,26 +1,78 @@
 <div class="container">
   <div class="row">
-    <div class="col-12">
-      Frequency: <select [(ngModel)]="freq">
-        <option value="daily">Daily</option>
-        <option value="month">Monthly</option>
-      </select>
-      From: <input type="date" [(ngModel)]="fromdate" (input)="view()">
-      Range: <input type="number" [(ngModel)]="count" (input)="view()">
-      <button (click)="view()">View</button>
-        <ngx-charts-bar-vertical 
-          [view]="[800,350]"
-          [results]="saleData"
-          [xAxisLabel]="'Period'"
-          [legendTitle]="'Sale Trend'"
-          [yAxisLabel]="'Sale'"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="true"
-          [xAxis]="true"
-          [yAxis]="true"
-          [gradient]="false">
+    <div class="col-6">
+      <h5>Sales Trend</h5>
+      <div>
+        Frequency: <select [(ngModel)]="freq">
+          <option value="daily">Daily</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        From: <input type="date" [(ngModel)]="fromdate" (input)="viewsale()">
+        Range: <input type="number" [(ngModel)]="count" (input)="viewsale()" min="7" max="31">
+        <button (click)="viewsale()">View</button>
+      </div>
+      <ngx-charts-bar-vertical 
+        [view]="[600,350]"
+        [results]="saleData"
+        [xAxisLabel]="'Period'"
+        [legendTitle]="'Sale Trend'"
+        [yAxisLabel]="'Sale'"
+        [legend]="false"
+        [showXAxisLabel]="true"
+        [showYAxisLabel]="true"
+        [xAxis]="true"
+        [yAxis]="true"
+        [gradient]="false">
       </ngx-charts-bar-vertical>
+    </div>
+    <div class="col-6">
+      <h5>Customer Visit Trend</h5>
+      <div>
+        Frequency: <select [(ngModel)]="custfreq">
+          <option value="daily">Daily</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        From: <input type="date" [(ngModel)]="custfromdate" (input)="viewcustomer()">
+        Range: <input type="number" [(ngModel)]="custcount" (input)="viewcustomer()" min="7" max="31">
+        <button (click)="viewcustomer()">View</button>
+      </div>
+      <ngx-charts-bar-vertical-2d
+        [view]="[600,350]"
+        [results]="customerData"
+        [xAxis]="true"
+        [yAxis]="true"
+        [legend]="true"
+        [showXAxisLabel]="true"
+        [showYAxisLabel]="true"
+        [xAxisLabel]="'Period'"
+        [yAxisLabel]="'Customers'"
+        [legendTitle]="'Customers'">
+      </ngx-charts-bar-vertical-2d>
+    </div>
+    <div class="col-6">
+      <h5>Report Req</h5>
+      <ul>
+        <li>Products Demand (most and least), based on total orders and qty</li>
+        <li>Products by age and its time left for expiry</li>
+        <li>Complaints on products and vendors</li>
+        <li>No. of orders by hourly, daily, weekly and monthly</li>
+      </ul>
+    </div>
+    <div class="col-6">
+      <h5>Fuctional Req</h5>
+      <ul>
+        <li>Stock Adjustment</li>
+        <li>Stock Audit (quaterly)</li>
+        <li>Complaint Mgmt</li>
+        <li>Accounts</li>
+        <li>Notifications</li>
+      </ul>
+    </div>
+    <div class="col-6">
+      <h5>Tech Debts</h5>
+      <ul>
+        <li>Avoid loading all records (stock), add filters and pagination</li>
+      </ul>
     </div>
   </div>
 </div>
