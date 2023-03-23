@@ -26,9 +26,9 @@ export class SaleReminderComponent {
                     recentvisit: item.recent_visit,
                     recentsaleid: item.recent_sale_id,
                     recenttotal: item.recent_total,
-                    sincerecentweeks: Math.round(item.since_recent_weeks),
-                    consumeweeks: item.consume_weeks,
-                    remindcustomer: (item.consume_weeks - item.since_recent_weeks) < 0 
+                    sincerecentdays: item.since_recent_days,
+                    expreturndays: item.expreturndays,
+                    remindcustomer: (item.expreturndays - item.since_recent_days) < 0 
                     // agewithus: item.age_in_months,
                     // lastbillid: item.last_bill_id,
                     // lastbilldt: item.last_bill_date,

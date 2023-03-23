@@ -11,7 +11,6 @@ export class PurchaseInvoiceService {
 
     constructor(@InjectRepository(PurchaseInvoice) private readonly purchaseInvoiceRepository: Repository<PurchaseInvoice>,
     @InjectRepository(PurchaseInvoiceItem) private readonly purchaseInvoiceItemRepository: Repository<PurchaseInvoiceItem>,
-    // @InjectRepository(ProductPrice) private readonly priceRepository: Repository<ProductPrice>,
     @InjectEntityManager() private manager: EntityManager) { }
 
     async create(dto: CreatePurchaseInvoiceDto, userid:any) {

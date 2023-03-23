@@ -60,7 +60,7 @@ export class SaleFormComponent {
       if(saleId){
           this.service.find(saleId).subscribe((data:any) => {
             this.sale.id = data.id;
-            this.sale.consumeweeks = data.consumeweeks;
+            this.sale.expreturndays = data.expreturndays;
             this.sale.customer = data.customer;
             this.sale.billdate = data.billdate;
             this.sale.status = data.status;

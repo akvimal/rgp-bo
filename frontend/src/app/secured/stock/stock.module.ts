@@ -4,10 +4,6 @@ import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { SharedModule } from "src/app/shared/shared.module";
-import { InvoiceFormComponent } from "./invoices/components/invoice-form.component";
-import { InvoiceItemsComponent } from "./invoices/components/invoice-items.component";
-import { InvoicePaymentComponent } from "./invoices/components/invoice-payment.component";
-import { InvoicesComponent } from "./invoices/components/invoices.component";
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import {DialogModule} from 'primeng/dialog';
 import {TableModule} from 'primeng/table';
@@ -20,23 +16,15 @@ import {ButtonModule} from 'primeng/button';
 import {DropdownModule} from 'primeng/dropdown';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
-import { InvoiceItemFormComponent } from "./invoices/components/invoice-item-form.component";
+import { StockComponent } from "./components/stock.component";
 
 const routes: Routes = [
-  { path: '', redirectTo: 'list'},
-    {path: 'list', component: InvoicesComponent, canActivate:[AuthGuard]},
-    {path: 'new', component: InvoiceFormComponent, canActivate:[AuthGuard]},
-    {path: 'edit/:id', component: InvoiceFormComponent, canActivate:[AuthGuard]},
-    {path: 'items/:id', component: InvoiceItemsComponent, canActivate:[AuthGuard]}
+  { path: '', component: StockComponent, canActivate:[AuthGuard]}
 ];
 
 @NgModule({
     declarations: [
-      InvoicesComponent,
-      InvoiceFormComponent,
-      InvoiceItemsComponent,
-      InvoiceItemFormComponent,
-      InvoicePaymentComponent
+      StockComponent
     ],
     imports: [
         FormsModule,  
@@ -59,4 +47,4 @@ const routes: Routes = [
     ],
     exports: [RouterModule]
   })
-export class PurchasesModule{}
+export class StockModule{}

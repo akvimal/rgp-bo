@@ -15,7 +15,7 @@ export class InvoiceFormComponent {
     vendors:any = [];
     products:any = [];
     total:number = 0;
-    currentDate = new Date()
+    currentDate = new Date();
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -92,7 +92,11 @@ export class InvoiceFormComponent {
       if(id)
         this.service.save({id, ...obj}).subscribe(data => this.gotoEdit(id));
       else
-        this.service.save(obj).subscribe((data:any) => this.gotoEdit(data.id));
+        this.service.save(obj).subscribe((data:any) => {
+          if(!(data.status && data.status === 'ERROR')) {
+            this.gotoEdit(data.id);
+          }
+        });
     }
 
     verify(){

@@ -7,6 +7,7 @@ import { User } from "src/core/decorator/user.decorator";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { CreateProductPriceDto } from "./dto/create-product-price.dto";
 import { PurchaseInvoiceService } from "../purchases/invoice.service";
+import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
 
 @ApiTags('Products')
 @Controller('products')
@@ -26,6 +27,13 @@ export class ProductController {
     @User() currentUser: any) {
         const updated = await this.invoiceService.updateItems([createDto.itemid],{saleprice:createDto.price},currentUser.id);
         return this.productService.createPrice(createDto, currentUser.id);
+    }
+
+    @Post('/qty')
+    async updateQty(@Body() createDto: CreateProductQtyChangeDto, 
+    @User() currentUser: any) {
+        // const updated = await this.invoiceService.updateItems([createDto.itemid],{saleprice:createDto.price},currentUser.id);
+        return this.productService.createQty(createDto, currentUser.id);
     }
 
     @Put(':id')

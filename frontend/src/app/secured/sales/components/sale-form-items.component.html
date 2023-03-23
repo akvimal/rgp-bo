@@ -74,15 +74,15 @@
                    
                     <!-- <label for="offer" class="m-1">Discount</label> -->
                     <div class="col-4 d-flex flex-row">
-                <span style="margin:0;padding:0">MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal | number:'1.0-0'}}</span>
-                    
-                <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
-                <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue;margin:0;padding:0">
-                    Discount({{sale.disccode}}):<i class="bi bi-currency-rupee" style="padding:0"></i> {{sale.discamount}}</span>
-                <span *ngIf="sale.saving > 0">&nbsp;
-                    <label for="saving"></label>
-                   <strong>Saving:</strong> {{sale.saving}}%</span>
-                </div>
+                        <span style="margin:0;padding:0">MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal | number:'1.0-0'}}</span>
+                            
+                        <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
+                        <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue;margin:0;padding:0">
+                            Discount({{sale.disccode}}):<i class="bi bi-currency-rupee" style="padding:0"></i> {{sale.discamount}}</span>
+                        <span *ngIf="sale.saving > 0">&nbsp;
+                            <label for="saving"></label>
+                        <strong>Saving:</strong> {{sale.saving}}%</span>
+                    </div>
                 
                 <!-- <div class="row">
                     <div class="col-md-3">
@@ -115,9 +115,13 @@
                         <input type="text" class="form-control" 
                         [(ngModel)]="sale.payrefno" placeholder="Ref #">
                 </div>
-                <input type="text" class="form-control" 
-                    [(ngModel)]="sale.consumeweeks" placeholder="Weeks">
+                <div class="col-3 d-flex justify-content-end">
+                    <div>
+                        <input type="text" class="form-control" 
+                            [(ngModel)]="sale.expreturndays" placeholder="Days">
+                    </div>
                 </div>
+            </div>
             </td>
             <td style="text-align: right; background-color: royalblue;">
                 <span style="font-size: larger;color: white;">

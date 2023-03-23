@@ -14,6 +14,7 @@ import { PurchasesModule } from "./purchases/purchases.module";
 import { RolesModule } from "./roles/roles.module";
 import { SalesModule } from "./sales/sales.module";
 import { SecuredComponent } from "./secured.component";
+import { StockModule } from "./stock/stock.module";
 import { UsersModule } from "./users/users.module";
 
 const routes: Routes = [
@@ -43,6 +44,10 @@ const routes: Routes = [
       loadChildren: () => import('./purchases/purchases.module').then(m => m.PurchasesModule)
     },
     {
+      path: 'stock', canActivate:[AuthGuard],
+      loadChildren: () => import('./stock/stock.module').then(m => m.StockModule)
+    },
+    {
       path: 'customers', canActivate:[AuthGuard],
       loadChildren: () => import('./customers/customers.module').then(m => m.CustomersModule)
     },
@@ -70,6 +75,7 @@ const routes: Routes = [
         UsersModule,
         ProductsModule,
         PurchasesModule,
+        StockModule,
         CustomersModule,
         SalesModule
     ],

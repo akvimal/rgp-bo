@@ -12,8 +12,10 @@
   <!-- <thead> -->
     <ng-template pTemplate="header">
     <tr>
-      <!-- <th  pSortableColumn="category">ID</th> -->
-      <th pSortableColumn="invoice_no">ID
+      <th pSortableColumn="id">ID
+        <p-sortIcon field="id"></p-sortIcon>
+      </th>
+      <th pSortableColumn="invoice_no">No.
         <p-sortIcon field="invoice_no"></p-sortIcon>
         <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
       </th>
@@ -44,7 +46,8 @@
     <!-- <tr *ngFor="let p of invoices"> -->
       <!-- <td>{{p.id}}</td> -->
       <tr>
-      <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
+        <td>{{p.id}}</td>
+        <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
       <td style="text-align: center;">{{p.invoice_date | date : 'dd-MMM'}}</td>
       <td>{{p.business_name}}</td>
       <td style="text-align: center;">{{p.status}}</td>

@@ -1,16 +1,19 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ProductPrice } from "src/entities/product-price.entity";
+import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { Product } from "src/entities/product.entity";
 import { Repository } from "typeorm";
 import { CreateProductPriceDto } from "./dto/create-product-price.dto";
+import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
 import { CreateProductDto } from "./dto/create-product.dto";
 
 @Injectable()
 export class ProductService {
 
     constructor(@InjectRepository(Product) private readonly productRepository: Repository<Product>,
-    @InjectRepository(ProductPrice) private readonly priceRepository: Repository<ProductPrice>) { }
+    @InjectRepository(ProductPrice) private readonly priceRepository: Repository<ProductPrice>,
+    @InjectRepository(ProductQtyChange) private readonly qtyChangeRepository: Repository<ProductQtyChange>) { }
 
     async create(createProductDto: CreateProductDto, userid) {
         return this.productRepository.save({...createProductDto, createdby:userid});
@@ -18,6 +21,10 @@ export class ProductService {
     
       async createPrice(dto: CreateProductPriceDto, userid) {
         return this.priceRepository.save({...dto, createdby:userid});
+      }
+    
+      async createQty(dto: CreateProductQtyChangeDto, userid) {
+        return this.qtyChangeRepository.save({...dto, createdby:userid});
       }
     
       async findAll(query:any,user:any){

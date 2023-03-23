@@ -36,17 +36,17 @@ Sale Reminder
                 <p-columnFilter type="numeric" field="recentvisit" display="menu"></p-columnFilter>
                 <p-sortIcon field="recentvisit"></p-sortIcon>
             </th>
-            <th pSortableColumn="sincerecentweeks">Weeks Ago
-                <p-columnFilter type="numeric" field="sincerecentweeks" display="menu"></p-columnFilter>
-                <p-sortIcon field="sincerecentweeks"></p-sortIcon>
+            <th pSortableColumn="sincerecentdays">Days Ago
+                <p-columnFilter type="numeric" field="sincerecentdays" display="menu"></p-columnFilter>
+                <p-sortIcon field="sincerecentdays"></p-sortIcon>
             </th>
             <th pSortableColumn="recenttotal">Bill Amt
                 <p-columnFilter type="numeric" field="recenttotal" display="menu"></p-columnFilter>
                 <p-sortIcon field="recenttotal"></p-sortIcon>
             </th>
-            <th pSortableColumn="consumeweeks">Last Dose
-                <p-columnFilter type="numeric" field="consumeweeks" display="menu"></p-columnFilter>
-                <p-sortIcon field="consumeweeks"></p-sortIcon>
+            <th pSortableColumn="expreturndays">Days
+                <p-columnFilter type="numeric" field="expreturndays" display="menu"></p-columnFilter>
+                <p-sortIcon field="expreturndays"></p-sortIcon>
             </th>
             <th>Actions</th>
         </tr>
@@ -58,9 +58,9 @@ Sale Reminder
             <td>{{customer.custmobile}}</td>
             <td>{{customer.sincemonths}}</td>
             <td>{{customer.recentvisit | date: 'dd-MMM'}}</td>
-            <td>{{customer.sincerecentweeks}}</td>
+            <td>{{customer.sincerecentdays}}</td>
             <td>{{customer.recenttotal}}</td>
-            <td>{{customer.consumeweeks}}</td>
+            <td>{{customer.expreturndays}}</td>
             
             <td style="text-align: center;">
                 <!-- <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">

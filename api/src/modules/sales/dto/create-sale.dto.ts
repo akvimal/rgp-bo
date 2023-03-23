@@ -16,8 +16,9 @@ export class CreateSaleDto {
 
     @ApiProperty({ description: 'payment refno', example: '' })
     readonly payrefno: string;    
-    @ApiProperty({ description: 'consume weeks', example: 0 })
-    readonly consumeweeks: number;
+    
+    @ApiProperty({ description: 'expreturn days', example: 0 })
+    readonly expreturndays: number;
 
     @ApiProperty({ description: 'customer id', example: 0 })
     readonly customerid: number;

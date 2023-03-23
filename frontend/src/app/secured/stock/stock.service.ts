@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { environment } from "./../../../../environments/environment";
+import { environment } from "../../../environments/environment";
 
 @Injectable({
     providedIn: 'root'
@@ -17,5 +17,9 @@ export class StockService {
 
     updatePrice(price:any){
         return this.http.post(`${this.apiurl}/products/price`,price);
+    }
+    
+    updateQty(qtyForm:any){
+        return this.http.post(`${this.apiurl}/products/qty`,{...qtyForm, status: 'APPROVED'});
     }
 }
