@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
-import { CalculatorService } from "src/app/secured/calculator.service";
+import { DateUtilService } from "src/app/secured/date-util.service";
 import { ProductUtilService } from "src/app/secured/product-util.service";
 import { ProductsService } from "src/app/secured/products/products.service";
 import { InvoiceService } from "../invoices.service";
@@ -41,8 +41,8 @@ export class InvoiceItemFormComponent {
 
     constructor(private invService: InvoiceService, 
         private prodService:ProductsService,
-        private calc: CalculatorService,
-        private productUtil:ProductUtilService){}
+        private dateUtilService: DateUtilService,
+        private prodUtilService:ProductUtilService){}
     
     ngOnInit(){
         this.form.controls['invoiceid'].setValue(this.invoiceid);
@@ -56,7 +56,7 @@ export class InvoiceItemFormComponent {
                 this.form.controls['invoiceid'].setValue(data.invoiceid);
                 this.form.controls['productid'].setValue(data.productid);
                 data.batch && this.form.controls['batch'].setValue(data.batch);
-                data.expdate && this.form.controls['expdate'].setValue(this.calc.formatExpDate(data.expdate));
+                data.expdate && this.form.controls['expdate'].setValue(this.dateUtilService.formatExpDate(data.expdate));
                 this.form.controls['mrpcost'].setValue(data.mrpcost);
                 this.form.controls['ptrvalue'].setValue(data.ptrvalue);
                 // this.form.controls['pack'].setValue(data.pack);
@@ -112,8 +112,8 @@ export class InvoiceItemFormComponent {
         this.form.controls['expdate'].setValue(new Date(event.expdate));
         this.form.controls['saleprice'].setValue(event.saleprice);
 
-        this.sellermargin = this.calc.getMargin(event.ptrvalue, event.saleprice);
-        this.customersaving = this.calc.getSaving(event.mrpcost, event.saleprice);        
+        this.sellermargin = this.prodUtilService.getMargin(event.ptrvalue, event.saleprice);
+        this.customersaving = this.prodUtilService.getSaving(event.mrpcost, event.saleprice);        
     }
     
     clearBatch(){
@@ -167,9 +167,9 @@ export class InvoiceItemFormComponent {
     calculateMargin(){
         let sp = +this.form.value.saleprice;// * (1 + (this.form.value.taxpcnt/100));
         
-        this.sellermargin = this.calc.getMargin(this.getPTRAfterTax(),sp);// Math.round(((sp - this.getPTRAfterTax())/this.getPTRAfterTax())*100);
+        this.sellermargin = this.prodUtilService.getMargin(this.getPTRAfterTax(),sp);// Math.round(((sp - this.getPTRAfterTax())/this.getPTRAfterTax())*100);
         // this.form.controls['sellermargin'].setValue(this.sellermargin);
-        this.customersaving = this.calc.getSaving(this.form.value.mrpcost,sp); //Math.round((((this.form.value.mrpcost/this.form.value.pack) - sp)/(this.form.value.mrpcost/this.form.value.pack))*100);
+        this.customersaving = this.prodUtilService.getSaving(this.form.value.mrpcost,sp); //Math.round((((this.form.value.mrpcost/this.form.value.pack) - sp)/(this.form.value.mrpcost/this.form.value.pack))*100);
         // this.form.controls['customersaving'].setValue(this.customersaving);
     }
 
@@ -216,7 +216,7 @@ export class InvoiceItemFormComponent {
     }
 
     calculateSP(event:any){        
-        let sp = +this.productUtil.calcSalePrice(this.getPTRAfterTax(),this.form.value.mrpcost,this.form.value.taxpcnt);
+        let sp = +this.prodUtilService.calcSalePrice(this.getPTRAfterTax(),this.form.value.mrpcost,this.form.value.taxpcnt);
         if(sp < this.getPTRAfterTax()){
             sp = this.getPTRAfterTax();
         }
@@ -284,7 +284,7 @@ export class InvoiceItemFormComponent {
         if(this.itemid){
             this.invService.updateItems([this.form.value.id],{...this.form.value,
                 batch:this.form.value.batch.toUpperCase(),
-                expdate:this.calc.parseExpDate(this.form.value.expdate),
+                expdate:this.dateUtilService.parseExpDate(this.form.value.expdate),
                 ptrcost:this.getPTRAfterTax(),
                 total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);

@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
-import { CalculatorService } from "../../calculator.service";
+import { ProductUtilService } from "../../product-util.service";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
 
@@ -21,7 +21,7 @@ export class SaleViewComponent {
     constructor(private route: ActivatedRoute,
       private router: Router, 
       private service:SaleService,
-      private calc: CalculatorService){}
+      private prodUtilService: ProductUtilService){}
 
     async ngOnInit(){
 
@@ -59,7 +59,7 @@ export class SaleViewComponent {
           this.finalAmt = Math.round(data.total);
           
           // this.saving = Math.round( (data.total / this.mrpTotal) * 100);
-          this.saving = this.calc.getSaving(this.mrpTotal, data.total);
+          this.saving = this.prodUtilService.getSaving(this.mrpTotal, data.total);
           console.log('saving: ',this.saving);
           
         });

@@ -15,11 +15,26 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock`);
     }
 
+    findDemand(fromdate:string,todate:string,incother:boolean){
+        const criteria = {begindt:fromdate,enddt:todate,orders_avail:incother};
+        console.log('criteria: ',criteria);
+        
+        return this.http.post(`${this.apiurl}/stock/demand`, criteria);
+    }
+
+    findAllPriceAdjustments(){
+        return this.http.get(`${this.apiurl}/stock/adjust/price`);
+    }
+
+    findAllQtyAdjustments(){
+        return this.http.get(`${this.apiurl}/stock/adjust/qty`);
+    }
+
     updatePrice(price:any){
-        return this.http.post(`${this.apiurl}/products/price`,price);
+        return this.http.post(`${this.apiurl}/stock/adjust/price`,price);
     }
     
     updateQty(qtyForm:any){
-        return this.http.post(`${this.apiurl}/products/qty`,{...qtyForm, status: 'APPROVED'});
+        return this.http.post(`${this.apiurl}/stock/adjust/qty`,{...qtyForm, status: 'APPROVED'});
     }
 }

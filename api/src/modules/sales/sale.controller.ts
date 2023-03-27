@@ -6,7 +6,7 @@ import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { User } from "src/core/decorator/user.decorator";
 import { CustomerService } from "../customers/customer.service";
-import { StockService } from "../inventory/stock.service";
+import { StockService } from "../stock/stock.service";
 import { RoleService } from "../app/roles/role.service";
 
 @ApiTags('Sales')

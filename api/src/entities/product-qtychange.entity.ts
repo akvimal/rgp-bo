@@ -2,9 +2,12 @@ import {
   Column,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { BaseEntity } from "./base.entity";
+import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
 
 @Index("product_qtychange_pk", ["id"], { unique: true })
 @Entity("product_qtychange")
@@ -31,4 +34,10 @@ export class ProductQtyChange extends BaseEntity {
   @Column("character varying", { name: "comments", nullable: true })
   comments: string | null;
 
+  @ManyToOne(
+    () => PurchaseInvoiceItem,
+    (purchase) => purchase.saleitems
+  )
+  @JoinColumn([{ name: "item_id", referencedColumnName: "id" }])
+  purchaseitem: PurchaseInvoiceItem;
 }

@@ -28,4 +28,12 @@ export class ProductUtilService {
         }
         return price;
     }
+    
+    getMargin(ptr:number,sp:number) {
+        return Math.round(((sp-ptr) / ptr) * 100);
+    }
+
+    getSaving(mrp:number,sp:number) {
+        return Math.round(((mrp-sp) / mrp) * 100);
+    }
 }

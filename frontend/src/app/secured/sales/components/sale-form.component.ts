@@ -2,7 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
-import { CalculatorService } from "../../calculator.service";
+import { ProductUtilService } from "../../product-util.service";
 import { SaleItem } from "../sale-item.model";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
@@ -50,7 +50,7 @@ export class SaleFormComponent {
     constructor(private route: ActivatedRoute,
       private router: Router, 
       private service: SaleService,
-      private calc: CalculatorService,
+      private prodUtilService: ProductUtilService,
       private http: HttpClient){
         this.http.get("/assets/sale-props.json").subscribe((data:any) => this.salePropSchema = data);
       }
@@ -156,7 +156,7 @@ export class SaleFormComponent {
       this.sale.total = this.total;
       this.sale.mrptotal = mrptotal;
       
-      this.sale.saving = this.calc.getSaving(mrptotal,Math.round(this.total));
+      this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
   
       this.offer = offer;
       this.addNewItem();

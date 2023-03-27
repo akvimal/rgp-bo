@@ -1,5 +1,4 @@
 import { Component } from "@angular/core";
-import { CalculatorService } from "../../calculator.service";
 import { CustomersService } from "../../customers/customers.service";
 
 @Component({
@@ -10,7 +9,7 @@ export class SaleReminderComponent {
 
     customers:any[]=[];
 
-    constructor(private customerService:CustomersService, private calc: CalculatorService){}
+    constructor(private customerService:CustomersService){}
 
     ngOnInit(){
         this.customerService.getSaleData({}).subscribe((data:any) => {

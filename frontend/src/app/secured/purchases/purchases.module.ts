@@ -21,6 +21,7 @@ import {DropdownModule} from 'primeng/dropdown';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
 import { InvoiceItemFormComponent } from "./invoices/components/invoice-item-form.component";
+import { PurchaseHeaderComponent } from "./invoices/components/purchase-header.component";
 
 const routes: Routes = [
   { path: '', redirectTo: 'list'},
@@ -32,6 +33,7 @@ const routes: Routes = [
 
 @NgModule({
     declarations: [
+      PurchaseHeaderComponent,
       InvoicesComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,

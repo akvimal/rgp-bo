@@ -1,7 +1,4 @@
-<div class="pagetitle">
-  <h1>Purchase Invoices</h1>
-</div>
-
+<app-purchase-header></app-purchase-header>
 <a *isAuth="'purchases.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
 
 <p-table #dt1 [value]="invoices" [resizableColumns]="true" columnResizeMode="expand" 

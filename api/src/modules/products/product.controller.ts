@@ -5,9 +5,6 @@ import { CreateProductDto } from "./dto/create-product.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { User } from "src/core/decorator/user.decorator";
 import { UpdateProductDto } from "./dto/update-product.dto";
-import { CreateProductPriceDto } from "./dto/create-product-price.dto";
-import { PurchaseInvoiceService } from "../purchases/invoice.service";
-import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
 
 @ApiTags('Products')
 @Controller('products')
@@ -15,25 +12,11 @@ import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
 @UseGuards(AuthGuard('jwt'))
 export class ProductController {
 
-    constructor(private productService:ProductService, private invoiceService:PurchaseInvoiceService){}
+    constructor(private productService:ProductService){}
 
     @Post()
     async create(@Body() createDto: CreateProductDto,  @User() currentUser: any) {
         return this.productService.create(createDto, currentUser.id);
-    }
-
-    @Post('/price')
-    async createPrice(@Body() createDto: CreateProductPriceDto, 
-    @User() currentUser: any) {
-        const updated = await this.invoiceService.updateItems([createDto.itemid],{saleprice:createDto.price},currentUser.id);
-        return this.productService.createPrice(createDto, currentUser.id);
-    }
-
-    @Post('/qty')
-    async updateQty(@Body() createDto: CreateProductQtyChangeDto, 
-    @User() currentUser: any) {
-        // const updated = await this.invoiceService.updateItems([createDto.itemid],{saleprice:createDto.price},currentUser.id);
-        return this.productService.createQty(createDto, currentUser.id);
     }
 
     @Put(':id')

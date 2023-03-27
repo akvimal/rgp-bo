@@ -10,6 +10,9 @@ export class CreateProductPriceDto {
     
     @ApiProperty({ description: 'price', example: '' })
     readonly price: number;
+
+    @ApiProperty({ description: 'oldprice', example: '' })
+    readonly oldprice: number;
   
     @ApiProperty({ description: 'comments', example: '' })
     readonly comments: string;

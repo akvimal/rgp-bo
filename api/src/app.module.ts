@@ -13,11 +13,11 @@ import { UserModule } from './modules/app/users/user.module';
 import { VendorModule } from './modules/vendors/vendor.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ErrorsInterceptor } from './core/errors.interceptor';
-import { InventoryModule } from './modules/inventory/inventory.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { FileDownloadController } from './modules/app/download/filedownload.controller';
 import { PdfGenerateService } from './modules/app/download/pdfgenerate.service';
+import { StockModule } from './modules/stock/stock.module';
 
 @Module({
   controllers: [ AppController, FileDownloadController ],
@@ -43,7 +43,7 @@ import { PdfGenerateService } from './modules/app/download/pdfgenerate.service';
     PurchaseInvoiceModule,
     CustomerModule,
     SaleModule,
-    InventoryModule
+    StockModule
   ]
 })
 export class AppModule {}

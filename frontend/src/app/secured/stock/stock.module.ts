@@ -14,17 +14,34 @@ import {MultiSelectModule} from 'primeng/multiselect';
 import {ContextMenuModule} from 'primeng/contextmenu';
 import {ButtonModule} from 'primeng/button';
 import {DropdownModule} from 'primeng/dropdown';
+import { TabViewModule } from 'primeng/tabview';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
+import { StockListComponent } from "./components/stock-list.component";
+import { StockHeaderComponent } from "./components/stock-header.component";
 import { StockComponent } from "./components/stock.component";
+import { StockAdjustComponent } from "./components/stock-adjust.component";
+import { StockAuditComponent } from "./components/stock-audit.component";
+import { StockDemandComponent } from "./components/stock-demand.component";
+import { StockRequestComponent } from "./components/stock-request.component";
 
 const routes: Routes = [
-  { path: '', component: StockComponent, canActivate:[AuthGuard]}
+  { path: '', component: StockComponent, canActivate:[AuthGuard]},
+  { path: 'list', component: StockListComponent, canActivate:[AuthGuard]},
+  { path: 'adjust', component: StockAdjustComponent, canActivate:[AuthGuard]},
+  { path: 'demand', component: StockDemandComponent, canActivate:[AuthGuard]},
+  { path: 'request', component: StockRequestComponent, canActivate:[AuthGuard]},
 ];
 
 @NgModule({
     declarations: [
-      StockComponent
+      StockComponent,
+      StockListComponent,
+      StockAdjustComponent,
+      StockAuditComponent,
+      StockDemandComponent,
+      StockRequestComponent,
+      StockHeaderComponent
     ],
     imports: [
         FormsModule,  
@@ -35,6 +52,7 @@ const routes: Routes = [
         DialogModule,
         TableModule,
         ToastModule,
+        TabViewModule,
         SliderModule,
         MultiSelectModule,
         ContextMenuModule,
