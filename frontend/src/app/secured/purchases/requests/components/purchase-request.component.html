@@ -1,0 +1,98 @@
+<app-purchase-header></app-purchase-header>
+<div class="container">
+    <div class="row">
+      <div class="col-12">
+        <a (click)="add()"><button type="submit" class="btn btn-primary">Add New</button></a>
+      </div>
+      <div class="col-12">
+            <p-table [value]="requests" 
+            [resizableColumns]="true" columnResizeMode="expand" 
+            [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+                [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+                [rowsPerPageOptions]="[10,25,50]">
+                <ng-template pTemplate="header">
+                    <tr>
+                      <th pSortableColumn="id">ID
+                          <p-columnFilter type="text" field="id" display="menu"></p-columnFilter>
+                          <p-sortIcon field="id"></p-sortIcon>
+                      </th>
+                      <th pSortableColumn="title">Product
+                          <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
+                          <p-sortIcon field="title"></p-sortIcon>
+                      </th>
+                      <th pSortableColumn="requesttype">Type
+                        <p-columnFilter type="text" field="requesttype" display="menu"></p-columnFilter>
+                        <p-sortIcon field="requesttype"></p-sortIcon>
+                      </th>
+                      <th pSortableColumn="qty">Qty
+                        <p-columnFilter type="text" field="qty" display="menu"></p-columnFilter>
+                        <p-sortIcon field="qty"></p-sortIcon>
+                      </th>
+                      <th pSortableColumn="status">Status
+                        <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
+                        <p-sortIcon field="status"></p-sortIcon>
+                      </th>
+                      <th pSortableColumn="createdon">Date
+                        <p-columnFilter type="date" field="createdon" display="menu"></p-columnFilter>
+                        <p-sortIcon field="createdon"></p-sortIcon>
+                      </th> 
+                      <th pSortableColumn="comments">Comments
+                          <p-sortIcon field="comments"></p-sortIcon>
+                      </th>
+                      <th>Actions</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-i>
+                    <tr>
+                      <td>{{i.id}}</td>
+                      <td>{{i.product.title}}</td>
+                      <td>{{i.requesttype}}</td>
+                      <td>{{i.qty}}</td>
+                        <td>{{i.status}}</td>
+                        <td>{{i.createdon | date : 'dd/MM/yyyy'}}</td>
+                        <td>{{i.comments}}</td>
+                        <td style="text-align: center;">
+                          <a (click)="edit(i.id)">
+                              <i class="bi bi-pencil-square text-primary"></i>
+                          </a>&nbsp;&nbsp;
+                          <a *ngIf="i.status == 'NEW'" (click)="delete(i.id)">
+                              <i class="bi bi-trash text-danger"></i>
+                          </a>
+                      </td>
+                    </tr>
+                </ng-template>
+            </p-table>    
+      </div>
+    </div>
+  </div>
+     
+  <p-dialog [header]="form.controls['id'].value !== null ? 'Edit Request' : 'Add Request'" 
+              [(visible)]="displayForm" [modal]="true">
+    <form [formGroup]="form" (ngSubmit)="onSave()">
+      <div class="container">
+        <div class="row">
+          <div class="col-9">
+            <label for="product" class="form-label">Product</label><br>
+            <div *ngIf="form.controls['id'].value !== null;else lookup">
+              <h6>{{form.controls['title'].value}}</h6>
+            </div>
+            <ng-template #lookup>
+              <app-product-lookup (selected)="onProductSelect($event)"></app-product-lookup>
+            </ng-template>
+          </div>
+          <div class="col-3">
+            <label for="qty" class="form-label">Qty</label><br>
+          <input id="qty" class="form-control" type="number" formControlName="qty">
+          </div>
+        </div>
+        <div class="col-12">
+          <label for="comments" class="form-label">Comments</label><br>
+          <textarea class="form-control" id="comments" formControlName="comments" 
+            style="height: 100px;"></textarea>
+        </div>
+        <div class="col-12 text-center">
+          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+        </div>
+      </div>
+    </form>
+  </p-dialog>

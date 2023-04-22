@@ -23,14 +23,12 @@ import { StockComponent } from "./components/stock.component";
 import { StockAdjustComponent } from "./components/stock-adjust.component";
 import { StockAuditComponent } from "./components/stock-audit.component";
 import { StockDemandComponent } from "./components/stock-demand.component";
-import { StockRequestComponent } from "./components/stock-request.component";
 
 const routes: Routes = [
   { path: '', component: StockComponent, canActivate:[AuthGuard]},
   { path: 'list', component: StockListComponent, canActivate:[AuthGuard]},
   { path: 'adjust', component: StockAdjustComponent, canActivate:[AuthGuard]},
-  { path: 'demand', component: StockDemandComponent, canActivate:[AuthGuard]},
-  { path: 'request', component: StockRequestComponent, canActivate:[AuthGuard]},
+  { path: 'demand', component: StockDemandComponent, canActivate:[AuthGuard]}
 ];
 
 @NgModule({
@@ -40,7 +38,6 @@ const routes: Routes = [
       StockAdjustComponent,
       StockAuditComponent,
       StockDemandComponent,
-      StockRequestComponent,
       StockHeaderComponent
     ],
     imports: [

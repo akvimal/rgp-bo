@@ -1,4 +1,4 @@
-import { PurchaseInvoiceService } from "./invoice.service";
+import { PurchaseInvoiceService } from "./purchase-invoice.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";

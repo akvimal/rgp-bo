@@ -4,7 +4,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { User } from "src/core/decorator/user.decorator";
 import { ProductPriceChange } from "src/entities/product-pricechange.entity";
 import { ProductQtyChange } from "src/entities/product-qtychange.entity";
-import { PurchaseInvoiceService } from "../purchases/invoice.service";
+import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
 import { CreateProductPriceDto } from "./dto/create-product-price.dto";
 import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
 import { StockService } from "./stock.service";

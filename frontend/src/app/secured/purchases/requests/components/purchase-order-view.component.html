@@ -1,0 +1,62 @@
+
+<div class="row">
+  <div *ngIf="order?.status === 'PENDING';else submitted" class="col-12">
+    <a (click)="onAdd()"><button class="btn btn-primary">Add</button></a>
+    <a *ngIf="order?.requests.length > 0" (click)="onProceed()"><button class="btn btn-primary">Proceed</button></a>
+  </div>
+  <ng-template #submitted>
+    <a><button class="btn btn-primary" (click)="onDownload()">Download</button></a>
+  </ng-template>
+</div>
+
+<p-table [value]="order?.requests" 
+    [resizableColumns]="true" columnResizeMode="expand" 
+    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    [rowsPerPageOptions]="[10,25,50]">
+    <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="product.title">Product
+          </th>
+          <th pSortableColumn="qty">Qty</th>
+          <th *ngIf="order.status === 'PENDING'">Actions</th>
+        </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-req>
+        <tr>
+          <td>{{req.product.title}}</td>
+          <td>{{req.qty}}</td>
+            <td *ngIf="order.status === 'PENDING'" style="text-align: center;">
+                  <!-- <i class="bi bi-pencil-square text-primary"></i> -->
+                  <a (click)="delete(req.id)">
+                    <i class="bi bi-trash text-danger"></i>
+                </a>
+          </td>
+        </tr>
+    </ng-template>
+</p-table> 
+
+<p-dialog [header]="'Add Request'" 
+          [(visible)]="displayForm" [modal]="true">
+  <form [formGroup]="form" (ngSubmit)="onSave()">
+    <div class="container">
+      <div class="row">
+        <div class="col-9">
+          <label for="order" class="form-label">Request</label><br>
+            <select class="form-select" id="req" formControlName="requestid">
+              <option value="">Select</option>
+              <option *ngFor="let ar of availrequests" [value]="ar?.id">{{ar?.product?.title}}</option>
+            </select>
+        </div>
+        <!-- <div class="col-3">
+          <label for="qty" class="form-label">Qty</label><br>
+        <input id="qty" class="form-control" type="number" formControlName="qty">
+        </div> -->
+      </div>
+     
+      <div class="col-12 text-center">
+        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+      </div>
+    </div>
+  </form>
+</p-dialog>

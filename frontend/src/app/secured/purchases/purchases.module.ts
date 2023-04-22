@@ -7,7 +7,7 @@ import { SharedModule } from "src/app/shared/shared.module";
 import { InvoiceFormComponent } from "./invoices/components/invoice-form.component";
 import { InvoiceItemsComponent } from "./invoices/components/invoice-items.component";
 import { InvoicePaymentComponent } from "./invoices/components/invoice-payment.component";
-import { InvoicesComponent } from "./invoices/components/invoices.component";
+import { InvoiceListComponent } from "./invoices/components/invoice-list.component";
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import {DialogModule} from 'primeng/dialog';
 import {TableModule} from 'primeng/table';
@@ -21,20 +21,42 @@ import {DropdownModule} from 'primeng/dropdown';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
 import { InvoiceItemFormComponent } from "./invoices/components/invoice-item-form.component";
-import { PurchaseHeaderComponent } from "./invoices/components/purchase-header.component";
+import { PurchaseRequestComponent } from "./requests/components/purchase-request.component";
+import { PurchaseHeaderComponent } from "./purchase-header.component";
+import { PurchasesComponent } from "./invoices/components/purchases.component";
+import { TabViewModule } from "primeng/tabview";
+import { PurchaseOrderComponent } from "./requests/components/purchase-order.component";
+import { PurchaseOrderViewComponent } from "./requests/components/purchase-order-view.component";
+import { InvoicesComponent } from "./invoices/components/invoices.component";
 
 const routes: Routes = [
-  { path: '', redirectTo: 'list'},
-    {path: 'list', component: InvoicesComponent, canActivate:[AuthGuard]},
-    {path: 'new', component: InvoiceFormComponent, canActivate:[AuthGuard]},
-    {path: 'edit/:id', component: InvoiceFormComponent, canActivate:[AuthGuard]},
-    {path: 'items/:id', component: InvoiceItemsComponent, canActivate:[AuthGuard]}
+  { path: '', component: PurchasesComponent, canActivate:[AuthGuard]},
+  { path: 'requests', component: PurchaseRequestComponent, canActivate:[AuthGuard]},
+  { path: 'orders', component: PurchaseOrderComponent, canActivate:[AuthGuard],
+      children: [
+        { path: ':id', component: PurchaseOrderViewComponent, canActivate:[AuthGuard] }
+      ]
+  },
+  { path: 'invoice', component: InvoicesComponent, canActivate:[AuthGuard],
+      children: [
+        { path: '', redirectTo: 'list'},
+        { path: 'list', component: InvoiceListComponent},
+        { path: 'new', component: InvoiceFormComponent},
+        { path: 'edit/:id', component: InvoiceFormComponent},
+        { path: 'items/:id', component: InvoiceItemsComponent}
+      ]
+  }
 ];
 
 @NgModule({
     declarations: [
+      PurchasesComponent,
       PurchaseHeaderComponent,
+      PurchaseRequestComponent,
+      PurchaseOrderComponent,
+      PurchaseOrderViewComponent,
       InvoicesComponent,
+      InvoiceListComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,
       InvoiceItemFormComponent,
@@ -47,6 +69,7 @@ const routes: Routes = [
         AutoCompleteModule,
         CalendarModule,
         DialogModule,
+        TabViewModule,
         TableModule,
         ToastModule,
         SliderModule,

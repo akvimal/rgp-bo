@@ -1,0 +1,54 @@
+<app-purchase-header></app-purchase-header>
+<div class="container">
+  <div class="row">
+    <div class="col-12">
+      <a (click)="add()"><button type="submit" class="btn btn-primary">Add New</button></a>
+    </div>
+    <div class="col-4 mt-2">
+      <ul class="list-group">
+        <li class="list-group-item" *ngFor="let order of orders">
+          <a [routerLink]="[order.id]">
+            {{order.vendor.name}}</a>
+          <br>
+          #{{order.id}} {{order.createdon | date : 'dd MMM'}} {{order?.status}}
+        </li>
+      </ul>
+    </div>
+    <div class="col-8">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>
+
+<p-dialog [header]="form.controls['id'].value !== null ? 'Edit Order' : 'Add Order'" [(visible)]="displayForm"
+  [modal]="true">
+  <form [formGroup]="form" (ngSubmit)="onSave()">
+    <div class="container">
+      <div class="row">
+        <div class="col-9">
+          <label for="order" class="form-label">Vendor</label><br>
+          <div *ngIf="form.controls['id'].value !== null;else lookup">
+            <!-- <h6>{{form.controls['title'].value}}</h6> -->
+          </div>
+          <ng-template #lookup>
+            <select class="form-select" id="vendor" formControlName="vendorid">
+              <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
+            </select>
+            <!-- <app-product-lookup (selected)="onProductSelect($event)"></app-product-lookup> -->
+          </ng-template>
+        </div>
+        <!-- <div class="col-3">
+              <label for="qty" class="form-label">Qty</label><br>
+            <input id="qty" class="form-control" type="number" formControlName="qty">
+            </div> -->
+      </div>
+      <div class="col-12">
+        <label for="comments" class="form-label">Comments</label><br>
+        <textarea class="form-control" id="comments" formControlName="comments" style="height: 100px;"></textarea>
+      </div>
+      <div class="col-12 text-center">
+        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+      </div>
+    </div>
+  </form>
+</p-dialog>

@@ -6,6 +6,7 @@ import {
   } from "typeorm";
 import { BaseEntity } from "./base.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
+import { PurchaseRequest } from "./purchase-request.entity";
   
   @Index("product_pk", ["id"], { unique: true })
   @Index("product_un", ["title"], { unique: true })
@@ -38,6 +39,12 @@ import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
 
     @Column("json", { name: "more_props", nullable: true })
     props: object | null;
+
+    @OneToMany(
+      () => PurchaseRequest,
+      (request) => request.product
+    )
+    requests: PurchaseRequest[];
 
     @OneToMany(
       () => PurchaseInvoiceItem,

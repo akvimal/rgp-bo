@@ -5,6 +5,7 @@ import { VendorsService } from "../../../vendors/vendors.service";
 import { Invoice } from "../invoice.model";
 import { InvoiceService } from "../invoices.service";
 import { ProductsService } from "../../../products/products.service";
+import { PurchaseOrderService } from "../../requests/purchase-order.service";
 
 @Component({
     templateUrl: './invoice-form.component.html'
@@ -12,6 +13,7 @@ import { ProductsService } from "../../../products/products.service";
 export class InvoiceFormComponent {
 
     invoice:Invoice = {}
+    orders:any = [];
     vendors:any = [];
     products:any = [];
     total:number = 0;
@@ -31,7 +33,8 @@ export class InvoiceFormComponent {
       private router: Router, 
       private service:InvoiceService,
       private vendorService:VendorsService,
-      private prodService:ProductsService){}
+      private prodService:ProductsService,
+      private poService:PurchaseOrderService){}
 
     ngOnInit(){
       const id = this.route.snapshot.paramMap.get('id');
@@ -60,6 +63,11 @@ export class InvoiceFormComponent {
 
       this.vendorService.findAll().subscribe(data => this.vendors = data);
       this.prodService.findAll(null).subscribe(data => this.products = data);
+    }
+
+    fetchOrders(event:any){
+      this.form.controls['purchaseorderid'].setValue('')
+      this.poService.findAllByCriteria({status:'SUBMITTED', vendorid:event.target.value}).subscribe(data => this.orders = data);
     }
 
     getCurrentDateStr(){
@@ -122,9 +130,10 @@ export class InvoiceFormComponent {
     }
     
     gotoList() {
-      this.router.navigate(['/secure/purchases'],{relativeTo:this.route})
+      this.router.navigate(['/secure/purchases/invoice'],{relativeTo:this.route})
     }
+    
     gotoEdit(id:any){
-      this.router.navigate([`/secure/purchases/items/${id}`])
+      this.router.navigate([`/secure/purchases/invoice/items/${id}`])
     }
 }

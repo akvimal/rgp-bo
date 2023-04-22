@@ -2,7 +2,7 @@
 <html>
   <head>
     <mate charest="utf-8" />
-    <title>H1 Schedule Report</title>
+    <title>Purchase Order</title>
     <style>
       body {
         font-size: 9px;
@@ -28,39 +28,25 @@
   </head>
   <body>
     <div style="text-align: center;">
-    <h4>H1 Schedule Report</h4>
-    <p>Period: {{this.fromdate}} - {{this.todate}}</p>
+    <h4>Purchase Order</h4>
+    <h5>{{this.order.vendor.name}}</h5>
+    <p>Date: {{this.orderdate}}</p>
   </div>
     <table id="data">
       <thead>
       <tr>
-        <th>No.</th>
-        <th>Date</th>
-        <th>Patient</th>
-        <th>Doctor</th>
-        <th>Drug</th>
+        <th>Product</th>
         <th>Qty</th>
-        <th>Pharmacist</th>
       </tr>
     </thead>
     <tbody>
-      {{#each items}}
+      {{#each requests}}
       <tr>
-        <td>{{this.id}}</td>
-        <td>{{this.date}}</td>
-        <td>{{this.customer}}
-          ({{this.mobile}})
-          <br>{{this.address}}
-        </td>
-        <td>{{this.doctor}}</td>
         <td>{{this.product}}</td>
         <td class="qty">{{this.qty}}</td>
-        <td></td>
       </tr>
       {{/each}}
     </tbody>
     </table>
-   
-    
   </body>
 </html>

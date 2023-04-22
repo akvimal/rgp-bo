@@ -7,7 +7,7 @@ import { TypeOrmConfigService } from './database/typeorm-config.service';
 import { RoleModule } from './modules/app/roles/role.module';
 import { CustomerModule } from './modules/customers/customer.module';
 import { ProductModule } from './modules/products/product.module';
-import { PurchaseInvoiceModule } from './modules/purchases/invoice.module';
+import { PurchaseInvoiceModule } from './modules/purchases/purchase.module';
 import { SaleModule } from './modules/sales/sale.module';
 import { UserModule } from './modules/app/users/user.module';
 import { VendorModule } from './modules/vendors/vendor.module';

@@ -5,7 +5,7 @@ import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { Product } from "src/entities/product.entity";
 import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
-import { PurchaseInvoiceService } from "../purchases/invoice.service";
+import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
 import { StockController } from "./stock.controller";
 import { StockService } from "./stock.service";
 

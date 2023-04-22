@@ -60,7 +60,6 @@ export class AuthService {
       else 
         return p.path === url || url.startsWith(p.path);
     });
-    
     return found ? true : false;
   }
 }

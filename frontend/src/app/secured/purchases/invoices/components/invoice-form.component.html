@@ -1,14 +1,21 @@
-<div class="pagetitle">
-  <h1>Purchase Invoices</h1>
-</div>
+<app-purchase-header></app-purchase-header>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
   <div class="container">
     <div class="row">
       <div class="col-md-3">
         <label for="vendor" class="col-form-label">Vendor</label>
-        <select class="form-select" id="vendor" formControlName="vendorid" aria-label="State">
+        <select class="form-select" id="vendor" formControlName="vendorid" (change)="fetchOrders($event)">
+          <option value="">Select</option>
           <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="poid" class="col-form-label">PO</label>
+        <!-- <input type="text" class="form-control" formControlName="purchaseorderid" id="poid"> -->
+        <select class="form-select" id="order" formControlName="purchaseorderid">
+          <option value="">Select</option>
+          <option *ngFor="let o of orders" [value]="o.id">{{o.createdon | date}} ({{o.id}})</option>
         </select>
       </div>
       <div class="col-md-3">
@@ -18,10 +25,6 @@
       <div class="col-md-3">
         <label for="invno" class="col-form-label">Invoice No.</label>
         <input type="text" class="form-control" formControlName="invoiceno" id="invno">
-      </div>
-      <div class="col-md-3">
-        <label for="poid" class="col-form-label">PO ID</label>
-        <input type="text" class="form-control" formControlName="purchaseorderid" id="poid">
       </div>
     </div>
     <div class="row mt-3">

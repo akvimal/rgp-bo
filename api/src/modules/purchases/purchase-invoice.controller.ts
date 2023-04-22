@@ -1,4 +1,4 @@
-import { PurchaseInvoiceService } from "./invoice.service";
+import { PurchaseInvoiceService } from "./purchase-invoice.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
@@ -14,11 +14,6 @@ export class PurchaseInvoiceController {
 
     constructor(private purchaseInvoiceService:PurchaseInvoiceService){}
 
-    // @Get()
-    // async findAll() {
-    //   return this.purchaseInvoiceService.findAll();
-    // }
-
     @Get('/:id')
     async findById(@Param('id') id: string) {
       return this.purchaseInvoiceService.findById(id);
@@ -26,12 +21,10 @@ export class PurchaseInvoiceController {
 
     @Get()
     async findByUnique(@Query() query: any) {
-      // console.log('Query: ',query);
-      
       if(Object.keys(query).length > 0)
-      return this.purchaseInvoiceService.findByUnique(query);
+        return this.purchaseInvoiceService.findByUnique(query);
       else
-      return this.purchaseInvoiceService.findAll();
+        return this.purchaseInvoiceService.findAll();
     }
 
     @Post()
@@ -55,7 +48,6 @@ export class PurchaseInvoiceController {
 
     @Delete(':id')
     remove(@Param('id') id: any) {
-      // return this.purchaseInvoiceService.update([id], {isActive:false}, currentUser.id);
       return this.purchaseInvoiceService.remove(id);
     }
 }
