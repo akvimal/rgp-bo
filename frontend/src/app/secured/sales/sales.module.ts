@@ -24,7 +24,7 @@ import { SaleHeaderComponent } from "./components/sale-header.component";
 import { SaleReminderComponent } from "./components/sale-reminder.component";
 
 const routes: Routes = [
-  {path: '', component: SalesComponent, canActivate:[AuthGuard]},
+  {path: '', redirectTo: 'list'},
   {path: 'list', component: SalesListComponent, canActivate:[AuthGuard]},
   {path: 'new', component: SaleFormComponent, canActivate:[AuthGuard]},
   {path: 'reminder', component: SaleReminderComponent, canActivate:[AuthGuard]},

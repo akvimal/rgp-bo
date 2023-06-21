@@ -2,10 +2,15 @@
   <h1>Sales</h1>
 </div> -->
 <app-sale-header></app-sale-header>
+<div class="row">
+  <div class="col-12">
+
 
   <p-tabView>
     <p-tabPanel header="Invoice Level" headerStyleClass="no-print">
     <div class="row mt-3 no-print">
+      <div class="row">
+        
       <div class="col-md-2">
         <label for="fromdate">Date</label>
         <input type="date" id="fromdate" name="filterbydate" class="form-control" 
@@ -30,9 +35,11 @@
     </div>
     <!-- <table class="table table-bordered mt-4">
       <thead> -->
+      
+      <div class="col-12">
   <p-table #dt1 [value]="sales" [resizableColumns]="true" columnResizeMode="expand" 
     [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
     [rowsPerPageOptions]="[10,25,50]">
     <ng-template pTemplate="header">
         <tr>
@@ -82,6 +89,8 @@
       </table> -->
     </ng-template>
   </p-table>
+</div>
+</div>
     </p-tabPanel>
     <p-tabPanel header="Product Level" headerStyleClass="no-print">
       <app-sale-items></app-sale-items>
@@ -91,3 +100,5 @@
   </p-tabView>
 
 
+</div>
+</div>

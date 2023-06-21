@@ -25,7 +25,7 @@ import { StockAuditComponent } from "./components/stock-audit.component";
 import { StockDemandComponent } from "./components/stock-demand.component";
 
 const routes: Routes = [
-  { path: '', component: StockComponent, canActivate:[AuthGuard]},
+  { path: '', redirectTo: 'list'},
   { path: 'list', component: StockListComponent, canActivate:[AuthGuard]},
   { path: 'adjust', component: StockAdjustComponent, canActivate:[AuthGuard]},
   { path: 'demand', component: StockDemandComponent, canActivate:[AuthGuard]}

@@ -1,8 +1,7 @@
 <app-purchase-header></app-purchase-header>
-<div class="container">
   <div class="row">
-    <div class="col-12">
-      <a (click)="add()"><button type="submit" class="btn btn-primary">Add New</button></a>
+    <div class="col-12 mt-2">
+        <a (click)="add()"><button type="submit" class="btn btn-primary">Add New</button></a>
     </div>
     <div class="col-4 mt-2">
       <ul class="list-group">
@@ -14,11 +13,10 @@
         </li>
       </ul>
     </div>
-    <div class="col-8">
+    <div class="col-8 mt-2">
       <router-outlet></router-outlet>
     </div>
   </div>
-</div>
 
 <p-dialog [header]="form.controls['id'].value !== null ? 'Edit Order' : 'Add Order'" [(visible)]="displayForm"
   [modal]="true">

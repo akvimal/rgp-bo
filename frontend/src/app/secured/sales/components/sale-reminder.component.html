@@ -1,11 +1,8 @@
 <app-sale-header></app-sale-header>
 
-Sale Reminder
-
-
 <p-table #dt1 [value]="customers" [resizableColumns]="true" columnResizeMode="expand" 
 [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
     [rowsPerPageOptions]="[10,25,50]">
     <!-- <ng-template pTemplate="caption">
         <div class="flex">

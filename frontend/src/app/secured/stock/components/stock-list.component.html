@@ -1,10 +1,10 @@
 <app-stock-header></app-stock-header>
-  <div class="container">
+  
     <div class="row mt-2">
-        <div class="col-12 p-0">
+        <div class="col-12">
             <p-table #dt1 [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
             [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-                [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
@@ -99,7 +99,7 @@
             </p-table>    
         </div>
     </div>
-</div>
+
 
 <p-dialog header="Adjust Price" [(visible)]="displayPriceAdjForm" [modal]="true">
     <!-- <div class="container"> -->
