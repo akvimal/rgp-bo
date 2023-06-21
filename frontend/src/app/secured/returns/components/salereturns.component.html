@@ -1,0 +1,157 @@
+<div class="pagetitle">
+  <h1>Sale Returns</h1>
+</div>
+<!-- <a [routerLink]="['new']"> -->
+  <button (click)="showAddForm()" class="btn btn-primary">Add New</button>
+<!-- </a> -->
+
+<p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
+[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+[tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+[rowsPerPageOptions]="[10,25,50]">
+<ng-template pTemplate="header">
+
+    <tr>
+      <th scope="col">ID</th>
+      <th scope="col" pSortableColumn="createdon">Date
+        <p-sortIcon field="createdon"></p-sortIcon>
+      </th>
+      <th scope="col">Customer</th>
+      <th scope="col">Product</th>
+      <th scope="col">Qty</th>
+      <th scope="col">Amount</th>
+      <th scope="col">Reason</th>
+      <th scope="col">Status</th>
+      <th scope="col">Actions</th>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="body" let-ri>
+    <tr>
+      <td>{{ri.id}}</td>
+      <td>{{ri.createdon | date : 'dd/MM/yy'}}</td>
+      <td>{{ri.sale.customer.name}}({{ri.sale.customer.mobile}})<br>
+        Bill No: {{ri.sale.id}} Bill Date: {{ri.sale.billdate | date : 'dd-MMM'}}</td>
+      <td>{{ri.purchaseitem.product.title}}
+        <div>
+          Batch: {{ri.purchaseitem.batch}} Exp: {{ri.purchaseitem.expdate}}
+        </div>
+      </td>
+      <td style="text-align:right">{{ri.qty}}</td>
+      <td style="text-align:right">{{ri.amount}}</td>
+      <td>{{ri.reason}}</td>
+      <td>{{ri.status}}</td>
+      <td style="text-align: center;">
+        <i class="bi bi-journal-text"></i>
+        <div *ngIf="ri.status !== 'Return Complete'">
+        <a (click)="showProcessInput(ri.id)">
+          <i class="bi bi-pencil-square text-primary"></i>
+        </a>&nbsp;&nbsp;
+        <a (click)="showDeleteConfirm(ri.id)"><i class="bi bi-trash text-danger"></i></a>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog [header]="'Delete Return'" 
+            [(visible)]="displayRemoveReturn" [modal]="true">
+            <h4>{{returnitem?.purchaseitem.product.title}}</h4>
+            {{returnitem?.status}} : {{-1*returnitem?.qty}} nos.
+            <p>
+              <button class="btn btn-primary m-2" (click)="confirmDelete()">Confirm</button>
+            </p>
+</p-dialog>
+<p-dialog [header]="'Process Return'" 
+            [(visible)]="displayUpdateReturn" [modal]="true">
+            <h4>{{returnitem?.purchaseitem.product.title}}</h4>
+            {{returnitem?.status}} : {{-1*returnitem?.qty}} nos.
+            <h5>{{returnitem?.reason}}</h5>
+            <p>{{returnitem?.comments}}</p>
+            <textarea class="form-control" [(ngModel)]="comments"></textarea>
+            <button *ngIf="returnitem?.reason === 'Defect at Source' || 
+            returnitem?.reason === 'Defect at Store' || 
+            returnitem?.reason === 'Defect at Delivery'"
+            class="btn btn-primary m-2" (click)="processReturn('adjust')">Adjust Stock</button>
+
+            <button class="btn btn-primary m-2" (click)="processReturn('accept')">Accept Return</button>
+            <p>
+              
+            </p>
+</p-dialog>
+
+<p-dialog [header]="'New Return'" 
+            [(visible)]="displayNewReturn" [modal]="true">
+            
+         <div class="row">
+            <div class="col-6">
+                  <p-autoComplete [(ngModel)]="customer" [minLength]="2"
+                  [suggestions]="filteredCustomerList"
+                  [showEmptyMessage]="true"
+                  (completeMethod)="searchCustomers($event)"
+                  field="mobile" placeholder="Name or Mobile"
+                  (onSelect)="customerSelected($event)">
+                  <ng-template let-customer pTemplate="item">
+                    <div>{{customer.name}} - {{customer.mobile}}</div>
+                </ng-template>
+                </p-autoComplete>
+                {{customer.name}}
+            </div>
+            <div class="col-6">
+              <p-autoComplete [(ngModel)]="saleitem" [minLength]="2"
+              [suggestions]="filteredCustomerItemList"
+              [showEmptyMessage]="true"
+              (completeMethod)="searchCustomerItems($event)"
+              field="title" placeholder="Product"
+              showClear="true"
+              (onSelect)="productSelected($event)">
+              <ng-template let-saleitem pTemplate="item">
+                <div>
+                  {{saleitem.title}} ({{saleitem.batch}})<br>
+            {{saleitem.bill_no}} ({{saleitem.bill_date | date : 'dd-MMM'}})
+                </div>
+            </ng-template>
+            </p-autoComplete>
+            {{saleitem.title}}
+            </div>
+        
+            <div class="col-4"><label class="form-label">Sale Date</label> {{saleitem.bill_date | date}}</div>
+            <div class="col-4">Allowed Qty: {{saleitem.allow_qty}}</div>
+            <div class="col-4">Price: {{saleitem.ptr_cost}}</div>
+            </div>
+            <form [formGroup]="form" (ngSubmit)="onSubmitReturnItem()">
+            <div class="row">
+            
+            <div class="col-4">
+              <label class="form-label">Reason</label>
+              <select name="reason" class="form-control" formControlName="reason">
+                  <option value=""></option>
+                  <option>Defect at Source</option>
+                  <option>Defect at Store</option>
+                  <option>Defect at Delivery</option>
+                  <option>Customer Mistake</option>
+                  <option>Sales Mistake</option>
+                  <option>None</option>
+              </select>
+            </div>
+            <div class="col-4"><label class="form-label">Return Qty</label>
+              <input type="text" name="qty" class="form-control" 
+              formControlName="qty"
+              (input)="calculate($event)">
+            </div>
+            <div class="col-4"><label class="form-label">Amount:</label><br>
+            {{form.controls['amount'].value}}</div>
+            <div class="col-12"><label class="form-label">Comments</label>
+            <textarea class="form-control" formControlName="comments"></textarea>
+            </div>
+            <div class="col-6"><label class="form-label">Refund Mode:</label>
+              <select name="paymode" class="form-control" formControlName="paymode">
+                <option value="Credit">Credit</option>
+                  <option value="Transfer">Transfer</option>
+                  <option value="Cash">Cash</option>
+              </select></div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+            </div>          
+        </div>
+      </form>
+</p-dialog>

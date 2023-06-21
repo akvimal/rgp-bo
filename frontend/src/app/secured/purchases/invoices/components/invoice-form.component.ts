@@ -18,6 +18,7 @@ export class InvoiceFormComponent {
     products:any = [];
     total:number = 0;
     currentDate = new Date();
+    errorMessage:string = '';
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -101,9 +102,16 @@ export class InvoiceFormComponent {
         this.service.save({id, ...obj}).subscribe(data => this.gotoEdit(id));
       else
         this.service.save(obj).subscribe((data:any) => {
-          if(!(data.status && data.status === 'ERROR')) {
-            this.gotoEdit(data.id);
+          console.log('saved',data);
+          if(data.status === 'ERROR'){
+            this.errorMessage = data.message;
           }
+          // if(!(data.status && data.status === 'ERROR')) {
+            // console.log('>>>> ',data);
+            
+            else
+            this.gotoEdit(data.id);
+          // }
         });
     }
 

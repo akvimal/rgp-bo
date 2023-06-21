@@ -22,8 +22,6 @@ export class PurchaseService {
     }    
 
     async findAllRequestsByCriteria(criteria:any){
-        console.log('criteria: ',criteria);
-        
         let whereclause = 'req.isActive = :flag'
         if(criteria.status){
             whereclause += ' and req.status = :status'

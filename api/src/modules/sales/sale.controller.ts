@@ -110,6 +110,11 @@ export class SaleController {
     async findAllItemsBySale(@Param('id') id: string) {
       return this.saleService.findAllItemsBySale(id);
     }
+    
+    @Get('/:id/items/return')
+    async findAllItemsToReturn(@Param('id') id: string) {
+      return this.saleService.findAllEligibleItemsToReturn(id);
+    }
 
     @Delete(':id')
     remove(@Param('id') id: string, @User() currentUser: any) {

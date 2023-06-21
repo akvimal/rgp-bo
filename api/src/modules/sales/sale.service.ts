@@ -16,29 +16,21 @@ export class SaleService {
 
     async create(sale:any,userid:any) {
         return this.saleRepository.save({...sale, createdby:userid}).then(data => {
-            // console.log('data: ',data);
             data.items.forEach(i => {
                 i.saleid = data.id;
             })
             return this.saleItemRepository.save(data.items).then(d => {
                 return new Promise(async (resolve,reject)=>{
-                    const sale = await this.findById(data.id)
-                    // console.log('data:',data);
+                    const sale = await this.findById(data.id);
                     resolve(sale);
                 })
             })
-            
-            
         });
     }
 
     async removeItems(createSaleDto:CreateSaleDto){
         return await this.saleItemRepository.delete({saleid:createSaleDto.id});
-    }    
-    // async updateItems(createSaleDto:CreateSaleDto, userid:any){
-    //     await this.saleItemRepository.delete({saleid:createSaleDto.id});
-    //     return await this.saleRepository.save({...createSaleDto, updatedby:userid});
-    // }    
+    } 
   
     async createItem(createSaleItemDto: CreateSaleItemDto, userid:any) {
         return this.saleItemRepository.save({...createSaleItemDto, createdby:userid});
@@ -171,7 +163,7 @@ export class SaleService {
 	          .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
 	          .leftJoinAndSelect("purchaseitem.product", "product")
 	            .select(['sale','customer','items','purchaseitem','product'])
-          .where(`sale.status = 'COMPLETE' and sale.id in (${ids.join(',')})`)
+          .where(`sale.status = 'COMPLETE' and items.status = 'Sale Complete' and sale.id in (${ids.join(',')})`)
           .getMany();
     }
 
@@ -198,6 +190,20 @@ export class SaleService {
         return this.saleItemRepository.createQueryBuilder('si')
             .where('si.saleid = :id', { id })
             .getMany();
+    }
+
+    async findAllEligibleItemsToReturn(id:string){
+        return await this.manager.query(
+        `select s.sale_id, pii.id, p.title, pii.batch, pii.exp_date, pii.sale_price, p.pack, x.net as balqty from sale_item s 
+        inner join 
+        (select sale_id as sid, purchase_item_id as pid, sum(qty) as net from sale_item si where sale_id = ${id}
+        group by sale_id, purchase_item_id) x on x.sid = s.sale_id and x.pid = s.purchase_item_id and x.net > 0 and status is null
+        inner join purchase_invoice_item pii on pii.id = s.purchase_item_id 
+        inner join product p on p.id = pii.product_id`);
+
+        // return this.saleItemRepository.createQueryBuilder('si')
+        //     .where('si.saleid = :id and ', { id })
+        //     .getMany();
     }
 
     async update(id:any, values:any, userid:any){

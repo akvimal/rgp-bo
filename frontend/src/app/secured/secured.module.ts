@@ -11,6 +11,7 @@ import { DashboardComponent } from "./dashboard.component";
 import { ProductsModule } from "./products/products.module";
 import { ProfileComponent } from "./profile.component";
 import { PurchasesModule } from "./purchases/purchases.module";
+import { SaleReturnsModule } from "./returns/salereturns.module";
 import { RolesModule } from "./roles/roles.module";
 import { SalesModule } from "./sales/sales.module";
 import { SecuredComponent } from "./secured.component";
@@ -54,6 +55,10 @@ const routes: Routes = [
     {
       path: 'sales', canActivate:[AuthGuard],
       loadChildren: () => import('./sales/sales.module').then(m => m.SalesModule)
+    },
+    {
+      path: 'returns', canActivate:[AuthGuard],
+      loadChildren: () => import('./returns/salereturns.module').then(m => m.SaleReturnsModule)
     }
   ] }
 ];
@@ -77,7 +82,8 @@ const routes: Routes = [
         PurchasesModule,
         StockModule,
         CustomersModule,
-        SalesModule
+        SalesModule,
+        SaleReturnsModule
     ],
     exports: [RouterModule]
   })

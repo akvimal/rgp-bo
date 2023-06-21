@@ -18,6 +18,7 @@ import { AppService } from './app.service';
 import { FileDownloadController } from './modules/app/download/filedownload.controller';
 import { PdfGenerateService } from './modules/app/download/pdfgenerate.service';
 import { StockModule } from './modules/stock/stock.module';
+import { SaleReturnModule } from './modules/returns/salereturn.module';
 
 @Module({
   controllers: [ AppController, FileDownloadController ],
@@ -43,6 +44,7 @@ import { StockModule } from './modules/stock/stock.module';
     PurchaseInvoiceModule,
     CustomerModule,
     SaleModule,
+    SaleReturnModule,
     StockModule
   ]
 })

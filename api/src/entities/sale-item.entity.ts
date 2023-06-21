@@ -4,10 +4,12 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { BaseEntity } from "./base.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
+import { SaleReturnItem } from "./salereturn-item.entity";
 import { Sale } from "./sale.entity";
 
 @Index("sale_item_pk", ["id"], { unique: true })
@@ -38,6 +40,12 @@ export class SaleItem extends BaseEntity {
   @Column("character varying", { name: "comments", nullable: true })
   comments: string | null;
 
+  @Column("character varying", { name: "reason", nullable: true })
+  reason: string | null;
+
+  @Column("character varying", { name: "paymode", nullable: true })
+  paymode: string | null;
+
   @ManyToOne(
     () => PurchaseInvoiceItem,
     (purchase) => purchase.saleitems
@@ -48,4 +56,7 @@ export class SaleItem extends BaseEntity {
   @ManyToOne(() => Sale, (sale) => sale.items)
   @JoinColumn([{ name: "sale_id", referencedColumnName: "id" }])
   sale: Sale;
+
+  @OneToMany(() => SaleReturnItem, (rtn) => rtn.saleitem)
+  returns: SaleReturnItem[];
 }

@@ -2,10 +2,11 @@
 <div class="row">
   <div *ngIf="order?.status === 'PENDING';else submitted" class="col-12">
     <a (click)="onAdd()"><button class="btn btn-primary">Add</button></a>
-    <a *ngIf="order?.requests.length > 0" (click)="onProceed()"><button class="btn btn-primary">Proceed</button></a>
+    &nbsp;<a *ngIf="order?.requests.length > 0" (click)="onProceed()">
+      <button class="btn btn-success">Proceed</button></a>
   </div>
   <ng-template #submitted>
-    <a><button class="btn btn-primary" (click)="onDownload()">Download</button></a>
+    <a><button class="btn btn-secondary" (click)="onDownload()">Download</button></a>
   </ng-template>
 </div>
 

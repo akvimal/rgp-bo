@@ -221,6 +221,7 @@ export class SaleFormComponent {
     let total = 0;
     validItems && validItems.forEach((i:any) => {
       total += i.total;
+      i.status = 'Sale Complete';
       i.id = null;
     });
 

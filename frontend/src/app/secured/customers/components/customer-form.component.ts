@@ -10,7 +10,6 @@ import { CustomersService } from "../customers.service";
 })
 export class CustomerFormComponent {
 
-  // @Input() id:number = 0;
   customer:Customer = {name:''}
   @Output() saved = new EventEmitter();
 

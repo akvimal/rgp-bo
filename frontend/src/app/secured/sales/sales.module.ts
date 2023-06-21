@@ -44,7 +44,6 @@ const routes: Routes = [
       SaleFormComponent,
       SaleFormItemsComponent,
       StockSelectComponent,
-      // CustomerFormComponent,
       CustomerSelectComponent
     ],
     imports: [
@@ -57,7 +56,6 @@ const routes: Routes = [
         TabViewModule,
         InputNumberModule,
         TableModule,
-        // CustomersModule,
         RouterModule.forChild(routes),
         SharedModule
     ],

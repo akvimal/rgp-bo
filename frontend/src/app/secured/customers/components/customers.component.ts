@@ -8,10 +8,7 @@ import { CustomersService } from "../customers.service";
 })
 export class CustomersComponent {
 
-    // displayForm:boolean = false;
-
-    customers:Customer[] = []
-    // selectedCustomerId:any;
+    customers:Customer[] = [];
     
     constructor(private service:CustomersService){}
 
@@ -19,26 +16,8 @@ export class CustomersComponent {
         this.fetchCustomers();
     }
 
-    // showNewCustomer(){
-    //    this.router.navigate(['new']);
-    // }
-
-    // onEdit(id:any) {
-    //     this.selectedCustomerId = id;
-    //     this.displayForm = true;
-    // }
-
-    // onRemove(id:any) {
-    //   this.service.remove(id).subscribe(data => this.fetchCustomers());
-    // }
-
     fetchCustomers(){
         this.service.findAll().subscribe((data:any) => this.customers = data);
     }
-
-    // customerSaved(event:any){
-    //     this.displayForm = false;
-    //     this.fetchCustomers();
-    // }
 
 }
