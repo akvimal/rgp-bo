@@ -20,8 +20,11 @@ Purchase
   
 Inventory
   - Demand
-  - Adjustment
+  - Auditing
+  - Price Adjustment
+  - Offers
   - Clearance
+    -  Expiry
 
 Sale
   - POS
