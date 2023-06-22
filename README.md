@@ -4,6 +4,11 @@ User
   - Signin
   - Permissions
 
+Business
+  - Profile
+  - Transfer
+  - Permissions
+
 Product
   - Catalog
       - Search / Filter
@@ -35,6 +40,10 @@ Inventory
 Sale
   - POS
   - Returns
+
+Compliance
+  -  H1 Schedule
+  -  Tax Filing
 
 Marketing
 
