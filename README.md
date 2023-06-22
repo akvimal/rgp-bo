@@ -5,9 +5,15 @@ User
   - Permissions
 
 Product
-
+  - Catalog
+      - Search / Filter
+      - Knowledge
+  - Reviews
+    
 Vendor
-  - Invoice
+  - Price List
+  - Invoices
+  - Issues
   
 Customer
   - Profile
@@ -33,5 +39,12 @@ Sale
 Marketing
 
 HR
+  - Attendance
+  - Leaves
+  - Performance
+  - Benefits
 
 Finance
+  - Invoice Payments
+  - Expenses
+    -  Petty Cash
