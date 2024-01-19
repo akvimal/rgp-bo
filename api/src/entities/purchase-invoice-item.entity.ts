@@ -11,6 +11,7 @@ import {
   import { Product } from "./product.entity";
 import { BaseEntity } from "./base.entity";
 import { SaleItem } from "./sale-item.entity";
+import { ProductClearance } from "./product-clearance.entity";
   
   @Index("pur_invitem_un", ["batch", "invoiceid", "productid"], { unique: true })
   @Index("pur_invitem_pk", ["id"], { unique: true })
@@ -82,5 +83,8 @@ import { SaleItem } from "./sale-item.entity";
 
     @OneToMany(() => SaleItem, (saleItem) => saleItem.purchaseitem)
     saleitems: SaleItem[];
+
+    @OneToMany(() => ProductClearance, (clearance) => clearance.purchaseitem)
+    clearanceitem: ProductClearance[];
   }
   

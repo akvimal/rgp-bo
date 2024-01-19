@@ -6,6 +6,7 @@ import { User } from "src/core/decorator/user.decorator";
 import { RoleService } from "../app/roles/role.service";
 import { SaleItemService } from "./saleitem.service";
 import { UpdateSaleReturnItemDto } from "./dto/update-salereturn.dto";
+import { CreateProductClearanceDto } from './dto/create-clearance.dto';
 
 @ApiTags('SaleReturns')
 @Controller('salereturns')
@@ -19,6 +20,11 @@ export class SaleReturnController {
     @Post()
     async create(@Body() createSaleReturnDto: CreateSaleReturnDto, @User() currentUser: any) {
       return this.saleItemService.saveReturn(createSaleReturnDto, currentUser.id);
+    }
+
+    @Post('/clearance')
+    async createClearance(@Body() createClearanceDto: CreateProductClearanceDto, @User() currentUser: any) {
+      return this.saleItemService.saveClearance(createClearanceDto, currentUser.id);
     }
 
     @Get()
