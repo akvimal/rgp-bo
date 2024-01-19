@@ -14,7 +14,6 @@ import {InputNumberModule} from 'primeng/inputnumber';
 import { TableModule } from "primeng/table";
 import { SaleReturnsComponent } from "./components/salereturns.component";
 import { ReturnItemSelectComponent } from "./components/auto-complete/returnitem-select.component";
-import { StockModule } from "../stock/stock.module";
 
 const routes: Routes = [
   {path: '', component: SaleReturnsComponent, canActivate:[AuthGuard]},

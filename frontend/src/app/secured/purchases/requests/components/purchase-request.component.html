@@ -19,10 +19,10 @@
                           <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                           <p-sortIcon field="title"></p-sortIcon>
                       </th>
-                      <th pSortableColumn="requesttype">Type
+                      <!-- <th pSortableColumn="requesttype">Type
                         <p-columnFilter type="text" field="requesttype" display="menu"></p-columnFilter>
                         <p-sortIcon field="requesttype"></p-sortIcon>
-                      </th>
+                      </th> -->
                       <th pSortableColumn="qty">Qty
                         <p-columnFilter type="text" field="qty" display="menu"></p-columnFilter>
                         <p-sortIcon field="qty"></p-sortIcon>
@@ -45,7 +45,7 @@
                     <tr>
                       <td>{{i.id}}</td>
                       <td>{{i.product.title}}</td>
-                      <td>{{i.requesttype}}</td>
+                      <!-- <td>{{i.requesttype}}</td> -->
                       <td>{{i.qty}}</td>
                         <td>{{i.status}}</td>
                         <td>{{i.createdon | date : 'dd/MM/yyyy'}}</td>
