@@ -24,7 +24,7 @@ export class ProductFormComponent{
         hsn: new FormControl(''),
         code: new FormControl(''),
         pack: new FormControl('1', Validators.required),
-        category: new FormControl(''),
+        category: new FormControl({value: '', disabled: true}),
         mfr: new FormControl(''),
         brand: new FormControl('', Validators.required),
         description: new FormControl(''),
@@ -35,6 +35,8 @@ export class ProductFormComponent{
       props:any = [];
       brand:string = '';
       pack:string = '';
+
+      isNew:boolean = false;
       
       constructor(private configService:ConfigService, 
         private service:ProductsService, 
@@ -49,6 +51,10 @@ export class ProductFormComponent{
       //     {name: 'Istanbul', code: 'IST'},
       //     {name: 'Paris', code: 'PRS'}
       // ];
+      
+// console.log('this.route.url: ',this.route.snapshot.url[0]);
+      this.isNew = this.route.snapshot.url[0].path === 'new';
+      this.isNew && this.form.controls['category'].enable()
 
         this.productProps$ = this.configService.props;
 
