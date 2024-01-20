@@ -1,4 +1,13 @@
 ## Features
+### Admin
 ### Platform
-### Stock
+- Login
+- Sign up
+### Product
+### Purchase
+- Intent
+- Purchase Order
+- Invoice
+### Inventory
+- Stock
 ### Sale
