@@ -73,7 +73,7 @@
       <div class="row mt-2">
         <div class="col-md-12 text-center">
           <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-          <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+          <button type="reset" *ngIf="isNew" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
           <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
         </div>
       </div>
