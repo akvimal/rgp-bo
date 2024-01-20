@@ -45,7 +45,15 @@ export class ProductListComponent {
             this.products = [...data].map(p => {
                 let attrs:any[] = [];
                 for (const [key, value] of Object.entries(p.props)) {
-                    attrs.push({key:key.toUpperCase(),value});
+                    
+                    if(value !== null) {
+                        if(Array.isArray(value)) {
+                            const items = value.map(d => d.code);
+                            attrs.push({key,value:items.join(', ')});
+                        }
+                        else
+                            attrs.push({key,value});
+                    }
                 }
                 return {...p,attrs,showProps:false};
             });
@@ -53,7 +61,6 @@ export class ProductListComponent {
     }
 
     toggleProps(prod:any,event:any){
-        console.log('product: ',prod);
         this.products.forEach((p:any) => {
             if(p.id === prod.id){
                 p.showProps = !p.showProps

@@ -4,11 +4,17 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { Observable } from "rxjs";
 import { ConfigService } from "src/app/shared/config.service";
 import { ProductsService } from "../products.service";
-
+interface City {
+  name: string,
+  code: string
+}
 @Component({
     templateUrl: 'product-form.component.html'
 })
 export class ProductFormComponent{
+  // cities!: City[];
+
+  // selectedCities!: City[];
 
     productProps$?:Observable<any>;
 
@@ -36,6 +42,14 @@ export class ProductFormComponent{
         private route:ActivatedRoute){}
 
       ngOnInit(){
+      //   this.cities = [
+      //     {name: 'New York', code: 'NY'},
+      //     {name: 'Rome', code: 'RM'},
+      //     {name: 'London', code: 'LDN'},
+      //     {name: 'Istanbul', code: 'IST'},
+      //     {name: 'Paris', code: 'PRS'}
+      // ];
+
         this.productProps$ = this.configService.props;
 
         this.populateProps(this.form.controls['category'].value,undefined);

@@ -38,6 +38,8 @@
               <option value="">Select</option>
               <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
             </select> 
+            <p-multiSelect [options]="pp.choices" formControlName={{pp.id}} optionLabel="name" *ngIf="pp.type === 'MULTI-SELECT'"></p-multiSelect>
+            
             <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)" 
                       class="form-control" formControlName={{pp.id}}>
             <div *ngIf="pp.type === 'CHECK'">
