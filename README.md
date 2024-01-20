@@ -1,5 +1,8 @@
 ## Features
 ### Admin
+- User
+- Role
+- RBAC
 ### Platform
 - Login
 - Sign up
