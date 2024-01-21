@@ -11,10 +11,7 @@ interface City {
 @Component({
     templateUrl: 'product-form.component.html'
 })
-export class ProductFormComponent{
-  // cities!: City[];
-
-  // selectedCities!: City[];
+export class ProductFormComponent {
 
     productProps$?:Observable<any>;
 
@@ -44,17 +41,9 @@ export class ProductFormComponent{
         private route:ActivatedRoute){}
 
       ngOnInit(){
-      //   this.cities = [
-      //     {name: 'New York', code: 'NY'},
-      //     {name: 'Rome', code: 'RM'},
-      //     {name: 'London', code: 'LDN'},
-      //     {name: 'Istanbul', code: 'IST'},
-      //     {name: 'Paris', code: 'PRS'}
-      // ];
-      
-// console.log('this.route.url: ',this.route.snapshot.url[0]);
-      this.isNew = this.route.snapshot.url[0].path === 'new';
-      this.isNew && this.form.controls['category'].enable()
+        
+        this.isNew = this.route.snapshot.url[0].path === 'new';
+        this.isNew && this.form.controls['category'].enable()
 
         this.productProps$ = this.configService.props;
 
@@ -92,9 +81,8 @@ export class ProductFormComponent{
               }
               pps = {...pps, [pname]:fc}
             }
-            this.form.setControl('props', new FormGroup(pps));  
+            this.form.setControl('props', new FormGroup(pps));
           }
-          
         });
       }
 

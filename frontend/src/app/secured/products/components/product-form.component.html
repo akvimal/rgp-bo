@@ -9,7 +9,7 @@
       <!-- Multi Columns Form -->
       <form [formGroup]="form" (ngSubmit)="onSave()">
         <div class="row mt-0">
-          <div class="col-md-2">
+          <div class="col-md-2"  *ngIf="(productProps$ | async).length > 0">
             <label for="category" class="form-label">Category</label>          
             <select formControlName="category" class="form-control" id="category" 
             (change)="selectProps($event,undefined)">
