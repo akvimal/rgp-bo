@@ -20,6 +20,10 @@ export class CustomersService {
         return this.http.delete(`${this.apiurl}/${id}`);
     }
 
+    findByCriteria(criteria:any){
+        return this.http.post(`${this.apiurl}/filter`,criteria);
+    }
+
     find(id:any){
         return this.http.get(`${this.apiurl}/${id}`);
     }

@@ -3,7 +3,6 @@ import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { ProductUtilService } from "../../product-util.service";
-import { SaleItem } from "../sale-item.model";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
 
@@ -26,6 +25,7 @@ export class SaleFormComponent {
 
     filteredCustomers: any[] = [];
     //newCustomer:boolean = true;
+    saleWithNoCustomerAllowed:boolean = false;
     allowCustomerSelect:boolean = false;
     newSaleItem = {id:0,itemid:0,price:0,qty:0,qtyready:false}
 
@@ -97,6 +97,14 @@ export class SaleFormComponent {
         this.allowCustomerSelect = true;
         this.sale.billdate = new Date();
       } 
+    }
+
+    resetCustomer(){
+      this.sale.customer = null;
+    }
+
+    isSaleWithNoCustomerAllowed(){
+      return this.saleWithNoCustomerAllowed;
     }
 
     isNewCustomer() {
@@ -209,15 +217,6 @@ export class SaleFormComponent {
       }
     }
     
-    if(this.isNewCustomer()){
-        this.displayNewCustomer = true;
-        this.customerEditOnly = false;
-        if(status === 'PENDING'){
-          this.customerEditOnly = true;
-        }
-        return;
-    }
-
     let total = 0;
     validItems && validItems.forEach((i:any) => {
       total += i.total;
@@ -236,6 +235,15 @@ export class SaleFormComponent {
         total = newTotal;
     }
     
+    if(!this.isSaleWithNoCustomerAllowed() && this.isNewCustomer()){
+      this.displayNewCustomer = true;
+      this.customerEditOnly = false;
+      if(status === 'PENDING'){
+        this.customerEditOnly = true;
+      }
+      return;
+    }
+
     this.service.save({...this.sale, total:Math.round(total), disccode:(this.offer?.code), discamount:discamt, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
       if(data.status === 'COMPLETE')
@@ -281,9 +289,9 @@ export class SaleFormComponent {
 
   saveCustomerInfo(status:string) {
     if(status === 'COMPLETE') {
-      if(!this.sale.customer.name){
-        this.sale.customer['name'] = 'Unknown'
-      }
+      // if(!this.sale.customer.name){
+      //   this.sale.customer['name'] = 'Unknown'
+      // }
       this.submit(status);
     }
     
@@ -296,8 +304,9 @@ export class SaleFormComponent {
     
     this.fetchCustomerPrevSales && this.service.getSalesByCustomer(this.sale.customer.id).subscribe((prevSale:any) => {
       
-      if(!prevSale.status) {
-        this.prevCustSales = [];
+      if(prevSale.length > 0) {
+        // if(!prevSale.status) {
+          this.prevCustSales = [];
 
         prevSale.forEach((ps:any) => {
           const items = ps.items.map((i:any) => {
@@ -333,10 +342,11 @@ export class SaleFormComponent {
 
           this.prevCustSales.push({billdate:ps.billdate,total:ps.total,items});
         });
+
+        this.displayPrevSalesCopy = true;
       }
     });
     
-    this.displayPrevSalesCopy = true;
   }
 
   copyCustomerInfo(event:any) {  
