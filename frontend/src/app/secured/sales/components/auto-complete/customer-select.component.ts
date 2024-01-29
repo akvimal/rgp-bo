@@ -31,10 +31,6 @@ export class CustomerSelectComponent {
 
     constructor(private customerService:CustomersService){}
 
-    ngOnInit(){
-        this.customerService.findAllApi().subscribe(data => this.items = data);
-    }
-
     focusOut(event:any){
         this.focusLeave.emit(event);
     }
@@ -51,10 +47,11 @@ export class CustomerSelectComponent {
 
     filterCustomer(event:any) {
         let query = event.query;
-        this.filteredCustomer = this.items && this.items.filter((c:any) => 
-            (c.name && c.name.toLowerCase().indexOf(query.toLowerCase()) == 0) ||
-            (c.mobile && c.mobile.indexOf(query.toLowerCase()) == 0));
-        this.customerSelected.emit({existing:false,mobile:query});
+        let criteria = {condition:'any', criteria:[
+            {property:'name',check:'startswith',value:query},
+            {property:'mobile',check:'startswith',value:query}]}
+        this.customerService.findByCriteria(criteria).subscribe((data:any) => this.filteredCustomer = data);
+        this.customerSelected.emit({existing:false,name:query,mobile:query});
     }
 
 }

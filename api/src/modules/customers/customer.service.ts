@@ -28,6 +28,25 @@ export class CustomerService {
         return await this.manager.query(query);
     }
 
+    async filterByCriteria(criteria:any) {
+
+        const qb = this.customerRepository.createQueryBuilder('c')
+            .where('c.active = :flag', { flag: true });
+            let ch = '';
+            for(let index = 0; index < criteria.criteria.length; index++) {
+                const c = criteria.criteria[index];
+                if(c['check'] === 'startswith'){
+                    ch += `${c.property} ilike '${c.value}%'`
+                }
+                
+                if(index < (criteria.criteria.length-1))
+                    ch +=  criteria.condition === 'any' ? ' or ' : ' and '
+            }
+    
+            qb.andWhere(ch);
+        return qb.getMany();
+    }
+
     async update(id:any, values:any){
         await this.customerRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             const obj = await this.customerRepository.findOne({id});

@@ -15,6 +15,10 @@
                     <!-- <a href="javascript:void(0)" (click)="closeChangeCustomer()">
                         <i class="bi bi-x-square text-primary"></i></a> -->
             </div>
+            <div class="col-lg-2">
+                <input type="checkbox" [(ngModel)]="saleWithNoCustomerAllowed" name="saleWithNoCustomerAllowed" id="saleWithNoCustomerAllowed">
+                Undisclosed
+            </div>
         </div>
            
         <ng-template #saleCustomer>
@@ -28,6 +32,11 @@
                         <span class="ml-2">
                             <a *ngIf="!isNewCustomer()" (click)="showPrevSalesCopy()">
                                 <i class="bi bi-files text-success"></i>
+                            </a>
+                        </span>
+                        <span class="ml-2">
+                            <a (click)="resetCustomer()">
+                                <i class="bi bi-x-square text-danger"></i>
                             </a>
                         </span>
                     </div>
