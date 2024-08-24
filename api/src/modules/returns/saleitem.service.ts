@@ -5,6 +5,9 @@ import { SaleItem } from "src/entities/sale-item.entity";
 import { Sale } from "src/entities/sale.entity";
 import { Repository } from "typeorm";
 import { CreateSaleReturnDto } from "./dto/create-salereturn.dto";
+import { CreateProductClearanceDto } from "./dto/create-clearance.dto";
+import { ProductClearance } from "src/entities/product-clearance.entity";
+import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 
 @Injectable()
 export class SaleItemService {
@@ -13,26 +16,44 @@ export class SaleItemService {
 
     constructor(
         @InjectRepository(SaleItem) private readonly saleItemRepo: Repository<SaleItem>,
+        @InjectRepository(PurchaseInvoiceItem) private readonly purchaseItemRepo: Repository<PurchaseInvoiceItem>,
+        @InjectRepository(ProductClearance) private readonly clearanceRepo: Repository<ProductClearance>,
         @InjectEntityManager() private manager: EntityManager) { }
 
-    async saveReturn(dto: CreateSaleReturnDto, userid: any) {
+        async saveReturn(dto: CreateSaleReturnDto, userid: any) {
 
-        const purchaseItem = await this.saleItemRepo.findOne(dto.saleitemid);
+            const purchaseItem = await this.saleItemRepo.findOne(dto.saleitemid);
+    
+            return this.saleItemRepo.save({
+                saleid: purchaseItem.saleid,
+                itemid: purchaseItem.itemid,
+                qty: (-1 * dto.qty),
+                price: purchaseItem.price,
+                total: purchaseItem.price * (-1 * dto.qty),
+                paymode: dto.paymode,
+                status: dto.status,
+                reason: dto.reason,
+                comments: dto.comments,
+                createdby: userid
+            });
+        }
 
-        return this.saleItemRepo.save({
-            saleid: purchaseItem.saleid,
-            itemid: purchaseItem.itemid,
-            qty: (-1 * dto.qty),
-            price: purchaseItem.price,
-            total: purchaseItem.price * (-1 * dto.qty),
-            paymode: dto.paymode,
-            status: dto.status,
-            reason: dto.reason,
-            comments: dto.comments,
-            createdby: userid
-        });
-    }
+        async saveClearance(dto: CreateProductClearanceDto, userid: any) {
 
+            const purchaseItem = await this.purchaseItemRepo.findOne(dto.itemid);
+    
+            return this.clearanceRepo.save({
+                itemid: purchaseItem.id,
+                qty: dto.qty,
+                price: dto.price,
+                total: dto.price * dto.qty,
+                status: dto.status,
+                reason: dto.reason,
+                comments: dto.comments,
+                createdby: userid
+            });
+        }
+        
     async findAllReturns(query: any, userid: any) {
         const qb = this.saleItemRepo.createQueryBuilder("si")
             .leftJoinAndSelect("si.sale", "s")
@@ -72,7 +93,7 @@ export class SaleItemService {
         const now = new Date();
         const other = new Date(now.setMonth(now.getMonth() - this.RETURN_PERIOD_MONTHS_ALLOWED));
         return await this.manager.query(`
-        select distinct p.title, pii.batch, pii.exp_date, pii.ptr_cost, 
+        select distinct p.title, pii.batch, pii.exp_date, si.price, 
         si.id as saleitem_id, s.bill_date, s.id as bill_no, si.qty as sold_qty, 
         x.aqty as allow_qty, si.created_on
         from sale_item si 

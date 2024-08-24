@@ -4,11 +4,12 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { Observable } from "rxjs";
 import { ConfigService } from "src/app/shared/config.service";
 import { ProductsService } from "../products.service";
+import { MessageService } from 'primeng/api';
 
 @Component({
     templateUrl: 'product-form.component.html'
 })
-export class ProductFormComponent{
+export class ProductFormComponent {
 
     productProps$?:Observable<any>;
 
@@ -18,7 +19,7 @@ export class ProductFormComponent{
         hsn: new FormControl(''),
         code: new FormControl(''),
         pack: new FormControl('1', Validators.required),
-        category: new FormControl(''),
+        category: new FormControl({value: '', disabled: true}),
         mfr: new FormControl(''),
         brand: new FormControl('', Validators.required),
         description: new FormControl(''),
@@ -29,13 +30,20 @@ export class ProductFormComponent{
       props:any = [];
       brand:string = '';
       pack:string = '';
+
+      isNew:boolean = false;
       
       constructor(private configService:ConfigService, 
         private service:ProductsService, 
+        private messageService: MessageService,
         private router:Router,
         private route:ActivatedRoute){}
 
       ngOnInit(){
+        
+        this.isNew = this.route.snapshot.url[0].path === 'new';
+        (this.isNew || this.form.controls['category'].value === '') && this.form.controls['category'].enable()
+
         this.productProps$ = this.configService.props;
 
         this.populateProps(this.form.controls['category'].value,undefined);
@@ -72,9 +80,8 @@ export class ProductFormComponent{
               }
               pps = {...pps, [pname]:fc}
             }
-            this.form.setControl('props', new FormGroup(pps));  
+            this.form.setControl('props', new FormGroup(pps));
           }
-          
         });
       }
 
@@ -126,7 +133,14 @@ export class ProductFormComponent{
           this.service.update(id, obj).subscribe(data => this.gotoList());
         }
         else {
-          this.service.save(obj).subscribe(data => this.gotoList());
+          this.service.save(obj).subscribe((data:any) => {
+            if(data.status == 'ERROR')
+              this.messageService.add({ severity: 'error', summary: 'Error', detail: data.message });
+            else {            
+              this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Saved Suucessfully' });
+              this.gotoList();
+            }
+          });
         }
   
       }

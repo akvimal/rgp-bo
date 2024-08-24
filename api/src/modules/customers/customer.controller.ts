@@ -27,6 +27,11 @@ export class CustomerController {
       return this.customerService.findSaleData(criteria);
     }
 
+    @Post('/filter')
+    async filterByCriteria(@Body() criteria: any) {
+      return this.customerService.filterByCriteria(criteria);
+    }
+
     @Get(':id')
     async findOne(@Param('id') id: string) {
       return this.customerService.findById(id);

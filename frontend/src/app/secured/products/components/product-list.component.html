@@ -4,7 +4,7 @@
 
     <div class="row mt-2">
         <div class="col-md-10 d-flex d-inline-flex">
-            <div>
+            <div *ngIf="(productProps$ | async).length > 0">
                 <select class="form-control" id="category" [(ngModel)]="category" (change)="selectCategory($event)">
                 <option value="">Category</option>
                 <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
@@ -40,7 +40,7 @@
                         <th pSortableColumn="id">ID 
                             <p-sortIcon field="id"></p-sortIcon>
                         </th>  
-                        <th pSortableColumn="category">Category 
+                        <th *ngIf="(productProps$ | async).length > 0" pSortableColumn="category">Category 
                             <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
                             <p-sortIcon field="category"></p-sortIcon>
                         </th>
@@ -76,12 +76,12 @@
                 <ng-template pTemplate="body" let-product>
                     <tr>
                         <td>{{product.id}}</td>
-                        <td>{{product.category}}</td>
+                        <td *ngIf="(productProps$ | async).length > 0">{{product.category}}</td>
                         <!-- <td>{{product.code}}</td> -->
                         <td>{{product.hsn}}</td>
                         <td>
                             <h6>{{product.title}}
-                                <a href="#" (click)="toggleProps(product,$event)">({{product.attrs.length}})</a>
+                                <a href="#" (click)="toggleProps(product,$event)" *ngIf="product.attrs.length > 0">({{product.attrs.length}})</a>
                             </h6>
                             <ul [ngStyle]="{'display': product.showProps ? 'inline' : 'none','margin':0,'padding':0}">
                                 <li style="list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>

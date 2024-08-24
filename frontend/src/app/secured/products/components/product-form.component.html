@@ -9,7 +9,7 @@
       <!-- Multi Columns Form -->
       <form [formGroup]="form" (ngSubmit)="onSave()">
         <div class="row mt-0">
-          <div class="col-md-2">
+          <div class="col-md-2" *ngIf="(productProps$ | async).length > 0">
             <label for="category" class="form-label">Category</label>          
             <select formControlName="category" class="form-control" id="category" 
             (change)="selectProps($event,undefined)">
@@ -38,6 +38,8 @@
               <option value="">Select</option>
               <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
             </select> 
+            <p-multiSelect [options]="pp.choices" formControlName={{pp.id}} optionLabel="name" *ngIf="pp.type === 'MULTI-SELECT'"></p-multiSelect>
+            
             <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)" 
                       class="form-control" formControlName={{pp.id}}>
             <div *ngIf="pp.type === 'CHECK'">
@@ -71,7 +73,7 @@
       <div class="row mt-2">
         <div class="col-md-12 text-center">
           <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-          <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+          <button type="reset" *ngIf="isNew" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
           <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
         </div>
       </div>
@@ -79,3 +81,4 @@
 
     </div>
   </div>
+  

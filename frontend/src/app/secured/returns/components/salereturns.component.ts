@@ -1,6 +1,5 @@
 import { Component } from "@angular/core";
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from "@angular/forms";
-import { StockService } from "../../stock/stock.service";
 
 import { SaleReturnService } from "../salereturns.service";
 import { SaleReturnItem } from "./salereturnitem.model";
@@ -35,7 +34,7 @@ export class SaleReturnsComponent {
         paymode: new FormControl('Credit')
     });
 
-    constructor(private service:SaleReturnService, private stockService:StockService){}
+    constructor(private service:SaleReturnService){}
 
     ngOnInit(){
         this.fetchReturns();
@@ -90,8 +89,8 @@ export class SaleReturnsComponent {
     }
 
     calculate(event:any){
-        const total = event.target.value * this.saleitem.ptr_cost;
-        this.form.controls['amount'].setValue(total);
+        const total = event.target.value * this.saleitem.price;
+        this.form.controls['amount'].setValue(total.toFixed(2));
     }
 
     showProcessInput(id:number){
@@ -113,26 +112,31 @@ export class SaleReturnsComponent {
     processReturn(action:string){     
         //TBD - to better way to store and render multiple comments   
         const moreComments = this.returnitem.comments + '\n\n >>>\n' + this.comments;
-        const adjustStock = action === 'adjust';
+        // const adjustStock = action === 'adjust';
 
         this.service.update(this.returnitem.id, {
-            status: adjustStock ?  'Stock Adjusted' : 'Return Complete', 
+            status: action === 'discard' ?  'Discarded' : 'Return Accepted', 
             comments: moreComments}).subscribe(data => {
-
-            if(adjustStock){
-                this.stockService.updateQty({
-                    itemid:this.returnitem.purchaseitem.id,
-                    qty:(-1*this.returnitem.qty), 
-                    reason:this.returnitem.reason,
-                    comments: moreComments + '\n' + 'Sale Return (ID: '+this.returnitem.id+')'});
-            }
+                // console.log('is adjust:',adjustStock);
+                
+                // console.log('data: ',data);
+                
+            // if(adjustStock){
+            //     this.stockService.updateQty({
+            //         itemid:this.returnitem.purchaseitem.id,
+            //         qty:(-1*this.returnitem.qty), 
+            //         reason:this.returnitem.reason,
+            //         comments: moreComments + '\n' + 'Sale Return (ID: '+this.returnitem.id+')'}).subscribe(data => {
+            //             console.log('saved');
+                        
+            //         });
+            // }
 
             this.displayUpdateReturn = false;
             this.fetchReturns();
         })
 
     }
-
 }
 
 export function returnQtyExceedASoldQty(): ValidatorFn {

@@ -3,7 +3,8 @@
   "props":[
     {
       "id": "composition",
-      "label": "Composition"
+      "label": "Composition",
+      "searchable": true
     },
     {
       "id": "formulation",
@@ -52,6 +53,21 @@
         }
       ]
     },{
+      "id": "conditions",
+      "label": "Condition",
+      "type": "MULTI-SELECT",
+      "searchable": true,
+      "choices": [
+        {
+          "name": "Fever",
+          "code": "Fever"
+        },
+        {
+          "name": "Cold",
+          "code": "Cold"
+        }]
+      },
+    {
       "id": "schedule",
       "label": "Schedule",
       "type": "SINGLE-SELECT",
@@ -75,16 +91,6 @@
           "value": "H1 Anti TB"
         }
       ]
-    },
-    {
-      "id": "generic",
-      "label": "Generic",
-      "type": "CHECK"
-    },
-    {
-      "id": "chronic",
-      "label": "Chronic",
-      "type": "CHECK"
     }
   ]
 },{

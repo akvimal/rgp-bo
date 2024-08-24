@@ -12,6 +12,8 @@ import { AuthModule } from './@core/auth/auth.module';
 import { AuthTokenInterceptor } from './@core/auth/auth-token.interceptor';
 import { RouterModule } from '@angular/router';
 import { PosComponent } from './pos.component';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 
 @NgModule({
   declarations: [
@@ -23,6 +25,7 @@ import { PosComponent } from './pos.component';
     BrowserAnimationsModule,
     HttpClientModule,
     ReactiveFormsModule,
+    ToastModule,
     RouterModule,
     CommonModule,
     FormsModule,

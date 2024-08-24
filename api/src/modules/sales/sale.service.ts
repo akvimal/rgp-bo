@@ -157,6 +157,9 @@ export class SaleService {
         from sale s where s.status = 'COMPLETE' and s.customer_id = ${custid} order by s.bill_date desc limit ${limit}`);
         const ids = saleids.map(i => i.id);
         
+        if(ids.length == 0)
+            return []
+        
         return await this.saleRepository.createQueryBuilder("sale")
 		  	.innerJoinAndSelect("sale.customer", "customer")
 	          .leftJoinAndSelect("sale.items", "items")

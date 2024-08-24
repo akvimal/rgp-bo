@@ -71,7 +71,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
             <button *ngIf="returnitem?.reason === 'Defect at Source' || 
             returnitem?.reason === 'Defect at Store' || 
             returnitem?.reason === 'Defect at Delivery'"
-            class="btn btn-primary m-2" (click)="processReturn('adjust')">Adjust Stock</button>
+            class="btn btn-primary m-2" (click)="processReturn('discard')">Adjust Stock</button>
 
             <button class="btn btn-primary m-2" (click)="processReturn('accept')">Accept Return</button>
             <p>
@@ -116,7 +116,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
         
             <div class="col-4"><label class="form-label">Sale Date</label> {{saleitem.bill_date | date}}</div>
             <div class="col-4">Allowed Qty: {{saleitem.allow_qty}}</div>
-            <div class="col-4">Price: {{saleitem.ptr_cost}}</div>
+            <div class="col-4">Price: {{saleitem.price}}</div>
             </div>
             <form [formGroup]="form" (ngSubmit)="onSubmitReturnItem()">
             <div class="row">
