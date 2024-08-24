@@ -59,6 +59,10 @@ const routes: Routes = [
     {
       path: 'returns', canActivate:[AuthGuard],
       loadChildren: () => import('./returns/salereturns.module').then(m => m.SaleReturnsModule)
+    },
+    {
+      path: 'settings', canActivate:[AuthGuard],
+      loadChildren: () => import('./settings/settings.module').then(m => m.SettingsModule)
     }
   ] }
 ];
