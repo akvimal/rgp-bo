@@ -16,18 +16,22 @@
                         <th pSortableColumn="id">ID
                             <p-sortIcon field="id"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="name">Business Name
+                        <th pSortableColumn="name">Name
                             <p-sortIcon field="name"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="contactname">Contact Name
+                        <!-- <th pSortableColumn="contactname">Contact
                             <p-sortIcon field="contactname"></p-sortIcon>
+                        </th> -->
+                        <th pSortableColumn="gstn">GSTN
+                            <p-sortIcon field="gstn"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="contactphone">Contact Phone
+                        <th pSortableColumn="contactphone">Phone
                             <p-sortIcon field="contactphone"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="address">Address
+                       
+                        <!-- <th pSortableColumn="address">Address
                             <p-sortIcon field="address"></p-sortIcon>
-                        </th>
+                        </th> -->
                         <th>Actions</th>
                     </tr>
                 </ng-template>
@@ -35,9 +39,10 @@
                     <tr>
                         <td>{{vendor.id}}</td>
                         <td>{{vendor.name}}</td>
-                        <td>{{vendor.contactname}}</td>
+                        <!-- <td>{{vendor.contactname}}</td> -->
+                        <td>{{vendor.gstn}}</td>
                         <td>{{vendor.contactphone}}</td>
-                        <td>{{vendor.address}}</td>
+                        <!-- <td>{{vendor.address}}</td> -->
                         <td style="text-align: center;">
                             <a *isAuth="'vendors.edit'" [routerLink]="['../edit', vendor.id]">
                             <i class="bi bi-pencil-square text-primary"></i></a>&nbsp;&nbsp;

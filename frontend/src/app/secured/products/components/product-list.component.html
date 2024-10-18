@@ -6,7 +6,7 @@
         <div class="col-md-10 d-flex d-inline-flex">
             <div *ngIf="(productProps$ | async).length > 0">
                 <select class="form-control" id="category" [(ngModel)]="category" (change)="selectCategory($event)">
-                <option value="">Category</option>
+                <option value="">All Category</option>
                 <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
                 </select>
             </div>
@@ -48,10 +48,10 @@
                             <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
                             <p-sortIcon field="code"></p-sortIcon>
                         </th>   -->
-                        <th pSortableColumn="hsn">HSN
+                        <!-- <th pSortableColumn="hsn">HSN
                             <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
                             <p-sortIcon field="hsn"></p-sortIcon>
-                        </th>
+                        </th> -->
                         <th pSortableColumn="title">Title 
                             <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                             <p-sortIcon field="title"></p-sortIcon>
@@ -67,9 +67,9 @@
                             <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
                             <p-sortIcon field="mfr"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="createdon">Date 
+                        <!-- <th pSortableColumn="createdon">Date 
                             <p-sortIcon field="createdon"></p-sortIcon>
-                        </th>  
+                        </th>   -->
                         <th>Actions</th>
                     </tr>
                 </ng-template>
@@ -78,7 +78,7 @@
                         <td>{{product.id}}</td>
                         <td *ngIf="(productProps$ | async).length > 0">{{product.category}}</td>
                         <!-- <td>{{product.code}}</td> -->
-                        <td>{{product.hsn}}</td>
+                        <!-- <td>{{product.hsn}}</td> -->
                         <td>
                             <h6>{{product.title}}
                                 <a href="#" (click)="toggleProps(product,$event)" *ngIf="product.attrs.length > 0">({{product.attrs.length}})</a>
@@ -90,7 +90,7 @@
                         <td style="text-align: center;">{{product.pack}}</td>
                         <!-- <td>{{product.brand}}</td> -->
                         <td>{{product.mfr}}</td>
-                        <td>{{product.createdon | date : 'dd/MM/yy'}}</td>
+                        <!-- <td>{{product.createdon | date : 'dd/MM/yy'}}</td> -->
                         <td style="text-align: center;">
                             <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
                                 <i class="bi bi-pencil-square text-primary"></i>

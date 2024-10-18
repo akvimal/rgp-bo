@@ -21,12 +21,7 @@
                     (onSelect)="selectBatch($event)" [minLength]="1" [size]="10" [dropdown]="true"
                     [inputStyle]="{'background-color':'#9df'}">
                     <ng-template let-item pTemplate="item">
-                        <h6 style="color: cornflowerblue;">{{item.batch}} / {{item.expdate}}</h6>
-                            <p class="m-0">
-                                <span><i class="bi bi-currency-rupee"></i>{{item.ptrvalue}}(R)</span>
-                                <span style="color:blue;"><i class="bi bi-currency-rupee"></i>{{item.saleprice}}(S)</span>
-                                <span><i class="bi bi-currency-rupee"></i>{{item.mrpcost}}(M)</span>
-                            </p>
+                        <h6 style="color: cornflowerblue;">{{item.batch}} / {{item.expdate | date : 'MMM-yy'}}</h6>
                     </ng-template>
                 </p-autoComplete>&nbsp;
             </div>
@@ -67,6 +62,10 @@
             <label for="qty" class="form-label">QTY</label>
             <input type="number" id="qty" class="form-control" formControlName="qty" (input)="calculate()">
         </div>
+        <!-- <div class="col-md-1">
+            <label for="total" class="form-label" style="color: blue">Free</label>
+            <input type="number" class="form-control">
+        </div>-->
         <div class="col-md-1">
             <label for="mrp" class="form-label">MRP</label>
             <input type="number" id="mrp" class="form-control" formControlName="mrpcost" (input)="calculate()">
@@ -74,57 +73,27 @@
         <div class="col-md-1">
             <label for="ptr" class="form-label">Rate</label>
             <input type="number" id="ptr" class="form-control"
-            formControlName="ptrvalue" size="6" (input)="calculateSP($event)">
+            formControlName="ptrvalue" size="6" (input)="calculate()">
         </div>
-        <!-- <div class="col-md-1">
+        <div class="col-md-1">
             <label for="disc" class="form-label">Disc %</label>
             <input type="text" id="disc" class="form-control" formControlName="discpcnt" size="6" (input)="calculate()">
-        </div> -->
+        </div>
         <div class="col-md-1">
             <label for="taxpcnt" class="form-label">Tax %</label>
             <input type="number" id="taxpcnt" class="form-control" formControlName="taxpcnt" size="4" (input)="calculate()">
         </div>
-        <!-- <div class="col-md-1">
-            <label for="total" class="form-label" style="color: blue">Free</label>
-            <input type="number" class="form-control">
-        </div>
-        <div class="col-md-1">
-            <label for="disc" class="form-label" style="color: blue">Disc %</label>
-            <input type="number" id="disc" class="form-control" formControlName="discpcnt" size="6" (input)="calculate()">
-        </div> -->
-        <!-- <div class="col-md-1">
-            <label for="disc" class="form-label">Adj Qty</label>
-            
-        </div> -->
         <div class="col-md-1">
             <label for="total" class="form-label">Total</label>
             <br>
-            <span>{{total | number:'0.0-9'}}</span>
+            <span>{{total | number:'1.2-2'}}</span>
         </div>
-        <div class="col-md-1">
-            <label for="salep" class="form-label">Sale</label>
-            <!-- <p *ngIf="batchfound">{{form.controls['saleprice'].value}}</p> -->
-            <input type="number" id="saleprice" class="form-control"
-            formControlName="saleprice" (input)="calculateMargin()">
-            <!-- <a (click)="calculate()">
-                <i class="bi bi-pin-angle-fill text-danger"></i>
-                </a> -->
-            <!-- <br>
-            <span>{{form.value.saleprice || 0}}</span> -->
+       
+            <div class="col-md-1">
+                <label class="form-label">&nbsp;</label><br>
+                <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Add</button>
+            </div>
         </div>
-        <div class="col-md-1">
-            <label class="form-label">Margin</label><br>
-            <span>{{this.sellermargin}}%</span>
-        </div>
-        <div class="col-md-1">
-            <label class="form-label">Discount</label><br>
-            <span>{{this.customersaving}}%</span>
-        </div>
-        <div class="col-md-1">
-            <label class="form-label">&nbsp;</label><br>
-            <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Add</button>
-        </div>
-    </div>
     </div>
        
     <!-- <div class="row" *ngIf="form.errors">

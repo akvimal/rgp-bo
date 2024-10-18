@@ -9,6 +9,7 @@ import {
   } from "typeorm";
 import { BaseEntity } from "./base.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
+import { VendorPayment } from "./vendor-payment.entity";
   import { Vendor } from "./vendor.entity";
   
   @Index("purchase_invoice_pk", ["id"], { unique: true })
@@ -28,8 +29,8 @@ import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
     @Column("character varying", { name: "status" })
     status: string;
     
-    @Column("character varying", { name: "grn" })
-    grn: string;
+    @Column("character varying", { name: "gr_no" })
+    grno: string;
 
     @Column("double precision", { name: "total", precision: 53 })
     total: number;
@@ -42,21 +43,6 @@ import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
     
     @Column("character varying", { name: "purchase_order_id" })
     purchaseorderid: string;
-
-    @Column("date", { name: "pay_date" })
-    paydate: string;
-
-    @Column("character varying", { name: "pay_mode" })
-    paymode: string;
-
-    @Column("character varying", { name: "pay_refno" })
-    payrefno: string;
-
-    @Column("character varying", { name: "pay_comments" })
-    paycomments: string;
-
-    @Column("double precision", { name: "pay_amount", precision: 53 })
-    payamount: number;
     
     @ManyToOne(() => Vendor, (vendor) => vendor.purchaseInvoices)
     @JoinColumn([{ name: "vendor_id", referencedColumnName: "id" }])
@@ -67,5 +53,8 @@ import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
       (purchaseInvoiceItem) => purchaseInvoiceItem.invoice
     )
     items: PurchaseInvoiceItem[];
+
+    @OneToMany(() => VendorPayment, (vendorPayment) => vendorPayment.invoice)
+    payments: VendorPayment[];
   }
   

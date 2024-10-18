@@ -14,8 +14,8 @@ export class CreatePurchaseInvoiceDto {
     @ApiProperty({ description: 'status', example: '' })
     readonly status: string;
 
-    @ApiProperty({ description: 'grn', example: '' })
-    readonly grn: string;
+    @ApiProperty({ description: 'grno', example: '' })
+    readonly grno: string;
 
     @ApiProperty({ description: 'total', example: 0 })
     readonly total: number;

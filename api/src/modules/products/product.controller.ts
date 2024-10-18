@@ -5,6 +5,8 @@ import { CreateProductDto } from "./dto/create-product.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { User } from "src/core/decorator/user.decorator";
 import { UpdateProductDto } from "./dto/update-product.dto";
+import { CreateProductPrice2Dto } from "./dto/create-product-price2.dto";
+import { UpdateProductPrice2Dto } from "./dto/update-product-price2.dto";
 
 @ApiTags('Products')
 @Controller('products')
@@ -19,9 +21,19 @@ export class ProductController {
         return this.productService.create(createDto, currentUser.id);
     }
 
+    @Post(':productid/prices')
+    async addPrice(@Param('productid') productid: number, @Body() createDto: CreateProductPrice2Dto,  @User() currentUser: any) {
+        return this.productService.addPrice({...createDto, productid}, currentUser.id);
+    }
+
     @Put(':id')
     update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @User() currentUser: any) {
       return this.productService.update(id, updateDto, currentUser.id);
+    }
+
+    @Put(':productid/prices/:id')
+    updatePrice(@Param('id') id: number, @Param('productid') productid: number, @Body() updateDto: UpdateProductPrice2Dto, @User() currentUser: any) {
+      return this.productService.updatePrice(id, {...updateDto, productid}, currentUser.id);
     }
 
     @Get()

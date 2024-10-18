@@ -6,6 +6,7 @@ import {
   } from "typeorm";
 import { BaseEntity } from "./base.entity";
 import { PurchaseInvoice } from "./purchase-invoice.entity";
+import { VendorPayment } from "./vendor-payment.entity";
   
   @Index("vendor_pk", ["id"], { unique: true })
   @Index("vendor_un", ["name"], { unique: true })
@@ -39,4 +40,8 @@ import { PurchaseInvoice } from "./purchase-invoice.entity";
 
     @OneToMany(() => PurchaseInvoice, (purchaseInvoice) => purchaseInvoice.vendor)
     purchaseInvoices: PurchaseInvoice[];
+
+    @OneToMany(() => VendorPayment, (vendorPayment) => vendorPayment.vendor)
+    payments: VendorPayment[];
+
 }

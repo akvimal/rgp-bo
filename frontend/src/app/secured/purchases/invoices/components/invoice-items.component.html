@@ -39,11 +39,11 @@
                             <th pSortableColumn="expdate">Expiry
                                 <p-sortIcon field="expdate"></p-sortIcon>
                             </th>
-                            <th>Pack</th>
+                            <!-- <th>Pack</th> -->
                             <th>Qty</th>
                             <th>MRP</th>
                             <th>PTR</th>
-                            <!-- <th>Disc</th> -->
+                            <th>Disc</th>
                             <th>Tax</th>
                             <th>Total</th>
                             <th>Status</th>
@@ -61,16 +61,16 @@
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
                             <td>{{i.expdate | date: 'MMM-yy'}}</td>
-                            <td style="text-align: right;">{{i.product.pack}}</td>
+                            <!-- <td style="text-align: right;">{{i.product.pack}}</td> -->
                             <td style="text-align: right;">{{i.qty}}</td>
-                            <td style="text-align: right;">{{i.mrpcost}}</td>
-                            <td style="text-align: right;">{{i.ptrvalue}}</td>
-                            <!-- <td>{{i.discpcnt}}%</td> -->
+                            <td style="text-align: right;">{{i.mrpcost | number:'1.2-2'}}</td>
+                            <td style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
+                            <td>{{i.discpcnt}}%</td>
                             <td>{{i.taxpcnt}}%</td>
-                            <td style="text-align: right;">{{i.total | number:'0.0-9'}}</td>
+                            <td style="text-align: right;">{{i.total | number:'1.2-2'}}</td>
                             <td>{{i.status}}</td>
                             <td>
-                                <a (click)="showItemEdit(i.id)">
+                                <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
                                     <i class="bi bi-pencil-square text-primary"></i>
                                 </a>
                             </td>
@@ -88,7 +88,7 @@
             </p-table>
             </div>
             <div class="col-lg-12">
-                Total ({{invoice.items?.length}} items) Value: {{grosstotal | number:'0.0-0'}} | Tax: {{taxtotal | number:'0.0-0'}}  | Invoice: {{nettotal | number:'0.0-0'}} 
+                Total ({{invoice.items?.length}} items) Gross: {{grosstotal | number:'1.2-2'}} | Disc: {{disctotal | number:'1.2-2'}} | Tax: {{taxtotal | number:'1.2-2'}} | Net: {{nettotal | number:'1.2-2'}} 
             </div>
         </div>
 
@@ -120,7 +120,7 @@
         </div> -->
     </div>
 </div>
-        <app-invoice-payment *ngIf="invoice.status === 'RECEIVED'" 
+        <!-- <app-invoice-payment *ngIf="invoice.status === 'RECEIVED'" 
             [invoiceid]="invoice.id" [invoiceamt]="invoice.total"
             (payUpdated)="onPaid($event)"></app-invoice-payment>
 
@@ -135,7 +135,7 @@
                     <li>Comments: {{invoice.paycomments}}</li>
                 </ul>
             </div>
-        </div>
+        </div> -->
 
         <p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()"
         [(visible)]="displayEditItem" [modal]="true">

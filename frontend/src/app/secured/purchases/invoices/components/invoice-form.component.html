@@ -26,6 +26,16 @@
         <label for="invno" class="col-form-label">Invoice No.</label>
         <input type="text" class="form-control" formControlName="invoiceno" id="invno">
       </div>
+
+      <div class="col-md-3">
+        <label for="grno" class="col-form-label">GR No.</label>
+        <input type="text" class="form-control" formControlName="grno" id="grno">
+      </div>
+<!-- 
+      <div class="col-md-3">
+        <label for="invno" class="col-form-label">GR Date</label>
+        <input type="date" class="form-control" formControlName="grdate" id="grdate">
+      </div> -->
     </div>
     <div class="row" *ngIf="errorMessage !== ''">
       <div class="col-md-12">{{errorMessage}}</div>

@@ -42,8 +42,12 @@ export class ProductListComponent {
 
     fetchList(){
         this.service.findAll(this.category && {category:this.category}).subscribe((data:any) => {
+            console.log(data);
+            
             this.products = [...data].map(p => {
                 let attrs:any[] = [];
+                console.log(p);
+                if(p.props){
                 for (const [key, value] of Object.entries(p.props)) {
                     
                     if(value !== null) {
@@ -55,7 +59,9 @@ export class ProductListComponent {
                             attrs.push({key,value});
                     }
                 }
+                }
                 return {...p,attrs,showProps:false};
+
             });
         });
     }

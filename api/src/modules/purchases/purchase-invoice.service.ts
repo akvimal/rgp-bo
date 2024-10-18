@@ -22,11 +22,6 @@ export class PurchaseInvoiceService {
     }
     
     async findAll(){
-      // return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
-      //   .innerJoinAndSelect("invoice.vendor", "vendor")
-      //   .select(['invoice','vendor.name'])
-      //   .where('invoice.active = :flag', { flag:true }).orderBy('invoice.created_on','DESC')
-      //   .getMany();
       return await this.manager.query(`select * from invoices_view`);
   }    
   

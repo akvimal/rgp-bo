@@ -15,7 +15,7 @@ import { StockService } from "../../../stock/stock.service";
                         <div [ngStyle]="{maxWidth:'600px',backgroundColor:stock.available_qty == 0?'#ffff80':'inherit'}">
                             <span *ngIf="stock.available_qty == 0">Empty</span>
                             <h6 style="margin:0;padding:0;font-weight:bold">{{stock.title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price}})</h6>
-                            <p style="margin:0;padding:0;color:#999;font-style: italic;">{{stock.more_props.composition}}</p>
+                            <p style="margin:0;padding:0;color:#999;font-style: italic;">{{stock.more_props?.composition}}</p>
                             <span style="margin:0;padding:0;color:blue;font-size:smaller">
                                 {{stock.batch}} / {{stock.expdate|date:'MMM-yy'}} ({{stock.available_qty}})
                             </span>

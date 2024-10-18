@@ -18,6 +18,7 @@ export class InvoiceItemsComponent {
     grn:string = '';
     grosstotal:number = 0;
     taxtotal:number = 0;
+    disctotal:number = 0;
     nettotal:number = 0;
 
     constructor(private route:ActivatedRoute,
@@ -31,19 +32,23 @@ export class InvoiceItemsComponent {
         
         this.nettotal = 0;
         this.grosstotal = 0;
+        this.disctotal = 0;
         this.taxtotal = 0;
 
         this.invService.find(id).subscribe((inv:any) => { 
             this.invoice = inv;
             this.items = inv.items.map((i:any) => {
-
-                this.grosstotal += +i.total;
-                this.taxtotal += (i.qty * (i.ptrvalue * (i.taxpcnt/100)));
+                // this.grosstotal += +i.total;
+                // console.log(`qty: ${i.qty}, ptrvalue: ${i.ptrvalue}, discpcnt: ${i.discpcnt}, taxpcnt: ${i.taxpcnt}`);
+                this.grosstotal += i.ptrvalue*i.qty;
+                this.disctotal += i.ptrvalue*i.qty*(i.discpcnt/100);
+                this.taxtotal += ((i.ptrvalue*i.qty)-(i.ptrvalue*i.qty*(i.discpcnt/100))) *(i.taxpcnt/100);
+                // console.log(`taxtotal: ${this.taxtotal}`);
                 
                 return {...i, selected:false}
             });
-            this.nettotal = this.grosstotal + this.taxtotal;
-
+            this.nettotal = this.grosstotal - this.disctotal + this.taxtotal;
+            
             if(this.items) {
                 this.itemSelected =  this.items.filter((i:any) => i.selected).length > 0;
                 const verifiedItems = this.items.filter((i:any) => i.status === 'VERIFIED');

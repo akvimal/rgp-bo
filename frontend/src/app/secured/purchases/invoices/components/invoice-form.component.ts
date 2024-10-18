@@ -26,7 +26,7 @@ export class InvoiceFormComponent {
         invoiceno: new FormControl('',Validators.required),
         invoicedate: new FormControl(this.getCurrentDateStr(),Validators.required),
         purchaseorderid: new FormControl(''),
-        grn: new FormControl('')
+        grno: new FormControl('')
       });
 
     constructor(
@@ -50,7 +50,7 @@ export class InvoiceFormComponent {
         this.form.controls['invoicedate'].setValue(data.invoicedate);
         
         this.form.controls['purchaseorderid'].setValue(data.purchaseorderid);
-        this.form.controls['grn'].setValue(data.grn);
+        this.form.controls['grno'].setValue(data.grno);
 
         this.invoice.items && this.invoice.items.push({status:'NEW'});
 
@@ -95,7 +95,8 @@ export class InvoiceFormComponent {
         invoicedate: this.form.value.invoicedate,
         vendorid: this.form.value.vendorid,
         purchaseorderid: this.form.value.purchaseorderid,
-        grn: this.form.value.grn }
+        grno: this.form.value.grno
+      }
         
       const id = this.form.value.id;
       if(id)

@@ -21,7 +21,7 @@ export class ProductFormComponent {
         pack: new FormControl('1', Validators.required),
         category: new FormControl({value: '', disabled: true}),
         mfr: new FormControl(''),
-        brand: new FormControl('', Validators.required),
+        brand: new FormControl(''),
         description: new FormControl(''),
         props: new FormControl('')
       });

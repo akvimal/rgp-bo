@@ -5,6 +5,7 @@ import {
     PrimaryGeneratedColumn,
   } from "typeorm";
 import { BaseEntity } from "./base.entity";
+import { ProductPrice2 } from "./product-price2.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
 import { PurchaseRequest } from "./purchase-request.entity";
   
@@ -39,6 +40,13 @@ import { PurchaseRequest } from "./purchase-request.entity";
 
     @Column("json", { name: "more_props", nullable: true })
     props: object | null;
+
+
+    @OneToMany(
+      () => ProductPrice2,
+      (price) => price.product
+    )
+    prices: ProductPrice2[];
 
     @OneToMany(
       () => PurchaseRequest,

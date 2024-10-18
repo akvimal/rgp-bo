@@ -1,7 +1,6 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { DateUtilService } from "src/app/secured/date-util.service";
-import { ProductUtilService } from "src/app/secured/product-util.service";
 import { ProductsService } from "src/app/secured/products/products.service";
 import { InvoiceService } from "../invoices.service";
 
@@ -17,12 +16,11 @@ export class InvoiceItemFormComponent {
         productid: new FormControl('',Validators.required),
         batch: new FormControl(''),
         expdate: new FormControl(''),
-        // pack: new FormControl('1',Validators.required),
         qty: new FormControl('',Validators.required),
         ptrvalue: new FormControl('',Validators.required),
         mrpcost: new FormControl('',Validators.required),
-        taxpcnt: new FormControl(''),
-        saleprice: new FormControl(''),
+        discpcnt: new FormControl(''),
+        taxpcnt: new FormControl('')
       });
       
     @Input() invoiceid:any;
@@ -41,8 +39,7 @@ export class InvoiceItemFormComponent {
 
     constructor(private invService: InvoiceService, 
         private prodService:ProductsService,
-        private dateUtilService: DateUtilService,
-        private prodUtilService:ProductUtilService){}
+        private dateUtilService: DateUtilService){}
     
     ngOnInit(){
         this.form.controls['invoiceid'].setValue(this.invoiceid);
@@ -59,10 +56,9 @@ export class InvoiceItemFormComponent {
                 data.expdate && this.form.controls['expdate'].setValue(this.dateUtilService.formatExpDate(data.expdate));
                 this.form.controls['mrpcost'].setValue(data.mrpcost);
                 this.form.controls['ptrvalue'].setValue(data.ptrvalue);
-                // this.form.controls['pack'].setValue(data.pack);
                 this.form.controls['qty'].setValue(data.qty);
+                this.form.controls['discpcnt'].setValue(data.discpcnt);
                 this.form.controls['taxpcnt'].setValue(data.taxpcnt);
-                this.form.controls['saleprice'].setValue(data.saleprice);
 
                 if(data.product){
                     this.selectedProduct = data.product;
@@ -107,22 +103,21 @@ export class InvoiceItemFormComponent {
     selectBatch(event:any){
         this.form.controls['batch'].setValue(event.batch);
         this.form.controls['ptrvalue'].setValue(event.ptrvalue);
+        this.form.controls['discpcnt'].setValue(event.discpcnt);
         this.form.controls['taxpcnt'].setValue(event.taxpcnt);
         this.form.controls['mrpcost'].setValue(event.mrpcost);
         this.form.controls['expdate'].setValue(new Date(event.expdate));
-        this.form.controls['saleprice'].setValue(event.saleprice);
-
-        this.sellermargin = this.prodUtilService.getMargin(event.ptrvalue, event.saleprice);
-        this.customersaving = this.prodUtilService.getSaving(event.mrpcost, event.saleprice);        
     }
     
     clearBatch(){
         this.form.controls['batch'].setValue('');
-        this.form.controls['ptrvalue'].setValue('');
-        this.form.controls['taxpcnt'].setValue('');
-        this.form.controls['mrpcost'].setValue('');
         this.form.controls['expdate'].setValue('');
-        this.form.controls['saleprice'].setValue('');
+        this.form.controls['mrpcost'].setValue('');
+        this.form.controls['qty'].setValue('');
+        this.form.controls['ptrvalue'].setValue('');
+        this.form.controls['discpcnt'].setValue('');
+        this.form.controls['taxpcnt'].setValue('');
+        this.total = 0;
         this.sellermargin = 0;
         this.customersaving = 0;
     }
@@ -136,26 +131,24 @@ export class InvoiceItemFormComponent {
                     return {batch:i.batch,
                         expdate:i.expdate,
                         createdt:i.createdon,
+                        discpcnt:i.discpcnt,
                         taxpcnt:i.taxpcnt,
                         mrpcost:i.mrpcost.toFixed(2),
-                        ptrvalue:i.ptrvalue.toFixed(2),
-                        saleprice:i.saleprice.toFixed(2)
+                        ptrvalue:i.ptrvalue.toFixed(2)
                     }
                 });
                 
                 this.clearBatch();
 
-                if(this.batches.length > 0){
-                    this.form.controls['saleprice'].setValue(this.batches[0].saleprice);
-                }
         });
         
         this.form.controls['productid'].setValue(this.selectedProduct.id);
-        // this.form.controls['pack'].setValue(this.selectedProduct.pack);
     }
 
-    calculateTotal(qty:number,price:number):number{
-        const total = qty * price;
+    calculateTotal(qty:number,price:number,disc:number,tax:number):number{
+        const gross = qty * price;
+        const gross_after_disc = gross - (gross*(disc/100));
+        const total = gross_after_disc + (gross_after_disc*(tax/100));
         return isNaN(total) ? 0 : +total.toFixed(2);
     }
     
@@ -164,29 +157,14 @@ export class InvoiceItemFormComponent {
         // return (this.form.value.ptrvalue/this.form.value.pack) *(1+(this.form.value.taxpcnt/100));
     }
 
-    calculateMargin(){
-        let sp = +this.form.value.saleprice;// * (1 + (this.form.value.taxpcnt/100));
-        
-        this.sellermargin = this.prodUtilService.getMargin(this.getPTRAfterTax(),sp);// Math.round(((sp - this.getPTRAfterTax())/this.getPTRAfterTax())*100);
-        // this.form.controls['sellermargin'].setValue(this.sellermargin);
-        this.customersaving = this.prodUtilService.getSaving(this.form.value.mrpcost,sp); //Math.round((((this.form.value.mrpcost/this.form.value.pack) - sp)/(this.form.value.mrpcost/this.form.value.pack))*100);
-        // this.form.controls['customersaving'].setValue(this.customersaving);
-    }
-
     loadexist(){
         
         this.form.controls['ptrvalue'].setValue('')
+        this.form.controls['discpcnt'].setValue('')
         this.form.controls['taxpcnt'].setValue('')
-        // this.form.controls['pack'].setValue('')
         this.form.controls['mrpcost'].setValue('')
         this.form.controls['expdate'].setValue('')
-        this.form.controls['saleprice'].setValue('')
         this.form.controls['qty'].setValue('')
-        // this.form.controls['ptrvalue'].enable();
-        // this.form.controls['taxpcnt'].enable();
-        // this.form.controls['mrpcost'].enable();
-        // this.form.controls['expdate'].enable();
-        // this.form.controls['saleprice'].enable();
 
         this.sellermargin = 0
         this.customersaving = 0
@@ -198,87 +176,23 @@ export class InvoiceItemFormComponent {
                 this.batchfound = true;
                 const item = data[0];
                 this.form.controls['ptrvalue'].setValue(item.ptr_value);
+                this.form.controls['discpcnt'].setValue(item.disc_pcnt);
                 this.form.controls['taxpcnt'].setValue(item.tax_pcnt);
                 this.form.controls['mrpcost'].setValue(item.mrp_cost);
                 this.form.controls['expdate'].setValue(new Date(item.exp_date));
-                this.form.controls['saleprice'].setValue(item.sale_price);
 
-                // this.form.controls['ptrvalue'].disable();
-                // this.form.controls['taxpcnt'].disable();
-                // this.form.controls['mrpcost'].disable();
-                // this.form.controls['expdate'].disable();
-                // this.form.controls['saleprice'].disable();
-                this.calculateMargin();
-                // this.calculate()
-                this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrvalue);
+                this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrvalue,
+                this.form.value.discpcnt, this.form.value.taxpcnt);
             }
         });
     }
 
-    calculateSP(event:any){        
-        let sp = +this.prodUtilService.calcSalePrice(this.getPTRAfterTax(),this.form.value.mrpcost,this.form.value.taxpcnt);
-        if(sp < this.getPTRAfterTax()){
-            sp = this.getPTRAfterTax();
-        }
-        this.form.controls['saleprice'].setValue(sp);
-        this.calculateMargin();
-    }
-
     calculate(){
-        this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrvalue);
-        
-    //    this.invService.findItemSalePrice(this.form.value.productid,this.form.value.batch).subscribe((data:any) => {
-        // let sp = 0;
-        // console.log('data:',data);
-        
-        // if(data.length == 1) { 
-        //     sp = data[0].sale_price;
-        //     this.spfound = true;
-        // }
-        // else {
-        //     let sp = +this.calcSalePrice();
-        //     if(sp < this.getPTRAfterTax()){
-        //         sp = this.getPTRAfterTax();
-        //     }
-        //     this.spfound = false;
-        // // }
-        // this.form.controls['saleprice'].setValue(sp);
-        // this.calculateMargin();
-    //    })
-       
-        
-        // else {
-        //     this.form.controls['ptrvalue'].setErrors(null)
-        // }
-
-        
-        // this.form.controls['total'].setValue(this.total);
-        
+        this.total = this.calculateTotal(this.form.value.qty, 
+            this.form.value.ptrvalue, this.form.value.discpcnt, this.form.value.taxpcnt);
+        const invalid = this.total >= (this.form.value.qty * this.form.value.mrpcost);
+        invalid && this.form.setErrors({valid:false})
     }
-
-    // calcSalePrice(){
-    //     const maxm = 2.5
-    //     const minm = 1.3
-    //     const mins = 0.5
-        
-    //     let ptrcost = this.getPTRAfterTax();
-    //     let mrp = this.form.value.mrpcost;///this.form.value.pack;
-
-    //     let maxmargin = ptrcost * maxm;
-    //     let minmargin = ptrcost * minm;
-    //     let minsaving = mrp - (mrp * mins);
-
-    //     let price = maxmargin;
-    //     if(maxmargin > minsaving ) {
-    //         price = (minsaving <= minmargin) ? minmargin : minsaving;
-    //     }
-        
-    //     return price > this.getMRPBeforeTax() ? this.getMRPBeforeTax() : price.toFixed(2);
-    // }
-
-    // getMRPBeforeTax(){
-    //    return +(((this.form.value.mrpcost/this.form.value.pack) / (1 + (this.form.value.taxpcnt/100))).toFixed(2));
-    // }
 
     submit(){
         if(this.itemid){

@@ -43,7 +43,7 @@ export class PurchaseInvoiceController {
     @Put('/confirm')
     async confirm(@Body() input:UpdateInvoicesDto, @User() currentUser: any) {
       const result = await this.purchaseInvoiceService.getGRN('TGN');
-      return await this.purchaseInvoiceService.update(input.ids, {...input.values, grn:result[0].generate_grn}, currentUser.id);
+      return await this.purchaseInvoiceService.update(input.ids, {...input.values, grno:result[0].generate_grn}, currentUser.id);
     }
 
     @Delete(':id')

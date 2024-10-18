@@ -12,9 +12,9 @@
   <!-- <thead> -->
     <ng-template pTemplate="header">
     <tr>
-      <th pSortableColumn="id">ID
+      <!-- <th pSortableColumn="id">ID
         <p-sortIcon field="id"></p-sortIcon>
-      </th>
+      </th> -->
       <th pSortableColumn="invoice_no">No.
         <p-sortIcon field="invoice_no"></p-sortIcon>
         <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
@@ -27,14 +27,15 @@
         <p-sortIcon field="business_name"></p-sortIcon>
         <p-columnFilter type="text" field="business_name" display="menu"></p-columnFilter>
       </th>
-      <th pSortableColumn="status">Status
-        <p-sortIcon field="status"></p-sortIcon>
-        <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
-      </th>
+      
       <th pSortableColumn="items">Items</th>
       <th pSortableColumn="total">Amount
         <p-sortIcon field="total"></p-sortIcon>
         <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
+      </th>
+      <th pSortableColumn="status">Status
+        <p-sortIcon field="status"></p-sortIcon>
+        <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
       </th>
       <!-- <th  pSortableColumn="category">Actions</th> -->
       <th></th>
@@ -46,13 +47,13 @@
     <!-- <tr *ngFor="let p of invoices"> -->
       <!-- <td>{{p.id}}</td> -->
       <tr>
-        <td>{{p.id}}</td>
+        <!-- <td>{{p.id}}</td> -->
         <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
       <td style="text-align: center;">{{p.invoice_date | date : 'dd-MMM'}}</td>
       <td>{{p.business_name}}</td>
-      <td style="text-align: center;">{{p.status}}</td>
       <td style="text-align: center;">{{p.items}}</td>
       <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
+      <td style="text-align: center;">{{p.status}}</td>
       <!-- <td>
         <span *ngIf="p.status === 'NEW'">
       <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">
@@ -64,7 +65,7 @@
       <td>
         <a (click)="delete(p.id)">
           <i class="bi bi-trash text-danger"></i>
-      </a>
+        </a>
       </td>
     </tr>
   <!-- </tbody>

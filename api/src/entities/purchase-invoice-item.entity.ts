@@ -50,13 +50,6 @@ import { ProductClearance } from "./product-clearance.entity";
       precision: 53,
     })
     taxpcnt: number | null;
-
-    @Column("double precision", {
-      name: "sale_price",
-      nullable: true,
-      precision: 53,
-    })
-    saleprice: number | null;
   
     @Column("integer", { name: "qty" })
     qty: number;
