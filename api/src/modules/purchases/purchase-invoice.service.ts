@@ -116,10 +116,12 @@ export class PurchaseInvoiceService {
       }
 
       async updateItems(ids:number[], values:any, userid:any){
-        return this.purchaseInvoiceItemRepository.createQueryBuilder('items')
+        
+       return await this.purchaseInvoiceItemRepository.createQueryBuilder('items')
         .update(PurchaseInvoiceItem, {...values, updatedby:userid})
         .where("id in (:...ids)", { ids })
         .execute();
+        
       }
 
       async removeItems(ids:number[]){

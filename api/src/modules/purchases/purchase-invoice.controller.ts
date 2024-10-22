@@ -31,8 +31,10 @@ export class PurchaseInvoiceController {
     async create(@Body() dto: CreatePurchaseInvoiceDto, @User() currentUser: any) {
       if(dto.id)
         return this.purchaseInvoiceService.update([dto.id], dto, currentUser.id);
-      else
-        return this.purchaseInvoiceService.create(dto, currentUser.id);
+      else {
+        const result = await this.purchaseInvoiceService.getGRN('R'); 
+        return this.purchaseInvoiceService.create({...dto, grno:result[0].generate_grn}, currentUser.id);
+      }
     }
 
     @Put()
@@ -42,8 +44,7 @@ export class PurchaseInvoiceController {
 
     @Put('/confirm')
     async confirm(@Body() input:UpdateInvoicesDto, @User() currentUser: any) {
-      const result = await this.purchaseInvoiceService.getGRN('TGN');
-      return await this.purchaseInvoiceService.update(input.ids, {...input.values, grno:result[0].generate_grn}, currentUser.id);
+      return await this.purchaseInvoiceService.update(input.ids, input.values, currentUser.id);
     }
 
     @Delete(':id')

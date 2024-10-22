@@ -1,9 +1,7 @@
-import { InvoiceItem } from "./invoice-item.model";
-
 export interface Invoice {
     id?:number,
     invoiceno?:string,
-    grn?:string,
+    grno?:string,
     invoicedate?:string,
     vendorid?:number,
     purchaseorderid?:number,

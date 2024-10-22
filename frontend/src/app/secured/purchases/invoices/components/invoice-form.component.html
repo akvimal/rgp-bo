@@ -10,27 +10,27 @@
           <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
         </select>
       </div>
-      <div class="col-md-3">
+      <!-- <div class="col-md-3">
         <label for="poid" class="col-form-label">PO</label>
-        <!-- <input type="text" class="form-control" formControlName="purchaseorderid" id="poid"> -->
+        
         <select class="form-select" id="order" formControlName="purchaseorderid">
           <option value="">Select</option>
           <option *ngFor="let o of orders" [value]="o.id">{{o.createdon | date}} ({{o.id}})</option>
         </select>
+      </div> -->
+      <div class="col-md-3">
+        <label for="invno" class="col-form-label">Invoice No.</label>
+        <input type="text" class="form-control" formControlName="invoiceno" id="invno">
       </div>
       <div class="col-md-3">
         <label for="invdate" class="col-form-label">Invoice Date</label><br>
         <input type="date" class="form-control" formControlName="invoicedate" id="invdate">
       </div>
-      <div class="col-md-3">
-        <label for="invno" class="col-form-label">Invoice No.</label>
-        <input type="text" class="form-control" formControlName="invoiceno" id="invno">
-      </div>
 
-      <div class="col-md-3">
+      <!-- <div class="col-md-3">
         <label for="grno" class="col-form-label">GR No.</label>
         <input type="text" class="form-control" formControlName="grno" id="grno">
-      </div>
+      </div> -->
 <!-- 
       <div class="col-md-3">
         <label for="invno" class="col-form-label">GR Date</label>

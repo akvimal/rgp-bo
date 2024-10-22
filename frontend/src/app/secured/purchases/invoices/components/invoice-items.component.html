@@ -2,16 +2,17 @@
   <div class="card">
     <div class="card-body">
         <div class="row">
-            <div class="col-lg-4 col-md-4 label">Vendor: {{invoice.vendor?.name}}</div>
-            <div class="col-lg-4 col-md-4 label">Invoice No: {{invoice.invoiceno}}</div>
-            <div class="col-lg-4 col-md-4 label">Invoice Date: {{invoice.invoicedate | date : 'dd/MM/yyyy'}}</div>
+            <div class="col-lg-12 col-md-12 label text-center h4">{{invoice.vendor?.name}}</div>
+            <div class="col-lg-3 col-md-3 label"><strong>Invoice No:</strong> {{invoice.invoiceno}}</div>
+            <div class="col-lg-3 col-md-3 label"><strong>Invoice Date:</strong> {{invoice.invoicedate | date : 'dd/MM/yyyy'}}</div>
+
+            <!-- <div class="col-lg-4 col-md-4 label">PO ID: {{invoice.purchaseorderid}}</div> -->
+            <div class="col-lg-3 col-md-3 label text-end"><strong>GRN:</strong><span class="text-success"> {{invoice.grno}}</span></div>
+            <div class="col-lg-3 col-md-3 label text-end"><strong>Status:</strong> {{invoice.status}}
+                <a *ngIf="invoice.status === 'NEW'" [routerLink]="['../../edit',invoice.id]">Edit</a>
+            </div>
         </div>
-        <div class="row">
-            <div class="col-lg-4 col-md-4 label">PO ID: {{invoice.purchaseorderid}}</div>
-            <div *ngIf="invoice.status === 'RECEIVED'" class="col-lg-4 col-md-4 label">GRN: {{invoice.grn}}</div>
-            <div class="col-lg-4 col-md-4 label">Status: {{invoice.status}}</div>
-        </div>
-        <a *ngIf="invoice.status === 'NEW'" [routerLink]="['../../edit',invoice.id]">Edit</a>
+        
     </div>
 </div>
 <div class="card p-0" *ngIf="invoice.status === 'NEW'">

@@ -30,7 +30,7 @@ import { PurchaseOrderViewComponent } from "./requests/components/purchase-order
 import { InvoicesComponent } from "./invoices/components/invoices.component";
 
 const routes: Routes = [
-  { path: '', redirectTo: 'requests'},
+  { path: '', redirectTo: 'invoice'},
   { path: 'requests', component: PurchaseRequestComponent, canActivate:[AuthGuard]},
   { path: 'orders', component: PurchaseOrderComponent, canActivate:[AuthGuard],
       children: [
