@@ -48,7 +48,7 @@
             <!-- <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td> -->
             <td width="10%" style="text-align: right;">{{(item.total||0).toFixed(2)}}</td>
         </tr>
-        <tr>
+        <!-- <tr>
             <td></td>
             <td colspan="5">
                 <div class="d-flex justify-content-end">
@@ -67,7 +67,7 @@
                 (input)="applyDiscount()"
                 [disabled]="!offer.input">
             </td>
-        </tr>
+        </tr> -->
         <tr>
             <td colspan="6">
                 <div class="row">
@@ -115,12 +115,12 @@
                         <input type="text" class="form-control" 
                         [(ngModel)]="sale.payrefno" placeholder="Ref #">
                 </div>
-                <div class="col-3 d-flex justify-content-end">
+                <!-- <div class="col-3 d-flex justify-content-end">
                     <div>
                         <input type="text" class="form-control" 
                             [(ngModel)]="sale.expreturndays" placeholder="Days">
                     </div>
-                </div>
+                </div> -->
             </div>
             </td>
             <td style="text-align: right; background-color: royalblue;">

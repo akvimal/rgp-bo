@@ -76,10 +76,10 @@
                       <th pSortableColumn="reason">Reason
                           <p-sortIcon field="reason"></p-sortIcon>
                       </th>
-                      <th pSortableColumn="status">Status
+                      <!-- <th pSortableColumn="status">Status
                         <p-columnFilter type="date" field="status" display="menu"></p-columnFilter>
                         <p-sortIcon field="status"></p-sortIcon>
-                    </th>
+                    </th> -->
                       <th>Comments</th>
                     </tr>
                 </ng-template>
@@ -95,7 +95,7 @@
                         <td style="text-align: right;">{{i.price}}</td>
                         <td>{{i.date | date : 'dd/MM/yyyy'}}</td>
                         <td>{{i.reason}}</td>
-                        <td>{{i.status}}</td>
+                        <!-- <td>{{i.status}}</td> -->
                         <td>{{i.comments}}</td>
                     </tr>
                 </ng-template>

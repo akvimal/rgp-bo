@@ -37,7 +37,8 @@ import { ProductClearance } from "./product-clearance.entity";
     ptrvalue: number;
     @Column("double precision", { name: "ptr_cost", precision: 53 })
     ptrcost: number;
-  
+    @Column("double precision", { name: "sale_price", precision: 53 })
+    saleprice: number;
     @Column("double precision", { name: "mrp_cost", precision: 53 })
     mrpcost: number;
    

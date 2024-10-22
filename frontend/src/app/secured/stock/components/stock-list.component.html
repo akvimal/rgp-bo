@@ -30,7 +30,7 @@
                             <p-columnFilter type="numeric" field="available_qty" display="menu"></p-columnFilter>
                             <p-sortIcon field="available_qty"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="qtypcnt">Qty %
+                        <!-- <th pSortableColumn="qtypcnt">Qty %
                             <p-sortIcon field="qtypcnt"></p-sortIcon>
                         </th>
                         <th pSortableColumn="old_with_us">Old
@@ -40,7 +40,7 @@
                         <th pSortableColumn="life_left">Life
                             <p-columnFilter type="numeric" field="life_left" display="menu"></p-columnFilter>
                             <p-sortIcon field="life_left"></p-sortIcon>
-                        </th>
+                        </th> -->
                         <th pSortableColumn="ptr_cost">Rate
                             <p-columnFilter type="numeric" field="ptr_cost" display="menu"></p-columnFilter>
                             <p-sortIcon field="ptr_cost"></p-sortIcon>
@@ -81,9 +81,9 @@
                                 <i class="bi bi-pencil-square text-primary"></i></a>
                             </span>
                         </td>
-                        <td style="text-align: right;">{{i.qtypcnt}}</td>
+                        <!-- <td style="text-align: right;">{{i.qtypcnt}}</td>
                         <td style="text-align: center;">{{i.old_with_us}}</td>
-                        <td style="text-align: center;">{{i.life_left}}</td>
+                        <td style="text-align: center;">{{i.life_left}}</td> -->
                         <td style="text-align: right;">{{i.ptr_cost}}</td>
                         <td style="text-align: right;">{{i.sale_price}}
                             <span class="ml-2">
@@ -101,7 +101,7 @@
     </div>
 
 
-<p-dialog header="Adjust Price" [(visible)]="displayPriceAdjForm" [modal]="true">
+<p-dialog header="Adjust Stock Price" [(visible)]="displayPriceAdjForm" [modal]="true">
     <!-- <div class="container"> -->
         <form [formGroup]="priceAdjustForm" (ngSubmit)="onPriceAdjSubmit()">
             <!-- <div class="row"> -->
@@ -124,8 +124,7 @@
                             <label class="adj-label">PTR</label><br>{{selectedItem?.ptr_cost}}
                         </div>
                         <div class="col-md-2 m-0 p-0">
-                            <label class="adj-label" for="price">Current</label><br>
-                                {{selectedItem?.sale_price}}
+                            <label class="adj-label" for="price">Current</label><br>{{selectedItem?.sale_price}}
                             <!-- <label>Qty:</label>{{selectedItem?.sale_qty}} -->
                         </div>
                         <div class="col-md-2 m-0 p-0">
@@ -149,7 +148,7 @@
                         </div>
                         <div class="col-md-12 p-0">
                             <label class="adj-label" for="Reason">Reason</label>
-                            <textarea class="form-control" id="reason" 
+                            <textarea class="form-control" id="reason" placeholder="Explain the reason for adjustment" 
                             formControlName="comments"></textarea>
                         </div>
                     </div>
@@ -158,14 +157,14 @@
                     <!-- </div> -->
                     <div class="row mt-3">
                         <div class="col-md-12 p-0">
-                            <button type="submit" class="btn btn-primary" [disabled]="!priceAdjustForm.valid">Submit</button>
+                            <button type="submit" class="btn btn-primary" [disabled]="!priceAdjustForm.valid">Save</button>
                         </div>
                     </div>
                 </div>
         </form>
 </p-dialog>
 
-<p-dialog header="Adjust Qty" [(visible)]="displayQtyAdjForm" [modal]="true">
+<p-dialog header="Adjust Stock Quantity" [(visible)]="displayQtyAdjForm" [modal]="true">
         <form [formGroup]="qtyAdjustForm" (ngSubmit)="onQtyAdjSubmit()">
                 <div class="container">
                     <div class="row">
@@ -184,8 +183,8 @@
                                 {{selectedItem?.available_qty}}
                         </div>
                         <div class="col-md-2 m-0 p-0">
-                            <label class="adj-label" for="qty">Change</label>
-                                <input type="text" class="form-control" id="qty" max="0"
+                            <label class="adj-label" for="qty">Adjust</label>
+                                <input type="number" class="form-control" id="qty" min="0"
                                 formControlName="qty" (input)="newQtyInput($event)">
                         </div>
                                 <!-- </div> -->
@@ -208,7 +207,7 @@
                         </div>
                         <div class="col-md-12 p-0">
                             <label class="adj-label" for="comments">Comments</label>
-                            <textarea class="form-control" id="comments" 
+                            <textarea class="form-control" id="comments" placeholder="Explain the reason for adjustment" 
                             formControlName="comments"></textarea>
                         </div>
                     </div>
@@ -218,7 +217,7 @@
                     <div class="row mt-3">
                         <div class="col-md-12 p-0">
                             <button type="submit" class="btn btn-primary" 
-                            [disabled]="!qtyAdjustForm.valid">Submit</button>
+                            [disabled]="!qtyAdjustForm.valid">Save</button>
                         </div>
                     </div>
                 </div>

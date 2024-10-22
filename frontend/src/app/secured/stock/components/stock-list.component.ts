@@ -25,7 +25,7 @@ export class StockListComponent {
         itemid: new FormControl('',Validators.required),
         // effdate: new FormControl(new Date().toISOString().slice(0, 10),Validators.required),
         price: new FormControl('',Validators.required),
-        comments: new FormControl('')
+        comments: new FormControl('',Validators.required)
       });
 
       qtyAdjustForm:FormGroup = new FormGroup({
@@ -33,7 +33,7 @@ export class StockListComponent {
         // effdate: new FormControl(new Date().toISOString().slice(0, 10),Validators.required),
         reason: new FormControl('',Validators.required),
         qty: new FormControl('',Validators.required),
-        comments: new FormControl('')
+        comments: new FormControl('',Validators.required)
       });
 
       qtyChangeReasons:any[] = [
@@ -51,12 +51,13 @@ export class StockListComponent {
     ngOnInit(){
         this.service.findAll().subscribe((data:any) => {
             this.items = data.map((s:any) => {
-                const margin = this.prodUtilService.getMargin(s.ptr_cost,s.sale_price);
-                const saving = this.prodUtilService.getSaving(s.mrp_cost,s.sale_price);
+                const margin = this.prodUtilService.getMargin(s.ptr_cost,s.sale_price||s.mrp_cost);
+                const saving = this.prodUtilService.getSaving(s.mrp_cost,s.sale_price||s.mrp_cost);
                 const qtypcnt = Math.round((s.available_qty/s.sale_qty)*100);
+                
                 return {...s, qtypcnt, mrp_cost: this.padDecimal(s.mrp_cost,2), 
                     ptr_cost: this.padDecimal(s.ptr_cost,2),
-                    sale_price: this.padDecimal(s.sale_price,2),
+                    sale_price: this.padDecimal(s.sale_price == null || s.sale_price == 0 ? s.mrp_cost:s.sale_price,2),
                     margin, saving };
             });
         });
@@ -121,11 +122,11 @@ export class StockListComponent {
         const mrpAfterTaxDedcut = this.selectedItem.mrp_cost;
         if (+event.target.value > +mrpAfterTaxDedcut){
             this.priceAdjustForm.controls['price'].setValue(mrpAfterTaxDedcut);
-            event.target.value = mrpAfterTaxDedcut; //prevent entering value over max qty
+            event.target.value = mrpAfterTaxDedcut;
         }
         else if (+event.target.value < +this.selectedItem.ptr_cost){
             this.priceAdjustForm.controls['price'].setValue(this.selectedItem.ptr_cost);
-            event.target.value = this.selectedItem.ptr_cost; //prevent entering value over max qty
+            event.target.value = this.selectedItem.ptr_cost;
         }
 
         this.margin = this.prodUtilService.getMargin(this.selectedItem.ptr_cost,+event.target.value);

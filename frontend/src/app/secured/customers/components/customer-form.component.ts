@@ -15,13 +15,13 @@ export class CustomerFormComponent {
 
   custLeadTypes:any[] = [
     { value: 'Walkin', label: 'Walk in' },
-    { value: 'Online', label: 'Online Search' },
-    { value: 'Banner', label: 'Banner' },
-    { value: 'PaperAd', label: 'Paper Ad' },
+    // { value: 'Online', label: 'Online Search' },
+    // { value: 'Banner', label: 'Banner' },
+    // { value: 'PaperAd', label: 'Paper Ad' },
     { value: 'Referral', label: 'Referral' },
-    { value: 'Campaign', label: 'Campaign' },
+    // { value: 'Campaign', label: 'Campaign' },
     { value: 'Other', label: 'Other' },
-    { value: 'Unknown', label: 'Unknown' },
+    // { value: 'Unknown', label: 'Unknown' },
   ]
 
     form:FormGroup = new FormGroup({
@@ -31,7 +31,7 @@ export class CustomerFormComponent {
         email: new FormControl(''),
         address: new FormControl(''),
         locality: new FormControl(''),
-        area: new FormControl(''),
+        // area: new FormControl(''),
         srctype: new FormControl('',Validators.required),
         srcdesc: new FormControl('')
     });
@@ -50,7 +50,7 @@ export class CustomerFormComponent {
             this.form.controls['name'].setValue(data.name);
             this.form.controls['mobile'].setValue(data.mobile);
             this.form.controls['email'].setValue(data.email);
-            this.form.controls['area'].setValue(data.area);
+            // this.form.controls['area'].setValue(data.area);
             this.form.controls['locality'].setValue(data.locality);
             this.form.controls['address'].setValue(data.address);
             this.form.controls['srctype'].setValue(data.srctype);

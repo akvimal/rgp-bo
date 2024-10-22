@@ -15,18 +15,22 @@
     </div>
   </div>
   <div class="row">
-    <div class="col-md-4">
+    <!-- <div class="col-md-4">
       <label for="area" class="form-label">Area</label>
       <input type="text" id="area"  class="form-control" formControlName="area">
-    </div>
+    </div> -->
     <div class="col-md-4">
-      <label for="locality" class="form-label">Locality</label>
+      <label for="locality" class="form-label">Location</label>
       <input type="text" id="locality"  class="form-control" formControlName="locality">
     </div>
     <div class="col-md-4">
       <label for="address" class="form-label">Address</label>
       <textarea id="address"  class="form-control" formControlName="address" rows="3"></textarea>
     </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-12">&nbsp;</div>
   </div>
     <div class="row">
     <div class="col-md-3">
@@ -36,6 +40,7 @@
         <option *ngFor="let t of custLeadTypes" [value]="t.value">{{t.label}}</option>
       </select>
     </div>
+
     <div class="col-md-3">
       <label for="srcdesc" class="form-label">Source Text</label>
       <input type="text" id="srcdesc" class="form-control" formControlName="srcdesc">
