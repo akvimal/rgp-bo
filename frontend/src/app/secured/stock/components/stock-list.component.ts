@@ -57,7 +57,8 @@ export class StockListComponent {
                 
                 return {...s, qtypcnt, mrp_cost: this.padDecimal(s.mrp_cost,2), 
                     ptr_cost: this.padDecimal(s.ptr_cost,2),
-                    sale_price: this.padDecimal(s.sale_price == null || s.sale_price == 0 ? s.mrp_cost:s.sale_price,2),
+                    // sale_price: this.padDecimal(s.sale_price == null || s.sale_price == 0 ? s.mrp_cost:s.sale_price,2),
+                    sale_price: this.padDecimal(s.sale_price,2),
                     margin, saving };
             });
         });

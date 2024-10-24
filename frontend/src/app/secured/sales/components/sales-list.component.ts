@@ -1,4 +1,5 @@
 import { Component } from "@angular/core";
+import { DateUtilService } from "../../date-util.service";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
 
@@ -11,7 +12,7 @@ export class SalesListComponent {
     criteria = {date:'',seller:'',status:'',customer:''}
 
     openH1DrugsTab = false;
-    constructor(private service:SaleService){}
+    constructor(private service:SaleService, private dateService:DateUtilService){}
 
     ngOnInit(){
        this.fetchSales();
@@ -36,5 +37,25 @@ export class SalesListComponent {
         this.criteria.status = ''
         
         this.fetchSales();
+      }
+
+      isActionAllowed(action:string,sale:any){
+      
+        let allowed = false;
+        if(action === 'Print' && sale.status === 'COMPLETE'){
+          allowed = true;
+        }
+        else if(action === 'Edit' && (sale.status === 'PENDING' || this.dateService.isSameDay(sale.createdon))){
+          allowed = true;
+        }
+        else if(action === 'Return' 
+        && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.createdon))
+        ){ // return allowed for sale completed within specified period
+          allowed = true;
+        }
+        else if(action === 'Cancel' && sale.status !== 'LOCKED'){ // the sale will be locked on filing GST
+          allowed = true;
+        }
+        return allowed;
       }
 }

@@ -20,14 +20,14 @@
         <label for="sustomer">Customer</label><br>
         <app-customer-select id="customer" (customerSelected)="selectCustomer($event)"></app-customer-select>
       </div>
-      <div class="col-md-2">
+      <!-- <div class="col-md-2">
         <label for="status">Status</label>
         <select name="filterbystatus" id="status" class="form-control" [(ngModel)]="criteria.status" (change)="fetchSales()">
           <option value=""></option>
           <option value="PENDING">PENDING</option>
           <option value="COMPLETE">COMPLETE</option>
         </select>
-      </div>
+      </div> -->
       <div class="col-md-2">
         <label>&nbsp;</label><br>
         <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
@@ -68,15 +68,16 @@
             <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
             <p-sortIcon field="total"></p-sortIcon>
           </th>
+          <th>Actions</th>
         </tr>
       <!-- </thead>
         <tbody> -->
         </ng-template>
         <ng-template pTemplate="body" let-s>
           <tr>
-            <td>
-              <a *ngIf="s.status !== 'COMPLETE'" [routerLink]="['../edit',s.id]">{{s.id}}</a>
-              <a *ngIf="s.status === 'COMPLETE'" [routerLink]="['../view',s.id]">{{s.id}}</a>
+            <td>{{s.id}}
+              <!-- <a *ngIf="s.status !== 'COMPLETE'" [routerLink]="['../edit',s.id]">{{s.id}}</a>
+              <a *ngIf="s.status === 'COMPLETE'" [routerLink]="['../view',s.id]">{{s.id}}</a> -->
             </td>
             <td>{{s.billdate | date: 'dd-MMM, hh:mm a'}}</td>
             <td>{{s.customer ? s.customer.name : ''}}</td>
@@ -84,6 +85,12 @@
             <!-- <td>{{s.created ? s.created.fullname : ''}}</td> -->
             <td>{{s.status}}</td>
             <td style="text-align: right;">{{s.total | number:'0.0-9'}}</td>
+            <td>
+              <a *ngIf="isActionAllowed('Print',s)" [routerLink]="['../view',s.id]">Print</a> |
+              <a *ngIf="isActionAllowed('Edit',s)" [routerLink]="['../edit',s.id]">Edit</a> | 
+              <a *ngIf="isActionAllowed('Return',s)" [routerLink]="['../edit',s.id]">Return</a> | 
+              <!-- <a *ngIf="isActionAllowed('Cancel',s)" [routerLink]="['../edit',s.id]">Cancel</a> -->
+            </td>
           </tr>  
         <!-- </tbody>
       </table> -->

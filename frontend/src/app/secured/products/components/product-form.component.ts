@@ -91,18 +91,18 @@ export class ProductFormComponent {
 
       dataInput(type:any,key:any,event:any){
         
-        if(key === 'brand'){
-          this.brand = event.target.value;
-        } else if(key === 'formulation'){
-          this.pdata.formulation = event.target.value;
-        } else if(key === 'pack'){
-          this.pack = event.target.value;
-        } 
-        let formattedTitle = (this.brand.trim().toUpperCase()||'') + ' ' + (this.pdata.formulation||'');
-        if(this.form.value.pack > 1)
-          formattedTitle += ` ${this.pack}'s`;
+        // if(key === 'brand'){
+        //   this.brand = event.target.value;
+        // } else if(key === 'formulation'){
+        //   this.pdata.formulation = event.target.value;
+        // } else if(key === 'pack'){
+        //   this.pack = event.target.value;
+        // } 
+        // let formattedTitle = (this.brand.trim().toUpperCase()||'') + ' ' + (this.pdata.formulation||'');
+        // if(this.form.value.pack > 1)
+        //   formattedTitle += ` ${this.pack}'s`;
 
-        this.form.controls['title'].setValue(formattedTitle);
+        // this.form.controls['title'].setValue(formattedTitle);
       }
   
       // isPluralPacking(count:number,formulation:string){

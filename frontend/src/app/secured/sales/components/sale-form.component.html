@@ -9,32 +9,32 @@
         <div class="row mt-3 mb-3" *ngIf="isNewCustomer(); else saleCustomer">
             <div class="col-lg-3">
                 <app-customer-select 
-                    (customerSelected)="selectCustomer($event)"
+                    (customerSelected)="selectCustomer($event,true)"
                     (focusLeave)="doneEnterCustomer($event)">
                     </app-customer-select>
                     <!-- <a href="javascript:void(0)" (click)="closeChangeCustomer()">
                         <i class="bi bi-x-square text-primary"></i></a> -->
             </div>
-            <div class="col-lg-2">
+            <!-- <div class="col-lg-2">
                 <input type="checkbox" [(ngModel)]="saleWithNoCustomerAllowed" name="saleWithNoCustomerAllowed" id="saleWithNoCustomerAllowed">
                 Undisclosed
-            </div>
+            </div> -->
         </div>
            
         <ng-template #saleCustomer>
             <div class="row mt-2">
                 <div class="col-lg-3">Mobile: {{sale.customer?.mobile}}
                     <div *ngIf="!sale.customer?.mobile.startsWith('000')">
-                        <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
+                        <!-- <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
                             <a (click)="showChangeCustomer('Edit')">
                             <i class="bi bi-pencil text-primary"></i></a>
-                        </span>
-                        <span class="ml-2">
-                            <a *ngIf="!isNewCustomer()" (click)="showPrevSalesCopy()">
+                        </span> -->
+                        <span class="ml-2" *ngIf="!isNewCustomer()">
+                            <a (click)="showPrevSalesCopy()">
                                 <i class="bi bi-files text-success"></i>
                             </a>
                         </span>
-                        <span class="ml-2">
+                        <span class="ml-2" *ngIf="sale.status !== 'COMPLETE'">
                             <a (click)="resetCustomer()">
                                 <i class="bi bi-x-square text-danger"></i>
                             </a>
@@ -42,8 +42,8 @@
                     </div>
                 </div>
                 <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Name: {{sale.customer?.name}}</div>
-                <!-- <div class="col-lg-3">Email: {{sale.customer?.email}}</div> -->
-                <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Address: {{sale.customer?.address}}</div>
+                <div class="col-lg-3">Email: {{sale.customer?.email}}</div>
+                <!-- <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Address: {{sale.customer?.address}}</div> -->
             </div>
         </ng-template>
 
@@ -57,20 +57,21 @@
 </div>
 
 <div class="row">
-    <div class="col-12 text-align-right" *ngIf="sale.status === 'NEW' || sale.status === 'PENDING'">
+    <div class="col-12 text-align-right">
         <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
                     [disabled]="!(total > 0)">Complete</button>    
-        <button type="button" (click)="submit('PENDING')" class="btn btn-outline-primary m-2" 
+        <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" class="btn btn-outline-primary m-2" 
                     [disabled]="total === 0">Save</button>    
         <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" 
             class="btn btn-primary m-2">Discard</button>
         
         <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
             <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
-        <button type="button" (click)="cancel()" class="btn btn-outline-primary m-2">Cancel</button>        
+        <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button>        
     </div>
 </div>
 
+<!-- Information to capture for H1 -->
 <p-dialog header="Prescription" [(visible)]="displaySalePropsForm" [modal]="true">
     <form [formGroup]="form" (ngSubmit)="onSubmitSaleProps()">
         <div class="row g-2 bg-light pb-3 mt-3" formGroupName="props" *ngIf="saleprops.length > 0">
@@ -91,6 +92,7 @@
             </div>
         </div>
         <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
+        <button type="submit" class="btn btn-secondary">Skip</button>
     </form>
 </p-dialog>
 
@@ -112,31 +114,38 @@
             (click)="copySelectedItem()">Copy</button>
 </p-dialog>
 
-<p-dialog [header]="(this.sale?.customer?.name || 'New Customer') + ' (' + (this.sale?.customer?.mobile || '') + ')'" 
+<!-- Customer Info form (shown if no customer already selected)-->
+<p-dialog [header]="(this.sale?.customer?.name || 'Customer') + ' (' + (this.sale?.customer?.mobile || '') + ')'" 
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
+            <div class="col-lg-6">
+                <!-- <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
+                [value]="sale.customer?.mobile||''" (input)="updateCustomer('mobile',$event)"> -->
+                <app-customer-select 
+                    (customerSelected)="selectCustomer($event, false)"
+                    (focusLeave)="doneEnterCustomer($event)">
+                    </app-customer-select>
+            </div>
+            
             <div class="col-lg-6">
                 <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
                 [value]="sale.customer?.name||''" (input)="updateCustomer('name',$event)">
             </div>
-            <div class="col-lg-6">
-                <input type="text" name="custMobile" id="custMobile" class="form-control" placeholder="Mobile"
-                [value]="sale.customer?.mobile||''" (input)="updateCustomer('mobile',$event)">
-            </div>
-            <!-- <div class="col-lg-4">
+            <div class="col-lg-4">
                 <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
                 [value]="sale.customer?.email||''" (input)="updateCustomer('email',$event)">
-            </div> -->
+            </div>
         </div>
-        <div class="row mt-2">
+        <!-- show below section if the customer is not found -->
+        <!-- <div class="row mt-2">
             <div class="col-lg-6">
                     <input type="text" name="custArea" id="custArea" class="form-control" placeholder="Area"
                 [value]="sale.customer?.area||''" (input)="updateCustomer('area',$event)">
             </div>
-            <!-- <div class="col-lg-4">
+            <div class="col-lg-4">
                     <input type="text" name="custLocal" id="custLocal" class="form-control" placeholder="Locality"
                 [value]="sale.customer?.locality||''" (input)="updateCustomer('locality',$event)">
-            </div> -->
+            </div>
             <div class="col-lg-6">
                     <textarea name="custAddr" id="custAddr" class="form-control" placeholder="Address"
                 (input)="updateCustomer('address',$event)">{{sale.customer?.address||''}}</textarea>
@@ -154,13 +163,16 @@
                     <input type="text" name="custSrcText" id="custSrcText" class="form-control"
                     [value]="sale.customer?.srcdesc||''" (input)="updateCustomer('srcdesc',$event)">
             </div>
-        </div>
+        </div> -->
         <div class="row mt-2">
             <div class="col-lg-12">
-                <button type="button" class="btn btn-primary m-2 text-center" 
-                (click)="saveCustomerInfo('PENDING')">Save</button>
-                <button type="button" *ngIf="!customerEditOnly" class="btn btn-primary m-2 text-center" 
-                (click)="saveCustomerInfo('COMPLETE')">Save & Complete</button>
+                <!-- <button class="btn btn-primary m-2 text-center" 
+                (click)="saveCustomerInfo('PENDING')">Save</button> -->
+                <button *ngIf="!customerEditOnly" class="btn btn-primary m-2 text-center" 
+                (click)="submit('COMPLETE')">Save</button>
+                <button class="btn btn-outline-secondary m-2"
+                (click)="noCustomerSale()">Continue</button>
+                
             </div>
         </div>
 </p-dialog>

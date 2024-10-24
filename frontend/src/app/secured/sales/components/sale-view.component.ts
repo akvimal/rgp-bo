@@ -39,7 +39,7 @@ export class SaleViewComponent {
               expdate: i.purchaseitem.expdate,
               qty: i.qty,
               mrp:(i.purchaseitem.mrpcost/i.purchaseitem.product.pack).toFixed(2),
-              price:i.price,
+              price:i.price.toFixed(2),
               taxpcnt:i.purchaseitem.taxpcnt,
               total: i.total
             }

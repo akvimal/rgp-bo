@@ -15,6 +15,10 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock`);
     }
 
+    findAllReadyForSale(){
+        return this.http.get(`${this.apiurl}/stock/ready`);
+    }
+
     findDemand(fromdate:string,todate:string,incother:boolean){
         const criteria = {begindt:fromdate,enddt:todate,orders_avail:incother};
         console.log('criteria: ',criteria);

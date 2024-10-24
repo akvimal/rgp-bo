@@ -39,7 +39,7 @@ export class StockSelectComponent {
     constructor(private stockService:StockService, private http: HttpClient){}
 
     ngOnInit(){
-        this.stockService.findAll().subscribe((data:any) => {
+        this.stockService.findAllReadyForSale().subscribe((data:any) => {
             this.items = data;
             this.stock = data.find((pi:any) => this.item.itemid !== '' && pi.id === this.item.itemid);            
         });

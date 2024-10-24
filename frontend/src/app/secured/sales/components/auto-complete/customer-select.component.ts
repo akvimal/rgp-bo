@@ -9,6 +9,7 @@ import { CustomersService } from "../../../customers/customers.service";
                 (onBlur)="focusOut($event)"
                 field="mobile" placeholder="Mobile"
                 [disabled]="disabled"
+                [maxlength]="10"
                 [suggestions]="filteredCustomer" 
                 [inputStyle]="{'background-color':'#9df'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="2">

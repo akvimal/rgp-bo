@@ -22,6 +22,11 @@ export class StockController {
       return this.service.findAll();
     }
 
+    @Get('/ready')
+    async findAllReady() {
+      return this.service.findAllReady();
+    }
+
     @Post('/demand')
     async findDemand(@Body() input: {begindt:string,enddt:string,orders_avail:boolean}) {
       return this.service.findStockDemand(input);

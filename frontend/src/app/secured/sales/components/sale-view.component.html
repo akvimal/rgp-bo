@@ -19,8 +19,8 @@
                         Bill Date: {{sale.billdate | date: 'dd-MMM hh:mm a'}}
                     </td>
                     <td style="text-align: right;">
-                        Name: {{sale.customer?.name}}<br>
-                        Phone: {{sale.customer?.mobile}}
+                       <span *ngIf="sale.customer?.name">Name: {{sale.customer?.name}}</span><br>
+                       <span *ngIf="sale.customer?.mobile">Phone: {{sale.customer?.mobile}}</span>
                     </td>
                 </tr>
             </table>
@@ -79,8 +79,8 @@
 <div class="non-print" style="text-align:center">
     <button type="button" class="btn  btn-primary m-2" onclick="javascript:window.print();">Print</button>
     
-    <a *isAuth="'sales.add'" [routerLink]="['../../new']">
-        <button type="submit" class="btn btn-success no-print m-2">New Sale</button></a>
+    <!-- <a *isAuth="'sales.add'" [routerLink]="['../../new']">
+        <button type="submit" class="btn btn-success no-print m-2">New Sale</button></a> -->
          
-    <button type="button" (click)="cancel()" class="btn btn-outline-primary m-2">Back to List</button>    
+    <button type="button" (click)="cancel()" class="btn btn-outline-primary m-2">Sales</button>    
 </div>

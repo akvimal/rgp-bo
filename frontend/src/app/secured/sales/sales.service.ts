@@ -45,8 +45,8 @@ export class SaleService {
     }
 
     findAll(criteria:any){
-       return this.http.get(`${this.apiurl}`,{params:criteria});
-    }
+        return this.http.get(`${this.apiurl}`,{params:criteria});
+     }
 
     removeItem(id:number){
         const arr = this.items.value;

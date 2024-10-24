@@ -30,17 +30,21 @@
             <td width="7%" style="text-align: right;">{{(item.mrp_cost * item.pack||0).toFixed(2)||''}}</td>
             <td width="25%">
                 <div class="input-group mb-3"  *ngIf="item.itemid > 0">
-                    <input type="number" min="0" name="box" class="form-control"
+                    <!-- <input type="number" min="0" name="box" class="form-control"
                     [value]="item.box == 0 ? '' : item.box" (input)="boxInputValidate($event,item.maxqty,item.pack,item.id)">
                     <input type="number" min="0" class="form-control" name="boxitem" 
-                    [value]="item.boxbal == 0 ? '' : item.boxbal" (input)="boxitemInputValidate($event,item.maxqty,item.pack,item.id)">
-                    <!-- <input type="number" [value]="item.qty" class="form-control"
+                    [value]="item.boxbal == 0 ? '' : item.boxbal" (input)="boxitemInputValidate($event,item.maxqty,item.pack,item.id)"> 
+                <div class="input-group-append">
+                        <span class="input-group-text" id="basic-addon2">{{item.balqty}}</span>
+                    </div>
+                -->
+                    <input type="number" [value]="item.qty" class="form-control"
                         [disabled]="item.maxqty == 0"
                         [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#9df'}"
-                        (input)="calculate(item.itemid,$event)"> -->
-                    <!-- <span class="m-2">{{(item.maxqty||0)}}</span> -->
+                        (input)="calculate(item.itemid,$event)">
+                    
                     <div class="input-group-append">
-                        <span class="input-group-text" id="basic-addon2">{{item.balqty}}</span>
+                        <span class="input-group-text" id="basic-addon2">{{item.unitsbal}}</span>
                     </div>
                 </div>
             </td>

@@ -7,6 +7,11 @@
       "searchable": true
     },
     {
+      "id": "chronic",
+      "label": "Chronic",
+      "type": "CHECK"
+    },
+    {
       "id": "formulation",
       "label": "Formulation",
       "type": "SINGLE-SELECT",

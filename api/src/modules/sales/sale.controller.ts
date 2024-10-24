@@ -94,7 +94,7 @@ export class SaleController {
     async findItems(@Param('id') custid: string) {
 
       const stocks = await this.stockService.findAll(); //for finding item available qty
-      const sales = await this.saleService.findAllByCustomerId(custid,1);
+      const sales = await this.saleService.findAllByCustomerId(custid,5);
       
       sales.forEach(s => {
         s.items.forEach((i:any) => {

@@ -38,13 +38,13 @@ export class SaleFormComponent {
 
     custCustomerTypes:any[] = [
       { value: 'Walkin', label: 'Walk in' },
-      { value: 'Online', label: 'Online Search' },
-      { value: 'Banner', label: 'Banner' },
-      { value: 'PaperAd', label: 'Paper Ad' },
+      // { value: 'Online', label: 'Online Search' },
+      // { value: 'Banner', label: 'Banner' },
+      { value: 'PaperAd', label: 'Advertisement' },
       { value: 'Referral', label: 'Referral' },
-      { value: 'Campaign', label: 'Campaign' },
+      // { value: 'Campaign', label: 'Campaign' },
       { value: 'Other', label: 'Other' },
-      { value: 'Unknown', label: 'Unknown' },
+      // { value: 'Unknown', label: 'Unknown' },
     ]
 
     constructor(private route: ActivatedRoute,
@@ -75,6 +75,7 @@ export class SaleFormComponent {
                 box: Math.trunc(i.qty / pack),
                 boxbal: i.qty % pack,
                 balqty: Math.trunc(i.qty/pack) + '.' + (i.qty%pack),
+                unitsbal:i.maxqty-i.qty,
                 pack,
                 mrp_cost: i.purchaseitem.mrpcost/pack,
                 title: i.purchaseitem.product.title,
@@ -170,7 +171,7 @@ export class SaleFormComponent {
       this.addNewItem();
     }
 
-    selectCustomer(customer:any){
+    selectCustomer(customer:any, copySales:boolean){
       const {id,name,mobile,email,address} = customer;
       if(customer.existing){
         this.sale.customer = {id,name,mobile,email,address};
@@ -179,7 +180,7 @@ export class SaleFormComponent {
       else {
         this.sale.customer = {mobile,name:''};
       }
-      this.fetchCustomerPrevSales = true;
+      this.fetchCustomerPrevSales = copySales;
     }
   
   doneEnterCustomer(event:any){
@@ -190,6 +191,7 @@ export class SaleFormComponent {
         event.target.focus();
       }
     } 
+    
     this.sale.customer = {mobile:inputval};
   }
 
@@ -199,20 +201,33 @@ export class SaleFormComponent {
     }
   }
 
+  doesProductContains(items:any, prop:string, value:any){
+    const props = items.filter((i:any) => i.more_props[prop] === value);
+    return props && props.length > 0;
+  }
+
   submit(status:any){
+
     if(status === 'DISCARD'){
       this.sale.id && this.service.remove(this.sale.id).subscribe(data => {
         this.router.navigateByUrl(`/secure/sales`); 
       })
       return;
     }
+    
+    //all items should have total greater than zero
     const validItems = this.sale.items && this.sale.items.filter((i:any) => (i.itemid !== '' && ((i.box * i.pack) + i.boxbal) > 0));
     
-    const requireAdditionalProps = validItems?.filter((i:any) => i.more_props.schedule === 'H1');
+    // const requireAdditionalProps = validItems?.filter((i:any) => i.more_props.schedule === 'H1');
     if(status === 'COMPLETE' && !this.salePropValues){
-      if(requireAdditionalProps && requireAdditionalProps.length > 0){
+      if(this.doesProductContains(validItems, 'schedule', 'H1')){
         this.populateSalePropsForm('H1',null);
         this.displaySalePropsForm = true;
+        return;
+      }
+      if(this.doesProductContains(validItems, 'chronic', true) && 
+      (!this.saleWithNoCustomerAllowed && this.isNewCustomer())){
+        this.displayNewCustomer = true;
         return;
       }
     }
@@ -235,14 +250,14 @@ export class SaleFormComponent {
         total = newTotal;
     }
     
-    if(!this.isSaleWithNoCustomerAllowed() && this.isNewCustomer()){
-      this.displayNewCustomer = true;
-      this.customerEditOnly = false;
-      if(status === 'PENDING'){
-        this.customerEditOnly = true;
-      }
-      return;
-    }
+    // if(!this.isSaleWithNoCustomerAllowed() && this.isNewCustomer()){
+    //   this.displayNewCustomer = true;
+    //   this.customerEditOnly = false;
+    //   if(status === 'PENDING'){
+    //     this.customerEditOnly = true;
+    //   }
+    //   return;
+    // }
 
     this.service.save({...this.sale, total:Math.round(total), disccode:(this.offer?.code), discamount:discamt, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
@@ -287,13 +302,11 @@ export class SaleFormComponent {
     this.router.navigateByUrl(`/secure/sales`); 
   }
 
-  saveCustomerInfo(status:string) {
-    if(status === 'COMPLETE') {
-      // if(!this.sale.customer.name){
-      //   this.sale.customer['name'] = 'Unknown'
-      // }
-      this.submit(status);
-    }
+  noCustomerSale() {
+    
+    this.saleWithNoCustomerAllowed = true;
+      this.submit('COMPLETE');
+    
     
     this.displayNewCustomer = false;
   }
@@ -303,7 +316,6 @@ export class SaleFormComponent {
     const addedItemsToSale = this.sale.items?.map((i:any) => i.itemid)
     
     this.fetchCustomerPrevSales && this.service.getSalesByCustomer(this.sale.customer.id).subscribe((prevSale:any) => {
-      
       if(prevSale.length > 0) {
         // if(!prevSale.status) {
           this.prevCustSales = [];

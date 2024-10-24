@@ -56,6 +56,7 @@ export class DateUtilService {
         dt.setDate(dt.getDate() + days);
         return this.getFormatDate(dt);
     }
+
     parseMonthText(mon:number){
         let text = ''
         switch (mon) {
@@ -101,4 +102,18 @@ export class DateUtilService {
         }
         return text;
     }
+
+
+    isSameDay(date:string){
+        const chkdt = new Date(date).getTime();
+        
+        const enddt = new Date();
+        enddt.setHours(23);
+        enddt.setMinutes(59);
+        enddt.setSeconds(59);
+
+        const hours = (enddt.getTime()-chkdt)/1000/60/60;
+        return hours > 0 && hours <= 24;
+    }
+    
 }
