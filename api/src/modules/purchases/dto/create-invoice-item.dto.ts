@@ -16,6 +16,9 @@ export class CreatePurchaseInvoiceItemDto {
   
     @ApiProperty({ description: 'exp date', example: '' })
     readonly expdate: string;
+
+    @ApiProperty({ description: 'mfr date', example: '' })
+    readonly mfrdate: string;
   
     @ApiProperty({ description: 'ptr value', example: 0 })
     readonly ptrvalue: number;

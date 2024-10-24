@@ -37,7 +37,8 @@
                                 <p-sortIcon field="product.title"></p-sortIcon>
                             </th>
                             <th>Batch</th>
-                            <th pSortableColumn="expdate">Expiry
+                            <th>MFR Date</th>
+                            <th pSortableColumn="expdate">EXP Date
                                 <p-sortIcon field="expdate"></p-sortIcon>
                             </th>
                             <!-- <th>Pack</th> -->
@@ -61,15 +62,16 @@
                             </td>
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
-                            <td>{{i.expdate | date: 'MMM-yy'}}</td>
+                            <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td>
+                            <td class="text-center">{{i.expdate | date: 'MMM-yy'}}</td>
                             <!-- <td style="text-align: right;">{{i.product.pack}}</td> -->
                             <td style="text-align: right;">{{i.qty}}</td>
                             <td style="text-align: right;">{{i.mrpcost | number:'1.2-2'}}</td>
                             <td style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
-                            <td>{{i.discpcnt}}%</td>
-                            <td>{{i.taxpcnt}}%</td>
+                            <td>{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
+                            <td>{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
                             <td style="text-align: right;">{{i.total | number:'1.2-2'}}</td>
-                            <td>{{i.status}}</td>
+                            <td class="text-center">{{i.status}}</td>
                             <td>
                                 <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
                                     <i class="bi bi-pencil-square text-primary"></i>

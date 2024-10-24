@@ -25,10 +25,6 @@
           "value": "CAP"
         },
         {
-          "label": "Oral",
-          "value": "ORL"
-        },
-        {
           "label": "Syrup",
           "value": "SYP"
         },
@@ -49,7 +45,7 @@
           "value": "SCT"
         },
         {
-          "label": "Injectable",
+          "label": "Injection",
           "value": "INJ"
         },
         {

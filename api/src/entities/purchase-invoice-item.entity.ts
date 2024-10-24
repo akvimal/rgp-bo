@@ -32,6 +32,8 @@ import { ProductClearance } from "./product-clearance.entity";
   
     @Column("date", { name: "exp_date", nullable: true })
     expdate: string | null;
+    @Column("date", { name: "mfr_date", nullable: true })
+    mfrdate: string | null;
   
     @Column("double precision", { name: "ptr_value", precision: 53 })
     ptrvalue: number;

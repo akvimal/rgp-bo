@@ -197,7 +197,7 @@ export class SaleService {
 
     async findAllEligibleItemsToReturn(id:string){
         return await this.manager.query(
-        `select s.sale_id, pii.id, p.title, pii.batch, pii.exp_date, pii.sale_price, p.pack, x.net as balqty from sale_item s 
+        `select s.sale_id, pii.id, p.title, pii.batch, pii.mfr_date, pii.exp_date, pii.sale_price, p.pack, x.net as balqty from sale_item s 
         inner join 
         (select sale_id as sid, purchase_item_id as pid, sum(qty) as net from sale_item si where sale_id = ${id}
         group by sale_id, purchase_item_id) x on x.sid = s.sale_id and x.pid = s.purchase_item_id and x.net > 0 and status is null

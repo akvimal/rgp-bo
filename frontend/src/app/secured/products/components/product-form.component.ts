@@ -119,7 +119,7 @@ export class ProductFormComponent {
       onSave(){
         const obj = { 
           title: this.form.value.title.trim(), 
-          hsn:this.form.value.hsn.trim(), 
+          hsn:this.form.value.hsn.trim(),
           code:this.form.value.code.trim(), 
           pack:this.form.value.pack, 
           category:this.form.value.category, 

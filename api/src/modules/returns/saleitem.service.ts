@@ -93,7 +93,7 @@ export class SaleItemService {
         const now = new Date();
         const other = new Date(now.setMonth(now.getMonth() - this.RETURN_PERIOD_MONTHS_ALLOWED));
         return await this.manager.query(`
-        select distinct p.title, pii.batch, pii.exp_date, si.price, 
+        select distinct p.title, pii.batch, pii.mfr_date, pii.exp_date, si.price, 
         si.id as saleitem_id, s.bill_date, s.id as bill_no, si.qty as sold_qty, 
         x.aqty as allow_qty, si.created_on
         from sale_item si 
