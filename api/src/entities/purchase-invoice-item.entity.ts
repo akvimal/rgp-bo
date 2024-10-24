@@ -56,7 +56,9 @@ import { ProductClearance } from "./product-clearance.entity";
   
     @Column("integer", { name: "qty" })
     qty: number;
-  
+    @Column("integer", { name: "free_qty" })
+    freeqty: number;
+
     @Column("double precision", { name: "total", precision: 53 })
     total: number;
 

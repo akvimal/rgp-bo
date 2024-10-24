@@ -43,6 +43,9 @@ export class CreatePurchaseInvoiceItemDto {
 
     @ApiProperty({ description: 'quantity', example: 0 })
     readonly qty: number;
+    
+    @ApiProperty({ description: 'free quantity', example: 0 })
+    readonly freeqty: number;
 
     @ApiProperty({ description: 'total', example: 0 })
     readonly total: number;

@@ -20,8 +20,9 @@ export class InvoiceItemFormComponent {
         qty: new FormControl('',Validators.required),
         ptrvalue: new FormControl('',Validators.required),
         mrpcost: new FormControl('',Validators.required),
+        taxpcnt: new FormControl(''),
         discpcnt: new FormControl(''),
-        taxpcnt: new FormControl('')
+        freeqty: new FormControl('')
       });
       
     @Input() invoiceid:any;
@@ -59,6 +60,7 @@ export class InvoiceItemFormComponent {
                 this.form.controls['mrpcost'].setValue(data.mrpcost);
                 this.form.controls['ptrvalue'].setValue(data.ptrvalue);
                 this.form.controls['qty'].setValue(data.qty);
+                this.form.controls['freeqty'].setValue(data.freeqty);
                 this.form.controls['discpcnt'].setValue(data.discpcnt);
                 this.form.controls['taxpcnt'].setValue(data.taxpcnt);
 
@@ -118,6 +120,7 @@ export class InvoiceItemFormComponent {
         this.form.controls['expdate'].setValue('');
         this.form.controls['mrpcost'].setValue('');
         this.form.controls['qty'].setValue('');
+        this.form.controls['freeqty'].setValue('');
         this.form.controls['ptrvalue'].setValue('');
         this.form.controls['discpcnt'].setValue('');
         this.form.controls['taxpcnt'].setValue('');
@@ -171,6 +174,7 @@ export class InvoiceItemFormComponent {
         this.form.controls['mfrdate'].setValue('')
         this.form.controls['expdate'].setValue('')
         this.form.controls['qty'].setValue('')
+        this.form.controls['freeqty'].setValue('')
 
         this.sellermargin = 0
         this.customersaving = 0

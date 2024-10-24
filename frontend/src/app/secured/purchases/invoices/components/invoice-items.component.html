@@ -45,8 +45,9 @@
                             <th>Qty</th>
                             <th>MRP</th>
                             <th>PTR</th>
-                            <th>Disc</th>
                             <th>Tax</th>
+                            <th>Disc</th>
+                            <th>Free</th>
                             <th>Total</th>
                             <th>Status</th>
                             <th></th>
@@ -68,8 +69,10 @@
                             <td style="text-align: right;">{{i.qty}}</td>
                             <td style="text-align: right;">{{i.mrpcost | number:'1.2-2'}}</td>
                             <td style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
-                            <td>{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
+                            
                             <td>{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
+                            <td>{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
+                            <td style="text-align: right;">{{i.freeqty}}</td>
                             <td style="text-align: right;">{{i.total | number:'1.2-2'}}</td>
                             <td class="text-center">{{i.status}}</td>
                             <td>
