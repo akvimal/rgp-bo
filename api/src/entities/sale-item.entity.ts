@@ -11,6 +11,7 @@ import { BaseEntity } from "./base.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
 import { SaleReturnItem } from "./salereturn-item.entity";
 import { Sale } from "./sale.entity";
+import { Product } from "./product.entity";
 
 @Index("sale_item_pk", ["id"], { unique: true })
 @Index("sale_item_un", ["itemid", "saleid"], { unique: true })
@@ -24,6 +25,15 @@ export class SaleItem extends BaseEntity {
 
   @Column("integer", { name: "purchase_item_id", unique: true })
   itemid: number;
+
+  @Column("integer", { name: "product_id", unique: true })
+  productid: number;
+
+  @Column("character varying", { name: "batch", nullable: true })
+  batch: string | null;
+  
+  @Column("date", { name: "exp_date", nullable: true })
+  expdate: string | null;
 
   @Column("double precision", { name: "price", precision: 53 })
   price: number;
@@ -52,6 +62,13 @@ export class SaleItem extends BaseEntity {
   )
   @JoinColumn([{ name: "purchase_item_id", referencedColumnName: "id" }])
   purchaseitem: PurchaseInvoiceItem;
+
+  @ManyToOne(
+    () => Product,
+    (product) => product.saleItems
+  )
+  @JoinColumn([{ name: "product_id", referencedColumnName: "id" }])
+  product: Product;
 
   @ManyToOne(() => Sale, (sale) => sale.items)
   @JoinColumn([{ name: "sale_id", referencedColumnName: "id" }])

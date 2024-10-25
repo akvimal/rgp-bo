@@ -66,25 +66,25 @@ export class SaleFormComponent {
             this.sale.status = data.status;
   
             this.sale.items = data.items.map((i:any) => {
-              const pack = i.purchaseitem.product.pack;
+              // const pack = i.purchaseitem.product.pack;
               return {
                 id:i.id,
-                itemid:i.purchaseitem.id,
+                // itemid:i.purchaseitem.id,
                 price:i.price,
                 qty:i.qty,
-                box: Math.trunc(i.qty / pack),
-                boxbal: i.qty % pack,
-                balqty: Math.trunc(i.qty/pack) + '.' + (i.qty%pack),
-                unitsbal:i.maxqty-i.qty,
-                pack,
-                mrp_cost: i.purchaseitem.mrpcost/pack,
-                title: i.purchaseitem.product.title,
-                taxpcnt:i.purchaseitem.taxpcnt,
-                batch:i.purchaseitem.batch,
-                expdate:i.purchaseitem.expdate,
-                maxqty: i.maxqty,
-                more_props: i.purchaseitem.product.props,
-                total: this.calculateTotal(i.qty,i.price,i.purchaseitem.taxpcnt)
+                box: Math.trunc(i.qty / i.pack),
+                boxbal: i.qty % i.pack,
+                balqty: Math.trunc(i.qty/i.pack) + '.' + (i.qty%i.pack),
+                unitsbal:i.available_qty-i.qty,
+                pack:i.pack,
+                mrp_cost: i.mrp_cost/i.pack,
+                title: i.title,
+                taxpcnt:i.tax_pcnt,
+                batch:i.batch,
+                expdate:i.exp_date,
+                maxqty: i.available_qty,
+                // more_props: i.purchaseitem.product.props,
+                total: this.calculateTotal(i.qty,i.price,i.tax_pcnt)
               }
             });
   

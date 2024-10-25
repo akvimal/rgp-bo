@@ -37,7 +37,7 @@
                                 <p-sortIcon field="product.title"></p-sortIcon>
                             </th>
                             <th>Batch</th>
-                            <th>MFR Date</th>
+                            <!-- <th>MFR Date</th> -->
                             <th pSortableColumn="expdate">EXP Date
                                 <p-sortIcon field="expdate"></p-sortIcon>
                             </th>
@@ -63,7 +63,7 @@
                             </td>
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
-                            <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td>
+                            <!-- <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td> -->
                             <td class="text-center">{{i.expdate | date: 'MMM-yy'}}</td>
                             <!-- <td style="text-align: right;">{{i.product.pack}}</td> -->
                             <td style="text-align: right;">{{i.qty}}</td>

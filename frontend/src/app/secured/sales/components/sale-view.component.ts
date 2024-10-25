@@ -30,22 +30,25 @@ export class SaleViewComponent {
       this.service.find(saleId).subscribe((data:any) => {
         
           this.sale.items = data.items.map((i:any) => {
-            this.mrpTotal += +((i.purchaseitem.mrpcost/i.purchaseitem.product.pack) * i.qty).toFixed(0);
+            console.log(i);
+            
+            this.mrpTotal += +((i.mrp/i.pack) * i.qty);
             this.itemsTotal += +i.total;
             return {
-              title: i.purchaseitem.product.title,
-              props: i.purchaseitem.product.props,
-              batch: i.purchaseitem.batch,
-              expdate: i.purchaseitem.expdate,
+              title: i.title,
+              props: i.props,
+              batch: i.batch,
+              expdate: i.exp_date,
               qty: i.qty,
-              mrp:(i.purchaseitem.mrpcost/i.purchaseitem.product.pack).toFixed(2),
+              mrp:(i.mrp/i.pack).toFixed(2),
               price:i.price.toFixed(2),
-              taxpcnt:i.purchaseitem.taxpcnt,
+              taxpcnt:i.taxpcnt,
               total: i.total
             }
           });
           
           this.sale.id = data.id;
+          this.sale.billno = data.billno;
           this.sale.billdate = data.billdate;
           if(data.customer){
             const {mobile,name,email} = data.customer;
@@ -60,8 +63,6 @@ export class SaleViewComponent {
           
           // this.saving = Math.round( (data.total / this.mrpTotal) * 100);
           this.saving = this.prodUtilService.getSaving(this.mrpTotal, data.total);
-          console.log('saving: ',this.saving);
-          
         });
     }
 

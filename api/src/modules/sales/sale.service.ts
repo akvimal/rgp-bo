@@ -182,9 +182,8 @@ export class SaleService {
         return await this.saleRepository.createQueryBuilder("sale")
         .leftJoinAndSelect("sale.customer", "customer")
         .leftJoinAndSelect("sale.items", "items")
-        .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
-        .leftJoinAndSelect("purchaseitem.product", "product")
-          .select(['sale','customer','items','purchaseitem','product'])
+        .leftJoinAndSelect("items.product", "product")
+          .select(['sale','customer','items','product'])
           .where('sale.id = :id', { id })
           .getOne();
     }

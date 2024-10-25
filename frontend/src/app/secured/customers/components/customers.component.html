@@ -11,21 +11,25 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
 
     <tr>
       <th scope="col">ID</th>
-      <th pSortableColumn="name">Name
+      <th pSortableColumn="name" scope="col">Name
         <p-sortIcon field="name"></p-sortIcon>
         <p-columnFilter type="text" field="name" display="menu"></p-columnFilter>
       </th>
-      <th pSortableColumn="mobile">Mobile
+      <th pSortableColumn="mobile" scope="col">Mobile
         <p-sortIcon field="mobile"></p-sortIcon>
         <p-columnFilter type="text" field="mobile" display="menu"></p-columnFilter>
       </th>
-      <!-- <th scope="col">Email</th> -->
+      <th  pSortableColumn="email" scope="col">Email
+        <p-sortIcon field="email"></p-sortIcon>
+        <p-columnFilter type="text" field="email" display="menu"></p-columnFilter>
+
+      </th>
       <!-- <th scope="col">Area</th> -->
       <!-- <th scope="col">Address</th> -->
-      <th scope="col">Location</th>
+      <!-- <th scope="col">Location</th> -->
       <!-- <th scope="col">Source Type</th> -->
       <!-- <th scope="col">Source Info</th> -->
-      <th scope="col">Date</th>
+      <!-- <th scope="col">Date</th> -->
       <th scope="col">Actions</th>
     </tr>
   </ng-template>
@@ -34,13 +38,13 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <td>{{c.id}}</td>
       <td>{{c.name}}</td>
       <td>{{c.mobile}}</td>
-      <!-- <td>{{c.email}}</td> -->
+      <td>{{c.email}}</td>
       <!-- <td>{{c.area}}</td> -->
-      <td>{{c.locality}}</td>
+      <!-- <td>{{c.locality}}</td> -->
       <!-- <td>{{c.address}}</td> -->
       <!-- <td>{{c.srctype}}</td> -->
       <!-- <td>{{c.srcdesc}}</td> -->
-      <td>{{c.createdon | date : 'dd/MM/yy'}}</td>
+      <!-- <td>{{c.createdon | date : 'dd/MM/yy'}}</td> -->
       <td style="text-align: center;">
         <a [routerLink]="['edit',c.id]">
           <i class="bi bi-pencil-square text-primary"></i>

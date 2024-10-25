@@ -45,13 +45,12 @@
             <div class="p-2"><a (click)="clearBatch()"><i class="bi bi-x-circle text-danger"></i></a></div>
           </div>
     </div>
-    <div class="col-md-1">
+    <!-- <div class="col-md-1">
         <label for="mfrdate" class="form-label">MFR Date</label>
-        <!-- <p *ngIf="batchfound">{{form.controls['expdate'].value}}</p> -->
         <br>
         <p-calendar formControlName="mfrdate" view="month" dateFormat="mm/yy" [maxDate]="today()" 
                 [yearNavigator]="true" yearRange="2000:2030"></p-calendar>
-    </div>
+    </div> -->
     <div class="col-md-1">
         <label for="expdate" class="form-label">EXP Date</label>
         <!-- <p *ngIf="batchfound">{{form.controls['expdate'].value}}</p> -->

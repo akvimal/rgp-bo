@@ -2,7 +2,10 @@ import { SaleItem } from "./sale-item.model";
 
 export interface Sale {
     id?:number,
+    billno?:any,
     billdate?:any,
+    orderno?:any,
+    orderdate?:any,
     customerid?:number,
     customer?:any,
     created?:any,

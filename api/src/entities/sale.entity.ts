@@ -18,8 +18,15 @@ export class Sale extends BaseEntity {
   @PrimaryGeneratedColumn({ type: "integer", name: "id" })
   id: number;
 
+  @Column("integer", { name: "bill_no", nullable: true })
+  billno: number | null;
+  @Column("integer", { name: "order_no", nullable: true })
+  orderno: number | null;
+
   @Column("timestamp without time zone", { name: "bill_date" })
   billdate: Date;
+  @Column("timestamp without time zone", { name: "order_date" })
+  orderdate: Date;
   
   @Column("integer", { name: "customer_id"})
   customerid: number;

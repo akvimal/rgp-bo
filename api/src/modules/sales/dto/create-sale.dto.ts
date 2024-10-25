@@ -7,6 +7,13 @@ export class CreateSaleDto {
     
     @ApiProperty({ description: 'bill date', example: '' })
     readonly billdate: string;
+    @ApiProperty({ description: 'order date', example: '' })
+    readonly orderdate: string;
+
+    @ApiProperty({ description: 'bill no', example: 0 })
+    readonly billno: number;    
+    @ApiProperty({ description: 'order no', example: 0 })
+    readonly orderno: number;
 
     @ApiProperty({ description: 'status', example: '' })
     readonly status: string;

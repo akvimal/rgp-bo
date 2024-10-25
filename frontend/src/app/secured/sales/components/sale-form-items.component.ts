@@ -59,11 +59,12 @@ export class SaleFormItemsComponent{
     if(changes['customer'] && changes['customer'].currentValue){
       if(changes['customer'].currentValue.id){
         this.saleService.getSalesByCustomer(changes['customer'].currentValue.id).subscribe((data:any) => {
+          
               this.customerTotalOrders = data.length;
               data.forEach((s:any) => {
                 this.customerTotalSaleAmount += s.total;
               });
-              this.customerLastBillDate = data[0].billdate;
+              this.customerLastBillDate = data.length == 1 && data[0].billdate;
             });
       }
     }

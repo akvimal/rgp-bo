@@ -83,9 +83,9 @@
                 <td>{{item.sale.customer?.name}}</td>
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td> -->
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td> -->
-                <td>{{item.purchaseitem.product.title}}
+                <td>{{item.title}}
                   <br>
-                  <span style="font-size:smaller">{{item.purchaseitem.batch}} / {{item.purchaseitem.expdate | date : 'MMM-yy'}}</span>
+                  <span style="font-size:smaller">{{item.batch}} / {{item.expdate | date : 'MMM-yy'}}</span>
                 </td>
                 <!-- <td></td> -->
                 <td style="text-align:right">{{item.qty}}</td>

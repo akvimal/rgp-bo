@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
+import exp from "constants";
 import { ProductPriceChange } from "src/entities/product-pricechange.entity";
 import { ProductQtyChange } from "src/entities/product-qtychange.entity";
+import { Sale } from "src/entities/sale.entity";
 import { EntityManager, Repository } from "typeorm";
 import { CreateProductPriceDto } from "./dto/create-product-price.dto";
 import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
@@ -16,6 +18,35 @@ export class StockService {
         async findAll(){
             return await this.manager.query(`
             select * from stock_view where (life_left is null or life_left >= 0) order by title`);
+        }
+
+        async findAvailableQty(prodid:number, batch:string, expdate:string){
+            return await this.manager.query(`
+            select 
+                case 
+                    when life_left < 1 then 0 
+                    else available_qty end 
+            from stock_view where product_id = ${prodid} and batch  = '${batch}' and expdate = '${expdate}'`);
+        }
+
+        async getSaleItemAvailableQuantities(sale:Sale){
+           const items = await this.manager.query(`
+           select si.product_id, p.title, p.pack, p.more_props as props, si.batch, si.exp_date, sv.mrp_cost, 
+           sv.tax_pcnt, si.price, si.qty, si.total::numeric,
+           (case when life_left < 1 then 0 else available_qty end)::numeric
+           from sale_item si inner join 
+           stock_view sv on sv.product_id = si.product_id and sv.batch = si.batch and sv.expdate = si.exp_date 
+           inner join product p on p.id = si.product_id 
+           where si.sale_id = ${sale.id}`);
+        //    console.log(items);
+           return {...sale, items};
+        }
+
+        async getMrpOfItems(sale:Sale) {
+            const items = await this.manager.query(`select si.*, iv.title, iv.pack, iv.mrp 
+            from sale_item si inner join inventory_view iv on iv.id = si.product_id and iv.batch = si.batch and iv.exp_date = si.exp_date 
+            where si.sale_id = ${sale.id}`);
+            return {...sale, items};
         }
 
         async findAllReady(){

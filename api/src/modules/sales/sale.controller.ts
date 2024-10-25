@@ -78,16 +78,10 @@ export class SaleController {
 
     @Get('/:id')
     async findById(@Param('id') id: string) {
-
       const sale = await this.saleService.findById(id);
-      
-      const stocks = await this.stockService.findAll(); //for finding item available qty
-      const items = sale.items.map((i:any) => {
-        const st = stocks.find(s => s.id === i.itemid);
-        return {...i, maxqty:st.available_qty}; //add max qty possible
-      });
-
-      return {...sale, items};
+      // return this.stockService.getSaleItemAvailableQuantities(sale);
+      return this.stockService.getMrpOfItems(sale);
+      // return sale;
     }
 
     @Get('/:id/customer')

@@ -8,6 +8,7 @@ import { BaseEntity } from "./base.entity";
 import { ProductPrice2 } from "./product-price2.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
 import { PurchaseRequest } from "./purchase-request.entity";
+import { SaleItem } from "./sale-item.entity";
   
   @Index("product_pk", ["id"], { unique: true })
   @Index("product_un", ["title"], { unique: true })
@@ -58,6 +59,12 @@ import { PurchaseRequest } from "./purchase-request.entity";
       () => PurchaseInvoiceItem,
       (purchaseInvoiceItem) => purchaseInvoiceItem.product
     )
-    purchaseInvoiceItems: PurchaseInvoiceItem[];
+    purchaseInvoiceItems: PurchaseInvoiceItem[];    
+    
+    @OneToMany(
+      () => SaleItem,
+      (saleItem) => saleItem.product
+    )
+    saleItems: SaleItem[];
   
 }

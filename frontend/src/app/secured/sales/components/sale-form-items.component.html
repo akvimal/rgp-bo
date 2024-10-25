@@ -29,7 +29,7 @@
             </td>
             <td width="7%" style="text-align: right;">{{(item.mrp_cost * item.pack||0).toFixed(2)||''}}</td>
             <td width="25%">
-                <div class="input-group mb-3"  *ngIf="item.itemid > 0">
+                <div class="input-group mb-3">
                     <!-- <input type="number" min="0" name="box" class="form-control"
                     [value]="item.box == 0 ? '' : item.box" (input)="boxInputValidate($event,item.maxqty,item.pack,item.id)">
                     <input type="number" min="0" class="form-control" name="boxitem" 
