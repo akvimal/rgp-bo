@@ -79,9 +79,7 @@ export class SaleController {
     @Get('/:id')
     async findById(@Param('id') id: string) {
       const sale = await this.saleService.findById(id);
-      // return this.stockService.getSaleItemAvailableQuantities(sale);
-      return this.stockService.getMrpOfItems(sale);
-      // return sale;
+      return sale;//this.stockService.getItemsWithStockData(sale);
     }
 
     @Get('/:id/customer')

@@ -2,6 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
+import { slideOutDownAnimation } from "angular-animations";
 import { ProductUtilService } from "../../product-util.service";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
@@ -67,6 +68,7 @@ export class SaleFormComponent {
   
             this.sale.items = data.items.map((i:any) => {
               // const pack = i.purchaseitem.product.pack;
+              const avail_qty = +i.bought - +i.sold;
               return {
                 id:i.id,
                 // itemid:i.purchaseitem.id,
@@ -75,14 +77,14 @@ export class SaleFormComponent {
                 box: Math.trunc(i.qty / i.pack),
                 boxbal: i.qty % i.pack,
                 balqty: Math.trunc(i.qty/i.pack) + '.' + (i.qty%i.pack),
-                unitsbal:i.available_qty-i.qty,
+                unitsbal:avail_qty-i.qty,
                 pack:i.pack,
                 mrp_cost: i.mrp_cost/i.pack,
                 title: i.title,
                 taxpcnt:i.tax_pcnt,
                 batch:i.batch,
                 expdate:i.exp_date,
-                maxqty: i.available_qty,
+                maxqty: avail_qty,
                 // more_props: i.purchaseitem.product.props,
                 total: this.calculateTotal(i.qty,i.price,i.tax_pcnt)
               }

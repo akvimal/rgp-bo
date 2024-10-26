@@ -46,7 +46,7 @@ export class SaleService {
             qb.andWhere('sale.createdby = :uid', { uid:userid });
         }
         if(query.date){
-            qb.andWhere(`DATE_TRUNC('day', sale.createdon) = :con`, { con:query.date });
+            qb.andWhere(`DATE_TRUNC('day', sale.billdate) = :con`, { con:query.date });
         }
         if(query.customer){
             qb.andWhere(`customer.id = :cid`, { cid:query.customer });

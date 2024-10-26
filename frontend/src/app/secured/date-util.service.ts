@@ -5,7 +5,7 @@ import { Injectable } from "@angular/core";
 })
 export class DateUtilService {
 
-    parseExpDate(date:any){
+    parseDate(date:any){
         let mon = 0
         let day = 0
         let yr = 0
@@ -24,7 +24,7 @@ export class DateUtilService {
         return yr+'-'+(mon < 10 ? '0'+mon : ''+mon)+'-01';;
     }
 
-    formatExpDate(dateStr:string){
+    formatDate(dateStr:string){
         const arr = dateStr.split('-');
         const dt = new Date();
         dt.setFullYear(+arr[0]);

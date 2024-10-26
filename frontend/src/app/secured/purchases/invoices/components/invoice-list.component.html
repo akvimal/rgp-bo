@@ -49,7 +49,7 @@
       <tr>
         <!-- <td>{{p.id}}</td> -->
         <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
-      <td style="text-align: center;">{{p.invoice_date | date : 'dd-MMM'}}</td>
+      <td style="text-align: center;">{{p.invoice_date | date : 'dd/MM/yy'}}</td>
       <td>{{p.business_name}}</td>
       <td style="text-align: center;">{{p.items}}</td>
       <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>

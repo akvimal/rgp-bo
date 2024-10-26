@@ -55,8 +55,8 @@ export class InvoiceItemFormComponent {
                 this.form.controls['invoiceid'].setValue(data.invoiceid);
                 this.form.controls['productid'].setValue(data.productid);
                 data.batch && this.form.controls['batch'].setValue(data.batch);
-                data.mfrdate && this.form.controls['mfrdate'].setValue(this.dateUtilService.formatExpDate(data.mfrdate));
-                data.expdate && this.form.controls['expdate'].setValue(this.dateUtilService.formatExpDate(data.expdate));
+                data.mfrdate && this.form.controls['mfrdate'].setValue(this.dateUtilService.formatDate(data.mfrdate));
+                data.expdate && this.form.controls['expdate'].setValue(this.dateUtilService.formatDate(data.expdate));
                 this.form.controls['mrpcost'].setValue(data.mrpcost);
                 this.form.controls['ptrvalue'].setValue(data.ptrvalue);
                 this.form.controls['qty'].setValue(data.qty);
@@ -209,8 +209,8 @@ export class InvoiceItemFormComponent {
         if(this.itemid){
             this.invService.updateItems([this.form.value.id],{...this.form.value,
                 batch:this.form.value.batch.toUpperCase(),
-                mfrdate:this.dateUtilService.parseExpDate(this.form.value.mfrdate),
-                expdate:this.dateUtilService.parseExpDate(this.form.value.expdate),
+                mfrdate:this.dateUtilService.parseDate(this.form.value.mfrdate),
+                expdate:this.dateUtilService.parseDate(this.form.value.expdate),
                 ptrcost:this.getPTRAfterTax(),
                 total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);

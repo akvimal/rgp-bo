@@ -15,7 +15,8 @@ export class SalesListComponent {
     constructor(private service:SaleService, private dateService:DateUtilService){}
 
     ngOnInit(){
-       this.fetchSales();
+      this.criteria['date'] = this.dateService.getFormatDate(new Date());
+      this.fetchSales();
     }
 
     openH1Drugs(event:any){

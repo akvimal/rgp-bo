@@ -35,10 +35,10 @@ export class SaleViewComponent {
             this.mrpTotal += +((i.mrp/i.pack) * i.qty);
             this.itemsTotal += +i.total;
             return {
-              title: i.title,
+              title: i.product.title,
               props: i.props,
               batch: i.batch,
-              expdate: i.exp_date,
+              expdate: i.expdate,
               qty: i.qty,
               mrp:(i.mrp/i.pack).toFixed(2),
               price:i.price.toFixed(2),

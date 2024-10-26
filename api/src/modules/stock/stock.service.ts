@@ -29,21 +29,21 @@ export class StockService {
             from stock_view where product_id = ${prodid} and batch  = '${batch}' and expdate = '${expdate}'`);
         }
 
-        async getSaleItemAvailableQuantities(sale:Sale){
-           const items = await this.manager.query(`
-           select si.product_id, p.title, p.pack, p.more_props as props, si.batch, si.exp_date, sv.mrp_cost, 
-           sv.tax_pcnt, si.price, si.qty, si.total::numeric,
-           (case when life_left < 1 then 0 else available_qty end)::numeric
-           from sale_item si inner join 
-           stock_view sv on sv.product_id = si.product_id and sv.batch = si.batch and sv.expdate = si.exp_date 
-           inner join product p on p.id = si.product_id 
-           where si.sale_id = ${sale.id}`);
-        //    console.log(items);
-           return {...sale, items};
-        }
+        // async getSaleItemAvailableQuantities(sale:Sale){
+        //    const items = await this.manager.query(`
+        //    select si.product_id, p.title, p.pack, p.more_props as props, si.batch, si.exp_date, sv.mrp_cost, 
+        //    sv.tax_pcnt, si.price, si.qty, si.total::numeric,
+        //    (case when life_left < 1 then 0 else available_qty end)::numeric
+        //    from sale_item si inner join 
+        //    stock_view sv on sv.product_id = si.product_id and sv.batch = si.batch and sv.expdate = si.exp_date 
+        //    inner join product p on p.id = si.product_id 
+        //    where si.sale_id = ${sale.id}`);
+        // //    console.log(items);
+        //    return {...sale, items};
+        // }
 
-        async getMrpOfItems(sale:Sale) {
-            const items = await this.manager.query(`select si.*, iv.title, iv.pack, iv.mrp 
+        async getItemsWithStockData(sale:Sale) {
+            const items = await this.manager.query(`select si.*, iv.title, iv.pack, iv.mrp, iv.bought, iv.sold  
             from sale_item si inner join inventory_view iv on iv.id = si.product_id and iv.batch = si.batch and iv.exp_date = si.exp_date 
             where si.sale_id = ${sale.id}`);
             return {...sale, items};
