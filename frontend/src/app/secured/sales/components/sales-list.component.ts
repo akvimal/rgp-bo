@@ -23,7 +23,11 @@ export class SalesListComponent {
       this.openH1DrugsTab = true;
     }
     fetchSales(){
-        this.service.findAll(this.criteria).subscribe((data:any) => this.sales = data);
+        this.service.findAll(this.criteria).subscribe((data:any) => {
+          console.log(data);
+          
+          this.sales = data;
+        });
     }
 
     selectCustomer(customer:any){

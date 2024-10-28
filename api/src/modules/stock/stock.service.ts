@@ -20,13 +20,25 @@ export class StockService {
             select * from stock_view where (life_left is null or life_left >= 0) order by title`);
         }
 
+        async findByCriteria(query:any){
+            return await this.manager.query(`
+            select iv.*, iv.available, sale_price, market_price 
+            from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
+            where product_expdate > current_timestamp and lower(product_title) like lower('%${query.query}%') order by product_title, product_expdate limit 25`);
+        }
+
+        async findByItems(ids:number[]){
+            return await this.manager.query(`select iv.purchase_itemid, iv.available 
+            from inventory_view iv where purchase_itemid in (${ids.join(',')})`);
+        }
+
         async findAvailableQty(prodid:number, batch:string, expdate:string){
             return await this.manager.query(`
             select 
                 case 
                     when life_left < 1 then 0 
                     else available_qty end 
-            from stock_view where product_id = ${prodid} and batch  = '${batch}' and expdate = '${expdate}'`);
+            from stock_view where product_id = ${prodid} and batch = '${batch}' and expdate = '${expdate}'`);
         }
 
         // async getSaleItemAvailableQuantities(sale:Sale){
@@ -43,10 +55,18 @@ export class StockService {
         // }
 
         async getItemsWithStockData(sale:Sale) {
-            const items = await this.manager.query(`select si.*, iv.title, iv.pack, iv.mrp, iv.bought, iv.sold  
-            from sale_item si inner join inventory_view iv on iv.id = si.product_id and iv.batch = si.batch and iv.exp_date = si.exp_date 
-            where si.sale_id = ${sale.id}`);
-            return {...sale, items};
+
+            const products = sale.items.map((item:any) => { return `(title='${item.product.title.replaceAll('\'','\'\'')}' and batch='${item.batch}' and exp_date='${item.expdate}')`});
+            console.log(products);
+            
+            const query = `select * from inventory_view where ${products.join(' or ')}`
+            console.log(query);
+            
+            const stockdata = await this.manager.query(query);
+            console.log(stockdata);
+            
+
+            return sale;
         }
 
         async findAllReady(){

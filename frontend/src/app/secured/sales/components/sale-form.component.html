@@ -3,7 +3,7 @@
     <div class="card-body">
         <div class="row">
             <div class="col-lg-4">Date: {{this.sale.billdate | date: 'dd-MMM hh:mm a'}}</div>
-            <div class="col-lg-4"><span *ngIf="this.sale.id">No: {{this.sale.id}}</span></div>
+            <div class="col-lg-4">No: {{this.sale.billno}}</div>
             <div class="col-lg-4">Status: {{this.sale.status}}</div>
         </div>
         <div class="row mt-3 mb-3" *ngIf="isNewCustomer(); else saleCustomer">
@@ -48,11 +48,14 @@
         </ng-template>
 
         <app-sale-form-items [items]="sale.items" 
-            [customer]="sale.customer"
-            [sale]="sale"
             (removed)="removeItem($event)"
             (recalculateTotal)="recalculateTotal($event)">
         </app-sale-form-items>
+        No. of items: {{sale.totalitems}} <br>
+        <span *ngIf="sale.mrptotal !== sale.total">
+            MRP Total: {{sale.mrptotal}}<br>
+        Saving: {{sale.saving}}</span><br>
+        Net Total: {{sale.total}}
     </div>
 </div>
 
@@ -60,10 +63,10 @@
     <div class="col-12 text-align-right">
         <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
                     [disabled]="!(total > 0)">Complete</button>    
-        <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" class="btn btn-outline-primary m-2" 
-                    [disabled]="total === 0">Save</button>    
+        <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" 
+            class="btn btn-outline-primary m-2" [disabled]="total === 0">Save</button>    
         <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" 
-            class="btn btn-primary m-2">Discard</button>
+            class="btn btn-outline-secondary m-2">Discard</button>
         
         <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
             <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->

@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { StockService } from "../../stock/stock.service";
 import { Offer } from "../offer.model";
 import { OfferService } from "../offer.service";
 import { SaleService } from "../sales.service";
@@ -10,8 +11,8 @@ import { SaleService } from "../sales.service";
 export class SaleFormItemsComponent{
 
   @Input() items:any;
-  @Input() sale:any;
-  @Input() customer:any;
+  // @Input() sale:any;
+  // @Input() customer:any;
   
   offers:Offer[] = [];
   offer:Offer = {};
@@ -28,50 +29,95 @@ export class SaleFormItemsComponent{
   @Output() recalculateTotal = new EventEmitter();
 
   total:number = 0;
-  newSaleItem = {purchaseitemid:'',price:'',box:'',boxbal:''};
-
-  customerTotalOrders = 0;
-  customerTotalSaleAmount = 0;
-  customerLastBillDate:any;
+  // newSaleItem = {purchaseitemid:'',price:'',box:'',boxbal:''};
+  newSaleItem = {id:0,price:0,qty:0,qtyready:false}
+  // customerTotalOrders = 0;
+  // customerTotalSaleAmount = 0;
+  // customerLastBillDate:any;
 
   // box:string = '';
   // boxitem:string = '';
   // balqty:string = '';
 
-  constructor(private saleService:SaleService, private offerService:OfferService){}
-
-  ngOnInit(){
-    this.offerService.state.subscribe(data => {
-      this.offers = data.filter(d => d.available);
-    });
-  }
+  constructor(private saleService:SaleService, 
+    private offerService:OfferService,
+    private stockService:StockService){}
 
   ngOnChanges(changes: SimpleChanges) {
-    console.log('items change');
-    console.log(changes['items']);
-    
-    
+
     if(changes['items']){
-      this.refreshTotal(changes['items'].currentValue);
-      this.recalculateTotal.emit(true);
+      const ids = changes['items'].currentValue.map((i:any) => i.itemid)
+      //fetch available quantities
+      if(ids.length > 0){
+      this.stockService.findByItems(ids).subscribe((data:any) => {
+
+        // console.log('DATA');
+        // console.log(data);
+        
+        changes['items'].currentValue.forEach((item:any) => {
+          if(item.product){
+            item['title'] = item.product.title;
+            item['edited'] = true;
+            item['maxqty'] = +data.find((d:any)=>d['purchase_itemid']==item.itemid)['available'] + (item.status == 'Complete' ? item.qty : 0);
+            this.refreshAvailableQty(item);
+          }
+          this.calculateTotalWithQtyChange(item);
+        });
+        
+        // this.refreshTotal(changes['items'].currentValue);
+        
+        // this.recalculateTotal.emit(true);
+      })
+    }
+     
     }
 
-    if(changes['customer'] && changes['customer'].currentValue){
-      if(changes['customer'].currentValue.id){
-        this.saleService.getSalesByCustomer(changes['customer'].currentValue.id).subscribe((data:any) => {
+    // if(changes['customer'] && changes['customer'].currentValue){
+    //   if(changes['customer'].currentValue.id){
+    //     this.saleService.getSalesByCustomer(changes['customer'].currentValue.id).subscribe((data:any) => {
           
-              this.customerTotalOrders = data.length;
-              data.forEach((s:any) => {
-                this.customerTotalSaleAmount += s.total;
-              });
-              this.customerLastBillDate = data.length == 1 && data[0].billdate;
-            });
-      }
-    }
+    //           this.customerTotalOrders = data.length;
+    //           data.forEach((s:any) => {
+    //             this.customerTotalSaleAmount += s.total;
+    //           });
+    //           this.customerLastBillDate = data.length == 1 && data[0].billdate;
+    //         });
+    //   }
+    // }
 
-    this.offerService.state.subscribe(data => {
-      this.offers = data.filter(d => d.available);
-    });
+    // this.offerService.state.subscribe(data => {
+    //   this.offers = data.filter(d => d.available);
+    // });
+  }
+
+  selectProduct(itemid:number,selected:any) {
+    
+    const item = this.items.find((i:any) => i.id == itemid);
+
+    if(item){
+      item.id = selected.product_id;
+      item.itemid = selected.purchase_itemid;
+      item.productid = selected.product_id;
+      item.title = selected.product_title;
+      item.batch = selected.product_batch;
+      item.expdate = selected.product_expdate;
+      item.qty = selected.product_pack; //default qty to pack
+      item.maxqty = selected.available;
+      item.pack = selected.product_pack;
+      item.mrpcost = selected.mrp/selected.product_pack;
+      item.price = (selected.sale_price || selected.mrp)/selected.product_pack;
+      item.taxpcnt = selected.product_taxpcnt;
+      // item.more_props = event.more_props;
+      item['box'] = 0;
+      item['boxbal'] = 0;
+      item['qtyready'] = true;
+      item['balqty'] = this.getBalQty(selected.available,selected.product_pack);
+      item['unitsbal'] = selected.available_qty - item.qty;
+
+      item['edited'] = true;
+      this.refreshAvailableQty(item);
+    }        
+    this.calculateTotalWithQtyChange(item);
   }
 
   applyDiscount(){
@@ -163,15 +209,19 @@ export class SaleFormItemsComponent{
     this.recalculateTotal.emit(this.offer);
   }
 
-  calculate(itemid:any,event:any){      
-    const item = this.items.find((i:any) => i.itemid === itemid);
-    item.qty = event.target.value;
-        
+  calculate(itemid:any,event:any){
+    
+    const item = this.items.find((i:any) => i.id === itemid);
+    item.qty = event.target.value;  
     if(+event.target.value > +item.maxqty){
       item.qty = item.maxqty;
       event.target.value = item.maxqty; //prevent entering value over max qty
     }
-        
+    else if (+event.target.value < 1){
+      item.qty = 0;
+      event.target.value = '';
+    }
+    this.refreshAvailableQty(item);
     this.calculateTotalWithQtyChange(item);
 
     // const old = item.total || 0; //previous total
@@ -203,16 +253,19 @@ export class SaleFormItemsComponent{
     item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
 
     this.total = Math.round(this.total - old + item.total);
-    let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
+    // let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
     
-    if(newTotal < 0) newTotal = 0;
-    this.total = newTotal;
+    // if(newTotal < 0) newTotal = 0;
+    // this.total = newTotal;
 
+    
+    this.recalculateTotal.emit(undefined);
+  }
+
+  refreshAvailableQty(item:any){
     item['unitsbal'] = item.maxqty - item.qty;
     item['box'] = Math.trunc(item.qty / item.pack);
-    item['boxbal'] = item.qty % item.pack; 
-    
-    this.recalculateTotal.emit(this.offer);
+    item['boxbal'] = item.qty % item.pack;
   }
 
   getItemsTotal(){
@@ -225,30 +278,7 @@ export class SaleFormItemsComponent{
     return total;
   }
   
-      selectProduct(itemid:number,event:any) {
-        const item = this.items.find((i:any) => i.id == itemid);
-        if(item){
-          const pi = event;
-          item.title = event.title;
-          item.batch = pi.batch;
-          item.expdate = pi.expdate;
-          item.qty = pi.pack;
-          item.maxqty = pi.available_qty;
-          item.pack = pi.pack;
-          item.itemid = pi.id;
-          item.mrp_cost = (pi.mrp_cost/pi.pack);
-          item.price = ((pi.sale_price || pi.mrp_cost)/pi.pack).toFixed(2);
-          item.taxpcnt = pi.tax_pcnt;
-          item.more_props = event.more_props;
-          item['box'] = 0;
-          item['boxbal'] = 0;
-          item['qtyready'] = true;
-          item['balqty'] = this.getBalQty(pi.available_qty,pi.pack);
-          item['unitsbal'] = pi.available_qty - item.qty;
-        }
-        this.calculateTotalWithQtyChange(item);
-      }
-
+     
       boxInputValidate(event:any,availqty:any,pack:any,itemid:any){
         const input = +event.target.value;
 

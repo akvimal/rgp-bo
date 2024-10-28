@@ -2,7 +2,6 @@ import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
-import { slideOutDownAnimation } from "angular-animations";
 import { ProductUtilService } from "../../product-util.service";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
@@ -22,13 +21,14 @@ export class SaleFormComponent {
 
     total:number = 0;
     customers:any = []
-    offer:{code?:string,amount?:number} = {};
+    // offer:{code?:string,amount?:number} = {};
 
     filteredCustomers: any[] = [];
     //newCustomer:boolean = true;
     saleWithNoCustomerAllowed:boolean = false;
     allowCustomerSelect:boolean = false;
-    newSaleItem = {id:0,itemid:0,price:0,qty:0,qtyready:false}
+
+    newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false}
 
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
@@ -59,47 +59,66 @@ export class SaleFormComponent {
     ngOnInit(){
       const saleId = this.route.snapshot.paramMap.get('id'); 
       if(saleId){
+        
           this.service.find(saleId).subscribe((data:any) => {
-            this.sale.id = data.id;
-            this.sale.expreturndays = data.expreturndays;
-            this.sale.customer = data.customer;
-            this.sale.billdate = data.billdate;
-            this.sale.status = data.status;
+            this.sale = data;
+      
+            
+          //   this.sale.id = data.id;
+          //   // this.sale.expreturndays = data.expreturndays;
+          //   this.sale.customer = data.customer;
+          //   this.sale.billno = data.billno;
+          //   this.sale.billdate = data.billdate;
+          //   this.sale.status = data.status;
   
-            this.sale.items = data.items.map((i:any) => {
-              // const pack = i.purchaseitem.product.pack;
-              const avail_qty = +i.bought - +i.sold;
-              return {
-                id:i.id,
-                // itemid:i.purchaseitem.id,
-                price:i.price,
-                qty:i.qty,
-                box: Math.trunc(i.qty / i.pack),
-                boxbal: i.qty % i.pack,
-                balqty: Math.trunc(i.qty/i.pack) + '.' + (i.qty%i.pack),
-                unitsbal:avail_qty-i.qty,
-                pack:i.pack,
-                mrp_cost: i.mrp_cost/i.pack,
-                title: i.title,
-                taxpcnt:i.tax_pcnt,
-                batch:i.batch,
-                expdate:i.exp_date,
-                maxqty: avail_qty,
-                // more_props: i.purchaseitem.product.props,
-                total: this.calculateTotal(i.qty,i.price,i.tax_pcnt)
-              }
-            });
+          //   this.sale.items = data.items.map((i:any) => {
+              
+          //     // const avail_qty = +i.bought - +i.sold;
+          //     const pack = i.pack;
+          //     return {
+          //       id:i.id,
+          //       productid: i.product_id,
+          //       title: i.product.title,
+          //       pack:pack,
+
+          //       taxpcnt:i.taxpcnt,
+
+          //       batch:i.batch,
+          //       expdate:i.expdate,
+          //       mrpcost: i.mrpcost,
+                
+          //       price:i.price,
+          //       qty:i.qty,
+          //       box: Math.trunc(i.qty / pack),
+          //       boxbal: i.qty % pack,
+          //       balqty: Math.trunc(i.qty/ pack) + '.' + (i.qty % pack),
+          //       // unitsbal:avail_qty-i.qty,                
+          //       // maxqty: avail_qty,
+
+          //       // more_props: i.purchaseitem.product.props,
+          //       total: this.calculateTotal(i.qty,i.price,i.taxpcnt)
+          //     }
+          //   });
   
-            this.sale.items && this.sale.items.forEach(item => {
-              this.total += item.total || 0;
-            });
+          //   this.sale.items && this.sale.items.forEach(item => {
+          //     this.total += item.total || 0;
+          //   });
             
         });        
       }
       else {
         this.allowCustomerSelect = true;
         this.sale.billdate = new Date();
+        this.addNewItem();
       } 
+    }
+
+    addNewItem(){
+      const newItemFound = this.sale.items?.find((i:any) => !i.edited);
+      // !newItemFound && this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
+      if(!newItemFound){
+        this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
+      }
     }
 
     resetCustomer(){
@@ -143,10 +162,6 @@ export class SaleFormComponent {
       this.displayNewCustomer = true;
     }
 
-    addNewItem(){
-      const newItemFound = this.sale.items?.find((i:any) => (i.itemid == 0 || i.itemid == ''));
-      !newItemFound && this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
-    }
 
     calculateTotal(qty:number,price:number,tax:number) {
       const total = qty * (price * (1 + (tax / 100)));
@@ -156,20 +171,21 @@ export class SaleFormComponent {
     recalculateTotal(offer:any){
       this.total = 0;
       let mrptotal = 0;
-      this.sale.items?.forEach((i:any) => {        
-        if(i.itemid > 0) {
+      // this.sale.items?.filter((i:any) => i.edited)
+      this.sale.items?.filter((i:any) => i.edited).forEach((i:any) => {        
+        // if(i.itemid > 0) {
           this.total += i.total;
           const qty = (i.box * i.pack) + i.boxbal;
-          mrptotal += ((+i.mrp_cost||0)*qty)
-        }
+          mrptotal += +(i.mrpcost||0)*qty;
+        // }
       });
 
-      this.sale.total = this.total;
+      this.sale.total = this.total; //TODO: need to check where total calculated
       this.sale.mrptotal = mrptotal;
-      
+      this.sale.totalitems = this.sale.items?.filter((i:any) => i.edited).length;
       this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
   
-      this.offer = offer;
+      // this.offer = offer;
       this.addNewItem();
     }
 
@@ -201,10 +217,11 @@ export class SaleFormComponent {
     if(this.sale.items) {
       this.sale.items = [...this.sale.items].filter((i:any) => i.id !== id)
     }
+    this.recalculateTotal(undefined);
   }
 
   doesProductContains(items:any, prop:string, value:any){
-    const props = items.filter((i:any) => i.more_props[prop] === value);
+    const props = items.filter((i:any) => i.more_props && i.more_props[prop] === value);
     return props && props.length > 0;
   }
 
@@ -218,7 +235,7 @@ export class SaleFormComponent {
     }
     
     //all items should have total greater than zero
-    const validItems = this.sale.items && this.sale.items.filter((i:any) => (i.itemid !== '' && ((i.box * i.pack) + i.boxbal) > 0));
+    const validItems = this.sale.items && this.sale.items.filter((i:any) => i.edited && i.qty > 0);
     
     // const requireAdditionalProps = validItems?.filter((i:any) => i.more_props.schedule === 'H1');
     if(status === 'COMPLETE' && !this.salePropValues){
@@ -237,20 +254,30 @@ export class SaleFormComponent {
     let total = 0;
     validItems && validItems.forEach((i:any) => {
       total += i.total;
-      i.status = 'Sale Complete';
+      switch (status) {
+        case 'COMPLETE':
+          i.status = 'Complete';    
+          break;
+          case 'PENDING':
+            i.status = 'Pending';    
+            break;
+          default:
+          break;
+      }
+      
       i.id = null;
     });
 
-    let discamt  = this.offer.amount||0;
-    if(this.offer){
-      const newTotal = total - discamt;
-      if(newTotal < 0){
-        discamt = total;
-        total = 0;
-      }
-      else 
-        total = newTotal;
-    }
+    // let discamt  = this.offer.amount||0;
+    // if(this.offer){
+    //   const newTotal = total - discamt;
+    //   if(newTotal < 0){
+    //     discamt = total;
+    //     total = 0;
+    //   }
+    //   else 
+    //     total = newTotal;
+    // }
     
     // if(!this.isSaleWithNoCustomerAllowed() && this.isNewCustomer()){
     //   this.displayNewCustomer = true;
@@ -261,7 +288,9 @@ export class SaleFormComponent {
     //   return;
     // }
 
-    this.service.save({...this.sale, total:Math.round(total), disccode:(this.offer?.code), discamount:discamt, status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
+    this.service.save({...this.sale, //total:Math.round(total), 
+      // disccode:(this.offer?.code), discamount:discamt, 
+      status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
       this.salePropValues = null;
       if(data.status === 'COMPLETE')
         this.router.navigateByUrl(`/secure/sales/view/${data.id}`); 
@@ -347,9 +376,9 @@ export class SaleFormComponent {
               box,
               boxbal,
               balqty,
-              mrp_cost:(i.purchaseitem.mrpcost/i.purchaseitem.product.pack),
+              mrpcost:i.purchaseitem.mrpcost,
               title:i.purchaseitem.product.title,
-              more_props:i.purchaseitem.product.props,
+              // more_props:i.purchaseitem.product.props,
               batch:i.purchaseitem.batch,
               expdate:i.purchaseitem.expdate};
           });

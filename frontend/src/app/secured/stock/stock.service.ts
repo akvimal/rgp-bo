@@ -15,6 +15,12 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock`);
     }
 
+    filterByCriteria(query:any){
+        return this.http.get(`${this.apiurl}/stock/filter?query=${query}`);
+    }
+    findByItems(ids:[]){
+        return this.http.post(`${this.apiurl}/stock/items`, ids);
+    }
     findAllReadyForSale(){
         return this.http.get(`${this.apiurl}/stock/ready`);
     }

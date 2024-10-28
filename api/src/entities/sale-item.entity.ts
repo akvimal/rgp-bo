@@ -37,9 +37,15 @@ export class SaleItem extends BaseEntity {
 
   @Column("double precision", { name: "price", precision: 53 })
   price: number;
-
+  @Column("double precision", { name: "mrp_cost", precision: 53 })
+  mrpcost: number;
+  @Column("double precision", { name: "tax_pcnt", precision: 53 })
+  taxpcnt: number;
+  
   @Column("integer", { name: "qty" })
   qty: number;
+  @Column("integer", { name: "pack" })
+  pack: number;
   
   @Column("double precision", { name: "total", precision: 53 })
   total: number;

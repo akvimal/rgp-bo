@@ -43,11 +43,8 @@
     [rowsPerPageOptions]="[10,25,50]">
     <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="id">Order No.
-            <p-columnFilter type="text" field="orderno" display="menu"></p-columnFilter>
-            <p-sortIcon field="orderno"></p-sortIcon>
-          </th> 
-          <th pSortableColumn="id">Bill No.
+          <th>ID</th>
+          <th pSortableColumn="billno">Bill No.
             <p-columnFilter type="text" field="billno" display="menu"></p-columnFilter>
             <p-sortIcon field="billno"></p-sortIcon>
           </th>
@@ -79,10 +76,12 @@
         </ng-template>
         <ng-template pTemplate="body" let-s>
           <tr>
-            <td>{{s.orderno}}</td>
-            <td>{{s.billno}}
-              <!-- <a *ngIf="s.status !== 'COMPLETE'" [routerLink]="['../edit',s.id]">{{s.id}}</a>
-              <a *ngIf="s.status === 'COMPLETE'" [routerLink]="['../view',s.id]">{{s.id}}</a> -->
+            <!-- <td>{{s.orderno}}</td> -->
+            <td>
+              <a [routerLink]="['../edit',s.id]">{{s.id}}</a>
+            </td>
+            <td>
+              <a>{{s.billno}}</a>
             </td>
 
             <td>{{s.billdate | date: 'dd/MM/yy'}}</td>

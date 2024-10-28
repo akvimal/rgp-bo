@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { User } from "src/core/decorator/user.decorator";
@@ -22,9 +22,19 @@ export class StockController {
       return this.service.findAll();
     }
 
+    @Get('/filter')
+    async filterByCriteria(@Query() query: any, @User() currentUser: any) {
+      return this.service.findByCriteria(query);
+    }
+
     @Get('/ready')
     async findAllReady() {
       return this.service.findAllReady();
+    }
+
+    @Post('/items')
+    async findByItems(@Body() input) {
+      return this.service.findByItems(input);
     }
 
     @Post('/demand')

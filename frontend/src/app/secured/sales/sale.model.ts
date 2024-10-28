@@ -19,5 +19,6 @@ export interface Sale {
     props?:any,
     mrptotal?:number,
     saving?:number,
-    expreturndays?:number
+    expreturndays?:number,
+    totalitems?:number
 }

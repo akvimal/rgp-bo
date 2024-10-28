@@ -7,17 +7,17 @@ import { StockService } from "../../../stock/stock.service";
     template: `<p-autoComplete [(ngModel)]="stock"
                     (onSelect)="selected($event)"
                     [forceSelection]="true"
-                    field="title"
+                    field="product_title"
                     [suggestions]="filteredStock" 
                     (completeMethod)="filterStock($event)" [minLength]="2"
                     [inputStyle]="{'background-color':'#9df'}">
                     <ng-template let-stock pTemplate="item">
-                        <div [ngStyle]="{maxWidth:'600px',backgroundColor:stock.available_qty == 0?'#ffff80':'inherit'}">
-                            <span *ngIf="stock.available_qty == 0">Empty</span>
-                            <h6 style="margin:0;padding:0;font-weight:bold">{{stock.title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price}})</h6>
-                            <p style="margin:0;padding:0;color:#999;font-style: italic;">{{stock.more_props?.composition}}</p>
+                        <div [ngStyle]="{maxWidth:'600px',backgroundColor:stock.available < 1?'#ffc0c0':'inherit'}">
+                            <span *ngIf="stock.available_qty < 1">Empty</span>
+                            <h6 style="margin:0;padding:0;font-weight:bold">{{stock.product_title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||stock.mrp}})</h6>
+                            <p style="margin:0;padding:0;color:#999;font-style: italic;">Composition</p>
                             <span style="margin:0;padding:0;color:blue;font-size:smaller">
-                                {{stock.batch}} / {{stock.expdate|date:'MMM-yy'}} ({{stock.available_qty}})
+                                {{stock.product_batch}} / {{stock.product_expdate|date:'MMM-yy'}} ({{stock.available}})
                             </span>
                         </div>
                     </ng-template>
@@ -39,10 +39,6 @@ export class StockSelectComponent {
     constructor(private stockService:StockService, private http: HttpClient){}
 
     ngOnInit(){
-        this.stockService.findAllReadyForSale().subscribe((data:any) => {
-            this.items = data;
-            this.stock = data.find((pi:any) => this.item.itemid !== '' && pi.id === this.item.itemid);            
-        });
         this.http.get("/assets/props.json").subscribe((data:any) => {
             data.forEach((category:any) => {
                 category['props'].forEach((prop:any) => {
@@ -52,8 +48,10 @@ export class StockSelectComponent {
         });
     }
 
-    selected(event:any){
-        this.stockSelected.emit(event);
+    selected(stockitem:any){
+        if(stockitem.available > 0) {
+            this.stockSelected.emit(stockitem);
+        }
     }
 
     isPropMatch(props:any,query:string){
@@ -72,22 +70,11 @@ export class StockSelectComponent {
     }
 
     filterStock(event:any) {
-        
         let filtered : any[] = [];
-        let query = event.query;
-
-        for(let i = 0; i < this.items.length; i++) {
-            let st = this.items[i];
-            const present = this.itemsSelected.find(i => i.itemid === st.id);
-            
-            if (!present && 
-                (st.title.toLowerCase().indexOf(query.toLowerCase()) >= 0 
-                || (st.more_props && this.isPropMatch(st.more_props,query)))) {
-                filtered.push(st);
-            }
-        }
-
-        this.filteredStock = filtered;
+        this.stockService.filterByCriteria(event.query).subscribe((data:any) => {
+            filtered = data;
+           this.filteredStock = filtered;         
+        });        
     }
 
 }

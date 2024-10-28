@@ -34,6 +34,6 @@ export class ProductUtilService {
     }
 
     getSaving(mrp:number,sp:number) {
-        return ((mrp-sp) / mrp) * 100;
+        return Math.round(((mrp-sp) / mrp) * 100);
     }
 }

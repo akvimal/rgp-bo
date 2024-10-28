@@ -23,7 +23,7 @@ export class SalesItemListComponent {
       this.criteria.category = this.category;
       this.criteria.props = [...this.props];
     }
-    this.fetchSaleItems();
+    // this.fetchSaleItems();
   }
 
   isH1DrugFilter() {
