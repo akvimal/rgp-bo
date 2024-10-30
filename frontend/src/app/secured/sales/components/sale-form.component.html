@@ -106,7 +106,7 @@
                         [disabled]="!(total > 0)">Complete</button>    
             <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" 
                 class="btn btn-outline-primary m-2" [disabled]="total === 0">Save</button>    
-            <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" 
+            <button *ngIf="sale.status === 'PENDING'" (click)="discard()" 
                 class="btn btn-outline-secondary m-2">Discard</button>
 
             <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
@@ -166,11 +166,10 @@
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
             <div class="col-lg-6">
-                <!-- <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
-                [value]="sale.customer?.mobile||''" 
-                (input)="updateCustomer('mobile',$event)"> -->
                 <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
-                [value]="sale.customer?.mobile||''">
+                [value]="sale.customer?.mobile||''" 
+                (input)="updateCustomer('mobile',$event)">
+                
                 <!-- <app-customer-select 
                     (customerSelected)="selectCustomer($event, false)"
                     (focusLeave)="doneEnterCustomer($event)">
@@ -178,19 +177,14 @@
             </div>
             
             <div class="col-lg-6">
-                <!-- <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
-                [value]="sale.customer?.name||''" 
-                (input)="updateCustomer('name',$event)"> -->
                 <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
-                [value]="sale.customer?.name||''">
+                [value]="sale.customer?.name||''" 
+                (input)="updateCustomer('name',$event)">
             </div>
             <div class="col-lg-4">
-                <!-- <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
-                [value]="sale.customer?.email||''" 
-                (input)="updateCustomer('email',$event)"> -->
                 <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
                 [value]="sale.customer?.email||''" 
-                >
+                (input)="updateCustomer('email',$event)">
             </div>
         </div>
         <!-- show below section if the customer is not found -->

@@ -26,8 +26,8 @@ export class SaleFormComponent {
     // offer:{code?:string,amount?:number} = {};
 
     filteredCustomers: any[] = [];
-    //newCustomer:boolean = true;
-    saleWithNoCustomer:boolean = false;
+    
+    saleWithCustomer:boolean = true;
     allowCustomerSelect:boolean = false;
 
     newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false}
@@ -64,35 +64,28 @@ export class SaleFormComponent {
       
       const saleId = this.route.snapshot.paramMap.get('id'); 
       if(saleId){
-          this.service.find(saleId).subscribe((result:any) => {
-            
-            this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
-              items.forEach((item:any) => {
-                item = this.helper.mapStockToSaleItem(item,true);
-              });
-              result['items'] = items;
+        this.service.find(saleId).subscribe((result:any) => {
 
+          this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
+            result['items'] = items.map((element:any) => {
+              return {...element, edited:true, title: element.product_title, 
+                taxpcnt: element.product_taxpcnt,
+                mrpcost: (element.mrp/element.product_pack),
+                expdate: element.product_expdate,
+                unitsbal: element.available - element.product_pack,
+              itemid: element.purchase_itemid}
+            });;
             this.sale = result;
             this.recalculateTotal(undefined);
-            })
           });
-          
+          });
       }
       else {
         this.allowCustomerSelect = true;
         this.sale.billdate = new Date();
       } 
-      // this.addNewItem();
-      // this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
+       
     }
-
-    // addNewItem(){
-    //   const newItemFound = this.sale.items?.find((i:any) => !i.edited);
-    //   // !newItemFound && this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
-    //   if(!newItemFound){
-    //     this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
-    //   }
-    // }
 
     resetCustomer(){
       this.sale.customer = null;
@@ -210,30 +203,30 @@ export class SaleFormComponent {
   }
 
   saveCustomer(){
-    this.saleWithNoCustomer = false;
+    // this.saleWithNoCustomer = false;
     this.submit(this.sale.status);
   }
 
   cancelCustomer(){
-    this.saleWithNoCustomer = true;
+    this.saleWithCustomer = false;
     this.submit(this.sale.status);
+  }
+
+  discard(){
+    this.sale.id && this.service.remove(this.sale.id).subscribe(data => {
+      this.router.navigateByUrl(`/secure/sales`); 
+    });
   }
 
   submit(status:any){
 
-    if(status === 'DISCARD'){
-      this.sale.id && this.service.remove(this.sale.id).subscribe(data => {
-        this.router.navigateByUrl(`/secure/sales`); 
-      })
-      return;
-    }
-
     this.sale.status = status;
-    
-    if(!this.saleWithNoCustomer && !this.customerInfoCaptured()){
+
+    if(this.saleWithCustomer && !this.customerInfoCaptured()){
       this.displayNewCustomer = true;
       return;
     }
+    this.displayNewCustomer = false;
 
     const validItems = this.sale.items && this.sale.items.filter((i:any) => i.edited && i.qty > 0);
     
@@ -246,43 +239,61 @@ export class SaleFormComponent {
       }
     }
     
-    
-    this.sale.items = this.sale.items?.map(item => {
-      return this.helper.mapSaleItemInputToSave(item,status=='COMPLETE')
+    this.sale.items = this.sale.items?.map((item:any) => {
+      
+      switch (status) {
+        case 'COMPLETE':
+            item['status'] = 'Complete'
+            break;
+        case 'PENDING':
+                item['status'] = 'Pending'
+            break;
+        default:
+            break;
+      }
+      item['productid'] = item['product_id'];
+      return item;
     })
 
-    this.service.save({...this.sale, status}).subscribe((data:any) => {
-      this.salePropValues = null;
-      if(data.status === 'COMPLETE')
-        this.router.navigateByUrl(`/secure/sales/view/${data.id}`); 
+    
+        this.service.save({...this.sale, status}).subscribe((data:any) => {
+          this.salePropValues = null;
+          this.redirectAfterSubmit(data.status, data.id);
+        });
+        
+      }
+
+      redirectAfterSubmit(status:string,id:number){
+        if(status === 'COMPLETE')
+        this.router.navigateByUrl(`/secure/sales/view/${id}`); 
       else 
-        this.router.navigateByUrl(`/secure/sales/edit/${data.id}`); 
-    });
+        this.router.navigateByUrl(`/secure/sales/edit/${id}`); 
+      }
+
+  updateCustomer(attr:string,event:any){
+    if(!this.sale.customer){
+      this.sale.customer = {}
+    }
+
+    // if(attr === 'srctype'){
+    //   this.sale.customer.srctype = event.target.value;
+    // } else if(attr === 'srcdesc'){
+    //   this.sale.customer.srcdesc = event.target.value;
+    // } else if(attr === 'address'){
+    //   this.sale.customer.address = event.target.value
+    // } else if(attr === 'area'){
+    //   this.sale.customer.area = event.target.value
+    // } else if(attr === 'locality'){
+    //   this.sale.customer.locality = event.target.value
+    // } else 
+    if(attr === 'email'){
+      this.sale.customer.email = event.target.value
+    } else if(attr === 'name'){
+      this.sale.customer.name = this.capitalize(event.target.value)
+    }else if(attr === 'mobile'){
+      this.sale.customer.mobile = event.target.value
+    }
   }
-
-  // updateCustomer(attr:string,event:any){
-  //   if(!this.sale.customer){
-  //     this.sale.customer = {}
-  //   }
-
-  //   if(attr === 'srctype'){
-  //     this.sale.customer.srctype = event.target.value;
-  //   } else if(attr === 'srcdesc'){
-  //     this.sale.customer.srcdesc = event.target.value;
-  //   } else if(attr === 'address'){
-  //     this.sale.customer.address = event.target.value
-  //   } else if(attr === 'area'){
-  //     this.sale.customer.area = event.target.value
-  //   } else if(attr === 'locality'){
-  //     this.sale.customer.locality = event.target.value
-  //   } else if(attr === 'email'){
-  //     this.sale.customer.email = event.target.value
-  //   } else if(attr === 'name'){
-  //     this.sale.customer.name = this.capitalize(event.target.value)
-  //   }else if(attr === 'mobile'){
-  //     this.sale.customer.mobile = event.target.value
-  //   }
-  // }
 
   capitalize(word:string){
       const lower = word.toLowerCase();

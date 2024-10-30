@@ -154,7 +154,7 @@ export class SaleFormItemsComponent{
       const itemtotal = this.calculateTotal(qty, i.price, i.taxpcnt);
       i['total'] = itemtotal;
       i['qtyready'] = true;
-      i['unitsbal'] = i.maxqty - i.qty;
+      i['unitsbal'] = i.available - i.qty;
       this.total = Math.round(this.total + itemtotal);
     });
     
@@ -231,13 +231,13 @@ export class SaleFormItemsComponent{
 
   // }
 
-  calculate(itemid:any,event:any){
+  changeItemQty(itemid:any,event:any){
     
     const item = this.items.find((i:any) => i.itemid === itemid);
     item.qty = event.target.value;  
-    if(+event.target.value > +item.maxqty){
-      item.qty = item.maxqty;
-      event.target.value = item.maxqty; //prevent entering value over max qty
+    if(+event.target.value > +item.available){
+      item.qty = item.available;
+      event.target.value = item.available; //prevent entering value over max qty
     }
     else if (+event.target.value < 1){
       item.qty = 0;
@@ -286,7 +286,7 @@ export class SaleFormItemsComponent{
   }
 
   refreshAvailableQty(item:any){
-    item['unitsbal'] = item.maxqty - item.qty;
+    item['unitsbal'] = item.available - item.qty;
     // item['box'] = Math.trunc(item.qty / item.pack);
     // item['boxbal'] = item.qty % item.pack;
   }

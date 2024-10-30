@@ -41,7 +41,7 @@
                     <input type="number" [value]="item.qty" class="form-control"
                         [disabled]="item.maxqty == 0"
                         [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#9df'}"
-                        (input)="calculate(item.itemid,$event)">
+                        (input)="changeItemQty(item.itemid,$event)">
                     
                     <div class="input-group-append">
                         <span class="input-group-text" id="basic-addon2">{{item.unitsbal}}</span>

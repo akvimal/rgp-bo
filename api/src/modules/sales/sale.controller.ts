@@ -1,6 +1,6 @@
 import { SaleService } from "./sale.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreateSaleDto } from "./dto/create-sale.dto";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { AuthGuard } from "@nestjs/passport";
@@ -8,6 +8,7 @@ import { User } from "src/core/decorator/user.decorator";
 import { CustomerService } from "../customers/customer.service";
 import { StockService } from "../stock/stock.service";
 import { RoleService } from "../app/roles/role.service";
+import { UpdateSaleDto } from "./dto/update-sale.dto";
 
 @ApiTags('Sales')
 @Controller('sales')
@@ -20,22 +21,29 @@ export class SaleController {
       private custService:CustomerService,
       private roleService:RoleService){}
 
-    @Post()
-    async create(@Body() createSaleDto: CreateSaleDto, @User() currentUser: any) {
-        
-        if(createSaleDto.id ){
-          await this.saleService.removeItems(createSaleDto);
-        }
-        // else {
-          let customer = createSaleDto.customer;
-          if(customer){ //if customer not present before
-            customer = await this.custService.save(createSaleDto.customer);
-          }
-          // console.log('items: ',createSaleDto.items);
+      @Post()
+      async create(@Body() createSaleDto: CreateSaleDto, @User() currentUser: any) {
           
-          return this.saleService.create({...createSaleDto, customer}, currentUser.id);
-        // }
-    }
+          if(createSaleDto.id ){
+            await this.saleService.removeItems(createSaleDto);
+          }
+          
+            let customer = createSaleDto.customer;
+            if(customer){ //if customer not present before
+              customer = await this.custService.save(createSaleDto.customer);
+            }
+            
+            return this.saleService.create({...createSaleDto, customer}, currentUser.id);
+      }
+
+      @Put()
+      async update(@Body() updateSaleDto: UpdateSaleDto, @User() currentUser: any) {
+        let customer = updateSaleDto.customer;
+        if(customer){ //if customer not present before
+          customer = await this.custService.save(updateSaleDto.customer);
+        }
+        return this.saleService.updateSale({...updateSaleDto, customer}, currentUser.id);
+      }
 
     @Post('/items')
     async createItem(@Body() createSaleItemDto: CreateSaleItemDto, @User() currentUser: any) {

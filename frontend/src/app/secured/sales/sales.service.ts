@@ -18,10 +18,12 @@ export class SaleService {
     constructor(private http:HttpClient){}
 
     save(sale:Sale){
-        // sale.items?.forEach((i:any) => {
-        //     i.qty = (i.box * i.pack) + i.boxbal;
-        // });
-        return this.http.post(`${this.apiurl}`,sale);
+        if(sale.billno){
+            return this.http.put(`${this.apiurl}`,sale);
+        }
+        else {
+            return this.http.post(`${this.apiurl}`,sale);
+        }
     }
 
     findAllItems(criteria:any){

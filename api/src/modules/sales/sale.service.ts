@@ -36,6 +36,18 @@ export class SaleService {
         });
     }
 
+    async updateSale(sale:any,userid:any) {
+        
+        return this.saleRepository.save({...sale, updatedby:userid}).then(result => {
+            return this.saleItemRepository.save(sale.items).then(itemsResult => {
+                return new Promise(async (resolve,reject)=>{
+                    const sale = await this.findById(result.id);
+                    resolve(sale);
+                })
+            })
+        });
+    }
+
     async removeItems(createSaleDto:CreateSaleDto){
         return await this.saleItemRepository.delete({saleid:createSaleDto.id});
     } 
@@ -45,7 +57,7 @@ export class SaleService {
     }
 
     async findSaleItemsForSaleWithAvailableQty(id:number){
-        const query = `select si.id, si.qty, iv.* from sale_item si 
+        const query = `select si.*, iv.* from sale_item si 
         inner join inventory_view iv on iv.purchase_itemid = si.purchase_item_id 
         inner join sale s on s.id = si.sale_id 
         where s.id = ${id}`;

@@ -41,7 +41,20 @@ export class SaleHelper {
         return output;
     }
 
-    mapSaleItemInputToSave(saleItemInput:any,complete:boolean){
+    mapSaleItemInputToSave(saleItemInput:any,saleStatus:any){
+        
+        let itemStatus =  '';
+        switch (saleStatus) {
+            case 'COMPLETE':
+                itemStatus = 'Complete'
+                break;
+            case 'PENDING':
+                    itemStatus = 'Pending'
+                break;
+            default:
+                break;
+        }
+
         return {
             productid:saleItemInput['product_id'],
             itemid:saleItemInput['itemid'],
@@ -52,7 +65,7 @@ export class SaleHelper {
             mrpcost:saleItemInput['mrpcost'],
             pack:saleItemInput['pack'],
             price:saleItemInput['price'],
-            status:complete?'Complete':'Pending',
+            status: itemStatus,
             total:saleItemInput['total']
         }
     }
