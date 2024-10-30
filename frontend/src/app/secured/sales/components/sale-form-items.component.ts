@@ -27,6 +27,7 @@ export class SaleFormItemsComponent{
   tender:number = 0;
 
   @Output() itemAdded = new EventEmitter();
+  @Output() itemUpdated = new EventEmitter();
   @Output() itemRemoved = new EventEmitter();
   
   total:number = 0;
@@ -214,21 +215,21 @@ export class SaleFormItemsComponent{
   //   this.recalculateTotal.emit(this.offer);
   // }
 
-  onItemQtyChange(itemid:number, qty:number){
-    const item = this.items.find((i:any) => i.itemid === itemid);
+  // onItemQtyChange(itemid:number, qty:number){
+  //   const item = this.items.find((i:any) => i.itemid === itemid);
 
-    const old = item.total || 0; //previous total
-    item.total = this.calculateTotal(qty,item.price,item.taxpcnt); //new total
+  //   const old = item.total || 0; //previous total
+  //   item.total = this.calculateTotal(qty,item.price,item.taxpcnt); //new total
 
-    this.total = Math.round(this.total - old + item.total);
-    let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
+  //   this.total = Math.round(this.total - old + item.total);
+  //   let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
         
-    if(newTotal < 0)
-      newTotal = 0;
+  //   if(newTotal < 0)
+  //     newTotal = 0;
 
-    this.total = Math.round(newTotal);
+  //   this.total = Math.round(newTotal);
 
-  }
+  // }
 
   calculate(itemid:any,event:any){
     
@@ -242,9 +243,11 @@ export class SaleFormItemsComponent{
       item.qty = 0;
       event.target.value = '';
     }
+
     this.refreshAvailableQty(item);
     this.calculateTotalWithQtyChange(item);
 
+    this.itemUpdated.emit(item);
     // const old = item.total || 0; //previous total
     // item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
 
@@ -284,8 +287,8 @@ export class SaleFormItemsComponent{
 
   refreshAvailableQty(item:any){
     item['unitsbal'] = item.maxqty - item.qty;
-    item['box'] = Math.trunc(item.qty / item.pack);
-    item['boxbal'] = item.qty % item.pack;
+    // item['box'] = Math.trunc(item.qty / item.pack);
+    // item['boxbal'] = item.qty % item.pack;
   }
 
   getItemsTotal(){
@@ -299,64 +302,64 @@ export class SaleFormItemsComponent{
   }
   
      
-      boxInputValidate(event:any,availqty:any,pack:any,itemid:any){
-        const input = +event.target.value;
+      // boxInputValidate(event:any,availqty:any,pack:any,itemid:any){
+      //   const input = +event.target.value;
 
-        const bal = availqty % pack;
-        const availbox = (availqty - bal)/pack;;
+      //   const bal = availqty % pack;
+      //   const availbox = (availqty - bal)/pack;;
 
-        const item = this.items.find((i:any) => i.id === itemid);
-        item['box'] = input;
-        let totalinputqty = (input * pack) + item.boxbal;
+      //   const item = this.items.find((i:any) => i.id === itemid);
+      //   item['box'] = input;
+      //   let totalinputqty = (input * pack) + item.boxbal;
         
-        if(input > availbox || totalinputqty > availqty){
-          event.target.value = availbox;
-          item['box'] = availbox;
-        }
+      //   if(input > availbox || totalinputqty > availqty){
+      //     event.target.value = availbox;
+      //     item['box'] = availbox;
+      //   }
 
-        let totalbalqty = availqty - totalinputqty;
-        if(totalbalqty < 0) {
-          item['balqty'] = 0;  
-        }
-        else {
-          item['balqty'] = this.getBalQty(totalbalqty,item.pack);
-        }
+      //   let totalbalqty = availqty - totalinputqty;
+      //   if(totalbalqty < 0) {
+      //     item['balqty'] = 0;  
+      //   }
+      //   else {
+      //     item['balqty'] = this.getBalQty(totalbalqty,item.pack);
+      //   }
         
-        this.onItemQtyChange(itemid, (item.box * pack) + item.boxbal);
-      }
+      //   this.onItemQtyChange(itemid, (item.box * pack) + item.boxbal);
+      // }
 
       getBalQty(qty:number,pack:number){
         return Math.trunc(qty/pack) + '.' + (qty%pack);
       }
 
-      boxitemInputValidate(event:any,availqty:any,pack:any,itemid:any){
-        const input = +event.target.value;
+      // boxitemInputValidate(event:any,availqty:any,pack:any,itemid:any){
+      //   const input = +event.target.value;
         
-        const item = this.items.find((i:any) => i.id === itemid);
+      //   const item = this.items.find((i:any) => i.id === itemid);
         
-        let totalinputqty = (item.box * pack) + input;
-        if(totalinputqty > availqty){
-          totalinputqty = availqty;
-        }
+      //   let totalinputqty = (item.box * pack) + input;
+      //   if(totalinputqty > availqty){
+      //     totalinputqty = availqty;
+      //   }
         
-        let bal = totalinputqty % pack;
-        let box = (totalinputqty - bal)/pack;
+      //   let bal = totalinputqty % pack;
+      //   let box = (totalinputqty - bal)/pack;
         
-        if (input >= pack || totalinputqty >= availqty){
-          item['box'] = box;
-          item['boxbal'] = bal;
-          event.target.value = bal;
-        }
-        else {
-          item['box'] = item.box||0 ;
-          item['boxbal'] = input;
-        }
+      //   if (input >= pack || totalinputqty >= availqty){
+      //     item['box'] = box;
+      //     item['boxbal'] = bal;
+      //     event.target.value = bal;
+      //   }
+      //   else {
+      //     item['box'] = item.box||0 ;
+      //     item['boxbal'] = input;
+      //   }
 
-        let totalbalqty = availqty - totalinputqty;
-        item['balqty'] = Math.trunc(totalbalqty/item.pack) + '.' + totalbalqty%item.pack;
+      //   let totalbalqty = availqty - totalinputqty;
+      //   item['balqty'] = Math.trunc(totalbalqty/item.pack) + '.' + totalbalqty%item.pack;
         
-        this.onItemQtyChange(itemid, (item.box * pack) + item.boxbal);
-      }
+      //   this.onItemQtyChange(itemid, (item.box * pack) + item.boxbal);
+      // }
 
       removeItem(id:any){
         this.itemRemoved.emit(id);

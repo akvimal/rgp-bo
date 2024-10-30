@@ -147,6 +147,13 @@ export class SaleFormComponent {
       this.recalculateTotal(undefined);
     }
 
+    onItemUpdate(item:any){
+      this.sale.items?.forEach(element => {
+        element = item;
+      });
+      this.recalculateTotal(undefined);
+    }
+
     recalculateTotal(offer:any){
       this.total = 0;
       let mrptotal = 0;
@@ -253,29 +260,29 @@ export class SaleFormComponent {
     });
   }
 
-  updateCustomer(attr:string,event:any){
-    if(!this.sale.customer){
-      this.sale.customer = {}
-    }
+  // updateCustomer(attr:string,event:any){
+  //   if(!this.sale.customer){
+  //     this.sale.customer = {}
+  //   }
 
-    if(attr === 'srctype'){
-      this.sale.customer.srctype = event.target.value;
-    } else if(attr === 'srcdesc'){
-      this.sale.customer.srcdesc = event.target.value;
-    } else if(attr === 'address'){
-      this.sale.customer.address = event.target.value
-    } else if(attr === 'area'){
-      this.sale.customer.area = event.target.value
-    } else if(attr === 'locality'){
-      this.sale.customer.locality = event.target.value
-    } else if(attr === 'email'){
-      this.sale.customer.email = event.target.value
-    } else if(attr === 'name'){
-      this.sale.customer.name = this.capitalize(event.target.value)
-    }else if(attr === 'mobile'){
-      this.sale.customer.mobile = event.target.value
-    }
-  }
+  //   if(attr === 'srctype'){
+  //     this.sale.customer.srctype = event.target.value;
+  //   } else if(attr === 'srcdesc'){
+  //     this.sale.customer.srcdesc = event.target.value;
+  //   } else if(attr === 'address'){
+  //     this.sale.customer.address = event.target.value
+  //   } else if(attr === 'area'){
+  //     this.sale.customer.area = event.target.value
+  //   } else if(attr === 'locality'){
+  //     this.sale.customer.locality = event.target.value
+  //   } else if(attr === 'email'){
+  //     this.sale.customer.email = event.target.value
+  //   } else if(attr === 'name'){
+  //     this.sale.customer.name = this.capitalize(event.target.value)
+  //   }else if(attr === 'mobile'){
+  //     this.sale.customer.mobile = event.target.value
+  //   }
+  // }
 
   capitalize(word:string){
       const lower = word.toLowerCase();
@@ -348,11 +355,11 @@ export class SaleFormComponent {
     
   }
 
-  copyCustomerInfo(event:any) {  
-    this.form.controls['props'].get('ptntname')?.setValue(event.target.checked ? this.sale.customer.name : '');
-    this.form.controls['props'].get('ptntmobile')?.setValue(event.target.checked ? this.sale.customer.mobile : '');
-    this.form.controls['props'].get('ptntaddr')?.setValue(event.target.checked ? this.sale.customer.address : '');
-  }
+  // copyCustomerInfo(event:any) {  
+  //   this.form.controls['props'].get('ptntname')?.setValue(event.target.checked ? this.sale.customer.name : '');
+  //   this.form.controls['props'].get('ptntmobile')?.setValue(event.target.checked ? this.sale.customer.mobile : '');
+  //   this.form.controls['props'].get('ptntaddr')?.setValue(event.target.checked ? this.sale.customer.address : '');
+  // }
 
   selectItem(productid:any,event:any){
     this.prevCustSales.forEach((s:Sale) => {
@@ -418,12 +425,12 @@ export class SaleFormComponent {
         arr.push({...this.helper.mapStockToSaleItem(selected,true)});
       });
 
-this.recalculateTotal(undefined);
+// this.recalculateTotal(undefined);
       
      })
-     console.log('product ids ...');
+//      console.log('product ids ...');
      
-console.log(prodids);
+// console.log(prodids);
 
     //get the stock of products selected and update items
     this.sale.items = arr;

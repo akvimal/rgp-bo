@@ -36,7 +36,7 @@
                 <tr><td colspan="2">
                     <app-sale-form-items [items]="sale.items" 
                     (itemRemoved)="onItemRemoved($event)"
-                    (itemAdded)="onItemAdd($event)">
+                    (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
                 </app-sale-form-items>
                 </td>
                 </tr>
@@ -122,9 +122,9 @@
 <p-dialog header="Prescription" [(visible)]="displaySalePropsForm" [modal]="true">
     <form [formGroup]="form" (ngSubmit)="onSubmitSaleProps()">
         <div class="row g-2 bg-light pb-3 mt-3" formGroupName="props" *ngIf="saleprops.length > 0">
-            <div class="col-md-12">
+            <!-- <div class="col-md-12">
                 <input type="checkbox" name="selectCu" (change)="copyCustomerInfo($event)">Copy Customer Info to Patient
-            </div>
+            </div> -->
             <div class="col-md-4" *ngFor="let pp of saleprops">
                 <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
                 <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'">
@@ -166,8 +166,11 @@
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
             <div class="col-lg-6">
+                <!-- <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
+                [value]="sale.customer?.mobile||''" 
+                (input)="updateCustomer('mobile',$event)"> -->
                 <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
-                [value]="sale.customer?.mobile||''" (input)="updateCustomer('mobile',$event)">
+                [value]="sale.customer?.mobile||''">
                 <!-- <app-customer-select 
                     (customerSelected)="selectCustomer($event, false)"
                     (focusLeave)="doneEnterCustomer($event)">
@@ -175,12 +178,19 @@
             </div>
             
             <div class="col-lg-6">
+                <!-- <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
+                [value]="sale.customer?.name||''" 
+                (input)="updateCustomer('name',$event)"> -->
                 <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
-                [value]="sale.customer?.name||''" (input)="updateCustomer('name',$event)">
+                [value]="sale.customer?.name||''">
             </div>
             <div class="col-lg-4">
+                <!-- <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
+                [value]="sale.customer?.email||''" 
+                (input)="updateCustomer('email',$event)"> -->
                 <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
-                [value]="sale.customer?.email||''" (input)="updateCustomer('email',$event)">
+                [value]="sale.customer?.email||''" 
+                >
             </div>
         </div>
         <!-- show below section if the customer is not found -->
