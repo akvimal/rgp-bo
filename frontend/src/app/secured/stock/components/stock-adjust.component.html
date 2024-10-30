@@ -65,9 +65,9 @@
                       <th pSortableColumn="qty">Qty
                         <p-sortIcon field="qty"></p-sortIcon>
                     </th>
-                    <th pSortableColumn="price">Price
+                    <!-- <th pSortableColumn="price">Price
                       <p-sortIcon field="price"></p-sortIcon>
-                  </th>
+                  </th> -->
                 <th pSortableColumn="date">Date
                         <p-columnFilter type="date" field="date" display="menu"></p-columnFilter>
                         <p-sortIcon field="date"></p-sortIcon>
@@ -92,7 +92,7 @@
                             <span class="batch" style="margin-left:5px"><i class="bi bi-currency-rupee"></i>{{i.mrp_cost}}</span>
                         </td>
                         <td>{{i.qty}}</td>
-                        <td style="text-align: right;">{{i.price}}</td>
+                        <!-- <td style="text-align: right;">{{i.price}}</td> -->
                         <td>{{i.date | date : 'dd/MM/yyyy'}}</td>
                         <td>{{i.reason}}</td>
                         <!-- <td>{{i.status}}</td> -->

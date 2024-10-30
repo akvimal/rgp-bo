@@ -22,6 +22,7 @@ import { TableModule } from "primeng/table";
 import { SaleDashboardComponent } from "./components/sale-dashboard.component";
 import { SaleHeaderComponent } from "./components/sale-header.component";
 import { SaleReminderComponent } from "./components/sale-reminder.component";
+import { SaleHelper } from "./sale.helper";
 
 const routes: Routes = [
   {path: '', redirectTo: 'list'},

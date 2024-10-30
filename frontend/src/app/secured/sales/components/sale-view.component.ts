@@ -40,8 +40,8 @@ export class SaleViewComponent {
               batch: i.batch,
               expdate: i.expdate,
               qty: i.qty,
-              mrp:i.mrpcost.toFixed(2),
-              price:i.price.toFixed(2),
+              mrp:i.mrpcost,
+              price:i.price,
               taxpcnt:i.taxpcnt,
               total: i.total
             }

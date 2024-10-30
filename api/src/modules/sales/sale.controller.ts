@@ -82,18 +82,23 @@ export class SaleController {
       return sale;//this.stockService.getItemsWithStockData(sale);
     }
 
+    @Get('/:id/availableitems')
+    async findSaleItemsForSaleWithAvailableQty(@Param('id') id: number) {
+      return await this.saleService.findSaleItemsForSaleWithAvailableQty(id)
+    }
+    
     @Get('/:id/customer')
     async findItems(@Param('id') custid: string) {
 
-      const stocks = await this.stockService.findAll(); //for finding item available qty
+      // const stocks = await this.stockService.findAll(); //for finding item available qty
       const sales = await this.saleService.findAllByCustomerId(custid,5);
       
-      sales.forEach(s => {
-        s.items.forEach((i:any) => {
-          const st = stocks.find(s => s.id === i.itemid);
-          i.maxqty = st.available_qty; //add max qty possible
-        });
-      })      
+      // sales.forEach(s => {
+      //   s.items.forEach((i:any) => {
+      //     const st = stocks.find(s => s.id === i.itemid);
+      //     i.maxqty = st.available_qty; //add max qty possible
+      //   });
+      // })      
       
       return sales;
     }

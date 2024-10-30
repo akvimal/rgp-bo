@@ -27,6 +27,9 @@ export class SaleService {
     findAllItems(criteria:any){
         return this.http.post(`${this.apiurl}/items/criteria`,criteria);
      }
+     findItemsWithAvailableQty(saleid:number){
+         return this.http.get(`${this.apiurl}/${saleid}/availableitems`);
+      }
  
     saveItem(item:SaleItem){
         return this.http.post(`${this.apiurl}/items`,item);

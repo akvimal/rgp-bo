@@ -15,12 +15,18 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock`);
     }
 
-    filterByCriteria(query:any){
-        return this.http.get(`${this.apiurl}/stock/filter?query=${query}`);
+    filterByCriteria(query:any,limit:number){
+        return this.http.get(`${this.apiurl}/stock/filter?query=${query}&limit=${limit}`);
     }
-    findByItems(ids:[]){
-        return this.http.post(`${this.apiurl}/stock/items`, ids);
+
+    findByItems(purchaseitemids:[]){
+        return this.http.post(`${this.apiurl}/stock/items`, purchaseitemids);
     }
+
+    findByProducts(ids:number[]){
+        return this.http.post(`${this.apiurl}/stock/products`, ids);
+    }
+
     findAllReadyForSale(){
         return this.http.get(`${this.apiurl}/stock/ready`);
     }

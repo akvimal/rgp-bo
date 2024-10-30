@@ -22,14 +22,20 @@ export class StockService {
 
         async findByCriteria(query:any){
             return await this.manager.query(`
-            select iv.*, iv.available, sale_price, market_price 
+            select iv.*, sale_price, market_price 
             from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
-            where product_expdate > current_timestamp and lower(product_title) like lower('%${query.query}%') order by product_title, product_expdate limit 25`);
+            where available > 0 and product_expdate > current_timestamp and product_title ilike '%${query.query}%' order by product_title, product_expdate ${query.limit > 0 ? 'limit '+query.limit : ''}`);
         }
 
         async findByItems(ids:number[]){
             return await this.manager.query(`select iv.purchase_itemid, iv.available 
             from inventory_view iv where purchase_itemid in (${ids.join(',')})`);
+        }
+
+        async findByProducts(ids:number[]){
+            return await this.manager.query(`select iv.*, sale_price, market_price 
+            from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
+            where  iv.product_id in (${ids.join(',')}) and product_expdate > current_timestamp and available > 0 order by product_expdate`);
         }
 
         async findAvailableQty(prodid:number, batch:string, expdate:string){

@@ -43,6 +43,15 @@ export class SaleService {
     async createItem(createSaleItemDto: CreateSaleItemDto, userid:any) {
         return this.saleItemRepository.save({...createSaleItemDto, createdby:userid});
     }
+
+    async findSaleItemsForSaleWithAvailableQty(id:number){
+        const query = `select si.id, si.qty, iv.* from sale_item si 
+        inner join inventory_view iv on iv.purchase_itemid = si.purchase_item_id 
+        inner join sale s on s.id = si.sale_id 
+        where s.id = ${id}`;
+        return await this.manager.query(query);
+
+    }
     
     async findAll(query:any,userid:any){
         const qb = this.saleRepository.createQueryBuilder("sale")
@@ -174,7 +183,7 @@ export class SaleService {
 	          .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
 	          .leftJoinAndSelect("purchaseitem.product", "product")
 	            .select(['sale','customer','items','purchaseitem','product'])
-          .where(`sale.status = 'COMPLETE' and items.status = 'Sale Complete' and sale.id in (${ids.join(',')})`)
+          .where(`sale.status = 'COMPLETE' and items.status = 'Complete' and sale.id in (${ids.join(',')})`)
           .getMany();
     }
 

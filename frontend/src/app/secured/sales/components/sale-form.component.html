@@ -1,78 +1,122 @@
 <app-sale-header></app-sale-header>
-<div class="card">
-    <div class="card-body">
-        <div class="row">
-            <div class="col-lg-4">Date: {{this.sale.billdate | date: 'dd-MMM hh:mm a'}}</div>
-            <div class="col-lg-4">No: {{this.sale.billno}}</div>
-            <div class="col-lg-4">Status: {{this.sale.status}}</div>
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <table class="table mt-4">    
+                <tr>
+                    <!-- Customer Info -->
+                    <td>
+                        <app-customer-select 
+                                (customerSelected)="selectCustomer($event,true)"
+                                (focusLeave)="doneEnterCustomer($event)">
+                                </app-customer-select>
+                        <div *ngIf="sale.customer?.mobile !== null">
+                            Mobile: {{sale.customer?.mobile}}
+                            Name: {{sale.customer?.name}}
+                            Email: {{sale.customer?.email}}
+                            <span class="ml-2" *ngIf="!isNewCustomer()">
+                                <a (click)="showPrevSalesCopy()">
+                                    <i class="bi bi-files text-success"></i>
+                                </a>
+                            </span>
+                            <span class="ml-2" *ngIf="sale.status !== 'COMPLETE'">
+                                <a (click)="resetCustomer()">
+                                    <i class="bi bi-x-square text-danger"></i>
+                                </a>
+                            </span>
+                        </div>
+                    </td>
+                    <!-- Bill Info-->
+                    <td class="text-end">
+                        <div>Date: {{this.sale.billdate | date: 'dd-MMM hh:mm a'}}</div>
+                        <div *ngIf="sale.status !== 'NEW'">No: {{this.sale.billno}} ({{this.sale.status}})</div>
+                    </td>
+                </tr>
+                <!-- Sale Items -->
+                <tr><td colspan="2">
+                    <app-sale-form-items [items]="sale.items" 
+                    (itemRemoved)="onItemRemoved($event)"
+                    (itemAdded)="onItemAdd($event)">
+                </app-sale-form-items>
+                </td>
+                </tr>
+                <!-- <tr>
+                    <td colspan="2">
+               
+                <span>Discount</span>
+                
+                <select [(ngModel)]="offer.code" class="form-control" (change)="selectOffer($event)">
+                    <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
+                </select>
+            
+                <input type="number" class="form-control" [(ngModel)]="offer.amount" size="4"
+                (input)="applyDiscount()"
+                [disabled]="!offer.input">
+            
+                    </td>
+                </tr> -->
+                <!-- Total -->
+                <tr *ngIf="sale.items && sale.items.length > 0">
+                    <td colspan="2">
+                    <table class="table">
+                        <tr>
+                            <th>Items</th>
+                            <th>Credit</th>
+                            <th>Payment</th>
+                            <th>Total</th>
+                        </tr>
+                        <tr>
+                            <td>{{sale.totalitems}}</td>
+                            <td></td>
+                            <td>
+                                <select name="digitype" id="digitype">
+                                    <option value="PayTm">PayTM</option>
+                                    <option value="UPI">UPI</option>
+                                </select>
+                                <input type="text" name="digiref">
+                                <input type="text" name="cash">
+                            </td>
+                            <td>
+                                <table class="table table-bordered m-0 p-0">
+                                    <tr>
+                                      <th>Saving</th>
+                                      <th colspan="2">Total</th>
+                                    </tr>
+                                    <tr>
+                                      <td rowspan="2">{{sale.saving}}%</td>
+                                      <td>MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal}}</td>
+                                      <td rowspan="2"><i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total}}</td>
+                                    </tr>
+                                    <tr>
+                                      <td>Tax: $80</td>
+                                    </tr>
+                                  </table>
+                                
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                </tr>
+            </table>
         </div>
-        <div class="row mt-3 mb-3" *ngIf="isNewCustomer(); else saleCustomer">
-            <div class="col-lg-3">
-                <app-customer-select 
-                    (customerSelected)="selectCustomer($event,true)"
-                    (focusLeave)="doneEnterCustomer($event)">
-                    </app-customer-select>
-                    <!-- <a href="javascript:void(0)" (click)="closeChangeCustomer()">
-                        <i class="bi bi-x-square text-primary"></i></a> -->
-            </div>
-            <!-- <div class="col-lg-2">
-                <input type="checkbox" [(ngModel)]="saleWithNoCustomerAllowed" name="saleWithNoCustomerAllowed" id="saleWithNoCustomerAllowed">
-                Undisclosed
-            </div> -->
-        </div>
-           
-        <ng-template #saleCustomer>
-            <div class="row mt-2">
-                <div class="col-lg-3">Mobile: {{sale.customer?.mobile}}
-                    <div *ngIf="!sale.customer?.mobile.startsWith('000')">
-                        <!-- <span class="ml-2" *ngIf="sale.status === 'NEW' || sale.status=== 'PENDING'">
-                            <a (click)="showChangeCustomer('Edit')">
-                            <i class="bi bi-pencil text-primary"></i></a>
-                        </span> -->
-                        <span class="ml-2" *ngIf="!isNewCustomer()">
-                            <a (click)="showPrevSalesCopy()">
-                                <i class="bi bi-files text-success"></i>
-                            </a>
-                        </span>
-                        <span class="ml-2" *ngIf="sale.status !== 'COMPLETE'">
-                            <a (click)="resetCustomer()">
-                                <i class="bi bi-x-square text-danger"></i>
-                            </a>
-                        </span>
-                    </div>
-                </div>
-                <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Name: {{sale.customer?.name}}</div>
-                <div class="col-lg-3">Email: {{sale.customer?.email}}</div>
-                <!-- <div class="col-lg-3" *ngIf="!sale.customer?.mobile.startsWith('000')">Address: {{sale.customer?.address}}</div> -->
-            </div>
-        </ng-template>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
+                        [disabled]="!(total > 0)">Complete</button>    
+            <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" 
+                class="btn btn-outline-primary m-2" [disabled]="total === 0">Save</button>    
+            <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" 
+                class="btn btn-outline-secondary m-2">Discard</button>
 
-        <app-sale-form-items [items]="sale.items" 
-            (removed)="removeItem($event)"
-            (recalculateTotal)="recalculateTotal($event)">
-        </app-sale-form-items>
-        No. of items: {{sale.totalitems}} <br>
-        <span *ngIf="sale.mrptotal !== sale.total">
-            MRP Total: {{sale.mrptotal}}<br>
-        Saving: {{sale.saving}}</span><br>
-        Net Total: {{sale.total}}
+            <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
+                <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
+            <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button>
+        </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-12 text-align-right">
-        <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
-                    [disabled]="!(total > 0)">Complete</button>    
-        <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" 
-            class="btn btn-outline-primary m-2" [disabled]="total === 0">Save</button>    
-        <button *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" 
-            class="btn btn-outline-secondary m-2">Discard</button>
-        
-        <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
-            <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
-        <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button>        
-    </div>
-</div>
+
 
 <!-- Information to capture for H1 -->
 <p-dialog header="Prescription" [(visible)]="displaySalePropsForm" [modal]="true">
@@ -102,18 +146,18 @@
 <!-- Customer Previous Sales -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
         [(visible)]="displayPrevSalesCopy" [modal]="true">
-    <div *ngFor="let s of prevCustSales">
+    <div *ngFor="let s of prevCustSales; index as i">
         {{s.billdate | date : 'dd-MMM'}} | <i class="bi bi-currency-rupee" style="padding:0"></i>{{s.total}}
             <ul class="list-group mt-2">
-                <li class="list-group-item"><input type="checkbox" (change)="toggleAll($event)">
+                <li class="list-group-item"><input type="checkbox" (change)="toggleAll(i,$event)">
                     <span class="p-2 text-primary">All</span>
                 </li>
                 <li class="list-group-item" *ngFor="let i of s.items">
-                    <input type="checkbox" (change)="selectItem(i.id,$event)" [checked]="i.selected">
+                    <input type="checkbox" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
                     <span class="p-2">{{i.title}} ({{i.qty}})</span></li>
             </ul>
     </div>
-    <button type="button" class="btn btn-primary mt-2 text-center" [disabled]="!copyItemSelected()" 
+    <button type="button" class="btn btn-primary mt-2 text-center"
             (click)="copySelectedItem()">Copy</button>
 </p-dialog>
 
@@ -122,12 +166,12 @@
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
             <div class="col-lg-6">
-                <!-- <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
-                [value]="sale.customer?.mobile||''" (input)="updateCustomer('mobile',$event)"> -->
-                <app-customer-select 
+                <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
+                [value]="sale.customer?.mobile||''" (input)="updateCustomer('mobile',$event)">
+                <!-- <app-customer-select 
                     (customerSelected)="selectCustomer($event, false)"
                     (focusLeave)="doneEnterCustomer($event)">
-                    </app-customer-select>
+                    </app-customer-select> -->
             </div>
             
             <div class="col-lg-6">
@@ -172,9 +216,9 @@
                 <!-- <button class="btn btn-primary m-2 text-center" 
                 (click)="saveCustomerInfo('PENDING')">Save</button> -->
                 <button *ngIf="!customerEditOnly" class="btn btn-primary m-2 text-center" 
-                (click)="submit('COMPLETE')">Save</button>
+                (click)="saveCustomer()">Save</button>
                 <button class="btn btn-outline-secondary m-2"
-                (click)="noCustomerSale()">Continue</button>
+                (click)="cancelCustomer()">Continue</button>
                 
             </div>
         </div>

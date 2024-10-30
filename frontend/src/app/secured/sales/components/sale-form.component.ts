@@ -3,6 +3,8 @@ import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { ProductUtilService } from "../../product-util.service";
+import { StockService } from "../../stock/stock.service";
+import { SaleHelper } from "../sale.helper";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
 
@@ -25,7 +27,7 @@ export class SaleFormComponent {
 
     filteredCustomers: any[] = [];
     //newCustomer:boolean = true;
-    saleWithNoCustomerAllowed:boolean = false;
+    saleWithNoCustomer:boolean = false;
     allowCustomerSelect:boolean = false;
 
     newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false}
@@ -50,83 +52,50 @@ export class SaleFormComponent {
 
     constructor(private route: ActivatedRoute,
       private router: Router, 
+      private helper: SaleHelper,
       private service: SaleService,
+      private stockService: StockService,
       private prodUtilService: ProductUtilService,
       private http: HttpClient){
         this.http.get("/assets/sale-props.json").subscribe((data:any) => this.salePropSchema = data);
       }
 
     ngOnInit(){
+      
       const saleId = this.route.snapshot.paramMap.get('id'); 
       if(saleId){
-        
-          this.service.find(saleId).subscribe((data:any) => {
-            this.sale = data;
-      
+          this.service.find(saleId).subscribe((result:any) => {
             
-          //   this.sale.id = data.id;
-          //   // this.sale.expreturndays = data.expreturndays;
-          //   this.sale.customer = data.customer;
-          //   this.sale.billno = data.billno;
-          //   this.sale.billdate = data.billdate;
-          //   this.sale.status = data.status;
-  
-          //   this.sale.items = data.items.map((i:any) => {
-              
-          //     // const avail_qty = +i.bought - +i.sold;
-          //     const pack = i.pack;
-          //     return {
-          //       id:i.id,
-          //       productid: i.product_id,
-          //       title: i.product.title,
-          //       pack:pack,
+            this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
+              items.forEach((item:any) => {
+                item = this.helper.mapStockToSaleItem(item,true);
+              });
+              result['items'] = items;
 
-          //       taxpcnt:i.taxpcnt,
-
-          //       batch:i.batch,
-          //       expdate:i.expdate,
-          //       mrpcost: i.mrpcost,
-                
-          //       price:i.price,
-          //       qty:i.qty,
-          //       box: Math.trunc(i.qty / pack),
-          //       boxbal: i.qty % pack,
-          //       balqty: Math.trunc(i.qty/ pack) + '.' + (i.qty % pack),
-          //       // unitsbal:avail_qty-i.qty,                
-          //       // maxqty: avail_qty,
-
-          //       // more_props: i.purchaseitem.product.props,
-          //       total: this.calculateTotal(i.qty,i.price,i.taxpcnt)
-          //     }
-          //   });
-  
-          //   this.sale.items && this.sale.items.forEach(item => {
-          //     this.total += item.total || 0;
-          //   });
-            
-        });        
+            this.sale = result;
+            this.recalculateTotal(undefined);
+            })
+          });
+          
       }
       else {
         this.allowCustomerSelect = true;
         this.sale.billdate = new Date();
-        this.addNewItem();
       } 
+      // this.addNewItem();
+      // this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
     }
 
-    addNewItem(){
-      const newItemFound = this.sale.items?.find((i:any) => !i.edited);
-      // !newItemFound && this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
-      if(!newItemFound){
-        this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
-      }
-    }
+    // addNewItem(){
+    //   const newItemFound = this.sale.items?.find((i:any) => !i.edited);
+    //   // !newItemFound && this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
+    //   if(!newItemFound){
+    //     this.sale.items?.push({...this.newSaleItem, id: Math.random()});  
+    //   }
+    // }
 
     resetCustomer(){
       this.sale.customer = null;
-    }
-
-    isSaleWithNoCustomerAllowed(){
-      return this.saleWithNoCustomerAllowed;
     }
 
     isNewCustomer() {
@@ -136,6 +105,12 @@ export class SaleFormComponent {
         return false;
       }
       return true;
+    }
+
+    customerInfoCaptured(){
+      return this.sale.customer && 
+      (this.sale.customer.name && this.sale.customer.name !== '') && 
+      (this.sale.customer.mobile && this.sale.customer.mobile !== '');
     }
 
     populateSalePropsForm(type:any,values:any){
@@ -162,10 +137,14 @@ export class SaleFormComponent {
       this.displayNewCustomer = true;
     }
 
-
     calculateTotal(qty:number,price:number,tax:number) {
       const total = qty * (price * (1 + (tax / 100)));
       return isNaN(total) ? 0 : +total.toFixed(2);
+    }
+
+    onItemAdd(item:any){
+      this.sale.items?.push(item);
+      this.recalculateTotal(undefined);
     }
 
     recalculateTotal(offer:any){
@@ -174,24 +153,22 @@ export class SaleFormComponent {
       // this.sale.items?.filter((i:any) => i.edited)
       this.sale.items?.filter((i:any) => i.edited).forEach((i:any) => {        
         // if(i.itemid > 0) {
-          this.total += i.total;
-          const qty = (i.box * i.pack) + i.boxbal;
-          mrptotal += +(i.mrpcost||0)*qty;
+          this.total += +i.total;
+          // const qty = (i.box * i.pack) + i.boxbal;
+          mrptotal += +(i.mrpcost||0)*i.qty;
         // }
       });
 
-      this.sale.total = this.total; //TODO: need to check where total calculated
-      this.sale.mrptotal = mrptotal;
+      this.sale.total = Math.round(this.total);
+      this.sale.mrptotal = Math.round(mrptotal);
       this.sale.totalitems = this.sale.items?.filter((i:any) => i.edited).length;
       this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
   
-      // this.offer = offer;
-      this.addNewItem();
     }
 
     selectCustomer(customer:any, copySales:boolean){
       const {id,name,mobile,email,address} = customer;
-      if(customer.existing){
+      if(customer.existing){ 
         this.sale.customer = {id,name,mobile,email,address};
         !mobile.startsWith('000') && this.showPrevSalesCopy();
       }
@@ -213,7 +190,7 @@ export class SaleFormComponent {
     this.sale.customer = {mobile:inputval};
   }
 
-  removeItem(id:any){
+  onItemRemoved(id:any){
     if(this.sale.items) {
       this.sale.items = [...this.sale.items].filter((i:any) => i.id !== id)
     }
@@ -225,6 +202,16 @@ export class SaleFormComponent {
     return props && props.length > 0;
   }
 
+  saveCustomer(){
+    this.saleWithNoCustomer = false;
+    this.submit(this.sale.status);
+  }
+
+  cancelCustomer(){
+    this.saleWithNoCustomer = true;
+    this.submit(this.sale.status);
+  }
+
   submit(status:any){
 
     if(status === 'DISCARD'){
@@ -233,8 +220,14 @@ export class SaleFormComponent {
       })
       return;
     }
+
+    this.sale.status = status;
     
-    //all items should have total greater than zero
+    if(!this.saleWithNoCustomer && !this.customerInfoCaptured()){
+      this.displayNewCustomer = true;
+      return;
+    }
+
     const validItems = this.sale.items && this.sale.items.filter((i:any) => i.edited && i.qty > 0);
     
     // const requireAdditionalProps = validItems?.filter((i:any) => i.more_props.schedule === 'H1');
@@ -244,59 +237,19 @@ export class SaleFormComponent {
         this.displaySalePropsForm = true;
         return;
       }
-      if(this.doesProductContains(validItems, 'chronic', true) && 
-      (!this.saleWithNoCustomerAllowed && this.isNewCustomer())){
-        this.displayNewCustomer = true;
-        return;
-      }
     }
     
-    let total = 0;
-    validItems && validItems.forEach((i:any) => {
-      total += i.total;
-      switch (status) {
-        case 'COMPLETE':
-          i.status = 'Complete';    
-          break;
-          case 'PENDING':
-            i.status = 'Pending';    
-            break;
-          default:
-          break;
-      }
-      
-      i.id = null;
-    });
-
-    // let discamt  = this.offer.amount||0;
-    // if(this.offer){
-    //   const newTotal = total - discamt;
-    //   if(newTotal < 0){
-    //     discamt = total;
-    //     total = 0;
-    //   }
-    //   else 
-    //     total = newTotal;
-    // }
     
-    // if(!this.isSaleWithNoCustomerAllowed() && this.isNewCustomer()){
-    //   this.displayNewCustomer = true;
-    //   this.customerEditOnly = false;
-    //   if(status === 'PENDING'){
-    //     this.customerEditOnly = true;
-    //   }
-    //   return;
-    // }
+    this.sale.items = this.sale.items?.map(item => {
+      return this.helper.mapSaleItemInputToSave(item,status=='COMPLETE')
+    })
 
-    this.service.save({...this.sale, //total:Math.round(total), 
-      // disccode:(this.offer?.code), discamount:discamt, 
-      status, props: this.salePropValues,items:validItems}).subscribe((data:any) => {
+    this.service.save({...this.sale, status}).subscribe((data:any) => {
       this.salePropValues = null;
       if(data.status === 'COMPLETE')
         this.router.navigateByUrl(`/secure/sales/view/${data.id}`); 
       else 
         this.router.navigateByUrl(`/secure/sales/edit/${data.id}`); 
-
     });
   }
 
@@ -333,17 +286,18 @@ export class SaleFormComponent {
     this.router.navigateByUrl(`/secure/sales`); 
   }
 
-  noCustomerSale() {
+  // noCustomerSale() {
     
-    this.saleWithNoCustomerAllowed = true;
-      this.submit('COMPLETE');
+  //   this.saleWithNoCustomerAllowed = true;
+  //     this.submit('COMPLETE');
     
     
-    this.displayNewCustomer = false;
-  }
+  //   this.displayNewCustomer = false;
+  // }
 
   showPrevSalesCopy() {
 
+    // this is to pre select the sale items are already in cart
     const addedItemsToSale = this.sale.items?.map((i:any) => i.itemid)
     
     this.fetchCustomerPrevSales && this.service.getSalesByCustomer(this.sale.customer.id).subscribe((prevSale:any) => {
@@ -354,33 +308,35 @@ export class SaleFormComponent {
         prevSale.forEach((ps:any) => {
           const items = ps.items.map((i:any) => {
 
-            const box = Math.trunc(i.qty / i.purchaseitem.product.pack);
-            const boxbal = i.qty % i.purchaseitem.product.pack;
+            // const box = Math.trunc(i.qty / i.purchaseitem.product.pack);
+            // const boxbal = i.qty % i.purchaseitem.product.pack;
             
-            let totalbalqty = i.maxqty - i.qty;
-            let balqty = Math.trunc(totalbalqty / i.purchaseitem.product.pack) + '.' + (totalbalqty % i.purchaseitem.product.pack);
+            // let totalbalqty = i.maxqty - i.qty;
+            // let balqty = Math.trunc(totalbalqty / i.purchaseitem.product.pack) + '.' + (totalbalqty % i.purchaseitem.product.pack);
 
-            if(totalbalqty < 0) {
-              balqty = '0';
-            }
+            // if(totalbalqty < 0) {
+            //   balqty = '0';
+            // }
 
             return {
               id:i.id,
-              itemid:i.purchaseitem.id,
-              taxpcnt: i.purchaseitem.taxpcnt,
-              price: (i.purchaseitem.saleprice/i.purchaseitem.product.pack),
-              selected:addedItemsToSale?.includes(i.purchaseitem.id),
-              maxqty:i.maxqty,
+              itemid:i.itemid,
+              productid: i.purchaseitem.product.id,
+              // taxpcnt: i.purchaseitem.taxpcnt,
+              // price: (i.purchaseitem.saleprice/i.purchaseitem.product.pack),
+              // selected:addedItemsToSale?.includes(i.purchaseitem.id),
+              // maxqty:i.maxqty,
               qty:i.qty,
-              pack:i.purchaseitem.product.pack,
-              box,
-              boxbal,
-              balqty,
-              mrpcost:i.purchaseitem.mrpcost,
+              // pack:i.purchaseitem.product.pack,
+              // box,
+              // boxbal,
+              // balqty,
+              // mrpcost:i.purchaseitem.mrpcost,
               title:i.purchaseitem.product.title,
               // more_props:i.purchaseitem.product.props,
-              batch:i.purchaseitem.batch,
-              expdate:i.purchaseitem.expdate};
+              // batch:i.purchaseitem.batch,
+              // expdate:i.purchaseitem.expdate
+            };
           });
 
           this.prevCustSales.push({billdate:ps.billdate,total:ps.total,items});
@@ -398,17 +354,17 @@ export class SaleFormComponent {
     this.form.controls['props'].get('ptntaddr')?.setValue(event.target.checked ? this.sale.customer.address : '');
   }
 
-  selectItem(itemid:any,event:any){
+  selectItem(productid:any,event:any){
     this.prevCustSales.forEach((s:Sale) => {
       s.items && s.items.forEach((i:any) => {
-        if(i.id === itemid){
+        if(i.productid === productid){
           i['selected'] = event.target.checked;
         }
       })
     })
   }
 
-  copyItemSelected(){
+  copyActionEnabled(){
     return this.prevCustSales.filter((s:Sale) => {
       return s.items && s.items.filter((i:any) => i.selected).length > 0
     }).length > 0
@@ -422,18 +378,62 @@ export class SaleFormComponent {
 
   copySelectedItem(){
     const arr:any[] = [];
+    //get products selected
+    const prodids:number[] = []
      this.prevCustSales.forEach((s:Sale) => {
       s.items && s.items.forEach((i:any) => {
-        i.selected && arr.push(i);
+        if(i.selected && !prodids.includes(i.productid)){
+          prodids.push(i.productid);
+        } 
       })
      });
+
+     this.stockService.findByProducts(prodids).subscribe((items:any) => {
+      
+      items.forEach((selected:any) => {
+        // const item = {};
+        // const price = ((selected.sale_price || selected.mrp)/selected.product_pack).toFixed(2)
+        // const total = (+price * selected.product_pack).toFixed(2);
+        
+        // arr.push({
+          
+        //   itemid: selected.purchase_itemid,
+        //   productid: selected.product_id,
+        //   title : selected.product_title,
+        //   batch : selected.product_batch,
+        //   expdate : selected.product_expdate,
+        //   qty : selected.product_pack, //default qty to pack
+        //   maxqty : selected.available,
+        //   pack : selected.product_pack,
+        //   mrpcost : (selected.mrp/selected.product_pack).toFixed(2),
+        //   price,
+        //   taxpcnt : selected.product_taxpcnt,
+        //   // more_props = event.more_props;
+        //   unitsbal: selected.available - selected.product_pack,
+        //   total,
+
+    
+        //   edited: true
+        // });  
+        arr.push({...this.helper.mapStockToSaleItem(selected,true)});
+      });
+
+this.recalculateTotal(undefined);
+      
+     })
+     console.log('product ids ...');
+     
+console.log(prodids);
+
+    //get the stock of products selected and update items
     this.sale.items = arr;
-    this.addNewItem();
+
+    // this.addNewItem();
     this.displayPrevSalesCopy = false;
   }
 
-  toggleAll(event:any){
-    this.prevCustSales[0].items?.forEach(i => {
+  toggleAll(pos:number, event:any){
+    this.prevCustSales[pos].items?.forEach(i => {
       i.selected = event.target.checked
     });
   }

@@ -1,39 +1,35 @@
-<table class="table table-bordered mt-4">
+<table class="table table-bordered m-0 p-0">
     <thead>
         <tr>
-            <th></th>
-            <th>Product</th>
-            <th>Batch</th>
-            <th>Use by</th>
-            <th>MRP</th>
-            <th>Qty</th>
-            <th>Rate</th>
-            <!-- <th>Tax</th> -->
-            <th>Amount</th>
+            <th width="5%"></th>
+            <th width="40%">Product</th>
+            <th width="10%" class="text-end">Batch / Use By</th>
+            <th width="7%" class="text-end">MRP</th>
+            <th width="20%" class="text-end" width="10%">Qty</th>
+            <th width="8%" class="text-end">Rate</th>
+            <th width="5%" class="text-end">Tax</th>
+            <th width="10%" class="text-end">Amount</th>
         </tr>
     </thead>
     <tbody>
         <tr *ngFor="let item of items">
-            <td width="3%">
+            <td>
                 <span *ngIf="item.edited">
                 <a (click)="removeItem(item.id)">
                 <i class="bi bi-trash text-danger"></i>
                 </a>
             </span>
             </td>
-            <td width="35%">
-                <app-stock-select *ngIf="!item.edited"
-                [item]="item" (stockSelected)="selectProduct(item.id,$event)"
-                [itemsSelected]="items"></app-stock-select>
+            <td>
                 <p *ngIf="item.title" style="margin:0;padding:0;"><strong>{{item.title}}</strong><br><span style="color:#999;font-style: italic;">{{item.more_props?.composition}}</span></p>
             </td>
-            <td width="10%">
-                {{item.batch}}
+            <td class="text-end">
+                {{item.batch}}<span class="text-primary">&nbsp;/&nbsp;{{item.expdate | date : 'MMM-yy'}}</span>
             </td>
-            <td width="5%">{{item.expdate | date : 'MMM-yy'}}</td>
-            <td width="7%" style="text-align: right;">{{item.mrpcost}}</td>
-            <td width="25%">
-                <div class="input-group mb-3" *ngIf="item.edited">
+            <td class="text-end">{{item.mrpcost}}</td>
+            <td class="text-end">
+                <span *ngIf="!item.edited">{{item.qty}}</span>
+                <div class="input-group" *ngIf="item.edited">
                     <!-- <input type="number" min="0" name="box" class="form-control"
                     [value]="item.box == 0 ? '' : item.box" (input)="boxInputValidate($event,item.maxqty,item.pack,item.id)">
                     <input type="number" min="0" class="form-control" name="boxitem" 
@@ -45,38 +41,23 @@
                     <input type="number" [value]="item.qty" class="form-control"
                         [disabled]="item.maxqty == 0"
                         [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#9df'}"
-                        (input)="calculate(item.id,$event)">
+                        (input)="calculate(item.itemid,$event)">
                     
                     <div class="input-group-append">
                         <span class="input-group-text" id="basic-addon2">{{item.unitsbal}}</span>
                     </div>
                 </div>
             </td>
-            <td width="5%" style="text-align: right;">{{(item.price).toFixed(2)||''}}</td>
-            
-            <!-- <td width="7%" style="text-align: right;">{{item.taxpcnt}}</td> -->
-            <td width="10%" style="text-align: right;">{{item.total}}</td>
+            <td class="text-end">{{item.price}}</td>            
+            <td class="text-end">{{item.taxpcnt}}%</td>
+            <td class="text-end">{{item.total}}</td>
         </tr>
-        <!-- <tr>
+        <tr>
             <td></td>
-            <td colspan="5">
-                <div class="d-flex justify-content-end">
-                <div>
-                <span>Discount</span>
-                </div>
-                <div>
-                <select [(ngModel)]="offer.code" class="form-control" (change)="selectOffer($event)">
-                    <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
-                </select>
-            </div>
-                </div>
+            <td colspan="7">
+                <app-stock-select
+                (stockSelected)="selectProduct($event)"></app-stock-select>
             </td>
-            <td>
-                <input type="number" class="form-control" [(ngModel)]="offer.amount" size="4"
-                (input)="applyDiscount()"
-                [disabled]="!offer.input">
-            </td>
-        </tr> -->
-       
+        </tr>
     </tbody>
 </table>

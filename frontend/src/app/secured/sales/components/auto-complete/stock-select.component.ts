@@ -4,16 +4,14 @@ import { StockService } from "../../../stock/stock.service";
 
 @Component({
     selector: 'app-stock-select',
-    template: `<p-autoComplete [(ngModel)]="stock"
+    template: `<p-autoComplete
                     (onSelect)="selected($event)"
-                    [forceSelection]="true"
-                    field="product_title"
+                    field="''"
                     [suggestions]="filteredStock" 
                     (completeMethod)="filterStock($event)" [minLength]="2"
                     [inputStyle]="{'background-color':'#9df'}">
                     <ng-template let-stock pTemplate="item">
                         <div [ngStyle]="{maxWidth:'600px',backgroundColor:stock.available < 1?'#ffc0c0':'inherit'}">
-                            <span *ngIf="stock.available_qty < 1">Empty</span>
                             <h6 style="margin:0;padding:0;font-weight:bold">{{stock.product_title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||stock.mrp}})</h6>
                             <p style="margin:0;padding:0;color:#999;font-style: italic;">Composition</p>
                             <span style="margin:0;padding:0;color:blue;font-size:smaller">
@@ -26,12 +24,8 @@ import { StockService } from "../../../stock/stock.service";
 })
 export class StockSelectComponent {
 
-    @Input() item:any;
-    @Input() itemsSelected: any[] = [];
     @Output() stockSelected = new EventEmitter();
 
-    stock:any;
-    items:any = [];
     selectedStock: any;
     filteredStock: any[] = [];
     searchable:any[] = []
@@ -49,9 +43,7 @@ export class StockSelectComponent {
     }
 
     selected(stockitem:any){
-        if(stockitem.available > 0) {
-            this.stockSelected.emit(stockitem);
-        }
+        this.stockSelected.emit(stockitem);
     }
 
     isPropMatch(props:any,query:string){
@@ -71,7 +63,7 @@ export class StockSelectComponent {
 
     filterStock(event:any) {
         let filtered : any[] = [];
-        this.stockService.filterByCriteria(event.query).subscribe((data:any) => {
+        this.stockService.filterByCriteria(event.query,25).subscribe((data:any) => {
             filtered = data;
            this.filteredStock = filtered;         
         });        

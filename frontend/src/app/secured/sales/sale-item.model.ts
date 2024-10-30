@@ -4,6 +4,7 @@ export interface SaleItem {
     sale?:any,
     title?:string,
     props?:any,
+    productid?:number,
     purchaseitemid?:string,
     purchaseitem?:any,
     batch?:string,
