@@ -15,7 +15,7 @@
         <tr *ngFor="let item of items">
             <td>
                 <span *ngIf="item.edited">
-                <a (click)="removeItem(item.id)">
+                <a (click)="removeItem(item.itemid)">
                 <i class="bi bi-trash text-danger"></i>
                 </a>
             </span>

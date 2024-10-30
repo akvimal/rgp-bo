@@ -22,13 +22,11 @@ export class SaleFormComponent {
     salePropValues:any;
 
     total:number = 0;
-    customers:any = []
-    // offer:{code?:string,amount?:number} = {};
+    customers:any = [];
 
     filteredCustomers: any[] = [];
     
     saleWithCustomer:boolean = true;
-    allowCustomerSelect:boolean = false;
 
     newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false}
 
@@ -61,11 +59,11 @@ export class SaleFormComponent {
       }
 
     ngOnInit(){
-      
+      this.sale.billdate = new Date();
+
       const saleId = this.route.snapshot.paramMap.get('id'); 
       if(saleId){
         this.service.find(saleId).subscribe((result:any) => {
-
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
               return {...element, edited:true, title: element.product_title, 
@@ -76,28 +74,14 @@ export class SaleFormComponent {
               itemid: element.purchase_itemid}
             });;
             this.sale = result;
-            this.recalculateTotal(undefined);
+            this.recalculateTotal();
           });
-          });
-      }
-      else {
-        this.allowCustomerSelect = true;
-        this.sale.billdate = new Date();
+        });
       } 
-       
     }
 
     resetCustomer(){
       this.sale.customer = null;
-    }
-
-    isNewCustomer() {
-      if(this.sale.customer && 
-        (this.sale.customer.name && this.sale.customer.name !== '') && 
-        (this.sale.customer.mobile && this.sale.customer.mobile !== '')){
-        return false;
-      }
-      return true;
     }
 
     customerInfoCaptured(){
@@ -125,29 +109,19 @@ export class SaleFormComponent {
       }
     }
 
-    showChangeCustomer(mode:string){
-      this.customerEditOnly = true;
-      this.displayNewCustomer = true;
-    }
-
-    calculateTotal(qty:number,price:number,tax:number) {
-      const total = qty * (price * (1 + (tax / 100)));
-      return isNaN(total) ? 0 : +total.toFixed(2);
-    }
-
     onItemAdd(item:any){
       this.sale.items?.push(item);
-      this.recalculateTotal(undefined);
+      this.recalculateTotal();
     }
 
     onItemUpdate(item:any){
       this.sale.items?.forEach(element => {
         element = item;
       });
-      this.recalculateTotal(undefined);
+      this.recalculateTotal();
     }
 
-    recalculateTotal(offer:any){
+    recalculateTotal(){
       this.total = 0;
       let mrptotal = 0;
       // this.sale.items?.filter((i:any) => i.edited)
@@ -192,9 +166,9 @@ export class SaleFormComponent {
 
   onItemRemoved(id:any){
     if(this.sale.items) {
-      this.sale.items = [...this.sale.items].filter((i:any) => i.id !== id)
+      this.sale.items = [...this.sale.items].filter((i:any) => i.itemid !== id)
     }
-    this.recalculateTotal(undefined);
+    this.recalculateTotal();
   }
 
   doesProductContains(items:any, prop:string, value:any){
@@ -203,7 +177,6 @@ export class SaleFormComponent {
   }
 
   saveCustomer(){
-    // this.saleWithNoCustomer = false;
     this.submit(this.sale.status);
   }
 
@@ -304,24 +277,15 @@ export class SaleFormComponent {
     this.router.navigateByUrl(`/secure/sales`); 
   }
 
-  // noCustomerSale() {
-    
-  //   this.saleWithNoCustomerAllowed = true;
-  //     this.submit('COMPLETE');
-    
-    
-  //   this.displayNewCustomer = false;
-  // }
-
   showPrevSalesCopy() {
 
     // this is to pre select the sale items are already in cart
-    const addedItemsToSale = this.sale.items?.map((i:any) => i.itemid)
+    // const addedItemsToSale = this.sale.items?.map((i:any) => i.itemid)
     
     this.fetchCustomerPrevSales && this.service.getSalesByCustomer(this.sale.customer.id).subscribe((prevSale:any) => {
       if(prevSale.length > 0) {
-        // if(!prevSale.status) {
-          this.prevCustSales = [];
+        
+        this.prevCustSales = [];
 
         prevSale.forEach((ps:any) => {
           const items = ps.items.map((i:any) => {
@@ -340,20 +304,8 @@ export class SaleFormComponent {
               id:i.id,
               itemid:i.itemid,
               productid: i.purchaseitem.product.id,
-              // taxpcnt: i.purchaseitem.taxpcnt,
-              // price: (i.purchaseitem.saleprice/i.purchaseitem.product.pack),
-              // selected:addedItemsToSale?.includes(i.purchaseitem.id),
-              // maxqty:i.maxqty,
               qty:i.qty,
-              // pack:i.purchaseitem.product.pack,
-              // box,
-              // boxbal,
-              // balqty,
-              // mrpcost:i.purchaseitem.mrpcost,
-              title:i.purchaseitem.product.title,
-              // more_props:i.purchaseitem.product.props,
-              // batch:i.purchaseitem.batch,
-              // expdate:i.purchaseitem.expdate
+              title:i.purchaseitem.product.title
             };
           });
 
@@ -409,44 +361,15 @@ export class SaleFormComponent {
      this.stockService.findByProducts(prodids).subscribe((items:any) => {
       
       items.forEach((selected:any) => {
-        // const item = {};
-        // const price = ((selected.sale_price || selected.mrp)/selected.product_pack).toFixed(2)
-        // const total = (+price * selected.product_pack).toFixed(2);
-        
-        // arr.push({
-          
-        //   itemid: selected.purchase_itemid,
-        //   productid: selected.product_id,
-        //   title : selected.product_title,
-        //   batch : selected.product_batch,
-        //   expdate : selected.product_expdate,
-        //   qty : selected.product_pack, //default qty to pack
-        //   maxqty : selected.available,
-        //   pack : selected.product_pack,
-        //   mrpcost : (selected.mrp/selected.product_pack).toFixed(2),
-        //   price,
-        //   taxpcnt : selected.product_taxpcnt,
-        //   // more_props = event.more_props;
-        //   unitsbal: selected.available - selected.product_pack,
-        //   total,
-
-    
-        //   edited: true
-        // });  
         arr.push({...this.helper.mapStockToSaleItem(selected,true)});
       });
 
-// this.recalculateTotal(undefined);
-      
+      this.recalculateTotal();
      })
-//      console.log('product ids ...');
-     
-// console.log(prodids);
+
 
     //get the stock of products selected and update items
     this.sale.items = arr;
-
-    // this.addNewItem();
     this.displayPrevSalesCopy = false;
   }
 

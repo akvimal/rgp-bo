@@ -25,7 +25,7 @@ export class SaleController {
       async create(@Body() createSaleDto: CreateSaleDto, @User() currentUser: any) {
           
           if(createSaleDto.id ){
-            await this.saleService.removeItems(createSaleDto);
+            await this.saleService.removeItems(createSaleDto.id);
           }
           
             let customer = createSaleDto.customer;
@@ -38,6 +38,9 @@ export class SaleController {
 
       @Put()
       async update(@Body() updateSaleDto: UpdateSaleDto, @User() currentUser: any) {
+        if(updateSaleDto.id ){
+          await this.saleService.removeItems(updateSaleDto.id);
+        }
         let customer = updateSaleDto.customer;
         if(customer){ //if customer not present before
           customer = await this.custService.save(updateSaleDto.customer);

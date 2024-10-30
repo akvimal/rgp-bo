@@ -17,16 +17,14 @@ export class SaleService {
     async create(sale:any,userid:any) {
         
         const nos = await this.manager.query(`select generate_order_number() as order_no, generate_bill_number() as bill_no`);
-        console.log('order and bill no');
-        
-        console.log(nos);
-        sale['orderno'] = nos[0]['order_no']
-        sale['billno'] = nos[0]['bill_no']
+      
+        sale['orderno'] = nos[0]['order_no'];
+        sale['billno'] = nos[0]['bill_no'];
         
         return this.saleRepository.save({...sale, createdby:userid}).then(data => {
             data.items.forEach(i => {
                 i.saleid = data.id;
-            })
+            });
             return this.saleItemRepository.save(data.items).then(d => {
                 return new Promise(async (resolve,reject)=>{
                     const sale = await this.findById(data.id);
@@ -39,6 +37,9 @@ export class SaleService {
     async updateSale(sale:any,userid:any) {
         
         return this.saleRepository.save({...sale, updatedby:userid}).then(result => {
+            result.items.forEach(i => {
+                i.saleid = result.id;
+            })
             return this.saleItemRepository.save(sale.items).then(itemsResult => {
                 return new Promise(async (resolve,reject)=>{
                     const sale = await this.findById(result.id);
@@ -48,8 +49,8 @@ export class SaleService {
         });
     }
 
-    async removeItems(createSaleDto:CreateSaleDto){
-        return await this.saleItemRepository.delete({saleid:createSaleDto.id});
+    async removeItems(saleid){
+        return await this.saleItemRepository.delete({saleid});
     } 
   
     async createItem(createSaleItemDto: CreateSaleItemDto, userid:any) {
