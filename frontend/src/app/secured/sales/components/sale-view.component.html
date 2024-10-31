@@ -41,11 +41,11 @@
                     <p style="margin:0;padding:0;font-style:italic" *ngIf="i.props?.composition">{{i.props?.composition}}</p>
                 </td>
                 <td style="vertical-align: text-top; text-align: right;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
-                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.mrp}}</td>
+                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.mrp | number : '1.2-2'}}</td>
                 <td style="vertical-align: text-top; text-align: right;width:6%">{{i.qty}}</td>
-                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.price}}</td>
+                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.price | number : '1.2-2'}}</td>
                 <!-- <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td> -->
-                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.total}}</td>
+                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.total | number : '1.2-2'}}</td>
             </tr>
             <tr>
                 

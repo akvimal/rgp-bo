@@ -13,7 +13,9 @@ import { StockService } from "../../../stock/stock.service";
                     <ng-template let-stock pTemplate="item">
                         <div [ngStyle]="{maxWidth:'600px',backgroundColor:stock.available < 1?'#ffc0c0':'inherit'}">
                             <h6 style="margin:0;padding:0;font-weight:bold">{{stock.product_title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||stock.mrp}})</h6>
-                            <p style="margin:0;padding:0;color:#999;font-style: italic;">Composition</p>
+                            <p style="margin:0;padding:0;color:#999;font-style: italic;">
+                            {{stock['more_props'] ? stock['more_props']['composition'] : ''}}
+                            </p>
                             <span style="margin:0;padding:0;color:blue;font-size:smaller">
                                 {{stock.product_batch}} / {{stock.product_expdate|date:'MMM-yy'}} ({{stock.available}})
                             </span>

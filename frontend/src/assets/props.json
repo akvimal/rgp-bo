@@ -1,73 +1,11 @@
 [{
-  "category": "Drug",
+  "category": "Prescription (Rx)",
   "props":[
     {
       "id": "composition",
       "label": "Composition",
       "searchable": true
     },
-    {
-      "id": "chronic",
-      "label": "Chronic",
-      "type": "CHECK"
-    },
-    {
-      "id": "formulation",
-      "label": "Formulation",
-      "type": "SINGLE-SELECT",
-      "choices": [
-        {
-          "label": "Tablet",
-          "value": "TAB"
-        },
-        {
-          "label": "Capsule",
-          "value": "CAP"
-        },
-        {
-          "label": "Syrup",
-          "value": "SYP"
-        },
-        {
-          "label": "Cream",
-          "value": "CRM"
-        },
-        {
-          "label": "Spray",
-          "value": "SRY"
-        },
-        {
-          "label": "Drops",
-          "value": "DROP"
-        },
-        {
-          "label": "Sachet",
-          "value": "SCT"
-        },
-        {
-          "label": "Injection",
-          "value": "INJ"
-        },
-        {
-          "label": "Powder",
-          "value": "PDR"
-        }
-      ]
-    },{
-      "id": "conditions",
-      "label": "Condition",
-      "type": "MULTI-SELECT",
-      "searchable": true,
-      "choices": [
-        {
-          "name": "Fever",
-          "code": "Fever"
-        },
-        {
-          "name": "Cold",
-          "code": "Cold"
-        }]
-      },
     {
       "id": "schedule",
       "label": "Schedule",
@@ -86,36 +24,6 @@
         {
           "label": "X",
           "value": "X"
-        },
-        {
-          "label": "H1 Anti TB",
-          "value": "H1 Anti TB"
-        }
-      ]
-    }
-  ]
-},{
-  "category": "Surgicals",
-  "props":[
-    {
-      "id": "category",
-      "label": "Sub Category",
-      "type": "SINGLE-SELECT",
-      "choices": [
-        {
-          "label": "Syringe",
-          "value": "SNG"
-        },
-        {
-          "label": "Masks",
-          "value": "MSK"
-        }, {
-          "label": "Gloves",
-          "value": "GLV"
-        },
-        {
-          "label": "Others",
-          "value": "OTR"
         }
       ]
     }
@@ -124,34 +32,31 @@
   "category": "OTC",
   "props":[
     {
-      "id": "category",
-      "label": "Sub Category",
-      "type": "SINGLE-SELECT",
+      "id": "conditions",
+      "label": "Condition",
+      "type": "MULTI-SELECT",
+      "searchable": true,
       "choices": [
         {
-          "label": "Soap",
-          "value": "SOP"
+          "name": "Skin Care",
+          "code": "SkinCare"
         },{
-          "label": "Cream",
-          "value": "CRM"
+          "name": "Oral Care",
+          "code": "OralCare"
+        },{
+          "name": "Eye Care",
+          "code": "EyeCare"
+        },{
+          "name": "Supplement",
+          "code": "Supplement"
+        },{
+          "name": "Fever",
+          "code": "Fever"
         },
         {
-          "label": "Diapers",
-          "value": "DPR"
-        },
-        {
-          "label": "Monitoring",
-          "value": "MNR"
-        },
-        {
-          "label": "Oil",
-          "value": "OIL"
-        },
-        {
-          "label": "Others",
-          "value": "OTR"
-        }
-      ]
-    }
+          "name": "Cold",
+          "code": "Cold"
+        }]
+      }
   ]
 }]

@@ -36,7 +36,7 @@ export class SaleViewComponent {
             this.itemsTotal += +i.total;
             return {
               title: i.product.title,
-              props: i.props,
+              props: i.product.props,
               batch: i.batch,
               expdate: i.expdate,
               qty: i.qty,

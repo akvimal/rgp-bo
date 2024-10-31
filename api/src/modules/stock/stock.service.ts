@@ -24,7 +24,7 @@ export class StockService {
             return await this.manager.query(`
             select iv.*, sale_price, market_price 
             from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
-            where available > 0 and product_expdate > current_timestamp and product_title ilike '%${query.query}%' order by product_title, product_expdate ${query.limit > 0 ? 'limit '+query.limit : ''}`);
+            where available > 0 and product_expdate > current_timestamp and (product_title ilike '%${query.query}%' or more_props->>'composition' ilike '%${query.query}%') order by product_title, product_expdate ${query.limit > 0 ? 'limit '+query.limit : ''}`);
         }
 
         async findByItems(ids:number[]){

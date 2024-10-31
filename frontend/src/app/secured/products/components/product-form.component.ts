@@ -124,9 +124,9 @@ export class ProductFormComponent {
           pack:this.form.value.pack, 
           category:this.form.value.category, 
           mfr:this.form.value.mfr.trim(), 
-          brand:this.form.value.brand.trim(), 
+          brand:this.form.value.brand?.trim(), 
           props: this.form.value.props, 
-          description: this.form.value.description.trim() }
+          description: this.form.value.description?.trim() }
   
         const id = this.form.value.id;
         if(id) {
