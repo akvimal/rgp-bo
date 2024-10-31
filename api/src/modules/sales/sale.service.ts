@@ -197,6 +197,7 @@ export class SaleService {
 	          .leftJoinAndSelect("purchaseitem.product", "product")
 	            .select(['sale','customer','items','purchaseitem','product'])
           .where(`sale.status = 'COMPLETE' and items.status = 'Complete' and sale.id in (${ids.join(',')})`)
+          .orderBy(`sale.billdate`,'DESC')
           .getMany();
     }
 

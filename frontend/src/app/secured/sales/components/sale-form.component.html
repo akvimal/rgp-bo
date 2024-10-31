@@ -1,44 +1,45 @@
 <app-sale-header></app-sale-header>
-<div class="container">
+<div class="container m-0">
     <div class="row">
         <div class="col-12">
             <table class="table mt-4">    
                 <tr>
                     <!-- Customer Info -->
                     <td>
-                        <app-customer-select 
+                        <app-customer-select *ngIf="sale.customer == undefined || !(sale.customer?.mobile !== ''); else showCustomer"
                                 (customerSelected)="selectCustomer($event,true)"
                                 (focusLeave)="doneEnterCustomer($event)">
-                                </app-customer-select>
-                        <div *ngIf="sale.customer?.mobile !== null">
-                            Mobile: {{sale.customer?.mobile}}
-                            Name: {{sale.customer?.name}}
-                            Email: {{sale.customer?.email}}
-                            <span class="ml-2">
-                                <a (click)="showPrevSalesCopy()">
-                                    <i class="bi bi-files text-success"></i>
-                                </a>
-                            </span>
-                            <span class="ml-2" *ngIf="sale.status !== 'COMPLETE'">
-                                <a (click)="resetCustomer()">
-                                    <i class="bi bi-x-square text-danger"></i>
-                                </a>
-                            </span>
-                        </div>
+                        </app-customer-select>
+                        <ng-template #showCustomer>
+                            <div><strong>Name:</strong> {{sale.customer?.name}}</div>
+                            <div><strong>Mobile:</strong> {{sale.customer?.mobile}} 
+                                <h5 style="display:inline;margin-left:0.5em">
+                                    <a (click)="showPrevSalesCopy()">
+                                        <i class="bi bi-files text-success"></i>
+                                    </a>
+                                </h5>
+                                <h5 style="display:inline;margin-left:0.5em" *ngIf="sale.status !== 'COMPLETE'">
+                                    <a (click)="resetCustomer()">
+                                        <i class="bi bi-x-square text-danger"></i>
+                                    </a>
+                                </h5>
+                            </div>
+                        </ng-template>
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
-                        <div>Date: {{this.sale.billdate | date: 'dd-MMM hh:mm a'}}</div>
-                        <div *ngIf="sale.status !== 'NEW'">No: {{this.sale.billno}} ({{this.sale.status}})</div>
+                        <div><strong>Bill Date:</strong>&nbsp;{{this.sale.billdate | date: 'dd-MM-yy'}}</div>
+                        <div *ngIf="sale.status !== 'NEW'"><strong>Bill No:</strong>&nbsp;{{this.sale.billno}} ({{this.sale.status}})</div>
                     </td>
                 </tr>
                 <!-- Sale Items -->
-                <tr><td colspan="2">
-                    <app-sale-form-items [items]="sale.items" 
-                    (itemRemoved)="onItemRemoved($event)"
-                    (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
-                </app-sale-form-items>
-                </td>
+                <tr>
+                    <td colspan="2" class="m-0 p-0">
+                        <app-sale-form-items [items]="sale.items" 
+                            (itemRemoved)="onItemRemoved($event)"
+                            (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
+                        </app-sale-form-items>
+                    </td>
                 </tr>
                 <!-- <tr>
                     <td colspan="2">
@@ -56,46 +57,30 @@
                     </td>
                 </tr> -->
                 <!-- Total -->
-                <tr *ngIf="sale.items && sale.items.length > 0">
+                <tr *ngIf="sale.items && sale.items.length > 0" style="background-color:#eee">
                     <td colspan="2">
-                    <table class="table">
-                        <tr>
-                            <th>Items</th>
-                            <th>Credit</th>
-                            <th>Payment</th>
-                            <th>Total</th>
-                        </tr>
-                        <tr>
-                            <td>{{sale.totalitems}}</td>
-                            <td></td>
-                            <td>
-                                <select name="digitype" id="digitype">
-                                    <option value="PayTm">PayTM</option>
-                                    <option value="UPI">UPI</option>
-                                </select>
-                                <input type="text" name="digiref">
-                                <input type="text" name="cash">
-                            </td>
-                            <td>
-                                <table class="table table-bordered m-0 p-0">
-                                    <tr>
-                                      <th>Saving</th>
-                                      <th colspan="2">Total</th>
-                                    </tr>
-                                    <tr>
-                                      <td rowspan="2">{{sale.saving}}%</td>
-                                      <td>MRP: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal}}</td>
-                                      <td rowspan="2"><i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total}}</td>
-                                    </tr>
-                                    <tr>
-                                      <td>Tax: $80</td>
-                                    </tr>
-                                  </table>
-                                
-                            </td>
-                        </tr>
-                    </table>
-                </td>
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-4">
+                                    <strong>{{sale.totalitems}}</strong> items
+                                </div>
+                                <div class="col-2 text-end">
+                                    Saving: {{sale.saving}}%
+                                </div>
+                                <div class="col-2 text-end">
+                                    MRP Total:<i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal}}
+                                </div>
+                                <div class="col-2 text-end">
+                                    Tax Total:
+                                </div>
+                                <div class="col-2 text-end">
+                                    <h5>
+                                    Net Total:<i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total}}
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
                 </tr>
             </table>
         </div>
@@ -147,18 +132,20 @@
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
         [(visible)]="displayPrevSalesCopy" [modal]="true">
     <div *ngFor="let s of prevCustSales; index as i">
-        {{s.billdate | date : 'dd-MMM'}} | <i class="bi bi-currency-rupee" style="padding:0"></i>{{s.total}}
             <ul class="list-group mt-2">
-                <li class="list-group-item"><input type="checkbox" (change)="toggleAll(i,$event)">
-                    <span class="p-2 text-primary">All</span>
+                <li class="list-group-item" style="background-color: #9cf;">
+                    <input type="checkbox" (change)="toggleAll(i,$event)">
+                    <span class="text-primary fs-6 pl-2">&nbsp;&nbsp;{{s.billdate | date : 'dd-MMM-yy'}}</span>
                 </li>
                 <li class="list-group-item" *ngFor="let i of s.items">
                     <input type="checkbox" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
                     <span class="p-2">{{i.title}} ({{i.qty}})</span></li>
             </ul>
     </div>
+    <div class="mt-2">
     <button type="button" class="btn btn-primary mt-2 text-center"
             (click)="copySelectedItem()">Copy</button>
+        </div>
 </p-dialog>
 
 <!-- Customer Info form (shown if no customer already selected)-->
@@ -219,7 +206,7 @@
             <div class="col-lg-12">
                 <!-- <button class="btn btn-primary m-2 text-center" 
                 (click)="saveCustomerInfo('PENDING')">Save</button> -->
-                <button *ngIf="!customerEditOnly" class="btn btn-primary m-2 text-center" 
+                <button class="btn btn-primary m-2 text-center" 
                 (click)="saveCustomer()">Save</button>
                 <button class="btn btn-outline-secondary m-2"
                 (click)="cancelCustomer()">Continue</button>

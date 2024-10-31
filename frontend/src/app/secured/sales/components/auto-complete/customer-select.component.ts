@@ -6,7 +6,7 @@ import { CustomersService } from "../../../customers/customers.service";
     template: `
     <p-autoComplete [(ngModel)]="customer" [showEmptyMessage]="true" 
                 (onSelect)="selected($event)"
-                field="mobile" placeholder="Mobile"
+                field="''" placeholder="Mobile"
                 [disabled]="disabled"
                 [maxlength]="10"
                 [suggestions]="filteredCustomer" 

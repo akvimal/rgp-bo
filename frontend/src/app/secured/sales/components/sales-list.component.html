@@ -43,8 +43,8 @@
     [rowsPerPageOptions]="[10,25,50]">
     <ng-template pTemplate="header">
         <tr>
-          <th>ID</th>
-          <th pSortableColumn="billno">Bill No.
+          <!-- <th>Order #</th> -->
+          <th pSortableColumn="billno">Bill #
             <p-columnFilter type="text" field="billno" display="menu"></p-columnFilter>
             <p-sortIcon field="billno"></p-sortIcon>
           </th>
@@ -77,9 +77,9 @@
         <ng-template pTemplate="body" let-s>
           <tr>
             <!-- <td>{{s.orderno}}</td> -->
-            <td>
-              <a [routerLink]="['../edit',s.id]">{{s.id}}</a>
-            </td>
+            <!-- <td>
+              <a>{{s.orderno}}</a>
+            </td> -->
             <td>
               <a>{{s.billno}}</a>
             </td>
@@ -91,9 +91,15 @@
             <td>{{s.status}}</td>
             <td style="text-align: right;">{{s.total | number:'0.0-9'}}</td>
             <td>
-              <a *ngIf="isActionAllowed('Print',s)" [routerLink]="['../view',s.id]">Print</a> |
-              <a *ngIf="isActionAllowed('Edit',s)" [routerLink]="['../edit',s.id]">Edit</a> | 
-              <a *ngIf="isActionAllowed('Return',s)" [routerLink]="['../edit',s.id]">Return</a> | 
+              <h5 *ngIf="isActionAllowed('Print',s)" style="float:left; margin-right: 0.3em;">
+                <a [routerLink]="['../view',s.id]"><i class="bi bi-eye"></i></a>
+              </h5>
+              <h5 *ngIf="isActionAllowed('Edit',s)" style="float:left; margin-right: 0.3em;">
+                <a [routerLink]="['../edit',s.id]"><i class="bi bi-pencil"></i></a>
+              </h5>
+              <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
+              <a [routerLink]="['../edit',s.id]"><i class="bi bi-arrow-return-left"></i></a>
+            </h5>
               <!-- <a *ngIf="isActionAllowed('Cancel',s)" [routerLink]="['../edit',s.id]">Cancel</a> -->
             </td>
           </tr>  

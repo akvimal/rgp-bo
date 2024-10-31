@@ -18,14 +18,12 @@ export class SaleFormComponent {
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
     displayNewCustomer:boolean = false;
-    customerEditOnly:boolean = false;
+    
     salePropValues:any;
 
     total:number = 0;
-    customers:any = [];
-
-    filteredCustomers: any[] = [];
     
+    inputCustomer:boolean = true;
     saleWithCustomer:boolean = true;
 
     newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false}
@@ -60,7 +58,7 @@ export class SaleFormComponent {
 
     ngOnInit(){
       this.sale.billdate = new Date();
-
+      
       const saleId = this.route.snapshot.paramMap.get('id'); 
       if(saleId){
         this.service.find(saleId).subscribe((result:any) => {
@@ -74,14 +72,18 @@ export class SaleFormComponent {
               itemid: element.purchase_itemid}
             });;
             this.sale = result;
+           
             this.recalculateTotal();
           });
         });
       } 
+      
+      
     }
 
     resetCustomer(){
       this.sale.customer = null;
+      this.inputCustomer = true;
     }
 
     customerInfoCaptured(){
@@ -90,24 +92,24 @@ export class SaleFormComponent {
       (this.sale.customer.mobile && this.sale.customer.mobile !== '');
     }
 
-    populateSalePropsForm(type:any,values:any){
-      const typeConfig = this.salePropSchema.find((d:any) => d.category === type);
-      if(typeConfig && typeConfig.props){
-        let pps = {};
-        const props = typeConfig.props;
-        this.saleprops = props;
-        for(let i=0;i<props.length;i++){
-          const pname = props[i].id;
-          const value = values ? values[pname] : props[i].default;
-          const fc = new FormControl(value);
-          if(props[i].required) {
-            fc.setValidators(Validators.required);
-          }
-          pps = {...pps, [pname]:fc}
-        }
-        this.form.setControl('props', new FormGroup(pps));
-      }
-    }
+    // populateSalePropsForm(type:any,values:any){
+    //   const typeConfig = this.salePropSchema.find((d:any) => d.category === type);
+    //   if(typeConfig && typeConfig.props){
+    //     let pps = {};
+    //     const props = typeConfig.props;
+    //     this.saleprops = props;
+    //     for(let i=0;i<props.length;i++){
+    //       const pname = props[i].id;
+    //       const value = values ? values[pname] : props[i].default;
+    //       const fc = new FormControl(value);
+    //       if(props[i].required) {
+    //         fc.setValidators(Validators.required);
+    //       }
+    //       pps = {...pps, [pname]:fc}
+    //     }
+    //     this.form.setControl('props', new FormGroup(pps));
+    //   }
+    // }
 
     onItemAdd(item:any){
       this.sale.items?.push(item);
@@ -150,6 +152,7 @@ export class SaleFormComponent {
         this.sale.customer = {mobile,name:''};
       }
       this.fetchCustomerPrevSales = copySales;
+      this.inputCustomer = false;
     }
   
   doneEnterCustomer(event:any){
@@ -201,16 +204,16 @@ export class SaleFormComponent {
     }
     this.displayNewCustomer = false;
 
-    const validItems = this.sale.items && this.sale.items.filter((i:any) => i.edited && i.qty > 0);
+    // const validItems = this.sale.items && this.sale.items.filter((i:any) => i.edited && i.qty > 0);
     
     // const requireAdditionalProps = validItems?.filter((i:any) => i.more_props.schedule === 'H1');
-    if(status === 'COMPLETE' && !this.salePropValues){
-      if(this.doesProductContains(validItems, 'schedule', 'H1')){
-        this.populateSalePropsForm('H1',null);
-        this.displaySalePropsForm = true;
-        return;
-      }
-    }
+    // if(status === 'COMPLETE' && !this.salePropValues){
+    //   if(this.doesProductContains(validItems, 'schedule', 'H1')){
+    //     this.populateSalePropsForm('H1',null);
+    //     this.displaySalePropsForm = true;
+    //     return;
+    //   }
+    // }
     
     this.sale.items = this.sale.items?.map((item:any) => {
       
@@ -290,16 +293,6 @@ export class SaleFormComponent {
         prevSale.forEach((ps:any) => {
           const items = ps.items.map((i:any) => {
 
-            // const box = Math.trunc(i.qty / i.purchaseitem.product.pack);
-            // const boxbal = i.qty % i.purchaseitem.product.pack;
-            
-            // let totalbalqty = i.maxqty - i.qty;
-            // let balqty = Math.trunc(totalbalqty / i.purchaseitem.product.pack) + '.' + (totalbalqty % i.purchaseitem.product.pack);
-
-            // if(totalbalqty < 0) {
-            //   balqty = '0';
-            // }
-
             return {
               id:i.id,
               itemid:i.itemid,
@@ -347,7 +340,7 @@ export class SaleFormComponent {
   }
 
   copySelectedItem(){
-    const arr:any[] = [];
+    const arr = this.sale.items?.map(i => {return i;});
     //get products selected
     const prodids:number[] = []
      this.prevCustSales.forEach((s:Sale) => {
@@ -361,12 +354,11 @@ export class SaleFormComponent {
      this.stockService.findByProducts(prodids).subscribe((items:any) => {
       
       items.forEach((selected:any) => {
-        arr.push({...this.helper.mapStockToSaleItem(selected,true)});
+        arr?.push({...this.helper.mapStockToSaleItem(selected,true)});
       });
 
       this.recalculateTotal();
-     })
-
+     });
 
     //get the stock of products selected and update items
     this.sale.items = arr;
