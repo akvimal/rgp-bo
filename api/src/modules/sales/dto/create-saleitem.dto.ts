@@ -17,8 +17,8 @@ export class CreateSaleItemDto {
   
     @ApiProperty({ description: 'quantity', example: 0 })
     readonly qty: number;
-    @ApiProperty({ description: 'pack', example: 0 })
-    readonly pack: number;
+    // @ApiProperty({ description: 'pack', example: 0 })
+    // readonly pack: number;
 
     @ApiProperty({ description: 'status', example: '' })
     readonly status: string;

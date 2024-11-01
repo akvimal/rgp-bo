@@ -7,9 +7,9 @@
                     <td colspan="2" style="text-align: center;">
                         <h6 style="font-size: larger;font-weight: bolder;">Ramesh Generic Pharmacy</h6>
                         <div>
-                        <p style="margin: 0;">DL#: TN/Z04/21/00446, TN/Z04/20/00446</p>
-                        <p>15A 36th Street, Thillai Ganga Nagar, Nanganallur, Chennai - 600061<br>
-                            Call: (044) 4769 3960 | 88593 35933</p>
+                        <p style="margin: 0;">DL#: TN-Z04-20-00009, TN-Z04-21-00009 | GSTIN: 33AOBPV6363C2Z0</p>
+                        <p>No. 1/256, 4th Street, Kalamegam Salai, Mogappair West, Chennai - 600037<br>
+                            Phone: 72990 72725 | 88593 35933</p>
                         </div>
                     </td>
                 </tr>
@@ -51,20 +51,21 @@
                 
                 <!-- <td>{{sale.total?.tax}}</td> -->
                 <td colspan="1" class="text-align:left">
-                    <div class="m-0 p-0" *ngIf="saving > 0">
-                    <span style="margin:0;padding:0">MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
-                    <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
-                    <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue">
-                        Discount({{sale.disccode}}):<i class="bi bi-currency-rupee" style="padding:0"></i> {{sale.discamount}}</span>
-                    <span style="color: green;font-weight: bolder;">
-                        <label for="saving" class="ml-4">&nbsp;&nbsp;Saving:</label>
-                        {{saving|number :'1.0-0'}}%</span>
-                </div>
+                    {{itemsCount}} items
                 </td>
-                <td colspan="3" style="text-align:right">No. of items: {{itemsCount}}</td>
-                
+                <td colspan="3" style="text-align:right">
+                    <div class="m-0 p-0" *ngIf="saving > 0">
+                        <span style="margin:0;padding:0">MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
+                        <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
+                        <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue">
+                            Discount({{sale.disccode}}):<i class="bi bi-currency-rupee" style="padding:0"></i> {{sale.discamount}}</span>
+                        <span style="color: green;font-weight: bolder;">
+                            <label for="saving" class="ml-4">&nbsp; Discount:</label>
+                            {{saving|number :'1.0-0'}}%</span>
+                    </div>
+                </td>
                 <td colspan="2" style="text-align: right;">
-                    <label>Total {{itemsTotal != finalAmt ? '(rounded)' : ''}}: </label>
+                    <label>Net Total {{itemsTotal != finalAmt ? '(rounded)' : ''}}: </label>
                     <i class="bi bi-currency-rupee" style="padding:0"></i>
                         <!-- {{itemsTotal| number : '1.1-2'}} -->
                         {{finalAmt}} 

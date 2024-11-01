@@ -9,7 +9,7 @@ import { SaleService } from "../sales.service";
 export class SalesListComponent {
     
     sales:Sale[] = [];
-    criteria = {date:'',seller:'',status:'',customer:''}
+    criteria = {billno:'',date:'',seller:'',status:'',customer:''}
 
     openH1DrugsTab = false;
     constructor(private service:SaleService, private dateService:DateUtilService){}
@@ -22,10 +22,14 @@ export class SalesListComponent {
     openH1Drugs(event:any){
       this.openH1DrugsTab = true;
     }
+
     fetchSales(){
         this.service.findAll(this.criteria).subscribe((data:any) => {
-          console.log(data);
           
+          data.forEach((sale:any) => {
+            //round the decimals of total
+            sale['total'] = Math.round(sale['total'])
+          });
           this.sales = data;
         });
     }
@@ -37,11 +41,10 @@ export class SalesListComponent {
       }
 
       clearFilter(){
+        this.criteria.billno = ''
         this.criteria.date = ''
         this.criteria.customer = ''
         this.criteria.status = ''
-        
-        this.fetchSales();
       }
 
       isActionAllowed(action:string,sale:any){
@@ -50,11 +53,11 @@ export class SalesListComponent {
         if(action === 'Print' && sale.status === 'COMPLETE'){
           allowed = true;
         }
-        else if(action === 'Edit' && (sale.status === 'PENDING' || this.dateService.isSameDay(sale.createdon))){
+        else if(action === 'Edit' && (sale.status === 'PENDING' || this.dateService.isSameDay(sale.billdate))){
           allowed = true;
         }
         else if(action === 'Return' 
-        && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.createdon))
+        && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.billdate))
         ){ // return allowed for sale completed within specified period
           allowed = true;
         }

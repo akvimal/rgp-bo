@@ -9,12 +9,17 @@
   <p-tabView>
     <p-tabPanel header="Invoice Level" headerStyleClass="no-print">
     <div class="row mt-3 no-print">
-      <div class="row">
+    
         
+      <div class="col-md-2">
+        <label for="billno">Bill No</label>
+        <input type="text" id="billno" name="filterbybillno" class="form-control" 
+              [(ngModel)]="criteria.billno">
+      </div>
       <div class="col-md-2">
         <label for="fromdate">Date</label>
         <input type="date" id="fromdate" name="filterbydate" class="form-control" 
-              [(ngModel)]="criteria.date" (input)="fetchSales()">
+              [(ngModel)]="criteria.date">
       </div>
       <div class="col-md-3">
         <label for="sustomer">Customer</label><br>
@@ -29,13 +34,15 @@
         </select>
       </div> -->
       <div class="col-md-2">
-        <label>&nbsp;</label><br>
-        <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
+        <BR>
+          <button type="button" class="btn btn-primary" (click)="fetchSales()">Search</button>
+          &nbsp;&nbsp;<button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
       </div>
+      <!-- </div> -->
     </div>
     <!-- <table class="table table-bordered mt-4">
       <thead> -->
-      
+      <div class="row">
       <div class="col-12">
   <p-table #dt1 [value]="sales" [resizableColumns]="true" columnResizeMode="expand" 
     [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
@@ -89,7 +96,7 @@
             <td>{{s.customer ? s.customer.mobile : ''}}</td>
             <!-- <td>{{s.created ? s.created.fullname : ''}}</td> -->
             <td>{{s.status}}</td>
-            <td style="text-align: right;">{{s.total | number:'0.0-9'}}</td>
+            <td style="text-align: right;">{{s.total}}</td>
             <td>
               <h5 *ngIf="isActionAllowed('Print',s)" style="float:left; margin-right: 0.3em;">
                 <a [routerLink]="['../view',s.id]"><i class="bi bi-eye"></i></a>

@@ -44,8 +44,8 @@ export class SaleItem extends BaseEntity {
   
   @Column("integer", { name: "qty" })
   qty: number;
-  @Column("integer", { name: "pack" })
-  pack: number;
+  // @Column("integer", { name: "pack" })
+  // pack: number;
   
   @Column("double precision", { name: "total", precision: 53 })
   total: number;

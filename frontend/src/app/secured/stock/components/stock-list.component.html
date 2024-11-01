@@ -8,9 +8,9 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="purchase_invoiceid">Invoice
-                            <p-columnFilter type="text" field="purchase_invoiceid" display="menu"></p-columnFilter>
-                            <p-sortIcon field="purchase_invoiceid"></p-sortIcon>
+                        <th pSortableColumn="invoice_no">Invoice
+                            <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
+                            <p-sortIcon field="invoice_no"></p-sortIcon>
                         </th>
                         <th pSortableColumn="product_title">Product
                             <p-columnFilter type="text" field="product_title" display="menu"></p-columnFilter>
@@ -49,11 +49,10 @@
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
                     <tr>
-                        <td><a [routerLink]="['/secure/purchases/items',i.purchase_invoiceid]">{{i.purchase_invoiceid}}</a></td>
+                        <td><a [routerLink]="['/secure/purchases/items',i.purchase_invoiceid]">{{i.invoice_no}}</a></td>
                         <td>
                             <p class="m-0">{{i.product_title}}</p>
                             <span class="batch">{{i.product_batch}}/{{i.product_expdate | date :'MMM-yy'}}</span>
-                            
                         </td>
                         <td>{{i.product_batch}}/{{i.product_expdate | date :'MMM-yy'}}</td>
                         <td class="text-end">{{i.purchased}}</td>

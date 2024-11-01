@@ -48,9 +48,9 @@
         <!-- <thead> -->
           <ng-template pTemplate="header">
           <tr>
-            <th pSortableColumn="sale.id" class="billno">No.
-              <p-columnFilter type="text" field="sale.id" display="menu"></p-columnFilter>
-              <p-sortIcon field="sale.id"></p-sortIcon>
+            <th pSortableColumn="sale.billno" class="billno">Bill No.
+              <p-columnFilter type="text" field="sale.billno" display="menu"></p-columnFilter>
+              <p-sortIcon field="sale.billno"></p-sortIcon>
             </th>
             <th pSortableColumn="sale.billdate" class="billdt">Date
               <p-columnFilter type="date" field="sale.billdate" display="menu"></p-columnFilter>
@@ -76,7 +76,7 @@
             <!-- <tr *ngFor="let item of items"> -->
               <tr>
                 <td>
-                  <a [routerLink]="['../view',item.sale.id]">{{item.sale.id}}</a>
+                  <a [routerLink]="['../view',item.sale.id]">{{item.sale.billno}}</a>
                 </td>
                 <td>{{item.sale.billdate | date :'dd/MM/yy'}}</td>
                 <td *ngIf="isH1DrugFilter()">{{item.sale.props && item.sale.props['prescdoctor']}}</td>

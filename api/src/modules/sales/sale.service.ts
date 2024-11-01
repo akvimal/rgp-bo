@@ -78,6 +78,9 @@ export class SaleService {
         if(query.date){
             qb.andWhere(`DATE_TRUNC('day', sale.billdate) = :con`, { con:query.date });
         }
+        if(query.billno){
+            qb.andWhere(`sale.bill_no = :billno`, { billno:query.billno });
+        }
         if(query.customer){
             qb.andWhere(`customer.id = :cid`, { cid:query.customer });
         }
