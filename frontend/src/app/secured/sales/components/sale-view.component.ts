@@ -32,7 +32,8 @@ export class SaleViewComponent {
           this.sale.items = data.items.map((i:any) => {
             console.log(i);
             const pack = i.product.pack;
-            this.mrpTotal += +((i.mrpcost/pack) * i.qty);
+            const unitmrp = i.mrpcost/pack;
+            this.mrpTotal += +(unitmrp * i.qty);
             this.itemsTotal += +i.total;
             return {
               title: i.product.title,
@@ -40,7 +41,7 @@ export class SaleViewComponent {
               batch: i.batch,
               expdate: i.expdate,
               qty: i.qty,
-              mrp:i.mrpcost,
+              mrp: unitmrp,
               price:i.price,
               taxpcnt:i.taxpcnt,
               total: i.total

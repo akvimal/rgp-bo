@@ -4,8 +4,8 @@
     <select name="filterbycategory" class="form-control" [(ngModel)]="criteria.category" 
           (change)="fetchFilterProps($event)">
       <option value=""></option>
-      <option value="Drug">Drug</option>
-      <option value="Surgicals">Surgicals</option>
+      <option *ngFor="let p of props" [value]="p.category">{{p.category}}</option>
+      <!-- <option value="Surgicals">Surgicals</option> -->
     </select>
   </div>
   <div class="col-md-2">

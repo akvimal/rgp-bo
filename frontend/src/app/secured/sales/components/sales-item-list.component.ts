@@ -10,7 +10,7 @@ import { saveAs as importedSaveAs } from "file-saver";
 export class SalesItemListComponent {
 
   @Input() category: any;
-  @Input() props: any;
+  props: any;
   items: SaleItem[] = [];
 
   criteria: { category: string, props: any[], product: string, fromdate: string, todate: string }
@@ -21,8 +21,12 @@ export class SalesItemListComponent {
   ngOnInit() {
     if (this.category) {
       this.criteria.category = this.category;
-      this.criteria.props = [...this.props];
+      
     }
+    this.service.getProps().subscribe(result => {
+      console.log(result);
+      this.props = result;
+    });
     // this.fetchSaleItems();
   }
 
