@@ -9,22 +9,26 @@ import { SaleService } from "../sales.service";
 export class SalesListComponent {
     
     sales:Sale[] = [];
-    criteria = {billno:'',date:'',seller:'',status:'',customer:''}
+    // criteria = {billno:'',date:'',self:true,status:'',customer:''}
+    date:string = '';
+    self:boolean = true;
 
     openH1DrugsTab = false;
+
     constructor(private service:SaleService, private dateService:DateUtilService){}
 
     ngOnInit(){
-      this.criteria['date'] = this.dateService.getFormatDate(new Date());
-      this.fetchSales();
+      this.date = this.dateService.getFormatDate(new Date());
+      this.fetchSales({date:this.date,
+        self:this.self});
     }
 
     openH1Drugs(event:any){
       this.openH1DrugsTab = true;
     }
 
-    fetchSales(){
-        this.service.findAll(this.criteria).subscribe((data:any) => {
+    fetchSales(filter:any){
+        this.service.findAll(filter).subscribe((data:any) => {
           
           data.forEach((sale:any) => {
             //round the decimals of total
@@ -34,18 +38,30 @@ export class SalesListComponent {
         });
     }
 
-    selectCustomer(customer:any){
+    filterDateSales(input:any, event:any){
+      if(event === 'date')
+      this.fetchSales({date:input.target.value,self:this.self});
+      else if(event === 'self')
+      this.fetchSales({date:this.date,self:input.target.checked});
+    }
+
+    filterBillSales(input:any){
+      this.fetchSales({billno:input.target.value});
+    }
+
+    filterCustomerSales(customer:any){
         const {id} = customer;
-        this.criteria.customer = id || 0;
-        this.fetchSales();
+        // this.criteria.customer = id || 0;
+        this.fetchSales({customer:id});
       }
 
-      clearFilter(){
-        this.criteria.billno = ''
-        this.criteria.date = ''
-        this.criteria.customer = ''
-        this.criteria.status = ''
-      }
+      // clearFilter(){
+      //   this.criteria.billno = ''
+      //   this.criteria.date = ''
+      //   this.criteria.customer = ''
+      //   this.criteria.status = ''
+      //   this.criteria.self = true
+      // }
 
       isActionAllowed(action:string,sale:any){
       

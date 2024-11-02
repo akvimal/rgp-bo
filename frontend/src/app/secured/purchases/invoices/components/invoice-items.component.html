@@ -32,7 +32,7 @@
                 <!-- <table class="table table-bordered">
                     <thead> -->
                         <tr>
-                            <th></th>
+                            <th *ngIf="invoice.status !== 'COMPLETE'"></th>
                             <th pSortableColumn="product.title">Product
                                 <p-sortIcon field="product.title"></p-sortIcon>
                             </th>
@@ -50,7 +50,7 @@
                             <th>Free</th>
                             <th>Total</th>
                             <th>Status</th>
-                            <th></th>
+                            <th *ngIf="invoice.status !== 'COMPLETE'"></th>
                         </tr>
                     <!-- </thead>
                 <tbody> -->
@@ -58,7 +58,7 @@
                 <ng-template pTemplate="body" let-i>
                     <!-- <tr *ngFor="let i of invoice.items"> -->
                         <tr>
-                            <td style="width:2em">
+                            <td *ngIf="invoice.status !== 'COMPLETE'" style="width:2em">
                                 <input type="checkbox" *ngIf="i.status !== 'VERIFIED'" (change)="selectItem($event,i.id)">
                             </td>
                             <td>{{i.product?.title}}</td>
@@ -75,7 +75,7 @@
                             <td style="text-align: right;">{{i.freeqty}}</td>
                             <td style="text-align: right;">{{i.total | number:'1.2-2'}}</td>
                             <td class="text-center">{{i.status}}</td>
-                            <td>
+                            <td *ngIf="invoice.status !== 'COMPLETE'">
                                 <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
                                     <i class="bi bi-pencil-square text-primary"></i>
                                 </a>

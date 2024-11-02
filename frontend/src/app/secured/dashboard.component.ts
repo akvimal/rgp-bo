@@ -13,7 +13,6 @@ export class DashboardComponent {
     fromdate = '';
     freq = 'daily';
     count = '7';
-
     custfromdate = '';
     custfreq = 'monthly';
     custcount = '7';

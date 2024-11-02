@@ -10,21 +10,28 @@
     <p-tabPanel header="Invoice Level" headerStyleClass="no-print">
     <div class="row mt-3 no-print">
     
-        
+      <div class="col-md-2">
+        <label for="fromdate">Date</label>
+        <input type="date" id="fromdate" name="filterbydate" class="form-control" [(ngModel)]="date" (change)="filterDateSales($event, 'date')">
+      </div>
+      <div class="col-md-1">
+        <br>
+        <input class="form-check-input" type="checkbox" name="self" id="self" [(ngModel)]="self" (change)="filterDateSales($event, 'self')"/>
+        <label for="self">&nbsp;Self</label>
+      </div>
+
+      <div class="col-md-2">
+        <label for="sustomer">Customer</label><br>
+        <app-customer-select id="customer" (customerSelected)="filterCustomerSales($event)"></app-customer-select>
+      </div>  
       <div class="col-md-2">
         <label for="billno">Bill No</label>
         <input type="text" id="billno" name="filterbybillno" class="form-control" 
-              [(ngModel)]="criteria.billno">
+          (input)="filterBillSales($event)">
       </div>
-      <div class="col-md-2">
-        <label for="fromdate">Date</label>
-        <input type="date" id="fromdate" name="filterbydate" class="form-control" 
-              [(ngModel)]="criteria.date">
-      </div>
-      <div class="col-md-3">
-        <label for="sustomer">Customer</label><br>
-        <app-customer-select id="customer" (customerSelected)="selectCustomer($event)"></app-customer-select>
-      </div>
+
+      
+      
       <!-- <div class="col-md-2">
         <label for="status">Status</label>
         <select name="filterbystatus" id="status" class="form-control" [(ngModel)]="criteria.status" (change)="fetchSales()">
@@ -33,11 +40,11 @@
           <option value="COMPLETE">COMPLETE</option>
         </select>
       </div> -->
-      <div class="col-md-2">
+      <!-- <div class="col-md-2">
         <BR>
           <button type="button" class="btn btn-primary" (click)="fetchSales()">Search</button>
           &nbsp;&nbsp;<button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
-      </div>
+      </div> -->
       <!-- </div> -->
     </div>
     <!-- <table class="table table-bordered mt-4">
@@ -104,9 +111,9 @@
               <h5 *ngIf="isActionAllowed('Edit',s)" style="float:left; margin-right: 0.3em;">
                 <a [routerLink]="['../edit',s.id]"><i class="bi bi-pencil"></i></a>
               </h5>
-              <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
+              <!-- <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
               <a [routerLink]="['../edit',s.id]"><i class="bi bi-arrow-return-left"></i></a>
-            </h5>
+            </h5> -->
               <!-- <a *ngIf="isActionAllowed('Cancel',s)" [routerLink]="['../edit',s.id]">Cancel</a> -->
             </td>
           </tr>  

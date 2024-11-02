@@ -70,11 +70,12 @@ export class SaleController {
 
     @Get()
     async findAll(@Query() query: any, @User() currentUser: any) {
+      // const role = await this.roleService.findById(currentUser.roleid);
+      // const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
+      // const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
+      // console.log(query);
       
-      const role = await this.roleService.findById(currentUser.roleid);
-      const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
-      const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
-      return this.saleService.findAll(query,owned);
+      return this.saleService.findAll(query,query['self']==='true'?currentUser.id:null);
     }
 
     @Post('/items/criteria')

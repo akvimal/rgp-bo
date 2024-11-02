@@ -105,9 +105,9 @@ export class SaleService {
         if(query.fromdate && query.todate){
             qb.andWhere('sale.billdate >= :from and sale.billdate <= :to', { from:query.fromdate,to:query.todate });
         }
-        if(userid){
-            qb.andWhere('sale.createdby = :uid', { uid:userid });
-        }
+        // if(userid){
+        //     qb.andWhere('sale.createdby = :uid', { uid:userid });
+        // }
         
         if(query.props){
             query.props.forEach(p => {
