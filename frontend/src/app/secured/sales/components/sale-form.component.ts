@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
-import { FormControl, FormGroup, Validators } from "@angular/forms";
+import { FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { ProductUtilService } from "../../product-util.service";
 import { StockService } from "../../stock/stock.service";

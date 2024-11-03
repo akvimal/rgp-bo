@@ -87,7 +87,7 @@ export class SaleService {
         if(query.status){
             qb.andWhere(`sale.status = :st`, { st:query.status });
         }
-        qb.orderBy('sale.createdon','DESC')
+        qb.orderBy('sale.billdate','DESC')
         return qb.getMany();
     }
 
@@ -99,6 +99,9 @@ export class SaleService {
                     .leftJoinAndSelect("purchaseitem.product", "product")
                     .select(['item','sale','customer','purchaseitem','product'])
                     .where('sale.status = :st', { st:'COMPLETE' })
+                    if(query.product){
+                        qb.andWhere('product.title ilike :prod', { prod: query.product+'%' });
+                    } 
         if(query.category){
             qb.andWhere('product.category = :ctg', { ctg:query.category });
         }        

@@ -81,11 +81,11 @@ export class SaleController {
     @Post('/items/criteria')
     async findAllItems(@Body() criteria: any, @User() currentUser: any) {
             
-      const role = await this.roleService.findById(currentUser.roleid);
-      const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
-      const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
+      // const role = await this.roleService.findById(currentUser.roleid);
+      // const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
+      // const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
 
-      return this.saleService.findAllItems(criteria,owned);
+      return this.saleService.findAllItems(criteria,undefined);
     }
 
     @Get('/:id')

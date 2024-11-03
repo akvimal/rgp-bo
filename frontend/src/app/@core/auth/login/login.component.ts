@@ -36,8 +36,14 @@ export class LoginComponent {
         }).subscribe({next: data => {
             this.credService.setCredentials(data['token']);
             this.userService.getCurrentUser().subscribe((data:any) => {
+                console.log('logged in user');
+                
+                console.log(data);
+                
                 this.authService.setPermissions(data.permissions);
-                this.router.navigate(['/secure/dashboard']); //TODO: redirect to path accessed    
+                const landing_page = data.permissions[0]['path'][0]
+
+                this.router.navigate([landing_page]); //TODO: redirect to path accessed    
             })
             // this.authService.getPermissions().subscribe(data => {
             //     this.authService.setPermissions(data);

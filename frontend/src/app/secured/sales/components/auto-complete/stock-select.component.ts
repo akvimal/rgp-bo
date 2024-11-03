@@ -7,6 +7,7 @@ import { StockService } from "../../../stock/stock.service";
     template: `<p-autoComplete
                     (onSelect)="selected($event)"
                     field="''"
+                    placeholder="Name / Composition"
                     [suggestions]="filteredStock" 
                     (completeMethod)="filterStock($event)" [minLength]="2"
                     [inputStyle]="{'background-color':'#9df'}">

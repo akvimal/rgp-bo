@@ -91,7 +91,7 @@
                         [disabled]="!(total > 0)">Complete</button>    
             <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" 
                 class="btn btn-outline-primary m-2" [disabled]="total === 0">Save</button>    
-            <button *ngIf="sale.status === 'PENDING'" (click)="discard()" 
+            <button (click)="discard()"
                 class="btn btn-outline-secondary m-2">Discard</button>
 
             <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">

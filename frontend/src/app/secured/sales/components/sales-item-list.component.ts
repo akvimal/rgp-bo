@@ -20,14 +20,9 @@ export class SalesItemListComponent {
 
   ngOnInit() {
     if (this.category) {
-      this.criteria.category = this.category;
-      
+      this.criteria.category = this.category; 
     }
-    this.service.getProps().subscribe(result => {
-      console.log(result);
-      this.props = result;
-    });
-    // this.fetchSaleItems();
+    this.service.getProps().subscribe(result => this.props = result);
   }
 
   isH1DrugFilter() {
