@@ -32,7 +32,7 @@ export class SaleViewComponent {
           this.sale.items = data.items.map((i:any) => {
             console.log(i);
             const pack = i.product.pack;
-            const unitmrp = i.mrpcost/pack;
+            const unitmrp = i.mrpcost;
             this.mrpTotal += +(unitmrp * i.qty);
             this.itemsTotal += +i.total;
             return {
