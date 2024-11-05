@@ -15,8 +15,8 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock`);
     }
 
-    filterByCriteria(query:any,limit:number){
-        return this.http.get(`${this.apiurl}/stock/filter?query=${query}&limit=${limit}`);
+    filterByCriteria(query:any,available:boolean,expired:boolean,limit:number){
+        return this.http.get(`${this.apiurl}/stock/filter?query=${query}&available=${available}&expired=${expired}&limit=${limit}`);
     }
 
     findByItems(purchaseitemids:[]){

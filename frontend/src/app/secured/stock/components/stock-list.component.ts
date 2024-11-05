@@ -52,7 +52,7 @@ export class StockListComponent {
     }
 
     fetchStock(){
-        this.service.filterByCriteria('',0).subscribe(items => {
+        this.service.filterByCriteria('',false,false,0).subscribe(items => {
             this.items = items;
         });
     }

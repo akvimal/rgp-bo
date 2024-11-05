@@ -31,26 +31,20 @@ export class LoginComponent {
     onSubmit(){
         // console.log(this.form.value);
         this.authService.login({
-            email:this.form.value.email,
-            password:this.form.value.password
-        }).subscribe({next: data => {
-            this.credService.setCredentials(data['token']);
-            this.userService.getCurrentUser().subscribe((data:any) => {
-                console.log('logged in user');
-                
-                console.log(data);
-                
-                this.authService.setPermissions(data.permissions);
-                const landing_page = data.permissions[0]['path'][0]
-
-                this.router.navigate([landing_page]); //TODO: redirect to path accessed    
-            })
-            // this.authService.getPermissions().subscribe(data => {
-            //     this.authService.setPermissions(data);
-                
-            // })
-        }, error : err => {
-            this.error = err.message;
-            }})
-      }
+                email:this.form.value.email,
+                password:this.form.value.password
+            }).subscribe({
+                    next: data => {
+                        this.credService.setCredentials(data['token']);
+                        this.userService.getCurrentUser().subscribe((data:any) => {              
+                                    this.authService.setPermissions(data.permissions);
+                                    const landing_page = data.permissions[0]['path'][0]
+                                    this.router.navigate([landing_page]); //TODO: redirect to path accessed    
+                                });
+                    }, 
+                    error : err => {
+                        this.error = err.message;
+                    }
+                });
+    }
 }

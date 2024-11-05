@@ -53,18 +53,17 @@
               <p-columnFilter type="text" field="sale.billno" display="menu"></p-columnFilter>
               <p-sortIcon field="sale.billno"></p-sortIcon>
             </th>
-            <th pSortableColumn="sale.billdate" class="billdt">Date
-              <p-columnFilter type="date" field="sale.billdate" display="menu"></p-columnFilter>
-              <p-sortIcon field="sale.billdate"></p-sortIcon>
-            </th>
-           
+            <th pSortableColumn="sale.billdate" class="billdt">Bill Date</th>
             <!-- <th class="phone">Phone</th> -->
             <!-- <th class="address" *ngIf="isH1DrugFilter()">Address</th> -->
             <th pSortableColumn="purchaseitem.product.title" class="product">Product
               <p-columnFilter type="text" field="purchaseitem.product.title" display="menu"></p-columnFilter>
               <p-sortIcon field="purchaseitem.product.title"></p-sortIcon>
             </th>
-            <!-- <th class="batch">Batch/Exp</th> -->
+            <th class="batch">Batch
+              <p-columnFilter type="text" field="batch" display="menu"></p-columnFilter>
+            </th>
+            <th class="expiry">Expiry</th>
             <th class="qty">Qty</th>
             <th class="rate">Rate</th>
             <!-- <th class="total">Amount</th> --> 
@@ -85,10 +84,11 @@
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td> -->
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td> -->
                 <td>{{item.purchaseitem.product.title}}
-                  <br>
-                  <span style="font-size:smaller">{{item.batch}} / {{item.expdate | date : 'MMM-yy'}}</span>
+                  <!-- <br>
+                  <span style="font-size:smaller"> / {{item.expdate | date : 'MMM-yy'}}</span> -->
                 </td>
-                <!-- <td></td> -->
+                <td>{{item.batch}}</td>
+                <td>{{item.expdate | date : 'MMM-yy'}}</td>
                 <td style="text-align:right">{{item.qty}}</td>
                 <td style="text-align:right">{{item.price}}</td>
                 <td>{{item.sale.customer?.name}}</td>

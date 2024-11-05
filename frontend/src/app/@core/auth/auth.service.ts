@@ -54,6 +54,8 @@ export class AuthService {
   }
 
   public isUrlAuthorized(url:string):boolean{
+    console.log(this.permissions);
+    
     const found = this.permissions.find((p:any) => {
       if(p.path instanceof Array) 
         return p.path.includes(url)

@@ -18,7 +18,10 @@
                         </th>
                         <th>Batch/Exp</th>
                         <th>Purchased</th>
-                        <th>Sold</th>
+                        <th pSortableColumn="sold">Sold
+                            <p-columnFilter type="numeric" field="sold" display="menu"></p-columnFilter>
+                            <p-sortIcon field="sold"></p-sortIcon>
+                        </th>
                         <th>Adjusted</th>
                         <!-- <th>Pack</th> -->
                         <!-- <th pSortableColumn="expdate">Expiry

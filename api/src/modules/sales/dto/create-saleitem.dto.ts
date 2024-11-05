@@ -22,8 +22,4 @@ export class CreateSaleItemDto {
 
     @ApiProperty({ description: 'status', example: '' })
     readonly status: string;
-
-    @ApiProperty({ description: 'comments', example: '' })
-    readonly comments: string;
-
 }

@@ -4,10 +4,12 @@ import { FormsModule } from "@angular/forms";
 import { AutoCompleteModule } from "primeng/autocomplete";
 import { ProductLookupComponent } from "./components/product-lookup.component";
 import { IsAuthDirective } from "./isauth.directive";
+import { IsNavAuthDirective } from "./isNavAuth.directive";
 
 @NgModule({
     declarations: [
       ProductLookupComponent,
+      IsNavAuthDirective,
       IsAuthDirective
     ],
     imports: [
@@ -15,6 +17,6 @@ import { IsAuthDirective } from "./isauth.directive";
         CommonModule,
         AutoCompleteModule
     ],
-    exports: [IsAuthDirective,ProductLookupComponent]
+    exports: [IsAuthDirective,IsNavAuthDirective,ProductLookupComponent]
   })
 export class SharedModule{}

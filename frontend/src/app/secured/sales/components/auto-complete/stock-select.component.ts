@@ -66,7 +66,7 @@ export class StockSelectComponent {
 
     filterStock(event:any) {
         let filtered : any[] = [];
-        this.stockService.filterByCriteria(event.query,25).subscribe((data:any) => {
+        this.stockService.filterByCriteria(event.query,true,false,25).subscribe((data:any) => {
             filtered = data;
            this.filteredStock = filtered;         
         });        

@@ -53,15 +53,6 @@ export class SaleItem extends BaseEntity {
   @Column("character varying", { name: "status", nullable: true })
   status: string | null;
 
-  @Column("character varying", { name: "comments", nullable: true })
-  comments: string | null;
-
-  @Column("character varying", { name: "reason", nullable: true })
-  reason: string | null;
-
-  @Column("character varying", { name: "paymode", nullable: true })
-  paymode: string | null;
-
   @ManyToOne(
     () => PurchaseInvoiceItem,
     (purchase) => purchase.saleitems
