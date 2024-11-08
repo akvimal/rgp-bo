@@ -6,9 +6,8 @@ import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { User } from "src/core/decorator/user.decorator";
 import { CustomerService } from "../customers/customer.service";
-import { StockService } from "../stock/stock.service";
-import { RoleService } from "../app/roles/role.service";
-import { UpdateSaleDto } from "./dto/update-sale.dto";
+import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
+import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 
 @ApiTags('Sales')
 @Controller('sales')
@@ -17,30 +16,30 @@ import { UpdateSaleDto } from "./dto/update-sale.dto";
 export class SaleController {
 
     constructor(private saleService:SaleService, 
-      private stockService:StockService, 
-      private custService:CustomerService,
-      private roleService:RoleService){}
+      private custService:CustomerService){}
 
       @Post()
       async create(@Body() createSaleDto: CreateSaleDto, @User() currentUser: any) {
-          
-          if(createSaleDto.id ){
-            await this.saleService.removeItems(createSaleDto.id);
-          }
-          
-            let customer = createSaleDto.customer;
-            if(customer){ //if customer not present before
-              customer = await this.custService.save(createSaleDto.customer);
-            }
-            
-            return this.saleService.create({...createSaleDto, customer}, currentUser.id);
+
+        let customer = createSaleDto.customer;
+        if(customer){ //if customer not present before
+          customer = await this.custService.save(createSaleDto.customer);
+        }
+        
+        return this.saleService.create({...createSaleDto, customer}, currentUser.id);
       }
 
       @Put()
-      async update(@Body() updateSaleDto: UpdateSaleDto, @User() currentUser: any) {
-        if(updateSaleDto.id ){
-          await this.saleService.removeItems(updateSaleDto.id);
+      async update(@Body() updateSaleDto: any, @User() currentUser: any) {
+        //get the itemid that is removed at client end
+        const sale = await this.saleService.findById(updateSaleDto.id);
+        const existingItemIds = sale.items.map(i => i.id);
+        const newIntemIds = updateSaleDto['items'].map(i => i.id);
+        const removedItemIds = existingItemIds.filter(num => !newIntemIds.includes(num));        
+        if(removedItemIds.length > 0 ){
+          await this.saleService.removeItemsByIds(removedItemIds);
         }
+
         let customer = updateSaleDto.customer;
         if(customer){ //if customer not present before
           customer = await this.custService.save(updateSaleDto.customer);
@@ -50,12 +49,44 @@ export class SaleController {
 
     @Post('/items')
     async createItem(@Body() createSaleItemDto: CreateSaleItemDto, @User() currentUser: any) {
-        return this.saleService.createItem(createSaleItemDto, currentUser.id);
+      return this.saleService.createItem(createSaleItemDto, currentUser.id);
+    }
+
+    @Post('/returns')
+    async returnItem(@Body() items:CreateSaleReturnItemDto[], @User() currentUser: any) {
+      return this.saleService.createReturnItems(items, currentUser.id);
+    } 
+    
+    @Put('/returns')
+    async updateReturnItem(@Body() item:UpdateSaleReturnItemDto, @User() currentUser: any) {
+      return this.saleService.updateReturnItem(item, currentUser.id);
     }
 
     @Get('/raw')
     async findAllSales() {
       return this.saleService.getSales();
+    }
+
+    @Get('/returns/:id/eligible')
+    async getEligibleReturns(@Param('id') id: number) {
+      const items = await this.saleService.getEligibleReturns(id);
+      const sale = await this.saleService.findById(id);
+      return {...sale, items};
+    }
+    
+    @Get('/returns/items/:rid')
+    async getReturnItemToAdjust(@Param('rid') rid: number) {
+      return await this.saleService.getReturnItemToAdjust(rid);
+    }
+
+    @Get('/returns/:id/sale')
+    async getSaleReturnItems(@Param('id') id: number) {
+      return await this.saleService.getSaleReturnItems(id);
+    }
+
+    @Get('/returns')
+    async findAllReturns() {
+      return this.saleService.getReturns();
     }
 
     @Post('/data')
@@ -70,26 +101,16 @@ export class SaleController {
 
     @Get()
     async findAll(@Query() query: any, @User() currentUser: any) {
-      // const role = await this.roleService.findById(currentUser.roleid);
-      // const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
-      // const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
-      // console.log(query);
-      
       return this.saleService.findAll(query,query['self']==='true'?currentUser.id:null);
     }
 
     @Post('/items/criteria')
     async findAllItems(@Body() criteria: any, @User() currentUser: any) {
-            
-      // const role = await this.roleService.findById(currentUser.roleid);
-      // const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
-      // const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
-
       return this.saleService.findAllItems(criteria,undefined);
     }
 
     @Get('/:id')
-    async findById(@Param('id') id: string) {
+    async findById(@Param('id') id: number) {
       const sale = await this.saleService.findById(id);
       return sale;//this.stockService.getItemsWithStockData(sale);
     }
@@ -101,18 +122,7 @@ export class SaleController {
     
     @Get('/:id/customer')
     async findItems(@Param('id') custid: string) {
-
-      // const stocks = await this.stockService.findAll(); //for finding item available qty
-      const sales = await this.saleService.findAllByCustomerId(custid,3);
-      
-      // sales.forEach(s => {
-      //   s.items.forEach((i:any) => {
-      //     const st = stocks.find(s => s.id === i.itemid);
-      //     i.maxqty = st.available_qty; //add max qty possible
-      //   });
-      // })      
-      
-      return sales;
+      return await this.saleService.findAllByCustomerId(custid,3);
     }
 
     @Get('/:id/items')
@@ -133,5 +143,10 @@ export class SaleController {
     @Delete('items/:id')
     removeItem(@Param('id') id: string, @User() currentUser: any) {
       return this.saleService.removeItem(id, currentUser.id);
+    }
+
+    @Delete('returns/:id')
+    removeReturnItem(@Param('id') id: string) {
+      return this.saleService.removeReturnItem(id);
     }
 }

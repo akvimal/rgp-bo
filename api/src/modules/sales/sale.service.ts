@@ -4,14 +4,17 @@ import { EntityManager } from "typeorm";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { Sale } from "src/entities/sale.entity";
 import { Repository } from "typeorm";
-import { CreateSaleDto } from "./dto/create-sale.dto";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
+import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
+import { SaleReturnItem } from "src/entities/salereturn-item.entity";
+import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 
 @Injectable()
 export class SaleService {
 
     constructor(@InjectRepository(Sale) private readonly saleRepository: Repository<Sale>,
     @InjectRepository(SaleItem) private readonly saleItemRepository: Repository<SaleItem>,
+    @InjectRepository(SaleReturnItem) private readonly saleReturnItemRepository: Repository<SaleReturnItem>,
     @InjectEntityManager() private manager: EntityManager) { }
 
     async create(sale:any,userid:any) {
@@ -34,6 +37,19 @@ export class SaleService {
         });
     }
 
+    async createReturnItems(items:CreateSaleReturnItemDto[],userid:any){
+        items.forEach(item => {
+            item['createdby'] = userid;
+        })
+        return this.saleReturnItemRepository.save(items);
+    }
+
+    async updateReturnItem(item:UpdateSaleReturnItemDto,userid:any){
+        item['updatedby'] = userid;
+        return this.saleReturnItemRepository.save(item);
+    }
+
+
     async updateSale(sale:any,userid:any) {
         
         return this.saleRepository.save({...sale, updatedby:userid}).then(result => {
@@ -48,6 +64,9 @@ export class SaleService {
             })
         });
     }
+    async removeItemsByIds(ids:any){
+        return await this.saleItemRepository.delete(ids);
+    } 
 
     async removeItems(saleid){
         return await this.saleItemRepository.delete({saleid});
@@ -63,7 +82,6 @@ export class SaleService {
         inner join sale s on s.id = si.sale_id 
         where s.id = ${id}`;
         return await this.manager.query(query);
-
     }
     
     async findAll(query:any,userid:any){
@@ -126,6 +144,13 @@ export class SaleService {
         let dat = dt.getDate();
         return dt.getFullYear() + '-' + (mon < 10 ? ('0'+mon) : mon) 
         + '-' + (dat < 10 ? ('0'+dat) : dat);
+    }
+
+    async getSaleReturnItems(saleId:any){
+        const query = ` SELECT sri.sale_item_id, sri.qty FROM sale_return_item sri 
+        inner join sale_item si on si.id = sri.sale_item_id 
+        inner join sale s on s.id = si.sale_id and s.id = ${saleId}`;
+        return await this.manager.query(query);
     }
 
     async getSalesByFreq(fromdate:string,freq:string,count:number){
@@ -215,7 +240,38 @@ export class SaleService {
         inner join customer c on c.id = s.customer_id `);
     }
 
-    async findById(id:string){
+    async getReturns(){
+        return await this.manager.query(`   
+        select sri.id, si.sale_id, s.bill_no, s.bill_date, sri.created_on, sri.created_by, c."name", c.mobile, 
+                si.purchase_item_id, p.title, si.batch, si.exp_date, 
+                sri.qty, si.price, sri.reason, sri."comments", sri.status 
+                from sale_return_item sri inner join sale_item si on si.id = sri.sale_item_id 
+                inner join sale s on s.id = si.sale_id 
+                inner join product p on p.id = si.product_id 
+                left join customer c on c.id = s.customer_id 
+                order by sri.created_on desc`);
+    }
+
+    async getEligibleReturns(saleid:any){
+        return await this.manager.query(`   
+            select si.id, p.title, si.batch, si.exp_date, si.price, coalesce(si.qty - returned.total,si.qty - returned.total,si.qty) as eligible
+            from sale_item si left join 
+            (SELECT sale_item_id, sum(sri.qty) as total FROM sale_return_item sri 
+            inner join sale_item si on si.id = sri.sale_item_id WHERE si.sale_id = ${saleid} GROUP BY sale_item_id) returned ON returned.sale_item_id = si.id 
+            inner join sale s on s.id = si.sale_id and s.id = ${saleid}
+            inner join product p on p.id = si.product_id order by p.title`);
+    }
+
+    async getReturnItemToAdjust(saleReturnId:any){
+        return await this.manager.query(`
+        select sri.id, p.title, si.batch, si.exp_date, si.price, si.purchase_item_id as itemid, sri.qty, sri.reason, sri."comments"
+        from sale_return_item sri 
+        inner join sale_item si on si.id = sri.sale_item_id 
+        inner join product p on p.id = si.product_id 
+        where sri.id = ${saleReturnId}`);
+    }
+
+    async findById(id:number){
         return await this.saleRepository.createQueryBuilder("sale")
         .leftJoinAndSelect("sale.customer", "customer")
         .leftJoinAndSelect("sale.items", "items")
@@ -255,6 +311,12 @@ export class SaleService {
     async removeItem(itemid:any, userid:any){
         await this.saleItemRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             await transaction.update(SaleItem, itemid, {isArchived:true, updatedby:userid});
+        });
+    }    
+
+    async removeReturnItem(id:any){
+        await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
+            await transaction.delete(SaleReturnItem, id);
         });
     }    
 

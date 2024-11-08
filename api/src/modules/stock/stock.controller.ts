@@ -102,6 +102,11 @@ export class StockController {
         // const updated = await this.invoiceService.updateItems([createDto.itemid],{saleprice:createDto.price},currentUser.id);
         return this.service.createQty(createDto, currentUser.id);
     }
+
+    @Post('/adjust/returns')
+    async adjustReturnItems(@Body() items:CreateProductQtyChangeDto[], @User() currentUser: any) {
+      return this.service.createStockAdjustments(items, currentUser.id);
+    }
     // @Get()
     // async findByCriteria() {
     //   return this.service.findByCriteria({});

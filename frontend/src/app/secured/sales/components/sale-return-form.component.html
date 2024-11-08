@@ -1,0 +1,68 @@
+
+<div class="container">
+    <div class="row">
+        <div class="col-6">
+           <strong>Order No.:</strong> {{header.orderno}} &nbsp;&nbsp;<strong>Bill No.:</strong> {{header.billno}} &nbsp;&nbsp;<strong>Bill Date:</strong> {{header.billdate | date : 'dd/MM/yyyy'}}
+        </div>
+        <div class="col-6 text-end">
+          <strong>Name:</strong> {{header.customername}} <strong>Mobile:</strong> {{header.customermobile}}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">            
+            <p-table [value]="items" styleClass="p-datatable-gridlines mt-4">
+                <ng-template pTemplate="header">    
+                    <tr>
+                        <th>Product</th>
+                        <th>Batch / Exp</th>
+                        <th>Qty</th>
+                        <th>Amount</th>
+                        <th>Reason</th>
+                        <th>Comments</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-i>
+                    <tr [style]="i.valid ? 'background: #ddd;' : 'none'">
+                        <td>{{i.title}}</td>
+                        <td width="15%">{{i.batch}} / {{i.exp_date | date : 'MMM-yy'}}</td>
+                        <td width="13%">
+                            <div class="input-group mb-3">
+                                <input class="form-control" type="number" [value]="i.qty" (change)="changeItem('QTY',$event,i.id)"/>
+                                <div class="input-group-append">
+                                  <span class="input-group-text">{{i.elig}}</span>
+                                </div>
+                              </div>
+                        </td>
+                        <td>{{+i.qty * +i.price}}</td>
+                        <td width="20%">
+                            <select class="form-control" (change)="changeItem('REASON',$event,i.id)"> 
+                                <option value="">Select</option> 
+                                <option value="Not Effective">Not Effective</option> 
+                                <option value="Defective">Defective</option> 
+                                <option value="Prescription Change">Prescription Change</option> 
+                            </select> 
+                        </td>
+                        <td>
+                            <textarea class="form-control" (change)="changeItem('COMMENT',$event,i.id)"></textarea>
+                        </td>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="summary">
+                    <div class="col-3">Refund: 
+                        <select class="form-control">
+                            <option value="">Select</option>
+                            <option value="Credit">Credit</option>
+                            <option value="Transfer">Transfer</option>
+                            <option value="Cash">Cash</option>
+                        </select>
+                    </div>
+                    <div class="col-3 text-end">Total: {{total}}</div>
+                </ng-template>
+            </p-table>
+        </div>
+        <div class="col-12 text-center mt-4">
+            <button class="btn btn-primary" (click)="onSubmit()" [disabled]="!valid">Submit</button>
+            <span *ngIf="!valid">Invalid input !!!</span>
+        </div>
+    </div>
+</div>

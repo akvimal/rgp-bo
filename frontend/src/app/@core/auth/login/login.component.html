@@ -35,14 +35,16 @@
                               class="form-control" required>
                               <div class="invalid-feedback">Please enter your password!</div>
                             </div>
-
+                            <!-- {{form.controls['password'].dirty}} -->
+                            <div class="col-12 text-center alert alert-danger" *ngIf="!form.controls['password'].dirty && error && error !== ''">Invalid Credentials</div>
+                            
                                 <!-- <div class="col-12">
                                   <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="remember" value="true" id="rememberMe">
                                     <label class="form-check-label" for="rememberMe">Remember me</label>
                                   </div>
                                 </div> -->
-                            <div class="col-12 p-2 text-center">
+                            <div class="col-12 p-4 text-center">
                               <button class="btn btn-primary" type="submit" 
                               [disabled]="!form.valid">Login</button>
                             </div>

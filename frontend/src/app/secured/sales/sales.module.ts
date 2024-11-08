@@ -22,10 +22,14 @@ import { TableModule } from "primeng/table";
 import { SaleDashboardComponent } from "./components/sale-dashboard.component";
 import { SaleHeaderComponent } from "./components/sale-header.component";
 import { SaleReminderComponent } from "./components/sale-reminder.component";
+import { SaleReturnsComponent } from "./components/sale-returns.component";
+import { SaleReturnFormComponent } from "./components/sale-return-form.component";
+import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
 
 const routes: Routes = [
   {path: '', redirectTo: 'list'},
   {path: 'list', component: SalesListComponent, canActivate:[AuthGuard]},
+  {path: 'returns', component: SaleReturnsComponent, canActivate:[AuthGuard]},
   {path: 'new', component: SaleFormComponent, canActivate:[AuthGuard]},
   {path: 'reminder', component: SaleReminderComponent, canActivate:[AuthGuard]},
   {path: 'view/:id', component: SaleViewComponent, canActivate:[AuthGuard]},
@@ -39,6 +43,9 @@ const routes: Routes = [
       SaleReminderComponent,
       SaleDashboardComponent,
       SalesListComponent,
+      SaleReturnsComponent,
+      SaleReturnFormComponent,
+      SaleReturnAdjustFormComponent,
       SalesItemListComponent,
       SaleViewComponent,
       SaleFormComponent,

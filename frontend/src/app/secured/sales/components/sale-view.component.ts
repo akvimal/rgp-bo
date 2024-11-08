@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
+import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";
@@ -21,6 +22,7 @@ export class SaleViewComponent {
     constructor(private route: ActivatedRoute,
       private router: Router, 
       private service:SaleService,
+      private dateUtilService: DateUtilService,
       private prodUtilService: ProductUtilService){}
 
     async ngOnInit(){
@@ -30,16 +32,17 @@ export class SaleViewComponent {
       this.service.find(saleId).subscribe((data:any) => {
         
           this.sale.items = data.items.map((i:any) => {
-            console.log(i);
-            const pack = i.product.pack;
+            // console.log(i);
+            // const pack = i.product.pack;
             const unitmrp = i.mrpcost;
             this.mrpTotal += +(unitmrp * i.qty);
             this.itemsTotal += +i.total;
+            
             return {
               title: i.product.title,
               props: i.product.props,
               batch: i.batch,
-              expdate: i.expdate,
+              expdate: this.dateUtilService.getOtherDate(new Date(i.expdate), 1),
               qty: i.qty,
               mrp: unitmrp,
               price:i.price,

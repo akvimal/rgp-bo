@@ -8,9 +8,17 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="invoice_no">Invoice
+                        <th pSortableColumn="invoice_no">Invoice No
                             <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
                             <p-sortIcon field="invoice_no"></p-sortIcon>
+                        </th>
+                        <th pSortableColumn="invoice_date">Invoice Date
+                            <p-columnFilter type="date" field="invoice_date" display="menu">
+                                <ng-template pTemplate="filter" let-value let-filter="filterCallback">
+                                    <!-- <p-calendar #calendar [ngModel]="value" dateFormat="dd/mm/yy"></p-calendar> -->
+                               </ng-template>
+                            </p-columnFilter>
+                            <p-sortIcon field="invoice_date"></p-sortIcon>
                         </th>
                         <th pSortableColumn="product_title">Product
                             <p-columnFilter type="text" field="product_title" display="menu"></p-columnFilter>
@@ -53,9 +61,10 @@
                 <ng-template pTemplate="body" let-i>
                     <tr>
                         <td><a [routerLink]="['/secure/purchases/items',i.purchase_invoiceid]">{{i.invoice_no}}</a></td>
+                        <td>{{i.invoice_date | date : 'dd/MM/yyyy'}}</td>
                         <td>
                             <p class="m-0">{{i.product_title}}</p>
-                            <span class="batch">{{i.product_batch}}/{{i.product_expdate | date :'MMM-yy'}}</span>
+                            <!-- <span class="batch">{{i.product_batch}}/{{i.product_expdate | date :'MMM-yy'}}</span> -->
                         </td>
                         <td>{{i.product_batch}}/{{i.product_expdate | date :'MMM-yy'}}</td>
                         <td class="text-end">{{i.purchased}}</td>

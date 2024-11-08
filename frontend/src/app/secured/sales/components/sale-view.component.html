@@ -1,24 +1,25 @@
 <app-sale-header></app-sale-header>
+
 <div class="card p-2">
     <div class="card-body bill-view">
         <div class="row">
             <table class="bill-head" style="font-size: small;">
                 <tr>
-                    <td colspan="2" style="text-align: center;">
-                        <h6 style="font-size: larger;font-weight: bolder;">Ramesh Generic Pharmacy</h6>
-                        <div>
-                        <p style="margin: 0;">DL#: TN-Z04-20-00009, TN-Z04-21-00009 | GSTIN: 33AOBPV6363C2Z0</p>
-                        <p>No. 1/256, 4th Street, Kalamegam Salai, Mogappair West, Chennai - 600037<br>
-                            Phone: 72990 72725 | 88593 35933</p>
+                    <td>
+                        <img src="assets/img/rgp-logo.png" alt="" width="75px" height="75px" style="float: left;">
+                        <div style="padding-left: 6.7em;">
+                            <h6 style="font-size: large;font-weight: bolder; margin:0;padding:0;">Ramesh Generic Pharmacy</h6>
+                        
+                            <p># 1/256, Kalamegam Salai, Mogappair West, Chennai-600037<br>
+                            Phone: <strong>72990 72725 | 88593 35933</strong><br>
+                            DL#: TN-Z04-20-00009 | TN-Z04-21-00009</p>
                         </div>
                     </td>
-                </tr>
-                <tr>
-                    <td>
+                <!-- </tr>
+                <tr> -->
+                    <td style="text-align: right; vertical-align: bottom;">
                        <strong>Bill No.:</strong> {{sale.billno}}<br>
-                        <strong>Bill Date:</strong> {{sale.billdate | date: 'dd/MM/yyyy'}}
-                    </td>
-                    <td style="text-align: right;">
+                        <strong>Bill Date:</strong> {{sale.billdate | date: 'dd/MM/yyyy'}}<br>
                        <span *ngIf="sale.customer?.name"><strong>Name:</strong> {{sale.customer?.name}}</span><br>
                        <span *ngIf="sale.customer?.mobile"><strong>Phone:</strong> {{sale.customer?.mobile}}</span>
                     </td>
@@ -28,49 +29,50 @@
             <table class="table table-bordered mt-3" style="font-size: small;">
                 <tr>
                     <th style="text-align: left;" scope="col" width="20%">Product</th>
-                    <th style="text-align: right;" scope="col">Batch / Exp</th>
+                    <th style="text-align: right;" scope="col">Batch</th>
                     <th style="text-align: right;" scope="col">MRP</th>
-                    <th style="text-align: right;" scope="col">Qty</th>
+                    <th style="text-align: right;" scope="col">Units</th>
                     <th style="text-align: right;" scope="col">Rate</th>
-                    <!-- <th style="text-align: right;">Tax</th> -->
                     <th style="text-align: right;" scope="col">Amount</th>
                 </tr>
-            <tr *ngFor="let i of sale.items">
-                <td>
-                    {{i.title}}
-                    <p style="margin:0;padding:0;font-style:italic" *ngIf="i.props?.composition">{{i.props?.composition}}</p>
-                </td>
-                <td style="vertical-align: text-top; text-align: right;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
-                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.mrp | number : '1.2-2'}}</td>
-                <td style="vertical-align: text-top; text-align: right;width:6%">{{i.qty}}</td>
-                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.price | number : '1.2-2'}}</td>
-                <!-- <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td> -->
-                <td style="vertical-align: text-top; text-align: right;width:8%">{{i.total | number : '1.2-2'}}</td>
-            </tr>
-            <tr>
-                
-                <!-- <td>{{sale.total?.tax}}</td> -->
-                <td colspan="1" class="text-align:left">
-                    {{itemsCount}} items
-                </td>
-                <td colspan="3" style="text-align:right">
-                    <div class="m-0 p-0" *ngIf="saving > 0">
-                        <span style="margin:0;padding:0">MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
-                        <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
-                        <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue">
-                            Discount({{sale.disccode}}):<i class="bi bi-currency-rupee" style="padding:0"></i> {{sale.discamount}}</span>
-                        <span style="color: green;font-weight: bolder;">
-                            <label for="saving" class="ml-4">&nbsp; Discount:</label>
-                            {{saving|number :'1.0-0'}}%</span>
-                    </div>
-                </td>
-                <td colspan="2" style="text-align: right;">
-                    <label>Net Total {{itemsTotal != finalAmt ? '(rounded)' : ''}}: </label>
-                    <i class="bi bi-currency-rupee" style="padding:0"></i>
-                        <!-- {{itemsTotal| number : '1.1-2'}} -->
-                        {{finalAmt}} 
-                </td>
-            </tr>
+                <tr *ngFor="let i of sale.items">
+                    <td>
+                        {{i.title}}
+                        <p style="margin:0;padding:0;font-style:italic" *ngIf="i.props?.composition">{{i.props?.composition}}</p>
+                    </td>
+                    <td style="vertical-align: text-top; text-align: right;width:15%">{{i.batch}} / {{i.expdate | date : 'MMM-yy'}}</td>
+                    <td style="vertical-align: text-top; text-align: right;width:8%">{{i.mrp | number : '1.2-2'}}</td>
+                    <td style="vertical-align: text-top; text-align: right;width:6%">{{i.qty}}</td>
+                    <td style="vertical-align: text-top; text-align: right;width:8%">{{i.price | number : '1.2-2'}}</td>
+                    <!-- <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td> -->
+                    <td style="vertical-align: text-top; text-align: right;width:8%">{{i.total | number : '1.2-2'}}</td>
+                </tr>
+                <tr>
+                    <!-- <td>{{sale.total?.tax}}</td> -->
+                    <td>
+                        Total Items:<strong>{{itemsCount}}</strong>
+                    </td>
+                    <td colspan="3" style="text-align:right">
+                        <div class="m-0 p-0" *ngIf="saving > 0">
+                            <span style="margin:0;padding:0">MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>
+                            <!-- <span style="margin-left: 1em;">Net Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number:'1.0-0'}}</span> -->
+                            <span *ngIf="sale.discamount && sale.discamount > 0" style="color: blue">
+                                Discount({{sale.disccode}}):<i class="bi bi-currency-rupee" style="padding:0"></i> {{sale.discamount}}</span>
+                            <span style="color: green;font-weight: bolder;">
+                                <label for="saving" class="ml-4">&nbsp; Discount:</label>
+                                {{saving|number :'1.0-0'}}%</span>
+                        </div>
+                    </td>
+                    <td colspan="2" style="text-align: right;">
+                        <!-- <label>Net Total {{itemsTotal != finalAmt ? '(rounded)' : ''}}: </label> -->
+                        <label>Net Total:</label>
+                        <span>
+                        <i class="bi bi-currency-rupee" style="padding:0"></i>
+                            <!-- {{itemsTotal| number : '1.1-2'}} -->
+                           <strong>{{finalAmt}}</strong>
+                        </span>
+                    </td>
+                </tr>
             <!-- <tr *ngIf="saving > 0" >
                 <td colspan="4">
                     <span style="margin:0;padding:0">MRP Total: <i class="bi bi-currency-rupee" style="padding:0"></i>{{mrpTotal | number:'1.0-0'}}</span>

@@ -1,0 +1,97 @@
+<!-- <div class="pagetitle no-print">
+  <h1>Sales</h1>
+</div> -->
+<app-sale-header></app-sale-header>
+<h3>Returns</h3>
+<div class="row">
+  <div class="col-12">
+    <p-table #dt1 [value]="returns" [resizableColumns]="true" columnResizeMode="expand" 
+        [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+        [rowsPerPageOptions]="[10,25,50]">
+      <ng-template pTemplate="header">
+        <tr>
+          <!-- <th>Order #</th> -->
+          <th pSortableColumn="billno">Bill #
+            <p-columnFilter type="text" field="billno" display="menu"></p-columnFilter>
+            <p-sortIcon field="billno"></p-sortIcon>
+          </th>
+          <th pSortableColumn="returndate">Date
+            <p-columnFilter type="date" field="returndate" display="menu"></p-columnFilter>
+            <p-sortIcon field="returndate"></p-sortIcon>
+          </th> 
+          <th pSortableColumn="customer">Customer
+            <p-columnFilter type="text" field="customer" display="menu"></p-columnFilter>
+            <p-sortIcon field="customer"></p-sortIcon>
+          </th> 
+          <th pSortableColumn="product">Product
+            <p-columnFilter type="text" field="product" display="menu"></p-columnFilter>
+            <p-sortIcon field="product"></p-sortIcon>
+          </th>
+          <!-- <th pSortableColumn="batch">Batch
+            <p-columnFilter type="text" field="batch" display="menu"></p-columnFilter>
+            <p-sortIcon field="batch"></p-sortIcon>
+          </th>
+          <th pSortableColumn="expdate">Expiry
+            <p-columnFilter type="date" field="expdate" display="menu"></p-columnFilter>
+            <p-sortIcon field="expdate"></p-sortIcon>
+          </th> -->
+          <th pSortableColumn="qty">Qty
+            <p-columnFilter type="numeric" field="qty" display="menu"></p-columnFilter>
+            <p-sortIcon field="qty"></p-sortIcon>
+          </th> 
+          <!-- <th pSortableColumn="price">Price
+            <p-columnFilter type="numeric" field="price" display="menu"></p-columnFilter>
+            <p-sortIcon field="price"></p-sortIcon>
+          </th>  -->
+          <!-- <th pSortableColumn="total">Amount
+            <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
+            <p-sortIcon field="total"></p-sortIcon>
+          </th>  -->
+          <!-- <th pSortableColumn="reason">Reason
+            <p-columnFilter type="text" field="reason" display="menu"></p-columnFilter>
+            <p-sortIcon field="reason"></p-sortIcon>
+          </th> -->
+          <th>Reason</th>
+          <!-- <th pSortableColumn="status">Status
+            <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
+            <p-sortIcon field="status"></p-sortIcon>
+          </th> -->
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-s>
+          <tr>
+            <td>
+              <a [routerLink]="['../view',s.saleid]">{{s.billno}}</a>
+            </td>
+            <td>{{s.returndate | date : 'dd/MM/yyyy'}}</td>
+            <td>{{s.customer}}</td>
+            <td>{{s.product}}<br>
+             <span style="color: blue;font-size:smaller">{{s.batch}}
+            ({{s.expdate | date : 'MMM-yy'}})</span></td>
+            <td class="text-end">{{s.qty}}</td>
+            <!-- <td>{{s.price}}</td> -->
+            <!-- <td class="text-end">{{s.total | number: '1.0-0' }}</td> -->
+            <td><span *ngIf="s.reason">{{s.reason}}</span></td>
+            <!-- <td>{{s.status}}</td> -->
+            <td style="text-align:center">
+              <h4>
+                <a *ngIf="s.status==='NEW'" (click)="showReturnAdjust(s.id)">
+                  <i class="bi bi-arrow-left-right"></i>
+                </a>&nbsp;
+                <a *ngIf="s.status==='NEW'" (click)="removeItem(s.id)">
+                <i class="bi bi-trash text-danger"></i>
+                </a>                
+                <i class="bi bi-check-circle-fill" *ngIf="s.status==='ADJUSTED'"></i>
+              </h4>
+            </td>
+          </tr>  
+        </ng-template>
+      </p-table>
+  </div>
+</div>
+
+<p-dialog [header]="'Return Adjust'" [(visible)]="showReturnAdjustForm" [modal]="true">
+  <sale-return-adjust-form [id]="adjustReturnItemId" (success)="onAdjustSubmitSuccess($event)"></sale-return-adjust-form>
+</p-dialog>

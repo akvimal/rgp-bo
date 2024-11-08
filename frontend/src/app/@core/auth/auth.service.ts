@@ -54,11 +54,16 @@ export class AuthService {
   }
 
   public isUrlAuthorized(url:string):boolean{
-    console.log(this.permissions);
+    // console.log(this.permissions);
     
     const found = this.permissions.find((p:any) => {
       if(p.path instanceof Array) 
-        return p.path.includes(url)
+        return p.path.find((i:string) => {
+          // console.log(i);
+          // console.log(url);
+          
+          return url.indexOf(i) >= 0
+        })//p.path.includes(url)
       else 
         return p.path === url || url.startsWith(p.path);
     });

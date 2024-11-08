@@ -52,5 +52,9 @@ export class StockService {
     
     updateQty(qtyForm:any){
         return this.http.post(`${this.apiurl}/stock/adjust/qty`,{...qtyForm, status: 'APPROVED'});
+    }   
+    
+    adjustReturnQuantities(adjustments:any){
+        return this.http.post(`${this.apiurl}/stock/adjust/returns`,adjustments);
     }
 }

@@ -1,0 +1,35 @@
+
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+        <table class="table">
+            <tr>
+                <td colspan="2" scope="col"><h4 class="m-0 p-0">{{returnItem.title}}</h4>
+                    {{returnItem.batch}} / {{returnItem.exp_date | date : 'MMM-yy'}}</td>
+            </tr>
+            <tr>
+                <td class="pt-4" scope="col">{{returnItem.reason}}</td>
+                <td class="pt-4" scope="col">{{returnItem.qty}}</td>
+            </tr>
+            <tr>
+                <td class="pt-2" scope="col">Accept (add to stock)</td>
+                <td class="pt-2" scope="col">Reject (deduct from stock)</td>
+            </tr>
+            <tr>
+                <td class="pt-2" scope="col"><input type="text" class="form-control" [(ngModel)]="returnItem.accept" (input)="validate('ACCEPT',$event)"></td>
+                <td class="pt-2" scope="col"><input type="text" class="form-control" [(ngModel)]="returnItem.reject.qty" (input)="validate('REJECT',$event)"></td>
+            </tr>
+            <tr *ngIf="returnItem.reject.qty > 0" >
+                <td colspan="2"><textarea class="form-control" [(ngModel)]="returnItem.reject.reason" placeholder="Reason to Reject"></textarea></td>                
+            </tr>
+            <tr>
+                <td colspan="2" class="text-center pt-2">
+                    <button class="btn btn-primary" (click)="onSubmit()">Submit</button>
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+        
+    
+</div>

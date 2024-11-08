@@ -111,9 +111,9 @@
               <h5 *ngIf="isActionAllowed('Edit',s)" style="float:left; margin-right: 0.3em;">
                 <a [routerLink]="['../edit',s.id]"><i class="bi bi-pencil"></i></a>
               </h5>
-              <!-- <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
-              <a [routerLink]="['../edit',s.id]"><i class="bi bi-arrow-return-left"></i></a>
-            </h5> -->
+              <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
+              <i class="bi bi-arrow-return-left" (click)="showReturn(s.id)"></i>
+            </h5>
               <!-- <a *ngIf="isActionAllowed('Cancel',s)" [routerLink]="['../edit',s.id]">Cancel</a> -->
             </td>
           </tr>  
@@ -134,3 +134,7 @@
 
 </div>
 </div>
+
+<p-dialog [header]="'Return'" [(visible)]="showReturnForm" [modal]="true">
+    <sale-return-form [id]="returnSaleId" (success)="onReturnSubmitSuccess($event)"></sale-return-form>
+</p-dialog>

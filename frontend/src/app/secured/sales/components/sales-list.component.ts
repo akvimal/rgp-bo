@@ -12,8 +12,10 @@ export class SalesListComponent {
     // criteria = {billno:'',date:'',self:true,status:'',customer:''}
     date:string = '';
     self:boolean = true;
+    returnSaleId = '';
 
     openH1DrugsTab = false;
+    showReturnForm = false;
 
     constructor(private service:SaleService, private dateService:DateUtilService){}
 
@@ -38,7 +40,16 @@ export class SalesListComponent {
         });
     }
 
-    filterDateSales(input:any, event:any){
+    showReturn(saleid:any){
+      this.returnSaleId = saleid;
+      this.showReturnForm = true;
+    }
+
+    onReturnSubmitSuccess(event:any){
+      this.showReturnForm = false;
+    }
+
+  filterDateSales(input:any, event:any){
       if(event === 'date')
       this.fetchSales({date:input.target.value,self:this.self});
       else if(event === 'self')
@@ -73,7 +84,7 @@ export class SalesListComponent {
           allowed = true;
         }
         else if(action === 'Return' 
-        && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.billdate))
+        // && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.billdate))
         ){ // return allowed for sale completed within specified period
           allowed = true;
         }

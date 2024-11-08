@@ -68,7 +68,7 @@
                             <!-- <td style="text-align: right;">{{i.product.pack}}</td> -->
                             <td style="text-align: right;">{{i.qty}}</td>
                             <td style="text-align: right;">{{i.mrpcost | number:'1.2-2'}}</td>
-                            <td *isAuth="'purchases.read$ptrvalue'" style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
+                            <td style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
                             
                             <td>{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
                             <td>{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>

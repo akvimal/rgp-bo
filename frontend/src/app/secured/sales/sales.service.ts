@@ -18,20 +18,28 @@ export class SaleService {
     constructor(private http:HttpClient){}
 
     save(sale:Sale){
-        if(sale.billno){
-            return this.http.put(`${this.apiurl}`,sale);
-        }
-        else {
-            return this.http.post(`${this.apiurl}`,sale);
-        }
+        return sale.billno ? this.http.put(`${this.apiurl}`,sale) : this.http.post(`${this.apiurl}`,sale);
+    }
+
+    saveReturns(returns:any){
+        return this.http.post(`${this.apiurl}/returns`,returns);
     }
 
     findAllItems(criteria:any){
         return this.http.post(`${this.apiurl}/items/criteria`,criteria);
-     }
-     findItemsWithAvailableQty(saleid:number){
+    }
+     
+    findEligibleReturnItems(saleid:any){
+        return this.http.get(`${this.apiurl}/returns/${saleid}/eligible`);
+    }
+
+    findReturnItemToAdjust(returnItemId:any){
+        return this.http.get(`${this.apiurl}/returns/items/${returnItemId}`);
+    }
+     
+    findItemsWithAvailableQty(saleid:number){
          return this.http.get(`${this.apiurl}/${saleid}/availableitems`);
-      }
+    }
  
     saveItem(item:SaleItem){
         return this.http.post(`${this.apiurl}/items`,item);
@@ -51,7 +59,11 @@ export class SaleService {
 
     findAll(criteria:any){
         return this.http.get(`${this.apiurl}`,{params:criteria});
-     }
+    }
+
+    findAllReturns(criteria:any){
+        return this.http.get(`${this.apiurl}/returns`);
+    }
 
     removeItem(id:number){
         const arr = this.items.value;
@@ -61,13 +73,18 @@ export class SaleService {
         this.updateTotal((mat?.total||0),0);
     }
 
+    removeReturnItem(id:number){
+        return this.http.delete(`${this.apiurl}/returns/${id}`);
+    }
+
     updateTotal(prev:number,now:number){
         this.totalState.next(this.totalState.value - prev + now)
     }
 
     getSaleData(criteria:any){
         return this.http.post(`${this.apiurl}/data`,criteria);
-    }   
+    }
+
     getCustomerData(criteria:any){
         return this.http.post(`${this.apiurl}/visits`,criteria);
     }   

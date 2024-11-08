@@ -157,6 +157,14 @@ export class StockService {
     async createQty(dto: CreateProductQtyChangeDto, userid) {
         return this.qtyRepository.save({...dto, createdby:userid});
     }
+
+    async createStockAdjustments(items: CreateProductQtyChangeDto[], userid) {
+        items.forEach(item => {
+            item['createdby'] = userid;
+        })
+        return this.qtyRepository.save(items);
+        // return this.qtyRepository.save({...dto, createdby:userid});
+    }
     // async findByCriteria(criteria){
     //     let query = `select * from stock_view`;
     //     if(criteria) {

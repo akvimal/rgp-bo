@@ -1,0 +1,44 @@
+
+
+ <p-table #dt1 [value]="prices" [resizableColumns]="true" columnResizeMode="expand" 
+ [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+     [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+     [rowsPerPageOptions]="[10,25,50]">
+     <ng-template pTemplate="header">
+         <tr>
+           <th pSortableColumn="itemid">ID
+               <p-columnFilter type="text" field="itemid" display="menu"></p-columnFilter>
+               <p-sortIcon field="itemid"></p-sortIcon>
+           </th>
+           <th pSortableColumn="title">Product
+               <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
+               <p-sortIcon field="title"></p-sortIcon>
+           </th>
+           <th pSortableColumn="oldprice">Old Price
+               <p-sortIcon field="oldprice"></p-sortIcon>
+           </th>
+           <th pSortableColumn="price">New Price
+               <p-sortIcon field="price"></p-sortIcon>
+           </th>
+             <th pSortableColumn="date">Date
+               <p-columnFilter type="date" field="date" display="menu"></p-columnFilter>
+               <p-sortIcon field="date"></p-sortIcon>
+           </th>
+           <th>Comments</th>
+         </tr>
+     </ng-template>
+     <ng-template pTemplate="body" let-i>
+         <tr>
+           <td>{{i.itemid}}</td>
+             <td>
+                 <p class="m-0">{{i.title}}</p>
+                 <span class="batch">{{i.batch}}/{{i.expdate | date :'MMM-yy'}}</span>
+                 <span class="batch" style="margin-left:5px"><i class="bi bi-currency-rupee"></i>{{i.mrp_cost}}</span>
+             </td>
+             <td style="text-align: right;">{{i.oldprice}} ({{i.price - i.oldprice > 0 ? '+'+(i.price - i.oldprice) : (i.price - i.oldprice)}})</td>
+             <td style="text-align: right;">{{i.price}}</td>
+             <td>{{i.date | date : 'dd/MM/yyyy'}}</td>
+             <td>{{i.comments}}</td>
+         </tr>
+     </ng-template>
+ </p-table>   

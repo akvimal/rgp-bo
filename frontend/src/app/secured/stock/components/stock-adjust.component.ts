@@ -12,15 +12,11 @@ import { StockService } from "../stock.service";
 })
 export class StockAdjustComponent {
 
-    prices:[] = []
-    quantities:[] = []
+    quantities:[] = [];
 
     constructor(private stockService:StockService) {}
 
     ngOnInit() {
-        this.stockService.findAllPriceAdjustments().subscribe((data:any) => {
-            this.prices = data;
-        });
         this.stockService.findAllQtyAdjustments().subscribe((data:any) => {
             this.quantities = data;
         });
