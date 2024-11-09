@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
-import { ProductPrice } from "../product-price";
-import { ProductsService } from "../products.service";
+import { ProductPrice } from "../../product-price.model";
+import { ProductsService } from "../../products.service";
 
 @Component({
     templateUrl: 'product-price.component.html'

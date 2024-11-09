@@ -1,7 +1,10 @@
 import { Component } from "@angular/core";
 
 @Component({
-    templateUrl:'./products.component.html'
+    template: `
+    <app-product-header></app-product-header>
+    <router-outlet></router-outlet>
+    `
 })
 export class ProductsComponent {
 }

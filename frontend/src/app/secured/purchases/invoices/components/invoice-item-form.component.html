@@ -25,10 +25,9 @@
                     </ng-template>
                 </p-autoComplete>&nbsp;
             </div>
-        
         </div>
         <div class="row">
-          <div class="col-md-12 mt-2">
+          <div class="col-md-12 mt-2 mb-2">
             <strong>{{selectedProduct?.title}}</strong><br>
             <span style="font-style: italic;color:red;">{{selectedProduct?.props?.composition}}</span>
           </div>
@@ -60,12 +59,12 @@
     </div>
     <!-- </div>
     <div class="row"> -->
-        <!-- <div class="col-md-1">
+        <div class="col-md-1">
             <label for="pk" class="form-label">Pack</label>
             <p>{{form.controls['pack'].value}}</p>
-        </div> -->
+        </div>
         <div class="col-md-1">
-            <label for="qty" class="form-label">Packs</label>
+            <label for="qty" class="form-label">QTY</label>
             <input type="number" id="qty" class="form-control" formControlName="qty" (input)="calculate()">
         </div>
         <!-- <div class="col-md-1">
@@ -86,11 +85,11 @@
             <input type="number" id="taxpcnt" class="form-control" formControlName="taxpcnt" size="4" (input)="calculate()">
         </div>
         <div class="col-md-1">
-            <label for="disc" class="form-label text-info">Disc %</label>
+            <label for="disc" class="form-label">Disc %</label>
             <input type="text" id="disc" class="form-control" formControlName="discpcnt" size="6" (input)="calculate()">
         </div>
         <div class="col-md-1">
-            <label for="freeqty" class="form-label text-info">Free</label>
+            <label for="freeqty" class="form-label">Free</label>
             <input type="number" id="freeqty" class="form-control" formControlName="freeqty">
         </div>
         <div class="col-md-1">

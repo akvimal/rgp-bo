@@ -1,4 +1,3 @@
-<app-product-header></app-product-header>
     <div class="row">
         <div class="col-md-10 d-flex d-inline-flex">
             <div *ngIf="(productProps$ | async).length > 0">
@@ -14,7 +13,6 @@
             </div>
         </div>
     </div>
-
     <div class="row">
             <div class="col-12">
             <p-table #dt1 [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
@@ -49,7 +47,7 @@
                             <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
                             <p-sortIcon field="hsn"></p-sortIcon>
                         </th> -->
-                        <th pSortableColumn="title">Title 
+                        <th pSortableColumn="title">Product 
                             <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                             <p-sortIcon field="title"></p-sortIcon>
                         </th>
@@ -64,10 +62,10 @@
                             <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
                             <p-sortIcon field="mfr"></p-sortIcon>
                         </th>
-                        <!-- <th pSortableColumn="createdon">Date 
-                            <p-sortIcon field="createdon"></p-sortIcon>
-                        </th>   -->
-                        <th>Actions</th>
+                        <th pSortableColumn="updatedon">Latest 
+                            <p-sortIcon field="updatedon"></p-sortIcon>
+                        </th>  
+                        <th class="text-center">Actions</th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-product>
@@ -87,14 +85,16 @@
                         <td style="text-align: center;">{{product.pack}}</td>
                         <!-- <td>{{product.brand}}</td> -->
                         <td>{{product.mfr}}</td>
-                        <!-- <td>{{product.createdon | date : 'dd/MM/yy'}}</td> -->
+                        <td>{{product.updatedon | date : 'dd/MM/yy'}}</td>
                         <td style="text-align: center;">
+                            <h5>
                             <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
                                 <i class="bi bi-pencil-square text-primary"></i>
                             </a>&nbsp;&nbsp;
                             <a *isAuth="'products.delete'" (click)="delete(product.id)">
                                 <i class="bi bi-trash text-danger"></i>
                             </a>
+                        </h5>
                         </td>
                     </tr>
                 </ng-template>

@@ -1,7 +1,7 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
-import { VendorsService } from "../../../vendors/vendors.service";
+import { VendorsService } from "../../vendors/vendors.service";
 import { Invoice } from "../invoice.model";
 import { InvoiceService } from "../invoices.service";
 import { ProductsService } from "../../../products/products.service";
@@ -103,16 +103,10 @@ export class InvoiceFormComponent {
         this.service.save({id, ...obj}).subscribe(data => this.gotoEdit(id));
       else
         this.service.save(obj).subscribe((data:any) => {
-          console.log('saved',data);
-          if(data.status === 'ERROR'){
+          if(data.status === 'ERROR')
             this.errorMessage = data.message;
-          }
-          // if(!(data.status && data.status === 'ERROR')) {
-            // console.log('>>>> ',data);
-            
-            else
+          else
             this.gotoEdit(data.id);
-          // }
         });
     }
 
@@ -139,10 +133,10 @@ export class InvoiceFormComponent {
     }
     
     gotoList() {
-      this.router.navigate(['/secure/purchases/invoice'],{relativeTo:this.route})
+      this.router.navigate(['/secure/purchases/invoices']);
     }
     
     gotoEdit(id:any){
-      this.router.navigate([`/secure/purchases/invoice/items/${id}`])
+      this.router.navigate([`/secure/purchases/invoices/items/${id}`])
     }
 }

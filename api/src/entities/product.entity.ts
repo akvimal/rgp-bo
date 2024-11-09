@@ -38,6 +38,13 @@ import { SaleItem } from "./sale-item.entity";
 
     @Column("character varying", { name: "description", length: 400 })
     description: string;
+    
+    @Column("double precision", {
+      name: "tax_pcnt",
+      nullable: true,
+      precision: 53,
+    })
+    taxpcnt: number | null;
 
     @Column("json", { name: "more_props", nullable: true })
     props: object | null;

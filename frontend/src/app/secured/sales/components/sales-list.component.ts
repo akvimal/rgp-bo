@@ -84,7 +84,7 @@ export class SalesListComponent {
           allowed = true;
         }
         else if(action === 'Return' 
-        // && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.billdate))
+        && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.billdate))
         ){ // return allowed for sale completed within specified period
           allowed = true;
         }

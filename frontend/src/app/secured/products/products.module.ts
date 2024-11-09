@@ -4,9 +4,6 @@ import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { SharedModule } from "src/app/shared/shared.module";
-import { ProductFormComponent } from "./components/product-form.component";
-import { ProductListComponent } from "./components/product-list.component";
-import { ProductsComponent } from "./components/products.component";
 import {TableModule} from 'primeng/table';
 import {ToastModule} from 'primeng/toast';
 import {CalendarModule} from 'primeng/calendar';
@@ -18,23 +15,33 @@ import {ButtonModule} from 'primeng/button';
 import {DropdownModule} from 'primeng/dropdown';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
+import { ProductPriceComponent } from "./components/price/product-price.component";
+import { ProductListComponent } from "./components/master/product-list.component";
+import { ProductFormComponent } from "./components/master/product-form.component";
+import { ProductsComponent } from "./components/products.component";
 import { ProductHeaderComponent } from "./components/product-header.component";
-import { ProductPriceComponent } from "./components/product-price.component";
 
 const routes: Routes = [
-  { path: '', redirectTo: 'list'},
-  {path: 'list', component: ProductListComponent, canActivate:[AuthGuard]},
-  {path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]},
-    {path: 'new', component: ProductFormComponent, canActivate:[AuthGuard]},
-    {path: 'edit/:id', component: ProductFormComponent, canActivate:[AuthGuard]}
+  { path: '', component: ProductsComponent, 
+    children: [
+      { path: '', redirectTo: 'master'},
+      { path: 'master', children: [
+        { path: '', redirectTo: 'list'},
+        { path: 'list', component: ProductListComponent, canActivate:[AuthGuard]},
+        { path: 'new', component: ProductFormComponent, canActivate:[AuthGuard]},
+        { path: 'edit/:id', component: ProductFormComponent, canActivate:[AuthGuard]}
+      ]},
+      { path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]}      
+  ]},
+  
 ];
 
 @NgModule({
     declarations: [
         ProductsComponent,
+        ProductHeaderComponent,
         ProductListComponent,
         ProductFormComponent,
-        ProductHeaderComponent,
         ProductPriceComponent
     ],
     imports: [

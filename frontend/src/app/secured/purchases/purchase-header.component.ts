@@ -4,6 +4,4 @@ import { Component } from "@angular/core";
     selector: 'app-purchase-header',
     templateUrl: './purchase-header.component.html'
 })
-export class PurchaseHeaderComponent {
-
-}
+export class PurchaseHeaderComponent {}

@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
-import { VendorsService } from "src/app/secured/vendors/vendors.service";
+import { VendorsService } from "src/app/secured/purchases/vendors/vendors.service";
 import { PurchaseOrderService } from "../purchase-order.service";
 
 @Component({

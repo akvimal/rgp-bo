@@ -4,13 +4,13 @@
 <nav class="navbar navbar-light bg-light justify-content-between">
     <ul class="nav">
         <li class="nav-item">
-            <a class="nav-link" routerLink="/secure/stock/list">Inventory</a>
+            <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/stock/list">Inventory</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" routerLink="/secure/stock/adjust">Adjustments</a>
+            <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/stock/adjust">Adjustments</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" routerLink="/secure/stock/demand">Demand</a>
+            <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/stock/demand">Demand</a>
         </li>
     </ul>
 </nav>

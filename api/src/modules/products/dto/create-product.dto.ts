@@ -28,7 +28,8 @@ export class CreateProductDto {
 
     @ApiPropertyOptional({ description: 'pack', example: 0 })
     readonly pack: number;
-
+    @ApiProperty({ description: 'tax percent', example: 0 })
+    readonly taxpcnt: number;
     @ApiPropertyOptional({ description: 'category', example: '' })
     @IsOptional()
     readonly category: string;

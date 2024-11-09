@@ -1,15 +1,14 @@
-<app-purchase-header></app-purchase-header>
 <div class="row">
   <div class="col-12 mt-2">
-<a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoice/new']"><button type="submit" class="btn btn-primary">Add New</button></a>
-</div>
-<div class="col-12">
-<p-table #dt1 [value]="invoices" [resizableColumns]="true" columnResizeMode="expand" 
-[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
-    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-    [rowsPerPageOptions]="[10,25,50]">
-<!-- <table *isAuth="'purchases.read'" class="table table-bordered mt-3"> -->
-  <!-- <thead> -->
+    <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+  </div>
+  <div class="col-12">
+    <p-table #dt1 [value]="invoices" [resizableColumns]="true" columnResizeMode="expand" 
+    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+        [rowsPerPageOptions]="[10,25,50]">
+    <!-- <table *isAuth="'purchases.read'" class="table table-bordered mt-3"> -->
+      <!-- <thead> -->
     <ng-template pTemplate="header">
     <tr>
       <!-- <th pSortableColumn="id">ID

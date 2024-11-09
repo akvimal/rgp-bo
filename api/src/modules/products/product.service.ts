@@ -22,6 +22,7 @@ export class ProductService {
           if(query.title){
             qb.andWhere(`p.title = :ttl`, { ttl:query.title });
           }
+          qb.orderBy('p.updatedon','DESC')
         return qb.getMany();
     }
 

@@ -1,8 +1,11 @@
-<app-purchase-header></app-purchase-header>
+
+<div class="card mt-2">
+  <div class="card-body">
+    <h5 class="card-title p-0 m-0">New Invoice</h5>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <div class="container">
-    <div class="row">
+  
+    <div class="row mt-4">
       <div class="col-md-3">
         <label for="vendor" class="col-form-label">Vendor</label>
         <select class="form-select" id="vendor" formControlName="vendorid" (change)="fetchOrders($event)">
@@ -46,7 +49,7 @@
         <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
       </div>
     </div>
-  </div>
+  
   <!-- <div class="col-md-6">
     <label for="grn" class="col-sm-2 col-form-label">GRN</label>
     <input type="text" class="form-control" formControlName="grn" 
@@ -56,3 +59,5 @@
 </form>
 <!-- <a *ngIf="invoice.id" [routerLink]="['../../items',invoice.id]">Items</a> -->
 <router-outlet></router-outlet>
+</div>
+</div>

@@ -3,7 +3,7 @@ import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { Observable } from "rxjs";
 import { ConfigService } from "src/app/shared/config.service";
-import { ProductsService } from "../products.service";
+import { ProductsService } from "../../products.service";
 import { MessageService } from 'primeng/api';
 
 @Component({

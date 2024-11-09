@@ -2,8 +2,7 @@ import { Component, ViewChild } from "@angular/core";
 import { Table } from "primeng/table";
 import { Observable } from "rxjs";
 import { ConfigService } from "src/app/shared/config.service";
-import { ProductsService } from "../products.service";
-import { PropsService } from "../props.service";
+import { ProductsService } from "../../products.service";
 
 @Component({
     templateUrl: 'product-list.component.html'

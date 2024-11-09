@@ -2,7 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Product } from "./product.model";
 import { environment } from "./../../../environments/environment";
-import { ProductPrice } from "./product-price";
+import { ProductPrice } from "./product-price.model";
 
 @Injectable({
     providedIn: 'root'

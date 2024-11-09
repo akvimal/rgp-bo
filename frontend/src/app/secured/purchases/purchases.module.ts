@@ -28,28 +28,37 @@ import { TabViewModule } from "primeng/tabview";
 import { PurchaseOrderComponent } from "./requests/components/purchase-order.component";
 import { PurchaseOrderViewComponent } from "./requests/components/purchase-order-view.component";
 import { InvoicesComponent } from "./invoices/components/invoices.component";
+import { PurchaseHomeComponent } from "./purchases-home.component";
 
 const routes: Routes = [
-  { path: '', redirectTo: 'invoice'},
-  { path: 'requests', component: PurchaseRequestComponent, canActivate:[AuthGuard]},
-  { path: 'orders', component: PurchaseOrderComponent, canActivate:[AuthGuard],
-      children: [
-        { path: ':id', component: PurchaseOrderViewComponent, canActivate:[AuthGuard] }
-      ]
-  },
-  { path: 'invoice', component: InvoicesComponent, canActivate:[AuthGuard],
-      children: [
-        { path: '', redirectTo: 'list'},
-        { path: 'list', component: InvoiceListComponent},
-        { path: 'new', component: InvoiceFormComponent},
-        { path: 'edit/:id', component: InvoiceFormComponent},
-        { path: 'items/:id', component: InvoiceItemsComponent}
-      ]
-  }
+  { path: '', component: PurchaseHomeComponent, 
+    children: [
+      { path: '', redirectTo: 'invoices'},
+      { path: 'intents', component: PurchaseRequestComponent, canActivate:[AuthGuard]},
+      { path: 'orders', component: PurchaseOrderComponent, canActivate:[AuthGuard],
+          children: [
+            { path: ':id', component: PurchaseOrderViewComponent, canActivate:[AuthGuard] }
+          ]
+      },
+      { path: 'invoices', canActivate:[AuthGuard],
+          children: [
+            { path: '', redirectTo: 'list'},
+            { path: 'list', component: InvoiceListComponent},
+            { path: 'new', component: InvoiceFormComponent},
+            { path: 'edit/:id', component: InvoiceFormComponent},
+            { path: 'items/:id', component: InvoiceItemsComponent}
+          ]
+      },
+      {
+        path: 'vendors', canActivate:[AuthGuard],
+        loadChildren: () => import('./vendors/vendors.module').then(m => m.VendorsModule)
+      }
+  ]}
 ];
 
 @NgModule({
     declarations: [
+      PurchaseHomeComponent,
       PurchasesComponent,
       PurchaseHeaderComponent,
       PurchaseRequestComponent,

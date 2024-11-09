@@ -44,8 +44,8 @@ export class SaleReturnAdjustFormComponent {
     onSubmit(): void {
         const input = [];
 
-        if(this.returnItem['accept'] > 0)
-        input.push({itemid:this.returnItem['itemid'],qty:this.returnItem['accept'],
+        // if(this.returnItem['accept'] > 0)
+        input.push({itemid:this.returnItem['itemid'],qty:this.returnItem['qty'],
             price:this.returnItem['price'],reason:'Returned',status:'APPROVED'});
         if(this.returnItem['reject']['qty'] > 0)
         input.push({itemid:this.returnItem['itemid'],qty:-1*this.returnItem['reject']['qty'],

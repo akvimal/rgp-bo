@@ -1,16 +1,10 @@
-<div class="pagetitle">
-  <h1>Products</h1>
-</div>
-
 <div class="card">
     <div class="card-body">
-      <h5 class="card-title m-0 p-0">New Product</h5>
-
+      <h5 class="card-title m-0 p-0">{{isNew ? 'New' : 'Edit'}} Product</h5>
+      
       <!-- Multi Columns Form -->
       <form class="pt-2" [formGroup]="form" (ngSubmit)="onSave()">
-       
         <div class="row mt-2">
-         
           <div class="col-md-4">
             <label for="brand" class="form-label">Brand</label>
             <input id="brand" class="form-control" type="text" formControlName="brand">
@@ -32,7 +26,6 @@
             <input type="text" class="form-control" id="prcode" formControlName="code">
           </div>
         </div>
-
         <div class="row mt-4">
           <div class="col-md-12" *isAuth="'products.add$title'">
             <label for="title" class="form-label">Title <span class="required">*</span></label>
@@ -59,7 +52,6 @@
             <label for="brand" class="form-label">Brand <span class="required">*</span></label>
             <input id="brand" class="form-control" type="text" formControlName="brand" (input)="dataInput(undefined, 'brand', $event)">
           </div>       -->
-         
         </div>
         <div class="row g-2 bg-light pb-3 mt-2" formGroupName="props">
             <div class="col-md-4" *ngFor="let pp of props">

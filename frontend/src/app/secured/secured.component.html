@@ -120,25 +120,19 @@
           </a>
         </li>
     
-        <li class="nav-item" *isNavAuth>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isNavAuth>
           <a class="nav-link collapsed" routerLink="products">
             <i class="bi bi-envelope"></i>
             <span>Products</span>
           </a>
         </li>
-        <li class="nav-item" *isAuth="'vendors.read'">
-          <a class="nav-link collapsed" routerLink="vendors">
-            <i class="bi bi-envelope"></i>
-            <span>Vendors</span>
-          </a>
-        </li>
-        <li class="nav-item" *isAuth="'purchases.read'">
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'purchases.read'">
           <a class="nav-link collapsed" routerLink="purchases">
             <i class="bi bi-envelope"></i>
             <span>Purchase</span>
           </a>
         </li>
-        <li class="nav-item" *isAuth="'stock.read'">
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'stock.read'">
           <a class="nav-link collapsed" routerLink="stock">
             <i class="bi bi-envelope"></i>
             <span>Stock</span>

@@ -105,6 +105,8 @@ export class PurchaseInvoiceService {
 
    async findItemsByProduct(id:number){
       return this.purchaseInvoiceItemRepository.createQueryBuilder('i')
+      .innerJoinAndSelect("i.product", "product")
+      .select(['i','product'])
       .where('i.productid = :id', { id }).orderBy('i.createdon','DESC')
       .getMany();
     }
