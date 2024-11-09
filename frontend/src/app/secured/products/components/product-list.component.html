@@ -1,8 +1,5 @@
-<div class="pagetitle">
-    <h1>Products</h1>
-</div>
-
-    <div class="row mt-2">
+<app-product-header></app-product-header>
+    <div class="row">
         <div class="col-md-10 d-flex d-inline-flex">
             <div *ngIf="(productProps$ | async).length > 0">
                 <select class="form-control" id="category" [(ngModel)]="category" (change)="selectCategory($event)">

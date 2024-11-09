@@ -295,10 +295,6 @@ export class SaleService {
         group by sale_id, purchase_item_id) x on x.sid = s.sale_id and x.pid = s.purchase_item_id and x.net > 0 and status is null
         inner join purchase_invoice_item pii on pii.id = s.purchase_item_id 
         inner join product p on p.id = pii.product_id`);
-
-        // return this.saleItemRepository.createQueryBuilder('si')
-        //     .where('si.saleid = :id and ', { id })
-        //     .getMany();
     }
 
     async update(id:any, values:any, userid:any){

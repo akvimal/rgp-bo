@@ -8,7 +8,10 @@ export class CreateProductPrice2Dto {
     @ApiProperty({ description: 'effdate', example: '' })
     readonly effdate: string;
     
-    @ApiProperty({ description: 'price', example: '' })
-    readonly price: number;
+    @ApiProperty({ description: 'market price', example: '' })
+    readonly marketprice: number;
+    
+    @ApiProperty({ description: 'sale price', example: '' })
+    readonly saleprice: number;
  
 }

@@ -1,44 +1,69 @@
+<app-product-header></app-product-header>
 
+<div class="row">
+    <div class="col-12">
 
- <p-table #dt1 [value]="prices" [resizableColumns]="true" columnResizeMode="expand" 
- [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-     [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-     [rowsPerPageOptions]="[10,25,50]">
-     <ng-template pTemplate="header">
-         <tr>
-           <th pSortableColumn="itemid">ID
-               <p-columnFilter type="text" field="itemid" display="menu"></p-columnFilter>
-               <p-sortIcon field="itemid"></p-sortIcon>
-           </th>
-           <th pSortableColumn="title">Product
-               <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
-               <p-sortIcon field="title"></p-sortIcon>
-           </th>
-           <th pSortableColumn="oldprice">Old Price
-               <p-sortIcon field="oldprice"></p-sortIcon>
-           </th>
-           <th pSortableColumn="price">New Price
-               <p-sortIcon field="price"></p-sortIcon>
-           </th>
-             <th pSortableColumn="date">Date
-               <p-columnFilter type="date" field="date" display="menu"></p-columnFilter>
-               <p-sortIcon field="date"></p-sortIcon>
-           </th>
-           <th>Comments</th>
-         </tr>
-     </ng-template>
-     <ng-template pTemplate="body" let-i>
-         <tr>
-           <td>{{i.itemid}}</td>
-             <td>
-                 <p class="m-0">{{i.title}}</p>
-                 <span class="batch">{{i.batch}}/{{i.expdate | date :'MMM-yy'}}</span>
-                 <span class="batch" style="margin-left:5px"><i class="bi bi-currency-rupee"></i>{{i.mrp_cost}}</span>
-             </td>
-             <td style="text-align: right;">{{i.oldprice}} ({{i.price - i.oldprice > 0 ? '+'+(i.price - i.oldprice) : (i.price - i.oldprice)}})</td>
-             <td style="text-align: right;">{{i.price}}</td>
-             <td>{{i.date | date : 'dd/MM/yyyy'}}</td>
-             <td>{{i.comments}}</td>
-         </tr>
-     </ng-template>
- </p-table>   
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+    <p-table [value]="products" dataKey="id" editMode="row"
+    [tableStyle]="{'min-width': '50rem'}"
+    [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
+    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+    [rowsPerPageOptions]="[25,50,100]">
+
+        <ng-template pTemplate="header">
+            <tr>
+                <th style="width:42%" pSortableColumn="title">Product
+                    <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
+                    <p-sortIcon field="title"></p-sortIcon>
+                </th>
+                <th style="width:8%" class="text-center">Max MRP</th>
+                <th style="width:8%">Martket</th>
+                <th style="width:8%">Max PTR</th>
+                <th style="width:8%">Sale Rate</th>
+                <th style="width:8%" pSortableColumn="margin">Margin
+                    <p-columnFilter type="number" field="margin" display="menu"></p-columnFilter>
+                    <p-sortIcon field="margin"></p-sortIcon>
+                </th>
+                <th style="width:8%">Actions</th>
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-product let-editing="editing" let-ri="rowIndex">
+            <tr [pEditableRow]="product">
+                <td>{{product.title}}</td>
+                <td class="text-center">{{product.our_max_mrp}}</td>
+                <td class="text-center" pEditableColumn>
+                    <p-cellEditor>
+                        <ng-template pTemplate="input">
+                            <input pInputText type="text" [(ngModel)]="product.market_price">
+                        </ng-template>
+                        <ng-template pTemplate="output">
+                            {{product.market_price}}
+                        </ng-template>
+                    </p-cellEditor>
+                </td>
+                <td class="text-center">{{product.our_max_ptr | number : '1.2-2'}}</td>
+                <td class="text-center" pEditableColumn>
+                    <p-cellEditor>
+                        <ng-template pTemplate="input">
+                            <input pInputText type="text" [(ngModel)]="product.our_sale_price">
+                        </ng-template>
+                        <ng-template pTemplate="output">
+                            {{product.our_sale_price}}
+                        </ng-template>
+                    </p-cellEditor>
+                </td>
+                <td>{{product.margin | percent}}</td>
+                <td style="text-align:center">
+                    <button *ngIf="!editing" pButton pRipple type="button" pInitEditableRow icon="pi pi-pencil" (click)="onRowEditInit(product)" class="p-button-rounded p-button-text"></button>
+                    <button *ngIf="editing" pButton pRipple type="button" pSaveEditableRow icon="pi pi-check" (click)="onRowEditSave(product)" class="p-button-rounded p-button-text p-button-success p-mr-2"></button>
+                    <button *ngIf="editing" pButton pRipple type="button" pCancelEditableRow icon="pi pi-times" (click)="onRowEditCancel(product, ri)" class="p-button-rounded p-button-text p-button-danger"></button>
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>
+</div>

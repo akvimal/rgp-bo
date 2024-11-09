@@ -25,9 +25,9 @@ export class StockService {
             select iv.*, sale_price, market_price 
             from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
             where (product_title ilike '%${query.query}%' or more_props->>'composition' ilike '%${query.query}%')
-            ${query.expired === 'false' ? ' and product_expdate > current_timestamp ' : ''}
-            ${query.available === 'true' ? ' and available > 0 ' : ''} 
             order by product_title, product_expdate ${query.limit > 0 ? 'limit '+query.limit : ''}`);
+            // ${query.expired === 'false' ? ' and product_expdate > current_timestamp ' : ''}
+            // ${query.available === 'true' ? ' and available > 0 ' : ''} 
         }
 
         async findByItems(ids:number[]){

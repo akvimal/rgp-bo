@@ -21,9 +21,14 @@ export class ProductController {
         return this.productService.create(createDto, currentUser.id);
     }
 
-    @Post(':productid/prices')
-    async addPrice(@Param('productid') productid: number, @Body() createDto: CreateProductPrice2Dto,  @User() currentUser: any) {
-        return this.productService.addPrice({...createDto, productid}, currentUser.id);
+    @Post('prices')
+    async addPrice(@Body() createDto: CreateProductPrice2Dto,  @User() currentUser: any) {
+        return this.productService.addPrice(createDto, currentUser.id);
+    } 
+    
+    @Put('prices/:id')
+    async updatePrice(@Param('id') id: number, @Body() dto: UpdateProductPrice2Dto,  @User() currentUser: any) {
+        return this.productService.updatePrice(id, dto, currentUser.id);
     }
 
     @Put(':id')
@@ -31,20 +36,23 @@ export class ProductController {
       return this.productService.update(id, updateDto, currentUser.id);
     }
 
-    @Put(':productid/prices/:id')
-    updatePrice(@Param('id') id: number, @Param('productid') productid: number, @Body() updateDto: UpdateProductPrice2Dto, @User() currentUser: any) {
-      return this.productService.updatePrice(id, {...updateDto, productid}, currentUser.id);
-    }
+    // @Put(':productid/prices/:id')
+    // updatePrice(@Param('id') id: number, @Param('productid') productid: number, @Body() updateDto: UpdateProductPrice2Dto, @User() currentUser: any) {
+    //   return this.productService.updatePrice(id, {...updateDto, productid}, currentUser.id);
+    // }
 
     @Get()
     findAll(@Query() query: any, @User() currentUser: any) {
       return this.productService.findAll(query,currentUser);
     }
+
+    @Get('/prices')
+    findAllPrices(@Query() query: any) {
+      return this.productService.findPrices(query);
+    }
     
     @Post('/title')
     findByTitle(@Body() body:any) {
-      console.log('BODY: ',body);
-      
       return this.productService.findByTitle(body.title);
     }
     
@@ -57,4 +65,5 @@ export class ProductController {
     remove(@Param('id') id: string, @User() currentUser: any) {
       return this.productService.update(id, {isActive:false}, currentUser.id);
     }
+
 }

@@ -18,10 +18,13 @@ import {ButtonModule} from 'primeng/button';
 import {DropdownModule} from 'primeng/dropdown';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
+import { ProductHeaderComponent } from "./components/product-header.component";
+import { ProductPriceComponent } from "./components/product-price.component";
 
 const routes: Routes = [
   { path: '', redirectTo: 'list'},
-    {path: 'list', component: ProductListComponent, canActivate:[AuthGuard]},
+  {path: 'list', component: ProductListComponent, canActivate:[AuthGuard]},
+  {path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]},
     {path: 'new', component: ProductFormComponent, canActivate:[AuthGuard]},
     {path: 'edit/:id', component: ProductFormComponent, canActivate:[AuthGuard]}
 ];
@@ -30,7 +33,9 @@ const routes: Routes = [
     declarations: [
         ProductsComponent,
         ProductListComponent,
-        ProductFormComponent
+        ProductFormComponent,
+        ProductHeaderComponent,
+        ProductPriceComponent
     ],
     imports: [
         CommonModule,

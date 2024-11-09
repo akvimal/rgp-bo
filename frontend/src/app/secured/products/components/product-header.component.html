@@ -1,0 +1,13 @@
+<div class="pagetitle">
+  <h1>Products</h1>
+</div>
+<nav class="navbar navbar-light bg-light justify-content-between non-print">
+    <ul class="nav">
+        <li class="nav-item" *isNavAuth>
+          <a class="nav-link"[routerLinkActive]="['is-active']" routerLink="/secure/products/list">Product Master</a>
+        </li>
+        <li class="nav-item" *isNavAuth>
+          <a class="nav-link"[routerLinkActive]="['is-active']" routerLink="/secure/products/price">Price List</a>
+        </li>
+      </ul>
+  </nav>
