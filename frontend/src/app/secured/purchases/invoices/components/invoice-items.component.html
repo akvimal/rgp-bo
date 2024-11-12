@@ -9,7 +9,7 @@
             <!-- <div class="col-lg-4 col-md-4 label">PO ID: {{invoice.purchaseorderid}}</div> -->
             <div class="col-lg-3 col-md-3 label text-end"><strong>GRN:</strong><span class="text-success"> {{invoice.grno}}</span></div>
             <div class="col-lg-3 col-md-3 label text-end"><strong>Status:</strong> {{invoice.status}}
-                <a *ngIf="invoice.status === 'NEW'" [routerLink]="['../../edit',invoice.id]">Edit</a>
+                <a [routerLink]="['../../edit',invoice.id]">Edit</a>
             </div>
         </div>
         
@@ -33,53 +33,50 @@
                     <thead> -->
                         <tr>
                             <th *ngIf="invoice.status !== 'COMPLETE'"></th>
+                            <th *ngIf="invoice.status !== 'COMPLETE'"></th>
                             <th pSortableColumn="product.title">Product
                                 <p-sortIcon field="product.title"></p-sortIcon>
                             </th>
                             <th>Batch</th>
                             <!-- <th>MFR Date</th> -->
-                            <th pSortableColumn="expdate">EXP Date
+                            <th pSortableColumn="expdate">Expiry
                                 <p-sortIcon field="expdate"></p-sortIcon>
                             </th>
-                            <!-- <th>Pack</th> -->
-                            <th>Packs</th>
                             <th>MRP</th>
-                            <th>PTR</th>
-                            <th>Tax</th>
-                            <th>Disc</th>
+                            <!-- <th>Pack</th> -->
+                            <th>QTY</th>
                             <th>Free</th>
+                            <th>Rate</th>
+                            <th>Disc</th>
+                            <th>Tax</th>
                             <th>Total</th>
-                            <th>Status</th>
-                            <th *ngIf="invoice.status !== 'COMPLETE'"></th>
                         </tr>
                     <!-- </thead>
                 <tbody> -->
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
                     <!-- <tr *ngFor="let i of invoice.items"> -->
-                        <tr>
+                        <tr [ngStyle]="{'background':i.selected ? '#ddd' : 'inherit'}">
                             <td *ngIf="invoice.status !== 'COMPLETE'" style="width:2em">
-                                <input type="checkbox" *ngIf="i.status !== 'VERIFIED'" (change)="selectItem($event,i.id)">
+                                <input type="checkbox" class="form-conrol-input" *ngIf="i.status !== 'VERIFIED'" (change)="selectItem($event,i.id)">
+                            </td><td *ngIf="invoice.status !== 'COMPLETE'">
+                                <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
+                                    <i class="bi bi-pencil-square text-primary"></i>
+                                </a>
                             </td>
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
                             <!-- <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td> -->
                             <td class="text-center">{{i.expdate | date: 'MMM-yy'}}</td>
+                            <td style="text-align: right;">{{i.mrpcost | number:'1.2-2'}}</td>
                             <!-- <td style="text-align: right;">{{i.product.pack}}</td> -->
                             <td style="text-align: right;">{{i.qty}}</td>
-                            <td style="text-align: right;">{{i.mrpcost | number:'1.2-2'}}</td>
-                            <td style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
-                            
-                            <td>{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
-                            <td>{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
                             <td style="text-align: right;">{{i.freeqty}}</td>
-                            <td style="text-align: right;">{{i.total | number:'1.2-2'}}</td>
-                            <td class="text-center">{{i.status}}</td>
-                            <td *ngIf="invoice.status !== 'COMPLETE'">
-                                <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
-                                    <i class="bi bi-pencil-square text-primary"></i>
-                                </a>
-                            </td>
+                            <td style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
+                            <td>{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
+                            <td>{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
+                            <td style="text-align: right;">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
+                            <!-- <td class="text-center">{{i.status}}</td> -->
                         </tr>
                         <!-- <tr>
                         
@@ -91,11 +88,21 @@
                 </table> -->
 
                 </ng-template>
+                <ng-template pTemplate="footer">
+                    <tr>
+                        <td colspan="8" class="text-right">Net Total: {{nettotal | number:'1.2-2'}}</td>
+                        <td>{{disctotal | number:'1.2-2'}}</td>
+                        <td>{{taxtotal | number:'1.2-2'}}</td>
+                        <td>{{grosstotal | number:'1.2-2'}}</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </ng-template>
             </p-table>
             </div>
-            <div class="col-lg-12">
+            <!-- <div class="col-lg-12">
                 Total ({{invoice.items?.length}} items) Gross: {{grosstotal | number:'1.2-2'}} | Disc: {{disctotal | number:'1.2-2'}} | Tax: {{taxtotal | number:'1.2-2'}} | Net: {{nettotal | number:'1.2-2'}} 
-            </div>
+            </div> -->
         </div>
 
         <div class="row">

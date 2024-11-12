@@ -24,6 +24,16 @@ export class CreateSaleDto {
     @ApiProperty({ description: 'payment refno', example: '' })
     readonly payrefno: string;    
     
+    @ApiProperty({ description: 'Digital Payment Method', example: '' })
+    readonly digimethod: string | null;
+    @ApiProperty({ description: 'Digital Payment RefNo', example: '' })
+    readonly digirefno: string | null;
+  
+    @ApiProperty({ description: 'Digital Payment Amount', example: 0 })
+    readonly digiamt: number;
+    @ApiProperty({ description: 'Cash Payment Amount', example: 0 })
+    readonly cashamt: number;
+
     @ApiProperty({ description: 'expreturn days', example: 0 })
     readonly expreturndays: number;
 

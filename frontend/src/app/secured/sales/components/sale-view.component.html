@@ -1,5 +1,3 @@
-<app-sale-header></app-sale-header>
-
 <div class="card p-2">
     <div class="card-body bill-view">
         <div class="row">
@@ -9,7 +7,6 @@
                         <img src="assets/img/rgp-logo.png" alt="" width="75px" height="75px" style="float: left;">
                         <div style="padding-left: 6.7em;">
                             <h6 style="font-size: large;font-weight: bolder; margin:0;padding:0;">Ramesh Generic Pharmacy</h6>
-                        
                             <p># 1/256, Kalamegam Salai, Mogappair West, Chennai-600037<br>
                             Phone: <strong>72990 72725 | 88593 35933</strong><br>
                             DL#: TN-Z04-20-00009 | TN-Z04-21-00009</p>
@@ -17,7 +14,7 @@
                     </td>
                 <!-- </tr>
                 <tr> -->
-                    <td style="text-align: right; vertical-align: bottom;">
+                    <td style="text-align: right;">
                        <strong>Bill No.:</strong> {{sale.billno}}<br>
                         <strong>Bill Date:</strong> {{sale.billdate | date: 'dd/MM/yyyy'}}<br>
                        <span *ngIf="sale.customer?.name"><strong>Name:</strong> {{sale.customer?.name}}</span><br>

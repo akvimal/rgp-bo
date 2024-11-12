@@ -67,7 +67,7 @@ export class SaleItem extends BaseEntity {
   @JoinColumn([{ name: "product_id", referencedColumnName: "id" }])
   product: Product;
 
-  @ManyToOne(() => Sale, (sale) => sale.items)
+  @ManyToOne(() => Sale, (sale) => sale.items, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: "sale_id", referencedColumnName: "id" }])
   sale: Sale;
 

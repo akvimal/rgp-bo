@@ -1,4 +1,4 @@
-<app-sale-header></app-sale-header>
+<!-- <app-sale-header></app-sale-header> -->
 <div class="container m-0">
     <div class="row">
         <div class="col-12">
@@ -28,13 +28,13 @@
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
-                        <div><strong>Bill Date:</strong>&nbsp;{{this.sale.billdate | date: 'dd-MM-yy'}}</div>
+                        <div><strong>Bill Date:</strong>&nbsp;{{this.sale.billdate | date: 'dd/MM/yy'}}</div>
                         <div *ngIf="sale.status !== 'NEW'"><strong>Bill No:</strong>&nbsp;{{this.sale.billno}} ({{this.sale.status}})</div>
                     </td>
                 </tr>
                 <!-- Sale Items -->
                 <tr>
-                    <td colspan="2" class="m-0 p-0">
+                    <td colspan="2">
                         <app-sale-form-items [items]="sale.items" 
                             (itemRemoved)="onItemRemoved($event)"
                             (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
@@ -57,51 +57,67 @@
                     </td>
                 </tr> -->
                 <!-- Total -->
-                <tr *ngIf="sale.items && sale.items.length > 0" style="background-color:#eee">
+                <tr *ngIf="sale.items && sale.items.length > 0" style="background:#ccc;">
                     <td colspan="2">
-                        <div class="container">
-                            <div class="row">
-                                <div class="col-4">
+                        <!-- <div class="container"> -->
+                            <div class="row m-0 p-0">
+                                <div class="col-1">
                                     <strong>{{sale.totalitems}}</strong> items
                                 </div>
-                                <div class="col-2 text-end">
-                                    Saving: {{sale.saving}}%
+                                <!-- <div class="col-1">
+                                    MRP:<i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal}}
+                                </div> -->
+                                <div class="col-1">
+                                    Save: {{sale.saving}}%
                                 </div>
-                                <div class="col-2 text-end">
-                                    MRP Total:<i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal}}
-                                </div>
-                                <div class="col-2 text-end">
-                                    Tax Total:
+                                <div class="col-8">
+                                    <div class="row">
+                                        <div class="col-3">Credit (future)</div>
+                                        <div class="col-6 d-flex flex-row">
+                                            <select class="form-control" [(ngModel)]="paymode" [disabled]="!isCashPartial()">
+                                                <option value="PayTM">PayTM</option>
+                                                <option value="GPay">GPay</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                            <input type="text" class="form-control" [(ngModel)]="digiamt" [disabled]="!isCashPartial()" (input)="calcCashBal('digi',$event)">
+                                            <input type="text" class="form-control" [(ngModel)]="payrefno" placeholder="Ref#" [disabled]="!isCashPartial()">
+                                        </div>
+                                        <div class="col-3 d-flex flex-row text-end">
+                                            <input type="checkbox" class="form-control-input" [(ngModel)]="isCash" style="width: 2em; height: 2em;" (change)="changeToCash($event)">
+                                            <label style="padding-top:.3em;padding-left:.25em;padding-right:.5em;">Cash</label>
+                                            <input type="text" class="form-control" [(ngModel)]="cashamt" placeholder="Cash" [disabled]="!isCash" (input)="calcCashBal('cash',$event)">
+                                            <span *ngIf="cashbal>0" class="input-group-text" style="font-size: larger;background-color:blue;color:white;">{{cashbal}}</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="col-2 text-end">
                                     <h5>
-                                    Net Total:<i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total}}
+                                    Net Total: <span style="background-color: rgb(65, 236, 60);font-size: x-large;padding: .25em;"><i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total}}</span>
                                     </h5>
                                 </div>
                             </div>
-                        </div>
+                        <!-- </div> -->
                     </td>
                 </tr>
             </table>
         </div>
     </div>
     <div class="row">
-        <div class="col-12">
+        <div class="col-8">
+            <button (click)="discard()" *ngIf="sale.status !== 'NEW'"
+            class="btn btn-outline-danger m-2">Discard</button>
+        </div>
+        <div class="col-4 text-end">
             <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
-                        [disabled]="!(total > 0)">Complete</button>    
-            <button *ngIf="sale.status !== 'COMPLETE'"(click)="submit('PENDING')" 
-                class="btn btn-outline-primary m-2" [disabled]="total === 0">Save</button>    
-            <button (click)="discard()"
-                class="btn btn-outline-secondary m-2">Discard</button>
-
+                        [disabled]="!isCompleteReady()">Complete</button>    
+            <button *ngIf="sale.status !== 'COMPLETE'" (click)="submit('PENDING')" 
+                class="btn btn-outline-secondary m-2" [disabled]="total === 0">Save</button>    
             <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
                 <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
-            <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button>
+            <!-- <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button> -->
         </div>
     </div>
 </div>
-
-
 
 <!-- Information to capture for H1 -->
 <p-dialog header="Prescription" [(visible)]="displaySalePropsForm" [modal]="true">

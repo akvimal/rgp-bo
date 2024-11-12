@@ -157,7 +157,8 @@ export class InvoiceItemFormComponent {
     calculateTotal(qty:number,price:number,disc:number,tax:number):number{
         const gross = qty * price;
         const gross_after_disc = gross - (gross*(disc/100));
-        const total = gross_after_disc + (gross_after_disc*(tax/100));
+        // const total = gross_after_disc + (gross_after_disc*(tax/100));
+        const total = gross_after_disc;
         return isNaN(total) ? 0 : +total.toFixed(2);
     }
     

@@ -104,6 +104,11 @@ export class SaleController {
       return this.saleService.findAll(query,query['self']==='true'?currentUser.id:null);
     }
 
+    @Get('/saved')
+    async findAllSaved() {
+      return this.saleService.findSavedSales();
+    }
+
     @Post('/items/criteria')
     async findAllItems(@Body() criteria: any, @User() currentUser: any) {
       return this.saleService.findAllItems(criteria,undefined);
@@ -136,8 +141,8 @@ export class SaleController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string, @User() currentUser: any) {
-      return this.saleService.update(id, {isActive:false}, currentUser.id);
+    remove(@Param('id') id: string) {
+      return this.saleService.delete(id);
     }
     
     @Delete('items/:id')

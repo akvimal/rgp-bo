@@ -31,8 +31,8 @@ export class DashboardComponent {
         .subscribe((data:any) => {
             this.saleData = data.map((dt:any) => {
                 return {
-                    name:this.freq==='daily'?this.dateService.getDateMonth(dt.date):this.dateService.getMonthYear(dt.date),
-                    value:Math.round(dt.sale)||0
+                    name:this.freq==='daily'?this.dateService.getDateMonth(dt.bill_dt):this.dateService.getMonthYear(dt.bill_dt),
+                    value:Math.round(dt.total)||0
                 }
             })
         })

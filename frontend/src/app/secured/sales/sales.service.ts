@@ -10,6 +10,7 @@ import { environment } from "./../../../environments/environment";
 })
 export class SaleService {
 
+    saved = new BehaviorSubject<[]>([]);
     items = new BehaviorSubject<SaleItem[]>([]);
     totalState = new BehaviorSubject(0);
 
@@ -55,6 +56,12 @@ export class SaleService {
 
     find(id:any){
         return this.http.get(`${this.apiurl}/${id}`);
+    }
+
+    refreshSavedSales(){
+        this.http.get(`${this.apiurl}/saved`).subscribe((data:any) => {
+            this.saved.next(data);
+        });
     }
 
     findAll(criteria:any){

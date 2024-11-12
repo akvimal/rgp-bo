@@ -25,20 +25,26 @@ import { SaleReminderComponent } from "./components/sale-reminder.component";
 import { SaleReturnsComponent } from "./components/sale-returns.component";
 import { SaleReturnFormComponent } from "./components/sale-return-form.component";
 import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
+import { SalePosComponent } from "./components/sale-pos.component";
 
 const routes: Routes = [
-  {path: '', redirectTo: 'list'},
+  {path: '', redirectTo: 'pos'},
   {path: 'list', component: SalesListComponent, canActivate:[AuthGuard]},
   {path: 'returns', component: SaleReturnsComponent, canActivate:[AuthGuard]},
-  {path: 'new', component: SaleFormComponent, canActivate:[AuthGuard]},
+  {path: 'pos', component: SalePosComponent, children: [
+    {path: '', redirectTo: 'new'},
+    {path: 'new', component: SaleFormComponent},
+    {path: 'edit/:id', component: SaleFormComponent},
+    {path: 'view/:id', component: SaleViewComponent}
+  ], canActivate:[AuthGuard]},
   {path: 'reminder', component: SaleReminderComponent, canActivate:[AuthGuard]},
-  {path: 'view/:id', component: SaleViewComponent, canActivate:[AuthGuard]},
-  {path: 'edit/:id', component: SaleFormComponent, canActivate:[AuthGuard]}
+  
 ];
 
 @NgModule({
     declarations: [
       SalesComponent,
+      SalePosComponent,
       SaleHeaderComponent,
       SaleReminderComponent,
       SaleDashboardComponent,

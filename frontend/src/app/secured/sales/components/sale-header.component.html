@@ -1,31 +1,21 @@
 <div class="pagetitle">
   <h1>Sales</h1>
 </div>
-<nav class="navbar navbar-light bg-light justify-content-between non-print">
-    <ul class="nav">
- 
+<nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
+    <ul class="nav page-menu">
+      <li class="nav-item">
+        <a class="nav-link" [routerLinkActive]="['is-active']" [routerLink]="['/secure/sales/pos']">
+            POS
+        </a>
+      </li>
         <li class="nav-item">
-          <a class="nav-link" routerLink="/secure/sales/list">Sales</a>
+          <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/sales/list">Sales</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLink="/secure/sales/returns">Returns</a>
+          <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/sales/returns">Returns</a>
         </li>
         <!-- <li class="nav-item">
           <a class="nav-link" routerLink="/secure/sales/reminder">Reminders</a>
         </li> -->
       </ul>
-        <ul class="list-inline">
-            <li class="list-inline-item">
-                <!-- <input class="form-control" type="search" placeholder="Customer"> -->
-                <!-- <app-customer-select 
-                (customerSelected)="selectCustomer($event)"
-                (focusLeave)="doneEnterCustomer($event)">
-                </app-customer-select> -->
-            </li> 
-            <li class="list-inline-item">
-                <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
-                    <button class="btn btn-primary no-print">New Sale</button>
-                </a>
-            </li>
-          </ul>
   </nav>

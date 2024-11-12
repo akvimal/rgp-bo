@@ -9,29 +9,24 @@
   <p-tabView>
     <p-tabPanel header="Invoice Level" headerStyleClass="no-print">
     <div class="row mt-3 no-print">
-    
       <div class="col-md-2">
-        <label for="fromdate">Date</label>
+        <label for="billno">Bill No.</label>
+        <input type="text" id="billno" name="filterbybillno" class="form-control" 
+          (input)="filterBillSales($event)">
+      </div>
+      <div class="col-md-2">
+        <label for="fromdate">Bill Date</label>
         <input type="date" id="fromdate" name="filterbydate" class="form-control" [(ngModel)]="date" (change)="filterDateSales($event, 'date')">
       </div>
+      <div class="col-md-2">
+        <label for="sustomer">Customer</label><br>
+        <app-customer-select id="customer" (customerSelected)="filterCustomerSales($event)"></app-customer-select>
+      </div>  
       <div class="col-md-1">
         <br>
         <input class="form-check-input" type="checkbox" name="self" id="self" [(ngModel)]="self" (change)="filterDateSales($event, 'self')"/>
         <label for="self">&nbsp;Self</label>
       </div>
-
-      <div class="col-md-2">
-        <label for="sustomer">Customer</label><br>
-        <app-customer-select id="customer" (customerSelected)="filterCustomerSales($event)"></app-customer-select>
-      </div>  
-      <div class="col-md-2">
-        <label for="billno">Bill No</label>
-        <input type="text" id="billno" name="filterbybillno" class="form-control" 
-          (input)="filterBillSales($event)">
-      </div>
-
-      
-      
       <!-- <div class="col-md-2">
         <label for="status">Status</label>
         <select name="filterbystatus" id="status" class="form-control" [(ngModel)]="criteria.status" (change)="fetchSales()">
@@ -51,38 +46,35 @@
       <thead> -->
       <div class="row">
       <div class="col-12">
-  <p-table #dt1 [value]="sales" [resizableColumns]="true" columnResizeMode="expand" 
+  <p-table #dt1 [value]="sales" 
+  [multiSortMeta]="[{field: 'billdate', order: -1}, {field: 'billno', order: -1}]"
+  [resizableColumns]="true" columnResizeMode="expand" 
     [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
     currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
     [rowsPerPageOptions]="[10,25,50]">
     <ng-template pTemplate="header">
         <tr>
           <!-- <th>Order #</th> -->
-          <th pSortableColumn="billno">Bill #
+          <th pSortableColumn="billno">Bill No.
             <p-columnFilter type="text" field="billno" display="menu"></p-columnFilter>
             <p-sortIcon field="billno"></p-sortIcon>
           </th>
-          <th pSortableColumn="billdate">Date
+          <th pSortableColumn="billdate">Bill Date
             <p-columnFilter type="date" field="billdate" display="menu"></p-columnFilter>
             <p-sortIcon field="billdate"></p-sortIcon>
           </th>
-          <th pSortableColumn="customer.name">Cust. Name
-            <p-columnFilter type="text" field="customer.name" display="menu"></p-columnFilter>
-            <p-sortIcon field="customer.name"></p-sortIcon>
+          <th pSortableColumn="custinfo">Customer
+            <p-columnFilter type="text" field="custinfo" display="menu"></p-columnFilter>
+            <p-sortIcon field="custinfo"></p-sortIcon>
           </th>
-          <th pSortableColumn="customer.mobile">Cust. Mobile
-            <p-columnFilter type="text" field="customer.mobile" display="menu"></p-columnFilter>
-            <p-sortIcon field="customer.mobile"></p-sortIcon>
-          </th>
-          <!-- <th>Sale Person</th> -->
-          <th pSortableColumn="status">Status
+          <th>Sale Person</th>
+          <!-- <th pSortableColumn="status">Status
             <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
             <p-sortIcon field="status"></p-sortIcon>
-          </th>
-          <th pSortableColumn="total">Total
-            <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
-            <p-sortIcon field="total"></p-sortIcon>
-          </th>
+          </th> -->
+          <th>Digital</th>
+          <th>Cash</th>
+          <th>Total</th>
           <th>Actions</th>
         </tr>
       <!-- </thead>
@@ -97,19 +89,21 @@
             <td>
               <a>{{s.billno}}</a>
             </td>
-
             <td>{{s.billdate | date: 'dd/MM/yy'}}</td>
-            <td>{{s.customer ? s.customer.name : ''}}</td>
-            <td>{{s.customer ? s.customer.mobile : ''}}</td>
-            <!-- <td>{{s.created ? s.created.fullname : ''}}</td> -->
-            <td>{{s.status}}</td>
+            <td>{{s.custinfo}}</td>
+            <!-- <td>{{s.customer ? s.customer.name : ''}}</td> -->
+            <!-- <td>{{s.customer ? s.customer.mobile : ''}}</td> -->
+            <td>{{s.created ? s.created.fullname : ''}}</td>
+            <!-- <td>{{s.status}}</td> -->
+            <td style="text-align: right;">{{s.digiamt}}</td>
+            <td style="text-align: right;">{{s.cashamt}}</td>
             <td style="text-align: right;">{{s.total}}</td>
             <td>
               <h5 *ngIf="isActionAllowed('Print',s)" style="float:left; margin-right: 0.3em;">
-                <a [routerLink]="['../view',s.id]"><i class="bi bi-eye"></i></a>
+                <a [routerLink]="['../pos/view',s.id]"><i class="bi bi-eye"></i></a>
               </h5>
               <h5 *ngIf="isActionAllowed('Edit',s)" style="float:left; margin-right: 0.3em;">
-                <a [routerLink]="['../edit',s.id]"><i class="bi bi-pencil"></i></a>
+                <a [routerLink]="['../pos/edit',s.id]"><i class="bi bi-pencil"></i></a>
               </h5>
               <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
               <i class="bi bi-arrow-return-left" (click)="showReturn(s.id)"></i>
@@ -120,6 +114,15 @@
         <!-- </tbody>
       </table> -->
     </ng-template>
+    <ng-template pTemplate="footer">
+      <tr>
+          <td colspan="4" class="text-end">Total</td>
+          <td style="text-align: right;">{{totals['digital']}}</td>
+          <td style="text-align: right;">{{totals['cash']}}</td>
+          <td style="text-align: right;">{{totals['net']}}</td>
+          <td></td>
+      </tr>
+  </ng-template>
   </p-table>
 </div>
 </div>

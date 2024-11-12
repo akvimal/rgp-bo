@@ -16,6 +16,8 @@ export class SalesListComponent {
 
     openH1DrugsTab = false;
     showReturnForm = false;
+    
+    totals = {digital:0,cash:0,net:0};
 
     constructor(private service:SaleService, private dateService:DateUtilService){}
 
@@ -30,11 +32,20 @@ export class SalesListComponent {
     }
 
     fetchSales(filter:any){
-        this.service.findAll(filter).subscribe((data:any) => {
-          
+      this.totals['digital'] = 0;
+      this.totals['cash'] = 0;
+      this.totals['net'] = 0;
+
+        this.service.findAll({...filter,status:'COMPLETE'}).subscribe((data:any) => {
           data.forEach((sale:any) => {
+            if(sale['customer']){
+              sale['custinfo'] = `${sale['customer']['name']} (${sale['customer']['mobile']})`
+            }
             //round the decimals of total
-            sale['total'] = Math.round(sale['total'])
+            sale['total'] = Math.round(sale['total']);
+            this.totals['digital'] += sale['digiamt'];
+            this.totals['cash'] += sale['cashamt'];
+            this.totals['net'] += +sale['total'];
           });
           this.sales = data;
         });

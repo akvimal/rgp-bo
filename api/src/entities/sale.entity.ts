@@ -40,6 +40,16 @@ export class Sale extends BaseEntity {
   @Column("character varying", { name: "payrefno", nullable: true })
   payrefno: string | null;
 
+  @Column("character varying", { name: "digi_method", nullable: true })
+  digimethod: string | null;
+  @Column("character varying", { name: "digi_refno", nullable: true })
+  digirefno: string | null;
+
+  @Column("double precision", { name: "digi_amount", precision: 53 })
+  digiamt: number;
+  @Column("double precision", { name: "cash_amount", precision: 53 })
+  cashamt: number;
+
   @Column("double precision", { name: "disc_amount", precision: 53 })
   discamount: number;
 

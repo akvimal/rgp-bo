@@ -91,10 +91,6 @@ export class InvoiceItemsComponent {
         this.feedback = event.target.value;
     }
     
-    // updateGrn(event:any){
-    //     this.grn = event.target.value;
-    // }
-
     confirmInvoice(){
         this.invService.confirm([this.invoice.id],{status:'COMPLETE',comments:this.feedback}).subscribe(data => {
             this.fetchItems(this.invoice.id);

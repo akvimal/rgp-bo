@@ -35,6 +35,13 @@ export class SaleFormComponent {
     saleprops:any[] = []
     form:FormGroup = new FormGroup({});
 
+    isCash = false;
+    digiamt = 0;
+    cashamt = 0;
+    cashbal = 0;
+    paymode = 'PayTM';
+    payrefno = '';
+
     custCustomerTypes:any[] = [
       { value: 'Walkin', label: 'Walk in' },
       // { value: 'Online', label: 'Online Search' },
@@ -58,10 +65,10 @@ export class SaleFormComponent {
 
     ngOnInit(){
       this.sale.billdate = new Date();
-      
-      const saleId = this.route.snapshot.paramMap.get('id'); 
-      if(saleId){
-        this.service.find(saleId).subscribe((result:any) => {
+      //get the id from url query params
+      this.route.paramMap.subscribe(params => {  
+        const saleId =  params.get("id");
+        saleId !== null && this.service.find(saleId).subscribe((result:any) => {
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
               return {...element, edited:true, title: element.product_title, 
@@ -69,16 +76,14 @@ export class SaleFormComponent {
                 mrpcost: (element.mrp/element.product_pack),
                 expdate: element.product_expdate,
                 unitsbal: element.available - element.product_pack,
-              itemid: element.purchase_itemid}
+                itemid: element.purchase_itemid
+              }
             });;
             this.sale = result;
-           
             this.recalculateTotal();
           });
         });
-      } 
-      
-      
+      });
     }
 
     resetCustomer(){
@@ -91,25 +96,6 @@ export class SaleFormComponent {
       (this.sale.customer.name && this.sale.customer.name !== '') && 
       (this.sale.customer.mobile && this.sale.customer.mobile !== '');
     }
-
-    // populateSalePropsForm(type:any,values:any){
-    //   const typeConfig = this.salePropSchema.find((d:any) => d.category === type);
-    //   if(typeConfig && typeConfig.props){
-    //     let pps = {};
-    //     const props = typeConfig.props;
-    //     this.saleprops = props;
-    //     for(let i=0;i<props.length;i++){
-    //       const pname = props[i].id;
-    //       const value = values ? values[pname] : props[i].default;
-    //       const fc = new FormControl(value);
-    //       if(props[i].required) {
-    //         fc.setValidators(Validators.required);
-    //       }
-    //       pps = {...pps, [pname]:fc}
-    //     }
-    //     this.form.setControl('props', new FormGroup(pps));
-    //   }
-    // }
 
     onItemAdd(item:any){
       this.sale.items?.push(item);
@@ -126,20 +112,17 @@ export class SaleFormComponent {
     recalculateTotal(){
       this.total = 0;
       let mrptotal = 0;
-      // this.sale.items?.filter((i:any) => i.edited)
+
       this.sale.items?.filter((i:any) => i.edited).forEach((i:any) => {        
-        // if(i.itemid > 0) {
-          this.total += +i.total;
-          // const qty = (i.box * i.pack) + i.boxbal;
+          this.total += Math.round(+i.total);
           mrptotal += +(i.mrpcost||0)*i.qty;
-        // }
       });
 
       this.sale.total = Math.round(this.total);
       this.sale.mrptotal = Math.round(mrptotal);
       this.sale.totalitems = this.sale.items?.filter((i:any) => i.edited).length;
       this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
-  
+      this.digiamt = this.total;
     }
 
     selectCustomer(customer:any, copySales:boolean){
@@ -190,7 +173,8 @@ export class SaleFormComponent {
 
   discard(){
     this.sale.id && this.service.remove(this.sale.id).subscribe(data => {
-      this.router.navigateByUrl(`/secure/sales`); 
+      this.service.refreshSavedSales();
+      this.router.navigateByUrl(`/secure/sales/pos/new`); 
     });
   }
 
@@ -203,23 +187,11 @@ export class SaleFormComponent {
       return;
     }
     this.displayNewCustomer = false;
-
-    // const validItems = this.sale.items && this.sale.items.filter((i:any) => i.edited && i.qty > 0);
-    
-    // const requireAdditionalProps = validItems?.filter((i:any) => i.more_props.schedule === 'H1');
-    // if(status === 'COMPLETE' && !this.salePropValues){
-    //   if(this.doesProductContains(validItems, 'schedule', 'H1')){
-    //     this.populateSalePropsForm('H1',null);
-    //     this.displaySalePropsForm = true;
-    //     return;
-    //   }
-    // }
     
     this.sale.items = this.sale.items?.map((item:any) => {
-      
       switch (status) {
         case 'COMPLETE':
-            item['status'] = 'Complete'
+            item['status'] = 'Complete';
             break;
         case 'PENDING':
                 item['status'] = 'Pending'
@@ -229,22 +201,32 @@ export class SaleFormComponent {
       }
       item['productid'] = item['product_id'];
       return item;
-    })
+    });
 
+    if(this.sale.status == 'COMPLETE'){
+      if(this.digiamt > 0) {
+        this.sale['digimethod']=this.paymode;
+        this.sale['digirefno']=this.payrefno;
+        this.sale['digiamt']=this.digiamt;
+      }
+      if(this.cashamt > 0) {
+        this.sale['cashamt'] = this.cashamt > this.total ? this.total : this.cashamt;
+      }
+    }
     
-        this.service.save({...this.sale, status}).subscribe((data:any) => {
-          this.salePropValues = null;
-          this.redirectAfterSubmit(data.status, data.id);
-        });
-        
-      }
+    this.service.save({...this.sale, status}).subscribe((data:any) => {
+      this.salePropValues = null;
+      this.redirectAfterSubmit(data.status, data.id);
+      this.service.refreshSavedSales();
+    });
+  }
 
-      redirectAfterSubmit(status:string,id:number){
-        if(status === 'COMPLETE')
-        this.router.navigateByUrl(`/secure/sales/view/${id}`); 
-      else 
-        this.router.navigateByUrl(`/secure/sales/edit/${id}`); 
-      }
+  redirectAfterSubmit(status:string,id:number){
+    if(status === 'COMPLETE')
+      this.router.navigateByUrl(`/secure/sales/view/${id}`); 
+    else 
+      this.router.navigateByUrl(`/secure/sales/pos`); 
+  }
 
   updateCustomer(attr:string,event:any){
     if(!this.sale.customer){
@@ -371,4 +353,29 @@ export class SaleFormComponent {
     });
   }
 
+  calcCashBal(mode:string,event:any){
+    const bal = Math.round(this.total) - (+this.cashamt + +this.digiamt);
+    this.cashbal = bal < 0 ? (-1 * bal) : 0; 
+  }
+
+  isCashPartial(){
+    return +this.cashamt < +this.total ? true : false;
+  }
+
+  changeToCash(event:any){
+    if(event.target.checked){
+      this.cashamt = this.total;
+      this.digiamt = 0;
+    }
+    else {
+      this.cashamt = 0;
+      this.cashbal = 0;
+      this.digiamt = this.total;
+    }
+  }
+
+  isCompleteReady(){
+    const amt = +this.digiamt + +this.cashamt
+    return this.total > 0 && (amt >= this.total);
+  }
 }

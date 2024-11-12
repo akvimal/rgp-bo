@@ -22,6 +22,7 @@ export class SaleService {
         const nos = await this.manager.query(`select generate_order_number() as order_no, generate_bill_number() as bill_no`);
       
         sale['orderno'] = nos[0]['order_no'];
+        sale['orderdate'] = new Date();
         sale['billno'] = nos[0]['bill_no'];
         
         return this.saleRepository.save({...sale, createdby:userid}).then(data => {
@@ -81,6 +82,14 @@ export class SaleService {
         inner join inventory_view iv on iv.purchase_itemid = si.purchase_item_id 
         inner join sale s on s.id = si.sale_id 
         where s.id = ${id}`;
+        return await this.manager.query(query);
+    }
+
+    async findSavedSales(){
+        const query = `
+        select s.id, bill_no, c."name", c.mobile, s.created_on 
+        from sale s left join customer c on s.customer_id = c.id 
+        where s.status = 'PENDING' order by created_on desc`;
         return await this.manager.query(query);
     }
     
@@ -162,22 +171,38 @@ export class SaleService {
             const date = new Date(dt.setDate(dt.getDate()+1));
             const other = date.setDate(date.getDate()-count);
             const todate = this.getFormatDate(new Date(other));
-            query = `select to_char(x.dt,'yyyy-mm-dd') as date, 
-            sum(sv.sale_total) as sale, count(sv.id) as orders 
-            from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
-            left join sale_view sv on x.dt = sv.sale_date 
-            group by x.dt order by x.dt`
+            // query = `select to_char(x.dt,'yyyy-mm-dd') as date, 
+            // sum(sv.sale_total) as sale, count(sv.id) as orders 
+            // from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
+            // left join sale_view sv on x.dt = sv.sale_date 
+            // group by x.dt order by x.dt`
+
+            query = `select to_char(s.bill_date,'yyyy-mm-dd') as bill_dt, sum(s.digi_amount) as digital, 
+            sum(s.cash_amount) as cash, sum(s.total) as total, count(s.bill_no) as orders 
+            from sale s inner join 
+            (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x on to_char(s.bill_date,'yyyy-mm-dd') = x.dt::text
+            and s.status = 'COMPLETE'
+            group by to_char(s.bill_date,'yyyy-mm-dd');`
         }
         else {
             const date = new Date();
             const other = date.setMonth((date.getMonth()-1)-count);
             const todate = this.getFormatDate(new Date(other));
-            query = `select x.d2 as date, 
-            sum(sv.sale_total) as sale, count(sv.id) as orders 
-            from (select months('${fromdate}','${todate}') as d2) x
-            left join sale_view sv on x.d2 = date_part('year',sv.sale_date)||'-'||lpad(date_part('month',sv.sale_date)::text,2,'0')
-            group by x.d2
-            order by x.d2`
+            // query = `select x.d2 as date, 
+            // sum(sv.sale_total) as sale, count(sv.id) as orders 
+            // from (select months('${fromdate}','${todate}') as d2) x
+            // left join sale_view sv on x.d2 = date_part('year',sv.sale_date)||'-'||lpad(date_part('month',sv.sale_date)::text,2,'0')
+            // group by x.d2
+            // order by x.d2`
+
+            query = `
+            select x.dt as bill_dt, sum(s.digi_amount) as digital, sum(s.cash_amount) as cash, 
+            sum(s.total) as total, count(s.bill_no) as orders 
+            from sale s inner join 
+            (select months('${fromdate}','${todate}') as dt)x on x.dt::text = date_part('year',s.bill_date)||'-'||lpad(date_part('month',s.bill_date)::text,2,'0')
+            and s.status = 'COMPLETE'
+            group by x.dt
+            order by x.dt;`
         }
         return await this.manager.query(query);
     }
@@ -301,6 +326,12 @@ export class SaleService {
         await this.saleRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             const obj = await this.saleRepository.findOne({id});
             await transaction.update(Sale, id, {...obj, ...values, updatedby:userid});
+        });
+    } 
+
+    async delete(id:any){
+        await this.saleRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
+            await transaction.delete(Sale, id);
         });
     } 
     
