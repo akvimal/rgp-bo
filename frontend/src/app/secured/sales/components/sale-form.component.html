@@ -18,7 +18,7 @@
                                         <i class="bi bi-files text-success"></i>
                                     </a>
                                 </h5>
-                                <h5 style="display:inline;margin-left:0.5em" *ngIf="sale.status !== 'COMPLETE'">
+                                <h5 style="display:inline;margin-left:0.5em">
                                     <a (click)="resetCustomer()">
                                         <i class="bi bi-x-square text-danger"></i>
                                     </a>
@@ -28,8 +28,8 @@
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
-                        <div><strong>Bill Date:</strong>&nbsp;{{this.sale.billdate | date: 'dd/MM/yy'}}</div>
-                        <div *ngIf="sale.status !== 'NEW'"><strong>Bill No:</strong>&nbsp;{{this.sale.billno}} ({{this.sale.status}})</div>
+                        <div><strong>Bill Date:</strong>&nbsp;{{sale.billdate | date: 'dd/MM/yy'}}</div>
+                        <div *ngIf="sale.status !== 'NEW' && sale.billno"><strong>Bill No:</strong>&nbsp;{{sale.billno}}</div>
                     </td>
                 </tr>
                 <!-- Sale Items -->
@@ -104,13 +104,13 @@
     </div>
     <div class="row">
         <div class="col-8">
-            <button (click)="discard()" *ngIf="sale.status !== 'NEW'"
+            <button (click)="discard()" *ngIf="sale.id && sale.status !== 'NEW'"
             class="btn btn-outline-danger m-2">Discard</button>
         </div>
         <div class="col-4 text-end">
             <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
                         [disabled]="!isCompleteReady()">Complete</button>    
-            <button *ngIf="sale.status !== 'COMPLETE'" (click)="submit('PENDING')" 
+            <button (click)="submit('PENDING')" 
                 class="btn btn-outline-secondary m-2" [disabled]="total === 0">Save</button>    
             <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
                 <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
@@ -169,22 +169,21 @@
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
             <div class="col-lg-6">
-                <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
-                [value]="sale.customer?.mobile||''" 
-                (input)="updateCustomer('mobile',$event)">
-                
-                <!-- <app-customer-select 
+                <app-customer-select 
                     (customerSelected)="selectCustomer($event, false)"
                     (focusLeave)="doneEnterCustomer($event)">
-                    </app-customer-select> -->
+                    </app-customer-select>
             </div>
             
             <div class="col-lg-6">
+                <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
+                [value]="sale.customer?.mobile||''" 
+                (input)="updateCustomer('mobile',$event)">
+                <br>
                 <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
                 [value]="sale.customer?.name||''" 
                 (input)="updateCustomer('name',$event)">
-            </div>
-            <div class="col-lg-4">
+                <br>
                 <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
                 [value]="sale.customer?.email||''" 
                 (input)="updateCustomer('email',$event)">

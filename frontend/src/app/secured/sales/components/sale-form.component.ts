@@ -1,5 +1,5 @@
 import { HttpClient } from "@angular/common/http";
-import { Component } from "@angular/core";
+import { Component, SimpleChanges } from "@angular/core";
 import { FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { ProductUtilService } from "../../product-util.service";
@@ -129,7 +129,7 @@ export class SaleFormComponent {
       const {id,name,mobile,email,address} = customer;
       if(customer.existing){ 
         this.sale.customer = {id,name,mobile,email,address};
-        !mobile.startsWith('000') && this.showPrevSalesCopy();
+        copySales && this.showPrevSalesCopy();
       }
       else {
         this.sale.customer = {mobile,name:''};
@@ -138,12 +138,11 @@ export class SaleFormComponent {
       this.inputCustomer = false;
     }
   
-  doneEnterCustomer(event:any){
+  doneEnterCustomer(event:any){    
     const inputval = event.target.value;
     if(inputval.length > 0){
       if(inputval.length !== 10) {
-        event.target.value = inputval.substring(0,10)
-        event.target.focus();
+        event.target.value = inputval.substring(0,10);
       }
     } 
     
@@ -174,7 +173,7 @@ export class SaleFormComponent {
   discard(){
     this.sale.id && this.service.remove(this.sale.id).subscribe(data => {
       this.service.refreshSavedSales();
-      this.router.navigateByUrl(`/secure/sales/pos/new`); 
+      this.router.navigate([`/secure/sales/pos`]);
     });
   }
 
@@ -225,7 +224,7 @@ export class SaleFormComponent {
     if(status === 'COMPLETE')
       this.router.navigateByUrl(`/secure/sales/view/${id}`); 
     else 
-      this.router.navigateByUrl(`/secure/sales/pos`); 
+      this.router.navigate([`/secure/sales/pos/edit`,id]);
   }
 
   updateCustomer(attr:string,event:any){

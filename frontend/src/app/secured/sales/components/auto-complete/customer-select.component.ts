@@ -6,6 +6,7 @@ import { CustomersService } from "../../../customers/customers.service";
     template: `
     <p-autoComplete [(ngModel)]="customer" [showEmptyMessage]="true" 
                 (onSelect)="selected($event)"
+                (onBlur)="focusOut($event)"
                 field="''" placeholder="Name or Mobile"
                 [disabled]="disabled"
                 [maxlength]="10"
@@ -47,6 +48,10 @@ export class CustomerSelectComponent {
             {property:'name',check:'startswith',value:query},
             {property:'mobile',check:'startswith',value:query}]}
         this.customerService.findByCriteria(criteria).subscribe((data:any) => this.filteredCustomer = data);
+    }
+
+    focusOut(event:any){
+        this.focusLeave.emit(event);
     }
 
 }

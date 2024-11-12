@@ -10,7 +10,6 @@ import { DashboardComponent } from "./dashboard.component";
 import { ProductsModule } from "./products/products.module";
 import { ProfileComponent } from "./profile.component";
 import { PurchasesModule } from "./purchases/purchases.module";
-import { SaleReturnsModule } from "./returns/salereturns.module";
 import { SalesModule } from "./sales/sales.module";
 import { SecuredComponent } from "./secured.component";
 import { StockModule } from "./stock/stock.module";
@@ -63,8 +62,7 @@ const routes: Routes = [
         PurchasesModule,
         StockModule,
         CustomersModule,
-        SalesModule,
-        SaleReturnsModule
+        SalesModule
     ],
     exports: [RouterModule]
   })
