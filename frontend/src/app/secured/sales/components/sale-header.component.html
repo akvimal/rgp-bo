@@ -4,18 +4,16 @@
 <nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
     <ul class="nav page-menu">
       <li class="nav-item">
-        <a class="nav-link" [routerLinkActive]="['is-active']" [routerLink]="['/secure/sales/pos']">
-            POS
-        </a>
+        <a class="nav-link" [routerLinkActive]="['is-active']" [routerLink]="['/secure/sales/pos']">POS</a>
       </li>
         <li class="nav-item">
-          <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/sales/list">Sales</a>
+          <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/sales/list">Report</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/sales/returns">Returns</a>
         </li>
-        <!-- <li class="nav-item">
-          <a class="nav-link" routerLink="/secure/sales/reminder">Reminders</a>
-        </li> -->
+        <li class="nav-item">
+          <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/sales/reminders">Reminders</a>
+        </li>
       </ul>
   </nav>

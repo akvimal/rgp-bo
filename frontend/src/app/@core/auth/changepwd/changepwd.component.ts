@@ -1,7 +1,7 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { Router } from "@angular/router";
-import { UsersService } from "src/app/secured/users/users.service";
+import { UsersService } from "src/app/secured/settings/users/users.service";
 import { AuthService } from "../auth.service";
 import { CredentialsService } from "../credentials.service";
 

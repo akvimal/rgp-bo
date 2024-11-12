@@ -1,0 +1,51 @@
+<div class="card">
+    <div class="card-body">
+      <h5 class="card-title">New User</h5>
+      <!-- Multi Columns Form -->
+      <form [formGroup]="form" (ngSubmit)="onSave()">
+        <div class="row">
+          <div class="col-md-3" *isAuth="'users.add$email'">
+            <label for="email" class="form-label">Email</label>
+            <input type="text" class="form-control" id="email" formControlName="email">
+          </div>
+          <div class="col-md-3" *isAuth="'users.add$password'">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" formControlName="password">
+          </div>
+          <div class="col-md-3">
+            <label for="confirmpassword" class="form-label">Confirm Password</label>
+            <input type="password" class="form-control" id="confirmpassword" formControlName="confirmpassword">
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-md-3" *isAuth="'users.add$fullname'">
+            <label for="fullname" class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="fullname" formControlName="fullname">
+          </div>
+          <div class="col-md-3" *isAuth="'users.add$phone'">
+            <label for="phone" class="form-label">Phone</label>
+            <input type="text" class="form-control" id="phone" formControlName="phone">
+          </div>
+          <div class="col-md-3" *isAuth="'users.add$location'">
+            <label for="location" class="form-label">Location</label>
+            <input type="text" class="form-control" id="location" formControlName="location">
+          </div>
+          </div>
+          <div class="row mt-3">
+          <div class="col-md-3" *isAuth="'users.add$role'">
+            <label for="role" class="form-label">Role</label>
+            <select class="form-control" id="role" formControlName="roleid">
+              <option *ngFor="let r of roles" [value]="r.id">{{r.name}}</option>
+            </select>
+          </div>
+        
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+            <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+            <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
+          </div>
+        </div>
+      </form><!-- End Multi Columns Form -->
+
+    </div>
+  </div>

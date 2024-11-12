@@ -37,7 +37,7 @@ const routes: Routes = [
     {path: 'edit/:id', component: SaleFormComponent},
     {path: 'view/:id', component: SaleViewComponent}
   ], canActivate:[AuthGuard]},
-  {path: 'reminder', component: SaleReminderComponent, canActivate:[AuthGuard]},
+  {path: 'reminders', component: SaleReminderComponent, canActivate:[AuthGuard]},
   
 ];
 

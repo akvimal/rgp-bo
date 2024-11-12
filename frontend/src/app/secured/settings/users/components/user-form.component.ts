@@ -17,6 +17,7 @@ export class UserFormComponent {
         fullname: new FormControl('',Validators.required),
         email: new FormControl('',Validators.required),
         password: new FormControl('',Validators.required),
+        confirmpassword: new FormControl('',Validators.required),
         phone: new FormControl(''),
         location: new FormControl('')
       });
@@ -56,11 +57,7 @@ export class UserFormComponent {
   
         const id = this.form.value.id;
         if(id) {
-          this.service.update(id, obj).subscribe(data => {
-            // console.log('data: ',data);
-            // console.log('redirecting ,,');
-            this.gotoList()
-          });
+          this.service.update(id, obj).subscribe(data => this.gotoList());
         }
         else {
           this.service.save(obj).subscribe(data => this.gotoList());
@@ -73,6 +70,6 @@ export class UserFormComponent {
       }
 
       gotoList() {
-        this.router.navigate(['/secure/users/list'],{relativeTo:this.route})
+        this.router.navigate(['/secure//settings/users']);
       }
 }

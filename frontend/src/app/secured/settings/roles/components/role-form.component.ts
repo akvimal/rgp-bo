@@ -54,6 +54,6 @@ export class RoleFormComponent{
       }
 
       gotoList() {
-        this.router.navigate(['/secure/roles/list'],{relativeTo:this.route})
+        this.router.navigate(['/secure/settings/roles'])
       }
 }

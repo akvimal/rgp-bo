@@ -2,7 +2,7 @@ import { Component } from "@angular/core";
 import { Observable } from "rxjs";
 import { AppState } from "../shared/app-state";
 import { AppStateService } from "../shared/appstate.service";
-import { UsersService } from "./users/users.service";
+import { UsersService } from "./settings/users/users.service";
 
 @Component({
     templateUrl: 'secured.component.html'

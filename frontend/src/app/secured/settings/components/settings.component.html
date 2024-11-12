@@ -1,3 +1,17 @@
 <div class="pagetitle">
   <h1>Settings</h1>
 </div>
+<nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
+  <ul class="nav">
+    <li class="nav-item" *isNavAuth>
+      <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/settings/roles">Roles</a>
+    </li>
+    <li class="nav-item" *isNavAuth>
+      <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/settings/users">Users</a>
+    </li>
+    <li class="nav-item" *isNavAuth>
+      <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/settings/app">Application</a>
+    </li>   
+  </ul>
+</nav>
+<router-outlet></router-outlet>
