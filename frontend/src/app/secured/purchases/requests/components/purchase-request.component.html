@@ -68,16 +68,17 @@
     <form [formGroup]="form" (ngSubmit)="onSave()">
       <div class="container">
         <div class="row">
-          <div class="col-9">
-            <label for="product" class="form-label">Product</label><br>
-            <div *ngIf="form.controls['id'].value !== null;else lookup">
-              <h6>{{form.controls['title'].value}}</h6>
-            </div>
-            <ng-template #lookup>
+          <div class="col-12 mb-2">
               <app-product-lookup (selected)="onProductSelect($event)"></app-product-lookup>
-            </ng-template>
           </div>
-          <div class="col-3">
+          <!-- <div class="col-12">
+            <h5>{{form.value.title}}</h5>
+          </div> -->
+          <div class="col-10">
+            <label for="title" class="form-label">Product</label><br>
+          <input id="title" class="form-control" type="text" formControlName="title">
+          </div>
+          <div class="col-2">
             <label for="qty" class="form-label">Qty</label><br>
           <input id="qty" class="form-control" type="number" formControlName="qty">
           </div>
@@ -89,6 +90,7 @@
         </div>
         <div class="col-12 text-center">
           <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+          <button class="btn btn-outline-secondary" (click)="reset()">Reset</button>
         </div>
       </div>
     </form>

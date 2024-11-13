@@ -1,15 +1,12 @@
 import { Component, EventEmitter, Input, Output } from "@angular/core";
-import { CustomersService } from "../../../customers/customers.service";
+import { CustomersService } from "../../secured/customers/customers.service";
 
 @Component({
     selector: 'app-customer-select',
     template: `
     <p-autoComplete [(ngModel)]="customer" [showEmptyMessage]="true" 
                 (onSelect)="selected($event)"
-                (onBlur)="focusOut($event)"
-                field="''" placeholder="Name or Mobile"
-                [disabled]="disabled"
-                [maxlength]="10"
+                field="''" placeholder="Customer Name or Mobile"
                 [suggestions]="filteredCustomer" 
                 [inputStyle]="{'background-color':'#9df'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="2">
@@ -22,7 +19,7 @@ import { CustomersService } from "../../../customers/customers.service";
 export class CustomerSelectComponent {
 
     @Output() customerSelected = new EventEmitter();
-    @Output() focusLeave = new EventEmitter();
+    // @Output() focusLeave = new EventEmitter();
     @Input() disabled:boolean = false;
 
     customer:any;
@@ -48,10 +45,6 @@ export class CustomerSelectComponent {
             {property:'name',check:'startswith',value:query},
             {property:'mobile',check:'startswith',value:query}]}
         this.customerService.findByCriteria(criteria).subscribe((data:any) => this.filteredCustomer = data);
-    }
-
-    focusOut(event:any){
-        this.focusLeave.emit(event);
     }
 
 }

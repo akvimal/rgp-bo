@@ -1,6 +1,6 @@
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { Component, EventEmitter, Inject, Input, Output } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
-import { StockService } from "../../../stock/stock.service";
+import { StockService } from "src/app/secured/stock/stock.service";
 
 @Component({
     selector: 'app-stock-select',
@@ -12,12 +12,12 @@ import { StockService } from "../../../stock/stock.service";
                     (completeMethod)="filterStock($event)" [minLength]="2"
                     [inputStyle]="{'background-color':'#9df'}">
                     <ng-template let-stock pTemplate="item">
-                        <div [ngStyle]="{maxWidth:'600px',backgroundColor:stock.available < 1?'#ffc0c0':'inherit'}">
+                        <div [ngStyle]="{maxWidth:'800px',backgroundColor:stock.available < 1?'#ffc0c0':'inherit'}">
                             <h6 style="margin:0;padding:0;font-weight:bold">{{stock.product_title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||stock.mrp}})</h6>
                             <p style="margin:0;padding:0;color:#999;font-style: italic;">
                             {{stock['more_props'] ? stock['more_props']['composition'] : ''}}
                             </p>
-                            <span style="margin:0;padding:0;color:blue;font-size:smaller">
+                            <span style="margin:0;padding:0;color:blue;">
                                 {{stock.product_batch}} / {{stock.product_expdate|date:'MMM-yy'}} ({{stock.available}})
                             </span>
                         </div>

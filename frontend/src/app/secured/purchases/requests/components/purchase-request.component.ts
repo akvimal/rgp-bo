@@ -36,8 +36,11 @@ export class PurchaseRequestComponent {
         });
     }
 
-    onProductSelect(event:any){
-        this.form.controls['productid'].setValue(event.product.id);
+    onProductSelect(product:any){
+        console.log(product);
+        
+        this.form.controls['title'].setValue(product.title);
+        this.form.controls['productid'].setValue(product.id);
     }
 
     add(){
@@ -60,7 +63,7 @@ export class PurchaseRequestComponent {
         if(this.form.controls['id'].value !== null) {
             this.service.update(this.form.controls['id'].value, {
                 // productid: this.form.controls['productid'].value,
-                // qty: this.form.controls['qty'].value,
+                qty: this.form.controls['qty'].value,
                 comments: this.form.controls['comments'].value}).subscribe(data => {
                 this.filter();
                 this.displayForm = false;
@@ -76,5 +79,10 @@ export class PurchaseRequestComponent {
 
     delete(id:number){
         this.service.remove(id).subscribe(data => this.filter() );
+    }
+
+    reset(){
+        this.form.reset();
+        return false;
     }
 }

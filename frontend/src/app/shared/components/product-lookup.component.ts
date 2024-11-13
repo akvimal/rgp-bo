@@ -4,19 +4,24 @@ import { ProductsService } from "src/app/secured/products/products.service";
 @Component({
     selector: 'app-product-lookup',
     template: `
-        <p-autoComplete [suggestions]="filteredProducts" 
-        (completeMethod)="filterProduct($event)" (onSelect)="selectProduct($event)" 
-        (onBlur)="doneSelect()" [disabled]="disabled" [showEmptyMessage]="true"
-        field="title">
+        <p-autoComplete 
+        (onSelect)="doneSelect($event)" 
+        field="''"
+        placeholder="Name / Composition" 
+        [suggestions]="filteredProducts" 
+        [minLength]="2"
+        (completeMethod)="filterProduct($event)" 
+        [showEmptyMessage]="true"
+        [inputStyle]="{'background-color':'#9df'}">
             <ng-template let-product pTemplate="item">
-            <div style="max-width:400px">
-               <h6 style="margin:0;padding:0;">{{product.title}}</h6>
-               <!-- <i class="bi bi-x-square"></i> -->
-               <p style="color:red;font-style: italic;">{{product.props?.composition}}</p>
-               </div>
+                <div>
+                    <h6 style="margin:0;padding:0;font-weight:bold">{{product.title}}</h6>
+                    <p style="margin:0;padding:0;color:#999;font-style: italic;">
+                    {{product['props'] ? product['props']['composition'] : ''}}
+                    </p>
+                </div>
             </ng-template>
-        </p-autoComplete>
-        <a (click)="clear()"><i class="bi bi-x-square"></i></a>
+            </p-autoComplete>
     `
 })
 export class ProductLookupComponent {
@@ -50,13 +55,8 @@ export class ProductLookupComponent {
         this.filteredProducts = filtered;
     }
 
-    doneSelect(){
-        this.selected.emit(this.product);
-    }
-
-    selectProduct(event:any){
-        this.product = {existing:true, product:event};
-        this.disabled = true;
+    doneSelect(event:any){
+        this.selected.emit(event);
     }
 
     clear(){

@@ -138,16 +138,16 @@ export class SaleFormComponent {
       this.inputCustomer = false;
     }
   
-  doneEnterCustomer(event:any){    
-    const inputval = event.target.value;
-    if(inputval.length > 0){
-      if(inputval.length !== 10) {
-        event.target.value = inputval.substring(0,10);
-      }
-    } 
+  // doneEnterCustomer(event:any){    
+  //   const inputval = event.target.value;
+  //   if(inputval.length > 0){
+  //     if(inputval.length !== 10) {
+  //       event.target.value = inputval.substring(0,10);
+  //     }
+  //   } 
     
-    this.sale.customer = {mobile:inputval};
-  }
+  //   this.sale.customer = {mobile:inputval};
+  // }
 
   onItemRemoved(id:any){
     if(this.sale.items) {

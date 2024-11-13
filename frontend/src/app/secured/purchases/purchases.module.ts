@@ -31,16 +31,16 @@ import { InvoicesComponent } from "./invoices/components/invoices.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
 
 const routes: Routes = [
-  { path: '', component: PurchaseHomeComponent, 
+  { path: '', component: PurchaseHomeComponent, canActivate:[AuthGuard],
     children: [
       { path: '', redirectTo: 'invoices'},
-      { path: 'intents', component: PurchaseRequestComponent, canActivate:[AuthGuard]},
-      { path: 'orders', component: PurchaseOrderComponent, canActivate:[AuthGuard],
+      { path: 'intents', component: PurchaseRequestComponent },
+      { path: 'orders', component: PurchaseOrderComponent,
           children: [
-            { path: ':id', component: PurchaseOrderViewComponent, canActivate:[AuthGuard] }
+            { path: ':id', component: PurchaseOrderViewComponent }
           ]
       },
-      { path: 'invoices', canActivate:[AuthGuard],
+      { path: 'invoices', 
           children: [
             { path: '', redirectTo: 'list'},
             { path: 'list', component: InvoiceListComponent},
@@ -50,7 +50,7 @@ const routes: Routes = [
           ]
       },
       {
-        path: 'vendors', canActivate:[AuthGuard],
+        path: 'vendors',
         loadChildren: () => import('./vendors/vendors.module').then(m => m.VendorsModule)
       }
   ]}

@@ -6,19 +6,14 @@
                 <tr>
                     <!-- Customer Info -->
                     <td>
-                        <app-customer-select *ngIf="sale.customer == undefined || !(sale.customer?.mobile !== ''); else showCustomer"
-                                (customerSelected)="selectCustomer($event,true)"
-                                (focusLeave)="doneEnterCustomer($event)">
+                        <app-customer-select *ngIf="sale.customer == undefined || !(sale.customer?.mobile !== ''); else showCustomer" (customerSelected)="selectCustomer($event,true)">
                         </app-customer-select>
                         <ng-template #showCustomer>
-                            <div><strong>Name:</strong> {{sale.customer?.name}}</div>
-                            <div><strong>Mobile:</strong> {{sale.customer?.mobile}} 
+                            <div><strong>Customer:</strong> {{sale.customer?.name}} ({{sale.customer?.mobile}})
                                 <h5 style="display:inline;margin-left:0.5em">
                                     <a (click)="showPrevSalesCopy()">
                                         <i class="bi bi-files text-success"></i>
-                                    </a>
-                                </h5>
-                                <h5 style="display:inline;margin-left:0.5em">
+                                    </a>&nbsp;
                                     <a (click)="resetCustomer()">
                                         <i class="bi bi-x-square text-danger"></i>
                                     </a>
@@ -28,8 +23,8 @@
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
-                        <div><strong>Bill Date:</strong>&nbsp;{{sale.billdate | date: 'dd/MM/yy'}}</div>
-                        <div *ngIf="sale.status !== 'NEW' && sale.billno"><strong>Bill No:</strong>&nbsp;{{sale.billno}}</div>
+                        <strong>Bill Date:</strong>&nbsp;{{sale.billdate | date: 'dd/MM/yy'}}
+                        <span *ngIf="sale.status !== 'NEW' && sale.billno">&nbsp;<strong>Bill No:</strong>&nbsp;{{sale.billno}}</span>
                     </td>
                 </tr>
                 <!-- Sale Items -->
@@ -169,12 +164,8 @@
             [(visible)]="displayNewCustomer" [modal]="true">
         <div class="row">
             <div class="col-lg-6">
-                <app-customer-select 
-                    (customerSelected)="selectCustomer($event, false)"
-                    (focusLeave)="doneEnterCustomer($event)">
-                    </app-customer-select>
+                <app-customer-select (customerSelected)="selectCustomer($event, false)"></app-customer-select>
             </div>
-            
             <div class="col-lg-6">
                 <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
                 [value]="sale.customer?.mobile||''" 
