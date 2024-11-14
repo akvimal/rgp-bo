@@ -3,7 +3,7 @@ import { Component, SimpleChanges } from "@angular/core";
 import { FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { ProductUtilService } from "../../product-util.service";
-import { StockService } from "../../stock/stock.service";
+import { StockService } from "../../store/stock/stock.service";
 import { SaleHelper } from "../sale.helper";
 import { Sale } from "../sale.model";
 import { SaleService } from "../sales.service";

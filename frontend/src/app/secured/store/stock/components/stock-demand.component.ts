@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { DateUtilService } from "../../date-util.service";
+import { DateUtilService } from "../../../date-util.service";
 import { StockService } from "../stock.service";
 
 @Component({

@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
-import { ProductUtilService } from "../../product-util.service";
+import { ProductUtilService } from "../../../product-util.service";
 import { StockService } from "../stock.service";
 
 @Component({

@@ -1,6 +1,6 @@
-import { Component, EventEmitter, Inject, Input, Output } from "@angular/core";
+import { Component, EventEmitter, Output } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
-import { StockService } from "src/app/secured/stock/stock.service";
+import { StockService } from "src/app/secured/store/stock/stock.service";
 
 @Component({
     selector: 'app-stock-select',

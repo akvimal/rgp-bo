@@ -17,28 +17,34 @@ import {DropdownModule} from 'primeng/dropdown';
 import { TabViewModule } from 'primeng/tabview';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
-import { StockListComponent } from "./components/stock-list.component";
-import { StockHeaderComponent } from "./components/stock-header.component";
-import { StockComponent } from "./components/stock.component";
-import { StockAdjustComponent } from "./components/stock-adjust.component";
-import { StockAuditComponent } from "./components/stock-audit.component";
-import { StockDemandComponent } from "./components/stock-demand.component";
+import { StoreComponent } from "./store.component";
+import { CashComponent } from "./cash/components/cash.component";
+import { StockComponent } from "./stock/components/stock.component";
+import { StockListComponent } from "./stock/components/stock-list.component";
+import { StockAdjustComponent } from "./stock/components/stock-adjust.component";
+import { StockDemandComponent } from "./stock/components/stock-demand.component";
 
 const routes: Routes = [
-  { path: '', redirectTo: 'list'},
-  { path: 'list', component: StockListComponent, canActivate:[AuthGuard]},
-  { path: 'adjust', component: StockAdjustComponent, canActivate:[AuthGuard]},
-  { path: 'demand', component: StockDemandComponent, canActivate:[AuthGuard]}
+  { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
+    { path: '', redirectTo: 'stock' },
+    { path: 'stock', component: StockComponent, children: [
+      { path: '', redirectTo: 'list' },
+      { path: 'list', component: StockListComponent },
+      { path: 'adjust', component: StockAdjustComponent },
+      { path: 'demand', component: StockDemandComponent }
+    ]},
+    { path: 'cash', component: CashComponent}
+  ]}
 ];
 
 @NgModule({
     declarations: [
+      StoreComponent,
+      CashComponent,
       StockComponent,
       StockListComponent,
       StockAdjustComponent,
-      StockAuditComponent,
-      StockDemandComponent,
-      StockHeaderComponent
+      StockDemandComponent
     ],
     imports: [
         FormsModule,  
@@ -62,4 +68,4 @@ const routes: Routes = [
     ],
     exports: [RouterModule]
   })
-export class StockModule{}
+export class StoreModule{}

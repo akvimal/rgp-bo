@@ -2,7 +2,7 @@ import { Component, EventEmitter, Output } from "@angular/core";
 import { ProductsService } from "src/app/secured/products/products.service";
 
 @Component({
-    selector: 'app-product-lookup',
+    selector: 'app-product-select',
     template: `
         <p-autoComplete 
         (onSelect)="doneSelect($event)" 
@@ -24,7 +24,7 @@ import { ProductsService } from "src/app/secured/products/products.service";
             </p-autoComplete>
     `
 })
-export class ProductLookupComponent {
+export class ProductSelectComponent {
 
     product:any;
     filteredProducts:any[] = [];

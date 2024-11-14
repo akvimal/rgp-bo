@@ -2,6 +2,7 @@ import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
+import { StoreModule } from "@ngrx/store";
 import { NgxChartsModule } from "@swimlane/ngx-charts";
 import { AuthGuard } from "../@core/auth/auth.guard";
 import { SharedModule } from "../shared/shared.module";
@@ -12,7 +13,6 @@ import { ProfileComponent } from "./profile.component";
 import { PurchasesModule } from "./purchases/purchases.module";
 import { SalesModule } from "./sales/sales.module";
 import { SecuredComponent } from "./secured.component";
-import { StockModule } from "./stock/stock.module";
 
 const routes: Routes = [
   { path: '', component: SecuredComponent, children: [
@@ -27,8 +27,8 @@ const routes: Routes = [
       loadChildren: () => import('./purchases/purchases.module').then(m => m.PurchasesModule)
     },
     {
-      path: 'stock', canActivate:[AuthGuard],
-      loadChildren: () => import('./stock/stock.module').then(m => m.StockModule)
+      path: 'store', canActivate:[AuthGuard],
+      loadChildren: () => import('./store/store.module').then(m => m.StoreModule)
     },
     {
       path: 'customers', canActivate:[AuthGuard],
@@ -60,7 +60,7 @@ const routes: Routes = [
         NgxChartsModule,
         ProductsModule,
         PurchasesModule,
-        StockModule,
+        StoreModule,
         CustomersModule,
         SalesModule
     ],
