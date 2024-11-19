@@ -12,7 +12,7 @@ export class InvoiceItemFormComponent {
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
-        invoiceid: new FormControl('',Validators.required),
+        // invoiceid: new FormControl('',Validators.required),
         productid: new FormControl('',Validators.required),
         batch: new FormControl(''),
         // pack: new FormControl(''),
@@ -45,7 +45,7 @@ export class InvoiceItemFormComponent {
         private dateUtilService: DateUtilService){}
     
     ngOnInit(){
-        this.form.controls['invoiceid'].setValue(this.invoiceid);
+        // this.form.controls['invoiceid'].setValue(this.invoiceid);
         this.prodService.findAll(null).subscribe(data => this.products = data);
     }
 
@@ -53,7 +53,7 @@ export class InvoiceItemFormComponent {
         if(changes.itemid && changes.itemid.currentValue){
             this.invService.findItem(changes.itemid.currentValue).subscribe((data:any) => {
                 this.form.controls['id'].setValue(data.id);
-                this.form.controls['invoiceid'].setValue(data.invoiceid);
+                // this.form.controls['invoiceid'].setValue(data.invoiceid);
                 this.form.controls['productid'].setValue(data.productid);
                 data.batch && this.form.controls['batch'].setValue(data.batch);
                 data.mfrdate && this.form.controls['mfrdate'].setValue(this.dateUtilService.formatDate(data.mfrdate));
@@ -209,6 +209,8 @@ export class InvoiceItemFormComponent {
 
     submit(){
         if(this.itemid){
+            console.log('updating items ...');
+            
             this.invService.updateItems([this.form.value.id],{...this.form.value,
                 batch:this.form.value.batch.toUpperCase(),
                 mfrdate:this.dateUtilService.parseDate(this.form.value.mfrdate),
@@ -220,7 +222,8 @@ export class InvoiceItemFormComponent {
             });
         }
         else {
-            this.invService.saveItem({...this.form.value, pack: null,
+            console.log('saving items ...');
+            this.invService.saveItem({...this.form.value, invoiceid:this.invoiceid,
                 batch:this.form.value.batch.toUpperCase(),
                 ptrcost:this.getPTRAfterTax(), total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);

@@ -29,6 +29,7 @@ export class InvoiceItemsComponent {
     }
 
     fetchItems(id:any){
+        console.log('fetching items',id);
         
         this.nettotal = 0;
         this.grosstotal = 0;
