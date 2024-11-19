@@ -23,6 +23,7 @@ import { StockComponent } from "./stock/components/stock.component";
 import { StockListComponent } from "./stock/components/stock-list.component";
 import { StockAdjustComponent } from "./stock/components/stock-adjust.component";
 import { StockDemandComponent } from "./stock/components/stock-demand.component";
+import { CreditComponent } from "./credit/components/credit.component";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
@@ -33,7 +34,8 @@ const routes: Routes = [
       { path: 'adjust', component: StockAdjustComponent },
       { path: 'demand', component: StockDemandComponent }
     ]},
-    { path: 'cash', component: CashComponent}
+    { path: 'cash', component: CashComponent},
+    { path: 'credit', component: CreditComponent}
   ]}
 ];
 
@@ -42,6 +44,7 @@ const routes: Routes = [
       StoreComponent,
       CashComponent,
       StockComponent,
+      CreditComponent,
       StockListComponent,
       StockAdjustComponent,
       StockDemandComponent

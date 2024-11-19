@@ -15,7 +15,7 @@ export class InvoiceItemFormComponent {
         invoiceid: new FormControl('',Validators.required),
         productid: new FormControl('',Validators.required),
         batch: new FormControl(''),
-        pack: new FormControl(''),
+        // pack: new FormControl(''),
         mfrdate: new FormControl(''),
         expdate: new FormControl(''),
         qty: new FormControl('',Validators.required),
@@ -150,7 +150,7 @@ export class InvoiceItemFormComponent {
                 this.clearBatch();
 
         });
-        this.form.controls['pack'].setValue(this.selectedProduct.pack);
+        // this.form.controls['pack'].setValue(this.selectedProduct.pack);
         this.form.controls['productid'].setValue(this.selectedProduct.id);
     }
 
@@ -220,7 +220,7 @@ export class InvoiceItemFormComponent {
             });
         }
         else {
-            this.invService.saveItem({...this.form.value,
+            this.invService.saveItem({...this.form.value, pack: null,
                 batch:this.form.value.batch.toUpperCase(),
                 ptrcost:this.getPTRAfterTax(), total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);

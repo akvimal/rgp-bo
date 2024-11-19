@@ -34,10 +34,10 @@ export class ProductClearance extends BaseEntity {
   @Column("character varying", { name: "comments", nullable: true })
   comments: string | null;
 
-  @ManyToOne(
-    () => PurchaseInvoiceItem,
-    (purchase) => purchase.clearanceitem
-  )
-  @JoinColumn([{ name: "purchase_item_id", referencedColumnName: "id" }])
-  purchaseitem: PurchaseInvoiceItem;
+  // @ManyToOne(
+  //   () => PurchaseInvoiceItem,
+  //   (purchase) => purchase.clearanceitem
+  // )
+  // @JoinColumn([{ name: "purchase_item_id", referencedColumnName: "id" }])
+  // purchaseitem: PurchaseInvoiceItem;
 }

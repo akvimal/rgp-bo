@@ -11,7 +11,7 @@ export interface SaleItem {
     expdate?:string,
     taxpcnt?:string,
     mrp?:string,
-    pack?:number,
+    // pack?:number,
     price?:number,
     status?:string,
     comments?:string,

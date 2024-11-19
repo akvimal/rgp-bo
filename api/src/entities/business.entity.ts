@@ -4,7 +4,7 @@ import {
     Index, OneToMany,
     PrimaryGeneratedColumn,
   } from "typeorm";
-import { BusinessLocation } from "./business-location.entity";
+import { Store } from "./store.entity";
   
   @Index("business_pk", ["id"], { unique: true })
   @Index("business_un", ["name"], { unique: true })
@@ -19,8 +19,8 @@ import { BusinessLocation } from "./business-location.entity";
     name: string;
     
     @OneToMany(
-      () => BusinessLocation,
-      (busloc) => busloc.business
+      () => Store,
+      (loc) => loc.business
     )
-    locations: BusinessLocation[];
+    stores: Store[];
 }

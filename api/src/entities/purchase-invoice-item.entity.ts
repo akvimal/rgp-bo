@@ -82,7 +82,7 @@ import { ProductClearance } from "./product-clearance.entity";
     @OneToMany(() => SaleItem, (saleItem) => saleItem.purchaseitem)
     saleitems: SaleItem[];
 
-    @OneToMany(() => ProductClearance, (clearance) => clearance.purchaseitem)
-    clearanceitem: ProductClearance[];
+    // @OneToMany(() => ProductClearance, (clearance) => clearance.purchaseitem)
+    // clearanceitem: ProductClearance[];
   }
   

@@ -7,12 +7,15 @@ import { Component } from "@angular/core";
         </div>
         <nav class="page-menu navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
             <ul class="nav">
-            <li class="nav-item" *isNavAuth>
-                <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/store/stock">Stock</a>
-            </li>
-            <li class="nav-item" *isNavAuth>
-                <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/store/cash">Cash</a>
-            </li>
+                <li class="nav-item" *isNavAuth>
+                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock">Stock</a>
+                </li>
+                <li class="nav-item" *isNavAuth>
+                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
+                </li>
+                <li class="nav-item" *isNavAuth>
+                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="credit">Credit</a>
+                </li>
             </ul>
         </nav>
         <router-outlet></router-outlet>

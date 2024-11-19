@@ -63,6 +63,10 @@ export class SaleViewComponent {
           this.sale.total = data.total;
           this.sale.disccode = data.disccode;
           this.sale.discamount = data.discamount;
+          this.sale.digiamt = data.digiamt;
+          this.sale.paymode = data.paymode;
+          this.sale.cashamt = data.cashamt;
+          
           this.finalAmt = Math.round(data.total);
           
           // this.saving = Math.round( (data.total / this.mrpTotal) * 100);

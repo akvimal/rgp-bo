@@ -1,5 +1,5 @@
 import { HttpClient } from "@angular/common/http";
-import { Component, SimpleChanges } from "@angular/core";
+import { Component } from "@angular/core";
 import { FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { ProductUtilService } from "../../product-util.service";
@@ -13,7 +13,7 @@ import { SaleService } from "../sales.service";
 })
 export class SaleFormComponent {
 
-    sale:Sale = {status:'NEW',items:[]}
+    sale:Sale = {status:'NEW',items:[],paymode:'PayTM'}
     
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
@@ -36,11 +36,12 @@ export class SaleFormComponent {
     form:FormGroup = new FormGroup({});
 
     isCash = false;
-    digiamt = 0;
-    cashamt = 0;
+    // tender = 0;
+    // digiamt = 0;
+    // cashamt = 0;
     cashbal = 0;
-    paymode = 'PayTM';
-    payrefno = '';
+    // paymode = 'PayTM';
+    // payrefno = '';
 
     custCustomerTypes:any[] = [
       { value: 'Walkin', label: 'Walk in' },
@@ -80,7 +81,7 @@ export class SaleFormComponent {
               }
             });;
             this.sale = result;
-            this.recalculateTotal();
+            this.isCash = result['cashamt'] > 0;
           });
         });
       });
@@ -122,7 +123,6 @@ export class SaleFormComponent {
       this.sale.mrptotal = Math.round(mrptotal);
       this.sale.totalitems = this.sale.items?.filter((i:any) => i.edited).length;
       this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
-      this.digiamt = this.total;
     }
 
     selectCustomer(customer:any, copySales:boolean){
@@ -203,14 +203,17 @@ export class SaleFormComponent {
     });
 
     if(this.sale.status == 'COMPLETE'){
-      if(this.digiamt > 0) {
-        this.sale['digimethod']=this.paymode;
-        this.sale['digirefno']=this.payrefno;
-        this.sale['digiamt']=this.digiamt;
+      if(this.isCash){
+        this.sale['cashamt'] = this.sale.total;
+        this.sale['digiamt'] = 0;
+        this.sale['paymode'] = '';
+        this.sale['payrefno'] = '';
       }
-      if(this.cashamt > 0) {
-        this.sale['cashamt'] = this.cashamt > this.total ? this.total : this.cashamt;
+      else {
+        this.sale['digiamt'] = this.sale.total;  
+        this.sale['cashamt'] = 0;
       }
+      
     }
     
     this.service.save({...this.sale, status}).subscribe((data:any) => {
@@ -352,29 +355,22 @@ export class SaleFormComponent {
     });
   }
 
-  calcCashBal(mode:string,event:any){
-    const bal = Math.round(this.total) - (+this.cashamt + +this.digiamt);
-    this.cashbal = bal < 0 ? (-1 * bal) : 0; 
-  }
-
-  isCashPartial(){
-    return +this.cashamt < +this.total ? true : false;
+  tenderBal(event:any){
+        this.cashbal = +(this.sale.cashamt||0) - Math.round(this.sale.total||0) ;
   }
 
   changeToCash(event:any){
     if(event.target.checked){
-      this.cashamt = this.total;
-      this.digiamt = 0;
+      this.sale.cashamt = this.sale.total;
+      this.sale.paymode = '';
+      this.sale.payrefno = '';
     }
     else {
-      this.cashamt = 0;
-      this.cashbal = 0;
-      this.digiamt = this.total;
+      this.sale.cashamt = 0;
     }
   }
 
   isCompleteReady(){
-    const amt = +this.digiamt + +this.cashamt
-    return this.total > 0 && (amt >= this.total);
+    return (!this.isCash && this.sale.paymode !== '') || (this.isCash && (this.sale.cashamt||0) >= this.total);
   }
 }

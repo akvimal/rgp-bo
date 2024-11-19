@@ -67,21 +67,23 @@
                                 </div>
                                 <div class="col-8">
                                     <div class="row">
-                                        <div class="col-3">Credit (future)</div>
+                                        <div class="col-3">
+                                            <!-- Credit (future) -->
+                                        </div>
                                         <div class="col-6 d-flex flex-row">
-                                            <select class="form-control" [(ngModel)]="paymode" [disabled]="!isCashPartial()">
+                                            <select class="form-control" [(ngModel)]="sale.paymode">
                                                 <option value="PayTM">PayTM</option>
                                                 <option value="GPay">GPay</option>
+                                                <option value="Card">Card</option>
                                                 <option value="Other">Other</option>
                                             </select>
-                                            <input type="text" class="form-control" [(ngModel)]="digiamt" [disabled]="!isCashPartial()" (input)="calcCashBal('digi',$event)">
-                                            <input type="text" class="form-control" [(ngModel)]="payrefno" placeholder="Ref#" [disabled]="!isCashPartial()">
+                                            <input type="text" class="form-control" [(ngModel)]="sale.payrefno" placeholder="Ref#">
                                         </div>
                                         <div class="col-3 d-flex flex-row text-end">
                                             <input type="checkbox" class="form-control-input" [(ngModel)]="isCash" style="width: 2em; height: 2em;" (change)="changeToCash($event)">
                                             <label style="padding-top:.3em;padding-left:.25em;padding-right:.5em;">Cash</label>
-                                            <input type="text" class="form-control" [(ngModel)]="cashamt" placeholder="Cash" [disabled]="!isCash" (input)="calcCashBal('cash',$event)">
-                                            <span *ngIf="cashbal>0" class="input-group-text" style="font-size: larger;background-color:blue;color:white;">{{cashbal}}</span>
+                                            <input type="text" class="form-control" [(ngModel)]="sale.cashamt" (input)="tenderBal($event)">
+                                            <span class="input-group-text" [ngStyle]="{'font-size': 'larger', 'background-color': cashbal < 0 ? 'red' : 'blue','color':'white'}">{{cashbal}}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -146,7 +148,7 @@
             <ul class="list-group mt-2">
                 <li class="list-group-item" style="background-color: #9cf;">
                     <input type="checkbox" (change)="toggleAll(i,$event)">
-                    <span class="text-primary fs-6 pl-2">&nbsp;&nbsp;{{s.billdate | date : 'dd-MMM-yy'}}</span>
+                    <span class="text-primary fs-6 pl-2">&nbsp;&nbsp; <strong>{{s.billdate | date : 'dd-MMM-yy'}}</strong></span>
                 </li>
                 <li class="list-group-item" *ngFor="let i of s.items">
                     <input type="checkbox" (change)="selectItem(i.productid,$event)" [checked]="i.selected">

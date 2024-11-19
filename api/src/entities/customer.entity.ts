@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { BaseEntity } from "./base.entity";
+import { CustomerCreditAccount } from "./customer-credit-account.entity";
 import { Sale } from "./sale.entity";
 
 @Index("customer_pk", ["id"], { unique: true })
@@ -38,4 +39,10 @@ export class Customer extends BaseEntity {
 
   @OneToMany(() => Sale, (sale) => sale.customer)
   sales: Sale[];
+
+  @OneToMany(
+    () => CustomerCreditAccount,
+    (acc) => acc.customer
+  )
+  credits: CustomerCreditAccount[];
 }
