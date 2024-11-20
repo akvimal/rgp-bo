@@ -33,9 +33,9 @@ export class StockListComponent {
       qtyAdjustForm:FormGroup = new FormGroup({
         itemid: new FormControl('',Validators.required),
         // effdate: new FormControl(new Date().toISOString().slice(0, 10),Validators.required),
-        reason: new FormControl('',Validators.required),
+        reason: new FormControl('Other',Validators.required),
         qty: new FormControl(0,Validators.required),
-        comments: new FormControl('',Validators.required)
+        comments: new FormControl('')
       });
 
       qtyChangeReasons:any[] = [
