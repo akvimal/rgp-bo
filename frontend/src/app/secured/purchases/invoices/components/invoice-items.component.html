@@ -24,13 +24,9 @@
         <div class="card-body">
         <div class="row">
             <div class="col-lg-12">
-                <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
-                    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-                    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-                    [rowsPerPageOptions]="[10,25,50]">
+                <p-table [value]="items" 
+                    [resizableColumns]="true" columnResizeMode="expand" styleClass="p-datatable-gridlines mt-0">
                 <ng-template pTemplate="header">
-                <!-- <table class="table table-bordered">
-                    <thead> -->
                         <tr>
                             <th *ngIf="invoice.status !== 'COMPLETE'"></th>
                             <th *ngIf="invoice.status !== 'COMPLETE'"></th>
@@ -39,17 +35,17 @@
                             </th>
                             <th>Batch</th>
                             <!-- <th>MFR Date</th> -->
-                            <th pSortableColumn="expdate">Expiry
+                            <th pSortableColumn="expdate" class="text-center">Expiry
                                 <p-sortIcon field="expdate"></p-sortIcon>
                             </th>
-                            <th>MRP</th>
+                            <th class="text-end">MRP</th>
                             <!-- <th>Pack</th> -->
-                            <th>QTY</th>
-                            <th>Free</th>
-                            <th>Rate</th>
-                            <th>Disc</th>
-                            <th>Tax</th>
-                            <th>Total</th>
+                            <th class="text-end">QTY</th>
+                            <th class="text-end">Free</th>
+                            <th class="text-end">Rate</th>
+                            <th class="text-end">Disc</th>
+                            <th class="text-end">Tax</th>
+                            <th class="text-end">Total</th>
                         </tr>
                     <!-- </thead>
                 <tbody> -->
@@ -57,25 +53,28 @@
                 <ng-template pTemplate="body" let-i>
                     <!-- <tr *ngFor="let i of invoice.items"> -->
                         <tr [ngStyle]="{'background':i.selected ? '#ddd' : 'inherit'}">
-                            <td *ngIf="invoice.status !== 'COMPLETE'" style="width:2em">
-                                <input type="checkbox" class="form-conrol-input" *ngIf="i.status !== 'VERIFIED'" (change)="selectItem($event,i.id)">
-                            </td><td *ngIf="invoice.status !== 'COMPLETE'">
-                                <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
-                                    <i class="bi bi-pencil-square text-primary"></i>
-                                </a>
+                            <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center"  style="width:2em">
+                                <input type="checkbox" class="form-conrol-input checkmark" *ngIf="i.status !== 'VERIFIED'" (change)="selectItem($event,i.id)">
+                            </td>
+                            <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center" style="width:2em">
+                                <h4 style="margin:0;padding:0;">
+                                    <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
+                                        <i class="bi bi-pencil-square text-primary"></i>
+                                    </a>
+                                </h4>
                             </td>
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
                             <!-- <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td> -->
                             <td class="text-center">{{i.expdate | date: 'MMM-yy'}}</td>
-                            <td style="text-align: right;">{{i.mrpcost | number:'1.2-2'}}</td>
+                            <td class="text-end">{{i.mrpcost | number:'1.2-2'}}</td>
                             <!-- <td style="text-align: right;">{{i.product.pack}}</td> -->
-                            <td style="text-align: right;">{{i.qty}}</td>
-                            <td style="text-align: right;">{{i.freeqty}}</td>
-                            <td style="text-align: right;">{{i.ptrvalue | number:'1.2-2'}}</td>
-                            <td>{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
-                            <td>{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
-                            <td style="text-align: right;">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
+                            <td class="text-end">{{i.qty}}</td>
+                            <td class="text-end">{{i.freeqty}}</td>
+                            <td class="text-end">{{i.ptrvalue | number:'1.2-2'}}</td>
+                            <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
+                            <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
+                            <td class="text-end">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
                             <!-- <td class="text-center">{{i.status}}</td> -->
                         </tr>
                         <!-- <tr>
@@ -90,12 +89,19 @@
                 </ng-template>
                 <ng-template pTemplate="footer">
                     <tr>
-                        <td colspan="8" class="text-right">Net Total: {{nettotal | number:'1.2-2'}}</td>
-                        <td>{{disctotal | number:'1.2-2'}}</td>
-                        <td>{{taxtotal | number:'1.2-2'}}</td>
-                        <td>{{grosstotal | number:'1.2-2'}}</td>
-                        <td></td>
-                        <td></td>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
+                        <td colspan="7"></td>
+                        <td class="text-end">{{disctotal | number:'1.2-2'}}</td>
+                        <td class="text-end">{{taxtotal | number:'1.2-2'}}</td>
+                        <td class="text-end">{{grosstotal | number:'1.2-2'}}</td>
+                    </tr>
+                    <tr>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
+                        <td colspan="7" class="text-end">{{invoice.items?.length}} Items</td>
+                        <td colspan="3" class="text-end">
+                            <span style="color:blue;font-size:larger">{{nettotal | number:'1.2-2'}}</span></td>
                     </tr>
                 </ng-template>
             </p-table>
