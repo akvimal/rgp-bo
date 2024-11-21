@@ -56,6 +56,10 @@ export class SalesListComponent {
       this.showReturnForm = true;
     }
 
+    showDelivery(saleid:any){
+
+    }
+
     onReturnSubmitSuccess(event:any){
       this.showReturnForm = false;
     }
@@ -86,6 +90,7 @@ export class SalesListComponent {
       // }
 
       isActionAllowed(action:string,sale:any){
+      console.log(sale);
       
         let allowed = false;
         if(action === 'Print' && sale.status === 'COMPLETE'){
@@ -100,6 +105,9 @@ export class SalesListComponent {
           allowed = true;
         }
         else if(action === 'Cancel' && sale.status !== 'LOCKED'){ // the sale will be locked on filing GST
+          allowed = true;
+        }
+        else if(action === 'Delivery' && sale.deliverytype === 'Delivery'){
           allowed = true;
         }
         return allowed;

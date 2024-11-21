@@ -66,7 +66,7 @@
                                     <label class="sale-summary">Save: {{sale.saving}}%</label>
                                 </div>
                                 <div class="col-7">
-                                   <app-sale-payment [total]="sale.total||0" (updated)="paymentinfo($event)"></app-sale-payment>
+                                   <app-sale-payment [total]="sale.total||0" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
                                 </div>
                                 <div class="col-2 text-end">
                                     <h4>
@@ -81,6 +81,21 @@
         </div>
     </div>
     <div class="row">
+        <div class="col-12 d-flex flex-row">
+            <label for="ordertype" style="padding-right:1em;">Order Type</label>
+            <select [(ngModel)]="sale.ordertype">
+                <option value="Walk-in">Walk-in</option>
+                <option value="Phone">Phone</option>
+                <option value="Whatsapp">Whatsapp</option>
+            </select>
+            <label for="deliverytype" style="padding-left:2em;padding-right:1em;">Delivery type</label>
+            <select [(ngModel)]="sale.deliverytype">
+                <option value="Counter">Counter</option>
+                <option value="Delivery">Delivery</option>
+            </select>
+        </div>
+    </div>
+    <div class="row mt-2">
         <div class="col-8">
             <button (click)="submit('PENDING')" 
                 class="btn btn-outline-secondary m-2" [disabled]="total === 0">Save</button>
@@ -126,20 +141,28 @@
 <!-- Customer Previous Sales -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
         [(visible)]="displayPrevSalesCopy" [modal]="true">
-    <div *ngFor="let s of prevCustSales; index as i">
-            <ul class="list-group mt-2">
-                <li class="list-group-item" style="background-color: #9cf;">
-                    <input type="checkbox" (change)="toggleAll(i,$event)">
-                    <span class="text-primary fs-6 pl-2">&nbsp;&nbsp; <strong>{{s.billdate | date : 'dd-MMM-yy'}}</strong></span>
-                </li>
-                <li class="list-group-item" *ngFor="let i of s.items">
-                    <input type="checkbox" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
-                    <span class="p-2">{{i.title}} ({{i.qty}})</span></li>
-            </ul>
-    </div>
-    <div class="mt-2">
-    <button type="button" class="btn btn-primary mt-2 text-center"
-            (click)="copySelectedItem()">Copy</button>
+        <div class="row">
+            <div class="col-12 mt-1">
+                <button type="button" class="btn btn-outline-primary mt-2 text-center"
+                    (click)="copySelectedItem()">Copy</button>
+            </div>
+            <div class="col-12">
+                <div *ngFor="let s of prevCustSales; index as i">
+                    <ul class="list-group mt-2">
+                        <li class="list-group-item" style="background-color: #9cf;">
+                            <input type="checkbox" style="width:15px;height:15px;" (change)="toggleAll(i,$event)">
+                            <span class="text-primary fs-6 pl-2">&nbsp;&nbsp; <strong>{{s.billdate | date : 'dd-MMM-yy'}}</strong></span>
+                        </li>
+                        <li class="list-group-item" *ngFor="let i of s.items">
+                            <input type="checkbox" style="width:15px;height:15px;" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
+                            <span class="p-2">{{i.title}} ({{i.qty}})</span></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-12 mt-1">
+                <button type="button" class="btn btn-outline-primary mt-2 text-center"
+                    (click)="copySelectedItem()">Copy</button>
+            </div>
         </div>
 </p-dialog>
 

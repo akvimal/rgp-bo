@@ -14,8 +14,6 @@ export interface Sale {
     total?: number,
     disccode?:string,
     discamount?:number,
-    paymode?:string,
-    payrefno?:string,
     digimethod?:string,
     digirefno?:string,
     digiamt?:number,
@@ -24,5 +22,7 @@ export interface Sale {
     mrptotal?:number,
     saving?:number,
     expreturndays?:number,
-    totalitems?:number
+    totalitems?:number,
+    ordertype?:string,
+    deliverytype?:string
 }

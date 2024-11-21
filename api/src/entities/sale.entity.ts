@@ -33,12 +33,6 @@ export class Sale extends BaseEntity {
 
   @Column("character varying", { name: "status", nullable: true })
   status: string | null;
-  
-  @Column("character varying", { name: "paymode", nullable: true })
-  paymode: string | null;
-
-  @Column("character varying", { name: "payrefno", nullable: true })
-  payrefno: string | null;
 
   @Column("character varying", { name: "digi_method", nullable: true })
   digimethod: string | null;
@@ -52,9 +46,13 @@ export class Sale extends BaseEntity {
 
   @Column("double precision", { name: "disc_amount", precision: 53 })
   discamount: number;
-
   @Column("character varying", { name: "disc_code", nullable: true })
   disccode: string | null;
+
+  @Column("character varying", { name: "order_type", nullable: true })
+  ordertype: string | null;  
+  @Column("character varying", { name: "delivery_type", nullable: true })
+  deliverytype: string | null;
   
   @Column("double precision", { name: "total", precision: 53 })
   total: number;

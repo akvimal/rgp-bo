@@ -67,7 +67,6 @@
             <p-columnFilter type="text" field="custinfo" display="menu"></p-columnFilter>
             <p-sortIcon field="custinfo"></p-sortIcon>
           </th>
-          <th>Sale Person</th>
           <!-- <th pSortableColumn="status">Status
             <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
             <p-sortIcon field="status"></p-sortIcon>
@@ -75,6 +74,9 @@
           <th>Digital</th>
           <th>Cash</th>
           <th>Total</th>
+          <th>Order</th>
+          <th>Delivery</th>
+          <th>Sale Person</th>
           <th>Actions</th>
         </tr>
       <!-- </thead>
@@ -93,12 +95,15 @@
             <td>{{s.custinfo}}</td>
             <!-- <td>{{s.customer ? s.customer.name : ''}}</td> -->
             <!-- <td>{{s.customer ? s.customer.mobile : ''}}</td> -->
-            <td>{{s.created ? s.created.fullname : ''}}</td>
             <!-- <td>{{s.status}}</td> -->
             <td style="text-align: right;">{{s.digiamt}}</td>
             <td style="text-align: right;">{{s.cashamt}}</td>
             <td style="text-align: right;">{{s.total}}</td>
+            <td>{{s.ordertype}}</td>
+            <td>{{s.deliverytype}}</td>
+            <td>{{s.created ? s.created.fullname : ''}}</td>
             <td>
+              
               <h5 *ngIf="isActionAllowed('Print',s)" style="float:left; margin-right: 0.3em;">
                 <a [routerLink]="['../pos/view',s.id]"><i class="bi bi-eye"></i></a>
               </h5>
@@ -108,6 +113,10 @@
               <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
               <i class="bi bi-arrow-return-left" (click)="showReturn(s.id)"></i>
             </h5>
+            <h5  *ngIf="isActionAllowed('Delivery',s)"style="float:left; margin-right: 0.3em;">
+              <i class="bi bi-envelope" (click)="showDelivery(s.id)"></i>
+            </h5>
+            
               <!-- <a *ngIf="isActionAllowed('Cancel',s)" [routerLink]="['../edit',s.id]">Cancel</a> -->
             </td>
           </tr>  

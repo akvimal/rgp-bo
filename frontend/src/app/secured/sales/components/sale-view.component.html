@@ -50,7 +50,7 @@
                         Total Items:<strong>{{itemsCount}}</strong>
                     </td>
                     <td>Paid via
-                        <span *ngIf="sale.digiamt||0 > 0">{{sale.paymode}}</span>
+                        <span *ngIf="sale.digiamt||0 > 0">{{sale.digimethod}}</span>
                         <span *ngIf="sale.cashamt||0 > 0">CASH</span>
                     </td>
                     <td colspan="2">

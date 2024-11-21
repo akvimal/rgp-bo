@@ -8,7 +8,7 @@ export class SalePaymentComponent {
   
     @Input() total = 0;
     
-    payment:{digimode?:string,digiamt?:number,
+    @Input() payment:{digimode?:string,digiamt?:number,
         digirefno?:string,cashamt?:number,valid?:boolean}={};
     cashbal = 0;
     cashonly = false;
@@ -16,7 +16,13 @@ export class SalePaymentComponent {
     @Output() updated:EventEmitter<any> = new EventEmitter();
 
     ngOnInit(){
-        this.payment['digimode'] = 'PayTM';
+        
+        console.log(this.payment);
+        if(this.payment['digiamt'] == this.total && this.payment['digimode'] == undefined)
+            this.payment['digimode'] = 'PayTM';
+
+        if(this.payment['cashamt'] == this.total)
+            this.cashonly = true;
     }
 
     ngOnChanges(changes:SimpleChanges){

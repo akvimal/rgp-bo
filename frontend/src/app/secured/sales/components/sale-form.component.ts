@@ -14,7 +14,7 @@ import { SaleService } from "../sales.service";
 })
 export class SaleFormComponent {
 
-    sale:Sale = {status:'NEW',items:[],paymode:'PayTM'}
+    sale:Sale = {status:'NEW',items:[],digimethod:'PayTM'}
     
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
@@ -23,13 +23,14 @@ export class SaleFormComponent {
     salePropValues:any;
 
     total:number = 0;
-    payment:any;
+    payment:any = {};
     paymentValid=false;
     
     inputCustomer:boolean = true;
     saleWithCustomer:boolean = true;
 
-    newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false}
+    // newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false,
+    // ordertype:'Walk-in',deliverytype:'Counter'}
 
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
@@ -62,9 +63,12 @@ export class SaleFormComponent {
 
     ngOnInit(){
       this.sale.billdate = new Date();
+      this.sale['ordertype'] = 'Walk-in';
+      this.sale['deliverytype'] = 'Counter';
       //get the id from url query params
       this.route.paramMap.subscribe(params => {  
         const saleId =  params.get("id");
+
         saleId !== null && this.service.find(saleId).subscribe((result:any) => {
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
@@ -77,6 +81,12 @@ export class SaleFormComponent {
               }
             });;
             this.sale = result;
+            
+            this.payment['cashamt'] = this.sale['cashamt'];
+            this.payment['digimode'] = this.sale['digimethod'];
+            this.payment['digiamt'] = this.sale['digiamt'];
+            this.payment['digirefno'] = this.sale['digirefno'];
+
             this.recalculateTotal()
           });
         });
@@ -190,8 +200,8 @@ export class SaleFormComponent {
     if(this.sale.status == 'COMPLETE'){
         this.sale['cashamt'] = this.payment.cashamt;
         this.sale['digiamt'] = this.payment.digiamt;
-        this.sale['paymode'] = this.payment.digimode;
-        this.sale['payrefno'] = this.payment.digirefno;
+        this.sale['digimethod'] = this.payment.digimode;
+        this.sale['digirefno'] = this.payment.digirefno;
     }
     
     this.service.save({...this.sale, billdate: this.dateService.getFormatDate(new Date()), status}).subscribe((data:any) => {
@@ -243,7 +253,6 @@ export class SaleFormComponent {
   }
 
   paymentinfo(event:any){
-    console.log(event);
     this.payment = event;
   }
 

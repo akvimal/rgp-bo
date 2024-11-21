@@ -27,6 +27,7 @@ import { SaleReturnFormComponent } from "./components/sale-return-form.component
 import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
 import { SalePosComponent } from "./components/sale-pos.component";
 import { SalePaymentComponent } from "./components/sale-payment.component";
+import { SaleDeliveryComponent } from "./components/sale-delivery.component";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
@@ -39,7 +40,7 @@ const routes: Routes = [
     {path: 'view/:id', component: SaleViewComponent}
   ], canActivate:[AuthGuard]},
   {path: 'reminders', component: SaleReminderComponent, canActivate:[AuthGuard]},
-  
+  {path: 'deliveries', component: SaleDeliveryComponent, canActivate:[AuthGuard]},
 ];
 
 @NgModule({
@@ -59,6 +60,7 @@ const routes: Routes = [
       SaleFormComponent,
       SaleFormItemsComponent,
       StockSelectComponent,
+      SaleDeliveryComponent,
       CustomerSelectComponent
     ],
     imports: [

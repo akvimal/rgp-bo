@@ -114,7 +114,7 @@ export class SaleService {
         if(query.status){
             qb.andWhere(`sale.status = :st`, { st:query.status });
         }
-        qb.orderBy('sale.billdate','DESC')
+        qb.orderBy('sale.updatedon','DESC')
         return qb.getMany();
     }
 

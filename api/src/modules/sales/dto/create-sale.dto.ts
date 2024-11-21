@@ -18,11 +18,10 @@ export class CreateSaleDto {
     @ApiProperty({ description: 'status', example: '' })
     readonly status: string;
 
-    @ApiProperty({ description: 'payment mode', example: '' })
-    readonly paymode: string;
-
-    @ApiProperty({ description: 'payment refno', example: '' })
-    readonly payrefno: string;    
+    @ApiProperty({ description: 'ordertype', example: '' })
+    readonly ordertype: string;
+    @ApiProperty({ description: 'deliverytype', example: '' })
+    readonly deliverytype: string;
     
     @ApiProperty({ description: 'Digital Payment Method', example: '' })
     readonly digimethod: string | null;
