@@ -2,7 +2,7 @@
       <div class="col-12">
             <p-table #dt2 [value]="quantities" [resizableColumns]="true" columnResizeMode="expand" 
             [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-                [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>

@@ -2,11 +2,10 @@ import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { DateUtilService } from "src/app/secured/date-util.service";
 import { InvoiceService } from "src/app/secured/purchases/invoices/invoices.service";
-import { ProductUtilService } from "../../../product-util.service";
 import { StockService } from "../stock.service";
 
 @Component({
-    templateUrl: 'stock-list.component.html',
+    templateUrl: 'stock-audit.component.html',
     styles: [
         `
         .batch {color:blue;font-style:italic;font-size:smaller}
@@ -14,7 +13,7 @@ import { StockService } from "../stock.service";
         `
     ]
 })
-export class StockListComponent {
+export class StockAuditComponent {
 
     items:any = [];
     // displayPriceAdjForm: boolean = false;
@@ -51,14 +50,25 @@ export class StockListComponent {
         { value: 'Other', label: 'Other' }
       ]
     
-    constructor(private service: StockService, private invoiceService: InvoiceService, private dateService:DateUtilService){}
+    constructor(private service: StockService, private invoiceService:InvoiceService, private dateService: DateUtilService){}
 
     ngOnInit(){
         this.fetchStock();
     }
 
+    complete(){
+        
+            const ids:number[] = [];
+            this.items.forEach((item:any) => {
+                if(item['selected'])
+                    ids.push(item['id']);
+            });
+            this.invoiceService.updateItems(ids, {status: 'VERIFIED', verifyenddate: this.dateService.getFormatDate(new Date())}).subscribe(result => this.fetchStock());
+        
+    }
+    
     fetchStock(){
-        this.service.filterByCriteria('',this.available,this.expired,this.inactive,'VERIFIED',0).subscribe((items:any) => {
+        this.service.filterByCriteria('',this.available,this.expired,this.inactive,'AUDIT',0).subscribe((items:any) => {
             this.items = items.map((i:any) => {
                 return {...i, available: +i['available']}
             });
@@ -80,16 +90,13 @@ export class StockListComponent {
     }
 
     audit(){
-        const ids:number[] = [];
-        this.items.forEach((item:any) => {
-            if(item['selected'])
-                ids.push(item['id']);
-        });
-        this.invoiceService.updateItems(ids, {status: 'AUDIT',verifystartdate:this.dateService.getFormatDate(new Date())}).subscribe(result => this.fetchStock());
+        
     }
 
     showQtyDialog(item:any) {
         this.selectedItem = item;
+        console.log(item);
+        
         this.qtyAdjustForm.reset();
         this.qtyAdjustForm.controls['itemid'].setValue(item['purchase_itemid']);
         this.displayQtyAdjForm = true;

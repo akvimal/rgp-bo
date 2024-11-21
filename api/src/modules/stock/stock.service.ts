@@ -21,13 +21,22 @@ export class StockService {
         }
 
         async findByCriteria(query:any){
-            return await this.manager.query(`
+            let sql = `
             select iv.*, sale_price, market_price 
             from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
-            where (product_title ilike '%${query.query}%' or more_props->>'composition' ilike '%${query.query}%')
-            ${query.expired === 'false' ? ' and product_expdate > current_timestamp ' : ''}
-            ${query.available === 'true' ? ' and available > 0 ' : ''} 
-            order by product_title, product_expdate ${query.limit > 0 ? 'limit '+query.limit : ''}`);
+            where (product_title ilike '%${query.query}%' or more_props->>'composition' ilike '%${query.query}%')`;
+            if(query.status){
+                let arr = query.status.split(',');
+                query.status = arr.map(a => '\'' + a + '\'');
+                sql += ` and iv.status in (${query.status})`;
+            }
+            sql += `
+                ${query.inactive === 'true' ? ' and iv.active = false ' : ''} 
+                ${query.expired === 'true' ? ' and product_expdate < current_timestamp ' : ''}
+                ${query.available === 'true' ? ' and available > 0 ' : ''} 
+                order by product_title, product_expdate ${query.limit > 0 ? 'limit '+query.limit : ''}`
+
+            return await this.manager.query(sql);
         }
 
         async findByItems(ids:number[]){
@@ -38,7 +47,7 @@ export class StockService {
         async findByProducts(ids:number[]){
             return await this.manager.query(`select iv.*, sale_price, market_price 
             from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
-            where  iv.product_id in (${ids.join(',')}) and product_expdate > current_timestamp and available > 0 order by product_expdate`);
+            where  iv.product_id in (${ids.join(',')}) and iv.status = 'VERIFIED' and product_expdate > current_timestamp and available > 0 order by product_expdate`);
         }
 
         async findAvailableQty(prodid:number, batch:string, expdate:string){

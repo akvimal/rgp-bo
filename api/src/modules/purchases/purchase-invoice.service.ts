@@ -118,9 +118,12 @@ export class PurchaseInvoiceService {
       }
 
       async updateItems(ids:number[], values:any, userid:any){
-        
+        const obj = {...values, updatedby:userid};
+        if(values['status'] && values['status'] == 'VERIFIED'){
+          obj['verifiedby'] = userid;
+        }
        return await this.purchaseInvoiceItemRepository.createQueryBuilder('items')
-        .update(PurchaseInvoiceItem, {...values, updatedby:userid})
+        .update(PurchaseInvoiceItem, obj)
         .where("id in (:...ids)", { ids })
         .execute();
         

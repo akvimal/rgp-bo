@@ -8,6 +8,9 @@ import { Component } from "@angular/core";
                 <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="list">Inventory</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="audit">Audit</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="adjust">Adjustments</a>
             </li>
             <li class="nav-item">

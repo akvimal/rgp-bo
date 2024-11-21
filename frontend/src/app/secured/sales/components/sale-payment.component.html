@@ -1,0 +1,24 @@
+<div class="row">
+    <div *ngIf="!cashonly;else cash" class="col-7 d-flex flex-row">
+        <select class="form-control" [(ngModel)]="payment.digimode" (change)="digimodechange($event)">
+            <option value="PayTM">PayTM</option>
+            <option value="GPay">GPay</option>
+            <option value="Card">Card</option>
+            <option value="Other">Other</option>
+        </select>
+        <input type="text" class="form-control" [(ngModel)]="payment.digiamt" (input)="digiamtchange($event)">
+        <input type="text" class="form-control" [(ngModel)]="payment.digirefno" placeholder="Ref#">
+        <input type="text" class="form-control" [(ngModel)]="payment.cashamt" (input)="cashamtchange($event)">
+    </div>
+    <ng-template #cash>
+        <div class="col-7 d-flex flex-row">&nbsp;</div>
+    </ng-template>
+    <div class="col-2 d-flex flex-row text-end">
+        <input type="checkbox" class="form-control-input checkmark mt-2" [(ngModel)]="cashonly" (change)="changeToCash($event)">
+        <label class="sale-summary">&nbsp;Cash</label>
+    </div>
+    <div class="col-3 d-flex flex-row text-end">
+        <input type="text" class="form-control" (input)="tenderBal($event)">
+        <span class="input-group-text" [ngStyle]="{'font-size': 'larger', 'background-color': cashbal < 0 ? 'red' : 'blue','color':'white'}">{{cashbal}}</span>
+    </div>
+</div>

@@ -2,6 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
+import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
 import { StockService } from "../../store/stock/stock.service";
 import { SaleHelper } from "../sale.helper";
@@ -22,6 +23,8 @@ export class SaleFormComponent {
     salePropValues:any;
 
     total:number = 0;
+    payment:any;
+    paymentValid=false;
     
     inputCustomer:boolean = true;
     saleWithCustomer:boolean = true;
@@ -34,14 +37,6 @@ export class SaleFormComponent {
     salePropSchema:any[] = []
     saleprops:any[] = []
     form:FormGroup = new FormGroup({});
-
-    isCash = false;
-    // tender = 0;
-    // digiamt = 0;
-    // cashamt = 0;
-    cashbal = 0;
-    // paymode = 'PayTM';
-    // payrefno = '';
 
     custCustomerTypes:any[] = [
       { value: 'Walkin', label: 'Walk in' },
@@ -59,6 +54,7 @@ export class SaleFormComponent {
       private helper: SaleHelper,
       private service: SaleService,
       private stockService: StockService,
+      private dateService: DateUtilService,
       private prodUtilService: ProductUtilService,
       private http: HttpClient){
         this.http.get("/assets/sale-props.json").subscribe((data:any) => this.salePropSchema = data);
@@ -81,7 +77,7 @@ export class SaleFormComponent {
               }
             });;
             this.sale = result;
-            this.isCash = result['cashamt'] > 0;
+            this.recalculateTotal()
           });
         });
       });
@@ -137,17 +133,6 @@ export class SaleFormComponent {
       this.fetchCustomerPrevSales = copySales;
       this.inputCustomer = false;
     }
-  
-  // doneEnterCustomer(event:any){    
-  //   const inputval = event.target.value;
-  //   if(inputval.length > 0){
-  //     if(inputval.length !== 10) {
-  //       event.target.value = inputval.substring(0,10);
-  //     }
-  //   } 
-    
-  //   this.sale.customer = {mobile:inputval};
-  // }
 
   onItemRemoved(id:any){
     if(this.sale.items) {
@@ -203,20 +188,13 @@ export class SaleFormComponent {
     });
 
     if(this.sale.status == 'COMPLETE'){
-      if(this.isCash){
-        this.sale['cashamt'] = this.sale.total;
-        this.sale['digiamt'] = 0;
-        this.sale['paymode'] = '';
-        this.sale['payrefno'] = '';
-      }
-      else {
-        this.sale['digiamt'] = this.sale.total;  
-        this.sale['cashamt'] = 0;
-      }
-      
+        this.sale['cashamt'] = this.payment.cashamt;
+        this.sale['digiamt'] = this.payment.digiamt;
+        this.sale['paymode'] = this.payment.digimode;
+        this.sale['payrefno'] = this.payment.digirefno;
     }
     
-    this.service.save({...this.sale, status}).subscribe((data:any) => {
+    this.service.save({...this.sale, billdate: this.dateService.getFormatDate(new Date()), status}).subscribe((data:any) => {
       this.salePropValues = null;
       this.redirectAfterSubmit(data.status, data.id);
       this.service.refreshSavedSales();
@@ -262,6 +240,11 @@ export class SaleFormComponent {
 
   cancel(){
     this.router.navigateByUrl(`/secure/sales`); 
+  }
+
+  paymentinfo(event:any){
+    console.log(event);
+    this.payment = event;
   }
 
   showPrevSalesCopy() {
@@ -355,22 +338,7 @@ export class SaleFormComponent {
     });
   }
 
-  tenderBal(event:any){
-        this.cashbal = +(this.sale.cashamt||0) - Math.round(this.sale.total||0) ;
-  }
-
-  changeToCash(event:any){
-    if(event.target.checked){
-      this.sale.cashamt = this.sale.total;
-      this.sale.paymode = '';
-      this.sale.payrefno = '';
-    }
-    else {
-      this.sale.cashamt = 0;
-    }
-  }
-
   isCompleteReady(){
-    return (!this.isCash && this.sale.paymode !== '') || (this.isCash && (this.sale.cashamt||0) >= this.total);
+    return this.payment && this.payment['valid'];
   }
 }

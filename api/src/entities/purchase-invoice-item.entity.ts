@@ -68,6 +68,13 @@ import { ProductClearance } from "./product-clearance.entity";
     @Column("character varying", { name: "status" })
     status: string;
 
+    @Column({ name: 'verified_by', type: 'integer' })
+    verifiedby: number;
+    @Column({ name: 'verify_start_date', type: 'date'})
+    verifystartdate: Date;
+    @Column({ name: 'verify_end_date', type: 'date'})
+    verifyenddate: Date;
+    
     @ManyToOne(
       () => PurchaseInvoice,
       (purchaseInvoice) => purchaseInvoice.items
