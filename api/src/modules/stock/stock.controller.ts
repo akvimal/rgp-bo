@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { User } from "src/core/decorator/user.decorator";
@@ -75,6 +75,7 @@ export class StockController {
     async findAllQtyAdjust() {
       return (await this.service.findAllQtyAdjust()).map((data:ProductQtyChange) => {
         return {
+          id:data.id,
           itemid: data.purchaseitem.id,
           title: data.purchaseitem.product.title,
           date: data.createdon,
@@ -99,8 +100,19 @@ export class StockController {
     @Post('/adjust/qty')
     async updateQty(@Body() createDto: CreateProductQtyChangeDto, 
     @User() currentUser: any) {
-        // const updated = await this.invoiceService.updateItems([createDto.itemid],{saleprice:createDto.price},currentUser.id);
         return this.service.createQty(createDto, currentUser.id);
+    }
+
+    @Post('/adjust/qty/bulk')
+    async updateQtyBulkToZero(@Body() obj:any, @User() currentUser: any) {
+        console.log(obj);
+        this.service.findPurchaseItemsWithAvailable(obj.ids).then(async (data) => {
+          console.log(data);
+          for (let index = 0; index < data.length; index++) {
+            const element = data[index];
+            await this.service.createQty({itemid:element['purchase_itemid'],qty: -1 * +element['available'],status:'APPROVED',reason:obj['reason'],comments:obj['comments']}, currentUser.id);
+          }
+        })
     }
 
     @Post('/adjust/returns')
@@ -111,4 +123,12 @@ export class StockController {
     // async findByCriteria() {
     //   return this.service.findByCriteria({});
     // }
+
+    @Delete('/adjust/qty/:id')
+    remove(@Param('id') id: string) {
+      console.log('ADJUST Delete',id);
+      
+      return this.service.deleteQtyAdjustment(id);
+    }
+
 }

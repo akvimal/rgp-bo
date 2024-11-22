@@ -46,6 +46,10 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock/adjust/price`);
     }
 
+    deleteQtyAdjustment(id:number){
+        return this.http.delete(`${this.apiurl}/stock/adjust/qty/${id}`)
+    }
+
     findAllQtyAdjustments(){
         return this.http.get(`${this.apiurl}/stock/adjust/qty`);
     }
@@ -56,6 +60,10 @@ export class StockService {
     
     updateQty(qtyForm:any){
         return this.http.post(`${this.apiurl}/stock/adjust/qty`,{...qtyForm, status: 'APPROVED'});
+    }   
+        
+    updateQtyToZero(obj:any){
+        return this.http.post(`${this.apiurl}/stock/adjust/qty/bulk`,obj);
     }   
     
     adjustReturnQuantities(adjustments:any){

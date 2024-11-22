@@ -20,6 +20,11 @@ export class StockService {
             select * from stock_view where (life_left is null or life_left >= 0) order by title`);
         }
 
+        async findPurchaseItemsWithAvailable(ids:number[]){
+            return await this.manager.query(`
+            select purchase_itemid, available from inventory_view iv where iv.purchase_itemid in (${ids.join(',')})`);
+        }
+
         async findByCriteria(query:any){
             let sql = `
             select iv.*, sale_price, market_price 
@@ -182,4 +187,10 @@ export class StockService {
     //     }
     //     return await this.manager.query(query);
     // }
+
+    async deleteQtyAdjustment(id:any){
+        await this.qtyRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
+            await transaction.delete(ProductQtyChange, id);
+        });
+    } 
 }

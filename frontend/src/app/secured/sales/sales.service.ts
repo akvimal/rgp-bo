@@ -1,8 +1,8 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
-import { SaleItem } from "./sale-item.model";
-import { Sale } from "./sale.model";
+import { SaleItem } from "./models/sale-item.model";
+import { Sale } from "./models/sale.model";
 import { environment } from "./../../../environments/environment";
 
 @Injectable({

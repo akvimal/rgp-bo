@@ -2,7 +2,7 @@ import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
-import { Sale } from "../sale.model";
+import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
 
 @Component({

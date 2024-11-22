@@ -16,8 +16,6 @@ export class SalePaymentComponent {
     @Output() updated:EventEmitter<any> = new EventEmitter();
 
     ngOnInit(){
-        
-        console.log(this.payment);
         if(this.payment['digiamt'] == this.total && this.payment['digimode'] == undefined)
             this.payment['digimode'] = 'PayTM';
 

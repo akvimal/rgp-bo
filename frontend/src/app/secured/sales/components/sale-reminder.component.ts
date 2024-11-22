@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { CustomersService } from "../../customers/customers.service";
+import { CustomersService } from "src/app/secured/customers/customers.service";
 
 @Component({
     selector:'app-sale-reminder',

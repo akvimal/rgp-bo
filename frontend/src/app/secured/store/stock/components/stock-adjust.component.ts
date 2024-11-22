@@ -17,8 +17,22 @@ export class StockAdjustComponent {
     constructor(private stockService:StockService) {}
 
     ngOnInit() {
+       this.fetchAdjustments();
+    }
+
+    fetchAdjustments(){
         this.stockService.findAllQtyAdjustments().subscribe((data:any) => {
             this.quantities = data;
         });
+    }
+
+    edit(id:number){
+
+    }
+
+    delete(id:number){
+        this.stockService.deleteQtyAdjustment(id).subscribe(result => {
+            this.fetchAdjustments();
+        })
     }
 }

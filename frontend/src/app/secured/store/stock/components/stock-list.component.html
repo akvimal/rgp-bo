@@ -8,7 +8,7 @@
         <label for="expired" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Expired</label> 
         </div>
         <div class="col-12">
-            <button (click)="audit()" class="btn btn-outline-danger">Audit</button>
+            <button (click)="audit()" [disabled]="!isItemsSelected()" class="btn btn-outline-info">Audit</button>
         </div>
         <div class="col-12">
             <p-table #dt1 [value]="items" [resizableColumns]="true" columnResizeMode="expand" 

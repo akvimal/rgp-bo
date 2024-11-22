@@ -6,7 +6,7 @@ import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
 import { StockService } from "../../store/stock/stock.service";
 import { SaleHelper } from "../sale.helper";
-import { Sale } from "../sale.model";
+import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
 
 @Component({

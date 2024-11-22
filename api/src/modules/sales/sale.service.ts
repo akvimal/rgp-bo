@@ -95,9 +95,10 @@ export class SaleService {
     
     async findAll(query:any,userid:any){
         const qb = this.saleRepository.createQueryBuilder("sale")
-                    .leftJoinAndSelect("sale.customer", "customer")
+        .leftJoinAndSelect("sale.delivery", "delivery")
+        .leftJoinAndSelect("sale.customer", "customer")
                     .leftJoinAndSelect("sale.created", "created")
-                    .select(['sale','customer','customer.name','customer.mobile','created.id','created.fullname'])
+                    .select(['sale','customer','customer.name','customer.mobile','created.id','created.fullname', 'delivery'])
                     .where('sale.active = :flag', { flag:true }); 
         if(userid){
             qb.andWhere('sale.createdby = :uid', { uid:userid });

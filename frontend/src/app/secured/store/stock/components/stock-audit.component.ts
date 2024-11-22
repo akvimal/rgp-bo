@@ -16,8 +16,9 @@ import { StockService } from "../stock.service";
 export class StockAuditComponent {
 
     items:any = [];
-    // displayPriceAdjForm: boolean = false;
+    
     displayQtyAdjForm: boolean = false;
+    displayQtyBulkAdjForm: boolean = false;
 
     selectedItem:any;
     finalqty:number = 0;
@@ -28,18 +29,15 @@ export class StockAuditComponent {
     expired = false;
     inactive = false;
 
-    // priceAdjustForm:FormGroup = new FormGroup({
-    //     itemid: new FormControl('',Validators.required),
-    //     // effdate: new FormControl(new Date().toISOString().slice(0, 10),Validators.required),
-    //     price: new FormControl('',Validators.required),
-    //     comments: new FormControl('',Validators.required)
-    //   });
-
       qtyAdjustForm:FormGroup = new FormGroup({
         itemid: new FormControl('',Validators.required),
-        // effdate: new FormControl(new Date().toISOString().slice(0, 10),Validators.required),
-        reason: new FormControl('Other',Validators.required),
+        reason: new FormControl('',Validators.required),
         qty: new FormControl(0,Validators.required),
+        comments: new FormControl('')
+      });
+
+      qtyBulkAdjustForm:FormGroup = new FormGroup({
+        reason: new FormControl('',Validators.required),
         comments: new FormControl('')
       });
 
@@ -57,16 +55,18 @@ export class StockAuditComponent {
     }
 
     complete(){
-        
             const ids:number[] = [];
             this.items.forEach((item:any) => {
                 if(item['selected'])
                     ids.push(item['id']);
             });
             this.invoiceService.updateItems(ids, {status: 'VERIFIED', verifyenddate: this.dateService.getFormatDate(new Date())}).subscribe(result => this.fetchStock());
-        
     }
     
+    bulkadjust(){
+        this.displayQtyBulkAdjForm = true;
+    }
+
     fetchStock(){
         this.service.filterByCriteria('',this.available,this.expired,this.inactive,'AUDIT',0).subscribe((items:any) => {
             this.items = items.map((i:any) => {
@@ -89,24 +89,16 @@ export class StockAuditComponent {
         });
     }
 
-    audit(){
-        
-    }
-
     showQtyDialog(item:any) {
         this.selectedItem = item;
-        console.log(item);
-        
         this.qtyAdjustForm.reset();
         this.qtyAdjustForm.controls['itemid'].setValue(item['purchase_itemid']);
         this.displayQtyAdjForm = true;
         this.finalqty = this.selectedItem.available;   
         this.minAllowed = -1 * (+this.selectedItem.available);
-        // this.maxAllowed = (+item.available) + (+item.sold);
     }
     
     onQtyAdjSubmit(){
-        console.log(this.qtyAdjustForm.value);
         this.service.updateQty(this.qtyAdjustForm.value)
             .subscribe(data => {
                 this.fetchStock();
@@ -114,9 +106,29 @@ export class StockAuditComponent {
         });
     }
 
+    isItemsSelected(){
+        const selected = this.items.filter((i:any) => i.selected)
+        return selected.length > 0;
+    }
+
+    onQtyBulkAdjSubmit(){
+        const ids:number[] = [];
+        this.items.forEach((item:any) => {
+            if(item['selected'])
+                ids.push(item['id']);
+        });
+        this.service.updateQtyToZero({ids, reason:this.qtyBulkAdjustForm.controls['reason'].value, 
+                comments:this.qtyBulkAdjustForm.controls['comments'].value})
+            .subscribe(data => {
+                this.fetchStock();
+                this.qtyBulkAdjustForm.reset();
+                this.displayQtyBulkAdjForm = false;                
+        });
+        
+    }
+
     onQtyChange(event:any){
         this.finalqty = this.selectedItem.available - (-1 * (this.qtyAdjustForm.controls['qty'].value * 1));      
     }
     
-
 }

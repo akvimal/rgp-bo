@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { CustomersService } from "../../customers/customers.service";
+import { SaleDeliveryService } from "../sale-delivery.service";
 
 @Component({
     selector:'app-sale-delivery',
@@ -7,6 +7,13 @@ import { CustomersService } from "../../customers/customers.service";
 })
 export class SaleDeliveryComponent {
 
+    deliveries:any[] = []
 
+    constructor(private service:SaleDeliveryService){}
 
+    ngOnInit(){
+        console.log('loading ...');
+        
+        this.service.findAll().subscribe((result:any) => this.deliveries = result)
+    }
 }

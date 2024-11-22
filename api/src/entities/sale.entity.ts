@@ -5,11 +5,13 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { AppUser } from "./AppUser.entity";
 import { BaseEntity } from "./base.entity";
 import { Customer } from "./customer.entity";
+import { SaleDelivery } from "./sale-delivery.entity";
 import { SaleItem } from "./sale-item.entity";
 
 @Index("sale_pk", ["id"], { unique: true })
@@ -29,7 +31,7 @@ export class Sale extends BaseEntity {
   orderdate: Date;
   
   @Column("integer", { name: "customer_id"})
-  customerid: number;
+  customerid: number;  
 
   @Column("character varying", { name: "status", nullable: true })
   status: string | null;
@@ -72,5 +74,12 @@ export class Sale extends BaseEntity {
 
   @OneToMany(() => SaleItem, (item) => item.sale)
   items: SaleItem[];
+
+  // @OneToMany(() => SaleDelivery, (item) => item.sale)
+  // deliveries: SaleDelivery[];
+
+
+  @OneToOne(() => SaleDelivery, (delivery) => delivery.sale)
+    delivery: SaleDelivery
 
 }

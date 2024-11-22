@@ -1,0 +1,37 @@
+<form class="pt-2" [formGroup]="form" (ngSubmit)="onSave()">
+    <div class="row mt-2">
+        <div class="col-12">
+            Shipping Info
+        </div>
+        <div class="col-md-8">
+            <label for="recname" class="form-label"></label>
+            <input id="recname" class="form-control" type="text" formControlName="receivername" placeholder="Name">
+          </div>   
+          <div class="col-md-4">
+            <label for="recphone" class="form-label"></label>
+            <input id="recphone" class="form-control" type="text" formControlName="receiverphone" placeholder="Phone">
+          </div>   
+          <div class="col-md-12">
+            <label for="recaddr" class="form-label"></label>
+            <textarea id="recaddr" class="form-control" formControlName="receiveraddress" placeholder="Address"></textarea>
+          </div>   
+             <div class="col-12">
+                Delivery Info
+             </div> 
+      <div class="col-md-8">
+        <label for="deliveryby" class="form-label">Delivery By</label>
+        <input id="deliveryby" class="form-control" type="text" formControlName="deliveryby" placeholder="Delivery By">
+      </div>
+      <div class="col-md-4">
+        <label for="charges" class="form-label">Cost</label>
+        <input type="number" class="form-control" id="charges" formControlName="charges" placeholder="Amount">
+      </div>
+    </div>
+    
+  <div class="row mt-2">
+    <div class="col-md-12 text-center">
+      <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+      <button type="reset" class="btn btn-outline-secondary m-2">Reset</button> 
+    </div>
+  </div>
+  </form>

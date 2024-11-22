@@ -8,7 +8,7 @@ export class CreateProductQtyChangeDto {
     @ApiProperty({ description: 'qty', example: 0 })
     readonly qty: number;
     @ApiProperty({ description: 'price', example: 0 })
-    readonly price: number;
+    readonly price?: number;
   
     @ApiProperty({ description: 'status', example: '' })
     readonly status: string;

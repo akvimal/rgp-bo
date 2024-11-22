@@ -82,19 +82,24 @@
     </div>
     <div class="row">
         <div class="col-12 d-flex flex-row">
-            <label for="ordertype" style="padding-right:1em;">Order Type</label>
+            <label for="ordertype" style="padding-right:.5em;">Order</label>
             <select [(ngModel)]="sale.ordertype">
                 <option value="Walk-in">Walk-in</option>
                 <option value="Phone">Phone</option>
                 <option value="Whatsapp">Whatsapp</option>
             </select>
-            <label for="deliverytype" style="padding-left:2em;padding-right:1em;">Delivery type</label>
+            <label for="deliverytype" style="padding-left:1em;padding-right:.5em;">Delivery</label>
             <select [(ngModel)]="sale.deliverytype">
                 <option value="Counter">Counter</option>
                 <option value="Delivery">Delivery</option>
             </select>
         </div>
     </div>
+    <!-- <div class="row" *ngIf="sale.customer && (sale.total||0) > 0 && sale.deliverytype == 'Delivery'">
+        <div class="col-12">
+            <app-sale-delivery-form></app-sale-delivery-form>
+        </div>
+    </div> -->
     <div class="row mt-2">
         <div class="col-8">
             <button (click)="submit('PENDING')" 

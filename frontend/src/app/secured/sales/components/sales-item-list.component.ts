@@ -1,5 +1,5 @@
 import { Component, Input } from "@angular/core";
-import { SaleItem } from "../sale-item.model";
+import { SaleItem } from "../models/sale-item.model";
 import { SaleService } from "../sales.service";
 import { saveAs as importedSaveAs } from "file-saver";
 

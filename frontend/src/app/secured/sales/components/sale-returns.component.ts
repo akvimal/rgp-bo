@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { SaleReturn } from "../salereturn.model";
+import { SaleReturn } from "../models/salereturn.model";
 import { SaleService } from "../sales.service";
 
 @Component({

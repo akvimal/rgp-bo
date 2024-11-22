@@ -12,7 +12,8 @@
         </div>
         
         <div class="col-12">
-            <button (click)="complete()" class="btn btn-outline-danger">Complete</button>
+            <button (click)="complete()" [disabled]="!isItemsSelected()" class="btn btn-outline-success">Complete</button>&nbsp;&nbsp;
+            <button (click)="bulkadjust()" [disabled]="!isItemsSelected()" class="btn btn-outline-danger">Bulk Adjust</button>
         </div>
         <div class="col-12">
             <p-table #dt1 [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
@@ -83,7 +84,7 @@
                         <td><a [routerLink]="['/secure/purchases/items',i.purchase_invoiceid]">{{i.invoice_no}}</a></td>
                         <!-- <td>{{i.invoice_date | date : 'dd/MM/yyyy'}}</td> -->
                         <td>
-                            <p class="m-0">{{i.product_title}}</p>
+                            <p>{{i.product_title}}</p>
                             <span class="batch">{{i.product_batch}}</span>
                         </td>
                         <td>{{i.product_expdate | date :'MMM-yy'}}</td>
@@ -166,4 +167,32 @@
                     </div>
                 </div>
         </form>
+</p-dialog>
+
+<p-dialog header="Bulk Adjustment" [(visible)]="displayQtyBulkAdjForm" [modal]="true">
+    <form [formGroup]="qtyBulkAdjustForm" (ngSubmit)="onQtyBulkAdjSubmit()">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <label class="adj-label" for="reason">Reason</label>
+                        <select class="form-control" formControlName="reason">
+                            <option value="">Select</option>
+                            <option *ngFor="let c of qtyChangeReasons" [value]="c.value">{{c.label}}</option>
+                        </select> 
+                    </div>
+                    <div class="col-12">
+                        <label class="adj-label" for="comments">Comments</label>
+                        <textarea class="form-control" id="comments" placeholder="Explain the reason for adjustment" 
+                        formControlName="comments"></textarea>
+                    </div>
+                </div>
+              
+                <div class="row mt-3">
+                    <div class="col-md-12 p-0">
+                        <button type="submit" class="btn btn-primary" 
+                        [disabled]="!qtyBulkAdjustForm.valid">Save</button>
+                    </div>
+                </div>
+            </div>
+    </form>
 </p-dialog>

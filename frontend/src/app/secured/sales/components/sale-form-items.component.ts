@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { StockService } from "../../store/stock/stock.service";
-import { Offer } from "../offer.model";
+import { Offer } from "../models/offer.model";
 import { OfferService } from "../offer.service";
 import { SaleHelper } from "../sale.helper";
 import { SaleService } from "../sales.service";

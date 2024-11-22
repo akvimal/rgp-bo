@@ -78,6 +78,11 @@ export class StockListComponent {
             item['selected'] = event.target.checked;
         });
     }
+    
+    isItemsSelected(){
+        const selected = this.items.filter((i:any) => i.selected)
+        return selected.length > 0;
+    }
 
     audit(){
         const ids:number[] = [];

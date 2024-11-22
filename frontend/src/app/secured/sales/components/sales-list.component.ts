@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { DateUtilService } from "../../date-util.service";
-import { Sale } from "../sale.model";
+import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
 
 @Component({
@@ -90,8 +90,6 @@ export class SalesListComponent {
       // }
 
       isActionAllowed(action:string,sale:any){
-      console.log(sale);
-      
         let allowed = false;
         if(action === 'Print' && sale.status === 'COMPLETE'){
           allowed = true;

@@ -1,2 +1,39 @@
 <app-sale-header></app-sale-header>
-Deliveries
+<!-- <app-sale-delivery-form></app-sale-delivery-form> -->
+<div class="row mt-2">
+    <div class="col-12">
+          <p-table #dt2 [value]="deliveries" [resizableColumns]="true" columnResizeMode="expand" 
+          [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+              currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+              [rowsPerPageOptions]="[10,25,50]">
+              <ng-template pTemplate="header">
+                  <tr>
+                    <th>Bill No</th>
+                    <th>Receiver</th>
+                    <th>Total</th>
+                    <th>Date</th>
+                    <th>Booked By</th>
+                    <th>Del. By</th>
+                    <th>Del. Date</th>
+                    <th>Charge</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-i>
+                    <tr>
+                      <td>{{i.sale.billno}}</td>
+                      <td>{{i.receivername}} | {{i.receiverphone}} | {{i.receiveraddress}}</td>
+                      <td>{{i.sale.total}}</td>
+                      <td>{{i.bookeddate}}</td>
+                      <td>{{i.bookedby}}</td>
+                      <td>{{i.deliveryby}}</td>
+                      <td>{{i.deliverydate}}</td>
+                      <td>{{i.charges}}</td>
+                      <td>{{i.status}}</td>
+                      <td></td>
+                    </tr>
+                </ng-template>
+          </p-table>
+    </div>
+</div>

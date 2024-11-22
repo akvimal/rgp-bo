@@ -12,22 +12,21 @@ import { SaleFormItemsComponent } from "./components/sale-form-items.component";
 import { SaleViewComponent } from "./components/sale-view.component";
 import { SalesListComponent } from "./components/sales-list.component";
 import { SalesComponent } from "./components/sales.component";
-import { StockSelectComponent } from "../../shared/components/stock-select.component";
-import { CustomerSelectComponent } from "../../shared/components/customer-select.component";
 import { DialogModule } from 'primeng/dialog';
 import { TabViewModule } from 'primeng/tabview';
-import {InputNumberModule} from 'primeng/inputnumber';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { SalesItemListComponent } from "./components/sales-item-list.component";
 import { TableModule } from "primeng/table";
 import { SaleDashboardComponent } from "./components/sale-dashboard.component";
 import { SaleHeaderComponent } from "./components/sale-header.component";
-import { SaleReminderComponent } from "./components/sale-reminder.component";
-import { SaleReturnsComponent } from "./components/sale-returns.component";
-import { SaleReturnFormComponent } from "./components/sale-return-form.component";
-import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
 import { SalePosComponent } from "./components/sale-pos.component";
-import { SalePaymentComponent } from "./components/sale-payment.component";
+import { SaleReturnsComponent } from "./components/sale-returns.component";
+import { SaleReminderComponent } from "./components/sale-reminder.component";
 import { SaleDeliveryComponent } from "./components/sale-delivery.component";
+import { SalePaymentComponent } from "./components/sale-payment.component";
+import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
+import { SaleReturnFormComponent } from "./components/sale-return-form.component";
+import { SaleDeliveryFormComponent } from "./components/sale-delivery-form.component";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
@@ -48,20 +47,19 @@ const routes: Routes = [
       SalesComponent,
       SalePosComponent,
       SaleHeaderComponent,
-      SaleReminderComponent,
       SaleDashboardComponent,
       SalesListComponent,
-      SaleReturnsComponent,
-      SaleReturnFormComponent,
-      SaleReturnAdjustFormComponent,
       SalesItemListComponent,
       SaleViewComponent,
       SalePaymentComponent,
       SaleFormComponent,
       SaleFormItemsComponent,
-      StockSelectComponent,
+      SaleReturnsComponent,
+      SaleReturnAdjustFormComponent,
+      SaleReturnFormComponent,
+      SaleReminderComponent,
       SaleDeliveryComponent,
-      CustomerSelectComponent
+      SaleDeliveryFormComponent
     ],
     imports: [
         CommonModule,
