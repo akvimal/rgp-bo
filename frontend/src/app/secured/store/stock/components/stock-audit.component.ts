@@ -8,7 +8,6 @@ import { StockService } from "../stock.service";
     templateUrl: 'stock-audit.component.html',
     styles: [
         `
-        .batch {color:blue;font-style:italic;font-size:smaller}
         .adj-label {color:#aaa;font-weight:bold;margin-bottom:.5em;}
         `
     ]

@@ -95,3 +95,6 @@
     padding: .4em 0 .4em;
     font-size: large;
   }
+.batch {
+    color:blue;font-style:italic;font-size:medium;font-weight:bold;
+}

@@ -2,14 +2,12 @@ import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { DateUtilService } from "src/app/secured/date-util.service";
 import { InvoiceService } from "src/app/secured/purchases/invoices/invoices.service";
-import { ProductUtilService } from "../../../product-util.service";
 import { StockService } from "../stock.service";
 
 @Component({
     templateUrl: 'stock-list.component.html',
     styles: [
         `
-        .batch {color:blue;font-style:italic;font-size:smaller}
         .adj-label {color:#aaa;font-weight:bold;margin-bottom:.5em;}
         `
     ]
