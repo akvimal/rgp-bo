@@ -27,6 +27,7 @@ import { SalePaymentComponent } from "./components/sale-payment.component";
 import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
 import { SaleReturnFormComponent } from "./components/sale-return-form.component";
 import { SaleDeliveryFormComponent } from "./components/sale-delivery-form.component";
+import { SaleHistoryCustomerComponent } from "./components/sale-history-customer.component";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
@@ -54,6 +55,7 @@ const routes: Routes = [
       SalePaymentComponent,
       SaleFormComponent,
       SaleFormItemsComponent,
+      SaleHistoryCustomerComponent,
       SaleReturnsComponent,
       SaleReturnAdjustFormComponent,
       SaleReturnFormComponent,

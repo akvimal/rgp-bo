@@ -125,9 +125,16 @@ export class SaleController {
       return await this.saleService.findSaleItemsForSaleWithAvailableQty(id)
     }
     
-    @Get('/:id/customer')
-    async findItems(@Param('id') custid: string) {
-      return await this.saleService.findAllByCustomerId(custid,3);
+    @Get('/:id/:year/:month/customer')
+    async findCustomerSaleByPeriod(@Param('id') custid: string,
+        @Param('year') year: number,
+        @Param('month') month: number) {
+      return await this.saleService.findCustomerSaleByPeriod(custid,year,month);
+    }   
+    
+    @Get('/:id/customer/months')
+    async findCustomerSaleMonths(@Param('id') custid: string) {
+      return await this.saleService.findCustomerSaleMonths(custid);
     }
 
     @Get('/:id/items')

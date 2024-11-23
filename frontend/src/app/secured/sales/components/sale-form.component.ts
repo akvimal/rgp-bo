@@ -14,11 +14,11 @@ import { SaleService } from "../sales.service";
 })
 export class SaleFormComponent {
 
-    sale:Sale = {status:'NEW',items:[],digimethod:'PayTM'}
+    sale:Sale = {status:'NEW',items:[],digimethod:'PayTM',customer:{existing:false,mobile:''}}
     
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
-    displayNewCustomer:boolean = false;
+    // displayNewCustomer:boolean = false;
     
     salePropValues:any;
 
@@ -26,11 +26,7 @@ export class SaleFormComponent {
     payment:any = {};
     paymentValid=false;
     
-    inputCustomer:boolean = true;
-    saleWithCustomer:boolean = true;
-
-    // newSaleItem = {id:0,price:0,qty:0,status:'New',edited:false,qtyready:false,
-    // ordertype:'Walk-in',deliverytype:'Counter'}
+    // saleWithCustomer:boolean = true;
 
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
@@ -94,8 +90,10 @@ export class SaleFormComponent {
     }
 
     resetCustomer(){
-      this.sale.customer = null;
-      this.inputCustomer = true;
+      this.sale.customer['existing'] = false;
+      this.sale.customer['mobile'] = '';
+      this.sale.customer['name'] = '';
+      this.sale.customer['email'] = '';
     }
 
     customerInfoCaptured(){
@@ -132,16 +130,8 @@ export class SaleFormComponent {
     }
 
     selectCustomer(customer:any, copySales:boolean){
-      const {id,name,mobile,email,address} = customer;
-      if(customer.existing){ 
-        this.sale.customer = {id,name,mobile,email,address};
-        copySales && this.showPrevSalesCopy();
-      }
-      else {
-        this.sale.customer = {mobile,name:''};
-      }
-      this.fetchCustomerPrevSales = copySales;
-      this.inputCustomer = false;
+      this.sale.customer = customer;
+      this.displayPrevSalesCopy = copySales; 
     }
 
   onItemRemoved(id:any){
@@ -156,14 +146,10 @@ export class SaleFormComponent {
     return props && props.length > 0;
   }
 
-  saveCustomer(){
-    this.submit(this.sale.status);
-  }
-
-  cancelCustomer(){
-    this.saleWithCustomer = false;
-    this.submit(this.sale.status);
-  }
+  // continueSubmit(){
+  //   this.saleWithCustomer = false;
+  //   this.submit(this.sale.status);
+  // }
 
   discard(){
     this.sale.id && this.service.remove(this.sale.id).subscribe(data => {
@@ -175,12 +161,6 @@ export class SaleFormComponent {
   submit(status:any){
 
     this.sale.status = status;
-
-    if(this.saleWithCustomer && !this.customerInfoCaptured()){
-      this.displayNewCustomer = true;
-      return;
-    }
-    this.displayNewCustomer = false;
     
     this.sale.items = this.sale.items?.map((item:any) => {
       switch (status) {
@@ -203,8 +183,12 @@ export class SaleFormComponent {
         this.sale['digimethod'] = this.payment.digimode;
         this.sale['digirefno'] = this.payment.digirefno;
     }
+
+    const obj = this.sale;
+    if(this.sale.customer.mobile === '')
+    obj['customer'] = null;
     
-    this.service.save({...this.sale, billdate: this.dateService.getFormatDate(new Date()), status}).subscribe((data:any) => {
+    this.service.save({...obj, billdate: this.dateService.getFormatDate(new Date()), status}).subscribe((data:any) => {
       this.salePropValues = null;
       this.redirectAfterSubmit(data.status, data.id);
       this.service.refreshSavedSales();
@@ -212,6 +196,8 @@ export class SaleFormComponent {
   }
 
   redirectAfterSubmit(status:string,id:number){
+    console.log(status);
+    
     if(status === 'COMPLETE')
       this.router.navigateByUrl(`/secure/sales/view/${id}`); 
     else 
@@ -257,94 +243,34 @@ export class SaleFormComponent {
   }
 
   showPrevSalesCopy() {
-
-    // this is to pre select the sale items are already in cart
-    // const addedItemsToSale = this.sale.items?.map((i:any) => i.itemid)
-    
-    this.fetchCustomerPrevSales && this.service.getSalesByCustomer(this.sale.customer.id).subscribe((prevSale:any) => {
-      if(prevSale.length > 0) {
-        
-        this.prevCustSales = [];
-
-        prevSale.forEach((ps:any) => {
-          const items = ps.items.map((i:any) => {
-
-            return {
-              id:i.id,
-              itemid:i.itemid,
-              productid: i.purchaseitem.product.id,
-              qty:i.qty,
-              title:i.purchaseitem.product.title
-            };
-          });
-
-          this.prevCustSales.push({billdate:ps.billdate,total:ps.total,items});
-        });
-
-        this.displayPrevSalesCopy = true;
-      }
-    });
-    
+    this.displayPrevSalesCopy = true;
   }
 
+  captureCustomerInfo(event:any){
+    this.sale.customer = event;
+  }
   // copyCustomerInfo(event:any) {  
   //   this.form.controls['props'].get('ptntname')?.setValue(event.target.checked ? this.sale.customer.name : '');
   //   this.form.controls['props'].get('ptntmobile')?.setValue(event.target.checked ? this.sale.customer.mobile : '');
   //   this.form.controls['props'].get('ptntaddr')?.setValue(event.target.checked ? this.sale.customer.address : '');
   // }
 
-  selectItem(productid:any,event:any){
-    this.prevCustSales.forEach((s:Sale) => {
-      s.items && s.items.forEach((i:any) => {
-        if(i.productid === productid){
-          i['selected'] = event.target.checked;
-        }
-      })
-    })
-  }
-
-  copyActionEnabled(){
-    return this.prevCustSales.filter((s:Sale) => {
-      return s.items && s.items.filter((i:any) => i.selected).length > 0
-    }).length > 0
+  productsFromHistory(event:any){
+    const arr = this.sale.items?.map(i => {return i;});
+    this.stockService.findByProducts(event).subscribe((items:any) => {      
+      items.forEach((selected:any) => {
+        arr?.push({...this.helper.mapStockToSaleItem(selected,true)});
+      });
+      this.recalculateTotal(); 
+    }); 
+    this.sale.items = arr;
+     this.displayPrevSalesCopy = false;
   }
 
   onSubmitSaleProps(){
     this.displaySalePropsForm = false;
     this.salePropValues = this.form.controls['props'].value;
     this.submit('COMPLETE');
-  }
-
-  copySelectedItem(){
-    const arr = this.sale.items?.map(i => {return i;});
-    //get products selected
-    const prodids:number[] = []
-     this.prevCustSales.forEach((s:Sale) => {
-      s.items && s.items.forEach((i:any) => {
-        if(i.selected && !prodids.includes(i.productid)){
-          prodids.push(i.productid);
-        } 
-      })
-     });
-
-     this.stockService.findByProducts(prodids).subscribe((items:any) => {
-      
-      items.forEach((selected:any) => {
-        arr?.push({...this.helper.mapStockToSaleItem(selected,true)});
-      });
-
-      this.recalculateTotal();
-     });
-
-    //get the stock of products selected and update items
-    this.sale.items = arr;
-    this.displayPrevSalesCopy = false;
-  }
-
-  toggleAll(pos:number, event:any){
-    this.prevCustSales[pos].items?.forEach(i => {
-      i.selected = event.target.checked
-    });
   }
 
   isCompleteReady(){

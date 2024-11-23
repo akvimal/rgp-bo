@@ -6,10 +6,19 @@
                 <tr>
                     <!-- Customer Info -->
                     <td>
-                        <app-customer-select *ngIf="sale.customer == undefined || !(sale.customer?.mobile !== ''); else showCustomer" (customerSelected)="selectCustomer($event,true)">
+                        <strong>Customer</strong>
+                        <div class="d-flex">
+                        <app-customer-select *ngIf="!sale.customer.existing; else showCustomer" 
+                        (customerSelected)="selectCustomer($event,true)"
+                        (onInput)="captureCustomerInfo($event)">
                         </app-customer-select>
+                        <div *ngIf="!sale.customer.existing" class="d-flex">
+                            &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.name" placeholder="Name">
+                            &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.email" placeholder="Email">
+                        </div>
+                        </div>
                         <ng-template #showCustomer>
-                            <div><strong>Customer:</strong> {{sale.customer?.name}} ({{sale.customer?.mobile}})
+                            <div>{{sale.customer?.name}} ({{sale.customer?.mobile}})
                                 <h5 style="display:inline;margin-left:0.5em">
                                     <a (click)="showPrevSalesCopy()">
                                         <i class="bi bi-files text-success"></i>
@@ -146,7 +155,7 @@
 <!-- Customer Previous Sales -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
         [(visible)]="displayPrevSalesCopy" [modal]="true">
-        <div class="row">
+        <!-- <div class="row">
             <div class="col-12 mt-1">
                 <button type="button" class="btn btn-outline-primary mt-2 text-center"
                     (click)="copySelectedItem()">Copy</button>
@@ -168,67 +177,6 @@
                 <button type="button" class="btn btn-outline-primary mt-2 text-center"
                     (click)="copySelectedItem()">Copy</button>
             </div>
-        </div>
-</p-dialog>
-
-<!-- Customer Info form (shown if no customer already selected)-->
-<p-dialog [header]="(this.sale?.customer?.name || 'Customer') + ' (' + (this.sale?.customer?.mobile || '') + ')'" 
-            [(visible)]="displayNewCustomer" [modal]="true">
-        <div class="row">
-            <div class="col-lg-6">
-                <app-customer-select (customerSelected)="selectCustomer($event, false)"></app-customer-select>
-            </div>
-            <div class="col-lg-6">
-                <input type="text" name="custMobile" id="custMobile" maxlength="10" class="form-control" placeholder="Mobile"
-                [value]="sale.customer?.mobile||''" 
-                (input)="updateCustomer('mobile',$event)">
-                <br>
-                <input type="text" name="custName" id="custName" class="form-control" placeholder="Name"
-                [value]="sale.customer?.name||''" 
-                (input)="updateCustomer('name',$event)">
-                <br>
-                <input type="text" name="custEmail" id="custEmail" class="form-control" placeholder="Email"
-                [value]="sale.customer?.email||''" 
-                (input)="updateCustomer('email',$event)">
-            </div>
-        </div>
-        <!-- show below section if the customer is not found -->
-        <!-- <div class="row mt-2">
-            <div class="col-lg-6">
-                    <input type="text" name="custArea" id="custArea" class="form-control" placeholder="Area"
-                [value]="sale.customer?.area||''" (input)="updateCustomer('area',$event)">
-            </div>
-            <div class="col-lg-4">
-                    <input type="text" name="custLocal" id="custLocal" class="form-control" placeholder="Locality"
-                [value]="sale.customer?.locality||''" (input)="updateCustomer('locality',$event)">
-            </div>
-            <div class="col-lg-6">
-                    <textarea name="custAddr" id="custAddr" class="form-control" placeholder="Address"
-                (input)="updateCustomer('address',$event)">{{sale.customer?.address||''}}</textarea>
-            </div>
-        </div>
-        <div class="row mt-2">
-            <div class="col-lg-6">
-                <select name="srctype" [value]="sale.customer?.srctype"  class="form-control" 
-                            (change)="updateCustomer('srctype',$event)">
-                    <option value="">Select</option>
-                    <option *ngFor="let st of custCustomerTypes" [value]="st.value">{{st.label}}</option>
-                </select>
-            </div>
-            <div class="col-lg-6">
-                    <input type="text" name="custSrcText" id="custSrcText" class="form-control"
-                    [value]="sale.customer?.srcdesc||''" (input)="updateCustomer('srcdesc',$event)">
-            </div>
         </div> -->
-        <div class="row mt-2">
-            <div class="col-lg-12">
-                <!-- <button class="btn btn-primary m-2 text-center" 
-                (click)="saveCustomerInfo('PENDING')">Save</button> -->
-                <button class="btn btn-primary m-2 text-center" 
-                (click)="saveCustomer()">Save</button>
-                <button class="btn btn-outline-secondary m-2"
-                (click)="cancelCustomer()">Continue</button>
-                
-            </div>
-        </div>
+        <app-sale-history-customer [customerid]="sale.customer.id" (sold)="productsFromHistory($event)"></app-sale-history-customer>
 </p-dialog>

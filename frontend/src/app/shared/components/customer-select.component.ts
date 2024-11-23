@@ -4,9 +4,10 @@ import { CustomersService } from "../../secured/customers/customers.service";
 @Component({
     selector: 'app-customer-select',
     template: `
-    <p-autoComplete [(ngModel)]="customer" [showEmptyMessage]="true" 
+    <p-autoComplete [(ngModel)]="customer"
                 (onSelect)="selected($event)"
-                field="''" placeholder="Customer Name or Mobile"
+                (onKeyUp)="input($event)"
+                field="''" placeholder="Name or Mobile"
                 [suggestions]="filteredCustomer" 
                 [inputStyle]="{'background-color':'#9df'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="2">
@@ -19,17 +20,17 @@ import { CustomersService } from "../../secured/customers/customers.service";
 export class CustomerSelectComponent {
 
     @Output() customerSelected = new EventEmitter();
-    // @Output() focusLeave = new EventEmitter();
+    @Output() onInput = new EventEmitter();
     @Input() disabled:boolean = false;
 
     customer:any;
-    items:any = [];
-    
     filteredCustomer: any[] = [];
 
     constructor(private customerService:CustomersService){}
     
     selected(event:any){
+        console.log('item selected');
+        
         this.customerSelected.emit({
             existing:true,
             id:event.id,
@@ -43,8 +44,16 @@ export class CustomerSelectComponent {
         let query = event.query;
         let criteria = {condition:'any', criteria:[
             {property:'name',check:'startswith',value:query},
-            {property:'mobile',check:'startswith',value:query}]}
-        this.customerService.findByCriteria(criteria).subscribe((data:any) => this.filteredCustomer = data);
+            {property:'mobile',check:'startswith',value:query}]};
+        
+            this.customerService.findByCriteria(criteria).subscribe((data:any) => {
+                this.filteredCustomer = data; 
+                
+            });
+    }
+
+    input(event:any){
+        this.onInput.emit({existing:false, mobile:this.customer});
     }
 
 }

@@ -44,6 +44,8 @@ export class CustomerService {
             }
     
             qb.andWhere(ch);
+            if(criteria.limit)
+                qb.limit(criteria.limit);
         return qb.getMany();
     }
 

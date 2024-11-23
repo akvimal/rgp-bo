@@ -50,8 +50,16 @@ export class SaleService {
         return this.http.delete(`${this.apiurl}/${id}`);
     }
 
-    getSalesByCustomer(custid:number){
-        return this.http.get(`${this.apiurl}/${custid}/customer`);
+    getCustomerMonthlySales(custid:number,year:number,month:number){
+        return this.http.get(`${this.apiurl}/${custid}/${year}/${month}/customer`);
+    }
+
+    getMonthByCustomer(custid:number){
+        return this.http.get(`${this.apiurl}/${custid}/customer/months`);
+    }
+
+    getSalesMonthByCustomer(custid:number){
+        return this.http.get(`${this.apiurl}/${custid}/customer/months`);
     }
 
     find(id:any){

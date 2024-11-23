@@ -21,7 +21,7 @@ export class CustomersService {
     }
 
     findByCriteria(criteria:any){
-        return this.http.post(`${this.apiurl}/filter`,criteria);
+        return this.http.post(`${this.apiurl}/filter`,{...criteria, limit:50});
     }
 
     find(id:any){

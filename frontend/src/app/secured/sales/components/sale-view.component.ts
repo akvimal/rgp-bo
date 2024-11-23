@@ -74,7 +74,4 @@ export class SaleViewComponent {
         });
     }
 
-    cancel(){
-      this.router.navigateByUrl('/secure/sales/list')
-    }
 }
