@@ -8,6 +8,7 @@ import { StockService } from "../../store/stock/stock.service";
 import { SaleHelper } from "../sale.helper";
 import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
+import { CustomersService } from "../../customers/customers.service";
 
 @Component({
     templateUrl: 'sale-form.component.html'
@@ -16,8 +17,10 @@ export class SaleFormComponent {
 
     sale:Sale = {status:'NEW',items:[],digimethod:'PayTM',customer:{existing:false,mobile:''}}
     
-    displayPrevSalesCopy: boolean = false;
-    displaySalePropsForm: boolean = false;
+    displayPrevSalesCopy = false;
+    displaySalePropsForm = false;
+    displayPrescritionForm = false;
+
     
     prescriptionProvided = false;
     salePropValues:any;
@@ -48,6 +51,7 @@ export class SaleFormComponent {
       private router: Router, 
       private helper: SaleHelper,
       private service: SaleService,
+      private customerService: CustomersService,
       private stockService: StockService,
       private dateService: DateUtilService,
       private prodUtilService: ProductUtilService,
@@ -85,6 +89,15 @@ export class SaleFormComponent {
           });
         });
       });
+    }
+
+    saveCustomer(){
+      this.customerService.save({name:this.sale.customer.name,
+        mobile:this.sale.customer.mobile,
+        email:this.sale.customer.email}).subscribe(data => {
+          console.log('customer saved',data);
+          this.sale.customer = {...data, existing: true};
+        });
     }
 
     resetCustomer(){
@@ -278,5 +291,9 @@ export class SaleFormComponent {
 
   isCompleteReady(){
     return (!this.isPrescriptionItemsFound() || (this.isPrescriptionItemsFound() && this.prescriptionProvided)) && this.payment && this.payment['valid'];
+  }
+
+  showPrescriptions(){
+    this.displayPrescritionForm = true;
   }
 }

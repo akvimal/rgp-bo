@@ -6,31 +6,35 @@
                 <tr>
                     <!-- Customer Info -->
                     <td>
-                        <strong>Customer</strong>
+                        <!-- <strong>Customer</strong> -->
                         <div class="d-flex">
                             <app-customer-select *ngIf="!sale.customer.existing; else showCustomer" 
                             (customerSelected)="selectCustomer($event,true)"
                             [inputText]="sale.customer.mobile"
                             (onInput)="captureCustomerInfo($event)">
                             </app-customer-select>
-                            <h4 *ngIf="sale.customer.mobile && sale.customer.mobile.length !== 10" 
-                                class="mt-2 icon"><i class="bi bi-shield-exclamation text-danger"></i></h4>
-                            <div *ngIf="!sale.customer.existing" class="d-flex">
-                                &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.name" placeholder="Name">
-                                &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.email" placeholder="Email">
+                            <!-- <h4 *ngIf="sale.customer.mobile && sale.customer.mobile.length !== 10" 
+                                class="mt-2 icon"><i class="bi bi-shield-exclamation text-danger"></i></h4> -->
+                            <div *ngIf="!sale.customer.existing && sale.customer.mobile.length === 10" class="d-flex">
+                                &nbsp;&nbsp;<input type="text" class="form-control" [(ngModel)]="sale.customer.name" placeholder="Name">
+                                &nbsp;&nbsp;<input type="text" class="form-control" [(ngModel)]="sale.customer.email" placeholder="Email">
+                                &nbsp;&nbsp;<button class="btn btn-outline-primary" (click)="saveCustomer()">Save</button>
                             </div>
                             <ng-template #showCustomer>
                                 <div class="mt-2">{{sale.customer?.name}} ({{sale.customer?.mobile}})
-                                    &nbsp;&nbsp; <h4 class="icon">
+                                    &nbsp;&nbsp;<h4 class="icon">
                                         <a (click)="showPrevSalesCopy()">
                                             <i class="bi bi-files text-success"></i>
-                                        </a>
+                                        </a>&nbsp;&nbsp;
+                                        <a (click)="showPrescriptions()">
+                                        <i class="bi bi-clipboard2-plus"></i>
+                                    </a>
                                     </h4>
                                 </div>
                             </ng-template>
                             <div class="mt-2">
-                                <h4 class="icon">&nbsp;
-                                    <a (click)="resetCustomer()">
+                                <h4 class="icon" *ngIf="sale.customer.mobile && sale.customer.mobile.length > 0">
+                                    &nbsp;&nbsp;<a (click)="resetCustomer()">
                                         <i class="bi bi-x-square text-danger"></i>
                                     </a>
                                 </h4>
@@ -145,29 +149,15 @@
 <!-- </div> -->
 
 <!-- Information to capture for H1 -->
-<p-dialog header="Prescription" [(visible)]="displaySalePropsForm" [modal]="true">
-    <form [formGroup]="form" (ngSubmit)="onSubmitSaleProps()">
-        <div class="row g-2 bg-light pb-3 mt-3" formGroupName="props" *ngIf="saleprops.length > 0">
-            <!-- <div class="col-md-12">
-                <input type="checkbox" name="selectCu" (change)="copyCustomerInfo($event)">Copy Customer Info to Patient
-            </div> -->
-            <div class="col-md-4" *ngFor="let pp of saleprops">
-                <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
-                <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'">
-                    <option value="">Select</option>
-                    <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
-                </select> 
-                <input *ngIf="!pp.type" type="text"
-                        class="form-control" formControlName={{pp.id}}>
-                <div *ngIf="pp.type === 'CHECK'">
-                <input type="checkbox" class="form-check-input" formControlName={{pp.id}}> Yes
-                </div>
-            </div>
-        </div>
-        <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
-        <button type="submit" class="btn btn-secondary">Skip</button>
-    </form>
+<p-dialog header="Prescription" [(visible)]="displayPrescritionForm" [modal]="true">
+   Prescriptions
 </p-dialog>
+
+<!-- New Customer -->
+<!-- <p-dialog [header]="'New Customer'" 
+        [(visible)]="showNewCustomer" [modal]="true">
+    <app-customer-form-dialog></app-customer-form-dialog>
+</p-dialog> -->
 
 <!-- Customer Previous Sales -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 

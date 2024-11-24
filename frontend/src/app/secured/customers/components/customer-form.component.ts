@@ -59,7 +59,6 @@ export class CustomerFormComponent {
     }
 
     onSave(){
-      
         const obj = { 
           name: this.form.value.name, 
           mobile: this.form.value.mobile, 

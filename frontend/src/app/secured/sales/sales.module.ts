@@ -28,6 +28,7 @@ import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-f
 import { SaleReturnFormComponent } from "./components/sale-return-form.component";
 import { SaleDeliveryFormComponent } from "./components/sale-delivery-form.component";
 import { SaleHistoryCustomerComponent } from "./components/sale-history-customer.component";
+import { CustomersModule } from "../customers/customers.module";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
