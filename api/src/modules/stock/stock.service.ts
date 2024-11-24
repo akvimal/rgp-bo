@@ -25,21 +25,36 @@ export class StockService {
             select purchase_itemid, available from inventory_view iv where iv.purchase_itemid in (${ids.join(',')})`);
         }
 
-        async findByCriteria(query:any){
-            let sql = `
-            select iv.*, sale_price, market_price 
-            from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
-            where (product_title ilike '%${query.query}%' or more_props->>'composition' ilike '%${query.query}%')`;
-            if(query.status){
-                let arr = query.status.split(',');
-                query.status = arr.map(a => '\'' + a + '\'');
-                sql += ` and iv.status in (${query.status})`;
+        async findByCriteria(criteria:any){
+            
+            let sql = `select iv.*, sale_price, market_price 
+                from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id`;
+            
+            const conditions = [];
+            
+            if(criteria['id'])
+                conditions.push(`iv.product_id = ${criteria['id']}`);
+
+            if(!criteria['id'] && criteria['title']){
+                const title = criteria['starts'] && criteria['title'] ? `${criteria['title'].replaceAll('\'','\,\,')}%` : `%${criteria['title'].replaceAll('\'','\,\,')}%`;
+                conditions.push(`(product_title ilike '${title}' or more_props->>'composition' ilike '${title}')`);
             }
-            sql += `
-                ${query.inactive === 'true' ? ' and iv.active = false ' : ''} 
-                ${query.expired === 'true' ? ' and product_expdate < current_timestamp ' : ''}
-                ${query.available === 'true' ? ' and available > 0 ' : ''} 
-                order by product_title, product_expdate ${query.limit > 0 ? 'limit '+query.limit : ''}`
+
+            if(criteria['status']){
+                let arr = criteria.status.split(',');
+                criteria.status = arr.map(a => '\'' + a + '\'');
+                conditions.push(`iv.status in (${criteria.status})`);
+            }
+            if(criteria['expired'])
+                conditions.push('product_expdate < current_date')
+            if(criteria['available'])
+                conditions.push('available > 0')
+            
+            if(conditions.length > 0){
+                sql += ' where ' + conditions.join(' and ');
+            }            
+                
+            sql += ` order by product_title, product_expdate ${criteria['limit'] > 0 ? 'limit '+ criteria['limit'] : ''}`
 
             return await this.manager.query(sql);
         }

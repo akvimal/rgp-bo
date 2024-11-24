@@ -22,9 +22,9 @@ export class StockController {
       return this.service.findAll();
     }
 
-    @Get('/filter')
-    async filterByCriteria(@Query() query: any, @User() currentUser: any) {
-      return this.service.findByCriteria(query);
+    @Post('/filter')
+    async filterByCriteria(@Body() criteria) {
+      return this.service.findByCriteria(criteria);
     }
 
     @Get('/ready')
@@ -105,14 +105,12 @@ export class StockController {
 
     @Post('/adjust/qty/bulk')
     async updateQtyBulkToZero(@Body() obj:any, @User() currentUser: any) {
-        console.log(obj);
-        this.service.findPurchaseItemsWithAvailable(obj.ids).then(async (data) => {
-          console.log(data);
-          for (let index = 0; index < data.length; index++) {
-            const element = data[index];
-            await this.service.createQty({itemid:element['purchase_itemid'],qty: -1 * +element['available'],status:'APPROVED',reason:obj['reason'],comments:obj['comments']}, currentUser.id);
-          }
-        })
+        const data = await this.service.findPurchaseItemsWithAvailable(obj.ids);
+        for (let index = 0; index < data.length; index++) {
+          const element = data[index];
+          await this.service.createQty({itemid:element['purchase_itemid'],qty: -1 * +element['available'],status:'APPROVED',reason:obj['reason'],comments:obj['comments']}, currentUser.id);
+        }
+        return data;        
     }
 
     @Post('/adjust/returns')

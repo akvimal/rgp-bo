@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
+
 import { DateUtilService } from "src/app/secured/date-util.service";
 import { InvoiceService } from "src/app/secured/purchases/invoices/invoices.service";
 import { StockService } from "../stock.service";
@@ -47,7 +48,9 @@ export class StockAuditComponent {
         { value: 'Other', label: 'Other' }
       ]
     
-    constructor(private service: StockService, private invoiceService:InvoiceService, private dateService: DateUtilService){}
+    constructor(private service: StockService, 
+        private invoiceService:InvoiceService, 
+        private dateService: DateUtilService){}
 
     ngOnInit(){
         this.fetchStock();
@@ -67,10 +70,12 @@ export class StockAuditComponent {
     }
 
     fetchStock(){
-        this.service.filterByCriteria('',this.available,this.expired,this.inactive,'AUDIT',0).subscribe((items:any) => {
+        
+        this.service.filterByCriteria({available:this.available,expired:this.expired,status:'AUDIT'}).subscribe((items:any) => {
             this.items = items.map((i:any) => {
                 return {...i, available: +i['available']}
             });
+            
         });
     }
 
@@ -119,9 +124,9 @@ export class StockAuditComponent {
         this.service.updateQtyToZero({ids, reason:this.qtyBulkAdjustForm.controls['reason'].value, 
                 comments:this.qtyBulkAdjustForm.controls['comments'].value})
             .subscribe(data => {
-                this.fetchStock();
-                this.qtyBulkAdjustForm.reset();
-                this.displayQtyBulkAdjForm = false;                
+            this.fetchStock();
+            this.qtyBulkAdjustForm.reset();
+            this.displayQtyBulkAdjForm = false;
         });
         
     }

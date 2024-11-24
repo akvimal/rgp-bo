@@ -18,15 +18,13 @@ export class SaleFormComponent {
     
     displayPrevSalesCopy: boolean = false;
     displaySalePropsForm: boolean = false;
-    // displayNewCustomer:boolean = false;
     
+    prescriptionProvided = false;
     salePropValues:any;
 
     total:number = 0;
     payment:any = {};
     paymentValid=false;
-    
-    // saleWithCustomer:boolean = true;
 
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
@@ -273,7 +271,12 @@ export class SaleFormComponent {
     this.submit('COMPLETE');
   }
 
+  isPrescriptionItemsFound(){
+    const prescitems = this.sale.items && this.sale.items.filter((i:any) => i.more_props && i.more_props['schedule'] == 'H1') || [];
+    return prescitems.length > 0;
+  }
+
   isCompleteReady(){
-    return this.payment && this.payment['valid'];
+    return (!this.isPrescriptionItemsFound() || (this.isPrescriptionItemsFound() && this.prescriptionProvided)) && this.payment && this.payment['valid'];
   }
 }

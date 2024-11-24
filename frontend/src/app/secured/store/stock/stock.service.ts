@@ -15,12 +15,10 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock`);
     }
 
-    filterByCriteria(query:any,available:boolean,expired:boolean,inactive:boolean,status:string,limit:number){
-        let path = `${this.apiurl}/stock/filter?query=${query}&available=${available}&expired=${expired}&inactive=${inactive}&limit=${limit}`;
-        if(status !== ''){
-            path += `&status=${status}`
-        }
-        return this.http.get(path);
+    filterByCriteria(criteria:any){    
+        console.log('filtering...',criteria);
+            
+        return this.http.post(`${this.apiurl}/stock/filter`, criteria);
     }
 
     findByItems(purchaseitemids:[]){

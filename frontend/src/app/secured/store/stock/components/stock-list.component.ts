@@ -15,10 +15,9 @@ import { StockService } from "../stock.service";
 export class StockListComponent {
 
     items:any = [];
-    // displayPriceAdjForm: boolean = false;
     displayQtyAdjForm: boolean = false;
 
-    selectedItem:any;
+    selectedItem:{id?:number,title?:string} = {};
     finalqty:number = 0;
     maxAllowed = 0;
     minAllowed = 0;
@@ -26,13 +25,6 @@ export class StockListComponent {
     available = true;
     expired = false;
     inactive = false;
-
-    // priceAdjustForm:FormGroup = new FormGroup({
-    //     itemid: new FormControl('',Validators.required),
-    //     // effdate: new FormControl(new Date().toISOString().slice(0, 10),Validators.required),
-    //     price: new FormControl('',Validators.required),
-    //     comments: new FormControl('',Validators.required)
-    //   });
 
       qtyAdjustForm:FormGroup = new FormGroup({
         itemid: new FormControl('',Validators.required),
@@ -56,12 +48,22 @@ export class StockListComponent {
     }
 
     fetchStock(){
-        this.service.filterByCriteria('',this.available,this.expired,this.inactive,'VERIFIED',0).subscribe((items:any) => {
+        
+        let criteria = {status:'VERIFIED',
+        id:this.selectedItem['id'],
+        title:this.selectedItem['title'],available:this.available,
+            expired:this.expired,starts:true}
+
+        this.service.filterByCriteria(criteria).subscribe((items:any) => {
             this.items = items.map((i:any) => {
                 return {...i, available: +i['available']}
             });
         });
     }
+
+    // filter(){
+    //     this.fetchStock();
+    // }
 
     selectItem(event:any, id:number){
         this.items.forEach((item:any) => {
@@ -82,6 +84,11 @@ export class StockListComponent {
         return selected.length > 0;
     }
 
+    onProductSelect(event:any){
+        this.selectedItem = event;
+        this.fetchStock();
+    }
+
     audit(){
         const ids:number[] = [];
         this.items.forEach((item:any) => {
@@ -90,29 +97,5 @@ export class StockListComponent {
         });
         this.invoiceService.updateItems(ids, {status: 'AUDIT',verifystartdate:this.dateService.getFormatDate(new Date())}).subscribe(result => this.fetchStock());
     }
-
-    showQtyDialog(item:any) {
-        this.selectedItem = item;
-        this.qtyAdjustForm.reset();
-        this.qtyAdjustForm.controls['itemid'].setValue(item['purchase_itemid']);
-        this.displayQtyAdjForm = true;
-        this.finalqty = this.selectedItem.available;   
-        this.minAllowed = -1 * (+this.selectedItem.available);
-        // this.maxAllowed = (+item.available) + (+item.sold);
-    }
-    
-    onQtyAdjSubmit(){
-        console.log(this.qtyAdjustForm.value);
-        this.service.updateQty(this.qtyAdjustForm.value)
-            .subscribe(data => {
-                this.fetchStock();
-                this.displayQtyAdjForm = false;                        
-        });
-    }
-
-    onQtyChange(event:any){
-        this.finalqty = this.selectedItem.available - (-1 * (this.qtyAdjustForm.controls['qty'].value * 1));      
-    }
-    
 
 }

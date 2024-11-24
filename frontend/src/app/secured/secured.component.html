@@ -94,8 +94,26 @@
             <i class="bi bi-grid"></i>
             <span>Dashboard</span>
           </a>
-        </li><!-- End Dashboard Nav -->
-    
+        </li>
+        <li class="nav-item" *isNavAuth>
+          <a class="nav-link collapsed" routerLink="sales">
+            <i class="bi bi-envelope"></i>
+            <span>Sales</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'store.read'">
+          <a class="nav-link collapsed" routerLink="store">
+            <i class="bi bi-envelope"></i>
+            <span>Store</span>
+          </a>
+        </li>
+
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'purchases.read'">
+          <a class="nav-link collapsed" routerLink="purchases">
+            <i class="bi bi-envelope"></i>
+            <span>Purchase</span>
+          </a>
+        </li>
         <!-- <li class="nav-heading">Pages</li> -->
     
         <!-- <li class="nav-item">
@@ -126,28 +144,10 @@
             <span>Products</span>
           </a>
         </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'purchases.read'">
-          <a class="nav-link collapsed" routerLink="purchases">
-            <i class="bi bi-envelope"></i>
-            <span>Purchase</span>
-          </a>
-        </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'store.read'">
-          <a class="nav-link collapsed" routerLink="store">
-            <i class="bi bi-envelope"></i>
-            <span>Store</span>
-          </a>
-        </li>
         <li class="nav-item" *isAuth="'customers.read'">
           <a class="nav-link collapsed" routerLink="customers">
             <i class="bi bi-envelope"></i>
             <span>Customers</span>
-          </a>
-        </li>
-        <li class="nav-item" *isNavAuth>
-          <a class="nav-link collapsed" routerLink="sales">
-            <i class="bi bi-envelope"></i>
-            <span>Sales</span>
           </a>
         </li>
         <!-- <li class="nav-item" *isAuth="'returns.read'">

@@ -1,12 +1,14 @@
-import { Component, EventEmitter, Output } from "@angular/core";
+import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { ProductsService } from "src/app/secured/products/products.service";
 
 @Component({
     selector: 'app-product-select',
     template: `
         <p-autoComplete 
+        [(ngModel)]="title"
+        (onKeyUp)="input($event)"
         (onSelect)="doneSelect($event)" 
-        field="''"
+        field="title"
         placeholder="Name / Composition" 
         [suggestions]="filteredProducts" 
         [minLength]="2"
@@ -26,11 +28,13 @@ import { ProductsService } from "src/app/secured/products/products.service";
 })
 export class ProductSelectComponent {
 
-    product:any;
+    @Input() product:any;
+    title = '';
     filteredProducts:any[] = [];
     products:any = [];
     disabled:boolean = false;
 
+    // @Input() inputText:any;
     @Output() selected = new EventEmitter();
 
     constructor(private prodService:ProductsService){}
@@ -40,7 +44,7 @@ export class ProductSelectComponent {
     }
 
     filterProduct(event:any) {
-        this.product = {existing:false,product:{title:event.query}};
+        // this.product = {existing:false,product:{title:event.query}};
         
         let filtered : any[] = [];
         let query = event.query;
@@ -49,7 +53,7 @@ export class ProductSelectComponent {
             let prod = this.products[i];
             if ((prod.title.toLowerCase().indexOf(query.toLowerCase()) == 0) || 
                 (prod.category ==='Drug' && prod.props && prod.props.composition && prod.props.composition.toLowerCase().indexOf(query.toLowerCase()) >= 0) ) {
-                filtered.push(prod);
+                filtered.push({id:prod['id'],title:prod['title']});
             }
         }
         this.filteredProducts = filtered;
@@ -61,5 +65,9 @@ export class ProductSelectComponent {
 
     clear(){
         this.disabled = false;
+    }
+
+    input(event:any){
+        this.selected.emit({title:this.title});
     }
 }

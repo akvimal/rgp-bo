@@ -1,12 +1,17 @@
     <div class="row mt-2">
         <div class="col-12">
-            <input class="form-conrol-input checkmark" type="checkbox" name="available" id="available" [(ngModel)]="available" 
-            (change)="fetchStock()"/>
-        <label for="available" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Available</label>
-        <input class="form-conrol-input checkmark" type="checkbox" name="expired" id="expired" [(ngModel)]="expired" 
-            (change)="fetchStock()"/>
-        <label for="expired" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Expired</label> 
+            <div class="d-flex">
+                <input class="form-conrol-input checkmark" type="checkbox" name="available" id="available" [(ngModel)]="available" 
+                (change)="fetchStock()"/>
+            <label for="available" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Available</label>
+            <input class="form-conrol-input checkmark" type="checkbox" name="expired" id="expired" [(ngModel)]="expired" 
+                (change)="fetchStock()"/>
+            <label for="expired" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Expired</label> 
+            <app-product-select (selected)="onProductSelect($event)"></app-product-select>
+            <!-- <button (click)="filter()" class="btn btn-primary">Filter</button>     -->
+            </div>
         </div>
+        
         <div class="col-12">
             <button (click)="audit()" [disabled]="!isItemsSelected()" class="btn btn-outline-info">Audit</button>
         </div>
@@ -37,7 +42,6 @@
                             <p-sortIcon field="product_title"></p-sortIcon>
                         </th>
                         <th pSortableColumn="product_expdate">Expiry
-                            <p-columnFilter type="date" field="product_expdate" display="menu"></p-columnFilter>
                             <p-sortIcon field="product_expdate"></p-sortIcon>
                         </th>
                         <th>Purchased</th>

@@ -19,6 +19,7 @@ import { FileDownloadController } from './modules/app/download/filedownload.cont
 import { PdfGenerateService } from './modules/app/download/pdfgenerate.service';
 import { StockModule } from './modules/stock/stock.module';
 import { SaleReturnModule } from './modules/returns/salereturn.module';
+import { FilesModule } from './modules/files/files.module';
 
 @Module({
   controllers: [ AppController, FileDownloadController ],
@@ -45,7 +46,8 @@ import { SaleReturnModule } from './modules/returns/salereturn.module';
     CustomerModule,
     SaleModule,
     SaleReturnModule,
-    StockModule
+    StockModule,
+    FilesModule
   ]
 })
 export class AppModule {}

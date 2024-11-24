@@ -18,11 +18,11 @@ export class SaleHistoryCustomerComponent {
     constructor(private service:SaleService){}
 
     ngOnChanges(changes:SimpleChanges){
-        
         changes.customerid.currentValue && this.service.getSalesMonthByCustomer(changes.customerid.currentValue).subscribe((data:any) => {
             this.periods = data.map((d:any) => {
               return {...d,period:d.mon+'-'+(d.yr%2000)}
-            });    
+            });
+            this.activeIndex = 0;    
             data.length > 0 && this.fetchSales(changes.customerid.currentValue,data[0]['yr'], data[0]['mon'])
         });
     }

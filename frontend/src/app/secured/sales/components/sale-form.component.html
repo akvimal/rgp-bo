@@ -1,34 +1,41 @@
 <!-- <app-sale-header></app-sale-header> -->
-<div class="container m-0">
+<!-- <div class="container m-0"> -->
     <div class="row">
         <div class="col-12">
-            <table class="table mt-4">    
+            <table class="table mt-2">    
                 <tr>
                     <!-- Customer Info -->
                     <td>
                         <strong>Customer</strong>
                         <div class="d-flex">
-                        <app-customer-select *ngIf="!sale.customer.existing; else showCustomer" 
-                        (customerSelected)="selectCustomer($event,true)"
-                        (onInput)="captureCustomerInfo($event)">
-                        </app-customer-select>
-                        <div *ngIf="!sale.customer.existing" class="d-flex">
-                            &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.name" placeholder="Name">
-                            &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.email" placeholder="Email">
-                        </div>
-                        </div>
-                        <ng-template #showCustomer>
-                            <div>{{sale.customer?.name}} ({{sale.customer?.mobile}})
-                                <h5 style="display:inline;margin-left:0.5em">
-                                    <a (click)="showPrevSalesCopy()">
-                                        <i class="bi bi-files text-success"></i>
-                                    </a>&nbsp;
+                            <app-customer-select *ngIf="!sale.customer.existing; else showCustomer" 
+                            (customerSelected)="selectCustomer($event,true)"
+                            [inputText]="sale.customer.mobile"
+                            (onInput)="captureCustomerInfo($event)">
+                            </app-customer-select>
+                            <h4 *ngIf="sale.customer.mobile && sale.customer.mobile.length !== 10" 
+                                class="mt-2 icon"><i class="bi bi-shield-exclamation text-danger"></i></h4>
+                            <div *ngIf="!sale.customer.existing" class="d-flex">
+                                &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.name" placeholder="Name">
+                                &nbsp;&nbsp;<input type="text" class="form-control" [disabled]="sale.customer.mobile && sale.customer.mobile.length !== 10" [(ngModel)]="sale.customer.email" placeholder="Email">
+                            </div>
+                            <ng-template #showCustomer>
+                                <div class="mt-2">{{sale.customer?.name}} ({{sale.customer?.mobile}})
+                                    &nbsp;&nbsp; <h4 class="icon">
+                                        <a (click)="showPrevSalesCopy()">
+                                            <i class="bi bi-files text-success"></i>
+                                        </a>
+                                    </h4>
+                                </div>
+                            </ng-template>
+                            <div class="mt-2">
+                                <h4 class="icon">&nbsp;
                                     <a (click)="resetCustomer()">
                                         <i class="bi bi-x-square text-danger"></i>
                                     </a>
-                                </h5>
+                                </h4>
                             </div>
-                        </ng-template>
+                        </div>
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
@@ -110,11 +117,21 @@
         </div>
     </div> -->
     <div class="row mt-2">
-        <div class="col-8">
+        <div class="col-8 d-flex">
             <button (click)="submit('PENDING')" 
                 class="btn btn-outline-secondary m-2" [disabled]="total === 0">Save</button>
             <button (click)="discard()" *ngIf="sale.id && sale.status !== 'NEW'"
             class="btn btn-outline-danger m-2">Discard</button>
+
+            <div *ngIf="isPrescriptionItemsFound()" class="mt-3">
+                <input type="checkbox" style="width: 20px;height: 20px;" [(ngModel)]="prescriptionProvided">
+                <span style="font-size: large;"> Prescription</span>
+                <!-- <select>
+                    <option value="">Select</option>
+                </select>
+                <h4 class="icon"><i class="bi bi-file-earmark-arrow-up text-primary"></i></h4> -->
+                <app-file-upload></app-file-upload>
+            </div>
         </div>
         <div class="col-4 text-end">
             <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
@@ -125,7 +142,7 @@
             <!-- <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button> -->
         </div>
     </div>
-</div>
+<!-- </div> -->
 
 <!-- Information to capture for H1 -->
 <p-dialog header="Prescription" [(visible)]="displaySalePropsForm" [modal]="true">
@@ -154,29 +171,6 @@
 
 <!-- Customer Previous Sales -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
-        [(visible)]="displayPrevSalesCopy" [modal]="true">
-        <!-- <div class="row">
-            <div class="col-12 mt-1">
-                <button type="button" class="btn btn-outline-primary mt-2 text-center"
-                    (click)="copySelectedItem()">Copy</button>
-            </div>
-            <div class="col-12">
-                <div *ngFor="let s of prevCustSales; index as i">
-                    <ul class="list-group mt-2">
-                        <li class="list-group-item" style="background-color: #9cf;">
-                            <input type="checkbox" style="width:15px;height:15px;" (change)="toggleAll(i,$event)">
-                            <span class="text-primary fs-6 pl-2">&nbsp;&nbsp; <strong>{{s.billdate | date : 'dd-MMM-yy'}}</strong></span>
-                        </li>
-                        <li class="list-group-item" *ngFor="let i of s.items">
-                            <input type="checkbox" style="width:15px;height:15px;" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
-                            <span class="p-2">{{i.title}} ({{i.qty}})</span></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="col-12 mt-1">
-                <button type="button" class="btn btn-outline-primary mt-2 text-center"
-                    (click)="copySelectedItem()">Copy</button>
-            </div>
-        </div> -->
+        [(visible)]="displayPrevSalesCopy" [modal]="true" [maximizable]="true">
         <app-sale-history-customer [customerid]="sale.customer.id" (sold)="productsFromHistory($event)"></app-sale-history-customer>
 </p-dialog>

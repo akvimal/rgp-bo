@@ -98,3 +98,17 @@
 .batch {
     color:blue;font-style:italic;font-size:medium;font-weight:bold;
 }
+
+.h1-badge {
+    margin-left:.5em;
+    padding: .3em .5em; 
+    background: red;
+    color:white;
+    font-weight: bold;
+    font-size: small;
+}
+
+.icon {
+    display:inline;
+    margin-left:0.5em;
+}

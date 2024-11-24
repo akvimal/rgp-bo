@@ -4,10 +4,10 @@ import { CustomersService } from "../../secured/customers/customers.service";
 @Component({
     selector: 'app-customer-select',
     template: `
-    <p-autoComplete [(ngModel)]="customer"
+    <p-autoComplete [(ngModel)]="inputText"
                 (onSelect)="selected($event)"
                 (onKeyUp)="input($event)"
-                field="''" placeholder="Name or Mobile"
+                field="''" placeholder="Mobile"
                 [suggestions]="filteredCustomer" 
                 [inputStyle]="{'background-color':'#9df'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="2">
@@ -23,14 +23,12 @@ export class CustomerSelectComponent {
     @Output() onInput = new EventEmitter();
     @Input() disabled:boolean = false;
 
-    customer:any;
+    @Input() inputText:any;
     filteredCustomer: any[] = [];
 
     constructor(private customerService:CustomersService){}
     
     selected(event:any){
-        console.log('item selected');
-        
         this.customerSelected.emit({
             existing:true,
             id:event.id,
@@ -53,7 +51,7 @@ export class CustomerSelectComponent {
     }
 
     input(event:any){
-        this.onInput.emit({existing:false, mobile:this.customer});
+        this.onInput.emit({existing:false, mobile:this.inputText});
     }
 
 }

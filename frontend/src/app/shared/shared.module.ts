@@ -3,6 +3,7 @@ import { NgModule } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { AutoCompleteModule } from "primeng/autocomplete";
 import { CustomerSelectComponent } from "./components/customer-select.component";
+import { FileUploadComponent } from "./components/file-upload.component";
 import { ProductSelectComponent } from "./components/product-select.component";
 import { StockSelectComponent } from "./components/stock-select.component";
 import { IsAuthDirective } from "./isauth.directive";
@@ -14,6 +15,7 @@ import { TextWrapPipe } from "./text-wrap.pipe";
       ProductSelectComponent,
       StockSelectComponent,
       CustomerSelectComponent,
+      FileUploadComponent,
       IsNavAuthDirective,
       IsAuthDirective,
       TextWrapPipe
@@ -23,6 +25,12 @@ import { TextWrapPipe } from "./text-wrap.pipe";
         CommonModule,
         AutoCompleteModule
     ],
-    exports: [IsAuthDirective,IsNavAuthDirective,TextWrapPipe, ProductSelectComponent,StockSelectComponent,CustomerSelectComponent]
+    exports: [IsAuthDirective,
+      IsNavAuthDirective,
+      TextWrapPipe, 
+      ProductSelectComponent,
+      StockSelectComponent,
+      CustomerSelectComponent,
+      FileUploadComponent]
   })
 export class SharedModule{}

@@ -21,7 +21,9 @@
             </h5>
             </td>
             <td>
-                <p *ngIf="item.title" style="margin:0;padding:0;"><strong>{{item.title}}</strong><br><span style="color:#999;font-style: italic;">{{item.more_props?.composition}}</span></p>
+                <p *ngIf="item.title" style="margin:0;padding:0;"><strong>{{item.title}}</strong>
+                    <span *ngIf="item.more_props?.schedule === 'H1'" class="h1-badge">H1</span><br>
+                    <span style="color:#999;font-style: italic;">{{item.more_props?.composition}}</span></p>
             </td>
             <td class="text-end">
                 {{item.batch}}<span class="text-primary">&nbsp;/{{item.expdate | date : 'MMM-yy'}}</span>
