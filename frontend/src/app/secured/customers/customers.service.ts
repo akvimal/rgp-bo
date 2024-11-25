@@ -39,4 +39,29 @@ export class CustomersService {
     getSaleData(criteria:any){
         return this.http.post(`${this.apiurl}/sale`,criteria);
     }   
+
+    getCustomerOrdersByPeriod(cust:any,year:number,month:number){
+        console.log('cust: ',cust);
+        
+        return this.http.get(`${this.apiurl}/${cust['id']}/${year}/${month}/orders`);
+    }
+
+    getCustomerOrderedMonths(cust:any){
+        return this.http.get(`${this.apiurl}/${cust.id}/periods`);
+    }
+
+    findAllDocuments(customerId:number){
+        console.log('getting documents fr customer',customerId);
+        
+        return this.http.get(`${this.apiurl}/${customerId}/documents`);
+    }
+
+    addDocument(customerId:number,documentId:number){
+        return this.http.post(`${this.apiurl}/documents/add`,{customerId,documentId});
+    }
+
+    removeDocuments(customerId:number,documentId:number){
+        return this.http.post(`${this.apiurl}/documents/remove`,{customerId,documentId});
+    }
+
 }

@@ -17,7 +17,7 @@ export const multerOptions = {
     },
     // Check the mimetypes to allow for upload
     fileFilter: (req: any, file: any, cb: any) => {
-        if (file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+        if (file.mimetype.match(/\/(jpg|jpeg|png|gif|pdf)$/)) {
             // Allow storage of file
             cb(null, true);
         } else {
@@ -29,7 +29,13 @@ export const multerOptions = {
     storage: diskStorage({
         // Destination storage path details
         destination: (req: any, file: any, cb: any) => {
-            const uploadPath = multerConfig.dest;
+            console.log(req['query']);
+            const query = req['query']
+            
+            const keys = Object.keys(query);
+            
+
+            const uploadPath = multerConfig.dest+'/'+keys[0]+'/'+query[keys[0]];
             // Create folder if doesn't exist
             if (!existsSync(uploadPath)) {
                 mkdirSync(uploadPath);

@@ -17,11 +17,11 @@ export class SaleFormComponent {
 
     sale:Sale = {status:'NEW',items:[],digimethod:'PayTM',customer:{existing:false,mobile:''}}
     
-    displayPrevSalesCopy = false;
+    showCustomerView = false;
+
     displaySalePropsForm = false;
     displayPrescritionForm = false;
 
-    
     prescriptionProvided = false;
     salePropValues:any;
 
@@ -142,7 +142,7 @@ export class SaleFormComponent {
 
     selectCustomer(customer:any, copySales:boolean){
       this.sale.customer = customer;
-      this.displayPrevSalesCopy = copySales; 
+      this.showCustomerView = copySales; 
     }
 
   onItemRemoved(id:any){
@@ -254,7 +254,7 @@ export class SaleFormComponent {
   }
 
   showPrevSalesCopy() {
-    this.displayPrevSalesCopy = true;
+    this.showCustomerView = true;
   }
 
   captureCustomerInfo(event:any){
@@ -266,16 +266,20 @@ export class SaleFormComponent {
   //   this.form.controls['props'].get('ptntaddr')?.setValue(event.target.checked ? this.sale.customer.address : '');
   // }
 
-  productsFromHistory(event:any){
-    const arr = this.sale.items?.map(i => {return i;});
-    this.stockService.findByProducts(event).subscribe((items:any) => {      
-      items.forEach((selected:any) => {
-        arr?.push({...this.helper.mapStockToSaleItem(selected,true)});
-      });
-      this.recalculateTotal(); 
-    }); 
-    this.sale.items = arr;
-     this.displayPrevSalesCopy = false;
+  onCustomerData(event:any){
+    if(event['action'] == 'productsSelected'){
+      const prodids = event['event'];
+      const arr = this.sale.items?.map(i => {return i;});
+      
+      this.stockService.findByProducts(prodids).subscribe((items:any) => {      
+        items.forEach((selected:any) => {
+          arr?.push({...this.helper.mapStockToSaleItem(selected,true)});
+        });
+        this.recalculateTotal(); 
+      }); 
+      this.sale.items = arr;
+      this.showCustomerView = false;
+    }
   }
 
   onSubmitSaleProps(){
@@ -290,7 +294,12 @@ export class SaleFormComponent {
   }
 
   isCompleteReady(){
-    return (!this.isPrescriptionItemsFound() || (this.isPrescriptionItemsFound() && this.prescriptionProvided)) && this.payment && this.payment['valid'];
+    // customer mobile is empty or 10 digit and name should be minimum 2 characters
+    const customerValid = this.sale.customer.mobile.length == 0 || 
+        (this.sale.customer.mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2);
+
+    return (!this.isPrescriptionItemsFound() || (this.isPrescriptionItemsFound() && this.prescriptionProvided)) 
+          && customerValid && this.payment && this.payment['valid'];
   }
 
   showPrescriptions(){

@@ -238,37 +238,37 @@ export class SaleService {
         return await this.manager.query(query);
     }
 
-    async findCustomerSaleByPeriod(custid,year,month){
+    // async findCustomerSaleByPeriod(custid,year,month){
 
-      let day = 31;
-      if(month == 2)
-        day = year%4 == 0 ? 29 : 28;
-      if(month <= 6 && month != 2 && month%2 == 0)
-        day = 30;
-      if(month > 8 && month%2 == 1)
-        day = 30;
+    //   let day = 31;
+    //   if(month == 2)
+    //     day = year%4 == 0 ? 29 : 28;
+    //   if(month <= 6 && month != 2 && month%2 == 0)
+    //     day = 30;
+    //   if(month > 8 && month%2 == 1)
+    //     day = 30;
       
         
-        return await this.saleRepository.createQueryBuilder("sale")
-		  	.innerJoinAndSelect("sale.customer", "customer")
-	          .leftJoinAndSelect("sale.items", "items")
-	          .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
-	          .leftJoinAndSelect("purchaseitem.product", "product")
-	            .select(['sale','customer','items','purchaseitem','product'])
-          .where(`sale.status = 'COMPLETE' and items.status = 'Complete' and sale.customer_id = ${custid}
-           and sale.bill_date between '${year}-${month}-01' and '${year}-${month}-${day}'`)
-          .orderBy(`sale.billdate`,'DESC')
-          .getMany();
-    }
+    //     return await this.saleRepository.createQueryBuilder("sale")
+	// 	  	.innerJoinAndSelect("sale.customer", "customer")
+	//           .leftJoinAndSelect("sale.items", "items")
+	//           .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
+	//           .leftJoinAndSelect("purchaseitem.product", "product")
+	//             .select(['sale','customer','items','purchaseitem','product'])
+    //       .where(`sale.status = 'COMPLETE' and items.status = 'Complete' and sale.customer_id = ${custid}
+    //        and sale.bill_date between '${year}-${month}-01' and '${year}-${month}-${day}'`)
+    //       .orderBy(`sale.billdate`,'DESC')
+    //       .getMany();
+    // }
 
-    async findCustomerSaleMonths(custid){
-        return await this.manager.query(`
-        select x.yr, x.mon, sum(x.total) as total, count(*) from
-            (select date_part('year',s.bill_date) as yr, date_part('month',s.bill_date) as mon, s.id, s.total
-                from sale s 
-                where s.status = 'COMPLETE' and s.customer_id = ${custid} and s.bill_date between (current_date - 365) and current_date) x 
-        group by x.yr, x.mon order by x.yr desc, x.mon desc`);
-    }
+    // async findCustomerSaleMonths(custid){
+    //     return await this.manager.query(`
+    //     select x.yr, x.mon, sum(x.total) as total, count(*) from
+    //         (select date_part('year',s.bill_date) as yr, date_part('month',s.bill_date) as mon, s.id, s.total
+    //             from sale s 
+    //             where s.status = 'COMPLETE' and s.customer_id = ${custid} and s.bill_date between (current_date - 365) and current_date) x 
+    //     group by x.yr, x.mon order by x.yr desc, x.mon desc`);
+    // }
 
     async getSales(){
         return await this.manager.query(`   

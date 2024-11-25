@@ -17,15 +17,36 @@ export class FilesController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file',multerOptions))
   uploadFile(@UploadedFile() file: Express.Multer.File) {
-    console.log(file);
-    return {status:'SUCCESS',link:file.path}
+    return file;
   }
 
-  @Get('buffer')
-  buffer(@Res() response: Response) {
-    const file = this.service.imageBuffer();
-    response.contentType('image/png');
+  @Post('view')
+  buffer(@Body() body, @Res() response: Response) {
+    const filepath = body.path;
+    // const filepath = '/Users/vimalkrishnan/temp/upload/1000/731e61fd-a96f-4880-922b-e2904bf7b5b4.jpeg';
+    const file = this.service.imageBuffer(filepath);
+    if(filepath.toLowerCase().endsWith('pdf')){
+      response.contentType('application/pdf');
+    }
+    else if(filepath.toLowerCase().endsWith('jpeg')||filepath.toLowerCase().endsWith('jpg')){
+      response.contentType('image/jpeg');
+    }
     response.send(file);
+    
   }
+
+  // @Get('buffer')
+  // buffer(@Res() response: Response) {
+  //   const filepath = '/Users/vimalkrishnan/temp/upload/1000/cf6c3ab4-be73-47ac-92be-50bc125e086c.PDF';
+  //   // const filepath = '/Users/vimalkrishnan/temp/upload/1000/731e61fd-a96f-4880-922b-e2904bf7b5b4.jpeg';
+  //   const file = this.service.imageBuffer(filepath);
+  //   if(filepath.toLowerCase().endsWith('pdf')){
+  //     response.contentType('application/pdf');
+  //   }
+  //   else if(filepath.toLowerCase().endsWith('jpeg')||filepath.toLowerCase().endsWith('jpg')){
+  //     response.contentType('image/jpeg');
+  //   }
+  //   response.send(file);
+  // }
 
 }

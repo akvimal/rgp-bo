@@ -41,4 +41,32 @@ export class CustomerController {
     remove(@Param('id') id: string) {
       return this.customerService.update(id, {isActive:false});
     }
+
+    @Get('/:id/periods')
+    async findCustomerOrderesMonths(@Param('id') custid: string) {
+      return await this.customerService.findSalePeriods(custid);
+    }
+
+    @Get('/:id/:year/:month/orders')
+    async findCustomerOrdersByPeriod(@Param('id') custid: string,
+        @Param('year') year: number,
+        @Param('month') month: number) {
+      return await this.customerService.findCustomerSaleByPeriod(custid,year,month);
+    }   
+
+    
+    @Get('/:id/documents')
+    async findDocuments(@Param('id') custid: string) {
+      return await this.customerService.findDocuments(custid);
+    }
+
+    @Post('/documents/add')
+    async addDocument(@Body() body) {
+        return this.customerService.addDocument(body.customerId,body.documentId);
+    }
+
+    @Post('/documents/remove')
+    async removeDocument(@Body() body) {
+        return this.customerService.removeDocument(body.customerId,body.documentId);
+    }
 }

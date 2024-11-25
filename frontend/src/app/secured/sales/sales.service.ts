@@ -54,10 +54,6 @@ export class SaleService {
         return this.http.get(`${this.apiurl}/${custid}/${year}/${month}/customer`);
     }
 
-    getMonthByCustomer(custid:number){
-        return this.http.get(`${this.apiurl}/${custid}/customer/months`);
-    }
-
     getSalesMonthByCustomer(custid:number){
         return this.http.get(`${this.apiurl}/${custid}/customer/months`);
     }

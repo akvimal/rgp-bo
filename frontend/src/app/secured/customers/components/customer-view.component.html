@@ -1,0 +1,21 @@
+
+<div class="row">
+    <div class="col-12">
+        Customer Data
+    </div>
+    <div class="col-12">
+        <p-tabView>
+            <p-tabPanel header="Orders">
+                <app-customer-orders [customer]="customer" (selected)="productsSelected($event)"></app-customer-orders>                
+            </p-tabPanel>
+            <p-tabPanel header="Documents">
+                <app-customer-documents [customer]="customer"></app-customer-documents>
+            </p-tabPanel>
+            <p-tabPanel header="Complaints">
+                <p>
+                    Complaints
+                </p>
+            </p-tabPanel>
+        </p-tabView>
+    </div>
+</div>

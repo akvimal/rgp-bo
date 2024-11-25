@@ -12,7 +12,7 @@ export class FilesService {
 
     upload(){}
 
-    imageBuffer() {
-        return readFileSync('/Users/vimalkrishnan/temp/upload/ef4745e9-21f5-46d4-b159-35415bb6c42b.jpeg');
+    imageBuffer(filepath) {
+        return readFileSync(filepath);
       }
 }

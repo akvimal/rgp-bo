@@ -25,10 +25,8 @@
                                     &nbsp;&nbsp;<h4 class="icon">
                                         <a (click)="showPrevSalesCopy()">
                                             <i class="bi bi-files text-success"></i>
-                                        </a>&nbsp;&nbsp;
-                                        <a (click)="showPrescriptions()">
-                                        <i class="bi bi-clipboard2-plus"></i>
-                                    </a>
+                                        </a>
+                                        <!-- &nbsp;&nbsp;<a (click)="showPrescriptions()"><i class="bi bi-clipboard2-plus"></i></a> -->
                                     </h4>
                                 </div>
                             </ng-template>
@@ -134,7 +132,7 @@
                     <option value="">Select</option>
                 </select>
                 <h4 class="icon"><i class="bi bi-file-earmark-arrow-up text-primary"></i></h4> -->
-                <app-file-upload></app-file-upload>
+                
             </div>
         </div>
         <div class="col-4 text-end">
@@ -148,11 +146,6 @@
     </div>
 <!-- </div> -->
 
-<!-- Information to capture for H1 -->
-<p-dialog header="Prescription" [(visible)]="displayPrescritionForm" [modal]="true">
-   Prescriptions
-</p-dialog>
-
 <!-- New Customer -->
 <!-- <p-dialog [header]="'New Customer'" 
         [(visible)]="showNewCustomer" [modal]="true">
@@ -161,6 +154,9 @@
 
 <!-- Customer Previous Sales -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
-        [(visible)]="displayPrevSalesCopy" [modal]="true" [maximizable]="true">
-        <app-sale-history-customer [customerid]="sale.customer.id" (sold)="productsFromHistory($event)"></app-sale-history-customer>
+        [(visible)]="showCustomerView" [modal]="true" [maximizable]="true">
+        <!-- <app-sale-history-customer [customerid]="sale.customer.id" (sold)="productsFromHistory($event)"></app-sale-history-customer> -->
+        <!-- <app-customer-orders [customerId]="sale.customer.id" (productsOrdered)="productsFromHistory($event)"></app-customer-orders> -->
+        <app-customer-view *ngIf="sale.customer.id" [id]="sale.customer.id" (selected)="onCustomerData($event)"></app-customer-view>
+
 </p-dialog>

@@ -75,7 +75,8 @@ const routes: Routes = [
         InputNumberModule,
         TableModule,
         RouterModule.forChild(routes),
-        SharedModule
+        SharedModule,
+        CustomersModule
     ],
     exports: [RouterModule]
   })
