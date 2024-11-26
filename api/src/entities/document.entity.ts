@@ -15,8 +15,7 @@ import {
   
     @Column("character varying", { name: "doc_name" })
     name: string;    
-    @Column("character varying", { name: "doc_alias" })
-    alias: string;
+
     @Column("character varying", { name: "doc_path" })
     path: string;    
     @Column("character varying", { name: "doc_extn" })

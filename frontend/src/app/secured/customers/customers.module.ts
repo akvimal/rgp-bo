@@ -1,6 +1,6 @@
 import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
-import { ReactiveFormsModule } from "@angular/forms";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { SharedModule } from "src/app/shared/shared.module";
@@ -15,9 +15,9 @@ import { CustomerViewComponent } from "./components/customer-view.component";
 import { DocumentsModule } from "src/app/shared/documents/documents.module";
 
 const routes: Routes = [
-  { path: 'list', component: CustomersComponent, canActivate:[AuthGuard]},
-  { path: 'new', component: CustomerFormComponent, canActivate:[AuthGuard]},
-  { path: 'edit/:id', component: CustomerFormComponent, canActivate:[AuthGuard]}
+  { path: 'cust/list', component: CustomersComponent, canActivate:[AuthGuard]},
+  { path: 'cust/new', component: CustomerFormComponent, canActivate:[AuthGuard]},
+  { path: 'cust/edit/:id', component: CustomerFormComponent, canActivate:[AuthGuard]}
 ];
 
 @NgModule({
@@ -31,6 +31,7 @@ const routes: Routes = [
     imports: [
         RouterModule.forChild(routes),
         CommonModule,
+        FormsModule,
         ReactiveFormsModule,
         DialogModule,
         TableModule,
@@ -38,6 +39,8 @@ const routes: Routes = [
         SharedModule,
         DocumentsModule
     ],
-    exports: [RouterModule,CustomerOrdersComponent,CustomerDocumentsComponent,CustomerViewComponent]
+    exports: [RouterModule,CustomerOrdersComponent,
+      CustomerDocumentsComponent,CustomerViewComponent
+    ]
   })
 export class CustomersModule{}

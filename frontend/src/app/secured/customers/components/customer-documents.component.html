@@ -1,2 +1,17 @@
-<app-document-upload [entity]="customer" [type]="'customer'" [property]="'id'" (uploaded)="onUpload($event)"></app-document-upload>
-<app-document-viewer [documents]="documents"></app-document-viewer>
+<app-document-upload [entity]="customer" [type]="'customer'" [property]="'id'" (uploaded)="onUpload($event)">
+    <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
+</app-document-upload>
+<div>
+    <button class="btn btn-outline-primary mt-2 text-center"
+    (click)="copySelectedItem()">Copy</button>
+    <button class="btn btn-outline-danger mt-2 text-center"
+    (click)="deleteSelectedItem()">Delete</button>
+</div>
+<app-document-viewer [document]="document">
+    <div *ngFor="let d of documents">
+        <div class="d-flex">
+            <input type="checkbox" style="width:20px;height:20px;" (change)="selectDocument(d.id,$event)" [checked]="d.selected">
+            <p class="document-nav"  (click)="viewDoc(d.id)" style="margin-left:.5em;"><span style="color: blue;">{{d.created_on | date : 'dd/MM/yy'}}</span> {{d.alias}}</p>
+        </div> 
+     </div>
+</app-document-viewer>

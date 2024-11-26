@@ -1,13 +1,11 @@
 <div class="d-flex">
-    <input class="form-control" type="file" 
-            (change)="onChange($event)">
-    <button (click)="onUpload()" 
-        class="btn btn-success">
-        Upload
-    </button>
+    <input class="form-control" type="file" (change)="onChange($event)">
+        <ng-content></ng-content>
+    <button (click)="onUpload()" class="btn btn-success">Upload</button>
 </div>
 
 <span *ngIf="error && error.length > 0">{{error}}</span>
+
 <div class="container" *ngIf="loading">
     <h3>Loading ...</h3>
 </div>

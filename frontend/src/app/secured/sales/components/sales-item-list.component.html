@@ -1,11 +1,11 @@
 <div class="row no-print">
   <div class="col-md-2">
-    <!-- <label for="category">Category</label>
+    <label for="category">Category</label>
     <select name="filterbycategory" class="form-control" [(ngModel)]="criteria.category" 
           (change)="fetchFilterProps($event)">
       <option value=""></option>
       <option *ngFor="let p of props" [value]="p.category">{{p.category}}</option>
-    </select> -->
+    </select>
     <label for="product">Product</label>
     <input type="text" name="product"  class="form-control" id="product" [(ngModel)]="criteria.product">
   </div>

@@ -61,9 +61,8 @@ export class AuthService {
         return p.path.find((i:string) => {
           // console.log(i);
           // console.log(url);
-          
           return url.indexOf(i) >= 0
-        })//p.path.includes(url)
+        })
       else 
         return p.path === url || url.startsWith(p.path);
     });

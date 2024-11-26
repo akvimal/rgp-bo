@@ -75,7 +75,7 @@ export class CustomerFormComponent {
           this.service.save(id ? {id, ...obj} : obj).subscribe(data => {
             this.form.reset();
             this.saved.emit(data);
-            this.router.navigate(['/secure/customers'])
+            this.router.navigate(['/secure/customers/cust/list'])
           });
   
       }
@@ -91,8 +91,7 @@ export class CustomerFormComponent {
         this.form.controls['address'].setValue(cust.address);
         this.form.controls['area'].setValue(cust.area);
         this.form.controls['srctype'].setValue(cust.scrtype);
-        this.form.controls['srcdesc'].setValue(cust.srcdesc);
-        
+        this.form.controls['srcdesc'].setValue(cust.srcdesc);    
       }
 
       reset(){

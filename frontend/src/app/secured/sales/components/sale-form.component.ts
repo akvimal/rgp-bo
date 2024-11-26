@@ -267,6 +267,8 @@ export class SaleFormComponent {
   // }
 
   onCustomerData(event:any){
+    console.log('onCustomerdata:',event);
+    
     if(event['action'] == 'productsSelected'){
       const prodids = event['event'];
       const arr = this.sale.items?.map(i => {return i;});
@@ -279,6 +281,11 @@ export class SaleFormComponent {
       }); 
       this.sale.items = arr;
       this.showCustomerView = false;
+    }
+    else if(event['action'] == 'documentsSelected'){
+      const docids = event['event'];
+      console.log('documents selected',docids);
+      
     }
   }
 
@@ -298,7 +305,7 @@ export class SaleFormComponent {
     const customerValid = this.sale.customer.mobile.length == 0 || 
         (this.sale.customer.mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2);
 
-    return (!this.isPrescriptionItemsFound() || (this.isPrescriptionItemsFound() && this.prescriptionProvided)) 
+    return (!this.isPrescriptionItemsFound() || (this.isPrescriptionItemsFound() && this.prescriptionProvided && this.sale.customer.mobile)) 
           && customerValid && this.payment && this.payment['valid'];
   }
 

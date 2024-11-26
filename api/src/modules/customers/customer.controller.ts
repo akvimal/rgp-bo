@@ -53,7 +53,6 @@ export class CustomerController {
         @Param('month') month: number) {
       return await this.customerService.findCustomerSaleByPeriod(custid,year,month);
     }   
-
     
     @Get('/:id/documents')
     async findDocuments(@Param('id') custid: string) {
@@ -62,11 +61,11 @@ export class CustomerController {
 
     @Post('/documents/add')
     async addDocument(@Body() body) {
-        return this.customerService.addDocument(body.customerId,body.documentId);
+        return this.customerService.addDocument(body);
     }
 
     @Post('/documents/remove')
     async removeDocument(@Body() body) {
-        return this.customerService.removeDocument(body.customerId,body.documentId);
+        return this.customerService.removeDocument(body.customerId,body.ids);
     }
 }

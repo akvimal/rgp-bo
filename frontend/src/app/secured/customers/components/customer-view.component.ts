@@ -23,4 +23,10 @@ export class CustomerViewComponent {
         this.selected.emit({action:'productsSelected', event})
     }
 
+    documentsSelected(event:any){
+        console.log('event receved',event);
+        
+        this.selected.emit({action:'documentsSelected', event})
+    }
+
 }

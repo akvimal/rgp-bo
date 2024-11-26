@@ -69,16 +69,16 @@ export class CustomerService {
 
     async findDocuments(custid){
         return await this.manager.query(`
-        select d.* from customer_documents cd inner join documents d on d.id = cd.document_id where cd.customer_id = ${custid} order by d.created_on desc`);
+        select cd.alias, cd.category, cd.more_props,d.* from customer_documents cd inner join documents d on d.id = cd.document_id where cd.customer_id = ${custid} order by d.created_on desc`);
     }
 
-    async addDocument(custId:number,docId:number){
-        return await this.manager.query(`insert into customer_documents (customer_id,document_id) values (${custId},${docId})`);
+    async addDocument(cdoc){
+        return await this.manager.query(`insert into customer_documents (customer_id,document_id,alias) values (${cdoc.customerId},${cdoc.documentId},'${cdoc.alias}')`);
     }
 
-    async removeDocument(custId:number,docId:number){
-        await this.manager.query(`delete from documents where id = ${docId}`)
-        return await this.manager.query(`delete from customer_documents where customer_id = ${custId}`);
+    async removeDocument(custId:number,ids:number[]){
+        await this.manager.query(`delete from customer_documents where customer_id = ${custId} and document_id in (${ids.join(',')})`);
+        return await this.manager.query(`delete from documents where id in (${ids.join(',')})`)
     }
 
     async findCustomerSaleByPeriod(custid,year,month){

@@ -10,10 +10,6 @@ export class CreateDocumentDto {
     @ApiProperty({ description: 'path', example: '' })
     @IsOptional()
     readonly path: string;
-
-    @ApiProperty({ description: 'alias', example: '' })
-    @IsOptional()
-    readonly alias: string;
     
     @ApiProperty({ description: 'extn', example: '' })
     @IsOptional()

@@ -52,7 +52,6 @@ export class DocumentUploadComponent {
                     this.loading = false; // Flag variable 
                     console.log('uploaded document, emitting',event);
                     this.saveDocInfoToTable(event);
-                    // this.uploaded.emit(event);
                 }
             }
         );
@@ -61,8 +60,8 @@ export class DocumentUploadComponent {
     saveDocInfoToTable(event:any){
         //save the document infor to DB
         if(event){
-            const extn = event.filename.substring(event.filename.indexOf('.')+1);
-            this.docService.save({name:event.originalname, alias: '', path: event.path, extn }).subscribe(result => {
+            const extn = event.filename.substring(event.filename.indexOf('.')+1).toLowerCase();
+            this.docService.save({name:event.originalname, path: event.path, extn }).subscribe(result => {
                 this.uploaded.emit(result);
             });
         }

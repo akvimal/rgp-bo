@@ -41,8 +41,6 @@ export class CustomersService {
     }   
 
     getCustomerOrdersByPeriod(cust:any,year:number,month:number){
-        console.log('cust: ',cust);
-        
         return this.http.get(`${this.apiurl}/${cust['id']}/${year}/${month}/orders`);
     }
 
@@ -51,17 +49,15 @@ export class CustomersService {
     }
 
     findAllDocuments(customerId:number){
-        console.log('getting documents fr customer',customerId);
-        
         return this.http.get(`${this.apiurl}/${customerId}/documents`);
     }
 
-    addDocument(customerId:number,documentId:number){
-        return this.http.post(`${this.apiurl}/documents/add`,{customerId,documentId});
+    addDocument(customerDocument:any){
+        return this.http.post(`${this.apiurl}/documents/add`,customerDocument);
     }
 
-    removeDocuments(customerId:number,documentId:number){
-        return this.http.post(`${this.apiurl}/documents/remove`,{customerId,documentId});
+    removeDocuments(customerId:number,ids:number[]){
+        return this.http.post(`${this.apiurl}/documents/remove`,{customerId,ids});
     }
 
 }

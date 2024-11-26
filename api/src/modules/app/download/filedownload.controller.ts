@@ -25,15 +25,16 @@ export class FileDownloadController {
     const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
     const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
     const items = (await this.saleService.findAllItems(criteria,owned)).map(item => {
-  
+      console.log(item.sale);
+      
       return {
-        id:item.sale.id,
+        id:item.sale.billno,
         product:item.purchaseitem.product.title,
         date:this.formatDate(new Date(item.sale.billdate)),
-        customer:item.sale.props['ptntname'],
-        mobile:item.sale.props['ptntmobile'],
-        address:item.sale.props['ptntaddr'],
-        doctor:item.sale.props['prescdoctor'],
+        customer:item.sale.props && item.sale.props['ptntname'],
+        mobile:item.sale.props && item.sale.props['ptntmobile'],
+        address:item.sale.props && item.sale.props['ptntaddr'],
+        doctor:item.sale.props && item.sale.props['prescdoctor'],
         qty:item.qty
       }
     });
@@ -73,10 +74,10 @@ export class FileDownloadController {
 
   formatDate(dt:Date){
     let day = dt.getDate();
-    let month = dt.getMonth();
+    let month = dt.getMonth()+1;
     let year = dt.getFullYear();
    
     return ''+(day < 10 ? '0'+day : day) + '/' +
-    (month < 10 ? '0'+(month+1) : (month+1)) + '/' + (year%2000);
+    (month < 10 ? '0'+month : month) + '/' + (year%2000);
   }
 }

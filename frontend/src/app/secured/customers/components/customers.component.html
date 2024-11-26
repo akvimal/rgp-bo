@@ -1,7 +1,7 @@
 <div class="pagetitle">
   <h1>Customers</h1>
 </div>
-<a [routerLink]="['new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+<a [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
 
 <p-table [value]="customers" [resizableColumns]="true" columnResizeMode="expand" 
 [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
@@ -46,7 +46,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <!-- <td>{{c.srcdesc}}</td> -->
       <!-- <td>{{c.createdon | date : 'dd/MM/yy'}}</td> -->
       <td style="text-align: center;">
-        <a [routerLink]="['edit',c.id]">
+        <a [routerLink]="['../edit',c.id]">
           <i class="bi bi-pencil-square text-primary"></i>
         </a>
   <!--       

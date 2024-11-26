@@ -116,3 +116,19 @@
 .icon a{
     cursor: pointer;
 }
+
+.document-nav{
+    cursor:pointer;
+    margin: 0;
+    padding: 0;
+}
+
+.document-nav:hover{
+    background-color: yellow;
+}
+.customer span{
+    padding-right: 1em;
+}
+.customer span i{
+    padding-right: .5em;
+}

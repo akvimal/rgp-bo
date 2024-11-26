@@ -1,7 +1,10 @@
 
 <div class="row">
-    <div class="col-12">
-        Customer Data
+    <div class="col-12 customer" *ngIf="customer" style="background: #f0f0f0;font-size: larger;">
+        <span *ngIf="customer.email"><i class="bi bi-envelope-at-fill text-primary"></i>{{customer.email}}</span>
+        <span *ngIf="customer.locality"><i class="bi bi-geo-alt-fill text-primary"></i>{{customer.locality}}</span>
+        <span *ngIf="customer.address"><i class="bi bi-house-door-fill text-primary"></i>{{customer.address}}</span>
+        <span *ngIf="customer.srctype"><i class="bi bi-link text-primary"></i>{{customer.srctype}} ({{customer.srcdesc}})</span>
     </div>
     <div class="col-12">
         <p-tabView>
@@ -9,7 +12,7 @@
                 <app-customer-orders [customer]="customer" (selected)="productsSelected($event)"></app-customer-orders>                
             </p-tabPanel>
             <p-tabPanel header="Documents">
-                <app-customer-documents [customer]="customer"></app-customer-documents>
+                <app-customer-documents [customer]="customer" (selected)="documentsSelected($event)"></app-customer-documents>
             </p-tabPanel>
             <p-tabPanel header="Complaints">
                 <p>
