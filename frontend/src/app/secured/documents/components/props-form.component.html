@@ -1,0 +1,38 @@
+<form class="pt-2" [formGroup]="form">
+    <div class="row">
+      <div class="col-2">
+        <label class="form-label">Category</label>
+        <select formControlName="category" class="form-control" id="category" 
+              (change)="selectProps($event,undefined)">
+              <option value="">Select</option>
+              <option *ngFor="let c of categories" [value]="c.category">{{c.category}}</option>
+          </select>
+      </div>
+      <div class="col-10">
+        <div class="row g-2 pb-3" formGroupName="props">
+          <div class="col-md-4" *ngFor="let pp of props">
+          <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
+          <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
+          (change)="dataInput(pp.type, pp.id, $event)">
+            <option value="">Select</option>
+            <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
+          </select> 
+          <p-multiSelect [options]="pp.choices" formControlName={{pp.id}} optionLabel="name" *ngIf="pp.type === 'MULTI-SELECT'"></p-multiSelect>
+          
+          <input *ngIf="pp.type === 'date'" type="date" (change)="dataInput(pp.type, pp.id, $event)" 
+                    class="form-control" formControlName={{pp.id}}>
+          <input *ngIf="!pp.type" type="text" (change)="dataInput(pp.type, pp.id, $event)" 
+                    class="form-control" formControlName={{pp.id}}>
+      
+          <div *ngIf="pp.type === 'CHECK'">
+            <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)" [checked]="pp.default"
+            class="form-check-input" formControlName={{pp.id}}> Yes
+            </div>
+          </div>
+      </div>
+      </div>
+    </div>
+    
+  
+  
+  </form>

@@ -1,0 +1,24 @@
+<div class="row mt-2 p-2" style="background:#dea;">
+    <div class="col-12">
+        <button class="btn btn-outline-secondary" (click)="openNewForm()" *ngIf="!newForm">Upload New Document</button>
+        <div *ngIf="newForm">
+            <h4>Upload New Document</h4>
+            <div class="d-flex">
+                <input class="form-control" type="file" (change)="onChange($event)">&nbsp;&nbsp;
+                <ng-content select="[alias]"></ng-content>
+            </div>
+            <!-- <ng-content select="[props]"></ng-content> -->
+            <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
+            <app-props-form [entity]="'document'" [reset]="reset" (updated)="propsUpdate($event)"></app-props-form>
+            
+            <div class="row">
+                <div class="col-12 text-end">
+                    <span *ngIf="loading">Loading...</span>      
+                    <span *ngIf="error && error.length > 0">{{error}}</span>
+                    <button class="btn btn-outline-secondary" (click)="cancelNewForm()">Cancel</button>
+                    &nbsp;&nbsp;<button (click)="onUpload()" [disabled]="!isFormValid()" class="btn btn-success">Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

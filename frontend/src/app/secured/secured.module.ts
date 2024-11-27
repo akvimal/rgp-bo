@@ -8,6 +8,7 @@ import { AuthGuard } from "../@core/auth/auth.guard";
 import { SharedModule } from "../shared/shared.module";
 import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
+import { DocumentsModule } from "./documents/documents.module";
 import { ProductsModule } from "./products/products.module";
 import { ProfileComponent } from "./profile.component";
 import { PurchasesModule } from "./purchases/purchases.module";
@@ -52,17 +53,18 @@ const routes: Routes = [
       ProfileComponent
     ],
     imports: [
+        RouterModule.forChild(routes),
         CommonModule,
         FormsModule,
         ReactiveFormsModule,
-        RouterModule.forChild(routes),
         SharedModule,
         NgxChartsModule,
         ProductsModule,
         PurchasesModule,
         StoreModule,
         CustomersModule,
-        SalesModule
+        SalesModule,
+        DocumentsModule
     ],
     exports: [RouterModule]
   })

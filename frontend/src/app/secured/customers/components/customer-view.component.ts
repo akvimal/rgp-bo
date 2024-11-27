@@ -1,5 +1,4 @@
 import { Component, EventEmitter, Input, Output } from "@angular/core";
-import { Customer } from "../customer.model";
 import { CustomersService } from "../customers.service";
 
 @Component({
@@ -24,7 +23,7 @@ export class CustomerViewComponent {
     }
 
     documentsSelected(event:any){
-        console.log('event receved',event);
+        console.log(event);
         
         this.selected.emit({action:'documentsSelected', event})
     }

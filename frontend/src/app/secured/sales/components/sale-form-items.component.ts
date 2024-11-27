@@ -12,8 +12,6 @@ import { SaleService } from "../sales.service";
 export class SaleFormItemsComponent{
 
   @Input() items:any;
-  // @Input() sale:any;
-  // @Input() customer:any;
   
   offers:Offer[] = [];
   offer:Offer = {};
@@ -31,11 +29,7 @@ export class SaleFormItemsComponent{
   @Output() itemRemoved = new EventEmitter();
   
   total:number = 0;
-  // newSaleItem = {purchaseitemid:'',price:'',box:'',boxbal:''};
   newSaleItem = {id:0,price:0,qty:0,qtyready:false}
-  // customerTotalOrders = 0;
-  // customerTotalSaleAmount = 0;
-  // customerLastBillDate:any;
 
   // box:string = '';
   // boxitem:string = '';
@@ -46,101 +40,11 @@ export class SaleFormItemsComponent{
     private offerService:OfferService,
     private stockService:StockService){}
 
-  ngOnChanges(changes: SimpleChanges) {
-
-    // if(changes['items']){
-    //   const ids = changes['items'].currentValue.map((i:any) => i.itemid)
-    //   //fetch available quantities
-    //   if(ids.length > 0){
-    //   this.stockService.findByItems(ids).subscribe((data:any) => {
-
-    //     // console.log('DATA');
-    //     // console.log(data);
-        
-    //     changes['items'].currentValue.forEach((item:any) => {
-    //       if(item.product){
-    //         item['title'] = item.product.title;
-    //         item['edited'] = true;
-    //         item['maxqty'] = +data.find((d:any)=>d['purchase_itemid']==item.itemid)['available'] + (item.status == 'Complete' ? item.qty : 0);
-    //         this.refreshAvailableQty(item);
-    //       }
-    //       this.calculateTotalWithQtyChange(item);
-    //     });
-        
-    //     // this.refreshTotal(changes['items'].currentValue);
-        
-    //     // this.recalculateTotal.emit(true);
-    //   })
-    // }
-     
-    // }
-
-    // if(changes['customer'] && changes['customer'].currentValue){
-    //   if(changes['customer'].currentValue.id){
-    //     this.saleService.getSalesByCustomer(changes['customer'].currentValue.id).subscribe((data:any) => {
-          
-    //           this.customerTotalOrders = data.length;
-    //           data.forEach((s:any) => {
-    //             this.customerTotalSaleAmount += s.total;
-    //           });
-    //           this.customerLastBillDate = data.length == 1 && data[0].billdate;
-    //         });
-    //   }
-    // }
-
-    // this.offerService.state.subscribe(data => {
-    //   this.offers = data.filter(d => d.available);
-    // });
-  }
-
-  // ngDoCheck(){
-  //   console.log(this.items);
-  //   this.items.forEach((item:any) => {
-  //     // if(item.product){
-  //     //   item['title'] = item.product.title;
-  //     //   item['edited'] = true;
-  //     //   item['maxqty'] = ;
-  //     //   this.refreshAvailableQty(item);
-  //     // }
-  //     this.calculateTotalWithQtyChange(item);
-  //   });
-  // }
-  // selectProduct(itemid:number,selected:any) {
-    selectProduct(selected:any) {
-      
+  selectProduct(selected:any) {
+    console.log('selected: ',selected);  
     const item = this.helper.mapStockToSaleItem(selected, true);
-    // this.refreshAvailableQty(item);
     this.calculateTotalWithQtyChange(item);
-    // this.items.push(item);
-      this.itemAdded.emit(item);
-    // this.recalculateTotal.emit(undefined);
-
-    // const item = this.items.find((i:any) => i.id == itemid);
-
-    // if(item){
-    //   item.id = selected.product_id;
-    //   item.itemid = selected.purchase_itemid;
-    //   item.productid = selected.product_id;
-    //   item.title = selected.product_title;
-    //   item.batch = selected.product_batch;
-    //   item.expdate = selected.product_expdate;
-    //   item.qty = selected.product_pack; //default qty to pack
-    //   item.maxqty = selected.available;
-    //   item.pack = selected.product_pack;
-    //   item.mrpcost = selected.mrp/selected.product_pack;
-    //   item.price = (selected.sale_price || selected.mrp)/selected.product_pack;
-    //   item.taxpcnt = selected.product_taxpcnt;
-    //   // item.more_props = event.more_props;
-    //   item['box'] = 0;
-    //   item['boxbal'] = 0;
-    //   item['qtyready'] = true;
-    //   item['balqty'] = this.getBalQty(selected.available,selected.product_pack);
-    //   item['unitsbal'] = selected.available_qty - item.qty;
-
-    //   item['edited'] = true;
-    //   this.refreshAvailableQty(item);
-    // }        
-    // this.calculateTotalWithQtyChange(item);
+    this.itemAdded.emit(item);
   }
 
   applyDiscount(){
@@ -194,43 +98,6 @@ export class SaleFormItemsComponent{
     return isNaN(total) ? 0 : +total.toFixed(2);
   }
 
-  // onQtyChange(itemid:any,qty:number){      
-  //   const item = this.items.find((i:any) => i.itemid === itemid);
-  //   item.qty = qty;
-        
-  //   if(qty > +item.maxqty){
-  //     item.qty = item.maxqty;
-  //     qty = item.maxqty; //prevent entering value over max qty
-  //   }
-        
-  //   const old = item.total || 0; //previous total
-  //   item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
-
-  //   this.total = Math.round(this.total - old + item.total);
-  //   let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
-  //   if(newTotal < 0)
-  //   newTotal = 0;
-  //   this.total = newTotal;
-    
-  //   this.recalculateTotal.emit(this.offer);
-  // }
-
-  // onItemQtyChange(itemid:number, qty:number){
-  //   const item = this.items.find((i:any) => i.itemid === itemid);
-
-  //   const old = item.total || 0; //previous total
-  //   item.total = this.calculateTotal(qty,item.price,item.taxpcnt); //new total
-
-  //   this.total = Math.round(this.total - old + item.total);
-  //   let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
-        
-  //   if(newTotal < 0)
-  //     newTotal = 0;
-
-  //   this.total = Math.round(newTotal);
-
-  // }
-
   changeItemQty(itemid:any,event:any){
     
     const item = this.items.find((i:any) => i.itemid === itemid);
@@ -265,24 +132,12 @@ export class SaleFormItemsComponent{
   }
 
   calculateTotalWithQtyChange(item:any){
-    // const item = this.items.find((i:any) => i.itemid === itemid);
-    // item.qty = event.target.value;
-        
-    // if(+event.target.value > +item.maxqty){
-    //   item.qty = item.maxqty;
-    //   event.target.value = item.maxqty; //prevent entering value over max qty
-    // }
         
     const old = item.total || 0; //previous total
     item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
 
     this.total = Math.round(this.total - old + item.total);
-    // let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
-    
-    // if(newTotal < 0) newTotal = 0;
-    // this.total = newTotal;
 
-    
   }
 
   refreshAvailableQty(item:any){

@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Output } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { StockService } from "src/app/secured/store/stock/stock.service";
+import { PropsService } from "../props.service";
 
 @Component({
     selector: 'app-stock-select',
@@ -33,15 +34,21 @@ export class StockSelectComponent {
     filteredStock: any[] = [];
     searchable:any[] = []
 
-    constructor(private stockService:StockService, private http: HttpClient){}
+    // props$?:Observable<any>;
+
+    constructor(private stockService:StockService, private propsService:PropsService, private http: HttpClient){
+        // this.props$ = this.propsService.props;
+    }
 
     ngOnInit(){
-        this.http.get("/assets/props.json").subscribe((data:any) => {
+        this.propsService.productProps$.subscribe(data => {
+        if(data){
             data.forEach((category:any) => {
                 category['props'].forEach((prop:any) => {
                     prop['searchable'] && this.searchable.push(prop);   
                 }); 
             });
+        }
         });
     }
 

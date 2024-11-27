@@ -69,11 +69,11 @@ export class CustomerService {
 
     async findDocuments(custid){
         return await this.manager.query(`
-        select cd.alias, cd.category, cd.more_props,d.* from customer_documents cd inner join documents d on d.id = cd.document_id where cd.customer_id = ${custid} order by d.created_on desc`);
+        select d.* from customer_documents cd inner join documents d on d.id = cd.document_id where cd.customer_id = ${custid} order by d.created_on desc`);
     }
 
     async addDocument(cdoc){
-        return await this.manager.query(`insert into customer_documents (customer_id,document_id,alias) values (${cdoc.customerId},${cdoc.documentId},'${cdoc.alias}')`);
+        return await this.manager.query(`insert into customer_documents (customer_id,document_id) values (${cdoc.customerId},${cdoc.documentId})`);
     }
 
     async removeDocument(custId:number,ids:number[]){

@@ -18,7 +18,7 @@ export class DocumentsService {
     find(id:any){
         return this.http.get(`${this.apiurl}/${id}`);
     }
-    
+        
     filter(ids:number[]){
         return this.http.post(`${this.apiurl}/filter`,{ids});
     }

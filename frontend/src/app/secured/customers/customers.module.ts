@@ -12,7 +12,7 @@ import { CustomerOrdersComponent } from "./components/customer-orders.component"
 import { CustomerDocumentsComponent } from "./components/customer-documents.component";
 import { TabViewModule } from "primeng/tabview";
 import { CustomerViewComponent } from "./components/customer-view.component";
-import { DocumentsModule } from "src/app/shared/documents/documents.module";
+import { DocumentsModule } from "src/app/secured/documents/documents.module";
 
 const routes: Routes = [
   { path: 'cust/list', component: CustomersComponent, canActivate:[AuthGuard]},
@@ -36,8 +36,8 @@ const routes: Routes = [
         DialogModule,
         TableModule,
         TabViewModule,
-        SharedModule,
-        DocumentsModule
+        DocumentsModule,
+        SharedModule
     ],
     exports: [RouterModule,CustomerOrdersComponent,
       CustomerDocumentsComponent,CustomerViewComponent

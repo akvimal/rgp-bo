@@ -19,6 +19,8 @@ export class SaleService {
     constructor(private http:HttpClient){}
 
     save(sale:Sale){
+        console.log(sale);
+        
         return sale.billno ? this.http.put(`${this.apiurl}`,sale) : this.http.post(`${this.apiurl}`,sale);
     }
 
@@ -104,7 +106,4 @@ export class SaleService {
         return this.http.post(`${environment.apiHost}/download/h1schedule`, criteria, {responseType: "blob"});
     }
 
-    getProps() {
-        return this.http.get("/assets/props.json")
-    }
 }

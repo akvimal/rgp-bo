@@ -1,10 +1,10 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
-import { Observable } from "rxjs";
-import { ConfigService } from "src/app/shared/config.service";
 import { ProductsService } from "../../products.service";
 import { MessageService } from 'primeng/api';
+import { PropsService } from "src/app/shared/props.service";
+import { Observable } from "rxjs";
 
 @Component({
     templateUrl: 'product-form.component.html'
@@ -33,21 +33,22 @@ export class ProductFormComponent {
 
       isNew:boolean = false;
       
-      constructor(private configService:ConfigService, 
+      constructor(private propsService:PropsService, 
         private service:ProductsService, 
         private messageService: MessageService,
         private router:Router,
-        private route:ActivatedRoute){}
+        private route:ActivatedRoute){
+          this.productProps$ = this.propsService.productProps$;
+        }
 
       ngOnInit(){
         
         this.isNew = this.route.snapshot.url[0].path === 'new';
         (this.isNew || this.form.controls['category'].value === '') && this.form.controls['category'].enable()
 
-        this.productProps$ = this.configService.props;
-
         this.populateProps(this.form.controls['category'].value,undefined);
         const id = this.route.snapshot.paramMap.get('id'); 
+
         id && this.service.findById(id).subscribe((data:any) => {
           this.form.controls['id'].setValue(id);
           this.form.controls['title'].setValue(data.title);
@@ -65,7 +66,7 @@ export class ProductFormComponent {
       }
 
       populateProps(category:any,values:any){
-        this.configService.props.subscribe((data:any) => {
+        this.propsService.productProps$.subscribe((data:any) => {
           this.props = [];
           const catProps = data.find((d:any) => d.category === category);
           if(catProps){

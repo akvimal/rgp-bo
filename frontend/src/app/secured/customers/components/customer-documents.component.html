@@ -1,17 +1,23 @@
 <app-document-upload [entity]="customer" [type]="'customer'" [property]="'id'" (uploaded)="onUpload($event)">
-    <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
+    <!-- <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name" alias>
+    <app-props-form [entity]="'document'" [reset]="reset" (updated)="propsUpdate($event)" props></app-props-form> -->
+    
 </app-document-upload>
-<div>
-    <button class="btn btn-outline-primary mt-2 text-center"
-    (click)="copySelectedItem()">Copy</button>
-    <button class="btn btn-outline-danger mt-2 text-center"
-    (click)="deleteSelectedItem()">Delete</button>
-</div>
-<app-document-viewer [document]="document">
+
+<app-document-list [ids]="ids" (selected)="copySelectedItem($event)" (removed)="removedSelectedItem($event)"></app-document-list>
+<!-- <app-document-viewer [document]="document">
+    <div>
+    <div *ngIf="documents.length > 0" class="mb-2">
+        <button class="btn btn-outline-primary btn-sm mt-2 text-center"
+        (click)="copySelectedItem()">Copy</button>&nbsp;&nbsp;
+        <button class="btn btn-outline-danger btn-sm mt-2 text-center"
+        (click)="deleteSelectedItem()">Delete</button>
+    </div>
     <div *ngFor="let d of documents">
         <div class="d-flex">
             <input type="checkbox" style="width:20px;height:20px;" (change)="selectDocument(d.id,$event)" [checked]="d.selected">
             <p class="document-nav"  (click)="viewDoc(d.id)" style="margin-left:.5em;"><span style="color: blue;">{{d.created_on | date : 'dd/MM/yy'}}</span> {{d.alias}}</p>
         </div> 
      </div>
-</app-document-viewer>
+    </div>
+</app-document-viewer> -->

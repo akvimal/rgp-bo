@@ -31,6 +31,7 @@ import { SaleHistoryCustomerComponent } from "./components/sale-history-customer
 import { CustomersModule } from "../customers/customers.module";
 import { CustomersComponent } from "../customers/components/customers.component";
 import { CustomerFormComponent } from "../customers/components/customer-form.component";
+import { DocumentsModule } from "../documents/documents.module";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
@@ -78,7 +79,8 @@ const routes: Routes = [
         TableModule,
         RouterModule.forChild(routes),
         SharedModule,
-        CustomersModule
+        CustomersModule,
+        DocumentsModule
     ],
     exports: [RouterModule]
   })

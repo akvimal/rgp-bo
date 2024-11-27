@@ -64,6 +64,9 @@ export class Sale extends BaseEntity {
   @Column("json", { name: "more_props", nullable: true })
   props: object | null;
 
+  @Column({ name: 'doc_pending', type: 'boolean', default: false })
+  docpending: boolean;
+
   @ManyToOne(() => Customer, (customer) => customer.sales)
   @JoinColumn([{ name: "customer_id", referencedColumnName: "id" }])
   customer: Customer;

@@ -1,7 +1,7 @@
 import { Component, ViewChild } from "@angular/core";
 import { Table } from "primeng/table";
 import { Observable } from "rxjs";
-import { ConfigService } from "src/app/shared/config.service";
+import { PropsService } from "src/app/shared/props.service";
 import { ProductsService } from "../../products.service";
 
 @Component({
@@ -16,10 +16,10 @@ export class ProductListComponent {
     @ViewChild('dt') dt: Table | undefined;
 
     constructor(private service:ProductsService,
-        private configService:ConfigService){}
+        private propsService:PropsService){}
 
     ngOnInit(){ 
-        this.productProps$ = this.configService.props;
+        this.productProps$ = this.propsService.productProps$;
         this.fetchList()
     }
     

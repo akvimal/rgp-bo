@@ -19,6 +19,7 @@ export interface Sale {
     digiamt?:number,
     cashamt?:number,
     props?:any,
+    docpending?:any,
     mrptotal?:number,
     saving?:number,
     expreturndays?:number,

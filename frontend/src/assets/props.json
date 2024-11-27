@@ -1,62 +1,148 @@
 [{
-  "category": "Prescription (Rx)",
-  "props":[
+  "entity": "product",
+  "config" : [{
+    "category": "Prescription (Rx)",
+    "props":[
+      {
+        "id": "composition",
+        "label": "Composition",
+        "searchable": true
+      },
+      {
+        "id": "schedule",
+        "label": "Schedule",
+        "type": "SINGLE-SELECT",
+        "default": "H",
+        "filter":true,
+        "choices": [
+          {
+            "label": "H",
+            "value": "H"
+          },
+          {
+            "label": "H1",
+            "value": "H1"
+          },
+          {
+            "label": "X",
+            "value": "X"
+          }
+        ]
+      },{
+        "id": "document",
+        "label": "Document",
+        "type": "SINGLE-SELECT",
+        "default": "None",
+        "filter":true,
+        "choices": [
+          {
+            "label": "None",
+            "value": "None"
+          },
+          {
+            "label": "Prescription",
+            "value": "Prescription"
+          }
+        ]
+      }
+    ]
+  },{
+    "category": "OTC",
+    "props":[
+      {
+        "id": "conditions",
+        "label": "Condition",
+        "type": "MULTI-SELECT",
+        "searchable": true,
+        "choices": [
+          {
+            "name": "Skin Care",
+            "code": "SkinCare"
+          },{
+            "name": "Oral Care",
+            "code": "OralCare"
+          },{
+            "name": "Eye Care",
+            "code": "EyeCare"
+          },{
+            "name": "Supplement",
+            "code": "Supplement"
+          },{
+            "name": "Fever",
+            "code": "Fever"
+          },
+          {
+            "name": "Cold",
+            "code": "Cold"
+          }]
+        }
+    ]
+  }]
+}, {
+  "entity": "document",
+  "config" : [
     {
-      "id": "composition",
-      "label": "Composition",
-      "searchable": true
+      "category": "H1",
+      "props":[
+        {
+          "id": "prescno",
+          "label": "ID"
+        },
+        {
+          "id": "prescdate",
+          "label": "Date"
+        },
+        {
+          "id": "prescdoctor",
+          "label": "Doctor",
+          "required":true
+        },
+        {
+          "id": "ptntname",
+          "label": "Patient Name",
+          "required": true
+        },
+        {
+          "id": "ptntmobile",
+          "label": "Patient Phone",
+          "required": true
+        },
+        {
+          "id": "ptntaddr",
+          "label": "Patient Address"
+        }
+      ]
     },
     {
-      "id": "schedule",
-      "label": "Schedule",
-      "type": "SINGLE-SELECT",
-      "default": "H",
-      "filter":true,
-      "choices": [
+      "category": "Prescription",
+      "props":[        
         {
-          "label": "H",
-          "value": "H"
+          "id": "prescdate",
+          "label": "Date",
+          "type": "date",
+          "required":true
         },
         {
-          "label": "H1",
-          "value": "H1"
+          "id": "doctorname",
+          "label": "Doctor Name",
+          "required":true
         },
         {
-          "label": "X",
-          "value": "X"
+          "id": "doctorphone",
+          "label": "Doctor Phone",
+          "required":true
+        },
+        {
+          "id": "ptntname",
+          "label": "Patient Name",
+          "required": true
+        },
+        {
+          "id": "ptntmobile",
+          "label": "Patient Phone",
+          "required": true
         }
       ]
     }
-  ]
-},{
-  "category": "OTC",
-  "props":[
-    {
-      "id": "conditions",
-      "label": "Condition",
-      "type": "MULTI-SELECT",
-      "searchable": true,
-      "choices": [
-        {
-          "name": "Skin Care",
-          "code": "SkinCare"
-        },{
-          "name": "Oral Care",
-          "code": "OralCare"
-        },{
-          "name": "Eye Care",
-          "code": "EyeCare"
-        },{
-          "name": "Supplement",
-          "code": "Supplement"
-        },{
-          "name": "Fever",
-          "code": "Fever"
-        },
-        {
-          "name": "Cold",
-          "code": "Cold"
-        }]
-      }
   ]
 }]

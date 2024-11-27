@@ -9,6 +9,7 @@ import { SaleHelper } from "../sale.helper";
 import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
 import { CustomersService } from "../../customers/customers.service";
+import { SaleValidator } from "../sale.validator";
 
 @Component({
     templateUrl: 'sale-form.component.html'
@@ -17,12 +18,16 @@ export class SaleFormComponent {
 
     sale:Sale = {status:'NEW',items:[],digimethod:'PayTM',customer:{existing:false,mobile:''}}
     
+    documents:any[] = [];
+
     showCustomerView = false;
+
+    showDocument = false;
+    docpath = '';
 
     displaySalePropsForm = false;
     displayPrescritionForm = false;
 
-    prescriptionProvided = false;
     salePropValues:any;
 
     total:number = 0;
@@ -32,7 +37,6 @@ export class SaleFormComponent {
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
 
-    salePropSchema:any[] = []
     saleprops:any[] = []
     form:FormGroup = new FormGroup({});
 
@@ -55,11 +59,11 @@ export class SaleFormComponent {
       private stockService: StockService,
       private dateService: DateUtilService,
       private prodUtilService: ProductUtilService,
-      private http: HttpClient){
-        this.http.get("/assets/sale-props.json").subscribe((data:any) => this.salePropSchema = data);
-      }
+      private validator: SaleValidator
+      ){}
 
     ngOnInit(){
+      
       this.sale.billdate = new Date();
       this.sale['ordertype'] = 'Walk-in';
       this.sale['deliverytype'] = 'Counter';
@@ -68,6 +72,7 @@ export class SaleFormComponent {
         const saleId =  params.get("id");
 
         saleId !== null && this.service.find(saleId).subscribe((result:any) => {
+          
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
               return {...element, edited:true, title: element.product_title, 
@@ -78,13 +83,23 @@ export class SaleFormComponent {
                 itemid: element.purchase_itemid
               }
             });;
-            this.sale = result;
+            console.log(result['docpending']);
             
+            if(result['props'])
+              this.documents = result['props']['documents'];
+
+            this.sale = result;
+           
+
+            if(this.sale.customer)
+              this.sale.customer = {...this.sale.customer, existing:true};
+
             this.payment['cashamt'] = this.sale['cashamt'];
             this.payment['digimode'] = this.sale['digimethod'];
             this.payment['digiamt'] = this.sale['digiamt'];
             this.payment['digirefno'] = this.sale['digirefno'];
-
+            this.sale['docpending'] = result['docpending'];
+            console.log(this.sale['docpending']);
             this.recalculateTotal()
           });
         });
@@ -95,7 +110,7 @@ export class SaleFormComponent {
       this.customerService.save({name:this.sale.customer.name,
         mobile:this.sale.customer.mobile,
         email:this.sale.customer.email}).subscribe(data => {
-          console.log('customer saved',data);
+          // console.log('customer saved',data);
           this.sale.customer = {...data, existing: true};
         });
     }
@@ -115,6 +130,8 @@ export class SaleFormComponent {
 
     onItemAdd(item:any){
       this.sale.items?.push(item);
+      // console.log('item added ...',item);
+      
       this.recalculateTotal();
     }
 
@@ -138,6 +155,8 @@ export class SaleFormComponent {
       this.sale.mrptotal = Math.round(mrptotal);
       this.sale.totalitems = this.sale.items?.filter((i:any) => i.edited).length;
       this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
+
+      this.sale.docpending = false;
     }
 
     selectCustomer(customer:any, copySales:boolean){
@@ -199,6 +218,8 @@ export class SaleFormComponent {
     if(this.sale.customer.mobile === '')
     obj['customer'] = null;
     
+    this.sale.props = {documents: this.documents};
+
     this.service.save({...obj, billdate: this.dateService.getFormatDate(new Date()), status}).subscribe((data:any) => {
       this.salePropValues = null;
       this.redirectAfterSubmit(data.status, data.id);
@@ -207,7 +228,7 @@ export class SaleFormComponent {
   }
 
   redirectAfterSubmit(status:string,id:number){
-    console.log(status);
+    // console.log(status);
     
     if(status === 'COMPLETE')
       this.router.navigateByUrl(`/secure/sales/view/${id}`); 
@@ -267,8 +288,6 @@ export class SaleFormComponent {
   // }
 
   onCustomerData(event:any){
-    console.log('onCustomerdata:',event);
-    
     if(event['action'] == 'productsSelected'){
       const prodids = event['event'];
       const arr = this.sale.items?.map(i => {return i;});
@@ -280,13 +299,20 @@ export class SaleFormComponent {
         this.recalculateTotal(); 
       }); 
       this.sale.items = arr;
-      this.showCustomerView = false;
     }
     else if(event['action'] == 'documentsSelected'){
-      const docids = event['event'];
-      console.log('documents selected',docids);
+      const docs = event['event'];
+      console.log(docs);
       
+      docs.forEach((d:any) => {
+        const found = this.documents.find((td:any) => td.id === d.id);
+        if(!found)
+          this.documents.push({id:d.id, category:d.category, name:d.name , alias:d.alias, path: d.path, props: JSON.parse(d.docprops)});
+      })
+      this.sale.docpending = false;
     }
+
+    this.showCustomerView = false;
   }
 
   onSubmitSaleProps(){
@@ -295,21 +321,39 @@ export class SaleFormComponent {
     this.submit('COMPLETE');
   }
 
-  isPrescriptionItemsFound(){
-    const prescitems = this.sale.items && this.sale.items.filter((i:any) => i.more_props && i.more_props['schedule'] == 'H1') || [];
-    return prescitems.length > 0;
-  }
+  // isPrescriptionItemsFound(){
+  //   // console.log('isPrescRequired: ',this.sale.items);
+    
+    
+  //   const prescitems = this.sale.items && this.sale.items.filter((i:any) => i.more_props && i.more_props['schedule'] == 'H1') || [];
+  //   return prescitems.length > 0;
+  // }
 
   isCompleteReady(){
     // customer mobile is empty or 10 digit and name should be minimum 2 characters
     const customerValid = this.sale.customer.mobile.length == 0 || 
         (this.sale.customer.mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2);
 
-    return (!this.isPrescriptionItemsFound() || (this.isPrescriptionItemsFound() && this.prescriptionProvided && this.sale.customer.mobile)) 
-          && customerValid && this.payment && this.payment['valid'];
+    return this.validator.validate(this.sale,this.documents) && 
+          customerValid && this.payment && this.payment['valid'];
   }
 
   showPrescriptions(){
     this.displayPrescritionForm = true;
+  }
+
+  removeDocument(id:number){
+    const index = this.documents.indexOf((d:any) => d.id == id);
+    this.documents.splice(index,1)
+  }
+
+  isPrescriptionItemsFound() {
+    return this.sale.items && this.sale.items.find((i:any) => i.more_props && i.more_props['document'] == 'Prescription' )
+  }
+
+  viewDoc(doc:any){
+    console.log(doc);
+    this.docpath = doc.path;
+    this.showDocument = true;
   }
 }

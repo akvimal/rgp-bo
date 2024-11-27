@@ -1,0 +1,6 @@
+<div *ngIf="content">
+    <img *ngIf="content.type !== 'pdf'; else pdf" [src]="content.blob">
+    <ng-template #pdf>
+        <embed [attr.src]="content.blob" type="application/pdf" width="800" height="600">
+    </ng-template>
+</div>

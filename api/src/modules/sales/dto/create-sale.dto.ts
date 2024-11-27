@@ -36,6 +36,11 @@ export class CreateSaleDto {
     @ApiProperty({ description: 'expreturn days', example: 0 })
     readonly expreturndays: number;
 
+    @ApiProperty({ description: 'document pending', example: false })
+    readonly docpending: boolean;
+
+    
+
     @ApiProperty({ description: 'customer id', example: 0 })
     readonly customerid: number;
 

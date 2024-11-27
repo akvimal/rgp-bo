@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsObject, IsOptional } from 'class-validator';
 
 export class CreateDocumentDto {
 
@@ -14,5 +14,20 @@ export class CreateDocumentDto {
     @ApiProperty({ description: 'extn', example: '' })
     @IsOptional()
     readonly extn: string;
+    @ApiProperty({ description: 'category', example: '' })
+    @IsOptional()
+    readonly category: string;
 
+    @ApiProperty({ description: 'alias', example: '' })
+    @IsOptional()
+    readonly alias: string;
+
+    @ApiPropertyOptional({ description: 'document props', example: '{}' })
+    @IsOptional()
+    @IsObject()
+    readonly docprops: object;
+    @ApiPropertyOptional({ description: 'upload props', example: '{}' })
+    @IsOptional()
+    @IsObject()
+    readonly uploadprops: object;
 }

@@ -2,6 +2,7 @@ import { Component, Input } from "@angular/core";
 import { SaleItem } from "../models/sale-item.model";
 import { SaleService } from "../sales.service";
 import { saveAs as importedSaveAs } from "file-saver";
+import { PropsService } from "src/app/shared/props.service";
 
 @Component({
   selector: 'app-sale-items',
@@ -16,13 +17,13 @@ export class SalesItemListComponent {
   criteria: { category: string, props: any[], product: string, fromdate: string, todate: string }
     = { category: '', props: [], product: '', fromdate: '', todate: '' }
 
-  constructor(private service: SaleService) { }
+  constructor(private service: SaleService, private propService:PropsService) { }
 
   ngOnInit() {
     if (this.category) {
       this.criteria.category = this.category; 
     }
-    this.service.getProps().subscribe(result => this.props = result);
+    // this.props = this.propService.fetch('product');//.subscribe(result => this.props = result);
   }
 
   isH1DrugFilter() {
@@ -31,8 +32,9 @@ export class SalesItemListComponent {
   }
 
   fetchFilterProps(event: any) {
-    this.criteria.props = []
-    this.service.getProps().subscribe((data: any) => {
+    this.criteria.props = [];
+    this.propService.documentProps$.subscribe(data => {
+    
       const catProps = data.find((d: any) => d.category === this.criteria.category);
       if (catProps) {
         const props = catProps.props.filter((p: any) => p.filter)
@@ -40,6 +42,7 @@ export class SalesItemListComponent {
           this.criteria.props.push({ ...pr, value: '' })
         })
       }
+
     });
     this.fetchSaleItems();
   }

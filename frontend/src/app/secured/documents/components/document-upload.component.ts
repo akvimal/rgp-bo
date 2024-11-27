@@ -12,9 +12,15 @@ export class DocumentUploadComponent {
     @Input() entity:any;
     @Input() type:string = '';
     @Input() property:string = '';
+    valid = false;
 
     @Output() uploaded:EventEmitter<any> = new EventEmitter();
+    
+    props:any;
+    alias = '';
+    reset=false;
 
+    newForm = false;
     entityId:number = 0;
     error = '';
     loading: boolean = false; // Flag variable
@@ -24,7 +30,7 @@ export class DocumentUploadComponent {
     constructor(private service: FileUploadService, private docService:DocumentsService) { }
 
     ngOnChanges(changes:SimpleChanges){
-        if(changes.entity.currentValue && changes.entity.currentValue[this.property]){
+        if(changes.entity && changes.entity.currentValue &&  changes.entity.currentValue[this.property]){
             this.entityId = changes.entity.currentValue[this.property];
         }
     }
@@ -61,10 +67,30 @@ export class DocumentUploadComponent {
         //save the document infor to DB
         if(event){
             const extn = event.filename.substring(event.filename.indexOf('.')+1).toLowerCase();
-            this.docService.save({name:event.originalname, path: event.path, extn }).subscribe(result => {
+            this.docService.save({name:event.originalname, path: event.path, extn, category: this.props['category'], 
+                alias: this.alias , 
+                docprops: JSON.stringify(this.props['props']), 
+                uploadprops: JSON.stringify(event) }).subscribe(result => {
+                this.cancelNewForm();
                 this.uploaded.emit(result);
             });
         }
     }
+
+    cancelNewForm(){
+        this.newForm = false;
+    }
     
+    openNewForm(){
+        this.newForm = true;
+    }
+    
+    propsUpdate(event:any){
+        this.valid = event.valid;
+        this.props = event.values;
+    }
+
+    isFormValid(){
+        return this.valid && this.file;
+    }
 }
