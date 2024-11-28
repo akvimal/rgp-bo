@@ -71,6 +71,8 @@
               <p-sortIcon field="sale.billno"></p-sortIcon>
             </th>
             <th pSortableColumn="sale.billdate" class="billdt">Bill Date</th>
+            <th class="customer">Customer</th>
+            <th class="document">Document</th>
             <th>Category</th>
             <!-- <th class="address" *ngIf="isH1DrugFilter()">Address</th> -->
             <th pSortableColumn="purchaseitem.product.title" class="product">Product
@@ -82,10 +84,9 @@
             </th>
             <th class="expiry">Expiry</th>
             <th class="qty">Qty</th>
-            <th class="rate">Rate</th>
+            <!-- <th class="rate">Rate</th> -->
             <!-- <th class="total">Amount</th> --> 
-            <th class="customer">Customer</th>
-            <th class="doctor" *ngIf="isH1DrugFilter()">Doctor</th>
+            
           </tr>
         <!-- </thead>
           <tbody> -->
@@ -97,6 +98,16 @@
                   <a [routerLink]="['../view',item.sale.id]">{{item.sale.billno}}</a>
                 </td>
                 <td>{{item.sale.billdate | date: 'dd/MM/yy h:mm a'}}</td>
+                <td>{{item.sale.customer?.name}}</td>
+                <td>
+                  <div *ngIf="item.sale.props && item.sale.props.documents">
+                    <div *ngFor="let d of item.sale.props.documents">
+                      <span>{{d.category}}</span><br>
+                      <ul><li *ngFor="let p of d.props"><span>{{p.label}}</span><span>{{p.value}}</span> </li></ul>
+                    </div>
+                  </div>
+                  
+                </td>
                <td>{{item.purchaseitem.product.category}}</td>
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td> -->
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td> -->
@@ -107,9 +118,8 @@
                 <td>{{item.batch}}</td>
                 <td>{{item.expdate | date : 'MMM-yy'}}</td>
                 <td style="text-align:right">{{item.qty}}</td>
-                <td style="text-align:right">{{item.price}}</td>
-                <td>{{item.sale.customer?.name}}</td>
-                <td *ngIf="isH1DrugFilter()">{{item.sale.props && item.sale.props['prescdoctor']}}</td>
+                <!-- <td style="text-align:right">{{item.price}}</td> -->
+                
                 <!-- <td style="text-align:right">{{item.total}}</td> -->
             </tr>  
           <!-- </tbody>
