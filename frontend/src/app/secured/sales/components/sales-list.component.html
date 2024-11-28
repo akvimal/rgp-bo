@@ -54,6 +54,7 @@
     [rowsPerPageOptions]="[10,25,50]">
     <ng-template pTemplate="header">
         <tr>
+          <th width="5%"></th>
           <!-- <th>Order #</th> -->
           <th pSortableColumn="billno">Bill No.
             <p-columnFilter type="text" field="billno" display="menu"></p-columnFilter>
@@ -63,6 +64,7 @@
             <p-columnFilter type="date" field="billdate" display="menu"></p-columnFilter>
             <p-sortIcon field="billdate"></p-sortIcon>
           </th>
+          
           <th pSortableColumn="custinfo">Customer
             <p-columnFilter type="text" field="custinfo" display="menu"></p-columnFilter>
             <p-sortIcon field="custinfo"></p-sortIcon>
@@ -74,9 +76,8 @@
           <th>Digital</th>
           <th>Cash</th>
           <th>Total</th>
-          <th>Order</th>
           <th>Delivery</th>
-          <th>Sale Person</th>
+          <th *ngIf="!self">Sale Person</th>
           <th>Actions</th>
         </tr>
       <!-- </thead>
@@ -84,6 +85,14 @@
         </ng-template>
         <ng-template pTemplate="body" let-s>
           <tr>
+            <td>
+              <h4 class="icon" *ngIf="s.ordertype=='Walk-in'"><i class="bi bi-shop"></i></h4>
+              <h4 class="icon" *ngIf="s.ordertype=='Phone'"><i class="bi bi-telephone-inbound-fill"></i></h4>
+              <h4 class="icon" *ngIf="s.ordertype=='Whatsapp'"><i class="bi bi-whatsapp"></i></h4>
+              <h4 class="icon" *ngIf="s.deliverytype=='Counter'"><i class="bi bi-bag-check-fill"></i></h4>
+              <h4 class="icon" *ngIf="s.deliverytype=='Delivery'"><i class="bi bi-truck"></i></h4>
+              <h4 class="icon text-danger" *ngIf="s.docpending == true"><i class="bi bi-exclamation-triangle"></i></h4>
+            </td>
             <!-- <td>{{s.orderno}}</td> -->
             <!-- <td>
               <a>{{s.orderno}}</a>
@@ -91,7 +100,7 @@
             <td>
               <a>{{s.billno}}</a>
             </td>
-            <td>{{s.billdate | date: 'dd/MM/yy'}}</td>
+            <td>{{s.billdate | date: 'dd/MM/yy h:mm a'}}</td>
             <td>{{s.custinfo}}</td>
             <!-- <td>{{s.customer ? s.customer.name : ''}}</td> -->
             <!-- <td>{{s.customer ? s.customer.mobile : ''}}</td> -->
@@ -99,21 +108,21 @@
             <td style="text-align: right;">{{s.digiamt}}</td>
             <td style="text-align: right;">{{s.cashamt}}</td>
             <td style="text-align: right;">{{s.total}}</td>
-            <td>{{s.ordertype}}</td>
-            <td>{{s.deliverytype}}
-              <p *ngIf="s.deliverytype == 'Delivery' && s.delivery == null">Book</p>
-            </td>
-            <td>{{s.created ? s.created.fullname : ''}}</td>
+            <td><p *ngIf="s.deliverytype == 'Delivery' && s.delivery == null">Book</p></td>
+            <td *ngIf="!self">{{s.created ? s.created.fullname : ''}}</td>
             <td>
-              <h5 *ngIf="isActionAllowed('Print',s)" style="float:left; margin-right: 0.3em;">
+              <h4 class="icon"*ngIf="isActionAllowed('Print',s)">
                 <a [routerLink]="['../pos/view',s.id]"><i class="bi bi-eye"></i></a>
-              </h5>
-              <h5 *ngIf="isActionAllowed('Edit',s)" style="float:left; margin-right: 0.3em;">
+              </h4>
+              <h4 class="icon"*ngIf="isActionAllowed('Edit',s)">
                 <a [routerLink]="['../pos/edit',s.id]"><i class="bi bi-pencil"></i></a>
-              </h5>
-              <h5 *ngIf="isActionAllowed('Return',s)" style="float:left; margin-right: 0.3em;">
+              </h4>
+              <h4 class="icon" *ngIf="isActionAllowed('Return',s)">
               <i class="bi bi-arrow-return-left" (click)="showReturn(s.id)"></i>
-            </h5>
+            </h4>
+            <h4 class="icon" *ngIf="s.props && s.props['documents'] && s.props['documents'].length > 0">
+              <i class="bi bi-files"></i>
+            </h4>
             <!-- <h5  *ngIf="isActionAllowed('Delivery',s)"style="float:left; margin-right: 0.3em;">
               <i class="bi bi-envelope" (click)="showDelivery(s.id)"></i>
             </h5> -->

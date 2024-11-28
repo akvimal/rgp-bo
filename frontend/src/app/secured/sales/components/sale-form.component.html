@@ -5,37 +5,42 @@
                     <!-- Customer Info -->
                     <td>
                         <!-- <strong>Customer</strong> -->
-                        <div class="d-flex">
-                            <app-customer-select *ngIf="!sale.customer.existing; else showCustomer" 
+                        <div class="d-flex" *ngIf="!sale.customer.existing" >
+                            <app-customer-select
                             (customerSelected)="selectCustomer($event,true)"
                             [inputText]="sale.customer.mobile"
                             (onInput)="captureCustomerInfo($event)">
                             </app-customer-select>
+                            
                             <!-- <h4 *ngIf="sale.customer.mobile && sale.customer.mobile.length !== 10" 
                                 class="mt-2 icon"><i class="bi bi-shield-exclamation text-danger"></i></h4> -->
-                            <div *ngIf="!sale.customer.existing && sale.customer.mobile.length === 10" class="d-flex">
+                            <div *ngIf="sale.customer.mobile.length === 10" class="d-flex">
                                 &nbsp;&nbsp;<input type="text" class="form-control" [(ngModel)]="sale.customer.name" placeholder="Name">
                                 &nbsp;&nbsp;<input type="text" class="form-control" [(ngModel)]="sale.customer.email" placeholder="Email">
+                                <!-- <h4 class="icon">
+                                    &nbsp;&nbsp;<a (click)="resetCustomer()">
+                                        <i class="bi bi-x-square text-danger"></i>
+                                    </a>
+                                </h4> -->
                                 &nbsp;&nbsp;<button class="btn btn-outline-primary" (click)="saveCustomer()">Save</button>
+                                &nbsp;&nbsp;<button class="btn btn-outline-secondary" (click)="resetCustomer()">Cancel</button>
                             </div>
-                            <ng-template #showCustomer>
-                                <div class="mt-2">{{sale.customer?.name}} ({{sale.customer?.mobile}})
+                        </div>
+                            <!-- <ng-template #showCustomer> -->
+                                <div class="mt-2" *ngIf="sale.customer.existing">{{sale.customer?.name}} ({{sale.customer?.mobile}})
                                     &nbsp;&nbsp;<h4 class="icon">
                                         <a (click)="showPrevSalesCopy()">
                                             <i class="bi bi-files text-success"></i>
                                         </a>
+                                        &nbsp;&nbsp;<a (click)="resetCustomer()">
+                                            <i class="bi bi-x-square text-danger"></i>
+                                        </a>
                                         <!-- &nbsp;&nbsp;<a (click)="showPrescriptions()"><i class="bi bi-clipboard2-plus"></i></a> -->
                                     </h4>
                                 </div>
-                            </ng-template>
-                            <div class="mt-2">
-                                <h4 class="icon" *ngIf="sale.customer.mobile && sale.customer.mobile.length > 0">
-                                    &nbsp;&nbsp;<a (click)="resetCustomer()">
-                                        <i class="bi bi-x-square text-danger"></i>
-                                    </a>
-                                </h4>
-                            </div>
-                        </div>
+                            <!-- </ng-template> -->
+                            
+                        <!-- </div> -->
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
@@ -122,12 +127,13 @@
                 class="btn btn-outline-secondary m-2" [disabled]="total === 0">Save</button>
             <button (click)="discard()" *ngIf="sale.id && sale.status !== 'NEW'"
             class="btn btn-outline-danger m-2">Discard</button>
+            
+        </div>
+        <div class="d-flex justify-content-end col-4">
             <div *ngIf="isPrescriptionItemsFound()" class="mt-3 ml-3">
                 <input type="checkbox" style="width: 20px;height: 20px;" [(ngModel)]="sale.docpending">
                 <span style="font-size: large;"> Document Pending</span>
             </div>
-        </div>
-        <div class="col-4 text-end">
             <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
                         [disabled]="!isCompleteReady()">Complete</button>    
                 
@@ -137,18 +143,22 @@
         </div>
     </div>
 
-    <div class="documents">
-        <h6>Documents</h6>
+    <div class="documents mt-4" *ngIf="documents.length > 0">
+        <h6 style="background: #dea;padding:.5em">Documents</h6>
         <ul>
-            <li *ngFor="let doc of documents"><h4 class="icon"><a (click)="removeDocument(doc.id)"><i class="bi bi-trash"></i></a></h4>{{doc.name}}
-            <h4 class="icon"><a (click)="viewDoc(doc)"><i class="bi bi-eye"></i></a></h4>
+            <li *ngFor="let doc of documents">
+                <h4 class="icon"><a (click)="removeDocument(doc.id)"><i class="bi bi-trash"></i></a></h4>
+                <strong>{{doc.category}}</strong>
+                <app-obj-print [obj]="doc.props" [json]="false"></app-obj-print>
+                {{doc.name}}
+                <h4 class="icon"><a (click)="viewDoc(doc)"><i class="bi bi-eye"></i></a></h4>
             </li>
         </ul>
     </div>
 <!-- Customer View -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
         [(visible)]="showCustomerView" [modal]="true" [maximizable]="true">
-    <app-customer-view *ngIf="sale.customer.id" [id]="sale.customer.id" (selected)="onCustomerData($event)"></app-customer-view>
+    <app-customer-view *ngIf="sale.customer && sale.customer.id" [id]="sale.customer.id" (selected)="onCustomerData($event)"></app-customer-view>
 </p-dialog>
 <p-dialog [(visible)]="showDocument" >
     <app-document-viewer [path]="docpath"></app-document-viewer>

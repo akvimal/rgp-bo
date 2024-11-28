@@ -1,32 +1,49 @@
 <div class="row no-print">
-  <div class="col-md-2">
-    <label for="category">Category</label>
-    <select name="filterbycategory" class="form-control" [(ngModel)]="criteria.category" 
-          (change)="fetchFilterProps($event)">
-      <option value=""></option>
-      <option *ngFor="let p of props" [value]="p.category">{{p.category}}</option>
-    </select>
-    <label for="product">Product</label>
-    <input type="text" name="product"  class="form-control" id="product" [(ngModel)]="criteria.product">
-  </div>
-  <div class="col-md-2">
-    <label for="fromdate">From Date</label>
-    <input type="date" name="fromdate"  class="form-control" id="fromdate" [(ngModel)]="criteria.fromdate">
-  </div>
-  <div class="col-md-2">
-    <label for="todate">To Date</label>
-    <input type="date" name="todate" class="form-control" id="todate" [(ngModel)]="criteria.todate">
-  </div>
-  <div *ngFor="let p of criteria.props"  class="col-md-2">
-        <div *ngIf="p.type === 'SINGLE-SELECT'">
-            <label>{{p.label}}</label>
-            <select [(ngModel)]="p.value" class="form-control">
-                <option value=""></option>
-                <option *ngFor="let c of p.choices" [value]="c.value">{{c.label}}</option>
-            </select>
-        </div>
+  <div class="d-flex">
+    <div><label for="fromdate">From Date</label>
+    <input type="date" name="fromdate"  class="form-control" id="fromdate" [(ngModel)]="criteria.fromdate"></div>
+    <div><label for="todate">To Date</label>
+    <input type="date" name="todate" class="form-control" id="todate" [(ngModel)]="criteria.todate"></div>
+    <div>
+      <label for="product">Product</label>
+      <input type="text" name="product"  class="form-control" id="product" [(ngModel)]="criteria.product">
     </div>
+  </div>
+  <div class="col-2">
     
+        <label for="category">Category</label>
+        <!-- <select name="filterbycategory" class="form-control" [(ngModel)]="criteria.category" 
+              (change)="fetchFilterProps($event)">
+          <option value=""></option>
+          <option *ngFor="let p of props" [value]="p.category">{{p.category}}</option>
+        </select> -->
+    
+
+        <div *ngIf="(productProps$ | async).length > 0">
+          <select class="form-control" id="category" [(ngModel)]="criteria.category" (change)="fetchFilterProps($event)">
+          <option value="">All Category</option>
+          <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
+          </select>
+        </div>
+      
+    
+  </div>
+    
+  <div class="col-10">
+    <div class="d-flex">
+      <div *ngFor="let p of criteria.props">
+          <div *ngIf="p.type === 'SINGLE-SELECT'">
+              <label>{{p.label}}</label>
+              <select [(ngModel)]="p.value" class="form-control">
+                  <option value=""></option>
+                  <option *ngFor="let c of p.choices" [value]="c.value">{{c.label}}</option>
+              </select>
+          </div>
+      </div>
+    </div>
+  </div>  
+  
+
   <div class="col-md-4">
     <label>&nbsp;</label><br>
     <button type="button" class="btn btn-primary mx-auto" (click)="fetchSaleItems()">Filter</button>
@@ -42,9 +59,9 @@
   </div> -->
 </div>
 <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
-[paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-[rowsPerPageOptions]="[10,25,50]">
+      [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+      [rowsPerPageOptions]="[10,25,50]">
     <!-- <table class="table table-bordered mt-4 sale-items"> -->
         <!-- <thead> -->
           <ng-template pTemplate="header">
@@ -54,7 +71,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
               <p-sortIcon field="sale.billno"></p-sortIcon>
             </th>
             <th pSortableColumn="sale.billdate" class="billdt">Bill Date</th>
-            <!-- <th class="phone">Phone</th> -->
+            <th>Category</th>
             <!-- <th class="address" *ngIf="isH1DrugFilter()">Address</th> -->
             <th pSortableColumn="purchaseitem.product.title" class="product">Product
               <p-columnFilter type="text" field="purchaseitem.product.title" display="menu"></p-columnFilter>
@@ -79,8 +96,8 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
                 <td>
                   <a [routerLink]="['../view',item.sale.id]">{{item.sale.billno}}</a>
                 </td>
-                <td>{{item.sale.billdate | date :'dd/MM/yy'}}</td>
-               
+                <td>{{item.sale.billdate | date: 'dd/MM/yy h:mm a'}}</td>
+               <td>{{item.purchaseitem.product.category}}</td>
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td> -->
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td> -->
                 <td>{{item.purchaseitem.product.title}}

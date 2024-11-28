@@ -9,6 +9,8 @@ import { PropsService } from "src/app/shared/props.service";
 export class PropsFormComponent{
     
   @Input() entity = '';
+  @Input() copyProps:any;
+  
   @Input() reset:boolean = false;
   @Output() updated:EventEmitter<any> = new EventEmitter();
 
@@ -32,7 +34,25 @@ export class PropsFormComponent{
     }
 
     dataInput(type:any,key:any,event:any){
-      this.updated.emit({valid:this.form.valid, values:this.form.value});
+      // console.log(this.form);
+      
+      this.updated.emit({valid:this.form.valid, values:{category: this.form.controls['category'].value, props:this.mapToLabelValues(this.form.value)}});
+    }
+
+    mapToLabelValues(values:any){
+      // console.log(this.props);
+      // console.log(values);
+      let newval:any = []
+      Object.keys(values['props']).forEach((k:string) => {
+        const prop = this.props.find((p:any) => p['id'] == k);
+        const s = prop['label'];
+        newval.push({label:s, value:values['props'][k]})
+        // obj = {...obj, `'${s}'`: values['props'][k]};
+      })
+      // values['props'] = 
+      // console.log(newval);
+      
+      return newval;
     }
     
     selectProps(event:any,values:any){
@@ -40,12 +60,13 @@ export class PropsFormComponent{
     }
 
     populateProps(category:any,values:any){
-      
+      //TODO: on copying values, other properties also cleared
       this.props = [];
       const catProps = this.categories.find((c:any) => c.category == category);
           
       if(catProps){
         this.props = catProps.props;
+        
         let pps = {};  
         for(let i=0;i<this.props.length;i++){
           const pname = this.props[i].id;
@@ -58,5 +79,9 @@ export class PropsFormComponent{
         }
         this.form.setControl('props', new FormGroup(pps));
       }
+    }
+
+    copyData(event:any){
+        this.populateProps(this.form.controls['category'].value, event.target.checked && this.copyProps);
     }
 }

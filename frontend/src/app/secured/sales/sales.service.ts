@@ -29,6 +29,7 @@ export class SaleService {
     }
 
     findAllItems(criteria:any){
+        console.log(criteria);
         return this.http.post(`${this.apiurl}/items/criteria`,criteria);
     }
      

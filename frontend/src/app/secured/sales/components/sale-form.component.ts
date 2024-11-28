@@ -16,7 +16,8 @@ import { SaleValidator } from "../sale.validator";
 })
 export class SaleFormComponent {
 
-    sale:Sale = {status:'NEW',items:[],digimethod:'PayTM',customer:{existing:false,mobile:''}}
+    newcustomer = {existing:false,mobile:'',name:''}
+    sale:Sale = {status:'NEW',items:[],digimethod:'PayTM'}
     
     documents:any[] = [];
 
@@ -65,6 +66,7 @@ export class SaleFormComponent {
     ngOnInit(){
       
       this.sale.billdate = new Date();
+      this.sale['customer'] = this.newcustomer;
       this.sale['ordertype'] = 'Walk-in';
       this.sale['deliverytype'] = 'Counter';
       //get the id from url query params
@@ -72,6 +74,7 @@ export class SaleFormComponent {
         const saleId =  params.get("id");
 
         saleId !== null && this.service.find(saleId).subscribe((result:any) => {
+          console.log(result);
           
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
@@ -82,17 +85,17 @@ export class SaleFormComponent {
                 unitsbal: element.available - element.product_pack,
                 itemid: element.purchase_itemid
               }
-            });;
-            console.log(result['docpending']);
-            
+            });
+        
             if(result['props'])
               this.documents = result['props']['documents'];
 
             this.sale = result;
-           
 
             if(this.sale.customer)
               this.sale.customer = {...this.sale.customer, existing:true};
+            else
+              this.sale.customer = this.newcustomer;
 
             this.payment['cashamt'] = this.sale['cashamt'];
             this.payment['digimode'] = this.sale['digimethod'];
@@ -220,7 +223,7 @@ export class SaleFormComponent {
     
     this.sale.props = {documents: this.documents};
 
-    this.service.save({...obj, billdate: this.dateService.getFormatDate(new Date()), status}).subscribe((data:any) => {
+    this.service.save({...obj, billdate:new Date(), status}).subscribe((data:any) => {
       this.salePropValues = null;
       this.redirectAfterSubmit(data.status, data.id);
       this.service.refreshSavedSales();
@@ -331,8 +334,8 @@ export class SaleFormComponent {
 
   isCompleteReady(){
     // customer mobile is empty or 10 digit and name should be minimum 2 characters
-    const customerValid = this.sale.customer.mobile.length == 0 || 
-        (this.sale.customer.mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2);
+    const customerValid = this.sale.customer && (this.sale.customer.mobile.length == 0 || 
+        (this.sale.customer.mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2));
 
     return this.validator.validate(this.sale,this.documents) && 
           customerValid && this.payment && this.payment['valid'];

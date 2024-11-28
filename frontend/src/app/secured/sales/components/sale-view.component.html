@@ -93,8 +93,10 @@
         </div>
     </div>
 </div>
-<div class="non-print" style="text-align:center">
-    <a href="#" class="btn btn-outline-primary" role="button" [routerLink]="['/secure/sales/list']">Sales</a>&nbsp;   
-    <a href="#" class="btn btn-success" role="button" onclick="javascript:window.print();return false;">Print</a>&nbsp;&nbsp;
-    <a href="#" class="btn btn-primary" role="button" [routerLink]="['/secure/sales/pos']">New Sale</a>
+<div class="d-flex justify-content-evenly non-print" style="text-align:center">
+    <a class="btn btn-primary" role="button" [routerLink]="['/secure/sales/pos']">New Sale</a>
+    <a class="btn btn-success" style="font-size:larger;padding-left:3em;padding-right:3em" role="button" onclick="javascript:window.print();return false;">
+        <i class="bi bi-printer"></i>&nbsp;&nbsp;Print
+    </a>
+    <a class="btn btn-outline-primary" role="button" [routerLink]="['/secure/sales/list']">Sales</a> 
 </div>

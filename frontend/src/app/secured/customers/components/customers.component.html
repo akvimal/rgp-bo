@@ -19,11 +19,13 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
         <p-sortIcon field="mobile"></p-sortIcon>
         <p-columnFilter type="text" field="mobile" display="menu"></p-columnFilter>
       </th>
-      <th  pSortableColumn="email" scope="col">Email
+      <!-- <th  pSortableColumn="email" scope="col">Email
         <p-sortIcon field="email"></p-sortIcon>
         <p-columnFilter type="text" field="email" display="menu"></p-columnFilter>
-
-      </th>
+      </th> -->
+      <th>Address</th>
+      <th>History</th>
+      <th>Recent Visit</th>
       <!-- <th scope="col">Area</th> -->
       <!-- <th scope="col">Address</th> -->
       <!-- <th scope="col">Location</th> -->
@@ -38,7 +40,11 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <td>{{c.id}}</td>
       <td>{{c.name}}</td>
       <td>{{c.mobile}}</td>
-      <td>{{c.email}}</td>
+      <td>{{c.email}} | {{c.address}} | {{c.locality}}</td>
+      <td>{{c.srctype}}({{c.srcdesc}})|
+        Begin Date
+      </td>
+      <td></td>
       <!-- <td>{{c.area}}</td> -->
       <!-- <td>{{c.locality}}</td> -->
       <!-- <td>{{c.address}}</td> -->
@@ -46,9 +52,12 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <!-- <td>{{c.srcdesc}}</td> -->
       <!-- <td>{{c.createdon | date : 'dd/MM/yy'}}</td> -->
       <td style="text-align: center;">
+        <h4 class="icon">
         <a [routerLink]="['../edit',c.id]">
           <i class="bi bi-pencil-square text-primary"></i>
         </a>
+      </h4>
+      <h4 class="icon"><i class="bi bi-files"></i></h4>
   <!--       
         <a (click)="onRemove(c.id)">
           <i class="bi bi-trash text-danger"></i>

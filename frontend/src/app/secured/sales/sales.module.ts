@@ -38,10 +38,10 @@ const routes: Routes = [
   {path: 'list', component: SalesListComponent, canActivate:[AuthGuard]},
   {path: 'returns', component: SaleReturnsComponent, canActivate:[AuthGuard]},
   {path: 'pos', component: SalePosComponent, children: [
-    {path: '', redirectTo: 'new'},
-    {path: 'new', component: SaleFormComponent},
-    {path: 'edit/:id', component: SaleFormComponent},
-    {path: 'view/:id', component: SaleViewComponent}
+    {path: '', redirectTo: 'new' },
+    {path: 'new', component: SaleFormComponent },
+    {path: 'edit/:id', component: SaleFormComponent },
+    {path: 'view/:id', component: SaleViewComponent }
   ], canActivate:[AuthGuard]},
   {path: 'reminders', component: SaleReminderComponent, canActivate:[AuthGuard]},
   {path: 'deliveries', component: SaleDeliveryComponent, canActivate:[AuthGuard]}

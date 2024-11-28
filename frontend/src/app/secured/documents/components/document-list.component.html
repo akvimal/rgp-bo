@@ -1,6 +1,6 @@
-<div class="row">
+<div class="row mt-4">
     <div class="col-3">
-        <div *ngIf="documents.length > 0" class="mb-2">
+        <div *ngIf="documentsSelected()" class="mb-2">
             <button class="btn btn-outline-primary btn-sm mt-2 text-center"
             (click)="copySelectedItem()">Copy</button>&nbsp;&nbsp;
             <button class="btn btn-outline-danger btn-sm mt-2 text-center"
@@ -9,7 +9,11 @@
         <div *ngFor="let d of documents">
             <div class="d-flex">
                 <input type="checkbox" style="width:20px;height:20px;" (change)="selectDocument(d.id,$event)" [checked]="d.selected">
-                <p class="document-nav" (click)="viewDoc(d.id)" style="margin-left:.5em;"><span style="color: blue;">{{d.createdon | date : 'dd/MM/yy'}}</span> {{d.alias}}</p>
+                <div class="document-nav" (click)="viewDoc(d.id)" style="margin-left:.5em;">
+                    <span style="color: blue;">{{d.createdon | date : 'dd/MM/yy'}}</span> {{d.alias}} <br>
+                    <strong>{{d.category}}</strong><br>
+                    <app-obj-print [obj]="d.docprops" [json]="true"></app-obj-print>
+                </div>
             </div> 
         </div>
     </div>

@@ -5,12 +5,9 @@
             <h4>Upload New Document</h4>
             <div class="d-flex">
                 <input class="form-control" type="file" (change)="onChange($event)">&nbsp;&nbsp;
-                <ng-content select="[alias]"></ng-content>
+                <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
             </div>
-            <!-- <ng-content select="[props]"></ng-content> -->
-            <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
-            <app-props-form [entity]="'document'" [reset]="reset" (updated)="propsUpdate($event)"></app-props-form>
-            
+            <app-props-form [entity]="'document'" [copyProps]="copyProps" [reset]="reset" (updated)="propsUpdate($event)"></app-props-form>
             <div class="row">
                 <div class="col-12 text-end">
                     <span *ngIf="loading">Loading...</span>      

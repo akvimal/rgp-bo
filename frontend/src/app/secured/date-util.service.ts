@@ -103,7 +103,6 @@ export class DateUtilService {
         return text;
     }
 
-
     isSameDay(date:string){
         const chkdt = new Date(date).getTime();
         

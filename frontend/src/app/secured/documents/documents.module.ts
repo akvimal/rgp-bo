@@ -8,6 +8,7 @@ import { DocumentListComponent } from "./components/document-list.component";
 import { DocumentUploadComponent } from "./components/document-upload.component";
 import { DocumentViewerComponent } from "./components/document-viewer.component";
 import { FileUploadComponent } from "./components/file-upload.component";
+import { ObjPrintComponent } from "./components/obj-print.component";
 import { PropsFormComponent } from "./components/props-form.component";
 
 @NgModule({
@@ -16,7 +17,8 @@ import { PropsFormComponent } from "./components/props-form.component";
       DocumentListComponent,
       DocumentViewerComponent,
       FileUploadComponent,
-      PropsFormComponent
+      PropsFormComponent,
+      ObjPrintComponent
     ],
     imports: [
       SharedModule,
@@ -27,6 +29,6 @@ import { PropsFormComponent } from "./components/props-form.component";
         MultiSelectModule,
         SharedModule
     ],
-    exports: [DocumentUploadComponent,DocumentListComponent,DocumentViewerComponent]
+    exports: [DocumentUploadComponent,DocumentListComponent,DocumentViewerComponent,ObjPrintComponent]
   })
 export class DocumentsModule{}

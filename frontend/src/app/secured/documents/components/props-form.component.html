@@ -7,6 +7,9 @@
               <option value="">Select</option>
               <option *ngFor="let c of categories" [value]="c.category">{{c.category}}</option>
           </select>
+          <div *ngIf="form.controls['category'].value !== '' && copyProps">
+            <input type="checkbox" (click)="copyData($event)">&nbsp;Copy
+          </div>
       </div>
       <div class="col-10">
         <div class="row g-2 pb-3" formGroupName="props">
@@ -32,7 +35,4 @@
       </div>
       </div>
     </div>
-    
-  
-  
   </form>

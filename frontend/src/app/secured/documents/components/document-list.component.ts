@@ -48,6 +48,10 @@ export class DocumentListComponent {
         });
     }
 
+    documentsSelected(){
+        return this.documents.filter(d => d.selected).length > 0
+    }
+
     getSelectedItems(){
         const docs:any[] = [];
         this.documents.forEach((d:any) => {

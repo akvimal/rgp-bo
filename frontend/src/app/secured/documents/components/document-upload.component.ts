@@ -12,6 +12,9 @@ export class DocumentUploadComponent {
     @Input() entity:any;
     @Input() type:string = '';
     @Input() property:string = '';
+
+    @Input() copyProps:any; 
+
     valid = false;
 
     @Output() uploaded:EventEmitter<any> = new EventEmitter();
@@ -52,11 +55,13 @@ export class DocumentUploadComponent {
             })
           ).subscribe(
             (event: any) => {
+                console.log('....',event);
+                
                 if (typeof (event) === 'object') {
                     this.error = '';
                     this.file = null;
                     this.loading = false; // Flag variable 
-                    console.log('uploaded document, emitting',event);
+                    // console.log('uploaded document, emitting',event);
                     this.saveDocInfoToTable(event);
                 }
             }
@@ -65,6 +70,8 @@ export class DocumentUploadComponent {
 
     saveDocInfoToTable(event:any){
         //save the document infor to DB
+        console.log(event);
+        
         if(event){
             const extn = event.filename.substring(event.filename.indexOf('.')+1).toLowerCase();
             this.docService.save({name:event.originalname, path: event.path, extn, category: this.props['category'], 
@@ -86,6 +93,8 @@ export class DocumentUploadComponent {
     }
     
     propsUpdate(event:any){
+        console.log(event);
+        
         this.valid = event.valid;
         this.props = event.values;
     }
