@@ -1,16 +1,16 @@
-<div class="row no-print">
+<div class="row orderitemsciteria no-print">
   <div class="d-flex">
-    <div><label for="fromdate">From Date</label>
+    <div class="criteria"><label for="fromdate">From Date</label>
     <input type="date" name="fromdate"  class="form-control" id="fromdate" [(ngModel)]="criteria.fromdate"></div>
-    <div><label for="todate">To Date</label>
+    <div class="criteria"><label for="todate">To Date</label>
     <input type="date" name="todate" class="form-control" id="todate" [(ngModel)]="criteria.todate"></div>
-    <div>
+    <div class="criteria">
       <label for="product">Product</label>
       <input type="text" name="product"  class="form-control" id="product" [(ngModel)]="criteria.product">
     </div>
-  </div>
-  <div class="col-2">
-    
+  <!-- </div>
+  <div class="col-2 mt-2"> -->
+    <div class="criteria">
         <label for="category">Category</label>
         <!-- <select name="filterbycategory" class="form-control" [(ngModel)]="criteria.category" 
               (change)="fetchFilterProps($event)">
@@ -25,13 +25,13 @@
           <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
           </select>
         </div>
-      
+      </div>
     
-  </div>
+  <!-- </div>
     
-  <div class="col-10">
-    <div class="d-flex">
-      <div *ngFor="let p of criteria.props">
+  <div class="col-10 mt-2">
+    <div class="d-flex"> -->
+      <div *ngFor="let p of criteria.props" class="criteria">
           <div *ngIf="p.type === 'SINGLE-SELECT'">
               <label>{{p.label}}</label>
               <select [(ngModel)]="p.value" class="form-control">
@@ -41,7 +41,7 @@
           </div>
       </div>
     </div>
-  </div>  
+  <!-- </div>   -->
   
 
   <div class="col-md-4">
@@ -50,7 +50,7 @@
     &nbsp;
     <button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
     &nbsp;
-    <button type="button" class="btn btn-outline-primary" *ngIf="isH1DrugFilter()" (click)="downloadh1()">Download H1</button>
+    <button type="button" class="btn btn-outline-primary" (click)="download()">Download</button>
     <!-- &nbsp;
     <button type="button" class="btn  btn-secondary" onclick="javascript:window.print();">Print</button> -->
   </div>

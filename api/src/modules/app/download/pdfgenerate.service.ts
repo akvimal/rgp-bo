@@ -5,26 +5,21 @@ import * as fs from 'fs';
 
 export class PdfGenerateService {
 
-    //https://github.com/marcbachmann/node-html-pdf
-
     generate(templatefile,data):any{
         return new Promise((resolve,reject)=>{
             const options = {
                 format: "A4",
-                orientation: "portrait",
+                orientation: "landscape",
                 border: {
                     top: "10mm",
-                    right: "10mm",
+                    right: "20mm",
                     bottom: "10mm",
-                    left: "30mm"
+                    left: "20mm"
                 },
-                header: {
-                    height: "10mm",
-                    contents: `<div style="text-align: center;">
-                    <h3>Ramesh Generic Pharmacy</h3>
-                    <p>Thillai Ganga Nagar, Chennai</p>
-                    </div>`
-                },
+                // header: {
+                //     height: "10mm",
+                //     contents: `${data}`
+                // },
                 // footer: {
                 //     height: "10mm",
                 //     contents: {
@@ -48,6 +43,4 @@ export class PdfGenerateService {
 
         })
     }
-
-
 }

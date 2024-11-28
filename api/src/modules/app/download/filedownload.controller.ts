@@ -5,6 +5,7 @@ import type { Response } from 'express';
 import { User } from 'src/core/decorator/user.decorator';
 import { PurchaseService } from 'src/modules/purchases/purchase.service';
 import { SaleService } from 'src/modules/sales/sale.service';
+
 import { RoleService } from '../roles/role.service';
 import { PdfGenerateService } from './pdfgenerate.service';
 
@@ -12,36 +13,55 @@ import { PdfGenerateService } from './pdfgenerate.service';
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
 export class FileDownloadController {
+
+  business = 'Ramesh Generic Pharmacy, No.1/256, 4th Street, Kalamegam Salai, Tiruvallur, TAMIL NADU - 600037'
   
   constructor(private service:PdfGenerateService, 
     private saleService:SaleService, 
     private roleService:RoleService,
     private poService:PurchaseService){}
 
-  @Post('/h1schedule')
+  @Post('/salereport')
   async getH1Schedule(@Body() criteria, @User() currentUser: any, @Res() res: Response) {
    
+    const {sign} = criteria;
     const role = await this.roleService.findById(currentUser.roleid);
     const sale = Object.values(role.permissions).find((p:any) => p.resource === 'sales');
+    
     const owned = (!sale.data || sale.data === 'self') ? currentUser.id : undefined;
+    
     const items = (await this.saleService.findAllItems(criteria,owned)).map(item => {
-      console.log(item.sale);
-      
-      return {
-        id:item.sale.billno,
+    
+      return {    
+        documents:item.sale.props && item.sale.props['documents'] ? item.sale.props['documents']: [],
+        billno:item.sale.billno,
         product:item.purchaseitem.product.title,
-        date:this.formatDate(new Date(item.sale.billdate)),
-        customer:item.sale.props && item.sale.props['ptntname'],
-        mobile:item.sale.props && item.sale.props['ptntmobile'],
-        address:item.sale.props && item.sale.props['ptntaddr'],
-        doctor:item.sale.props && item.sale.props['prescdoctor'],
+        billdate:this.formatDate(new Date(item.sale.billdate)),
+        batch:item.batch,expiry:item.expdate,
         qty:item.qty
       }
     });
     
-    const data = {fromdate:criteria.fromdate,todate:criteria.todate, items};
-    const stream = await this.service.generate('templates/pdf/h1-template.html',data);
+    const stream = await this.service.generate('templates/pdf/sale-report.html',{business:this.business, criteria: this.format(criteria),sign:sign||false,items});
     stream.pipe(res);
+  }
+
+  format(obj){
+    let out = ''
+   
+    const props = Object.entries(obj) 
+    props.forEach(p => {
+      if(typeof p[1] == 'string')
+      out += `${p[0]}: ${p[1]}  `
+    });
+   
+    if(obj.props){
+      obj.props.forEach(p => {
+        out += `${p.id}: ${p.value}  `
+      })
+    }
+   
+   return out;
   }
 
   @Post('/po')

@@ -103,8 +103,8 @@ export class SaleService {
         return this.http.post(`${this.apiurl}/visits`,criteria);
     }   
      
-    downloadh1(criteria:any){
-        return this.http.post(`${environment.apiHost}/download/h1schedule`, criteria, {responseType: "blob"});
+    download(criteria:any){
+        return this.http.post(`${environment.apiHost}/download/salereport`, criteria, {responseType: "blob"});
     }
 
 }

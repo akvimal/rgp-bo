@@ -142,3 +142,11 @@
     padding: 0;
     list-style: none;
 }
+
+.orderitemsciteria .criteria {
+    margin-right: 1.5em;
+}
+
+.orderitemsciteria .criteria label{
+    padding-bottom: .5em;;
+}

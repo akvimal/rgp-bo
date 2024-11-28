@@ -60,12 +60,7 @@ export class SalesItemListComponent {
 
   fetchSaleItems() {
     const obj = this.removeNullAndEmpty(this.criteria);
-    let categProps = []
-    if(this.criteria.props){
-      categProps = this.criteria.props.filter(p => p.value !== '');
-    }
-    
-    this.service.findAllItems({...obj, props: categProps, todate: this.dateService.getOtherDate(new Date(this.criteria.todate),1)}).subscribe((data: any) => this.items = data);
+    this.service.findAllItems({...obj, todate: this.dateService.getOtherDate(new Date(this.criteria.todate),1)}).subscribe((data: any) => this.items = data);
   }
 
   removeNullAndEmpty(obj:any){
@@ -82,6 +77,12 @@ export class SalesItemListComponent {
     for (const key of newarr) {
       newobj[key[0]] = key[1];
     }
+
+    let categProps = []
+    if(obj.props){
+      categProps = obj.props.filter((p:any) => p.value !== '');
+    }
+    newobj['props'] = categProps;
     return newobj;
   }
 
@@ -90,10 +91,10 @@ export class SalesItemListComponent {
     this.fetchSaleItems();
   }
 
-  downloadh1() {
-    this.service.downloadh1(this.criteria).subscribe((data: any) => {
-      const blob = new Blob([data]);
-      importedSaveAs(blob, 'h1schedule.pdf');
+  download() {
+    const obj = this.removeNullAndEmpty(this.criteria);
+    this.service.download({...obj, sign:true, todate: this.dateService.getOtherDate(new Date(this.criteria.todate),1)}).subscribe((data: any) => {
+        importedSaveAs(new Blob([data]), 'salereport.pdf');
     });
   }
 

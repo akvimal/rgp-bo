@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <mate charest="utf-8" />
+    <title>Sale Report</title>
+    <style>
+      body {
+        font-size: 9px;
+      }
+      body, h1, h2, h3, h4, h5, h6, ul, li, p {
+        margin:0;
+        padding: 0;
+      }
+      table, tr, td, th {
+        border:1px solid #aaa;
+        border-collapse: collapse;
+      }
+      td, th {
+        padding: 3px;
+      }
+      #data {
+        margin-top: 10px;
+      }
+      .qty {
+        text-align: center;
+      }
+      .document .category{
+        font-weight: bolder;
+      }
+      .document ul {
+        margin:0;padding:0;
+      }
+      .document li{
+        margin:0;padding-right:5px;list-style: none;
+        float: left;
+      }
+      .document .props label{
+        font-weight: bolder;display: inline;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="text-align: center;">
+     <h3>{{this.business}}</h3>
+    <h4 style="margin-top:.5em">Sale Report</h4>
+    <p style="margin-top:.5em;">{{this.criteria}}</p>
+  </div>
+    <table id="data" width="100%">
+      <thead>
+      <tr>
+        <th>Bill Date</th>
+        <th>Bill No.</th>
+        <th width="40%">Document</th>
+        <th>Item Name</th>
+        <th>Batch / Exp</th>
+        <th>Qty</th>
+        {{#if sign}}
+        <th>Signature</th>
+        {{/if}}
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>{{this.billdate}}</td>
+        <td>{{this.billno}}</td>
+        <td class="document">
+        {{#each this.documents}}
+        <span class="category">{{this.category}}</span>
+        <ul class="props">
+        {{#each this.props}}
+        <li><label>{{this.label}}:</label>{{this.value}}</li>
+        {{/each}}
+        </ul>
+        {{/each}}
+        </td>
+        <td>{{this.product}}</td>
+        <td>{{this.batch}} / {{this.expiry}}</td>
+        <td class="qty">{{this.qty}}</td>
+        {{#if ../sign}}
+        <td></td>
+        {{/if}}
+      </tr>
+      {{/each}}
+    </tbody>
+    </table>
+  </body>
+</html>
