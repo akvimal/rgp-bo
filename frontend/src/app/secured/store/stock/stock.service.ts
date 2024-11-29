@@ -15,9 +15,7 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock`);
     }
 
-    filterByCriteria(criteria:any){    
-        console.log('filtering...',criteria);
-            
+    filterByCriteria(criteria:any){   
         return this.http.post(`${this.apiurl}/stock/filter`, criteria);
     }
 
