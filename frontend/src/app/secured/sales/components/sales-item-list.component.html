@@ -58,8 +58,10 @@
     <button type="button" class="btn  btn-primary" onclick="javascript:window.print();">Print</button>
   </div> -->
 </div>
+
 <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
-      [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+      [paginator]="true" [rows]="10" [showCurrentPageReport]="true" 
+      styleClass="p-datatable-gridlines mt-4"
       currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
       [rowsPerPageOptions]="[10,25,50]">
     <!-- <table class="table table-bordered mt-4 sale-items"> -->

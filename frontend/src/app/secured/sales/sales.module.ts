@@ -29,9 +29,8 @@ import { SaleReturnFormComponent } from "./components/sale-return-form.component
 import { SaleDeliveryFormComponent } from "./components/sale-delivery-form.component";
 import { SaleHistoryCustomerComponent } from "./components/sale-history-customer.component";
 import { CustomersModule } from "../customers/customers.module";
-import { CustomersComponent } from "../customers/components/customers.component";
-import { CustomerFormComponent } from "../customers/components/customer-form.component";
 import { DocumentsModule } from "../documents/documents.module";
+import { MultiSelectModule } from "primeng/multiselect";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
@@ -77,6 +76,7 @@ const routes: Routes = [
         TabViewModule,
         InputNumberModule,
         TableModule,
+        MultiSelectModule,
         RouterModule.forChild(routes),
         SharedModule,
         CustomersModule,

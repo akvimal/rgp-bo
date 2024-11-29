@@ -76,7 +76,7 @@
           <th>Digital</th>
           <th>Cash</th>
           <th>Total</th>
-          <th>Delivery</th>
+          
           <th *ngIf="!self">Sale Person</th>
           <th>Actions</th>
         </tr>
@@ -108,7 +108,7 @@
             <td style="text-align: right;">{{s.digiamt}}</td>
             <td style="text-align: right;">{{s.cashamt}}</td>
             <td style="text-align: right;">{{s.total}}</td>
-            <td><p *ngIf="s.deliverytype == 'Delivery' && s.delivery == null">Book</p></td>
+            
             <td *ngIf="!self">{{s.created ? s.created.fullname : ''}}</td>
             <td>
               <h4 class="icon"*ngIf="isActionAllowed('Print',s)">
@@ -135,7 +135,7 @@
     </ng-template>
     <ng-template pTemplate="footer">
       <tr>
-          <td colspan="3" class="text-end">Total</td>
+          <td colspan="4" class="text-end">Total</td>
           <td style="text-align: right;">{{totals['digital']}}</td>
           <td style="text-align: right;">{{totals['cash']}}</td>
           <td style="text-align: right;">{{totals['net']}}</td>

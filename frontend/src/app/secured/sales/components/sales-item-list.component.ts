@@ -23,6 +23,7 @@ export class SalesItemListComponent {
   constructor(private service: SaleService, private propService:PropsService, private dateService:DateUtilService) { }
 
   ngOnInit() {
+    
     if (this.category) {
       this.criteria.category = this.category; 
     }
@@ -37,11 +38,6 @@ export class SalesItemListComponent {
     this.criteria.product = '';
     this.criteria.category = '';
     this.criteria.props = [];
-  }
-
-  isH1DrugFilter() {
-    const present = this.criteria.props.filter(p => (p.id === 'schedule' && p.value === 'H1'));
-    return present.length > 0;
   }
 
   fetchFilterProps(event: any) {
