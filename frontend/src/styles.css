@@ -142,7 +142,10 @@
     padding: 0;
     list-style: none;
 }
-
+.document label {
+    margin-right:.5em;
+    font-weight: bold;
+}
 .orderitemsciteria .criteria {
     margin-right: 1.5em;
 }

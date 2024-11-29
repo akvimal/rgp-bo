@@ -100,10 +100,10 @@
                 <td>{{item.sale.billdate | date: 'dd/MM/yy h:mm a'}}</td>
                 <td>{{item.sale.customer?.name}}</td>
                 <td>
-                  <div *ngIf="item.sale.props && item.sale.props.documents">
-                    <div *ngFor="let d of item.sale.props.documents">
-                      <span>{{d.category}}</span><br>
-                      <ul><li *ngFor="let p of d.props"><span>{{p.label}}</span><span>{{p.value}}</span> </li></ul>
+                  <div *ngIf="item.sale.props && item.sale.props.documents" class="documents">
+                    <div *ngFor="let d of item.sale.props.documents" class="document">
+                      <span class="category">{{d.category}}</span><br>
+                      <ul><li *ngFor="let p of d.props"><label>{{p.label}}</label><span>{{p.value}}</span> </li></ul>
                     </div>
                   </div>
                   
