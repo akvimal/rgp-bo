@@ -1,19 +1,20 @@
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { FormControl, FormGroup } from "@angular/forms";
 import { ProductsService } from "src/app/secured/products/products.service";
 
 @Component({
     selector: 'app-product-select',
     template: `
+    <span class="p-fluid">
+    <form [formGroup]="formGroup">
         <p-autoComplete 
-        [(ngModel)]="title"
-        (onKeyUp)="input($event)"
         (onSelect)="doneSelect($event)" 
+        formControlName="title"
         field="title"
         placeholder="Name / Composition" 
         [suggestions]="filteredProducts" 
         [minLength]="2"
         (completeMethod)="filterProduct($event)" 
-        [showEmptyMessage]="true"
         [inputStyle]="{'background-color':'#9df'}">
             <ng-template let-product pTemplate="item">
                 <div>
@@ -23,51 +24,44 @@ import { ProductsService } from "src/app/secured/products/products.service";
                     </p>
                 </div>
             </ng-template>
-            </p-autoComplete>
+        </p-autoComplete>
+        </form>
+    </span>
     `
 })
 export class ProductSelectComponent {
 
-    @Input() product:any;
-    title = '';
+    @Input() reset = false;
     filteredProducts:any[] = [];
     products:any = [];
-    disabled:boolean = false;
 
-    // @Input() inputText:any;
+    formGroup = new FormGroup({
+        title: new FormControl(null)
+    });
+
     @Output() selected = new EventEmitter();
 
     constructor(private prodService:ProductsService){}
 
-    ngOnInit(){
-        this.prodService.findAll(null).subscribe(data => this.products = data);
+    ngOnChanges(changes:SimpleChanges){
+        if(changes.reset.currentValue == true){
+            this.formGroup.reset();
+        }
     }
 
     filterProduct(event:any) {
-        // this.product = {existing:false,product:{title:event.query}};
-        
-        let filtered : any[] = [];
         let query = event.query;
+        let criteria = {condition:'any', criteria:[
+            {property:'title',check:'startswith',value:query},
+            {property:'composition', props_json:'more_props', check:'contains',value:query}]};
 
-        for(let i = 0; i < this.products.length; i++) {
-            let prod = this.products[i];
-            if ((prod.title.toLowerCase().indexOf(query.toLowerCase()) == 0) || 
-                (prod.category ==='Drug' && prod.props && prod.props.composition && prod.props.composition.toLowerCase().indexOf(query.toLowerCase()) >= 0) ) {
-                filtered.push({id:prod['id'],title:prod['title']});
-            }
-        }
-        this.filteredProducts = filtered;
+        this.prodService.findByCriteria(criteria).subscribe((data:any) => {
+            this.filteredProducts = data;
+        });
     }
 
     doneSelect(event:any){
         this.selected.emit(event);
     }
 
-    clear(){
-        this.disabled = false;
-    }
-
-    input(event:any){
-        this.selected.emit({title:this.title});
-    }
 }

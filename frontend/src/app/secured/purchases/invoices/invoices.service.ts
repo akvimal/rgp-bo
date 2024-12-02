@@ -53,6 +53,8 @@ export class InvoiceService {
     }
 
     saveItem(item:InvoiceItem){
+        console.log('item to be saved:',item);
+        
         const obj:any ={}
         for (const [key, value] of Object.entries(item)) {
             if(value !== ''){

@@ -17,6 +17,10 @@ export class ProductsService {
         return this.http.get(this.apiurl,{params:criteria});
     }
 
+    findByCriteria(criteria:any){
+        return this.http.post(`${this.apiurl}/filter`,{...criteria, limit:25});
+    }
+
     findAllPrices(){
         return this.http.get(`${this.apiurl}/prices`);
     }

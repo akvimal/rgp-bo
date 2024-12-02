@@ -6,22 +6,24 @@ import { Injectable } from "@angular/core";
 export class DateUtilService {
 
     parseDate(date:any){
-        let mon = 0
-        let day = 0
-        let yr = 0
-        
-        if(typeof date === 'object'){
-            day = date.getDay();
-            mon = date.getMonth() + 1;
-            yr = date.getFullYear();
+        if(date){
+            let mon = 0
+            let day = 0
+            let yr = 0
+            
+            if(typeof date === 'object'){
+                day = date.getDay();
+                mon = date.getMonth() + 1;
+                yr = date.getFullYear();
+            }
+            else {
+                const arr = date.split('/');
+                mon = arr[0] + 1;
+                yr = arr[1];
+            }
+            return yr+'-'+(mon < 10 ? '0'+mon : ''+mon)+'-01';
         }
-        else {
-            const arr = date.split('/');
-            mon = arr[0] + 1;
-            yr = arr[1];
-        }
-        
-        return yr+'-'+(mon < 10 ? '0'+mon : ''+mon)+'-01';;
+        return '';
     }
 
     formatDate(dateStr:string){

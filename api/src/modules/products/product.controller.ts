@@ -21,6 +21,11 @@ export class ProductController {
         return this.productService.create(createDto, currentUser.id);
     }
 
+    @Post('/filter')
+    async filterByCriteria(@Body() criteria: any) {
+      return this.productService.filterByCriteria(criteria);
+    }
+
     @Post('prices')
     async addPrice(@Body() createDto: CreateProductPrice2Dto,  @User() currentUser: any) {
         return this.productService.addPrice(createDto, currentUser.id);

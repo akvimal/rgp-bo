@@ -21,16 +21,13 @@ export class InvoiceItemsComponent {
     disctotal:number = 0;
     nettotal:number = 0;
 
-    constructor(private route:ActivatedRoute,
-        private invService: InvoiceService){}
+    constructor(private route:ActivatedRoute, private invService: InvoiceService){}
 
     ngOnInit(){
         this.fetchItems(this.route.snapshot.paramMap.get('id'));
     }
 
     fetchItems(id:any){
-        console.log('fetching items',id);
-        
         this.nettotal = 0;
         this.grosstotal = 0;
         this.disctotal = 0;

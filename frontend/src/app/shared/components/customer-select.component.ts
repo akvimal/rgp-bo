@@ -44,10 +44,9 @@ export class CustomerSelectComponent {
             {property:'name',check:'startswith',value:query},
             {property:'mobile',check:'startswith',value:query}]};
         
-            this.customerService.findByCriteria(criteria).subscribe((data:any) => {
-                this.filteredCustomer = data; 
-                
-            });
+        this.customerService.findByCriteria(criteria).subscribe((data:any) => {
+            this.filteredCustomer = data;  
+        });
     }
 
     input(event:any){

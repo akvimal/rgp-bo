@@ -26,6 +26,36 @@ export class ProductService {
         return qb.getMany();
     }
 
+    async filterByCriteria(criteria:any) {
+
+      const qb = this.productRepository.createQueryBuilder('p')
+          .where('p.active = :flag', { flag: true });
+          let ch = '';
+          for(let index = 0; index < criteria.criteria.length; index++) {
+              const c = criteria.criteria[index];
+              let prop = c.property;
+              if(c['props_json']){
+                prop = `${c['props_json']}->>'${c.property}'`
+              }
+
+              if(c['check'] === 'startswith'){
+                  ch += `${prop} ilike '${c.value}%'`
+              }
+              if(c['check'] === 'contains'){
+                ch += `${prop} ilike '%${c.value}%'`
+            }
+              
+
+              if(index < (criteria.criteria.length-1))
+                  ch +=  criteria.condition === 'any' ? ' or ' : ' and '
+          }
+  
+          qb.andWhere(ch);
+          if(criteria.limit)
+              qb.limit(criteria.limit);
+      return qb.getMany();
+  }
+
     async findPrices(criteria:any){
       return await this.manager.query(
         `select p.id, pp.id as price_id, p.title, pii.ptr as our_max_ptr, pii.mrp as our_max_mrp, pp.market_price, coalesce(pp.sale_price,0) as our_sale_price

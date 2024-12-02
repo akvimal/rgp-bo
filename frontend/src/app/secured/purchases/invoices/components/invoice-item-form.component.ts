@@ -10,16 +10,16 @@ import { InvoiceService } from "../invoices.service";
 })
 export class InvoiceItemFormComponent {
 
+    batch=''
+    productReset=false;
+
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
-        // invoiceid: new FormControl('',Validators.required),
         productid: new FormControl('',Validators.required),
         batch: new FormControl(''),
-        // pack: new FormControl(''),
-        mfrdate: new FormControl(''),
         expdate: new FormControl(''),
         qty: new FormControl('',Validators.required),
-        ptrvalue: new FormControl('',Validators.required),
+        ptrvalue: new FormControl('',[Validators.required]),
         mrpcost: new FormControl('',Validators.required),
         taxpcnt: new FormControl(''),
         discpcnt: new FormControl(''),
@@ -45,7 +45,6 @@ export class InvoiceItemFormComponent {
         private dateUtilService: DateUtilService){}
     
     ngOnInit(){
-        // this.form.controls['invoiceid'].setValue(this.invoiceid);
         this.prodService.findAll(null).subscribe(data => this.products = data);
     }
 
@@ -53,10 +52,8 @@ export class InvoiceItemFormComponent {
         if(changes.itemid && changes.itemid.currentValue){
             this.invService.findItem(changes.itemid.currentValue).subscribe((data:any) => {
                 this.form.controls['id'].setValue(data.id);
-                // this.form.controls['invoiceid'].setValue(data.invoiceid);
                 this.form.controls['productid'].setValue(data.productid);
                 data.batch && this.form.controls['batch'].setValue(data.batch);
-                data.mfrdate && this.form.controls['mfrdate'].setValue(this.dateUtilService.formatDate(data.mfrdate));
                 data.expdate && this.form.controls['expdate'].setValue(this.dateUtilService.formatDate(data.expdate));
                 this.form.controls['mrpcost'].setValue(data.mrpcost);
                 this.form.controls['ptrvalue'].setValue(data.ptrvalue);
@@ -79,10 +76,14 @@ export class InvoiceItemFormComponent {
         let query = event.query;
         for(let i = 0; i < this.batches.length; i++) {
             let batch = this.batches[i];
-            if (batch.batch.toLowerCase().indexOf(query.toLowerCase()) == 0) {
-                filtered.push(batch);
+            if (batch.batch.toLowerCase().indexOf(query.toLowerCase()) == 0 && new Date(batch.expdate) > new Date()) {
+                const existing = filtered.filter(f => f.batch == batch.batch);
+                if(existing.length == 0) {
+                    filtered.push(batch);
+                }
             }
         }
+        
         this.filteredBatches = filtered;            
     }
 
@@ -111,13 +112,11 @@ export class InvoiceItemFormComponent {
         this.form.controls['discpcnt'].setValue(event.discpcnt);
         this.form.controls['taxpcnt'].setValue(event.taxpcnt);
         this.form.controls['mrpcost'].setValue(event.mrpcost);
-        this.form.controls['mfrdate'].setValue(new Date(event.mfrdate));
         this.form.controls['expdate'].setValue(new Date(event.expdate));
     }
     
     clearBatch(){
         this.form.controls['batch'].setValue('');
-        this.form.controls['mfrdate'].setValue('');
         this.form.controls['expdate'].setValue('');
         this.form.controls['mrpcost'].setValue('');
         this.form.controls['qty'].setValue('');
@@ -133,12 +132,11 @@ export class InvoiceItemFormComponent {
     selectProduct(event:any){
         this.selectedProduct = event;
         
-        this.invService.findItemsByProduct(this.selectedProduct.id)
+        this.selectedProduct && this.invService.findItemsByProduct(this.selectedProduct.id)
             .subscribe((items:any) => {
                 this.batches = items.map((i:any) => {
                     return {batch:i.batch,
                         expdate:i.expdate,
-                        mfrdate:i.mfrdate,
                         createdt:i.createdon,
                         discpcnt:i.discpcnt,
                         taxpcnt:i.taxpcnt,
@@ -146,25 +144,20 @@ export class InvoiceItemFormComponent {
                         ptrvalue:i.ptrvalue.toFixed(2)
                     }
                 });
-                
                 this.clearBatch();
-
         });
-        // this.form.controls['pack'].setValue(this.selectedProduct.pack);
         this.form.controls['productid'].setValue(this.selectedProduct.id);
     }
 
     calculateTotal(qty:number,price:number,disc:number,tax:number):number{
         const gross = qty * price;
         const gross_after_disc = gross - (gross*(disc/100));
-        // const total = gross_after_disc + (gross_after_disc*(tax/100));
         const total = gross_after_disc;
         return isNaN(total) ? 0 : +total.toFixed(2);
     }
     
     getPTRAfterTax(){
         return this.form.value.ptrvalue * (1+(this.form.value.taxpcnt/100));
-        // return (this.form.value.ptrvalue/this.form.value.pack) *(1+(this.form.value.taxpcnt/100));
     }
 
     loadexist(){
@@ -173,7 +166,6 @@ export class InvoiceItemFormComponent {
         this.form.controls['discpcnt'].setValue('')
         this.form.controls['taxpcnt'].setValue('')
         this.form.controls['mrpcost'].setValue('')
-        this.form.controls['mfrdate'].setValue('')
         this.form.controls['expdate'].setValue('')
         this.form.controls['qty'].setValue('')
         this.form.controls['freeqty'].setValue('')
@@ -191,7 +183,6 @@ export class InvoiceItemFormComponent {
                 this.form.controls['discpcnt'].setValue(item.disc_pcnt);
                 this.form.controls['taxpcnt'].setValue(item.tax_pcnt);
                 this.form.controls['mrpcost'].setValue(item.mrp_cost);
-                this.form.controls['mfrdate'].setValue(new Date(item.mfr_date));
                 this.form.controls['expdate'].setValue(new Date(item.exp_date));
 
                 this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrvalue,
@@ -209,11 +200,8 @@ export class InvoiceItemFormComponent {
 
     submit(){
         if(this.itemid){
-            console.log('updating items ...');
-            
             this.invService.updateItems([this.form.value.id],{...this.form.value,
                 batch:this.form.value.batch.toUpperCase(),
-                mfrdate:this.dateUtilService.parseDate(this.form.value.mfrdate),
                 expdate:this.dateUtilService.parseDate(this.form.value.expdate),
                 ptrcost:this.getPTRAfterTax(),
                 total: this.total}).subscribe(data => {
@@ -222,8 +210,7 @@ export class InvoiceItemFormComponent {
             });
         }
         else {
-            console.log('saving items ...');
-            this.invService.saveItem({...this.form.value, invoiceid:this.invoiceid,
+            this.invService.saveItem({...this.form.value, expdate:this.dateUtilService.parseDate(this.form.value.expdate) , invoiceid:this.invoiceid,
                 batch:this.form.value.batch.toUpperCase(),
                 ptrcost:this.getPTRAfterTax(), total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);
@@ -238,5 +225,6 @@ export class InvoiceItemFormComponent {
         this.total = 0;
         this.sellermargin = 0;
         this.customersaving = 0;
+        this.productReset = true;
     }
 }
