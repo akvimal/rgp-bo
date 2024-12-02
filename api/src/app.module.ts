@@ -21,9 +21,11 @@ import { StockModule } from './modules/stock/stock.module';
 import { SaleReturnModule } from './modules/returns/salereturn.module';
 import { FilesModule } from './modules/files/files.module';
 import { DocumentModule } from './modules/documents/document.module';
+import { ExportController } from './modules/documents/export.controller';
+import { ReportModule } from './modules/reports/report.module';
 
 @Module({
-  controllers: [ AppController, FileDownloadController ],
+  controllers: [ AppController, FileDownloadController, ExportController ],
   providers: [ {
     provide: APP_INTERCEPTOR,
     useClass: ErrorsInterceptor,
@@ -49,7 +51,8 @@ import { DocumentModule } from './modules/documents/document.module';
     SaleReturnModule,
     StockModule,
     FilesModule,
-    DocumentModule
+    DocumentModule,
+    ReportModule
   ]
 })
 export class AppModule {}

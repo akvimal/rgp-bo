@@ -26,7 +26,7 @@
                                 &nbsp;&nbsp;<button class="btn btn-outline-secondary" (click)="resetCustomer()">Cancel</button>
                             </div>
                         </div>
-                            <!-- <ng-template #showCustomer> -->
+                            
                                 <div class="mt-2" *ngIf="sale.customer.existing">{{sale.customer?.name}} ({{sale.customer?.mobile}})
                                     &nbsp;&nbsp;<h4 class="icon">
                                         <a (click)="showPrevSalesCopy()">
@@ -35,12 +35,9 @@
                                         &nbsp;&nbsp;<a (click)="resetCustomer()">
                                             <i class="bi bi-x-square text-danger"></i>
                                         </a>
-                                        <!-- &nbsp;&nbsp;<a (click)="showPrescriptions()"><i class="bi bi-clipboard2-plus"></i></a> -->
+                                    
                                     </h4>
                                 </div>
-                            <!-- </ng-template> -->
-                            
-                        <!-- </div> -->
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
@@ -130,12 +127,12 @@
             
         </div>
         <div class="d-flex justify-content-end col-4">
-            <div *ngIf="isPrescriptionItemsFound()" class="mt-3 ml-3">
+            <div *ngIf="isDocumentRequiredOnSale() && !isDocumentProvided()" class="mt-3 ml-3">
                 <input type="checkbox" style="width: 20px;height: 20px;" [(ngModel)]="sale.docpending">
-                <span style="font-size: large;"> Document Pending</span>
+                &nbsp;<span style="font-size: large;color:red;">{{getMisingDocs()}}</span> <span style="font-size: large;">&nbsp;pending</span>
             </div>
             <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
-                        [disabled]="!isCompleteReady()">Complete</button>    
+                        [disabled]="!isSaleFormValid()">Complete</button>    
                 
             <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
                 <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->

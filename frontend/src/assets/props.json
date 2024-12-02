@@ -12,7 +12,6 @@
         "id": "schedule",
         "label": "Schedule",
         "type": "SINGLE-SELECT",
-        "default": "H",
         "filter":true,
         "choices": [
           {
@@ -30,18 +29,18 @@
         ]
       },{
         "id": "document",
-        "label": "Document",
+        "label": "Document Required On Sale",
         "type": "SINGLE-SELECT",
         "default": "None",
         "filter":true,
         "choices": [
           {
-            "label": "None",
-            "value": "None"
-          },
-          {
             "label": "Prescription",
             "value": "Prescription"
+          },
+          {
+            "label": "Age Proof",
+            "value": "Age Proof"
           }
         ]
       }
@@ -50,69 +49,48 @@
     "category": "OTC",
     "props":[
       {
-        "id": "conditions",
-        "label": "Condition",
-        "type": "MULTI-SELECT",
-        "searchable": true,
+        "id": "subcategory",
+        "label": "Sub Category",
+        "type": "SINGLE-SELECT",
+        "default": "Others",
+        "filter":true,
         "choices": [
           {
-            "name": "Skin Care",
-            "code": "SkinCare"
-          },{
-            "name": "Oral Care",
-            "code": "OralCare"
-          },{
-            "name": "Eye Care",
-            "code": "EyeCare"
-          },{
-            "name": "Supplement",
-            "code": "Supplement"
-          },{
-            "name": "Fever",
-            "code": "Fever"
+            "label": "Supplements",
+            "value": "Supplements"
           },
           {
-            "name": "Cold",
-            "code": "Cold"
-          }]
-        }
+            "label": "Surgicals",
+            "value": "Surgicals"
+          },
+          {
+            "label": "Others",
+            "value": "Others"
+          }
+        ]
+      },
+      {
+        "id": "document",
+        "label": "Document Required On Sale",
+        "type": "SINGLE-SELECT",
+        "default": "None",
+        "filter":true,
+        "choices": [
+          {
+            "label": "Prescription",
+            "value": "Prescription"
+          },
+          {
+            "label": "Age Proof",
+            "value": "Age Proof"
+          }
+        ]
+      }
     ]
   }]
 }, {
   "entity": "document",
   "config" : [
-    {
-      "category": "H1",
-      "props":[
-        {
-          "id": "prescno",
-          "label": "ID"
-        },
-        {
-          "id": "prescdate",
-          "label": "Date"
-        },
-        {
-          "id": "prescdoctor",
-          "label": "Doctor",
-          "required":true
-        },
-        {
-          "id": "ptntname",
-          "label": "Patient Name",
-          "required": true
-        },
-        {
-          "id": "ptntmobile",
-          "label": "Patient Phone",
-          "required": true
-        },
-        {
-          "id": "ptntaddr",
-          "label": "Patient Address"
-        }
-      ]
-    },
     {
       "category": "Prescription",
       "props":[        
@@ -143,6 +121,27 @@
           "required": true
         }
       ]
+    },{
+      "category": "Age Proof",
+      "props":[        
+        {
+          "id": "prooftype",
+          "label": "Proof Type",
+          "required":true,
+          "type": "SINGLE-SELECT",
+          "choices": [
+            {
+              "label": "Driving License",
+              "value": "Driving License"
+            },
+            {
+              "label": "AADHAR Card",
+              "value": "AADHAR Card"
+            }
+          ]
+        }
+      ]
     }
   ]
 }]
+

@@ -7,7 +7,7 @@
                 <input class="form-control" type="file" (change)="onChange($event)">&nbsp;&nbsp;
                 <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
             </div>
-            <app-props-form [entity]="'document'" [copyProps]="copyProps" [reset]="reset" (updated)="propsUpdate($event)"></app-props-form>
+            <app-props-form [entity]="'document'" [copyProps]="copyProps" (updated)="propsUpdate($event)"></app-props-form>
             <div class="row">
                 <div class="col-12 text-end">
                     <span *ngIf="loading">Loading...</span>      

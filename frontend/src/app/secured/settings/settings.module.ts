@@ -49,6 +49,7 @@ const routes: Routes = [
       UserEditFormComponent
     ],
     imports: [
+        RouterModule.forChild(routes),
         CommonModule,
         ReactiveFormsModule,
         FormsModule,
@@ -58,7 +59,6 @@ const routes: Routes = [
         TabViewModule,
         InputNumberModule,
         TableModule,
-        RouterModule.forChild(routes),
         SharedModule
     ],
     exports: [RouterModule]

@@ -29,6 +29,6 @@ import { PropsFormComponent } from "./components/props-form.component";
         MultiSelectModule,
         SharedModule
     ],
-    exports: [DocumentUploadComponent,DocumentListComponent,DocumentViewerComponent,ObjPrintComponent]
+    exports: [DocumentUploadComponent,DocumentListComponent,DocumentViewerComponent,PropsFormComponent, ObjPrintComponent]
   })
 export class DocumentsModule{}

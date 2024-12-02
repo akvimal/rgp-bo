@@ -1,44 +1,34 @@
-import { HttpClient } from "@angular/common/http";
 import { Component } from "@angular/core";
 import { FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
-import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
 import { StockService } from "../../store/stock/stock.service";
 import { SaleHelper } from "../sale.helper";
 import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
 import { CustomersService } from "../../customers/customers.service";
-import { SaleValidator } from "../sale.validator";
 
 @Component({
     templateUrl: 'sale-form.component.html'
 })
 export class SaleFormComponent {
 
-    newcustomer = {existing:false,mobile:'',name:''}
+    customer = {existing:false,mobile:'',name:''}
     sale:Sale = {status:'NEW',items:[],digimethod:'PayTM'}
     
+    showDocument = false;
+    docpath = '';
     documents:any[] = [];
+    doctypes:any[] =[];
 
     showCustomerView = false;
 
-    showDocument = false;
-    docpath = '';
-
-    displaySalePropsForm = false;
-    displayPrescritionForm = false;
-
-    salePropValues:any;
-
     total:number = 0;
     payment:any = {};
-    paymentValid=false;
 
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
 
-    saleprops:any[] = []
     form:FormGroup = new FormGroup({});
 
     custCustomerTypes:any[] = [
@@ -58,15 +48,12 @@ export class SaleFormComponent {
       private service: SaleService,
       private customerService: CustomersService,
       private stockService: StockService,
-      private dateService: DateUtilService,
-      private prodUtilService: ProductUtilService,
-      private validator: SaleValidator
-      ){}
+      private prodUtilService: ProductUtilService){}
 
     ngOnInit(){
       
       this.sale.billdate = new Date();
-      this.sale['customer'] = this.newcustomer;
+      this.sale['customer'] = this.customer;
       this.sale['ordertype'] = 'Walk-in';
       this.sale['deliverytype'] = 'Counter';
       //get the id from url query params
@@ -95,7 +82,7 @@ export class SaleFormComponent {
             if(this.sale.customer)
               this.sale.customer = {...this.sale.customer, existing:true};
             else
-              this.sale.customer = this.newcustomer;
+              this.sale.customer = this.customer;
 
             this.payment['cashamt'] = this.sale['cashamt'];
             this.payment['digimode'] = this.sale['digimethod'];
@@ -179,11 +166,6 @@ export class SaleFormComponent {
     return props && props.length > 0;
   }
 
-  // continueSubmit(){
-  //   this.saleWithCustomer = false;
-  //   this.submit(this.sale.status);
-  // }
-
   discard(){
     this.sale.id && this.service.remove(this.sale.id).subscribe(data => {
       this.service.refreshSavedSales();
@@ -224,7 +206,6 @@ export class SaleFormComponent {
     this.sale.props = {documents: this.documents};
 
     this.service.save({...obj, billdate:new Date(), status}).subscribe((data:any) => {
-      this.salePropValues = null;
       this.redirectAfterSubmit(data.status, data.id);
       this.service.refreshSavedSales();
     });
@@ -244,17 +225,6 @@ export class SaleFormComponent {
       this.sale.customer = {}
     }
 
-    // if(attr === 'srctype'){
-    //   this.sale.customer.srctype = event.target.value;
-    // } else if(attr === 'srcdesc'){
-    //   this.sale.customer.srcdesc = event.target.value;
-    // } else if(attr === 'address'){
-    //   this.sale.customer.address = event.target.value
-    // } else if(attr === 'area'){
-    //   this.sale.customer.area = event.target.value
-    // } else if(attr === 'locality'){
-    //   this.sale.customer.locality = event.target.value
-    // } else 
     if(attr === 'email'){
       this.sale.customer.email = event.target.value
     } else if(attr === 'name'){
@@ -284,11 +254,6 @@ export class SaleFormComponent {
   captureCustomerInfo(event:any){
     this.sale.customer = event;
   }
-  // copyCustomerInfo(event:any) {  
-  //   this.form.controls['props'].get('ptntname')?.setValue(event.target.checked ? this.sale.customer.name : '');
-  //   this.form.controls['props'].get('ptntmobile')?.setValue(event.target.checked ? this.sale.customer.mobile : '');
-  //   this.form.controls['props'].get('ptntaddr')?.setValue(event.target.checked ? this.sale.customer.address : '');
-  // }
 
   onCustomerData(event:any){
     if(event['action'] == 'productsSelected'){
@@ -318,31 +283,16 @@ export class SaleFormComponent {
     this.showCustomerView = false;
   }
 
-  onSubmitSaleProps(){
-    this.displaySalePropsForm = false;
-    this.salePropValues = this.form.controls['props'].value;
-    this.submit('COMPLETE');
-  }
+  isSaleFormValid(){
+    if(this.sale.items?.length == 0)
+      return false;
 
-  // isPrescriptionItemsFound(){
-  //   // console.log('isPrescRequired: ',this.sale.items);
-    
-    
-  //   const prescitems = this.sale.items && this.sale.items.filter((i:any) => i.more_props && i.more_props['schedule'] == 'H1') || [];
-  //   return prescitems.length > 0;
-  // }
-
-  isCompleteReady(){
-    // customer mobile is empty or 10 digit and name should be minimum 2 characters
     const customerValid = this.sale.customer && (this.sale.customer.mobile.length == 0 || 
         (this.sale.customer.mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2));
 
-    return this.validator.validate(this.sale,this.documents) && 
-          customerValid && this.payment && this.payment['valid'];
-  }
-
-  showPrescriptions(){
-    this.displayPrescritionForm = true;
+    return (this.doctypes.length == 0 || 
+      (this.isDocumentProvided() || (this.sale.customer.mobile.length == 10 && this.sale.docpending)))
+      && customerValid;
   }
 
   removeDocument(id:number){
@@ -350,13 +300,39 @@ export class SaleFormComponent {
     this.documents.splice(index,1)
   }
 
-  isPrescriptionItemsFound() {
-    return this.sale.items && this.sale.items.find((i:any) => i.more_props && i.more_props['document'] == 'Prescription' )
+  isDocumentRequiredOnSale() {
+    const doctypesrequired:any[] = [];
+    this.sale.items?.forEach((item:any) => {
+      const docprops = item['more_props'];
+      if(docprops){
+        doctypesrequired.push(docprops['document']);
+      }
+    });
+    
+    this.doctypes = doctypesrequired;
+    return this.doctypes.length > 0;
+  }
+
+  isDocumentAvailable(documents:any,reqddocs:any[]){
+    let valid = true;
+    reqddocs.forEach(doctype => {
+      const found = documents.find((d:any) => d['category'] == doctype);
+      valid = valid && found;
+    });
+    return valid;
   }
 
   viewDoc(doc:any){
-    console.log(doc);
     this.docpath = doc.path;
     this.showDocument = true;
+  }
+
+  isDocumentProvided(){
+    return this.isDocumentAvailable(this.documents,this.doctypes)
+  }
+
+  getMisingDocs(){
+    const doctypespresent = this.documents.map(d => d.category);
+    return this.doctypes.filter(d => !doctypespresent.includes(d));
   }
 }

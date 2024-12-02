@@ -10,19 +10,17 @@ export class PropsFormComponent{
     
   @Input() entity = '';
   @Input() copyProps:any;
-  
-  @Input() reset:boolean = false;
+  @Input() default = true;
   @Output() updated:EventEmitter<any> = new EventEmitter();
 
-   
-  categories:{category:string,props:any[]}[] = []
+  categories:{category:string,props:any[]}[] = [];
 
     form:FormGroup = new FormGroup({
         category: new FormControl(''),
         props: new FormControl('')
     });
     props:any;
-
+    
     constructor(private propsService:PropsService){}
 
     ngOnInit(){
@@ -34,51 +32,45 @@ export class PropsFormComponent{
     }
 
     dataInput(type:any,key:any,event:any){
-      // console.log(this.form);
-      
       this.updated.emit({valid:this.form.valid, values:{category: this.form.controls['category'].value, props:this.mapToLabelValues(this.form.value)}});
     }
 
     mapToLabelValues(values:any){
-      // console.log(this.props);
-      // console.log(values);
       let newval:any = []
       Object.keys(values['props']).forEach((k:string) => {
         const prop = this.props.find((p:any) => p['id'] == k);
         const s = prop['label'];
-        newval.push({label:s, value:values['props'][k]})
-        // obj = {...obj, `'${s}'`: values['props'][k]};
-      })
-      // values['props'] = 
-      // console.log(newval);
-      
+        newval.push({id:prop.id, label:s, value:values['props'][k]});
+      });
       return newval;
     }
     
     selectProps(event:any,values:any){
+      console.log(event.target.value);
+      this.form.controls['props'].reset();
       this.populateProps(event.target.value,undefined);
+      this.dataInput(undefined,undefined,undefined);
     }
 
     populateProps(category:any,values:any){
       //TODO: on copying values, other properties also cleared
       this.props = [];
+
       const catProps = this.categories.find((c:any) => c.category == category);
-          
+      let pps = {};    
       if(catProps){
         this.props = catProps.props;
-        
-        let pps = {};  
         for(let i=0;i<this.props.length;i++){
           const pname = this.props[i].id;
-          const value = values ? values[pname] : this.props[i].default;
+          const value = values ? values[pname] : (this.default ? this.props[i].default : '');
           const fc = new FormControl(value);
           if(this.props[i].required) {
             fc.setValidators(Validators.required);
           }
           pps = {...pps, [pname]:fc}
         }
-        this.form.setControl('props', new FormGroup(pps));
       }
+      this.form.setControl('props', new FormGroup(pps));
     }
 
     copyData(event:any){
