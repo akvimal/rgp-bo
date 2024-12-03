@@ -100,6 +100,6 @@ constructor(private fileUploadService: FileUploadService,private sanitizer: DomS
     this.fileService.view(path).subscribe((data:any) => {
       const blob = new Blob([data], { type: 'image/png' });
       this.content = this.sanitizer.bypassSecurityTrustResourceUrl(window.URL.createObjectURL(blob));
-  });
+    });
   }
 }
