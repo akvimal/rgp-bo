@@ -61,7 +61,7 @@ export class SaleFormComponent {
         const saleId =  params.get("id");
 
         saleId !== null && this.service.find(saleId).subscribe((result:any) => {
-          console.log(result);
+          // console.log(result);
           
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
@@ -89,7 +89,7 @@ export class SaleFormComponent {
             this.payment['digiamt'] = this.sale['digiamt'];
             this.payment['digirefno'] = this.sale['digirefno'];
             this.sale['docpending'] = result['docpending'];
-            console.log(this.sale['docpending']);
+            // console.log(this.sale['docpending']);
             this.recalculateTotal()
           });
         });
@@ -270,7 +270,7 @@ export class SaleFormComponent {
     }
     else if(event['action'] == 'documentsSelected'){
       const docs = event['event'];
-      console.log(docs);
+      // console.log(docs);
       
       docs.forEach((d:any) => {
         const found = this.documents.find((td:any) => td.id === d.id);

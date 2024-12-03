@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { StoreModule } from "@ngrx/store";
 import { NgxChartsModule } from "@swimlane/ngx-charts";
+import { DialogModule } from "primeng/dialog";
 import { AuthGuard } from "../@core/auth/auth.guard";
 import { SharedModule } from "../shared/shared.module";
 import { CustomersModule } from "./customers/customers.module";
@@ -68,7 +69,8 @@ const routes: Routes = [
         StoreModule,
         CustomersModule,
         SalesModule,
-        DocumentsModule
+        DocumentsModule,
+        DialogModule
     ],
     exports: [RouterModule]
   })

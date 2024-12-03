@@ -1,7 +1,6 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { DateUtilService } from "src/app/secured/date-util.service";
-import { ProductsService } from "src/app/secured/products/products.service";
 import { InvoiceService } from "../invoices.service";
 
 @Component({
@@ -10,8 +9,10 @@ import { InvoiceService } from "../invoices.service";
 })
 export class InvoiceItemFormComponent {
 
+    title=''
     batch=''
     productReset=false;
+    @Input() mode=''
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -40,17 +41,14 @@ export class InvoiceItemFormComponent {
     customersaving:number = 0;
     batches:any[]=[];
 
+
     constructor(private invService: InvoiceService, 
-        private prodService:ProductsService,
         private dateUtilService: DateUtilService){}
-    
-    ngOnInit(){
-        this.prodService.findAll(null).subscribe(data => this.products = data);
-    }
 
     ngOnChanges(changes:SimpleChanges){
         if(changes.itemid && changes.itemid.currentValue){
             this.invService.findItem(changes.itemid.currentValue).subscribe((data:any) => {
+                this.title = data.product.title;
                 this.form.controls['id'].setValue(data.id);
                 this.form.controls['productid'].setValue(data.productid);
                 data.batch && this.form.controls['batch'].setValue(data.batch);

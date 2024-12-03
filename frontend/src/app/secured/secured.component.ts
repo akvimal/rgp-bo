@@ -9,6 +9,7 @@ import { UsersService } from "./settings/users/users.service";
 })
 export class SecuredComponent {
   
+    // showUserPopup = false;
     user:any;
     state$!:Observable<AppState>;
     
@@ -21,4 +22,8 @@ export class SecuredComponent {
     ngOnInit(){
       this.userService.getCurrentUser().subscribe(data => this.user = data);
     }
+    
+    // showDialog(){
+    //   this.showUserPopup = true;
+    // }
 }

@@ -29,12 +29,8 @@ export const multerOptions = {
     storage: diskStorage({
         // Destination storage path details
         destination: (req: any, file: any, cb: any) => {
-            console.log(req['query']);
             const query = req['query']
-            
             const keys = Object.keys(query);
-            
-
             const uploadPath = multerConfig.dest+'/'+keys[0]+'/'+query[keys[0]];
             // Create folder if doesn't exist
             if (!existsSync(uploadPath)) {
@@ -45,7 +41,7 @@ export const multerOptions = {
         // File modification details
         filename: (req: any, file: any, cb: any) => {
             // Calling the callback passing the random name generated with the original extension name
-            cb(null, `${uuid()}${extname(file.originalname)}`);
+            cb(null, `${uuid()}${extname(file.originalname)}`);            
         },
     }),
 };

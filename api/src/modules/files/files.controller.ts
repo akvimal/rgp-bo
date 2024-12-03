@@ -21,9 +21,8 @@ export class FilesController {
   }
 
   @Post('view')
-  buffer(@Body() body, @Res() response: Response) {
+  view(@Body() body, @Res() response: Response) {
     const filepath = body.path;
-    // const filepath = '/Users/vimalkrishnan/temp/upload/1000/731e61fd-a96f-4880-922b-e2904bf7b5b4.jpeg';
     const file = this.service.imageBuffer(filepath);
     if(filepath.toLowerCase().endsWith('pdf')){
       response.contentType('application/pdf');
@@ -32,7 +31,6 @@ export class FilesController {
       response.contentType('image/jpeg');
     }
     response.send(file);
-    
   }
 
   // @Get('buffer')

@@ -158,6 +158,6 @@
 
         <p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()"
         [(visible)]="displayEditItem" [modal]="true">
-            <app-invoice-item-form [invoiceid]="invoice.id" [itemid]="itemid" 
+            <app-invoice-item-form [mode]="'edit'" [invoiceid]="invoice.id" [itemid]="itemid" 
             (added)="closeEditItem()"></app-invoice-item-form>
         </p-dialog>

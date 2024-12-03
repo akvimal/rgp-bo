@@ -153,3 +153,7 @@
 .orderitemsciteria .criteria label{
     padding-bottom: .5em;;
 }
+
+.sale-history-item:hover {
+    background: #dde;
+}

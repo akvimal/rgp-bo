@@ -33,7 +33,6 @@ export class ProductSelectComponent {
 
     @Input() reset = false;
     filteredProducts:any[] = [];
-    products:any = [];
 
     formGroup = new FormGroup({
         title: new FormControl(null)

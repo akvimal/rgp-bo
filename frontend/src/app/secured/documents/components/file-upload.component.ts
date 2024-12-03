@@ -8,7 +8,7 @@ import { FileUploadService } from '../file-upload.service';
     selector: 'app-file-upload',
     templateUrl: './file-upload.component.html'
 })
-export class FileUploadComponent implements OnInit {
+export class FileUploadComponent {
 
     @Input() entity:any;
     @Input() type:string = '';
@@ -23,22 +23,12 @@ export class FileUploadComponent implements OnInit {
 
     content:any;
     // Inject service 
-    constructor(private sanitizer: DomSanitizer, private fileUploadService: FileUploadService) { }
+    constructor(private fileUploadService: FileUploadService) { }
 
     ngOnChanges(changes:SimpleChanges){
         if(changes.entity.currentValue && changes.entity.currentValue[this.property]){
             this.entityId = changes.entity.currentValue[this.property];
         }
-    }
-
-    ngOnInit(): void {
-        // this.fileUploadService.download().subscribe(data => {
-        //     // const blob = new Blob([data], { type: 'application/octet-stream' });
-        //     const blob = new Blob([data], { type: 'application/pdf' });
-        //     this.content = this.sanitizer.bypassSecurityTrustResourceUrl(window.URL.createObjectURL(blob));
-        // });
-        // console.log(this.entity);
-        
     }
 
     // On file Select

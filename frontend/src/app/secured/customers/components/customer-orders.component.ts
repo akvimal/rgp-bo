@@ -20,8 +20,6 @@ export class CustomerOrdersComponent {
     constructor(private service:CustomersService){}
 
     ngOnChanges(changes:SimpleChanges){
-      console.log(changes);
-      
         changes.customer.currentValue && this.service.getCustomerOrderedMonths(changes.customer.currentValue).subscribe((data:any) => {
             this.periods = data.map((d:any) => {
               return {...d,period:d.mon+'-'+(d.yr%2000)}
@@ -31,9 +29,7 @@ export class CustomerOrdersComponent {
         });
     }
 
-    fetchSales(cust:any,year:number,month:number){
-      console.log('fetching sales for ');
-      
+    fetchSales(cust:any,year:number,month:number){      
       this.service.getCustomerOrdersByPeriod(cust,year,month).subscribe((prevSale:any) => {
         if(prevSale.length > 0) {
           this.saleOrders = [];
@@ -44,10 +40,11 @@ export class CustomerOrdersComponent {
                 itemid:i.itemid,
                 productid: i.purchaseitem.product.id,
                 qty:i.qty,
-                title:i.purchaseitem.product.title
+                title:i.purchaseitem.product.title,
+                price:i.price
               };
             });
-            this.saleOrders.push({billdate:ps.billdate,total:ps.total,items});
+            this.saleOrders.push({billdate:ps.billdate,billno:ps.billno,total:ps.total,items});
           });
         }
       });

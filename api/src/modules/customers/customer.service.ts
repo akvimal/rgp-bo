@@ -59,11 +59,12 @@ export class CustomerService {
       }
 
       async findSalePeriods(custid){
+        const days = 3 * 365; //3yrs
         return await this.manager.query(`
         select x.yr, x.mon, sum(x.total) as total, count(*) from
             (select date_part('year',s.bill_date) as yr, date_part('month',s.bill_date) as mon, s.id, s.total
                 from sale s 
-                where s.status = 'COMPLETE' and s.customer_id = ${custid} and s.bill_date between (current_date - 365) and current_date) x 
+                where s.status = 'COMPLETE' and s.customer_id = ${custid} and s.bill_date between (current_date - ${days}) and current_date) x 
         group by x.yr, x.mon order by x.yr desc, x.mon desc`);
     }
 

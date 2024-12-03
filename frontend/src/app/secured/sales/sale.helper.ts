@@ -28,7 +28,7 @@ export class SaleHelper {
             output.total = total;
             output['edited'] = editable;
         }
-        console.log(output);
+        // console.log(output);
         
         return output;
     }

@@ -5,7 +5,7 @@
     <div class="col-12" *ngIf="periods.length > 0">
         <p-tabView [(activeIndex)]="activeIndex" [scrollable]="true" (onChange)="viewPeriod($event)">
             <p-tabPanel *ngFor="let p of periods" [header]="p.period">
-                <div class="col-12 mt-1">
+                <div class="col-12">
                     <button type="button" class="btn btn-outline-primary mt-2 text-center"
                         (click)="copySelectedItem()">Copy</button>
                 </div>
@@ -13,13 +13,24 @@
                     <div *ngFor="let s of saleOrders; index as i">
                         <ul class="list-group mt-2">
                             <li class="list-group-item" style="background-color: rgb(184, 219, 254);">
-                                <input type="checkbox" style="width:15px;height:15px;" (change)="toggleAll(i,$event)">
-                                <span class="text-primary fs-6 pl-2">&nbsp;&nbsp; <strong>{{s.billdate | date : 'dd-MMM-yy'}}</strong></span>
+                                
+                                <div class="d-flex justify-content-between">
+                                    <div class="text-primary fs-6 pl-2"><input type="checkbox" style="width:15px;height:15px;" (change)="toggleAll(i,$event)">
+                                        &nbsp;<strong>{{s.billdate | date : 'dd-MMM-yy'}}</strong>
+                                    </div>
+                                    <div># {{s.billno}}</div>
+                                </div>
                             </li>
-                            <li class="list-group-item" *ngFor="let i of s.items">
-                                <input type="checkbox" style="width:15px;height:15px;" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
-                                <span class="p-2">{{i.title}} ({{i.qty}})</span></li>
-                        </ul>
+                            <li class="list-group-item sale-history-item" *ngFor="let i of s.items">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <input type="checkbox" style="width:15px;height:15px;" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
+                                        &nbsp;{{i.title}} ({{i.qty}})</div>
+                                    <div><i class="bi bi-currency-rupee" style="padding:0"></i>{{i.price}}</div>
+                                </div>
+                            </li>
+
+                        </ul>   
                     </div>
                 </div>
                 <div class="col-12 mt-1">
