@@ -11,6 +11,7 @@ export class PropsFormComponent{
   @Input() entity = '';
   @Input() copyProps:any;
   @Input() default = true;
+  @Input() validate = true;
   @Output() updated:EventEmitter<any> = new EventEmitter();
 
   categories:{category:string,props:any[]}[] = [];
@@ -32,7 +33,10 @@ export class PropsFormComponent{
     }
 
     dataInput(type:any,key:any,event:any){
+      if(this.validate)
       this.updated.emit({valid:this.form.valid, values:{category: this.form.controls['category'].value, props:this.mapToLabelValues(this.form.value)}});
+      else
+      this.updated.emit({category: this.form.controls['category'].value, props:this.mapToLabelValues(this.form.value)});
     }
 
     mapToLabelValues(values:any){
@@ -46,7 +50,7 @@ export class PropsFormComponent{
     }
     
     selectProps(event:any,values:any){
-      console.log(event.target.value);
+      // console.log(event.target.value);
       this.form.controls['props'].reset();
       this.populateProps(event.target.value,undefined);
       this.dataInput(undefined,undefined,undefined);
@@ -64,7 +68,7 @@ export class PropsFormComponent{
           const pname = this.props[i].id;
           const value = values ? values[pname] : (this.default ? this.props[i].default : '');
           const fc = new FormControl(value);
-          if(this.props[i].required) {
+          if(this.validate && this.props[i].required) {
             fc.setValidators(Validators.required);
           }
           pps = {...pps, [pname]:fc}

@@ -1,7 +1,4 @@
-import { Component, ViewChild } from "@angular/core";
-import { Table } from "primeng/table";
-import { Observable } from "rxjs";
-import { PropsService } from "src/app/shared/props.service";
+import { Component } from "@angular/core";
 import { ProductsService } from "../../products.service";
 
 @Component({
@@ -10,62 +7,37 @@ import { ProductsService } from "../../products.service";
 export class ProductListComponent {
 
     products:any;
-    category:any = '';
-    productProps$?:Observable<any>;
+    criteria:any = {active:true, title: ''};
 
-    @ViewChild('dt') dt: Table | undefined;
-
-    constructor(private service:ProductsService,
-        private propsService:PropsService){}
+    constructor( 
+        private service:ProductsService){}
 
     ngOnInit(){ 
-        this.productProps$ = this.propsService.productProps$;
         this.fetchList()
-    }
-    
-    clear(table: Table) {
-        table.clear();
-    }
-
-    applyFilterGlobal($event:any, stringVal:any) {
-        this.dt?.filterGlobal(($event.target as HTMLInputElement).value, stringVal);
     }
 
     selectCategory(event:any){
         this.fetchList();
     }
       
-    delete(id:number){
-        this.service.remove(id).subscribe(data => this.fetchList() )
+    archive(id:number){
+        this.service.update(id, {isArchived:true}).subscribe(data => this.fetchList());
+    }
+
+    changeActive(id:number, flag:boolean){
+        this.service.update(id, {isActive:flag}).subscribe(data => this.fetchList());
     }
 
     fetchList(){
-        this.service.findAll(this.category && {category:this.category}).subscribe((data:any) => {
-            this.products = [...data].map(p => {
-                let attrs:any[] = [];
-                if(p.props){
-                    for (const [key, value] of Object.entries(p.props)) {
-                        if(value !== null) {
-                            if(Array.isArray(value)) {
-                                const items = value.map(d => d.code);
-                                attrs.push({key,value:items.join(', ')});
-                            }
-                            else
-                                attrs.push({key,value});
-                        }
-                    }
-                }
-                return {...p,attrs,showProps:false};
-            });
-        });
+        this.service.findByCriteria2(this.criteria).subscribe(data => this.products = data);
     }
 
-    toggleProps(prod:any,event:any){
-        this.products.forEach((p:any) => {
-            if(p.id === prod.id){
-                p.showProps = !p.showProps
-            }
-        });
-        event.preventDefault()
+    propsUpdate(event:any){
+        const props = event.props.filter((p:any) => p.value !== '')
+        this.criteria = {...this.criteria, category:event.category, props};
+    }
+
+    filter(){
+        this.fetchList();
     }
 }

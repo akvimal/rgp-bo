@@ -23,6 +23,7 @@ import { FilesModule } from './modules/files/files.module';
 import { DocumentModule } from './modules/documents/document.module';
 import { ExportController } from './modules/documents/export.controller';
 import { ReportModule } from './modules/reports/report.module';
+import { LookupModule } from './modules/app/lookup/lookup.module';
 
 @Module({
   controllers: [ AppController, FileDownloadController, ExportController ],
@@ -41,6 +42,7 @@ import { ReportModule } from './modules/reports/report.module';
     TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
     }),
+    LookupModule,
     RoleModule,
     UserModule,
     ProductModule,

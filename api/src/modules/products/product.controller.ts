@@ -25,6 +25,10 @@ export class ProductController {
     async filterByCriteria(@Body() criteria: any) {
       return this.productService.filterByCriteria(criteria);
     }
+    @Post('/filter2')
+    async filterByCriteria2(@Body() criteria: any) {
+      return this.productService.filterByCriteria2(criteria);
+    }
 
     @Post('prices')
     async addPrice(@Body() createDto: CreateProductPrice2Dto,  @User() currentUser: any) {
@@ -38,6 +42,8 @@ export class ProductController {
 
     @Put(':id')
     update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @User() currentUser: any) {
+      console.log(updateDto);
+      
       return this.productService.update(id, updateDto, currentUser.id);
     }
 

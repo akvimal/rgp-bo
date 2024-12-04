@@ -1,41 +1,32 @@
-    <div class="row">
-        <div class="col-md-10 d-flex d-inline-flex">
-            <div *ngIf="(productProps$ | async).length > 0">
-                <select class="form-control" id="category" [(ngModel)]="category" (change)="selectCategory($event)">
-                <option value="">All Category</option>
-                <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
-                </select>
+    <div class="row mt-4">
+        <div class="col-12 text-end">
+            <div>
+                <a *isAuth="'products.add'" [routerLink]="['../new']"><button class="btn btn-primary">Add New</button></a>
             </div>
         </div>
-        <div class="col-md-2 d-flex justify-content-end">
-            <div>
-                <a *isAuth="'products.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
-            </div>
+        <div class="col-12">
+            <input type="checkbox" [(ngModel)]="criteria.active" style="width:25px;height:25px;"> Active
+        </div>
+        <div class="col-12 mt-2">
+            <app-props-form [entity]="'product'" [validate]="false" [default]="false" (updated)="propsUpdate($event)"></app-props-form>
+        </div>
+        <div class="col-12 mt-2">
+            <button class="btn btn-primary" (click)="filter()">Filter</button>
         </div>
     </div>
     <div class="row">
             <div class="col-12">
-            <p-table #dt1 [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
+            <p-table [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
                 [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
                 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
                 [rowsPerPageOptions]="[10,25,50]">
-                <!-- <ng-template pTemplate="caption">
-                    <div class="flex">
-                        <button pButton label="Clear" class="p-button-outlined" icon="pi pi-filter-slash" (click)="clear(dt1)"></button>
-                        <span class="p-input-icon-left ml-auto">
-                            <i class="pi pi-search"></i>
-                            <input pInputText type="text" 
-                            (input)="applyFilterGlobal($event, 'contains')"
-                            placeholder="Search keyword" />
-                        </span>
-                    </div>
-                </ng-template> -->
+               
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="id">ID 
+                        <!-- <th pSortableColumn="id">ID 
                             <p-sortIcon field="id"></p-sortIcon>
-                        </th>  
-                        <th *ngIf="(productProps$ | async).length > 0" pSortableColumn="category">Category 
+                        </th>   -->
+                        <th pSortableColumn="category">Category 
                             <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
                             <p-sortIcon field="category"></p-sortIcon>
                         </th>
@@ -51,9 +42,10 @@
                             <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                             <p-sortIcon field="title"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="pack">Pack 
+                        <th>Properties</th>
+                        <!-- <th pSortableColumn="pack">Pack 
                             <p-sortIcon field="pack"></p-sortIcon>
-                        </th>
+                        </th> -->
                         <!-- <th pSortableColumn="brand">Brand 
                             <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
                             <p-sortIcon field="brand"></p-sortIcon>
@@ -70,31 +62,33 @@
                 </ng-template>
                 <ng-template pTemplate="body" let-product>
                     <tr>
-                        <td>{{product.id}}</td>
-                        <td *ngIf="(productProps$ | async).length > 0">{{product.category}}</td>
+                        <!-- <td>{{product.id}}</td> -->
+                        <td>{{product.category}}</td>
                         <!-- <td>{{product.code}}</td> -->
                         <!-- <td>{{product.hsn}}</td> -->
                         <td>
-                            <h6>{{product.title}}
-                                <a href="#" (click)="toggleProps(product,$event)" *ngIf="product.attrs.length > 0">({{product.attrs.length}})</a>
-                            </h6>
-                            <ul [ngStyle]="{'display': product.showProps ? 'inline' : 'none','margin':0,'padding':0}">
-                                <li style="list-style: none; padding: 0 .25em; margin-right:0.5em;" *ngFor="let attr of product.attrs"><strong>{{attr.key}}:</strong> {{attr.value}}</li>
-                            </ul>
+                            <h6>{{product.title}} ({{product.pack}})</h6>
                         </td>
-                        <td style="text-align: center;">{{product.pack}}</td>
+                        <td><app-props-print [props]="product.props"></app-props-print></td>
+                        <!-- <td style="text-align: center;">{{product.pack}}</td> -->
                         <!-- <td>{{product.brand}}</td> -->
                         <td>{{product.mfr}}</td>
                         <td>{{product.updatedon | date : 'dd/MM/yy'}}</td>
                         <td style="text-align: center;">
-                            <h5>
-                            <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
+                            <h4 class="icon">
+                            <a *ngIf="product.isActive" [routerLink]="['../edit', product.id]">
                                 <i class="bi bi-pencil-square text-primary"></i>
-                            </a>&nbsp;&nbsp;
-                            <a *isAuth="'products.delete'" (click)="delete(product.id)">
-                                <i class="bi bi-trash text-danger"></i>
                             </a>
-                        </h5>
+                            <a *ngIf="product.isActive" (click)="changeActive(product.id, false)">
+                                <i class="bi bi-sign-stop-fill" style="color:red"></i>
+                            </a>
+                            <a *ngIf="!product.isActive" (click)="changeActive(product.id, true)">
+                                <i class="bi bi-play-fill" style="color:green"></i>
+                            </a>
+                            <a *ngIf="!product.isActive" (click)="archive(product.id)">
+                                <i class="bi bi-trash" style="color:gray"></i>
+                            </a>
+                        </h4>
                         </td>
                     </tr>
                 </ng-template>

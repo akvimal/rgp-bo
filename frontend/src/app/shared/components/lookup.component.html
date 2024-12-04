@@ -1,0 +1,8 @@
+<span class="p-fluid"><p-autoComplete 
+[(ngModel)]="item"
+    [minLength]="2"
+    [suggestions]="list" 
+    (completeMethod)="search($event)"
+    [showEmptyMessage]="true"
+    (onKeyUp)="onEnter($event)"
+        ></p-autoComplete></span>

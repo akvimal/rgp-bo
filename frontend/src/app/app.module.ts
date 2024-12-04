@@ -13,7 +13,6 @@ import { AuthTokenInterceptor } from './@core/auth/auth-token.interceptor';
 import { RouterModule } from '@angular/router';
 import { PosComponent } from './pos.component';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
 
 @NgModule({
   declarations: [
@@ -21,6 +20,7 @@ import { MessageService } from 'primeng/api';
     PosComponent
   ],
   imports: [
+    AppRoutingModule,
     BrowserModule,
     BrowserAnimationsModule,
     HttpClientModule,
@@ -30,7 +30,6 @@ import { MessageService } from 'primeng/api';
     CommonModule,
     FormsModule,
     AuthModule,
-    AppRoutingModule,
     StoreDevtoolsModule.instrument({
       name: 'Pharma App',
       logOnly: environment.production

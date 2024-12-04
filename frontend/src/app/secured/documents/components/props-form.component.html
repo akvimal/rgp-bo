@@ -14,7 +14,7 @@
       <div class="col-10">
         <div class="row g-2 pb-3" formGroupName="props">
           <div class="col-md-4" *ngFor="let pp of props">
-          <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
+          <label class="form-label"  *ngIf="pp.type !== 'MULTI-SELECT'">{{pp.label}}<span class="text-danger" *ngIf="validate && pp.required"> *</span></label> 
           <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
           (change)="dataInput(pp.type, pp.id, $event)">
             <option value="">Select</option>
@@ -24,7 +24,9 @@
                     class="form-control" formControlName={{pp.id}}>
           <input *ngIf="!pp.type" type="text" (change)="dataInput(pp.type, pp.id, $event)" 
                     class="form-control" formControlName={{pp.id}}>
-      
+                    <!-- <span class="p-fluid">
+                      <p-multiSelect [options]="pp.choices" formControlName={{pp.id}} optionLabel="label" *ngIf="pp.type === 'MULTI-SELECT'"></p-multiSelect>
+                      </span> -->
           <div *ngIf="pp.type === 'CHECK'">
             <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)" [checked]="pp.default"
             class="form-check-input" formControlName={{pp.id}}> Yes

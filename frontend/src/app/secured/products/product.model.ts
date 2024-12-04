@@ -1,9 +1,11 @@
 export interface Product {
     id?:number,
-    title:string,
+    title?:string,
     description?:string,
     category?:string,
     mfr?:string,
     pack?:number,
-    brand?:string
+    brand?:string,
+    isActive?:boolean,
+    isArchived?:boolean
 }

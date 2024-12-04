@@ -1,17 +1,13 @@
 [{
   "entity": "product",
   "config" : [{
-    "category": "Prescription (Rx)",
+    "category": "Medicine",
     "props":[
-      {
-        "id": "composition",
-        "label": "Composition",
-        "searchable": true
-      },
       {
         "id": "schedule",
         "label": "Schedule",
         "type": "SINGLE-SELECT",
+        "required": true,
         "filter":true,
         "choices": [
           {
@@ -25,13 +21,75 @@
           {
             "label": "X",
             "value": "X"
+          },
+          {
+            "label": "Other",
+            "value": "Other"
           }
         ]
+      },
+      {
+        "id": "composition",
+        "label": "Composition",
+        "searchable": true
+      },{
+        "id": "condition",
+        "label": "Condition",
+        "type": "MULTI-SELECT",
+        "choices": [
+          {
+            "label": "Diabetes",
+            "value": "Diabetes"
+          },
+          {
+            "label": "Hypertension",
+            "value": "Hypertension"
+          },
+          {
+            "label": "Cholestrol",
+            "value": "Cholestrol"
+          },
+          {
+            "label": "Asthma",
+            "value": "Asthma"
+          },
+          {
+            "label": "Depression",
+            "value": "Depression"
+          },
+          {
+            "label": "Digestion",
+            "value": "Digestion"
+          },
+          {
+            "label": "Cold",
+            "value": "Cold"
+          },
+          {
+            "label": "Fever",
+            "value": "Fever"
+          },
+          {
+            "label": "Skin",
+            "value": "Skin"
+          },
+          {
+            "label": "Other",
+            "value": "Other"
+          }
+        ]
+      },{
+        "id": "chronic",
+        "label": "Chronic",
+        "type": "CHECK"
+      },{
+        "id": "generic",
+        "label": "Generic",
+        "type": "CHECK"
       },{
         "id": "document",
         "label": "Document Required On Sale",
         "type": "SINGLE-SELECT",
-        "default": "None",
         "filter":true,
         "choices": [
           {
@@ -52,7 +110,6 @@
         "id": "subcategory",
         "label": "Sub Category",
         "type": "SINGLE-SELECT",
-        "default": "Others",
         "filter":true,
         "choices": [
           {
@@ -73,7 +130,6 @@
         "id": "document",
         "label": "Document Required On Sale",
         "type": "SINGLE-SELECT",
-        "default": "None",
         "filter":true,
         "choices": [
           {

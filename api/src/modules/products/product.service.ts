@@ -44,9 +44,8 @@ export class ProductService {
               if(c['check'] === 'contains'){
                 ch += `${prop} ilike '%${c.value}%'`
             }
-              
-
-              if(index < (criteria.criteria.length-1))
+            
+            if(index < (criteria.criteria.length-1))
                   ch +=  criteria.condition === 'any' ? ' or ' : ' and '
           }
   
@@ -54,6 +53,24 @@ export class ProductService {
           if(criteria.limit)
               qb.limit(criteria.limit);
       return qb.getMany();
+  }
+
+  async filterByCriteria2(product:any) {
+
+    const qb = this.productRepository.createQueryBuilder('p')
+        .where('p.archive = false and p.active = :flag', { flag: product.active });
+        if(product.category && product.category !== ''){
+          qb.andWhere(`p.category = :categ`, {categ: product.category});
+        }
+        product.props && product.props.forEach(prop => {
+          if(typeof prop['value'] == 'boolean' && prop['value'] == false){
+            //ignored
+          } else
+          qb.andWhere(`p.more_props->>'${prop['id']}' = :val`, {val:prop['value']});
+        });
+        
+       
+    return qb.getMany();
   }
 
     async findPrices(criteria:any){

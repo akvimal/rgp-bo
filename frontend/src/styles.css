@@ -113,8 +113,9 @@
     margin-left:0.5em;
 }
 
-.icon a{
+.icon a {
     cursor: pointer;
+    margin-right: .5em;
 }
 
 .document-nav{
@@ -156,4 +157,16 @@
 
 .sale-history-item:hover {
     background: #dde;
+}
+
+.props {
+    margin: 0;
+    padding: 0;
+}
+
+.props li {
+    margin: 0;
+    padding-right: 1em;
+    list-style: none;
+    float: left;
 }

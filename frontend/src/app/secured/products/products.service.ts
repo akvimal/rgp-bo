@@ -14,11 +14,15 @@ export class ProductsService {
     constructor(private http:HttpClient){}
 
     findAll(criteria:any){
-        return this.http.get(this.apiurl,{params:criteria});
+        return this.http.post(this.apiurl,{criteria});
     }
 
     findByCriteria(criteria:any){
-        return this.http.post(`${this.apiurl}/filter`,{...criteria, limit:25});
+        return this.http.post(`${this.apiurl}/filter`, criteria);
+    }
+
+    findByCriteria2(criteria:any){
+        return this.http.post(`${this.apiurl}/filter2`, criteria);
     }
 
     findAllPrices(){
@@ -39,7 +43,7 @@ export class ProductsService {
     update(id:number, product:Product){
         return this.http.put(`${this.apiurl}/${id}`,product);
     }
-
+    
     remove(id:number){
         return this.http.delete(`${this.apiurl}/${id}`);
     }

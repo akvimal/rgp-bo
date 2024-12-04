@@ -20,6 +20,9 @@ import { ProductListComponent } from "./components/master/product-list.component
 import { ProductFormComponent } from "./components/master/product-form.component";
 import { ProductsComponent } from "./components/products.component";
 import { ProductHeaderComponent } from "./components/product-header.component";
+import { ConfirmDialogModule } from "primeng/confirmdialog";
+import { ConfirmationService } from "primeng/api";
+import { DocumentsModule } from "../documents/documents.module";
 
 const routes: Routes = [
   { path: '', component: ProductsComponent, 
@@ -54,12 +57,14 @@ const routes: Routes = [
         MultiSelectModule,
         ContextMenuModule,
         DialogModule,
+        ConfirmDialogModule,
         ButtonModule,
         DropdownModule,
         ProgressBarModule,
         InputTextModule,
         RouterModule.forChild(routes),
-        SharedModule
+        SharedModule,
+        DocumentsModule
     ],
     exports: [RouterModule]
   })

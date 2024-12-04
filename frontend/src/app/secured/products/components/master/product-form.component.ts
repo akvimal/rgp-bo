@@ -15,11 +15,11 @@ export class ProductFormComponent {
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
-        title: new FormControl('',Validators.required),
+        title: new FormControl('', Validators.required),
         hsn: new FormControl(''),
         code: new FormControl(''),
-        pack: new FormControl('1', Validators.required),
-        category: new FormControl({value: '', disabled: true}),
+        pack: new FormControl('1'),
+        category: new FormControl(''),
         mfr: new FormControl(''),
         brand: new FormControl(''),
         description: new FormControl(''),
@@ -44,9 +44,9 @@ export class ProductFormComponent {
       ngOnInit(){
         
         this.isNew = this.route.snapshot.url[0].path === 'new';
-        (this.isNew || this.form.controls['category'].value === '') && this.form.controls['category'].enable()
+        // (this.isNew || this.form.controls['category'].value === '') && this.form.controls['category'].enable()
 
-        this.populateProps(this.form.controls['category'].value,undefined);
+        // this.populateProps(this.form.controls['category'].value,undefined);
         const id = this.route.snapshot.paramMap.get('id'); 
 
         id && this.service.findById(id).subscribe((data:any) => {
@@ -66,28 +66,46 @@ export class ProductFormComponent {
       }
 
       populateProps(category:any,values:any){
+        console.log('category: ',category);
+        console.log('this.form.controls: ',this.form.controls);
+        console.log(this.form.contains('props'));
+        if(category == '' && this.form.contains('props'))
+            this.form.removeControl('props')
+        
         this.propsService.productProps$.subscribe((data:any) => {
           this.props = [];
           const catProps = data.find((d:any) => d.category === category);
+          console.log('catProps: ',catProps);
+          
           if(catProps){
             this.props = catProps.props;
             let pps = {};  
             for(let i=0;i<this.props.length;i++){
               const pname = this.props[i].id;
               const value = values ? values[pname] : this.props[i].default;
-              const fc = new FormControl(value);
-              if(this.props[i].required) {
-                fc.setValidators(Validators.required);
-              }
+              const fc = new FormControl(value||'');
+              // if(this.props[i].required) {
+              //   console.log('setting ',this.props[i]);
+                
+              //   fc.setValidators(Validators.required);
+              // }
               pps = {...pps, [pname]:fc}
             }
+            console.log('setting prps form roup');
+            
             this.form.setControl('props', new FormGroup(pps));
+          } else {
+            console.log('this.form.controls: ',this.form.controls);
+            if(this.form.contains('props'))
+            this.form.removeControl('props')
           }
         });
       }
 
       selectProps(event:any,values:any){
-        this.populateProps(event.target.value,undefined);
+        console.log('populating props..');
+        
+          this.populateProps(event.target.value,undefined);
       }
 
       dataInput(type:any,key:any,event:any){
@@ -124,10 +142,13 @@ export class ProductFormComponent {
           code:this.form.value.code.trim(), 
           pack:this.form.value.pack, 
           category:this.form.value.category, 
+          props: this.getTrimmedProps(this.form.value.props),
           mfr:this.form.value.mfr.trim(), 
           brand:this.form.value.brand?.trim(), 
-          props: this.form.value.props, 
           description: this.form.value.description?.trim() }
+  // console.log('before product save',obj);
+          // console.log(this.form.value.props);
+          
   
         const id = this.form.value.id;
         if(id) {
@@ -143,9 +164,12 @@ export class ProductFormComponent {
             }
           });
         }
-  
       }
   
+      getTrimmedProps(props:any){
+        return props;
+      }
+
       reset(){
         this.form.reset();
       }
@@ -153,4 +177,9 @@ export class ProductFormComponent {
       gotoList() {
         this.router.navigate(['/secure/products/list'],{relativeTo:this.route})
       }
+
+      titleEnter(event:any){
+        this.form.controls['title'].setValue(event.toUpperCase());
+      }
+      
 }
