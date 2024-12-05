@@ -23,7 +23,10 @@
       </div> -->
       <div class="col-md-3">
         <label for="invno" class="col-form-label">Invoice No.</label>
-        <input type="text" class="form-control" formControlName="invoiceno" id="invno">
+        <input type="text" class="form-control" formControlName="invoiceno" id="invno" maxlength="12">
+        <div *ngIf="form.controls['invoiceno'].dirty && form.controls['invoiceno'].invalid" style="font-size: large;color:red;">
+          Invoice No can be alphanumeric with hypen only
+        </div>
       </div>
       <div class="col-md-3">
         <label for="invdate" class="col-form-label">Invoice Date</label><br>

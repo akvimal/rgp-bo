@@ -25,8 +25,8 @@ export class ProductsService {
         return this.http.post(`${this.apiurl}/filter2`, criteria);
     }
 
-    findAllPrices(){
-        return this.http.get(`${this.apiurl}/prices`);
+    findAllPrices(criteria:any){
+        return this.http.post(`${this.apiurl}/prices`,criteria);
     }
 
     findById(id:any){

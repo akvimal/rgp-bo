@@ -7,8 +7,10 @@
                 <input class="form-control" type="file" (change)="onChange($event)">&nbsp;&nbsp;
                 <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
             </div>
+            <div class="mt-2">
             <app-props-form [entity]="'document'" [copyProps]="copyProps" (updated)="propsUpdate($event)"></app-props-form>
-            <div class="row">
+            </div>
+            <div class="row mt-2">
                 <div class="col-12 text-end">
                     <span *ngIf="loading">Loading...</span>      
                     <span *ngIf="error && error.length > 0">{{error}}</span>

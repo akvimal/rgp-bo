@@ -56,9 +56,13 @@ export class ProductService {
   }
 
   async filterByCriteria2(product:any) {
+console.log('criteria: ',product);
 
     const qb = this.productRepository.createQueryBuilder('p')
         .where('p.archive = false and p.active = :flag', { flag: product.active });
+        if(product.title && product.title !== ''){
+          qb.andWhere(`p.title ilike :title`, {title: product.title+'%'});
+        } 
         if(product.category && product.category !== ''){
           qb.andWhere(`p.category = :categ`, {categ: product.category});
         }
@@ -73,14 +77,19 @@ export class ProductService {
     return qb.getMany();
   }
 
-    async findPrices(criteria:any){
-      return await this.manager.query(
-        `select p.id, pp.id as price_id, p.title, pii.ptr as our_max_ptr, pii.mrp as our_max_mrp, pp.market_price, coalesce(pp.sale_price,0) as our_sale_price
-        from product p 
-        left join product_price2 pp on pp.product_id = p.id 
-        left join (select product_id, max(mrp_cost) as mrp, max(ptr_cost) as ptr from purchase_invoice_item group by product_id) pii on pii.product_id = p.id
-        order by p.title`);
-  }
+  // async findPrices(criteria:any){
+  //   return await this.manager.query(
+  //     `select p.id, pp.id as price_id, p.title, pii.ptr as our_max_ptr, pii.mrp as our_max_mrp, pp.market_price, coalesce(pp.sale_price,0) as our_sale_price
+  //     from product p 
+  //     left join product_price2 pp on pp.product_id = p.id 
+  //     left join (select product_id, max(mrp_cost) as mrp, max(ptr_cost) as ptr from purchase_invoice_item group by product_id) pii on pii.product_id = p.id
+  //     order by p.title`);
+  // }
+
+async findPrices(criteria:any){
+  return await this.manager.query(
+    `select * from price_view where active = ${criteria.active} and title ilike '${criteria.title}%'`);
+}
 
     async findByTitle(title:any){
       const qb = this.productRepository.createQueryBuilder(`p`)

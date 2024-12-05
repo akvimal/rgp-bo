@@ -36,7 +36,6 @@
                                         &nbsp;&nbsp;<a (click)="resetCustomer()">
                                             <i class="bi bi-x-square text-danger"></i>
                                         </a>
-                                    
                                     </h4>
                                 </div>
                     </td>
@@ -89,7 +88,7 @@
                                 </div>
                                 <div class="col-2 text-end">
                                     <h4>
-                                    Total: <span style="background-color: rgb(65, 236, 60);font-size: x-large;"><i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.total | number : '1.0-0'}}</span>
+                                    Total: <i class="bi bi-currency-rupee" style="padding:0"></i>&nbsp;<label style="background-color: rgb(65, 236, 60);font-size: xx-large;padding: 0 .3em 0 .3em;">{{sale.total | number : '1.0-0'}}</label>
                                     </h4>
                                 </div>
                             </div>
@@ -99,42 +98,42 @@
             </table>
         </div>
     </div>
-    <div class="row">
-        <div class="col-12 d-flex flex-row">
-            <label for="ordertype" style="padding-right:.5em;">Order</label>
-            <select [(ngModel)]="sale.ordertype">
-                <option value="Walk-in">Walk-in</option>
-                <option value="Phone">Phone</option>
-                <option value="Whatsapp">Whatsapp</option>
-            </select>
-            <label for="deliverytype" style="padding-left:1em;padding-right:.5em;">Delivery</label>
-            <select [(ngModel)]="sale.deliverytype">
-                <option value="Counter">Counter</option>
-                <option value="Delivery">Delivery</option>
-            </select>
-        </div>
-    </div>
+    
     <!-- <div class="row" *ngIf="sale.customer && (sale.total||0) > 0 && sale.deliverytype == 'Delivery'">
         <div class="col-12">
             <app-sale-delivery-form></app-sale-delivery-form>
         </div>
     </div> -->
-    <div class="row mt-2">
+    <div class="row">
         <div class="col-8 d-flex">
             <button (click)="submit('PENDING')" 
-                class="btn btn-outline-secondary m-2" [disabled]="total === 0">Save</button>
+                class="btn btn-secondary" [disabled]="total === 0" style="margin-right:1em">Save</button>
             <button (click)="discard()" *ngIf="sale.id && sale.status !== 'NEW'"
-            class="btn btn-outline-danger m-2">Discard</button>
+            class="btn btn-outline-danger">Discard</button>
             
         </div>
-        <div class="d-flex justify-content-end col-4">
+        <div class="col-4 d-flex justify-content-end">
             <div *ngIf="isDocumentRequiredOnSale() && !isDocumentProvided()" class="mt-3 ml-3">
                 <input type="checkbox" style="width: 20px;height: 20px;" [(ngModel)]="sale.docpending">
                 &nbsp;<span style="font-size: large;color:red;">{{getMisingDocs()}}</span> <span style="font-size: large;">&nbsp;pending</span>
             </div>
-            <button (click)="submit('COMPLETE')" class="btn btn-primary m-2" 
+            <div style="margin-right: 1em;">
+                <select [(ngModel)]="sale.ordertype" class="form-control">
+                    <option value="Walk-in">Walk-in</option>
+                    <option value="Phone">Phone</option>
+                    <option value="Whatsapp">Whatsapp</option>
+                </select>
+            </div>
+            <div style="margin-right: 1em;">
+                <select [(ngModel)]="sale.deliverytype" class="form-control">
+                    <option value="Counter">Counter</option>
+                    <option value="Delivery">Delivery</option>
+                </select>
+            </div>
+            <div>
+            <button (click)="submit('COMPLETE')" class="btn btn-primary" 
                         [disabled]="!isSaleFormValid()">Complete</button>    
-                
+                    </div>
             <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
                 <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
             <!-- <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button> -->

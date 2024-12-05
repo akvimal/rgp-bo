@@ -170,3 +170,7 @@
     list-style: none;
     float: left;
 }
+
+.props div {
+    margin-right: 1em;
+}

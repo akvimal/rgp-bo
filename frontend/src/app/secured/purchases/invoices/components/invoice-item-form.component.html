@@ -10,7 +10,7 @@
             <th>Rate</th>
             <th>Disc%</th>
             <th>Tax%</th>
-            <th>Total</th>
+            <th style="text-align: right;">Total</th>
             <th></th>
         </tr>
         <tr>
@@ -43,8 +43,7 @@
                 <input type="number" id="freeqty" class="form-control" formControlName="freeqty">
             </td>
             <td width="8%">
-                <input type="number" id="ptr" class="form-control"
-                formControlName="ptrvalue" size="6" (input)="calculate()">
+                <input type="number" id="ptr" class="form-control" formControlName="ptrvalue" size="6" (input)="calculate()">
             </td>
             <td width="5%">
                 <input type="text" id="disc" class="form-control" formControlName="discpcnt" size="6" (input)="calculate()">
@@ -52,10 +51,10 @@
             <td width="5%">
                 <input type="number" id="taxpcnt" class="form-control" formControlName="taxpcnt" size="4" (input)="calculate()">
             </td>
-            <td width="6%" style="text-align: right;">
+            <td width="6%" style="text-align: right;padding-right:1em;font-weight: bolder;background: #dea;">
                 {{total | number:'1.2-2'}}
             </td>
-            <td width="8%">
+            <td width="4%">
                 <button type="submit" [disabled]="total == 0 || total == undefined" class="btn btn-primary">Add</button>
             </td>
         </tr>

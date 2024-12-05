@@ -30,7 +30,7 @@ export class ProductController {
       return this.productService.filterByCriteria2(criteria);
     }
 
-    @Post('prices')
+    @Post('prices/add')
     async addPrice(@Body() createDto: CreateProductPrice2Dto,  @User() currentUser: any) {
         return this.productService.addPrice(createDto, currentUser.id);
     } 
@@ -57,9 +57,9 @@ export class ProductController {
       return this.productService.findAll(query,currentUser);
     }
 
-    @Get('/prices')
-    findAllPrices(@Query() query: any) {
-      return this.productService.findPrices(query);
+    @Post('/prices')
+    findAllPrices(@Body() criteria:any) {
+      return this.productService.findPrices(criteria);
     }
     
     @Post('/title')

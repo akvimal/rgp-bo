@@ -1,19 +1,21 @@
-<form class="pt-2" [formGroup]="form">
-    <div class="row">
-      <div class="col-2">
+<form [formGroup]="form">
+      <div class="d-flex props">
+        <div>
         <label class="form-label">Category</label>
         <select formControlName="category" class="form-control" id="category" 
               (change)="selectProps($event,undefined)">
               <option value="">Select</option>
               <option *ngFor="let c of categories" [value]="c.category">{{c.category}}</option>
           </select>
+        </div>
           <div *ngIf="form.controls['category'].value !== '' && copyProps">
-            <input type="checkbox" (click)="copyData($event)">&nbsp;Copy
+            <label class="form-label">Copy</label><br>
+            <input type="checkbox" (click)="copyData($event)" style="width:25px;height:25px;margin-top:.5em;">
           </div>
-      </div>
-      <div class="col-10">
-        <div class="row g-2 pb-3" formGroupName="props">
-          <div class="col-md-4" *ngFor="let pp of props">
+      <!-- </div>
+      <div class="col-10"> -->
+        <div class="d-flex" formGroupName="props">
+          <div *ngFor="let pp of props">
           <label class="form-label"  *ngIf="pp.type !== 'MULTI-SELECT'">{{pp.label}}<span class="text-danger" *ngIf="validate && pp.required"> *</span></label> 
           <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
           (change)="dataInput(pp.type, pp.id, $event)">
@@ -34,5 +36,5 @@
           </div>
       </div>
       </div>
-    </div>
+    
   </form>

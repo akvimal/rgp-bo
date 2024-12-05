@@ -18,7 +18,7 @@
         <label class="sale-summary">&nbsp;Cash</label>
     </div>
     <div class="col-3 d-flex flex-row text-end">
-        <input type="text" class="form-control" (input)="tenderBal($event)">
-        <span class="input-group-text" [ngStyle]="{'font-size': 'larger', 'background-color': cashbal < 0 ? 'red' : 'blue','color':'white'}">{{cashbal}}</span>
+        <input type="number" class="form-control" (input)="tenderBal($event)">
+        <span class="input-group-text" [ngStyle]="{'font-size': 'larger', 'background-color': cashbal < 0 ? '#faa' : '#aaf'}">{{cashbal}}</span>
     </div>
 </div>

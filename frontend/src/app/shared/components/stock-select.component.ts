@@ -5,7 +5,7 @@ import { PropsService } from "../props.service";
 
 @Component({
     selector: 'app-stock-select',
-    template: `<p-autoComplete
+    template: `<span class="p-fluid"><p-autoComplete
                     (onSelect)="selected($event)"
                     field="''"
                     placeholder="Name / Composition"
@@ -23,7 +23,7 @@ import { PropsService } from "../props.service";
                             </span>
                         </div>
                     </ng-template>
-                </p-autoComplete>`
+                </p-autoComplete></span>`
 
 })
 export class StockSelectComponent {

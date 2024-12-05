@@ -41,7 +41,6 @@ export class SaleFormItemsComponent{
     private stockService:StockService){}
 
   selectProduct(selected:any) {
-    console.log('selected: ',selected);  
     const item = this.helper.mapStockToSaleItem(selected, true);
     this.calculateTotalWithQtyChange(item);
     this.itemAdded.emit(item);
@@ -115,20 +114,7 @@ export class SaleFormItemsComponent{
     this.calculateTotalWithQtyChange(item);
 
     this.itemUpdated.emit(item);
-    // const old = item.total || 0; //previous total
-    // item.total = this.calculateTotal(item.qty,item.price,item.taxpcnt); //new total
-
-    // this.total = Math.round(this.total - old + item.total);
-    // let newTotal = this.getItemsTotal() - (this.offer?.amount || 0);
     
-    // if(newTotal < 0) newTotal = 0;
-    // this.total = newTotal;
-
-    // item['unitsbal'] = item.maxqty - item.qty;
-    // item['box'] = Math.trunc(item.qty / item.pack);
-    // item['boxbal'] = item.qty % item.pack; 
-    
-    // this.recalculateTotal.emit(this.offer);
   }
 
   calculateTotalWithQtyChange(item:any){
@@ -156,7 +142,6 @@ export class SaleFormItemsComponent{
     return total;
   }
   
-     
       // boxInputValidate(event:any,availqty:any,pack:any,itemid:any){
       //   const input = +event.target.value;
 

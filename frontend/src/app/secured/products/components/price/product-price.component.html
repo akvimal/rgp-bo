@@ -1,16 +1,16 @@
-<div class="row">
-    <div class="col-12">
-
+<div class="row mt-2">
+    <div class="col-12 p-2 d-flex">
+       <div style="padding-right:.5em"><input type="text" class="form-control" [(ngModel)]="criteria.title" (input)="filter()" placeholder="Product"></div>
+       <div style="padding-right:.5em;padding-top: .5em;font-size: larger;"><input type="checkbox" style="width:25px;height:25px;" [(ngModel)]="criteria.active" (change)="filter()"> Active</div>
     </div>
 </div>
 
-<div class="row">
+<div class="row mt-2">
     <div class="col-12">
-    <p-table [value]="products" dataKey="id" editMode="row"
-    [tableStyle]="{'min-width': '50rem'}"
-    [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
-    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-    [rowsPerPageOptions]="[25,50,100]">
+    <p-table [value]="products" dataKey="id" editMode="row" styleClass="p-datatable-sm p-datatable-striped"
+            [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
+            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+            [rowsPerPageOptions]="[25,50,100]">
 
         <ng-template pTemplate="header">
             <tr>
@@ -18,22 +18,25 @@
                     <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                     <p-sortIcon field="title"></p-sortIcon>
                 </th>
-                <th style="width:8%" class="text-center">Max MRP</th>
-                <th style="width:8%">Martket</th>
-                <th style="width:8%">Max PTR</th>
-                <th style="width:8%">Sale Rate</th>
-                <th style="width:8%" pSortableColumn="margin">Margin
+                <!-- <th style="width:8%">Martket</th> -->
+                <th style="width:8%" class="text-end">PTR</th>
+                <th style="width:8%" class="text-end">Price</th>
+                <th style="width:8%" class="text-end" pSortableColumn="margin">Margin
                     <p-columnFilter type="number" field="margin" display="menu"></p-columnFilter>
                     <p-sortIcon field="margin"></p-sortIcon>
                 </th>
-                <th style="width:8%">Actions</th>
+                <th style="width:8%" class="text-end" pSortableColumn="discount">Discount
+                    <p-columnFilter type="number" field="discount" display="menu"></p-columnFilter>
+                    <p-sortIcon field="margin"></p-sortIcon>
+                </th>
+                <th style="width:8%" class="text-end">MRP</th>
+                <th style="width:8%" class="text-center">Actions</th>
             </tr>
         </ng-template>
         <ng-template pTemplate="body" let-product let-editing="editing" let-ri="rowIndex">
             <tr [pEditableRow]="product">
                 <td>{{product.title}}</td>
-                <td class="text-center">{{product.our_max_mrp}}</td>
-                <td class="text-center" pEditableColumn>
+                <!-- <td class="text-center" pEditableColumn>
                     <p-cellEditor>
                         <ng-template pTemplate="input">
                             <input pInputText type="text" [(ngModel)]="product.market_price">
@@ -42,9 +45,9 @@
                             {{product.market_price}}
                         </ng-template>
                     </p-cellEditor>
-                </td>
-                <td class="text-center">{{product.our_max_ptr | number : '1.2-2'}}</td>
-                <td class="text-center" pEditableColumn>
+                </td> -->
+                <td class="text-end">{{product.ptr | number : '1.2-2'}}</td>
+                <!-- <td class="text-center" pEditableColumn>
                     <p-cellEditor>
                         <ng-template pTemplate="input">
                             <input pInputText type="text" [(ngModel)]="product.our_sale_price">
@@ -53,8 +56,11 @@
                             {{product.our_sale_price}}
                         </ng-template>
                     </p-cellEditor>
-                </td>
-                <td>{{product.margin | percent}}</td>
+                </td> -->
+                <td class="text-end">{{product.price | number : '1.2-2'}}</td>
+                <td class="text-end">{{product.margin}}%</td>
+                <td class="text-end">{{product.discount}}%</td>
+                <td class="text-end">{{product.mrp | number : '1.2-2'}}</td>
                 <td style="text-align:center">
                     <button *ngIf="!editing" pButton pRipple type="button" pInitEditableRow icon="pi pi-pencil" (click)="onRowEditInit(product)" class="p-button-rounded p-button-text"></button>
                     <button *ngIf="editing" pButton pRipple type="button" pSaveEditableRow icon="pi pi-check" (click)="onRowEditSave(product)" class="p-button-rounded p-button-text p-button-success p-mr-2"></button>

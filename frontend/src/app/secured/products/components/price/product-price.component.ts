@@ -7,22 +7,18 @@ import { ProductsService } from "../../products.service";
 })
 export class ProductPriceComponent {
 
-    products:ProductPrice[] = [];
+    criteria = {active:true,title:''}
+
+    products:any[] = [];
 
     constructor(private service:ProductsService){}
 
     ngOnInit(){ 
-       this.service.findAllPrices().subscribe((data:any) => {
-        console.log(data);
-        data.forEach((item:any) => {
-            if(item['our_sale_price'] > 0){
-            const margin = (item['our_sale_price'] - item['our_max_ptr'])/item['our_max_ptr'];
-            item['margin'] = margin;
-            }
-        });
-        
-        this.products = data;
-        });
+       this.filter();
+    }
+
+    filter(){
+        this.service.findAllPrices(this.criteria).subscribe((data:any)=> this.products = data);
     }
 
     onRowEditInit(product: ProductPrice) {

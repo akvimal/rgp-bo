@@ -1,6 +1,7 @@
 [{
   "entity": "product",
-  "config" : [{
+  "config" : [
+    {
     "category": "Medicine",
     "props":[
       {
@@ -102,8 +103,8 @@
           }
         ]
       }
-    ]
-  },{
+    ]},
+  {
     "category": "OTC",
     "props":[
       {
@@ -113,38 +114,35 @@
         "filter":true,
         "choices": [
           {
-            "label": "Supplements",
-            "value": "Supplements"
+            "label": "Supplement",
+            "value": "Supplement"
           },
           {
-            "label": "Surgicals",
-            "value": "Surgicals"
+            "label": "Surgical",
+            "value": "Surgical"
           },
           {
-            "label": "Others",
-            "value": "Others"
-          }
-        ]
-      },
-      {
-        "id": "document",
-        "label": "Document Required On Sale",
-        "type": "SINGLE-SELECT",
-        "filter":true,
-        "choices": [
-          {
-            "label": "Prescription",
-            "value": "Prescription"
+            "label": "Personal Care",
+            "value": "Personal Care"
           },
           {
-            "label": "Age Proof",
-            "value": "Age Proof"
+            "label": "Device",
+            "value": "Device"
+          },
+          {
+            "label": "Treatment",
+            "value": "Treatment"
+          },
+          {
+            "label": "Other",
+            "value": "Other"
           }
         ]
       }
     ]
   }]
-}, {
+}, 
+{
   "entity": "document",
   "config" : [
     {

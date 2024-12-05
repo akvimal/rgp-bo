@@ -16,11 +16,6 @@ export class LookupComponent{
 
     constructor(private service:LookupService){}
 
-    // ngOnInit()
-    // {
-    //     this.item = this.default;
-    // }
-
     ngOnChanges(changes:SimpleChanges){
         this.item = changes.default.currentValue;
     }
@@ -30,7 +25,6 @@ export class LookupComponent{
     }
 
     onEnter(event:any){
-        // console.log(this.item);
         this.update.emit(this.item);
     }
 }

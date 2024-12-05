@@ -23,7 +23,7 @@ export class InvoiceFormComponent {
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
         vendorid: new FormControl('',Validators.required),
-        invoiceno: new FormControl('',Validators.required),
+        invoiceno: new FormControl('',[Validators.required,Validators.pattern('^[a-zA-Z0-9-]+$')]),
         invoicedate: new FormControl(this.getCurrentDateStr(),Validators.required),
         purchaseorderid: new FormControl(''),
         grno: new FormControl('')
@@ -34,7 +34,7 @@ export class InvoiceFormComponent {
       private router: Router, 
       private service:InvoiceService,
       private vendorService:VendorsService,
-      private prodService:ProductsService,
+      // private prodService:ProductsService,
       private poService:PurchaseOrderService){}
 
     ngOnInit(){
@@ -63,7 +63,7 @@ export class InvoiceFormComponent {
       });
 
       this.vendorService.findAll().subscribe(data => this.vendors = data);
-      this.prodService.findAll(null).subscribe(data => this.products = data);
+      // this.prodService.findAll(null).subscribe(data => this.products = data);
     }
 
     fetchOrders(event:any){

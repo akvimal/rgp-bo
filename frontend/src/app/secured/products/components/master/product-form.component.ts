@@ -178,8 +178,8 @@ export class ProductFormComponent {
         this.router.navigate(['/secure/products/list'],{relativeTo:this.route})
       }
 
-      titleEnter(event:any){
-        this.form.controls['title'].setValue(event.toUpperCase());
+      onLookupInput(event:any, field:string){
+        this.form.controls[field].setValue(event.toUpperCase());
       }
       
 }

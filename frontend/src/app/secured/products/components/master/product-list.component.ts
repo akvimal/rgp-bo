@@ -33,11 +33,16 @@ export class ProductListComponent {
     }
 
     propsUpdate(event:any){
+        
         const props = event.props.filter((p:any) => p.value !== '')
         this.criteria = {...this.criteria, category:event.category, props};
+        this.fetchList();
+        console.log(this.criteria);
     }
 
     filter(){
+        console.log('filter called',this.criteria);
+        
         this.fetchList();
     }
 }

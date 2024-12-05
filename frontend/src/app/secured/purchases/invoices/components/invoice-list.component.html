@@ -1,6 +1,6 @@
 <div class="row">
   <div class="col-12 mt-2">
-    <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+    <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button class="btn btn-primary">Add New</button></a>
   </div>
   <div class="col-12">
     <p-table #dt1 [value]="invoices" 

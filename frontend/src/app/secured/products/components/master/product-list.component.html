@@ -1,18 +1,26 @@
-    <div class="row mt-4">
-        <div class="col-12 text-end">
-            <div>
-                <a *isAuth="'products.add'" [routerLink]="['../new']"><button class="btn btn-primary">Add New</button></a>
+    <div class="d-flex justify-content-between mt-2">
+        <div class="row">
+            <!-- <div style="padding-right:.5em;padding-top: .5em;font-weight: bold;font-size: larger;">Filter</div> -->
+            <div class="col-12 d-flex">
+                <div style="padding-right:.5em">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" [(ngModel)]="criteria.title" (input)="filter()" placeholder="Product"></div>
+                <div style="padding-right:.5em;">
+                    <label class="form-label">Active</label>
+                    <input type="checkbox" style="width:25px;height:25px;" [(ngModel)]="criteria.active" (change)="filter()">
+                </div>
+
+            <!-- </div>
+            <div class="col-12 mt-2"> -->
+                <app-props-form [entity]="'product'" [validate]="false" [default]="false" (updated)="propsUpdate($event)"></app-props-form>
             </div>
         </div>
-        <div class="col-12">
-            <input type="checkbox" [(ngModel)]="criteria.active" style="width:25px;height:25px;"> Active
+        <div>
+            <a *isAuth="'products.add'" [routerLink]="['../new']"><button class="btn btn-primary">Add New</button></a>
         </div>
-        <div class="col-12 mt-2">
-            <app-props-form [entity]="'product'" [validate]="false" [default]="false" (updated)="propsUpdate($event)"></app-props-form>
-        </div>
-        <div class="col-12 mt-2">
+        <!-- <div class="col-12 mt-2">
             <button class="btn btn-primary" (click)="filter()">Filter</button>
-        </div>
+        </div> -->
     </div>
     <div class="row">
             <div class="col-12">
