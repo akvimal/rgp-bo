@@ -303,10 +303,10 @@ export class SaleFormComponent {
   isDocumentRequiredOnSale() {
     const doctypesrequired:any[] = [];
     this.sale.items?.forEach((item:any) => {
-      const docprops = item['more_props'];
-      if(docprops !== undefined && docprops['document'] !== undefined && docprops['document'] != ''){
-        doctypesrequired.push(docprops['document']);
-      }
+      const props = item['more_props'];
+        if(props !== null && props['document'] !== undefined && props['document'] != ''){
+           doctypesrequired.push(props['document']);
+        }
     });
     this.doctypes = doctypesrequired;
     return this.doctypes.length > 0;
