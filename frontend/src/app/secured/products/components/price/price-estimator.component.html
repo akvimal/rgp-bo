@@ -2,18 +2,18 @@
     <div class="col-12 d-flex">
         <div class="price-comp">
             <label style="text-align: left;">Category</label>
-            <h6><select [(ngModel)]="data.category" (change)="arrive($event, 'categ')">
+            <h6><select [(ngModel)]="data.category" (change)="calculate()">
                 <option value=""></option>
                 <option *ngFor="let c of getTypes()">{{c}}</option>
             </select></h6>
         </div>
         <div class="price-comp">
             <label>PTR</label>
-            <h6><input type="number" style="width:100px;text-align:right;" [(ngModel)]="data.ptr" (input)="arrive($event,'ptr')"></h6>
+            <h6><input type="number" style="width:100px;text-align:right;" [(ngModel)]="data.ptr" (input)="calculate()"></h6>
         </div>
         <div class="price-comp">
             <label>MRP</label>
-            <h6><input type="number" style="width:100px;text-align:right;" [(ngModel)]="data.mrp" (input)="arrive($event, 'mrp')"></h6>
+            <h6><input type="number" style="width:100px;text-align:right;" [(ngModel)]="data.mrp" (input)="calculate()"></h6>
         </div>
         <div class="price-comp">
             <label>Price</label>
@@ -29,5 +29,15 @@
             <label>Discount</label>
             <h6 style="color:blue;">{{data.discount}}%</h6>
         </div>
+    </div>
+    <div class="col-12">
+        <table class="range">
+            <tr><th></th><th width="35%">Margin</th><th width="35%">Discount</th></tr>
+            <tr *ngFor="let r of range">
+                <td>{{r.category}}</td>
+                <td><label>Min:{{r.margin[0]}}</label><label>Max:{{r.margin[1]}}</label></td>
+                <td><label>Min:{{r.discount[0]}}</label><label>Max:{{r.discount[1]}}</label></td>
+            </tr>
+        </table>
     </div>
 </div>

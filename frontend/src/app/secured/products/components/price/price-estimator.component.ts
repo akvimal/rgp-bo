@@ -7,7 +7,7 @@ import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/
 export class PriceEstimatorComponent{
 
     data:any = {};
-    guide = [
+    range = [
         {category: 'Generic',margin:[50,-1], discount: [-1,80]},
         {category: 'Non Generic',margin:[10,-1], discount: [-1,10]},
         {category: 'Other',margin:[0,-1], discount: [-1,0]}
@@ -18,12 +18,12 @@ export class PriceEstimatorComponent{
     }
 
     getTypes(){
-        return this.guide.map(c => c.category);
+        return this.range.map(c => c.category);
     }
 
-    arrive(event:any, input:string){
+    calculate(){
         
-         const range = this.guide.find(c=>c.category == this.data.category)
+         const range = this.range.find(c=>c.category == this.data.category)
          const {margin,discount} = range;
 
          if(this.data.ptr > 0 && this.data.mrp > 0){

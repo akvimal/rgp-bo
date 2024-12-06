@@ -189,3 +189,7 @@
     font-weight: bold;
     font-size: x-large;
 }
+
+.range label{
+    width: 80px;
+}
