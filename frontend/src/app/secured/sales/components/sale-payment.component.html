@@ -3,7 +3,6 @@
         <select class="form-control" [(ngModel)]="payment.digimode" (change)="digimodechange($event)">
             <option value="PayTM">PayTM</option>
             <option value="GPay">GPay</option>
-            <option value="Card">Card</option>
             <option value="Other">Other</option>
         </select>
         <input type="text" class="form-control" [(ngModel)]="payment.digiamt" (input)="digiamtchange($event)">

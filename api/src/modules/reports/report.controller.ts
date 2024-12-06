@@ -1,6 +1,6 @@
 import { ReportService } from "./report.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Post, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { Response } from 'express';
 import { GeneratorService } from "./generator.service";
@@ -13,14 +13,15 @@ export class ReportController {
 
     constructor(private service:ReportService, private generator:GeneratorService){}
 
+    @Get('/reminder/customer')
+    async customerReminders() {
+      return this.service.returnedCustomers(null);
+    }
+
     @Post('/sale')
     async search(@Body() body: any, @Res() res: Response) {
       // console.log(body);
       const result = await this.service.saleQuery(body.criteria);
-
-      // console.log(result.length);
-      
-
 
       if(body.action == 'search')
         res.send(result);
@@ -61,7 +62,6 @@ export class ReportController {
         }
         
       }
-
     }
 
     formatProps(props){

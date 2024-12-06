@@ -134,7 +134,7 @@ export class SaleService {
             qb.andWhere('product.category = :ctg', { ctg:query.category });
         }        
         if(query.fromdate && query.todate){
-            qb.andWhere('sale.billdate >= :from and sale.billdate <= :to', { from:query.fromdate,to:query.todate });
+            qb.andWhere('sale.billdate between :from and :to', { from:query.fromdate,to:query.todate });
         }
         // if(userid){
         //     qb.andWhere('sale.createdby = :uid', { uid:userid });

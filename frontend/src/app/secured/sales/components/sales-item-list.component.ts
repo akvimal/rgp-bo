@@ -56,7 +56,9 @@ export class SalesItemListComponent {
 
   fetchSaleItems() {
     const obj = this.removeNullAndEmpty(this.criteria);
-    this.service.findAllItems({...obj, todate: this.dateService.getOtherDate(new Date(this.criteria.todate),1)}).subscribe((data: any) => this.items = data);
+    this.service.findAllItems({...obj
+      // , todate: this.dateService.getOtherDate(new Date(this.criteria.todate),1)
+    }).subscribe((data: any) => this.items = data);
   }
 
   removeNullAndEmpty(obj:any){
@@ -89,7 +91,9 @@ export class SalesItemListComponent {
 
   download() {
     const obj = this.removeNullAndEmpty(this.criteria);
-    this.service.download({...obj, sign:true, todate: this.dateService.getOtherDate(new Date(this.criteria.todate),1)}).subscribe((data: any) => {
+    this.service.download({...obj, sign:true
+      // todate: this.dateService.getOtherDate(new Date(this.criteria.todate),1)
+    }).subscribe((data: any) => {
         importedSaveAs(new Blob([data]), 'salereport.pdf');
     });
   }

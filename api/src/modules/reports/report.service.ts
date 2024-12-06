@@ -7,6 +7,24 @@ export class ReportService {
 
     constructor(@InjectEntityManager() private manager: EntityManager) { }
 
+    async returnedCustomers(criteria:any){
+      let sql = '';
+      sql = `select c.id, name, mobile,  max(s.bill_date) as last_visited, 
+      current_date - date(max(s.bill_date)) as days_lapsed, count(s.bill_date) as orders, get_days_diff_between_sales(c.id)
+      from customer c inner join sale s on s.customer_id = c.id and s.bill_date >= '2024-05-01'
+      group by c.id, name, mobile
+      order by max(s.bill_date) desc`
+      return await this.manager.query(sql);
+    }
+
+    async customerOrders(id:number){
+      let sql = `select s.bill_no, s.bill_date, current_date - date(s.bill_date)
+      from sale s
+      inner join customer c on c.id = s.customer_id and c.id = ${id}
+      order by s.bill_date desc`;
+      return await this.manager.query(sql);
+    }
+
     async saleQuery(criteria:any){
       let sql = '';
       if(criteria.report == 'sale'){
@@ -30,7 +48,6 @@ export class ReportService {
               })
               sql += `and p.category = '${criteria.product.category}'`
             }
-              
           }
           sql += ` order by s.bill_date desc, s.bill_no desc`
         // and s.order_type = '' 
