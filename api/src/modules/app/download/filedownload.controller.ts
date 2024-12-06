@@ -70,7 +70,6 @@ export class FileDownloadController {
     const order = (await this.poService.findOrderById(criteria.id));
     
     if(order) {
-      console.log(order);
       
       const requests = order.requests.map(req => {
   

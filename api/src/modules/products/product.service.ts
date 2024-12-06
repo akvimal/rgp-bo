@@ -56,8 +56,6 @@ export class ProductService {
   }
 
   async filterByCriteria2(product:any) {
-console.log('criteria: ',product);
-
     const qb = this.productRepository.createQueryBuilder('p')
         .where('p.archive = false and p.active = :flag', { flag: product.active });
         if(product.title && product.title !== ''){
@@ -123,8 +121,6 @@ console.log('criteria: ',product);
     
     async addPrice(createProductPrice2Dto: CreateProductPrice2Dto, userid) {
       return await this.endCurrentPrice(createProductPrice2Dto.productid,createProductPrice2Dto.effdate).then(async (data:any) => {
-        console.log(data);
-        
         return await this.priceRepository.save({...createProductPrice2Dto, createdby:userid});
       })
       

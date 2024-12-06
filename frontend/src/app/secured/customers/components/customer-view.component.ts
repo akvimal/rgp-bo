@@ -23,8 +23,6 @@ export class CustomerViewComponent {
     }
 
     documentsSelected(event:any){
-        console.log(event);
-        
         this.selected.emit({action:'documentsSelected', event})
     }
 

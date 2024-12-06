@@ -8,8 +8,6 @@ export class ReportService {
     constructor(@InjectEntityManager() private manager: EntityManager) { }
 
     async saleQuery(criteria:any){
-   console.log(criteria);
-   
       let sql = '';
       if(criteria.report == 'sale'){
         sql = `

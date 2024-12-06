@@ -34,8 +34,6 @@ export class PurchaseService {
     }
 
     async findAllOrdersByCriteria(criteria:any){
-        console.log('criteria: ',criteria);
-        
         let whereclause = 'or.isActive = :flag'
         if(criteria.status){
             whereclause += ' and or.status = :status'

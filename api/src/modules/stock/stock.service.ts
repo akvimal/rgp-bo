@@ -95,15 +95,8 @@ export class StockService {
         async getItemsWithStockData(sale:Sale) {
 
             const products = sale.items.map((item:any) => { return `(title='${item.product.title.replaceAll('\'','\'\'')}' and batch='${item.batch}' and exp_date='${item.expdate}')`});
-            console.log(products);
-            
             const query = `select * from inventory_view where ${products.join(' or ')}`
-            console.log(query);
-            
             const stockdata = await this.manager.query(query);
-            console.log(stockdata);
-            
-
             return sale;
         }
 

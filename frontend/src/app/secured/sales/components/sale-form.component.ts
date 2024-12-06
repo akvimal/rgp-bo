@@ -61,7 +61,7 @@ export class SaleFormComponent {
         const saleId =  params.get("id");
 
         saleId !== null && this.service.find(saleId).subscribe((result:any) => {
-          // console.log(result);
+          console.log(result);
           
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
@@ -304,11 +304,10 @@ export class SaleFormComponent {
     const doctypesrequired:any[] = [];
     this.sale.items?.forEach((item:any) => {
       const docprops = item['more_props'];
-      if(docprops){
+      if(docprops !== undefined && docprops['document'] !== undefined && docprops['document'] != ''){
         doctypesrequired.push(docprops['document']);
       }
     });
-    
     this.doctypes = doctypesrequired;
     return this.doctypes.length > 0;
   }

@@ -56,7 +56,6 @@ export class PurchaseItemController {
 
     @Put()
     updateItems(@Body() input:UpdateInvoiceItemsDto, @User() currentUser: any) {
-      console.log(input);
       return this.purchaseInvoiceService.updateItems(input.ids, input.values, currentUser.id);
     }
 
