@@ -31,8 +31,8 @@ export class PriceAdjustorComponent{
         const ptr = +this.price.ptr;
         const mrp = +this.price.mrp;
         
-        if(price > mrp){ event.target.value = mrp; }
-        if(price < ptr){ event.target.value = ptr; }
+        // if(price > mrp){ event.target.value = mrp; }
+        // if(price < ptr){ event.target.value = ptr; }
 
         //Below logic is for applying minimum margin and maximum discount
         //==========
