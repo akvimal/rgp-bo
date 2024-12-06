@@ -27,7 +27,7 @@ export class StockService {
 
         async findByCriteria(criteria:any){
             
-            let sql = `select iv.*, sale_price, market_price 
+            let sql = `select iv.*, sale_price
                 from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id`;
             
             const conditions = [];

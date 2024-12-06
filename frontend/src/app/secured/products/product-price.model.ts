@@ -5,5 +5,4 @@ export interface ProductPrice {
     our_max_ptr?:number;
     our_max_mrp?:number;
     our_sale_price?:number;
-    market_price?:number;
 }
