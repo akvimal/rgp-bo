@@ -8,16 +8,16 @@
             </select></h6>
         </div>
         <div class="price-comp">
-            <label>PTR</label>
-            <h6><input type="number" style="width:100px;text-align:right;" [(ngModel)]="data.ptr" (input)="calculate()"></h6>
+            <label>PTR Cost</label>
+            <h6><input type="number" style="width:140px;text-align:right;" [(ngModel)]="data.ptr" (input)="calculate()"></h6>
         </div>
         <div class="price-comp">
             <label>MRP</label>
-            <h6><input type="number" style="width:100px;text-align:right;" [(ngModel)]="data.mrp" (input)="calculate()"></h6>
+            <h6><input type="number" style="width:140px;text-align:right;" [(ngModel)]="data.mrp" (input)="calculate()"></h6>
         </div>
         <div class="price-comp">
             <label>Price</label>
-            <h6 style="background: #dea;">
+            <h6 style="background: #dea;padding: .15em;">
                 &nbsp;{{data.price}}
             </h6>
         </div>

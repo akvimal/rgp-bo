@@ -36,10 +36,10 @@ export class PriceEstimatorComponent{
                 let maxdisc = +this.data.mrp - +this.data.mrp * (+discount[1]/100);
                 
                 if(minmargin < maxdisc ){
-                    this.data.price = maxdisc;
+                    this.data.price = maxdisc.toFixed(2);
                 }
                 else if (minmargin > maxdisc ){
-                    this.data.price = minmargin;
+                    this.data.price = minmargin.toFixed(2);
                 }
             }
             
