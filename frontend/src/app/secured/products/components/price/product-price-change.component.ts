@@ -63,6 +63,6 @@ export class ProductPriceChangeComponent {
 
     isValid(){
         return this.price.save != '' && this.price.date != null 
-        && (this.price.reason != '' &&  (this.price.reason == 'Other' && this.price.comments != '' ));
+        && this.price.reason != '';
     }
 }
