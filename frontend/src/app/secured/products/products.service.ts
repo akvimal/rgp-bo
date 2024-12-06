@@ -32,6 +32,9 @@ export class ProductsService {
     findById(id:any){
         return this.http.get(`${this.apiurl}/${id}`);
     }    
+    findPricesById(prodid:any){
+        return this.http.get(`${this.apiurl}/prices/${prodid}`);
+    }    
     search(text:any){
         return this.http.get(`${this.apiurl}/search=${text}`);
     }
@@ -48,15 +51,20 @@ export class ProductsService {
         return this.http.delete(`${this.apiurl}/${id}`);
     }
 
-    addPrice(data:ProductPrice){
-        return this.http.post(`${this.apiurl}/prices`,{productid:data['id'],
-        marketprice:data['market_price'],
-        saleprice:data['our_sale_price']});
+    addPrice(data:any){
+        return this.http.post(`${this.apiurl}/prices/add`,{productid:data['id'],
+        effdate:data['date'],
+        saleprice:data['sale'],
+        reason:data['reason'],
+        comments:data['comments']});
     }    
-    updatePrice(data:ProductPrice){
+    updatePrice(data:any){
         return this.http.put(`${this.apiurl}/prices/${data['price_id']}`,{productid:data['id'],
-        marketprice:data['market_price'],
-        saleprice:data['our_sale_price']});
+        effdate:data['date'],
+        saleprice:data['sale'],
+        reason:data['reason'],
+        comments:data['comments']
+    });
     }    
     
 }

@@ -1,0 +1,47 @@
+<h5>{{current?.price?.title}}</h5>
+<div class="row mt-4">
+    <div class="col-6">
+        <div class="row">
+            <app-price-adjustor [price]="current?.price" (ready)="priceData($event)"></app-price-adjustor>
+            <div class="col-12 mt-2 d-flex">
+                <div>
+                    <label>Effective Date</label>
+                    <input type="date" class="form-control" [(ngModel)]="price.date">
+                </div>
+                <div style="margin-left:1em">
+                    <label>Reason</label>
+                    <select class="form-control" [(ngModel)]="price.reason">
+                        <option value="Purchase">Initial</option>
+                        <option value="Purchase">Higher PTR</option>
+                        <option value="Market">Market Pressure</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>    
+            </div>
+            <div class="col-12 mt-2">
+                <label>Comments</label>
+                <textarea class="form-control" [(ngModel)]="price.comments"></textarea>
+            </div>
+            <div class="col-12 mt-2">
+                <button class="btn btn-primary" [disabled]="!isValid()" (click)="onSave()">Save</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="row">
+            <div class="col-12">
+                <h6 style="padding:.3em;border-bottom: 4px solid #999;background:#ddd">History</h6>
+                <div>
+                    <div class="change" *ngFor="let h of current.history">
+                        <div>
+                        <strong>{{h.eff_date | date}}</strong>: {{h.sale_price}}
+                        <p><label>{{h.reason}}</label>{{h.comments}}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+

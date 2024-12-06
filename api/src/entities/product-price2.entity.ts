@@ -20,14 +20,17 @@ export class ProductPrice2 extends BaseEntity {
   @Column("integer", { name: "product_id", unique: true })
   productid: number;
 
-  @Column("double precision", { name: "market_price", precision: 53 })
-  marketprice: number;
-
   @Column("double precision", { name: "sale_price", precision: 53 })
   saleprice: number;
 
   @Column({ name: 'eff_date', type: 'date', default: () => 'CURRENT_DATE', unique: true })
   effdate: Date;
+
+  @Column("character varying", { name: "reason" })
+  reason: string;
+
+  @Column("character varying", { name: "comments" })
+  comments: string;
 
   @ManyToOne(
     () => Product,

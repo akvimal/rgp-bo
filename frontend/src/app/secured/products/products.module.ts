@@ -21,8 +21,10 @@ import { ProductFormComponent } from "./components/master/product-form.component
 import { ProductsComponent } from "./components/products.component";
 import { ProductHeaderComponent } from "./components/product-header.component";
 import { ConfirmDialogModule } from "primeng/confirmdialog";
-import { ConfirmationService } from "primeng/api";
 import { DocumentsModule } from "../documents/documents.module";
+import { ProductPriceChangeComponent } from "./components/price/product-price-change.component";
+import { PriceAdjustorComponent } from "./components/price/price-adjustor.component";
+import { PriceEstimatorComponent } from "./components/price/price-estimator.component";
 
 const routes: Routes = [
   { path: '', component: ProductsComponent, 
@@ -45,7 +47,10 @@ const routes: Routes = [
         ProductHeaderComponent,
         ProductListComponent,
         ProductFormComponent,
-        ProductPriceComponent
+        ProductPriceComponent,
+        ProductPriceChangeComponent,
+        PriceAdjustorComponent,
+        PriceEstimatorComponent
     ],
     imports: [
         CommonModule,
@@ -66,6 +71,6 @@ const routes: Routes = [
         SharedModule,
         DocumentsModule
     ],
-    exports: [RouterModule]
+    exports: [RouterModule,PriceEstimatorComponent]
   })
 export class ProductsModule{}

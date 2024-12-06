@@ -174,3 +174,18 @@
 .props div {
     margin-right: 1em;
 }
+
+.price-comp {
+    margin-right: .5em;
+}
+
+.price-comp label {
+    text-align: right;
+    width: 100px;
+}
+
+.price-comp h6 {
+    text-align: right;
+    font-weight: bold;
+    font-size: x-large;
+}

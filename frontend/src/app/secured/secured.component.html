@@ -145,6 +145,13 @@
         </li> -->
     
         <li class="nav-item">
+          <a class="nav-link collapsed" (click)="openPricing()">
+            <i class="bi bi-box-arrow-in-left"></i>
+            <span>Pricing</span>
+          </a>
+        </li>
+
+        <li class="nav-item">
           <a class="nav-link collapsed" routerLink="/logout">
             <i class="bi bi-box-arrow-in-left"></i>
             <span>Logout</span>
@@ -181,3 +188,7 @@
   <!-- <p-dialog header="Profile" [modal]="true" [(visible)]="showUserPopup" [style]="{ width: '25rem' }">
     <app-webcam-snapshot></app-webcam-snapshot>
   </p-dialog> -->
+  <p-dialog [header]="'Price'" 
+        [(visible)]="pricing" [modal]="true">
+    <app-price-estimator></app-price-estimator>
+</p-dialog>

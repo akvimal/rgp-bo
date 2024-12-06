@@ -7,6 +7,7 @@
 
 <div class="row mt-2">
     <div class="col-12">
+        <p>Product not purchased are not shown below</p>
     <p-table [value]="products" dataKey="id" editMode="row" styleClass="p-datatable-sm p-datatable-striped"
             [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
@@ -62,12 +63,22 @@
                 <td class="text-end">{{product.discount}}%</td>
                 <td class="text-end">{{product.mrp | number : '1.2-2'}}</td>
                 <td style="text-align:center">
-                    <button *ngIf="!editing" pButton pRipple type="button" pInitEditableRow icon="pi pi-pencil" (click)="onRowEditInit(product)" class="p-button-rounded p-button-text"></button>
+                    <h4 class="icon">
+                        <a (click)="changePrice(product.id)">
+                            <i class="bi bi-pencil-square text-primary"></i>
+                        </a>
+                    </h4>
+                    <!-- <button *ngIf="!editing" pButton pRipple type="button" pInitEditableRow icon="pi pi-pencil" (click)="onRowEditInit(product)" class="p-button-rounded p-button-text"></button>
                     <button *ngIf="editing" pButton pRipple type="button" pSaveEditableRow icon="pi pi-check" (click)="onRowEditSave(product)" class="p-button-rounded p-button-text p-button-success p-mr-2"></button>
-                    <button *ngIf="editing" pButton pRipple type="button" pCancelEditableRow icon="pi pi-times" (click)="onRowEditCancel(product, ri)" class="p-button-rounded p-button-text p-button-danger"></button>
+                    <button *ngIf="editing" pButton pRipple type="button" pCancelEditableRow icon="pi pi-times" (click)="onRowEditCancel(product, ri)" class="p-button-rounded p-button-text p-button-danger"></button> -->
                 </td>
             </tr>
         </ng-template>
     </p-table>
 </div>
 </div>
+
+<p-dialog [header]="'Price Change'" 
+        [(visible)]="showPriceChange" [modal]="true">
+    <app-product-price-change [productid]="productid" (added)="changed($event)"></app-product-price-change>
+</p-dialog>

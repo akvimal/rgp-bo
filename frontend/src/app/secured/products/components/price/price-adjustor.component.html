@@ -1,0 +1,23 @@
+<div class="row">
+    <div class="col-12 d-flex">
+        <div class="price-comp">
+            <label>PTR</label>
+            <h6>{{data.ptr|number}}</h6>
+        </div>
+        <div class="price-comp">
+            <label>Price</label>
+            <h6><input type="number" style="width:100px;text-align:right;" [(ngModel)]="data.price" (input)="calculate($event)"></h6>
+        </div>
+        <div class="price-comp">
+            <label>MRP</label>
+            <h6>{{data.mrp|number}}</h6></div>
+        <div class="price-comp">
+            <label>Margin</label>
+            <h6 style="color:blueviolet">{{data.margin}}%</h6>
+        </div>
+        <div class="price-comp">
+            <label>Discount</label>
+            <h6 style="color:blue;">{{data.discount}}%</h6>
+        </div>
+    </div>
+</div>

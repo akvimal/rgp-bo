@@ -8,8 +8,10 @@ import { ProductsService } from "../../products.service";
 export class ProductPriceComponent {
 
     criteria = {active:true,title:''}
+    productid=0;
 
     products:any[] = [];
+    showPriceChange:boolean = false;
 
     constructor(private service:ProductsService){}
 
@@ -44,5 +46,16 @@ export class ProductPriceComponent {
     onRowEditCancel(product: ProductPrice, index: number) {
         // console.log('onRowEditCancel',product);
         // console.log('index: ',index); 
+    }
+
+    changePrice(productid:number){
+        this.productid=productid;
+        this.showPriceChange = true;
+    }
+
+    changed(event:any){
+        console.log(event);
+        this.showPriceChange = false;
+        //update price item
     }
 }

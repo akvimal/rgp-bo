@@ -86,16 +86,30 @@ console.log('criteria: ',product);
   //     order by p.title`);
   // }
 
-async findPrices(criteria:any){
-  return await this.manager.query(
-    `select * from price_view where active = ${criteria.active} and title ilike '${criteria.title}%'`);
-}
+  async findPrices(criteria:any){
+    return await this.manager.query(
+      `select * from price_view where active = ${criteria.active} and title ilike '${criteria.title}%'`);
+  }
 
+  async findPriceById(productid:number){
+    return await this.manager.query(
+      `select * from price_view where id = ${productid}`);
+  }
+
+  async endCurrentPrice(productid:number,enddate:string){
+    return await this.manager.query(
+      `update product_price2 set end_date = '${enddate}' where product_id = ${productid} and end_date = '2099-12-31'`);
+  }
+
+  async findPriceHistoryById(productid:number){
+    return await this.manager.query(
+      `select * from product_price2 where product_id = ${productid} order by eff_date desc`);
+  }
+    
     async findByTitle(title:any){
       const qb = this.productRepository.createQueryBuilder(`p`)
           .where('p.isActive = :flag', { flag: true });
         qb.andWhere(`p.title = :ttl`, { ttl:title });
-          
         return qb.getOne();
     }
 
@@ -108,7 +122,12 @@ async findPrices(criteria:any){
     }
     
     async addPrice(createProductPrice2Dto: CreateProductPrice2Dto, userid) {
-      return this.priceRepository.save({...createProductPrice2Dto, createdby:userid});
+      return await this.endCurrentPrice(createProductPrice2Dto.productid,createProductPrice2Dto.effdate).then(async (data:any) => {
+        console.log(data);
+        
+        return await this.priceRepository.save({...createProductPrice2Dto, createdby:userid});
+      })
+      
     }
     
     async update(id:any, values:any, userid){

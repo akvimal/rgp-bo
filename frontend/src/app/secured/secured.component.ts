@@ -12,6 +12,8 @@ export class SecuredComponent {
     // showUserPopup = false;
     user:any;
     state$!:Observable<AppState>;
+
+    pricing:boolean = false;
     
     constructor(
       private appStateService:AppStateService, 
@@ -26,4 +28,8 @@ export class SecuredComponent {
     // showDialog(){
     //   this.showUserPopup = true;
     // }
+
+    openPricing(){
+      this.pricing = true;
+    }
 }

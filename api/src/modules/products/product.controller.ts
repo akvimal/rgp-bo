@@ -31,8 +31,8 @@ export class ProductController {
     }
 
     @Post('prices/add')
-    async addPrice(@Body() createDto: CreateProductPrice2Dto,  @User() currentUser: any) {
-        return this.productService.addPrice(createDto, currentUser.id);
+    async addPrice(@Body() body,  @User() currentUser: any) {
+        return this.productService.addPrice(body, currentUser.id);
     } 
     
     @Put('prices/:id')
@@ -42,8 +42,6 @@ export class ProductController {
 
     @Put(':id')
     update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @User() currentUser: any) {
-      console.log(updateDto);
-      
       return this.productService.update(id, updateDto, currentUser.id);
     }
 
@@ -51,6 +49,14 @@ export class ProductController {
     // updatePrice(@Param('id') id: number, @Param('productid') productid: number, @Body() updateDto: UpdateProductPrice2Dto, @User() currentUser: any) {
     //   return this.productService.updatePrice(id, {...updateDto, productid}, currentUser.id);
     // }
+
+    @Get('/prices/:prodid')
+    findPriceById(@Param() param: any, @User() currentUser: any) {
+      return this.productService.findPriceById(param.prodid).then(async (price:any) => {
+        const history = await this.productService.findPriceHistoryById(price[0].id);
+        return {price:price[0], history};
+      });
+    }
 
     @Get()
     findAll(@Query() query: any, @User() currentUser: any) {
