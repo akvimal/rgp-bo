@@ -1,64 +1,52 @@
 <app-sale-header></app-sale-header>
 
-<p-table #dt1 [value]="customers" [resizableColumns]="true" columnResizeMode="expand" 
+<p-table [value]="result" [resizableColumns]="true" columnResizeMode="expand" 
 [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
     currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
     [rowsPerPageOptions]="[10,25,50]">
-    <!-- <ng-template pTemplate="caption">
-        <div class="flex">
-            <button pButton label="Clear" class="p-button-outlined" icon="pi pi-filter-slash" (click)="clear(dt1)"></button>
-            <span class="p-input-icon-left ml-auto">
-                <i class="pi pi-search"></i>
-                <input pInputText type="text" 
-                (input)="applyFilterGlobal($event, 'contains')"
-                placeholder="Search keyword" />
-            </span>
-        </div>
-    </ng-template> -->
+    
     <ng-template pTemplate="header">
         <tr>
-            <th pSortableColumn="custname">Name 
+            <th pSortableColumn="name">Name 
                 <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
-                <p-sortIcon field="custname"></p-sortIcon>
+                <p-sortIcon field="name"></p-sortIcon>
             </th>
-            <th pSortableColumn="custmobile">Mobile 
+            <th pSortableColumn="mobile">Mobile 
                 <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
-                <p-sortIcon field="custmobile"></p-sortIcon>
+                <p-sortIcon field="mobile"></p-sortIcon>
             </th>           
-            <th pSortableColumn="sincemonths">Period
-                <p-columnFilter type="numeric" field="sincemonths" display="menu"></p-columnFilter>
-                <p-sortIcon field="sincemonths"></p-sortIcon>
+           
+            <th pSortableColumn="days_lapsed">Days ago
+                <p-columnFilter type="numeric" field="days_lapsed" display="menu"></p-columnFilter>
+                <p-sortIcon field="days_lapsed"></p-sortIcon>
             </th>
-            <th pSortableColumn="recentvisit">Last Seen
-                <p-columnFilter type="numeric" field="recentvisit" display="menu"></p-columnFilter>
-                <p-sortIcon field="recentvisit"></p-sortIcon>
+            <th pSortableColumn="last_visited">Last Visit
+                <p-columnFilter type="date" field="last_visited" display="menu"></p-columnFilter>
+                <p-sortIcon field="last_visited"></p-sortIcon>
             </th>
-            <th pSortableColumn="sincerecentdays">Days Ago
-                <p-columnFilter type="numeric" field="sincerecentdays" display="menu"></p-columnFilter>
-                <p-sortIcon field="sincerecentdays"></p-sortIcon>
+            <!-- <th>Pattern</th> -->
+            <th>Interval</th>
+            <th pSortableColumn="avgdays">Avg Visit<br>Interval
+                <p-sortIcon field="avgdays"></p-sortIcon>
             </th>
-            <th pSortableColumn="recenttotal">Bill Amt
-                <p-columnFilter type="numeric" field="recenttotal" display="menu"></p-columnFilter>
-                <p-sortIcon field="recenttotal"></p-sortIcon>
-            </th>
-            <th pSortableColumn="expreturndays">Days
-                <p-columnFilter type="numeric" field="expreturndays" display="menu"></p-columnFilter>
-                <p-sortIcon field="expreturndays"></p-sortIcon>
+            <th pSortableColumn="devdays">Visits<br>
+                Slip
+                <p-sortIcon field="devdays"></p-sortIcon>
             </th>
             <th>Actions</th>
         </tr>
     </ng-template>
     <ng-template pTemplate="body" let-customer>
         <tr>
-            <td>{{customer.custname}}</td>
+            <td>{{customer.name}}</td>
             <!-- <td>{{product.code}}</td> -->
-            <td>{{customer.custmobile}}</td>
-            <td>{{customer.sincemonths}}</td>
-            <td>{{customer.recentvisit | date: 'dd-MMM'}}</td>
-            <td>{{customer.sincerecentdays}}</td>
-            <td>{{customer.recenttotal}}</td>
-            <td>{{customer.expreturndays}}</td>
-            
+            <td>{{customer.mobile}}</td>
+            <td>{{customer.days_lapsed}}</td>
+            <td>{{customer.last_visited | date: 'dd/MM/yy'}}</td>
+            <!-- <td>{{customer.visit_pattern}}</td> -->
+            <td>{{customer.interval}}</td>
+            <td>{{customer.avgdays}}</td>
+            <td>{{customer.devdays}}</td>
             <td style="text-align: center;">
                 <!-- <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
                     <i class="bi bi-pencil-square text-primary"></i>
@@ -66,8 +54,9 @@
                 <a *isAuth="'products.delete'" (click)="delete(product.id)">
                     <i class="bi bi-trash text-danger"></i>
                 </a> -->
-                <a [routerLink]="['/secure/sales/view',customer.recentsaleid]">View</a>
-                <span *ngIf="customer.remindcustomer">Remind</span>
+                <!-- <a [routerLink]="['/secure/sales/view',customer.recentsaleid]">View</a>
+                <span *ngIf="customer.remindcustomer">Remind</span> -->
+                Add to Reminder
             </td>
         </tr>
     </ng-template>

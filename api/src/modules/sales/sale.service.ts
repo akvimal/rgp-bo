@@ -335,6 +335,15 @@ export class SaleService {
         inner join product p on p.id = pii.product_id`);
     }
 
+    async findVisits(criteria:any){        
+        const sql = `select c.id, name, mobile,  max(s.bill_date) as last_visited, 
+        current_date - date(max(s.bill_date)) as days_lapsed,  get_days_diff_stats(c.id) as visit_pattern
+        from customer c inner join sale s on s.customer_id = c.id and (current_date - date(s.bill_date)) <= ${criteria.maxdays}
+        group by c.id, name, mobile
+        order by max(s.bill_date) desc`
+        return await this.manager.query(sql);
+    }
+
     async update(id:any, values:any, userid:any){
         await this.saleRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             const obj = await this.saleRepository.findOne({id});

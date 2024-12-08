@@ -13,11 +13,6 @@ export class ReportController {
 
     constructor(private service:ReportService, private generator:GeneratorService){}
 
-    @Get('/reminder/customer')
-    async customerReminders() {
-      return this.service.returnedCustomers(null);
-    }
-
     @Post('/sale')
     async search(@Body() body: any, @Res() res: Response) {
       // console.log(body);

@@ -19,8 +19,6 @@ export class SaleService {
     constructor(private http:HttpClient){}
 
     save(sale:Sale){
-        console.log(sale);
-        
         return sale.billno ? this.http.put(`${this.apiurl}`,sale) : this.http.post(`${this.apiurl}`,sale);
     }
 
@@ -29,9 +27,13 @@ export class SaleService {
     }
 
     findAllItems(criteria:any){
-        console.log(criteria);
         return this.http.post(`${this.apiurl}/items/criteria`,criteria);
     }
+
+    findCustomerSalePattern(criteria:any){
+        return this.http.get(`${this.apiurl}/visits/${criteria.days}`);
+    }
+
      
     findEligibleReturnItems(saleid:any){
         return this.http.get(`${this.apiurl}/returns/${saleid}/eligible`);

@@ -1,5 +1,5 @@
 import { Component } from "@angular/core";
-import { CustomersService } from "src/app/secured/customers/customers.service";
+import { SaleService } from "../sales.service";
 
 @Component({
     selector:'app-sale-reminder',
@@ -7,38 +7,31 @@ import { CustomersService } from "src/app/secured/customers/customers.service";
 })
 export class SaleReminderComponent {
 
-    customers:any[]=[];
-
-    constructor(private customerService:CustomersService){}
+  result = []
+    constructor(private service:SaleService){}
 
     ngOnInit(){
-        this.customerService.getSaleData({}).subscribe((data:any) => {
-            this.customers = data.map((item:any)=> {
-                // const dt = new Date(item.last_bill_date)
-                return {
-                    custname: item.name,
-                    custmobile: item.mobile,
-                    customerid: item.customer_id,
-                    sincedate: item.since,
-                    sincemonths: Math.round(item.since_months),
-                    tilldatetotal: item.tilldate_total,
-                    recentvisit: item.recent_visit,
-                    recentsaleid: item.recent_sale_id,
-                    recenttotal: item.recent_total,
-                    sincerecentdays: item.since_recent_days,
-                    expreturndays: item.expreturndays,
-                    remindcustomer: (item.expreturndays - item.since_recent_days) < 0 
-                    // agewithus: item.age_in_months,
-                    // lastbillid: item.last_bill_id,
-                    // lastbilldt: item.last_bill_date,
-                    // monthsago: item.visit_months_ago,
+        this.service.findCustomerSalePattern({days:90}).subscribe((data:any) => {
+            this.result = data.map(d => {
+                //("{31,40,44,13,42}",34.0000000000000000,12.7475487839819621)
+                //({},,)
+                let interval = '';
+                let avgdays= 0;
+                let devdays = 0;
+                const pattern = d['visit_pattern'];
                 
+                if(pattern!=='' && pattern.indexOf('\"') > 0){
+                    const str2pos = pattern.lastIndexOf('\"');
+                    const encodedInterval = (pattern.substring(pattern.indexOf('\"')+2,str2pos-1));
+                    // console.log(interval.split(',').reverse());
+                    interval = encodedInterval.split(',').reverse();
+                    avgdays = Math.round(+pattern.substring(str2pos+2, pattern.lastIndexOf(',')));
+                    devdays = Math.round(+pattern.substring(pattern.lastIndexOf(',')+1,pattern.length-1));
                 }
-                {
-                    
-                  }
-            }
-        )});
+                
+                return {...d, interval, avgdays, devdays}
+            });
+        });
     }
 
 }

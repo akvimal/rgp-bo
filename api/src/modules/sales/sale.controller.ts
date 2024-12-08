@@ -84,6 +84,11 @@ export class SaleController {
       return await this.saleService.getSaleReturnItems(id);
     }
 
+    @Get('/visits/:days')
+    async findDaysVisited(@Param('days') days: number) {
+      return this.saleService.findVisits({maxdays:days})
+    }
+    
     @Get('/returns')
     async findAllReturns() {
       return this.saleService.getReturns();

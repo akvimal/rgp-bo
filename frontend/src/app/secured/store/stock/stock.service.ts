@@ -11,9 +11,9 @@ export class StockService {
 
     constructor(private http:HttpClient){ }
 
-    findAll(){
-        return this.http.get(`${this.apiurl}/stock`);
-    }
+    // findAll(){
+    //     return this.http.get(`${this.apiurl}/stock`);
+    // }
 
     filterByCriteria(criteria:any){   
         return this.http.post(`${this.apiurl}/stock/filter`, criteria);

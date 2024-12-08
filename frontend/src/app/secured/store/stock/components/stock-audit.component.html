@@ -13,7 +13,7 @@
         
         <div class="col-12">
             <button (click)="complete()" [disabled]="!isItemsSelected()" class="btn btn-outline-success">Complete</button>&nbsp;&nbsp;
-            <button (click)="bulkadjust()" [disabled]="!isItemsSelected()" class="btn btn-outline-danger">Bulk Adjust</button>
+            <!-- <button (click)="bulkadjust()" [disabled]="!isItemsSelected()" class="btn btn-outline-danger">Bulk Adjust</button> -->
         </div>
         <div class="col-12">
             <p-table #dt1 [value]="items" [resizableColumns]="true" columnResizeMode="expand" 

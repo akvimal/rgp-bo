@@ -193,3 +193,10 @@
 .range label{
     width: 80px;
 }
+
+.expired {
+    background: #dde !important;
+}
+.low {
+    background: #fdd !important;
+}

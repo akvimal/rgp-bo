@@ -46,6 +46,7 @@ export class AuthService {
 
   public isActionAuthorized(action:string){
     const arr:any[] = []
+    
     this.permissions.forEach((elem:any) => {
       elem.policies &&  elem.policies.forEach((e:any) => arr.push(elem.resource + '.' +e.action));
       arr.push(elem.resource);

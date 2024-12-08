@@ -17,10 +17,10 @@ export class StockController {
     
     constructor(private service:StockService, private invoiceService:PurchaseInvoiceService){}
 
-    @Get()
-    async findAll() {
-      return this.service.findAll();
-    }
+    // @Get()
+    // async findAll() {
+    //   return this.service.findAll();
+    // }
 
     @Post('/filter')
     async filterByCriteria(@Body() criteria) {

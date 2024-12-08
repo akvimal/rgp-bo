@@ -1,0 +1,67 @@
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex">
+                <input class="form-conrol-input checkmark" type="checkbox" [(ngModel)]="criteria.active" 
+                (change)="fetch()"/>
+            <label for="available" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Active</label>
+            <input class="form-conrol-input checkmark" type="checkbox" [(ngModel)]="criteria.available" 
+                (change)="fetch()"/>
+            <label for="expired" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Available</label> 
+            <input class="form-conrol-input checkmark" type="checkbox" [(ngModel)]="criteria.expired" 
+                (change)="fetch()"/>
+            <label for="expired" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Expired</label> 
+            <!-- <app-product-select (selected)="onProductSelect($event)"></app-product-select> -->
+            </div>
+        </div>
+    </div>
+    <div class="row mt-2">
+        <div class="col-6">
+            <p-table [value]="products"
+            [paginator]="true" [rows]="10" [showCurrentPageReport]="true" 
+            styleClass="p-datatable-gridlines p-datatable-sm"
+                currentPageReportTemplate="{totalRecords} Products" 
+                [rowsPerPageOptions]="[10,25,50]">
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th>
+                            <input type="checkbox" class="form-conrol-input checkmark">
+                        </th>
+                        <th pSortableColumn="title">Product
+                            <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
+                            <p-sortIcon field="title"></p-sortIcon>
+                        </th>
+                        <th pSortableColumn="last_sale_date">Last
+                            <p-sortIcon field="last_sale_date"></p-sortIcon>
+                        </th>
+                        <!-- <th>Avg.<br>Cust</th> -->
+                        <th>Ppl</th>
+                        <th>Avg.<br>Sales</th>
+                        <th>High<br>Sales</th>
+                        <th>Avail</th>
+                        <th pSortableColumn="level">Level
+                            <p-sortIcon field="level"></p-sortIcon>
+                        </th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-i>
+                    <tr [ngClass]="{'low': i.level < 20}">
+                        <td><input type="checkbox" class="form-conrol-input checkmark" ></td>
+                        <td><a [routerLink]="['items',i.id]">{{i.title}}</a>
+                            <!-- {{i.title}} -->
+                        </td>
+                        <td>{{i.last_sale_date | date : 'MM/yy'}}</td>
+                        <!-- <td>{{i.average_customers | number:'1.0-0'}}</td> -->
+                        <td>{{i.highest_customers}}</td>
+                        <td>{{i.average_sales | number:'1.0-0'}}</td>
+                        <td>{{i.highest_sales}}</td>
+                        <td class="text-end"><strong>{{i.balance}}</strong></td>
+                        <td>{{i.level}}</td>
+                    </tr>
+                </ng-template>
+            </p-table>    
+        </div>
+        <div class="col-6">
+            <router-outlet></router-outlet>
+        </div>
+        
+    </div>

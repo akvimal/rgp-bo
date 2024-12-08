@@ -22,10 +22,10 @@ export class CustomerController {
       return this.customerService.findAll();
     }
 
-    @Post('/sale')
-    async findSaleData(@Body() criteria: any) {
-      return this.customerService.findSaleData(criteria);
-    }
+    // @Post('/sale')
+    // async findSaleData(@Body() criteria: any) {
+    //   return this.customerService.findSaleData(criteria);
+    // }
 
     @Post('/filter')
     async filterByCriteria(@Body() criteria: any) {

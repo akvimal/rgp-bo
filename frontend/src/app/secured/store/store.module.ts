@@ -25,6 +25,9 @@ import { StockAdjustComponent } from "./stock/components/stock-adjust.component"
 import { StockDemandComponent } from "./stock/components/stock-demand.component";
 import { CreditComponent } from "./credit/components/credit.component";
 import { StockAuditComponent } from "./stock/components/stock-audit.component";
+import { Stock2Component } from "./stock/components/stock2.component";
+import { StockProductsComponent } from "./stock/components/stock-products.component";
+import { StockProductItemsComponent } from "./stock/components/stock-product-items.component";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
@@ -35,6 +38,11 @@ const routes: Routes = [
       { path: 'audit', component: StockAuditComponent },
       { path: 'adjust', component: StockAdjustComponent },
       { path: 'demand', component: StockDemandComponent }
+    ]},{ path: 'inventory', component: Stock2Component, children: [
+      { path: '', redirectTo: 'products' },
+      { path: 'products', component: StockProductsComponent, children: [{
+        path: 'items/:id', component: StockProductItemsComponent
+      }] }
     ]},
     { path: 'cash', component: CashComponent},
     { path: 'credit', component: CreditComponent}
@@ -46,13 +54,17 @@ const routes: Routes = [
       StoreComponent,
       CashComponent,
       StockComponent,
+      Stock2Component,
       CreditComponent,
       StockListComponent,
       StockAuditComponent,
       StockAdjustComponent,
-      StockDemandComponent
+      StockDemandComponent,
+      StockProductsComponent,
+      StockProductItemsComponent
     ],
     imports: [
+        RouterModule.forChild(routes),
         FormsModule,  
         CommonModule,
         ReactiveFormsModule,
@@ -69,7 +81,6 @@ const routes: Routes = [
         DropdownModule,
         ProgressBarModule,
         InputTextModule,
-        RouterModule.forChild(routes),
         SharedModule
     ],
     exports: [RouterModule]

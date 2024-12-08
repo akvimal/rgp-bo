@@ -15,10 +15,10 @@ export class StockService {
         @InjectRepository(ProductPriceChange) private readonly priceRepository: Repository<ProductPriceChange>,
         @InjectRepository(ProductQtyChange) private readonly qtyRepository: Repository<ProductQtyChange>){}
     
-        async findAll(){
-            return await this.manager.query(`
-            select * from stock_view where (life_left is null or life_left >= 0) order by title`);
-        }
+        // async findAll(){
+        //     return await this.manager.query(`
+        //     select * from stock_view where (life_left is null or life_left >= 0) order by title`);
+        // }
 
         async findPurchaseItemsWithAvailable(ids:number[]){
             return await this.manager.query(`
