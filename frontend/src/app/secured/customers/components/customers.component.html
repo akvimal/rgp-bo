@@ -10,7 +10,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
 <ng-template pTemplate="header">
 
     <tr>
-      <th scope="col">ID</th>
+      <!-- <th scope="col">ID</th> -->
       <th pSortableColumn="name" scope="col">Name
         <p-sortIcon field="name"></p-sortIcon>
         <p-columnFilter type="text" field="name" display="menu"></p-columnFilter>
@@ -23,12 +23,12 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
         <p-sortIcon field="email"></p-sortIcon>
         <p-columnFilter type="text" field="email" display="menu"></p-columnFilter>
       </th> -->
-      <th>Address</th>
+      <!-- <th>Address</th> -->
       <!-- <th>History</th>
       <th>Recent Visit</th> -->
       <!-- <th scope="col">Area</th> -->
       <!-- <th scope="col">Address</th> -->
-      <!-- <th scope="col">Location</th> -->
+      <th scope="col">Location</th>
       <!-- <th scope="col">Source Type</th> -->
       <!-- <th scope="col">Source Info</th> -->
       <!-- <th scope="col">Date</th> -->
@@ -37,16 +37,16 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
   </ng-template>
   <ng-template pTemplate="body" let-c>
     <tr>
-      <td>{{c.id}}</td>
+      <!-- <td>{{c.id}}</td> -->
       <td>{{c.name}}</td>
       <td>{{c.mobile}}</td>
-      <td>{{c.email}} | {{c.address}} | {{c.locality}}</td>
+      <!-- <td>{{c.email}} | {{c.address}} | {{c.locality}}</td> -->
       <!-- <td>{{c.srctype}}({{c.srcdesc}})|
         Begin Date
       </td>
       <td></td> -->
       <!-- <td>{{c.area}}</td> -->
-      <!-- <td>{{c.locality}}</td> -->
+      <td>{{c.locality}}</td>
       <!-- <td>{{c.address}}</td> -->
       <!-- <td>{{c.srctype}}</td> -->
       <!-- <td>{{c.srcdesc}}</td> -->
@@ -57,7 +57,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
           <i class="bi bi-pencil-square text-primary"></i>
         </a>
       </h4>
-      <h4 class="icon"><i class="bi bi-files"></i></h4>
+      <!-- <h4 class="icon"><i class="bi bi-files"></i></h4> -->
   <!--       
         <a (click)="onRemove(c.id)">
           <i class="bi bi-trash text-danger"></i>

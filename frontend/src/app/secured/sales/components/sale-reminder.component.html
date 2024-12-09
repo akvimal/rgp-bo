@@ -1,5 +1,7 @@
 <app-sale-header></app-sale-header>
-
+<div class="text-center mt-4" *ngIf="loading">
+    <div class="spinner-border" role="status"></div>
+  </div>
 <p-table [value]="result" [resizableColumns]="true" columnResizeMode="expand" 
 [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
     currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
@@ -8,14 +10,13 @@
     <ng-template pTemplate="header">
         <tr>
             <th pSortableColumn="name">Name 
-                <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
+                <p-columnFilter type="text" field="name" display="menu"></p-columnFilter>
                 <p-sortIcon field="name"></p-sortIcon>
             </th>
             <th pSortableColumn="mobile">Mobile 
-                <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
+                <p-columnFilter type="text" field="mobile" display="menu"></p-columnFilter>
                 <p-sortIcon field="mobile"></p-sortIcon>
-            </th>           
-           
+            </th>
             <th pSortableColumn="days_lapsed">Days ago
                 <p-columnFilter type="numeric" field="days_lapsed" display="menu"></p-columnFilter>
                 <p-sortIcon field="days_lapsed"></p-sortIcon>
@@ -33,7 +34,6 @@
                 Slip
                 <p-sortIcon field="devdays"></p-sortIcon>
             </th>
-            <th>Actions</th>
         </tr>
     </ng-template>
     <ng-template pTemplate="body" let-customer>
@@ -47,17 +47,6 @@
             <td>{{customer.interval}}</td>
             <td>{{customer.avgdays}}</td>
             <td>{{customer.devdays}}</td>
-            <td style="text-align: center;">
-                <!-- <a *isAuth="'products.edit'" [routerLink]="['../edit', product.id]">
-                    <i class="bi bi-pencil-square text-primary"></i>
-                </a>&nbsp;
-                <a *isAuth="'products.delete'" (click)="delete(product.id)">
-                    <i class="bi bi-trash text-danger"></i>
-                </a> -->
-                <!-- <a [routerLink]="['/secure/sales/view',customer.recentsaleid]">View</a>
-                <span *ngIf="customer.remindcustomer">Remind</span> -->
-                Add to Reminder
-            </td>
         </tr>
     </ng-template>
 </p-table>

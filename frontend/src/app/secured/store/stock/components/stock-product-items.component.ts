@@ -15,8 +15,6 @@ export class StockProductItemsComponent {
     ngOnInit(){
         this.route.params.subscribe(params => {
             this.service.findByProduct(params['id']).subscribe((data:any) => {
-                console.log(data);
-                
                 if(data.purchases.length > 0){
                     this.product = data.purchases[0];
                 }

@@ -197,6 +197,12 @@
 .expired {
     background: #dde !important;
 }
+
 .low {
     background: #fdd !important;
+}
+
+.row-hover:hover {
+    background: #ccc !important;
+    cursor: pointer;
 }

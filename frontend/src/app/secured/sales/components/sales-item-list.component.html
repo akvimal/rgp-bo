@@ -74,8 +74,8 @@
             </th>
             <th pSortableColumn="sale.billdate" class="billdt">Bill Date</th>
             <th class="customer">Customer</th>
-            <th class="document">Document</th>
-            <th>Category</th>
+            <!-- <th class="document">Document</th> -->
+            <!-- <th>Category</th> -->
             <!-- <th class="address" *ngIf="isH1DrugFilter()">Address</th> -->
             <th pSortableColumn="purchaseitem.product.title" class="product">Product
               <p-columnFilter type="text" field="purchaseitem.product.title" display="menu"></p-columnFilter>
@@ -101,16 +101,15 @@
                 </td>
                 <td>{{item.sale.billdate | date: 'dd/MM/yy h:mm a'}}</td>
                 <td>{{item.sale.customer?.name}}</td>
-                <td>
+                <!-- <td>
                   <div *ngIf="item.sale.props && item.sale.props.documents" class="documents">
                     <div *ngFor="let d of item.sale.props.documents" class="document">
                       <span class="category">{{d.category}}</span><br>
                       <ul><li *ngFor="let p of d.props"><label>{{p.label}}</label><span>{{p.value}}</span> </li></ul>
                     </div>
                   </div>
-                  
                 </td>
-               <td>{{item.purchaseitem.product.category}}</td>
+               <td>{{item.purchaseitem.product.category}}</td> -->
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td> -->
                 <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td> -->
                 <td>{{item.purchaseitem.product.title}}

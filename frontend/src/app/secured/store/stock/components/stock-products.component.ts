@@ -1,7 +1,5 @@
 import { Component } from "@angular/core";
-import { DateUtilService } from "src/app/secured/date-util.service";
-import { InvoiceService } from "src/app/secured/purchases/invoices/invoices.service";
-import { StockService } from "../stock.service";
+import { ActivatedRoute, Router } from "@angular/router";
 import { Stock2Service } from "../stock2.service";
 
 @Component({
@@ -12,7 +10,7 @@ export class StockProductsComponent {
     criteria = {active:true, available:true, expired:false, starts:true}
     products:any = []
    
-    constructor(private service: Stock2Service){}
+    constructor(private router:Router, private activatedRoute: ActivatedRoute, private service: Stock2Service){}
 
     ngOnInit(){
         this.fetch();
@@ -21,5 +19,13 @@ export class StockProductsComponent {
     fetch(){
         this.service.findAll({criteria:this.criteria}).subscribe(data => this.products = data);
     }
+
+    openData(id){
+        // console.log(event.target.checked);
+        this.router.navigate(['items',id],{relativeTo:this.activatedRoute})
+        // console.log(id);
+        
+    }
+    
 
 }
