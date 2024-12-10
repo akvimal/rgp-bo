@@ -13,18 +13,18 @@ export class StockProductsComponent {
     constructor(private router:Router, private activatedRoute: ActivatedRoute, private service: Stock2Service){}
 
     ngOnInit(){
-        this.fetch();
+        this.service.findAll({criteria:this.criteria});
+        this.service.getProducts().subscribe(data => {
+            this.products = data;
+        })
     }
 
     fetch(){
-        this.service.findAll({criteria:this.criteria}).subscribe(data => this.products = data);
+        this.service.findAll({criteria:this.criteria});
     }
 
     openData(id){
-        // console.log(event.target.checked);
-        this.router.navigate(['items',id],{relativeTo:this.activatedRoute})
-        // console.log(id);
-        
+        this.router.navigate(['items',id],{relativeTo:this.activatedRoute});
     }
     
 

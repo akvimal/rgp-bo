@@ -18,13 +18,11 @@ export class StockProductItemsComponent {
 
     ngOnInit(){
         this.route.params.subscribe(params => {
-            this.service.findByProduct(params['id']).subscribe((data:any) => {
+            this.service.findByProduct(params['id']);
+            this.service.getProductStats().subscribe((data:any) => {
                 if(data.purchases.length > 0){
                     this.product = data.purchases[0];
                 }
-                data.purchases.forEach(d => {
-                    d['balance'] = +(+d.purchased - +d.sold + +d.adjusted);
-                });
                 data.sales.forEach(d => {
                     d['long'] = this.isAfterDays(d.sale_month, 180);
                 });
@@ -49,8 +47,9 @@ export class StockProductItemsComponent {
     }
 
     closeAdjForm(event:any){
-        console.log(event);
         this.displayQtyAdjForm = false;
+        this.service.findByProduct(this.selectedItem.id);
+        this.service.refreshProducts();
     }
 
     toggleActive(product){

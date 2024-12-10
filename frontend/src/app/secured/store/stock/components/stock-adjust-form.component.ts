@@ -56,7 +56,7 @@ export class StockAdjustFormComponent {
     onQtyAdjSubmit(){
         this.service.updateQty(this.qtyAdjustForm.value)
             .subscribe(data => {
-                       this.saved.emit(data);         
+                this.saved.emit(data);         
         });
     }
     
