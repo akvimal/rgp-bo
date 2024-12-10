@@ -13,13 +13,13 @@ import { PropsService } from "../props.service";
                     (completeMethod)="filterStock($event)" [minLength]="2"
                     [inputStyle]="{'background-color':'#9df'}">
                     <ng-template let-stock pTemplate="item">
-                        <div [ngStyle]="{maxWidth:'800px',backgroundColor:stock.available < 1?'#ffc0c0':'inherit'}">
-                            <h6 style="margin:0;padding:0;font-weight:bold">{{stock.product_title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||stock.mrp}})</h6>
+                        <div [ngStyle]="{maxWidth:'800px',backgroundColor:stock.balance < 1?'#ffc0c0':'inherit'}">
+                            <h6 style="margin:0;padding:0;font-weight:bold">{{stock.title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||'None'}})</h6>
                             <p style="margin:0;padding:0;color:#999;font-style: italic;">
                             {{stock['more_props'] ? stock['more_props']['composition'] : ''}}
                             </p>
                             <span style="margin:0;padding:0;color:blue;">
-                                {{stock.product_batch}} / {{stock.product_expdate|date:'MMM-yy'}} ({{stock.available}})
+                                {{stock.batch}} / {{stock.exp_date|date:'MMM-yy'}} ({{stock.balance}})
                             </span>
                         </div>
                     </ng-template>
@@ -32,7 +32,7 @@ export class StockSelectComponent {
 
     selectedStock: any;
     filteredStock: any[] = [];
-    searchable:any[] = []
+    searchable:any[] = [];
 
     // props$?:Observable<any>;
 

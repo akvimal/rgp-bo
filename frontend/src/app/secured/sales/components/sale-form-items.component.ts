@@ -41,6 +41,8 @@ export class SaleFormItemsComponent{
     private stockService:StockService){}
 
   selectProduct(selected:any) {
+    console.log(selected);
+    
     const item = this.helper.mapStockToSaleItem(selected, true);
     this.calculateTotalWithQtyChange(item);
     this.itemAdded.emit(item);

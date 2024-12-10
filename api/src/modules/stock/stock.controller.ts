@@ -32,17 +32,19 @@ export class StockController {
       return this.service.findAllReady();
     }
 
-    @Post('/items')
-    async findByItems(@Body() input) {
-      return this.service.findByItems(input);
-    }
+    // @Post('/items')
+    // async findByItems(@Body() input) {
+    //   return this.service.findByItems(input);
+    // }
     
     @Post('/products')
     async findByProducts(@Body() input) {
       const prods = [];
       return this.service.findByProducts(input).then((items:any) => {
         items.forEach(product => {
-          if(!prods.find(i=>i.product_id == product.product_id)){
+          console.log(product);
+          
+          if(!prods.find(i=>i.id == product.id)){
             prods.push(product);
           }
         });

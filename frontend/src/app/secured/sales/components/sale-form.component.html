@@ -154,7 +154,7 @@
     </div>
 <!-- Customer View -->
 <p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
-        [(visible)]="showCustomerView" [modal]="true" [maximizable]="true">
+        [(visible)]="showCustomerView" [style]="{ width: '75rem', height: '40rem' }" [modal]="true" [maximizable]="true">
     <app-customer-view *ngIf="sale.customer && sale.customer.id" [id]="sale.customer.id" (selected)="onCustomerData($event)"></app-customer-view>
 </p-dialog>
 <p-dialog [(visible)]="showDocument" >

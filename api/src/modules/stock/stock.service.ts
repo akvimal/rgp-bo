@@ -15,11 +15,6 @@ export class StockService {
         @InjectRepository(ProductPriceChange) private readonly priceRepository: Repository<ProductPriceChange>,
         @InjectRepository(ProductQtyChange) private readonly qtyRepository: Repository<ProductQtyChange>){}
     
-        // async findAll(){
-        //     return await this.manager.query(`
-        //     select * from stock_view where (life_left is null or life_left >= 0) order by title`);
-        // }
-
         async findPurchaseItemsWithAvailable(ids:number[]){
             return await this.manager.query(`
             select purchase_itemid, available from inventory_view iv where iv.purchase_itemid in (${ids.join(',')})`);
@@ -27,57 +22,63 @@ export class StockService {
 
         async findByCriteria(criteria:any){
             
-            let sql = `select iv.*, sale_price
-                from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id`;
-            
+            let sql = 
+            `select piv.*, p.more_props, pp.sale_price from product_items_view piv 
+            inner join product p on p.id = piv.id
+            left join product_price2 pp on pp.product_id = piv.id`;
+
             const conditions = [];
-            
+            if(criteria['expired'])
+                conditions.push(`piv.expired = ${criteria['expired']}`)
+
             if(criteria['id'])
-                conditions.push(`iv.product_id = ${criteria['id']}`);
+                conditions.push(`piv.id = ${criteria['id']}`);
 
             if(!criteria['id'] && criteria['title']){
                 const title = criteria['starts'] && criteria['title'] ? `${criteria['title'].replaceAll('\'','\,\,')}%` : `%${criteria['title'].replaceAll('\'','\,\,')}%`;
-                conditions.push(`(product_title ilike '${title}' or more_props->>'composition' ilike '${title}')`);
+                conditions.push(`(piv.title ilike '${title}' or p.more_props->>'composition' ilike '${title}')`);
             }
 
             if(criteria['status']){
                 let arr = criteria.status.split(',');
                 criteria.status = arr.map(a => '\'' + a + '\'');
-                conditions.push(`iv.status in (${criteria.status})`);
+                conditions.push(`piv.status in (${criteria.status})`);
             }
             if(criteria['expired'])
-                conditions.push('product_expdate < current_date')
+                conditions.push('piv.exp_date < current_date')
             if(criteria['available'])
-                conditions.push('available > 0')
+                conditions.push('piv.balance > 0')
             
             if(conditions.length > 0){
                 sql += ' where ' + conditions.join(' and ');
             }            
                 
-            sql += ` order by product_title, product_expdate ${criteria['limit'] > 0 ? 'limit '+ criteria['limit'] : ''}`
+            sql += ` order by piv.title, piv.exp_date ${criteria['limit'] > 0 ? 'limit '+ criteria['limit'] : ''}`
 
             return await this.manager.query(sql);
         }
 
-        async findByItems(ids:number[]){
-            return await this.manager.query(`select iv.purchase_itemid, iv.available 
-            from inventory_view iv where purchase_itemid in (${ids.join(',')})`);
-        }
+        // async findByItems(ids:number[]){
+        //     return await this.manager.query(`select iv.purchase_itemid, iv.available 
+        //     from inventory_view iv where purchase_itemid in (${ids.join(',')})`);
+        // }
 
         async findByProducts(ids:number[]){
-            return await this.manager.query(`select iv.*, sale_price, market_price 
-            from inventory_view iv left join product_price2 pp on pp.product_id = iv.product_id 
-            where  iv.product_id in (${ids.join(',')}) and iv.status = 'VERIFIED' and product_expdate > current_timestamp and available > 0 order by product_expdate`);
+            return await this.manager.query(`
+            select piv.*, p.more_props, pp.sale_price from product_items_view piv 
+            inner join product p on p.id = piv.id and p.id in (${ids.join(',')})
+            left join product_price2 pp on pp.product_id = piv.id where piv.expired = false and piv.balance > 0
+            order by piv.exp_date asc`);
         }
 
-        async findAvailableQty(prodid:number, batch:string, expdate:string){
-            return await this.manager.query(`
-            select 
-                case 
-                    when life_left < 1 then 0 
-                    else available_qty end 
-            from stock_view where product_id = ${prodid} and batch = '${batch}' and expdate = '${expdate}'`);
-        }
+        // async findAvailableQty(prodid:number, batch:string, expdate:string){
+        //     return await this.manager.query(`
+        //     select 
+        //         case 
+        //             when life_left < 1 then 0 
+        //             else available_qty end 
+        //     from stock_view where product_id = ${prodid} and batch = '${batch}' and expdate = '${expdate}'`);
+        // }
 
         // async getSaleItemAvailableQuantities(sale:Sale){
         //    const items = await this.manager.query(`

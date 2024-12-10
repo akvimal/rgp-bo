@@ -9,22 +9,22 @@ export class SaleHelper {
     mapStockToSaleItem(source:any,editable:boolean){
         const output = source;
         if(source){
-            const price = ((source.sale_price ||  source.mrp)/source.product_pack).toFixed(2)
-            const total = (+price * source.product_pack).toFixed(2);
+            const price = ((source.sale_price ||  source.mrp_cost)/source.pack).toFixed(2)
+            const total = (+price * source.pack).toFixed(2);
     
-            output.itemid = source.purchase_itemid;
-            output.product_id = source.product_id;
-            output.title = source.product_title;
-            output.batch = source.product_batch;
-            output.expdate = source.product_expdate;
-            output.qty = source.product_pack; //default qty to pack
-            output.maxqty = source.available;
-            output.pack = source.product_pack;
-            output.mrpcost = (source.mrp/source.product_pack).toFixed(2);
+            output.itemid = source.item_id;
+            output.product_id = source.id;
+            output.title = source.title;
+            output.batch = source.batch;
+            output.expdate = source.exp_date;
+            output.qty = source.pack; //default qty to pack
+            output.maxqty = source.balance;
+            output.pack = source.pack;
+            output.mrpcost = (source.mrp_cost/source.pack).toFixed(2);
             output.price = price;
-            output.taxpcnt = source.product_taxpcnt;
+            output.taxpcnt = source.tax_pcnt;
               // more_props = event.more_props;
-            output.unitsbal = source.available - source.product_pack,
+            output.unitsbal = source.balance - source.pack,
             output.total = total;
             output['edited'] = editable;
         }
