@@ -5,7 +5,7 @@ import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { SharedModule } from "src/app/shared/shared.module";
 import { AutoCompleteModule } from 'primeng/autocomplete';
-import {DialogModule} from 'primeng/dialog';
+import { DialogModule} from 'primeng/dialog';
 import {TableModule} from 'primeng/table';
 import {ToastModule} from 'primeng/toast';
 import {CalendarModule} from 'primeng/calendar';
@@ -28,6 +28,7 @@ import { StockAuditComponent } from "./stock/components/stock-audit.component";
 import { Stock2Component } from "./stock/components/stock2.component";
 import { StockProductsComponent } from "./stock/components/stock-products.component";
 import { StockProductItemsComponent } from "./stock/components/stock-product-items.component";
+import { StockAdjustFormComponent } from "./stock/components/stock-adjust-form.component";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
@@ -61,7 +62,8 @@ const routes: Routes = [
       StockAdjustComponent,
       StockDemandComponent,
       StockProductsComponent,
-      StockProductItemsComponent
+      StockProductItemsComponent,
+      StockAdjustFormComponent
     ],
     imports: [
         RouterModule.forChild(routes),

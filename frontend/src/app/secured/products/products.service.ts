@@ -43,8 +43,8 @@ export class ProductsService {
         return this.http.post(`${this.apiurl}`,product);
     }
 
-    update(id:number, product:Product){
-        return this.http.put(`${this.apiurl}/${id}`,product);
+    update(id:number, props:any){
+        return this.http.put(`${this.apiurl}/${id}`,props);
     }
     
     remove(id:number){

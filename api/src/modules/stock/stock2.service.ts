@@ -13,7 +13,10 @@ export class Stock2Service {
                         left join product_sale_agg_view av on av.product_id = iv.id`;
 
         const arr = [];
-        arr.push(`iv.balance ${criteria.available? '> 0': '<= 0'}`);
+        if(criteria.available){
+            arr.push(`iv.balance > 0`);
+        }
+
         arr.push(`iv.active = ${criteria.active}`);
         arr.push(`iv.expired = ${criteria.expired}`);
 
@@ -23,22 +26,13 @@ export class Stock2Service {
         sql += ` order by av.highest_customers desc`
         return await this.manager.query(sql).then(data => {
             data.forEach(rec => {
-                const recent = rec['most_recent_sale_on'];
-                const orders = rec['highest_orders'];
-                let level = 'low'
-                if(rec['average_sales']){
-                const pcnt = (rec['balance']-rec['average_sales'])/rec['average_sales']
-                rec['level'] = +Math.round(pcnt * 100);
+                if(rec['balance']){
+                    rec['balance'] = +rec['balance'];
                 }
-                // highest_customers
-                // highest_orders
-                // highest_sales
-                // average_customers
-                // average_orders
-                // average_sales
-                // last_purchase_date
-                // last_sale_Date
-                
+                if(rec['average_sales']){
+                    const pcnt = (rec['balance']-rec['average_sales'])/rec['average_sales']
+                    rec['level'] = +Math.round(pcnt * 100);
+                }
             });
             
             return data;

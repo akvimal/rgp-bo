@@ -54,7 +54,7 @@
                     <!-- <tr *ngFor="let i of invoice.items"> -->
                         <tr [ngStyle]="{'background':i.selected ? '#ddd' : 'inherit'}">
                             <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center"  style="width:2em">
-                                <input type="checkbox" class="form-conrol-input checkmark" *ngIf="i.status !== 'VERIFIED'" (change)="selectItem($event,i.id)">
+                                <input type="checkbox" class="form-conrol-input checkmark" *ngIf="i.status === 'NEW'" (change)="selectItem($event,i.id)">
                             </td>
                             <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center" style="width:2em">
                                 <h4 style="margin:0;padding:0;">

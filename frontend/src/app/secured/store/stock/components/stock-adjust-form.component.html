@@ -1,0 +1,57 @@
+<form [formGroup]="qtyAdjustForm" (ngSubmit)="onQtyAdjSubmit()">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 p-0">
+                <h5>{{item?.title}}</h5>
+                <p class="batch">{{item?.batch}} / {{item?.exp_date | date: 'MMM-yy'}}</p>
+            </div>
+        </div>
+        <div class="row">
+            <!-- <div class="col-md-2 m-0 p-0">
+                <label class="adj-label" for="purchase">Purchase</label><br>
+                    {{(+selectedItem?.purchase_qty * selectedItem?.pack)}}
+            </div> -->
+            <div class="col-md-2 m-0 p-0">
+                <label class="adj-label" for="price">Current</label><br>
+                    {{item?.balance}}
+            </div>
+            <div class="col-md-2 m-0 p-0">
+                <label class="adj-label" for="qty">Adjust</label>
+                    <input type="number" class="form-control" id="qty" [min]="minAllowed"
+                    formControlName="qty" (input)="onQtyChange($event)">
+            </div>
+                    <!-- </div> -->
+                <!-- </div>
+            </div> -->
+            <!-- </div>
+            <div class="row mt-4"> -->
+            <div class="col-md-2">
+                <label class="adj-label" for="newqty">Final</label><br>
+                {{finalqty}}
+                <!-- <input type="text" class="form-control" id="price" 
+                formControlName="price" (input)="limitMRP($event)"> -->
+            </div>
+            <div class="col-md-3 m-0 p-0">
+                <label class="adj-label" for="reason">Reason</label>
+                <select class="form-control" formControlName="reason">
+                    <option value="">Select</option>
+                    <option *ngFor="let c of qtyChangeReasons" [value]="c.value">{{c.label}}</option>
+                </select> 
+            </div>
+            <div class="col-md-12 p-0">
+                <label class="adj-label" for="comments">Comments</label>
+                <textarea class="form-control" id="comments" placeholder="Explain the reason for adjustment" 
+                formControlName="comments"></textarea>
+            </div>
+        </div>
+        <!-- <div class="row"> -->
+           
+        <!-- </div> -->
+        <div class="row mt-3">
+            <div class="col-md-12 p-0">
+                <button type="submit" class="btn btn-primary" 
+                [disabled]="!qtyAdjustForm.valid">Save</button>
+            </div>
+        </div>
+    </div>
+</form>

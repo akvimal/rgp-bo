@@ -7,7 +7,7 @@ import { Stock2Service } from "../stock2.service";
 })
 export class StockProductsComponent {
 
-    criteria = {active:true, available:true, expired:false, starts:true}
+    criteria = {active:true, available:false, expired:false, starts:true}
     products:any = []
    
     constructor(private router:Router, private activatedRoute: ActivatedRoute, private service: Stock2Service){}
