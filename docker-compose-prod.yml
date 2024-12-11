@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
       context: ./api
       # Only build development stage from Dockerfile
-      target: development
+      target: production
       
     # Mount our host dir to the docker container  
     # Mount api directory (./api) to (:) docker container (/app)
@@ -16,7 +16,7 @@ services:
       - ./api/node_modules:/app/node_modules
     # RUN in debug mode: npm run start:debug
     # RUN in dev mode npm run start:dev
-    command: npm run start:dev
+    command: npm run start:prod
     depends_on:
       - postgres
     environment:
@@ -26,9 +26,9 @@ services:
       FILEUPOAD_SIZE_LIMIT: 512000
       JWT_KEY: dev
       JWT_EXPIRES: 24h
-      PORT: 3000
+      PORT: 3001
     ports:
-      - 30000:3000
+      - 30001:3001
     networks:  
       - local
 
@@ -49,17 +49,16 @@ services:
 
   frontend:
     build:
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
       context: ./frontend
-      target: development
-    command: npm run start
+    command: ng serve --configuration production
     depends_on:
       - api
     volumes:
       - ./frontend:/dist/src/app
       - /dist/src/app/node_modules
     ports:
-      - 4200:4200
+      - 8080:4200
     networks:  
       - local
 

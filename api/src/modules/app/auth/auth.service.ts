@@ -33,6 +33,8 @@ export class AuthService {
   public async login(body: LoginDto): Promise<any | never> {
     const { email, password }: LoginDto = body;
     const user: AppUser = await this.userRepository.findOne({ where: { email } });
+    console.log(user);
+    
     if (!user) {
       throw new Error('Invalid Credentials');
     }
