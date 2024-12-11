@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
-import { PurchaseOrder } from "src/entities/purchase-order.entity";
-import { PurchaseRequest } from "src/entities/purchase-request.entity";
+import { PurchaseOrder } from "../../entities/purchase-order.entity";
+import { PurchaseRequest } from "../../entities/purchase-request.entity";
 import { EntityManager, Repository } from "typeorm";
 import { CreatePurchaseOrderDto } from "./dto/create-order.dto";
 import { CreatePurchaseRequestDto } from "./dto/create-request.dto";

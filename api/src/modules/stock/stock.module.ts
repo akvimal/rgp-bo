@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ProductPriceChange } from "src/entities/product-pricechange.entity";
-import { ProductQtyChange } from "src/entities/product-qtychange.entity";
-import { Product } from "src/entities/product.entity";
-import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
-import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
+import { ProductPriceChange } from "../../entities/product-pricechange.entity";
+import { ProductQtyChange } from "../../entities/product-qtychange.entity";
+import { Product } from "../../entities/product.entity";
+import { PurchaseInvoiceItem } from "../../entities/purchase-invoice-item.entity";
+import { PurchaseInvoice } from "../../entities/purchase-invoice.entity";
 import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
 import { StockController } from "./stock.controller";
 import { StockService } from "./stock.service";

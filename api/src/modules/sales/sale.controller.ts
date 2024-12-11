@@ -4,7 +4,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } fro
 import { CreateSaleDto } from "./dto/create-sale.dto";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { AuthGuard } from "@nestjs/passport";
-import { User } from "src/core/decorator/user.decorator";
+import { User } from "../../core/decorator/user.decorator";
 import { CustomerService } from "../customers/customer.service";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
 import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";

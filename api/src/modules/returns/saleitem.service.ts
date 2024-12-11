@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
-import { SaleItem } from "src/entities/sale-item.entity";
+import { SaleItem } from "../../entities/sale-item.entity";
 import { Repository } from "typeorm";
 import { CreateSaleReturnDto } from "./dto/create-salereturn.dto";
 import { CreateProductClearanceDto } from "./dto/create-clearance.dto";
-import { ProductClearance } from "src/entities/product-clearance.entity";
-import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
+import { ProductClearance } from "../../entities/product-clearance.entity";
+import { PurchaseInvoiceItem } from "../../entities/purchase-invoice-item.entity";
 
 @Injectable()
 export class SaleItemService {

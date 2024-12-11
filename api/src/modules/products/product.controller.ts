@@ -3,9 +3,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { AuthGuard } from "@nestjs/passport";
-import { User } from "src/core/decorator/user.decorator";
+import { User } from "../../core/decorator/user.decorator";
 import { UpdateProductDto } from "./dto/update-product.dto";
-import { CreateProductPrice2Dto } from "./dto/create-product-price2.dto";
 import { UpdateProductPrice2Dto } from "./dto/update-product-price2.dto";
 
 @ApiTags('Products')

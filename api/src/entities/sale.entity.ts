@@ -8,7 +8,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { AppUser } from "./AppUser.entity";
+import { AppUser } from "./appuser.entity";
 import { BaseEntity } from "./base.entity";
 import { Customer } from "./customer.entity";
 import { SaleDelivery } from "./sale-delivery.entity";

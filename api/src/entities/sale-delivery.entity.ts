@@ -3,11 +3,9 @@ import {
   Entity,
   Index,
   JoinColumn,
-  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { AppUser } from "./AppUser.entity";
 import { BaseEntity } from "./base.entity";
 import { Sale } from "./sale.entity";
 

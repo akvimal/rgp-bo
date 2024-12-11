@@ -1,7 +1,7 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { User } from "src/core/decorator/user.decorator";
+import { User } from "../../core/decorator/user.decorator";
 import { CustomerService } from "../customers/customer.service";
 import { SaleDeliveryService } from "./sale-delivery.service";
 import { CreateSaleDeliveryDto } from "./dto/create-saledelivery.dto";

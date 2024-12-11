@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: ./api
+      # Only build development stage from Dockerfile
+      target: development
+      
+    # Mount our host dir to the docker container  
+    # Mount api directory (./api) to (:) docker container (/app)
+    # Reflect File changes from host to container
+    volumes:
+      - ./api:/app
+      - ./app/node_modules
+    # RUN in debug mode: npm run start:debug
+    # RUN in dev mode npm run start:dev
+    command: npm run start:dev
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/db
+      FILEUPLOAD_LOCATION: /Users/vimalkrishnan/temp/upload
+      FILEUPOAD_SIZE_LIMIT: 512000
+      JWT_KEY: dev
+      JWT_EXPIRES: 24h
+      PORT: 3000
+    ports:
+      - 3000:3000
+
+  frontend:
+    build:
+      dockerfile: Dockerfile
+      context: ./frontend
+      target: development
+    command: npm run start
+    volumes:
+      - ./frontend:/dist/src/app
+      - /dist/src/app/node_modules
+    ports:
+      - 4200:4200
+    links:
+      - api
+  
+  postgres:
+    image: postgres
+    restart: always
+    container_name: db
+    volumes:
+      - rgp-db:/var/lib/postgresql/data
+    networks:  
+      - local
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: db
+    ports:
+      - 35000:5432

@@ -2,9 +2,9 @@ import { Body, Controller, Get, Param, Post, Res, StreamableFile, UseGuards } fr
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { User } from 'src/core/decorator/user.decorator';
-import { PurchaseService } from 'src/modules/purchases/purchase.service';
-import { SaleService } from 'src/modules/sales/sale.service';
+import { User } from '../../../core/decorator/user.decorator';
+import { PurchaseService } from '../../../modules/purchases/purchase.service';
+import { SaleService } from '../../../modules/sales/sale.service';
 
 import { RoleService } from '../roles/role.service';
 import { PdfGenerateService } from './pdfgenerate.service';

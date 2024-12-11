@@ -4,7 +4,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } fro
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { UpdateInvoiceItemsDto } from "./dto/update-invoice-items.dto";
-import { User } from "src/core/decorator/user.decorator";
+import { User } from "../../core/decorator/user.decorator";
 
 @ApiTags('PurchaseItems')
 @Controller('purchaseitems')

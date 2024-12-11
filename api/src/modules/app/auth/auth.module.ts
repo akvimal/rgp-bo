@@ -7,8 +7,8 @@ import { AuthHelper } from './auth.helper';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './auth.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AppUser } from 'src/entities/AppUser.entity';
-import authConfig from 'src/config/auth.config';
+import { AppUser } from '../../../entities/appuser.entity';
+import authConfig from '../../../config/auth.config';
 import { UserService } from '../users/user.service';
 
 @Module({

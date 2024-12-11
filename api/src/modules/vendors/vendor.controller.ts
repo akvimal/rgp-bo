@@ -4,7 +4,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from "@nes
 import { CreateVendorDto } from "./dto/create-vendor.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
-import { User } from "src/core/decorator/user.decorator";
+import { User } from "../../core/decorator/user.decorator";
 
 @ApiTags('Vendors')
 @Controller('vendors')

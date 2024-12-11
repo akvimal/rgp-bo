@@ -3,7 +3,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } fro
 import { AuthGuard } from "@nestjs/passport";
 import { PurchaseService } from './purchase.service';
 import { CreatePurchaseRequestDto } from './dto/create-request.dto';
-import { User } from 'src/core/decorator/user.decorator';
+import { User } from '../../core/decorator/user.decorator';
 import { UpdatePurchaseRequestDto } from './dto/update-request.dto';
 
 @ApiTags('PurchaseRequests')

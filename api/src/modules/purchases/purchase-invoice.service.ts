@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
-import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
-import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
+import { PurchaseInvoiceItem } from "../../entities/purchase-invoice-item.entity";
+import { PurchaseInvoice } from "../../entities/purchase-invoice.entity";
 import { EntityManager, Repository } from "typeorm";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
