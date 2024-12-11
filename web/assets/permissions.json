@@ -1,0 +1,41 @@
+[
+    {
+        "resource": "site",
+        "path": ["/secure/dashboard","/secure/profile"]
+    },
+    {
+        "resource": "users",
+        "path": "/secure/users",
+        "policies": [
+            {
+                "action": "read",
+                "path": "",
+                "properties": ["email"]
+            }
+        ]
+    },
+    {
+        "resource": "products",
+        "path": "/secure/products",
+        "policies": [
+            {
+                "action": "read",
+                "path": "/list",
+                "properties": ["title","description"]
+            },
+            {
+                "action": "add",
+                "path": "/new",
+                "properties": ["title","description"]
+            },
+            {
+                "action": "edit",
+                "path": "/edit",
+                "properties": ["title"]
+            },
+            {
+                "action": "delete"
+            }
+        ]
+    }
+]

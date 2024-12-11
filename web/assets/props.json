@@ -1,0 +1,201 @@
+[{
+  "entity": "product",
+  "config" : [
+    {
+    "category": "Medicine",
+    "props":[
+      {
+        "id": "schedule",
+        "label": "Schedule",
+        "type": "SINGLE-SELECT",
+        "required": true,
+        "filter":true,
+        "choices": [
+          {
+            "label": "H",
+            "value": "H"
+          },
+          {
+            "label": "H1",
+            "value": "H1"
+          },
+          {
+            "label": "X",
+            "value": "X"
+          },
+          {
+            "label": "Other",
+            "value": "Other"
+          }
+        ]
+      },
+      {
+        "id": "composition",
+        "label": "Composition",
+        "searchable": true
+      },{
+        "id": "condition",
+        "label": "Condition",
+        "type": "MULTI-SELECT",
+        "choices": [
+          {
+            "label": "Diabetes",
+            "value": "Diabetes"
+          },
+          {
+            "label": "Hypertension",
+            "value": "Hypertension"
+          },
+          {
+            "label": "Cholestrol",
+            "value": "Cholestrol"
+          },
+          {
+            "label": "Asthma",
+            "value": "Asthma"
+          },
+          {
+            "label": "Depression",
+            "value": "Depression"
+          },
+          {
+            "label": "Digestion",
+            "value": "Digestion"
+          },
+          {
+            "label": "Cold",
+            "value": "Cold"
+          },
+          {
+            "label": "Fever",
+            "value": "Fever"
+          },
+          {
+            "label": "Skin",
+            "value": "Skin"
+          },
+          {
+            "label": "Other",
+            "value": "Other"
+          }
+        ]
+      },{
+        "id": "chronic",
+        "label": "Chronic",
+        "type": "CHECK"
+      },{
+        "id": "generic",
+        "label": "Generic",
+        "type": "CHECK"
+      },{
+        "id": "document",
+        "label": "Document Required On Sale",
+        "type": "SINGLE-SELECT",
+        "filter":true,
+        "choices": [
+          {
+            "label": "Prescription",
+            "value": "Prescription"
+          },
+          {
+            "label": "Age Proof",
+            "value": "Age Proof"
+          }
+        ]
+      }
+    ]},
+  {
+    "category": "OTC",
+    "props":[
+      {
+        "id": "subcategory",
+        "label": "Sub Category",
+        "type": "SINGLE-SELECT",
+        "filter":true,
+        "choices": [
+          {
+            "label": "Supplement",
+            "value": "Supplement"
+          },
+          {
+            "label": "Surgical",
+            "value": "Surgical"
+          },
+          {
+            "label": "Personal Care",
+            "value": "Personal Care"
+          },
+          {
+            "label": "Device",
+            "value": "Device"
+          },
+          {
+            "label": "Treatment",
+            "value": "Treatment"
+          },
+          {
+            "label": "Other",
+            "value": "Other"
+          }
+        ]
+      }
+    ]
+  }]
+}, 
+{
+  "entity": "document",
+  "config" : [
+    {
+      "category": "Prescription",
+      "props":[        
+        {
+          "id": "prescdate",
+          "label": "Date",
+          "type": "date",
+          "required":true
+        },
+        {
+          "id": "doctorname",
+          "label": "Doctor Name",
+          "required":true
+        },
+        {
+          "id": "doctorphone",
+          "label": "Doctor Phone",
+          "required":true
+        },
+        {
+          "id": "ptntname",
+          "label": "Patient Name",
+          "required": true
+        },
+        {
+          "id": "ptntmobile",
+          "label": "Patient Phone",
+          "required": true
+        }
+      ]
+    },{
+      "category": "Age Proof",
+      "props":[        
+        {
+          "id": "prooftype",
+          "label": "Proof Type",
+          "required":true,
+          "type": "SINGLE-SELECT",
+          "choices": [
+            {
+              "label": "Driving License",
+              "value": "Driving License"
+            },
+            {
+              "label": "AADHAR Card",
+              "value": "AADHAR Card"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}]
+
