@@ -27,6 +27,6 @@ WORKDIR /app
 
 COPY --from=development /app .
 
-EXPOSE 8080
+EXPOSE 3001
 
 CMD ["node", "dist/main"]
