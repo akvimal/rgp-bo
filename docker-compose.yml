@@ -5,8 +5,6 @@ services:
     build:
       dockerfile: Dockerfile
       context: ./api
-      # Only build development stage from Dockerfile
-      target: development
       
     # Mount our host dir to the docker container  
     # Mount api directory (./api) to (:) docker container (/app)
@@ -46,22 +44,6 @@ services:
       POSTGRES_DB: rgpdb
     ports:
       - 35000:5432
-
-  frontend:
-    build:
-      dockerfile: Dockerfile
-      context: ./frontend
-      target: development
-    command: npm run start
-    depends_on:
-      - api
-    volumes:
-      - ./frontend:/dist/src/app
-      - /dist/src/app/node_modules
-    ports:
-      - 4200:4200
-    networks:  
-      - local
 
 networks:
   local:
