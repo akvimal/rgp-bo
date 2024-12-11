@@ -2,8 +2,6 @@ FROM node:16.19.0
 
 WORKDIR /app
 
-COPY api/dist ./dist
-
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 
