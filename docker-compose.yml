@@ -13,13 +13,15 @@ services:
     # Reflect File changes from host to container
     volumes:
       - ./api:/app
-      - ./app/node_modules
+      - ./api/node_modules:/app/node_modules
     # RUN in debug mode: npm run start:debug
     # RUN in dev mode npm run start:dev
     command: npm run start:dev
+    depends_on:
+      - postgres
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/db
+      DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
       FILEUPLOAD_LOCATION: /Users/vimalkrishnan/temp/upload
       FILEUPOAD_SIZE_LIMIT: 512000
       JWT_KEY: dev
@@ -27,6 +29,23 @@ services:
       PORT: 3000
     ports:
       - 3000:3000
+    networks:  
+      - local
+
+  postgres:
+    image: postgres:14
+    restart: always
+    container_name: rgp-db
+    volumes:
+      - rgpdata:/var/lib/postgresql/data
+    networks:  
+      - local
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rgpdb
+    ports:
+      - 35000:5432
 
   frontend:
     build:
@@ -34,25 +53,19 @@ services:
       context: ./frontend
       target: development
     command: npm run start
+    depends_on:
+      - api
     volumes:
       - ./frontend:/dist/src/app
       - /dist/src/app/node_modules
     ports:
       - 4200:4200
-    links:
-      - api
-  
-  postgres:
-    image: postgres
-    restart: always
-    container_name: db
-    volumes:
-      - rgp-db:/var/lib/postgresql/data
     networks:  
       - local
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: db
-    ports:
-      - 35000:5432
+
+networks:
+  local:
+
+volumes:
+    rgpdata:
+        external: true
