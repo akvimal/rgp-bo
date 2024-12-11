@@ -7,7 +7,6 @@ services:
       context: ./api
       # Only build development stage from Dockerfile
       target: production
-      
     # Mount our host dir to the docker container  
     # Mount api directory (./api) to (:) docker container (/app)
     # Reflect File changes from host to container
