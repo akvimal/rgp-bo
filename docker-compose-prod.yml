@@ -23,7 +23,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
       FILEUPLOAD_LOCATION: /app/uploaded-files
       FILEUPOAD_SIZE_LIMIT: 512000
-      JWT_KEY: dev
+      JWT_KEY: R06!nHo@d
       JWT_EXPIRES: 24h
       PORT: 3001
     ports:
