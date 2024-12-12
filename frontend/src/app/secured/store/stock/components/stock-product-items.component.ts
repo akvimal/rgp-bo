@@ -49,7 +49,7 @@ export class StockProductItemsComponent {
     closeAdjForm(event:any){
         this.displayQtyAdjForm = false;
         this.service.findByProduct(this.selectedItem.id);
-        this.service.refreshProducts();
+        // this.service.refreshProducts();
     }
 
     toggleActive(product){
@@ -59,4 +59,5 @@ export class StockProductItemsComponent {
             }
         })
     }
+
 }

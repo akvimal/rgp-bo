@@ -29,6 +29,7 @@ import { Stock2Component } from "./stock/components/stock2.component";
 import { StockProductsComponent } from "./stock/components/stock-products.component";
 import { StockProductItemsComponent } from "./stock/components/stock-product-items.component";
 import { StockAdjustFormComponent } from "./stock/components/stock-adjust-form.component";
+import { ProductsModule } from "../products/products.module";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [

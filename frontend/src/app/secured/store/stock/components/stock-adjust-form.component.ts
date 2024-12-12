@@ -11,8 +11,6 @@ export class StockAdjustFormComponent {
     @Input() item:any = {};
     @Output() saved = new EventEmitter();
 
-    // adjItem:any = {};
-
     finalqty:number = 0;
     maxAllowed = 0;
     minAllowed = 0;
@@ -36,14 +34,14 @@ export class StockAdjustFormComponent {
     ngOnChanges(changes:SimpleChanges){
         
         if(changes.item.currentValue){
-            // this.adjItem = changes.item.currentValue;
+            
             console.log(changes.item.currentValue);
             
             this.qtyAdjustForm.reset();
-        this.qtyAdjustForm.controls['itemid'].setValue(this.item['item_id']);
-        
-        this.finalqty = this.item.balance;   
-        this.minAllowed = -1 * (+this.item.balance);
+            this.qtyAdjustForm.controls['itemid'].setValue(this.item['item_id']);
+            
+            this.finalqty = this.item.balance;   
+            this.minAllowed = -1 * (+this.item.balance);
         }
     }
 
