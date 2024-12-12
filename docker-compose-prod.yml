@@ -12,6 +12,7 @@ services:
     volumes:
       - ./api:/app
       - ./api/node_modules:/app/node_modules
+      - rgpfiles:/app/uploaded-files
     # RUN in debug mode: npm run start:debug
     # RUN in dev mode npm run start:dev
     command: npm run start:prod
@@ -20,7 +21,7 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
-      FILEUPLOAD_LOCATION: /Users/vimalkrishnan/temp/upload
+      FILEUPLOAD_LOCATION: /app/uploaded-files
       FILEUPOAD_SIZE_LIMIT: 512000
       JWT_KEY: dev
       JWT_EXPIRES: 24h
@@ -65,4 +66,6 @@ networks:
 
 volumes:
     rgpdata:
-        external: true
+      external: true
+    rgpfiles:
+      external: true
