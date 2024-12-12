@@ -1,6 +1,7 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { ProductsService } from "src/app/secured/products/products.service";
+import { StockService } from "../stock.service";
 import { Stock2Service } from "../stock2.service";
 
 @Component({
@@ -14,7 +15,8 @@ export class StockProductItemsComponent {
     displayQtyAdjForm: boolean = false;
     selectedItem:any;
 
-    constructor(private route:ActivatedRoute, private service: Stock2Service, private prodService:ProductsService){}
+    constructor(private route:ActivatedRoute, private service1: StockService, 
+        private service: Stock2Service, private prodService:ProductsService){}
 
     ngOnInit(){
         this.route.params.subscribe(params => {
@@ -60,4 +62,13 @@ export class StockProductItemsComponent {
         })
     }
 
+    zeroStock(prodid, itemid,adjQty){
+        const obj =  {itemid,
+        reason: 'Other',
+        qty: -1* +adjQty};
+        this.service1.updateQty(obj)
+            .subscribe(data => {
+                this.service.findByProduct(prodid);
+        });
+    }
 }

@@ -42,10 +42,14 @@
                         <td style="text-align:right">{{i.balance}}</td>
                         <td>
                             <h5 class="icon">
-                                <!-- <span class="ml-2"> -->
-                                    <a href="javascript:void(0)" (click)="showQtyDialog(i)">
-                                    <i class="bi bi-pencil-square text-primary"></i></a>
-                                <!-- </span> -->
+                                <a href="javascript:void(0)" (click)="showQtyDialog(i)">
+                                <i class="bi bi-pencil-square text-primary"></i>
+                                </a>
+                            </h5>
+                            <h5 class="icon">                                    
+                                <a href="javascript:void(0)" (click)="zeroStock(i.id,i.item_id,i.balance)">
+                                    <i class="bi bi-0-circle-fill"></i>
+                                </a>
                             </h5>
                         </td>
                         </tr>    
