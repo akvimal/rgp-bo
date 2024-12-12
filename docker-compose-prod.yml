@@ -46,20 +46,20 @@ services:
     ports:
       - 35000:5432
 
-  # frontend:
-  #   build:
-  #     dockerfile: Dockerfile.prod
-  #     context: ./frontend
-  #   command: ng serve --configuration production
-  #   depends_on:
-  #     - api
-  #   volumes:
-  #     - ./frontend:/dist/src/app
-  #     - /dist/src/app/node_modules
-  #   ports:
-  #     - 8080:4200
-  #   networks:  
-  #     - local
+  frontend:
+    build:
+      dockerfile: Dockerfile.prod
+      context: ./frontend
+    command: ng serve --configuration production
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/dist/src/app
+      - /dist/src/app/node_modules
+    ports:
+      - 8080:4200
+    networks:  
+      - local
 
 networks:
   local:
