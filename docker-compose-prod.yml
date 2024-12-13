@@ -5,6 +5,10 @@ services:
     build:
       dockerfile: Dockerfile.prod
       context: ./api
+      # Only build development stage from Dockerfile
+    # Mount our host dir to the docker container  
+    # Mount api directory (./api) to (:) docker container (/app)
+    # Reflect File changes from host to container
     volumes:
       - ./api:/app
       - ./api/node_modules:/app/node_modules
@@ -48,12 +52,14 @@ services:
     build:
       dockerfile: Dockerfile.prod
       context: ./frontend
+    command: ng serve --configuration production
     depends_on:
       - api
     volumes:
-      - ./dist/frontend:/usr/share/nginx/html
+      - ./frontend:/dist/src/app
+      - /dist/src/app/node_modules
     ports:
-      - 8080:80
+      - 8080:4200
     networks:  
       - local
 
