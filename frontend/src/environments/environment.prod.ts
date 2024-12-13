@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiHost: 'http://rgp-db:30000'
+  apiHost: 'http://rgp-db'
 };
