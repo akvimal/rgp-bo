@@ -46,17 +46,17 @@ services:
     ports:
       - 35000:5432
   
-  pgadmin:
-    image: dpage/pgadmin4
-    restart: always
-    container_name: pgadmin
-    networks:  
-      - local
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rgp.com
-      PGADMIN_DEFAULT_PASSWORD: R6PD8@dmin
-    ports:
-      - 9080:80
+  # pgadmin:
+  #   image: dpage/pgadmin4
+  #   restart: always
+  #   container_name: pgadmin
+  #   networks:  
+  #     - local
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@rgp.com
+  #     PGADMIN_DEFAULT_PASSWORD: R6PD8@dmin
+  #   ports:
+  #     - 9080:80
 
   frontend:
     build:
