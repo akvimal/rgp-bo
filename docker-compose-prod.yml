@@ -17,7 +17,7 @@ services:
     depends_on:
       - postgres
     ports:
-      - 30001:3001
+      - 30000:3000
     networks:  
       - local
 
