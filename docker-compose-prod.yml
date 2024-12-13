@@ -5,27 +5,13 @@ services:
     build:
       dockerfile: Dockerfile.prod
       context: ./api
-      # Only build development stage from Dockerfile
-    # Mount our host dir to the docker container  
-    # Mount api directory (./api) to (:) docker container (/app)
-    # Reflect File changes from host to container
     volumes:
       - ./api:/app
       - ./api/node_modules:/app/node_modules
       - rgpfiles:/app/uploaded-files
-    # RUN in debug mode: npm run start:debug
-    # RUN in dev mode npm run start:dev
     command: npm run start:prod
     depends_on:
       - postgres
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
-      FILEUPLOAD_LOCATION: /app/uploaded-files
-      FILEUPOAD_SIZE_LIMIT: 512000
-      JWT_KEY: R06!nHo@d
-      JWT_EXPIRES: 24h
-      PORT: 3001
     ports:
       - 30001:3001
     networks:  

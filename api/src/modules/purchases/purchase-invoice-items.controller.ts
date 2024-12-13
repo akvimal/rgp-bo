@@ -41,9 +41,7 @@ export class PurchaseItemController {
 
     @Post()
     async createItem(@Body() createPurchaseInvoiceItemDto: CreatePurchaseInvoiceItemDto, @User() currentUser: any) {
-        const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);
-        console.log(item);
-        
+        const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);        
         await this.purchaseInvoiceService.findAllItemsByInvoice(item.invoiceid).then(async (items:any) => {
           let total = 0;
           items.forEach(item => {

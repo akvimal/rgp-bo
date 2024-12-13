@@ -42,8 +42,6 @@ export class StockController {
       const prods = [];
       return this.service.findByProducts(input).then((items:any) => {
         items.forEach(product => {
-          console.log(product);
-          
           if(!prods.find(i=>i.id == product.id)){
             prods.push(product);
           }
