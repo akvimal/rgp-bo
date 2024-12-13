@@ -48,14 +48,12 @@ services:
     build:
       dockerfile: Dockerfile.prod
       context: ./frontend
-    command: ng serve --configuration production
     depends_on:
       - api
     volumes:
-      - ./frontend:/dist/src/app
-      - /dist/src/app/node_modules
+      - ./dist/frontend:/usr/share/nginx/html
     ports:
-      - 8080:4200
+      - 8080:80
     networks:  
       - local
 
