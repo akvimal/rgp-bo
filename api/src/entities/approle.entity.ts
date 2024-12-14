@@ -6,8 +6,8 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 
-import { AppUser } from "./AppUser.entity";
-import { BaseEntity } from "./base.entity";
+import { AppUser } from "../entities/appuser.entity";
+import { BaseEntity } from "../entities/base.entity";
 
 @Index("app_role_un", ["name"], { unique: true })
 @Index("app_role_pk", ["id"], { unique: true })

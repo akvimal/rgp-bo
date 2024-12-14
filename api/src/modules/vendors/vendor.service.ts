@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Vendor } from "src/entities/vendor.entity";
+import { Vendor } from "../../entities/vendor.entity";
 import { Repository } from "typeorm";
 import { CreateVendorDto } from "./dto/create-vendor.dto";
 

@@ -4,10 +4,10 @@ import { Request, response } from 'express';
 import { RegisterDto, LoginDto, ChangePasswordDto } from './auth.dto';
 import { JwtAuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import { AppUser } from '../../../entities/AppUser.entity';
+import { AppUser } from '../../../entities/appuser.entity';
 import { ApiTags } from '@nestjs/swagger';
 import { UserService } from '../users/user.service';
-import { User } from 'src/core/decorator/user.decorator';
+import { User } from '../../../core/decorator/user.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')

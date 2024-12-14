@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: ./api
+      
+    # Mount our host dir to the docker container  
+    # Mount api directory (./api) to (:) docker container (/app)
+    # Reflect File changes from host to container
+    volumes:
+      - ./api:/app
+      - ./api/node_modules:/app/node_modules
+    # RUN in debug mode: npm run start:debug
+    # RUN in dev mode npm run start:dev
+    command: npm run start:dev
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
+      FILEUPLOAD_LOCATION: /Users/vimalkrishnan/temp/upload
+      FILEUPOAD_SIZE_LIMIT: 512000
+      JWT_KEY: dev
+      JWT_EXPIRES: 24h
+      PORT: 3000
+    ports:
+      - 30000:3000
+    networks:  
+      - local
+
+  postgres:
+    image: postgres:14
+    restart: always
+    container_name: rgp-db
+    volumes:
+      - rgpdata:/var/lib/postgresql/data
+    networks:  
+      - local
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rgpdb
+    ports:
+      - 35000:5432
+
+networks:
+  local:
+
+volumes:
+    rgpdata:
+        external: true

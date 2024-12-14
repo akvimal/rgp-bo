@@ -52,7 +52,7 @@ export class FileUploadComponent {
                     this.error = '';
                     this.file = null;
                     this.loading = false; // Flag variable 
-                    console.log('uploaded document, emitting',event);
+                    // console.log('uploaded document, emitting',event);
                     
                     this.uploaded.emit(event);
                 }

@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
-import { SaleItem } from "src/entities/sale-item.entity";
-import { Sale } from "src/entities/sale.entity";
+import { SaleItem } from "../../entities/sale-item.entity";
+import { Sale } from "../../entities/sale.entity";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
-import { SaleReturnItem } from "src/entities/salereturn-item.entity";
+import { SaleReturnItem } from "../../entities/salereturn-item.entity";
 import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 
 @Injectable()
@@ -220,7 +220,7 @@ export class SaleService {
             query = `select to_char(x.dt,'yyyy-mm-dd') as date, scv.return_status, count(scv.recent_sale_id)
              from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
              left join sale_customer_view scv on x.dt = scv.recent_visit
-             where scv.mobile != '00000'
+             where scv.mobile != '0000000000'
              group by x.dt, scv.return_status 
               order by x.dt`
         }
@@ -231,7 +231,7 @@ export class SaleService {
             query = `select x.dt as date, scv.return_status, count(scv.recent_sale_id)
             from (select months('${fromdate}','${todate}')::text as dt) x
             left join sale_customer_view scv on x.dt = date_part('year',scv.recent_visit::date)||'-'||lpad(date_part('month',scv.recent_visit::date)::text,2,'0')
-            where scv.mobile != '00000'
+            where scv.mobile != '0000000000'
             group by x.dt, scv.return_status 
              order by x.dt`
         }

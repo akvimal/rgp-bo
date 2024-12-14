@@ -4,7 +4,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } fro
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { UpdateInvoiceItemsDto } from "./dto/update-invoice-items.dto";
-import { User } from "src/core/decorator/user.decorator";
+import { User } from "../../core/decorator/user.decorator";
 
 @ApiTags('PurchaseItems')
 @Controller('purchaseitems')
@@ -41,9 +41,7 @@ export class PurchaseItemController {
 
     @Post()
     async createItem(@Body() createPurchaseInvoiceItemDto: CreatePurchaseInvoiceItemDto, @User() currentUser: any) {
-        const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);
-        console.log(item);
-        
+        const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);        
         await this.purchaseInvoiceService.findAllItemsByInvoice(item.invoiceid).then(async (items:any) => {
           let total = 0;
           items.forEach(item => {

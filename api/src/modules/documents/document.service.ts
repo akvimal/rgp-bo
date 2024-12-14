@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
-import { Document } from "src/entities/document.entity";
+import { Document } from "../../entities/document.entity";
 import { CreateDocumentDto } from "./dto/create-document.dto";
 
 @Injectable()

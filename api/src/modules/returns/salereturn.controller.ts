@@ -2,7 +2,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreateSaleReturnDto } from "./dto/create-salereturn.dto";
 import { AuthGuard } from "@nestjs/passport";
-import { User } from "src/core/decorator/user.decorator";
+import { User } from "../../core/decorator/user.decorator";
 import { RoleService } from "../app/roles/role.service";
 import { SaleItemService } from "./saleitem.service";
 import { UpdateSaleReturnItemDto } from "./dto/update-salereturn.dto";

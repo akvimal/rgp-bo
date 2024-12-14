@@ -69,15 +69,12 @@ export class DocumentUploadComponent {
     }
 
     saveDocInfoToTable(event:any){
-        //save the document infor to DB
-        console.log(event);
-        
         if(event){
             const extn = event.filename.substring(event.filename.indexOf('.')+1).toLowerCase();
             this.docService.save({name:event.originalname, path: event.path, extn, category: this.props['category'], 
                 alias: this.alias , 
-                docprops: JSON.stringify(this.props['props']), 
-                uploadprops: JSON.stringify(event) }).subscribe(result => {
+                docprops: JSON.stringify(this.props['props']), uploadprops: JSON.stringify(event) 
+                }).subscribe(result => {
                 this.cancelNewForm();
                 this.uploaded.emit(result);
             });

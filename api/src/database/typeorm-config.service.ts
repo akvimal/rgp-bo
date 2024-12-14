@@ -8,15 +8,11 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     return {
-      type: process.env.DATABASE_TYPE,
-      host: process.env.DATABASE_HOST,
-      port: process.env.DATABASE_PORT,
-      username: process.env.DATABASE_USERNAME,
-      password: process.env.DATABASE_PASSWORD,
-      database: process.env.DATABASE_NAME,
+      type: 'postgres',
+      url: process.env.DATABASE_URL,
       dropSchema: false,
       keepConnectionAlive: true,
-      logging: this.configService.get('app.nodeEnv') !== 'production',
+      logging: this.configService.get('NODE_ENV') !== 'production',
       entities: ['**/*.entity.js'],
       cli: {
         entitiesDir: 'src',
@@ -25,10 +21,10 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
       extra: {
         // based on https://node-postgres.com/api/pool
         // max connection pool size
-        max: process.env.DATABASE_MAX_CONNECTIONS,
-        ssl: process.env.DATABASE_SSL_ENABLED === 'true'
+        max: 100,
+        ssl: false
           ? {
-            rejectUnauthorized: process.env.DATABASE_REJECT_UNAUTHORIZED === 'true',
+            rejectUnauthorized: false,
             ca: this.configService.get('database.ca')
               ? this.configService.get('database.ca')
               : null,

@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { AppUser } from 'src/entities/AppUser.entity';
+import { AppUser } from '../../../entities/appuser.entity';
 
 @Injectable()
 export class AuthHelper {
