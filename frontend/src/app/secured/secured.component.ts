@@ -1,4 +1,5 @@
 import { Component } from "@angular/core";
+import { Title } from "@angular/platform-browser";
 import { Observable } from "rxjs";
 import { AppState } from "../shared/app-state";
 import { AppStateService } from "../shared/appstate.service";
@@ -17,12 +18,17 @@ export class SecuredComponent {
     
     constructor(
       private appStateService:AppStateService, 
-      private userService:UsersService){
+      private userService:UsersService, private titleService: Title){
         this.state$ = this.appStateService.state;
       }
     
     ngOnInit(){
-      this.userService.getCurrentUser().subscribe(data => this.user = data);
+      this.userService.getCurrentUser().subscribe(data => {
+        // console.log(data);
+        this.titleService.setTitle(`RGP - ${data['fullname']}`)
+        this.user = data;
+      });
+      
     }
     
     // showDialog(){

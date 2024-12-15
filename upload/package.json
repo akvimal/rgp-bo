@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.2.1",
+    "bcryptjs": "^2.4.3",
     "html-pdf": "^3.0.1",
     "pdf-creator-node": "^2.3.5",
     "pdf-lib": "^1.17.1",

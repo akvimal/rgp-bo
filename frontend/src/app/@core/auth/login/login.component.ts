@@ -11,7 +11,7 @@ import { CredentialsService } from "../credentials.service";
 })
 export class LoginComponent {
 
-    error?:any;
+    error:any;
 
     form = new FormGroup({
         email: new FormControl('',Validators.required),
@@ -36,11 +36,16 @@ export class LoginComponent {
             }).subscribe({
                     next: data => {
                         this.credService.setCredentials(data['token']);
-                        this.userService.getCurrentUser().subscribe((data:any) => {              
+                        this.userService.getCurrentUser().subscribe((data:any) => {     
+                                if(data.rolename && data.permissions){
                                     this.authService.setPermissions(data.permissions);
                                     const landing_page = data.permissions[0]['path'][0]
                                     this.router.navigate([landing_page]); //TODO: redirect to path accessed    
-                                });
+                                }
+                                else {
+                                    this.error = 'Unauthorized Access. Please Contact Admin!!'
+                                }
+                            });
                     }, 
                     error : err => {
                         this.form.controls['password'].reset();

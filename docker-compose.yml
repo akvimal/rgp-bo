@@ -1,6 +1,7 @@
 version: "3.8"
 
 services:
+
   api:
     build:
       dockerfile: Dockerfile
@@ -12,6 +13,7 @@ services:
     volumes:
       - ./api:/app
       - ./api/node_modules:/app/node_modules
+      - ~/temp/upload:/app/upload
     # RUN in debug mode: npm run start:debug
     # RUN in dev mode npm run start:dev
     command: npm run start:dev
@@ -19,14 +21,15 @@ services:
       - postgres
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
-      FILEUPLOAD_LOCATION: /Users/vimalkrishnan/temp/upload
+      # DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
+      DATABASE_URL: postgresql://postgres:postgres@host.docker.internal:5432/rgp-dec14
+      FILEUPLOAD_LOCATION: /app/upload
       FILEUPOAD_SIZE_LIMIT: 512000
       JWT_KEY: dev
       JWT_EXPIRES: 24h
       PORT: 3000
     ports:
-      - 30000:3000
+      - 3000:3000
     networks:  
       - local
 
@@ -43,8 +46,22 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: rgpdb
     ports:
-      - 35000:5432
+      - 5432:5432
 
+  frontend:
+    build:
+      dockerfile: Dockerfile
+      context: ./frontend
+    command: npm start
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - 4200:4200
+    networks:  
+      - local
 networks:
   local:
 
