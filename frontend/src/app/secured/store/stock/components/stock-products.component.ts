@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
-import { Stock2Service } from "../stock2.service";
+import { StockService } from "../stock.service";
 
 @Component({
     templateUrl: 'stock-products.component.html'
@@ -10,13 +10,12 @@ export class StockProductsComponent {
     criteria = {active:true, available:false, expired:false, starts:true}
     products:any = []
    
-    constructor(private router:Router, private activatedRoute: ActivatedRoute, private service: Stock2Service){}
+    constructor(private router:Router, private activatedRoute: ActivatedRoute, private service: StockService){}
 
     ngOnInit(){
         this.service.findAll({criteria:this.criteria});
         this.service.getProducts().subscribe((data:any) => {
             this.products = data.map(d => {
-                // console.log(d);  
                 return {...d, highest_customers: +d['highest_customers']}
             });
         })
@@ -30,5 +29,4 @@ export class StockProductsComponent {
         this.router.navigate(['items',id],{relativeTo:this.activatedRoute});
     }
     
-
 }

@@ -1,5 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Subject } from "rxjs";
 import { environment } from "../../../../environments/environment";
 
 @Injectable({
@@ -7,13 +8,40 @@ import { environment } from "../../../../environments/environment";
 })
 export class StockService {
 
+    products = new Subject();
+    stats = new Subject();
+
+    filter:any;
+
+    stock2url = environment.apiHost+'/stock2';
     apiurl = environment.apiHost;
 
     constructor(private http:HttpClient){ }
 
-    // findAll(){
-    //     return this.http.get(`${this.apiurl}/stock`);
-    // }
+    getProducts(){
+        return this.products;
+    }
+
+    getProductStats(){
+        return this.stats;
+    }
+
+    refreshProducts(){
+        this.findAll(this.filter);
+    }
+
+    findAll(criteria:any){
+        this.filter = criteria;
+        this.http.post(this.stock2url, this.filter).subscribe(data => {
+            this.products.next(data);
+        })
+    }
+
+    findByProduct(id:number){
+        this.http.get(`${this.stock2url}/${id}`).subscribe(data => {
+            this.stats.next(data);
+        })
+    }
 
     filterByCriteria(criteria:any){   
         return this.http.post(`${this.apiurl}/stock/filter`, criteria);

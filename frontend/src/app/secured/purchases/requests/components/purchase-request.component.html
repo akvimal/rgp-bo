@@ -11,10 +11,14 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                      <th pSortableColumn="id">ID
+                      <!-- <th pSortableColumn="id">ID
                           <p-columnFilter type="text" field="id" display="menu"></p-columnFilter>
                           <p-sortIcon field="id"></p-sortIcon>
-                      </th>
+                      </th> -->
+                      <th pSortableColumn="createdon">Date
+                        <p-columnFilter type="date" field="createdon" display="menu"></p-columnFilter>
+                        <p-sortIcon field="createdon"></p-sortIcon>
+                      </th> 
                       <th pSortableColumn="title">Product
                           <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                           <p-sortIcon field="title"></p-sortIcon>
@@ -31,25 +35,23 @@
                         <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
                         <p-sortIcon field="status"></p-sortIcon>
                       </th>
-                      <th pSortableColumn="createdon">Date
-                        <p-columnFilter type="date" field="createdon" display="menu"></p-columnFilter>
-                        <p-sortIcon field="createdon"></p-sortIcon>
-                      </th> 
-                      <th pSortableColumn="comments">Comments
+                      
+                      <!-- <th pSortableColumn="comments">Comments
                           <p-sortIcon field="comments"></p-sortIcon>
-                      </th>
+                      </th> -->
                       <th>Actions</th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
                     <tr>
-                      <td>{{i.id}}</td>
+                      <td>{{i.createdon | date : 'dd/MM/yyyy'}}</td>
+                      <!-- <td>{{i.id}}</td> -->
                       <td>{{i.product.title}}</td>
                       <!-- <td>{{i.requesttype}}</td> -->
                       <td>{{i.qty}}</td>
                         <td>{{i.status}}</td>
-                        <td>{{i.createdon | date : 'dd/MM/yyyy'}}</td>
-                        <td>{{i.comments}}</td>
+                        
+                        <!-- <td>{{i.comments}}</td> -->
                         <td style="text-align: center;">
                           <a (click)="edit(i.id)">
                               <i class="bi bi-pencil-square text-primary"></i>

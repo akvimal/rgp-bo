@@ -17,8 +17,7 @@ export class SalePaymentComponent {
 
     ngOnInit(){
         if(this.payment['digiamt'] == this.total && this.payment['digimode'] == undefined)
-            this.payment['digimode'] = 'PayTM';
-
+            this.payment['digimode'] = 'UPI';
         if(this.payment['cashamt'] == this.total)
             this.cashonly = true;
     }
@@ -69,7 +68,7 @@ export class SalePaymentComponent {
         }
         else {
             this.payment.digiamt = this.total;
-            this.payment.digimode = 'PayTM';
+            this.payment.digimode = 'UPI';
             this.payment.digirefno = '';
             this.payment.cashamt = 0;
         }
