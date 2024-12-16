@@ -56,7 +56,7 @@
         <tr>
             <td></td>
             <td>
-                <app-stock-select (stockSelected)="selectProduct($event)"></app-stock-select>
+                <app-stock-select (stockSelected)="selectProduct($event)" [excludeItems]="getItemsInForm()"></app-stock-select>
             </td>
             <td colspan="6"></td>
         </tr>

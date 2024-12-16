@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from "@angular/core";
+import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { StockService } from "src/app/secured/store/stock/stock.service";
 import { PropsService } from "../props.service";
@@ -24,10 +24,10 @@ import { PropsService } from "../props.service";
                         </div>
                     </ng-template>
                 </p-autoComplete></span>`
-
 })
 export class StockSelectComponent {
 
+    @Input() excludeItems = [];
     @Output() stockSelected = new EventEmitter();
 
     selectedStock: any;
@@ -42,13 +42,13 @@ export class StockSelectComponent {
 
     ngOnInit(){
         this.propsService.productProps$.subscribe(data => {
-        if(data){
-            data.forEach((category:any) => {
-                category['props'].forEach((prop:any) => {
-                    prop['searchable'] && this.searchable.push(prop);   
-                }); 
-            });
-        }
+            if(data){
+                data.forEach((category:any) => {
+                    category['props'].forEach((prop:any) => {
+                        prop['searchable'] && this.searchable.push(prop);   
+                    }); 
+                });
+            }
         });
     }
 
@@ -73,7 +73,13 @@ export class StockSelectComponent {
 
     filterStock(event:any) {
         let filtered : any[] = [];
-        this.stockService.filterByCriteria({title:event.query, starts:true, available:true,expired:false,status:'VERIFIED',limit:25}).subscribe((data:any) => {
+        
+        this.stockService.filterByCriteria({title:event.query, excludeItems:this.excludeItems,
+            starts:true, 
+            available:true,
+            expired:false,
+            status:'VERIFIED',
+            limit:25}).subscribe((data:any) => {
             filtered = data;
            this.filteredStock = filtered;         
         });        

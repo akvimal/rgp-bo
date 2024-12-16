@@ -24,8 +24,11 @@ export class StockService {
             
             let sql = 
             `select piv.*, p.more_props, pp.sale_price from product_items_view piv 
-            inner join product p on p.id = piv.id
-            left join product_price2 pp on pp.product_id = piv.id`;
+            inner join product p on p.id = piv.id `;
+            if(criteria['excludeItems'] && criteria['excludeItems'].length > 0){
+                sql += ` and piv.item_id not in (${criteria['excludeItems'].join(',')}) `
+            }
+            sql += `left join product_price2 pp on pp.product_id = piv.id `;
 
             const conditions = [];
             if(criteria['expired'])

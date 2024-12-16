@@ -18,7 +18,7 @@
         <div class="col-6">
             <p-table [value]="products"
             [paginator]="true" [rows]="10" [showCurrentPageReport]="true" 
-            styleClass="p-datatable-gridlines p-datatable-sm"
+            styleClass="p-datatable-gridlines p-datatable-sm app-table"
                 currentPageReportTemplate="{totalRecords} Products" 
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
@@ -30,28 +30,30 @@
                         <th pSortableColumn="last_sale_date">Last
                             <p-sortIcon field="last_sale_date"></p-sortIcon>
                         </th>
-                        <th>Cust.</th>
-                        <th>Avg.<br>Sales</th>
-                        <th>High<br>Sales</th>
-                        <th pSortableColumn="balance">Avail
+                        <th pSortableColumn="highest_customers" class="right">Cust.
+                            <!-- <p-columnFilter type="number" field="highest_customers" display="menu"></p-columnFilter> -->
+                            <p-sortIcon field="highest_customers"></p-sortIcon>
+                        </th>
+                        <th class="right">Avg.<br>Sales</th>
+                        <th class="right">High<br>Sales</th>
+                        <th pSortableColumn="balance" class="right">Avail
                             <p-sortIcon field="balance"></p-sortIcon>
                         </th>
-                        <th pSortableColumn="level">Level
+                        <th pSortableColumn="level" class="right">Level
                             <p-sortIcon field="level"></p-sortIcon>
                         </th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
                     <tr class="row-hover" [ngClass]="{'low': i.level < 20}" (click)="openData(i.id)">
-                        <td>{{i.title}}
-                        </td>
+                        <td>{{i.title}}</td>
                         <td>{{i.last_sale_date | date : 'MM/yy'}}</td>
                         <!-- <td>{{i.average_customers | number:'1.0-0'}}</td> -->
-                        <td>{{i.highest_customers}}</td>
-                        <td>{{i.average_sales | number:'1.0-0'}}</td>
-                        <td>{{i.highest_sales}}</td>
-                        <td class="text-end"><strong>{{i.balance}}</strong></td>
-                        <td>{{i.level}}</td>
+                        <td class="right">{{i.highest_customers}}</td>
+                        <td class="right">{{i.average_sales | number:'1.0-0'}}</td>
+                        <td class="right">{{i.highest_sales}}</td>
+                        <td class="right"><strong>{{i.balance}}</strong></td>
+                        <td class="right">{{i.level}}</td>
                     </tr>
                 </ng-template>
             </p-table>    

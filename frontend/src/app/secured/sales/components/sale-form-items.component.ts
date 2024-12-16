@@ -41,8 +41,6 @@ export class SaleFormItemsComponent{
     private stockService:StockService){}
 
   selectProduct(selected:any) {
-    console.log(selected);
-    
     const item = this.helper.mapStockToSaleItem(selected, true);
     this.calculateTotalWithQtyChange(item);
     this.itemAdded.emit(item);
@@ -103,9 +101,9 @@ export class SaleFormItemsComponent{
     
     const item = this.items.find((i:any) => i.itemid === itemid);
     item.qty = event.target.value;  
-    if(+event.target.value > +item.available){
-      item.qty = item.available;
-      event.target.value = item.available; //prevent entering value over max qty
+    if(+event.target.value > +item.balance){
+      item.qty = item.balance;
+      event.target.value = item.balance; //prevent entering value over max qty
     }
     else if (+event.target.value < 1){
       item.qty = 0;
@@ -129,7 +127,7 @@ export class SaleFormItemsComponent{
   }
 
   refreshAvailableQty(item:any){
-    item['unitsbal'] = item.available - item.qty;
+    item['unitsbal'] = +item.balance - +item.qty;
     // item['box'] = Math.trunc(item.qty / item.pack);
     // item['boxbal'] = item.qty % item.pack;
   }
@@ -209,5 +207,9 @@ export class SaleFormItemsComponent{
 
       calcTender(event:any){
         this.tender = event.target.value - this.total;
+      }
+
+      getItemsInForm(){
+        return this.items.map(i => i.item_id);;
       }
 }

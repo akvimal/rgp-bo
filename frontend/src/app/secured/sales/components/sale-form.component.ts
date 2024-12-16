@@ -284,7 +284,7 @@ export class SaleFormComponent {
   }
 
   isSaleFormValid(){
-    if(this.sale.items?.length == 0)
+    if(this.sale.items?.length == 0 || this.sale.total == 0)
       return false;
 
     const customerValid = this.sale.customer && (this.sale.customer.mobile.length == 0 || 

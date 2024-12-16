@@ -203,3 +203,7 @@
     background: #ccc !important;
     cursor: pointer;
 }
+
+.app-table .right {
+    text-align: right !important;
+}

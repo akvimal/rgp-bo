@@ -14,8 +14,11 @@ export class StockProductsComponent {
 
     ngOnInit(){
         this.service.findAll({criteria:this.criteria});
-        this.service.getProducts().subscribe(data => {
-            this.products = data;
+        this.service.getProducts().subscribe((data:any) => {
+            this.products = data.map(d => {
+                // console.log(d);  
+                return {...d, highest_customers: +d['highest_customers']}
+            });
         })
     }
 
