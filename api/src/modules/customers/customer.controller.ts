@@ -32,6 +32,11 @@ export class CustomerController {
       return this.customerService.filterByCriteria(criteria);
     }
 
+    @Get(':mobile/mobile')
+    async findOneByMobile(@Param('mobile') mobile: string) {
+      return this.customerService.findByMobile(mobile);
+    }
+
     @Get(':id')
     async findOne(@Param('id') id: string) {
       return this.customerService.findById(id);

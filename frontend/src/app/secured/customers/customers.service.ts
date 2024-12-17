@@ -28,6 +28,10 @@ export class CustomersService {
         return this.http.get(`${this.apiurl}/${id}`);
     }
 
+    findByMobile(mobile:any){
+        return this.http.get(`${this.apiurl}/${mobile}/mobile`);
+    }
+
     findAllApi(){
         return this.http.get(`${this.apiurl}`);
     }
@@ -35,10 +39,6 @@ export class CustomersService {
     findAll(){
         return this.http.get(`${this.apiurl}`);
     }
-
-    // getSaleData(criteria:any){
-    //     return this.http.post(`${this.apiurl}/sale`,criteria);
-    // }   
 
     getCustomerOrdersByPeriod(cust:any,year:number,month:number){
         return this.http.get(`${this.apiurl}/${cust['id']}/${year}/${month}/orders`);

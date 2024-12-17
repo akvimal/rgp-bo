@@ -21,7 +21,6 @@ import {DropdownModule} from 'primeng/dropdown';
 import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
 import { InvoiceItemFormComponent } from "./invoices/components/invoice-item-form.component";
-import { PurchaseRequestComponent } from "./requests/components/purchase-request.component";
 import { PurchaseHeaderComponent } from "./purchase-header.component";
 import { PurchasesComponent } from "./invoices/components/purchases.component";
 import { TabViewModule } from "primeng/tabview";
@@ -34,7 +33,6 @@ const routes: Routes = [
   { path: '', component: PurchaseHomeComponent, canActivate:[AuthGuard],
     children: [
       { path: '', redirectTo: 'invoices'},
-      { path: 'intents', component: PurchaseRequestComponent },
       { path: 'orders', component: PurchaseOrderComponent,
           children: [
             { path: ':id', component: PurchaseOrderViewComponent }
@@ -61,7 +59,6 @@ const routes: Routes = [
       PurchaseHomeComponent,
       PurchasesComponent,
       PurchaseHeaderComponent,
-      PurchaseRequestComponent,
       PurchaseOrderComponent,
       PurchaseOrderViewComponent,
       InvoicesComponent,

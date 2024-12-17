@@ -1,9 +1,9 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
-import { PurchaseRequestService } from "../purchase-request.service";
+import { PurchaseIntentService } from "./purchase-intent.service";
 
 @Component({
-    templateUrl: './purchase-request.component.html',
+    templateUrl: './purchase-intent.component.html',
     styles: [
         `
         .batch {color:blue;font-style:italic;font-size:smaller}
@@ -11,7 +11,7 @@ import { PurchaseRequestService } from "../purchase-request.service";
         `
     ]
 })
-export class PurchaseRequestComponent {
+export class PurchaseIntentComponent {
 
     requests:[] = []
     displayForm:boolean = false;
@@ -24,7 +24,7 @@ export class PurchaseRequestComponent {
         comments: new FormControl('')
     });
 
-    constructor(private service:PurchaseRequestService) {}
+    constructor(private service:PurchaseIntentService) {}
 
     ngOnInit() {
         this.filter();
@@ -37,8 +37,6 @@ export class PurchaseRequestComponent {
     }
 
     onProductSelect(product:any){
-        console.log(product);
-        
         this.form.controls['title'].setValue(product.title);
         this.form.controls['productid'].setValue(product.id);
     }

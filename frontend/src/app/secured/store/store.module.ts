@@ -25,6 +25,7 @@ import { StockProductsComponent } from "./stock/components/stock-products.compon
 import { StockProductItemsComponent } from "./stock/components/stock-product-items.component";
 import { StockAdjustFormComponent } from "./stock/components/stock-adjust-form.component";
 import { StockComponent } from "./stock/components/stock.component";
+import { PurchaseIntentComponent } from "./intent/purchase-intent.component";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
@@ -36,8 +37,8 @@ const routes: Routes = [
         }] },
         { path: 'adjust', component: StockAdjustComponent }
       ] },
-    { path: 'cash', component: CashComponent},
-    { path: 'credit', component: CreditComponent}
+    { path: 'intent', component: PurchaseIntentComponent},
+    { path: 'cash', component: CashComponent}
   ]}
 ];
 
@@ -49,7 +50,8 @@ const routes: Routes = [
       StockAdjustComponent,
       StockProductsComponent,
       StockProductItemsComponent,
-      StockAdjustFormComponent
+      StockAdjustFormComponent,
+      PurchaseIntentComponent
     ],
     imports: [
         RouterModule.forChild(routes),

@@ -5,7 +5,7 @@ import { map } from 'rxjs/operators';
 import { saveAs as importedSaveAs } from "file-saver";
 
 import { PurchaseOrderService } from "../purchase-order.service";
-import { PurchaseRequestService } from "../purchase-request.service";
+import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 
 @Component({
     selector: 'app-purchase-order-view',
@@ -25,7 +25,7 @@ export class PurchaseOrderViewComponent {
 
     constructor(private route:ActivatedRoute, 
         private service:PurchaseOrderService, 
-        private reqService:PurchaseRequestService) {}
+        private reqService:PurchaseIntentService) {}
 
     ngOnInit() {
         this.route.params.pipe(map(p => p.id)).subscribe(id => {

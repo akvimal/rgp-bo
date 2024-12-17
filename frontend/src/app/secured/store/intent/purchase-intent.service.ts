@@ -1,12 +1,11 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { environment } from "src/environments/environment";
-import { PurchaseRequest } from "./purchase-request.model";
 
 @Injectable({
     providedIn: 'root'
 })
-export class PurchaseRequestService {
+export class PurchaseIntentService {
 
     apiurl = `${environment.apiHost}/purchaserequests`;
 
@@ -24,11 +23,11 @@ export class PurchaseRequestService {
         return this.http.get(`${this.apiurl}/${id}`);
     }
 
-    save(request:PurchaseRequest){
+    save(request:any){
         return this.http.post(this.apiurl,{...request, id: null});
     }
 
-    update(id:number, request:PurchaseRequest){
+    update(id:number, request:any){
         return this.http.put(`${this.apiurl}/${id}`,request);
     }
 

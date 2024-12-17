@@ -120,8 +120,6 @@ export class SaleFormComponent {
 
     onItemAdd(item:any){
       this.sale.items?.push(item);
-      // console.log('item added ...',item);
-      
       this.recalculateTotal();
     }
 
@@ -200,8 +198,16 @@ export class SaleFormComponent {
     }
 
     const obj = this.sale;
-    if(this.sale.customer.mobile === '')
-    obj['customer'] = null;
+    
+    if(this.sale.customer.mobile === ''){
+        obj['customer'] = null;
+        if(this.sale.status == 'COMPLETE')
+          //setting default nil customer
+          this.sale.customerid = +localStorage.getItem('nil');
+    }
+    else{
+        this.sale.customer['name'] = this.sale.customer['name'].toUpperCase();
+    }
     
     this.sale.props = {documents: this.documents};
 
@@ -212,8 +218,6 @@ export class SaleFormComponent {
   }
 
   redirectAfterSubmit(status:string,id:number){
-    // console.log(status);
-    
     if(status === 'COMPLETE')
       this.router.navigateByUrl(`/secure/sales/view/${id}`); 
     else 
@@ -270,8 +274,6 @@ export class SaleFormComponent {
     }
     else if(event['action'] == 'documentsSelected'){
       const docs = event['event'];
-      // console.log(docs);
-      
       docs.forEach((d:any) => {
         const found = this.documents.find((td:any) => td.id === d.id);
         if(!found)

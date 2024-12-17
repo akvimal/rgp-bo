@@ -25,6 +25,11 @@ export class CustomerService {
         return this.customerRepository.findOne(id);
     }
 
+    async findByMobile(mobile:string) {
+        return this.customerRepository.createQueryBuilder('c')
+            .where('c.mobile = :mobile', { mobile }).getOne();
+    }
+
     // async findSaleData(criteria:any) {
     //     const query = `select * from customer_sale_view`;
     //     return await this.manager.query(query);
