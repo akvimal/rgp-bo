@@ -1,6 +1,8 @@
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { StockService } from "../stock.service";
+import { MenuItem } from 'primeng/api';
+import { Menu } from 'primeng/menu';
 
 @Component({
     templateUrl: 'stock-products.component.html'
@@ -10,6 +12,8 @@ export class StockProductsComponent {
     criteria = {active:true, available:false, expired:false, starts:true}
     products:any = []
    
+    // items: MenuItem[] | undefined;
+
     constructor(private router:Router, private activatedRoute: ActivatedRoute, private service: StockService){}
 
     ngOnInit(){
@@ -18,7 +22,22 @@ export class StockProductsComponent {
             this.products = data.map(d => {
                 return {...d, highest_customers: +d['highest_customers']}
             });
-        })
+        });
+        // this.items = [
+        //     {
+        //         label: 'Options',
+        //         items: [
+        //             {
+        //                 label: 'Refresh',
+        //                 icon: 'pi pi-refresh'
+        //             },
+        //             {
+        //                 label: 'Export',
+        //                 icon: 'pi pi-upload'
+        //             }
+        //         ]
+        //     }
+        // ];
     }
 
     fetch(){

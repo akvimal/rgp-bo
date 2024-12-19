@@ -19,9 +19,11 @@
                     <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                     <p-sortIcon field="title"></p-sortIcon>
                 </th>
-                <!-- <th style="width:8%">Martket</th> -->
+                <th style="width:8%" pSortableColumn="last_updated">Updated
+                    <p-sortIcon field="last_updated"></p-sortIcon></th>
                 <th style="width:8%" class="text-end">PTR</th>
-                <th style="width:8%" class="text-end">Price</th>
+                <th style="width:8%" class="text-end" pSortableColumn="price">Price
+                    <p-sortIcon field="price"></p-sortIcon></th>
                 <th style="width:8%" class="text-end" pSortableColumn="margin">Margin
                     <p-columnFilter type="number" field="margin" display="menu"></p-columnFilter>
                     <p-sortIcon field="margin"></p-sortIcon>
@@ -37,6 +39,7 @@
         <ng-template pTemplate="body" let-product let-editing="editing" let-ri="rowIndex">
             <tr [pEditableRow]="product">
                 <td>{{product.title}}</td>
+                <td>{{product.last_updated | date : 'dd/MM/yy'}}</td>
                 <!-- <td class="text-center" pEditableColumn>
                     <p-cellEditor>
                         <ng-template pTemplate="input">

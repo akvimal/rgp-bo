@@ -14,6 +14,10 @@
             </div>
         </div>
     </div>
+    <div>
+        <!-- <p-menu #menu [model]="items" [popup]="true"></p-menu>
+        <p-button (click)="menu.toggle($event)" icon="pi pi-ellipsis-v"></p-button>
+        </div> -->
     <div class="row mt-2">
         <div class="col-6">
             <p-table [value]="products"
@@ -46,7 +50,13 @@
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
                     <tr class="row-hover" [ngClass]="{'low': i.level < 20}" (click)="openData(i.id)">
-                        <td>{{i.title}}</td>
+                        <td>
+                            
+                            <!-- <a (click)="menu.toggle($event)">
+                                <i class="bi bi-trash" style="color:gray"></i>
+                            </a> -->
+
+                            {{i.title}}</td>
                         <td>{{i.last_sale_date | date : 'MM/yy'}}</td>
                         <!-- <td>{{i.average_customers | number:'1.0-0'}}</td> -->
                         <td class="right">{{i.highest_customers}}</td>

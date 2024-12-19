@@ -20,7 +20,7 @@
     <div class="row">
             <div class="col-12">
             <p-table [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
-                [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
+                [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines p-datatable-sm mt-4"
                 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
                 [rowsPerPageOptions]="[10,25,50]">
                
@@ -53,10 +53,10 @@
                             <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
                             <p-sortIcon field="brand"></p-sortIcon>
                         </th> -->
-                        <th pSortableColumn="mfr">MFR
+                        <!-- <th pSortableColumn="mfr">MFR
                             <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
                             <p-sortIcon field="mfr"></p-sortIcon>
-                        </th>
+                        </th> -->
                         <th pSortableColumn="updatedon">Latest 
                             <p-sortIcon field="updatedon"></p-sortIcon>
                         </th>  
@@ -75,7 +75,7 @@
                         <td><app-props-print [props]="product.props"></app-props-print></td>
                         <!-- <td style="text-align: center;">{{product.pack}}</td> -->
                         <!-- <td>{{product.brand}}</td> -->
-                        <td>{{product.mfr}}</td>
+                        <!-- <td>{{product.mfr}}</td> -->
                         <td>{{product.updatedon | date : 'dd/MM/yy'}}</td>
                         <td style="text-align: center;">
                             <h4 class="icon">

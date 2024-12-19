@@ -28,7 +28,7 @@ export class StockService {
             if(criteria['excludeItems'] && criteria['excludeItems'].length > 0){
                 sql += ` and piv.item_id not in (${criteria['excludeItems'].join(',')}) `
             }
-            sql += `left join product_price2 pp on pp.product_id = piv.id `;
+            sql += `left join product_price2 pp on pp.product_id = piv.id and pp.end_date > current_date `;
 
             const conditions = [];
             if(criteria['expired'])
@@ -38,8 +38,8 @@ export class StockService {
                 conditions.push(`piv.id = ${criteria['id']}`);
 
             if(!criteria['id'] && criteria['title']){
-                const title = criteria['starts'] && criteria['title'] ? `${criteria['title'].replaceAll('\'','\,\,')}%` : `%${criteria['title'].replaceAll('\'','\,\,')}%`;
-                conditions.push(`(piv.title ilike '${title}' or p.more_props->>'composition' ilike '${title}')`);
+                let titleCriteria = criteria['title'].startsWith('~') ? '%'+criteria['title'].substring(1).replaceAll('\'','\,\,') : criteria['title'].replaceAll('\'','\,\,');
+                conditions.push(`(piv.title ilike '${titleCriteria}%' or p.more_props->>'composition' ilike '${titleCriteria}%')`);
             }
 
             if(criteria['status']){

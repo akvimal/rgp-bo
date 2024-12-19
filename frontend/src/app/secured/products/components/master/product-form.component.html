@@ -57,6 +57,7 @@
             </span> -->
             <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)" 
                       class="form-control" formControlName={{pp.id}}>
+            <textarea *ngIf="pp.type === 'TEXT'" cols="40" (input)="dataInput(pp.type, pp.id, $event)" class="form-control" formControlName={{pp.id}}></textarea>
             <div *ngIf="pp.type === 'CHECK'">
               <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)" [checked]="pp.default"
               class="form-check-input" style="width:25px;height:25px" formControlName={{pp.id}}>
