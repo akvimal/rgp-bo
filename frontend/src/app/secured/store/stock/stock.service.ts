@@ -30,6 +30,13 @@ export class StockService {
         this.findAll(this.filter);
     }
 
+    getMonthAvailableList(){
+        return this.http.get(this.stock2url+'/expiries');
+    }
+    getProductsByExpiryMonths(month:string){
+        return this.http.get(this.stock2url+'/expiries/'+month);
+    }
+    
     findAll(criteria:any){
         this.filter = criteria;
         this.http.post(this.stock2url, this.filter).subscribe(data => {

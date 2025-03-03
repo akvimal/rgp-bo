@@ -1,0 +1,42 @@
+<div class="row">
+    <div class="col-12">
+        <div class="col-10 d-flex"><h5>Expiry: {{month | date:'MMM-yy'}}</h5></div>
+        
+    </div>
+                <div class="col-12">
+                    <p-table [value]="data"
+                    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" 
+                    styleClass="p-datatable-gridlines p-datatable-sm"
+                        currentPageReportTemplate="{totalRecords} Items" 
+                        [rowsPerPageOptions]="[10,25,50]">
+                        <ng-template pTemplate="header">
+                        <tr>
+                            <th>Product</th>
+                            <th>Batch</th>
+                            <th>Qty</th>
+                            <!-- <th></th> -->
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-i>
+                        <tr>
+                       
+                        <td>{{i.title}}</td>
+                        <td>{{i.batch}}</td>
+                        <td style="text-align:right">{{i.balance}}</td>
+                        <!-- <td>
+                            <h5 class="icon">
+                                <a href="javascript:void(0)" (click)="showQtyDialog(i.item_id)">
+                                <i class="bi bi-pencil-square text-primary"></i>
+                                </a>
+                            </h5>
+                        </td> -->
+                        </tr>    
+                    </ng-template>
+                    </p-table>    
+                </div>
+            
+</div>
+
+<p-dialog header="Stock Adjustment" [(visible)]="displayQtyAdjForm" [modal]="true">
+    <app-stock-adjust-form [item]="selectedItem" (saved)="closeAdjForm($event)"></app-stock-adjust-form>
+</p-dialog>

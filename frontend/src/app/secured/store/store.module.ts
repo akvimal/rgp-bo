@@ -27,6 +27,8 @@ import { StockProductItemsComponent } from "./stock/components/stock-product-ite
 import { StockAdjustFormComponent } from "./stock/components/stock-adjust-form.component";
 import { StockComponent } from "./stock/components/stock.component";
 import { PurchaseIntentComponent } from "./intent/purchase-intent.component";
+import { StockExpiryComponent } from "./stock/components/stock-expiry.component";
+import { StockExpiryItemsComponent } from "./stock/components/stock-expiry-items.component";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
@@ -36,6 +38,9 @@ const routes: Routes = [
         { path: 'products', component: StockProductsComponent, children: [{
             path: 'items/:id', component: StockProductItemsComponent
         }] },
+        { path: 'expiry', component: StockExpiryComponent, children: [{
+          path: 'expiry/:month', component: StockExpiryItemsComponent
+      }]  },
         { path: 'adjust', component: StockAdjustComponent }
       ] },
     { path: 'intent', component: PurchaseIntentComponent},
@@ -50,6 +55,8 @@ const routes: Routes = [
       StockComponent,
       StockAdjustComponent,
       StockProductsComponent,
+      StockExpiryComponent,
+      StockExpiryItemsComponent,
       StockProductItemsComponent,
       StockAdjustFormComponent,
       PurchaseIntentComponent

@@ -10,13 +10,13 @@ import { Component } from "@angular/core";
                 <li class="nav-item" *isNavAuth>
                     <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock">Stock</a>
                 </li>
-                <li class="nav-item" *isNavAuth>
+                <!-- <li class="nav-item" *isNavAuth>
                      <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="intent">Intent</a>
                 </li>
                 <li class="nav-item" *isNavAuth>
                     <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
                 </li>
-                <!--
+               
                 <li class="nav-item" *isNavAuth>
                     <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="credit">Credit</a>
                 </li> -->

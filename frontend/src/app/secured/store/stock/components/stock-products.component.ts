@@ -23,21 +23,6 @@ export class StockProductsComponent {
                 return {...d, highest_customers: +d['highest_customers']}
             });
         });
-        // this.items = [
-        //     {
-        //         label: 'Options',
-        //         items: [
-        //             {
-        //                 label: 'Refresh',
-        //                 icon: 'pi pi-refresh'
-        //             },
-        //             {
-        //                 label: 'Export',
-        //                 icon: 'pi pi-upload'
-        //             }
-        //         ]
-        //     }
-        // ];
     }
 
     fetch(){

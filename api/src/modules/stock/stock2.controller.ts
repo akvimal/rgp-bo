@@ -16,6 +16,15 @@ export class Stock2Controller {
       return this.service.findAll({...body.criteria});
     }
 
+    @Get('/expiries')
+    async getMonthAvailableList() {
+      return this.service.getMonthAvailableList();
+    }
+    @Get('/expiries/:month')
+    async getProductsByExpiryMonths(@Param('month') month: string) {
+      return this.service.findProductsByExpiries(month);
+    }
+
     @Get('/:id')
     async findProductItems(@Param('id') id: number) {
       return this.service.findProductItemsById(id);

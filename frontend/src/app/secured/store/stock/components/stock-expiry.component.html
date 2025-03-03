@@ -1,0 +1,36 @@
+
+    <div>
+        <!-- <p-menu #menu [model]="items" [popup]="true"></p-menu>
+        <p-button (click)="menu.toggle($event)" icon="pi pi-ellipsis-v"></p-button>
+        </div> -->
+    <div class="row mt-2">
+        <div class="col-4">
+            <p-table [value]="products"
+            [paginator]="true" [rows]="10" [showCurrentPageReport]="true" 
+            styleClass="p-datatable-gridlines p-datatable-sm app-table"
+                currentPageReportTemplate="{totalRecords} Products" 
+                [rowsPerPageOptions]="[10,25,50]">
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th pSortableColumn="exp_date">Month
+                            <p-sortIcon field="exp_date"></p-sortIcon>
+                        </th>
+                        <th class="right">Products</th>
+                        <th class="right">Qty</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-i>
+                    <tr class="row-hover" (click)="openData(i.exp_date)">
+                        
+                        <td>{{i.exp_date | date : 'MMM-yy'}}</td>
+                         
+                        <td class="right">{{i.products}}</td>
+                        <td class="right">{{i.available}}</td>
+                    </tr>
+                </ng-template>
+            </p-table>    
+        </div>
+        <div class="col-8">
+            <router-outlet></router-outlet>
+        </div>
+    </div>

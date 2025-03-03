@@ -39,6 +39,18 @@ export class Stock2Service {
         });
     }
 
+    async getMonthAvailableList(){
+        const sql = `select to_char(exp_date,'yyyy-mm-dd') as exp_date, count(item_id) as products, sum(balance) as available
+        from product_items_view where active = true and balance > 0 group by exp_date order by exp_date`;
+        return await this.manager.query(sql);
+    }
+
+    findProductsByExpiries(month:string){
+        const sql = `select item_id, title, batch, balance 
+            from product_items_view where active = true and exp_date = '${month}' and balance > 0`;
+        return this.manager.query(sql);
+    }
+
     async findProductItemsById(id:number) {
         const purchases = await this.manager.query(`select * from product_items_view where id = ${id} order by invoice_date desc`);
         const sales = await this.manager.query(`select * from product_sale_monthly_view where product_id = ${id} order by sale_month desc`);
