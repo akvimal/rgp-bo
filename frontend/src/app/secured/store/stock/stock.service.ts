@@ -31,10 +31,10 @@ export class StockService {
     }
 
     getMonthAvailableList(){
-        return this.http.get(this.stock2url+'/expiries');
+        return this.http.get(this.stock2url+'/expiries/all');
     }
     getProductsByExpiryMonths(month:string){
-        return this.http.get(this.stock2url+'/expiries/'+month);
+        return this.http.get(this.stock2url+'/expiries/month/'+month);
     }
     
     findAll(criteria:any){
