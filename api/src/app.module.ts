@@ -31,6 +31,7 @@ import { LookupModule } from './modules/app/lookup/lookup.module';
     useClass: ErrorsInterceptor,
   }, AppService, PdfGenerateService],
   imports: [
+    ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
     }),
