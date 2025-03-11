@@ -23,7 +23,6 @@ import { DocumentModule } from './modules/documents/document.module';
 import { ExportController } from './modules/documents/export.controller';
 import { ReportModule } from './modules/reports/report.module';
 import { LookupModule } from './modules/app/lookup/lookup.module';
-import authConfig from './config/auth.config';
 
 @Module({
   controllers: [ AppController, FileDownloadController, ExportController ],

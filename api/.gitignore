@@ -2,6 +2,8 @@
 /dist
 /node_modules
 
+start-server.bat
+start-server-dev.bat
 # Logs
 logs
 *.log

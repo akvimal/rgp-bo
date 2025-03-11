@@ -4,7 +4,7 @@ import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
 
 @Injectable()
 export class TypeOrmConfigService implements TypeOrmOptionsFactory {
-  constructor(private configService: ConfigService) {}
+  constructor() {}
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     return {
@@ -12,7 +12,7 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
       url: process.env.DATABASE_URL,
       dropSchema: false,
       keepConnectionAlive: true,
-      logging: this.configService.get('NODE_ENV') !== 'production',
+      logging: process.env.LOG_SQL === 'true',
       entities: ['**/*.entity.js'],
       cli: {
         entitiesDir: 'src',
@@ -23,19 +23,6 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
         // max connection pool size
         max: 100,
         ssl: false
-          ? {
-            rejectUnauthorized: false,
-            ca: this.configService.get('database.ca')
-              ? this.configService.get('database.ca')
-              : null,
-            key: this.configService.get('database.key')
-              ? this.configService.get('database.key')
-              : null,
-            cert: this.configService.get('database.cert')
-              ? this.configService.get('database.cert')
-              : null,
-          }
-          : false,
       },
     } as TypeOrmModuleOptions;
   }
