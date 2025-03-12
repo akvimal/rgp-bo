@@ -9,9 +9,11 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './auth.strategy';
 import { AppUser } from '../../../entities/appuser.entity';
 import { UserService } from '../users/user.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt', property: 'user' }),
     JwtModule.register({     secret: process.env.JWT_KEY,
         signOptions: { expiresIn: process.env.JWT_EXPIRES },
