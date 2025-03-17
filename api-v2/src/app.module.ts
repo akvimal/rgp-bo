@@ -15,10 +15,13 @@ import { SaleReturnModule } from './modules/app/returns/salereturn.module';
 import { DocumentModule } from './modules/app/documents/document.module';
 import { FilesModule } from './modules/app/files/files.module';
 import { ReportModule } from './modules/app/reports/report.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { DbBackupService } from './modules/app/backup/db.backup';
 
 @Module({
   imports: [
     ConfigModule.forRoot(), 
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
     }),

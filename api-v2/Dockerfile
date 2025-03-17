@@ -1,0 +1,17 @@
+# DEVELOPMENT
+
+FROM node:22.14.0
+
+WORKDIR /app
+
+COPY *.json ./
+
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start:prod"]

@@ -54,6 +54,8 @@ export class CredentialsService {
    */
   setCredentials(credentials?: string) {
     // this.token = credentials || null;
+    console.log('credentials', credentials);
+    
     if (credentials) {
       sessionStorage.setItem(credentialsKey, credentials);
     } else {

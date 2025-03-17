@@ -1,28 +1,26 @@
-version: "3.8"
-
 services:
-
   api:
     build:
       dockerfile: Dockerfile
-      context: ./api
+      context: ./api-v2
       
     # Mount our host dir to the docker container  
     # Mount api directory (./api) to (:) docker container (/app)
     # Reflect File changes from host to container
     volumes:
-      - ./api:/app
-      - ./api/node_modules:/app/node_modules
-      - ~/temp/upload:/app/upload
+      - ./api-v2:/app
+      - ./api-v2/node_modules:/app/node_modules
+      - ~/uploads:/app/upload
     # RUN in debug mode: npm run start:debug
     # RUN in dev mode npm run start:dev
-    command: npm run start:dev
+    command: npm run start:prod
     depends_on:
       - postgres
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       # DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
-      DATABASE_URL: postgresql://postgres:postgres@host.docker.internal:5432/rgp-dec14
+      DATABASE_URL: postgresql://rgpapp:r9pAdmin7@host.docker.internal:5432/rgpdb
+      LOG_SQL: false
       FILEUPLOAD_LOCATION: /app/upload
       FILEUPOAD_SIZE_LIMIT: 512000
       JWT_KEY: dev
@@ -42,26 +40,20 @@ services:
     networks:  
       - local
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: rgpapp
+      POSTGRES_PASSWORD: r9pAdmin7
       POSTGRES_DB: rgpdb
     ports:
       - 5432:5432
-
   frontend:
     build:
       dockerfile: Dockerfile
       context: ./frontend
-    command: npm start
-    depends_on:
-      - api
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     ports:
-      - 4200:4200
-    networks:  
+      - 8000:80
+    networks:
       - local
+      
 networks:
   local:
 
