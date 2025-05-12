@@ -32,11 +32,11 @@ services:
       - local
 
   postgres:
-    image: postgres:14
+    image: postgres:17.4-alpine
     restart: always
     container_name: rgp-db
     volumes:
-      - rgpdata:/var/lib/postgresql/data
+      - rgp_pg_data:/var/lib/postgresql/data
     networks:  
       - local
     environment:
@@ -58,5 +58,4 @@ networks:
   local:
 
 volumes:
-    rgpdata:
-        external: true
+    rgp_pg_data:
