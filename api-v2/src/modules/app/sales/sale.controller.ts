@@ -26,7 +26,7 @@ export class SaleController {
           customer = await this.custService.save(createSaleDto.customer);
         }
         
-        return this.saleService.create({...createSaleDto, customer}, currentUser.id);
+        return await this.saleService.create({...createSaleDto, customer}, currentUser.id);
       }
 
       @Put()

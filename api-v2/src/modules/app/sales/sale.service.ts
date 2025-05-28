@@ -25,17 +25,20 @@ export class SaleService {
         sale['orderdate'] = new Date();
         sale['billno'] = nos[0]['bill_no'];
         
-        return this.saleRepository.save({...sale, createdby:userid}).then(data => {
+        const data = await this.saleRepository.save({...sale, createdby:userid});
+        // .then(async (data) => {
             data.items.forEach(i => {
                 i.saleid = data.id;
             });
-            return this.saleItemRepository.save(data.items).then(d => {
-                return new Promise(async (resolve,reject)=>{
-                    const sale = await this.findById(data.id);
-                    resolve(sale);
-                })
-            })
-        });
+            await this.saleItemRepository.save(data.items)
+            // .then(d => {
+            //     return new Promise(async (resolve,reject)=>{
+            //         const sale = await this.findById(data.id);
+            //         resolve(sale);
+            //     })
+            // })
+        // });
+        return data;
     }
 
     async createReturnItems(items:CreateSaleReturnItemDto[],userid:any){
