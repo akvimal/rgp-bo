@@ -1,12 +1,10 @@
-# DEVELOPMENT
+FROM node:22.14.0-alpine
 
-FROM node:22.14.0
+WORKDIR /usr/src/app
 
-WORKDIR /app
+COPY package*.json ./
 
-COPY *.json ./
-
-RUN npm install
+RUN npm install --force
 
 COPY . .
 
