@@ -1,0 +1,272 @@
+CREATE SCHEMA public AUTHORIZATION pg_database_owner;
+
+-- DROP SEQUENCE public.accounts_id_seq;
+
+CREATE SEQUENCE public.accounts_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.app_role_id_seq;
+
+CREATE SEQUENCE public.app_role_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.app_user_id_seq;
+
+CREATE SEQUENCE public.app_user_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.business_id_seq;
+
+CREATE SEQUENCE public.business_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.business_location_id_seq;
+
+CREATE SEQUENCE public.business_location_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.customer_documents_id_seq;
+
+CREATE SEQUENCE public.customer_documents_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.customer_id_seq;
+
+CREATE SEQUENCE public.customer_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.customer_transaction_id_seq;
+
+CREATE SEQUENCE public.customer_transaction_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.documents_id_seq;
+
+CREATE SEQUENCE public.documents_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.grn_seq;
+
+CREATE SEQUENCE public.grn_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.langchain_chat_histories_id_seq;
+
+CREATE SEQUENCE public.langchain_chat_histories_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.lookup_id_seq;
+
+CREATE SEQUENCE public.lookup_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.order_number_seq;
+
+CREATE SEQUENCE public.order_number_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.product_clearance_id_seq;
+
+CREATE SEQUENCE public.product_clearance_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.product_id_seq;
+
+CREATE SEQUENCE public.product_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.product_price2_id_seq;
+
+CREATE SEQUENCE public.product_price2_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.product_price_id_seq;
+
+CREATE SEQUENCE public.product_price_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.product_qtychange_id_seq;
+
+CREATE SEQUENCE public.product_qtychange_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.purchase_invoice_id_seq;
+
+CREATE SEQUENCE public.purchase_invoice_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.purchase_invoice_item_id_seq;
+
+CREATE SEQUENCE public.purchase_invoice_item_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.purchase_order_id_seq;
+
+CREATE SEQUENCE public.purchase_order_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.purchase_request_id_seq;
+
+CREATE SEQUENCE public.purchase_request_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.sale_deliveries_id_seq;
+
+CREATE SEQUENCE public.sale_deliveries_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.sale_id_seq;
+
+CREATE SEQUENCE public.sale_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.sale_item_id_seq;
+
+CREATE SEQUENCE public.sale_item_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.sale_return_item_id_seq;
+
+CREATE SEQUENCE public.sale_return_item_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.sales_meta_id_seq;
+
+CREATE SEQUENCE public.sales_meta_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.vendor_id_seq;
+
+CREATE SEQUENCE public.vendor_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.vendor_payment_id_seq;
+
+CREATE SEQUENCE public.vendor_payment_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.vendor_pricelist_id_seq;
+
+CREATE SEQUENCE public.vendor_pricelist_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;-- public.accounts definition
