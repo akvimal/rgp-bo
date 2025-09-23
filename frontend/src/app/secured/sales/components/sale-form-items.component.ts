@@ -42,6 +42,7 @@ export class SaleFormItemsComponent{
 
   selectProduct(selected:any) {
     const item = this.helper.mapStockToSaleItem(selected, true);
+    
     this.calculateTotalWithQtyChange(item);
     this.itemAdded.emit(item);
   }
@@ -94,7 +95,8 @@ export class SaleFormItemsComponent{
     
   calculateTotal(qty:number,price:number,tax:number):number{
     let total = qty * (price||0);
-    return isNaN(total) ? 0 : +total.toFixed(2);
+    const totalAfterTax = total * (1 + (tax||0)/100);
+    return isNaN(totalAfterTax) ? 0 : +totalAfterTax.toFixed(2);
   }
 
   changeItemQty(itemid:any,event:any){

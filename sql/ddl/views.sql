@@ -88,6 +88,7 @@ AS SELECT p.id,
     p.active,
     pi.mrp,
     pi.ptr,
+    pi.tax,
     pr.price,
     pr.last_updated,
     round((COALESCE(pr.price::double precision, pi.mrp) - pi.ptr) / pi.ptr * 100::double precision) AS margin,
@@ -95,7 +96,8 @@ AS SELECT p.id,
    FROM product p
      JOIN ( SELECT pii.product_id,
             pii.mrp_cost AS mrp,
-            pii.ptr_cost AS ptr
+            pii.ptr_cost AS ptr,
+            pii.tax_pcnt AS tax
            FROM purchase_invoice_item pii
              JOIN purchase_invoice pi2 ON pi2.id = pii.invoice_id
              JOIN ( SELECT pii_1.product_id,
@@ -110,25 +112,7 @@ AS SELECT p.id,
           WHERE pp.end_date > CURRENT_DATE) pr ON pr.product_id = p.id
   WHERE pi.ptr > 0::double precision AND pi.mrp > 0::double precision
   ORDER BY pr.last_updated DESC;
-
-  -- public.product_items_agg_view source
-
-CREATE OR REPLACE VIEW public.product_items_agg_view
-AS SELECT id,
-    title,
-    active,
-    expired,
-    max(invoice_date) AS last_purchase_date,
-    date(max(last_sale_date)) AS last_sale_date,
-    sum(purchased) AS purchased,
-    sum(sold) AS sold,
-    sum(adjusted) AS adjusted,
-    sum(purchased) - sum(sold) + COALESCE(sum(adjusted), 0::numeric) AS balance
-   FROM product_items_view vw
-  WHERE expired = false
-  GROUP BY id, title, active, expired
-  ORDER BY title;
-
+  
   -- public.product_items_view source
 
 CREATE OR REPLACE VIEW public.product_items_view
@@ -175,6 +159,38 @@ AS SELECT p.id,
   GROUP BY p.id, p.title, pi.invoice_date, pi.invoice_no, pi.tax_pcnt, pi.mrp_cost, pi.id, pi.batch, pi.exp_date, pi.last_sale_date, pi.qty, pi.status, pi.sold
   ORDER BY p.title;
 
+  -- public.product_items_agg_view source
+
+CREATE OR REPLACE VIEW public.product_items_agg_view
+AS SELECT id,
+    title,
+    active,
+    expired,
+    max(invoice_date) AS last_purchase_date,
+    date(max(last_sale_date)) AS last_sale_date,
+    sum(purchased) AS purchased,
+    sum(sold) AS sold,
+    sum(adjusted) AS adjusted,
+    sum(purchased) - sum(sold) + COALESCE(sum(adjusted), 0::numeric) AS balance
+   FROM product_items_view vw
+  WHERE expired = false
+  GROUP BY id, title, active, expired
+  ORDER BY title;
+
+  -- public.product_sale_monthly_view source
+
+CREATE OR REPLACE VIEW public.product_sale_monthly_view
+AS SELECT si.product_id,
+    date(date_trunc('month'::text, s.bill_date)) AS sale_month,
+    count(DISTINCT s.customer_id) AS total_customers,
+    count(s.bill_no) AS total_orders,
+    sum(si.qty) AS total_qty,
+    date(max(s.bill_date)) AS last_date
+   FROM sale_item si
+     JOIN sale s ON s.id = si.sale_id
+  GROUP BY si.product_id, (date(date_trunc('month'::text, s.bill_date)))
+  ORDER BY si.product_id, (date(date_trunc('month'::text, s.bill_date))) DESC;
+
   -- public.product_sale_agg_view source
 
 CREATE OR REPLACE VIEW public.product_sale_agg_view
@@ -190,19 +206,7 @@ AS SELECT product_id,
   GROUP BY product_id
   ORDER BY product_id;
 
-  -- public.product_sale_monthly_view source
 
-CREATE OR REPLACE VIEW public.product_sale_monthly_view
-AS SELECT si.product_id,
-    date(date_trunc('month'::text, s.bill_date)) AS sale_month,
-    count(DISTINCT s.customer_id) AS total_customers,
-    count(s.bill_no) AS total_orders,
-    sum(si.qty) AS total_qty,
-    date(max(s.bill_date)) AS last_date
-   FROM sale_item si
-     JOIN sale s ON s.id = si.sale_id
-  GROUP BY si.product_id, (date(date_trunc('month'::text, s.bill_date)))
-  ORDER BY si.product_id, (date(date_trunc('month'::text, s.bill_date))) DESC;
 
   -- public.sale_customer_view source
 

@@ -6,13 +6,13 @@ export class CreateProductPrice2Dto {
     readonly productid: number;
 
     @ApiProperty({ description: 'effdate', example: '' })
-    readonly effdate: string;
+    readonly effdate?: string;
     
     @ApiProperty({ description: 'sale price', example: '' })
     readonly saleprice: number;
     @ApiProperty({ description: 'reason', example: '' })
     readonly reason:string;
     @ApiProperty({ description: 'comments', example: '' })
-    readonly comments: string;
+    readonly comments?: string;
  
 }

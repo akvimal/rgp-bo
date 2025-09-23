@@ -94,7 +94,7 @@ export class ProductService {
       `select * from price_view where id = ${productid}`);
   }
 
-  async endCurrentPrice(productid:number,enddate:string){
+  async endCurrentPrice(productid:number,enddate?:string){
     return await this.manager.query(
       `update product_price2 set end_date = '${enddate}' where product_id = ${productid} and end_date = '2099-12-31'`);
   }
@@ -120,10 +120,13 @@ export class ProductService {
     }
     
     async addPrice(createProductPrice2Dto: CreateProductPrice2Dto, userid) {
-      return await this.endCurrentPrice(createProductPrice2Dto.productid,createProductPrice2Dto.effdate).then(async (data:any) => {
+      const priceFound = await this.findPriceHistoryById(createProductPrice2Dto.productid);
+      if(!priceFound || priceFound.length == 0){
+        return this.priceRepository.save({...createProductPrice2Dto, createdby:userid});
+      }
+      return priceFound && await this.endCurrentPrice(createProductPrice2Dto.productid,createProductPrice2Dto.effdate).then(async (data:any) => {
         return await this.priceRepository.save({...createProductPrice2Dto, createdby:userid});
       })
-      
     }
     
     async update(id:any, values:any, userid){

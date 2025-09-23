@@ -5,6 +5,7 @@ import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { UpdateInvoiceItemsDto } from "./dto/update-invoice-items.dto";
 import { User } from "src/core/decorator/user.decorator";
+import { ProductService } from "../products/product.service";
 
 @ApiTags('PurchaseItems')
 @Controller('purchaseitems')
@@ -12,7 +13,7 @@ import { User } from "src/core/decorator/user.decorator";
 @UseGuards(AuthGuard)
 export class PurchaseItemController {
 
-    constructor(private purchaseInvoiceService:PurchaseInvoiceService){}
+    constructor(private purchaseInvoiceService:PurchaseInvoiceService, private productService: ProductService){}
 
     @Get()
     async findAllItems(@Query('status') status) { //accept query params
@@ -39,9 +40,16 @@ export class PurchaseItemController {
     //   return this.purchaseInvoiceService.findAllItemsByInvoice(id);
     // }
 
+      getSalePrice(priceBeforeTax,tax): number {
+        const price = priceBeforeTax * (1-tax/100)
+      return price + (priceBeforeTax - (price * (1 + tax/100)));
+      }
+
     @Post()
     async createItem(@Body() createPurchaseInvoiceItemDto: CreatePurchaseInvoiceItemDto, @User() currentUser: any) {
-        const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);        
+        const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);
+
+        this.productService.addPrice({productid: item.productid, saleprice: this.getSalePrice(item.mrpcost,item.taxpcnt), reason: 'Purchase'} , currentUser.id);     
         await this.purchaseInvoiceService.findAllItemsByInvoice(item.invoiceid).then(async (items:any) => {
           let total = 0;
           items.forEach(item => {
