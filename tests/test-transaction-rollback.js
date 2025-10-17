@@ -13,15 +13,16 @@
  */
 
 const { Pool } = require('pg');
+const config = require('./test-config');
 
 // Database configuration
+// Load from test-config.js (update credentials there if needed)
 const pool = new Pool({
-    host: 'localhost',
-    port: 5432,
-    database: 'rgpdb',
-    user: 'rgpapp',
-    password: 'r9pAdmin7',
-    max: 10,
+    connectionString: config.connectionString,
+    ssl: config.ssl,
+    max: config.max,
+    connectionTimeoutMillis: config.connectionTimeoutMillis,
+    idleTimeoutMillis: config.idleTimeoutMillis,
 });
 
 let testResults = {

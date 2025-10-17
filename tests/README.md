@@ -18,12 +18,36 @@ This directory contains tests for verifying fixes and functionality across all p
 # Install dependencies
 npm install pg
 
+# Configure database credentials (if needed)
+# Edit tests/test-config.js with your database credentials
+
 # Run Phase 2 tests (Bill number concurrency)
 node test-bill-number-concurrency.js
 
 # Run Phase 3 tests (Transaction rollback)
 node test-transaction-rollback.js
 ```
+
+### Database Configuration
+
+All tests use `test-config.js` for database credentials. If you encounter connection errors:
+
+1. **Update credentials in test-config.js**:
+   ```javascript
+   connectionString: 'postgresql://username:password@localhost:5432/database'
+   ```
+
+2. **Or use environment variables**:
+   ```bash
+   set DATABASE_URL=postgresql://username:password@localhost:5432/database
+   node test-transaction-rollback.js
+   ```
+
+3. **Default credentials** (from api-v2/.env):
+   - User: `rgpapp`
+   - Password: `r9pAdmin7`
+   - Database: `rgpdb`
+   - Host: `localhost:5432`
 
 ---
 
@@ -108,12 +132,40 @@ See [PHASE3_TESTING.md](./PHASE3_TESTING.md) for:
 
 **Problem:** Tests can't connect to database
 
-**Solution:**
-```bash
-# Verify PostgreSQL is running
-# Check credentials in test files match your setup
-# Ensure database 'rgpdb' exists
-```
+**Error:** `password authentication failed for user "rgpapp"`
+
+**Solutions:**
+
+1. **Update test-config.js** with your actual database credentials
+   ```javascript
+   connectionString: 'postgresql://YOUR_USER:YOUR_PASSWORD@localhost:5432/rgpdb'
+   ```
+
+2. **Check PostgreSQL is running**:
+   ```bash
+   # Windows
+   netstat -an | findstr ":5432"
+
+   # Should show LISTENING on port 5432
+   ```
+
+3. **Verify credentials work** by checking if API can connect:
+   ```bash
+   cd api-v2
+   npm run start:dev
+   # If API starts successfully, database credentials are correct
+   ```
+
+4. **Check pg_hba.conf** authentication method:
+   - Ensure PostgreSQL allows password (md5 or scram-sha-256) authentication
+   - Location: `PostgreSQL/data/pg_hba.conf`
+   - Look for line: `host all all 127.0.0.1/32 md5`
+
+5. **Verify database exists**:
+   ```bash
+   # If you have psql in PATH:
+   psql -U rgpapp -d rgpdb -c "SELECT 1"
+   ```
 
 ### High Wait Times (Phase 2)
 
