@@ -14,6 +14,7 @@ import { PurchaseOrder } from "src/entities/purchase-order.entity";
 import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 import { AuthModule } from "src/modules/auth/auth.module";
 import { JwtService } from "@nestjs/jwt";
+import { ProductModule } from "../products/product.module";
 
 @Module({
     imports: [TypeOrmModule.forFeature([
@@ -21,7 +22,7 @@ import { JwtService } from "@nestjs/jwt";
       PurchaseRequest,
       PurchaseOrder,
       PurchaseInvoice,
-      PurchaseInvoiceItem]),AuthModule],
+      PurchaseInvoiceItem]),AuthModule,ProductModule],
     controllers: [
       PurchaseRequestController,
       PurchaseOrderController,

@@ -10,12 +10,14 @@ DECLARE
     current_bill_no INT;
 BEGIN
     -- Check if we are in a new fiscal year
+    -- Use SELECT FOR UPDATE to lock the row and prevent race conditions
     SELECT fiscal_year_start, last_bill_no INTO current_fiscal_year_start, current_bill_no
     FROM sales_meta
     ORDER BY fiscal_year_start DESC
-    LIMIT 1;
+    LIMIT 1
+    FOR UPDATE;
 
-    IF current_fiscal_year_start < new_fiscal_year_start THEN
+    IF current_fiscal_year_start IS NULL OR current_fiscal_year_start < new_fiscal_year_start THEN
         -- Reset bill number for the new fiscal year
         INSERT INTO sales_meta (fiscal_year_start, last_bill_no) VALUES (new_fiscal_year_start, 1);
         RETURN 1;
@@ -25,7 +27,7 @@ BEGIN
         SET last_bill_no = last_bill_no + 1
         WHERE fiscal_year_start = current_fiscal_year_start
         RETURNING last_bill_no INTO current_bill_no;
-        
+
         RETURN current_bill_no;
     END IF;
 END;

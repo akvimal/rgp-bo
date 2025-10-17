@@ -9,9 +9,9 @@ export class SaleHelper {
     mapStockToSaleItem(source:any,editable:boolean){
         const output = source;
         if(source){
-            const price = ((source.sale_price ||  source.mrp_cost)/source.pack).toFixed(2)
+            const price = (source.sale_price/source.pack).toFixed(2)
+            // const total = ((+price * (1 + (source.tax_pcnt/100))) * source.pack).toFixed(2);
             const total = (+price * source.pack).toFixed(2);
-    
             output.itemid = source.item_id;
             output.product_id = source.id;
             output.title = source.title;
@@ -22,13 +22,12 @@ export class SaleHelper {
             output.pack = source.pack;
             output.mrpcost = (source.mrp_cost/source.pack).toFixed(2);
             output.price = price;
-            output.taxpcnt = source.tax_pcnt;
+            output.taxpcnt = source.tax_pcnt > 5 ? 5 : source.tax_pcnt; //max tax 5%, due to GST 2.0 effect from 22-09-2025
               // more_props = event.more_props;
             output.unitsbal = source.balance - source.pack,
             output.total = total;
             output['edited'] = editable;
         }
-        // console.log(output);
         
         return output;
     }

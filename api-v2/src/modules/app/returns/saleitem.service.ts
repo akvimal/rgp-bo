@@ -84,32 +84,34 @@ export class SaleItemService {
     async findCustomers(criteria: any) {
         const now = new Date();
         const other = new Date(now.setMonth(now.getMonth() - this.RETURN_PERIOD_MONTHS_ALLOWED));
+        const dateStr = this.getFormatDate(new Date(other));
         return await this.manager.query(`
-            select distinct c.id, c.name, c.mobile 
-            from sale s 
+            select distinct c.id, c.name, c.mobile
+            from sale s
             inner join customer c on s.customer_id = c.id
-            where s.bill_date > '${this.getFormatDate(new Date(other))}' 
-            and (c.name ilike '${criteria.starts}%' or c.mobile like '${criteria.starts}%')`);
+            where s.bill_date > $1
+            and (c.name ilike $2||'%' or c.mobile like $2||'%')`, [dateStr, criteria.starts]);
     }
 
     async findCustomerItems(criteria: any) {
         const now = new Date();
         const other = new Date(now.setMonth(now.getMonth() - this.RETURN_PERIOD_MONTHS_ALLOWED));
+        const dateStr = this.getFormatDate(new Date(other));
         return await this.manager.query(`
-        select distinct p.title, pii.batch, pii.mfr_date, pii.exp_date, si.price, 
-        si.id as saleitem_id, s.bill_date, s.id as bill_no, si.qty as sold_qty, 
+        select distinct p.title, pii.batch, pii.mfr_date, pii.exp_date, si.price,
+        si.id as saleitem_id, s.bill_date, s.id as bill_no, si.qty as sold_qty,
         x.aqty as allow_qty, si.created_on
-        from sale_item si 
-        inner join sale s on s.id = si.sale_id 
-        inner join purchase_invoice_item pii on pii.id = si.purchase_item_id 
-        inner join product p on p.id = pii.product_id 
-        left join (select sale_id, purchase_item_id, sum(qty) as aqty from sale_item sri 
+        from sale_item si
+        inner join sale s on s.id = si.sale_id
+        inner join purchase_invoice_item pii on pii.id = si.purchase_item_id
+        inner join product p on p.id = pii.product_id
+        left join (select sale_id, purchase_item_id, sum(qty) as aqty from sale_item sri
         group by sale_id, purchase_item_id) x on x.sale_id = si.sale_id and x.purchase_item_id = si.purchase_item_id
-        where s.customer_id = ${criteria.customerid} 
-        and s.bill_date > '${this.getFormatDate(new Date(other))}' 
-        and p.title ilike '${criteria.starts}%'
-        and si.qty > 0 and x.aqty > 0 
-        order by si.created_on desc`);
+        where s.customer_id = $1
+        and s.bill_date > $2
+        and p.title ilike $3||'%'
+        and si.qty > 0 and x.aqty > 0
+        order by si.created_on desc`, [criteria.customerid, dateStr, criteria.starts]);
     }
 
     async findById(id: number) {

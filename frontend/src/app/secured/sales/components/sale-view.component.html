@@ -30,6 +30,7 @@
                     <th style="text-align: right;" scope="col">MRP</th>
                     <th style="text-align: right;" scope="col">Units</th>
                     <th style="text-align: right;" scope="col">Rate</th>
+                    <th style="text-align: right;" scope="col">GST</th>
                     <th style="text-align: right;" scope="col">Amount</th>
                 </tr>
                 <tr *ngFor="let i of sale.items">
@@ -41,7 +42,7 @@
                     <td style="vertical-align: text-top; text-align: right;width:8%">{{i.mrp | number : '1.2-2'}}</td>
                     <td style="vertical-align: text-top; text-align: right;width:6%">{{i.qty}}</td>
                     <td style="vertical-align: text-top; text-align: right;width:8%">{{i.price | number : '1.2-2'}}</td>
-                    <!-- <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td> -->
+                    <td style="vertical-align: text-top; text-align: right;width:6%">{{i.taxpcnt}}%</td>
                     <td style="vertical-align: text-top; text-align: right;width:8%">{{i.total | number : '1.2-2'}}</td>
                 </tr>
                 <tr>
