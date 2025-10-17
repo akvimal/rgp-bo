@@ -26,15 +26,15 @@ export class PurchaseInvoiceService {
   }    
   
   async findSalePrice(input){
-    return await this.manager.query(`select 
+    return await this.manager.query(`select
     pii.mfr_date, pii.exp_date, pii.batch, p.pack, pii.mrp_cost, pii.sale_price, product_id, tax_pcnt, pii.created_on,
     round(ptr_value::numeric ,2) as ptr_value
-    from purchase_invoice_item pii 
-    inner join product p on p.id = pii.product_id 
-    where product_id = ${input.productid}
-    and upper(batch) = '${input.batch.toUpperCase()}'
-    order by pii.created_on desc 
-    limit 1`);
+    from purchase_invoice_item pii
+    inner join product p on p.id = pii.product_id
+    where product_id = $1
+    and upper(batch) = upper($2)
+    order by pii.created_on desc
+    limit 1`, [input.productid, input.batch]);
 }
 
     async findByUnique(query:any){
@@ -59,26 +59,39 @@ export class PurchaseInvoiceService {
           .getOne();
     }
 
-    async getGRN(key:string){  
-      return await this.manager.query(`select generate_grn('${key}')`);
+    async getGRN(key:string){
+      return await this.manager.query(`select generate_grn($1)`, [key]);
     }
 
     async remove(id:number){
-      
-      await this.manager.query(`
-      delete from product_price where 
-      item_id in (select id from purchase_invoice_item where invoice_id = ${id})`);
+      // Wrap multi-step delete in transaction to prevent orphaned data
+      return await this.purchaseInvoiceRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+        try {
+          // Step 1: Delete related product prices
+          await transactionManager.query(`
+            delete from product_price where
+            item_id in (select id from purchase_invoice_item where invoice_id = $1)`, [id]);
 
-      await this.purchaseInvoiceItemRepository.createQueryBuilder('item')
-      .delete()
-      .from(PurchaseInvoiceItem)
-      .where("invoiceid =:id", { id })
-      .execute();
-      return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
-      .delete()
-      .from(PurchaseInvoice)
-      .where("id =:id", { id })
-      .execute();
+          // Step 2: Delete invoice items
+          await transactionManager
+            .createQueryBuilder()
+            .delete()
+            .from(PurchaseInvoiceItem)
+            .where("invoiceid = :id", { id })
+            .execute();
+
+          // Step 3: Delete invoice header
+          return await transactionManager
+            .createQueryBuilder()
+            .delete()
+            .from(PurchaseInvoice)
+            .where("id = :id", { id })
+            .execute();
+        } catch (error) {
+          // Transaction will automatically rollback on error
+          throw new Error(`Failed to delete purchase invoice: ${error.message}`);
+        }
+      });
     }
 
     async findItemById(id:number){

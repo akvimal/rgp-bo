@@ -18,23 +18,46 @@ export class SaleService {
     @InjectEntityManager() private manager: EntityManager) { }
 
     async create(sale:any,userid:any) {
-        
-        const nos = await this.manager.query(`select generate_order_number() as order_no, generate_bill_number() as bill_no`);
-      
-        sale['orderno'] = nos[0]['order_no'];
-        sale['orderdate'] = new Date();
-        sale['billno'] = nos[0]['bill_no'];
-        
-        return this.saleRepository.save({...sale, createdby:userid}).then(data => {
-            data.items.forEach(i => {
-                i.saleid = data.id;
-            });
-            return this.saleItemRepository.save(data.items).then(d => {
-                return new Promise(async (resolve,reject)=>{
-                    const sale = await this.findById(data.id);
-                    resolve(sale);
-                })
-            })
+        // Wrap entire sale creation in transaction to prevent orphaned data
+        return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                // Step 1: Generate order and bill numbers (uses database sequences/locking)
+                const nos = await transactionManager.query(`select generate_order_number() as order_no, generate_bill_number() as bill_no`);
+
+                sale['orderno'] = nos[0]['order_no'];
+                sale['orderdate'] = new Date();
+                sale['billno'] = nos[0]['bill_no'];
+
+                // Step 2: Save sale header
+                const savedSale = await transactionManager.save(Sale, {...sale, createdby:userid});
+
+                if (!savedSale || !savedSale.id) {
+                    throw new Error('Failed to create sale header');
+                }
+
+                // Step 3: Save sale items with foreign key to sale
+                if (sale.items && sale.items.length > 0) {
+                    sale.items.forEach(i => {
+                        i.saleid = savedSale.id;
+                    });
+                    await transactionManager.save(SaleItem, sale.items);
+                }
+
+                // Step 4: Fetch and return complete sale with relations
+                const completeSale = await transactionManager
+                    .createQueryBuilder(Sale, "sale")
+                    .leftJoinAndSelect("sale.customer", "customer")
+                    .leftJoinAndSelect("sale.items", "items")
+                    .leftJoinAndSelect("items.product", "product")
+                    .select(['sale','customer','items','product'])
+                    .where('sale.id = :id', { id: savedSale.id })
+                    .getOne();
+
+                return completeSale;
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                throw new Error(`Failed to create sale: ${error.message}`);
+            }
         });
     }
 
@@ -52,17 +75,39 @@ export class SaleService {
 
 
     async updateSale(sale:any,userid:any) {
-        
-        return this.saleRepository.save({...sale, updatedby:userid}).then(result => {
-            result.items.forEach(i => {
-                i.saleid = result.id;
-            })
-            return this.saleItemRepository.save(sale.items).then(itemsResult => {
-                return new Promise(async (resolve,reject)=>{
-                    const sale = await this.findById(result.id);
-                    resolve(sale);
-                })
-            })
+        // Wrap entire sale update in transaction to maintain data consistency
+        return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                // Step 1: Update sale header
+                const updatedSale = await transactionManager.save(Sale, {...sale, updatedby:userid});
+
+                if (!updatedSale || !updatedSale.id) {
+                    throw new Error('Failed to update sale header');
+                }
+
+                // Step 2: Update sale items
+                if (sale.items && sale.items.length > 0) {
+                    sale.items.forEach(i => {
+                        i.saleid = updatedSale.id;
+                    });
+                    await transactionManager.save(SaleItem, sale.items);
+                }
+
+                // Step 3: Fetch and return complete sale with relations
+                const completeSale = await transactionManager
+                    .createQueryBuilder(Sale, "sale")
+                    .leftJoinAndSelect("sale.customer", "customer")
+                    .leftJoinAndSelect("sale.items", "items")
+                    .leftJoinAndSelect("items.product", "product")
+                    .select(['sale','customer','items','product'])
+                    .where('sale.id = :id', { id: updatedSale.id })
+                    .getOne();
+
+                return completeSale;
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                throw new Error(`Failed to update sale: ${error.message}`);
+            }
         });
     }
     async removeItemsByIds(ids:any){
