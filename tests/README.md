@@ -1,32 +1,50 @@
 # RGP Back Office - Test Suite
 
-This directory contains tests for verifying fixes and functionality.
+This directory contains tests for verifying fixes and functionality across all phases.
+
+---
+
+## Test Files
+
+1. **test-bill-number-concurrency.js** - Phase 2: Bill number race condition
+2. **test-transaction-rollback.js** - Phase 3: Transaction atomicity and rollback
+3. **PHASE3_TESTING.md** - Detailed Phase 3 testing guide
+
+---
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install pg
+
+# Run Phase 2 tests (Bill number concurrency)
+node test-bill-number-concurrency.js
+
+# Run Phase 3 tests (Transaction rollback)
+node test-transaction-rollback.js
+```
+
+---
 
 ## Phase 2: Bill Number Race Condition Test
 
-### Prerequisites
+### Running the Test
 
 ```bash
-npm install pg
-```
-
-### Running the Concurrency Test
-
-```bash
-cd tests
 node test-bill-number-concurrency.js
 ```
 
-### What This Test Does
+### What It Tests
 
-1. **Simulates Concurrent Transactions**: Creates 100 parallel database transactions
-2. **Generates Bill Numbers**: Each transaction calls `generate_bill_number()`
-3. **Checks for Duplicates**: Verifies all bill numbers are unique
-4. **Validates Sequence**: Ensures bill numbers are sequential without gaps
+1. **Concurrent Bill Generation**: 100 parallel transactions
+2. **Uniqueness**: No duplicate bill numbers
+3. **Sequential Order**: No gaps in sequence
+4. **Performance**: Lock wait times
 
-### Expected Results
+### Expected Output
 
-**✅ With Fix (SELECT FOR UPDATE):**
+**✅ Success:**
 ```
 Total transactions: 100
 Unique bill numbers: 100
@@ -34,7 +52,7 @@ Duplicates found: 0
 ✅ SUCCESS: No race condition detected!
 ```
 
-**❌ Without Fix (Original Code):**
+**❌ Failure:**
 ```
 Total transactions: 100
 Unique bill numbers: 95
@@ -42,34 +60,103 @@ Duplicates found: 5
 ❌ FAILURE: Race condition detected!
 ```
 
-### Performance Metrics
+---
 
-The test also measures:
-- Total execution time
-- Average time per transaction
-- Wait time due to locking (expected to be minimal)
+## Phase 3: Transaction Rollback Tests
 
-### Understanding the Results
+### Running the Tests
 
-- **No Duplicates**: The `FOR UPDATE` lock is working correctly
-- **Sequential Numbers**: No gaps in the sequence (important for GST compliance)
-- **Reasonable Performance**: Locking should add < 10ms per transaction on average
+```bash
+node test-transaction-rollback.js
+```
 
-### Troubleshooting
+### What It Tests
 
-**Database Connection Issues:**
-- Verify PostgreSQL is running
-- Check credentials in the test file
-- Ensure `sales_meta` table exists
+1. **Sale Creation Rollback**: Verifies no orphaned sales when item save fails
+2. **Purchase Deletion Rollback**: Verifies atomic cascade deletes
+3. **Orphaned Item Detection**: Scans for orphaned sale/invoice items
+4. **Bill Number Integrity**: Checks for duplicates
+5. **Transaction Isolation**: Verifies SERIALIZABLE behavior
 
-**High Wait Times:**
-- Normal under high concurrency (100+ simultaneous transactions)
-- Real-world usage will be lower
-- Each transaction waits for the lock, then processes quickly
+### Expected Output
+
+```
+✅ PASS: Sale Creation Rollback
+✅ PASS: Purchase Invoice Deletion Rollback
+✅ PASS: No Orphaned Sale Items
+✅ PASS: No Orphaned Invoice Items
+✅ PASS: Bill Number Sequence Integrity
+
+Total Tests: 5
+Passed: 5 ✅
+Failed: 0 ❌
+```
+
+### Manual Testing
+
+See [PHASE3_TESTING.md](./PHASE3_TESTING.md) for:
+- Manual test scenarios
+- Database integrity checks
+- Performance testing
+- Troubleshooting guide
+
+---
+
+## Common Issues
+
+### Database Connection Errors
+
+**Problem:** Tests can't connect to database
+
+**Solution:**
+```bash
+# Verify PostgreSQL is running
+# Check credentials in test files match your setup
+# Ensure database 'rgpdb' exists
+```
+
+### High Wait Times (Phase 2)
+
+**Problem:** Transactions taking > 100ms
+
+**Cause:** Normal under high concurrency (100+ simultaneous)
+
+**Solution:** Real-world usage has lower concurrency, this is expected
+
+### Orphaned Data Found (Phase 3)
+
+**Problem:** Tests find orphaned sale/invoice items
+
+**Cause:** Transaction rollback not working
+
+**Solution:**
+1. Verify NestJS and TypeORM versions
+2. Check database supports transactions
+3. Review error logs for transaction failures
+4. Apply Phase 3 fixes if not already applied
+
+---
+
+## Success Criteria
+
+### Phase 2
+- ✅ Zero duplicate bill numbers under load
+- ✅ Sequential bill numbers (no gaps)
+- ✅ Performance < 100ms per transaction
+
+### Phase 3
+- ✅ No orphaned sale items
+- ✅ No orphaned invoice items
+- ✅ Rollback prevents partial commits
+- ✅ Bill numbers only consumed on success
+- ✅ Performance < 500ms per transaction
+
+---
 
 ## Next Steps
 
-After running this test successfully:
-1. Apply the migration: `psql -d rgpdb -f sql/migrations/002_fix_bill_number_race_condition.sql`
-2. Re-run the test to verify
-3. Monitor production for performance impact
+1. ✅ Run Phase 2 tests
+2. ✅ Run Phase 3 tests
+3. ⬜ Review PHASE3_TESTING.md for manual tests
+4. ⬜ Run performance tests under load
+5. ⬜ Monitor production after deployment
