@@ -78,11 +78,11 @@ export class SaleService {
     }
 
     async findSaleItemsForSaleWithAvailableQty(id:number){
-        const query = `select si.*, iv.* from sale_item si 
-        inner join inventory_view iv on iv.purchase_itemid = si.purchase_item_id 
-        inner join sale s on s.id = si.sale_id 
-        where s.id = ${id}`;
-        return await this.manager.query(query);
+        const query = `select si.*, iv.* from sale_item si
+        inner join inventory_view iv on iv.purchase_itemid = si.purchase_item_id
+        inner join sale s on s.id = si.sale_id
+        where s.id = $1`;
+        return await this.manager.query(query, [id]);
     }
 
     async findSavedSales(){
@@ -157,85 +157,80 @@ export class SaleService {
     }
 
     async getSaleReturnItems(saleId:any){
-        const query = ` SELECT sri.sale_item_id, sri.qty FROM sale_return_item sri 
-        inner join sale_item si on si.id = sri.sale_item_id 
-        inner join sale s on s.id = si.sale_id and s.id = ${saleId}`;
-        return await this.manager.query(query);
+        const query = ` SELECT sri.sale_item_id, sri.qty FROM sale_return_item sri
+        inner join sale_item si on si.id = sri.sale_item_id
+        inner join sale s on s.id = si.sale_id and s.id = $1`;
+        return await this.manager.query(query, [saleId]);
     }
 
     async getSalesByFreq(fromdate:string,freq:string,count:number){
-   
+
         const dt = new Date(fromdate);
         let query = ''
+        let params = []
 
         if(freq === 'daily'){
             const date = new Date(dt.setDate(dt.getDate()+1));
             const other = date.setDate(date.getDate()-count);
             const todate = this.getFormatDate(new Date(other));
-            // query = `select to_char(x.dt,'yyyy-mm-dd') as date, 
-            // sum(sv.sale_total) as sale, count(sv.id) as orders 
-            // from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
-            // left join sale_view sv on x.dt = sv.sale_date 
-            // group by x.dt order by x.dt`
 
-            query = `select to_char(s.bill_date,'yyyy-mm-dd') as bill_dt, sum(s.digi_amount) as digital, 
-            sum(s.cash_amount) as cash, sum(s.total) as total, count(s.bill_no) as orders 
-            from sale s inner join 
-            (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x on to_char(s.bill_date,'yyyy-mm-dd') = x.dt::text
+            query = `select to_char(s.bill_date,'yyyy-mm-dd') as bill_dt, sum(s.digi_amount) as digital,
+            sum(s.cash_amount) as cash, sum(s.total) as total, count(s.bill_no) as orders
+            from sale s inner join
+            (select date(generate_series($1::date,$2,'1 day')) as dt)x on to_char(s.bill_date,'yyyy-mm-dd') = x.dt::text
             and s.status = 'COMPLETE'
             group by to_char(s.bill_date,'yyyy-mm-dd');`
+            params = [todate, fromdate];
         }
         else {
             const date = new Date();
             const other = date.setMonth((date.getMonth()-1)-count);
             const todate = this.getFormatDate(new Date(other));
-            // query = `select x.d2 as date, 
-            // sum(sv.sale_total) as sale, count(sv.id) as orders 
-            // from (select months('${fromdate}','${todate}') as d2) x
-            // left join sale_view sv on x.d2 = date_part('year',sv.sale_date)||'-'||lpad(date_part('month',sv.sale_date)::text,2,'0')
-            // group by x.d2
-            // order by x.d2`
 
             query = `
-            select x.dt as bill_dt, sum(s.digi_amount) as digital, sum(s.cash_amount) as cash, 
-            sum(s.total) as total, count(s.bill_no) as orders 
-            from sale s inner join 
-            (select months('${fromdate}','${todate}') as dt)x on x.dt::text = date_part('year',s.bill_date)||'-'||lpad(date_part('month',s.bill_date)::text,2,'0')
+            select x.dt as bill_dt, sum(s.digi_amount) as digital, sum(s.cash_amount) as cash,
+            sum(s.total) as total, count(s.bill_no) as orders
+            from sale s inner join
+            (select months($1,$2) as dt)x on x.dt::text = date_part('year',s.bill_date)||'-'||lpad(date_part('month',s.bill_date)::text,2,'0')
             and s.status = 'COMPLETE'
             group by x.dt
             order by x.dt;`
+            params = [fromdate, todate];
         }
-        return await this.manager.query(query);
+        return await this.manager.query(query, params);
     }
 
     async getCustomerVisitByFreq(fromdate:string,freq:string,count:number){
-   
+
         const dt = new Date(fromdate);
         let query = ''
+        let params = []
 
         if(freq === 'daily'){
             const date = new Date(dt.setDate(dt.getDate()+1));
             const other = date.setDate(date.getDate()-count);
             const todate = this.getFormatDate(new Date(other));
             query = `select to_char(x.dt,'yyyy-mm-dd') as date, scv.return_status, count(scv.recent_sale_id)
-             from (select date(generate_series('${todate}'::date,'${fromdate}','1 day')) as dt)x 
+             from (select date(generate_series($1::date,$2,'1 day')) as dt)x
              left join sale_customer_view scv on x.dt = scv.recent_visit
              where scv.mobile != '0000000000'
-             group by x.dt, scv.return_status 
+             group by x.dt, scv.return_status
               order by x.dt`
+            params = [todate, fromdate];
         }
         else {
             const date = new Date();
             const other = date.setMonth((date.getMonth()-1)-count);
             const todate = this.getFormatDate(new Date(other));
             query = `select x.dt as date, scv.return_status, count(scv.recent_sale_id)
-            from (select months('${fromdate}','${todate}')::text as dt) x
+            from (select months($1,$2)::text as dt) x
             left join sale_customer_view scv on x.dt = date_part('year',scv.recent_visit::date)||'-'||lpad(date_part('month',scv.recent_visit::date)::text,2,'0')
             where scv.mobile != '0000000000'
-            group by x.dt, scv.return_status 
+            group by x.dt, scv.return_status
              order by x.dt`
+            params = [fromdate, todate];
         }
-        return await this.manager.query(query);
+        return await this.manager.query(query, params);
     }
 
     // async findCustomerSaleByPeriod(custid,year,month){
@@ -291,22 +286,22 @@ export class SaleService {
     }
 
     async getEligibleReturns(saleid:any){
-        return await this.manager.query(`   
+        return await this.manager.query(`
             select si.id, p.title, si.batch, si.exp_date, si.price, coalesce(si.qty - returned.total,si.qty - returned.total,si.qty) as eligible
-            from sale_item si left join 
-            (SELECT sale_item_id, sum(sri.qty) as total FROM sale_return_item sri 
-            inner join sale_item si on si.id = sri.sale_item_id WHERE si.sale_id = ${saleid} GROUP BY sale_item_id) returned ON returned.sale_item_id = si.id 
-            inner join sale s on s.id = si.sale_id and s.id = ${saleid}
-            inner join product p on p.id = si.product_id order by p.title`);
+            from sale_item si left join
+            (SELECT sale_item_id, sum(sri.qty) as total FROM sale_return_item sri
+            inner join sale_item si on si.id = sri.sale_item_id WHERE si.sale_id = $1 GROUP BY sale_item_id) returned ON returned.sale_item_id = si.id
+            inner join sale s on s.id = si.sale_id and s.id = $1
+            inner join product p on p.id = si.product_id order by p.title`, [saleid]);
     }
 
     async getReturnItemToAdjust(saleReturnId:any){
         return await this.manager.query(`
         select sri.id, p.title, si.batch, si.exp_date, si.price, si.purchase_item_id as itemid, sri.qty, sri.reason, sri."comments"
-        from sale_return_item sri 
-        inner join sale_item si on si.id = sri.sale_item_id 
-        inner join product p on p.id = si.product_id 
-        where sri.id = ${saleReturnId}`);
+        from sale_return_item sri
+        inner join sale_item si on si.id = sri.sale_item_id
+        inner join product p on p.id = si.product_id
+        where sri.id = $1`, [saleReturnId]);
     }
 
     async findById(id:number){
@@ -327,21 +322,21 @@ export class SaleService {
 
     async findAllEligibleItemsToReturn(id:string){
         return await this.manager.query(
-        `select s.sale_id, pii.id, p.title, pii.batch, pii.mfr_date, pii.exp_date, pii.sale_price, p.pack, x.net as balqty from sale_item s 
-        inner join 
-        (select sale_id as sid, purchase_item_id as pid, sum(qty) as net from sale_item si where sale_id = ${id}
+        `select s.sale_id, pii.id, p.title, pii.batch, pii.mfr_date, pii.exp_date, pii.sale_price, p.pack, x.net as balqty from sale_item s
+        inner join
+        (select sale_id as sid, purchase_item_id as pid, sum(qty) as net from sale_item si where sale_id = $1
         group by sale_id, purchase_item_id) x on x.sid = s.sale_id and x.pid = s.purchase_item_id and x.net > 0 and status is null
-        inner join purchase_invoice_item pii on pii.id = s.purchase_item_id 
-        inner join product p on p.id = pii.product_id`);
+        inner join purchase_invoice_item pii on pii.id = s.purchase_item_id
+        inner join product p on p.id = pii.product_id`, [id]);
     }
 
-    async findVisits(criteria:any){        
-        const sql = `select c.id, name, mobile,  max(s.bill_date) as last_visited, 
+    async findVisits(criteria:any){
+        const sql = `select c.id, name, mobile,  max(s.bill_date) as last_visited,
         current_date - date(max(s.bill_date)) as days_lapsed,  get_days_diff_stats(c.id) as visit_pattern
-        from customer c inner join sale s on s.customer_id = c.id and (current_date - date(s.bill_date)) <= ${criteria.maxdays}
+        from customer c inner join sale s on s.customer_id = c.id and (current_date - date(s.bill_date)) <= $1
         group by c.id, name, mobile
         order by max(s.bill_date) desc`
-        return await this.manager.query(sql);
+        return await this.manager.query(sql, [criteria.maxdays]);
     }
 
     async update(id:any, values:any, userid:any){

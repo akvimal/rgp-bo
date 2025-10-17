@@ -15,49 +15,68 @@ export class StockService {
         @InjectRepository(ProductQtyChange) private readonly qtyRepository: Repository<ProductQtyChange>){}
     
         async findPurchaseItemsWithAvailable(ids:number[]){
+            if (!ids || ids.length === 0) return [];
+            const placeholders = ids.map((_, index) => `$${index + 1}`).join(',');
             return await this.manager.query(`
-            select purchase_itemid, available from inventory_view iv where iv.purchase_itemid in (${ids.join(',')})`);
+            select purchase_itemid, available from inventory_view iv where iv.purchase_itemid in (${placeholders})`, ids);
         }
 
         async findByCriteria(criteria:any){
-            
-            let sql = 
-            `select piv.*, p.more_props, pp.sale_price from product_items_view piv 
+
+            let sql =
+            `select piv.*, p.more_props, pp.sale_price from product_items_view piv
             inner join product p on p.id = piv.id `;
+
+            const params:any[] = [];
+            let paramIndex = 1;
+
             if(criteria['excludeItems'] && criteria['excludeItems'].length > 0){
-                sql += ` and piv.item_id not in (${criteria['excludeItems'].join(',')}) `
+                const placeholders = criteria['excludeItems'].map(() => `$${paramIndex++}`).join(',');
+                sql += ` and piv.item_id not in (${placeholders}) `
+                params.push(...criteria['excludeItems']);
             }
             sql += `left join product_price2 pp on pp.product_id = piv.id and pp.end_date > current_date `;
 
             const conditions:string[] = [];
-            if(criteria['expired'])
-                conditions.push(`piv.expired = ${criteria['expired']}`)
+            if(criteria['expired']){
+                conditions.push(`piv.expired = $${paramIndex++}`)
+                params.push(criteria['expired']);
+            }
 
-            if(criteria['id'])
-                conditions.push(`piv.id = ${criteria['id']}`);
+            if(criteria['id']){
+                conditions.push(`piv.id = $${paramIndex++}`);
+                params.push(criteria['id']);
+            }
 
             if(!criteria['id'] && criteria['title']){
-                let titleCriteria = criteria['title'].startsWith('~') ? '%'+criteria['title'].substring(1).replaceAll('\'','\,\,') : criteria['title'].replaceAll('\'','\,\,');
-                conditions.push(`(piv.title ilike '${titleCriteria}%' or p.more_props->>'composition' ilike '${titleCriteria}%')`);
+                let titleCriteria = criteria['title'].startsWith('~') ? '%'+criteria['title'].substring(1) : criteria['title'];
+                conditions.push(`(piv.title ilike $${paramIndex}||'%' or p.more_props->>'composition' ilike $${paramIndex}||'%')`);
+                params.push(titleCriteria);
+                paramIndex++;
             }
 
             if(criteria['status']){
                 let arr = criteria.status.split(',');
-                criteria.status = arr.map(a => '\'' + a + '\'');
-                conditions.push(`piv.status in (${criteria.status})`);
+                const placeholders = arr.map(() => `$${paramIndex++}`).join(',');
+                conditions.push(`piv.status in (${placeholders})`);
+                params.push(...arr);
             }
             if(criteria['expired'])
                 conditions.push('piv.exp_date < current_date')
             if(criteria['available'])
                 conditions.push('piv.balance > 0')
-            
+
             if(conditions.length > 0){
                 sql += ' where ' + conditions.join(' and ');
-            }            
-                
-            sql += ` order by piv.title, piv.exp_date ${criteria['limit'] > 0 ? 'limit '+ criteria['limit'] : ''}`
+            }
 
-            return await this.manager.query(sql);
+            sql += ` order by piv.title, piv.exp_date`
+            if(criteria['limit'] && criteria['limit'] > 0){
+                sql += ` limit $${paramIndex++}`;
+                params.push(criteria['limit']);
+            }
+
+            return await this.manager.query(sql, params);
         }
 
         // async findByItems(ids:number[]){
@@ -66,11 +85,13 @@ export class StockService {
         // }
 
         async findByProducts(ids:number[]){
+            if (!ids || ids.length === 0) return [];
+            const placeholders = ids.map((_, index) => `$${index + 1}`).join(',');
             return await this.manager.query(`
-            select piv.*, p.more_props, pp.sale_price from product_items_view piv 
-            inner join product p on p.id = piv.id and p.id in (${ids.join(',')})
+            select piv.*, p.more_props, pp.sale_price from product_items_view piv
+            inner join product p on p.id = piv.id and p.id in (${placeholders})
             left join product_price2 pp on pp.product_id = piv.id where piv.expired = false and piv.balance > 0
-            order by piv.exp_date asc`);
+            order by piv.exp_date asc`, ids);
         }
 
         // async findAvailableQty(prodid:number, batch:string, expdate:string){
@@ -96,10 +117,20 @@ export class StockService {
         // }
 
         async getItemsWithStockData(sale:any) {
+            if (!sale.items || sale.items.length === 0) return sale;
 
-            const products = sale.items.map((item:any) => { return `(title='${item.product.title.replaceAll('\'','\'\'')}' and batch='${item.batch}' and exp_date='${item.expdate}')`});
-            const query = `select * from inventory_view where ${products.join(' or ')}`
-            const stockdata = await this.manager.query(query);
+            const conditions:string[] = [];
+            const params:any[] = [];
+            let paramIndex = 1;
+
+            sale.items.forEach((item:any) => {
+                conditions.push(`(title = $${paramIndex} and batch = $${paramIndex+1} and exp_date = $${paramIndex+2})`);
+                params.push(item.product.title, item.batch, item.expdate);
+                paramIndex += 3;
+            });
+
+            const query = `select * from inventory_view where ${conditions.join(' or ')}`
+            const stockdata = await this.manager.query(query, params);
             return sale;
         }
 
@@ -114,33 +145,33 @@ export class StockService {
         x.start_order_date,
         x.end_order_date, x.days_span,
         round((x.days_span/x.days)*100) as days_pcnt,
-        case 
+        case
             when round((x.days_span/x.days)*100) > 60 then 'HIGH'
             when round((x.days_span/x.days)*100) > 30 and round((x.days_span/x.days)*100) <=60 then 'MEDIUM'
             when round((x.days_span/x.days)*100) <= 30 then 'LOW'
             else 'NONE'
         end as orders_freq,
-        x.days_ago, 
-        case 
+        x.days_ago,
+        case
             when x.days_ago >= 60 then 'LONG'
             when x.days_ago < 60 and x.days_ago >=30 then 'INTER'
             when x.days_ago < 30 then 'SHORT'
-            else 'NONE' 
+            else 'NONE'
             end as order_since
         from product p left join
-        (select sv.product_id, sum(sale_qty) as sold_qty, count(sv.id) as total_orders, count(*) as orders, 
-        min(sale_date) as start_order_date, max(sale_date) as end_order_date, 
+        (select sv.product_id, sum(sale_qty) as sold_qty, count(sv.id) as total_orders, count(*) as orders,
+        min(sale_date) as start_order_date, max(sale_date) as end_order_date,
         ((DATE_PART('day', (max(sale_date::timestamp with time zone) - min(sale_date::timestamp with time zone)))) + 1) as days_span,
-        ((DATE_PART('day', ('${input.enddt}'::timestamp with time zone - '${input.begindt}'::timestamp with time zone))) + 1) as days,
-        ((DATE_PART('day', ('${input.enddt}' - max(sale_date::timestamp with time zone)))) + 1) as days_ago
-        from sale_view sv where sale_date >= '${input.begindt}' and sale_date < '${input.enddt}' group by sv.product_id) x on p.id = x.product_id
+        ((DATE_PART('day', ($1::timestamp with time zone - $2::timestamp with time zone))) + 1) as days,
+        ((DATE_PART('day', ($1 - max(sale_date::timestamp with time zone)))) + 1) as days_ago
+        from sale_view sv where sale_date >= $2 and sale_date < $1 group by sv.product_id) x on p.id = x.product_id
         inner join stock_view sv2 on sv2.product_id = p.id
         inner join (select product_id, sum(available_qty) as avail_qty from stock_view sv group by product_id) y on y.product_id = p.id`;
         if(input.orders_avail){
             query += ` where x.total_orders is not null`
         }
-        
-        return await this.manager.query(query)
+
+        return await this.manager.query(query, [input.enddt, input.begindt])
     }
          
     async findAllPriceAdjust() {
@@ -172,7 +203,7 @@ export class StockService {
 
     async findByItem(id){
         return await this.manager.query(`
-        select * from stock_view where id = ${id}`);
+        select * from stock_view where id = $1`, [id]);
     }   
 
     async createPrice(dto: CreateProductPriceDto, userid) {
