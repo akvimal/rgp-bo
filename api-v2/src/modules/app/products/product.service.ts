@@ -90,20 +90,26 @@ export class ProductService {
   }
 
   async findPriceById(productid:number){
+    // Fixed SQL injection vulnerability - now using parameterized query
     return await this.manager.query(
-      `select * from price_view where id = ${productid}`);
+      `SELECT * FROM price_view WHERE id = $1`,
+      [productid]);
   }
 
   async endCurrentPrice(productid:number,enddate?:string){
+    // Fixed SQL injection vulnerability - now using parameterized query
     return await this.manager.query(
-      `update product_price2 set end_date = '${enddate}' where product_id = ${productid} and end_date = '2099-12-31'`);
+      `UPDATE product_price2 SET end_date = $1 WHERE product_id = $2 AND end_date = '2099-12-31'`,
+      [enddate, productid]);
   }
 
   async findPriceHistoryById(productid:number){
+    // Fixed SQL injection vulnerability - now using parameterized query
     return await this.manager.query(
-      `select * from product_price2 where product_id = ${productid} order by eff_date desc`);
+      `SELECT * FROM product_price2 WHERE product_id = $1 ORDER BY eff_date DESC`,
+      [productid]);
   }
-    
+
     async findByTitle(title:any){
       const qb = this.productRepository.createQueryBuilder(`p`)
           .where('p.isActive = :flag', { flag: true });
@@ -118,15 +124,42 @@ export class ProductService {
     async create(createProductDto: CreateProductDto, userid) {
       return this.productRepository.save({...createProductDto, createdby:userid});
     }
-    
+
+    /**
+     * Add new price for a product with transaction protection
+     * Fixed: Race condition when ending current price and adding new price
+     * Fixed: SQL injection vulnerabilities in helper methods
+     */
     async addPrice(createProductPrice2Dto: CreateProductPrice2Dto, userid) {
-      const priceFound = await this.findPriceHistoryById(createProductPrice2Dto.productid);
-      if(!priceFound || priceFound.length == 0){
-        return this.priceRepository.save({...createProductPrice2Dto, createdby:userid});
-      }
-      return priceFound && await this.endCurrentPrice(createProductPrice2Dto.productid,createProductPrice2Dto.effdate).then(async (data:any) => {
-        return await this.priceRepository.save({...createProductPrice2Dto, createdby:userid});
-      })
+      // Wrap entire operation in SERIALIZABLE transaction to prevent race conditions
+      return await this.priceRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+        try {
+          // Step 1: Query existing prices within transaction
+          const priceHistory = await transactionManager.query(
+            `SELECT * FROM product_price2 WHERE product_id = $1 ORDER BY eff_date DESC`,
+            [createProductPrice2Dto.productid]
+          );
+
+          // Step 2: End current price if one exists
+          if (priceHistory && priceHistory.length > 0) {
+            await transactionManager.query(
+              `UPDATE product_price2 SET end_date = $1 WHERE product_id = $2 AND end_date = '2099-12-31'`,
+              [createProductPrice2Dto.effdate, createProductPrice2Dto.productid]
+            );
+          }
+
+          // Step 3: Save new price
+          const newPrice = await transactionManager.save(ProductPrice2, {
+            ...createProductPrice2Dto,
+            createdby: userid
+          });
+
+          return newPrice;
+        } catch (error) {
+          // Transaction will automatically rollback on error
+          throw new Error(`Failed to add price: ${error.message}`);
+        }
+      });
     }
     
     async update(id:any, values:any, userid){

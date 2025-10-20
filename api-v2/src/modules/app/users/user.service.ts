@@ -74,13 +74,25 @@ export class UserService {
     return this.userRepository.update(id, updateUserDto);
   }
 
+  /**
+   * Soft delete user with transaction protection
+   * Fixed: Multi-step read-modify-write now atomic, preventing partial updates
+   */
   async delete(id:number, currentUser:any){
-    const obj = await this.userRepository.findOne({where:{id}});
-    if(obj){
-      obj.isActive = false;
-      obj.updatedby = currentUser.id;
-    }
-    return this.userRepository.save(obj as DeepPartial<AppUser>);
+    return await this.userRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+      try {
+        const obj = await transactionManager.findOne(AppUser, {where:{id}});
+        if(!obj){
+          throw new Error(`User with id ${id} not found`);
+        }
+        obj.isActive = false;
+        obj.updatedby = currentUser.id;
+        return await transactionManager.save(AppUser, obj as DeepPartial<AppUser>);
+      } catch (error) {
+        // Transaction will automatically rollback on error
+        throw new Error(`Failed to delete user: ${error.message}`);
+      }
+    });
   }
 
   // public async changePassword(body: ChangePasswordeDto, req: Request): Promise<AppUser> {

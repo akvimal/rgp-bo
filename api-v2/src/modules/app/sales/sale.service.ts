@@ -61,16 +61,38 @@ export class SaleService {
         });
     }
 
+    /**
+     * Create return items with transaction protection
+     * Fixed: Batch insert now atomic, preventing orphaned return items
+     */
     async createReturnItems(items:CreateSaleReturnItemDto[],userid:any){
-        items.forEach(item => {
-            item['createdby'] = userid;
-        })
-        return this.saleReturnItemRepository.save(items);
+        return await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                items.forEach(item => {
+                    item['createdby'] = userid;
+                });
+                return await transactionManager.save(SaleReturnItem, items);
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                throw new Error(`Failed to create return items: ${error.message}`);
+            }
+        });
     }
 
+    /**
+     * Update return item with transaction protection
+     * Fixed: Update now atomic, ensuring consistency
+     */
     async updateReturnItem(item:UpdateSaleReturnItemDto,userid:any){
-        item['updatedby'] = userid;
-        return this.saleReturnItemRepository.save(item);
+        return await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                item['updatedby'] = userid;
+                return await transactionManager.save(SaleReturnItem, item);
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                throw new Error(`Failed to update return item: ${error.message}`);
+            }
+        });
     }
 
 
