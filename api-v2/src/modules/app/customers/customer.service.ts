@@ -94,37 +94,122 @@ export class CustomerService {
         return await this.manager.query(`insert into customer_documents (customer_id,document_id) values ($1,$2)`, [cdoc.customerId, cdoc.documentId]);
     }
 
-    async removeDocument(custId:number,ids:number[]){
+    /**
+     * Remove document(s) from customer with transaction protection
+     * Fixed: Race condition in cascade delete operation
+     */
+    async removeDocument(custId:number, ids:number[]){
         if (!ids || ids.length === 0) return;
-        const placeholders = ids.map((_, index) => `$${index + 2}`).join(',');
-        await this.manager.query(`delete from customer_documents where customer_id = $1 and document_id in (${placeholders})`, [custId, ...ids]);
 
-        const placeholders2 = ids.map((_, index) => `$${index + 1}`).join(',');
-        return await this.manager.query(`delete from documents where id in (${placeholders2})`, ids)
+        // Wrap cascade delete in SERIALIZABLE transaction to prevent orphaned records
+        return await this.manager.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                // Step 1: Delete from junction table (customer_documents)
+                const placeholders = ids.map((_, index) => `$${index + 2}`).join(',');
+                await transactionManager.query(
+                    `DELETE FROM customer_documents WHERE customer_id = $1 AND document_id IN (${placeholders})`,
+                    [custId, ...ids]
+                );
+
+                // Step 2: Delete from documents table
+                const placeholders2 = ids.map((_, index) => `$${index + 1}`).join(',');
+                const result = await transactionManager.query(
+                    `DELETE FROM documents WHERE id IN (${placeholders2})`,
+                    ids
+                );
+
+                return result;
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                throw new Error(`Failed to remove document: ${error.message}`);
+            }
+        });
     }
 
+    /**
+     * Find customer sales for a specific month/year period
+     * Fixed: ORDER BY syntax error, leap year calculation, and date handling
+     */
     async findCustomerSaleByPeriod(custid,year,month){
+        // Use JavaScript's built-in date handling to avoid manual day calculation
+        // This correctly handles leap years and month lengths
+        const startDate = new Date(year, month - 1, 1);  // First day of month
+        const endDate = new Date(year, month, 0);  // Last day of month (day 0 of next month)
 
-        let day = 31;
-        if(month == 2)
-          day = year%4 == 0 ? 29 : 28;
-        if(month <= 6 && month != 2 && month%2 == 0)
-          day = 30;
-        if(month > 8 && month%2 == 1)
-          day = 30;
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
 
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const endDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-          return await this.saleRepository.createQueryBuilder("sale")
-                .innerJoinAndSelect("sale.customer", "customer")
-                .leftJoinAndSelect("sale.items", "items")
-                .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
-                .leftJoinAndSelect("purchaseitem.product", "product")
-                  .select(['sale','customer','items','purchaseitem','product'])
-            .where(`sale.status = 'COMPLETE' and items.status = 'Complete' and sale.customer_id = :custid
-             and sale.bill_date between :startDate and :endDate`, { custid, startDate, endDate })
-            .orderBy(`sale.billdate`,'DESC')
+        return await this.saleRepository.createQueryBuilder("sale")
+            .innerJoinAndSelect("sale.customer", "customer")
+            .leftJoinAndSelect("sale.items", "items")
+            .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
+            .leftJoinAndSelect("purchaseitem.product", "product")
+            .select(['sale','customer','items','purchaseitem','product'])
+            .where('sale.status = :saleStatus and items.status = :itemStatus and sale.customer_id = :custid and sale.bill_date between :startDate and :endDate', {
+                saleStatus: 'COMPLETE',
+                itemStatus: 'Complete',
+                custid,
+                startDate: startDateStr,
+                endDate: endDateStr
+            })
+            .orderBy('sale.bill_date', 'DESC')  // Fixed: removed backticks, use correct column name
             .getMany();
-      }
+    }
+
+    /**
+     * Get customer statistics for POS display
+     * Returns total orders, average bill amount, last purchase date, and frequency badge
+     */
+    async getCustomerStats(custid: number) {
+        const stats = await this.manager.query(`
+            SELECT
+                COUNT(*) as total_orders,
+                COALESCE(AVG(total), 0) as avg_bill,
+                MAX(bill_date) as last_purchase,
+                MIN(bill_date) as first_purchase
+            FROM sale
+            WHERE customer_id = $1 AND status = 'COMPLETE'
+        `, [custid]);
+
+        if (!stats || stats.length === 0) {
+            return {
+                totalOrders: 0,
+                avgBill: 0,
+                lastPurchase: null,
+                firstPurchase: null,
+                frequencyBadge: 'New'
+            };
+        }
+
+        const result = stats[0];
+        const totalOrders = parseInt(result.total_orders) || 0;
+        const avgBill = Math.round(parseFloat(result.avg_bill) || 0);
+        const lastPurchase = result.last_purchase;
+        const firstPurchase = result.first_purchase;
+
+        // Calculate frequency badge based on order count and recency
+        let frequencyBadge = 'New';
+        if (totalOrders > 0 && lastPurchase) {
+            const daysSinceLastPurchase = Math.floor((new Date().getTime() - new Date(lastPurchase).getTime()) / (1000 * 60 * 60 * 24));
+
+            if (totalOrders >= 10 && daysSinceLastPurchase <= 30) {
+                frequencyBadge = 'VIP';
+            } else if (totalOrders >= 5 || daysSinceLastPurchase <= 7) {
+                frequencyBadge = 'Regular';
+            } else if (daysSinceLastPurchase <= 60) {
+                frequencyBadge = 'Occasional';
+            } else {
+                frequencyBadge = 'Returning';
+            }
+        }
+
+        return {
+            totalOrders,
+            avgBill,
+            lastPurchase,
+            firstPurchase,
+            frequencyBadge,
+            daysSinceLastPurchase: lastPurchase ? Math.floor((new Date().getTime() - new Date(lastPurchase).getTime()) / (1000 * 60 * 60 * 24)) : null
+        };
+    }
 }

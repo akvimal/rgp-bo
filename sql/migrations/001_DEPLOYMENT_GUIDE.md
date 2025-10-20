@@ -1,6 +1,6 @@
 # Index Migration Deployment Guide
 
-## Migration: 003_add_performance_indexes.sql
+## Migration: 001_add_performance_indexes.sql
 
 ### Overview
 This migration adds **78 indexes** to optimize database performance. All indexes are created using `CREATE INDEX CONCURRENTLY` to avoid locking tables during creation.
@@ -36,7 +36,7 @@ SELECT
 
 **Option A: Using psql (Recommended)**
 ```bash
-psql -U your_username -d your_database -f sql/migrations/003_add_performance_indexes.sql
+psql -U your_username -d your_database -f sql/migrations/001_add_performance_indexes.sql
 ```
 
 **Option B: Split into Sections**
@@ -137,7 +137,7 @@ Execution time depends on data volume:
 **Solution**:
 ```bash
 # Run directly, not in a transaction
-psql -U your_username -d your_database -f sql/migrations/003_add_performance_indexes.sql
+psql -U your_username -d your_database -f sql/migrations/001_add_performance_indexes.sql
 ```
 
 ### Issue 2: Index Creation Fails or Hangs
@@ -278,7 +278,7 @@ ORDER BY idx_scan DESC;
 If issues occur, you can rollback using:
 
 ```bash
-psql -U your_username -d your_database -f sql/migrations/003_rollback.sql
+psql -U your_username -d your_database -f sql/migrations/001_rollback.sql
 ```
 
 **Warning**: Rollback will restore slow query performance. Only use if:

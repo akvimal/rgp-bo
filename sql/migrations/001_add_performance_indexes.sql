@@ -147,10 +147,12 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_product_price2_product_dates
     ON product_price2(product_id, eff_date DESC, end_date DESC)
     WHERE active = true AND archive = false;
 
--- Index for current prices (end_date > CURRENT_DATE)
+-- Index for current prices
+-- Note: CURRENT_DATE removed from WHERE clause as it's not IMMUTABLE
+-- Queries can still filter by date at runtime, this index will optimize them
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_product_price2_current
     ON product_price2(product_id, end_date)
-    WHERE active = true AND archive = false AND end_date > CURRENT_DATE;
+    WHERE active = true AND archive = false;
 
 -- Product quantity change indexes
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_product_qtychange_item_id

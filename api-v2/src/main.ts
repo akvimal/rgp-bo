@@ -1,3 +1,10 @@
+// Crypto polyfill for Node.js 16 compatibility
+// Node 16 doesn't have global crypto, so we need to polyfill it
+import { webcrypto } from 'crypto';
+if (!global.crypto) {
+  (global as any).crypto = webcrypto;
+}
+
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 

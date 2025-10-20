@@ -4,13 +4,13 @@
 
 ```bash
 # 1. Pre-deployment analysis (save output)
-psql -U your_user -d your_db -f sql/migrations/003_pre_deployment_analysis.sql > pre_analysis.txt
+psql -U your_user -d your_db -f sql/migrations/001_pre_deployment_analysis.sql > pre_analysis.txt
 
 # 2. Deploy indexes
-psql -U your_user -d your_db -f sql/migrations/003_add_performance_indexes.sql
+psql -U your_user -d your_db -f sql/migrations/001_add_performance_indexes.sql
 
 # 3. Post-deployment verification (save output)
-psql -U your_user -d your_db -f sql/migrations/003_post_deployment_analysis.sql > post_analysis.txt
+psql -U your_user -d your_db -f sql/migrations/001_post_deployment_analysis.sql > post_analysis.txt
 
 # 4. Compare results
 diff pre_analysis.txt post_analysis.txt
@@ -23,7 +23,7 @@ diff pre_analysis.txt post_analysis.txt
 
 ```bash
 psql -U postgres -d rgp_db \
-  -f sql/migrations/003_pre_deployment_analysis.sql \
+  -f sql/migrations/001_pre_deployment_analysis.sql \
   -o analysis_before_$(date +%Y%m%d_%H%M%S).txt
 ```
 
@@ -39,7 +39,7 @@ psql -U postgres -d rgp_db \
 
 ```bash
 psql -U postgres -d rgp_db \
-  -f sql/migrations/003_add_performance_indexes.sql \
+  -f sql/migrations/001_add_performance_indexes.sql \
   2>&1 | tee deployment_$(date +%Y%m%d_%H%M%S).log
 ```
 
@@ -61,7 +61,7 @@ FROM pg_stat_progress_create_index;
 
 ```bash
 psql -U postgres -d rgp_db \
-  -f sql/migrations/003_post_deployment_analysis.sql \
+  -f sql/migrations/001_post_deployment_analysis.sql \
   -o analysis_after_$(date +%Y%m%d_%H%M%S).txt
 ```
 
@@ -85,18 +85,18 @@ psql -U postgres -d rgp_db \
 
 ### Local PostgreSQL
 ```bash
-psql -h localhost -p 5432 -U postgres -d rgp_db -f sql/migrations/003_add_performance_indexes.sql
+psql -h localhost -p 5432 -U postgres -d rgp_db -f sql/migrations/001_add_performance_indexes.sql
 ```
 
 ### Docker Container
 ```bash
-docker exec -i postgres_container psql -U postgres -d rgp_db < sql/migrations/003_add_performance_indexes.sql
+docker exec -i postgres_container psql -U postgres -d rgp_db < sql/migrations/001_add_performance_indexes.sql
 ```
 
 ### Remote Server
 ```bash
 psql "postgresql://user:password@remote-host:5432/rgp_db?sslmode=require" \
-  -f sql/migrations/003_add_performance_indexes.sql
+  -f sql/migrations/001_add_performance_indexes.sql
 ```
 
 ### Using .pgpass file
@@ -106,7 +106,7 @@ echo "localhost:5432:rgp_db:postgres:your_password" > ~/.pgpass
 chmod 600 ~/.pgpass
 
 # Then run without password prompt
-psql -h localhost -U postgres -d rgp_db -f sql/migrations/003_add_performance_indexes.sql
+psql -h localhost -U postgres -d rgp_db -f sql/migrations/001_add_performance_indexes.sql
 ```
 
 ---
@@ -118,7 +118,7 @@ psql -h localhost -U postgres -d rgp_db -f sql/migrations/003_add_performance_in
 - [ ] **Check disk space** (need ~20% more)
 - [ ] **Verify PostgreSQL version** (9.2+)
 - [ ] **Run pre-deployment analysis**
-- [ ] **Review deployment guide** (003_DEPLOYMENT_GUIDE.md)
+- [ ] **Review deployment guide** (001_DEPLOYMENT_GUIDE.md)
 - [ ] **Inform team** (deployment in progress)
 
 ### During Deployment
@@ -142,7 +142,7 @@ psql -h localhost -U postgres -d rgp_db -f sql/migrations/003_add_performance_in
 
 **If you need to rollback**:
 ```bash
-psql -U postgres -d rgp_db -f sql/migrations/003_rollback.sql
+psql -U postgres -d rgp_db -f sql/migrations/001_rollback.sql
 ```
 
 **WARNING**: This will:
@@ -244,12 +244,12 @@ LIMIT 10;
 
 | File | Purpose | Duration |
 |------|---------|----------|
-| `003_pre_deployment_analysis.sql` | Baseline metrics | 5 min |
-| `003_add_performance_indexes.sql` | Create indexes | 15-45 min |
-| `003_post_deployment_analysis.sql` | Verify results | 5 min |
-| `003_rollback.sql` | Remove indexes | 10-20 min |
-| `003_DEPLOYMENT_GUIDE.md` | Full documentation | - |
-| `003_QUICK_START.md` | This file | - |
+| `001_pre_deployment_analysis.sql` | Baseline metrics | 5 min |
+| `001_add_performance_indexes.sql` | Create indexes | 15-45 min |
+| `001_post_deployment_analysis.sql` | Verify results | 5 min |
+| `001_rollback.sql` | Remove indexes | 10-20 min |
+| `001_DEPLOYMENT_GUIDE.md` | Full documentation | - |
+| `001_QUICK_START.md` | This file | - |
 
 ---
 
@@ -279,13 +279,13 @@ LIMIT 10;
 **For issues**:
 1. Check troubleshooting section above
 2. Review PostgreSQL logs: `/var/log/postgresql/`
-3. Consult full guide: `003_DEPLOYMENT_GUIDE.md`
+3. Consult full guide: `001_DEPLOYMENT_GUIDE.md`
 4. Create GitHub issue with error details
 
 **For questions**:
 - When to deploy? **Anytime** (CONCURRENT = no downtime)
 - How long? **15-45 minutes** (depends on data size)
-- Can I rollback? **Yes** (use 003_rollback.sql)
+- Can I rollback? **Yes** (use 001_rollback.sql)
 - Is it safe? **Yes** (no table locking)
 
 ---

@@ -32,7 +32,7 @@ export class CustomerController {
       return this.customerService.filterByCriteria(criteria);
     }
 
-    @Get(':mobile/mobile')
+    @Get('search/mobile/:mobile')
     async findOneByMobile(@Param('mobile') mobile: string) {
       return this.customerService.findByMobile(mobile);
     }
@@ -40,6 +40,11 @@ export class CustomerController {
     @Get(':id')
     async findOne(@Param('id') id: number) {
       return this.customerService.findById(id);
+    }
+
+    @Get(':id/stats')
+    async getCustomerStats(@Param('id') id: number) {
+      return this.customerService.getCustomerStats(id);
     }
 
     @Delete(':id')
