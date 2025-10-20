@@ -10,7 +10,19 @@
       "Bash(findstr:*)",
       "Bash(npm --version)",
       "Bash(npm run build)",
-      "Bash(git restore frontend/src/app/secured/customers/customers.service.ts frontend/src/app/secured/sales/components/sale-form.component.html frontend/src/app/secured/sales/components/sale-form.component.ts)"
+      "Bash(git restore frontend/src/app/secured/customers/customers.service.ts frontend/src/app/secured/sales/components/sale-form.component.html frontend/src/app/secured/sales/components/sale-form.component.ts)",
+      "Bash(git mv POS_UI_ANALYSIS_AND_AI_RECOMMENDATIONS.md docs/analysis/)",
+      "Bash(git mv POS_SCREENSHOT_SPECIFIC_IMPROVEMENTS.md docs/analysis/)",
+      "Bash(git mv IMPROVEMENT_PLAN.md docs/planning/)",
+      "Bash(git mv PHASES_1-3_COMPLETION_SUMMARY.md docs/planning/)",
+      "Bash(git mv QUICKSTART_FIXES.md docs/planning/)",
+      "Bash(git mv TESTING_CHECKLIST.md docs/planning/)",
+      "Bash(git mv MANUAL_VERIFICATION_GUIDE.md docs/planning/)",
+      "Bash(git mv PHASE4_ERROR_HANDLING_GUIDE.md docs/planning/)",
+      "Bash(git mv PHASE4_INFRASTRUCTURE_COMPLETE.md docs/planning/)",
+      "Bash(git mv VERIFICATION_RESULTS.md docs/planning/)",
+      "Bash(git mv PULL_REQUEST_TEMPLATE.md .github/)",
+      "Bash(git mv READY_FOR_PULL_REQUEST.md docs/)"
     ],
     "deny": [],
     "ask": []
