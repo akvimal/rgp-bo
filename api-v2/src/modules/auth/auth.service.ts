@@ -17,29 +17,27 @@ export class AuthService {
 
   public async register(body: RegisterDto): Promise<AppUser | never> {
 
-    const { name, email }: RegisterDto = body;
+    const { name, email, password }: RegisterDto = body;
     let user = await this.userService.findByUsername(email);
 
     if (user) {
       throw new HttpException('Conflict', HttpStatus.CONFLICT);
     }
-  
-    const password = this.helper.encodePassword(body['password']);
 
-    return this.userService.create({fullname:name,password,email});
+    // Don't hash password here - user.service.create() handles hashing
+    // Default to Admin role (role_id = 1) for new users
+    return this.userService.create({fullname:name,password,email,roleid:1});
   }
 
   public async login(body: LoginDto): Promise<any | never> {
     const { email, password }: LoginDto = body;
     const user = await this.userService.findByUsername(email );
     if (!user) {
-      // throw new Error('Invalid Credentials');
       throw new UnauthorizedException();
     }
 
     const isPasswordValid: boolean = this.helper.isPasswordValid(password, user.password);
     if (!isPasswordValid) {
-      // throw new Error('Invalid Credentials');
       throw new UnauthorizedException();
     }
 

@@ -15,6 +15,7 @@ import { SaleReturnModule } from './modules/app/returns/salereturn.module';
 import { DocumentModule } from './modules/app/documents/document.module';
 import { FilesModule } from './modules/app/files/files.module';
 import { ReportModule } from './modules/app/reports/report.module';
+import { LookupModule } from './modules/app/lookup/lookup.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DbBackupService } from './modules/app/backup/db.backup';
 
@@ -37,7 +38,8 @@ import { DbBackupService } from './modules/app/backup/db.backup';
     SaleReturnModule,
     DocumentModule,
     FilesModule,
-    ReportModule
+    ReportModule,
+    LookupModule
   ],
   controllers: [],
   providers: [],

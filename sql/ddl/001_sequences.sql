@@ -1,4 +1,5 @@
-CREATE SCHEMA public AUTHORIZATION pg_database_owner;
+-- Schema public is created by default in PostgreSQL
+-- CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION pg_database_owner;
 
 -- DROP SEQUENCE public.accounts_id_seq;
 

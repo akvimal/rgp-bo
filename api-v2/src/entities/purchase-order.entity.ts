@@ -30,10 +30,10 @@ import { PurchaseRequest } from "./purchase-request.entity";
     @Column("integer", { name: "vendor_id", unique: true })
     vendorid: number;
 
-    // @ManyToOne(() => Vendor, (vendor) => vendor.purchaseInvoices)
-    // @JoinColumn([{ name: "vendor_id", referencedColumnName: "id" }])
-    // vendor: Vendor;
-    
+    @ManyToOne(() => Vendor, (vendor) => vendor.purchaseInvoices)
+    @JoinColumn([{ name: "vendor_id", referencedColumnName: "id" }])
+    vendor: Vendor;
+
     @OneToMany(
       () => PurchaseRequest,
       (request) => request.po

@@ -81,7 +81,7 @@ export class CustomerService {
         select x.yr, x.mon, sum(x.total) as total, count(*) from
             (select date_part('year',s.bill_date) as yr, date_part('month',s.bill_date) as mon, s.id, s.total
                 from sale s
-                where s.status = 'COMPLETE' and s.customer_id = $1 and s.bill_date between (current_date - $2) and current_date) x
+                where s.status = 'COMPLETE' and s.customer_id = $1 and s.bill_date between (current_date - interval '1 day' * $2) and current_date) x
         group by x.yr, x.mon order by x.yr desc, x.mon desc`, [custid, days]);
     }
 

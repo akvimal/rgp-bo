@@ -52,7 +52,13 @@ export class UserService {
   }
 
   async findByUsername(username:string) {
-    return this.userRepository.findOne({ where: { email:username } });
+    // Need to explicitly select password field for authentication
+    // since it's marked with @Exclude() in the entity
+    return this.userRepository
+      .createQueryBuilder('user')
+      .where('user.email = :email', { email: username })
+      .addSelect('user.password')
+      .getOne();
   }
 
   async findBasicDetails(id:string) {

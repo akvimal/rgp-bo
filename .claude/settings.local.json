@@ -22,7 +22,13 @@
       "Bash(git mv PHASE4_INFRASTRUCTURE_COMPLETE.md docs/planning/)",
       "Bash(git mv VERIFICATION_RESULTS.md docs/planning/)",
       "Bash(git mv PULL_REQUEST_TEMPLATE.md .github/)",
-      "Bash(git mv READY_FOR_PULL_REQUEST.md docs/)"
+      "Bash(git mv READY_FOR_PULL_REQUEST.md docs/)",
+      "Bash(fc /b POS_UI_ANALYSIS_AND_AI_RECOMMENDATIONS.md docsanalysisPOS_UI_ANALYSIS_AND_AI_RECOMMENDATIONS.md)",
+      "Bash(git restore:*)",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(git mv:*)",
+      "Bash(docker-compose:*)"
     ],
     "deny": [],
     "ask": []
