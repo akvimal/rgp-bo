@@ -68,19 +68,20 @@ export class InvoiceItemsComponent {
 
     removeItems(){
         if(this.items) {
-            const ids = this.items.map((i:any) => {
-                if(i.selected) return i.id;
-            })
-            
+            const ids = this.items
+                .filter((i:any) => i.selected)
+                .map((i:any) => i.id);
+
             this.invService.removeItems({invoiceid: this.invoice.id, ids}).subscribe(data => this.fetchItems(this.invoice.id));
         }
     }
 
     verifyItems(){
         if(this.items) {
-            const ids = this.items.map((i:any) => {
-                if(i.selected) return i.id;
-            })
+            const ids = this.items
+                .filter((i:any) => i.selected)
+                .map((i:any) => i.id);
+
             this.invService.updateItems(ids, {status: 'VERIFIED'}).subscribe(data => this.fetchItems(this.invoice.id))
         }
     }
