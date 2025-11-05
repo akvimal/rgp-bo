@@ -207,7 +207,11 @@ export class StockService {
     }   
 
     async createPrice(dto: CreateProductPriceDto, userid) {
-        return this.priceRepository.save({...dto, createdby:userid});
+        return this.priceRepository.save({
+            ...dto,
+            enddate: dto.enddate || '2099-12-31',
+            createdby: userid
+        });
     }
     
     async createQty(dto: CreateProductQtyChangeDto, userid) {

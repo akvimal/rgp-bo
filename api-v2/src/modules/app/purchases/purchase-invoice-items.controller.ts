@@ -73,8 +73,9 @@ export class PurchaseItemController {
           items.forEach(item => {
             total += item.total && +item.total;
           })
-          await this.purchaseInvoiceService.update([input.invoiceid],{total},currentUser.id)  
+          await this.purchaseInvoiceService.update([input.invoiceid],{total},currentUser.id)
         })
       })
+      return { success: true, message: 'Items removed successfully' };
     }
 }
