@@ -134,6 +134,10 @@ export class ProductService {
       // Wrap entire operation in SERIALIZABLE transaction to prevent race conditions
       return await this.priceRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
         try {
+          // Set default values for effdate and enddate if not provided
+          const effdate = createProductPrice2Dto.effdate || new Date().toISOString().split('T')[0];
+          const enddate = createProductPrice2Dto.enddate || '2099-12-31';
+
           // Step 1: Query existing prices within transaction
           const priceHistory = await transactionManager.query(
             `SELECT * FROM product_price2 WHERE product_id = $1 ORDER BY eff_date DESC`,
@@ -144,14 +148,15 @@ export class ProductService {
           if (priceHistory && priceHistory.length > 0) {
             await transactionManager.query(
               `UPDATE product_price2 SET end_date = $1 WHERE product_id = $2 AND end_date = '2099-12-31'`,
-              [createProductPrice2Dto.effdate, createProductPrice2Dto.productid]
+              [effdate, createProductPrice2Dto.productid]
             );
           }
 
-          // Step 3: Save new price with default end_date if not provided
+          // Step 3: Save new price with default values
           const newPrice = await transactionManager.save(ProductPrice2, {
             ...createProductPrice2Dto,
-            enddate: createProductPrice2Dto.enddate || '2099-12-31',
+            effdate: effdate,
+            enddate: enddate,
             createdby: userid
           });
 
