@@ -148,9 +148,10 @@ export class ProductService {
             );
           }
 
-          // Step 3: Save new price
+          // Step 3: Save new price with default end_date if not provided
           const newPrice = await transactionManager.save(ProductPrice2, {
             ...createProductPrice2Dto,
+            enddate: createProductPrice2Dto.enddate || '2099-12-31',
             createdby: userid
           });
 
