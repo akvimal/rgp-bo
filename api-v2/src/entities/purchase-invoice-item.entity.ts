@@ -21,13 +21,13 @@ import { ProductClearance } from "./product-clearance.entity";
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
   
-    @Column("integer", { name: "invoice_id", unique: true })
+    @Column("integer", { name: "invoice_id" })
     invoiceid: number;
-  
-    @Column("integer", { name: "product_id", unique: true })
+
+    @Column("integer", { name: "product_id" })
     productid: number;
-  
-    @Column("character varying", { name: "batch", nullable: true, unique: true })
+
+    @Column("character varying", { name: "batch", nullable: true })
     batch: string | null;
   
     @Column("date", { name: "exp_date", nullable: true })
