@@ -1,98 +1,269 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# RGP Backend API v2
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The main NestJS backend API for the RGP Back Office System.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Overview
 
-## Description
+This is a production-ready NestJS application that provides RESTful APIs for managing retail pharmacy operations including sales, purchases, inventory, customers, and reporting.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Technology Stack
 
-## Project setup
+- **Framework**: NestJS 11.x
+- **Language**: TypeScript
+- **Database**: PostgreSQL 14
+- **ORM**: TypeORM
+- **Authentication**: JWT with Passport
+- **API Documentation**: Swagger/OpenAPI
+- **Validation**: class-validator, class-transformer
 
-```bash
-$ npm install
+## Project Structure
+
+```
+src/
+├── core/                    # Core utilities and decorators
+│   ├── decorator/          # Custom decorators (e.g., @User())
+│   ├── exceptions/         # Custom exception classes
+│   ├── errors.interceptor.ts
+│   └── http-exception.filter.ts
+├── entities/               # TypeORM entities
+├── modules/
+│   ├── auth/              # Authentication & JWT
+│   └── app/               # Business modules
+│       ├── customers/     # Customer management
+│       ├── documents/     # Document management
+│       ├── files/         # File upload handling
+│       ├── products/      # Product catalog
+│       ├── purchases/     # Purchase orders & invoices
+│       ├── reports/       # Reporting services
+│       ├── returns/       # Sales returns
+│       ├── roles/         # Role management
+│       ├── sales/         # Sales & POS
+│       ├── stock/         # Inventory management
+│       ├── users/         # User management
+│       └── vendors/       # Vendor management
+├── typeorm-config.service.ts
+├── app.module.ts
+└── main.ts
 ```
 
-## Compile and run the project
+## Installation
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+## Environment Configuration
+
+Create a `.env` file in this directory with the following variables:
+
+```env
+# Database
+DATABASE_URL=postgresql://rgpapp:password@localhost:5432/rgpdb
+LOG_SQL=false
+
+# JWT
+JWT_KEY=your-secret-key
+JWT_EXPIRES=24h
+
+# Server
+PORT=3000
+NODE_ENV=development
+
+# File Upload
+FILEUPLOAD_LOCATION=/path/to/upload
+FILEUPOAD_SIZE_LIMIT=512000
+```
+
+## Running the Application
 
 ```bash
-# unit tests
-$ npm run test
+# Development mode with hot reload
+npm run start:dev
 
-# e2e tests
-$ npm run test:e2e
+# Debug mode
+npm run start:debug
 
-# test coverage
-$ npm run test:cov
+# Production mode
+npm run start:prod
 ```
 
-## Deployment
+## API Documentation
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+When the application is running, access the Swagger UI at:
+```
+http://localhost:3000/api
+```
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Testing
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+# Unit tests
+npm run test
+
+# E2E tests
+npm run test:e2e
+
+# Test coverage
+npm run test:cov
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+For integration testing, see the `tests/` directory in the project root.
 
-## Resources
+## Database Setup
 
-Check out a few resources that may come in handy when working with NestJS:
+The application requires PostgreSQL 14. Database schema is defined in the `sql/` directory at project root:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+1. Run initial setup: `sql/init.sql`
+2. Create tables: `sql/ddl/tables.sql`
+3. Create sequences: `sql/ddl/sequences.sql`
+4. Create functions: `sql/ddl/functions.sql`
+5. Create views: `sql/ddl/views.sql`
 
-## Support
+## Key Features
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Security
+- SQL injection prevention with parameterized queries
+- Race condition handling for bill number generation
+- Transaction isolation (SERIALIZABLE level for critical operations)
+- Global HTTP exception filtering
+- JWT-based authentication with role-based access control
 
-## Stay in touch
+### Business Logic
+- **Sales**: POS operations, billing, deliveries, returns
+- **Purchases**: Vendor management, purchase orders, invoicing
+- **Inventory**: Stock tracking, pricing, quantity adjustments
+- **Customers**: Customer database, credit accounts, reminders
+- **Reports**: Sales reports, GST reports, inventory reports
+- **Documents**: File uploads, PDF generation (bills, reports)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Error Handling
+The application uses a global HTTP exception filter that:
+- Standardizes error responses
+- Logs errors with appropriate detail levels
+- Prevents information leakage in production
+- Handles database errors gracefully
+
+See `docs/PHASE4_ERROR_HANDLING_GUIDE.md` for details.
+
+## API Endpoints
+
+### Authentication
+- `POST /auth/login` - User login
+- `POST /auth/register` - User registration
+
+### Business Modules
+- `/customers` - Customer CRUD operations
+- `/products` - Product catalog management
+- `/sales` - Sales operations and POS
+- `/purchases` - Purchase orders and invoices
+- `/stock` - Inventory management
+- `/vendors` - Vendor management
+- `/reports` - Report generation
+- `/documents` - Document management
+- `/files` - File upload/download
+
+All endpoints except `/auth/login` require JWT authentication.
+
+## Development Guidelines
+
+### Adding a New Module
+
+1. Generate module: `nest g module modules/app/my-module`
+2. Generate controller: `nest g controller modules/app/my-module`
+3. Generate service: `nest g service modules/app/my-module`
+4. Create DTOs in `dto/` subfolder
+5. Add business logic to service
+6. Use transactions for multi-step operations
+7. Add Swagger decorators for API documentation
+
+### Transaction Best Practices
+
+For operations that modify multiple tables:
+
+```typescript
+async createSale(dto: CreateSaleDto): Promise<Sale> {
+  return await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+    // All database operations here
+    const sale = await manager.save(Sale, saleData);
+    await manager.save(SaleItem, items);
+    return sale;
+  });
+}
+```
+
+### Error Handling
+
+Throw appropriate exceptions:
+
+```typescript
+import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { BusinessException } from '../../core/exceptions/business.exception';
+
+// For not found resources
+throw new NotFoundException('Customer not found');
+
+// For business logic violations
+throw new BusinessException('Insufficient stock');
+
+// For validation errors
+throw new BadRequestException('Invalid input');
+```
+
+## Building for Production
+
+```bash
+# Build the application
+npm run build
+
+# Run in production mode
+npm run start:prod
+```
+
+The built application will be in the `dist/` directory.
+
+## Docker Support
+
+The application includes a Dockerfile for containerization. Use the docker-compose.yml in the project root to run the entire stack:
+
+```bash
+cd ..
+docker-compose up
+```
+
+## Troubleshooting
+
+### Database Connection Issues
+- Verify DATABASE_URL is correct
+- Ensure PostgreSQL is running
+- Check firewall settings
+
+### JWT Authentication Issues
+- Verify JWT_KEY is set
+- Check token expiration (JWT_EXPIRES)
+- Ensure Authorization header format: `Bearer <token>`
+
+### File Upload Issues
+- Check FILEUPLOAD_LOCATION exists and is writable
+- Verify FILEUPOAD_SIZE_LIMIT is appropriate
+- Ensure multer configuration in files module
+
+## Migration from api (v1)
+
+This version includes:
+- Updated to NestJS 11.x
+- Enhanced security features
+- Improved error handling
+- Better transaction management
+- Updated dependencies
+
+## Contributing
+
+1. Create a feature branch
+2. Follow the existing code structure
+3. Add tests for new features
+4. Update Swagger documentation
+5. Submit a pull request
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED - Private/Proprietary
