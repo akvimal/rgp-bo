@@ -31,7 +31,7 @@ CREATE TABLE public.shift (
     created_by INT4,
     updated_by INT4,
     CONSTRAINT shift_un UNIQUE (name, store_id),
-    CONSTRAINT shift_store_fk FOREIGN KEY (store_id) REFERENCES stores(id),
+    CONSTRAINT shift_store_fk FOREIGN KEY (store_id) REFERENCES business_location(id),
     CONSTRAINT shift_created_by_fk FOREIGN KEY (created_by) REFERENCES app_user(id),
     CONSTRAINT shift_updated_by_fk FOREIGN KEY (updated_by) REFERENCES app_user(id)
 );
@@ -187,14 +187,14 @@ COMMENT ON TABLE leave_type IS 'Leave type master (Sick, Casual, Earned, etc.)';
 COMMENT ON COLUMN leave_type.max_days_per_year IS 'Annual quota for this leave type';
 COMMENT ON COLUMN leave_type.carry_forward IS 'Can unused leaves carry forward to next year?';
 
--- Insert default leave types
+-- Insert default leave types (using existing admin user id=2)
 INSERT INTO leave_type (name, code, description, max_days_per_year, requires_document, is_paid, carry_forward, color_code, created_by, updated_by)
 VALUES
-    ('Sick Leave', 'SL', 'Medical reasons', 12, true, true, false, '#FF5733', 1, 1),
-    ('Casual Leave', 'CL', 'Personal reasons', 10, false, true, false, '#33C1FF', 1, 1),
-    ('Earned Leave', 'EL', 'Vacation/Annual leave', 15, false, true, true, '#33FF57', 1, 1),
-    ('Maternity Leave', 'ML', 'Maternity', 90, true, true, false, '#FF33E6', 1, 1),
-    ('Paternity Leave', 'PL', 'Paternity', 7, true, true, false, '#3357FF', 1, 1);
+    ('Sick Leave', 'SL', 'Medical reasons', 12, true, true, false, '#FF5733', 2, 2),
+    ('Casual Leave', 'CL', 'Personal reasons', 10, false, true, false, '#33C1FF', 2, 2),
+    ('Earned Leave', 'EL', 'Vacation/Annual leave', 15, false, true, true, '#33FF57', 2, 2),
+    ('Maternity Leave', 'ML', 'Maternity', 90, true, true, false, '#FF33E6', 2, 2),
+    ('Paternity Leave', 'PL', 'Paternity', 7, true, true, false, '#3357FF', 2, 2);
 
 -- Leave request
 CREATE TABLE public.leave_request (
@@ -437,14 +437,14 @@ CREATE OR REPLACE FUNCTION get_working_days(start_date DATE, end_date DATE)
 RETURNS INT AS $$
 DECLARE
     working_days INT := 0;
-    current_date DATE := start_date;
+    check_date DATE := start_date;
 BEGIN
-    WHILE current_date <= end_date LOOP
+    WHILE check_date <= end_date LOOP
         -- Exclude weekends (Saturday=6, Sunday=0)
-        IF EXTRACT(DOW FROM current_date) NOT IN (0, 6) THEN
+        IF EXTRACT(DOW FROM check_date) NOT IN (0, 6) THEN
             working_days := working_days + 1;
         END IF;
-        current_date := current_date + 1;
+        check_date := check_date + 1;
     END LOOP;
     RETURN working_days;
 END;

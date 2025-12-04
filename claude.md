@@ -89,7 +89,10 @@ rgp-bo/
 │   ├── init.sql         # Initial data (roles, admin user)
 │   └── migrations/      # Database migration scripts
 │       ├── 002_fix_bill_number_race_condition.sql
-│       └── 002_rollback.sql
+│       ├── 002_rollback.sql
+│       ├── 003_hr_management_tables.sql
+│       ├── 004_setup_test_db.sql
+│       └── 005_update_hr_permissions.sql
 │
 ├── tests/               # Integration and E2E tests
 │   ├── test-bill-number-concurrency.js
@@ -108,10 +111,16 @@ rgp-bo/
 │   └── setup-test-db.bat
 │
 ├── docs/                # Project documentation
-│   ├── PHASE4_ERROR_HANDLING_GUIDE.md
+│   ├── guides/          # Implementation and development guides
+│   │   ├── HR_PERFORMANCE_GUIDE.md
+│   │   ├── MANUAL_VERIFICATION_GUIDE.md
+│   │   └── PHASE4_ERROR_HANDLING_GUIDE.md
+│   ├── archive/         # Historical documentation
+│   │   ├── hr-implementation/  # HR feature planning and implementation docs
+│   │   └── PROJECT_CLEANUP_2024-11-29.md
 │   ├── PHASE4_INFRASTRUCTURE_COMPLETE.md
-│   ├── MANUAL_VERIFICATION_GUIDE.md
 │   ├── PULL_REQUEST_TEMPLATE.md
+│   ├── READY_FOR_PULL_REQUEST.md
 │   └── VERIFICATION_RESULTS.md
 │
 ├── docker-compose.yml   # Docker orchestration
@@ -159,6 +168,16 @@ rgp-bo/
 
 ### Documents
 23. **document**: Document metadata and file references
+
+### HR Management (New - Feature Branch)
+24. **shift**: Work shift definitions
+25. **user_shift**: User-shift assignments
+26. **attendance**: Clock-in/clock-out records
+27. **leave_type**: Leave type definitions
+28. **leave_request**: Leave request and approval
+29. **leave_balance**: Employee leave balances
+30. **user_score**: Performance scoring metrics
+31. **hr_audit_log**: HR operations audit trail
 
 ---
 
@@ -341,6 +360,7 @@ docker-compose down
 - **API**: http://localhost:3000
 - **Swagger Docs**: http://localhost:3000/api
 - **Database**: localhost:5432
+- **Redis Cache**: localhost:6379
 
 ### Database Access
 ```bash
@@ -424,19 +444,27 @@ node test-transaction-rollback.js
 1. `api-v2/src/main.ts` - Application bootstrap
 2. `api-v2/src/app.module.ts` - Module configuration
 3. `api-v2/src/core/http-exception.filter.ts` - Error handling
-4. `api-v2/src/modules/sales/sale.service.ts` - Example service with transactions
-5. `docs/PHASE4_ERROR_HANDLING_GUIDE.md` - Error handling patterns
+4. `api-v2/src/modules/app/sales/sale.service.ts` - Example service with transactions
+5. `docs/guides/PHASE4_ERROR_HANDLING_GUIDE.md` - Error handling patterns
 
 ### For Database Work
 1. `sql/ddl/tables.sql` - Table definitions
 2. `sql/ddl/functions.sql` - Critical functions (bill number generation)
 3. `sql/init.sql` - Initial data setup
-4. `docker-compose.yml` - Database configuration
+4. `sql/migrations/` - Schema changes and updates
+5. `docker-compose.yml` - Database configuration
 
 ### For Testing
 1. `tests/README.md` - Testing guide
 2. `tests/test-config.js` - Database connection config
-3. `docs/MANUAL_VERIFICATION_GUIDE.md` - Manual testing procedures
+3. `docs/guides/MANUAL_VERIFICATION_GUIDE.md` - Manual testing procedures
+
+### For HR Features (Feature Branch)
+1. `sql/migrations/003_hr_management_tables.sql` - HR database schema
+2. `api-v2/src/modules/hr/` - HR module implementation
+3. `frontend/src/app/secured/hr/` - HR frontend components
+4. `docs/guides/HR_PERFORMANCE_GUIDE.md` - HR implementation guide
+5. `docs/archive/hr-implementation/` - HR planning documentation
 
 ---
 
@@ -495,10 +523,13 @@ f3ec402c2 - docs: Add comprehensive verification and diagnostic documentation
 
 ### API Performance
 - JWT authentication reduces database lookups
+- Redis caching for frequently accessed data
 - TypeORM query optimization with eager/lazy loading
 - Proper use of transactions to minimize lock duration
 
-### Monitoring
+### Monitoring & Logging
+- System performance monitoring (query times, API response times)
+- API usage logging for analytics
 - All errors logged with full context
 - Sensitive data automatically redacted
 - Server logs include request details for debugging
@@ -509,19 +540,28 @@ f3ec402c2 - docs: Add comprehensive verification and diagnostic documentation
 
 ### Main Documentation
 - **README.md**: Project overview, setup, running
-- **claude.md**: This file - comprehensive context for Claude
+- **CLAUDE.md**: This file - comprehensive context for Claude
 - **api-v2/README.md**: Backend-specific documentation
 
-### Technical Guides
-- **docs/PHASE4_ERROR_HANDLING_GUIDE.md**: Error handling patterns
-- **docs/PHASE4_INFRASTRUCTURE_COMPLETE.md**: Phase 4 completion status
-- **docs/MANUAL_VERIFICATION_GUIDE.md**: Manual testing procedures
-- **docs/VERIFICATION_RESULTS.md**: Test results documentation
+### Technical Guides (`docs/guides/`)
+- **PHASE4_ERROR_HANDLING_GUIDE.md**: Error handling patterns
+- **MANUAL_VERIFICATION_GUIDE.md**: Manual testing procedures
+- **HR_PERFORMANCE_GUIDE.md**: HR features performance optimization
 
-### Development Guides
+### Project Status & Templates (`docs/`)
+- **PHASE4_INFRASTRUCTURE_COMPLETE.md**: Phase 4 completion status
+- **VERIFICATION_RESULTS.md**: Test results documentation
+- **PULL_REQUEST_TEMPLATE.md**: PR submission template
+- **READY_FOR_PULL_REQUEST.md**: PR readiness checklist
+
+### Historical Documentation (`docs/archive/`)
+- **hr-implementation/**: HR feature planning and implementation documentation
+- **PROJECT_CLEANUP_2024-11-29.md**: Previous cleanup summary
+
+### Testing Documentation
 - **tests/README.md**: Testing guide and procedures
-- **docs/PULL_REQUEST_TEMPLATE.md**: PR submission template
-- **docs/READY_FOR_PULL_REQUEST.md**: PR readiness checklist
+- **tests/CONFIGURATION_GUIDE.md**: Test configuration guide
+- **tests/PHASE3_TESTING.md**: Phase 3 transaction testing documentation
 
 ---
 
@@ -585,6 +625,22 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2025-11-30
+**Last Updated**: 2025-12-04
 **Maintainer**: Development Team
 **Claude Code Version**: This context is optimized for Claude Code
+
+---
+
+## Recent Changes (2025-12-04)
+
+### Project Cleanup & Organization
+- **Documentation reorganized**: Created `docs/guides/` for active guides and `docs/archive/` for historical docs
+- **HR documentation archived**: 7 HR implementation planning docs moved to `docs/archive/hr-implementation/`
+- **SQL migrations organized**: Moved `setup-test-db.sql` and `update_hr_permissions.sql` to `sql/migrations/`
+- **System files cleaned**: Removed `.DS_Store` files (already in .gitignore)
+- **Infrastructure updates**: Added Redis cache service, monitoring, and performance logging entities
+
+### New Features (Feature Branch: feature/hr-management)
+- **HR Management Module**: Shift management, leave tracking, attendance, performance scoring
+- **Monitoring & Caching**: Redis integration, API usage logging, query performance tracking
+- **Database Schema**: 8 new HR-related entities with comprehensive audit trails

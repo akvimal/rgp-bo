@@ -1,0 +1,143 @@
+<p-dialog
+  [(visible)]="visible"
+  [header]="isEditMode ? 'Edit Shift' : 'Create New Shift'"
+  [modal]="true"
+  [style]="{width: '600px'}"
+  [draggable]="false"
+  [resizable]="false"
+  (onHide)="closeDialog(false)">
+
+  <form [formGroup]="shiftForm" (ngSubmit)="saveShift()">
+    <div class="p-fluid">
+
+      <!-- Shift Name -->
+      <div class="p-field">
+        <label for="name">Shift Name *</label>
+        <input
+          id="name"
+          type="text"
+          pInputText
+          formControlName="name"
+          placeholder="e.g., Morning Shift, Night Shift"
+          [class.p-invalid]="shiftForm.get('name')?.invalid && shiftForm.get('name')?.touched" />
+        <small
+          class="p-error"
+          *ngIf="shiftForm.get('name')?.invalid && shiftForm.get('name')?.touched">
+          Shift name is required (max 50 characters)
+        </small>
+      </div>
+
+      <!-- Store ID (Hidden for now, defaulting to 1) -->
+      <input type="hidden" formControlName="storeid" />
+
+      <!-- Start Time -->
+      <div class="p-field">
+        <label for="starttime">Start Time *</label>
+        <p-calendar
+          id="starttime"
+          formControlName="starttime"
+          [timeOnly]="true"
+          [showIcon]="true"
+          [hourFormat]="'24'"
+          placeholder="Select start time"
+          [class.p-invalid]="shiftForm.get('starttime')?.invalid && shiftForm.get('starttime')?.touched">
+        </p-calendar>
+        <small
+          class="p-error"
+          *ngIf="shiftForm.get('starttime')?.invalid && shiftForm.get('starttime')?.touched">
+          Start time is required
+        </small>
+      </div>
+
+      <!-- End Time -->
+      <div class="p-field">
+        <label for="endtime">End Time *</label>
+        <p-calendar
+          id="endtime"
+          formControlName="endtime"
+          [timeOnly]="true"
+          [showIcon]="true"
+          [hourFormat]="'24'"
+          placeholder="Select end time"
+          [class.p-invalid]="shiftForm.get('endtime')?.invalid && shiftForm.get('endtime')?.touched">
+        </p-calendar>
+        <small
+          class="p-error"
+          *ngIf="shiftForm.get('endtime')?.invalid && shiftForm.get('endtime')?.touched">
+          End time is required
+        </small>
+      </div>
+
+      <!-- Break Duration -->
+      <div class="p-field">
+        <label for="breakduration">Break Duration (minutes) *</label>
+        <input
+          id="breakduration"
+          type="number"
+          pInputText
+          formControlName="breakduration"
+          placeholder="e.g., 60"
+          min="0"
+          [class.p-invalid]="shiftForm.get('breakduration')?.invalid && shiftForm.get('breakduration')?.touched" />
+        <small
+          class="p-error"
+          *ngIf="shiftForm.get('breakduration')?.invalid && shiftForm.get('breakduration')?.touched">
+          Break duration is required and must be 0 or greater
+        </small>
+      </div>
+
+      <!-- Grace Period -->
+      <div class="p-field">
+        <label for="graceperiodminutes">Grace Period (minutes)</label>
+        <input
+          id="graceperiodminutes"
+          type="number"
+          pInputText
+          formControlName="graceperiodminutes"
+          placeholder="e.g., 15"
+          min="0"
+          [class.p-invalid]="shiftForm.get('graceperiodminutes')?.invalid && shiftForm.get('graceperiodminutes')?.touched" />
+        <small class="p-hint">Time allowed for late clock-in without penalty</small>
+        <small
+          class="p-error"
+          *ngIf="shiftForm.get('graceperiodminutes')?.invalid && shiftForm.get('graceperiodminutes')?.touched">
+          Grace period must be 0 or greater
+        </small>
+      </div>
+
+      <!-- Description -->
+      <div class="p-field">
+        <label for="description">Description</label>
+        <textarea
+          id="description"
+          pInputTextarea
+          formControlName="description"
+          rows="3"
+          placeholder="Optional shift description">
+        </textarea>
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <button
+        pButton
+        type="button"
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-secondary"
+        (click)="closeDialog(false)"
+        [disabled]="isLoading">
+      </button>
+      <button
+        pButton
+        type="submit"
+        [label]="isEditMode ? 'Update Shift' : 'Create Shift'"
+        icon="pi pi-check"
+        class="p-button-success"
+        [disabled]="isLoading"
+        [loading]="isLoading">
+      </button>
+    </div>
+  </form>
+</p-dialog>

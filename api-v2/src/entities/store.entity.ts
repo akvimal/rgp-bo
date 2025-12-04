@@ -6,6 +6,7 @@ import {
   } from "typeorm";
 import { Business } from "./business.entity";
 import { StoreCashAccount } from "./store-cash-account.entity";
+import { Shift } from "./shift.entity";
   
   @Index("store_pk", ["id"], { unique: true })
   @Entity("stores")
@@ -30,4 +31,7 @@ import { StoreCashAccount } from "./store-cash-account.entity";
       (loc) => loc.store
     )
     transactions: StoreCashAccount[];
+
+    @OneToMany(() => Shift, (shift) => shift.store)
+    shifts: Shift[];
 }

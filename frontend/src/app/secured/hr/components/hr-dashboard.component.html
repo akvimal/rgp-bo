@@ -1,0 +1,221 @@
+<div class="hr-dashboard-container">
+  <div class="page-header">
+    <h2>HR Dashboard</h2>
+    <p class="text-muted">Welcome back! Here's your HR overview</p>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center py-5">
+    <i class="pi pi-spin pi-spinner" style="font-size: 3rem;"></i>
+    <p class="mt-2">Loading dashboard...</p>
+  </div>
+
+  <div *ngIf="!isLoading && dashboard" class="dashboard-content">
+    <!-- Today's Status Row -->
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <div class="card status-card">
+          <div class="card-body">
+            <h5 class="card-title">Today's Status</h5>
+            <div class="row">
+              <div class="col-md-4">
+                <div class="stat-item">
+                  <div class="stat-icon" [class.active]="dashboard.today.clockedIn">
+                    <i class="pi pi-sign-in"></i>
+                  </div>
+                  <div class="stat-details">
+                    <span class="stat-label">Clock In</span>
+                    <span class="stat-value">{{ dashboard.today.clockInTime || '--:--' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-item">
+                  <div class="stat-icon" [class.active]="dashboard.today.clockedOut">
+                    <i class="pi pi-sign-out"></i>
+                  </div>
+                  <div class="stat-details">
+                    <span class="stat-label">Clock Out</span>
+                    <span class="stat-value">{{ dashboard.today.clockOutTime || '--:--' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-item">
+                  <div class="stat-icon" [ngClass]="{
+                    'active': dashboard.today.status === 'PRESENT',
+                    'warning': dashboard.today.status === 'HALF_DAY',
+                    'danger': dashboard.today.status === 'ABSENT'
+                  }">
+                    <i class="pi pi-user"></i>
+                  </div>
+                  <div class="stat-details">
+                    <span class="stat-label">Status</span>
+                    <span class="stat-value text-uppercase">{{ dashboard.today.status }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card pending-card">
+          <div class="card-body text-center">
+            <i class="pi pi-bell pending-icon"></i>
+            <h3 class="pending-count">{{ dashboard.pendingActions.pendingLeaveRequests }}</h3>
+            <p class="mb-0">Pending Leave Requests</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance & Leave Row -->
+    <div class="row mb-4">
+      <!-- Monthly Performance -->
+      <div class="col-md-6">
+        <div class="card performance-card">
+          <div class="card-body">
+            <h5 class="card-title">This Month's Performance</h5>
+            <div class="performance-stats">
+              <div class="score-display">
+                <div class="score-circle">
+                  <svg width="120" height="120">
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#e9ecef" stroke-width="8"></circle>
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="54"
+                      fill="none"
+                      stroke="#667eea"
+                      stroke-width="8"
+                      [attr.stroke-dasharray]="339.292"
+                      [attr.stroke-dashoffset]="339.292 - (339.292 * dashboard.currentMonth.totalScore / 100)"
+                      transform="rotate(-90 60 60)"
+                    ></circle>
+                  </svg>
+                  <div class="score-text">
+                    <span class="score-number">{{ dashboard.currentMonth.totalScore.toFixed(1) }}</span>
+                    <span class="score-label">Score</span>
+                  </div>
+                </div>
+                <div class="grade-badge">
+                  <span class="badge" [ngClass]="getGradeClass(dashboard.currentMonth.grade)">
+                    Grade: {{ dashboard.currentMonth.grade }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="rank-display">
+                <i class="pi pi-trophy rank-icon"></i>
+                <div>
+                  <h3 class="rank-number">{{ dashboard.currentMonth.rank }}<sup>{{ getRankSuffix(dashboard.currentMonth.rank) }}</sup></h3>
+                  <p class="rank-label">Your Rank</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="present-days mt-3">
+              <i class="pi pi-calendar"></i>
+              <span>{{ dashboard.currentMonth.presentDays }} days present this month</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leave Balance -->
+      <div class="col-md-6">
+        <div class="card leave-card">
+          <div class="card-body">
+            <h5 class="card-title">Leave Balance ({{ currentYear }})</h5>
+            <div class="leave-balances">
+              <div *ngIf="leaveBalances.length === 0" class="text-center text-muted py-4">
+                No leave balances configured
+              </div>
+              <div *ngFor="let balance of leaveBalances" class="leave-item">
+                <div class="leave-header">
+                  <span class="leave-type">{{ balance.leaveType?.name }}</span>
+                  <span class="leave-available">{{ balance.availableDays }} / {{ balance.totalDays }}</span>
+                </div>
+                <div class="progress">
+                  <div
+                    class="progress-bar"
+                    [style.width.%]="(balance.availableDays / balance.totalDays) * 100"
+                    [ngClass]="{
+                      'bg-success': balance.availableDays / balance.totalDays > 0.5,
+                      'bg-warning': balance.availableDays / balance.totalDays > 0.2 && balance.availableDays / balance.totalDays <= 0.5,
+                      'bg-danger': balance.availableDays / balance.totalDays <= 0.2
+                    }"
+                  ></div>
+                </div>
+                <div class="leave-details">
+                  <small class="text-muted">
+                    Used: {{ balance.usedDays }} | Carried: {{ balance.carriedOverDays }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card leaderboard-card">
+          <div class="card-body">
+            <h5 class="card-title">
+              <i class="pi pi-star-fill text-warning"></i> Top Performers This Month
+            </h5>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th width="80">Rank</th>
+                    <th>Employee</th>
+                    <th width="120">Score</th>
+                    <th width="100">Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let entry of leaderboard">
+                    <td>
+                      <span class="rank-badge" [ngClass]="{
+                        'rank-gold': entry.rank === 1,
+                        'rank-silver': entry.rank === 2,
+                        'rank-bronze': entry.rank === 3
+                      }">
+                        <i class="pi" [ngClass]="{
+                          'pi-trophy': entry.rank <= 3,
+                          'pi-hashtag': entry.rank > 3
+                        }"></i>
+                        {{ entry.rank }}
+                      </span>
+                    </td>
+                    <td>{{ entry.userName }}</td>
+                    <td>
+                      <div class="progress" style="height: 20px;">
+                        <div
+                          class="progress-bar bg-primary"
+                          [style.width.%]="entry.totalScore"
+                        >
+                          {{ entry.totalScore.toFixed(1) }}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getGradeClass(entry.grade)">
+                        {{ entry.grade }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

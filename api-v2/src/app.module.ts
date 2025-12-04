@@ -17,6 +17,8 @@ import { FilesModule } from './modules/app/files/files.module';
 import { ReportModule } from './modules/app/reports/report.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DbBackupService } from './modules/app/backup/db.backup';
+import { HrModule } from './modules/hr/hr.module';
+import { RedisCacheModule } from './core/cache/redis-cache.module';
 
 @Module({
   imports: [
@@ -37,9 +39,11 @@ import { DbBackupService } from './modules/app/backup/db.backup';
     SaleReturnModule,
     DocumentModule,
     FilesModule,
-    ReportModule
+    ReportModule,
+    RedisCacheModule,
+    HrModule
   ],
   controllers: [],
-  providers: [],
+  providers: [DbBackupService],
 })
 export class AppModule {}

@@ -30,19 +30,28 @@ rgp-bo/
 - **Sales Operations**: POS interface, billing, returns, deliveries
 - **Purchase Management**: Vendor management, purchase orders, invoicing
 - **Customer Management**: Customer database, credit accounts
-- **Reporting**: Sales reports, GST reports, inventory reports
+- **HR Management**:
+  - Shift scheduling and user assignment
+  - Attendance tracking with webcam photo capture
+  - Leave management with approval workflow
+  - Performance scoring and leaderboards
+  - Comprehensive reporting and analytics
+- **Reporting**: Sales reports, GST reports, inventory reports, HR reports
 - **Document Management**: File uploads, PDF generation
 - **Data Security**: SQL injection prevention, transaction integrity, error handling
+- **Performance Optimization**: Redis caching, table partitioning, materialized views
 
 ## Technology Stack
 
 ### Backend (api-v2)
 - **Framework**: NestJS 11.x
 - **Language**: TypeScript
-- **Database**: PostgreSQL 14
+- **Database**: PostgreSQL 17
 - **ORM**: TypeORM
+- **Cache**: Redis 7
 - **Authentication**: JWT with Passport
 - **Documentation**: Swagger/OpenAPI
+- **Scheduling**: @nestjs/schedule (cron jobs)
 
 ### Frontend
 - **Framework**: Angular
@@ -50,7 +59,9 @@ rgp-bo/
 
 ### Infrastructure
 - **Containerization**: Docker & Docker Compose
-- **Database**: PostgreSQL 14
+- **Database**: PostgreSQL 17 with table partitioning
+- **Cache**: Redis 7 with LRU eviction
+- **Storage**: Local filesystem for uploads
 
 ## Getting Started
 
@@ -180,6 +191,9 @@ See `tests/README.md` for detailed testing documentation.
 - **Project Context (claude.md)**: Comprehensive project overview for developers and AI assistants
 - **API Documentation**: Available at `/api` endpoint when running the application (Swagger UI)
 - **Backend Guide**: `api-v2/README.md`
+- **HR System**:
+  - **Complete Guide**: `docs/HR_IMPLEMENTATION_COMPLETE.md`
+  - **Quick Start**: `docs/HR_API_QUICK_START.md`
 - **Error Handling Guide**: `docs/PHASE4_ERROR_HANDLING_GUIDE.md`
 - **Verification Guide**: `docs/MANUAL_VERIFICATION_GUIDE.md`
 - **Testing Guide**: `tests/README.md`
@@ -203,12 +217,19 @@ See `tests/README.md` for detailed testing documentation.
 - Phase 2: Bill number race condition fixed
 - Phase 3: Transaction wrappers for data integrity
 - Phase 4: Comprehensive error handling infrastructure
+- **Phase 5: HR Management System** (NEW)
+  - Shift scheduling and attendance tracking
+  - Leave management with workflow
+  - Performance scoring system
+  - Redis caching and database optimization
 
-See `docs/PHASE4_INFRASTRUCTURE_COMPLETE.md` for detailed completion status.
+See `docs/PHASE4_INFRASTRUCTURE_COMPLETE.md` and `docs/HR_IMPLEMENTATION_COMPLETE.md` for detailed completion status.
 
 ## Database Schema
 
-The application uses PostgreSQL with the following main tables:
+The application uses PostgreSQL 17 with the following main tables:
+
+**Core Business:**
 - `app_user`, `app_role` - Authentication and authorization
 - `product`, `product_price2` - Product catalog and pricing
 - `customer`, `customer_credit_account` - Customer management
@@ -216,6 +237,18 @@ The application uses PostgreSQL with the following main tables:
 - `sale`, `sale_item`, `sale_delivery` - Sales operations
 - `purchase_invoice`, `purchase_invoice_item` - Purchase management
 - `store`, `store_cash_account` - Store and cash management
+
+**HR Management:**
+- `shift`, `user_shift` - Work shift scheduling
+- `attendance` - Daily attendance with photo capture (partitioned)
+- `leave_type`, `leave_request`, `leave_balance` - Leave management
+- `user_score` - Performance scoring and analytics
+- `hr_audit_log` - HR operations audit trail
+
+**Performance Monitoring:**
+- `system_performance_log` - System metrics tracking
+- `api_usage_log` - API endpoint analytics
+- `query_performance_log` - Database query performance
 
 ## Contributing
 

@@ -1,0 +1,197 @@
+<div class="leave-request-container">
+  <div class="page-header">
+    <h2>Leave Management</h2>
+    <button class="btn btn-primary" (click)="showForm = !showForm">
+      <i class="pi pi-plus"></i> New Leave Request
+    </button>
+  </div>
+
+  <!-- Leave Request Form -->
+  <div *ngIf="showForm" class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Submit Leave Request</h5>
+      <form [formGroup]="leaveForm" (ngSubmit)="submitLeaveRequest()">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Leave Type *</label>
+            <select class="form-control" formControlName="leaveTypeId">
+              <option value="">Select Leave Type</option>
+              <option *ngFor="let type of leaveTypes" [value]="type.id">
+                {{ type.name }}
+                <span *ngIf="getBalanceForType(type.id) as balance">
+                  (Available: {{ balance.availableDays }} / {{ balance.totalDays }})
+                </span>
+              </option>
+            </select>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Total Days</label>
+            <input
+              type="text"
+              class="form-control"
+              [value]="calculateTotalDays()"
+              readonly
+            />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Start Date *</label>
+            <input type="date" class="form-control" formControlName="startDate" />
+            <div class="form-check mt-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                formControlName="isFirstHalfDay"
+                id="isFirstHalfDay"
+              />
+              <label class="form-check-label" for="isFirstHalfDay">
+                Half Day (First)
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label">End Date *</label>
+            <input type="date" class="form-control" formControlName="endDate" />
+            <div class="form-check mt-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                formControlName="isLastHalfDay"
+                id="isLastHalfDay"
+              />
+              <label class="form-check-label" for="isLastHalfDay">
+                Half Day (Last)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Reason *</label>
+          <textarea
+            class="form-control"
+            rows="3"
+            formControlName="reason"
+            placeholder="Enter reason for leave..."
+          ></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="isLoading || leaveForm.invalid"
+          >
+            <i class="pi pi-check"></i> Submit Request
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="showForm = false; leaveForm.reset()"
+          >
+            <i class="pi pi-times"></i> Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Leave Balances -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Leave Balance ({{ currentYear }})</h5>
+      <div class="row">
+        <div class="col-md-3" *ngFor="let balance of leaveBalances">
+          <div class="balance-card">
+            <h6>{{ balance.leaveType?.name }}</h6>
+            <div class="balance-stats">
+              <div class="balance-number">
+                {{ balance.availableDays }} / {{ balance.totalDays }}
+              </div>
+              <small class="text-muted">Days Available</small>
+            </div>
+            <div class="progress mt-2">
+              <div
+                class="progress-bar"
+                [style.width.%]="(balance.availableDays / balance.totalDays) * 100"
+                [ngClass]="{
+                  'bg-success': balance.availableDays / balance.totalDays > 0.5,
+                  'bg-warning': balance.availableDays / balance.totalDays > 0.2 && balance.availableDays / balance.totalDays <= 0.5,
+                  'bg-danger': balance.availableDays / balance.totalDays <= 0.2
+                }"
+              ></div>
+            </div>
+            <div class="balance-details mt-2">
+              <small>Used: {{ balance.usedDays }} | Carried: {{ balance.carriedOverDays }}</small>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="leaveBalances.length === 0" class="col-12 text-center text-muted py-4">
+          No leave balances configured
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Leave Requests -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">My Leave Requests</h5>
+
+      <div *ngIf="isLoading" class="text-center py-5">
+        <i class="pi pi-spin pi-spinner" style="font-size: 2rem;"></i>
+      </div>
+
+      <div *ngIf="!isLoading" class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Leave Type</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Days</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th>Approved By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let request of myRequests">
+              <td>{{ request.leaveType?.name }}</td>
+              <td>
+                {{ request.startDate | date:'MMM d, y' }}
+                <span *ngIf="request.isFirstHalfDay" class="badge badge-sm badge-info">Half</span>
+              </td>
+              <td>
+                {{ request.endDate | date:'MMM d, y' }}
+                <span *ngIf="request.isLastHalfDay" class="badge badge-sm badge-info">Half</span>
+              </td>
+              <td>{{ request.totalDays }}</td>
+              <td>{{ request.reason }}</td>
+              <td>
+                <span class="badge" [ngClass]="getStatusClass(request.status)">
+                  {{ request.status }}
+                </span>
+              </td>
+              <td>
+                {{ request.approver?.fullName || '--' }}
+                <small *ngIf="request.approvalDate" class="d-block text-muted">
+                  {{ request.approvalDate | date:'MMM d, y' }}
+                </small>
+              </td>
+            </tr>
+            <tr *ngIf="myRequests.length === 0">
+              <td colspan="7" class="text-center text-muted">
+                No leave requests found
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

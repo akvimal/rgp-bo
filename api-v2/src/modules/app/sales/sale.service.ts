@@ -212,7 +212,7 @@ export class SaleService {
 
         const dt = new Date(fromdate);
         let query = ''
-        let params = []
+        let params: string[] = []
 
         if(freq === 'daily'){
             const date = new Date(dt.setDate(dt.getDate()+1));
@@ -249,7 +249,7 @@ export class SaleService {
 
         const dt = new Date(fromdate);
         let query = ''
-        let params = []
+        let params: string[] = []
 
         if(freq === 'daily'){
             const date = new Date(dt.setDate(dt.getDate()+1));
