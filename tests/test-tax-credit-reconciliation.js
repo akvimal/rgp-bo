@@ -54,7 +54,7 @@ async function login() {
     const result = await apiCall('POST', '/auth/login', TEST_USER);
 
     if (result.success) {
-        authToken = result.data.access_token;
+        authToken = result.data.token || result.data.access_token;
         console.log('✓ Login successful');
         return true;
     } else {

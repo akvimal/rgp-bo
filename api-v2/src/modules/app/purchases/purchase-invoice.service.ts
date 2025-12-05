@@ -432,9 +432,9 @@ export class PurchaseInvoiceService {
                 { id: invoiceId },
                 {
                     lifecyclestatus: LifecycleStatus.OPEN,
-                    closedon: null,
-                    closedby: null,
-                    closurenotes: null,
+                    closedon: undefined,
+                    closedby: undefined,
+                    closurenotes: undefined,
                     updatedby: userid,
                 }
             );

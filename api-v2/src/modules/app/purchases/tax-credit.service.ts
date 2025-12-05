@@ -149,7 +149,7 @@ export class TaxCreditService {
     /**
      * Get tax credit by invoice ID
      */
-    async findByInvoice(invoiceId: number): Promise<PurchaseInvoiceTaxCredit> {
+    async findByInvoice(invoiceId: number): Promise<PurchaseInvoiceTaxCredit | null> {
         return this.taxCreditRepository.findOne({
             where: { invoiceid: invoiceId }
         });

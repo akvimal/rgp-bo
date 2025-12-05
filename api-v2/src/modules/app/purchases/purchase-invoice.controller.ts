@@ -158,7 +158,7 @@ export class PurchaseInvoiceController {
       await this.purchaseInvoiceService.reconcilePayment(
         parseInt(paymentId),
         body.reconciled,
-        body.notes,
+        body.notes || '',
         currentUser.id
       );
       return { message: 'Payment reconciliation updated' };

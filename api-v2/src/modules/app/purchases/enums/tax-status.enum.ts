@@ -14,6 +14,9 @@ export enum TaxStatus {
 
   /** Tax credit claimed and reconciled */
   RECONCILED = 'RECONCILED',
+
+  /** Mismatch found in tax credit reconciliation */
+  MISMATCH = 'MISMATCH',
 }
 
 /**
@@ -24,6 +27,7 @@ export const TaxStatusLabels: Record<TaxStatus, string> = {
   [TaxStatus.FILED]: 'Filed by Vendor',
   [TaxStatus.CREDITED]: 'Credited in 2A',
   [TaxStatus.RECONCILED]: 'Reconciled',
+  [TaxStatus.MISMATCH]: 'Mismatch',
 };
 
 /**

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git mv:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
