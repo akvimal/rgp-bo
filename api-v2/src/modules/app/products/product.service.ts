@@ -86,22 +86,28 @@ export class ProductService {
 
   async findPrices(criteria:any){
     return await this.manager.query(
-      `select * from price_view where active = ${criteria.active} and title ilike '${criteria.title}%'`);
+      `select * from price_view where active = $1 and title ilike $2`,
+      [criteria.active, `${criteria.title}%`]);
   }
 
   async findPriceById(productid:number){
     return await this.manager.query(
-      `select * from price_view where id = ${productid}`);
+      `select * from price_view where id = $1`,
+      [productid]);
   }
 
   async endCurrentPrice(productid:number,enddate?:string){
+    // If no end date provided, use current date
+    const dateToSet = enddate || new Date().toISOString().split('T')[0];
     return await this.manager.query(
-      `update product_price2 set end_date = '${enddate}' where product_id = ${productid} and end_date = '2099-12-31'`);
+      `update product_price2 set end_date = $1 where product_id = $2 and end_date = '2099-12-31'`,
+      [dateToSet, productid]);
   }
 
   async findPriceHistoryById(productid:number){
     return await this.manager.query(
-      `select * from product_price2 where product_id = ${productid} order by eff_date desc`);
+      `select * from product_price2 where product_id = $1 order by eff_date desc`,
+      [productid]);
   }
     
     async findByTitle(title:any){
