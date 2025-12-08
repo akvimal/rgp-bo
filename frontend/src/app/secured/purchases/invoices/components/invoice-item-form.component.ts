@@ -62,6 +62,20 @@ export class InvoiceItemFormComponent {
 
                 if(data.product){
                     this.selectedProduct = data.product;
+
+                    // Load batches for the product to enable batch editing
+                    this.invService.findItemsByProduct(data.productid).subscribe((items:any) => {
+                        this.batches = items.map((i:any) => {
+                            return {batch:i.batch,
+                                expdate:i.expdate,
+                                createdt:i.createdon,
+                                discpcnt:i.discpcnt,
+                                taxpcnt:i.taxpcnt,
+                                mrpcost:i.mrpcost.toFixed(2),
+                                ptrvalue:i.ptrvalue.toFixed(2)
+                            }
+                        });
+                    });
                 }
 
                 this.calculate();

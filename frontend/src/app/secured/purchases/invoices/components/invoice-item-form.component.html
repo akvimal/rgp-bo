@@ -19,15 +19,14 @@
                 <ng-template #showTitle>{{title}}</ng-template>
             </td>
             <td width="10%">
-                <p-autoComplete  *ngIf="mode !== 'edit';else showBatch" formControlName="batch"
-                    [suggestions]="filteredBatches" (completeMethod)="filterBatch($event)" 
+                <p-autoComplete formControlName="batch"
+                    [suggestions]="filteredBatches" (completeMethod)="filterBatch($event)"
                     (onSelect)="selectBatch($event)" [minLength]="1" [size]="10" [dropdown]="true"
                     [inputStyle]="{'background-color':'#9df'}">
                     <ng-template let-item pTemplate="item">
                         <h6 style="color: blue;">{{item.batch}} / {{item.expdate | date : 'MMM-yy'}}</h6>
                     </ng-template>
                 </p-autoComplete>
-                <ng-template #showBatch>{{form.controls['batch'].value}}</ng-template>
             </td>
             <td width="8%">
                     <p-calendar formControlName="expdate" view="month" dateFormat="M-y" [minDate]="today()" 
