@@ -129,7 +129,7 @@ export class InvoiceItemFormComponent {
 
     selectProduct(event:any){
         this.selectedProduct = event;
-        
+
         this.selectedProduct && this.invService.findItemsByProduct(this.selectedProduct.id)
             .subscribe((items:any) => {
                 this.batches = items.map((i:any) => {
@@ -142,7 +142,18 @@ export class InvoiceItemFormComponent {
                         ptrvalue:i.ptrvalue.toFixed(2)
                     }
                 });
-                this.clearBatch();
+
+                // If batches exist, use the most recent one as default
+                if(this.batches.length > 0) {
+                    const latestBatch = this.batches[0]; // Most recent batch
+                    this.form.controls['ptrvalue'].setValue(latestBatch.ptrvalue);
+                    this.form.controls['discpcnt'].setValue(latestBatch.discpcnt);
+                    this.form.controls['taxpcnt'].setValue(latestBatch.taxpcnt);
+                    this.form.controls['mrpcost'].setValue(latestBatch.mrpcost);
+                } else {
+                    // Only clear if no existing batches
+                    this.clearBatch();
+                }
         });
         this.form.controls['productid'].setValue(this.selectedProduct.id);
     }
