@@ -4,7 +4,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
 import { multerOptions } from './multer.config';
 import { Response } from 'express';
-import { Multer } from 'multer';
 import { AuthGuard } from "src/modules/auth/auth.guard";
 @ApiTags('Files')
 @Controller('files')
@@ -16,7 +15,7 @@ export class FilesController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file',multerOptions))
-  uploadFile(@UploadedFile() file: Multer.File) {
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
     return file;
   }
 
