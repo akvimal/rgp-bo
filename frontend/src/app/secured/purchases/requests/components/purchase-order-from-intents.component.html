@@ -1,0 +1,169 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Create Purchase Order from Sales Intents</h4>
+                <button class="btn btn-outline-secondary btn-sm" routerLink="/secure/purchases/orders">
+                    <i class="bi bi-arrow-left"></i> Back to Orders
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="loading" class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading pending intents...</p>
+    </div>
+
+    <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ errorMessage }}
+        <button type="button" class="btn-close" (click)="errorMessage = null"></button>
+    </div>
+
+    <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ successMessage }}
+        <button type="button" class="btn-close" (click)="successMessage = null"></button>
+    </div>
+
+    <div class="row" *ngIf="!loading">
+        <!-- Left side: Intent selection -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Pending Intents</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary me-2" (click)="selectAll()"
+                                [disabled]="pendingIntents.length === 0">
+                            Select All
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" (click)="clearSelection()"
+                                [disabled]="selectedIntentIds.size === 0">
+                            Clear Selection
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div *ngIf="pendingIntents.length === 0" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-3">No pending intents available for Purchase Order creation.</p>
+                        <a routerLink="/secure/sales/intent/new" class="btn btn-primary">
+                            Create Sales Intent
+                        </a>
+                    </div>
+
+                    <div *ngFor="let intent of pendingIntents"
+                         class="card mb-2 intent-card"
+                         [class.selected]="isSelected(intent.id!)"
+                         (click)="toggleIntentSelection(intent.id!)">
+                        <div class="card-body p-3">
+                            <div class="row align-items-center">
+                                <div class="col-1 text-center">
+                                    <input type="checkbox"
+                                           class="form-check-input"
+                                           [checked]="isSelected(intent.id!)"
+                                           (click)="$event.stopPropagation()">
+                                </div>
+                                <div class="col-8">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <strong>{{ intent.productname }}</strong>
+                                        <span class="badge badge-priority ms-2"
+                                              [ngClass]="getPriorityBadgeClass(intent.priority)">
+                                            {{ intent.priority }}
+                                        </span>
+                                        <span class="badge badge-priority ms-1"
+                                              [ngClass]="getTypeBadgeClass(intent.intenttype)">
+                                            {{ intent.intenttype }}
+                                        </span>
+                                    </div>
+                                    <div class="intent-type">
+                                        <span *ngIf="intent.customername">Customer: {{ intent.customername }}</span>
+                                        <span *ngIf="intent.customermobile" class="ms-2">
+                                            <i class="bi bi-telephone"></i> {{ intent.customermobile }}
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ intent.intentno }} | Created: {{ intent.createdon | date: 'short' }}
+                                    </small>
+                                    <div *ngIf="intent.requestnotes" class="mt-1">
+                                        <small class="text-muted">
+                                            <i class="bi bi-chat-left-text"></i> {{ intent.requestnotes }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-3 text-end">
+                                    <div class="mb-1">
+                                        <strong>Qty:</strong> {{ intent.requestedqty }}
+                                    </div>
+                                    <div *ngIf="intent.estimatedcost" class="text-muted">
+                                        <small>Est. ₹{{ intent.estimatedcost }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right side: PO Creation Form -->
+        <div class="col-md-4">
+            <div class="card position-sticky" style="top: 20px;">
+                <div class="card-header">
+                    <h5 class="mb-0">Purchase Order Details</h5>
+                </div>
+                <div class="card-body">
+                    <form [formGroup]="form" (ngSubmit)="onCreatePO()">
+                        <div class="mb-3">
+                            <label for="selectedCount" class="form-label">Selected Intents</label>
+                            <div class="alert alert-info">
+                                <strong>{{ getSelectedCount() }}</strong> intent(s) selected
+                                <br>
+                                <small>Total Quantity: <strong>{{ getTotalQuantity() }}</strong></small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="vendor" class="form-label">Vendor <span class="text-danger">*</span></label>
+                            <select class="form-select" id="vendor" formControlName="vendorid" required>
+                                <option value="">Select Vendor</option>
+                                <option *ngFor="let vendor of vendors" [value]="vendor.id">
+                                    {{ vendor.name }}
+                                </option>
+                            </select>
+                            <div *ngIf="form.controls['vendorid'].invalid && form.controls['vendorid'].touched"
+                                 class="text-danger small mt-1">
+                                Vendor is required
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="comments" class="form-label">Comments</label>
+                            <textarea class="form-control"
+                                      id="comments"
+                                      formControlName="comments"
+                                      rows="4"
+                                      placeholder="Add any additional notes for this purchase order..."></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit"
+                                    class="btn btn-primary"
+                                    [disabled]="!form.valid || getSelectedCount() === 0 || loading">
+                                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                                <i *ngIf="!loading" class="bi bi-cart-plus me-1"></i>
+                                Create Purchase Order
+                            </button>
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    routerLink="/secure/purchases/orders">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

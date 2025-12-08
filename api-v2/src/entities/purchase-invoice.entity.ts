@@ -11,6 +11,7 @@ import { BaseEntity } from "./base.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
 import { VendorPayment } from "./vendor-payment.entity";
   import { Vendor } from "./vendor.entity";
+  import { Store } from "./store.entity";
 
   @Index("purchase_invoice_pk", ["id"], { unique: true })
   @Index("purchase_invoice_un", ["invoiceno", "vendorid"], { unique: true })
@@ -105,6 +106,13 @@ import { VendorPayment } from "./vendor-payment.entity";
     @ManyToOne(() => Vendor, (vendor) => vendor.purchaseInvoices)
     @JoinColumn([{ name: "vendor_id", referencedColumnName: "id" }])
     vendor: Vendor;
+
+    @Column("integer", { name: "store_id", nullable: true })
+    storeid: number | null;
+
+    @ManyToOne(() => Store, (store) => store.purchaseInvoices, { nullable: true })
+    @JoinColumn({ name: "store_id" })
+    store: Store | null;
 
     @OneToMany(
       () => PurchaseInvoiceItem,

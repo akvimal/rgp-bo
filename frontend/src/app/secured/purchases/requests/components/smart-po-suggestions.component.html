@@ -1,0 +1,161 @@
+<div class="container-fluid">
+  <div class="row mb-3">
+    <div class="col-12">
+      <h4>Smart Purchase Order Suggestions</h4>
+      <p class="text-muted" *ngIf="suggestions">
+        Showing suggestions for <strong>{{ suggestions.storeName }}</strong>
+        ({{ suggestions.totalSuggestions }} items)
+      </p>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center">
+    <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+    <p>Loading suggestions...</p>
+  </div>
+
+  <div *ngIf="!loading && suggestions">
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <button pButton type="button" label="Create Purchase Order" icon="pi pi-plus"
+                class="p-button-success me-2"
+                [disabled]="!hasSelection()"
+                (click)="createPurchaseOrder()"></button>
+        <button pButton type="button" label="Refresh" icon="pi pi-refresh"
+                class="p-button-secondary"
+                (click)="loadSuggestions()"></button>
+      </div>
+    </div>
+
+    <!-- Low Stock Items Section -->
+    <div class="card mb-4" *ngIf="lowStockItems.length > 0">
+      <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">
+          <i class="pi pi-exclamation-triangle me-2"></i>
+          Low Stock Items ({{ lowStockItems.length }})
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        <p-table [value]="lowStockItems" [scrollable]="true" scrollHeight="400px">
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width: 50px">
+                <input type="checkbox"
+                       (change)="selectAllLowStock($event)"
+                       class="form-check-input">
+              </th>
+              <th>Product</th>
+              <th>Current Stock</th>
+              <th>Reorder Limit</th>
+              <th>Suggested Qty</th>
+              <th>Preferred Vendor</th>
+              <th>Last Vendor</th>
+              <th>Last Price</th>
+              <th>Last Purchase</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-item>
+            <tr>
+              <td>
+                <input type="checkbox" [(ngModel)]="item.selected" class="form-check-input">
+              </td>
+              <td>{{ item.productName }}</td>
+              <td class="text-center">
+                <span class="badge bg-danger">{{ item.currentStock || 0 }}</span>
+              </td>
+              <td class="text-center">{{ item.reorderLimit || 0 }}</td>
+              <td class="text-center">
+                <strong class="text-success">{{ item.suggestedQuantity }}</strong>
+              </td>
+              <td>{{ item.preferredVendorName || 'Not set' }}</td>
+              <td>{{ item.lastVendorName || 'N/A' }}</td>
+              <td>{{ formatCurrency(item.lastPurchasePrice) }}</td>
+              <td>{{ formatDate(item.lastPurchaseDate) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="9" class="text-center text-muted">
+                No low stock items found
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </div>
+
+    <!-- Sales Intent Items Section -->
+    <div class="card mb-4" *ngIf="salesIntentItems.length > 0">
+      <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+          <i class="pi pi-shopping-cart me-2"></i>
+          Sales Intent Items ({{ salesIntentItems.length }})
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        <p-table [value]="salesIntentItems" [scrollable]="true" scrollHeight="400px">
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width: 50px">
+                <input type="checkbox"
+                       (change)="selectAllSalesIntent($event)"
+                       class="form-check-input">
+              </th>
+              <th>Product</th>
+              <th>Priority</th>
+              <th>Requested Qty</th>
+              <th>Intent IDs</th>
+              <th>Preferred Vendor</th>
+              <th>Last Vendor</th>
+              <th>Last Price</th>
+              <th>Last Purchase</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-item>
+            <tr>
+              <td>
+                <input type="checkbox" [(ngModel)]="item.selected" class="form-check-input">
+              </td>
+              <td>{{ item.productName }}</td>
+              <td>
+                <span [ngClass]="getPriorityClass(item.priority)">
+                  {{ item.priority || 'NORMAL' }}
+                </span>
+              </td>
+              <td class="text-center">
+                <strong class="text-success">{{ item.suggestedQuantity }}</strong>
+              </td>
+              <td>
+                <small class="text-muted">{{ item.salesIntentIds?.join(', ') }}</small>
+              </td>
+              <td>{{ item.preferredVendorName || 'Not set' }}</td>
+              <td>{{ item.lastVendorName || 'N/A' }}</td>
+              <td>{{ formatCurrency(item.lastPurchasePrice) }}</td>
+              <td>{{ formatDate(item.lastPurchaseDate) }}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="9" class="text-center text-muted">
+                No sales intent items found
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="lowStockItems.length === 0 && salesIntentItems.length === 0" class="card">
+      <div class="card-body text-center py-5">
+        <i class="pi pi-check-circle text-success" style="font-size: 4rem"></i>
+        <h5 class="mt-3">All Good!</h5>
+        <p class="text-muted">
+          No purchase order suggestions at this time.
+          Your inventory levels are healthy and there are no pending sales intents.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

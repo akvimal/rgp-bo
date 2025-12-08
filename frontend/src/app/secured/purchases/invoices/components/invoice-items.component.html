@@ -1,18 +1,30 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="row">
+        <div class="row mb-3">
             <div class="col-lg-12 col-md-12 label text-center h4">{{invoice.vendor?.name}}</div>
+        </div>
+        <div class="row">
             <div class="col-lg-3 col-md-3 label"><strong>Invoice No:</strong> {{invoice.invoiceno}}</div>
             <div class="col-lg-3 col-md-3 label"><strong>Invoice Date:</strong> {{invoice.invoicedate | date : 'dd/MM/yyyy'}}</div>
-
-            <!-- <div class="col-lg-4 col-md-4 label">PO ID: {{invoice.purchaseorderid}}</div> -->
             <div class="col-lg-3 col-md-3 label text-end"><strong>GRN:</strong><span class="text-success"> {{invoice.grno}}</span></div>
             <div class="col-lg-3 col-md-3 label text-end"><strong>Status:</strong> {{invoice.status}}
-                <a [routerLink]="['../../edit',invoice.id]">Edit</a>
+                <a [routerLink]="['../../edit',invoice.id]" class="ms-2">Edit</a>
             </div>
         </div>
-        
+
+        <!-- Phase 3: Status Badges -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <app-invoice-status-badges
+                    [docType]="invoice.doctype"
+                    [paymentStatus]="invoice.paymentstatus"
+                    [taxStatus]="invoice.taxstatus"
+                    [lifecycleStatus]="invoice.lifecyclestatus">
+                </app-invoice-status-badges>
+            </div>
+        </div>
+
     </div>
 </div>
 <div class="card p-0" *ngIf="invoice.status === 'NEW'">
@@ -35,16 +47,15 @@
                         <tr>
                             <th *ngIf="invoice.status !== 'COMPLETE'"></th>
                             <th *ngIf="invoice.status !== 'COMPLETE'"></th>
+                            <th>Type</th>
                             <th pSortableColumn="product.title">Product
                                 <p-sortIcon field="product.title"></p-sortIcon>
                             </th>
                             <th>Batch</th>
-                            <!-- <th>MFR Date</th> -->
                             <th pSortableColumn="expdate" class="text-center">Expiry
                                 <p-sortIcon field="expdate"></p-sortIcon>
                             </th>
                             <th class="text-end">MRP</th>
-                            <!-- <th>Pack</th> -->
                             <th class="text-end">QTY</th>
                             <th class="text-end">Free</th>
                             <th class="text-end">Rate</th>
@@ -68,6 +79,21 @@
                                     </a>
                                 </h4>
                             </td>
+                            <td>
+                                <select *ngIf="i.status === 'NEW' && invoice.status !== 'COMPLETE'"
+                                        class="form-select form-select-sm"
+                                        [value]="i.itemtype || 'REGULAR'"
+                                        (change)="updateItemType(i.id, $event)">
+                                    <option value="REGULAR">Regular</option>
+                                    <option value="RETURN">Return</option>
+                                    <option value="SUPPLIED">Supplied</option>
+                                </select>
+                                <span *ngIf="i.status !== 'NEW' || invoice.status === 'COMPLETE'">
+                                    <span *ngIf="!i.itemtype || i.itemtype === 'REGULAR'" class="badge bg-success">REG</span>
+                                    <span *ngIf="i.itemtype === 'RETURN'" class="badge bg-danger">RET</span>
+                                    <span *ngIf="i.itemtype === 'SUPPLIED'" class="badge bg-info">SUP</span>
+                                </span>
+                            </td>
                             <td>{{i.product?.title}}</td>
                             <td>{{i.batch}}</td>
                             <!-- <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td> -->
@@ -79,8 +105,41 @@
                             <td class="text-end">{{i.ptrvalue | number:'1.2-2'}}</td>
                             <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
                             <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
-                            <td class="text-end">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
+                            <td class="text-end">{{calculateItemTotal(i) | number:'1.2-2'}}</td>
                             <!-- <td class="text-center">{{i.status}}</td> -->
+                        </tr>
+                        <!-- Conditional fields for RETURN and SUPPLIED items -->
+                        <tr *ngIf="(i.itemtype === 'RETURN' || i.itemtype === 'SUPPLIED') && i.status === 'NEW' && invoice.status !== 'COMPLETE'"
+                            style="background-color: #fffacd;">
+                            <td *ngIf="invoice.status !== 'COMPLETE'"></td>
+                            <td *ngIf="invoice.status !== 'COMPLETE'"></td>
+                            <td [attr.colspan]="invoice.status !== 'COMPLETE' ? '11' : '11'">
+                                <div class="row g-2 p-2">
+                                    <!-- Return Reason (for RETURN items) -->
+                                    <div class="col-md-6" *ngIf="i.itemtype === 'RETURN'">
+                                        <label class="form-label text-danger fw-bold">
+                                            <i class="bi bi-arrow-return-left"></i> Return Reason *
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm"
+                                               [value]="i.returnreason || ''"
+                                               (change)="updateItemField(i.id, 'returnreason', $event)"
+                                               placeholder="e.g., Damaged, Expired, Wrong item, etc.">
+                                        <small class="text-muted">Specify why this item is being returned</small>
+                                    </div>
+
+                                    <!-- Challan Reference (for SUPPLIED items) -->
+                                    <div class="col-md-6" *ngIf="i.itemtype === 'SUPPLIED'">
+                                        <label class="form-label text-info fw-bold">
+                                            <i class="bi bi-file-text"></i> Delivery Challan Reference *
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm"
+                                               [value]="i.challanref || ''"
+                                               (change)="updateItemField(i.id, 'challanref', $event)"
+                                               placeholder="Enter challan number">
+                                        <small class="text-muted">Reference to the original delivery challan</small>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                         <!-- <tr>
                         
@@ -96,15 +155,15 @@
                     <tr>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
-                        <td colspan="7"></td>
+                        <td colspan="8"></td>
                         <td class="text-end">{{disctotal | number:'1.2-2'}}</td>
                         <td class="text-end">{{taxtotal | number:'1.2-2'}}</td>
-                        <td class="text-end">{{grosstotal | number:'1.2-2'}}</td>
+                        <td class="text-end">{{nettotal | number:'1.2-2'}}</td>
                     </tr>
                     <tr>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
-                        <td colspan="7" class="text-end">{{invoice.items?.length}} Items</td>
+                        <td colspan="8" class="text-end">{{invoice.items?.length}} Items</td>
                         <td colspan="3" class="text-end">
                             <span style="color:blue;font-size:larger">{{nettotal | number:'1.2-2'}}</span></td>
                     </tr>
@@ -144,22 +203,30 @@
         </div> -->
     </div>
 </div>
-        <!-- <app-invoice-payment *ngIf="invoice.status === 'RECEIVED'" 
-            [invoiceid]="invoice.id" [invoiceamt]="invoice.total"
-            (payUpdated)="onPaid($event)"></app-invoice-payment>
 
-        <div class="row" *ngIf="invoice.status === 'PAID'">
-            <div class="col-lg-12">
-                <h5>Payment Info</h5>
-                <ul>
-                    <li>Date: {{invoice.paydate}}</li>
-                    <li>Mode: {{invoice.paymode}}</li>
-                    <li>Amount: {{invoice.payamount}}</li>
-                    <li>Ref #: {{invoice.payrefno}}</li>
-                    <li>Comments: {{invoice.paycomments}}</li>
-                </ul>
-            </div>
-        </div> -->
+<!-- Payment Management (for COMPLETE invoices) -->
+<app-invoice-payment *ngIf="invoice.status === 'COMPLETE'"
+    [invoiceId]="invoice.id"
+    [vendorId]="invoice.vendorid"
+    [invoiceTotal]="invoice.total"
+    [docType]="invoice.doctype"
+    (paymentUpdated)="onPaid($event)">
+</app-invoice-payment>
+
+<!-- Tax Credit Reconciliation (for COMPLETE invoices) -->
+<app-invoice-tax-credit *ngIf="invoice.status === 'COMPLETE'"
+    [invoiceId]="invoice.id"
+    [vendorGstin]="invoice.vendor?.gstin"
+    [invoiceTotal]="nettotal"
+    [taxAmount]="taxtotal"
+    (taxUpdated)="onTaxUpdated($event)">
+</app-invoice-tax-credit>
+
+<!-- Invoice Lifecycle Summary & Closure (for COMPLETE invoices) -->
+<app-invoice-lifecycle-summary *ngIf="invoice.status === 'COMPLETE'"
+    [invoiceId]="invoice.id"
+    (lifecycleUpdated)="onLifecycleUpdated($event)">
+</app-invoice-lifecycle-summary>
 
         <p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()"
         [(visible)]="displayEditItem" [modal]="true">

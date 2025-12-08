@@ -13,9 +13,6 @@
       <!-- <thead> -->
     <ng-template pTemplate="header">
     <tr>
-      <!-- <th pSortableColumn="id">ID
-        <p-sortIcon field="id"></p-sortIcon>
-      </th> -->
       <th pSortableColumn="invoice_no">No.
         <p-sortIcon field="invoice_no"></p-sortIcon>
         <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
@@ -24,45 +21,67 @@
         <p-sortIcon field="invoice_date"></p-sortIcon>
         <p-columnFilter type="date" field="invoice_date" display="menu"></p-columnFilter>
       </th>
+      <th>Type</th>
       <th pSortableColumn="business_name">Vendor
         <p-sortIcon field="business_name"></p-sortIcon>
         <p-columnFilter type="text" field="business_name" display="menu"></p-columnFilter>
       </th>
-      
       <th pSortableColumn="items">Items</th>
       <th pSortableColumn="total">Amount
         <p-sortIcon field="total"></p-sortIcon>
         <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
       </th>
+      <th>Payment</th>
+      <th>Tax</th>
+      <th>Lifecycle</th>
       <th pSortableColumn="status">Status
         <p-sortIcon field="status"></p-sortIcon>
         <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
       </th>
-      <!-- <th  pSortableColumn="category">Actions</th> -->
-      <!-- <th></th> -->
     </tr>
   </ng-template>
   <!-- </thead>
   <tbody> -->
     <ng-template pTemplate="body" let-p>
-    <!-- <tr *ngFor="let p of invoices"> -->
-      <!-- <td>{{p.id}}</td> -->
       <tr>
-        <!-- <td>{{p.id}}</td> -->
         <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
-      <td style="text-align: center;">{{p.invoice_date | date : 'dd/MM/yy'}}</td>
-      <td>{{p.business_name}}</td>
-      <td style="text-align: center;">{{p.items}}</td>
-      <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
-      <td style="text-align: center;">{{p.status}}</td>
-      <!-- <td>
+        <td style="text-align: center;">{{p.invoice_date | date : 'dd/MM/yy'}}</td>
+        <td>
+          <span *ngIf="p.doctype === 'INVOICE'" class="badge bg-primary">INV</span>
+          <span *ngIf="p.doctype === 'DELIVERY_CHALLAN'" class="badge bg-info">DC</span>
+          <span *ngIf="!p.doctype" class="badge bg-secondary">-</span>
+        </td>
+        <td>{{p.business_name}}</td>
+        <td style="text-align: center;">{{p.items}}</td>
+        <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
+        <td>
+          <span *ngIf="p.paymentstatus === 'PAID'" class="badge bg-success">Paid</span>
+          <span *ngIf="p.paymentstatus === 'PARTIAL'" class="badge bg-warning text-dark">Partial</span>
+          <span *ngIf="p.paymentstatus === 'UNPAID'" class="badge bg-danger">Unpaid</span>
+          <span *ngIf="!p.paymentstatus" class="badge bg-secondary">-</span>
+        </td>
+        <td>
+          <span *ngIf="p.taxstatus === 'RECONCILED'" class="badge bg-success">Done</span>
+          <span *ngIf="p.taxstatus === 'CREDITED'" class="badge bg-info">Credit</span>
+          <span *ngIf="p.taxstatus === 'FILED'" class="badge bg-primary">Filed</span>
+          <span *ngIf="p.taxstatus === 'PENDING'" class="badge bg-warning text-dark">Pending</span>
+          <span *ngIf="p.taxstatus === 'MISMATCH'" class="badge bg-danger">Mismatch</span>
+          <span *ngIf="!p.taxstatus" class="badge bg-secondary">-</span>
+        </td>
+        <td>
+          <span *ngIf="p.lifecyclestatus === 'CLOSED'" class="badge bg-dark">Closed</span>
+          <span *ngIf="p.lifecyclestatus === 'OPEN'" class="badge bg-primary">Open</span>
+          <span *ngIf="!p.lifecyclestatus" class="badge bg-secondary">-</span>
+        </td>
+        <td style="text-align: center;">{{p.status}}</td>
+      <td>
         <span *ngIf="p.status === 'NEW'">
       <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">
         <i class="bi bi-pencil text-primary"></i>
       </a>
         <a *isAuth="'purchases.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
       </span>
-      </td> -->
+      </td>
       <!-- <td>
         <a (click)="delete(p.id)">
           <i class="bi bi-trash text-danger"></i>

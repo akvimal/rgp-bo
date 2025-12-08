@@ -479,17 +479,20 @@ export class PurchaseInvoiceService {
 
         const verifiedItems = items.filter(i => i.status === 'VERIFIED');
 
+        // Get payment summary
+        const paymentSummary = await this.getPaymentSummary(invoiceId);
+
         return {
             invoice: {
                 id: invoice.id,
-                invoiceNo: invoice.invoiceno,
-                docType: invoice.doctype,
+                invoiceno: invoice.invoiceno,
+                doctype: invoice.doctype,
                 status: invoice.status,
-                paymentStatus: invoice.paymentstatus,
-                taxStatus: invoice.taxstatus,
-                lifecycleStatus: invoice.lifecyclestatus,
+                paymentstatus: invoice.paymentstatus,
+                taxstatus: invoice.taxstatus,
+                lifecyclestatus: invoice.lifecyclestatus,
             },
-            items: {
+            itemsummary: {
                 total: items.length,
                 regular: regularItems.length,
                 return: returnItems.length,
@@ -497,16 +500,22 @@ export class PurchaseInvoiceService {
                 verified: verifiedItems.length,
                 pending: items.length - verifiedItems.length,
             },
-            financial: {
-                total: invoice.total,
-                paidAmount: invoice.paidamount,
-                outstanding: invoice.total - (invoice.paidamount || 0),
-                taxCredit: invoice.totaltaxcredit,
+            paymentsummary: {
+                totalamount: paymentSummary.totalAmount || invoice.total || 0,
+                paidamount: paymentSummary.paidAmount || 0,
+                outstandingamount: paymentSummary.outstandingAmount || (invoice.total || 0),
+                paymentcount: paymentSummary.paymentCount || 0,
+                paymentstatus: invoice.paymentstatus || 'UNPAID',
             },
-            canComplete: items.length > 0 && verifiedItems.length === items.length,
-            canClose: invoice.status === 'COMPLETE' &&
-                     invoice.paymentstatus === PaymentStatus.PAID &&
-                     invoice.taxstatus === TaxStatus.RECONCILED,
+            taxsummary: {
+                totaltaxcredit: invoice.totaltaxcredit || 0,
+                taxstatus: invoice.taxstatus || 'PENDING',
+                filingstatus: null,
+            },
+            cancloseinvoice: invoice.status === 'COMPLETE' &&
+                             invoice.paymentstatus === PaymentStatus.PAID &&
+                             invoice.taxstatus === TaxStatus.RECONCILED,
+            closureblockers: [],
         };
     }
 
@@ -526,9 +535,14 @@ export class PurchaseInvoiceService {
                 throw new BadRequestException('Invoice not found');
             }
 
+            // Map frontend field names to entity field names
+            const { paymentdate, paymentmode, ...rest } = paymentData;
+
             // Create payment record
             const payment = await this.vendorPaymentRepository.save({
-                ...paymentData,
+                ...rest,
+                paydate: paymentdate,  // Map paymentdate to paydate
+                paymode: paymentmode,   // Map paymentmode to paymode
                 invoiceid: invoiceId,
                 vendorid: invoice.vendorid,
                 createdby: userid,

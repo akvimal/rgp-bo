@@ -14,6 +14,7 @@ export class ProductPriceChangeComponent {
     empty = { sale: 0, date: '', reason: '', comments: '' };
     price:any;
     current:any = {};
+    showBreakdown = false; // Control pricing breakdown visibility
 
     constructor(private service:ProductsService, private dateService:DateUtilService){}
 
@@ -41,12 +42,18 @@ export class ProductPriceChangeComponent {
 
     calculate(event:any){
         const price = +event.target.value;
-        
+
         const ptr = +this.current.price.ptr;
         const mrp = +this.current.price.mrp;
-        
-        if(price > mrp){ event.target.value = mrp; }
-        if(price < ptr){ event.target.value = ptr; }
+
+        if(price > mrp){
+            event.target.value = mrp;
+            this.price.sale = mrp;
+        }
+        if(price < ptr){
+            event.target.value = ptr;
+            this.price.sale = ptr;
+        }
 
         const margin = ((price-ptr)/ptr) * 100;
         const discount = ((mrp-price)/mrp) * 100;
@@ -54,7 +61,21 @@ export class ProductPriceChangeComponent {
         this.current.price.margin = Math.round(margin);
         this.current.price.discount = Math.round(discount);
         console.log(this.current);
-        
+
+    }
+
+    onPriceSliderChange(event: any) {
+        const price = +event.target.value;
+        this.price.sale = price;
+
+        const ptr = +this.current.price.ptr;
+        const mrp = +this.current.price.mrp;
+
+        const margin = ((price-ptr)/ptr) * 100;
+        const discount = ((mrp-price)/mrp) * 100;
+
+        this.current.price.margin = Math.round(margin);
+        this.current.price.discount = Math.round(discount);
     }
 
     priceData(event:any){
@@ -62,7 +83,7 @@ export class ProductPriceChangeComponent {
     }
 
     isValid(){
-        return this.price.save != '' && this.price.date != null 
+        return this.price.sale != '' && this.price.date != null
         && this.price.reason != '';
     }
 }

@@ -31,6 +31,8 @@ import { SaleHistoryCustomerComponent } from "./components/sale-history-customer
 import { CustomersModule } from "../customers/customers.module";
 import { DocumentsModule } from "../documents/documents.module";
 import { MultiSelectModule } from "primeng/multiselect";
+import { IntentListComponent } from "./intent/intent-list.component";
+import { IntentFormComponent } from "./intent/intent-form.component";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
@@ -43,7 +45,11 @@ const routes: Routes = [
     {path: 'view/:id', component: SaleViewComponent }
   ], canActivate:[AuthGuard]},
   {path: 'reminders', component: SaleReminderComponent, canActivate:[AuthGuard]},
-  {path: 'deliveries', component: SaleDeliveryComponent, canActivate:[AuthGuard]}
+  {path: 'deliveries', component: SaleDeliveryComponent, canActivate:[AuthGuard]},
+  {path: 'intent', component: IntentListComponent, canActivate:[AuthGuard]},
+  {path: 'intent/new', component: IntentFormComponent, canActivate:[AuthGuard]},
+  {path: 'intent/edit/:id', component: IntentFormComponent, canActivate:[AuthGuard]},
+  {path: 'intent/view/:id', component: IntentFormComponent, canActivate:[AuthGuard]}
 ];
 
 @NgModule({
@@ -64,7 +70,9 @@ const routes: Routes = [
       SaleReturnFormComponent,
       SaleReminderComponent,
       SaleDeliveryComponent,
-      SaleDeliveryFormComponent
+      SaleDeliveryFormComponent,
+      IntentListComponent,
+      IntentFormComponent
     ],
     imports: [
         CommonModule,

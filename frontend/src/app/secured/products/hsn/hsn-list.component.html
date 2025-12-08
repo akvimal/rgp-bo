@@ -1,0 +1,152 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">HSN Tax Code Management</h4>
+          <button class="btn btn-light btn-sm" (click)="createNew()">
+            <i class="bi bi-plus-circle"></i> Add New HSN Code
+          </button>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="card-body" *ngIf="statistics.length > 0">
+          <h5>Statistics by Category</h5>
+          <div class="row">
+            <div class="col-md-3" *ngFor="let stat of statistics">
+              <div class="card bg-light mb-3">
+                <div class="card-body">
+                  <h6 class="card-title">{{stat.tax_category || 'No Category'}}</h6>
+                  <p class="mb-1"><strong>Total Codes:</strong> {{stat.total_codes}}</p>
+                  <p class="mb-1"><strong>Active:</strong> {{stat.active_codes}}</p>
+                  <p class="mb-0"><strong>Avg Tax:</strong> {{stat.avg_tax_rate}}%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="card-body border-top">
+          <h5>Filters</h5>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Search</label>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Search by HSN code or description"
+                [(ngModel)]="searchTerm"
+                (keyup.enter)="applyFilters()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Category</label>
+              <select class="form-select" [(ngModel)]="selectedCategory">
+                <option value="">All Categories</option>
+                <option *ngFor="let cat of categories" [value]="cat">{{cat}}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Status</label>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="activeOnlyCheck"
+                  [(ngModel)]="activeOnly">
+                <label class="form-check-label" for="activeOnlyCheck">
+                  Active Only
+                </label>
+              </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-primary me-2" (click)="applyFilters()">
+                <i class="bi bi-search"></i> Search
+              </button>
+              <button class="btn btn-secondary" (click)="clearFilters()">
+                <i class="bi bi-arrow-clockwise"></i> Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HSN Table -->
+        <div class="card-body">
+          <div *ngIf="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <div *ngIf="!loading && filteredCodes.length === 0" class="alert alert-info">
+            No HSN codes found. Try adjusting your filters or create a new one.
+          </div>
+
+          <div *ngIf="!loading && filteredCodes.length > 0" class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>HSN Code</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>CGST %</th>
+                  <th>SGST %</th>
+                  <th>IGST %</th>
+                  <th>Total Tax %</th>
+                  <th>Effective From</th>
+                  <th>Effective To</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let hsn of filteredCodes">
+                  <td><strong>{{hsn.hsncode}}</strong></td>
+                  <td>{{hsn.hsndescription}}</td>
+                  <td>
+                    <span class="badge bg-info">{{hsn.taxcategory || 'N/A'}}</span>
+                  </td>
+                  <td>{{hsn.cgstrate}}%</td>
+                  <td>{{hsn.sgstrate}}%</td>
+                  <td>{{hsn.igstrate}}%</td>
+                  <td>
+                    <strong class="text-primary">{{getTotalTaxRate(hsn)}}%</strong>
+                  </td>
+                  <td>{{hsn.effectivefrom | date:'mediumDate'}}</td>
+                  <td>{{hsn.effectiveto | date:'mediumDate'}}</td>
+                  <td>
+                    <span
+                      class="badge"
+                      [ngClass]="hsn.isActive ? 'bg-success' : 'bg-secondary'">
+                      {{hsn.isActive ? 'Active' : 'Inactive'}}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      class="btn btn-sm btn-primary me-1"
+                      (click)="editHsn(hsn.id)"
+                      title="Edit">
+                      <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger"
+                      (click)="deleteHsn(hsn)"
+                      title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div *ngIf="!loading && filteredCodes.length > 0" class="mt-3">
+            <p class="text-muted">
+              Showing {{filteredCodes.length}} HSN code(s)
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

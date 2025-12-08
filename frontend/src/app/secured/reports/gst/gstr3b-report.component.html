@@ -1,0 +1,341 @@
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2>GSTR-3B Report</h2>
+          <p class="text-muted mb-0">Monthly Summary Return with Tax Payment</p>
+        </div>
+        <div>
+          <a routerLink="/secure/reports/gst/dashboard" class="btn btn-sm btn-outline-secondary mr-2">
+            <i class="fa fa-arrow-left"></i> Back to Dashboard
+          </a>
+          <button class="btn btn-sm btn-outline-primary" (click)="refresh()">
+            <i class="fa fa-refresh"></i> Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Month Selector -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <button class="btn btn-sm btn-outline-secondary" (click)="previousMonth()">
+              <i class="bi bi-chevron-left"></i> Previous
+            </button>
+            <h4 class="mb-0">{{ getMonthDisplay() }}</h4>
+            <button class="btn btn-sm btn-outline-secondary" (click)="nextMonth()">
+              Next <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-1">Filing Due Date</h6>
+          <h5 class="mb-0 text-danger">20th of next month</h5>
+          <small class="text-muted">Payment due with return filing</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="row" *ngIf="loading">
+    <div class="col-12">
+      <div class="text-center py-5">
+        <div class="spinner-border" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <p class="mt-2">Loading GSTR-3B report...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Content -->
+  <div *ngIf="!loading && reportData">
+    <!-- Tax Liability Summary -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-primary">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Tax Liability Summary</h5>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-md-3">
+                <h6 class="text-muted">Output Tax (Sales)</h6>
+                <h3 class="text-success">{{ formatCurrency(gstSummary?.sales?.totalTax) }}</h3>
+                <small class="text-muted">Table 3.1</small>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted">ITC Available (Purchases)</h6>
+                <h3 class="text-info">{{ formatCurrency(gstSummary?.purchases?.eligibleItc) }}</h3>
+                <small class="text-muted">Table 4</small>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted">Net Tax Payable</h6>
+                <h3 class="text-danger">{{ formatCurrency(getNetTaxPayable()) }}</h3>
+                <small class="text-muted">Output - ITC</small>
+              </div>
+              <div class="col-md-3">
+                <h6 class="text-muted">Interest (if late)</h6>
+                <h3 class="text-warning">₹0.00</h3>
+                <small class="text-muted">18% per annum</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table 3.1: Details of Outward Supplies -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Table 3.1 - Details of Outward Supplies and Inward Supplies liable to reverse charge</h5>
+            <button class="btn btn-sm btn-success" (click)="exportToCsv()" [disabled]="salesSummary.length === 0">
+              <i class="fa fa-download"></i> Export CSV
+            </button>
+          </div>
+          <div class="card-body">
+            <div *ngIf="salesSummary.length === 0" class="alert alert-info">
+              No sales data found for this period.
+            </div>
+
+            <div *ngIf="salesSummary.length > 0">
+              <div class="table-responsive">
+                <table class="table table-bordered">
+                  <thead class="thead-light">
+                    <tr>
+                      <th rowspan="2" class="align-middle">Nature of Supplies</th>
+                      <th rowspan="2" class="align-middle text-right">Taxable Value</th>
+                      <th colspan="2" class="text-center">Central Tax</th>
+                      <th colspan="2" class="text-center">State/UT Tax</th>
+                      <th colspan="2" class="text-center">Integrated Tax</th>
+                      <th rowspan="2" class="align-middle text-right">Total Tax</th>
+                    </tr>
+                    <tr>
+                      <th class="text-center">Rate</th>
+                      <th class="text-right">Amount</th>
+                      <th class="text-center">Rate</th>
+                      <th class="text-right">Amount</th>
+                      <th class="text-center">Rate</th>
+                      <th class="text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let item of salesSummary">
+                      <td>Outward taxable supplies ({{ item.tax_rate }}% GST)</td>
+                      <td class="text-right">{{ formatCurrency(item.total_taxable_value) }}</td>
+                      <td class="text-center">{{ (item.tax_rate / 2) }}%</td>
+                      <td class="text-right">{{ formatCurrency(item.cgst_amount) }}</td>
+                      <td class="text-center">{{ (item.tax_rate / 2) }}%</td>
+                      <td class="text-right">{{ formatCurrency(item.sgst_amount) }}</td>
+                      <td class="text-center">{{ item.tax_rate }}%</td>
+                      <td class="text-right">{{ formatCurrency(item.igst_amount) }}</td>
+                      <td class="text-right">
+                        <strong>{{ formatCurrency((item.cgst_amount || 0) + (item.sgst_amount || 0) + (item.igst_amount || 0)) }}</strong>
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot class="table-active">
+                    <tr>
+                      <th colspan="2">Total Output Tax</th>
+                      <th colspan="2" class="text-right">
+                        {{ formatCurrency(getTotalCgst()) }}
+                      </th>
+                      <th colspan="2" class="text-right">
+                        {{ formatCurrency(getTotalSgst()) }}
+                      </th>
+                      <th colspan="2" class="text-right">
+                        {{ formatCurrency(getTotalIgst()) }}
+                      </th>
+                      <th class="text-right">
+                        <strong>{{ formatCurrency(getTotalOutputTax()) }}</strong>
+                      </th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table 4: Eligible ITC -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Table 4 - Eligible ITC (Input Tax Credit)</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Details</th>
+                    <th class="text-right">Central Tax</th>
+                    <th class="text-right">State/UT Tax</th>
+                    <th class="text-right">Integrated Tax</th>
+                    <th class="text-right">Total ITC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>(A) ITC Available (whether in full or part)</td>
+                    <td class="text-right">{{ formatCurrency(itcAvailable?.totalCgst) }}</td>
+                    <td class="text-right">{{ formatCurrency(itcAvailable?.totalSgst) }}</td>
+                    <td class="text-right">{{ formatCurrency(itcAvailable?.totalIgst) }}</td>
+                    <td class="text-right">
+                      <strong>{{ formatCurrency(getTotalItcAvailable()) }}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>(1) Import of goods</td>
+                    <td class="text-right">-</td>
+                    <td class="text-right">-</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                  </tr>
+                  <tr>
+                    <td>(2) Import of services</td>
+                    <td class="text-right">-</td>
+                    <td class="text-right">-</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                  </tr>
+                  <tr>
+                    <td>(3) Inward supplies liable to reverse charge</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                  </tr>
+                  <tr>
+                    <td>(4) Inward supplies from ISD</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                    <td class="text-right">₹0.00</td>
+                  </tr>
+                  <tr>
+                    <td>(5) All other ITC</td>
+                    <td class="text-right">{{ formatCurrency(itcAvailable?.totalCgst) }}</td>
+                    <td class="text-right">{{ formatCurrency(itcAvailable?.totalSgst) }}</td>
+                    <td class="text-right">{{ formatCurrency(itcAvailable?.totalIgst) }}</td>
+                    <td class="text-right">
+                      <strong>{{ formatCurrency(getTotalItcAvailable()) }}</strong>
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="table-active">
+                  <tr>
+                    <th>Total ITC Available (A)</th>
+                    <th class="text-right">{{ formatCurrency(itcAvailable?.totalCgst) }}</th>
+                    <th class="text-right">{{ formatCurrency(itcAvailable?.totalSgst) }}</th>
+                    <th class="text-right">{{ formatCurrency(itcAvailable?.totalIgst) }}</th>
+                    <th class="text-right">
+                      <strong>{{ formatCurrency(getTotalItcAvailable()) }}</strong>
+                    </th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div class="alert alert-info mt-3">
+              <i class="fa fa-info-circle"></i>
+              <strong>Note:</strong> ITC can only be claimed after GSTR-2B verification.
+              Ensure all purchase invoices are verified against GSTR-2B before claiming ITC.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Summary -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-danger">
+          <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Table 5 - Payment Summary</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Description</th>
+                    <th class="text-right">Central Tax</th>
+                    <th class="text-right">State/UT Tax</th>
+                    <th class="text-right">Integrated Tax</th>
+                    <th class="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Tax Payable (Output Tax - ITC)</td>
+                    <td class="text-right">
+                      {{ formatCurrency(getNetCgstPayable()) }}
+                    </td>
+                    <td class="text-right">
+                      {{ formatCurrency(getNetSgstPayable()) }}
+                    </td>
+                    <td class="text-right">
+                      {{ formatCurrency(getNetIgstPayable()) }}
+                    </td>
+                    <td class="text-right">
+                      <strong class="text-danger">{{ formatCurrency(getNetTaxPayable()) }}</strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="alert alert-warning mt-3">
+              <i class="fa fa-exclamation-triangle"></i>
+              <strong>Payment Due:</strong> The above tax amount must be paid by <strong>20th of next month</strong>.
+              Late payment attracts interest at 18% per annum.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Filing Instructions</h5>
+          </div>
+          <div class="card-body">
+            <ol>
+              <li>Verify all sales and purchase data is correctly captured</li>
+              <li>Reconcile ITC with GSTR-2B data from GST portal</li>
+              <li>Calculate net tax payable (Output Tax - ITC)</li>
+              <li>Make payment through GST portal (Challan PMT-06)</li>
+              <li>File GSTR-3B return on GST portal by 20th of next month</li>
+              <li>Save acknowledgment and payment receipts</li>
+            </ol>
+
+            <div class="alert alert-info">
+              <i class="fa fa-lightbulb-o"></i>
+              <strong>Tip:</strong> File GSTR-1 first (by 11th), then reconcile with GSTR-2B, and finally file GSTR-3B with payment (by 20th).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

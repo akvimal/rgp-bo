@@ -1,10 +1,12 @@
 import { PurchaseInvoiceService } from "./purchase-invoice.service";
+import { TaxCreditService } from "./tax-credit.service";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { UpdateInvoicesDto } from "./dto/update-invoices.dto";
 import { User } from "src/core/decorator/user.decorator";
+import { CreateTaxCreditDto, UpdateTaxCreditDto, ReportMismatchDto } from "./dto/create-tax-credit.dto";
 
 @ApiTags('PurchaseInvoices')
 @Controller('purchases')
@@ -12,7 +14,10 @@ import { User } from "src/core/decorator/user.decorator";
 @UseGuards(AuthGuard)
 export class PurchaseInvoiceController {
 
-    constructor(private purchaseInvoiceService:PurchaseInvoiceService){}
+    constructor(
+        private purchaseInvoiceService:PurchaseInvoiceService,
+        private taxCreditService: TaxCreditService
+    ){}
 
     @Get('/:id')
     async findById(@Param('id') id: string) {
@@ -170,5 +175,60 @@ export class PurchaseInvoiceController {
     async deletePayment(@Param('paymentId') paymentId: string) {
       await this.purchaseInvoiceService.deletePayment(parseInt(paymentId));
       return { message: 'Payment deleted successfully' };
+    }
+
+    // ========== Tax Credit Reconciliation Endpoints ==========
+
+    @Post('/:id/tax-credits')
+    @ApiOperation({ summary: 'Create tax credit record for invoice' })
+    @ApiResponse({ status: 201, description: 'Tax credit created successfully' })
+    @ApiResponse({ status: 400, description: 'Invalid data or tax credit already exists' })
+    async createTaxCredit(
+      @Param('id') id: string,
+      @Body() dto: CreateTaxCreditDto,
+      @User() currentUser: any
+    ) {
+      return this.taxCreditService.create({ ...dto, invoiceid: parseInt(id) }, currentUser.id);
+    }
+
+    @Get('/:id/tax-credits')
+    @ApiOperation({ summary: 'Get tax credit record by invoice ID' })
+    @ApiResponse({ status: 200, description: 'Returns tax credit record' })
+    async getTaxCreditByInvoice(@Param('id') id: string) {
+      return this.taxCreditService.findByInvoice(parseInt(id));
+    }
+
+    @Put('/tax-credits/:taxCreditId/filing-status')
+    @ApiOperation({ summary: 'Update tax filing status' })
+    @ApiResponse({ status: 200, description: 'Filing status updated successfully' })
+    @ApiResponse({ status: 400, description: 'Tax credit not found' })
+    async updateTaxFilingStatus(
+      @Param('taxCreditId') taxCreditId: string,
+      @Body() dto: UpdateTaxCreditDto,
+      @User() currentUser: any
+    ) {
+      await this.taxCreditService.updateFilingStatus(parseInt(taxCreditId), dto, currentUser.id);
+      return { message: 'Filing status updated successfully' };
+    }
+
+    @Put('/tax-credits/:taxCreditId/mismatch')
+    @ApiOperation({ summary: 'Report tax mismatch' })
+    @ApiResponse({ status: 200, description: 'Mismatch reported successfully' })
+    @ApiResponse({ status: 400, description: 'Tax credit not found' })
+    async reportTaxMismatch(
+      @Param('taxCreditId') taxCreditId: string,
+      @Body() dto: ReportMismatchDto,
+      @User() currentUser: any
+    ) {
+      await this.taxCreditService.reportMismatch(parseInt(taxCreditId), dto, currentUser.id);
+      return { message: 'Mismatch reported successfully' };
+    }
+
+    @Delete('/tax-credits/:taxCreditId')
+    @ApiOperation({ summary: 'Delete tax credit record' })
+    @ApiResponse({ status: 200, description: 'Tax credit deleted successfully' })
+    async deleteTaxCredit(@Param('taxCreditId') taxCreditId: string) {
+      await this.taxCreditService.delete(parseInt(taxCreditId));
+      return { message: 'Tax credit deleted successfully' };
     }
 }

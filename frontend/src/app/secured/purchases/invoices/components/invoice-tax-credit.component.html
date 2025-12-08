@@ -1,0 +1,250 @@
+<div class="card mt-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-file-earmark-text"></i> Tax Credit Reconciliation
+            </h5>
+            <button type="button" class="btn btn-primary btn-sm" (click)="showAddForm()"
+                    *ngIf="!showAddTaxForm">
+                <i class="bi bi-plus-circle"></i> Add Tax Credit
+            </button>
+        </div>
+
+        <!-- Error Message -->
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" *ngIf="errorMessage">
+            {{ errorMessage }}
+            <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+        </div>
+
+        <!-- Add/Edit Tax Credit Form -->
+        <div class="card mb-4 border-primary" *ngIf="showAddTaxForm">
+            <div class="card-body">
+                <h6 class="card-title">{{ editingTaxCredit ? 'Edit Tax Credit' : 'Add Tax Credit Record' }}</h6>
+
+                <form [formGroup]="taxForm" (ngSubmit)="submitTaxCredit()">
+                    <div class="row g-3">
+                        <!-- GST Filing Month -->
+                        <div class="col-md-3">
+                            <label for="gstfilingmonth" class="form-label">GST Filing Month *</label>
+                            <input type="month" class="form-control" id="gstfilingmonth" formControlName="gstfilingmonth">
+                            <div class="invalid-feedback" *ngIf="taxForm.get('gstfilingmonth')?.invalid && taxForm.get('gstfilingmonth')?.touched">
+                                Filing month is required
+                            </div>
+                        </div>
+
+                        <!-- Vendor GSTIN -->
+                        <div class="col-md-3">
+                            <label for="vendorgstin" class="form-label">Vendor GSTIN *</label>
+                            <input type="text" class="form-control" id="vendorgstin" formControlName="vendorgstin"
+                                   placeholder="22AAAAA0000A1Z5" maxlength="15">
+                            <div class="invalid-feedback" *ngIf="taxForm.get('vendorgstin')?.invalid && taxForm.get('vendorgstin')?.touched">
+                                Valid GSTIN required (15 chars)
+                            </div>
+                        </div>
+
+                        <!-- Taxable Amount -->
+                        <div class="col-md-3">
+                            <label for="taxableamount" class="form-label">Taxable Amount *</label>
+                            <input type="number" class="form-control" id="taxableamount" formControlName="taxableamount"
+                                   step="0.01" min="0">
+                            <div class="invalid-feedback" *ngIf="taxForm.get('taxableamount')?.invalid && taxForm.get('taxableamount')?.touched">
+                                Taxable amount is required
+                            </div>
+                        </div>
+
+                        <!-- Total Tax Credit -->
+                        <div class="col-md-3">
+                            <label for="totaltaxcredit" class="form-label">Total Tax Credit *</label>
+                            <input type="number" class="form-control" id="totaltaxcredit" formControlName="totaltaxcredit"
+                                   step="0.01" min="0">
+                            <div class="invalid-feedback" *ngIf="taxForm.get('totaltaxcredit')?.invalid && taxForm.get('totaltaxcredit')?.touched">
+                                Total tax credit is required
+                            </div>
+                        </div>
+
+                        <!-- CGST Amount -->
+                        <div class="col-md-3">
+                            <label for="cgstamount" class="form-label">CGST Amount</label>
+                            <input type="number" class="form-control" id="cgstamount" formControlName="cgstamount"
+                                   step="0.01" min="0" placeholder="Optional">
+                        </div>
+
+                        <!-- SGST Amount -->
+                        <div class="col-md-3">
+                            <label for="sgstamount" class="form-label">SGST Amount</label>
+                            <input type="number" class="form-control" id="sgstamount" formControlName="sgstamount"
+                                   step="0.01" min="0" placeholder="Optional">
+                        </div>
+
+                        <!-- IGST Amount -->
+                        <div class="col-md-3">
+                            <label for="igstamount" class="form-label">IGST Amount</label>
+                            <input type="number" class="form-control" id="igstamount" formControlName="igstamount"
+                                   step="0.01" min="0" placeholder="Optional">
+                        </div>
+
+                        <!-- Filing Status -->
+                        <div class="col-md-3">
+                            <label for="filingstatus" class="form-label">Filing Status *</label>
+                            <select class="form-select" id="filingstatus" formControlName="filingstatus">
+                                <option *ngFor="let status of filingStatuses" [value]="status">{{ status }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="col-md-12">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" formControlName="notes" rows="2"
+                                      placeholder="Any additional notes or comments"></textarea>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary" [disabled]="!taxForm.valid || loading">
+                                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                                {{ editingTaxCredit ? 'Update Tax Credit' : 'Add Tax Credit' }}
+                            </button>
+                            <button type="button" class="btn btn-secondary ms-2" (click)="cancelForm()">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tax Credits List -->
+        <div class="table-responsive" *ngIf="taxCredits.length > 0">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Filing Month</th>
+                        <th>GSTIN</th>
+                        <th>Taxable Amt</th>
+                        <th>CGST</th>
+                        <th>SGST</th>
+                        <th>IGST</th>
+                        <th>Total Tax</th>
+                        <th>Status</th>
+                        <th>Mismatch</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let tc of taxCredits" [class.table-warning]="tc.hasmismatch">
+                        <td>{{ formatMonth(tc.gstfilingmonth) }}</td>
+                        <td><small>{{ tc.vendorgstin }}</small></td>
+                        <td>₹ {{ formatAmount(tc.taxableamount) }}</td>
+                        <td>{{ tc.cgstamount ? '₹ ' + formatAmount(tc.cgstamount) : '-' }}</td>
+                        <td>{{ tc.sgstamount ? '₹ ' + formatAmount(tc.sgstamount) : '-' }}</td>
+                        <td>{{ tc.igstamount ? '₹ ' + formatAmount(tc.igstamount) : '-' }}</td>
+                        <td><strong>₹ {{ formatAmount(tc.totaltaxcredit) }}</strong></td>
+                        <td>
+                            <span [ngClass]="getFilingStatusBadgeClass(tc.filingstatus)">
+                                {{ tc.filingstatus }}
+                            </span>
+                        </td>
+                        <td>
+                            <span *ngIf="tc.hasmismatch" class="badge bg-danger">
+                                <i class="bi bi-exclamation-triangle"></i> Yes
+                                <div *ngIf="tc.mismatchamount">
+                                    <small>₹{{ formatAmount(tc.mismatchamount) }}</small>
+                                </div>
+                            </span>
+                            <span *ngIf="!tc.hasmismatch" class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> No
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <!-- Edit -->
+                                <button type="button" class="btn btn-outline-primary"
+                                        (click)="editTaxCredit(tc)" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+
+                                <!-- Mark as Filed (if PENDING) -->
+                                <button type="button" class="btn btn-outline-info"
+                                        (click)="markAsFiled(tc.id!)"
+                                        *ngIf="tc.filingstatus === 'PENDING'" title="Mark as Filed by Vendor">
+                                    <i class="bi bi-file-check"></i>
+                                </button>
+
+                                <!-- Mark as Reflected in 2A (if FILED) -->
+                                <button type="button" class="btn btn-outline-success"
+                                        (click)="markAsReflectedIn2A(tc.id!)"
+                                        *ngIf="tc.filingstatus === 'FILED_BY_VENDOR'" title="Mark as Reflected in GSTR-2A">
+                                    <i class="bi bi-check2-square"></i>
+                                </button>
+
+                                <!-- Mark as Claimed (if REFLECTED) -->
+                                <button type="button" class="btn btn-outline-primary"
+                                        (click)="markAsClaimed(tc.id!)"
+                                        *ngIf="tc.filingstatus === 'REFLECTED_IN_2A'" title="Mark as Claimed">
+                                    <i class="bi bi-check-all"></i>
+                                </button>
+
+                                <!-- Report Mismatch -->
+                                <button type="button" class="btn btn-outline-warning"
+                                        (click)="reportMismatch(tc.id!)"
+                                        *ngIf="!tc.hasmismatch" title="Report Mismatch">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                </button>
+
+                                <!-- Resolve Mismatch -->
+                                <button type="button" class="btn btn-outline-success"
+                                        (click)="resolveMismatch(tc.id!)"
+                                        *ngIf="tc.hasmismatch && !tc.mismatchresolved" title="Resolve Mismatch">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+
+                                <!-- Delete -->
+                                <button type="button" class="btn btn-outline-danger"
+                                        (click)="deleteTaxCredit(tc.id!)" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- No Tax Credits Message -->
+        <div class="alert alert-info" *ngIf="taxCredits.length === 0 && !showAddTaxForm">
+            <i class="bi bi-info-circle"></i> No tax credit records yet. Click "Add Tax Credit" to start tracking GST tax credits for this invoice.
+        </div>
+
+        <!-- Tax Credit Workflow Info -->
+        <div class="card bg-light mt-3" *ngIf="!showAddTaxForm">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-info-circle-fill text-primary"></i> Tax Credit Workflow</h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <span class="badge bg-warning text-dark">PENDING</span>
+                        <p class="small mb-0">Tax not yet filed</p>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-primary">FILED_BY_VENDOR</span>
+                        <p class="small mb-0">Vendor filed GSTR-1</p>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-info">REFLECTED_IN_2A</span>
+                        <p class="small mb-0">Visible in GSTR-2A</p>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-success">CLAIMED</span>
+                        <p class="small mb-0">Claimed in GSTR-3B</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="text-center" *ngIf="loading && !showAddTaxForm">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>

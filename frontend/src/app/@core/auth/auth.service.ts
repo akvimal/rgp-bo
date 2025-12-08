@@ -8,9 +8,12 @@ import { environment } from './../../../environments/environment';
 })
 export class AuthService {
 
-  permissions = []
+  permissions: any[] = []
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    // Restore permissions from sessionStorage on app initialization
+    this.loadPermissionsFromStorage();
+  }
     
   public login(cred:any):Observable<any>{
     return this.http.post<any>(`${environment.apiHost}/auth/login`,cred);
@@ -30,6 +33,26 @@ export class AuthService {
 
   public setPermissions(perms:any){
     this.permissions = perms;
+    // Persist permissions to sessionStorage
+    this.savePermissionsToStorage();
+  }
+
+  private savePermissionsToStorage(): void {
+    if (this.permissions && this.permissions.length > 0) {
+      sessionStorage.setItem('permissions', JSON.stringify(this.permissions));
+    }
+  }
+
+  private loadPermissionsFromStorage(): void {
+    const savedPermissions = sessionStorage.getItem('permissions');
+    if (savedPermissions) {
+      try {
+        this.permissions = JSON.parse(savedPermissions);
+      } catch (error) {
+        console.error('Failed to parse saved permissions', error);
+        this.permissions = [];
+      }
+    }
   }
 
   public isFieldAuthorized(field:string){

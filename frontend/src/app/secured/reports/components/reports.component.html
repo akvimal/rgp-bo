@@ -1,6 +1,30 @@
 <div class="pagetitle">
   <h1>Reports</h1>
 </div>
+
+<!-- GST Reports Card -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <div class="card-body" style="padding: 2rem;">
+        <div class="d-flex justify-content-between align-items-center">
+          <div style="color: white;">
+            <h4 style="color: white; margin-bottom: 0.5rem;">
+              <i class="bi bi-file-earmark-text"></i> GST Reports & Filing
+            </h4>
+            <p style="margin-bottom: 0; opacity: 0.9;">
+              GSTR-1, GSTR-3B, ITC Reconciliation, and Compliance Dashboard
+            </p>
+          </div>
+          <a routerLink="/secure/reports/gst/dashboard" class="btn btn-light btn-lg">
+            <i class="bi bi-arrow-right-circle"></i> Open GST Reports
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row">
   <form [formGroup]="form" (ngSubmit)="onSubmit('search')">
     <div class="col-12">

@@ -128,8 +128,8 @@ UPDATE purchase_invoice_item
 SET
   cgst_pcnt = tax_pcnt / 2,
   sgst_pcnt = tax_pcnt / 2,
-  cgst_amount = ROUND((ptr_value * qty * (tax_pcnt / 100)) / 2, 2),
-  sgst_amount = ROUND((ptr_value * qty * (tax_pcnt / 100)) / 2, 2),
+  cgst_amount = ROUND(((ptr_value * qty * (tax_pcnt / 100)) / 2)::NUMERIC, 2),
+  sgst_amount = ROUND(((ptr_value * qty * (tax_pcnt / 100)) / 2)::NUMERIC, 2),
   igst_pcnt = 0,
   igst_amount = 0
 WHERE tax_pcnt IS NOT NULL AND tax_pcnt > 0 AND cgst_pcnt IS NULL;
@@ -408,42 +408,42 @@ CREATE INDEX IF NOT EXISTS idx_inv_doc_requires_review ON purchase_invoice_docum
 
 -- Add check constraints to purchase_invoice
 ALTER TABLE purchase_invoice
-ADD CONSTRAINT IF NOT EXISTS chk_doc_type
+ADD CONSTRAINT chk_doc_type
     CHECK (doc_type IN ('INVOICE', 'DELIVERY_CHALLAN'));
 
 ALTER TABLE purchase_invoice
-ADD CONSTRAINT IF NOT EXISTS chk_payment_status
+ADD CONSTRAINT chk_payment_status
     CHECK (payment_status IN ('UNPAID', 'PARTIAL', 'PAID'));
 
 ALTER TABLE purchase_invoice
-ADD CONSTRAINT IF NOT EXISTS chk_tax_status
+ADD CONSTRAINT chk_tax_status
     CHECK (tax_status IN ('PENDING', 'FILED', 'CREDITED', 'RECONCILED'));
 
 ALTER TABLE purchase_invoice
-ADD CONSTRAINT IF NOT EXISTS chk_lifecycle_status
+ADD CONSTRAINT chk_lifecycle_status
     CHECK (lifecycle_status IN ('OPEN', 'CLOSED'));
 
 -- Add check constraints to purchase_invoice_item
 ALTER TABLE purchase_invoice_item
-ADD CONSTRAINT IF NOT EXISTS chk_item_type
+ADD CONSTRAINT chk_item_type
     CHECK (item_type IN ('REGULAR', 'RETURN', 'SUPPLIED'));
 
 -- Add check constraints to vendor_payment
 ALTER TABLE vendor_payment
-ADD CONSTRAINT IF NOT EXISTS chk_payment_type
+ADD CONSTRAINT chk_payment_type
     CHECK (payment_type IN ('ADVANCE', 'PARTIAL', 'FULL'));
 
 ALTER TABLE vendor_payment
-ADD CONSTRAINT IF NOT EXISTS chk_payment_against
+ADD CONSTRAINT chk_payment_against
     CHECK (payment_against IN ('INVOICE', 'DELIVERY_CHALLAN'));
 
 ALTER TABLE vendor_payment
-ADD CONSTRAINT IF NOT EXISTS chk_vp_payment_status
+ADD CONSTRAINT chk_vp_payment_status
     CHECK (payment_status IN ('PENDING', 'COMPLETED', 'FAILED'));
 
 -- Add foreign key from vendor_payment to documents (for payment proof)
 ALTER TABLE vendor_payment
-ADD CONSTRAINT IF NOT EXISTS payment_proof_doc_fk
+ADD CONSTRAINT payment_proof_doc_fk
     FOREIGN KEY (payment_proof_doc_id) REFERENCES documents(id) ON DELETE SET NULL;
 
 -- ============================================================================

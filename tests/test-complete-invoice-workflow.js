@@ -172,30 +172,31 @@ async function addInvoiceItems() {
             qty: 50,
             total: -10000.00
         },
-        {
-            name: 'Supplied Item',
-            invoiceid: invoiceId,
-            productid: 4,
-            itemtype: 'SUPPLIED',
-            batch: `SUP-${Date.now()}`,
-            challanref: `DC-${Date.now()}`,
-            ptrvalue: 250.00,
-            ptrcost: 25000.00,
-            mrpcost: 300.00,
-            taxpcnt: 18,
-            cgstpcnt: 9,
-            sgstpcnt: 9,
-            cgstamount: 2250.00,
-            sgstamount: 2250.00,
-            qty: 100,
-            total: 29500.00
-        }
+        // Commented out - requires product ID 4 and delivery challan setup
+        // {
+        //     name: 'Supplied Item',
+        //     invoiceid: invoiceId,
+        //     productid: 4,
+        //     itemtype: 'SUPPLIED',
+        //     batch: `SUP-${Date.now()}`,
+        //     challanref: `DC-${Date.now()}`,
+        //     ptrvalue: 250.00,
+        //     ptrcost: 25000.00,
+        //     mrpcost: 300.00,
+        //     taxpcnt: 18,
+        //     cgstpcnt: 9,
+        //     sgstpcnt: 9,
+        //     cgstamount: 2250.00,
+        //     sgstamount: 2250.00,
+        //     qty: 100,
+        //     total: 29500.00
+        // }
     ];
 
     console.log(`\nAdding ${items.length} items to invoice...\n`);
 
     for (const item of items) {
-        const result = await apiCall('POST', '/purchases/items', item);
+        const result = await apiCall('POST', '/purchaseitems', item);
 
         if (result.success) {
             itemIds.push(result.data.id);
@@ -225,7 +226,7 @@ async function verifyItems() {
     console.log('║  STEP 4: Verify Invoice Items                          ║');
     console.log('╚════════════════════════════════════════════════════════╝');
 
-    const result = await apiCall('PUT', '/purchases/items', {
+    const result = await apiCall('PUT', '/purchaseitems', {
         ids: itemIds,
         values: { status: 'VERIFIED' }
     });

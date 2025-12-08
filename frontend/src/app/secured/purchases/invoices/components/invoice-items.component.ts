@@ -110,6 +110,68 @@ export class InvoiceItemsComponent {
 
     closeEditItem(){
         this.fetchItems(this.invoice.id);
-        this.displayEditItem = false;    
+        this.displayEditItem = false;
+    }
+
+    updateItemType(itemId: any, event: any) {
+        const newType = event.target.value;
+        const updateData: any = { itemtype: newType };
+
+        // Clear returnreason and challanref when changing type
+        if (newType === 'REGULAR') {
+            updateData.returnreason = null;
+            updateData.challanref = null;
+        } else if (newType === 'RETURN') {
+            updateData.challanref = null;
+        } else if (newType === 'SUPPLIED') {
+            updateData.returnreason = null;
+        }
+
+        this.invService.updateItems([itemId], updateData).subscribe(() => {
+            this.fetchItems(this.invoice.id);
+        });
+    }
+
+    updateItemField(itemId: any, field: string, event: any) {
+        const value = event.target.value;
+        const updateData: any = {};
+        updateData[field] = value;
+
+        this.invService.updateItems([itemId], updateData).subscribe(() => {
+            // Update local item without full refresh
+            const item = this.items.find((i: any) => i.id === itemId);
+            if (item) {
+                item[field] = value;
+            }
+        });
+    }
+
+    /**
+     * Calculate item total with discount and tax applied
+     * Formula: (Rate × Qty) - Discount + Tax
+     */
+    calculateItemTotal(item: any): number {
+        const gross = item.ptrvalue * item.qty;
+        const discount = gross * (item.discpcnt / 100);
+        const amountAfterDiscount = gross - discount;
+        const tax = amountAfterDiscount * (item.taxpcnt / 100);
+        const total = amountAfterDiscount + tax;
+        return total;
+    }
+
+    /**
+     * Handle tax credit update
+     */
+    onTaxUpdated(event: any) {
+        // Refresh invoice to get updated tax status
+        this.fetchItems(this.invoice.id);
+    }
+
+    /**
+     * Handle lifecycle update (when invoice is closed/reopened)
+     */
+    onLifecycleUpdated(event: any) {
+        // Refresh invoice to get updated lifecycle status
+        this.fetchItems(this.invoice.id);
     }
 }

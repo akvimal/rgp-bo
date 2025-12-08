@@ -24,7 +24,11 @@ export class InvoiceItemFormComponent {
         mrpcost: new FormControl('',Validators.required),
         taxpcnt: new FormControl(''),
         discpcnt: new FormControl(''),
-        freeqty: new FormControl('')
+        freeqty: new FormControl(''),
+        // Phase 3 fields
+        itemtype: new FormControl('REGULAR'),
+        returnreason: new FormControl(''),
+        challanref: new FormControl('')
       });
       
     @Input() invoiceid:any;
@@ -40,6 +44,13 @@ export class InvoiceItemFormComponent {
     sellermargin:number = 0;
     customersaving:number = 0;
     batches:any[]=[];
+
+    // Calculation breakdown
+    grossAmount: number = 0;
+    discountAmount: number = 0;
+    amountAfterDisc: number = 0;
+    taxAmount: number = 0;
+    totalWithTax: number = 0;
 
 
     constructor(private invService: InvoiceService, 
@@ -59,6 +70,11 @@ export class InvoiceItemFormComponent {
                 this.form.controls['freeqty'].setValue(data.freeqty);
                 this.form.controls['discpcnt'].setValue(data.discpcnt);
                 this.form.controls['taxpcnt'].setValue(data.taxpcnt);
+
+                // Phase 3 fields
+                this.form.controls['itemtype'].setValue(data.itemtype || 'REGULAR');
+                data.returnreason && this.form.controls['returnreason'].setValue(data.returnreason);
+                data.challanref && this.form.controls['challanref'].setValue(data.challanref);
 
                 if(data.product){
                     this.selectedProduct = data.product;
@@ -121,15 +137,45 @@ export class InvoiceItemFormComponent {
         this.form.controls['freeqty'].setValue('');
         this.form.controls['ptrvalue'].setValue('');
         this.form.controls['discpcnt'].setValue('');
-        this.form.controls['taxpcnt'].setValue('');
+        // Don't clear tax - it should persist for the selected product
+        // this.form.controls['taxpcnt'].setValue('');
         this.total = 0;
         this.sellermargin = 0;
         this.customersaving = 0;
+        this.grossAmount = 0;
+        this.discountAmount = 0;
+        this.amountAfterDisc = 0;
+        this.taxAmount = 0;
+        this.totalWithTax = 0;
     }
 
     selectProduct(event:any){
         this.selectedProduct = event;
-        
+
+        // Fetch product with tax rate from HSN code
+        this.invService.getProductWithTaxRate(this.selectedProduct.id)
+            .subscribe({
+                next: (productWithTax: any) => {
+                    console.log('Product with tax response:', productWithTax);
+
+                    // Auto-populate tax rate if available from HSN
+                    if (productWithTax && productWithTax.taxRate) {
+                        const taxRate = productWithTax.taxRate;
+                        this.form.controls['taxpcnt'].setValue(taxRate.totalRate);
+                        console.log(`✓ Auto-populated tax rate from HSN: ${taxRate.totalRate}% (${taxRate.taxCategory})`);
+                    } else if (productWithTax && productWithTax.taxpcnt) {
+                        // Fallback to product's tax_pcnt if no HSN lookup available
+                        this.form.controls['taxpcnt'].setValue(productWithTax.taxpcnt);
+                        console.log(`✓ Auto-populated tax rate from product.taxpcnt: ${productWithTax.taxpcnt}%`);
+                    } else {
+                        console.warn('⚠ No tax rate found for product:', this.selectedProduct.id);
+                    }
+                },
+                error: (error) => {
+                    console.error('✗ Error fetching product with tax rate:', error);
+                }
+            });
+
         this.selectedProduct && this.invService.findItemsByProduct(this.selectedProduct.id)
             .subscribe((items:any) => {
                 this.batches = items.map((i:any) => {
@@ -148,10 +194,20 @@ export class InvoiceItemFormComponent {
     }
 
     calculateTotal(qty:number,price:number,disc:number,tax:number):number{
-        const gross = qty * price;
-        const gross_after_disc = gross - (gross*(disc/100));
-        const total = gross_after_disc;
-        return isNaN(total) ? 0 : +total.toFixed(2);
+        // Calculate gross amount
+        this.grossAmount = qty * price;
+
+        // Calculate discount amount and amount after discount
+        this.discountAmount = this.grossAmount * (disc / 100);
+        this.amountAfterDisc = this.grossAmount - this.discountAmount;
+
+        // Calculate tax amount
+        this.taxAmount = this.amountAfterDisc * (tax / 100);
+
+        // Calculate final total with tax
+        this.totalWithTax = this.amountAfterDisc + this.taxAmount;
+
+        return isNaN(this.totalWithTax) ? 0 : +this.totalWithTax.toFixed(2);
     }
     
     getPTRAfterTax(){
@@ -159,7 +215,7 @@ export class InvoiceItemFormComponent {
     }
 
     loadexist(){
-        
+
         this.form.controls['ptrvalue'].setValue('')
         this.form.controls['discpcnt'].setValue('')
         this.form.controls['taxpcnt'].setValue('')
@@ -171,7 +227,12 @@ export class InvoiceItemFormComponent {
         this.sellermargin = 0
         this.customersaving = 0
         this.total = 0
-        this.batchfound = false;
+        this.batchfound = false
+        this.grossAmount = 0
+        this.discountAmount = 0
+        this.amountAfterDisc = 0
+        this.taxAmount = 0
+        this.totalWithTax = 0;
 
         this.invService.findItemSalePrice(this.form.value.productid,this.form.value.batch).subscribe((data:any) => {
             if(data.length == 1) {
@@ -218,11 +279,23 @@ export class InvoiceItemFormComponent {
     }
 
     resetValues(){
-        this.selectedProduct = null;  
+        this.selectedProduct = null;
         this.form.reset();
+        // Ensure itemtype defaults to REGULAR after reset
+        this.form.controls['itemtype'].setValue('REGULAR');
         this.total = 0;
         this.sellermargin = 0;
         this.customersaving = 0;
         this.productReset = true;
+        this.grossAmount = 0;
+        this.discountAmount = 0;
+        this.amountAfterDisc = 0;
+        this.taxAmount = 0;
+        this.totalWithTax = 0;
+
+        // Reset productReset flag after a brief delay to allow the component to process the reset
+        setTimeout(() => {
+            this.productReset = false;
+        }, 100);
     }
 }

@@ -1,45 +1,193 @@
-<h5>{{current?.price?.title}}</h5>
-<div class="row mt-4">
-    <div class="col-6">
-        <div class="row">
-            <app-price-adjustor [price]="current?.price" (ready)="priceData($event)"></app-price-adjustor>
-            <div class="col-12 mt-2 d-flex">
-                <div>
-                    <label>Effective Date</label>
-                    <input type="date" class="form-control" [(ngModel)]="price.date">
+<div class="container-fluid">
+    <h4 class="mb-4">{{current?.price?.title}}</h4>
+
+    <!-- Current Pricing Summary Card -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <strong>Current Pricing</strong>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col">
+                    <small class="text-muted">PTR (Purchase Rate)</small>
+                    <h4 class="mb-0 text-info">₹{{current?.price?.ptr || 0 | number:'1.2-2'}}</h4>
                 </div>
-                <div style="margin-left:1em">
-                    <label>Reason</label>
-                    <select class="form-control" [(ngModel)]="price.reason">
-                        <option value="Purchase">Initial</option>
-                        <option value="Purchase">Higher PTR</option>
-                        <option value="Market">Market Pressure</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>    
-            </div>
-            <div class="col-12 mt-2">
-                <label>Comments</label>
-                <textarea class="form-control" [(ngModel)]="price.comments"></textarea>
-            </div>
-            <div class="col-12 mt-2">
-                <button class="btn btn-primary" [disabled]="!isValid()" (click)="onSave()">Save</button>
+                <div class="col">
+                    <small class="text-muted">Current Sale Price</small>
+                    <h4 class="mb-0 text-success">₹{{current?.price?.price || 0 | number:'1.2-2'}}</h4>
+                </div>
+                <div class="col">
+                    <small class="text-muted">MRP (Max Retail Price)</small>
+                    <h4 class="mb-0 text-danger">₹{{current?.price?.mrp || 0 | number:'1.2-2'}}</h4>
+                </div>
+                <div class="col">
+                    <small class="text-muted">Profit Margin</small>
+                    <h4 class="mb-0" [ngClass]="{'text-success': current?.price?.margin >= 25, 'text-warning': current?.price?.margin >= 15 && current?.price?.margin < 25, 'text-danger': current?.price?.margin < 15}">
+                        {{current?.price?.margin || 0}}%
+                    </h4>
+                </div>
+                <div class="col">
+                    <small class="text-muted">Customer Discount</small>
+                    <h4 class="mb-0 text-primary">{{current?.price?.discount || 0}}%</h4>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-6">
-        <div class="row">
-            <div class="col-12">
-                <h6 style="padding:.3em;border-bottom: 4px solid #999;background:#ddd">History</h6>
-                <div>
-                    <div class="change" *ngFor="let h of current.history">
-                        <div>
-                        <strong>{{h.eff_date | date}}</strong>: {{h.sale_price}}
-                        <p><label>{{h.reason}}</label>{{h.comments}}</p>
+
+    <div class="row">
+        <!-- Left Column: Set New Price -->
+        <div class="col-md-7">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <strong>Set New Price</strong>
+                </div>
+                <div class="card-body">
+                    <!-- Visual Price Range Indicator -->
+                    <div class="mb-4">
+                        <label class="form-label"><strong>Sale Price</strong></label>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="text-muted small me-2">PTR: ₹{{current?.price?.ptr || 0}}</span>
+                            <div class="flex-grow-1">
+                                <input type="range"
+                                       class="form-range"
+                                       [min]="current?.price?.ptr || 0"
+                                       [max]="current?.price?.mrp || 0"
+                                       [value]="price?.sale || current?.price?.price || 0"
+                                       step="0.01"
+                                       (input)="onPriceSliderChange($event)">
+                            </div>
+                            <span class="text-muted small ms-2">MRP: ₹{{current?.price?.mrp || 0}}</span>
+                        </div>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">₹</span>
+                            <input type="number"
+                                   class="form-control form-control-lg text-center"
+                                   [(ngModel)]="price.sale"
+                                   [min]="current?.price?.ptr || 0"
+                                   [max]="current?.price?.mrp || 0"
+                                   step="0.01"
+                                   (input)="calculate($event)"
+                                   placeholder="Enter sale price">
+                        </div>
+                        <small class="text-muted">Price must be between PTR (₹{{current?.price?.ptr || 0}}) and MRP (₹{{current?.price?.mrp || 0}})</small>
+                    </div>
+
+                    <!-- Calculated Metrics -->
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <div class="card border-success">
+                                <div class="card-body text-center p-2">
+                                    <small class="text-muted d-block">Profit Margin</small>
+                                    <h5 class="mb-0" [ngClass]="{'text-success': current?.price?.margin >= 25, 'text-warning': current?.price?.margin >= 15 && current?.price?.margin < 25, 'text-danger': current?.price?.margin < 15}">
+                                        {{current?.price?.margin || 0}}%
+                                    </h5>
+                                    <small class="text-muted">₹{{((price?.sale || 0) - (current?.price?.ptr || 0)) | number:'1.2-2'}} profit</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card border-primary">
+                                <div class="card-body text-center p-2">
+                                    <small class="text-muted d-block">Customer Discount</small>
+                                    <h5 class="mb-0 text-primary">{{current?.price?.discount || 0}}%</h5>
+                                    <small class="text-muted">₹{{((current?.price?.mrp || 0) - (price?.sale || 0)) | number:'1.2-2'}} off MRP</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Price Change Details -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Effective Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" [(ngModel)]="price.date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Reason <span class="text-danger">*</span></label>
+                            <select class="form-control" [(ngModel)]="price.reason" required>
+                                <option value="">-- Select Reason --</option>
+                                <option value="Initial">Initial Price</option>
+                                <option value="Purchase">Higher PTR</option>
+                                <option value="Market">Market Pressure</option>
+                                <option value="Competition">Competition</option>
+                                <option value="Promotion">Promotional Offer</option>
+                                <option value="Clearance">Clearance Sale</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Comments</label>
+                        <textarea class="form-control" rows="3" [(ngModel)]="price.comments" placeholder="Add notes about this price change..."></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg" [disabled]="!isValid()" (click)="onSave()">
+                            <i class="bi bi-check-circle"></i> Save New Price
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Price History -->
+        <div class="col-md-5">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <strong>Price History</strong>
+                    <span class="badge bg-secondary float-end">{{current?.history?.length || 0}} changes</span>
+                </div>
+                <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item" *ngFor="let h of current.history; let i = index">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <strong class="text-primary">₹{{h.sale_price | number:'1.2-2'}}</strong>
+                                        <span class="badge bg-success ms-2" *ngIf="i === 0">Current</span>
+                                    </div>
+                                    <small class="text-muted d-block">
+                                        <i class="bi bi-calendar3"></i> {{h.eff_date | date:'mediumDate'}}
+                                    </small>
+                                    <div class="mt-2">
+                                        <span class="badge bg-light text-dark me-1">Margin: {{h.margin_pcnt || 0}}%</span>
+                                        <span class="badge bg-light text-dark">Discount: {{h.discount_pcnt || 0}}%</span>
+                                    </div>
+                                    <div class="mt-2" *ngIf="h.reason">
+                                        <small class="text-muted">
+                                            <strong>Reason:</strong> {{h.reason}}
+                                        </small>
+                                    </div>
+                                    <div class="mt-1" *ngIf="h.comments">
+                                        <small class="text-muted fst-italic">{{h.comments}}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item text-center text-muted" *ngIf="!current?.history || current.history.length === 0">
+                            <small>No price history available</small>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Advanced Pricing Breakdown (Collapsible) -->
+    <div class="card mb-4">
+        <div class="card-header bg-light" style="cursor: pointer;" (click)="showBreakdown = !showBreakdown">
+            <strong><i class="bi bi-calculator"></i> Advanced Pricing Analysis</strong>
+            <i class="bi float-end" [ngClass]="showBreakdown ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+        </div>
+        <div class="card-body" *ngIf="showBreakdown">
+            <app-pricing-breakdown
+                [productId]="productid"
+                [ptr]="current?.price?.ptr || 0"
+                [mrp]="current?.price?.mrp || 0"
+                [quantity]="1"
+                [taxInclusive]="false">
+            </app-pricing-breakdown>
         </div>
     </div>
 </div>

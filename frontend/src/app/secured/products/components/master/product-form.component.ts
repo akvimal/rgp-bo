@@ -4,7 +4,10 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { ProductsService } from "../../products.service";
 import { MessageService } from 'primeng/api';
 import { PropsService } from "src/app/shared/props.service";
+import { HsnService } from "../../hsn/hsn.service";
 import { Observable } from "rxjs";
+import { HttpClient } from "@angular/common/http";
+import { environment } from "src/environments/environment";
 
 @Component({
     templateUrl: 'product-form.component.html'
@@ -12,6 +15,11 @@ import { Observable } from "rxjs";
 export class ProductFormComponent {
 
     productProps$?:Observable<any>;
+    hsnCodes: any[] = [];
+    selectedHsn: any = null;
+    ocrProcessing: boolean = false;
+    ocrResult: any = null;
+    selectedFile: File | null = null;
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -32,28 +40,31 @@ export class ProductFormComponent {
       pack:string = '';
 
       isNew:boolean = false;
-      
-      constructor(private propsService:PropsService, 
-        private service:ProductsService, 
+
+      constructor(private propsService:PropsService,
+        private service:ProductsService,
+        private hsnService: HsnService,
         private messageService: MessageService,
+        private http: HttpClient,
         private router:Router,
         private route:ActivatedRoute){
           this.productProps$ = this.propsService.productProps$;
         }
 
       ngOnInit(){
-        
-        this.isNew = this.route.snapshot.url[0].path === 'new';
-        // (this.isNew || this.form.controls['category'].value === '') && this.form.controls['category'].enable()
 
-        // this.populateProps(this.form.controls['category'].value,undefined);
-        const id = this.route.snapshot.paramMap.get('id'); 
+        this.isNew = this.route.snapshot.url[0].path === 'new';
+
+        // Load all active HSN codes
+        this.loadHsnCodes();
+
+        const id = this.route.snapshot.paramMap.get('id');
 
         id && this.service.findById(id).subscribe((data:any) => {
           this.form.controls['id'].setValue(id);
           this.form.controls['title'].setValue(data.title);
-          this.form.controls['hsn'].setValue(data.hsn);
-          this.form.controls['code'].setValue(data.code);
+          this.form.controls['hsn'].setValue(data.hsnCode || data.hsn_code || data.hsn);
+          this.form.controls['code'].setValue(data.productCode || data.product_code || data.code);
           this.form.controls['pack'].setValue(data.pack);
           this.form.controls['category'].setValue(data.category);
           this.form.controls['mfr'].setValue(data.mfr);
@@ -62,7 +73,35 @@ export class ProductFormComponent {
 
           this.props = data.props;
           this.populateProps(data.category,data.props);
+
+          // Find and set selected HSN
+          const hsnValue = data.hsnCode || data.hsn_code || data.hsn;
+          if (hsnValue) {
+            this.selectedHsn = this.hsnCodes.find(h => h.hsncode === hsnValue);
+          }
         })
+      }
+
+      loadHsnCodes(): void {
+        this.hsnService.getAllHsnTaxCodes({ activeOnly: true }).subscribe({
+          next: (data: any[]) => {
+            // Sort HSN codes in ascending order by hsncode
+            this.hsnCodes = data.sort((a, b) => {
+              const codeA = a.hsncode || '';
+              const codeB = b.hsncode || '';
+              return codeA.localeCompare(codeB);
+            });
+          },
+          error: (error) => {
+            console.error('Error loading HSN codes:', error);
+          }
+        });
+      }
+
+      onHsnSelect(event: any): void {
+        const hsnCode = event.target.value;
+        this.selectedHsn = this.hsnCodes.find(h => h.hsncode === hsnCode);
+        this.form.controls['hsn'].setValue(hsnCode);
       }
 
       populateProps(category:any,values:any){
@@ -181,5 +220,93 @@ export class ProductFormComponent {
       onLookupInput(event:any, field:string){
         this.form.controls[field].setValue(event.toUpperCase());
       }
-      
+
+      onFileSelected(event: any): void {
+        const file = event.target.files[0];
+        if (file) {
+          this.selectedFile = file;
+          this.processImageWithOCR();
+        }
+      }
+
+      processImageWithOCR(): void {
+        if (!this.selectedFile) {
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Please select an image file' });
+          return;
+        }
+
+        this.ocrProcessing = true;
+        this.ocrResult = null;
+
+        const formData = new FormData();
+        formData.append('file', this.selectedFile);
+
+        this.http.post(`${environment.apiHost}/products/ocr/extract?entity=product&id=temp`, formData)
+          .subscribe({
+            next: (response: any) => {
+              this.ocrProcessing = false;
+              this.ocrResult = response;
+
+              if (response.success && response.productInfo) {
+                // Populate form with extracted data
+                this.populateFormFromOCR(response.productInfo);
+                this.messageService.add({
+                  severity: 'success',
+                  summary: 'OCR Completed',
+                  detail: `Product information extracted with ${response.productInfo.confidence} confidence. Please review and edit as needed.`
+                });
+              } else {
+                this.messageService.add({
+                  severity: 'warn',
+                  summary: 'OCR Failed',
+                  detail: response.message || 'Could not extract product information from image'
+                });
+              }
+            },
+            error: (error) => {
+              this.ocrProcessing = false;
+              console.error('OCR error:', error);
+              this.messageService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Failed to process image. Please try again.'
+              });
+            }
+          });
+      }
+
+      populateFormFromOCR(productInfo: any): void {
+        // Populate brand
+        if (productInfo.brand) {
+          this.form.controls['brand'].setValue(productInfo.brand.toUpperCase());
+        }
+
+        // Populate manufacturer
+        if (productInfo.mfr) {
+          this.form.controls['mfr'].setValue(productInfo.mfr.toUpperCase());
+        }
+
+        // Populate title
+        if (productInfo.title) {
+          this.form.controls['title'].setValue(productInfo.title.toUpperCase());
+        }
+
+        // Populate pack size
+        if (productInfo.pack) {
+          this.form.controls['pack'].setValue(productInfo.pack);
+        }
+
+        // Populate HSN code
+        if (productInfo.hsn) {
+          this.form.controls['hsn'].setValue(productInfo.hsn);
+          // Find and select the HSN in dropdown
+          this.selectedHsn = this.hsnCodes.find(h => h.hsncode === productInfo.hsn);
+        }
+
+        // Populate description
+        if (productInfo.description) {
+          this.form.controls['description'].setValue(productInfo.description);
+        }
+      }
+
 }

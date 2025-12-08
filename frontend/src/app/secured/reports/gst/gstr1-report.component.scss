@@ -1,0 +1,67 @@
+.nav-tabs {
+  .nav-link {
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:hover {
+      background-color: #f8f9fa;
+    }
+
+    &.active {
+      font-weight: 600;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+    }
+  }
+}
+
+.card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+  .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+  }
+}
+
+.table {
+  font-size: 0.9rem;
+
+  thead th {
+    border-top: none;
+    font-weight: 600;
+    background-color: #f8f9fa;
+    white-space: nowrap;
+  }
+
+  tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  tfoot tr {
+    font-weight: 600;
+    background-color: #e9ecef;
+  }
+
+  small {
+    font-size: 0.8rem;
+    color: #6c757d;
+  }
+}
+
+@media (max-width: 768px) {
+  .table {
+    font-size: 0.8rem;
+
+    th, td {
+      padding: 0.5rem;
+    }
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+}

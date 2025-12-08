@@ -13,6 +13,7 @@ import { BaseEntity } from "./base.entity";
 import { Customer } from "./customer.entity";
 import { SaleDelivery } from "./sale-delivery.entity";
 import { SaleItem } from "./sale-item.entity";
+import { Store } from "./store.entity";
 
 @Index("sale_pk", ["id"], { unique: true })
 @Entity("sale")
@@ -70,6 +71,13 @@ export class Sale extends BaseEntity {
   @ManyToOne(() => Customer, (customer) => customer.sales)
   @JoinColumn([{ name: "customer_id", referencedColumnName: "id" }])
   customer: Customer;
+
+  @Column("integer", { name: "store_id", nullable: true })
+  storeid: number | null;
+
+  @ManyToOne(() => Store, (store) => store.sales, { nullable: true })
+  @JoinColumn({ name: "store_id" })
+  store: Store | null;
 
   @ManyToOne(() => AppUser, (user) => user.sales)
   @JoinColumn([{ name: "created_by", referencedColumnName: "id" }])

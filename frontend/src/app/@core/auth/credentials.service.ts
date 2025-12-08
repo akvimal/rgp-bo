@@ -34,7 +34,8 @@ export class CredentialsService {
   }
 
   clearCredentials() {
-    sessionStorage.clear();
+    sessionStorage.removeItem(credentialsKey);
+    sessionStorage.removeItem('permissions');
   }
 
   /**

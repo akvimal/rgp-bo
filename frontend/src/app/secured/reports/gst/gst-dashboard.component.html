@@ -1,0 +1,380 @@
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2>GST Reports Dashboard</h2>
+        <button class="btn btn-sm btn-outline-primary" (click)="refresh()">
+          <i class="fa fa-refresh"></i> Refresh
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Month Selector -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <button class="btn btn-sm btn-outline-secondary" (click)="previousMonth()">
+              <i class="bi bi-chevron-left"></i> Previous
+            </button>
+            <h4 class="mb-0">{{ getMonthDisplay() }}</h4>
+            <button class="btn btn-sm btn-outline-secondary" (click)="nextMonth()">
+              Next <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+          <div class="text-center mt-2">
+            <button class="btn btn-sm btn-link" (click)="currentMonth()">
+              <i class="bi bi-calendar-today"></i> Current Month
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Cards -->
+  <div class="row mb-4">
+    <!-- Payment Risk Alert -->
+    <div class="col-md-6 mb-3" *ngIf="getCriticalRiskCount() > 0">
+      <div class="card border-danger">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <i class="fa fa-exclamation-triangle fa-2x text-danger mr-3"></i>
+            <div class="flex-grow-1">
+              <h5 class="card-title text-danger mb-1">ITC Payment Risk</h5>
+              <p class="mb-1">
+                <strong>{{ getCriticalRiskCount() }}</strong> invoices at risk
+              </p>
+              <p class="mb-0 text-muted">
+                Total ITC at risk: {{ formatCurrency(getTotalItcAtRisk()) }}
+              </p>
+            </div>
+            <button class="btn btn-sm btn-danger" (click)="togglePaymentRiskDetails()">
+              View Details
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Missing Data Alert -->
+    <div class="col-md-6 mb-3" *ngIf="getMissingDataCount() > 0">
+      <div class="card border-warning">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <i class="fa fa-exclamation-circle fa-2x text-warning mr-3"></i>
+            <div class="flex-grow-1">
+              <h5 class="card-title text-warning mb-1">Missing Data</h5>
+              <p class="mb-0">
+                <strong>{{ getMissingDataCount() }}</strong> records need attention
+              </p>
+            </div>
+            <button class="btn btn-sm btn-warning" (click)="toggleMissingDataDetails()">
+              View Details
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GST Summary Cards -->
+  <div class="row mb-4" *ngIf="gstSummary && !loadingSummary">
+    <div class="col-md-3 mb-3">
+      <div class="card bg-primary text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2">Total Sales</h6>
+          <h3 class="mb-0">{{ formatCurrency(gstSummary.sales?.totalSales) }}</h3>
+          <small>{{ gstSummary.sales?.totalInvoices }} invoices</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card bg-success text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2">Output GST</h6>
+          <h3 class="mb-0">{{ formatCurrency(gstSummary.sales?.totalTax) }}</h3>
+          <small>CGST + SGST + IGST</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card bg-info text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2">Total Purchases</h6>
+          <h3 class="mb-0">{{ formatCurrency(gstSummary.purchases?.totalPurchases) }}</h3>
+          <small>{{ gstSummary.purchases?.totalInvoices }} invoices</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
+      <div class="card bg-warning text-white">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2">ITC Available</h6>
+          <h3 class="mb-0">{{ formatCurrency(gstSummary.purchases?.eligibleItc) }}</h3>
+          <small>Input Tax Credit</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Summary -->
+  <div class="row mb-4" *ngIf="loadingSummary">
+    <div class="col-12">
+      <div class="text-center py-4">
+        <div class="spinner-border" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <p class="mt-2">Loading GST summary...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Net GST Liability -->
+  <div class="row mb-4" *ngIf="gstSummary && !loadingSummary">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Net GST Liability</h5>
+          <div class="row">
+            <div class="col-md-3">
+              <p class="mb-1 text-muted">Output GST (Sales)</p>
+              <h4>{{ formatCurrency(gstSummary.sales?.totalTax) }}</h4>
+            </div>
+            <div class="col-md-3">
+              <p class="mb-1 text-muted">Input GST (Purchases)</p>
+              <h4 class="text-info">{{ formatCurrency(gstSummary.purchases?.eligibleItc) }}</h4>
+            </div>
+            <div class="col-md-3">
+              <p class="mb-1 text-muted">Net Payable</p>
+              <h4 class="text-danger">
+                {{ formatCurrency((gstSummary.sales?.totalTax || 0) - (gstSummary.purchases?.eligibleItc || 0)) }}
+              </h4>
+            </div>
+            <div class="col-md-3">
+              <p class="mb-1 text-muted">Due Date</p>
+              <h5 class="text-muted">20th of next month</h5>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Quick Reports</h5>
+          <div class="row">
+            <div class="col-md-3 mb-2">
+              <a routerLink="/secure/reports/gst/gstr1" class="btn btn-outline-primary btn-block">
+                <i class="fa fa-file-text-o mr-2"></i>GSTR-1
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a routerLink="/secure/reports/gst/gstr3b" class="btn btn-outline-primary btn-block">
+                <i class="fa fa-file-text mr-2"></i>GSTR-3B
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <a routerLink="/secure/reports/gst/itc-reconciliation" class="btn btn-outline-primary btn-block">
+                <i class="fa fa-balance-scale mr-2"></i>ITC Reconciliation
+              </a>
+            </div>
+            <div class="col-md-3 mb-2">
+              <button class="btn btn-outline-secondary btn-block" disabled>
+                <i class="fa fa-download mr-2"></i>Export All
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ITC Dashboard (Last 12 Months) -->
+  <div class="row mb-4" *ngIf="!loadingItcDashboard && itcDashboard.length > 0">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">ITC Trend (Last 12 Months)</h5>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th class="text-right">Total Invoices</th>
+                  <th class="text-right">ITC Eligible</th>
+                  <th class="text-right">ITC Claimed</th>
+                  <th class="text-right">Pending</th>
+                  <th class="text-right">GSTR-2B Verified</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let month of itcDashboard.slice(0, 12)">
+                  <td>{{ formatDate(month.invoice_month) }}</td>
+                  <td class="text-right">{{ month.total_invoices }}</td>
+                  <td class="text-right">{{ formatCurrency(month.eligible_itc) }}</td>
+                  <td class="text-right">{{ formatCurrency(month.claimed_itc) }}</td>
+                  <td class="text-right">{{ month.pending_count }}</td>
+                  <td class="text-right">{{ month.gstr2b_verified_count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Risk Details Modal/Expandable -->
+  <div class="row mb-4" *ngIf="showPaymentRiskDetails && itcPaymentRisk.length > 0">
+    <div class="col-12">
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">ITC Payment Risk - Detailed View</h5>
+          <button class="btn btn-sm btn-outline-light" (click)="togglePaymentRiskDetails()">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead>
+                <tr>
+                  <th>Invoice No</th>
+                  <th>Vendor</th>
+                  <th>Invoice Date</th>
+                  <th>Due Date</th>
+                  <th class="text-right">ITC at Risk</th>
+                  <th>Days Remaining</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of itcPaymentRisk">
+                  <td>{{ item.invoice_no }}</td>
+                  <td>
+                    <small>{{ item.vendor_name }}</small><br>
+                    <small class="text-muted">{{ item.vendor_gstin }}</small>
+                  </td>
+                  <td>{{ formatDate(item.invoice_date) }}</td>
+                  <td>{{ formatDate(item.payment_due_date) }}</td>
+                  <td class="text-right">{{ formatCurrency(item.total_itc_at_risk) }}</td>
+                  <td>{{ item.days_remaining }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="getRiskBadgeClass(item.risk_status)">
+                      {{ item.risk_status }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Missing Data Details Modal/Expandable -->
+  <div class="row mb-4" *ngIf="showMissingDataDetails && missingData">
+    <div class="col-12">
+      <div class="card border-warning">
+        <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Missing Data - Detailed View</h5>
+          <button class="btn btn-sm btn-outline-light" (click)="toggleMissingDataDetails()">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div class="card-body">
+          <!-- Sales Missing Customer GSTIN -->
+          <div *ngIf="missingData.salesMissingCustomerGstin?.length > 0" class="mb-4">
+            <h6 class="text-warning">Sales without Customer GSTIN ({{ missingData.salesMissingCustomerGstin.length }})</h6>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Bill No</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of missingData.salesMissingCustomerGstin.slice(0, 10)">
+                    <td>{{ item.bill_no }}</td>
+                    <td>{{ formatDate(item.sale_date) }}</td>
+                    <td>{{ item.customer_name || 'Unknown' }}</td>
+                    <td class="text-right">{{ formatCurrency(item.total) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <small class="text-muted" *ngIf="missingData.salesMissingCustomerGstin.length > 10">
+              Showing 10 of {{ missingData.salesMissingCustomerGstin.length }} records
+            </small>
+          </div>
+
+          <!-- Purchases Missing Vendor GSTIN -->
+          <div *ngIf="missingData.purchasesMissingVendorGstin?.length > 0" class="mb-4">
+            <h6 class="text-warning">Purchases without Vendor GSTIN ({{ missingData.purchasesMissingVendorGstin.length }})</h6>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Vendor</th>
+                    <th class="text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of missingData.purchasesMissingVendorGstin.slice(0, 10)">
+                    <td>{{ item.invoice_no }}</td>
+                    <td>{{ formatDate(item.invoice_date) }}</td>
+                    <td>{{ item.vendor_name || 'Unknown' }}</td>
+                    <td class="text-right">{{ formatCurrency(item.total) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <small class="text-muted" *ngIf="missingData.purchasesMissingVendorGstin.length > 10">
+              Showing 10 of {{ missingData.purchasesMissingVendorGstin.length }} records
+            </small>
+          </div>
+
+          <!-- Products Missing HSN -->
+          <div *ngIf="missingData.productsMissingHsn?.length > 0">
+            <h6 class="text-warning">Products without HSN Code ({{ missingData.productsMissingHsn.length }})</h6>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Product ID</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of missingData.productsMissingHsn.slice(0, 10)">
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <small class="text-muted" *ngIf="missingData.productsMissingHsn.length > 10">
+              Showing 10 of {{ missingData.productsMissingHsn.length }} records
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
