@@ -13,3 +13,6 @@ nul
 # Docker volumes and data
 pgdata/
 uploads/
+
+# Test dependencies
+tests/node_modules/
