@@ -49,13 +49,24 @@ export class PurchaseItemController {
     async createItem(@Body() createPurchaseInvoiceItemDto: CreatePurchaseInvoiceItemDto, @User() currentUser: any) {
         const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);
 
-        this.productService.addPrice({productid: item.productid, saleprice: this.getSalePrice(item.mrpcost,item.taxpcnt), reason: 'Purchase'} , currentUser.id);     
+        // Only add a new price if the product doesn't already have an active price
+        const existingPrice = await this.productService.findPriceById(item.productid);
+        if (!existingPrice || existingPrice.length === 0) {
+          // No existing price found, calculate and add a new one
+          this.productService.addPrice({
+            productid: item.productid,
+            saleprice: this.getSalePrice(item.mrpcost, item.taxpcnt),
+            reason: 'Purchase'
+          }, currentUser.id);
+        }
+        // If existing price found, preserve it (don't overwrite)
+
         await this.purchaseInvoiceService.findAllItemsByInvoice(item.invoiceid).then(async (items:any) => {
           let total = 0;
           items.forEach(item => {
             total += item.total && +item.total;
           })
-          await this.purchaseInvoiceService.update([item.invoiceid],{total:Math.round(total)},currentUser.id)  
+          await this.purchaseInvoiceService.update([item.invoiceid],{total:Math.round(total)},currentUser.id)
         })
         return item;
     }
