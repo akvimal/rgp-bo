@@ -548,20 +548,44 @@ f3ec402c2 - docs: Add comprehensive verification and diagnostic documentation
 - **MANUAL_VERIFICATION_GUIDE.md**: Manual testing procedures
 - **HR_PERFORMANCE_GUIDE.md**: HR features performance optimization
 
-### Project Status & Templates (`docs/`)
-- **PHASE4_INFRASTRUCTURE_COMPLETE.md**: Phase 4 completion status
-- **VERIFICATION_RESULTS.md**: Test results documentation
+### Active Documentation (`docs/`)
+- **ENHANCED_INVOICE_LIFECYCLE.md**: Enhanced invoice lifecycle system
+- **GST_REPORTING_SYSTEM_IMPLEMENTATION.md**: GST reporting implementation
+- **HSN_TAX_MANAGEMENT_GUIDE.md**: HSN code and tax management
+- **GST_FILING_AND_ITC_GUIDE.md**: GST filing and ITC reconciliation
+- **SMART_PO_IMPLEMENTATION_ROADMAP.md**: Smart purchase order roadmap
+- **NEXT_ACTIONS_ROADMAP.md**: Project roadmap and next actions
+- **MULTI_TENANT_STORE_ARCHITECTURE.md**: Multi-store architecture
+- **INVOICE_DOCUMENT_UPLOAD_OCR.md**: Invoice OCR capabilities
+- **PRICING_TAX_ANALYSIS_RECOMMENDATIONS.md**: Pricing and tax analysis
+- **GST_2025_IMPACT_ANALYSIS.md**: GST 2025 impact analysis
+- **AI_API_ERROR_HANDLING.md**: AI API error handling patterns
 - **PULL_REQUEST_TEMPLATE.md**: PR submission template
 - **READY_FOR_PULL_REQUEST.md**: PR readiness checklist
 
 ### Historical Documentation (`docs/archive/`)
+- **phase-completions/**: Phase completion status documents
+  - PHASE1_HSN_TAX_IMPLEMENTATION_COMPLETE.md
+  - PHASE2_ADVANCED_PRICING_COMPLETE.md
+  - PHASE3_COMPLETION_STATUS.md
+  - PHASE4_INFRASTRUCTURE_COMPLETE.md
+- **implementation-summaries/**: Implementation summary documents
+  - AI_API_NOTIFICATION_IMPLEMENTATION.md
+  - GST_REPORTING_FRONTEND_IMPLEMENTATION_COMPLETE.md
+  - GST_REPORTING_IMPLEMENTATION_SUMMARY.md
+  - HSN_TAX_IMPLEMENTATION_SUMMARY.md
+  - MULTI_PRODUCT_INTENT_IMPLEMENTATION.md
 - **hr-implementation/**: HR feature planning and implementation documentation
-- **PROJECT_CLEANUP_2024-11-29.md**: Previous cleanup summary
+- **PROJECT_CLEANUP_2024-11-29.md**: Previous cleanup summary (Nov 2024)
+- **PROJECT_CLEANUP_SUMMARY_2025-12-04.md**: Previous cleanup summary (Dec 2024)
+- **PHASE3_TEST_RESULTS.md**: Phase 3 test results
+- **VERIFICATION_RESULTS.md**: General verification results
 
-### Testing Documentation
-- **tests/README.md**: Testing guide and procedures
-- **tests/CONFIGURATION_GUIDE.md**: Test configuration guide
-- **tests/PHASE3_TESTING.md**: Phase 3 transaction testing documentation
+### Testing Documentation (`tests/`)
+- **README.md**: Comprehensive testing guide with all test files listed
+- **CONFIGURATION_GUIDE.md**: Test configuration guide
+- **PHASE3_TESTING.md**: Phase 3 transaction rollback testing
+- **ENHANCED_INVOICE_LIFECYCLE_TESTING.md**: Enhanced invoice lifecycle testing guide
 
 ---
 
@@ -625,22 +649,45 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2025-12-04
+**Last Updated**: 2025-12-17
 **Maintainer**: Development Team
 **Claude Code Version**: This context is optimized for Claude Code
 
 ---
 
-## Recent Changes (2025-12-04)
+## Recent Changes (2025-12-17)
 
-### Project Cleanup & Organization
+### Project Cleanup & Organization (December 2025)
+- **Root directory cleaned**: Moved 6 implementation documents from root to `docs/`
+  - AI_API_NOTIFICATION_IMPLEMENTATION.md
+  - GST_REPORTING_IMPLEMENTATION_SUMMARY.md
+  - MULTI_PRODUCT_INTENT_IMPLEMENTATION.md
+  - NEXT_ACTIONS_ROADMAP.md
+  - PHASE3_COMPLETION_STATUS.md
+  - PHASE3_TEST_RESULTS.md
+
+- **Documentation archived**: Enhanced organization with new archive subdirectories
+  - `docs/archive/phase-completions/` - Phase 1-4 completion status documents
+  - `docs/archive/implementation-summaries/` - Implementation summary documents
+  - Previous cleanup summaries moved to archive
+
+- **Test documentation improved**:
+  - Renamed PHASE3_TESTING_README.md → ENHANCED_INVOICE_LIFECYCLE_TESTING.md (more descriptive)
+  - Updated tests/README.md with comprehensive test file listing organized by category
+
+- **Redundant files removed**:
+  - sql/migrations/006_enhanced_invoice_lifecycle.sql.backup (redundant backup)
+
+### Previous Changes (2025-12-04)
+
+#### Project Cleanup & Organization
 - **Documentation reorganized**: Created `docs/guides/` for active guides and `docs/archive/` for historical docs
 - **HR documentation archived**: 7 HR implementation planning docs moved to `docs/archive/hr-implementation/`
 - **SQL migrations organized**: Moved `setup-test-db.sql` and `update_hr_permissions.sql` to `sql/migrations/`
 - **System files cleaned**: Removed `.DS_Store` files (already in .gitignore)
 - **Infrastructure updates**: Added Redis cache service, monitoring, and performance logging entities
 
-### New Features (Feature Branch: feature/hr-management)
+#### New Features (Feature Branch: feature/hr-management)
 - **HR Management Module**: Shift management, leave tracking, attendance, performance scoring
 - **Monitoring & Caching**: Redis integration, API usage logging, query performance tracking
 - **Database Schema**: 8 new HR-related entities with comprehensive audit trails
