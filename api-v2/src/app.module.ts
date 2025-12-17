@@ -21,6 +21,7 @@ import { DbBackupService } from './modules/app/backup/db.backup';
 import { HrModule } from './modules/hr/hr.module';
 import { RedisCacheModule } from './core/cache/redis-cache.module';
 import { LookupModule } from './modules/app/lookup/lookup.module';
+import { DownloadModule } from './modules/app/downloads/download.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { LookupModule } from './modules/app/lookup/lookup.module';
     FilesModule,
     ReportModule,
     LookupModule,
+    DownloadModule,
     RedisCacheModule,
     HrModule
   ],

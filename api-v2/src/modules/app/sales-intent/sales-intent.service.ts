@@ -35,16 +35,19 @@ export class SalesIntentService {
                 // Calculate summary values
                 let totalItems = 0;
                 let totalEstimatedCost = 0;
+                let totalRequestedQty = 0;
 
                 if (hasItems && dto.items) {
                     // NEW: Using items array
                     totalItems = dto.items.length;
+                    totalRequestedQty = dto.items.reduce((sum, item) => sum + item.requestedqty, 0);
                     totalEstimatedCost = dto.items.reduce((sum, item) =>
                         sum + ((item.estimatedcost || 0) * item.requestedqty), 0
                     );
                 } else if (hasSingleProduct) {
                     // OLD: Backward compatibility with single-product format
                     totalItems = 1;
+                    totalRequestedQty = dto.requestedqty || 1;
                     totalEstimatedCost = (dto.estimatedcost || 0) * (dto.requestedqty || 1);
                 }
 
@@ -55,7 +58,7 @@ export class SalesIntentService {
                     priority: dto.priority || Priority.MEDIUM,
                     prodid: dto.prodid,
                     productname: dto.productname || '',
-                    requestedqty: dto.requestedqty || 0,
+                    requestedqty: totalRequestedQty,
                     customerid: dto.customerid,
                     customername: dto.customername,
                     customermobile: dto.customermobile,
@@ -191,28 +194,106 @@ export class SalesIntentService {
      * Update sales intent
      */
     async update(id: number, dto: UpdateSalesIntentDto, userId: number): Promise<SalesIntent> {
-        try {
-            const intent = await this.findOne(id);
+        return await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+            try {
+                const intent = await manager.findOne(SalesIntent, {
+                    where: { id, active: true },
+                    relations: ['items'],
+                });
 
-            // Check if intent can be updated
-            if (intent.status === IntentStatus.FULFILLED || intent.status === IntentStatus.CANCELLED) {
-                throw new BadRequestException(`Cannot update ${intent.status} intent`);
+                if (!intent) {
+                    throw new NotFoundException(`Sales intent with ID ${id} not found`);
+                }
+
+                // Check if intent can be updated
+                if (intent.status === IntentStatus.FULFILLED || intent.status === IntentStatus.CANCELLED) {
+                    throw new BadRequestException(`Cannot update ${intent.status} intent`);
+                }
+
+                // Extract items from dto
+                const items = dto.items;
+                const updateData: any = { ...dto };
+                delete updateData.items;
+
+                // Calculate totals if items are provided
+                if (items && items.length > 0) {
+                    const totalItems = items.length;
+                    const totalRequestedQty = items.reduce((sum, item) => sum + (item.requestedqty || 0), 0);
+                    const totalEstimatedCost = items.reduce((sum, item) =>
+                        sum + ((item.estimatedcost || 0) * (item.requestedqty || 0)), 0
+                    );
+
+                    updateData.totalitems = totalItems;
+                    updateData.requestedqty = totalRequestedQty;
+                    updateData.totalestimatedcost = totalEstimatedCost;
+                }
+
+                // Update intent (without items)
+                await manager.update(SalesIntent, id, {
+                    ...updateData,
+                    updatedby: userId,
+                });
+
+                // Handle items if provided
+                if (items) {
+                    // Get existing item IDs
+                    const existingItemIds = intent.items.map(item => item.id);
+                    const updatedItemIds = items.filter(item => item.id).map(item => item.id);
+
+                    // Delete items that are no longer in the array
+                    const itemsToDelete = existingItemIds.filter(id => !updatedItemIds.includes(id));
+                    if (itemsToDelete.length > 0) {
+                        await manager.delete(SalesIntentItem, itemsToDelete);
+                    }
+
+                    // Update or create items
+                    for (const item of items) {
+                        if (item.id) {
+                            // Update existing item
+                            await manager.update(SalesIntentItem, item.id, {
+                                productname: item.productname,
+                                requestedqty: item.requestedqty,
+                                estimatedcost: item.estimatedcost,
+                                itemnotes: item.itemnotes,
+                                prodid: item.prodid,
+                                updatedby: userId,
+                            });
+                        } else {
+                            // Create new item
+                            await manager.save(SalesIntentItem, {
+                                intentid: id,
+                                prodid: item.prodid,
+                                productname: item.productname,
+                                requestedqty: item.requestedqty,
+                                estimatedcost: item.estimatedcost,
+                                itemnotes: item.itemnotes,
+                                createdby: userId,
+                                updatedby: userId,
+                            });
+                        }
+                    }
+                }
+
+                this.logger.log(`Sales intent ${id} updated by user ${userId}`);
+
+                // Fetch and return updated intent
+                const updatedIntent = await manager.findOne(SalesIntent, {
+                    where: { id },
+                    relations: ['items', 'product', 'customer', 'purchaseorder'],
+                });
+
+                if (!updatedIntent) {
+                    throw new NotFoundException(`Sales intent with ID ${id} not found after update`);
+                }
+
+                return updatedIntent;
+
+            } catch (error) {
+                if (error instanceof HttpException) throw error;
+                this.logger.error(`Failed to update sales intent ${id}: ${error.message}`, error.stack);
+                throw new HttpException('Failed to update sales intent', HttpStatus.INTERNAL_SERVER_ERROR);
             }
-
-            // Update intent
-            await this.salesIntentRepository.update(id, {
-                ...dto,
-                updatedby: userId,
-            });
-
-            this.logger.log(`Sales intent ${id} updated by user ${userId}`);
-            return this.findOne(id);
-
-        } catch (error) {
-            if (error instanceof HttpException) throw error;
-            this.logger.error(`Failed to update sales intent ${id}: ${error.message}`, error.stack);
-            throw new HttpException('Failed to update sales intent', HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        });
     }
 
     /**

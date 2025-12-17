@@ -24,6 +24,9 @@ export class ProductService {
           if(query.title){
             qb.andWhere(`p.title = :ttl`, { ttl:query.title });
           }
+          if(query.search){
+            qb.andWhere(`p.title ILIKE :search`, { search: `%${query.search}%` });
+          }
           qb.orderBy('p.updatedon','DESC')
         return qb.getMany();
     }

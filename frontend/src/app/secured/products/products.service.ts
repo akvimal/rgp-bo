@@ -36,7 +36,7 @@ export class ProductsService {
         return this.http.get(`${this.apiurl}/prices/${prodid}`);
     }    
     search(text:any){
-        return this.http.get(`${this.apiurl}/search=${text}`);
+        return this.http.get(`${this.apiurl}?search=${text}`);
     }
 
     save(product:Product){

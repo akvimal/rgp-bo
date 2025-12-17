@@ -2,6 +2,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
 
 export class SalesIntentItemDto {
+    @ApiPropertyOptional({ description: 'Item ID (for updates, omit for new items)' })
+    @IsNumber()
+    @IsOptional()
+    id?: number;
+
     @ApiPropertyOptional({ description: 'Product ID (null for new products not in system)' })
     @IsNumber()
     @IsOptional()

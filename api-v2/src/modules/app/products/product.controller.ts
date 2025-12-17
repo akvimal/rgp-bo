@@ -2,7 +2,7 @@ import { ProductService } from "./product.service";
 import { PricingCalculatorService } from "./pricing-calculator.service";
 import { PricingRulesService } from "./pricing-rules.service";
 import { ProductOcrService } from "./product-ocr.service";
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiQuery, ApiOperation } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateProductDto } from "./dto/create-product.dto";
@@ -99,6 +99,10 @@ export class ProductController {
     }
 
     @Get()
+    @ApiOperation({ summary: 'Get all products with optional filters' })
+    @ApiQuery({ name: 'search', required: false, description: 'Search products by title (case-insensitive partial match)' })
+    @ApiQuery({ name: 'category', required: false, description: 'Filter by exact category' })
+    @ApiQuery({ name: 'title', required: false, description: 'Filter by exact title' })
     findAll(@Query() query: any, @User() currentUser: any) {
       return this.productService.findAll(query,currentUser);
     }

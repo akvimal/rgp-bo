@@ -1,8 +1,21 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Min, MaxLength, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { Type } from 'class-transformer';
 import { IntentType, Priority, IntentStatus, FulfillmentStatus } from 'src/entities/sales-intent.entity';
+import { SalesIntentItemDto } from './sales-intent-item.dto';
 
 export class UpdateSalesIntentDto {
+    @ApiPropertyOptional({
+        description: 'Array of product items (supports multiple products)',
+        type: [SalesIntentItemDto],
+        required: false
+    })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @ArrayMinSize(1)
+    @Type(() => SalesIntentItemDto)
+    @IsOptional()
+    items?: SalesIntentItemDto[];
     @ApiPropertyOptional({ enum: IntentType })
     @IsEnum(IntentType)
     @IsOptional()

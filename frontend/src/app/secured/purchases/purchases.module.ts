@@ -43,11 +43,8 @@ const routes: Routes = [
       { path: 'orders/suggestions', component: SmartPOSuggestionsComponent },
       { path: 'orders/from-intents', component: PurchaseOrderFromIntentsComponent },
       { path: 'orders/new', component: PurchaseOrderFormEnhancedComponent },
-      { path: 'orders', component: PurchaseOrderComponent,
-          children: [
-            { path: ':id', component: PurchaseOrderViewComponent }
-          ]
-      },
+      { path: 'orders/:id', component: PurchaseOrderViewComponent },
+      { path: 'orders', component: PurchaseOrderComponent },
       { path: 'invoices', 
           children: [
             { path: '', redirectTo: 'list'},
