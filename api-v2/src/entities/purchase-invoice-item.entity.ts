@@ -59,6 +59,10 @@ import { ProductClearance } from "./product-clearance.entity";
     @Column("integer", { name: "free_qty" })
     freeqty: number;
 
+    // Pack size at time of purchase (fix for issue #58)
+    @Column("double precision", { name: "pack_size", precision: 53, default: 1 })
+    packsize: number;
+
     @Column("double precision", { name: "total", precision: 53 })
     total: number;
 

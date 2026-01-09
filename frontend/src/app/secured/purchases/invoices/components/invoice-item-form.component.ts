@@ -124,7 +124,18 @@ export class InvoiceItemFormComponent {
         this.form.controls['batch'].setValue(event.batch);
         this.form.controls['ptrvalue'].setValue(event.ptrvalue);
         this.form.controls['discpcnt'].setValue(event.discpcnt);
-        this.form.controls['taxpcnt'].setValue(event.taxpcnt);
+
+        // Fix for issue #59: Don't override tax rate from batch
+        // Tax rate should come from HSN code, not from historical batch
+        const currentTaxRate = this.form.value.taxpcnt;
+        if (event.taxpcnt && event.taxpcnt !== currentTaxRate) {
+            console.warn(
+                `⚠ Tax rate mismatch: Batch has ${event.taxpcnt}% but current HSN rate is ${currentTaxRate}%. ` +
+                `Using current HSN rate ${currentTaxRate}%.`
+            );
+            // Don't override - keep the HSN tax rate that was set in selectProduct()
+        }
+
         this.form.controls['mrpcost'].setValue(event.mrpcost);
         this.form.controls['expdate'].setValue(new Date(event.expdate));
     }
@@ -218,7 +229,8 @@ export class InvoiceItemFormComponent {
 
         this.form.controls['ptrvalue'].setValue('')
         this.form.controls['discpcnt'].setValue('')
-        this.form.controls['taxpcnt'].setValue('')
+        // Fix for issue #59: Don't clear tax rate - it should be set from HSN
+        // this.form.controls['taxpcnt'].setValue('')
         this.form.controls['mrpcost'].setValue('')
         this.form.controls['expdate'].setValue('')
         this.form.controls['qty'].setValue('')
@@ -240,7 +252,18 @@ export class InvoiceItemFormComponent {
                 const item = data[0];
                 this.form.controls['ptrvalue'].setValue(item.ptr_value);
                 this.form.controls['discpcnt'].setValue(item.disc_pcnt);
-                this.form.controls['taxpcnt'].setValue(item.tax_pcnt);
+
+                // Fix for issue #59: Don't override tax rate from batch history
+                // Tax rate should always come from HSN code
+                const currentTaxRate = this.form.value.taxpcnt;
+                if (item.tax_pcnt && item.tax_pcnt !== currentTaxRate) {
+                    console.warn(
+                        `⚠ Historical batch has ${item.tax_pcnt}% tax but current HSN rate is ${currentTaxRate}%. ` +
+                        `Using current HSN rate ${currentTaxRate}%.`
+                    );
+                }
+                // Don't set: this.form.controls['taxpcnt'].setValue(item.tax_pcnt);
+
                 this.form.controls['mrpcost'].setValue(item.mrp_cost);
                 this.form.controls['expdate'].setValue(new Date(item.exp_date));
 

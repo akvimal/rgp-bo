@@ -6,6 +6,7 @@ import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
 import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 import { VendorPayment } from "src/entities/vendor-payment.entity";
+import { Product } from "src/entities/product.entity";
 import { ItemType, DocType, PaymentStatus, TaxStatus, LifecycleStatus } from "./enums";
 
 @Injectable()
@@ -16,6 +17,7 @@ export class PurchaseInvoiceService {
         @InjectRepository(PurchaseInvoice) private readonly purchaseInvoiceRepository: Repository<PurchaseInvoice>,
         @InjectRepository(PurchaseInvoiceItem) private readonly purchaseInvoiceItemRepository: Repository<PurchaseInvoiceItem>,
         @InjectRepository(VendorPayment) private readonly vendorPaymentRepository: Repository<VendorPayment>,
+        @InjectRepository(Product) private readonly productRepository: Repository<Product>,
         @InjectEntityManager() private manager: EntityManager
     ) { }
 
@@ -43,6 +45,7 @@ export class PurchaseInvoiceService {
 
     /**
      * Create invoice item with validation
+     * Fix for issue #58: Store pack size at time of purchase
      */
     async createItem(dto: CreatePurchaseInvoiceItemDto, userid: any) {
         try {
@@ -52,9 +55,22 @@ export class PurchaseInvoiceService {
             // Calculate tax breakdown if not provided
             const taxData = this.calculateItemTaxBreakdown(dto);
 
+            // Fetch product to get current pack size (Fix for issue #58)
+            const product = await this.productRepository.findOne({
+                where: { id: dto.productid }
+            });
+
+            if (!product) {
+                throw new BadRequestException(`Product with ID ${dto.productid} not found`);
+            }
+
+            // Store pack size at time of purchase to prevent retroactive changes
+            const packSize = product.pack || 1;
+
             return this.purchaseInvoiceItemRepository.save({
                 ...dto,
                 ...taxData,
+                packsize: packSize,  // Store current pack size (Fix for issue #58)
                 createdby: userid,
                 itemtype: dto.itemtype || ItemType.REGULAR,
             });
