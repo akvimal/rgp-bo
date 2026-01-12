@@ -29,6 +29,7 @@ services:
       PORT: 3000
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}  # Set via environment variable or .env file
     ports:
       - 3000:3000
     networks:  
