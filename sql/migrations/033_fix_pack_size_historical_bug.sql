@@ -1,5 +1,5 @@
--- Migration 016: Fix Pack Size Historical Quantity Bug
--- Date: 2026-01-09
+-- Migration 033: Fix Pack Size Historical Quantity Bug (Version 2 - Fixed)
+-- Date: 2026-01-12
 -- Issue: #58 - Pack Size Change Retroactively Affects Historical Quantities
 -- Description: Add pack_size column to purchase_invoice_item to prevent
 --              retroactive quantity recalculation when product pack size changes
@@ -41,9 +41,18 @@ ALTER TABLE purchase_invoice_item
 ALTER COLUMN pack_size SET DEFAULT 1;
 
 -- ===========================================================================
--- Step 5: Update inventory_view to use stored pack_size
+-- Step 5: Drop views that depend on purchase_invoice_item
 -- ===========================================================================
-CREATE OR REPLACE VIEW public.inventory_view AS
+DROP VIEW IF EXISTS public.inventory_view CASCADE;
+DROP VIEW IF EXISTS public.product_items_view CASCADE;
+DROP VIEW IF EXISTS public.product_items_agg_view CASCADE;
+DROP VIEW IF EXISTS public.stock_view CASCADE;
+DROP VIEW IF EXISTS public.sale_view CASCADE;
+
+-- ===========================================================================
+-- Step 6: Recreate inventory_view with stored pack_size
+-- ===========================================================================
+CREATE VIEW public.inventory_view AS
 SELECT
     pii.id,
     p.id AS product_id,
@@ -88,9 +97,9 @@ LEFT JOIN app_user au ON pii.verified_by = au.id
 ORDER BY p.title, pii.exp_date DESC;
 
 -- ===========================================================================
--- Step 6: Update product_items_view to use stored pack_size
+-- Step 7: Recreate product_items_view with stored pack_size
 -- ===========================================================================
-CREATE OR REPLACE VIEW public.product_items_view AS
+CREATE VIEW public.product_items_view AS
 SELECT
     p.id,
     p.title,
@@ -141,6 +150,97 @@ GROUP BY p.id, p.title, pi.invoice_date, pi.invoice_no, pi.tax_pcnt, pi.mrp_cost
          pi.id, pi.batch, pi.exp_date, pi.last_sale_date, pi.qty, pi.status, pi.sold, pi.pack_size
 ORDER BY p.title;
 
+-- ===========================================================================
+-- Step 8: Recreate product_items_agg_view
+-- ===========================================================================
+CREATE VIEW public.product_items_agg_view AS
+SELECT
+    id,
+    title,
+    active,
+    expired,
+    max(invoice_date) AS last_purchase_date,
+    date(max(last_sale_date)) AS last_sale_date,
+    sum(purchased) AS purchased,
+    sum(sold) AS sold,
+    sum(adjusted) AS adjusted,
+    sum(purchased) - sum(sold) + COALESCE(sum(adjusted), 0::numeric) AS balance
+FROM product_items_view vw
+WHERE expired = false
+GROUP BY id, title, active, expired
+ORDER BY title;
+
+-- ===========================================================================
+-- Step 9: Recreate stock_view with stored pack_size
+-- ===========================================================================
+CREATE VIEW public.stock_view AS
+SELECT
+    pii.id,
+    pi.invoice_no,
+    pi.invoice_date,
+    pii.invoice_id,
+    p.id AS product_id,
+    p.title,
+    p.more_props,
+    p.pack,
+    pii.batch,
+    pii.exp_date AS expdate,
+    pii.mrp_cost,
+    pii.ptr_value,
+    round(pii.sale_price::numeric, 2) AS sale_price,
+    pii.ptr_cost,
+    pii.tax_pcnt,
+    (pii.qty + COALESCE(pii.free_qty, 0)) * pii.pack_size AS sale_qty,  -- FIXED: Use stored pack_size
+    pii.qty + COALESCE(pii.free_qty, 0) AS purchase_qty,
+    (pii.qty + COALESCE(pii.free_qty, 0)) * pii.pack_size - COALESCE(x.total_qty, 0::bigint) - COALESCE(y.adj_qty, 0::bigint) AS available_qty,  -- FIXED
+    (date_part('year'::text, now()) - date_part('year'::text, pi.invoice_date)) * 12::double precision +
+    (date_part('month'::text, now()) - date_part('month'::text, pi.invoice_date)) AS old_with_us,
+    (date_part('year'::text, pii.exp_date) - date_part('year'::text, now())) * 12::double precision +
+    (date_part('month'::text, pii.exp_date) - date_part('month'::text, now())) AS life_left
+FROM purchase_invoice_item pii
+JOIN purchase_invoice pi ON pi.id = pii.invoice_id
+JOIN product p ON p.id = pii.product_id
+LEFT JOIN (
+    SELECT si.purchase_item_id, sum(si.qty) AS total_qty
+    FROM sale_item si
+    JOIN sale s ON s.id = si.sale_id
+    WHERE s.status::text = 'COMPLETE'::text
+    AND (si.status::text = 'Sale Complete'::text OR si.status::text = 'Return Accepted'::text)
+    GROUP BY si.purchase_item_id
+) x ON x.purchase_item_id = pii.id
+LEFT JOIN (
+    SELECT pc.item_id, sum(pc.qty) AS adj_qty
+    FROM product_qtychange pc
+    GROUP BY pc.item_id
+) y ON y.item_id = pii.id
+WHERE pii.status::text = 'VERIFIED'::text;
+
+-- ===========================================================================
+-- Step 10: Recreate sale_view with stored pack_size
+-- ===========================================================================
+CREATE VIEW public.sale_view AS
+SELECT
+    s.id,
+    date(s.bill_date) AS sale_date,
+    c.id AS customer_id,
+    c.name AS customer_name,
+    c.mobile AS customer_mobile,
+    p.id AS product_id,
+    p.title AS product,
+    pii.batch,
+    pii.exp_date,
+    si.qty AS sale_qty,
+    round((pii.ptr_value / pii.pack_size * (1::double precision + pii.tax_pcnt / 100::double precision))::numeric, 2) AS ptr_cost,  -- FIXED: Use stored pack_size
+    round((pii.ptr_value / pii.pack_size * (1::double precision + pii.tax_pcnt / 100::double precision) * si.qty::double precision)::numeric, 2) AS purchase_total,  -- FIXED
+    si.price AS sale_price,
+    si.total AS sale_total,
+    round((si.total - pii.ptr_value / pii.pack_size * si.qty::double precision)::numeric, 2) AS profit  -- FIXED
+FROM sale_item si
+JOIN sale s ON s.id = si.sale_id
+JOIN customer c ON c.id = s.customer_id
+JOIN purchase_invoice_item pii ON pii.id = si.purchase_item_id
+JOIN product p ON p.id = pii.product_id;
+
 COMMIT;
 
 -- ===========================================================================
@@ -149,7 +249,7 @@ COMMIT;
 
 -- Show migration status
 SELECT
-    'Migration 016 completed successfully!' AS status,
+    'Migration 033 completed successfully!' AS status,
     NOW() AS completed_at;
 
 -- Show statistics
@@ -187,3 +287,12 @@ SELECT
     END AS validation_status
 FROM purchase_invoice_item
 WHERE pack_size IS NULL;
+
+-- Verify views were recreated
+SELECT
+    schemaname,
+    viewname,
+    viewowner
+FROM pg_views
+WHERE viewname IN ('inventory_view', 'product_items_view', 'product_items_agg_view', 'stock_view', 'sale_view')
+ORDER BY viewname;
