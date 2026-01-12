@@ -26,6 +26,9 @@ export class AppRole extends BaseEntity {
   @Column({ name: 'locked', type: 'boolean', default: false })
   isLocked: boolean;
 
+  @Column({ name: 'uses_feature_groups', type: 'boolean', default: false })
+  usesFeatureGroups: boolean;
+
   @OneToMany(() => AppUser, (appUser) => appUser.role)
   appUsers: AppUser[];
 }

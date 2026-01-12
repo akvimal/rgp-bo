@@ -1,0 +1,277 @@
+<div class="container-fluid">
+  <!-- Loading Spinner -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading payslip...</p>
+  </div>
+
+  <!-- Payslip Content -->
+  <div *ngIf="!loading && payslip">
+    <!-- Action Buttons (Hidden when printing) -->
+    <div class="no-print mb-3">
+      <button class="btn btn-outline-secondary btn-sm" (click)="goBack()">
+        <i class="bi bi-arrow-left"></i> Back to Payroll Details
+      </button>
+      <div class="float-end">
+        <button class="btn btn-outline-primary btn-sm me-2" (click)="printPayslip()">
+          <i class="bi bi-printer"></i> Print
+        </button>
+        <button class="btn btn-outline-secondary btn-sm me-2" (click)="downloadPDF()">
+          <i class="bi bi-file-pdf"></i> Download PDF
+        </button>
+        <button class="btn btn-outline-info btn-sm" (click)="sendEmail()">
+          <i class="bi bi-envelope"></i> Email to Employee
+        </button>
+      </div>
+    </div>
+
+    <!-- Payslip Card -->
+    <div class="card payslip-card">
+      <div class="card-body">
+        <!-- Header -->
+        <div class="text-center mb-4 pb-3 border-bottom">
+          <h3>PAYSLIP</h3>
+          <h5>{{ getMonthName(payslip.month) }} {{ payslip.year }}</h5>
+        </div>
+
+        <!-- Employee and Company Information -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <h6 class="text-muted mb-3">EMPLOYEE DETAILS</h6>
+            <table class="table table-sm table-borderless">
+              <tr>
+                <td class="text-muted" width="40%">Employee Name:</td>
+                <td><strong>{{ payslip.user.fullname }}</strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Employee ID:</td>
+                <td>{{ payslip.userId }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted">Email:</td>
+                <td>{{ payslip.user.email }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted">Phone:</td>
+                <td>{{ payslip.user.phone }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted">Role:</td>
+                <td>{{ payslip.roleCode }}</td>
+              </tr>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <h6 class="text-muted mb-3">PAYMENT DETAILS</h6>
+            <table class="table table-sm table-borderless">
+              <tr>
+                <td class="text-muted" width="40%">Payment Model:</td>
+                <td>{{ getPaymentModelLabel(payslip.paymentModel) }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted">Employment Type:</td>
+                <td>{{ payslip.employmentTypeCode }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted">Payment Status:</td>
+                <td>
+                  <span class="badge" [ngClass]="getPaymentStatusBadgeClass(payslip.paymentStatus)">
+                    {{ payslip.paymentStatus }}
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="payslip.paymentDate">
+                <td class="text-muted">Payment Date:</td>
+                <td>{{ payslip.paymentDate | date:'dd MMM yyyy' }}</td>
+              </tr>
+              <tr *ngIf="payslip.paymentReference">
+                <td class="text-muted">Reference:</td>
+                <td>{{ payslip.paymentReference }}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Attendance Summary -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <h6 class="text-muted mb-3">ATTENDANCE SUMMARY</h6>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Total Working Days</th>
+                  <th>Days Worked</th>
+                  <th>Present Days</th>
+                  <th>Paid Leave</th>
+                  <th>LWP Days</th>
+                  <th *ngIf="payslip.hoursWorked">Hours Worked</th>
+                  <th *ngIf="payslip.billableHours">Billable Hours</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{{ payslip.totalWorkingDays || '-' }}</td>
+                  <td><strong>{{ payslip.actualDaysWorked }}</strong></td>
+                  <td>{{ payslip.presentDays || '-' }}</td>
+                  <td>{{ payslip.paidLeaveDays || '-' }}</td>
+                  <td>{{ payslip.lwpDays || '-' }}</td>
+                  <td *ngIf="payslip.hoursWorked">{{ payslip.hoursWorked }}</td>
+                  <td *ngIf="payslip.billableHours">{{ payslip.billableHours }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Salary Breakdown -->
+        <div class="row mb-4">
+          <!-- Earnings -->
+          <div class="col-md-6">
+            <h6 class="text-muted mb-3">EARNINGS</h6>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Component</th>
+                  <th class="text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let earning of earningsArray">
+                  <td>{{ earning.name }}</td>
+                  <td class="text-end">{{ formatCurrency(earning.amount) }}</td>
+                </tr>
+                <tr *ngIf="hasKpiIncentive()">
+                  <td><strong>KPI Incentive</strong></td>
+                  <td class="text-end"><strong>{{ formatCurrency(payslip.kpiIncentiveAmount) }}</strong></td>
+                </tr>
+              </tbody>
+              <tfoot class="table-success">
+                <tr>
+                  <th>Gross Salary</th>
+                  <th class="text-end">{{ formatCurrency(payslip.grossSalary) }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Deductions -->
+          <div class="col-md-6">
+            <h6 class="text-muted mb-3">DEDUCTIONS</h6>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Component</th>
+                  <th class="text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let deduction of deductionsArray">
+                  <td>{{ deduction.name }}</td>
+                  <td class="text-end">{{ formatCurrency(deduction.amount) }}</td>
+                </tr>
+                <tr *ngIf="deductionsArray.length === 0">
+                  <td colspan="2" class="text-center text-muted">No deductions</td>
+                </tr>
+              </tbody>
+              <tfoot class="table-danger">
+                <tr>
+                  <th>Total Deductions</th>
+                  <th class="text-end">{{ formatCurrency(payslip.totalDeductions) }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Net Salary -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="alert alert-success text-center" role="alert">
+              <h5 class="mb-0">
+                NET SALARY: <strong>{{ formatCurrency(payslip.netSalary) }}</strong>
+              </h5>
+            </div>
+          </div>
+        </div>
+
+        <!-- Employer Contributions (if any) -->
+        <div class="row mb-4" *ngIf="employerContributionsArray.length > 0">
+          <div class="col-12">
+            <h6 class="text-muted mb-3">EMPLOYER CONTRIBUTIONS (For Information Only)</h6>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Component</th>
+                  <th class="text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let contribution of employerContributionsArray">
+                  <td>{{ contribution.name }}</td>
+                  <td class="text-end">{{ formatCurrency(contribution.amount) }}</td>
+                </tr>
+              </tbody>
+              <tfoot class="table-info">
+                <tr>
+                  <th>Total Employer Contributions</th>
+                  <th class="text-end">{{ formatCurrency(getTotalEmployerContributions()) }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- KPI Details (if applicable) -->
+        <div class="row mb-4" *ngIf="kpiBreakdownArray.length > 0">
+          <div class="col-12">
+            <h6 class="text-muted mb-3">KPI PERFORMANCE</h6>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>KPI Category</th>
+                  <th class="text-end">Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let kpi of kpiBreakdownArray">
+                  <td>{{ kpi.name }}</td>
+                  <td class="text-end">{{ kpi.score }}/100</td>
+                </tr>
+              </tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <th>Average KPI Score</th>
+                  <th class="text-end">{{ getAverageKPIScore().toFixed(2) }}/100</th>
+                </tr>
+                <tr>
+                  <th>KPI Incentive Amount</th>
+                  <th class="text-end">{{ formatCurrency(payslip.kpiIncentiveAmount || 0) }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Remarks (if any) -->
+        <div class="row mb-4" *ngIf="payslip.remarks">
+          <div class="col-12">
+            <h6 class="text-muted mb-2">REMARKS</h6>
+            <p class="alert alert-warning">{{ payslip.remarks }}</p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="row mt-5 pt-3 border-top">
+          <div class="col-12 text-center text-muted">
+            <small>
+              This is a computer-generated payslip and does not require a signature.<br>
+              Generated on {{ payslip.createdOn | date:'dd MMM yyyy, hh:mm a' }}
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

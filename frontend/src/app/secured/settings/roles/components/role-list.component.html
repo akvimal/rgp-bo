@@ -11,7 +11,15 @@
     <tbody>
         <tr *ngFor="let p of roles">
             <td>{{p.id}}</td>
-            <td *isAuth="'roles.read$name'">{{p.name}}</td>
+            <td *isAuth="'roles.read$name'">
+                {{p.name}}
+                <span class="badge bg-success ms-2" *ngIf="p.usesFeatureGroups" title="Uses Feature Groups">
+                    <i class="bi bi-grid-3x3-gap"></i> Feature Groups
+                </span>
+                <span class="badge bg-secondary ms-2" *ngIf="!p.usesFeatureGroups" title="Uses Legacy JSON Permissions">
+                    <i class="bi bi-braces"></i> Legacy
+                </span>
+            </td>
             <td *isAuth="'roles.read$permissions'">
                 <div class="d-flex flex-wrap gap-1">
                     <span *ngFor="let badge of getResourceBadges(p.permissions)"

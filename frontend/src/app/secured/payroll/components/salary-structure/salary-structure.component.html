@@ -1,0 +1,240 @@
+<div class="container-fluid">
+  <div class="row mb-3">
+    <div class="col-12">
+      <h2>Employee Salary Structures</h2>
+      <p class="text-muted">Manage employee salary configurations and payment models</p>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <label for="paymentModelFilter" class="form-label">Payment Model</label>
+          <select
+            id="paymentModelFilter"
+            class="form-select"
+            [(ngModel)]="selectedPaymentModel"
+            (change)="onPaymentModelChange()">
+            <option *ngFor="let model of paymentModelOptions" [value]="model.value">
+              {{ model.label }}
+            </option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="employmentTypeFilter" class="form-label">Employment Type</label>
+          <select
+            id="employmentTypeFilter"
+            class="form-select"
+            [(ngModel)]="selectedEmploymentType"
+            (change)="onEmploymentTypeChange()">
+            <option *ngFor="let type of employmentTypeOptions" [value]="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="searchFilter" class="form-label">Search Employee</label>
+          <input
+            id="searchFilter"
+            type="text"
+            class="form-control"
+            placeholder="Search by name or email..."
+            [(ngModel)]="searchText"
+            (input)="onSearchChange()">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="showInactive"
+              [(ngModel)]="showInactiveOnly"
+              (change)="onShowInactiveChange()">
+            <label class="form-check-label" for="showInactive">
+              Show Inactive
+            </label>
+          </div>
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <button
+            class="btn btn-primary w-100"
+            (click)="createNewStructure()"
+            [disabled]="loading">
+            <i class="bi bi-plus-circle"></i> New
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading salary structures...</p>
+  </div>
+
+  <!-- Salary Structures Table -->
+  <div *ngIf="!loading" class="card">
+    <div class="card-body">
+      <div *ngIf="filteredStructures.length === 0" class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+        <p class="mt-3">No salary structures found</p>
+        <button class="btn btn-primary" (click)="createNewStructure()">
+          Create First Salary Structure
+        </button>
+      </div>
+
+      <div *ngIf="filteredStructures.length > 0" class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Employee</th>
+              <th>Employment Type</th>
+              <th>Payment Model</th>
+              <th class="text-end">CTC</th>
+              <th class="text-end">Basic Salary</th>
+              <th class="text-end">Additional Info</th>
+              <th>KPI</th>
+              <th>Effective From</th>
+              <th>Status</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let structure of filteredStructures">
+              <td>
+                <strong>{{ structure.user.fullname }}</strong><br>
+                <small class="text-muted">{{ structure.user.email }}</small>
+              </td>
+              <td>{{ structure.employmentTypeCode }}</td>
+              <td>{{ getPaymentModelLabel(structure.paymentModel) }}</td>
+              <td class="text-end">
+                <strong>{{ formatCurrency(structure.ctc) }}</strong>
+              </td>
+              <td class="text-end">{{ formatCurrency(structure.basicSalary) }}</td>
+              <td class="text-end">
+                <!-- Monthly Fixed -->
+                <span *ngIf="isMonthlyFixed(structure.paymentModel)">
+                  <small class="text-muted">
+                    HRA: {{ formatCurrency(structure.hra) }}<br>
+                    Special: {{ formatCurrency(structure.specialAllowance) }}
+                  </small>
+                </span>
+
+                <!-- Retainer + Per Day -->
+                <span *ngIf="isRetainerPlusPerDay(structure.paymentModel)">
+                  <small class="text-muted">
+                    Retainer: {{ formatCurrency(structure.retainerAmount || 0) }}<br>
+                    Per Day: {{ formatCurrency(structure.perDayRate || 0) }}
+                  </small>
+                </span>
+
+                <!-- Hourly -->
+                <span *ngIf="isHourly(structure.paymentModel)">
+                  <small class="text-muted">
+                    Hourly Rate: {{ formatCurrency(structure.hourlyRate || 0) }}
+                  </small>
+                </span>
+              </td>
+              <td>
+                <span *ngIf="structure.kpiEnabled" class="badge badge-success">Enabled</span>
+                <span *ngIf="!structure.kpiEnabled" class="badge badge-secondary">Disabled</span>
+              </td>
+              <td>{{ structure.effectiveFrom | date:'dd MMM yyyy' }}</td>
+              <td>
+                <span class="badge" [ngClass]="getStatusBadgeClass(structure.active)">
+                  {{ getStatusLabel(structure.active) }}
+                </span>
+              </td>
+              <td class="text-center">
+                <div class="btn-group btn-group-sm" role="group">
+                  <button
+                    class="btn btn-outline-primary"
+                    (click)="editStructure(structure)"
+                    title="Edit Structure">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button
+                    class="btn btn-outline-info"
+                    (click)="viewHistory(structure.userId)"
+                    title="View History">
+                    <i class="bi bi-clock-history"></i>
+                  </button>
+                  <button
+                    class="btn btn-outline-danger"
+                    (click)="deactivateStructure(structure)"
+                    [disabled]="!structure.active"
+                    title="Deactivate">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="3"><strong>Total Structures: {{ filteredStructures.length }}</strong></td>
+              <td class="text-end">
+                <strong>
+                  {{ formatCurrency(getTotalCTC()) }}
+                </strong>
+              </td>
+              <td class="text-end">
+                <strong>
+                  {{ formatCurrency(getTotalBasicSalary()) }}
+                </strong>
+              </td>
+              <td colspan="5"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Information Card -->
+  <div class="card mt-3">
+    <div class="card-body">
+      <h6 class="card-subtitle mb-2 text-muted">
+        <i class="bi bi-info-circle"></i> About Salary Structures
+      </h6>
+      <div class="row">
+        <div class="col-md-4">
+          <h6>Payment Models</h6>
+          <ul class="small">
+            <li><strong>Monthly Fixed:</strong> Standard full-time employee with fixed monthly salary</li>
+            <li><strong>Retainer + Per Day:</strong> Part-time with base retainer + daily rate</li>
+            <li><strong>Hourly:</strong> Paid based on hours worked</li>
+            <li><strong>Project Based:</strong> Fixed amount per project completion</li>
+            <li><strong>Daily Wage:</strong> Fixed amount per day worked</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h6>CTC Components</h6>
+          <ul class="small">
+            <li>Basic Salary</li>
+            <li>House Rent Allowance (HRA)</li>
+            <li>Conveyance Allowance</li>
+            <li>Medical Allowance</li>
+            <li>Special Allowance</li>
+            <li>KPI-based Incentives (if enabled)</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h6>Deductions</h6>
+          <ul class="small">
+            <li>Provident Fund (PF) - 12%</li>
+            <li>Employee State Insurance (ESI) - 0.75%</li>
+            <li>Professional Tax - ₹200</li>
+            <li>Tax Deducted at Source (TDS)</li>
+            <li>Other Deductions (if applicable)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

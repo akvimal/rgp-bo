@@ -35,4 +35,21 @@ export class UsersService {
       public remove(id:any){
         return this.http.delete(`${this.API_SERVER}/users/${id}`);
       }
+
+      // Multi-role management methods
+      public getUserRoles(userId: number) {
+        return this.http.get(`${this.API_SERVER}/users/roles/${userId}`);
+      }
+
+      public assignRole(userId: number, roleId: number) {
+        return this.http.post(`${this.API_SERVER}/users/roles/assign`, { userId, roleId });
+      }
+
+      public removeRole(userId: number, roleId: number) {
+        return this.http.delete(`${this.API_SERVER}/users/roles/${userId}/${roleId}`);
+      }
+
+      public refreshToken(userId: number) {
+        return this.http.post(`${this.API_SERVER}/users/roles/${userId}/refresh-token`, {});
+      }
 }

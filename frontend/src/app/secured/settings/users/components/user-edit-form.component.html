@@ -25,12 +25,62 @@
           <input type="text" class="form-control" id="location" formControlName="location">
         </div>
         <div class="col-md-12" *isAuth="'users.edit$role'">
-          <label for="role" class="form-label">Role</label>
+          <label for="role" class="form-label">Primary Role</label>
           <select class="form-control" id="role" formControlName="roleid">
             <option *ngFor="let r of roles" [value]="r.id">{{r.name}}</option>
           </select>
+          <small class="form-text text-muted">Primary role for backward compatibility</small>
         </div>
-       
+
+        <!-- Multi-Role Assignment Section -->
+        <div class="col-md-12 mt-4" *isAuth="'users.edit$role'">
+          <h6 class="mb-3">Assigned Roles</h6>
+
+          <!-- List of assigned roles -->
+          <div class="mb-3" *ngIf="userRoles.length > 0">
+            <div class="alert alert-info d-flex justify-content-between align-items-center p-2 mb-2"
+                 *ngFor="let ur of userRoles">
+              <span>
+                <i class="bi bi-person-badge me-2"></i>
+                {{ur.role.name}}
+                <small class="text-muted ms-2">(assigned on {{ur.assigned_on | date:'short'}})</small>
+              </span>
+              <button type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      (click)="onRemoveRole(ur.role_id)"
+                      [disabled]="userRoles.length === 1"
+                      title="Remove this role">
+                <i class="bi bi-x-circle"></i>
+              </button>
+            </div>
+            <small class="text-muted" *ngIf="userRoles.length === 1">
+              Note: Cannot remove last role. User must have at least one active role.
+            </small>
+          </div>
+
+          <!-- Add new role -->
+          <div class="card" *ngIf="availableRoles.length > 0">
+            <div class="card-body p-3">
+              <h6 class="card-subtitle mb-2 text-muted">Add Additional Role</h6>
+              <div class="input-group">
+                <select class="form-control" #roleSelect>
+                  <option value="">Select a role to add...</option>
+                  <option *ngFor="let r of availableRoles" [value]="r.id">{{r.name}}</option>
+                </select>
+                <button type="button"
+                        class="btn btn-primary"
+                        (click)="onAssignRole(+roleSelect.value); roleSelect.value=''">
+                  <i class="bi bi-plus-circle me-1"></i>Add Role
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-success mt-2" *ngIf="availableRoles.length === 0 && userRoles.length > 1">
+            <i class="bi bi-check-circle me-2"></i>All available roles have been assigned to this user.
+          </div>
+        </div>
+
         <div class="text-center">
           <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
           <button type="reset" (click)="reset()" class="btn btn-outline-secondary">Reset</button>

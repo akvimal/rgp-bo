@@ -22,11 +22,15 @@ import { HrModule } from './modules/hr/hr.module';
 import { RedisCacheModule } from './core/cache/redis-cache.module';
 import { LookupModule } from './modules/app/lookup/lookup.module';
 import { DownloadModule } from './modules/app/downloads/download.module';
+import { PayrollModule } from './modules/app/payroll/payroll.module';
+import { CoreModule } from './core/core.module';
+import { FeatureGroupModule } from './modules/app/feature-groups/feature-group.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     ScheduleModule.forRoot(),
+    CoreModule,
     TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
     }),
@@ -47,7 +51,9 @@ import { DownloadModule } from './modules/app/downloads/download.module';
     LookupModule,
     DownloadModule,
     RedisCacheModule,
-    HrModule
+    HrModule,
+    PayrollModule,
+    FeatureGroupModule
   ],
   controllers: [],
   providers: [DbBackupService],

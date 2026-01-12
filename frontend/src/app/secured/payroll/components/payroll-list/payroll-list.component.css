@@ -1,0 +1,41 @@
+/* Payroll List Component Styles */
+
+.badge-secondary {
+  background-color: #6c757d;
+}
+
+.badge-info {
+  background-color: #0dcaf0;
+  color: #000;
+}
+
+.badge-success {
+  background-color: #198754;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.badge-primary {
+  background-color: #0d6efd;
+}
+
+.badge-danger {
+  background-color: #dc3545;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.btn-group-sm > .btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
