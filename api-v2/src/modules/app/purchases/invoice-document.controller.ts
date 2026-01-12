@@ -28,7 +28,46 @@ import {
   UpdateAutoPopulateDto,
   MarkForReviewDto,
 } from './dto/create-invoice-document.dto';
-import { multerOptions } from '../files/multer.config';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import { v4 as uuid } from 'uuid';
+import { HttpException, HttpStatus } from '@nestjs/common';
+
+// Custom multer config for invoice documents
+const invoiceDocumentMulterOptions = {
+  limits: {
+    fileSize: +(process.env.FILEUPLOAD_SIZE_LIMIT || 10 * 1024 * 1024), // Default 10MB
+  },
+  fileFilter: (req: any, file: any, cb: any) => {
+    if (file.mimetype.match(/\/(jpg|jpeg|png|gif|pdf|webp)$/)) {
+      cb(null, true);
+    } else {
+      cb(
+        new HttpException(
+          `Unsupported file type ${extname(file.originalname)}`,
+          HttpStatus.BAD_REQUEST,
+        ),
+        false,
+      );
+    }
+  },
+  storage: diskStorage({
+    destination: (req: any, file: any, cb: any) => {
+      const uploadBasePath = process.env.FILEUPLOAD_LOCATION || './upload';
+      const uploadPath = `${uploadBasePath}/invoice-documents`;
+
+      // Create folder if doesn't exist
+      if (!existsSync(uploadPath)) {
+        mkdirSync(uploadPath, { recursive: true });
+      }
+      cb(null, uploadPath);
+    },
+    filename: (req: any, file: any, cb: any) => {
+      cb(null, `${uuid()}${extname(file.originalname)}`);
+    },
+  }),
+};
 
 @ApiTags('Invoice Documents')
 @Controller('purchases/invoices')
@@ -50,7 +89,7 @@ export class InvoiceDocumentController {
     status: 201,
     description: 'Document uploaded and OCR initiated',
   })
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', invoiceDocumentMulterOptions))
   async uploadDocument(
     @Param('invoiceId') invoiceId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -122,7 +161,7 @@ export class InvoiceDocumentController {
     status: 201,
     description: 'Document uploaded and data extracted for new invoice',
   })
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', invoiceDocumentMulterOptions))
   async uploadDocumentForNewInvoice(
     @UploadedFile() file: Express.Multer.File,
     @Body('doctype') doctype: string,

@@ -252,7 +252,7 @@ export class InvoiceService {
      * For new invoices (no invoice ID yet)
      */
     uploadAndExtractDocument(formData: FormData) {
-        return this.http.post(`${this.apiurl}/purchases/documents/upload`, formData);
+        return this.http.post(`${this.apiurl}/purchases/invoices/documents/upload`, formData);
     }
 
     /**
@@ -273,14 +273,14 @@ export class InvoiceService {
      * Get extraction preview for a document
      */
     getDocumentExtraction(documentId: number) {
-        return this.http.get(`${this.apiurl}/purchases/documents/${documentId}/extraction`);
+        return this.http.get(`${this.apiurl}/purchases/invoices/documents/${documentId}/extraction`);
     }
 
     /**
      * Retry extraction on a document
      */
     retryExtraction(documentId: number) {
-        return this.http.post(`${this.apiurl}/purchases/documents/${documentId}/extract`, {});
+        return this.http.post(`${this.apiurl}/purchases/invoices/documents/${documentId}/extract`, {});
     }
 
 }
