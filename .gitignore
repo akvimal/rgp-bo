@@ -36,3 +36,6 @@ logs/
 
 # Node modules
 node_modules/
+
+# Migration and database backups
+*_backup_*/
