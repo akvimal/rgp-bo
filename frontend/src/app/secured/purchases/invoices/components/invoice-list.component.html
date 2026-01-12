@@ -56,8 +56,20 @@
         <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
         <td>
           <span *ngIf="p.paymentstatus === 'PAID'" class="badge bg-success">Paid</span>
-          <span *ngIf="p.paymentstatus === 'PARTIAL'" class="badge bg-warning text-dark">Partial</span>
-          <span *ngIf="p.paymentstatus === 'UNPAID'" class="badge bg-danger">Unpaid</span>
+          <span *ngIf="p.paymentstatus === 'PARTIAL'"
+                class="badge bg-warning text-dark"
+                style="cursor: pointer;"
+                (click)="openQuickPayment(p)"
+                title="Click to complete payment">
+            Partial <i class="bi bi-pencil-square ms-1"></i>
+          </span>
+          <span *ngIf="p.paymentstatus === 'UNPAID'"
+                class="badge bg-danger"
+                style="cursor: pointer;"
+                (click)="openQuickPayment(p)"
+                title="Click to mark as paid">
+            Unpaid <i class="bi bi-pencil-square ms-1"></i>
+          </span>
           <span *ngIf="!p.paymentstatus" class="badge bg-secondary">-</span>
         </td>
         <td>
@@ -97,4 +109,56 @@
 <p-dialog [header]="'Warning'" (onHide)="closeDeleteWarn()"
 [(visible)]="displayError" [modal]="true">
     ERROR: {{errorMessage}}
+</p-dialog>
+
+<!-- Quick Payment Modal (Issue #61) -->
+<p-dialog header="Mark Invoice as Paid"
+          [(visible)]="showQuickPaymentDialog"
+          [modal]="true"
+          [style]="{width: '500px'}"
+          [draggable]="false"
+          [resizable]="false">
+  <div class="p-fluid" *ngIf="selectedInvoice">
+    <div class="mb-3">
+      <p><strong>Invoice:</strong> {{selectedInvoice.invoice_no}}</p>
+      <p><strong>Vendor:</strong> {{selectedInvoice.business_name}}</p>
+      <p><strong>Total Amount:</strong> ₹{{selectedInvoice.total | number:'1.2-2'}}</p>
+      <p *ngIf="selectedInvoice.paymentstatus === 'PARTIAL'">
+        <strong>Status:</strong> <span class="badge bg-warning text-dark">Partial Payment</span>
+      </p>
+    </div>
+
+    <div class="mb-3">
+      <label for="paymentMode" class="form-label">Payment Mode <span class="text-danger">*</span></label>
+      <select id="paymentMode" class="form-select" [(ngModel)]="quickPaymentMode">
+        <option value="CASH">Cash</option>
+        <option value="CARD">Card</option>
+        <option value="UPI">UPI</option>
+        <option value="CHEQUE">Cheque</option>
+        <option value="BANK_TRANSFER">Bank Transfer</option>
+        <option value="OTHER">Other</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="paymentDate" class="form-label">Payment Date</label>
+      <input type="date"
+             id="paymentDate"
+             class="form-control"
+             [(ngModel)]="quickPaymentDate"
+             [max]="todayDate">
+    </div>
+
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle me-2"></i>
+      This will create a payment record for the outstanding amount and mark the invoice as paid.
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-secondary" (click)="showQuickPaymentDialog = false">Cancel</button>
+    <button type="button" class="btn btn-primary" (click)="confirmQuickPayment()" [disabled]="!quickPaymentMode">
+      <i class="bi bi-check-circle me-1"></i>Mark as Paid
+    </button>
+  </ng-template>
 </p-dialog>
