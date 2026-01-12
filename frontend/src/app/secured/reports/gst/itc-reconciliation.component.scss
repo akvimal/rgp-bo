@@ -1,0 +1,115 @@
+.nav-tabs {
+  .nav-link {
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:hover {
+      background-color: #f8f9fa;
+    }
+
+    &.active {
+      font-weight: 600;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+    }
+  }
+}
+
+.btn-toolbar {
+  .btn-group {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+  .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+
+    &.bg-warning {
+      color: #000;
+      border-bottom-color: transparent;
+    }
+  }
+}
+
+.table {
+  font-size: 0.9rem;
+
+  thead th {
+    border-top: none;
+    font-weight: 600;
+    background-color: #f8f9fa;
+    white-space: nowrap;
+
+    input[type="checkbox"] {
+      cursor: pointer;
+    }
+  }
+
+  tbody {
+    tr:hover {
+      background-color: #f8f9fa;
+    }
+
+    input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    small {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+  }
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  font-weight: 500;
+}
+
+.text-danger,
+.text-warning {
+  font-weight: 600;
+}
+
+ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0;
+
+  li {
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .table {
+    font-size: 0.8rem;
+
+    th, td {
+      padding: 0.5rem;
+    }
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  .btn-toolbar {
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+
+      .btn {
+        margin-bottom: 0.5rem;
+      }
+    }
+  }
+}

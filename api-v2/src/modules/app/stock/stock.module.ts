@@ -10,11 +10,12 @@ import { Product } from "src/entities/product.entity";
 import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
 import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
+import { VendorPayment } from "src/entities/vendor-payment.entity";
 import { JwtService } from "@nestjs/jwt";
 import { AuthModule } from "src/modules/auth/auth.module";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Product, ProductPriceChange, ProductQtyChange, PurchaseInvoice, PurchaseInvoiceItem]),AuthModule],
+    imports: [TypeOrmModule.forFeature([Product, ProductPriceChange, ProductQtyChange, PurchaseInvoice, PurchaseInvoiceItem, VendorPayment]),AuthModule],
     controllers: [StockController,Stock2Controller],
     providers: [StockService,Stock2Service,PurchaseInvoiceService,JwtService],
     exports: [StockService, PurchaseInvoiceService],

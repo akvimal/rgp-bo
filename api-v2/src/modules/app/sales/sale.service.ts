@@ -21,21 +21,54 @@ export class SaleService {
         // Wrap entire sale creation in transaction to prevent orphaned data
         return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
-                // Step 1: Generate order and bill numbers (uses database sequences/locking)
+                // Fix for issue #60: Validate BEFORE generating bill number
+                // Step 1: Validate sale has items
+                if (!sale.items || sale.items.length === 0) {
+                    throw new Error('Sale must have at least one item');
+                }
+
+                // Step 2: Validate all items and stock availability
+                for (const item of sale.items) {
+                    if (!item.productid || !item.qty || item.qty <= 0) {
+                        throw new Error(`Invalid item: product ID and quantity are required`);
+                    }
+
+                    // Check stock availability if purchase_item_id is provided
+                    if (item.purchase_item_id) {
+                        const stockCheck = await transactionManager.query(
+                            `SELECT available FROM inventory_view WHERE purchase_itemid = $1`,
+                            [item.purchase_item_id]
+                        );
+
+                        if (!stockCheck || stockCheck.length === 0) {
+                            throw new Error(`Stock not found for item ID ${item.purchase_item_id}`);
+                        }
+
+                        const availableStock = stockCheck[0].available;
+                        if (availableStock < item.qty) {
+                            throw new Error(
+                                `Insufficient stock for item. Available: ${availableStock}, Requested: ${item.qty}`
+                            );
+                        }
+                    }
+                }
+
+                // Step 3: ONLY NOW generate order and bill numbers (after validation passes)
+                // This prevents bill number consumption when validation fails
                 const nos = await transactionManager.query(`select generate_order_number() as order_no, generate_bill_number() as bill_no`);
 
                 sale['orderno'] = nos[0]['order_no'];
                 sale['orderdate'] = new Date();
                 sale['billno'] = nos[0]['bill_no'];
 
-                // Step 2: Save sale header
+                // Step 4: Save sale header
                 const savedSale = await transactionManager.save(Sale, {...sale, createdby:userid});
 
                 if (!savedSale || !savedSale.id) {
                     throw new Error('Failed to create sale header');
                 }
 
-                // Step 3: Save sale items with foreign key to sale
+                // Step 5: Save sale items with foreign key to sale
                 if (sale.items && sale.items.length > 0) {
                     sale.items.forEach(i => {
                         i.saleid = savedSale.id;
@@ -43,7 +76,7 @@ export class SaleService {
                     await transactionManager.save(SaleItem, sale.items);
                 }
 
-                // Step 4: Fetch and return complete sale with relations
+                // Step 6: Fetch and return complete sale with relations
                 const completeSale = await transactionManager
                     .createQueryBuilder(Sale, "sale")
                     .leftJoinAndSelect("sale.customer", "customer")
@@ -56,6 +89,7 @@ export class SaleService {
                 return completeSale;
             } catch (error) {
                 // Transaction will automatically rollback on error
+                // Bill number NOT consumed if error occurs before generation
                 throw new Error(`Failed to create sale: ${error.message}`);
             }
         });
@@ -212,7 +246,7 @@ export class SaleService {
 
         const dt = new Date(fromdate);
         let query = ''
-        let params = []
+        let params: string[] = []
 
         if(freq === 'daily'){
             const date = new Date(dt.setDate(dt.getDate()+1));
@@ -249,7 +283,7 @@ export class SaleService {
 
         const dt = new Date(fromdate);
         let query = ''
-        let params = []
+        let params: string[] = []
 
         if(freq === 'daily'){
             const date = new Date(dt.setDate(dt.getDate()+1));

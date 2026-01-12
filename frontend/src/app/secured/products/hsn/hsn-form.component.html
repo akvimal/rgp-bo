@@ -1,0 +1,205 @@
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-{{ isEditMode ? 'pencil-square' : 'plus-circle' }}"></i>
+            {{ isEditMode ? 'Edit' : 'Create New' }} HSN Tax Code
+          </h4>
+        </div>
+
+        <div class="card-body">
+          <div *ngIf="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <form [formGroup]="hsnForm" (ngSubmit)="onSubmit()" *ngIf="!loading">
+            <!-- HSN Code and Description -->
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label for="hsncode" class="form-label">
+                  HSN Code <span class="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="hsncode"
+                  class="form-control"
+                  formControlName="hsncode"
+                  [class.is-invalid]="submitted && f['hsncode'].errors"
+                  placeholder="e.g., 30049099"
+                  maxlength="8">
+                <div class="invalid-feedback" *ngIf="submitted && f['hsncode'].errors">
+                  <div *ngIf="f['hsncode'].errors['required']">HSN Code is required</div>
+                  <div *ngIf="f['hsncode'].errors['minlength']">HSN Code must be at least 4 digits</div>
+                  <div *ngIf="f['hsncode'].errors['maxlength']">HSN Code must be at most 8 digits</div>
+                </div>
+              </div>
+
+              <div class="col-md-8">
+                <label for="hsndescription" class="form-label">Description</label>
+                <input
+                  type="text"
+                  id="hsndescription"
+                  class="form-control"
+                  formControlName="hsndescription"
+                  placeholder="e.g., General Medicine">
+              </div>
+            </div>
+
+            <!-- Tax Category -->
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="taxcategory" class="form-label">Tax Category</label>
+                <select id="taxcategory" class="form-select" formControlName="taxcategory">
+                  <option value="">Select Category</option>
+                  <option *ngFor="let cat of categories" [value]="cat">{{cat}}</option>
+                  <option value="MEDICINE">MEDICINE</option>
+                  <option value="COSMETIC">COSMETIC</option>
+                  <option value="MEDICAL_DEVICE">MEDICAL_DEVICE</option>
+                  <option value="SURGICAL">SURGICAL</option>
+                  <option value="AYURVEDA">AYURVEDA</option>
+                  <option value="FMCG">FMCG</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- GST Rates -->
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label for="cgstrate" class="form-label">
+                  CGST Rate (%) <span class="text-danger">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="cgstrate"
+                  class="form-control"
+                  formControlName="cgstrate"
+                  [class.is-invalid]="submitted && f['cgstrate'].errors"
+                  min="0"
+                  max="28"
+                  step="0.01">
+                <div class="invalid-feedback" *ngIf="submitted && f['cgstrate'].errors">
+                  <div *ngIf="f['cgstrate'].errors['required']">CGST Rate is required</div>
+                  <div *ngIf="f['cgstrate'].errors['min'] || f['cgstrate'].errors['max']">
+                    CGST Rate must be between 0 and 28
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <label for="sgstrate" class="form-label">
+                  SGST Rate (%) <span class="text-danger">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="sgstrate"
+                  class="form-control"
+                  formControlName="sgstrate"
+                  [class.is-invalid]="submitted && f['sgstrate'].errors"
+                  min="0"
+                  max="28"
+                  step="0.01">
+                <div class="invalid-feedback" *ngIf="submitted && f['sgstrate'].errors">
+                  <div *ngIf="f['sgstrate'].errors['required']">SGST Rate is required</div>
+                  <div *ngIf="f['sgstrate'].errors['min'] || f['sgstrate'].errors['max']">
+                    SGST Rate must be between 0 and 28
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <label for="igstrate" class="form-label">
+                  IGST Rate (%) <span class="text-danger">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="igstrate"
+                  class="form-control bg-light"
+                  formControlName="igstrate"
+                  [class.is-invalid]="submitted && f['igstrate'].errors"
+                  readonly
+                  min="0"
+                  max="28">
+                <small class="text-muted">Auto-calculated (CGST + SGST)</small>
+              </div>
+            </div>
+
+            <!-- Total Tax Rate Display -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="alert alert-info">
+                  <strong>Total Tax Rate: {{getTotalTaxRate()}}%</strong>
+                  <span class="ms-3">
+                    (CGST: {{f['cgstrate'].value || 0}}% + SGST: {{f['sgstrate'].value || 0}}% = IGST: {{f['igstrate'].value || 0}}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Effective Dates -->
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="effectivefrom" class="form-label">Effective From</label>
+                <input
+                  type="date"
+                  id="effectivefrom"
+                  class="form-control"
+                  formControlName="effectivefrom">
+              </div>
+
+              <div class="col-md-6">
+                <label for="effectiveto" class="form-label">Effective To</label>
+                <input
+                  type="date"
+                  id="effectiveto"
+                  class="form-control"
+                  formControlName="effectiveto">
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="row mt-4">
+              <div class="col-12">
+                <button
+                  type="submit"
+                  class="btn btn-primary me-2"
+                  [disabled]="loading">
+                  <i class="bi bi-check-circle"></i>
+                  {{ isEditMode ? 'Update' : 'Create' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="cancel()"
+                  [disabled]="loading">
+                  <i class="bi bi-x-circle"></i>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Help Section -->
+      <div class="card mt-3">
+        <div class="card-body">
+          <h6 class="card-title">
+            <i class="bi bi-info-circle text-primary"></i>
+            HSN Code Guidelines
+          </h6>
+          <ul class="mb-0">
+            <li>HSN Code must be 4-8 digits long</li>
+            <li>IGST Rate is automatically calculated as CGST + SGST</li>
+            <li>Tax rates must be between 0% and 28%</li>
+            <li>Select an appropriate tax category for better organization</li>
+            <li>Set effective dates to manage tax rate changes over time</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

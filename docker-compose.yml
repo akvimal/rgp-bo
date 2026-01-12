@@ -16,6 +16,7 @@ services:
     command: npm run start:prod
     depends_on:
       - postgres
+      - redis
     environment:
       NODE_ENV: production
       # DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
@@ -26,18 +27,20 @@ services:
       JWT_KEY: dev
       JWT_EXPIRES: 24h
       PORT: 3000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - 3000:3000
     networks:  
       - local
 
   postgres:
-    image: postgres:14
+    image: postgres:17
     restart: always
     container_name: rgp-db
     volumes:
       - rgpdata:/var/lib/postgresql/data
-    networks:  
+    networks:
       - local
     environment:
       POSTGRES_USER: rgpapp
@@ -45,6 +48,17 @@ services:
       POSTGRES_DB: rgpdb
     ports:
       - 5432:5432
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    container_name: rgp-redis
+    networks:
+      - local
+    ports:
+      - 6379:6379
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+
   frontend:
     build:
       dockerfile: Dockerfile

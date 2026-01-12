@@ -2,21 +2,35 @@
 <table *isAuth="'roles.read'" class="table table-bordered mt-3">
     <thead>
         <tr>
-            <th scope="col">ID</th>
-            <th *isAuth="'roles.read$name'" scope="col">Name</th>
+            <th scope="col" style="width: 60px;">ID</th>
+            <th *isAuth="'roles.read$name'" scope="col" style="width: 200px;">Name</th>
             <th *isAuth="'roles.read$permissions'" scope="col">Permissions</th>
-            <th scopr="col">Actions</th>
+            <th scope="col" style="width: 100px;">Actions</th>
         </tr>
     </thead>
     <tbody>
         <tr *ngFor="let p of roles">
             <td>{{p.id}}</td>
             <td *isAuth="'roles.read$name'">{{p.name}}</td>
-            <td *isAuth="'roles.read$permissions'">{{p.permissions}}</td>
+            <td *isAuth="'roles.read$permissions'">
+                <div class="d-flex flex-wrap gap-1">
+                    <span *ngFor="let badge of getResourceBadges(p.permissions)"
+                          class="badge bg-primary"
+                          [title]="badge.count + ' permissions'">
+                        {{ badge.label }}
+                        <span class="badge bg-light text-dark ms-1">{{ badge.count }}</span>
+                    </span>
+                    <span *ngIf="getResourceBadges(p.permissions).length === 0"
+                          class="text-muted fst-italic">
+                        No permissions
+                    </span>
+                </div>
+            </td>
             <td>
-                <a *isAuth="'roles.edit'" [routerLink]="['../edit', p.id]">
-                <i class="bi bi-pencil text-primary"></i></a>
-                <a *isAuth="'roles.delete'" (click)="delete(p.id)">
+                <a *isAuth="'roles.edit'" [routerLink]="['../edit', p.id]" class="me-2">
+                    <i class="bi bi-pencil text-primary"></i>
+                </a>
+                <a *isAuth="'roles.delete'" (click)="delete(p.id)" style="cursor: pointer;">
                     <i class="bi bi-trash text-danger"></i>
                 </a>
             </td>

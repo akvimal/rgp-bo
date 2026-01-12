@@ -30,6 +30,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // Build error response
     const errorResponse = this.buildErrorResponse(exception, request, status);
 
+    // Set retry-after header for rate limit errors
+    this.setRetryAfterHeader(exception, response);
+
     // Log the error (with full details for server logs)
     this.logError(exception, request, status);
 
@@ -203,16 +206,45 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorNames = {
       400: 'Bad Request',
       401: 'Unauthorized',
+      402: 'Payment Required',
       403: 'Forbidden',
       404: 'Not Found',
       409: 'Conflict',
       422: 'Unprocessable Entity',
+      429: 'Too Many Requests',
       500: 'Internal Server Error',
       502: 'Bad Gateway',
       503: 'Service Unavailable',
     };
 
     return errorNames[status] || 'Error';
+  }
+
+  /**
+   * Set Retry-After header for rate limit and service unavailable errors
+   */
+  private setRetryAfterHeader(exception: unknown, response: Response) {
+    if (exception instanceof HttpException) {
+      const exceptionResponse = exception.getResponse();
+
+      // Check if exception includes retryAfter property
+      if (
+        typeof exceptionResponse === 'object' &&
+        'retryAfter' in exceptionResponse &&
+        exceptionResponse.retryAfter
+      ) {
+        const retryAfter = (exceptionResponse as any).retryAfter;
+        if (typeof retryAfter === 'number') {
+          response.setHeader('Retry-After', String(retryAfter));
+        }
+      }
+
+      // For 429 or 503 without explicit retryAfter, set default
+      const status = exception.getStatus();
+      if ((status === 429 || status === 503) && !response.hasHeader('Retry-After')) {
+        response.setHeader('Retry-After', '60'); // Default 60 seconds
+      }
+    }
   }
 
   /**

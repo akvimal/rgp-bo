@@ -1,0 +1,160 @@
+-- =====================================================
+-- CONSOLIDATED MIGRATION: Flexible Payroll System
+-- Migrations: 006 through 010
+-- Date: 2026-01-10
+-- Purpose: Complete flexible payroll system implementation
+-- Description: Installs all payroll-related tables, masters, and KPI enhancements
+-- =====================================================
+--
+-- This consolidated script runs the following migrations in sequence:
+-- 006: Employment Type and Role Master Tables
+-- 007: Salary Component Master Table
+-- 008: Employee Salary Structure Table
+-- 009: Payroll Processing Tables
+-- 010: KPI Enhancements for Payroll
+--
+-- Execute this file to install the complete payroll system:
+-- docker exec -i rgp-db psql -U rgpapp -d rgpdb < sql/migrations/006-010_flexible_payroll_system_complete.sql
+--
+-- =====================================================
+
+\echo '=============================================='
+\echo 'Starting Flexible Payroll System Installation'
+\echo '=============================================='
+\echo ''
+
+-- =====================================================
+-- MIGRATION 006: Employment Type and Role Masters
+-- =====================================================
+
+\echo 'Migration 006: Creating Employment Type and Role Master tables...'
+
+\i sql/migrations/006_employment_type_role_masters.sql
+
+\echo 'Migration 006: Completed'
+\echo ''
+
+-- =====================================================
+-- MIGRATION 007: Salary Component Master
+-- =====================================================
+
+\echo 'Migration 007: Creating Salary Component Master table...'
+
+\i sql/migrations/007_salary_component_master.sql
+
+\echo 'Migration 007: Completed'
+\echo ''
+
+-- =====================================================
+-- MIGRATION 008: Employee Salary Structure
+-- =====================================================
+
+\echo 'Migration 008: Creating Employee Salary Structure table...'
+
+\i sql/migrations/008_flexible_salary_structure.sql
+
+\echo 'Migration 008: Completed'
+\echo ''
+
+-- =====================================================
+-- MIGRATION 009: Payroll Processing Tables
+-- =====================================================
+
+\echo 'Migration 009: Creating Payroll Processing tables...'
+
+\i sql/migrations/009_payroll_tables.sql
+
+\echo 'Migration 009: Completed'
+\echo ''
+
+-- =====================================================
+-- MIGRATION 010: KPI Enhancements
+-- =====================================================
+
+\echo 'Migration 010: Enhancing KPI system for payroll...'
+
+\i sql/migrations/010_kpi_enhancements.sql
+
+\echo 'Migration 010: Completed'
+\echo ''
+
+-- =====================================================
+-- FINAL VERIFICATION
+-- =====================================================
+
+\echo '=============================================='
+\echo 'Flexible Payroll System Installation Complete'
+\echo '=============================================='
+\echo ''
+\echo 'Verifying installation...'
+\echo ''
+
+-- Count all new tables
+SELECT
+    'Tables Created' as component,
+    COUNT(*) as count
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN (
+    'employment_type_master',
+    'role_master',
+    'salary_component_master',
+    'employee_salary_structure',
+    'payroll_run',
+    'payroll_detail',
+    'payment_request',
+    'payment_request_item',
+    'payment_transaction',
+    'kpi_category_master',
+    'monthly_kpi_score'
+  )
+UNION ALL
+SELECT
+    'Employment Types',
+    COUNT(*)
+FROM public.employment_type_master
+WHERE active = true
+UNION ALL
+SELECT
+    'Roles',
+    COUNT(*)
+FROM public.role_master
+WHERE active = true
+UNION ALL
+SELECT
+    'Salary Components',
+    COUNT(*)
+FROM public.salary_component_master
+WHERE active = true
+UNION ALL
+SELECT
+    'KPI Categories',
+    COUNT(*)
+FROM public.kpi_category_master
+WHERE active = true
+UNION ALL
+SELECT
+    'Sequences',
+    COUNT(*)
+FROM information_schema.sequences
+WHERE sequence_schema = 'public'
+  AND sequence_name IN ('payment_request_number_seq', 'payment_transaction_number_seq');
+
+\echo ''
+\echo 'Installation Summary:'
+\echo '- Employment Types: FULLTIME, PARTTIME, CONTRACTUAL, HOURLY'
+\echo '- Roles: ASSOCIATE, SENIOR, PARTTIME_PHARMACIST, MANAGER'
+\echo '- Salary Components: 17 components (earnings, deductions, reimbursements)'
+\echo '- KPI Categories: 16 categories across 3 roles'
+\echo '- Payroll Tables: 5 tables (run, detail, payment request, payment request item, payment transaction)'
+\echo ''
+\echo 'Next Steps:'
+\echo '1. Review sample data in employee_salary_structure table'
+\echo '2. Update sample records with actual user IDs'
+\echo '3. Configure salary structures for employees via UI'
+\echo '4. Begin monthly KPI score entry'
+\echo '5. Run first payroll calculation'
+\echo ''
+\echo '=============================================='
+\echo 'Installation Complete!'
+\echo '=============================================='

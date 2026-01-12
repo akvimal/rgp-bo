@@ -1,66 +1,156 @@
 
 <div class="card mt-2">
   <div class="card-body">
-    <h5 class="card-title p-0 m-0">New Invoice</h5>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="card-title p-0 m-0">
+        <i class="bi bi-file-earmark-text"></i> {{ invoice.id ? 'Edit' : 'New' }} Invoice
+      </h5>
+      <!-- Status Badges (shown when editing) -->
+      <div *ngIf="invoice.id">
+        <app-invoice-status-badges
+          [docType]="invoice.doctype"
+          [paymentStatus]="invoice.paymentstatus"
+          [taxStatus]="invoice.taxstatus"
+          [lifecycleStatus]="invoice.lifecyclestatus">
+        </app-invoice-status-badges>
+      </div>
+    </div>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  
-    <div class="row mt-4">
-      <div class="col-md-3">
-        <label for="vendor" class="col-form-label">Vendor</label>
-        <select class="form-select" id="vendor" formControlName="vendorid" (change)="fetchOrders($event)">
-          <option value="">Select</option>
-          <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label for="poid" class="col-form-label">PO</label>
-        
-        <select class="form-select" id="order" formControlName="purchaseorderid">
-          <option value="">Select</option>
-          <option *ngFor="let o of orders" [value]="o.id">{{o.createdon | date}} ({{o.id}})</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label for="invno" class="col-form-label">Invoice No.</label>
-        <input type="text" class="form-control" formControlName="invoiceno" id="invno" maxlength="12">
-        <div *ngIf="form.controls['invoiceno'].dirty && form.controls['invoiceno'].invalid" style="font-size: large;color:red;">
-          Invoice No can be alphanumeric with hypen only
+
+    <!-- Section 1: Purchase Order (Optional - but first) -->
+    <div class="card bg-light mb-3" *ngIf="!invoice.id">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-3 text-primary">
+          <i class="bi bi-cart-check"></i> Step 1: Link to Purchase Order (Optional)
+        </h6>
+
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle"></i>
+          <strong>Invoice against PO:</strong> If this invoice is for an existing Purchase Order,
+          select it below to automatically fetch vendor and other details. Otherwise, skip this step.
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <label for="poid" class="form-label fw-bold">Purchase Order</label>
+            <select class="form-select" id="order" formControlName="purchaseorderid"
+                    (change)="onPurchaseOrderChange($event)">
+              <option value="">-- No PO (Create Standalone Invoice) --</option>
+              <option *ngFor="let o of allOrders" [value]="o.id">
+                PO #{{o.id}} - {{o.vendor?.name}} - {{o.createdon | date:'mediumDate'}}
+              </option>
+            </select>
+            <small class="form-text text-muted">Select a PO to auto-populate vendor details</small>
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <label for="invdate" class="col-form-label">Invoice Date</label><br>
-        <input type="date" class="form-control" formControlName="invoicedate" id="invdate">
-      </div>
+    </div>
 
-      <!-- <div class="col-md-3">
-        <label for="grno" class="col-form-label">GR No.</label>
-        <input type="text" class="form-control" formControlName="grno" id="grno">
-      </div> -->
-<!-- 
-      <div class="col-md-3">
-        <label for="invno" class="col-form-label">GR Date</label>
-        <input type="date" class="form-control" formControlName="grdate" id="grdate">
-      </div> -->
+<!-- Step 2: Document Upload & Auto-Extract (only show for new invoices) -->
+<div *ngIf="!invoice.id">
+  <div class="card border-primary mb-4">
+    <div class="card-header bg-primary text-white">
+      <h6 class="mb-0">
+        <i class="bi bi-cloud-upload"></i> Step 2: Upload Invoice Document (Optional)
+      </h6>
     </div>
-    <div class="row" *ngIf="errorMessage !== ''">
-      <div class="col-md-12">{{errorMessage}}</div>
+    <div class="card-body">
+      <div class="alert alert-info mb-3">
+        <i class="bi bi-lightbulb"></i>
+        <strong>Smart Entry:</strong> Upload your invoice document to automatically extract and populate
+        document number, date, and line items. Review the extracted data and make any necessary adjustments.
+      </div>
+      <app-invoice-document-upload (dataExtracted)="handleExtractedData($event)"></app-invoice-document-upload>
     </div>
-    <div class="row mt-3">
-      <div class="col-md-12">
-        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Save</button>
-        <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
+  </div>
+
+  <!-- Visual Separator -->
+  <div class="text-center my-4">
+    <div class="d-inline-block px-3 py-2 bg-light border rounded">
+      <i class="bi bi-arrow-down"></i>
+      <span class="mx-2">OR enter manually below</span>
+      <i class="bi bi-arrow-down"></i>
+    </div>
+  </div>
+</div>
+
+    <!-- Section 2: Document Information -->
+    <div class="card bg-light mb-3">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-3 text-primary">
+          <i class="bi bi-file-text"></i> <span *ngIf="!invoice.id">Step 3: </span>Document Information
+        </h6>
+
+        <div class="row">
+          <div class="col-md-3">
+            <label for="vendor" class="form-label fw-bold">Vendor <span class="text-danger">*</span></label>
+            <select class="form-select" id="vendor" formControlName="vendorid">
+              <option value="">-- Select Vendor --</option>
+              <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
+            </select>
+            <small class="form-text text-muted" *ngIf="form.value.purchaseorderid">
+              <i class="bi bi-check-circle text-success"></i> Auto-filled from PO
+            </small>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Document Type <span class="text-danger">*</span></label>
+            <div class="d-flex gap-3 mt-2">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" formControlName="doctype"
+                       id="doctypeInvoice" value="INVOICE">
+                <label class="form-check-label" for="doctypeInvoice">
+                  <i class="bi bi-receipt"></i> Invoice
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" formControlName="doctype"
+                       id="doctypeDeliveryChallan" value="DELIVERY_CHALLAN">
+                <label class="form-check-label" for="doctypeDeliveryChallan">
+                  <i class="bi bi-truck"></i> Challan
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <label for="invno" class="form-label fw-bold">Document No. <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" formControlName="invoiceno" id="invno"
+                   maxlength="12" placeholder="e.g., INV-2024-001">
+            <div *ngIf="form.controls['invoiceno'].dirty && form.controls['invoiceno'].invalid"
+                 class="text-danger small mt-1">
+              <i class="bi bi-exclamation-circle"></i> Alphanumeric with hyphen only
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <label for="invdate" class="form-label fw-bold">Document Date <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" formControlName="invoicedate" id="invdate">
+          </div>
+        </div>
       </div>
     </div>
-  
-  <!-- <div class="col-md-6">
-    <label for="grn" class="col-sm-2 col-form-label">GRN</label>
-    <input type="text" class="form-control" formControlName="grn" 
-      id="grn">
-  </div> -->
- 
+
+    <!-- Error Message -->
+    <div class="alert alert-danger" role="alert" *ngIf="errorMessage !== ''">
+      <i class="bi bi-exclamation-triangle-fill"></i> {{errorMessage}}
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mt-4">
+      <div class="col-md-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary px-4" [disabled]="!form.valid">
+          <i class="bi bi-check-circle"></i> Save Invoice
+        </button>
+        <button type="button" (click)="gotoList()" class="btn btn-outline-secondary px-4">
+          <i class="bi bi-x-circle"></i> Cancel
+        </button>
+      </div>
+    </div>
+
 </form>
-<!-- <a *ngIf="invoice.id" [routerLink]="['../../items',invoice.id]">Items</a> -->
+
 <router-outlet></router-outlet>
 </div>
 </div>

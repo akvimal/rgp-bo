@@ -9,7 +9,12 @@ import { DocumentsModule } from "../documents/documents.module";
 import { ReportsComponent } from "./components/reports.component";
 
 const routes: Routes = [
-  { path: '', component: ReportsComponent, canActivate:[AuthGuard]}
+  { path: '', component: ReportsComponent, canActivate:[AuthGuard]},
+  {
+    path: 'gst',
+    canActivate: [AuthGuard],
+    loadChildren: () => import('./gst/gst-reports.module').then(m => m.GstReportsModule)
+  }
 ];
 
 @NgModule({

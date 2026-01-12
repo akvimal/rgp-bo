@@ -10,6 +10,7 @@ import {
 import { BaseEntity } from "./base.entity";
 import { PurchaseRequest } from "./purchase-request.entity";
   import { Vendor } from "./vendor.entity";
+  import { Store } from "./store.entity";
   
   @Index("purchase_order_pk", ["id"], { unique: true })
   @Entity("purchase_order")
@@ -30,10 +31,17 @@ import { PurchaseRequest } from "./purchase-request.entity";
     @Column("integer", { name: "vendor_id", unique: true })
     vendorid: number;
 
-    // @ManyToOne(() => Vendor, (vendor) => vendor.purchaseInvoices)
-    // @JoinColumn([{ name: "vendor_id", referencedColumnName: "id" }])
-    // vendor: Vendor;
-    
+    @ManyToOne(() => Vendor, (vendor) => vendor.purchaseOrders)
+    @JoinColumn([{ name: "vendor_id", referencedColumnName: "id" }])
+    vendor: Vendor;
+
+    @Column("integer", { name: "store_id", nullable: true })
+    storeid: number | null;
+
+    @ManyToOne(() => Store, (store) => store.purchaseOrders, { nullable: true })
+    @JoinColumn({ name: "store_id" })
+    store: Store | null;
+
     @OneToMany(
       () => PurchaseRequest,
       (request) => request.po

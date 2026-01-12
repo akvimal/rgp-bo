@@ -1,0 +1,254 @@
+<div class="card mt-3 border-primary">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-diagram-3"></i> Invoice Lifecycle Summary
+            </h5>
+            <button type="button" class="btn btn-outline-primary btn-sm" (click)="refresh()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+
+        <!-- Error Message -->
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" *ngIf="errorMessage">
+            {{ errorMessage }}
+            <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+        </div>
+
+        <!-- Loading -->
+        <div class="text-center" *ngIf="loading">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Lifecycle Summary -->
+        <div *ngIf="lifecycleSummary && lifecycleSummary.itemsummary && lifecycleSummary.paymentsummary && lifecycleSummary.taxsummary && !loading">
+            <!-- Overall Status Row -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">Lifecycle Status</h6>
+                            <h4>
+                                <span [ngClass]="getStatusBadgeClass(lifecycleSummary.invoice.lifecyclestatus)">
+                                    {{ lifecycleSummary.invoice.lifecyclestatus }}
+                                </span>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">Processing Status</h6>
+                            <h4>
+                                <span [ngClass]="getStatusBadgeClass(lifecycleSummary.invoice.status)">
+                                    {{ lifecycleSummary.invoice.status }}
+                                </span>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">Payment Status</h6>
+                            <h4>
+                                <span [ngClass]="getStatusBadgeClass(lifecycleSummary.invoice.paymentstatus)">
+                                    {{ lifecycleSummary.invoice.paymentstatus }}
+                                </span>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">Tax Status</h6>
+                            <h4>
+                                <span [ngClass]="getStatusBadgeClass(lifecycleSummary.invoice.taxstatus)">
+                                    {{ lifecycleSummary.invoice.taxstatus }}
+                                </span>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Details -->
+            <div class="row mb-4">
+                <!-- Item Verification Progress -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <i class="bi bi-check-square"></i> Item Verification
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Total Items:</span>
+                                <strong>{{ lifecycleSummary.itemsummary.total }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Verified:</span>
+                                <strong class="text-success">{{ lifecycleSummary.itemsummary.verified }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Pending:</span>
+                                <strong class="text-warning">{{ lifecycleSummary.itemsummary.pending }}</strong>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-success"
+                                     [style.width.%]="getProgressPercentage(lifecycleSummary.itemsummary.verified, lifecycleSummary.itemsummary.total)">
+                                    {{ getProgressPercentage(lifecycleSummary.itemsummary.verified, lifecycleSummary.itemsummary.total) }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Progress -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <i class="bi bi-currency-rupee"></i> Payment Status
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Invoice Total:</span>
+                                <strong>₹ {{ formatAmount(lifecycleSummary.paymentsummary.totalamount) }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Paid:</span>
+                                <strong class="text-success">₹ {{ formatAmount(lifecycleSummary.paymentsummary.paidamount) }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Outstanding:</span>
+                                <strong class="text-danger">₹ {{ formatAmount(lifecycleSummary.paymentsummary.outstandingamount) }}</strong>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-success"
+                                     [style.width.%]="getProgressPercentage(lifecycleSummary.paymentsummary.paidamount, lifecycleSummary.paymentsummary.totalamount)">
+                                    {{ getProgressPercentage(lifecycleSummary.paymentsummary.paidamount, lifecycleSummary.paymentsummary.totalamount) }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tax Credit Status -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <i class="bi bi-file-earmark-text"></i> Tax Credit
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Total Tax Credit:</span>
+                                <strong>₹ {{ formatAmount(lifecycleSummary.taxsummary.totaltaxcredit) }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Tax Status:</span>
+                                <span [ngClass]="getStatusBadgeClass(lifecycleSummary.taxsummary.taxstatus)">
+                                    {{ lifecycleSummary.taxsummary.taxstatus }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2" *ngIf="lifecycleSummary.taxsummary.filingstatus">
+                                <span>Filing Status:</span>
+                                <span [ngClass]="getStatusBadgeClass(lifecycleSummary.taxsummary.filingstatus)">
+                                    {{ lifecycleSummary.taxsummary.filingstatus }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Closure Validation -->
+            <div class="card border-warning" *ngIf="!lifecycleSummary.cancloseinvoice && lifecycleSummary.closureblockers.length > 0">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-exclamation-triangle"></i> Cannot Close Invoice - Requirements Not Met
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li *ngFor="let blocker of lifecycleSummary.closureblockers">{{ blocker }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Closure Actions -->
+            <div class="card border-success mt-3" *ngIf="lifecycleSummary.invoice.lifecyclestatus === 'OPEN'">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-lock"></i> Close Invoice
+                </div>
+                <div class="card-body">
+                    <div *ngIf="!showClosureForm">
+                        <p class="mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <span *ngIf="lifecycleSummary.cancloseinvoice">
+                                All requirements met. You can now close this invoice to mark it as complete.
+                            </span>
+                            <span *ngIf="!lifecycleSummary.cancloseinvoice">
+                                This invoice cannot be closed yet. Please resolve the blockers listed above.
+                            </span>
+                        </p>
+                        <button type="button" class="btn btn-success"
+                                (click)="showClosureDialog()"
+                                [disabled]="!lifecycleSummary.cancloseinvoice">
+                            <i class="bi bi-lock-fill"></i> Close Invoice
+                        </button>
+                    </div>
+
+                    <div *ngIf="showClosureForm">
+                        <div class="mb-3">
+                            <label for="closureNotes" class="form-label">Closure Notes *</label>
+                            <textarea class="form-control" id="closureNotes" rows="3"
+                                      [(ngModel)]="closureNotes"
+                                      placeholder="Enter notes about the invoice closure (e.g., All payments received, tax filed, no disputes)"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-success"
+                                (click)="closeInvoice()"
+                                [disabled]="closingInvoice || !closureNotes.trim()">
+                            <span *ngIf="closingInvoice" class="spinner-border spinner-border-sm me-2"></span>
+                            <i class="bi bi-check-circle"></i> Confirm Closure
+                        </button>
+                        <button type="button" class="btn btn-secondary ms-2"
+                                (click)="cancelClosure()"
+                                [disabled]="closingInvoice">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Closed Invoice Info -->
+            <div class="card border-dark mt-3" *ngIf="lifecycleSummary.invoice.lifecyclestatus === 'CLOSED'">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-lock-fill"></i> Invoice Closed
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Closed On:</strong>
+                                {{ lifecycleSummary.invoice.closedon ? (lifecycleSummary.invoice.closedon | date: 'dd/MM/yyyy HH:mm') : '-' }}
+                            </p>
+                        </div>
+                        <div class="col-md-12">
+                            <p class="mb-0">
+                                <strong>Closure Notes:</strong><br>
+                                {{ lifecycleSummary.invoice.closurenotes || 'No notes provided' }}
+                            </p>
+                        </div>
+                    </div>
+                    <hr>
+                    <button type="button" class="btn btn-warning"
+                            (click)="reopenInvoice()"
+                            [disabled]="loading">
+                        <i class="bi bi-unlock"></i> Reopen Invoice
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

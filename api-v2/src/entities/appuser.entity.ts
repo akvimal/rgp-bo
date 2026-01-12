@@ -11,6 +11,11 @@ import {
 import { AppRole } from "./approle.entity";
 import { BaseEntity } from "./base.entity";
 import { Sale } from "./sale.entity";
+import { UserShift } from "./user-shift.entity";
+import { Attendance } from "./attendance.entity";
+import { LeaveRequest } from "./leave-request.entity";
+import { LeaveBalance } from "./leave-balance.entity";
+import { UserScore } from "./user-score.entity";
 
 @Index("app_user_un", ["email"], { unique: true })
 @Index("app_user_pk", ["id"], { unique: true })
@@ -48,4 +53,19 @@ export class AppUser extends BaseEntity {
 
   @OneToMany(() => Sale, (sale) => sale.created)
   sales: Sale[];
+
+  @OneToMany(() => UserShift, (usershift) => usershift.user)
+  usershifts: UserShift[];
+
+  @OneToMany(() => Attendance, (attendance) => attendance.user)
+  attendances: Attendance[];
+
+  @OneToMany(() => LeaveRequest, (leaverequest) => leaverequest.user)
+  leaverequests: LeaveRequest[];
+
+  @OneToMany(() => LeaveBalance, (leavebalance) => leavebalance.user)
+  leavebalances: LeaveBalance[];
+
+  @OneToMany(() => UserScore, (userscore) => userscore.user)
+  userscores: UserScore[];
 }

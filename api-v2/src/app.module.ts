@@ -11,16 +11,21 @@ import { AuthModule } from './modules/auth/auth.module';
 import { StockModule } from './modules/app/stock/stock.module';
 import { CustomerModule } from './modules/app/customers/customer.module';
 import { SaleModule } from './modules/app/sales/sale.module';
+import { SalesIntentModule } from './modules/app/sales-intent/sales-intent.module';
 import { SaleReturnModule } from './modules/app/returns/salereturn.module';
 import { DocumentModule } from './modules/app/documents/document.module';
 import { FilesModule } from './modules/app/files/files.module';
 import { ReportModule } from './modules/app/reports/report.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DbBackupService } from './modules/app/backup/db.backup';
+import { HrModule } from './modules/hr/hr.module';
+import { RedisCacheModule } from './core/cache/redis-cache.module';
+import { LookupModule } from './modules/app/lookup/lookup.module';
+import { DownloadModule } from './modules/app/downloads/download.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(), 
+    ConfigModule.forRoot(),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useClass: TypeOrmConfigService,
@@ -34,12 +39,17 @@ import { DbBackupService } from './modules/app/backup/db.backup';
     StockModule,
     CustomerModule,
     SaleModule,
+    SalesIntentModule,
     SaleReturnModule,
     DocumentModule,
     FilesModule,
-    ReportModule
+    ReportModule,
+    LookupModule,
+    DownloadModule,
+    RedisCacheModule,
+    HrModule
   ],
   controllers: [],
-  providers: [],
+  providers: [DbBackupService],
 })
 export class AppModule {}

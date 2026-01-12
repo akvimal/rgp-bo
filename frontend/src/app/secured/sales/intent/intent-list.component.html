@@ -1,0 +1,180 @@
+<div class="card mt-2">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-lightbulb"></i> Sales Intent
+            </h5>
+            <button class="btn btn-primary" (click)="createNew()">
+                <i class="bi bi-plus-circle"></i> New Intent
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-3">
+                    <i class="bi bi-funnel"></i> Filters
+                </h6>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label small">Status</label>
+                        <select class="form-select form-select-sm" [(ngModel)]="statusFilter">
+                            <option value="">All</option>
+                            <option *ngFor="let s of statusOptions.slice(1)" [value]="s">{{formatStatus(s)}}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Type</label>
+                        <select class="form-select form-select-sm" [(ngModel)]="typeFilter">
+                            <option value="">All</option>
+                            <option *ngFor="let t of typeOptions.slice(1)" [value]="t">{{formatType(t)}}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Priority</label>
+                        <select class="form-select form-select-sm" [(ngModel)]="priorityFilter">
+                            <option value="">All</option>
+                            <option *ngFor="let p of priorityOptions.slice(1)" [value]="p">{{p}}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Fulfillment</label>
+                        <select class="form-select form-select-sm" [(ngModel)]="fulfillmentFilter">
+                            <option value="">All</option>
+                            <option *ngFor="let f of fulfillmentOptions.slice(1)" [value]="f">{{formatStatus(f)}}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-sm btn-primary me-2" (click)="applyFilters()">
+                            <i class="bi bi-search"></i> Apply
+                        </button>
+                        <button class="btn btn-sm btn-secondary" (click)="clearFilters()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="alert alert-danger" *ngIf="errorMessage">
+            <i class="bi bi-exclamation-triangle-fill"></i> {{errorMessage}}
+        </div>
+
+        <!-- Loading -->
+        <div class="text-center" *ngIf="loading">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Intents Table -->
+        <div class="table-responsive" *ngIf="!loading">
+            <table class="table table-hover table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Intent No.</th>
+                        <th>Type</th>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Customer</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Fulfillment</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngIf="filteredIntents.length === 0">
+                        <td colspan="10" class="text-center text-muted">No intents found</td>
+                    </tr>
+                    <tr *ngFor="let intent of filteredIntents">
+                        <td>
+                            <strong>{{intent.intentno}}</strong>
+                        </td>
+                        <td>
+                            <span [ngClass]="getTypeBadgeClass(intent.intenttype)">
+                                {{formatType(intent.intenttype)}}
+                            </span>
+                        </td>
+                        <td>
+                            <span *ngIf="intent.totalitems && intent.totalitems > 1" class="badge bg-info">
+                                {{intent.totalitems}} Products
+                            </span>
+                            <span *ngIf="!intent.totalitems || intent.totalitems === 1">
+                                {{intent.productname}}
+                                <span *ngIf="intent.product" class="small text-muted">(In system)</span>
+                            </span>
+                        </td>
+                        <td>
+                            <span *ngIf="intent.totalitems && intent.totalitems > 1">
+                                <span class="badge bg-secondary">Multiple</span>
+                            </span>
+                            <span *ngIf="!intent.totalitems || intent.totalitems === 1">
+                                {{intent.requestedqty}}
+                            </span>
+                        </td>
+                        <td>
+                            <span *ngIf="intent.customername">
+                                {{intent.customername}}
+                                <br><small class="text-muted">{{intent.customermobile}}</small>
+                            </span>
+                            <span *ngIf="!intent.customername" class="text-muted">-</span>
+                        </td>
+                        <td>
+                            <span [ngClass]="getPriorityBadgeClass(intent.priority)">
+                                {{intent.priority}}
+                            </span>
+                        </td>
+                        <td>
+                            <span [ngClass]="getStatusBadgeClass(intent.status)">
+                                {{formatStatus(intent.status || 'PENDING')}}
+                            </span>
+                        </td>
+                        <td>
+                            <small>{{formatStatus(intent.fulfillmentstatus || 'NOT STARTED')}}</small>
+                        </td>
+                        <td>
+                            <small>{{intent.createdon | date:'dd/MM/yyyy'}}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary btn-sm" (click)="view(intent.id!)" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm"
+                                        (click)="edit(intent.id!)"
+                                        [disabled]="intent.status === 'FULFILLED' || intent.status === 'CANCELLED'"
+                                        title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-warning btn-sm"
+                                        (click)="cancel(intent.id!)"
+                                        [disabled]="intent.status === 'FULFILLED' || intent.status === 'CANCELLED' || intent.status === 'IN_PO'"
+                                        title="Cancel">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm"
+                                        (click)="delete(intent.id!)"
+                                        [disabled]="intent.status !== 'PENDING'"
+                                        title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Summary -->
+        <div class="row mt-3" *ngIf="!loading && filteredIntents.length > 0">
+            <div class="col-md-12">
+                <small class="text-muted">
+                    Total: {{filteredIntents.length}} intent(s)
+                </small>
+            </div>
+        </div>
+    </div>
+</div>

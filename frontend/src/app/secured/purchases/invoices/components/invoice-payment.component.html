@@ -1,42 +1,225 @@
 <div class="card">
     <div class="card-body">
-      <h5 class="card-title">Payment Info</h5>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Payment Management</h5>
+            <button type="button" class="btn btn-primary btn-sm" (click)="showAddForm()"
+                    *ngIf="!showAddPaymentForm">
+                <i class="bi bi-plus-circle"></i> Add Payment
+            </button>
+        </div>
 
-      <!-- Multi Columns Form -->
-      <form class="row g-3" [formGroup]="form" (ngSubmit)="submit()">
-        <div class="row">
-        <div class="col-md-4">
-          <label for="paydate" class="form-label">Date</label>
-          <input type="date" class="form-control" id="paydate" formControlName="paydate">
+        <!-- Error Message -->
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" *ngIf="errorMessage">
+            {{ errorMessage }}
+            <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
         </div>
-        <div class="col-md-4">
-          <label for="paymode" class="form-label">Mode</label>
-          <select class="form-select" id="paymode" formControlName="paymode" aria-label="Mode">
-            <option>Select</option>
-            <option value="Cash">Cash</option>
-            <option value="Transfer">Transfer</option>
-          </select>
-          </div>
-          <div class="col-md-4">
-            <label for="payrefno" class="form-label">Reference No.</label>
-            <input type="text" class="form-control" id="payrefno" formControlName="payrefno">
-          </div>
-        </div>
-        <div class="row mt-4">
-          <div class="col-md-4">
-            <label for="payamount" class="form-label">Amount</label>
-            <input type="text" class="form-control" id="payamount" formControlName="payamount">
-          </div>
-          <div class="col-md-8">
-            <label for="paycomments" class="form-label">Comments</label>
-            <textarea class="form-control" id="paycomments" formControlName="paycomments"></textarea>
-          </div>
 
+        <!-- Payment Summary -->
+        <div class="row mb-4" *ngIf="paymentSummary">
+            <div class="col-md-3">
+                <div class="card text-bg-primary">
+                    <div class="card-body">
+                        <h6 class="card-title">Invoice Total</h6>
+                        <h4>₹ {{ formatAmount(paymentSummary.totalamount || invoiceTotal) }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-bg-success">
+                    <div class="card-body">
+                        <h6 class="card-title">Paid Amount</h6>
+                        <h4>₹ {{ formatAmount(paymentSummary.paidamount || 0) }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-bg-warning">
+                    <div class="card-body">
+                        <h6 class="card-title">Outstanding</h6>
+                        <h4>₹ {{ formatAmount(paymentSummary.outstandingamount || invoiceTotal) }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-bg-info">
+                    <div class="card-body">
+                        <h6 class="card-title">Payment Count</h6>
+                        <h4>{{ paymentSummary.paymentcount || 0 }}</h4>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="text-center">
-          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
-        </div>
-      </form><!-- End Multi Columns Form -->
 
+        <!-- Add/Edit Payment Form -->
+        <div class="card mb-4" *ngIf="showAddPaymentForm">
+            <div class="card-body">
+                <h6 class="card-title">{{ editingPayment ? 'Edit Payment' : 'Add Payment' }}</h6>
+
+                <form [formGroup]="paymentForm" (ngSubmit)="submitPayment()">
+                    <div class="row g-3">
+                        <!-- Payment Amount -->
+                        <div class="col-md-3">
+                            <label for="amount" class="form-label">Amount *</label>
+                            <input type="number" class="form-control" id="amount" formControlName="amount"
+                                   step="0.01" min="0.01">
+                            <div class="invalid-feedback" *ngIf="paymentForm.get('amount')?.invalid && paymentForm.get('amount')?.touched">
+                                Amount is required and must be greater than 0
+                            </div>
+                        </div>
+
+                        <!-- Payment Date -->
+                        <div class="col-md-3">
+                            <label for="paymentdate" class="form-label">Date *</label>
+                            <input type="date" class="form-control" id="paymentdate" formControlName="paymentdate">
+                            <div class="invalid-feedback" *ngIf="paymentForm.get('paymentdate')?.invalid && paymentForm.get('paymentdate')?.touched">
+                                Payment date is required
+                            </div>
+                        </div>
+
+                        <!-- Payment Mode -->
+                        <div class="col-md-3">
+                            <label for="paymentmode" class="form-label">Mode *</label>
+                            <select class="form-select" id="paymentmode" formControlName="paymentmode">
+                                <option value="">Select Mode</option>
+                                <option *ngFor="let mode of paymentModes" [value]="mode">{{ mode }}</option>
+                            </select>
+                            <div class="invalid-feedback" *ngIf="paymentForm.get('paymentmode')?.invalid && paymentForm.get('paymentmode')?.touched">
+                                Payment mode is required
+                            </div>
+                        </div>
+
+                        <!-- Payment Type -->
+                        <div class="col-md-3">
+                            <label for="paymenttype" class="form-label">Type *</label>
+                            <select class="form-select" id="paymenttype" formControlName="paymenttype">
+                                <option *ngFor="let type of paymentTypes" [value]="type">{{ type }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Bank Name -->
+                        <div class="col-md-3">
+                            <label for="bankname" class="form-label">Bank Name</label>
+                            <input type="text" class="form-control" id="bankname" formControlName="bankname">
+                        </div>
+
+                        <!-- Cheque No -->
+                        <div class="col-md-3">
+                            <label for="chequeno" class="form-label">Cheque No</label>
+                            <input type="text" class="form-control" id="chequeno" formControlName="chequeno">
+                        </div>
+
+                        <!-- UTR No -->
+                        <div class="col-md-3">
+                            <label for="utrno" class="form-label">UTR No</label>
+                            <input type="text" class="form-control" id="utrno" formControlName="utrno">
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="col-md-9">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" formControlName="notes" rows="2"></textarea>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary" [disabled]="!paymentForm.valid || loading">
+                                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                                {{ editingPayment ? 'Update Payment' : 'Add Payment' }}
+                            </button>
+                            <button type="button" class="btn btn-secondary ms-2" (click)="cancelForm()">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Payments List -->
+        <div class="table-responsive" *ngIf="payments.length > 0">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Mode</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Reconciled</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let payment of payments">
+                        <td>{{ formatDate(payment.paymentdate) }}</td>
+                        <td><strong>₹ {{ formatAmount(payment.amount) }}</strong></td>
+                        <td>{{ payment.paymentmode }}</td>
+                        <td>
+                            <span [ngClass]="getPaymentTypeBadgeClass(payment.paymenttype)">
+                                {{ payment.paymenttype }}
+                            </span>
+                        </td>
+                        <td>
+                            <span [ngClass]="getPaymentStatusBadgeClass(payment.paymentstatus)">
+                                {{ payment.paymentstatus }}
+                            </span>
+                        </td>
+                        <td>
+                            <small>
+                                <div *ngIf="payment.chequeno">Cheque: {{ payment.chequeno }}</div>
+                                <div *ngIf="payment.utrno">UTR: {{ payment.utrno }}</div>
+                                <div *ngIf="payment.bankname">Bank: {{ payment.bankname }}</div>
+                            </small>
+                        </td>
+                        <td>
+                            <span *ngIf="payment.reconciled" class="badge bg-success">
+                                <i class="bi bi-check-circle"></i> Yes
+                            </span>
+                            <span *ngIf="!payment.reconciled" class="badge bg-warning text-dark">
+                                <i class="bi bi-x-circle"></i> No
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary"
+                                        (click)="editPayment(payment)" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-success"
+                                        (click)="reconcilePayment(payment.id!)"
+                                        *ngIf="!payment.reconciled" title="Reconcile">
+                                    <i class="bi bi-check2-square"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger"
+                                        (click)="deletePayment(payment.id!)" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="table-active">
+                        <td><strong>Total Paid:</strong></td>
+                        <td colspan="7">
+                            <strong>₹ {{ formatAmount(paymentSummary?.paidamount || 0) }}</strong>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- No Payments Message -->
+        <div class="alert alert-info" *ngIf="payments.length === 0 && !showAddPaymentForm">
+            <i class="bi bi-info-circle"></i> No payments recorded yet. Click "Add Payment" to record the first payment.
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="text-center" *ngIf="loading && !showAddPaymentForm">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
     </div>
-  </div>
+</div>

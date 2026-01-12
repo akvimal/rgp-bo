@@ -8,6 +8,10 @@ import { InvoiceFormComponent } from "./invoices/components/invoice-form.compone
 import { InvoiceItemsComponent } from "./invoices/components/invoice-items.component";
 import { InvoicePaymentComponent } from "./invoices/components/invoice-payment.component";
 import { InvoiceListComponent } from "./invoices/components/invoice-list.component";
+import { InvoiceStatusBadgesComponent } from "./invoices/components/invoice-status-badges.component";
+import { InvoiceDocumentUploadComponent } from "./invoices/components/invoice-document-upload.component";
+import { InvoiceTaxCreditComponent } from "./invoices/components/invoice-tax-credit.component";
+import { InvoiceLifecycleSummaryComponent } from "./invoices/components/invoice-lifecycle-summary.component";
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import {DialogModule} from 'primeng/dialog';
 import {TableModule} from 'primeng/table';
@@ -26,6 +30,9 @@ import { PurchasesComponent } from "./invoices/components/purchases.component";
 import { TabViewModule } from "primeng/tabview";
 import { PurchaseOrderComponent } from "./requests/components/purchase-order.component";
 import { PurchaseOrderViewComponent } from "./requests/components/purchase-order-view.component";
+import { PurchaseOrderFromIntentsComponent } from "./requests/components/purchase-order-from-intents.component";
+import { PurchaseOrderFormEnhancedComponent } from "./requests/components/purchase-order-form-enhanced.component";
+import { SmartPOSuggestionsComponent } from "./requests/components/smart-po-suggestions.component";
 import { InvoicesComponent } from "./invoices/components/invoices.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
 
@@ -33,11 +40,11 @@ const routes: Routes = [
   { path: '', component: PurchaseHomeComponent, canActivate:[AuthGuard],
     children: [
       { path: '', redirectTo: 'invoices'},
-      { path: 'orders', component: PurchaseOrderComponent,
-          children: [
-            { path: ':id', component: PurchaseOrderViewComponent }
-          ]
-      },
+      { path: 'orders/suggestions', component: SmartPOSuggestionsComponent },
+      { path: 'orders/from-intents', component: PurchaseOrderFromIntentsComponent },
+      { path: 'orders/new', component: PurchaseOrderFormEnhancedComponent },
+      { path: 'orders/:id', component: PurchaseOrderViewComponent },
+      { path: 'orders', component: PurchaseOrderComponent },
       { path: 'invoices', 
           children: [
             { path: '', redirectTo: 'list'},
@@ -61,12 +68,19 @@ const routes: Routes = [
       PurchaseHeaderComponent,
       PurchaseOrderComponent,
       PurchaseOrderViewComponent,
+      PurchaseOrderFromIntentsComponent,
+      PurchaseOrderFormEnhancedComponent,
+      SmartPOSuggestionsComponent,
       InvoicesComponent,
       InvoiceListComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,
       InvoiceItemFormComponent,
-      InvoicePaymentComponent
+      InvoicePaymentComponent,
+      InvoiceStatusBadgesComponent,
+      InvoiceDocumentUploadComponent,
+      InvoiceTaxCreditComponent,
+      InvoiceLifecycleSummaryComponent
     ],
     imports: [
         FormsModule,  

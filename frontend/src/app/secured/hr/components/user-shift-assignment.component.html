@@ -1,0 +1,125 @@
+<p-dialog
+  [(visible)]="visible"
+  header="Assign User to Shift"
+  [modal]="true"
+  [style]="{width: '600px'}"
+  [draggable]="false"
+  [resizable]="false"
+  (onHide)="closeDialog(false)">
+
+  <form [formGroup]="assignmentForm" (ngSubmit)="assignUser()">
+    <div class="p-fluid">
+
+      <!-- Shift Info (Read-only) -->
+      <div class="shift-info" *ngIf="shift">
+        <h4>Shift: {{ shift.name }}</h4>
+        <p>{{ shift.starttime.substring(0, 5) }} - {{ shift.endtime.substring(0, 5) }}</p>
+      </div>
+
+      <!-- User Selection -->
+      <div class="p-field">
+        <label for="userid">Select User *</label>
+        <p-dropdown
+          id="userid"
+          formControlName="userid"
+          [options]="users"
+          optionLabel="full_name"
+          optionValue="id"
+          placeholder="Select a user"
+          [filter]="true"
+          filterBy="full_name,email"
+          [showClear]="true"
+          [class.p-invalid]="assignmentForm.get('userid')?.invalid && assignmentForm.get('userid')?.touched">
+          <ng-template let-user pTemplate="selectedItem">
+            <div *ngIf="user">
+              {{ user.full_name }}
+            </div>
+          </ng-template>
+          <ng-template let-user pTemplate="item">
+            <div>
+              <div>{{ user.full_name }}</div>
+              <small style="color: #6c757d">{{ user.email }}</small>
+            </div>
+          </ng-template>
+        </p-dropdown>
+        <small
+          class="p-error"
+          *ngIf="assignmentForm.get('userid')?.invalid && assignmentForm.get('userid')?.touched">
+          Please select a user
+        </small>
+      </div>
+
+      <!-- Effective From Date -->
+      <div class="p-field">
+        <label for="effectivefrom">Effective From *</label>
+        <p-calendar
+          id="effectivefrom"
+          formControlName="effectivefrom"
+          [showIcon]="true"
+          dateFormat="yy-mm-dd"
+          placeholder="Select start date"
+          [class.p-invalid]="assignmentForm.get('effectivefrom')?.invalid && assignmentForm.get('effectivefrom')?.touched">
+        </p-calendar>
+        <small
+          class="p-error"
+          *ngIf="assignmentForm.get('effectivefrom')?.invalid && assignmentForm.get('effectivefrom')?.touched">
+          Effective from date is required
+        </small>
+      </div>
+
+      <!-- Effective To Date -->
+      <div class="p-field">
+        <label for="effectiveto">Effective To (Optional)</label>
+        <p-calendar
+          id="effectiveto"
+          formControlName="effectiveto"
+          [showIcon]="true"
+          dateFormat="yy-mm-dd"
+          placeholder="Leave empty for indefinite"
+          [class.p-invalid]="assignmentForm.get('effectiveto')?.invalid && assignmentForm.get('effectiveto')?.touched">
+        </p-calendar>
+        <small class="p-hint">Leave empty if the shift assignment has no end date</small>
+      </div>
+
+      <!-- Days of Week -->
+      <div class="p-field">
+        <label>Days of Week *</label>
+        <div class="days-grid">
+          <div
+            *ngFor="let day of daysOfWeek"
+            class="day-checkbox"
+            [class.selected]="isDaySelected(day.value)"
+            (click)="onDayToggle(day.value)">
+            <span>{{ day.label.substring(0, 3) }}</span>
+          </div>
+        </div>
+        <small class="p-hint">Select the days this user works on this shift</small>
+        <small class="p-error" *ngIf="selectedDays.length === 0">
+          Please select at least one day
+        </small>
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <button
+        pButton
+        type="button"
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-secondary"
+        (click)="closeDialog(false)"
+        [disabled]="isLoading">
+      </button>
+      <button
+        pButton
+        type="submit"
+        label="Assign User"
+        icon="pi pi-check"
+        class="p-button-success"
+        [disabled]="isLoading"
+        [loading]="isLoading">
+      </button>
+    </div>
+  </form>
+</p-dialog>

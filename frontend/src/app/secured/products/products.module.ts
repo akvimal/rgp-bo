@@ -25,9 +25,12 @@ import { DocumentsModule } from "../documents/documents.module";
 import { ProductPriceChangeComponent } from "./components/price/product-price-change.component";
 import { PriceAdjustorComponent } from "./components/price/price-adjustor.component";
 import { PriceEstimatorComponent } from "./components/price/price-estimator.component";
+import { PricingBreakdownComponent } from "./components/pricing-breakdown.component";
+import { HsnListComponent } from "./hsn/hsn-list.component";
+import { HsnFormComponent } from "./hsn/hsn-form.component";
 
 const routes: Routes = [
-  { path: '', component: ProductsComponent, 
+  { path: '', component: ProductsComponent,
     children: [
       { path: '', redirectTo: 'master'},
       { path: 'master', children: [
@@ -36,9 +39,14 @@ const routes: Routes = [
         { path: 'new', component: ProductFormComponent, canActivate:[AuthGuard]},
         { path: 'edit/:id', component: ProductFormComponent, canActivate:[AuthGuard]}
       ]},
-      { path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]}      
+      { path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]},
+      { path: 'hsn', children: [
+        { path: '', component: HsnListComponent, canActivate:[AuthGuard]},
+        { path: 'new', component: HsnFormComponent, canActivate:[AuthGuard]},
+        { path: 'edit/:id', component: HsnFormComponent, canActivate:[AuthGuard]}
+      ]}
   ]},
-  
+
 ];
 
 @NgModule({
@@ -50,7 +58,10 @@ const routes: Routes = [
         ProductPriceComponent,
         ProductPriceChangeComponent,
         PriceAdjustorComponent,
-        PriceEstimatorComponent
+        PriceEstimatorComponent,
+        PricingBreakdownComponent,
+        HsnListComponent,
+        HsnFormComponent
     ],
     imports: [
         CommonModule,
@@ -71,6 +82,6 @@ const routes: Routes = [
         SharedModule,
         DocumentsModule
     ],
-    exports: [RouterModule,PriceEstimatorComponent]
+    exports: [RouterModule, PriceEstimatorComponent, PricingBreakdownComponent]
   })
 export class ProductsModule{}

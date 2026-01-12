@@ -1,0 +1,178 @@
+<div class="attendance-clock-container">
+  <div class="card">
+    <div class="card-header">
+      <h3>Attendance</h3>
+      <p class="text-muted">{{ today | date:'EEEE, MMMM d, y' }}</p>
+    </div>
+
+    <div class="card-body">
+      <!-- Today's Status -->
+      <div *ngIf="!isLoading && !showCamera" class="attendance-status">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="status-card">
+              <div class="status-icon" [class.active]="todayAttendance?.clockintime">
+                <i class="pi pi-sign-in"></i>
+              </div>
+              <div class="status-details">
+                <h5>Clock In</h5>
+                <p class="time">{{ (todayAttendance?.clockintime | date:'shortTime') || '-- : --' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="status-card">
+              <div class="status-icon" [class.active]="todayAttendance?.clockouttime">
+                <i class="pi pi-sign-out"></i>
+              </div>
+              <div class="status-details">
+                <h5>Clock Out</h5>
+                <p class="time">{{ (todayAttendance?.clockouttime | date:'shortTime') || '-- : --' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="worked-hours mt-3 text-center" *ngIf="todayAttendance?.totalhours">
+          <h5>Total Worked Time</h5>
+          <p class="display-4">{{ workedHours }}</p>
+        </div>
+
+        <div class="status-badge mt-3" *ngIf="todayAttendance">
+          <span class="badge" [ngClass]="{
+            'badge-success': todayAttendance.status === 'PRESENT',
+            'badge-warning': todayAttendance.status === 'HALF_DAY',
+            'badge-danger': todayAttendance.status === 'ABSENT',
+            'badge-info': todayAttendance.status === 'ON_LEAVE' || todayAttendance.status === 'REMOTE_WORK'
+          }">
+            {{ todayAttendance.status }}
+          </span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons mt-4">
+          <div class="d-flex gap-2 justify-content-center">
+            <button
+              class="btn btn-primary btn-lg"
+              [disabled]="!canClockIn || isLoading"
+              (click)="startCamera('clock-in')"
+            >
+              <i class="pi pi-camera"></i> Clock In
+            </button>
+
+            <button
+              class="btn btn-danger btn-lg"
+              [disabled]="!canClockOut || isLoading"
+              (click)="startCamera('clock-out')"
+            >
+              <i class="pi pi-camera"></i> Clock Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Camera Interface -->
+      <div *ngIf="showCamera" class="camera-interface">
+        <div class="camera-header">
+          <h4>{{ currentAction === 'clock-in' ? 'Clock In' : 'Clock Out' }} - Take Photo</h4>
+          <button class="btn btn-sm btn-secondary" (click)="cancelCamera()">
+            <i class="pi pi-times"></i> Cancel
+          </button>
+        </div>
+
+        <div class="camera-view">
+          <video #video [hidden]="isCaptured" [width]="WIDTH" [height]="HEIGHT" autoplay></video>
+          <canvas #canvas [width]="WIDTH" [height]="HEIGHT" [hidden]="!isCaptured"></canvas>
+        </div>
+
+        <div class="camera-controls mt-3">
+          <div *ngIf="!isCaptured" class="text-center">
+            <button class="btn btn-primary btn-lg" (click)="capturePhoto()">
+              <i class="pi pi-camera"></i> Capture Photo
+            </button>
+          </div>
+
+          <div *ngIf="isCaptured" class="d-flex gap-2 justify-content-center">
+            <button class="btn btn-warning" (click)="retakePhoto()">
+              <i class="pi pi-refresh"></i> Retake
+            </button>
+            <button class="btn btn-success" (click)="submitClockAction()" [disabled]="isLoading">
+              <i class="pi pi-check"></i>
+              {{ currentAction === 'clock-in' ? 'Confirm Clock In' : 'Confirm Clock Out' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div *ngIf="isLoading" class="text-center py-5">
+        <i class="pi pi-spin pi-spinner" style="font-size: 3rem;"></i>
+        <p class="mt-2">Processing...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attendance History -->
+  <div class="card mt-4">
+      <div class="card-header">
+        <h4>Attendance History - {{ today | date:'MMMM y' }}</h4>
+      </div>
+      <div class="card-body">
+        <div *ngIf="isLoadingHistory" class="text-center py-3">
+          <i class="pi pi-spin pi-spinner" style="font-size: 2rem;"></i>
+          <p class="mt-2">Loading history...</p>
+        </div>
+
+        <div *ngIf="!isLoadingHistory && monthlyAttendance.length === 0" class="text-center text-muted py-4">
+          <i class="pi pi-calendar" style="font-size: 3rem;"></i>
+          <p class="mt-2">No attendance records found for this month</p>
+        </div>
+
+        <div *ngIf="!isLoadingHistory && monthlyAttendance.length > 0" class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>Hours Worked</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let record of monthlyAttendance">
+                <td>{{ formatDate(record.attendancedate) }}</td>
+                <td>
+                  <span [class.text-muted]="!record.clockintime">
+                    {{ formatTime(record.clockintime) }}
+                  </span>
+                </td>
+                <td>
+                  <span [class.text-muted]="!record.clockouttime">
+                    {{ formatTime(record.clockouttime) }}
+                  </span>
+                </td>
+                <td>
+                  <span *ngIf="record.totalhours">
+                    {{ record.totalhours.toFixed(2) }} hrs
+                  </span>
+                  <span *ngIf="!record.totalhours" class="text-muted">--</span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="{
+                    'badge-success': record.status === 'PRESENT',
+                    'badge-warning': record.status === 'HALF_DAY' || record.status === 'PENDING',
+                    'badge-danger': record.status === 'ABSENT',
+                    'badge-info': record.status === 'ON_LEAVE' || record.status === 'REMOTE_WORK'
+                  }">
+                    {{ record.status }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+</div>

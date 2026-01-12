@@ -39,4 +39,16 @@ export class PurchaseOrderService {
     download(id:number) {
         return this.http.post(`${environment.apiHost}/download/po`, {id}, {responseType: "blob"});
     }
+
+    createFromIntents(payload: { vendorid: number; intentIds: number[]; comments?: string }) {
+        return this.http.post(`${this.apiurl}/from-intents`, payload);
+    }
+
+    createWithItems(payload: any) {
+        return this.http.post(`${this.apiurl}/with-items`, payload);
+    }
+
+    getSmartSuggestions(storeId: number) {
+        return this.http.get<any>(`${this.apiurl}/suggestions?storeId=${storeId}`);
+    }
 }

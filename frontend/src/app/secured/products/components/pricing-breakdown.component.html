@@ -1,0 +1,187 @@
+<div class="card pricing-breakdown-card" *ngIf="productId && ptr > 0 && mrp > 0">
+  <div class="card-header bg-primary text-white">
+    <h6 class="mb-0">
+      <i class="bi bi-calculator"></i> Pricing Breakdown
+      <span *ngIf="appliedRule" class="badge bg-warning ms-2">
+        Rule: {{appliedRule.ruleName}}
+      </span>
+    </h6>
+  </div>
+
+  <div class="card-body">
+    <!-- Loading State -->
+    <div *ngIf="loading" class="text-center py-3">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="text-muted mt-2">Calculating pricing...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error" class="alert alert-danger" role="alert">
+      {{error}}
+    </div>
+
+    <!-- Pricing Breakdown -->
+    <div *ngIf="!loading && !error && pricingData">
+      <!-- Input Values -->
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <div class="input-display">
+            <label class="form-label text-muted small">PTR (Purchase Rate)</label>
+            <div class="h5 mb-0">₹{{ptr | number:'1.2-2'}}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-display">
+            <label class="form-label text-muted small">MRP</label>
+            <div class="h5 mb-0">₹{{mrp | number:'1.2-2'}}</div>
+          </div>
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- Calculated Prices -->
+      <div class="pricing-section mb-3">
+        <h6 class="text-secondary">Calculated Prices</h6>
+
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="price-item">
+              <span class="label">Base Price (PTR + Tax):</span>
+              <span class="value">₹{{basePrice | number:'1.2-2'}}</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="price-item">
+              <span class="label">Tax Amount:</span>
+              <span class="value text-info">₹{{taxAmount | number:'1.2-2'}}</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="price-item">
+              <span class="label">Sale Price (excl. tax):</span>
+              <span class="value fw-bold">₹{{salePrice | number:'1.2-2'}}</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="price-item">
+              <span class="label">Sale Price (incl. tax):</span>
+              <span class="value fw-bold text-success">₹{{salePriceWithTax | number:'1.2-2'}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- Margins & Discounts -->
+      <div class="row g-3 mb-3">
+        <!-- Margin Card -->
+        <div class="col-md-6">
+          <div class="card border-success">
+            <div class="card-body">
+              <h6 class="card-title text-success">
+                <i class="bi bi-graph-up-arrow"></i> Profit Margin
+              </h6>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="h4 mb-0" [class]="getProfitMarginClass()">
+                    {{marginPercent | number:'1.2-2'}}%
+                  </div>
+                  <small class="text-muted">Amount: ₹{{marginAmount | number:'1.2-2'}}</small>
+                </div>
+                <div class="text-end">
+                  <i class="bi bi-percent display-4 text-success opacity-25"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discount Card -->
+        <div class="col-md-6">
+          <div class="card border-warning">
+            <div class="card-body">
+              <h6 class="card-title text-warning">
+                <i class="bi bi-tag"></i> Customer Discount
+              </h6>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="h4 mb-0 text-warning">
+                    {{discountPercent | number:'1.2-2'}}%
+                  </div>
+                  <small class="text-muted">Savings: ₹{{savingsForCustomer | number:'1.2-2'}}</small>
+                </div>
+                <div class="text-end">
+                  <span [class]="getDiscountBadgeClass()">
+                    ₹{{discountAmount | number:'1.2-2'}} off
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Applied Pricing Rule -->
+      <div *ngIf="appliedRule" class="alert alert-info mb-3">
+        <h6 class="alert-heading">
+          <i class="bi bi-award"></i> Applied Pricing Rule
+        </h6>
+        <div><strong>{{appliedRule.ruleName}}</strong> ({{appliedRule.ruleCode}})</div>
+        <div class="text-muted small">
+          Method: {{appliedRule.calculationMethod}} |
+          <span *ngIf="appliedRule.marginPcnt">Margin: {{appliedRule.marginPcnt}}%</span>
+          <span *ngIf="appliedRule.discountPcnt">Discount: {{appliedRule.discountPcnt}}%</span>
+          <span *ngIf="appliedRule.fixedPrice">Fixed: ₹{{appliedRule.fixedPrice}}</span>
+        </div>
+      </div>
+
+      <!-- Available Rules -->
+      <div *ngIf="availableRules && availableRules.length > 1" class="mt-3">
+        <h6 class="text-secondary">Other Available Rules ({{availableRules.length - 1}})</h6>
+        <div class="list-group list-group-sm">
+          <div *ngFor="let rule of availableRules.slice(1, 4)" class="list-group-item list-group-item-action small">
+            <div class="d-flex justify-content-between">
+              <span>{{rule.ruleName}}</span>
+              <span class="badge bg-secondary">Priority: {{rule.priority}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quantity Impact (if quantity > 1) -->
+      <div *ngIf="quantity > 1" class="alert alert-secondary mt-3">
+        <h6 class="alert-heading">Bulk Pricing</h6>
+        <div class="row">
+          <div class="col-6">
+            <small class="text-muted">Quantity:</small>
+            <div class="fw-bold">{{quantity}} units</div>
+          </div>
+          <div class="col-6">
+            <small class="text-muted">Total Amount:</small>
+            <div class="fw-bold">₹{{salePriceWithTax * quantity | number:'1.2-2'}}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Warnings -->
+      <div *ngIf="pricingData.pricingResult.warnings && pricingData.pricingResult.warnings.length > 0"
+           class="alert alert-warning mt-3">
+        <h6 class="alert-heading">
+          <i class="bi bi-exclamation-triangle"></i> Warnings
+        </h6>
+        <ul class="mb-0">
+          <li *ngFor="let warning of pricingData.pricingResult.warnings">{{warning}}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-footer text-muted small">
+    <i class="bi bi-info-circle"></i>
+    Prices calculated based on active pricing rules and tax rates
+  </div>
+</div>

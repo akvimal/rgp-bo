@@ -1,0 +1,104 @@
+<div class="shift-management-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <h2>Shift Management</h2>
+    <button pButton
+            type="button"
+            label="New Shift"
+            icon="pi pi-plus"
+            class="p-button-success"
+            (click)="openNewShiftForm()">
+    </button>
+  </div>
+
+  <p-card>
+    <p-table [value]="shifts"
+             [loading]="isLoading"
+             [paginator]="true"
+             [rows]="10"
+             [showCurrentPageReport]="true"
+             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} shifts"
+             [rowsPerPageOptions]="[10,25,50]"
+             styleClass="p-datatable-sm">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="name">
+            Name <p-sortIcon field="name"></p-sortIcon>
+          </th>
+          <th pSortableColumn="starttime">
+            Start Time <p-sortIcon field="starttime"></p-sortIcon>
+          </th>
+          <th pSortableColumn="endtime">
+            End Time <p-sortIcon field="endtime"></p-sortIcon>
+          </th>
+          <th>Working Hours</th>
+          <th>Break Duration</th>
+          <th>Grace Period</th>
+          <th>Description</th>
+          <th style="width: 250px">Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-shift>
+        <tr>
+          <td><strong>{{ shift.name }}</strong></td>
+          <td>{{ formatTime(shift.starttime) }}</td>
+          <td>{{ formatTime(shift.endtime) }}</td>
+          <td>{{ calculateShiftDuration(shift) }}</td>
+          <td>{{ shift.breakduration }} min</td>
+          <td>{{ shift.graceperiodminutes || 0 }} min</td>
+          <td>{{ shift.description || '-' }}</td>
+          <td>
+            <button pButton
+                    type="button"
+                    icon="pi pi-users"
+                    class="p-button-info p-button-sm"
+                    pTooltip="Assign Users"
+                    (click)="assignUsers(shift)"
+                    style="margin-right: 5px">
+            </button>
+            <button pButton
+                    type="button"
+                    icon="pi pi-pencil"
+                    class="p-button-warning p-button-sm"
+                    pTooltip="Edit Shift"
+                    (click)="editShift(shift)"
+                    style="margin-right: 5px">
+            </button>
+            <button pButton
+                    type="button"
+                    icon="pi pi-trash"
+                    class="p-button-danger p-button-sm"
+                    pTooltip="Delete Shift"
+                    (click)="deleteShift(shift)">
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" style="text-align: center">
+            No shifts found. Click "New Shift" to create one.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <!-- Shift Form Dialog -->
+  <app-shift-form
+    *ngIf="showShiftForm"
+    [shift]="selectedShift"
+    (close)="onShiftFormClose($event)">
+  </app-shift-form>
+
+  <!-- User Assignment Dialog -->
+  <app-user-shift-assignment
+    *ngIf="showAssignmentForm"
+    [shift]="selectedShift"
+    (close)="onAssignmentFormClose($event)">
+  </app-user-shift-assignment>
+</div>

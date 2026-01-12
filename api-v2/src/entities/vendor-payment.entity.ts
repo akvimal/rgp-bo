@@ -31,12 +31,48 @@ export class VendorPayment extends BaseEntity {
     @Column("double precision", { name: "amount", precision: 53 })
     amount: number;
 
-    @Column("character varying", { name: "pay_mode" })
+    @Column("character varying", { name: "pay_mode", nullable: true })
     paymode: string;
-    
-    @Column("character varying", { name: "trans_ref" })
+
+    @Column("character varying", { name: "trans_ref", nullable: true })
     transref: string;
-    
+
+    // Enhanced Payment Tracking
+    @Column("character varying", { name: "payment_type", default: 'FULL' })
+    paymenttype: string;
+
+    @Column("character varying", { name: "payment_against", default: 'INVOICE' })
+    paymentagainst: string;
+
+    @Column("character varying", { name: "payment_status", default: 'COMPLETED' })
+    paymentstatus: string;
+
+    // Payment Details
+    @Column("character varying", { name: "bank_name", nullable: true })
+    bankname: string;
+
+    @Column("character varying", { name: "cheque_no", nullable: true })
+    chequeno: string;
+
+    @Column("character varying", { name: "utr_no", nullable: true })
+    utrno: string;
+
+    @Column("integer", { name: "payment_proof_doc_id", nullable: true })
+    paymentproofdocid: number;
+
+    // Reconciliation
+    @Column("boolean", { name: "reconciled", default: false })
+    reconciled: boolean;
+
+    @Column("timestamp with time zone", { name: "reconciled_on", nullable: true })
+    reconciledon: Date;
+
+    @Column("integer", { name: "reconciled_by", nullable: true })
+    reconciledby: number;
+
+    @Column("text", { name: "notes", nullable: true })
+    notes: string;
+
     @ManyToOne(
       () => Vendor,
       (vendor) => vendor.payments
@@ -51,4 +87,3 @@ export class VendorPayment extends BaseEntity {
     @JoinColumn([{ name: "invoice_id", referencedColumnName: "id" }])
     invoice: PurchaseInvoice;
   }
-  

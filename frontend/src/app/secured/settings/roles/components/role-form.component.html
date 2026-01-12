@@ -1,28 +1,188 @@
-<!-- <div class="pagetitle">
-  <h1>Roles</h1>
-</div> -->
 <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">New Role</h5>
+  <div class="card-body">
+    <h5 class="card-title">{{ form.value.id ? 'Edit Role' : 'New Role' }}</h5>
 
-      <!-- Multi Columns Form -->
-      <form class="row g-3" [formGroup]="form" (ngSubmit)="onSave()">
-        <div class="col-md-12" *isAuth="'roles.add$name'">
-          <label for="title" class="form-label">Name</label>
-          <input type="text" class="form-control" id="name" formControlName="name">
-        </div>
-        <div class="col-md-12" *isAuth="'roles.add$permissions'">
-          <label for="permissions" class="form-label">Permissions</label>
-          <textarea class="form-control" id="permissions" formControlName="permissions" 
-            style="height: 100px;"></textarea>
-        </div>
-       
-        <div class="text-center">
-          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-          <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
-          <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
-        </div>
-      </form><!-- End Multi Columns Form -->
+    <!-- Multi Columns Form -->
+    <form class="row g-3" [formGroup]="form" (ngSubmit)="onSave()">
+      <div class="col-md-12" *isAuth="'roles.add$name'">
+        <label for="name" class="form-label">Role Name</label>
+        <input type="text" class="form-control" id="name" formControlName="name" placeholder="Enter role name">
+      </div>
 
-    </div>
+      <div class="col-md-12">
+        <label class="form-label">Permissions</label>
+
+        <!-- Mode Toggle -->
+        <div class="btn-group mb-3 d-block" role="group">
+          <button type="button" class="btn" [ngClass]="editMode === 'visual' ? 'btn-primary' : 'btn-outline-secondary'"
+                  (click)="switchToVisualMode()">
+            <i class="bi bi-list-check me-1"></i> Visual Editor
+          </button>
+          <button type="button" class="btn" [ngClass]="editMode === 'json' ? 'btn-primary' : 'btn-outline-secondary'"
+                  (click)="switchToJSONMode()">
+            <i class="bi bi-code-square me-1"></i> JSON Editor
+          </button>
+        </div>
+
+        <!-- Visual Permission Editor -->
+        <div *ngIf="editMode === 'visual'" class="permission-editor">
+          <div class="accordion" id="permissionAccordion">
+            <div class="accordion-item" *ngFor="let resource of resources">
+              <h2 class="accordion-header">
+                <button class="accordion-button" [class.collapsed]="activeAccordion !== resource.resource"
+                        type="button" (click)="toggleAccordion(resource.resource)">
+                  <div class="form-check me-3" (click)="$event.stopPropagation()">
+                    <input class="form-check-input" type="checkbox"
+                           [checked]="permissionState[resource.resource]?.enabled"
+                           (change)="toggleResource(resource.resource)"
+                           [id]="'resource-' + resource.resource">
+                  </div>
+                  <div>
+                    <strong>{{ resource.label }}</strong>
+                    <small class="d-block text-muted">{{ resource.description }}</small>
+                  </div>
+                </button>
+              </h2>
+              <div class="accordion-collapse collapse" [class.show]="activeAccordion === resource.resource">
+                <div class="accordion-body">
+                  <!-- Resource Paths -->
+                  <div class="mb-3" *ngIf="resource.defaultPaths && resource.defaultPaths.length > 0">
+                    <label class="form-label fw-bold">Available Paths:</label>
+                    <div class="d-flex flex-wrap gap-1">
+                      <span class="badge bg-secondary" *ngFor="let path of resource.defaultPaths">{{ path }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Actions/Policies -->
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Permissions:</label>
+                    <div class="table-responsive">
+                      <table class="table table-sm table-bordered">
+                        <thead>
+                          <tr>
+                            <th style="width: 50px">Enable</th>
+                            <th>Action</th>
+                            <th *ngIf="resource.availableProperties && resource.availableProperties.length > 0">Field Access</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let action of resource.actions">
+                            <td class="text-center">
+                              <input class="form-check-input" type="checkbox"
+                                     [checked]="permissionState[resource.resource]?.actions[action.action]?.enabled"
+                                     (change)="toggleAction(resource.resource, action.action)"
+                                     [id]="'action-' + resource.resource + '-' + action.action">
+                            </td>
+                            <td>
+                              <label [for]="'action-' + resource.resource + '-' + action.action"
+                                     class="mb-0">{{ action.label }}</label>
+                              <span class="badge bg-info ms-2"
+                                    *ngIf="action.requiresPath">Requires Path</span>
+                            </td>
+                            <td *ngIf="resource.availableProperties && resource.availableProperties.length > 0">
+                              <div *ngIf="action.requiresProperties && permissionState[resource.resource]?.actions[action.action]?.enabled">
+                                <div class="btn-group btn-group-sm mb-2" role="group">
+                                  <button type="button" class="btn btn-sm btn-outline-primary"
+                                          (click)="selectAllProperties(resource.resource, action.action, resource.availableProperties)">
+                                    Select All
+                                  </button>
+                                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                                          (click)="clearAllProperties(resource.resource, action.action)">
+                                    Clear All
+                                  </button>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                  <div class="form-check" *ngFor="let prop of resource.availableProperties">
+                                    <input class="form-check-input" type="checkbox"
+                                           [checked]="isPropertySelected(resource.resource, action.action, prop)"
+                                           (change)="toggleProperty(resource.resource, action.action, prop)"
+                                           [id]="'prop-' + resource.resource + '-' + action.action + '-' + prop">
+                                    <label class="form-check-label"
+                                           [for]="'prop-' + resource.resource + '-' + action.action + '-' + prop">
+                                      {{ prop }}
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                              <span class="text-muted" *ngIf="!action.requiresProperties">-</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- JSON Editor Mode -->
+        <div *ngIf="editMode === 'json'">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Advanced Mode:</strong> Edit permissions JSON directly. Click "Apply Changes" to validate and switch back to visual mode.
+          </div>
+          <textarea class="form-control font-monospace"
+                    [(ngModel)]="jsonPreview"
+                    [ngModelOptions]="{standalone: true}"
+                    rows="20"
+                    style="font-size: 12px;"></textarea>
+          <button type="button" class="btn btn-success mt-2" (click)="applyJSONChanges()">
+            <i class="bi bi-check-circle me-1"></i> Apply Changes & Return to Visual
+          </button>
+        </div>
+      </div>
+
+      <!-- JSON Preview (visible in visual mode) -->
+      <div class="col-md-12" *ngIf="editMode === 'visual'">
+        <div class="card">
+          <div class="card-header bg-light">
+            <strong>Generated JSON Preview</strong>
+          </div>
+          <div class="card-body">
+            <pre class="mb-0" style="font-size: 11px; max-height: 300px; overflow-y: auto;">{{ jsonPreview }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="text-center mt-4">
+        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">
+          <i class="bi bi-save me-1"></i> Save Role
+        </button>
+        <button type="button" (click)="reset()" class="btn btn-outline-secondary m-2">
+          <i class="bi bi-arrow-clockwise me-1"></i> Reset
+        </button>
+        <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">
+          <i class="bi bi-x-circle me-1"></i> Cancel
+        </button>
+      </div>
+    </form>
+
   </div>
+</div>
+
+<style>
+.permission-editor .accordion-button {
+  padding: 1rem;
+}
+
+.permission-editor .accordion-button:not(.collapsed) {
+  background-color: #f8f9fa;
+  color: #212529;
+}
+
+.permission-editor .form-check-input {
+  cursor: pointer;
+}
+
+.permission-editor label {
+  cursor: pointer;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+</style>

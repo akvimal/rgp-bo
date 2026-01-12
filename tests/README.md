@@ -6,9 +6,28 @@ This directory contains tests for verifying fixes and functionality across all p
 
 ## Test Files
 
+### Phase 2 & 3: Core Transaction Testing
 1. **test-bill-number-concurrency.js** - Phase 2: Bill number race condition
 2. **test-transaction-rollback.js** - Phase 3: Transaction atomicity and rollback
-3. **PHASE3_TESTING.md** - Detailed Phase 3 testing guide
+3. **PHASE3_TESTING.md** - Phase 3 transaction rollback testing guide
+
+### Enhanced Invoice Lifecycle Testing
+4. **test-invoice-lifecycle.js** - Invoice lifecycle management
+5. **test-payment-management.js** - Payment tracking and status
+6. **test-tax-credit-reconciliation.js** - GST tax credit workflow
+7. **test-complete-invoice-workflow.js** - End-to-end workflow integration
+8. **ENHANCED_INVOICE_LIFECYCLE_TESTING.md** - Comprehensive testing guide
+
+### HSN & Tax System Testing
+9. **test-hsn-tax-lookup.js** - HSN code and tax rate lookup
+10. **test-tax-auto-population.js** - Automatic tax population
+11. **test-phase2-pricing-system.js** - Advanced pricing rules engine
+
+### Utility & Diagnostics
+12. **test-connection.js** - Database connectivity verification
+13. **test-auth-debug.js** - Authentication debugging
+14. **diagnose-auth.js** - Authentication diagnostics
+15. **verify-via-api.js** - API-based verification
 
 ---
 

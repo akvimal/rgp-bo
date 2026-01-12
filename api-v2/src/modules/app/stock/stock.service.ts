@@ -210,7 +210,34 @@ export class StockService {
         return this.priceRepository.save({...dto, createdby:userid});
     }
     
+    /**
+     * Create stock quantity adjustment
+     * Fix for issue #60: Validate negative adjustments don't make stock go below zero
+     */
     async createQty(dto: CreateProductQtyChangeDto, userid) {
+        // If negative adjustment, validate it won't make available stock go below zero
+        if (dto.qty < 0) {
+            // Check current available stock for this item
+            const stockCheck = await this.manager.query(
+                `SELECT available FROM inventory_view WHERE purchase_itemid = $1`,
+                [dto.item_id]
+            );
+
+            if (!stockCheck || stockCheck.length === 0) {
+                throw new Error(`Stock not found for item ID ${dto.item_id}`);
+            }
+
+            const currentStock = stockCheck[0].available;
+            const newStock = currentStock + dto.qty; // dto.qty is negative
+
+            if (newStock < 0) {
+                throw new Error(
+                    `Invalid adjustment: Cannot reduce stock below zero. ` +
+                    `Current: ${currentStock}, Adjustment: ${dto.qty}, Would result in: ${newStock}`
+                );
+            }
+        }
+
         return this.qtyRepository.save({...dto, createdby:userid});
     }
 
