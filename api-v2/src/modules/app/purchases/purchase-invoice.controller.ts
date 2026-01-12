@@ -126,6 +126,24 @@ export class PurchaseInvoiceController {
       return this.purchaseInvoiceService.createPayment(parseInt(id), paymentData, currentUser.id);
     }
 
+    @Post('/:id/quick-payment')
+    @ApiOperation({ summary: 'Quick payment - Mark invoice as paid (Issue #61)' })
+    @ApiResponse({ status: 201, description: 'Quick payment created successfully' })
+    @ApiResponse({ status: 400, description: 'Invoice not found or already fully paid' })
+    async createQuickPayment(
+      @Param('id') id: string,
+      @Body() body: { paymentMode: string; paymentDate?: string },
+      @User() currentUser: any
+    ) {
+      const paymentDate = body.paymentDate ? new Date(body.paymentDate) : new Date();
+      return this.purchaseInvoiceService.createQuickPayment(
+        parseInt(id),
+        body.paymentMode || 'CASH',
+        paymentDate,
+        currentUser.id
+      );
+    }
+
     @Get('/:id/payments')
     @ApiOperation({ summary: 'Get all payments for invoice' })
     @ApiResponse({ status: 200, description: 'Returns list of payments' })
