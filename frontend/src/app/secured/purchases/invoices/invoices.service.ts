@@ -149,6 +149,20 @@ export class InvoiceService {
     }
 
     /**
+     * Quick payment - Mark invoice as paid with simplified flow (Issue #61)
+     * Creates a payment for the outstanding amount
+     */
+    createQuickPayment(invoiceId: number, paymentMode: string, paymentDate?: Date) {
+        return this.http.post<VendorPayment>(
+            `${this.apiurl}/purchases/${invoiceId}/quick-payment`,
+            {
+                paymentMode,
+                paymentDate: paymentDate ? paymentDate.toISOString() : undefined
+            }
+        );
+    }
+
+    /**
      * Update an existing payment
      */
     updatePayment(paymentId: number, payment: Partial<VendorPayment>) {

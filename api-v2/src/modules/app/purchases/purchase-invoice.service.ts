@@ -576,6 +576,66 @@ export class PurchaseInvoiceService {
     }
 
     /**
+     * Quick payment for marking invoice as paid (Issue #61)
+     * Creates a payment record for the outstanding amount
+     */
+    async createQuickPayment(
+        invoiceId: number,
+        paymentMode: string,
+        paymentDate: Date,
+        userid: number
+    ): Promise<VendorPayment> {
+        try {
+            // Get invoice with payment summary
+            const invoice = await this.purchaseInvoiceRepository.findOne({
+                where: { id: invoiceId }
+            });
+
+            if (!invoice) {
+                throw new BadRequestException('Invoice not found');
+            }
+
+            // Calculate outstanding amount
+            const payments = await this.vendorPaymentRepository
+                .createQueryBuilder('payment')
+                .where('payment.invoiceid = :invoiceId', { invoiceId })
+                .andWhere('payment.paymentstatus = :status', { status: 'COMPLETED' })
+                .getMany();
+
+            const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+            const outstanding = invoice.total - totalPaid;
+
+            if (outstanding <= 0) {
+                throw new BadRequestException('Invoice is already fully paid');
+            }
+
+            // Convert Date to string format (YYYY-MM-DD) for PostgreSQL date column
+            const paydateStr = paymentDate.toISOString().split('T')[0];
+
+            // Create payment record for outstanding amount
+            const payment = await this.vendorPaymentRepository.save({
+                invoiceid: invoiceId,
+                vendorid: invoice.vendorid,
+                amount: outstanding,
+                paydate: paydateStr,
+                paymode: paymentMode,
+                paymenttype: 'FULL',
+                paymentstatus: 'COMPLETED',
+                createdby: userid,
+            });
+
+            // Automatically update payment status
+            await this.updatePaymentStatus(invoiceId);
+
+            this.logger.log(`Quick payment ${payment.id} created for invoice ${invoiceId} - Amount: ₹${outstanding}`);
+            return payment;
+        } catch (error) {
+            this.logger.error(`Failed to create quick payment: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
+
+    /**
      * Get all payments for an invoice
      */
     async getPaymentsByInvoice(invoiceId: number): Promise<VendorPayment[]> {
