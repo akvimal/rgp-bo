@@ -17,6 +17,7 @@ dump-*.tar
 temp/
 *.tmp
 *.temp
+tmpclaude-*-cwd
 
 # IDE
 .vscode/
