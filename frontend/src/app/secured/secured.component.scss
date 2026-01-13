@@ -1,16 +1,6 @@
-/* Navigation Headings */
-.nav-heading {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6c757d;
-  padding: 1.5rem 1.5rem 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 1rem;
-}
-
-.nav-heading:first-child {
-  margin-top: 0;
+/* Collapsible Groups - Add spacing between sections */
+.nav-item:not(:first-child) {
+  margin-top: 0.5rem;
 }
 
 /* Collapsible Groups */
