@@ -58,22 +58,22 @@
           </a>
           <ul id="operationsMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a routerLink="sales" *isNavAuth>
+              <a [routerLink]="['sales']" *isNavAuth style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Sales & POS</span>
               </a>
             </li>
             <li>
-              <a routerLink="purchases" *isAuth="'purchases.read'">
+              <a [routerLink]="['purchases']" *isAuth="'purchases.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Purchases</span>
               </a>
             </li>
             <li>
-              <a routerLink="inventory" *isAuth="'inventory.read'">
+              <a [routerLink]="['inventory']" *isAuth="'inventory.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Inventory & Stock</span>
               </a>
             </li>
             <li>
-              <a routerLink="returns" *isAuth="'returns.read'">
+              <a [routerLink]="['returns']" *isAuth="'returns.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Returns & Exchanges</span>
               </a>
             </li>
@@ -90,17 +90,17 @@
           </a>
           <ul id="stakeholdersMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a routerLink="customers/cust/list" *isAuth="'customers.read'">
+              <a [routerLink]="['customers/cust/list']" *isAuth="'customers.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Customers</span>
               </a>
             </li>
             <li>
-              <a routerLink="vendors" *isAuth="'vendors.read'">
+              <a [routerLink]="['vendors']" *isAuth="'vendors.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Vendors</span>
               </a>
             </li>
             <li>
-              <a routerLink="products" *isNavAuth>
+              <a [routerLink]="['products']" *isNavAuth style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Products & Catalog</span>
               </a>
             </li>
@@ -117,17 +117,17 @@
           </a>
           <ul id="storeMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a routerLink="store" *isAuth="'store.read'">
+              <a [routerLink]="['store']" *isAuth="'store.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Store Operations</span>
               </a>
             </li>
             <li>
-              <a routerLink="store/cash" *isAuth="'cash.read'">
+              <a [routerLink]="['store/cash']" *isAuth="'cash.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Cash & Payments</span>
               </a>
             </li>
             <li>
-              <a routerLink="documents" *isAuth="'documents.read'">
+              <a [routerLink]="['documents']" *isAuth="'documents.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Documents</span>
               </a>
             </li>
@@ -144,32 +144,32 @@
           </a>
           <ul id="hrMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a routerLink="hr/dashboard" *isAuth="'hr.read'">
+              <a [routerLink]="['hr/dashboard']" *isAuth="'hr.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>HR Dashboard</span>
               </a>
             </li>
             <li>
-              <a routerLink="hr/attendance" *isAuth="'attendance.read'">
+              <a [routerLink]="['hr/attendance']" *isAuth="'attendance.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Attendance & Time</span>
               </a>
             </li>
             <li>
-              <a routerLink="hr/leave" *isAuth="'leave.read'">
+              <a [routerLink]="['hr/leave']" *isAuth="'leave.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Leave Management</span>
               </a>
             </li>
             <li>
-              <a routerLink="hr/shifts" *isAuth="'shifts.read'">
+              <a [routerLink]="['hr/shifts']" *isAuth="'shifts.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Shift Scheduling</span>
               </a>
             </li>
             <li>
-              <a routerLink="hr/shift-assignments" *isAuth="'shifts.read'">
+              <a [routerLink]="['hr/shift-assignments']" *isAuth="'shifts.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Shift Assignments</span>
               </a>
             </li>
             <li>
-              <a routerLink="hr/performance" *isAuth="'performance.read'">
+              <a [routerLink]="['hr/performance']" *isAuth="'performance.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Performance & KPI</span>
               </a>
             </li>
@@ -186,22 +186,22 @@
           </a>
           <ul id="financeMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a routerLink="payroll" *isAuth="'payroll.read'">
+              <a [routerLink]="['payroll']" *isAuth="'payroll.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Payroll Runs</span>
               </a>
             </li>
             <li>
-              <a routerLink="payroll/salary-structures" *isAuth="'payroll.manage'">
+              <a [routerLink]="['payroll/salary-structures']" *isAuth="'payroll.manage'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Salary Structures</span>
               </a>
             </li>
             <li>
-              <a routerLink="finance/reports" *isAuth="'finance.read'">
+              <a [routerLink]="['finance/reports']" *isAuth="'finance.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Financial Reports</span>
               </a>
             </li>
             <li>
-              <a routerLink="finance/gst" *isAuth="'gst.read'">
+              <a [routerLink]="['finance/gst']" *isAuth="'gst.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>GST & Tax Management</span>
               </a>
             </li>
@@ -218,27 +218,27 @@
           </a>
           <ul id="reportsMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a routerLink="reports/sales" *isAuth="'reports.sales'">
+              <a [routerLink]="['reports/sales']" *isAuth="'reports.sales'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Sales Reports</span>
               </a>
             </li>
             <li>
-              <a routerLink="reports/inventory" *isAuth="'reports.inventory'">
+              <a [routerLink]="['reports/inventory']" *isAuth="'reports.inventory'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Inventory Reports</span>
               </a>
             </li>
             <li>
-              <a routerLink="reports/financial" *isAuth="'reports.financial'">
+              <a [routerLink]="['reports/financial']" *isAuth="'reports.financial'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Financial Reports</span>
               </a>
             </li>
             <li>
-              <a routerLink="reports/hr" *isAuth="'reports.hr'">
+              <a [routerLink]="['reports/hr']" *isAuth="'reports.hr'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>HR Reports</span>
               </a>
             </li>
             <li>
-              <a routerLink="reports" *isAuth="'reports.custom'">
+              <a [routerLink]="['reports']" *isAuth="'reports.custom'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>All Reports</span>
               </a>
             </li>
@@ -255,22 +255,22 @@
           </a>
           <ul id="adminMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a routerLink="settings/users" *isAuth="'users.read'">
+              <a [routerLink]="['settings/users']" *isAuth="'users.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Users & Roles</span>
               </a>
             </li>
             <li>
-              <a routerLink="settings/roles" *isAuth="'roles.read'">
+              <a [routerLink]="['settings/roles']" *isAuth="'roles.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Permissions</span>
               </a>
             </li>
             <li>
-              <a routerLink="settings/business" *isAuth="'settings.manage'">
+              <a [routerLink]="['settings/business']" *isAuth="'settings.manage'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Business Settings</span>
               </a>
             </li>
             <li>
-              <a routerLink="settings" *isAuth="'settings.read'">
+              <a [routerLink]="['settings']" *isAuth="'settings.read'" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>System Configuration</span>
               </a>
             </li>
