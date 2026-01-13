@@ -65,9 +65,6 @@ export class UserScore {
   })
   grade: ScoreGrade | null;
 
-  @Column("jsonb", { name: "score_details", nullable: true })
-  scoredetails: any;
-
   @ManyToOne(() => AppUser, (user) => user.userscores)
   @JoinColumn([{ name: "user_id", referencedColumnName: "id" }])
   user: AppUser;
