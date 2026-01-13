@@ -4,7 +4,7 @@
 # Prerequisites: Install GitHub CLI (gh) and authenticate
 # Usage: ./create-github-issues.sh
 
-REPO="your-username/rgp-bo"  # UPDATE THIS
+REPO="akvimal/rgp-bo"
 
 echo "🚀 Creating GitHub labels, milestones, and issues for RGP Back Office"
 echo "Repository: $REPO"

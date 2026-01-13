@@ -13,7 +13,7 @@ This feature allows users to upload invoice documents (PDF or images) and automa
 - Key methods:
   - `create()`: Create invoice document record
   - `extractInvoiceData()`: Trigger OCR extraction
-  - `performOcrExtraction()`: Placeholder for AI integration
+  - `performOcrExtraction()`: **INTEGRATED** - Uses Anthropic Claude Vision for AI extraction
   - `autoPopulateFromExtractedData()`: Auto-populate invoice from extracted data
   - `updateOcrStatus()`: Update OCR processing status
   - `markForReview()`: Flag documents for manual review
@@ -106,9 +106,18 @@ Already exists in `purchase_invoice_document` table:
 
 ## AI Service Integration
 
-### Current Status
+### Current Status ✅
 
-The service includes a **placeholder** OCR extraction method. To enable actual AI extraction, you need to integrate one of the following services:
+The service is **FULLY INTEGRATED** with **Anthropic Claude Vision** for AI-powered invoice data extraction. The system supports:
+- PDF documents (native support)
+- Image files (JPEG, PNG, GIF, WebP)
+- Automatic field extraction (invoice number, date, vendor, amounts, line items)
+- Confidence scoring
+- Error handling and retry logic
+
+### Alternative AI Services
+
+If you prefer to use a different AI service, you can replace the implementation with one of the following options:
 
 ### Option 1: OpenAI GPT-4 Vision
 
@@ -188,83 +197,39 @@ Add to `.env`:
 OPENAI_API_KEY=sk-your-api-key-here
 ```
 
-### Option 2: Anthropic Claude Vision
+### Option 2: Anthropic Claude Vision ✅ (Currently Integrated)
 
-```typescript
-// In invoice-document.service.ts, update performOcrExtraction()
+**This is the current integrated solution.** The implementation is complete and ready to use.
 
-import Anthropic from '@anthropic-ai/sdk';
-import * as fs from 'fs';
+**Setup Required:**
+1. Package is already installed: `@anthropic-ai/sdk`
+2. Add your API key to `.env`:
+   ```
+   ANTHROPIC_API_KEY=your-api-key-here
+   ```
+3. Get your API key from: https://console.anthropic.com/
 
-private async performOcrExtraction(filepath: string, docType: string): Promise<any> {
-  const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
+**Features:**
+- Native PDF support (no conversion needed)
+- High accuracy for Indian invoices and GST documents
+- Supports all image formats (JPEG, PNG, GIF, WebP)
+- Cost-effective: ~$0.003 per document
+- Automatic error handling and retry logic
+- Confidence scoring
 
-  // Read file as base64
-  const imageBuffer = fs.readFileSync(filepath);
-  const base64Image = imageBuffer.toString('base64');
-  const mediaType = filepath.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg';
+**Current Implementation:**
+- Location: `api-v2/src/modules/app/purchases/invoice-document.service.ts`
+- Model: `claude-3-haiku-20240307` (optimized for speed and cost)
+- Max tokens: 4000
+- Full error handling with `AiApiErrorHandler`
 
-  const prompt = `
-Extract invoice data from this document. Return ONLY a JSON object with:
-{
-  "confidence": <0-100>,
-  "invoice": {
-    "invoiceNumber": "string",
-    "invoiceDate": "YYYY-MM-DD",
-    "vendorName": "string",
-    "vendorGstin": "string",
-    "grNumber": "string",
-    "totalAmount": number,
-    "taxAmount": number,
-    "subtotal": number
-  },
-  "items": [...]
-}
-  `;
-
-  const message = await AiApiErrorHandler.wrapApiCall(
-    () => anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: base64Image,
-              },
-            },
-            {
-              type: 'text',
-              text: prompt
-            }
-          ]
-        }
-      ]
-    }),
-    'Anthropic Claude Vision'
-  );
-
-  const content = message.content[0].text;
-  return JSON.parse(content);
-}
-```
-
-**Setup:**
-```bash
-npm install @anthropic-ai/sdk
-```
-
-Add to `.env`:
-```
-ANTHROPIC_API_KEY=your-api-key-here
-```
+**Recent Improvements (2025-12-19):**
+1. **Enhanced Vendor Extraction**: Added detailed prompt instructions to correctly distinguish between vendor (seller/issuer at invoice top) and customer (bill-to/ship-to sections)
+2. **Improved User Experience**: When extracted vendor doesn't exist in database, shows clear actionable message with:
+   - What data was successfully extracted
+   - Why user can't proceed (required vendor field)
+   - Step-by-step actions to resolve (select existing vendor or add new one)
+3. **Multi-format Support**: Correctly handles both PDF documents and image files (JPEG, PNG, GIF, WebP) with appropriate content type detection
 
 ### Option 3: OCR.space (Free OCR API)
 
@@ -329,41 +294,39 @@ OCR_SPACE_API_KEY=your-api-key-here
 
 ## Configuration
 
-### Environment Variables
+### Environment Variables ✅
 
-Add to `api-v2/.env`:
+The `.env` file has been updated with the required configuration:
 
 ```env
-# AI Service Configuration (choose one)
-OPENAI_API_KEY=sk-...
-# OR
-ANTHROPIC_API_KEY=...
-# OR
-OCR_SPACE_API_KEY=...
+# AI Service Configuration
+# Anthropic API Key for invoice OCR extraction
+# Get your API key from: https://console.anthropic.com/
+ANTHROPIC_API_KEY=your-api-key-here
 
-# File Upload Configuration
-FILEUPLOAD_LOCATION=./uploads
-MAX_FILE_SIZE=10485760  # 10MB in bytes
+# File Upload Configuration (already configured)
+FILEUPLOAD_LOCATION=d:/rgp/DATA/file-upload
+FILEUPLOAD_SIZE_LIMIT=512000
 ```
 
-### Dependencies
+**Next Step:** Replace `your-api-key-here` with your actual Anthropic API key.
 
-Install required packages:
+### Dependencies ✅
 
+**Already Installed:**
+- `@anthropic-ai/sdk` - Anthropic Claude Vision API client
+- `multer` & `@types/multer` - File upload handling
+- All required dependencies are installed
+
+**Alternative Services (if switching):**
 ```bash
 cd api-v2
 
 # For OpenAI
 npm install openai
 
-# OR for Anthropic Claude
-npm install @anthropic-ai/sdk
-
-# OR for OCR.space
+# For OCR.space
 npm install axios form-data
-
-# For all (if not already installed)
-npm install multer @types/multer
 ```
 
 ## Testing
@@ -507,6 +470,21 @@ For issues or questions:
 
 ## Summary
 
-This feature provides a complete end-to-end solution for invoice document upload and AI-powered data extraction. The modular design allows easy integration with various AI services (OpenAI, Anthropic, OCR.space) while maintaining robust error handling and user experience.
+This feature provides a **complete, production-ready** end-to-end solution for invoice document upload and AI-powered data extraction.
 
-The placeholder implementation allows development and testing to continue while AI service integration is completed. Simply replace the `performOcrExtraction()` method with your chosen AI provider's code.
+### ✅ What's Implemented:
+- **AI Integration**: Fully integrated with Anthropic Claude Vision
+- **File Upload**: Drag-and-drop with validation (PDF, images)
+- **OCR Processing**: Automatic extraction of invoice fields and line items
+- **Error Handling**: Comprehensive error handling with retry logic
+- **Status Tracking**: Real-time OCR status and confidence scoring
+- **Frontend UI**: Complete upload, preview, and populate workflow
+- **API Endpoints**: All CRUD operations for documents
+
+### 🚀 Ready to Use:
+1. Add your `ANTHROPIC_API_KEY` to `api-v2/.env`
+2. Restart the API service
+3. Upload invoice documents and extract data automatically
+
+### 🔄 Alternative Services:
+The modular design allows easy switching to other AI providers (OpenAI, OCR.space) if needed. Simply replace the `performOcrExtraction()` method in `invoice-document.service.ts`.

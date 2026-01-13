@@ -14,6 +14,9 @@ import {
   InvoiceDocumentType,
 } from './enums/ocr-status.enum';
 import { AiApiErrorHandler } from 'src/core/exceptions/ai-api.helper';
+import Anthropic from '@anthropic-ai/sdk';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Invoice Document Service
@@ -165,41 +168,178 @@ export class InvoiceDocumentService {
   }
 
   /**
-   * Perform OCR extraction (placeholder for AI integration)
-   * TODO: Integrate with actual AI service
+   * Perform OCR extraction using Anthropic Claude Vision
    */
   private async performOcrExtraction(
     filepath: string,
     docType: string,
   ): Promise<any> {
-    // This is a placeholder. In production, you would:
-    // 1. Read the file (PDF/Image)
-    // 2. Send to AI service (OpenAI, Anthropic, OCR.space, etc.)
-    // 3. Parse the response
-    // 4. Return structured data
-
     this.logger.log(`Performing OCR extraction on: ${filepath}`);
 
-    // Mock extracted data structure
-    return {
-      confidence: 85,
-      documentType: docType,
-      invoice: {
-        invoiceNumber: null,
-        invoiceDate: null,
-        vendorName: null,
-        vendorGstin: null,
-        grNumber: null,
-        totalAmount: null,
-        taxAmount: null,
-        subtotal: null,
-      },
-      items: [],
-      notes: [
-        'This is a placeholder extraction.',
-        'Integrate with OpenAI GPT-4 Vision, Anthropic Claude Vision, or OCR.space for actual extraction.',
-      ],
-    };
+    try {
+      // Initialize Anthropic client
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+
+      // Read file as base64
+      const fileBuffer = fs.readFileSync(filepath);
+      const base64Data = fileBuffer.toString('base64');
+
+      // Determine media type and content type based on file extension
+      const fileExt = path.extname(filepath).toLowerCase();
+      let mediaType: string;
+      let contentType: 'document' | 'image';
+
+      if (fileExt === '.pdf') {
+        mediaType = 'application/pdf';
+        contentType = 'document';
+      } else if (fileExt === '.jpg' || fileExt === '.jpeg') {
+        mediaType = 'image/jpeg';
+        contentType = 'image';
+      } else if (fileExt === '.png') {
+        mediaType = 'image/png';
+        contentType = 'image';
+      } else if (fileExt === '.gif') {
+        mediaType = 'image/gif';
+        contentType = 'image';
+      } else if (fileExt === '.webp') {
+        mediaType = 'image/webp';
+        contentType = 'image';
+      } else {
+        // Default to JPEG for unknown image types
+        mediaType = 'image/jpeg';
+        contentType = 'image';
+      }
+
+      // Construct the extraction prompt
+      const prompt = `
+Extract invoice data from this ${docType === 'DELIVERY_CHALLAN_SCAN' ? 'delivery challan' : 'invoice'} document.
+
+Return ONLY a valid JSON object (no markdown, no explanation) with the following structure:
+{
+  "confidence": <number 0-100>,
+  "invoice": {
+    "invoiceNumber": "string or null",
+    "invoiceDate": "YYYY-MM-DD or null",
+    "vendorName": "string or null",
+    "vendorGstin": "string or null",
+    "grNumber": "string or null",
+    "totalAmount": <number or null>,
+    "taxAmount": <number or null>,
+    "subtotal": <number or null>
+  },
+  "items": [
+    {
+      "productName": "string",
+      "batch": "string or null",
+      "quantity": <number>,
+      "rate": <number>,
+      "mrp": <number or null>,
+      "taxPercent": <number or null>,
+      "amount": <number>
+    }
+  ],
+  "notes": ["any issues or important observations"]
+}
+
+CRITICAL - Vendor vs Customer Distinction:
+- **Vendor Name**: THIS IS THE COMPANY AT THE VERY TOP OF THE INVOICE (in the header/letterhead). This is the SELLER who is ISSUING the invoice. Look for the business name in the largest font at the top, usually with their address and contact details below it.
+- **DO NOT extract the Customer/Bill To/Ship To name** - ignore any section labeled "Customer", "Bill To", "Buyer", "Ship To" etc.
+- **Vendor GSTIN**: The GST number will be RIGHT NEXT to or near the vendor's name at the top. It's exactly 15 characters (format: 33AUEPA1476GZ22).
+- **Verify**: The vendor name and GSTIN should be in the SAME section at the TOP of the invoice.
+
+Other fields:
+- **Invoice Date**: Use YYYY-MM-DD format. Look for "Date", "Invoice Date", "Bill Date" in the invoice details section.
+- **Invoice Number**: Look for "Inv No", "Invoice No", "Bill No" - usually has a prefix like SP, INV, etc.
+- **Amounts**: Extract only numeric values (no ₹, Rs). Total = Subtotal + Tax Amount.
+- **Line Items**: Extract all products with quantities, rates, and amounts from the table.
+- **GR Number**: Goods Receipt Number, if present.
+- Set any field to null if not found
+- Provide confidence score (0-100)
+`;
+
+      // Build content array based on file type
+      const content: any[] = [
+        {
+          type: contentType,
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data,
+          },
+        },
+        {
+          type: 'text',
+          text: prompt,
+        },
+      ];
+
+      // Call Anthropic API with error handling
+      const message = await AiApiErrorHandler.wrapApiCall(
+        () =>
+          anthropic.messages.create({
+            model: 'claude-3-haiku-20240307',
+            max_tokens: 4000,
+            messages: [
+              {
+                role: 'user',
+                content: content,
+              },
+            ],
+          }),
+        'Anthropic Claude Vision',
+      );
+
+      // Extract the text response
+      const responseText = message.content[0].type === 'text'
+        ? message.content[0].text
+        : '';
+
+      this.logger.log(`Claude response: ${responseText.substring(0, 200)}...`);
+
+      // Parse JSON response
+      // Remove markdown code blocks if present
+      let jsonText = responseText.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/```\n?/g, '');
+      }
+
+      const extractedData = JSON.parse(jsonText);
+
+      // Add document type to response
+      extractedData.documentType = docType;
+
+      this.logger.log(
+        `Successfully extracted data with confidence: ${extractedData.confidence}%`,
+      );
+
+      return extractedData;
+    } catch (error) {
+      this.logger.error('Error in OCR extraction:', error.stack);
+
+      // If it's an AI API error, it's already been handled by AiApiErrorHandler
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Handle JSON parse errors
+      if (error.name === 'SyntaxError') {
+        this.logger.error('Failed to parse Claude response as JSON');
+        throw new HttpException(
+          'Failed to parse OCR results. Please try again or upload a clearer document.',
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+
+      // Generic error
+      throw new HttpException(
+        'OCR extraction failed. Please try again.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   /**

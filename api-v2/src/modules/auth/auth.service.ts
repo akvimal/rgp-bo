@@ -44,7 +44,7 @@ export class AuthService {
     }
 
     this.userService.update(user.id, { lastlogin: new Date() });
-    return {token: this.helper.generateToken(user)};
+    return {token: await this.helper.generateToken(user)};
   }
 
   public async changepwd(body: ChangePasswordDto): Promise<any | never> {
@@ -61,11 +61,11 @@ export class AuthService {
 
     this.userService.update(user.id, { password: this.helper.encodePassword(newpassword), lastlogin: new Date() });
 
-    return {token: this.helper.generateToken(user)};
+    return {token: await this.helper.generateToken(user)};
   }
 
   public async refresh(user: AppUser): Promise<string> {
     this.userService.update(user.id, { lastlogin: new Date() });
-    return this.helper.generateToken(user);
+    return await this.helper.generateToken(user);
   }
 }

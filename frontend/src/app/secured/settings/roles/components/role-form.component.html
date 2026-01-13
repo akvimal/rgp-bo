@@ -12,17 +12,166 @@
       <div class="col-md-12">
         <label class="form-label">Permissions</label>
 
-        <!-- Mode Toggle -->
+        <!-- Permission Mode Selector -->
         <div class="btn-group mb-3 d-block" role="group">
-          <button type="button" class="btn" [ngClass]="editMode === 'visual' ? 'btn-primary' : 'btn-outline-secondary'"
-                  (click)="switchToVisualMode()">
-            <i class="bi bi-list-check me-1"></i> Visual Editor
+          <button type="button" class="btn"
+                  [ngClass]="permissionMode === 'feature-groups' ? 'btn-success' : 'btn-outline-secondary'"
+                  (click)="switchPermissionMode('feature-groups')">
+            <i class="bi bi-grid-3x3-gap me-1"></i> Feature Groups (Recommended)
           </button>
-          <button type="button" class="btn" [ngClass]="editMode === 'json' ? 'btn-primary' : 'btn-outline-secondary'"
-                  (click)="switchToJSONMode()">
-            <i class="bi bi-code-square me-1"></i> JSON Editor
+          <button type="button" class="btn"
+                  [ngClass]="permissionMode === 'legacy' ? 'btn-success' : 'btn-outline-secondary'"
+                  (click)="switchPermissionMode('legacy')">
+            <i class="bi bi-braces me-1"></i> Legacy JSON
           </button>
         </div>
+
+        <!-- Feature Groups Mode -->
+        <div *ngIf="permissionMode === 'feature-groups'" class="feature-groups-editor">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Feature Groups:</strong> Simplified permission management with intuitive access level dropdowns. Select features and assign access levels (View/Edit/Full).
+          </div>
+
+          <!-- Feature Group Assignment Card -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <strong>Assign New Feature</strong>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Feature Group</label>
+                  <select class="form-select" [(ngModel)]="selectedFeatureGroup"
+                          [ngModelOptions]="{standalone: true}"
+                          (change)="onFeatureGroupChange()">
+                    <option [value]="null">Select a feature...</option>
+                    <option *ngFor="let fg of availableFeatureGroups" [value]="fg.id">
+                      <i [class]="fg.icon"></i> {{ fg.displayName }}
+                    </option>
+                  </select>
+                  <small class="text-muted" *ngIf="selectedFeatureGroup">
+                    {{ getFeatureGroupById(selectedFeatureGroup)?.description }}
+                  </small>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Access Level</label>
+                  <select class="form-select" [(ngModel)]="selectedAccessLevel"
+                          [ngModelOptions]="{standalone: true}"
+                          [disabled]="!selectedFeatureGroup">
+                    <option [value]="null">Select access...</option>
+                    <option *ngFor="let al of getFeatureGroupById(selectedFeatureGroup)?.accessLevels"
+                            [value]="al.id">
+                      {{ al.displayName }}
+                    </option>
+                  </select>
+                  <small class="text-muted" *ngIf="selectedAccessLevel && selectedFeatureGroup">
+                    {{ getAccessLevelById(selectedFeatureGroup, selectedAccessLevel)?.description }}
+                  </small>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Data Scope</label>
+                  <select class="form-select" [(ngModel)]="selectedDataScope"
+                          [ngModelOptions]="{standalone: true}">
+                    <option value="all">All Data</option>
+                    <option value="team">Team Data</option>
+                    <option value="own">Own Data Only</option>
+                  </select>
+                  <small class="text-muted">Controls data visibility</small>
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
+                  <button type="button" class="btn btn-primary w-100" (click)="onAssignFeature()"
+                          [disabled]="!selectedFeatureGroup || !selectedAccessLevel">
+                    <i class="bi bi-plus-circle me-1"></i> Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assigned Features List -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <strong>Assigned Features ({{ roleFeatureAssignments.length }})</strong>
+            </div>
+            <div class="card-body">
+              <div *ngIf="roleFeatureAssignments.length === 0" class="text-center text-muted py-4">
+                <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                <p>No features assigned yet. Add features using the form above.</p>
+              </div>
+
+              <div class="table-responsive" *ngIf="roleFeatureAssignments.length > 0">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Feature Group</th>
+                      <th>Access Level</th>
+                      <th>Data Scope</th>
+                      <th style="width: 100px">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let assignment of roleFeatureAssignments">
+                      <td>
+                        <i [class]="assignment.featureGroup?.icon + ' me-2'"></i>
+                        <strong>{{ assignment.featureGroup?.displayName }}</strong>
+                        <br>
+                        <small class="text-muted">{{ assignment.featureGroup?.description }}</small>
+                      </td>
+                      <td>
+                        <select class="form-select form-select-sm"
+                                [value]="assignment.accessLevelId"
+                                (change)="onUpdateAccessLevel(assignment, +$any($event.target).value)">
+                          <option *ngFor="let al of assignment.featureGroup?.accessLevels"
+                                  [value]="al.id"
+                                  [selected]="al.id === assignment.accessLevelId">
+                            {{ al.displayName }}
+                          </option>
+                        </select>
+                        <small class="text-muted d-block mt-1">
+                          {{ assignment.accessLevel?.description }}
+                        </small>
+                      </td>
+                      <td>
+                        <select class="form-select form-select-sm"
+                                [value]="assignment.dataScope"
+                                (change)="onUpdateDataScope(assignment, $any($event.target).value)">
+                          <option value="all">All Data</option>
+                          <option value="team">Team Data</option>
+                          <option value="own">Own Data Only</option>
+                        </select>
+                      </td>
+                      <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                (click)="onRemoveFeature(assignment)"
+                                title="Remove feature">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legacy Mode -->
+        <div *ngIf="permissionMode === 'legacy'">
+          <!-- Mode Toggle -->
+          <div class="btn-group mb-3 d-block" role="group">
+            <button type="button" class="btn" [ngClass]="editMode === 'visual' ? 'btn-primary' : 'btn-outline-secondary'"
+                    (click)="switchToVisualMode()">
+              <i class="bi bi-list-check me-1"></i> Visual Editor
+            </button>
+            <button type="button" class="btn" [ngClass]="editMode === 'json' ? 'btn-primary' : 'btn-outline-secondary'"
+                    (click)="switchToJSONMode()">
+              <i class="bi bi-code-square me-1"></i> JSON Editor
+            </button>
+          </div>
 
         <!-- Visual Permission Editor -->
         <div *ngIf="editMode === 'visual'" class="permission-editor">
@@ -132,32 +281,33 @@
             <i class="bi bi-check-circle me-1"></i> Apply Changes & Return to Visual
           </button>
         </div>
-      </div>
 
-      <!-- JSON Preview (visible in visual mode) -->
-      <div class="col-md-12" *ngIf="editMode === 'visual'">
-        <div class="card">
-          <div class="card-header bg-light">
-            <strong>Generated JSON Preview</strong>
-          </div>
-          <div class="card-body">
-            <pre class="mb-0" style="font-size: 11px; max-height: 300px; overflow-y: auto;">{{ jsonPreview }}</pre>
+        <!-- JSON Preview (visible in visual mode) -->
+        <div *ngIf="editMode === 'visual'">
+          <div class="card mt-3">
+            <div class="card-header bg-light">
+              <strong>Generated JSON Preview</strong>
+            </div>
+            <div class="card-body">
+              <pre class="mb-0" style="font-size: 11px; max-height: 300px; overflow-y: auto;">{{ jsonPreview }}</pre>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Form Actions -->
-      <div class="text-center mt-4">
-        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">
-          <i class="bi bi-save me-1"></i> Save Role
-        </button>
-        <button type="button" (click)="reset()" class="btn btn-outline-secondary m-2">
-          <i class="bi bi-arrow-clockwise me-1"></i> Reset
-        </button>
-        <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">
-          <i class="bi bi-x-circle me-1"></i> Cancel
-        </button>
-      </div>
+    <!-- Form Actions -->
+    <div class="text-center mt-4">
+      <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">
+        <i class="bi bi-save me-1"></i> Save Role
+      </button>
+      <button type="button" (click)="reset()" class="btn btn-outline-secondary m-2">
+        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+      </button>
+      <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">
+        <i class="bi bi-x-circle me-1"></i> Cancel
+      </button>
+    </div>
     </form>
 
   </div>

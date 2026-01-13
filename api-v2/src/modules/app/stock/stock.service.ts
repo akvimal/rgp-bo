@@ -220,11 +220,11 @@ export class StockService {
             // Check current available stock for this item
             const stockCheck = await this.manager.query(
                 `SELECT available FROM inventory_view WHERE purchase_itemid = $1`,
-                [dto.item_id]
+                [dto.itemid]
             );
 
             if (!stockCheck || stockCheck.length === 0) {
-                throw new Error(`Stock not found for item ID ${dto.item_id}`);
+                throw new Error(`Stock not found for item ID ${dto.itemid}`);
             }
 
             const currentStock = stockCheck[0].available;

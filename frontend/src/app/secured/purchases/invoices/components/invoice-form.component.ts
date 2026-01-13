@@ -202,6 +202,7 @@ export class InvoiceFormComponent {
       }
 
       // Try to match vendor by name if provided
+      let vendorMatched = false;
       if (invoiceData.vendorName && this.vendors && this.vendors.length > 0) {
         const matchedVendor = this.vendors.find((v: any) =>
           v.name.toLowerCase().includes(invoiceData.vendorName.toLowerCase()) ||
@@ -213,14 +214,16 @@ export class InvoiceFormComponent {
           // Fetch orders for the matched vendor
           this.poService.findAllByCriteria({status:'SUBMITTED', vendorid:matchedVendor.id})
             .subscribe(data => this.orders = data);
-        } else {
-          // Show message that vendor needs to be selected manually
-          alert(`Vendor "${invoiceData.vendorName}" was detected but not found in the system. Please select the vendor manually.`);
+          vendorMatched = true;
         }
       }
 
-      // Show success message
-      alert('Invoice data has been populated from the uploaded document. Please review and complete any missing fields.');
+      // Show appropriate message based on vendor match
+      if (!vendorMatched && invoiceData.vendorName) {
+        alert(`Invoice data extracted successfully!\n\nVendor "${invoiceData.vendorName}" was detected but not found in your vendor list.\n\n⚠️ ACTION REQUIRED:\n1. Select the vendor from the dropdown below\n2. Or add "${invoiceData.vendorName}" as a new vendor first\n3. Then save the invoice\n\nExtracted data:\n- Invoice No: ${invoiceData.invoiceNumber || 'N/A'}\n- Date: ${invoiceData.invoiceDate || 'N/A'}\n- Amount: ${invoiceData.totalAmount || 'N/A'}`);
+      } else {
+        alert('Invoice data has been populated from the uploaded document. Please review and complete any missing fields.');
+      }
 
       // Mark form as touched to show validation
       this.form.markAllAsTouched();

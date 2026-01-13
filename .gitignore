@@ -17,6 +17,7 @@ dump-*.tar
 temp/
 *.tmp
 *.temp
+tmpclaude-*-cwd
 
 # IDE
 .vscode/
@@ -36,3 +37,6 @@ logs/
 
 # Node modules
 node_modules/
+
+# Migration and database backups
+*_backup_*/

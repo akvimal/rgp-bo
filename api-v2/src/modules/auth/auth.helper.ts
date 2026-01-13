@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { AppUser } from 'src/entities/appuser.entity';
+import { PermissionService } from 'src/core/services/permission.service';
 
 @Injectable()
 export class AuthHelper {
@@ -13,7 +14,10 @@ export class AuthHelper {
 
   private readonly jwt: JwtService;
 
-  constructor(jwt: JwtService) {
+  constructor(
+    jwt: JwtService,
+    private readonly permissionService: PermissionService
+  ) {
     this.jwt = jwt;
   }
 
@@ -31,9 +35,21 @@ export class AuthHelper {
     return user;
   }
 
-  // Generate JWT Token
-  public generateToken(user: AppUser): string {
-    return this.jwt.sign({ id: user.id, email: user.email });
+  // Generate JWT Token with multi-role permissions
+  public async generateToken(user: AppUser): Promise<string> {
+    // Resolve all permissions from all user's roles
+    const permissions = await this.permissionService.resolveUserPermissions(user.id);
+
+    // Get all role IDs for user
+    const roleIds = await this.permissionService.getUserRoleIds(user.id);
+
+    return this.jwt.sign({
+      id: user.id,
+      email: user.email,
+      role_id: user.roleid,        // Primary role (backward compatibility)
+      role_ids: roleIds,            // All role IDs
+      permissions: permissions      // Merged permissions from all roles
+    });
   }
 
   // Validate User's password

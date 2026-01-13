@@ -1,0 +1,183 @@
+<div class="container-fluid">
+  <div class="row mb-3">
+    <div class="col-12">
+      <h2>Payroll Management</h2>
+      <p class="text-muted">Manage monthly payroll runs and employee payments</p>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <label for="yearFilter" class="form-label">Year</label>
+          <select
+            id="yearFilter"
+            class="form-select"
+            [(ngModel)]="selectedYear"
+            (change)="onYearChange()">
+            <option *ngFor="let year of availableYears" [value]="year">{{ year }}</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="statusFilter" class="form-label">Status</label>
+          <select
+            id="statusFilter"
+            class="form-select"
+            [(ngModel)]="selectedStatus"
+            (change)="onStatusChange()">
+            <option *ngFor="let status of statusOptions" [value]="status.value">
+              {{ status.label }}
+            </option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="searchFilter" class="form-label">Search</label>
+          <input
+            id="searchFilter"
+            type="text"
+            class="form-control"
+            placeholder="Search by title or description..."
+            [(ngModel)]="searchText"
+            (input)="onSearchChange()">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button
+            class="btn btn-primary w-100"
+            (click)="createNewPayrollRun()"
+            [disabled]="loading">
+            <i class="bi bi-plus-circle"></i> New Run
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading payroll runs...</p>
+  </div>
+
+  <!-- Payroll Runs Table -->
+  <div *ngIf="!loading" class="card">
+    <div class="card-body">
+      <div *ngIf="filteredRuns.length === 0" class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+        <p class="mt-3">No payroll runs found</p>
+        <button class="btn btn-primary" (click)="createNewPayrollRun()">
+          Create First Payroll Run
+        </button>
+      </div>
+
+      <div *ngIf="filteredRuns.length > 0" class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Period</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th class="text-end">Employees</th>
+              <th class="text-end">Gross Salary</th>
+              <th class="text-end">Deductions</th>
+              <th class="text-end">Net Salary</th>
+              <th>Calculated</th>
+              <th>Approved</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let run of filteredRuns">
+              <td>
+                <strong>{{ getMonthName(run.month) }} {{ run.year }}</strong><br>
+                <small class="text-muted">
+                  {{ run.periodStartDate | date:'dd MMM' }} - {{ run.periodEndDate | date:'dd MMM' }}
+                </small>
+              </td>
+              <td>
+                {{ run.title }}
+                <br>
+                <small class="text-muted" *ngIf="run.description">{{ run.description }}</small>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="getStatusBadgeClass(run.status)">
+                  {{ run.status }}
+                </span>
+              </td>
+              <td class="text-end">{{ run.totalEmployees }}</td>
+              <td class="text-end">{{ formatCurrency(run.totalGrossSalary) }}</td>
+              <td class="text-end">{{ formatCurrency(run.totalDeductions) }}</td>
+              <td class="text-end"><strong>{{ formatCurrency(run.totalNetSalary) }}</strong></td>
+              <td>
+                <span *ngIf="run.calculatedOn">
+                  {{ run.calculatedOn | date:'dd MMM yyyy' }}
+                </span>
+                <span *ngIf="!run.calculatedOn" class="text-muted">-</span>
+              </td>
+              <td>
+                <span *ngIf="run.approvedOn">
+                  {{ run.approvedOn | date:'dd MMM yyyy' }}
+                </span>
+                <span *ngIf="!run.approvedOn" class="text-muted">-</span>
+              </td>
+              <td class="text-center">
+                <div class="btn-group btn-group-sm" role="group">
+                  <button
+                    class="btn btn-outline-primary"
+                    (click)="viewDetails(run.id)"
+                    title="View Details">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <button
+                    class="btn btn-outline-success"
+                    (click)="calculatePayroll(run)"
+                    [disabled]="!canCalculate(run.status) || loading"
+                    title="Calculate Payroll"
+                    *ngIf="canCalculate(run.status)">
+                    <i class="bi bi-calculator"></i>
+                  </button>
+                  <button
+                    class="btn btn-outline-info"
+                    (click)="approvePayroll(run)"
+                    [disabled]="!canApprove(run.status) || loading"
+                    title="Approve Payroll"
+                    *ngIf="canApprove(run.status)">
+                    <i class="bi bi-check-circle"></i>
+                  </button>
+                  <button
+                    class="btn btn-outline-danger"
+                    (click)="deletePayrollRun(run)"
+                    [disabled]="loading"
+                    title="Delete Run">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="3"><strong>Totals ({{ filteredRuns.length }} runs)</strong></td>
+              <td class="text-end">
+                <strong>{{ getTotalEmployees() }}</strong>
+              </td>
+              <td class="text-end">
+                <strong>{{ formatCurrency(getTotalGrossSalary()) }}</strong>
+              </td>
+              <td class="text-end">
+                <strong>{{ formatCurrency(getTotalDeductions()) }}</strong>
+              </td>
+              <td class="text-end">
+                <strong>{{ formatCurrency(getTotalNetSalary()) }}</strong>
+              </td>
+              <td colspan="3"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

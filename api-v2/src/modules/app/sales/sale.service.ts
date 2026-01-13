@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, ForbiddenException } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
@@ -8,14 +8,19 @@ import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { SaleReturnItem } from "src/entities/salereturn-item.entity";
 import { Sale } from "src/entities/sale.entity";
+import { DataScopeService } from "../../../core/services/data-scope.service";
 
 @Injectable()
 export class SaleService {
+    private readonly logger = new Logger(SaleService.name);
 
-    constructor(@InjectRepository(Sale) private readonly saleRepository: Repository<Sale>,
-    @InjectRepository(SaleItem) private readonly saleItemRepository: Repository<SaleItem>,
-    @InjectRepository(SaleReturnItem) private readonly saleReturnItemRepository: Repository<SaleReturnItem>,
-    @InjectEntityManager() private manager: EntityManager) { }
+    constructor(
+        @InjectRepository(Sale) private readonly saleRepository: Repository<Sale>,
+        @InjectRepository(SaleItem) private readonly saleItemRepository: Repository<SaleItem>,
+        @InjectRepository(SaleReturnItem) private readonly saleReturnItemRepository: Repository<SaleReturnItem>,
+        @InjectEntityManager() private manager: EntityManager,
+        private dataScopeService: DataScopeService
+    ) { }
 
     async create(sale:any,userid:any) {
         // Wrap entire sale creation in transaction to prevent orphaned data
@@ -172,16 +177,38 @@ export class SaleService {
         return await this.manager.query(query);
     }
     
-    async findAll(query:any,userid:any){
-        const qb = this.saleRepository.createQueryBuilder("sale")
-        .leftJoinAndSelect("sale.delivery", "delivery")
-        .leftJoinAndSelect("sale.customer", "customer")
-                    .leftJoinAndSelect("sale.created", "created")
-                    .select(['sale','customer','customer.name','customer.mobile','created.id','created.fullname', 'delivery'])
-                    .where('sale.active = :flag', { flag:true }); 
+    /**
+     * Find all sales with data scope filtering
+     *
+     * @param query - Filter criteria (date, billno, customer, status)
+     * @param userid - Current user ID for data scope filtering
+     * @returns Array of sales filtered by data scope and criteria
+     */
+    async findAll(query:any, userid:any){
+        this.logger.debug(`Finding sales for user ${userid} with query:`, query);
+
+        let qb = this.saleRepository.createQueryBuilder("sale")
+            .leftJoinAndSelect("sale.delivery", "delivery")
+            .leftJoinAndSelect("sale.customer", "customer")
+            .leftJoinAndSelect("sale.created", "created")
+            .select(['sale','customer','customer.name','customer.mobile','created.id','created.fullname', 'delivery'])
+            .where('sale.active = :flag', { flag:true });
+
+        // Apply data scope filtering (replaces the old userid check)
         if(userid){
-            qb.andWhere('sale.createdby = :uid', { uid:userid });
+            qb = await this.dataScopeService.applyDataScopeFilter(
+                qb,
+                userid,
+                'sales',
+                {
+                    alias: 'sale',
+                    userIdField: 'createdby',
+                    storeIdField: 'store_id'
+                }
+            );
         }
+
+        // Apply additional filters
         if(query.date){
             qb.andWhere(`DATE_TRUNC('day', sale.billdate) = :con`, { con:query.date });
         }
@@ -194,8 +221,13 @@ export class SaleService {
         if(query.status){
             qb.andWhere(`sale.status = :st`, { st:query.status });
         }
-        qb.orderBy('sale.updatedon','DESC')
-        return qb.getMany();
+
+        qb.orderBy('sale.updatedon','DESC');
+
+        const results = await qb.getMany();
+        this.logger.debug(`Found ${results.length} sales for user ${userid}`);
+
+        return results;
     }
 
     async findAllItems(query:any,userid:any){        
@@ -383,14 +415,42 @@ export class SaleService {
         where sri.id = $1`, [saleReturnId]);
     }
 
-    async findById(id:number){
-        return await this.saleRepository.createQueryBuilder("sale")
-        .leftJoinAndSelect("sale.customer", "customer")
-        .leftJoinAndSelect("sale.items", "items")
-        .leftJoinAndSelect("items.product", "product")
-          .select(['sale','customer','items','product'])
-          .where('sale.id = :id', { id })
-          .getOne();
+    /**
+     * Find sale by ID with data scope access check
+     *
+     * @param id - Sale ID
+     * @param userid - Current user ID for access validation
+     * @returns Sale object if user has access
+     * @throws NotFoundException if sale not found
+     * @throws ForbiddenException if user doesn't have access
+     */
+    async findById(id:number, userid?:any){
+        const sale = await this.saleRepository.createQueryBuilder("sale")
+            .leftJoinAndSelect("sale.customer", "customer")
+            .leftJoinAndSelect("sale.items", "items")
+            .leftJoinAndSelect("items.product", "product")
+            .select(['sale','customer','items','product'])
+            .where('sale.id = :id', { id })
+            .getOne();
+
+        if (!sale) {
+            throw new NotFoundException(`Sale with ID ${id} not found`);
+        }
+
+        // Check data scope access if userid is provided
+        if (userid) {
+            await this.dataScopeService.checkRecordAccess(
+                userid,
+                'sales',
+                {
+                    createdBy: sale.createdby,
+                    storeId: sale.storeid ?? undefined // Convert null to undefined
+                },
+                true // throw error if access denied
+            );
+        }
+
+        return sale;
     }
 
     async findAllItemsBySale(id:string){

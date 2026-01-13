@@ -1,0 +1,238 @@
+<div class="container-fluid">
+  <!-- Loading Spinner -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading payroll details...</p>
+  </div>
+
+  <!-- Payroll Details -->
+  <div *ngIf="!loading && payrollRun">
+    <!-- Header Section -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <button class="btn btn-outline-secondary btn-sm mb-2" (click)="goBack()">
+          <i class="bi bi-arrow-left"></i> Back to List
+        </button>
+        <h2>{{ payrollRun.title }}</h2>
+        <p class="text-muted">
+          {{ getMonthName(payrollRun.month) }} {{ payrollRun.year }}
+          ({{ payrollRun.periodStartDate | date:'dd MMM yyyy' }} - {{ payrollRun.periodEndDate | date:'dd MMM yyyy' }})
+        </p>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">Status</h6>
+            <span class="badge" [ngClass]="getStatusBadgeClass(payrollRun.status)">
+              {{ payrollRun.status }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">Total Employees</h6>
+            <h4 class="card-title mb-0">{{ payrollRun.totalEmployees }}</h4>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">Gross Salary</h6>
+            <h4 class="card-title mb-0">{{ formatCurrency(payrollRun.totalGrossSalary) }}</h4>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center bg-success text-white">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-2">Net Salary</h6>
+            <h4 class="card-title mb-0">{{ formatCurrency(payrollRun.totalNetSalary) }}</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional Info -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-3 text-muted">Deductions & Contributions</h6>
+            <div class="row">
+              <div class="col-6">
+                <p class="mb-1"><strong>Total Deductions:</strong></p>
+                <p class="text-danger">{{ formatCurrency(payrollRun.totalDeductions) }}</p>
+              </div>
+              <div class="col-6">
+                <p class="mb-1"><strong>Employer Contributions:</strong></p>
+                <p class="text-info">{{ formatCurrency(payrollRun.totalEmployerContributions) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="card-subtitle mb-3 text-muted">Approval Information</h6>
+            <div *ngIf="payrollRun.approvedOn">
+              <p class="mb-1"><strong>Approved On:</strong> {{ payrollRun.approvedOn | date:'dd MMM yyyy, hh:mm a' }}</p>
+              <p class="mb-1" *ngIf="payrollRun.approvalRemarks"><strong>Remarks:</strong> {{ payrollRun.approvalRemarks }}</p>
+            </div>
+            <div *ngIf="!payrollRun.approvedOn">
+              <p class="text-muted">Not yet approved</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="btn-group" role="group">
+          <button
+            class="btn btn-success"
+            (click)="approvePayroll()"
+            [disabled]="!canApprove() || loading"
+            *ngIf="canApprove()">
+            <i class="bi bi-check-circle"></i> Approve Payroll
+          </button>
+          <button
+            class="btn btn-primary"
+            (click)="requestPayment()"
+            [disabled]="!canRequestPayment() || loading"
+            *ngIf="canRequestPayment()">
+            <i class="bi bi-cash"></i> Request Payment
+          </button>
+          <button class="btn btn-outline-secondary" (click)="exportToExcel()">
+            <i class="bi bi-file-earmark-excel"></i> Export to Excel
+          </button>
+          <button class="btn btn-outline-secondary" (click)="exportToPDF()">
+            <i class="bi bi-file-earmark-pdf"></i> Export to PDF
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <label for="paymentStatusFilter" class="form-label">Payment Status</label>
+            <select
+              id="paymentStatusFilter"
+              class="form-select"
+              [(ngModel)]="selectedPaymentStatus"
+              (change)="onPaymentStatusChange()">
+              <option *ngFor="let status of paymentStatusOptions" [value]="status.value">
+                {{ status.label }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <label for="searchFilter" class="form-label">Search Employee</label>
+            <input
+              id="searchFilter"
+              type="text"
+              class="form-control"
+              placeholder="Search by name or email..."
+              [(ngModel)]="searchText"
+              (input)="onSearchChange()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Employee Details Table -->
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Employee Payroll Details</h5>
+
+        <div *ngIf="filteredDetails.length === 0" class="text-center py-4 text-muted">
+          <p>No employee records found</p>
+        </div>
+
+        <div *ngIf="filteredDetails.length > 0" class="table-responsive">
+          <table class="table table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Employee</th>
+                <th>Payment Model</th>
+                <th class="text-end">Days Worked</th>
+                <th class="text-end">Gross Salary</th>
+                <th class="text-end">Deductions</th>
+                <th class="text-end">Net Salary</th>
+                <th class="text-end">KPI Incentive</th>
+                <th>Payment Status</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let detail of filteredDetails">
+                <td>
+                  <strong>{{ detail.user.fullname }}</strong><br>
+                  <small class="text-muted">{{ detail.user.email }}</small>
+                </td>
+                <td>{{ getPaymentModelLabel(detail.paymentModel) }}</td>
+                <td class="text-end">{{ detail.actualDaysWorked }}</td>
+                <td class="text-end">{{ formatCurrency(detail.grossSalary) }}</td>
+                <td class="text-end text-danger">{{ formatCurrency(detail.totalDeductions) }}</td>
+                <td class="text-end"><strong>{{ formatCurrency(detail.netSalary) }}</strong></td>
+                <td class="text-end">
+                  <span *ngIf="hasKpiIncentive(detail.kpiIncentiveAmount)">
+                    {{ formatCurrency(detail.kpiIncentiveAmount) }}
+                  </span>
+                  <span *ngIf="!hasKpiIncentive(detail.kpiIncentiveAmount)" class="text-muted">
+                    -
+                  </span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="getPaymentStatusBadgeClass(detail.paymentStatus)">
+                    {{ detail.paymentStatus }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <button
+                    class="btn btn-outline-primary btn-sm"
+                    (click)="viewPayslip(detail)"
+                    title="View Payslip">
+                    <i class="bi bi-file-text"></i> Payslip
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="3"><strong>Totals ({{ filteredDetails.length }} employees)</strong></td>
+                <td class="text-end">
+                  <strong>{{ formatCurrency(getTotalGrossSalary()) }}</strong>
+                </td>
+                <td class="text-end">
+                  <strong>{{ formatCurrency(getTotalDeductions()) }}</strong>
+                </td>
+                <td class="text-end">
+                  <strong>{{ formatCurrency(getTotalNetSalary()) }}</strong>
+                </td>
+                <td class="text-end">
+                  <strong>{{ formatCurrency(getTotalKpiIncentive()) }}</strong>
+                </td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

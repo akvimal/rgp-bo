@@ -115,13 +115,26 @@ rgp-bo/
 │   │   ├── HR_PERFORMANCE_GUIDE.md
 │   │   ├── MANUAL_VERIFICATION_GUIDE.md
 │   │   └── PHASE4_ERROR_HANDLING_GUIDE.md
+│   ├── planning/        # Project planning and setup documentation
+│   │   ├── GITHUB_ISSUES_SETUP.md      # GitHub issues setup guide
+│   │   ├── GITHUB_PROJECT_SUMMARY.md   # Project dashboard reference
+│   │   └── github-issues-import.csv    # Issues import template
 │   ├── archive/         # Historical documentation
-│   │   ├── hr-implementation/  # HR feature planning and implementation docs
-│   │   └── PROJECT_CLEANUP_2024-11-29.md
+│   │   ├── hr-implementation/          # HR feature planning docs
+│   │   ├── implementation-summaries/   # Implementation summaries
+│   │   ├── phase-completions/          # Phase completion status
+│   │   ├── PHASE3_TEST_RESULTS.md
+│   │   ├── PROJECT_CLEANUP_2024-11-29.md
+│   │   ├── PROJECT_CLEANUP_SUMMARY_2025-12-04.md
+│   │   └── VERIFICATION_RESULTS.md
+│   ├── AI_API_ERROR_HANDLING.md
+│   ├── ENHANCED_INVOICE_LIFECYCLE.md
+│   ├── GST_REPORTING_SYSTEM_IMPLEMENTATION.md
+│   ├── HSN_TAX_MANAGEMENT_GUIDE.md
 │   ├── PHASE4_INFRASTRUCTURE_COMPLETE.md
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   ├── READY_FOR_PULL_REQUEST.md
-│   └── VERIFICATION_RESULTS.md
+│   └── (other active documentation files)
 │
 ├── docker-compose.yml   # Docker orchestration
 ├── README.md            # Main project documentation
@@ -655,9 +668,30 @@ For questions or issues:
 
 ---
 
-## Recent Changes (2025-12-17)
+## Recent Changes (2026-01-13)
 
-### Project Cleanup & Organization (December 2025)
+### Project Cleanup & Organization (January 2026)
+- **Temporary files removed**: Cleaned up 42 temporary Claude working directory files
+  - Removed all `tmpclaude-*-cwd` files from root directory (40 files)
+  - Removed all `tmpclaude-*-cwd` files from api-v2 directory (2 files)
+  - Added pattern to `.gitignore` to prevent future commits
+
+- **Log files cleaned**: Removed development log files
+  - Removed `backend.log` (1.5MB) - already in .gitignore pattern
+
+- **Obsolete files removed**:
+  - Removed `frontend/Dockerfile.old` (outdated Docker configuration)
+
+- **Planning documentation organized**: Created new `docs/planning/` directory
+  - Moved `GITHUB_ISSUES_SETUP.md` → `docs/planning/`
+  - Moved `GITHUB_PROJECT_SUMMARY.md` → `docs/planning/`
+  - Moved `github-issues-import.csv` → `docs/planning/`
+
+- **Project structure updated**: CLAUDE.md updated to reflect new organization
+
+### Previous Changes (2025-12-17)
+
+#### Project Cleanup & Organization (December 2025)
 - **Root directory cleaned**: Moved 6 implementation documents from root to `docs/`
   - AI_API_NOTIFICATION_IMPLEMENTATION.md
   - GST_REPORTING_IMPLEMENTATION_SUMMARY.md

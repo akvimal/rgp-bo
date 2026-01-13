@@ -1,0 +1,159 @@
+<div class="container-fluid">
+  <div class="row mb-3">
+    <div class="col-12">
+      <button class="btn btn-outline-secondary btn-sm mb-2" (click)="onCancel()">
+        <i class="bi bi-arrow-left"></i> Back to List
+      </button>
+      <h2>Create New Payroll Run</h2>
+      <p class="text-muted">Set up a new monthly payroll run for employees</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8 col-md-10">
+      <div class="card">
+        <div class="card-body">
+          <form [formGroup]="payrollForm" (ngSubmit)="onSubmit()">
+            <!-- Year Selection -->
+            <div class="mb-3">
+              <label for="year" class="form-label">
+                Year <span class="text-danger">*</span>
+              </label>
+              <select
+                id="year"
+                class="form-select"
+                formControlName="year"
+                (change)="onYearChange()"
+                [class.is-invalid]="isFieldInvalid('year')">
+                <option value="">-- Select Year --</option>
+                <option *ngFor="let year of years" [value]="year">{{ year }}</option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isFieldInvalid('year')">
+                {{ getFieldError('year') }}
+              </div>
+            </div>
+
+            <!-- Month Selection -->
+            <div class="mb-3">
+              <label for="month" class="form-label">
+                Month <span class="text-danger">*</span>
+              </label>
+              <select
+                id="month"
+                class="form-select"
+                formControlName="month"
+                (change)="onMonthChange()"
+                [class.is-invalid]="isFieldInvalid('month')">
+                <option value="">-- Select Month --</option>
+                <option *ngFor="let month of months" [value]="month.value">
+                  {{ month.label }}
+                </option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isFieldInvalid('month')">
+                {{ getFieldError('month') }}
+              </div>
+            </div>
+
+            <!-- Title -->
+            <div class="mb-3">
+              <label for="title" class="form-label">
+                Payroll Run Title <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                id="title"
+                class="form-control"
+                formControlName="title"
+                placeholder="e.g., January 2026 Payroll"
+                maxlength="200"
+                [class.is-invalid]="isFieldInvalid('title')">
+              <div class="invalid-feedback" *ngIf="isFieldInvalid('title')">
+                {{ getFieldError('title') }}
+              </div>
+              <small class="form-text text-muted">
+                This will be automatically generated based on year and month, but you can customize it.
+              </small>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="description" class="form-label">
+                Description (Optional)
+              </label>
+              <textarea
+                id="description"
+                class="form-control"
+                formControlName="description"
+                rows="3"
+                placeholder="Enter any additional notes or remarks for this payroll run..."
+                maxlength="500"
+                [class.is-invalid]="isFieldInvalid('description')"></textarea>
+              <div class="invalid-feedback" *ngIf="isFieldInvalid('description')">
+                {{ getFieldError('description') }}
+              </div>
+              <small class="form-text text-muted">
+                {{ payrollForm.get('description')?.value?.length || 0 }} / 500 characters
+              </small>
+            </div>
+
+            <!-- Information Box -->
+            <div class="alert alert-info" role="alert">
+              <h6 class="alert-heading">
+                <i class="bi bi-info-circle"></i> What happens next?
+              </h6>
+              <ul class="mb-0">
+                <li>A new payroll run will be created in <strong>DRAFT</strong> status</li>
+                <li>The period dates will be automatically set (1st to last day of the selected month)</li>
+                <li>You can then calculate payroll for all employees or specific employees</li>
+                <li>After calculation, you can review and approve the payroll</li>
+                <li>Finally, you can request payment processing for approved payroll</li>
+              </ul>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="d-flex justify-content-between">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="onCancel()"
+                [disabled]="loading">
+                <i class="bi bi-x-circle"></i> Cancel
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                <i *ngIf="!loading" class="bi bi-plus-circle"></i>
+                {{ loading ? 'Creating...' : 'Create Payroll Run' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tips Card -->
+      <div class="card mt-3">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2 text-muted">
+            <i class="bi bi-lightbulb"></i> Tips
+          </h6>
+          <ul class="mb-0">
+            <li>
+              <strong>Check for existing runs:</strong> Ensure you don't have an active payroll run for the same period
+            </li>
+            <li>
+              <strong>Employee salary structures:</strong> Make sure all active employees have valid salary structures configured
+            </li>
+            <li>
+              <strong>KPI scores:</strong> For better incentive calculations, ensure KPI scores are updated for the month
+            </li>
+            <li>
+              <strong>Leave and attendance:</strong> Update leave requests and attendance records before calculating payroll
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

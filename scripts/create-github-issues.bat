@@ -3,8 +3,7 @@ REM GitHub Issues Creation Script for Windows
 REM Prerequisites: Install GitHub CLI (gh) and authenticate with: gh auth login
 REM Usage: create-github-issues.bat
 
-SET REPO=your-username/rgp-bo
-REM UPDATE THE REPO VARIABLE ABOVE WITH YOUR GITHUB USERNAME/ORG
+SET REPO=akvimal/rgp-bo
 
 echo.
 echo ============================================

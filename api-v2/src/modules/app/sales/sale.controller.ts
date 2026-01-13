@@ -32,11 +32,11 @@ export class SaleController {
       @Put()
       async update(@Body() updateSaleDto: any, @User() currentUser: any) {
         //get the itemid that is removed at client end
-        const sale = await this.saleService.findById(updateSaleDto.id);
+        const sale = await this.saleService.findById(updateSaleDto.id, currentUser.id);
         const existingItemIds = sale?.items?.map(i => i.id);
         const newIntemIds = updateSaleDto['items'].map(i => i.id);
         if(existingItemIds){
-          const removedItemIds = existingItemIds.filter(num => !newIntemIds.includes(num));        
+          const removedItemIds = existingItemIds.filter(num => !newIntemIds.includes(num));
           if(removedItemIds.length > 0 ){
             await this.saleService.removeItemsByIds(removedItemIds);
           }
@@ -70,9 +70,9 @@ export class SaleController {
     }
 
     @Get('/returns/:id/eligible')
-    async getEligibleReturns(@Param('id') id: number) {
+    async getEligibleReturns(@Param('id') id: number, @User() currentUser: any) {
       const items = await this.saleService.getEligibleReturns(id);
-      const sale = await this.saleService.findById(id);
+      const sale = await this.saleService.findById(id, currentUser.id);
       return {...sale, items};
     }
     
@@ -108,7 +108,9 @@ export class SaleController {
 
     @Get()
     async findAll(@Query() query: any, @User() currentUser: any) {
-      return this.saleService.findAll(query,query['self']==='true'?currentUser.id:null);
+      // Always pass currentUser.id for data scope filtering
+      // Data scope determines what the user can see (all/team/own)
+      return this.saleService.findAll(query, currentUser.id);
     }
 
     @Get('/saved')
@@ -122,8 +124,8 @@ export class SaleController {
     }
 
     @Get('/:id')
-    async findById(@Param('id') id: number) {
-      const sale = await this.saleService.findById(id);
+    async findById(@Param('id') id: number, @User() currentUser: any) {
+      const sale = await this.saleService.findById(id, currentUser.id);
       return sale;//this.stockService.getItemsWithStockData(sale);
     }
 
