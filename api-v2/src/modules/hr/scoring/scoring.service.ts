@@ -75,19 +75,6 @@ export class ScoringService {
       // Determine grade
       const grade = this.calculateGrade(totalScore);
 
-      // Create score details
-      const scoreDetails = {
-        totalWorkingDays: this.getWorkingDays(startDate, endDate),
-        totalAttendances: attendances.length,
-        presentDays: attendances.filter(a => a.status === AttendanceStatus.PRESENT)
-          .length,
-        absentDays: attendances.filter(a => a.status === AttendanceStatus.ABSENT)
-          .length,
-        lateDays: attendances.filter(a => this.isLate(a)).length,
-        approvedLeaves: leaves.length,
-        components: scores,
-      };
-
       // Save or update score
       const scoreDate = new Date(year, month - 1, 1);
       let userScore = await this.scoreRepo.findOne({
@@ -105,7 +92,6 @@ export class ScoringService {
           reliabilityscore: scores.reliabilityScore,
           totalscore: totalScore,
           grade,
-          scoredetails: scoreDetails,
         });
       } else {
         userScore = this.scoreRepo.create({
@@ -117,7 +103,6 @@ export class ScoringService {
           reliabilityscore: scores.reliabilityScore,
           totalscore: totalScore,
           grade,
-          scoredetails: scoreDetails,
         });
       }
 
