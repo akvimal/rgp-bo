@@ -58,23 +58,23 @@
           </a>
           <ul id="operationsMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
             <li>
-              <a [routerLink]="['sales']" *isNavAuth style="cursor: pointer;">
+              <a [routerLink]="['/secure/sales']" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Sales & POS</span>
               </a>
             </li>
             <li>
-              <a [routerLink]="['purchases']" *isAuth="'purchases.read'" style="cursor: pointer;">
+              <a [routerLink]="['/secure/purchases']" style="cursor: pointer;">
                 <i class="bi bi-circle"></i><span>Purchases</span>
               </a>
             </li>
             <li>
-              <a [routerLink]="['inventory']" *isAuth="'inventory.read'" style="cursor: pointer;">
-                <i class="bi bi-circle"></i><span>Inventory & Stock</span>
+              <a [routerLink]="['/secure/products']" style="cursor: pointer;">
+                <i class="bi bi-circle"></i><span>Products & Inventory</span>
               </a>
             </li>
             <li>
-              <a [routerLink]="['returns']" *isAuth="'returns.read'" style="cursor: pointer;">
-                <i class="bi bi-circle"></i><span>Returns & Exchanges</span>
+              <a [routerLink]="['/secure/reports']" style="cursor: pointer;">
+                <i class="bi bi-circle"></i><span>Reports</span>
               </a>
             </li>
           </ul>
