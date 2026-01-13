@@ -1,0 +1,411 @@
+<!--
+  IMPROVED MENU STRUCTURE EXAMPLE
+  This is a sample implementation showing the proposed menu structure
+  with collapsible groups and better organization.
+-->
+
+<aside id="sidebar" class="sidebar">
+  <ul class="sidebar-nav" id="sidebar-nav">
+
+    <!-- DASHBOARD -->
+    <li class="nav-item">
+      <a class="nav-link active" routerLink="dashboard">
+        <i class="bi bi-grid"></i>
+        <span>Dashboard</span>
+      </a>
+    </li>
+
+    <!-- OPERATIONS GROUP -->
+    <li class="nav-heading">OPERATIONS</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" data-bs-toggle="collapse" href="#operationsMenu">
+        <i class="bi bi-cart"></i>
+        <span>Operations</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
+      <ul id="operationsMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+        <li>
+          <a routerLink="sales" *isAuth="'sales.read'">
+            <i class="bi bi-circle"></i><span>Sales & POS</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="purchases" *isAuth="'purchases.read'">
+            <i class="bi bi-circle"></i><span>Purchases</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="inventory" *isAuth="'inventory.read'">
+            <i class="bi bi-circle"></i><span>Inventory & Stock</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="returns" *isAuth="'returns.read'">
+            <i class="bi bi-circle"></i><span>Returns & Exchanges</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- STAKEHOLDERS GROUP -->
+    <li class="nav-heading">STAKEHOLDERS</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" data-bs-toggle="collapse" href="#stakeholdersMenu">
+        <i class="bi bi-people"></i>
+        <span>Stakeholders</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
+      <ul id="stakeholdersMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+        <li>
+          <a routerLink="customers/cust/list" *isAuth="'customers.read'">
+            <i class="bi bi-circle"></i><span>Customers</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="vendors" *isAuth="'vendors.read'">
+            <i class="bi bi-circle"></i><span>Vendors</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="products" *isAuth="'products.read'">
+            <i class="bi bi-circle"></i><span>Products & Catalog</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- STORE MANAGEMENT GROUP -->
+    <li class="nav-heading">STORE MANAGEMENT</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" data-bs-toggle="collapse" href="#storeMenu">
+        <i class="bi bi-shop"></i>
+        <span>Store Management</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
+      <ul id="storeMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+        <li>
+          <a routerLink="store" *isAuth="'store.read'">
+            <i class="bi bi-circle"></i><span>Store Operations</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="store/cash" *isAuth="'cash.read'">
+            <i class="bi bi-circle"></i><span>Cash & Payments</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="documents" *isAuth="'documents.read'">
+            <i class="bi bi-circle"></i><span>Documents</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- HUMAN RESOURCES GROUP -->
+    <li class="nav-heading">HUMAN RESOURCES</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" data-bs-toggle="collapse" href="#hrMenu">
+        <i class="bi bi-person-badge"></i>
+        <span>Human Resources</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
+      <ul id="hrMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+        <li>
+          <a routerLink="hr/dashboard" *isAuth="'hr.read'">
+            <i class="bi bi-circle"></i><span>HR Dashboard</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="hr/attendance" *isAuth="'attendance.read'">
+            <i class="bi bi-circle"></i><span>Attendance & Time</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="hr/leave" *isAuth="'leave.read'">
+            <i class="bi bi-circle"></i><span>Leave Management</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="hr/shifts" *isAuth="'shifts.read'">
+            <i class="bi bi-circle"></i><span>Shift Scheduling</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="hr/shift-assignments" *isAuth="'shifts.read'">
+            <i class="bi bi-circle"></i><span>Shift Assignments</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="hr/performance" *isAuth="'performance.read'">
+            <i class="bi bi-circle"></i><span>Performance & KPI</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- FINANCE & PAYROLL GROUP -->
+    <li class="nav-heading">FINANCE & PAYROLL</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" data-bs-toggle="collapse" href="#financeMenu">
+        <i class="bi bi-cash-stack"></i>
+        <span>Finance & Payroll</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
+      <ul id="financeMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+        <li>
+          <a routerLink="payroll" *isAuth="'payroll.read'">
+            <i class="bi bi-circle"></i><span>Payroll Runs</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="payroll/salary-structures" *isAuth="'payroll.manage'">
+            <i class="bi bi-circle"></i><span>Salary Structures</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="finance/reports" *isAuth="'finance.read'">
+            <i class="bi bi-circle"></i><span>Financial Reports</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="finance/gst" *isAuth="'gst.read'">
+            <i class="bi bi-circle"></i><span>GST & Tax Management</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- REPORTS & ANALYTICS GROUP -->
+    <li class="nav-heading">REPORTS & ANALYTICS</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" data-bs-toggle="collapse" href="#reportsMenu">
+        <i class="bi bi-graph-up"></i>
+        <span>Reports & Analytics</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
+      <ul id="reportsMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+        <li>
+          <a routerLink="reports/sales" *isAuth="'reports.sales'">
+            <i class="bi bi-circle"></i><span>Sales Reports</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="reports/inventory" *isAuth="'reports.inventory'">
+            <i class="bi bi-circle"></i><span>Inventory Reports</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="reports/financial" *isAuth="'reports.financial'">
+            <i class="bi bi-circle"></i><span>Financial Reports</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="reports/hr" *isAuth="'reports.hr'">
+            <i class="bi bi-circle"></i><span>HR Reports</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="reports" *isAuth="'reports.custom'">
+            <i class="bi bi-circle"></i><span>All Reports</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- ADMINISTRATION GROUP -->
+    <li class="nav-heading">ADMINISTRATION</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" data-bs-toggle="collapse" href="#adminMenu">
+        <i class="bi bi-gear"></i>
+        <span>Administration</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
+      <ul id="adminMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+        <li>
+          <a routerLink="settings/users" *isAuth="'users.read'">
+            <i class="bi bi-circle"></i><span>Users & Roles</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="settings/roles" *isAuth="'roles.read'">
+            <i class="bi bi-circle"></i><span>Permissions</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="settings/business" *isAuth="'settings.manage'">
+            <i class="bi bi-circle"></i><span>Business Settings</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="settings" *isAuth="'settings.read'">
+            <i class="bi bi-circle"></i><span>System Configuration</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- TOOLS GROUP -->
+    <li class="nav-heading">TOOLS</li>
+    <li class="nav-item">
+      <a class="nav-link collapsed" (click)="openPricing()">
+        <i class="bi bi-calculator"></i>
+        <span>Pricing Calculator</span>
+      </a>
+    </li>
+
+    <!-- LOGOUT -->
+    <li class="nav-item mt-4">
+      <a class="nav-link collapsed" routerLink="/logout">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Logout</span>
+      </a>
+    </li>
+
+  </ul>
+</aside>
+
+<!--
+  ADDITIONAL CSS NEEDED
+  Add this to your styles.scss or component styles
+-->
+<style>
+/* Navigation Headings */
+.nav-heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6c757d;
+  padding: 1.5rem 1.5rem 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 1rem;
+}
+
+.nav-heading:first-child {
+  margin-top: 0;
+}
+
+/* Collapsible Groups */
+.nav-link {
+  position: relative;
+}
+
+.nav-link .bi-chevron-down {
+  transition: transform 0.2s ease-in-out;
+  font-size: 0.75rem;
+}
+
+.nav-link:not(.collapsed) .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+/* Sub-menu items */
+.nav-content {
+  padding: 0;
+}
+
+.nav-content li {
+  list-style: none;
+}
+
+.nav-content a {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1.5rem 0.5rem 3.5rem;
+  font-size: 0.9rem;
+  color: #012970;
+  transition: all 0.3s ease;
+}
+
+.nav-content a:hover {
+  background-color: rgba(65, 84, 241, 0.05);
+  color: #4154f1;
+}
+
+.nav-content a i {
+  font-size: 0.5rem;
+  margin-right: 0.75rem;
+}
+
+/* Active states */
+.nav-content a.active {
+  background-color: rgba(65, 84, 241, 0.1);
+  color: #4154f1;
+  font-weight: 600;
+}
+
+.nav-item.has-active-child > .nav-link {
+  background-color: rgba(65, 84, 241, 0.05);
+  color: #4154f1;
+}
+
+/* Improved visual hierarchy */
+.nav-item > .nav-link {
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+}
+
+/* Logout special styling */
+.nav-item:last-child .nav-link {
+  border-top: 1px solid #eee;
+  margin-top: 1rem;
+  color: #dc3545;
+}
+
+.nav-item:last-child .nav-link:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .nav-heading {
+    font-size: 0.7rem;
+    padding: 1rem 1rem 0.25rem;
+  }
+
+  .nav-content a {
+    padding-left: 2.5rem;
+  }
+}
+</style>
+
+<!--
+  JAVASCRIPT FOR AUTO-EXPAND
+  Add this to your component TypeScript
+-->
+<script>
+// Auto-expand menu based on current route
+ngOnInit() {
+  this.autoExpandMenu();
+}
+
+autoExpandMenu() {
+  const currentUrl = this.router.url;
+
+  // Map routes to menu IDs
+  const routeMenuMap = {
+    '/sales': 'operationsMenu',
+    '/purchases': 'operationsMenu',
+    '/inventory': 'operationsMenu',
+    '/returns': 'operationsMenu',
+    '/customers': 'stakeholdersMenu',
+    '/vendors': 'stakeholdersMenu',
+    '/products': 'stakeholdersMenu',
+    '/store': 'storeMenu',
+    '/hr/': 'hrMenu',
+    '/payroll': 'financeMenu',
+    '/reports': 'reportsMenu',
+    '/settings': 'adminMenu'
+  };
+
+  // Find matching menu and expand it
+  for (const [route, menuId] of Object.entries(routeMenuMap)) {
+    if (currentUrl.includes(route)) {
+      const menuElement = document.getElementById(menuId);
+      if (menuElement) {
+        menuElement.classList.add('show');
+      }
+      break;
+    }
+  }
+}
+</script>
