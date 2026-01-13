@@ -1,0 +1,99 @@
+/* Navigation Headings */
+.nav-heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6c757d;
+  padding: 1.5rem 1.5rem 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 1rem;
+}
+
+.nav-heading:first-child {
+  margin-top: 0;
+}
+
+/* Collapsible Groups */
+.nav-link {
+  position: relative;
+}
+
+.nav-link .bi-chevron-down {
+  transition: transform 0.2s ease-in-out;
+  font-size: 0.75rem;
+}
+
+.nav-link:not(.collapsed) .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+/* Sub-menu items */
+.nav-content {
+  padding: 0;
+  background-color: transparent;
+}
+
+.nav-content li {
+  list-style: none;
+}
+
+.nav-content a {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1.5rem 0.5rem 3.5rem;
+  font-size: 0.9rem;
+  color: #012970;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.nav-content a:hover {
+  background-color: rgba(65, 84, 241, 0.05);
+  color: #4154f1;
+}
+
+.nav-content a i {
+  font-size: 0.5rem;
+  margin-right: 0.75rem;
+}
+
+/* Active states */
+.nav-content a.active {
+  background-color: rgba(65, 84, 241, 0.1);
+  color: #4154f1;
+  font-weight: 600;
+}
+
+.nav-item.has-active-child > .nav-link {
+  background-color: rgba(65, 84, 241, 0.05);
+  color: #4154f1;
+}
+
+/* Improved visual hierarchy */
+.nav-item > .nav-link {
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+}
+
+/* Logout special styling */
+.nav-item:last-child .nav-link {
+  border-top: 1px solid #eee;
+  margin-top: 1rem;
+  color: #dc3545;
+}
+
+.nav-item:last-child .nav-link:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .nav-heading {
+    font-size: 0.7rem;
+    padding: 1rem 1rem 0.25rem;
+  }
+
+  .nav-content a {
+    padding-left: 2.5rem;
+  }
+}

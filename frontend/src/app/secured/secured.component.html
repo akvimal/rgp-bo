@@ -37,169 +37,265 @@
     
   
   <aside id="sidebar" class="sidebar">
-  
+
       <ul class="sidebar-nav" id="sidebar-nav">
-    
+
+        <!-- DASHBOARD -->
         <li class="nav-item" *isNavAuth>
           <a class="nav-link" routerLink="dashboard">
             <i class="bi bi-grid"></i>
             <span>Dashboard</span>
           </a>
         </li>
-        <li class="nav-item" *isNavAuth>
-          <a class="nav-link collapsed" routerLink="sales">
-            <i class="bi bi-envelope"></i>
-            <span>Sales</span>
-          </a>
-        </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'store.read'">
-          <a class="nav-link collapsed" routerLink="store">
-            <i class="bi bi-envelope"></i>
-            <span>Store</span>
-          </a>
-        </li>
 
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'purchases.read'">
-          <a class="nav-link collapsed" routerLink="purchases">
-            <i class="bi bi-envelope"></i>
-            <span>Purchase</span>
-          </a>
-        </li>
-        <!-- <li class="nav-heading">Pages</li> -->
-    
-        <!-- <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="profile">
-            <i class="bi bi-person"></i>
-            <span>Profile</span>
-          </a>
-        </li> -->
-        <!-- End Profile Page Nav -->
-    
-        <!-- <li class="nav-item" *isAuth="'roles.read'">
-          <a class="nav-link collapsed" routerLink="roles">
-            <i class="bi bi-question-circle"></i>
-            <span>Roles</span>
-          </a>
-        </li>
-
-        <li class="nav-item" *isAuth="'users.read'">
-          <a class="nav-link collapsed" routerLink="users">
-            <i class="bi bi-question-circle"></i>
-            <span>Users</span>
-          </a>
-        </li> -->
-    
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isNavAuth>
-          <a class="nav-link collapsed" routerLink="products">
-            <i class="bi bi-envelope"></i>
-            <span>Products</span>
-          </a>
-        </li>
-        <li class="nav-item" *isAuth="'customers.read'">
-          <a class="nav-link collapsed" routerLink="customers/cust/list">
-            <i class="bi bi-envelope"></i>
-            <span>Customers</span>
-          </a>
-        </li>
-        <!-- <li class="nav-item" *isAuth="'returns.read'">
-          <a class="nav-link collapsed" routerLink="returns">
-            <i class="bi bi-envelope"></i>
-            <span>Returns</span>
-          </a>
-        </li> -->
+        <!-- OPERATIONS GROUP -->
+        <li class="nav-heading">OPERATIONS</li>
         <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="reports">
-            <i class="bi bi-envelope"></i>
-            <span>Reports</span>
+          <a class="nav-link collapsed" data-bs-toggle="collapse" href="#operationsMenu">
+            <i class="bi bi-cart"></i>
+            <span>Operations</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
-        </li>
-        <li class="nav-item" *isAuth="'settings.read'">
-          <a class="nav-link collapsed" routerLink="settings">
-            <i class="bi bi-envelope"></i>
-            <span>Settings</span>
-          </a>
+          <ul id="operationsMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <li>
+              <a routerLink="sales" *isNavAuth>
+                <i class="bi bi-circle"></i><span>Sales & POS</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="purchases" *isAuth="'purchases.read'">
+                <i class="bi bi-circle"></i><span>Purchases</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="inventory" *isAuth="'inventory.read'">
+                <i class="bi bi-circle"></i><span>Inventory & Stock</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="returns" *isAuth="'returns.read'">
+                <i class="bi bi-circle"></i><span>Returns & Exchanges</span>
+              </a>
+            </li>
+          </ul>
         </li>
 
-        <!-- HR Module -->
+        <!-- STAKEHOLDERS GROUP -->
+        <li class="nav-heading">STAKEHOLDERS</li>
         <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="hr/dashboard">
+          <a class="nav-link collapsed" data-bs-toggle="collapse" href="#stakeholdersMenu">
             <i class="bi bi-people"></i>
-            <span>HR Dashboard</span>
+            <span>Stakeholders</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
+          <ul id="stakeholdersMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <li>
+              <a routerLink="customers/cust/list" *isAuth="'customers.read'">
+                <i class="bi bi-circle"></i><span>Customers</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="vendors" *isAuth="'vendors.read'">
+                <i class="bi bi-circle"></i><span>Vendors</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="products" *isNavAuth>
+                <i class="bi bi-circle"></i><span>Products & Catalog</span>
+              </a>
+            </li>
+          </ul>
         </li>
+
+        <!-- STORE MANAGEMENT GROUP -->
+        <li class="nav-heading">STORE MANAGEMENT</li>
         <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="hr/attendance">
-            <i class="bi bi-clock-history"></i>
-            <span>Attendance</span>
+          <a class="nav-link collapsed" data-bs-toggle="collapse" href="#storeMenu">
+            <i class="bi bi-shop"></i>
+            <span>Store Management</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
+          <ul id="storeMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <li>
+              <a routerLink="store" *isAuth="'store.read'">
+                <i class="bi bi-circle"></i><span>Store Operations</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="store/cash" *isAuth="'cash.read'">
+                <i class="bi bi-circle"></i><span>Cash & Payments</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="documents" *isAuth="'documents.read'">
+                <i class="bi bi-circle"></i><span>Documents</span>
+              </a>
+            </li>
+          </ul>
         </li>
+
+        <!-- HUMAN RESOURCES GROUP -->
+        <li class="nav-heading">HUMAN RESOURCES</li>
         <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="hr/leave">
-            <i class="bi bi-calendar-check"></i>
-            <span>Leave Requests</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="hr/shifts">
-            <i class="bi bi-calendar3"></i>
-            <span>Shift Management</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="hr/shift-assignments">
+          <a class="nav-link collapsed" data-bs-toggle="collapse" href="#hrMenu">
             <i class="bi bi-person-badge"></i>
-            <span>Shift Assignments</span>
+            <span>Human Resources</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
+          <ul id="hrMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <li>
+              <a routerLink="hr/dashboard" *isAuth="'hr.read'">
+                <i class="bi bi-circle"></i><span>HR Dashboard</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/attendance" *isAuth="'attendance.read'">
+                <i class="bi bi-circle"></i><span>Attendance & Time</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/leave" *isAuth="'leave.read'">
+                <i class="bi bi-circle"></i><span>Leave Management</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/shifts" *isAuth="'shifts.read'">
+                <i class="bi bi-circle"></i><span>Shift Scheduling</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/shift-assignments" *isAuth="'shifts.read'">
+                <i class="bi bi-circle"></i><span>Shift Assignments</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/performance" *isAuth="'performance.read'">
+                <i class="bi bi-circle"></i><span>Performance & KPI</span>
+              </a>
+            </li>
+          </ul>
         </li>
 
-        <!-- Payroll Module -->
+        <!-- FINANCE & PAYROLL GROUP -->
+        <li class="nav-heading">FINANCE & PAYROLL</li>
         <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="payroll">
+          <a class="nav-link collapsed" data-bs-toggle="collapse" href="#financeMenu">
             <i class="bi bi-cash-stack"></i>
-            <span>Payroll</span>
+            <span>Finance & Payroll</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="payroll/salary-structures">
-            <i class="bi bi-currency-dollar"></i>
-            <span>Salary Structures</span>
-          </a>
+          <ul id="financeMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <li>
+              <a routerLink="payroll" *isAuth="'payroll.read'">
+                <i class="bi bi-circle"></i><span>Payroll Runs</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="payroll/salary-structures" *isAuth="'payroll.manage'">
+                <i class="bi bi-circle"></i><span>Salary Structures</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="finance/reports" *isAuth="'finance.read'">
+                <i class="bi bi-circle"></i><span>Financial Reports</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="finance/gst" *isAuth="'gst.read'">
+                <i class="bi bi-circle"></i><span>GST & Tax Management</span>
+              </a>
+            </li>
+          </ul>
         </li>
 
-        <!-- <li class="nav-item">
-          <a class="nav-link collapsed">
-            <i class="bi bi-envelope"></i>
-            <span style="color:grey">Finance</span>
-          </a>
-        </li>
+        <!-- REPORTS & ANALYTICS GROUP -->
+        <li class="nav-heading">REPORTS & ANALYTICS</li>
         <li class="nav-item">
-          <a class="nav-link collapsed">
-            <i class="bi bi-envelope"></i>
-            <span style="color:grey">Knowledge</span>
+          <a class="nav-link collapsed" data-bs-toggle="collapse" href="#reportsMenu">
+            <i class="bi bi-graph-up"></i>
+            <span>Reports & Analytics</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
-        </li> -->
-        <!-- <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="custinquiry">
-            <i class="bi bi-envelope"></i>
-            <span>Inquiry</span>
+          <ul id="reportsMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <li>
+              <a routerLink="reports/sales" *isAuth="'reports.sales'">
+                <i class="bi bi-circle"></i><span>Sales Reports</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="reports/inventory" *isAuth="'reports.inventory'">
+                <i class="bi bi-circle"></i><span>Inventory Reports</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="reports/financial" *isAuth="'reports.financial'">
+                <i class="bi bi-circle"></i><span>Financial Reports</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="reports/hr" *isAuth="'reports.hr'">
+                <i class="bi bi-circle"></i><span>HR Reports</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="reports" *isAuth="'reports.custom'">
+                <i class="bi bi-circle"></i><span>All Reports</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- ADMINISTRATION GROUP -->
+        <li class="nav-heading">ADMINISTRATION</li>
+        <li class="nav-item">
+          <a class="nav-link collapsed" data-bs-toggle="collapse" href="#adminMenu">
+            <i class="bi bi-gear"></i>
+            <span>Administration</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
-        </li> -->
-    
+          <ul id="adminMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <li>
+              <a routerLink="settings/users" *isAuth="'users.read'">
+                <i class="bi bi-circle"></i><span>Users & Roles</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="settings/roles" *isAuth="'roles.read'">
+                <i class="bi bi-circle"></i><span>Permissions</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="settings/business" *isAuth="'settings.manage'">
+                <i class="bi bi-circle"></i><span>Business Settings</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="settings" *isAuth="'settings.read'">
+                <i class="bi bi-circle"></i><span>System Configuration</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- TOOLS GROUP -->
+        <li class="nav-heading">TOOLS</li>
         <li class="nav-item">
           <a class="nav-link collapsed" (click)="openPricing()">
-            <i class="bi bi-box-arrow-in-left"></i>
-            <span>Pricing</span>
+            <i class="bi bi-calculator"></i>
+            <span>Pricing Calculator</span>
           </a>
         </li>
 
-        <li class="nav-item">
+        <!-- LOGOUT -->
+        <li class="nav-item mt-4">
           <a class="nav-link collapsed" routerLink="/logout">
-            <i class="bi bi-box-arrow-in-left"></i>
+            <i class="bi bi-box-arrow-right"></i>
             <span>Logout</span>
           </a>
-        </li><!-- End Login Page Nav -->
+        </li>
+
       </ul>
-    
+
     </aside><!-- End Sidebar-->
   
   <main id="main" class="main">
