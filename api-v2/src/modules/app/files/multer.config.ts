@@ -32,9 +32,9 @@ export const multerOptions = {
             const query = req['query']
             const keys = Object.keys(query);
             const uploadPath = multerConfig.dest+'/'+keys[0]+'/'+query[keys[0]];
-            // Create folder if doesn't exist
+            // Create folder if doesn't exist (recursive creates parent directories too)
             if (!existsSync(uploadPath)) {
-                mkdirSync(uploadPath);
+                mkdirSync(uploadPath, { recursive: true });
             }
             cb(null, uploadPath);
         },

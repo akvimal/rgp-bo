@@ -1,0 +1,169 @@
+::ng-deep .claim-review-dialog .p-dialog-header {
+  background-color: #007bff;
+  color: white;
+  padding: 20px;
+}
+
+.claim-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 20px;
+
+  .claim-header-left {
+    display: flex;
+    gap: 15px;
+    h4 { margin: 0; }
+  }
+
+  .claim-header-right {
+    display: flex;
+    gap: 20px;
+    .header-info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      label { font-size: 0.85rem; color: #6c757d; }
+    }
+  }
+}
+
+.amount-breakdown {
+  display: flex;
+  gap: 10px;
+
+  .amount-item {
+    text-align: center;
+    padding: 15px;
+    border-radius: 4px;
+    flex: 1;
+
+    &.claimed { background-color: #e3f2fd; border-left: 4px solid #2196f3; }
+    &.approved { background-color: #e8f5e9; border-left: 4px solid #4caf50; }
+    &.rejected { background-color: #ffebee; border-left: 4px solid #f44336; }
+    &.paid { background-color: #e0f7fa; border-left: 4px solid #00bcd4; }
+
+    .amount-label { font-size: 0.85rem; color: #6c757d; }
+    .amount-value { font-size: 1.2rem; font-weight: 600; }
+  }
+
+  .amount-separator { color: #6c757d; i { font-size: 1.2rem; } }
+}
+
+.pending-amount {
+  text-align: center;
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.details-section {
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      &.full-width { grid-column: span 2; }
+      label { font-weight: 500; color: #6c757d; }
+
+      .description-text, .remarks-text {
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-left: 3px solid #007bff;
+        margin: 0;
+      }
+      .rejection-reason { border-left-color: #dc3545; background-color: #f8d7da; }
+    }
+  }
+
+  .reviewer-section, .approval-section, .rejection-section, .payment-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    h5 { margin: 0 0 15px 0; display: flex; gap: 8px; }
+  }
+}
+
+.documents-section {
+  .documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+
+    .document-card {
+      border: 1px solid #dee2e6;
+      padding: 15px;
+      display: flex;
+      gap: 15px;
+      .document-icon { font-size: 2rem; color: #007bff; }
+      .document-name { font-weight: 500; }
+    }
+  }
+  .empty-documents { text-align: center; padding: 40px; color: #6c757d; }
+}
+
+.timeline-section ::ng-deep .p-timeline {
+  .timeline-marker {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .timeline-content {
+    .timeline-date, .timeline-user { display: flex; gap: 5px; color: #6c757d; font-size: 0.9rem; }
+    .timeline-remarks p { margin: 0; padding: 10px; background-color: #f8f9fa; border-left: 3px solid #007bff; }
+  }
+}
+
+.actions-section {
+  .action-card ::ng-deep .p-card-header {
+    background-color: #f8f9fa;
+    padding: 15px;
+    h5 { margin: 0; display: flex; gap: 8px; }
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    .form-field { display: flex; flex-direction: column; gap: 6px; }
+    .form-field.full-width { grid-column: span 2; }
+    label { font-weight: 500; .required { color: #dc3545; } }
+  }
+
+  .no-actions { text-align: center; padding: 40px; color: #6c757d; }
+}
+
+.badge {
+  padding: 0.4em 0.8em;
+  font-size: 0.875rem;
+  border-radius: 4px;
+  &.badge-secondary { background-color: #6c757d; color: white; }
+  &.badge-warning { background-color: #ffc107; color: #212529; }
+  &.badge-success { background-color: #28a745; color: white; }
+  &.badge-danger { background-color: #dc3545; color: white; }
+  &.badge-info { background-color: #17a2b8; color: white; }
+}
+
+.text-success { color: #28a745; }
+.text-info { color: #17a2b8; }
+.mb-3 { margin-bottom: 1rem; }
+
+@media (max-width: 768px) {
+  .claim-header { flex-direction: column; gap: 15px; .claim-header-right { flex-direction: column; } }
+  .amount-breakdown { flex-direction: column; .amount-separator { transform: rotate(90deg); } }
+  .details-section .detail-grid { grid-template-columns: 1fr; .detail-item { grid-column: span 1; } }
+  .actions-section .form-grid { grid-template-columns: 1fr; .form-field { grid-column: span 1; } }
+}

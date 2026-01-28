@@ -1,0 +1,179 @@
+.claim-submission-container {
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header-section {
+  margin-bottom: 20px;
+  h2 { margin: 0 0 5px 0; color: #333; }
+  .subtitle { margin: 0; color: #6c757d; font-size: 0.95rem; }
+}
+
+.form-section {
+  margin-bottom: 20px;
+  h4 { margin: 0 0 15px 0; color: #333; font-size: 1.1rem; border-bottom: 2px solid #007bff; padding-bottom: 8px; }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 15px;
+    &.full-width { grid-column: span 2; }
+    label { font-weight: 500; .required { color: #dc3545; } }
+    .help-text { font-size: 0.85rem; color: #6c757d; margin-top: 2px; }
+    .p-error { color: #dc3545; font-size: 0.85rem; }
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+}
+
+.enrollment-option {
+  .option-label { font-weight: 600; margin-bottom: 4px; }
+  .option-detail {
+    display: flex;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+}
+
+.enrollment-info {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 4px solid #007bff;
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      label { font-size: 0.85rem; color: #6c757d; font-weight: 600; }
+      .value { font-size: 0.95rem; color: #333; }
+    }
+  }
+}
+
+.upload-section {
+  .upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .documents-list {
+    h5 { margin: 0 0 10px 0; color: #333; font-size: 1rem; }
+
+    .document-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      margin-bottom: 8px;
+
+      .document-icon {
+        width: 40px;
+        height: 40px;
+        background: #007bff;
+        color: white;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+
+      .document-info {
+        flex: 1;
+        .document-name { font-weight: 500; margin-bottom: 2px; }
+        .document-size { font-size: 0.85rem; color: #6c757d; }
+      }
+    }
+  }
+
+  .no-documents {
+    text-align: center;
+    padding: 40px 20px;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 4px;
+    i { font-size: 3rem; color: #6c757d; margin-bottom: 10px; }
+    p { margin: 0; color: #6c757d; }
+  }
+}
+
+.important-notice {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  border-radius: 4px;
+  i { color: #1976d2; font-size: 1.5rem; flex-shrink: 0; margin-top: 2px; }
+  div {
+    flex: 1;
+    h5 { margin: 0 0 10px 0; color: #1976d2; font-size: 1rem; }
+    ul {
+      margin: 0;
+      padding-left: 20px;
+      li { color: #555; margin-bottom: 5px; font-size: 0.9rem; line-height: 1.5; }
+    }
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  i { font-size: 4rem; margin-bottom: 20px; &.text-warning { color: #ffc107; } }
+  h3 { margin: 0 0 10px 0; color: #333; }
+  p { color: #6c757d; margin: 0 0 20px 0; }
+}
+
+.badge {
+  padding: 0.4em 0.8em;
+  font-size: 0.875rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  &.badge-sm { font-size: 0.75rem; padding: 0.25em 0.6em; }
+  &.badge-success { background: #28a745; color: white; }
+  &.badge-primary { background: #007bff; color: white; }
+}
+
+.w-full { width: 100%; }
+
+::ng-deep {
+  p-divider { margin: 25px 0; }
+  .p-divider-horizontal { border-top-color: #dee2e6; }
+}
+
+@media (max-width: 768px) {
+  .form-section .form-grid { grid-template-columns: 1fr; .form-field { grid-column: span 1; } }
+  .enrollment-info .info-grid { grid-template-columns: 1fr; }
+  .form-actions { flex-direction: column; button { width: 100%; } }
+}

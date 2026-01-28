@@ -2,18 +2,14 @@ import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
-import { StoreModule } from "@ngrx/store";
 import { NgxChartsModule } from "@swimlane/ngx-charts";
 import { DialogModule } from "primeng/dialog";
 import { AuthGuard } from "../@core/auth/auth.guard";
 import { SharedModule } from "../shared/shared.module";
-import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
 import { DocumentsModule } from "./documents/documents.module";
-import { ProductsModule } from "./products/products.module";
+import { ProductsSharedModule } from "./products/products-shared.module";
 import { ProfileComponent } from "./profile.component";
-import { PurchasesModule } from "./purchases/purchases.module";
-import { SalesModule } from "./sales/sales.module";
 import { SecuredComponent } from "./secured.component";
 
 const routes: Routes = [
@@ -72,13 +68,9 @@ const routes: Routes = [
         ReactiveFormsModule,
         SharedModule,
         NgxChartsModule,
-        ProductsModule,
-        PurchasesModule,
-        StoreModule,
-        CustomersModule,
-        SalesModule,
         DocumentsModule,
-        DialogModule
+        DialogModule,
+        ProductsSharedModule
     ],
     exports: [RouterModule]
   })

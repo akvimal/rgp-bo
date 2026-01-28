@@ -17,6 +17,7 @@ export class SecuredComponent {
     state$!:Observable<AppState>;
 
     pricing:boolean = false;
+    showBugReportDialog:boolean = false;
 
     constructor(
       private appStateService:AppStateService,

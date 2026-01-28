@@ -25,6 +25,7 @@ import { DownloadModule } from './modules/app/downloads/download.module';
 import { PayrollModule } from './modules/app/payroll/payroll.module';
 import { CoreModule } from './core/core.module';
 import { FeatureGroupModule } from './modules/app/feature-groups/feature-group.module';
+import { BugReportModule } from './modules/app/bug-report/bug-report.module';
 
 @Module({
   imports: [
@@ -53,7 +54,8 @@ import { FeatureGroupModule } from './modules/app/feature-groups/feature-group.m
     RedisCacheModule,
     HrModule,
     PayrollModule,
-    FeatureGroupModule
+    FeatureGroupModule,
+    BugReportModule
   ],
   controllers: [],
   providers: [DbBackupService],

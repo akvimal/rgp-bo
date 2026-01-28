@@ -11,6 +11,11 @@ import { Component } from "@angular/core";
                 <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="expiry">Expiry</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="near-expiry">
+                    <i class="bi bi-exclamation-triangle"></i> Near Expiry
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="adjust">Adjustments</a>
             </li>
         </ul>

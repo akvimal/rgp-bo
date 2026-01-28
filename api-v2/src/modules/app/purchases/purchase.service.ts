@@ -10,6 +10,7 @@ import { PurchaseRequest } from "src/entities/purchase-request.entity";
 import { PurchaseOrder } from "src/entities/purchase-order.entity";
 import { SalesIntent, IntentStatus, FulfillmentStatus } from "src/entities/sales-intent.entity";
 import { Store } from "src/entities/store.entity";
+import { Vendor } from "src/entities/vendor.entity";
 
 @Injectable()
 export class PurchaseService {
@@ -183,7 +184,7 @@ export class PurchaseService {
         return await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
             try {
                 // 1. Validate vendor exists
-                const vendor = await manager.findOne(Store, { where: { id: dto.vendorid } });
+                const vendor = await manager.findOne(Vendor, { where: { id: dto.vendorid } });
                 if (!vendor) {
                     throw new BadRequestException(`Vendor with ID ${dto.vendorid} not found`);
                 }

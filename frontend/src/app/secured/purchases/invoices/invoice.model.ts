@@ -139,3 +139,24 @@ export interface InvoiceLifecycleSummary {
     cancloseinvoice: boolean,
     closureblockers: string[]
 }
+
+export interface ItemVerificationStatus {
+    invoiceId: number,
+    totalItems: number,
+    verifiedItems: number,
+    rejectedItems: number,
+    pendingItems: number,
+    allVerified: boolean,
+    items: VerifiedItem[]
+}
+
+export interface VerifiedItem {
+    id: number,
+    productid: number,
+    productname: string,
+    qty: number,
+    status: 'NEW' | 'VERIFIED' | 'REJECTED',
+    verifiedby?: number,
+    verifyenddate?: string,
+    comments?: string
+}

@@ -12,6 +12,8 @@ import { InvoiceStatusBadgesComponent } from "./invoices/components/invoice-stat
 import { InvoiceDocumentUploadComponent } from "./invoices/components/invoice-document-upload.component";
 import { InvoiceTaxCreditComponent } from "./invoices/components/invoice-tax-credit.component";
 import { InvoiceLifecycleSummaryComponent } from "./invoices/components/invoice-lifecycle-summary.component";
+import { VendorQuickAddComponent } from "./invoices/components/vendor-quick-add.component";
+import { ProductQuickAddComponent } from "./invoices/components/product-quick-add.component";
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import {DialogModule} from 'primeng/dialog';
 import {TableModule} from 'primeng/table';
@@ -35,11 +37,14 @@ import { PurchaseOrderFormEnhancedComponent } from "./requests/components/purcha
 import { SmartPOSuggestionsComponent } from "./requests/components/smart-po-suggestions.component";
 import { InvoicesComponent } from "./invoices/components/invoices.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
+import { PurchasesDashboardComponent } from "./dashboard/purchases-dashboard.component";
+import { NgChartsModule } from 'ng2-charts';
 
 const routes: Routes = [
   { path: '', component: PurchaseHomeComponent, canActivate:[AuthGuard],
     children: [
-      { path: '', redirectTo: 'invoices'},
+      { path: '', redirectTo: 'dashboard'},
+      { path: 'dashboard', component: PurchasesDashboardComponent },
       { path: 'orders/suggestions', component: SmartPOSuggestionsComponent },
       { path: 'orders/from-intents', component: PurchaseOrderFromIntentsComponent },
       { path: 'orders/new', component: PurchaseOrderFormEnhancedComponent },
@@ -80,10 +85,13 @@ const routes: Routes = [
       InvoiceStatusBadgesComponent,
       InvoiceDocumentUploadComponent,
       InvoiceTaxCreditComponent,
-      InvoiceLifecycleSummaryComponent
+      InvoiceLifecycleSummaryComponent,
+      VendorQuickAddComponent,
+      ProductQuickAddComponent,
+      PurchasesDashboardComponent
     ],
     imports: [
-        FormsModule,  
+        FormsModule,
         CommonModule,
         ReactiveFormsModule,
         AutoCompleteModule,
@@ -99,6 +107,7 @@ const routes: Routes = [
         DropdownModule,
         ProgressBarModule,
         InputTextModule,
+        NgChartsModule,
         RouterModule.forChild(routes),
         SharedModule
     ],

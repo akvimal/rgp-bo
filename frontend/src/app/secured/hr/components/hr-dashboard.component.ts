@@ -87,4 +87,9 @@ export class HrDashboardComponent implements OnInit {
     if (lastDigit === 3) return 'rd';
     return 'th';
   }
+
+  formatScore(score: number | undefined | null): string {
+    if (score === undefined || score === null) return '0.0';
+    return score.toFixed(1);
+  }
 }

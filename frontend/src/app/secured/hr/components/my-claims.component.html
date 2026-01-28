@@ -1,0 +1,272 @@
+<div class="my-claims-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <div>
+      <h2>My Claims</h2>
+      <p class="subtitle">Track your benefit claims and their status</p>
+    </div>
+    <button pButton
+            label="Submit New Claim"
+            icon="pi pi-plus"
+            class="p-button-success"
+            (click)="submitNewClaim()">
+    </button>
+  </div>
+
+  <!-- Status Cards -->
+  <div class="status-section">
+    <div class="status-cards">
+      <div *ngFor="let statusCount of statusCounts"
+           class="status-card"
+           [style.border-left-color]="statusCount.color"
+           (click)="filterByStatus(statusCount.status)">
+        <div class="status-icon" [style.background-color]="statusCount.color">
+          <i class="pi" [ngClass]="statusCount.icon"></i>
+        </div>
+        <div class="status-content">
+          <div class="status-value">{{ statusCount.count }}</div>
+          <div class="status-label">{{ statusCount.label }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <p-card styleClass="summary-card">
+      <div class="summary-stats">
+        <div class="summary-stat">
+          <span class="summary-label">Total Claimed:</span>
+          <span class="summary-value">{{ formatCurrency(getTotalClaimedAmount()) }}</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-label">Total Approved:</span>
+          <span class="summary-value text-success">{{ formatCurrency(getTotalApprovedAmount()) }}</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-label">Total Paid:</span>
+          <span class="summary-value text-primary">{{ formatCurrency(getTotalPaidAmount()) }}</span>
+        </div>
+      </div>
+    </p-card>
+  </div>
+
+  <!-- Filters Section -->
+  <p-card styleClass="mb-3" *ngIf="allClaims.length > 0">
+    <div class="filters-section">
+      <div class="filter-group search-group">
+        <label>Claim Number:</label>
+        <input type="text"
+               pInputText
+               [(ngModel)]="claimNumberSearch"
+               (ngModelChange)="onFilterChange()"
+               placeholder="Search by claim number">
+      </div>
+
+      <div class="filter-group">
+        <label>Status:</label>
+        <p-dropdown
+          [(ngModel)]="statusFilter"
+          [options]="claimStatuses"
+          placeholder="All Statuses"
+          (onChange)="onFilterChange()"
+          [showClear]="true">
+        </p-dropdown>
+      </div>
+
+      <div class="filter-group">
+        <label>Type:</label>
+        <p-dropdown
+          [(ngModel)]="claimTypeFilter"
+          [options]="claimTypes"
+          placeholder="All Types"
+          (onChange)="onFilterChange()"
+          [showClear]="true">
+        </p-dropdown>
+      </div>
+
+      <div class="filter-group">
+        <label>From Date:</label>
+        <p-calendar
+          [(ngModel)]="dateFromFilter"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          (onSelect)="onFilterChange()">
+        </p-calendar>
+      </div>
+
+      <div class="filter-group">
+        <label>To Date:</label>
+        <p-calendar
+          [(ngModel)]="dateToFilter"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          (onSelect)="onFilterChange()">
+        </p-calendar>
+      </div>
+
+      <button pButton
+              label="Clear Filters"
+              icon="pi pi-filter-slash"
+              class="p-button-outlined p-button-secondary"
+              (click)="clearFilters()">
+      </button>
+    </div>
+  </p-card>
+
+  <!-- Claims Table -->
+  <p-card *ngIf="allClaims.length > 0">
+    <p-table
+      [value]="claims"
+      [loading]="isLoading"
+      [paginator]="true"
+      [rows]="10"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} claims"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      styleClass="p-datatable-striped">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="claimNumber">
+            Claim # <p-sortIcon field="claimNumber"></p-sortIcon>
+          </th>
+          <th pSortableColumn="claimDate">
+            Date <p-sortIcon field="claimDate"></p-sortIcon>
+          </th>
+          <th>Type</th>
+          <th pSortableColumn="claimedAmount">
+            Claimed <p-sortIcon field="claimedAmount"></p-sortIcon>
+          </th>
+          <th>Approved</th>
+          <th>Status</th>
+          <th>Workflow</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-claim>
+        <tr>
+          <td>
+            <strong>{{ claim.claimNumber }}</strong>
+          </td>
+
+          <td>
+            <small>{{ formatDate(claim.claimDate) }}</small>
+          </td>
+
+          <td>
+            <span class="badge" [ngClass]="getClaimTypeBadgeClass(claim.claimType)">
+              {{ claim.claimType }}
+            </span>
+          </td>
+
+          <td>
+            <strong>{{ formatCurrency(claim.claimedAmount) }}</strong>
+          </td>
+
+          <td>
+            <span class="text-success" *ngIf="claim.approvedAmount">
+              <strong>{{ formatCurrency(claim.approvedAmount) }}</strong>
+            </span>
+            <span class="text-muted" *ngIf="!claim.approvedAmount">-</span>
+          </td>
+
+          <td>
+            <span class="badge" [ngClass]="getStatusBadgeClass(claim.status)">
+              {{ claim.status }}
+            </span>
+          </td>
+
+          <td>
+            <div class="workflow-indicator">
+              <div class="workflow-stage"
+                   [class.active]="getWorkflowStage(claim) >= 0"
+                   [class.rejected]="claim.status === 'REJECTED'"
+                   pTooltip="Submitted">
+                <i class="pi pi-file"></i>
+              </div>
+              <div class="workflow-connector"
+                   [class.active]="getWorkflowStage(claim) >= 1"></div>
+              <div class="workflow-stage"
+                   [class.active]="getWorkflowStage(claim) >= 1"
+                   [class.rejected]="claim.status === 'REJECTED'"
+                   pTooltip="Review">
+                <i class="pi pi-eye"></i>
+              </div>
+              <div class="workflow-connector"
+                   [class.active]="getWorkflowStage(claim) >= 2"></div>
+              <div class="workflow-stage"
+                   [class.active]="getWorkflowStage(claim) >= 2"
+                   [class.rejected]="claim.status === 'REJECTED'"
+                   pTooltip="Approved/Rejected">
+                <i class="pi" [ngClass]="claim.status === 'REJECTED' ? 'pi-times' : 'pi-check'"></i>
+              </div>
+              <div class="workflow-connector"
+                   [class.active]="getWorkflowStage(claim) >= 3"
+                   *ngIf="claim.status !== 'REJECTED'"></div>
+              <div class="workflow-stage"
+                   [class.active]="getWorkflowStage(claim) >= 3"
+                   pTooltip="Paid"
+                   *ngIf="claim.status !== 'REJECTED'">
+                <i class="pi pi-money-bill"></i>
+              </div>
+            </div>
+          </td>
+
+          <td>
+            <button pButton
+                    icon="pi pi-eye"
+                    class="p-button-rounded p-button-text p-button-info"
+                    pTooltip="View Details"
+                    (click)="viewClaimDetails(claim)">
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" style="text-align: center;">
+            <div class="empty-message">
+              <i class="pi pi-inbox" style="font-size: 3rem; color: #999;"></i>
+              <p>No claims found</p>
+              <small *ngIf="statusFilter || claimTypeFilter || claimNumberSearch">
+                Try adjusting your filters
+              </small>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <!-- Empty State - No Claims -->
+  <p-card *ngIf="allClaims.length === 0 && !isLoading">
+    <div class="empty-state">
+      <i class="pi pi-inbox"></i>
+      <h3>No Claims Submitted</h3>
+      <p>You haven't submitted any benefit claims yet.</p>
+      <button pButton
+              label="Submit Your First Claim"
+              icon="pi pi-plus"
+              class="p-button-lg"
+              (click)="submitNewClaim()">
+      </button>
+    </div>
+  </p-card>
+
+  <!-- Loading State -->
+  <p-card *ngIf="isLoading">
+    <div class="loading-state">
+      <i class="pi pi-spinner pi-spin"></i>
+      <p>Loading your claims...</p>
+    </div>
+  </p-card>
+</div>
+
+<!-- Claim Details Dialog -->
+<app-claim-details-dialog
+  [(visible)]="showDetailsDialog"
+  [claim]="selectedClaim"
+  (close)="closeDetailsDialog()">
+</app-claim-details-dialog>

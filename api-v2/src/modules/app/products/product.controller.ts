@@ -3,8 +3,8 @@ import { PricingCalculatorService } from "./pricing-calculator.service";
 import { PricingRulesService } from "./pricing-rules.service";
 import { ProductOcrService } from "./product-ocr.service";
 import { ApiBearerAuth, ApiTags, ApiQuery, ApiOperation } from '@nestjs/swagger';
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, UploadedFile, UseInterceptors } from "@nestjs/common";
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, UploadedFile, UploadedFiles, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { CreateProductDto } from "./dto/create-product.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 
@@ -61,6 +61,34 @@ export class ProductController {
         };
     }
 
+    @Post('ocr/extract-multiple')
+    @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
+    @ApiOperation({ summary: 'Extract product info from multiple images with combined contextualization' })
+    async extractProductInfoFromMultipleImages(@UploadedFiles() files: Express.Multer.File[]) {
+        if (!files || files.length === 0) {
+            return {
+                success: false,
+                message: 'No files uploaded'
+            };
+        }
+
+        // Extract image paths
+        const imagePaths = files.map(file => file.path);
+
+        // Process all images together with combined contextualization
+        const result = await this.productOcrService.processMultipleProductImages(imagePaths);
+
+        return {
+            ...result,
+            uploadedFiles: files.map(file => ({
+                filename: file.filename,
+                path: file.path,
+                size: file.size,
+                mimetype: file.mimetype
+            }))
+        };
+    }
+
     @Post('/filter')
     async filterByCriteria(@Body() criteria: any) {
       return this.productService.filterByCriteria(criteria);
@@ -68,6 +96,18 @@ export class ProductController {
     @Post('/filter2')
     async filterByCriteria2(@Body() criteria: any) {
       return this.productService.filterByCriteria2(criteria);
+    }
+
+    @Get('/categories')
+    @ApiOperation({ summary: 'Get list of product categories' })
+    async getCategories() {
+      return this.productService.getCategories();
+    }
+
+    @Get('/dashboard/metrics')
+    @ApiOperation({ summary: 'Get product dashboard metrics' })
+    async getDashboardMetrics() {
+      return this.productService.getDashboardMetrics();
     }
 
     @Post('prices/add')
@@ -201,7 +241,7 @@ export class ProductController {
 
     @Delete(':id')
     remove(@Param('id') id: string, @User() currentUser: any) {
-      return this.productService.update(id, {isActive:false}, currentUser.id);
+      return this.productService.remove(parseInt(id), currentUser.id);
     }
 
     // ========================================

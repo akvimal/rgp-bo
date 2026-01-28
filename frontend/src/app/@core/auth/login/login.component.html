@@ -36,10 +36,30 @@
                               <input type="password" name="password" id="password" formControlName="password"
                               class="form-control" required>
                               <div class="invalid-feedback">Please enter your password!</div>
-                            
-                            <!-- {{form.controls['password'].dirty}} -->
-                            <div class="col-12 text-center alert alert-danger" *ngIf="!form.controls['password'].dirty && error && error !== ''">Invalid Credentials</div>
-                            <div class="col-12">
+
+                            <!-- Password Expiry Warning -->
+                            <div class="col-12 alert alert-warning mt-2" *ngIf="passwordExpiresSoon">
+                              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                              <strong>Password Expiring Soon:</strong> Your password will expire in {{ daysUntilExpiry }} day(s). Please change your password soon.
+                            </div>
+
+                            <!-- Account Locked Error -->
+                            <div class="col-12 alert alert-danger mt-2" *ngIf="accountLocked">
+                              <i class="bi bi-lock-fill me-2"></i>
+                              <strong>Account Locked:</strong> {{ lockoutMessage }}
+                            </div>
+
+                            <!-- Password Expired Error -->
+                            <div class="col-12 alert alert-danger mt-2" *ngIf="passwordExpired">
+                              <i class="bi bi-exclamation-circle-fill me-2"></i>
+                              <strong>Password Expired:</strong> {{ error }}
+                            </div>
+
+                            <!-- Generic Error -->
+                            <div class="col-12 text-center alert alert-danger" *ngIf="!form.controls['password'].dirty && !accountLocked && !passwordExpired && error && error !== ''">
+                              Invalid Credentials
+                            </div>
+                            <div class="col-12" *ngIf="!accountLocked && !passwordExpired">
                               <div *ngIf="error">{{error}}</div>
                             </div>
                                 <!-- <div class="col-12">

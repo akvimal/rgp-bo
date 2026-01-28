@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { SystemPerformanceLog } from '../../entities/system-performance-log.entity';
 import { ApiUsageLog } from '../../entities/api-usage-log.entity';
 import { QueryPerformanceLog } from '../../entities/query-performance-log.entity';
-import { HrAuditLog } from '../../entities/hr-audit-log.entity';
+import { AuditLog } from '../../entities/audit-log.entity';
 
 @Injectable()
 export class PerformanceMonitoringService {
@@ -15,8 +15,8 @@ export class PerformanceMonitoringService {
     private apiUsageRepo: Repository<ApiUsageLog>,
     @InjectRepository(QueryPerformanceLog)
     private queryPerfRepo: Repository<QueryPerformanceLog>,
-    @InjectRepository(HrAuditLog)
-    private auditLogRepo: Repository<HrAuditLog>,
+    @InjectRepository(AuditLog)
+    private auditLogRepo: Repository<AuditLog>,
   ) {}
 
   /**
@@ -197,7 +197,7 @@ export class PerformanceMonitoringService {
     resourceType: string,
     resourceId: number,
     limit: number = 50,
-  ): Promise<HrAuditLog[]> {
+  ): Promise<AuditLog[]> {
     return this.auditLogRepo
       .createQueryBuilder('log')
       .where('log.resourcetype = :resourceType', { resourceType })

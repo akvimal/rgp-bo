@@ -1,0 +1,529 @@
+<p-dialog
+  [header]="isEditMode ? 'Edit Benefit Policy' : 'Create Benefit Policy'"
+  [(visible)]="visible"
+  [modal]="true"
+  [style]="{width: '900px', maxHeight: '90vh'}"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="benefit-policy-form-dialog"
+  (onHide)="closeDialog()">
+
+  <form [formGroup]="policyForm" (ngSubmit)="onSubmit()" class="benefit-policy-form">
+
+    <!-- Section 1: Basic Information -->
+    <p-card styleClass="form-section mb-3">
+      <ng-template pTemplate="header">
+        <h5 class="section-title">
+          <i class="pi pi-info-circle"></i> Basic Information
+        </h5>
+      </ng-template>
+
+      <div class="form-grid">
+        <!-- Benefit Type -->
+        <div class="form-field full-width">
+          <label for="benefitId">Benefit Type <span class="required">*</span></label>
+          <p-dropdown
+            id="benefitId"
+            formControlName="benefitId"
+            [options]="benefitMasters"
+            optionLabel="benefitName"
+            optionValue="id"
+            placeholder="Select benefit type"
+            [showClear]="true"
+            [filter]="true"
+            [style]="{'width': '100%'}">
+          </p-dropdown>
+          <small class="error-message" *ngIf="isFieldInvalid('benefitId')">
+            {{ getErrorMessage('benefitId') }}
+          </small>
+        </div>
+
+        <!-- Policy Name -->
+        <div class="form-field full-width">
+          <label for="policyName">Policy Name <span class="required">*</span></label>
+          <input
+            type="text"
+            id="policyName"
+            pInputText
+            formControlName="policyName"
+            placeholder="e.g., Group Health Insurance Policy 2024"
+            [style]="{'width': '100%'}">
+          <small class="error-message" *ngIf="isFieldInvalid('policyName')">
+            {{ getErrorMessage('policyName') }}
+          </small>
+        </div>
+
+        <!-- Description -->
+        <div class="form-field full-width">
+          <label for="description">Description</label>
+          <textarea
+            id="description"
+            pInputTextarea
+            formControlName="description"
+            rows="3"
+            placeholder="Describe the benefit policy..."
+            [style]="{'width': '100%'}">
+          </textarea>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 2: Coverage Configuration -->
+    <p-card styleClass="form-section mb-3">
+      <ng-template pTemplate="header">
+        <h5 class="section-title">
+          <i class="pi pi-shield"></i> Coverage Configuration
+        </h5>
+      </ng-template>
+
+      <div class="form-grid">
+        <!-- Coverage Type Selection -->
+        <div class="form-field full-width">
+          <label>Coverage Type <span class="required">*</span></label>
+          <div class="coverage-type-buttons">
+            <button
+              type="button"
+              pButton
+              label="Fixed Amount"
+              icon="pi pi-money-bill"
+              [class]="coverageType === 'amount' ? 'p-button' : 'p-button-outlined'"
+              (click)="setCoverageType('amount')">
+            </button>
+            <button
+              type="button"
+              pButton
+              label="Percentage"
+              icon="pi pi-percentage"
+              [class]="coverageType === 'percentage' ? 'p-button' : 'p-button-outlined'"
+              (click)="setCoverageType('percentage')">
+            </button>
+            <button
+              type="button"
+              pButton
+              label="Formula"
+              icon="pi pi-calculator"
+              [class]="coverageType === 'formula' ? 'p-button' : 'p-button-outlined'"
+              (click)="setCoverageType('formula')">
+            </button>
+          </div>
+        </div>
+
+        <!-- Coverage Amount -->
+        <div class="form-field half-width" *ngIf="coverageType === 'amount'">
+          <label for="coverageAmount">Coverage Amount (₹)</label>
+          <input
+            type="number"
+            id="coverageAmount"
+            pInputText
+            formControlName="coverageAmount"
+            placeholder="e.g., 500000"
+            [style]="{'width': '100%'}">
+        </div>
+
+        <!-- Coverage Percentage -->
+        <div class="form-field half-width" *ngIf="coverageType === 'percentage'">
+          <label for="coveragePercentage">Coverage Percentage (%)</label>
+          <input
+            type="number"
+            id="coveragePercentage"
+            pInputText
+            formControlName="coveragePercentage"
+            placeholder="e.g., 80"
+            min="0"
+            max="100"
+            [style]="{'width': '100%'}">
+        </div>
+
+        <!-- Coverage Formula (JSON) -->
+        <div class="form-field full-width" *ngIf="coverageType === 'formula'">
+          <label for="coverageFormula">Coverage Formula (JSON)</label>
+          <textarea
+            id="coverageFormula"
+            pInputTextarea
+            formControlName="coverageFormula"
+            rows="4"
+            placeholder='e.g., {"baseSalary": 1, "factor": 4, "description": "4x Annual Basic Salary"}'
+            [style]="{'width': '100%'}">
+          </textarea>
+          <small class="field-hint">Enter a valid JSON object defining the coverage calculation formula</small>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 3: Cost Sharing -->
+    <p-card styleClass="form-section mb-3">
+      <ng-template pTemplate="header">
+        <h5 class="section-title">
+          <i class="pi pi-users"></i> Cost Sharing
+        </h5>
+      </ng-template>
+
+      <div class="form-grid">
+        <!-- Employee Contribution Amount -->
+        <div class="form-field half-width">
+          <label for="employeeContributionAmount">Employee Contribution (₹) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="employeeContributionAmount"
+            pInputText
+            formControlName="employeeContributionAmount"
+            placeholder="0"
+            min="0"
+            [style]="{'width': '100%'}">
+          <small class="error-message" *ngIf="isFieldInvalid('employeeContributionAmount')">
+            {{ getErrorMessage('employeeContributionAmount') }}
+          </small>
+        </div>
+
+        <!-- Employee Contribution Percentage -->
+        <div class="form-field half-width">
+          <label for="employeeContributionPercentage">Employee Contribution (%) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="employeeContributionPercentage"
+            pInputText
+            formControlName="employeeContributionPercentage"
+            placeholder="0"
+            min="0"
+            max="100"
+            [style]="{'width': '100%'}">
+          <small class="error-message" *ngIf="isFieldInvalid('employeeContributionPercentage')">
+            {{ getErrorMessage('employeeContributionPercentage') }}
+          </small>
+        </div>
+
+        <!-- Employer Contribution Amount -->
+        <div class="form-field half-width">
+          <label for="employerContributionAmount">Employer Contribution (₹) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="employerContributionAmount"
+            pInputText
+            formControlName="employerContributionAmount"
+            placeholder="0"
+            min="0"
+            [style]="{'width': '100%'}">
+          <small class="error-message" *ngIf="isFieldInvalid('employerContributionAmount')">
+            {{ getErrorMessage('employerContributionAmount') }}
+          </small>
+        </div>
+
+        <!-- Employer Contribution Percentage -->
+        <div class="form-field half-width">
+          <label for="employerContributionPercentage">Employer Contribution (%) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="employerContributionPercentage"
+            pInputText
+            formControlName="employerContributionPercentage"
+            placeholder="0"
+            min="0"
+            max="100"
+            [style]="{'width': '100%'}">
+          <small class="error-message" *ngIf="isFieldInvalid('employerContributionPercentage')">
+            {{ getErrorMessage('employerContributionPercentage') }}
+          </small>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 4: Family Coverage -->
+    <p-card styleClass="form-section mb-3">
+      <ng-template pTemplate="header">
+        <h5 class="section-title">
+          <i class="pi pi-home"></i> Family Coverage
+        </h5>
+      </ng-template>
+
+      <div class="form-grid">
+        <!-- Family Coverage Allowed -->
+        <div class="form-field full-width">
+          <div class="checkbox-field">
+            <p-checkbox
+              inputId="familyCoverageAllowed"
+              formControlName="familyCoverageAllowed"
+              [binary]="true">
+            </p-checkbox>
+            <label for="familyCoverageAllowed">Allow Family Coverage</label>
+          </div>
+        </div>
+
+        <!-- Max Dependents -->
+        <div class="form-field half-width" *ngIf="policyForm.value.familyCoverageAllowed">
+          <label for="maxDependents">Maximum Dependents</label>
+          <input
+            type="number"
+            id="maxDependents"
+            pInputText
+            formControlName="maxDependents"
+            placeholder="0"
+            min="0"
+            [style]="{'width': '100%'}">
+        </div>
+
+        <!-- Dependent Coverage Amount -->
+        <div class="form-field half-width" *ngIf="policyForm.value.familyCoverageAllowed">
+          <label for="dependentCoverageAmount">Coverage per Dependent (₹)</label>
+          <input
+            type="number"
+            id="dependentCoverageAmount"
+            pInputText
+            formControlName="dependentCoverageAmount"
+            placeholder="0"
+            min="0"
+            [style]="{'width': '100%'}">
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 5: Policy Details -->
+    <p-card styleClass="form-section mb-3">
+      <ng-template pTemplate="header">
+        <h5 class="section-title">
+          <i class="pi pi-file"></i> Policy Details
+        </h5>
+      </ng-template>
+
+      <div class="form-grid">
+        <!-- Policy Provider -->
+        <div class="form-field half-width">
+          <label for="policyProvider">Policy Provider</label>
+          <input
+            type="text"
+            id="policyProvider"
+            pInputText
+            formControlName="policyProvider"
+            placeholder="e.g., HDFC ERGO"
+            [style]="{'width': '100%'}">
+        </div>
+
+        <!-- Policy Number -->
+        <div class="form-field half-width">
+          <label for="policyNumber">Policy Number</label>
+          <input
+            type="text"
+            id="policyNumber"
+            pInputText
+            formControlName="policyNumber"
+            placeholder="e.g., POL/2024/12345"
+            [style]="{'width': '100%'}">
+        </div>
+
+        <!-- Policy Start Date -->
+        <div class="form-field third-width">
+          <label for="policyStartDate">Policy Start Date</label>
+          <p-calendar
+            inputId="policyStartDate"
+            formControlName="policyStartDate"
+            dateFormat="yy-mm-dd"
+            [showIcon]="true"
+            [style]="{'width': '100%'}">
+          </p-calendar>
+        </div>
+
+        <!-- Policy End Date -->
+        <div class="form-field third-width">
+          <label for="policyEndDate">Policy End Date</label>
+          <p-calendar
+            inputId="policyEndDate"
+            formControlName="policyEndDate"
+            dateFormat="yy-mm-dd"
+            [showIcon]="true"
+            [style]="{'width': '100%'}">
+          </p-calendar>
+        </div>
+
+        <!-- Renewal Date -->
+        <div class="form-field third-width">
+          <label for="renewalDate">Renewal Date</label>
+          <p-calendar
+            inputId="renewalDate"
+            formControlName="renewalDate"
+            dateFormat="yy-mm-dd"
+            [showIcon]="true"
+            [style]="{'width': '100%'}">
+          </p-calendar>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 6: Rules & Limits -->
+    <p-card styleClass="form-section mb-3">
+      <ng-template pTemplate="header">
+        <h5 class="section-title">
+          <i class="pi pi-list"></i> Rules & Limits
+        </h5>
+      </ng-template>
+
+      <div class="form-grid">
+        <!-- Waiting Period Days -->
+        <div class="form-field third-width">
+          <label for="waitingPeriodDays">Waiting Period (Days) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="waitingPeriodDays"
+            pInputText
+            formControlName="waitingPeriodDays"
+            placeholder="0"
+            min="0"
+            [style]="{'width': '100%'}">
+          <small class="error-message" *ngIf="isFieldInvalid('waitingPeriodDays')">
+            {{ getErrorMessage('waitingPeriodDays') }}
+          </small>
+        </div>
+
+        <!-- Claim Submission Deadline Days -->
+        <div class="form-field third-width">
+          <label for="claimSubmissionDeadlineDays">Claim Deadline (Days) <span class="required">*</span></label>
+          <input
+            type="number"
+            id="claimSubmissionDeadlineDays"
+            pInputText
+            formControlName="claimSubmissionDeadlineDays"
+            placeholder="30"
+            min="1"
+            [style]="{'width': '100%'}">
+          <small class="error-message" *ngIf="isFieldInvalid('claimSubmissionDeadlineDays')">
+            {{ getErrorMessage('claimSubmissionDeadlineDays') }}
+          </small>
+        </div>
+
+        <!-- Max Claims Per Year -->
+        <div class="form-field third-width">
+          <label for="maxClaimsPerYear">Max Claims/Year</label>
+          <input
+            type="number"
+            id="maxClaimsPerYear"
+            pInputText
+            formControlName="maxClaimsPerYear"
+            placeholder="Unlimited"
+            min="1"
+            [style]="{'width': '100%'}">
+          <small class="field-hint">Leave blank for unlimited claims</small>
+        </div>
+
+        <!-- Documents Required -->
+        <div class="form-field full-width">
+          <label>Documents Required</label>
+          <div class="documents-input">
+            <input
+              type="text"
+              pInputText
+              [(ngModel)]="newDocument"
+              [ngModelOptions]="{standalone: true}"
+              placeholder="e.g., Medical Bills"
+              (keyup.enter)="addDocument()"
+              class="document-input">
+            <button
+              type="button"
+              pButton
+              icon="pi pi-plus"
+              label="Add"
+              class="p-button-sm"
+              (click)="addDocument()">
+            </button>
+          </div>
+          <div class="documents-list" *ngIf="documentsRequired.length > 0">
+            <div class="document-item" *ngFor="let doc of documentsRequired; let i = index">
+              <span>{{ doc }}</span>
+              <button
+                type="button"
+                pButton
+                icon="pi pi-times"
+                class="p-button-rounded p-button-text p-button-sm p-button-danger"
+                (click)="removeDocument(i)">
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Terms and Conditions -->
+        <div class="form-field full-width">
+          <label for="termsAndConditions">Terms & Conditions</label>
+          <textarea
+            id="termsAndConditions"
+            pInputTextarea
+            formControlName="termsAndConditions"
+            rows="4"
+            placeholder="Enter detailed terms and conditions..."
+            [style]="{'width': '100%'}">
+          </textarea>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 7: Effective Dates & Status -->
+    <p-card styleClass="form-section">
+      <ng-template pTemplate="header">
+        <h5 class="section-title">
+          <i class="pi pi-calendar"></i> Effective Period & Status
+        </h5>
+      </ng-template>
+
+      <div class="form-grid">
+        <!-- Effective From -->
+        <div class="form-field third-width">
+          <label for="effectiveFrom">Effective From <span class="required">*</span></label>
+          <p-calendar
+            inputId="effectiveFrom"
+            formControlName="effectiveFrom"
+            dateFormat="yy-mm-dd"
+            [showIcon]="true"
+            [style]="{'width': '100%'}">
+          </p-calendar>
+          <small class="error-message" *ngIf="isFieldInvalid('effectiveFrom')">
+            {{ getErrorMessage('effectiveFrom') }}
+          </small>
+        </div>
+
+        <!-- Effective To -->
+        <div class="form-field third-width">
+          <label for="effectiveTo">Effective To</label>
+          <p-calendar
+            inputId="effectiveTo"
+            formControlName="effectiveTo"
+            dateFormat="yy-mm-dd"
+            [showIcon]="true"
+            [style]="{'width': '100%'}">
+          </p-calendar>
+          <small class="field-hint">Leave blank for no end date</small>
+        </div>
+
+        <!-- Active Status -->
+        <div class="form-field third-width">
+          <label for="active">Status</label>
+          <div class="checkbox-field">
+            <p-checkbox
+              inputId="active"
+              formControlName="active"
+              [binary]="true">
+            </p-checkbox>
+            <label for="active">Active</label>
+          </div>
+        </div>
+      </div>
+    </p-card>
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <button
+      pButton
+      label="Cancel"
+      icon="pi pi-times"
+      class="p-button-secondary"
+      (click)="closeDialog()"
+      [disabled]="isSaving">
+    </button>
+    <button
+      pButton
+      [label]="isEditMode ? 'Update' : 'Create'"
+      icon="pi pi-check"
+      class="p-button-success"
+      (click)="onSubmit()"
+      [disabled]="isSaving"
+      [loading]="isSaving">
+    </button>
+  </ng-template>
+
+</p-dialog>

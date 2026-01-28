@@ -1,0 +1,263 @@
+<p-dialog [header]="isEditMode ? 'Edit HR Policy' : 'Create HR Policy'"
+          [(visible)]="visible"
+          [modal]="true"
+          [style]="{width: '900px', 'max-height': '90vh'}"
+          [draggable]="false"
+          [resizable]="false"
+          (onHide)="onCancel()">
+
+  <form [formGroup]="policyForm" (ngSubmit)="onSubmit()">
+
+    <!-- Basic Information -->
+    <p-card styleClass="mb-3">
+      <h5 class="section-header">Basic Information</h5>
+
+      <div class="p-fluid">
+        <!-- Policy Code -->
+        <div class="p-field mb-3">
+          <label for="policyCode">
+            Policy Code <span class="required">*</span>
+          </label>
+          <input id="policyCode"
+                 type="text"
+                 pInputText
+                 formControlName="policyCode"
+                 placeholder="e.g., PROBATION, ATTENDANCE_001"
+                 [class.p-invalid]="hasError('policyCode')">
+          <small class="p-error" *ngIf="hasError('policyCode')">
+            {{ getErrorMessage('policyCode') }}
+          </small>
+          <small class="p-info" *ngIf="isEditMode">
+            Policy code cannot be changed after creation
+          </small>
+        </div>
+
+        <!-- Policy Name -->
+        <div class="p-field mb-3">
+          <label for="policyName">
+            Policy Name <span class="required">*</span>
+          </label>
+          <input id="policyName"
+                 type="text"
+                 pInputText
+                 formControlName="policyName"
+                 placeholder="e.g., Probation Period Policy"
+                 [class.p-invalid]="hasError('policyName')">
+          <small class="p-error" *ngIf="hasError('policyName')">
+            {{ getErrorMessage('policyName') }}
+          </small>
+        </div>
+
+        <!-- Policy Category -->
+        <div class="p-field mb-3">
+          <label for="policyCategory">
+            Category <span class="required">*</span>
+          </label>
+          <p-dropdown id="policyCategory"
+                      [options]="policyCategories"
+                      formControlName="policyCategory"
+                      placeholder="Select Category"
+                      [class.p-invalid]="hasError('policyCategory')">
+          </p-dropdown>
+          <small class="p-error" *ngIf="hasError('policyCategory')">
+            {{ getErrorMessage('policyCategory') }}
+          </small>
+        </div>
+
+        <!-- Description -->
+        <div class="p-field mb-3">
+          <label for="description">Description</label>
+          <textarea id="description"
+                    pInputTextarea
+                    formControlName="description"
+                    rows="3"
+                    placeholder="Brief description of the policy...">
+          </textarea>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Policy Content -->
+    <p-card styleClass="mb-3">
+      <h5 class="section-header">
+        Policy Content <span class="required">*</span>
+        <button type="button"
+                pButton
+                icon="pi pi-info-circle"
+                class="p-button-rounded p-button-text p-button-sm"
+                pTooltip="Policy content must be valid JSON format"
+                style="float: right;">
+        </button>
+      </h5>
+
+      <!-- Sample Templates -->
+      <div class="mb-3">
+        <label>Quick Templates:</label>
+        <div class="template-buttons">
+          <button type="button"
+                  pButton
+                  label="Attendance"
+                  class="p-button-sm p-button-outlined mr-2"
+                  (click)="loadSampleContent('attendance')">
+          </button>
+          <button type="button"
+                  pButton
+                  label="Leave"
+                  class="p-button-sm p-button-outlined mr-2"
+                  (click)="loadSampleContent('leave')">
+          </button>
+          <button type="button"
+                  pButton
+                  label="Conduct"
+                  class="p-button-sm p-button-outlined mr-2"
+                  (click)="loadSampleContent('conduct')">
+          </button>
+          <button type="button"
+                  pButton
+                  label="Generic"
+                  class="p-button-sm p-button-outlined"
+                  (click)="loadSampleContent('generic')">
+          </button>
+        </div>
+      </div>
+
+      <!-- JSON Editor -->
+      <div class="p-field">
+        <textarea id="policyContent"
+                  class="json-editor"
+                  formControlName="policyContent"
+                  [(ngModel)]="policyContentJson"
+                  (ngModelChange)="onPolicyContentChange()"
+                  rows="12"
+                  placeholder='{"example": "Enter policy content as JSON"}'>
+        </textarea>
+        <small class="p-error" *ngIf="hasError('policyContent')">
+          {{ getErrorMessage('policyContent') }}
+        </small>
+        <small class="p-info" *ngIf="!validateJson() && policyContentJson">
+          <i class="pi pi-exclamation-triangle"></i> Invalid JSON format
+        </small>
+        <small class="p-success" *ngIf="validateJson() && policyContentJson">
+          <i class="pi pi-check"></i> Valid JSON
+        </small>
+      </div>
+    </p-card>
+
+    <!-- Policy Settings -->
+    <p-card styleClass="mb-3">
+      <h5 class="section-header">Policy Settings</h5>
+
+      <div class="p-fluid">
+        <!-- Effective Dates -->
+        <div class="p-grid">
+          <div class="p-col-12 p-md-6">
+            <div class="p-field mb-3">
+              <label for="effectiveFrom">
+                Effective From <span class="required">*</span>
+              </label>
+              <p-calendar id="effectiveFrom"
+                          formControlName="effectiveFrom"
+                          dateFormat="yy-mm-dd"
+                          [showIcon]="true"
+                          [class.p-invalid]="hasError('effectiveFrom')">
+              </p-calendar>
+              <small class="p-error" *ngIf="hasError('effectiveFrom')">
+                {{ getErrorMessage('effectiveFrom') }}
+              </small>
+            </div>
+          </div>
+
+          <div class="p-col-12 p-md-6">
+            <div class="p-field mb-3">
+              <label for="effectiveTo">Effective To (Optional)</label>
+              <p-calendar id="effectiveTo"
+                          formControlName="effectiveTo"
+                          dateFormat="yy-mm-dd"
+                          [showIcon]="true">
+              </p-calendar>
+              <small class="p-info">Leave blank if policy has no end date</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="checkbox-group mb-3">
+          <div class="p-field-checkbox">
+            <p-checkbox id="isMandatory"
+                        formControlName="isMandatory"
+                        [binary]="true">
+            </p-checkbox>
+            <label for="isMandatory">Mandatory Policy</label>
+            <small class="p-info d-block ml-4">
+              Mandatory policies apply to all employees
+            </small>
+          </div>
+
+          <div class="p-field-checkbox mt-2">
+            <p-checkbox id="requiresAcknowledgment"
+                        formControlName="requiresAcknowledgment"
+                        [binary]="true">
+            </p-checkbox>
+            <label for="requiresAcknowledgment">Requires Acknowledgment</label>
+            <small class="p-info d-block ml-4">
+              Employees must acknowledge they have read and understood this policy
+            </small>
+          </div>
+
+          <div class="p-field-checkbox mt-2" *ngIf="isEditMode">
+            <p-checkbox id="active"
+                        formControlName="active"
+                        [binary]="true">
+            </p-checkbox>
+            <label for="active">Active</label>
+            <small class="p-info d-block ml-4">
+              Inactive policies are not visible to employees
+            </small>
+          </div>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Version Info (Edit Mode Only) -->
+    <p-card *ngIf="isEditMode && policy" styleClass="mb-3 version-info">
+      <div class="p-grid">
+        <div class="p-col-4">
+          <strong>Current Version:</strong> v{{ policy.version }}
+        </div>
+        <div class="p-col-4">
+          <strong>Created:</strong> {{ policy.createdOn | date: 'short' }}
+        </div>
+        <div class="p-col-4">
+          <strong>Last Updated:</strong> {{ policy.updatedOn | date: 'short' }}
+        </div>
+      </div>
+      <small class="p-info">
+        <i class="pi pi-info-circle"></i>
+        Updating policy content will increment the version number
+      </small>
+    </p-card>
+
+  </form>
+
+  <!-- Dialog Footer -->
+  <ng-template pTemplate="footer">
+    <button pButton
+            type="button"
+            label="Cancel"
+            icon="pi pi-times"
+            class="p-button-secondary"
+            (click)="onCancel()"
+            [disabled]="isLoading">
+    </button>
+    <button pButton
+            type="submit"
+            [label]="isEditMode ? 'Update Policy' : 'Create Policy'"
+            icon="pi pi-check"
+            class="p-button-success"
+            (click)="onSubmit()"
+            [disabled]="isLoading"
+            [loading]="isLoading">
+    </button>
+  </ng-template>
+
+</p-dialog>

@@ -1,0 +1,190 @@
+.section-header {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #495057;
+  font-weight: 600;
+  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 8px;
+}
+
+.required {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.ml-4 {
+  margin-left: 1.5rem;
+}
+
+.d-block {
+  display: block;
+}
+
+.p-field {
+  margin-bottom: 1rem;
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #495057;
+  }
+
+  small.p-error {
+    display: block;
+    margin-top: 0.25rem;
+    color: #dc3545;
+  }
+
+  small.p-info {
+    display: block;
+    margin-top: 0.25rem;
+    color: #6c757d;
+    font-size: 0.875rem;
+  }
+
+  small.p-success {
+    display: block;
+    margin-top: 0.25rem;
+    color: #28a745;
+  }
+}
+
+.p-field-checkbox {
+  display: flex;
+  align-items: center;
+
+  label {
+    margin-left: 0.5rem;
+    margin-bottom: 0;
+    cursor: pointer;
+  }
+}
+
+.checkbox-group {
+  padding: 10px 0;
+}
+
+.json-editor {
+  width: 100%;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  resize: vertical;
+  background-color: #f8f9fa;
+
+  &:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+}
+
+.template-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.version-info {
+  background-color: #e7f3ff;
+  border-left: 4px solid #007bff;
+
+  ::ng-deep .p-card-body {
+    padding: 12px;
+  }
+
+  .p-grid {
+    margin-bottom: 8px;
+  }
+}
+
+// PrimeNG overrides
+::ng-deep {
+  .p-dialog {
+    .p-dialog-header {
+      background-color: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+    }
+
+    .p-dialog-content {
+      padding: 1.5rem;
+      max-height: calc(90vh - 150px);
+      overflow-y: auto;
+    }
+
+    .p-dialog-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #dee2e6;
+      background-color: #f8f9fa;
+    }
+  }
+
+  .p-card {
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    .p-card-body {
+      padding: 1.25rem;
+    }
+  }
+
+  .p-invalid {
+    border-color: #dc3545 !important;
+  }
+
+  .p-inputtext,
+  .p-dropdown,
+  .p-calendar .p-inputtext {
+    width: 100%;
+  }
+
+  .p-checkbox {
+    .p-checkbox-box {
+      border-color: #ced4da;
+    }
+
+    .p-checkbox-box.p-highlight {
+      background-color: #007bff;
+      border-color: #007bff;
+    }
+  }
+
+  .p-button {
+    &.p-button-sm {
+      font-size: 0.875rem;
+      padding: 0.4rem 0.8rem;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .template-buttons {
+    button {
+      flex: 1 1 calc(50% - 4px);
+    }
+  }
+
+  .p-grid {
+    .p-col-12 {
+      padding: 0.5rem;
+    }
+  }
+}

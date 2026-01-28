@@ -1,0 +1,223 @@
+<p-dialog
+  [(visible)]="visible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '800px'}"
+  styleClass="claim-details-dialog">
+
+  <ng-template pTemplate="header">
+    <div class="dialog-header">
+      <h3>Claim Details</h3>
+      <span class="badge" [ngClass]="getStatusBadgeClass(claim?.status!)">
+        {{ claim?.status }}
+      </span>
+    </div>
+  </ng-template>
+
+  <div *ngIf="claim" class="claim-details">
+    <!-- Claim Header -->
+    <div class="claim-header">
+      <div class="header-left">
+        <h4>{{ claim.claimNumber }}</h4>
+        <span class="badge" [ngClass]="getClaimTypeBadgeClass(claim.claimType)">
+          {{ claim.claimType }}
+        </span>
+      </div>
+      <div class="header-right">
+        <div class="header-info">
+          <label>Claim Date:</label>
+          <span>{{ formatDate(claim.claimDate) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Amount Summary -->
+    <div class="amount-summary">
+      <div class="amount-item claimed">
+        <div class="amount-label">Claimed Amount</div>
+        <div class="amount-value">{{ formatCurrency(claim.claimedAmount) }}</div>
+      </div>
+      <div class="amount-separator">
+        <i class="pi pi-arrow-right"></i>
+      </div>
+      <div class="amount-item" [class.approved]="claim.approvedAmount" [class.pending]="!claim.approvedAmount">
+        <div class="amount-label">Approved Amount</div>
+        <div class="amount-value">{{ formatCurrency(claim.approvedAmount) }}</div>
+      </div>
+      <div class="amount-separator" *ngIf="claim.status === 'PAID'">
+        <i class="pi pi-arrow-right"></i>
+      </div>
+      <div class="amount-item paid" *ngIf="claim.status === 'PAID'">
+        <div class="amount-label">Paid Amount</div>
+        <div class="amount-value">{{ formatCurrency(claim.approvedAmount) }}</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <p-tabView>
+      <!-- Details Tab -->
+      <p-tabPanel header="Details">
+        <div class="details-section">
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Claim Number:</label>
+              <span>{{ claim.claimNumber }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Claim Type:</label>
+              <span class="badge" [ngClass]="getClaimTypeBadgeClass(claim.claimType)">
+                {{ claim.claimType }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <label>Claim Date:</label>
+              <span>{{ formatDate(claim.claimDate) }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Enrollment ID:</label>
+              <span>{{ claim.enrollmentId }}</span>
+            </div>
+            <div class="detail-item full-width">
+              <label>Description:</label>
+              <p class="description-text">{{ claim.description }}</p>
+            </div>
+          </div>
+
+          <!-- Amount Details -->
+          <div class="section-divider"></div>
+          <h5>Amount Details</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Claimed Amount:</label>
+              <span class="amount-value">{{ formatCurrency(claim.claimedAmount) }}</span>
+            </div>
+            <div class="detail-item" *ngIf="claim.approvedAmount">
+              <label>Approved Amount:</label>
+              <span class="amount-value text-success">{{ formatCurrency(claim.approvedAmount) }}</span>
+            </div>
+            <div class="detail-item" *ngIf="claim.rejectedAmount">
+              <label>Rejected Amount:</label>
+              <span class="amount-value text-danger">{{ formatCurrency(claim.rejectedAmount) }}</span>
+            </div>
+          </div>
+
+          <!-- Review Information (if reviewed) -->
+          <div class="reviewer-section" *ngIf="claim.reviewedBy">
+            <h5><i class="pi pi-eye"></i> Review Information</h5>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>Reviewed By:</label>
+                <span>User #{{ claim.reviewedBy }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Reviewed On:</label>
+                <span>{{ formatDate(claim.reviewedOn) }}</span>
+              </div>
+              <div class="detail-item full-width" *ngIf="claim.reviewerRemarks">
+                <label>Review Remarks:</label>
+                <p class="remarks-text">{{ claim.reviewerRemarks }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rejection Information (if rejected) -->
+          <div class="rejection-section" *ngIf="claim.status === 'REJECTED' && claim.rejectionReason">
+            <h5><i class="pi pi-times-circle"></i> Rejection Information</h5>
+            <div class="detail-grid">
+              <div class="detail-item full-width">
+                <label>Rejection Reason:</label>
+                <p class="rejection-reason">{{ claim.rejectionReason }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Information (if paid) -->
+          <div class="payment-section" *ngIf="claim.status === 'PAID'">
+            <h5><i class="pi pi-money-bill"></i> Payment Information</h5>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>Payment Mode:</label>
+                <span>{{ claim.paymentMode }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Payment Reference:</label>
+                <span>{{ claim.paymentReference }}</span>
+              </div>
+              <div class="detail-item">
+                <label>Payment Date:</label>
+                <span>{{ formatDate(claim.paymentDate) }}</span>
+              </div>
+              <div class="detail-item" *ngIf="claim.payrollRunId">
+                <label>Payroll Run ID:</label>
+                <span>{{ claim.payrollRunId }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <!-- Documents Tab -->
+      <p-tabPanel header="Documents">
+        <div class="documents-section">
+          <div class="documents-grid" *ngIf="parseDocuments(claim.documents).length > 0">
+            <div *ngFor="let doc of parseDocuments(claim.documents)" class="document-card">
+              <div class="document-icon">
+                <i class="pi" [ngClass]="getDocumentIcon(doc)"></i>
+              </div>
+              <div class="document-info">
+                <div class="document-name">{{ doc.fileName || doc.name }}</div>
+                <a [href]="doc.filePath || doc.url" target="_blank" class="document-link">
+                  <i class="pi pi-external-link"></i> View
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="empty-documents" *ngIf="parseDocuments(claim.documents).length === 0">
+            <i class="pi pi-inbox"></i>
+            <p>No documents attached</p>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <!-- Timeline Tab -->
+      <p-tabPanel header="Timeline">
+        <div class="timeline-section">
+          <p-timeline [value]="timeline" align="left">
+            <ng-template pTemplate="marker" let-event>
+              <div class="timeline-marker" [style.background-color]="event.color">
+                <i class="pi" [ngClass]="event.icon"></i>
+              </div>
+            </ng-template>
+
+            <ng-template pTemplate="content" let-event>
+              <div class="timeline-content">
+                <h5>{{ event.status }}</h5>
+                <div class="timeline-date" *ngIf="event.date">
+                  <i class="pi pi-calendar"></i>
+                  <span>{{ formatDate(event.date) }}</span>
+                </div>
+                <div class="timeline-user" *ngIf="event.user">
+                  <i class="pi pi-user"></i>
+                  <span>{{ event.user }}</span>
+                </div>
+                <div class="timeline-remarks" *ngIf="event.remarks">
+                  <p>{{ event.remarks }}</p>
+                </div>
+              </div>
+            </ng-template>
+          </p-timeline>
+        </div>
+      </p-tabPanel>
+    </p-tabView>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton
+            label="Close"
+            icon="pi pi-times"
+            class="p-button-outlined"
+            (click)="closeDialog()">
+    </button>
+  </ng-template>
+</p-dialog>

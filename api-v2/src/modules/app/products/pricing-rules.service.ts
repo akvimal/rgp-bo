@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { PricingRule, PricingRuleStatus, PricingRuleType } from 'src/entities/pricing-rule.entity';
+import { PricingRuleApplication } from 'src/entities/pricing-rule-application.entity';
 import { PricingCalculatorService, PricingInput, PricingMethod, PricingResult } from './pricing-calculator.service';
 
 export interface ApplicableRule {
@@ -29,6 +30,8 @@ export class PricingRulesService {
   constructor(
     @InjectRepository(PricingRule)
     private readonly pricingRuleRepository: Repository<PricingRule>,
+    @InjectRepository(PricingRuleApplication)
+    private readonly pricingRuleApplicationRepository: Repository<PricingRuleApplication>,
     @InjectEntityManager()
     private manager: EntityManager,
     private pricingCalculatorService: PricingCalculatorService
@@ -290,7 +293,41 @@ export class PricingRulesService {
   }
 
   /**
-   * Log pricing rule application
+   * Log pricing rule application for sales
+   * Issue #123 - Strict pricing rule enforcement
+   */
+  async logSaleRuleApplication(data: {
+    pricingRuleId: number | null;
+    productId: number;
+    saleId?: number;
+    saleItemId?: number;
+    originalPrice?: number;
+    calculatedPrice: number;
+    discountAmount?: number;
+    marginPcnt?: number;
+    quantity: number;
+    appliedBy: number;
+  }, manager?: EntityManager): Promise<PricingRuleApplication> {
+    const em = manager || this.pricingRuleApplicationRepository.manager;
+
+    return await em.save(PricingRuleApplication, {
+      pricingRuleId: data.pricingRuleId,
+      productId: data.productId,
+      saleId: data.saleId,
+      saleItemId: data.saleItemId,
+      originalPrice: data.originalPrice,
+      calculatedPrice: data.calculatedPrice,
+      discountAmount: data.discountAmount,
+      marginPcnt: data.marginPcnt,
+      quantity: data.quantity,
+      appliedBy: data.appliedBy,
+      appliedOn: new Date(),
+      createdby: data.appliedBy
+    });
+  }
+
+  /**
+   * Log pricing rule application (legacy method)
    */
   async logRuleApplication(
     ruleId: number,

@@ -1,0 +1,201 @@
+.purchases-dashboard {
+  padding: 0;
+
+  // Card Border Styles
+  .border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+  }
+
+  .border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+  }
+
+  .border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+  }
+
+  .border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+  }
+
+  .border-left-danger {
+    border-left: 0.25rem solid #e74a3b !important;
+  }
+
+  // Card Styles
+  .card {
+    border: 0;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+
+    .card-header {
+      background-color: #f8f9fc;
+      border-bottom: 1px solid #e3e6f0;
+    }
+  }
+
+  // Text Utilities
+  .text-xs {
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .text-primary {
+    color: #4e73df !important;
+  }
+
+  .text-success {
+    color: #1cc88a !important;
+  }
+
+  .text-info {
+    color: #36b9cc !important;
+  }
+
+  .text-warning {
+    color: #f6c23e !important;
+  }
+
+  .text-danger {
+    color: #e74a3b !important;
+  }
+
+  .text-gray-300 {
+    color: #dddfeb !important;
+  }
+
+  .text-gray-800 {
+    color: #5a5c69 !important;
+  }
+
+  // Badge Styles
+  .badge {
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .badge-primary {
+    background-color: #4e73df;
+    color: white;
+  }
+
+  .badge-success {
+    background-color: #1cc88a;
+    color: white;
+  }
+
+  .badge-info {
+    background-color: #36b9cc;
+    color: white;
+  }
+
+  .badge-warning {
+    background-color: #f6c23e;
+    color: #212529;
+  }
+
+  .badge-danger {
+    background-color: #e74a3b;
+    color: white;
+  }
+
+  .badge-secondary {
+    background-color: #858796;
+    color: white;
+  }
+
+  // Chart Container
+  .chart-container {
+    position: relative;
+    width: 100%;
+  }
+
+  // Table Styles
+  .table {
+    font-size: 0.875rem;
+
+    thead {
+      background-color: #f8f9fc;
+
+      th {
+        font-weight: 600;
+        color: #5a5c69;
+        border-bottom: 2px solid #e3e6f0;
+        padding: 0.75rem;
+      }
+    }
+
+    tbody {
+      tr {
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: #f8f9fc;
+        }
+
+        td {
+          padding: 0.75rem;
+          vertical-align: middle;
+        }
+      }
+    }
+  }
+
+  // Button Group Wrapper
+  .btn-group-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  // Loading Spinner
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  // Icon Sizes
+  .fa-2x {
+    font-size: 2em;
+  }
+
+  .fa-3x {
+    font-size: 3em;
+  }
+
+  // Summary Cards
+  .card-body {
+    .row {
+      &.no-gutters {
+        margin-right: 0;
+        margin-left: 0;
+
+        > .col,
+        > [class*="col-"] {
+          padding-right: 0;
+          padding-left: 0;
+        }
+      }
+    }
+  }
+
+  // Responsive Adjustments
+  @media (max-width: 768px) {
+    .card {
+      margin-bottom: 1rem !important;
+    }
+
+    .table {
+      font-size: 0.75rem;
+    }
+
+    .btn-group-wrapper {
+      flex-direction: column;
+
+      button {
+        width: 100%;
+      }
+    }
+  }
+}

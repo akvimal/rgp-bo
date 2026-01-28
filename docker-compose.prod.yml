@@ -1,0 +1,120 @@
+# Production Docker Compose Configuration
+# Use this for VPS deployments with proper security settings
+
+services:
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: ./api-v2
+    restart: always
+    volumes:
+      - ./api-v2:/app
+      - ./api-v2/node_modules:/app/node_modules
+      - ~/uploads:/app/upload
+    command: npm run start:prod
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      NODE_ENV: production
+      # IMPORTANT: Change the database password below
+      DATABASE_URL: postgresql://rgpapp:CHANGE_THIS_PASSWORD@postgres:5432/rgpdb
+      LOG_SQL: false
+      FILEUPLOAD_LOCATION: /app/upload
+      FILEUPLOAD_SIZE_LIMIT: 10485760
+      # IMPORTANT: Generate a strong JWT key using: openssl rand -base64 32
+      JWT_KEY: CHANGE_THIS_TO_SECURE_RANDOM_STRING
+      JWT_EXPIRES: 8h  # Shorter session timeout for production
+      PORT: 3000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    ports:
+      # Bind to localhost only - use Nginx reverse proxy for external access
+      - "127.0.0.1:3002:3000"
+    networks:
+      - local
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:17
+    restart: always
+    container_name: rgp-db
+    volumes:
+      - rgpdata:/var/lib/postgresql/data
+    networks:
+      - local
+    environment:
+      POSTGRES_USER: rgpapp
+      # IMPORTANT: Change this password
+      POSTGRES_PASSWORD: CHANGE_THIS_PASSWORD
+      POSTGRES_DB: rgpdb
+    ports:
+      # Bind to localhost only - not accessible from outside
+      - "127.0.0.1:5434:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    container_name: rgp-redis
+    networks:
+      - local
+    ports:
+      # Bind to localhost only
+      - "127.0.0.1:6381:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass CHANGE_THIS_REDIS_PASSWORD
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      dockerfile: Dockerfile
+      context: ./frontend
+    restart: always
+    ports:
+      # Bind to localhost only - use Nginx reverse proxy
+      - "127.0.0.1:8000:80"
+    networks:
+      - local
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  local:
+    driver: bridge
+
+volumes:
+  rgpdata:
+    external: true
+
+# ==========================================
+# PRODUCTION DEPLOYMENT CHECKLIST:
+# ==========================================
+# [ ] Change POSTGRES_PASSWORD (line 46)
+# [ ] Generate and set JWT_KEY (line 27)
+# [ ] Set REDIS password (line 68)
+# [ ] Create .env file with ANTHROPIC_API_KEY
+# [ ] Create rgpdata volume: docker volume create rgpdata
+# [ ] Setup Nginx reverse proxy with SSL
+# [ ] Configure firewall (ufw)
+# [ ] Setup automated backups
+# [ ] Enable monitoring
+# [ ] Test all features
+# [ ] Change default admin password after first login
+#
+# See VPS_DEPLOYMENT_GUIDE.md for complete instructions

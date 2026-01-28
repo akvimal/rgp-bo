@@ -1,65 +1,33 @@
--- ============================================================================
--- ROLLBACK: Create HSN Tax Master Table
--- Migration: 008
--- Date: 2026-01-11
--- Description: Rollback HSN tax master table and related functions
--- ============================================================================
+-- Rollback for Migration 008: Administrative Actions Audit Log
+-- Purpose: Revert audit_log back to hr_audit_log
+-- Date: 2026-01-15
 
-BEGIN;
+-- Step 1: Rename table back to hr_audit_log
+ALTER TABLE audit_log RENAME TO hr_audit_log;
 
--- ============================================================================
--- Drop Functions
--- ============================================================================
+-- Step 2: Rename indexes back to original names
+ALTER INDEX idx_audit_user RENAME TO idx_hr_audit_user;
+ALTER INDEX idx_audit_resource RENAME TO idx_hr_audit_resource;
+ALTER INDEX idx_audit_action RENAME TO idx_hr_audit_action;
 
-DROP FUNCTION IF EXISTS public.get_hsn_tax_rate(VARCHAR, DATE) CASCADE;
+-- Step 3: Rename foreign key constraint back
+ALTER TABLE hr_audit_log RENAME CONSTRAINT audit_user_fk TO hr_audit_user_fk;
 
--- ============================================================================
--- Drop Indexes
--- ============================================================================
+-- Step 4: Drop old_values and new_values columns
+ALTER TABLE hr_audit_log DROP COLUMN IF EXISTS old_values;
+ALTER TABLE hr_audit_log DROP COLUMN IF EXISTS new_values;
 
-DROP INDEX IF EXISTS public.idx_hsn_tax_active;
-DROP INDEX IF EXISTS public.idx_hsn_tax_dates;
+-- Step 5: Remove comments (restore original minimal comments)
+COMMENT ON COLUMN hr_audit_log.action IS NULL;
+COMMENT ON COLUMN hr_audit_log.resource_type IS NULL;
+COMMENT ON COLUMN hr_audit_log.changes IS NULL;
+COMMENT ON COLUMN hr_audit_log.metadata IS NULL;
+COMMENT ON TABLE hr_audit_log IS NULL;
 
--- ============================================================================
--- Drop Tables
--- ============================================================================
-
-DROP TABLE IF EXISTS public.hsn_tax_master CASCADE;
-
--- ============================================================================
--- Verification
--- ============================================================================
-
-DO $$
-DECLARE
-    v_count INT;
-BEGIN
-    SELECT COUNT(*) INTO v_count
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-    AND table_name = 'hsn_tax_master';
-
-    IF v_count = 0 THEN
-        RAISE NOTICE 'SUCCESS: HSN tax master table removed';
-    ELSE
-        RAISE WARNING 'WARNING: HSN tax master table still exists';
-    END IF;
-
-    -- Check function
-    SELECT COUNT(*) INTO v_count
-    FROM information_schema.routines
-    WHERE routine_schema = 'public'
-    AND routine_name = 'get_hsn_tax_rate';
-
-    IF v_count = 0 THEN
-        RAISE NOTICE 'SUCCESS: HSN tax functions removed';
-    ELSE
-        RAISE WARNING 'WARNING: HSN tax functions still exist';
-    END IF;
-END $$;
-
-COMMIT;
-
--- ============================================================================
--- END OF ROLLBACK
--- ============================================================================
+-- Verification query
+SELECT
+    COUNT(*) as total_audit_entries,
+    COUNT(DISTINCT user_id) as unique_users,
+    MIN(timestamp) as oldest_entry,
+    MAX(timestamp) as newest_entry
+FROM hr_audit_log;

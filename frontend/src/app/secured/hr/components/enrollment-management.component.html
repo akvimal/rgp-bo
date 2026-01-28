@@ -1,0 +1,436 @@
+<div class="enrollment-management-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <h2>Enrollment Management</h2>
+    <div class="header-actions">
+      <button pButton
+              label="Bulk Enroll"
+              icon="pi pi-users"
+              class="p-button-info"
+              (click)="openBulkEnrollDialog()">
+      </button>
+    </div>
+  </div>
+
+  <!-- Dashboard Status Cards -->
+  <div class="dashboard-section">
+    <div class="status-cards">
+      <div *ngFor="let statusCount of statusCounts"
+           class="status-card"
+           [style.border-left-color]="statusCount.color"
+           (click)="filterByStatus(statusCount.status)">
+        <div class="status-card-icon" [style.background-color]="statusCount.color">
+          <i class="pi" [ngClass]="statusCount.icon"></i>
+        </div>
+        <div class="status-card-content">
+          <div class="status-card-count">{{ statusCount.count }}</div>
+          <div class="status-card-label">{{ statusCount.label }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Mode Toggle -->
+  <div class="view-mode-section">
+    <button pButton
+            [label]="'All Enrollments (' + allEnrollments.length + ')'"
+            icon="pi pi-list"
+            [class]="viewMode === 'all' ? 'p-button' : 'p-button-outlined'"
+            (click)="switchToAllEnrollments()">
+    </button>
+    <button pButton
+            [label]="'Approval Queue (' + getPendingCount() + ')'"
+            icon="pi pi-inbox"
+            [class]="viewMode === 'pending' ? 'p-button p-button-warning' : 'p-button-outlined p-button-warning'"
+            (click)="switchToApprovalQueue()">
+    </button>
+  </div>
+
+  <!-- Filters Section -->
+  <p-card styleClass="mb-3" *ngIf="viewMode === 'all'">
+    <div class="filters-section">
+      <!-- Status Filter -->
+      <div class="filter-group">
+        <label>Status:</label>
+        <p-dropdown
+          [(ngModel)]="statusFilter"
+          [options]="enrollmentStatuses"
+          placeholder="All Statuses"
+          (onChange)="onFilterChange()"
+          [showClear]="true">
+        </p-dropdown>
+      </div>
+
+      <!-- Benefit Policy Filter -->
+      <div class="filter-group">
+        <label>Benefit Policy:</label>
+        <p-dropdown
+          [(ngModel)]="benefitPolicyFilter"
+          [options]="benefitPolicies"
+          optionLabel="policyName"
+          optionValue="id"
+          placeholder="All Policies"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          [filter]="true">
+        </p-dropdown>
+      </div>
+
+      <!-- User ID Filter -->
+      <div class="filter-group">
+        <label>User ID:</label>
+        <input type="number"
+               pInputText
+               [(ngModel)]="userIdFilter"
+               (ngModelChange)="onFilterChange()"
+               placeholder="Filter by user ID">
+      </div>
+
+      <button pButton
+              label="Clear Filters"
+              icon="pi pi-filter-slash"
+              class="p-button-outlined p-button-secondary"
+              (click)="clearFilters()">
+      </button>
+    </div>
+  </p-card>
+
+  <!-- Bulk Actions Bar -->
+  <div class="bulk-actions-bar" *ngIf="selectedEnrollments.length > 0">
+    <span class="bulk-selection-info">
+      {{ selectedEnrollments.length }} enrollment(s) selected
+    </span>
+    <button pButton
+            label="Bulk Approve"
+            icon="pi pi-check"
+            class="p-button-success p-button-sm"
+            (click)="bulkApprove()">
+    </button>
+    <button pButton
+            label="Clear Selection"
+            icon="pi pi-times"
+            class="p-button-secondary p-button-sm"
+            (click)="selectedEnrollments = []">
+    </button>
+  </div>
+
+  <!-- Enrollments Table -->
+  <p-card>
+    <p-table
+      [value]="enrollments"
+      [(selection)]="selectedEnrollments"
+      [loading]="isLoading"
+      [paginator]="true"
+      [rows]="15"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} enrollments"
+      [rowsPerPageOptions]="[15, 25, 50]"
+      styleClass="p-datatable-striped"
+      dataKey="id">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="width: 3rem">
+            <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
+          </th>
+          <th pSortableColumn="id">
+            ID <p-sortIcon field="id"></p-sortIcon>
+          </th>
+          <th>User</th>
+          <th>Benefit Policy</th>
+          <th pSortableColumn="enrollmentDate">
+            Enrolled On <p-sortIcon field="enrollmentDate"></p-sortIcon>
+          </th>
+          <th>Coverage</th>
+          <th>Dependents</th>
+          <th pSortableColumn="status">
+            Status <p-sortIcon field="status"></p-sortIcon>
+          </th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-enrollment>
+        <tr>
+          <!-- Checkbox -->
+          <td>
+            <p-tableCheckbox [value]="enrollment" *ngIf="isPendingEnrollment(enrollment)"></p-tableCheckbox>
+          </td>
+
+          <!-- ID -->
+          <td>
+            <strong>{{ enrollment.id }}</strong>
+          </td>
+
+          <!-- User -->
+          <td>
+            <div>
+              <strong>User #{{ enrollment.userId }}</strong>
+            </div>
+            <small class="text-muted" *ngIf="enrollment.enrollmentType">
+              Type: {{ enrollment.enrollmentType }}
+            </small>
+          </td>
+
+          <!-- Benefit Policy -->
+          <td>
+            <div>{{ getBenefitPolicyName(enrollment.benefitPolicyId) }}</div>
+            <small class="text-muted">Policy #{{ enrollment.benefitPolicyId }}</small>
+          </td>
+
+          <!-- Enrollment Date -->
+          <td>
+            <small>{{ enrollment.enrollmentDate | date: 'yyyy-MM-dd' }}</small>
+          </td>
+
+          <!-- Coverage -->
+          <td>
+            <div *ngIf="enrollment.customCoverageAmount">
+              <strong>{{ formatCurrency(enrollment.customCoverageAmount) }}</strong>
+            </div>
+            <small class="text-muted" *ngIf="enrollment.customEmployeeContribution">
+              Emp: {{ formatCurrency(enrollment.customEmployeeContribution) }}
+            </small>
+          </td>
+
+          <!-- Dependents -->
+          <td>
+            <span class="badge badge-info" *ngIf="hasDependents(enrollment)">
+              <i class="pi pi-users"></i> Has Dependents
+            </span>
+            <span class="text-muted" *ngIf="!hasDependents(enrollment)">-</span>
+          </td>
+
+          <!-- Status -->
+          <td>
+            <span class="badge" [ngClass]="getStatusBadgeClass(enrollment.status)">
+              {{ enrollment.status }}
+            </span>
+            <div *ngIf="enrollment.approvedOn">
+              <small class="text-muted">
+                Approved: {{ formatDate(enrollment.approvedOn) }}
+              </small>
+            </div>
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <button pButton
+                    icon="pi pi-eye"
+                    class="p-button-rounded p-button-text p-button-info"
+                    pTooltip="View Details"
+                    (click)="viewEnrollmentDetails(enrollment)">
+            </button>
+            <button pButton
+                    icon="pi pi-check"
+                    class="p-button-rounded p-button-text p-button-success"
+                    pTooltip="Approve"
+                    (click)="approveEnrollment(enrollment)"
+                    *ngIf="isPendingEnrollment(enrollment)">
+            </button>
+            <button pButton
+                    icon="pi pi-ban"
+                    class="p-button-rounded p-button-text p-button-danger"
+                    pTooltip="Cancel"
+                    (click)="cancelEnrollment(enrollment)"
+                    *ngIf="isActiveEnrollment(enrollment)">
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="9" style="text-align: center;">
+            <div class="empty-message">
+              <i class="pi pi-inbox" style="font-size: 3rem; color: #999;"></i>
+              <p *ngIf="viewMode === 'pending'">No pending enrollments</p>
+              <p *ngIf="viewMode === 'all'">No enrollments found</p>
+              <small *ngIf="statusFilter || benefitPolicyFilter || userIdFilter">
+                Try adjusting your filters
+              </small>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+</div>
+
+<!-- Enrollment Details Dialog -->
+<p-dialog
+  header="Enrollment Details"
+  [(visible)]="showDetailsDialog"
+  [modal]="true"
+  [style]="{width: '800px'}"
+  (onHide)="onDetailsDialogClose()"
+  *ngIf="selectedEnrollment">
+
+  <div class="enrollment-details">
+    <p-card>
+      <h5>Enrollment #{{ selectedEnrollment.id }}</h5>
+
+      <!-- Basic Information -->
+      <div class="detail-section">
+        <h6>Basic Information</h6>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <strong>User ID:</strong>
+            {{ selectedEnrollment.userId }}
+          </div>
+
+          <div class="detail-item">
+            <strong>Benefit Policy:</strong>
+            {{ getBenefitPolicyName(selectedEnrollment.benefitPolicyId) }}
+          </div>
+
+          <div class="detail-item">
+            <strong>Enrollment Type:</strong>
+            {{ selectedEnrollment.enrollmentType || 'INDIVIDUAL' }}
+          </div>
+
+          <div class="detail-item">
+            <strong>Status:</strong>
+            <span class="badge" [ngClass]="getStatusBadgeClass(selectedEnrollment.status)">
+              {{ selectedEnrollment.status }}
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <strong>Enrollment Date:</strong>
+            {{ selectedEnrollment.enrollmentDate | date: 'yyyy-MM-dd' }}
+          </div>
+
+          <div class="detail-item">
+            <strong>Effective From:</strong>
+            {{ formatDate(selectedEnrollment.effectiveFrom) }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Coverage Details -->
+      <div class="detail-section">
+        <h6>Coverage Details</h6>
+        <div class="detail-grid">
+          <div class="detail-item" *ngIf="selectedEnrollment.customCoverageAmount">
+            <strong>Coverage Amount:</strong>
+            <strong class="text-primary">{{ formatCurrency(selectedEnrollment.customCoverageAmount) }}</strong>
+          </div>
+
+          <div class="detail-item" *ngIf="selectedEnrollment.customEmployeeContribution">
+            <strong>Employee Contribution:</strong>
+            {{ formatCurrency(selectedEnrollment.customEmployeeContribution) }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Dependents -->
+      <div class="detail-section" *ngIf="hasDependents(selectedEnrollment)">
+        <h6>Dependents</h6>
+        <pre class="json-display">{{ selectedEnrollment.dependents | json }}</pre>
+      </div>
+
+      <!-- Nominee Information -->
+      <div class="detail-section" *ngIf="selectedEnrollment.nomineeName">
+        <h6>Nominee Information</h6>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <strong>Name:</strong>
+            {{ selectedEnrollment.nomineeName }}
+          </div>
+
+          <div class="detail-item" *ngIf="selectedEnrollment.nomineeRelationship">
+            <strong>Relationship:</strong>
+            {{ selectedEnrollment.nomineeRelationship }}
+          </div>
+
+          <div class="detail-item" *ngIf="selectedEnrollment.nomineeDob">
+            <strong>Date of Birth:</strong>
+            {{ formatDate(selectedEnrollment.nomineeDob) }}
+          </div>
+
+          <div class="detail-item" *ngIf="selectedEnrollment.nomineeContact">
+            <strong>Contact:</strong>
+            {{ selectedEnrollment.nomineeContact }}
+          </div>
+
+          <div class="detail-item" *ngIf="selectedEnrollment.nomineePercentage">
+            <strong>Percentage:</strong>
+            {{ selectedEnrollment.nomineePercentage }}%
+          </div>
+        </div>
+      </div>
+
+      <!-- Approval Information -->
+      <div class="detail-section" *ngIf="selectedEnrollment.approvedBy">
+        <h6>Approval Information</h6>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <strong>Approved By:</strong>
+            User #{{ selectedEnrollment.approvedBy }}
+          </div>
+
+          <div class="detail-item">
+            <strong>Approved On:</strong>
+            {{ formatDate(selectedEnrollment.approvedOn) }}
+          </div>
+
+          <div class="detail-item full-width" *ngIf="selectedEnrollment.approvalRemarks">
+            <strong>Approval Remarks:</strong>
+            <p>{{ selectedEnrollment.approvalRemarks }}</p>
+          </div>
+        </div>
+      </div>
+    </p-card>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton
+            label="Approve"
+            icon="pi pi-check"
+            class="p-button-success"
+            (click)="approveEnrollment(selectedEnrollment); onDetailsDialogClose()"
+            *ngIf="isPendingEnrollment(selectedEnrollment)">
+    </button>
+    <button pButton
+            label="Cancel Enrollment"
+            icon="pi pi-ban"
+            class="p-button-danger"
+            (click)="cancelEnrollment(selectedEnrollment); onDetailsDialogClose()"
+            *ngIf="isActiveEnrollment(selectedEnrollment)">
+    </button>
+    <button pButton
+            label="Close"
+            icon="pi pi-times"
+            class="p-button-secondary"
+            (click)="onDetailsDialogClose()">
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- Bulk Enroll Dialog (Placeholder) -->
+<p-dialog
+  header="Bulk Enrollment"
+  [(visible)]="showBulkEnrollDialog"
+  [modal]="true"
+  [style]="{width: '600px'}"
+  (onHide)="onBulkEnrollDialogClose(false)">
+
+  <div class="bulk-enroll-content">
+    <p-card>
+      <p>Bulk enrollment functionality to be implemented.</p>
+      <p>This will allow enrolling multiple users in a benefit policy at once.</p>
+    </p-card>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton
+            label="Close"
+            icon="pi pi-times"
+            class="p-button-secondary"
+            (click)="onBulkEnrollDialogClose(false)">
+    </button>
+  </ng-template>
+</p-dialog>

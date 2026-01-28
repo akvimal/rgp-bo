@@ -8,6 +8,7 @@ import { VendorFormComponent } from "./components/vendor-form.component";
 import { VendorListComponent } from "./components/vendor-list.component";
 import { VendorsComponent } from "./components/vendors.component";
 import {TableModule} from 'primeng/table';
+import {DialogModule} from 'primeng/dialog';
 
 const routes: Routes = [
   { path: '', redirectTo: 'list'},
@@ -27,7 +28,8 @@ const routes: Routes = [
         ReactiveFormsModule,
         RouterModule.forChild(routes),
         SharedModule,
-        TableModule
+        TableModule,
+        DialogModule
     ],
     exports: [RouterModule]
   })

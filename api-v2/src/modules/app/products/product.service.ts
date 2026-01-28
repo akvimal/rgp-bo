@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, Repository } from "typeorm";
+import { EntityManager, Repository, DataSource } from "typeorm";
 import { CreateProductPrice2Dto } from "./dto/create-product-price2.dto";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { Product } from "src/entities/product.entity";
@@ -9,11 +9,13 @@ import { HsnTaxMaster } from "src/entities/hsn-tax-master.entity";
 
 @Injectable()
 export class ProductService {
+    private readonly logger = new Logger(ProductService.name);
 
     constructor(@InjectRepository(Product) private readonly productRepository: Repository<Product>,
                 @InjectRepository(ProductPrice2) private readonly priceRepository: Repository<ProductPrice2>,
                 @InjectRepository(HsnTaxMaster) private readonly hsnTaxRepository: Repository<HsnTaxMaster>,
-                @InjectEntityManager() private manager: EntityManager) { }
+                @InjectEntityManager() private manager: EntityManager,
+                private readonly dataSource: DataSource) { }
 
     async findAll(query:any,user:any){
       const qb = this.productRepository.createQueryBuilder(`p`)
@@ -61,23 +63,89 @@ export class ProductService {
   }
 
   async filterByCriteria2(product:any) {
-    const qb = this.productRepository.createQueryBuilder('p')
-        .where('p.archive = false and p.active = :flag', { flag: product.active });
-        if(product.title && product.title !== ''){
-          qb.andWhere(`p.title ilike :title`, {title: product.title+'%'});
-        } 
-        if(product.category && product.category !== ''){
-          qb.andWhere(`p.category = :categ`, {categ: product.category});
+    // Build WHERE conditions
+    let whereConditions = ['p.archive = false'];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    // Active filter - handle all/active/inactive
+    if (product.active !== undefined && product.active !== null) {
+      whereConditions.push(`p.active = $${paramIndex}`);
+      params.push(product.active);
+      paramIndex++;
+    }
+
+    // Title filter
+    if (product.title && product.title !== '') {
+      whereConditions.push(`p.title ILIKE $${paramIndex}`);
+      params.push(product.title + '%');
+      paramIndex++;
+    }
+
+    // Category filter
+    if (product.category && product.category !== '') {
+      whereConditions.push(`p.category = $${paramIndex}`);
+      params.push(product.category);
+      paramIndex++;
+    }
+
+    // Properties filter
+    if (product.props && product.props.length > 0) {
+      product.props.forEach((prop: any) => {
+        if (!(typeof prop['value'] === 'boolean' && prop['value'] === false)) {
+          whereConditions.push(`p.more_props->>'${prop['id']}' = $${paramIndex}`);
+          params.push(prop['value']);
+          paramIndex++;
         }
-        product.props && product.props.forEach(prop => {
-          if(typeof prop['value'] == 'boolean' && prop['value'] == false){
-            //ignored
-          } else
-          qb.andWhere(`p.more_props->>'${prop['id']}' = :val`, {val:prop['value']});
-        });
-        
-       
-    return qb.getMany();
+      });
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    // Enhanced query with stock, price, and margin data
+    const query = `
+      SELECT
+        p.id,
+        p.title,
+        p.product_code as code,
+        p.pack,
+        p.hsn_code as hsn,
+        p.mfr,
+        p.brand,
+        p.category,
+        p.description,
+        p.tax_pcnt as taxpcnt,
+        p.more_props as props,
+        p.active as "isActive",
+        p.archive as "isArchived",
+        p.created_on as createdon,
+        p.updated_on as updatedon,
+        p.created_by as createdby,
+        p.updated_by as updatedby,
+        COALESCE(stock.balance, 0) as "currentStock",
+        COALESCE(price.price, price.mrp, 0) as "salePrice",
+        COALESCE(price.mrp, 0) as mrp,
+        COALESCE(price.ptr, 0) as ptr,
+        COALESCE(price.margin, 0) as margin,
+        COALESCE(stock.last_sale_date, NULL) as "lastSaleDate"
+      FROM product p
+      LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+      LEFT JOIN price_view price ON price.id = p.id
+      WHERE ${whereClause}
+      ORDER BY p.updated_on DESC
+    `;
+
+    return await this.dataSource.query(query, params);
+  }
+
+  async getCategories() {
+    const result = await this.dataSource.query(`
+      SELECT DISTINCT category
+      FROM product
+      WHERE category IS NOT NULL AND category != '' AND active = true
+      ORDER BY category
+    `);
+    return result.map((row: any) => row.category);
   }
 
   // async findPrices(criteria:any){
@@ -91,7 +159,31 @@ export class ProductService {
 
   async findPrices(criteria:any){
     return await this.manager.query(
-      `select * from price_view where active = $1 and title ilike $2`,
+      `SELECT
+        pv.*,
+        p.category,
+        COALESCE(stock.balance, 0) as current_stock,
+        stock.last_sale_date,
+        pp2_curr.eff_date as last_change_date,
+        DATE_PART('day', NOW() - pp2_curr.eff_date) as price_age_days,
+        pp2_prev.sale_price as previous_price,
+        CASE
+          WHEN pp2_prev.sale_price IS NOT NULL AND pv.price > pp2_prev.sale_price THEN 'up'
+          WHEN pp2_prev.sale_price IS NOT NULL AND pv.price < pp2_prev.sale_price THEN 'down'
+          ELSE 'stable'
+        END as price_trend
+      FROM price_view pv
+      LEFT JOIN product p ON p.id = pv.id
+      LEFT JOIN product_items_agg_view stock ON stock.id = pv.id
+      LEFT JOIN product_price2 pp2_curr ON pp2_curr.product_id = pv.id AND pp2_curr.end_date = '2099-12-31'
+      LEFT JOIN LATERAL (
+        SELECT sale_price
+        FROM product_price2
+        WHERE product_id = pv.id AND id != pp2_curr.id
+        ORDER BY eff_date DESC LIMIT 1
+      ) pp2_prev ON true
+      WHERE pv.active = $1 AND pv.title ILIKE $2
+      ORDER BY pv.title`,
       [criteria.active, `${criteria.title}%`]);
   }
 
@@ -127,36 +219,128 @@ export class ProductService {
     }
 
     async create(createProductDto: CreateProductDto, userid) {
-      return this.productRepository.save({...createProductDto, createdby:userid});
+      try {
+        // Check for existing ACTIVE product with same title (ignore soft-deleted products)
+        const existingProduct = await this.productRepository.findOne({
+          where: {
+            title: createProductDto.title,
+            isActive: true,
+            isArchived: false
+          }
+        });
+
+        if (existingProduct) {
+          this.logger.warn(`Duplicate product title attempted: ${createProductDto.title}`);
+          throw new BadRequestException(
+            `Product with title "${createProductDto.title}" already exists. ` +
+            `Please use a different title or edit the existing product (ID: ${existingProduct.id}).`
+          );
+        }
+
+        return await this.productRepository.save({...createProductDto, createdby:userid});
+      } catch (error) {
+        // Handle unique constraint violation from database
+        if (error.code === '23505') { // PostgreSQL unique violation
+          this.logger.error(`Duplicate product creation failed: ${error.detail}`);
+          throw new BadRequestException(
+            `Product with this title already exists. Please use a unique product title.`
+          );
+        }
+        throw error;
+      }
     }
     
+    /**
+     * Add a new price for a product with auto-calculation and validation
+     * Issue #122 - Auto-calculate price margins
+     *
+     * Auto-calculates:
+     * - margin_pcnt if base_price and sale_price provided
+     * - discount_pcnt if mrp and sale_price provided
+     *
+     * Validates:
+     * - sale_price >= base_price (prevent loss-making sales)
+     * - sale_price <= mrp (prevent overpricing)
+     */
     async addPrice(createProductPrice2Dto: CreateProductPrice2Dto, userid) {
+      this.logger.log(`Adding price for product ${createProductPrice2Dto.productid}`);
+
+      // Create a mutable copy for calculations
+      const priceData: any = { ...createProductPrice2Dto };
+
+      // Auto-calculate margin_pcnt if not provided but base_price and sale_price exist
+      if (priceData.marginpcnt === undefined && priceData.baseprice && priceData.saleprice) {
+        priceData.marginpcnt = parseFloat(
+          (((priceData.saleprice - priceData.baseprice) / priceData.baseprice) * 100).toFixed(2)
+        );
+        this.logger.log(
+          `Auto-calculated margin: ${priceData.marginpcnt}% ` +
+          `(sale: ${priceData.saleprice}, base: ${priceData.baseprice})`
+        );
+      }
+
+      // Auto-calculate discount_pcnt if not provided but mrp and sale_price exist
+      if (priceData.discountpcnt === undefined && priceData.mrp && priceData.saleprice) {
+        priceData.discountpcnt = parseFloat(
+          (((priceData.mrp - priceData.saleprice) / priceData.mrp) * 100).toFixed(2)
+        );
+        this.logger.log(
+          `Auto-calculated discount: ${priceData.discountpcnt}% ` +
+          `(mrp: ${priceData.mrp}, sale: ${priceData.saleprice})`
+        );
+      }
+
+      // Validate sale_price >= base_price (prevent loss-making sales)
+      if (priceData.baseprice && priceData.saleprice < priceData.baseprice) {
+        const error = `Sale price (${priceData.saleprice}) cannot be less than base price (${priceData.baseprice}). ` +
+          `This would result in a loss of ${(priceData.baseprice - priceData.saleprice).toFixed(2)} per unit.`;
+        this.logger.error(error);
+        throw new BadRequestException(error);
+      }
+
+      // Validate sale_price <= mrp (prevent overpricing above MRP)
+      if (priceData.mrp && priceData.saleprice > priceData.mrp) {
+        const error = `Sale price (${priceData.saleprice}) cannot exceed MRP (${priceData.mrp}). ` +
+          `Selling above MRP is not permitted.`;
+        this.logger.error(error);
+        throw new BadRequestException(error);
+      }
+
       // Use transaction to prevent race condition when ending current price and adding new price
       return await this.manager.transaction('SERIALIZABLE', async (transactionalEntityManager) => {
         // Check if there's an existing price history
         const priceFound = await transactionalEntityManager.query(
           `SELECT * FROM product_price2 WHERE product_id = $1 ORDER BY eff_date DESC`,
-          [createProductPrice2Dto.productid]
+          [priceData.productid]
         );
 
         // If no existing price, just insert the new price
         if (!priceFound || priceFound.length === 0) {
+          this.logger.log(`Creating first price record for product ${priceData.productid}`);
           return await transactionalEntityManager.save(ProductPrice2, {
-            ...createProductPrice2Dto,
+            ...priceData,
             createdby: userid
           });
         }
 
         // End the current price (set end_date for prices ending on 2099-12-31)
-        const dateToSet = createProductPrice2Dto.effdate || new Date().toISOString().split('T')[0];
+        // Set end_date to one day before the new effective date to prevent unique constraint violation
+        const newEffDate = priceData.effdate || new Date().toISOString().split('T')[0];
+        const endDateForOldPrice = new Date(newEffDate);
+        endDateForOldPrice.setDate(endDateForOldPrice.getDate() - 1);
+        const dateToSet = endDateForOldPrice.toISOString().split('T')[0];
+
+        this.logger.log(`Ending previous price records for product ${priceData.productid} on ${dateToSet}`);
+
         await transactionalEntityManager.query(
           `UPDATE product_price2 SET end_date = $1 WHERE product_id = $2 AND end_date = '2099-12-31'`,
-          [dateToSet, createProductPrice2Dto.productid]
+          [dateToSet, priceData.productid]
         );
 
         // Add the new price
+        this.logger.log(`Creating new price record for product ${priceData.productid}`);
         return await transactionalEntityManager.save(ProductPrice2, {
-          ...createProductPrice2Dto,
+          ...priceData,
           createdby: userid
         });
       });
@@ -166,8 +350,136 @@ export class ProductService {
       return this.productRepository.update(id, {...values, updatedby:userid});
     }
 
+    /**
+     * Remove (soft delete) a product with validation
+     * Issue #121 - Product Deletion Validation & Safety
+     *
+     * Prevents deletion when:
+     * - Product has active stock in batches
+     * - Product has pending purchase invoices
+     */
+    async remove(id: number, userid: number): Promise<any> {
+      this.logger.log(`Attempting to delete product ${id} by user ${userid}`);
+
+      // Check for active stock in batches
+      const stockCheck = await this.dataSource.query(
+        `SELECT COALESCE(SUM(quantity_remaining), 0) as total_stock
+         FROM product_batch
+         WHERE product_id = $1 AND status = 'ACTIVE' AND active = true`,
+        [id]
+      );
+
+      const totalStock = parseInt(stockCheck[0].total_stock);
+
+      if (totalStock > 0) {
+        this.logger.warn(
+          `Cannot delete product ${id}: Has ${totalStock} units in active batches`
+        );
+        throw new BadRequestException(
+          `Cannot delete product with active stock (${totalStock} units remaining). ` +
+          `Please clear or transfer stock before deletion.`
+        );
+      }
+
+      // Check for pending purchase invoices
+      const poCheck = await this.dataSource.query(
+        `SELECT COUNT(*) as pending_po
+         FROM purchase_invoice pi
+         INNER JOIN purchase_invoice_item pii ON pi.id = pii.invoice_id
+         WHERE pii.product_id = $1
+           AND pi.status IN ('NEW', 'PARTIAL')
+           AND pi.active = true`,
+        [id]
+      );
+
+      const pendingPO = parseInt(poCheck[0].pending_po);
+
+      if (pendingPO > 0) {
+        this.logger.warn(
+          `Cannot delete product ${id}: Has ${pendingPO} pending purchase invoice(s)`
+        );
+        throw new BadRequestException(
+          `Cannot delete product with pending purchase invoices (${pendingPO} pending). ` +
+          `Please complete or cancel these invoices first.`
+        );
+      }
+
+      // Get the product to modify its title
+      const product = await this.productRepository.findOne({ where: { id } });
+
+      if (!product) {
+        throw new BadRequestException(`Product with ID ${id} not found`);
+      }
+
+      // Modify title to free up the unique constraint for future products
+      // Append deletion timestamp to allow recreating products with the same original title
+      const deletedTitle = `${product.title}_deleted_${Date.now()}`;
+
+      // Soft delete (set active = false, archive = true, modify title)
+      await this.productRepository.update(id, {
+        title: deletedTitle,
+        isActive: false,
+        isArchived: true,
+        updatedby: userid
+      });
+
+      this.logger.log(`Product ${id} successfully deleted by user ${userid}. Title changed from "${product.title}" to "${deletedTitle}"`);
+
+      return {
+        message: 'Product deleted successfully',
+        productId: id
+      };
+    }
+
+    /**
+     * Update an existing price with auto-calculation and validation
+     * Issue #122 - Auto-calculate price margins
+     */
     async updatePrice(id:any, values:any, userid){
-        return this.priceRepository.update(id, {...values, updatedby:userid});
+        this.logger.log(`Updating price ${id}`);
+
+        // Create a mutable copy for calculations
+        const priceData: any = { ...values };
+
+        // Auto-calculate margin_pcnt if not provided but base_price and sale_price exist
+        if (priceData.marginpcnt === undefined && priceData.baseprice && priceData.saleprice) {
+          priceData.marginpcnt = parseFloat(
+            (((priceData.saleprice - priceData.baseprice) / priceData.baseprice) * 100).toFixed(2)
+          );
+          this.logger.log(
+            `Auto-calculated margin: ${priceData.marginpcnt}% ` +
+            `(sale: ${priceData.saleprice}, base: ${priceData.baseprice})`
+          );
+        }
+
+        // Auto-calculate discount_pcnt if not provided but mrp and sale_price exist
+        if (priceData.discountpcnt === undefined && priceData.mrp && priceData.saleprice) {
+          priceData.discountpcnt = parseFloat(
+            (((priceData.mrp - priceData.saleprice) / priceData.mrp) * 100).toFixed(2)
+          );
+          this.logger.log(
+            `Auto-calculated discount: ${priceData.discountpcnt}% ` +
+            `(mrp: ${priceData.mrp}, sale: ${priceData.saleprice})`
+          );
+        }
+
+        // Validate sale_price >= base_price (prevent loss-making sales)
+        if (priceData.baseprice && priceData.saleprice < priceData.baseprice) {
+          const error = `Sale price (${priceData.saleprice}) cannot be less than base price (${priceData.baseprice}). ` +
+            `This would result in a loss of ${(priceData.baseprice - priceData.saleprice).toFixed(2)} per unit.`;
+          this.logger.error(error);
+          throw new BadRequestException(error);
+        }
+
+        // Validate sale_price <= mrp (prevent overpricing above MRP)
+        if (priceData.mrp && priceData.saleprice > priceData.mrp) {
+          const error = `Sale price (${priceData.saleprice}) cannot exceed MRP (${priceData.mrp}). ` +
+            `Selling above MRP is not permitted.`;
+          this.logger.error(error);
+          throw new BadRequestException(error);
+        }
+
+        return this.priceRepository.update(id, {...priceData, updatedby:userid});
     }
 
     /**
@@ -566,6 +878,202 @@ export class ProductService {
         .getRawMany();
 
       return result.map(r => r.manufacturer).filter(m => m);
+    }
+
+    /**
+     * Get product dashboard metrics
+     */
+    async getDashboardMetrics(): Promise<any> {
+      try {
+        // Overview metrics
+        const overviewQuery = `
+          SELECT
+            COUNT(*) FILTER (WHERE active = true AND archive = false) as total_active,
+            COUNT(*) FILTER (WHERE active = false AND archive = false) as total_inactive,
+            COUNT(*) FILTER (WHERE archive = true) as total_archived,
+            COUNT(DISTINCT category) FILTER (WHERE active = true AND archive = false) as total_categories
+          FROM product
+        `;
+        const overview = await this.dataSource.query(overviewQuery);
+
+        // Stock metrics
+        const stockQuery = `
+          SELECT
+            COUNT(*) FILTER (WHERE stock.balance = 0) as out_of_stock,
+            COUNT(*) FILTER (WHERE stock.balance > 0 AND stock.balance < 20) as low_stock,
+            COUNT(*) FILTER (WHERE stock.balance >= 20) as in_stock,
+            COALESCE(SUM(stock.balance), 0) as total_stock_units
+          FROM product p
+          LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+          WHERE p.active = true AND p.archive = false
+        `;
+        const stock = await this.dataSource.query(stockQuery);
+
+        // Pricing metrics
+        const pricingQuery = `
+          SELECT
+            COALESCE(AVG(price.margin), 0) as avg_margin,
+            COALESCE(SUM(price.price * stock.balance), 0) as total_inventory_value,
+            COUNT(*) FILTER (WHERE price.margin >= 20) as high_margin_count,
+            COUNT(*) FILTER (WHERE price.margin < 10) as low_margin_count
+          FROM product p
+          LEFT JOIN price_view price ON price.id = p.id
+          LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+          WHERE p.active = true AND p.archive = false
+        `;
+        const pricing = await this.dataSource.query(pricingQuery);
+
+        // Products by category
+        const categoryQuery = `
+          SELECT
+            category,
+            COUNT(*) as count
+          FROM product
+          WHERE active = true AND archive = false
+          GROUP BY category
+          ORDER BY count DESC
+          LIMIT 10
+        `;
+        const byCategory = await this.dataSource.query(categoryQuery);
+
+        // Stock status distribution
+        const stockDistribution = {
+          outOfStock: parseInt(stock[0].out_of_stock) || 0,
+          lowStock: parseInt(stock[0].low_stock) || 0,
+          inStock: parseInt(stock[0].in_stock) || 0
+        };
+
+        // Low stock alerts (products with stock < 20)
+        const lowStockAlertsQuery = `
+          SELECT
+            p.id,
+            p.title,
+            p.pack,
+            p.category,
+            COALESCE(stock.balance, 0) as current_stock,
+            COALESCE(price.price, 0) as sale_price,
+            stock.last_sale_date
+          FROM product p
+          LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+          LEFT JOIN price_view price ON price.id = p.id
+          WHERE p.active = true
+            AND p.archive = false
+            AND COALESCE(stock.balance, 0) > 0
+            AND COALESCE(stock.balance, 0) < 20
+          ORDER BY stock.balance ASC
+          LIMIT 10
+        `;
+        const lowStockAlerts = await this.dataSource.query(lowStockAlertsQuery);
+
+        // Out of stock products
+        const outOfStockQuery = `
+          SELECT
+            p.id,
+            p.title,
+            p.pack,
+            p.category,
+            stock.last_sale_date
+          FROM product p
+          LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+          WHERE p.active = true
+            AND p.archive = false
+            AND COALESCE(stock.balance, 0) = 0
+          ORDER BY p.updated_on DESC
+          LIMIT 10
+        `;
+        const outOfStock = await this.dataSource.query(outOfStockQuery);
+
+        // Top products by margin
+        const topMarginQuery = `
+          SELECT
+            p.id,
+            p.title,
+            p.pack,
+            p.category,
+            price.margin,
+            price.price as sale_price,
+            COALESCE(stock.balance, 0) as current_stock
+          FROM product p
+          LEFT JOIN price_view price ON price.id = p.id
+          LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+          WHERE p.active = true
+            AND p.archive = false
+            AND price.margin IS NOT NULL
+          ORDER BY price.margin DESC
+          LIMIT 10
+        `;
+        const topByMargin = await this.dataSource.query(topMarginQuery);
+
+        // Low margin products
+        const lowMarginQuery = `
+          SELECT
+            p.id,
+            p.title,
+            p.pack,
+            p.category,
+            price.margin,
+            price.price as sale_price,
+            COALESCE(stock.balance, 0) as current_stock
+          FROM product p
+          LEFT JOIN price_view price ON price.id = p.id
+          LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+          WHERE p.active = true
+            AND p.archive = false
+            AND price.margin IS NOT NULL
+            AND price.margin < 10
+          ORDER BY price.margin ASC
+          LIMIT 10
+        `;
+        const lowMargin = await this.dataSource.query(lowMarginQuery);
+
+        // Recently added products
+        const recentQuery = `
+          SELECT
+            p.id,
+            p.title,
+            p.pack,
+            p.category,
+            p.created_on,
+            COALESCE(price.price, 0) as sale_price,
+            COALESCE(price.margin, 0) as margin,
+            COALESCE(stock.balance, 0) as current_stock
+          FROM product p
+          LEFT JOIN price_view price ON price.id = p.id
+          LEFT JOIN product_items_agg_view stock ON stock.id = p.id
+          WHERE p.active = true AND p.archive = false
+          ORDER BY p.created_on DESC
+          LIMIT 10
+        `;
+        const recentProducts = await this.dataSource.query(recentQuery);
+
+        return {
+          overview: {
+            totalActive: parseInt(overview[0].total_active) || 0,
+            totalInactive: parseInt(overview[0].total_inactive) || 0,
+            totalArchived: parseInt(overview[0].total_archived) || 0,
+            totalCategories: parseInt(overview[0].total_categories) || 0,
+            totalStockUnits: parseInt(stock[0].total_stock_units) || 0,
+            avgMargin: parseFloat(pricing[0].avg_margin) || 0,
+            totalInventoryValue: parseFloat(pricing[0].total_inventory_value) || 0,
+            highMarginCount: parseInt(pricing[0].high_margin_count) || 0,
+            lowMarginCount: parseInt(pricing[0].low_margin_count) || 0
+          },
+          stockDistribution,
+          byCategory,
+          alerts: {
+            lowStock: lowStockAlerts,
+            outOfStock: outOfStock
+          },
+          topProducts: {
+            byMargin: topByMargin,
+            lowMargin: lowMargin
+          },
+          recentProducts
+        };
+      } catch (error) {
+        this.logger.error('Error getting dashboard metrics:', error.stack);
+        throw error;
+      }
     }
 
 }

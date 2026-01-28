@@ -1,0 +1,128 @@
+<p-dialog
+  [(visible)]="visible"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '600px'}"
+  header="Report a Bug"
+  (onHide)="onDialogHide()">
+
+  <!-- Success Message -->
+  <div *ngIf="submitSuccess" class="alert alert-success">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    Bug report submitted successfully!
+    <div class="mt-2">
+      <a [href]="issueUrl" target="_blank" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-github me-1"></i>
+        View on GitHub
+      </a>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="submitError" class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    {{ errorMessage }}
+  </div>
+
+  <!-- Form -->
+  <form [formGroup]="bugReportForm" (ngSubmit)="onSubmit()" *ngIf="!submitSuccess">
+    <!-- Title -->
+    <div class="mb-3">
+      <label for="title" class="form-label">
+        Title <span class="text-danger">*</span>
+      </label>
+      <input
+        type="text"
+        id="title"
+        class="form-control"
+        formControlName="title"
+        placeholder="Brief description of the bug"
+        maxlength="100"
+        [class.is-invalid]="title?.invalid && title?.touched">
+      <div class="invalid-feedback" *ngIf="title?.invalid && title?.touched">
+        <div *ngIf="title?.errors?.['required']">Title is required</div>
+        <div *ngIf="title?.errors?.['maxlength']">Title must be less than 100 characters</div>
+      </div>
+      <small class="form-text text-muted">
+        {{ title?.value?.length || 0 }}/100 characters
+      </small>
+    </div>
+
+    <!-- Description -->
+    <div class="mb-3">
+      <label for="description" class="form-label">
+        Description <span class="text-danger">*</span>
+      </label>
+      <textarea
+        id="description"
+        class="form-control"
+        formControlName="description"
+        rows="5"
+        placeholder="Describe what happened and what you expected to happen"
+        maxlength="2000"
+        [class.is-invalid]="description?.invalid && description?.touched"></textarea>
+      <div class="invalid-feedback" *ngIf="description?.invalid && description?.touched">
+        <div *ngIf="description?.errors?.['required']">Description is required</div>
+        <div *ngIf="description?.errors?.['maxlength']">Description must be less than 2000 characters</div>
+      </div>
+      <small class="form-text text-muted">
+        {{ description?.value?.length || 0 }}/2000 characters
+      </small>
+    </div>
+
+    <!-- Steps to Reproduce -->
+    <div class="mb-3">
+      <label for="stepsToReproduce" class="form-label">
+        Steps to Reproduce (Optional)
+      </label>
+      <textarea
+        id="stepsToReproduce"
+        class="form-control"
+        formControlName="stepsToReproduce"
+        rows="4"
+        placeholder="1. Go to...&#10;2. Click on...&#10;3. See error..."
+        maxlength="1000"
+        [class.is-invalid]="stepsToReproduce?.invalid && stepsToReproduce?.touched"></textarea>
+      <div class="invalid-feedback" *ngIf="stepsToReproduce?.invalid && stepsToReproduce?.touched">
+        <div *ngIf="stepsToReproduce?.errors?.['maxlength']">Steps must be less than 1000 characters</div>
+      </div>
+      <small class="form-text text-muted">
+        {{ stepsToReproduce?.value?.length || 0 }}/1000 characters
+      </small>
+    </div>
+
+    <!-- Info Note -->
+    <div class="alert alert-info mb-3">
+      <i class="bi bi-info-circle-fill me-2"></i>
+      <small>
+        System information (browser, OS, etc.) will be automatically included with your report.
+      </small>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex justify-content-end gap-2">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="hideDialog()"
+        [disabled]="isSubmitting">
+        Cancel
+      </button>
+      <button
+        type="submit"
+        class="btn btn-danger"
+        [disabled]="isSubmitting || bugReportForm.invalid">
+        <span *ngIf="!isSubmitting">
+          <i class="bi bi-bug-fill me-1"></i>
+          Submit Bug Report
+        </span>
+        <span *ngIf="isSubmitting">
+          <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          Submitting...
+        </span>
+      </button>
+    </div>
+  </form>
+</p-dialog>

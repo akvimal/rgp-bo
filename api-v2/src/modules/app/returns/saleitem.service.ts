@@ -1,41 +1,148 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, Logger } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
-import { EntityManager } from "typeorm";
+import { EntityManager, DataSource } from "typeorm";
 import { Repository } from "typeorm";
 import { CreateSaleReturnDto } from "./dto/create-salereturn.dto";
 import { CreateProductClearanceDto } from "./dto/create-clearance.dto";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 import { ProductClearance } from "src/entities/product-clearance.entity";
+import { BatchAllocationService, BatchAllocation } from "../stock/batch-allocation.service";
 
 @Injectable()
 export class SaleItemService {
-
+    private readonly logger = new Logger(SaleItemService.name);
     RETURN_PERIOD_MONTHS_ALLOWED = 4;
 
     constructor(
         @InjectRepository(SaleItem) private readonly saleItemRepo: Repository<SaleItem>,
         @InjectRepository(PurchaseInvoiceItem) private readonly purchaseItemRepo: Repository<PurchaseInvoiceItem>,
         @InjectRepository(ProductClearance) private readonly clearanceRepo: Repository<ProductClearance>,
-        @InjectEntityManager() private manager: EntityManager) { }
+        @InjectEntityManager() private manager: EntityManager,
+        private readonly batchAllocationService: BatchAllocationService,
+        private readonly dataSource: DataSource) { }
 
+        /**
+         * Save product return and reconcile with original batch allocations
+         * Returns quantity to the same batches from which it was sold (FEFO order)
+         */
         async saveReturn(dto: CreateSaleReturnDto, userid: any) {
+            return await this.dataSource.transaction('SERIALIZABLE', async (transactionManager) => {
+                // 1. Get original sale item with batch allocations
+                const originalSaleItem = await transactionManager.findOne(SaleItem, {
+                    where: { id: dto.saleitemid }
+                });
 
-            const purchaseItem = await this.saleItemRepo.findOne({where:{id:dto.saleitemid}});
-            if(!purchaseItem){
-                throw new NotFoundException('Sale item not found');
-            }
-            return this.saleItemRepo.save({
-                saleid: purchaseItem.saleid,
-                itemid: purchaseItem.itemid,
-                qty: (-1 * dto.qty),
-                price: purchaseItem.price,
-                total: purchaseItem.price * (-1 * dto.qty),
-                paymode: dto.paymode,
-                status: dto.status,
-                reason: dto.reason,
-                comments: dto.comments,
-                createdby: userid
+                if (!originalSaleItem) {
+                    throw new NotFoundException('Sale item not found');
+                }
+
+                // 2. Validate return quantity
+                if (dto.qty <= 0) {
+                    throw new BadRequestException('Return quantity must be positive');
+                }
+
+                if (dto.qty > originalSaleItem.qty) {
+                    throw new BadRequestException(
+                        `Cannot return ${dto.qty} units. Only ${originalSaleItem.qty} units were sold.`
+                    );
+                }
+
+                // 3. Parse batch allocations from original sale
+                let batchAllocations: BatchAllocation[] = [];
+                if (originalSaleItem.batchAllocations) {
+                    try {
+                        batchAllocations = typeof originalSaleItem.batchAllocations === 'string'
+                            ? JSON.parse(originalSaleItem.batchAllocations)
+                            : originalSaleItem.batchAllocations;
+                    } catch (error) {
+                        this.logger.warn(
+                            `Failed to parse batch allocations for sale item ${dto.saleitemid}. ` +
+                            `Proceeding with return but batch reconciliation skipped.`
+                        );
+                    }
+                }
+
+                // 4. Return quantity to batches (proportional to original allocation)
+                if (batchAllocations && batchAllocations.length > 0) {
+                    let remainingToReturn = dto.qty;
+                    const totalOriginalQty = originalSaleItem.qty;
+
+                    for (const allocation of batchAllocations) {
+                        if (remainingToReturn <= 0) break;
+
+                        // Calculate proportional return quantity
+                        const proportionalQty = Math.min(
+                            Math.ceil((allocation.quantity / totalOriginalQty) * dto.qty),
+                            remainingToReturn
+                        );
+
+                        if (proportionalQty > 0) {
+                            // Return to batch
+                            await this.batchAllocationService.returnToBatch(
+                                allocation.batchId,
+                                proportionalQty,
+                                'SALE_RETURN',
+                                dto.saleitemid,
+                                userid,
+                                transactionManager
+                            );
+
+                            remainingToReturn -= proportionalQty;
+
+                            this.logger.log(
+                                `Returned ${proportionalQty} units to batch ${allocation.batchId} ` +
+                                `(${allocation.batchNumber}) for sale item ${dto.saleitemid}`
+                            );
+                        }
+                    }
+
+                    // Handle any remaining quantity due to rounding
+                    if (remainingToReturn > 0) {
+                        this.logger.warn(
+                            `${remainingToReturn} units could not be returned to batches ` +
+                            `for sale item ${dto.saleitemid} due to rounding. ` +
+                            `Returning to first batch.`
+                        );
+
+                        await this.batchAllocationService.returnToBatch(
+                            batchAllocations[0].batchId,
+                            remainingToReturn,
+                            'SALE_RETURN',
+                            dto.saleitemid,
+                            userid,
+                            transactionManager
+                        );
+                    }
+                } else {
+                    this.logger.warn(
+                        `No batch allocations found for sale item ${dto.saleitemid}. ` +
+                        `Return processed but inventory not reconciled to batches. ` +
+                        `This may occur for sales created before batch tracking was implemented.`
+                    );
+                }
+
+                // 5. Create negative sale item record (return entry)
+                const returnItem = await transactionManager.save(SaleItem, {
+                    saleid: originalSaleItem.saleid,
+                    itemid: originalSaleItem.itemid,
+                    productid: originalSaleItem.productid,
+                    qty: (-1 * dto.qty),
+                    price: originalSaleItem.price,
+                    total: originalSaleItem.price * (-1 * dto.qty),
+                    paymode: dto.paymode,
+                    status: dto.status,
+                    reason: dto.reason,
+                    comments: dto.comments,
+                    createdby: userid
+                });
+
+                this.logger.log(
+                    `Return processed: ${dto.qty} units returned for sale item ${dto.saleitemid}. ` +
+                    `Return ID: ${returnItem.id}`
+                );
+
+                return returnItem;
             });
         }
 

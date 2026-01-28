@@ -1,12 +1,16 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, Repository } from "typeorm";
+import { DataSource, EntityManager, Repository } from "typeorm";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
 import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 import { VendorPayment } from "src/entities/vendor-payment.entity";
 import { Product } from "src/entities/product.entity";
+import { ProductPrice2 } from "src/entities/product-price2.entity";
+import { ProductQtyChange } from "src/entities/product-qtychange.entity";
+import { ProductBatch } from "src/entities/product-batch.entity";
+import { BatchMovementLog } from "src/entities/batch-movement-log.entity";
 import { ItemType, DocType, PaymentStatus, TaxStatus, LifecycleStatus } from "./enums";
 
 @Injectable()
@@ -18,7 +22,12 @@ export class PurchaseInvoiceService {
         @InjectRepository(PurchaseInvoiceItem) private readonly purchaseInvoiceItemRepository: Repository<PurchaseInvoiceItem>,
         @InjectRepository(VendorPayment) private readonly vendorPaymentRepository: Repository<VendorPayment>,
         @InjectRepository(Product) private readonly productRepository: Repository<Product>,
-        @InjectEntityManager() private manager: EntityManager
+        @InjectEntityManager() private manager: EntityManager,
+        @InjectRepository(ProductPrice2) private readonly productPriceRepository: Repository<ProductPrice2>,
+        @InjectRepository(ProductQtyChange) private readonly productQtyChangeRepository: Repository<ProductQtyChange>,
+        @InjectRepository(ProductBatch) private readonly productBatchRepository: Repository<ProductBatch>,
+        @InjectRepository(BatchMovementLog) private readonly batchMovementLogRepository: Repository<BatchMovementLog>,
+        private dataSource: DataSource
     ) { }
 
     /**
@@ -46,38 +55,89 @@ export class PurchaseInvoiceService {
     /**
      * Create invoice item with validation
      * Fix for issue #58: Store pack size at time of purchase
+     * Fix for issue #12: Atomic transaction for item creation, price update, and total recalculation
      */
-    async createItem(dto: CreatePurchaseInvoiceItemDto, userid: any) {
-        try {
-            // Validate item type specific requirements
-            this.validateItemType(dto);
+    async createItem(dto: CreatePurchaseInvoiceItemDto, userid: any, salePrice?: number) {
+        // Wrap all operations in SERIALIZABLE transaction to ensure atomicity
+        return await this.dataSource.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                // Validate item type specific requirements
+                this.validateItemType(dto);
 
-            // Calculate tax breakdown if not provided
-            const taxData = this.calculateItemTaxBreakdown(dto);
+                // Calculate tax breakdown if not provided
+                const taxData = this.calculateItemTaxBreakdown(dto);
 
-            // Fetch product to get current pack size (Fix for issue #58)
-            const product = await this.productRepository.findOne({
-                where: { id: dto.productid }
-            });
+                // Fetch product to get current pack size (Fix for issue #58)
+                const product = await transactionManager.findOne(Product, {
+                    where: { id: dto.productid }
+                });
 
-            if (!product) {
-                throw new BadRequestException(`Product with ID ${dto.productid} not found`);
+                if (!product) {
+                    throw new BadRequestException(`Product with ID ${dto.productid} not found`);
+                }
+
+                // Store pack size at time of purchase to prevent retroactive changes
+                const packSize = product.pack || 1;
+
+                // Step 1: Create purchase invoice item
+                const item = await transactionManager.save(PurchaseInvoiceItem, {
+                    ...dto,
+                    ...taxData,
+                    packsize: packSize,  // Store current pack size (Fix for issue #58)
+                    createdby: userid,
+                    itemtype: dto.itemtype || ItemType.REGULAR,
+                });
+
+                // Step 2: Update product price if sale price provided
+                if (salePrice && salePrice > 0) {
+                    // End current prices (set end_date for prices ending on 2099-12-31)
+                    const newEffDate = new Date().toISOString().split('T')[0];
+                    const endDateForOldPrice = new Date(newEffDate);
+                    endDateForOldPrice.setDate(endDateForOldPrice.getDate() - 1);
+                    const dateToSet = endDateForOldPrice.toISOString().split('T')[0];
+
+                    await transactionManager.query(
+                        `UPDATE product_price2 SET end_date = $1 WHERE product_id = $2 AND end_date = '2099-12-31'`,
+                        [dateToSet, dto.productid]
+                    );
+
+                    // Add new price record
+                    await transactionManager.save(ProductPrice2, {
+                        productid: dto.productid,
+                        saleprice: salePrice,
+                        effdate: newEffDate,
+                        enddate: '2099-12-31',
+                        reason: 'Purchase',
+                        createdby: userid
+                    });
+
+                    this.logger.log(`Updated sale price for product ${dto.productid} to ₹${salePrice}`);
+                }
+
+                // Step 3: Recalculate invoice totals
+                const items = await transactionManager.find(PurchaseInvoiceItem, {
+                    where: { invoiceid: item.invoiceid }
+                });
+
+                const total = items.reduce((sum, item) => sum + (item.total || 0), 0);
+
+                await transactionManager.update(PurchaseInvoice,
+                    { id: item.invoiceid },
+                    {
+                        total: Math.round(total),
+                        updatedby: userid
+                    }
+                );
+
+                this.logger.log(`Created item ${item.id} for invoice ${item.invoiceid}. New total: ₹${Math.round(total)}`);
+
+                return item;
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                this.logger.error(`Failed to create invoice item (transaction rolled back): ${error.message}`, error.stack);
+                throw new BadRequestException(`Failed to create invoice item: ${error.message}`);
             }
-
-            // Store pack size at time of purchase to prevent retroactive changes
-            const packSize = product.pack || 1;
-
-            return this.purchaseInvoiceItemRepository.save({
-                ...dto,
-                ...taxData,
-                packsize: packSize,  // Store current pack size (Fix for issue #58)
-                createdby: userid,
-                itemtype: dto.itemtype || ItemType.REGULAR,
-            });
-        } catch (error) {
-            this.logger.error(`Failed to create invoice item: ${error.message}`, error.stack);
-            throw error;
-        }
+        });
     }
 
     /**
@@ -135,8 +195,30 @@ export class PurchaseInvoiceService {
         return result;
     }
     
-    async findAll(){
-      return await this.manager.query(`select * from invoices_view`);
+    async findAll(page?: number, limit?: number){
+      const query = this.purchaseInvoiceRepository.createQueryBuilder('invoice')
+        .leftJoinAndSelect('invoice.vendor', 'vendor')
+        .leftJoinAndSelect('invoice.store', 'store')
+        .loadRelationCountAndMap('invoice.items', 'invoice.items')
+        .where('invoice.isActive = :flag', { flag: true })
+        .orderBy('invoice.invoicedate', 'DESC')
+        .addOrderBy('invoice.createdon', 'DESC');
+
+      // Add pagination if parameters provided
+      if (page && limit) {
+        const skip = (page - 1) * limit;
+        query.skip(skip).take(limit);
+      }
+
+      const [data, total] = await query.getManyAndCount();
+
+      return {
+        data,
+        total,
+        page: page || 1,
+        limit: limit || total,
+        totalPages: limit ? Math.ceil(total / limit) : 1
+      };
   }    
   
   async findSalePrice(input){
@@ -539,6 +621,7 @@ export class PurchaseInvoiceService {
 
     /**
      * Create vendor payment and update invoice payment status
+     * Issue #124 - Overpayment prevention
      */
     async createPayment(invoiceId: number, paymentData: any, userid: number): Promise<VendorPayment> {
         try {
@@ -550,6 +633,38 @@ export class PurchaseInvoiceService {
             if (!invoice) {
                 throw new BadRequestException('Invoice not found');
             }
+
+            // Overpayment Prevention (Issue #124)
+            // Calculate current outstanding balance
+            const payments = await this.vendorPaymentRepository
+                .createQueryBuilder('payment')
+                .where('payment.invoiceid = :invoiceId', { invoiceId })
+                .andWhere('payment.paymentstatus = :status', { status: 'COMPLETED' })
+                .getMany();
+
+            const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+            const outstanding = invoice.total - totalPaid;
+            const newPaymentAmount = paymentData.amount || 0;
+
+            // Validate payment amount doesn't exceed outstanding balance
+            if (newPaymentAmount > outstanding) {
+                const error = `Payment amount (₹${newPaymentAmount.toFixed(2)}) exceeds outstanding balance (₹${outstanding.toFixed(2)}). ` +
+                    `This would result in an overpayment of ₹${(newPaymentAmount - outstanding).toFixed(2)}. ` +
+                    `Invoice total: ₹${invoice.total.toFixed(2)}, Already paid: ₹${totalPaid.toFixed(2)}`;
+                this.logger.error(error);
+                throw new BadRequestException(error);
+            }
+
+            if (newPaymentAmount <= 0) {
+                throw new BadRequestException('Payment amount must be greater than zero');
+            }
+
+            this.logger.log(
+                `Creating payment for invoice ${invoiceId}: ` +
+                `Amount: ₹${newPaymentAmount.toFixed(2)}, ` +
+                `Outstanding: ₹${outstanding.toFixed(2)}, ` +
+                `Total: ₹${invoice.total.toFixed(2)}`
+            );
 
             // Map frontend field names to entity field names
             const { paymentdate, paymentmode, ...rest } = paymentData;
@@ -567,7 +682,10 @@ export class PurchaseInvoiceService {
             // Automatically update payment status
             await this.updatePaymentStatus(invoiceId);
 
-            this.logger.log(`Payment ${payment.id} created for invoice ${invoiceId}`);
+            this.logger.log(
+                `Payment ${payment.id} created for invoice ${invoiceId}. ` +
+                `New balance: ₹${(outstanding - newPaymentAmount).toFixed(2)}`
+            );
             return payment;
         } catch (error) {
             this.logger.error(`Failed to create payment: ${error.message}`, error.stack);
@@ -769,6 +887,325 @@ export class PurchaseInvoiceService {
             this.logger.log(`Payment ${paymentId} deleted`);
         } catch (error) {
             this.logger.error(`Failed to delete payment: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
+
+    /**
+     * Verify item (mark as verified)
+     * Fix for issue #14: Auto-create stock record when item is verified
+     * Fix for issue #127: Auto-create batch record for expiry tracking
+     */
+    async verifyItem(itemId: number, userId: number): Promise<void> {
+        // Wrap in transaction to ensure atomicity of verification + stock + batch creation
+        return await this.dataSource.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                // Get item details with invoice relation
+                const item = await transactionManager.findOne(PurchaseInvoiceItem, {
+                    where: { id: itemId },
+                    relations: ['invoice']
+                });
+
+                if (!item) {
+                    throw new NotFoundException(`Item with ID ${itemId} not found`);
+                }
+
+                if (item.status === 'VERIFIED') {
+                    throw new BadRequestException('Item is already verified');
+                }
+
+                // Validate expiry date is not in the past
+                if (item.expdate && new Date(item.expdate) < new Date()) {
+                    throw new BadRequestException(
+                        `Cannot verify item: Batch is already expired (expiry: ${item.expdate})`
+                    );
+                }
+
+                // Check if stock record already exists for this item to prevent duplicates
+                const existingStock = await transactionManager.findOne(ProductQtyChange, {
+                    where: {
+                        itemid: itemId,
+                        reason: 'PURCHASE_VERIFIED'
+                    }
+                });
+
+                if (existingStock) {
+                    throw new BadRequestException(
+                        `Stock record already exists for this item. ` +
+                        `Item may have been verified previously.`
+                    );
+                }
+
+                // Step 1: Mark item as verified
+                await transactionManager.update(PurchaseInvoiceItem,
+                    { id: itemId },
+                    {
+                        status: 'VERIFIED',
+                        verifiedby: userId,
+                        verifyenddate: new Date(),
+                        updatedon: new Date(),
+                        updatedby: userId
+                    }
+                );
+
+                // Step 2: Calculate total quantity received (qty + freeqty) * packsize
+                const totalQuantity = (item.qty + (item.freeqty || 0)) * (item.packsize || 1);
+
+                // Step 3: Create stock increase record
+                const stockRecord = await transactionManager.save(ProductQtyChange, {
+                    itemid: itemId,
+                    qty: totalQuantity,
+                    price: item.saleprice || 0,
+                    reason: 'PURCHASE_VERIFIED',
+                    status: 'APPROVED',
+                    comments: `Auto-generated from purchase item verification. ` +
+                              `Received: ${item.qty} + ${item.freeqty || 0} free, Pack: ${item.packsize || 1}`,
+                    createdby: userId
+                });
+
+                // Step 4: Create product batch record for expiry tracking (Issue #127)
+                const batchNumber = item.batch || `AUTO-${itemId}`;
+                const expiryDate = item.expdate || new Date(new Date().setFullYear(new Date().getFullYear() + 2)); // Default 2 years
+
+                const batch = await transactionManager.save(ProductBatch, {
+                    productId: item.productid,
+                    batchNumber: batchNumber,
+                    expiryDate: expiryDate,
+                    manufacturedDate: item.mfrdate || null,
+                    quantityReceived: totalQuantity,
+                    quantityRemaining: totalQuantity,
+                    purchaseInvoiceItemId: itemId,
+                    vendorId: item.invoice?.vendorid,
+                    ptrCost: item.ptrvalue || null,
+                    receivedDate: item.invoice?.invoicedate || new Date(),
+                    status: 'ACTIVE',
+                    createdby: userId
+                });
+
+                // Step 5: Log batch movement (immutable audit trail)
+                await transactionManager.save(BatchMovementLog, {
+                    batchId: batch.id,
+                    movementType: 'RECEIVED',
+                    quantity: totalQuantity,
+                    referenceType: 'PURCHASE_INVOICE',
+                    referenceId: item.invoiceid,
+                    performedBy: userId,
+                    performedAt: new Date(),
+                    notes: `Received from vendor. Batch: ${batchNumber}, Expiry: ${expiryDate}`
+                });
+
+                this.logger.log(
+                    `Item ${itemId} verified by user ${userId}. ` +
+                    `Stock: ${totalQuantity} units, Batch: ${batch.id} (${batchNumber}), Expiry: ${expiryDate}`
+                );
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                this.logger.error(`Failed to verify item (transaction rolled back): ${error.message}`, error.stack);
+                throw error;
+            }
+        });
+    }
+
+    /**
+     * Reject item with reason
+     */
+    async rejectItem(itemId: number, reason: string, userId: number): Promise<void> {
+        try {
+            const item = await this.purchaseInvoiceItemRepository.findOne({
+                where: { id: itemId }
+            });
+
+            if (!item) {
+                throw new NotFoundException(`Item with ID ${itemId} not found`);
+            }
+
+            await this.purchaseInvoiceItemRepository.update(
+                { id: itemId },
+                {
+                    status: 'REJECTED',
+                    comments: reason,
+                    verifiedby: userId,
+                    verifyenddate: new Date(),
+                    updatedon: new Date(),
+                    updatedby: userId
+                }
+            );
+
+            this.logger.log(`Item ${itemId} rejected by user ${userId}: ${reason}`);
+        } catch (error) {
+            this.logger.error(`Failed to reject item: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
+
+    /**
+     * Verify all items in an invoice
+     * Fix for issue #14: Auto-create stock records when items are verified
+     * Fix for issue #127: Auto-create batch records for expiry tracking
+     */
+    async verifyAllItems(invoiceId: number, userId: number): Promise<{ verified: number; alreadyVerified: number; stockCreated: number; batchesCreated: number }> {
+        // Wrap in transaction to ensure all-or-nothing verification
+        return await this.dataSource.transaction('SERIALIZABLE', async (transactionManager) => {
+            try {
+                const items = await transactionManager.find(PurchaseInvoiceItem, {
+                    where: { invoiceid: invoiceId },
+                    relations: ['invoice']
+                });
+
+                if (items.length === 0) {
+                    throw new NotFoundException(`No items found for invoice ${invoiceId}`);
+                }
+
+                let verified = 0;
+                let alreadyVerified = 0;
+                let stockCreated = 0;
+                let batchesCreated = 0;
+
+                // Get invoice details for vendor_id and invoice_date
+                const invoice = items[0].invoice;
+
+                for (const item of items) {
+                    if (item.status === 'VERIFIED') {
+                        alreadyVerified++;
+                    } else {
+                        // Validate expiry date
+                        if (item.expdate && new Date(item.expdate) < new Date()) {
+                            this.logger.warn(
+                                `Skipping item ${item.id}: Already expired (expiry: ${item.expdate})`
+                            );
+                            continue;
+                        }
+
+                        // Check if stock record already exists
+                        const existingStock = await transactionManager.findOne(ProductQtyChange, {
+                            where: {
+                                itemid: item.id,
+                                reason: 'PURCHASE_VERIFIED'
+                            }
+                        });
+
+                        // Update item status to VERIFIED
+                        await transactionManager.update(PurchaseInvoiceItem,
+                            { id: item.id },
+                            {
+                                status: 'VERIFIED',
+                                verifiedby: userId,
+                                verifyenddate: new Date(),
+                                updatedon: new Date(),
+                                updatedby: userId
+                            }
+                        );
+
+                        // Create stock and batch records if don't exist
+                        if (!existingStock) {
+                            const totalQuantity = (item.qty + (item.freeqty || 0)) * (item.packsize || 1);
+
+                            // Create stock record
+                            await transactionManager.save(ProductQtyChange, {
+                                itemid: item.id,
+                                qty: totalQuantity,
+                                price: item.saleprice || 0,
+                                reason: 'PURCHASE_VERIFIED',
+                                status: 'APPROVED',
+                                comments: `Auto-generated from bulk verification. ` +
+                                          `Received: ${item.qty} + ${item.freeqty || 0} free, Pack: ${item.packsize || 1}`,
+                                createdby: userId
+                            });
+
+                            stockCreated++;
+
+                            // Create batch record (Issue #127)
+                            const batchNumber = item.batch || `AUTO-${item.id}`;
+                            const expiryDate = item.expdate || new Date(new Date().setFullYear(new Date().getFullYear() + 2));
+
+                            const batch = await transactionManager.save(ProductBatch, {
+                                productId: item.productid,
+                                batchNumber: batchNumber,
+                                expiryDate: expiryDate,
+                                manufacturedDate: item.mfrdate || null,
+                                quantityReceived: totalQuantity,
+                                quantityRemaining: totalQuantity,
+                                purchaseInvoiceItemId: item.id,
+                                vendorId: invoice?.vendorid,
+                                ptrCost: item.ptrvalue || null,
+                                receivedDate: invoice?.invoicedate || new Date(),
+                                status: 'ACTIVE',
+                                createdby: userId
+                            });
+
+                            // Log batch movement
+                            await transactionManager.save(BatchMovementLog, {
+                                batchId: batch.id,
+                                movementType: 'RECEIVED',
+                                quantity: totalQuantity,
+                                referenceType: 'PURCHASE_INVOICE',
+                                referenceId: invoiceId,
+                                performedBy: userId,
+                                performedAt: new Date(),
+                                notes: `Bulk verification. Batch: ${batchNumber}, Expiry: ${expiryDate}`
+                            });
+
+                            batchesCreated++;
+                        }
+
+                        verified++;
+                    }
+                }
+
+                this.logger.log(
+                    `Invoice ${invoiceId}: ${verified} items verified, ${alreadyVerified} already verified, ` +
+                    `${stockCreated} stock records created, ${batchesCreated} batches created by user ${userId}`
+                );
+
+                return { verified, alreadyVerified, stockCreated, batchesCreated };
+            } catch (error) {
+                // Transaction will automatically rollback on error
+                this.logger.error(`Failed to verify all items (transaction rolled back): ${error.message}`, error.stack);
+                throw error;
+            }
+        });
+    }
+
+    /**
+     * Get verification status for invoice items
+     */
+    async getItemVerificationStatus(invoiceId: number): Promise<{
+        total: number;
+        verified: number;
+        pending: number;
+        rejected: number;
+        percentageComplete: number;
+    }> {
+        try {
+            const items = await this.purchaseInvoiceItemRepository.find({
+                where: { invoiceid: invoiceId }
+            });
+
+            if (items.length === 0) {
+                return {
+                    total: 0,
+                    verified: 0,
+                    pending: 0,
+                    rejected: 0,
+                    percentageComplete: 0
+                };
+            }
+
+            const total = items.length;
+            const verified = items.filter(item => item.status === 'VERIFIED').length;
+            const rejected = items.filter(item => item.status === 'REJECTED').length;
+            const pending = total - verified - rejected;
+            const percentageComplete = Math.round((verified / total) * 100);
+
+            return {
+                total,
+                verified,
+                pending,
+                rejected,
+                percentageComplete
+            };
+        } catch (error) {
+            this.logger.error(`Failed to get verification status: ${error.message}`, error.stack);
             throw error;
         }
     }

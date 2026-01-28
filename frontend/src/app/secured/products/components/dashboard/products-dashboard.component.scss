@@ -1,0 +1,81 @@
+// Card border colors
+.border-left-primary {
+  border-left: 0.25rem solid #4e73df !important;
+}
+
+.border-left-success {
+  border-left: 0.25rem solid #1cc88a !important;
+}
+
+.border-left-info {
+  border-left: 0.25rem solid #36b9cc !important;
+}
+
+.border-left-warning {
+  border-left: 0.25rem solid #f6c23e !important;
+}
+
+.border-left-danger {
+  border-left: 0.25rem solid #e74a3b !important;
+}
+
+// Badge colors
+.badge-success {
+  background-color: #1cc88a;
+  color: white;
+}
+
+.badge-warning {
+  background-color: #f6c23e;
+  color: #212529;
+}
+
+.badge-danger {
+  background-color: #e74a3b;
+  color: white;
+}
+
+.badge-secondary {
+  background-color: #858796;
+  color: white;
+}
+
+// Chart container
+.chart-container {
+  position: relative;
+  margin: auto;
+}
+
+// Table sticky header
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+// Hover effects
+.card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.3s ease;
+}
+
+// Text colors
+.text-gray-800 {
+  color: #5a5c69 !important;
+}
+
+.text-gray-300 {
+  color: #dddfeb !important;
+}
+
+// Font weight
+.fw-bold {
+  font-weight: 700;
+}
+
+// Cursor pointer
+[style*="cursor: pointer"] {
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+}

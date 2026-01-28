@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards, Req } from "@nestjs/common";
+import { Request } from 'express';
 
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { User } from "../../../core/decorator/user.decorator";
@@ -26,17 +27,20 @@ export class UserController {
     }
 
     @Post()
-    async create(@Body() createDto: CreateUserDto,  @User() currentUser: any) {
-        return this.userService.createAdmin(createDto, currentUser.id);
+    async create(@Body() createDto: CreateUserDto,  @User() currentUser: any, @Req() req: Request) {
+        const ipAddress = req['clientIp'] || req.ip;
+        return this.userService.createAdmin(createDto, currentUser.id, ipAddress);
     }
 
     @Put(':id')
-    update(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto) {
-      return this.userService.update(id, updateUserDto);
+    update(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto, @Req() req: Request) {
+      const ipAddress = req['clientIp'] || req.ip;
+      return this.userService.update(id, updateUserDto, ipAddress);
     }
-  
+
     @Delete(':id')
-    remove(@Param('id') id: number, @User() currentUser: any) {
-      return this.userService.delete(id, currentUser);
+    remove(@Param('id') id: number, @User() currentUser: any, @Req() req: Request) {
+      const ipAddress = req['clientIp'] || req.ip;
+      return this.userService.delete(id, currentUser, ipAddress);
     }
 }

@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../environments/environment';
 
 interface SalaryStructure {
   id: number;
@@ -35,7 +36,7 @@ interface SalaryStructure {
   styleUrls: ['./salary-structure.component.css']
 })
 export class SalaryStructureComponent implements OnInit {
-  private readonly API_URL = 'http://localhost:3000';
+  private readonly API_URL = environment.apiHost;
 
   salaryStructures: SalaryStructure[] = [];
   filteredStructures: SalaryStructure[] = [];

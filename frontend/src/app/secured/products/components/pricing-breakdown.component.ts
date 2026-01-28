@@ -14,6 +14,35 @@ export class PricingBreakdownComponent implements OnChanges {
   @Input() quantity: number = 1;
   @Input() taxInclusive: boolean = false;
 
+  /**
+   * Configurable thresholds based on business operations, product category, and market strategy.
+   *
+   * PHARMACY INDUSTRY STANDARDS:
+   * - Generic Medicines: 50-80% margin (high competition, volume-based)
+   * - Branded Medicines: 10-30% margin (regulated pricing, lower margins)
+   * - OTC Products: 30-50% margin (balance of volume and margin)
+   * - Premium/Specialty: 40-60% margin (low volume, high margin)
+   *
+   * CUSTOMIZATION EXAMPLES:
+   * 1. Generic medicines: marginThresholds = { good: 60, acceptable: 40 }
+   * 2. Branded medicines: marginThresholds = { good: 20, acceptable: 10 }
+   * 3. Promotional items: discountThresholds = { high: 30, medium: 15 }
+   * 4. Premium positioning: discountThresholds = { high: 10, medium: 5 }
+   *
+   * These thresholds control the color-coding in the UI:
+   * - Margin: Green (good) | Yellow (acceptable) | Red (below acceptable)
+   * - Discount: Red (aggressive) | Yellow (moderate) | Blue (premium)
+   */
+  @Input() marginThresholds = {
+    good: 25,      // >= 25% profit margin (green) - default for mixed inventory
+    acceptable: 15 // >= 15% profit margin (yellow), < 15% is low (red)
+  };
+
+  @Input() discountThresholds = {
+    high: 20,      // >= 20% discount (red - aggressive pricing, may hurt brand)
+    medium: 10     // >= 10% discount (yellow - moderate), < 10% is low (blue - premium positioning)
+  };
+
   loading: boolean = false;
   pricingData: any = null;
   error: string | null = null;
@@ -89,14 +118,14 @@ export class PricingBreakdownComponent implements OnChanges {
   }
 
   getProfitMarginClass(): string {
-    if (this.marginPercent >= 25) return 'text-success';
-    if (this.marginPercent >= 15) return 'text-warning';
+    if (this.marginPercent >= this.marginThresholds.good) return 'text-success';
+    if (this.marginPercent >= this.marginThresholds.acceptable) return 'text-warning';
     return 'text-danger';
   }
 
   getDiscountBadgeClass(): string {
-    if (this.discountPercent >= 20) return 'badge bg-danger';
-    if (this.discountPercent >= 10) return 'badge bg-warning';
+    if (this.discountPercent >= this.discountThresholds.high) return 'badge bg-danger';
+    if (this.discountPercent >= this.discountThresholds.medium) return 'badge bg-warning';
     return 'badge bg-info';
   }
 }

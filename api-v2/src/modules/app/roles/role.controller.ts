@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards, Req } from "@nestjs/common";
+import { Request } from 'express';
 
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { User } from "../../../core/decorator/user.decorator";
@@ -16,8 +17,9 @@ export class RoleController {
     constructor(private roleService:RoleService){}
     
     @Post()
-    async create(@Body() createDto: CreateRoleDto,  @User() currentUser: any) {
-        return this.roleService.create(createDto, currentUser.id);
+    async create(@Body() createDto: CreateRoleDto,  @User() currentUser: any, @Req() req: Request) {
+        const ipAddress = req['clientIp'] || req.ip;
+        return this.roleService.create(createDto, currentUser.id, ipAddress);
     }
 
     @Get()
@@ -31,12 +33,14 @@ export class RoleController {
     }
 
     @Put(':id')
-    update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
-      return this.roleService.update(id, updateRoleDto);
+    update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto, @Req() req: Request) {
+      const ipAddress = req['clientIp'] || req.ip;
+      return this.roleService.update(id, updateRoleDto, ipAddress);
     }
-    
+
     @Delete(':id')
-    remove(@Param('id') id: string, @User() currentUser: any) {
-      return this.roleService.delete(Number(id), currentUser);
+    remove(@Param('id') id: string, @User() currentUser: any, @Req() req: Request) {
+      const ipAddress = req['clientIp'] || req.ip;
+      return this.roleService.delete(Number(id), currentUser, ipAddress);
     }
 }

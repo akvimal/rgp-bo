@@ -27,6 +27,183 @@
 
     </div>
 </div>
+
+<!-- OCR Extracted Items Import Section -->
+<div class="card" *ngIf="showOcrImportSection && invoice.status === 'NEW'">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        <strong>OCR Extracted Items Ready</strong>
+                        <span class="ms-2 badge bg-primary">{{ocrExtractedItems.length}} items found</span>
+                    </div>
+                    <button type="button" class="btn-close" (click)="dismissOcrImport()" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Mapping Table -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <h6 class="text-muted mb-3">Map OCR items to products in your system:</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 3%">#</th>
+                                <th style="width: 20%">OCR Product Name</th>
+                                <th style="width: 25%">Select Product</th>
+                                <th class="text-end" style="width: 6%">Qty</th>
+                                <th class="text-end" style="width: 8%">Rate</th>
+                                <th class="text-end" style="width: 8%">MRP</th>
+                                <th class="text-center" style="width: 8%">Batch</th>
+                                <th class="text-center" style="width: 8%">Expiry</th>
+                                <th class="text-end" style="width: 8%">Total</th>
+                                <th style="width: 6%">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of ocrExtractedItems; let i = index"
+                                [class.table-success]="item.suggestedMatch || item.selectedProduct"
+                                [class.table-warning]="!item.suggestedMatch && !item.selectedProduct">
+                                <td class="text-center">{{i + 1}}</td>
+
+                                <!-- OCR Product Name -->
+                                <td>
+                                    <strong>{{item.productName || 'N/A'}}</strong>
+                                    <div *ngIf="item.suggestedMatch && !item.selectedProduct" class="small text-success mt-1">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Auto-matched: {{item.suggestedProduct.title}}
+                                    </div>
+                                    <div *ngIf="item.selectedProduct" class="small text-primary mt-1">
+                                        <i class="bi bi-hand-thumbs-up me-1"></i>
+                                        Mapped: {{item.selectedProduct.title}}
+                                    </div>
+                                </td>
+
+                                <!-- Product Selection -->
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <select class="form-select form-select-sm flex-grow-1"
+                                                (change)="onProductSelected(i, $event)"
+                                                [value]="item.selectedProduct?.id || (item.suggestedMatch ? item.suggestedProduct?.id : '')">
+                                            <option value="">-- Search & Select Product --</option>
+                                            <optgroup label="Suggested Match" *ngIf="item.suggestedMatch">
+                                                <option [value]="item.suggestedProduct.id">
+                                                    ✓ {{item.suggestedProduct.title}}
+                                                </option>
+                                            </optgroup>
+                                            <optgroup label="All Products">
+                                                <option *ngFor="let p of allProducts" [value]="p.id">
+                                                    {{p.title}}
+                                                </option>
+                                            </optgroup>
+                                        </select>
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-primary"
+                                                (click)="openQuickAddProduct(item, i)"
+                                                title="Add new product">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                    </div>
+                                </td>
+
+                                <!-- Quantity -->
+                                <td class="text-end">
+                                    <input type="number" class="form-control form-control-sm text-end"
+                                           [(ngModel)]="item.quantity"
+                                           (ngModelChange)="recalculateOcrItemTotal(i)"
+                                           min="1" step="1"
+                                           style="width: 60px;">
+                                </td>
+
+                                <!-- Rate -->
+                                <td class="text-end">
+                                    <input type="number" class="form-control form-control-sm text-end"
+                                           [(ngModel)]="item.rate"
+                                           (ngModelChange)="recalculateOcrItemTotal(i)"
+                                           min="0" step="0.01"
+                                           style="width: 80px;">
+                                </td>
+
+                                <!-- MRP -->
+                                <td class="text-end">
+                                    <input type="number" class="form-control form-control-sm text-end"
+                                           [(ngModel)]="item.mrp"
+                                           min="0" step="0.01"
+                                           style="width: 80px;">
+                                </td>
+
+                                <!-- Batch -->
+                                <td class="text-center">
+                                    <input type="text" class="form-control form-control-sm"
+                                           [(ngModel)]="item.batch"
+                                           placeholder="Batch"
+                                           maxlength="50"
+                                           style="width: 90px;">
+                                </td>
+
+                                <!-- Expiry -->
+                                <td class="text-center">
+                                    <input type="month" class="form-control form-control-sm"
+                                           [(ngModel)]="item.expiry"
+                                           style="width: 110px;">
+                                </td>
+
+                                <!-- Total (calculated) -->
+                                <td class="text-end">
+                                    <strong>{{item.total || 0 | number:'1.2-2'}}</strong>
+                                </td>
+
+                                <!-- Status Badge -->
+                                <td class="text-center">
+                                    <span *ngIf="item.selectedProduct" class="badge bg-primary">
+                                        <i class="bi bi-check"></i> Mapped
+                                    </span>
+                                    <span *ngIf="!item.selectedProduct && item.suggestedMatch" class="badge bg-success">
+                                        <i class="bi bi-lightbulb"></i> Suggested
+                                    </span>
+                                    <span *ngIf="!item.selectedProduct && !item.suggestedMatch" class="badge bg-warning text-dark">
+                                        <i class="bi bi-exclamation-triangle"></i> No Match
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Help Text -->
+                <div class="alert alert-info py-2 px-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <small>
+                        <strong>How to map:</strong>
+                        Green rows = Auto-matched | Yellow rows = No match found |
+                        Click <i class="bi bi-plus-circle"></i> to add new products
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="row">
+            <div class="col-12">
+                <button type="button" class="btn btn-primary me-2" (click)="importOcrItems()">
+                    <i class="bi bi-download me-1"></i> Import All Items
+                </button>
+                <button type="button" class="btn btn-outline-secondary" (click)="dismissOcrImport()">
+                    <i class="bi bi-x me-1"></i> Dismiss (Add Manually)
+                </button>
+                <small class="text-muted ms-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    These items were extracted from your uploaded invoice document
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card p-0" *ngIf="invoice.status === 'NEW'">
     <div class="card-body">
             <app-invoice-item-form [invoiceid]="invoice.id" (added)="fetchItems($event)"></app-invoice-item-form>
@@ -47,6 +224,7 @@
                         <tr>
                             <th *ngIf="invoice.status !== 'COMPLETE'"></th>
                             <th *ngIf="invoice.status !== 'COMPLETE'"></th>
+                            <th *ngIf="invoice.status !== 'COMPLETE'">Status</th>
                             <th>Type</th>
                             <th pSortableColumn="product.title">Product
                                 <p-sortIcon field="product.title"></p-sortIcon>
@@ -62,6 +240,7 @@
                             <th class="text-end">Disc</th>
                             <th class="text-end">Tax</th>
                             <th class="text-end">Total</th>
+                            <th *ngIf="invoice.status !== 'COMPLETE'" class="text-center">Actions</th>
                         </tr>
                     <!-- </thead>
                 <tbody> -->
@@ -79,6 +258,16 @@
                                     </a>
                                 </h4>
                             </td>
+                            <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center">
+                                <span *ngIf="!i.status || i.status === 'NEW'" class="badge bg-warning text-dark">NEW</span>
+                                <span *ngIf="i.status === 'VERIFIED'" class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> VERIFIED
+                                </span>
+                                <span *ngIf="i.status === 'REJECTED'" class="badge bg-danger"
+                                      [title]="i.comments || 'Rejected'">
+                                    <i class="bi bi-x-circle"></i> REJECTED
+                                </span>
+                            </td>
                             <td>
                                 <select *ngIf="i.status === 'NEW' && invoice.status !== 'COMPLETE'"
                                         class="form-select form-select-sm"
@@ -95,7 +284,15 @@
                                 </span>
                             </td>
                             <td>{{i.product?.title}}</td>
-                            <td>{{i.batch}}</td>
+                            <td>
+                                <input *ngIf="i.status === 'NEW' && invoice.status !== 'COMPLETE'"
+                                       type="text" class="form-control form-control-sm"
+                                       [value]="i.batch || ''"
+                                       (change)="updateItemField(i.id, 'batch', $event)"
+                                       placeholder="Batch"
+                                       maxlength="50">
+                                <span *ngIf="i.status !== 'NEW' || invoice.status === 'COMPLETE'">{{i.batch}}</span>
+                            </td>
                             <!-- <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td> -->
                             <td class="text-center">{{i.expdate | date: 'MMM-yy'}}</td>
                             <td class="text-end">{{i.mrpcost | number:'1.2-2'}}</td>
@@ -106,6 +303,18 @@
                             <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
                             <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
                             <td class="text-end">{{calculateItemTotal(i) | number:'1.2-2'}}</td>
+                            <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center">
+                                <div class="btn-group btn-group-sm" role="group" *ngIf="i.status === 'NEW'">
+                                    <button type="button" class="btn btn-success btn-sm" (click)="verifySingleItem(i.id)"
+                                            title="Verify this item">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" (click)="showRejectDialog(i)"
+                                            title="Reject this item">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </div>
+                            </td>
                             <!-- <td class="text-center">{{i.status}}</td> -->
                         </tr>
                         <!-- Conditional fields for RETURN and SUPPLIED items -->
@@ -155,17 +364,21 @@
                     <tr>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                         <td colspan="8"></td>
                         <td class="text-end">{{disctotal | number:'1.2-2'}}</td>
                         <td class="text-end">{{taxtotal | number:'1.2-2'}}</td>
                         <td class="text-end">{{nettotal | number:'1.2-2'}}</td>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                     </tr>
                     <tr>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                         <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                         <td colspan="8" class="text-end">{{invoice.items?.length}} Items</td>
                         <td colspan="3" class="text-end">
                             <span style="color:blue;font-size:larger">{{nettotal | number:'1.2-2'}}</span></td>
+                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
                     </tr>
                 </ng-template>
             </p-table>
@@ -175,10 +388,23 @@
             </div> -->
         </div>
 
-        <div class="row">
+        <div class="row" *ngIf="invoice.status !== 'COMPLETE'">
             <div class="col-lg-12">
-                <button type="button" *ngIf="itemSelected" class="btn btn-primary m-2" (click)="verifyItems()">Verify</button>
-                <button type="button" *ngIf="itemSelected" class="btn btn-outline-primary m-2" (click)="removeItems()">Remove</button>
+                <div class="btn-toolbar" role="toolbar">
+                    <div class="btn-group me-2" role="group">
+                        <button type="button" *ngIf="itemSelected" class="btn btn-success m-2" (click)="verifyItems()">
+                            <i class="bi bi-check-circle"></i> Verify Selected
+                        </button>
+                        <button type="button" *ngIf="!allVerified && items?.length > 0" class="btn btn-outline-success m-2" (click)="verifyAllItems()">
+                            <i class="bi bi-check-all"></i> Verify All Items
+                        </button>
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button type="button" *ngIf="itemSelected" class="btn btn-outline-danger m-2" (click)="removeItems()">
+                            <i class="bi bi-trash"></i> Remove Selected
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <!-- </div></div> -->
@@ -230,6 +456,47 @@
 
         <p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()"
         [(visible)]="displayEditItem" [modal]="true">
-            <app-invoice-item-form [mode]="'edit'" [invoiceid]="invoice.id" [itemid]="itemid" 
+            <app-invoice-item-form [mode]="'edit'" [invoiceid]="invoice.id" [itemid]="itemid"
             (added)="closeEditItem()"></app-invoice-item-form>
         </p-dialog>
+
+        <!-- Reject Item Dialog -->
+        <p-dialog [header]="'Reject Item'" (onHide)="cancelReject()"
+        [(visible)]="displayRejectDialog" [modal]="true" [style]="{width: '450px'}">
+            <div class="dialog-content">
+                <div class="mb-3" *ngIf="selectedItemForReject">
+                    <p><strong>Product:</strong> {{selectedItemForReject.product?.title}}</p>
+                    <p><strong>Batch:</strong> {{selectedItemForReject.batch}}</p>
+                    <p><strong>Quantity:</strong> {{selectedItemForReject.qty}}</p>
+                </div>
+                <div class="mb-3">
+                    <label for="rejectionReason" class="form-label text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Rejection Reason *
+                    </label>
+                    <textarea id="rejectionReason"
+                              class="form-control"
+                              rows="3"
+                              [(ngModel)]="rejectionReason"
+                              placeholder="Enter reason for rejection (e.g., Damaged, Expired, Wrong item, Quality issue)"
+                              required></textarea>
+                    <small class="text-muted">This reason will be stored for audit purposes</small>
+                </div>
+            </div>
+            <ng-template pTemplate="footer">
+                <button type="button" class="btn btn-secondary" (click)="cancelReject()">
+                    <i class="bi bi-x"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger" (click)="rejectItem()"
+                        [disabled]="!rejectionReason || rejectionReason.trim().length === 0">
+                    <i class="bi bi-x-circle"></i> Reject Item
+                </button>
+            </ng-template>
+        </p-dialog>
+
+        <!-- Quick Add Product Dialog -->
+        <app-product-quick-add
+          [(visible)]="showQuickAddProduct"
+          [prefillTitle]="selectedOcrItemForProductAdd?.productName"
+          (productCreated)="onProductCreated($event)"
+          (cancelled)="showQuickAddProduct = false">
+        </app-product-quick-add>

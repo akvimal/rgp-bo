@@ -1,0 +1,343 @@
+<div class="benefit-management-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <h2>Employee Benefits Management</h2>
+  </div>
+
+  <!-- Tabbed Interface -->
+  <p-tabView [(activeIndex)]="activeTabIndex">
+
+    <!-- ==================== Benefit Masters Tab ==================== -->
+    <p-tabPanel header="Benefit Types" leftIcon="pi pi-list">
+
+      <!-- Filters Section -->
+      <p-card styleClass="mb-3">
+        <div class="filters-section">
+          <div class="filter-group">
+            <label>Category:</label>
+            <p-dropdown
+              [(ngModel)]="masterCategoryFilter"
+              [options]="benefitCategories"
+              placeholder="All Categories"
+              (onChange)="onMasterFilterChange()"
+              [showClear]="true">
+            </p-dropdown>
+          </div>
+
+          <div class="filter-group">
+            <label>Status:</label>
+            <p-dropdown
+              [(ngModel)]="masterActiveFilter"
+              [options]="[
+                { label: 'All', value: null },
+                { label: 'Active', value: true },
+                { label: 'Inactive', value: false }
+              ]"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All"
+              (onChange)="onMasterFilterChange()">
+            </p-dropdown>
+          </div>
+
+          <button pButton
+                  label="Clear Filters"
+                  icon="pi pi-filter-slash"
+                  class="p-button-outlined p-button-secondary"
+                  (click)="clearMasterFilters()">
+          </button>
+
+          <button pButton
+                  label="New Benefit Type"
+                  icon="pi pi-plus"
+                  class="p-button-success"
+                  (click)="openNewMasterForm()"
+                  style="margin-left: auto;">
+          </button>
+        </div>
+      </p-card>
+
+      <!-- Benefit Masters Table -->
+      <p-card>
+        <p-table
+          [value]="benefitMasters"
+          [loading]="isLoading"
+          [paginator]="true"
+          [rows]="10"
+          [showCurrentPageReport]="true"
+          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} benefit types"
+          [rowsPerPageOptions]="[10, 25, 50]"
+          styleClass="p-datatable-striped">
+
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="benefitCode">
+                Code <p-sortIcon field="benefitCode"></p-sortIcon>
+              </th>
+              <th pSortableColumn="benefitName">
+                Name <p-sortIcon field="benefitName"></p-sortIcon>
+              </th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-master>
+            <tr>
+              <td><strong>{{ master.benefitCode }}</strong></td>
+              <td>{{ master.benefitName }}</td>
+              <td>
+                <span class="badge" [ngClass]="getCategoryBadgeClass(master.benefitCategory)">
+                  {{ master.benefitCategory }}
+                </span>
+              </td>
+              <td>{{ master.description || 'N/A' }}</td>
+              <td>
+                <span class="text-success" *ngIf="master.active">
+                  <i class="pi pi-check-circle"></i> Active
+                </span>
+                <span class="text-danger" *ngIf="!master.active">
+                  <i class="pi pi-times-circle"></i> Inactive
+                </span>
+              </td>
+              <td>
+                <button pButton
+                        icon="pi pi-pencil"
+                        class="p-button-rounded p-button-text p-button-info"
+                        pTooltip="Edit"
+                        (click)="editMaster(master)">
+                </button>
+                <button pButton
+                        icon="pi pi-trash"
+                        class="p-button-rounded p-button-text p-button-danger"
+                        pTooltip="Archive"
+                        (click)="archiveMaster(master)"
+                        *ngIf="master.active">
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="6" style="text-align: center;">No benefit types found</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+
+    </p-tabPanel>
+
+    <!-- ==================== Benefit Policies Tab ==================== -->
+    <p-tabPanel header="Benefit Policies" leftIcon="pi pi-file">
+
+      <!-- Filters Section -->
+      <p-card styleClass="mb-3">
+        <div class="filters-section">
+          <div class="filter-group">
+            <label>Benefit Type:</label>
+            <p-dropdown
+              [(ngModel)]="policyBenefitTypeFilter"
+              [options]="benefitMasters"
+              optionLabel="benefitName"
+              optionValue="id"
+              placeholder="All Benefit Types"
+              (onChange)="onPolicyFilterChange()"
+              [showClear]="true"
+              [filter]="true">
+            </p-dropdown>
+          </div>
+
+          <div class="filter-group">
+            <label>Status:</label>
+            <p-dropdown
+              [(ngModel)]="policyActiveFilter"
+              [options]="[
+                { label: 'All', value: null },
+                { label: 'Active', value: true },
+                { label: 'Inactive', value: false }
+              ]"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All"
+              (onChange)="onPolicyFilterChange()">
+            </p-dropdown>
+          </div>
+
+          <button pButton
+                  label="Clear Filters"
+                  icon="pi pi-filter-slash"
+                  class="p-button-outlined p-button-secondary"
+                  (click)="clearPolicyFilters()">
+          </button>
+
+          <button pButton
+                  label="New Benefit Policy"
+                  icon="pi pi-plus"
+                  class="p-button-success"
+                  (click)="openNewPolicyForm()"
+                  style="margin-left: auto;">
+          </button>
+        </div>
+      </p-card>
+
+      <!-- Benefit Policies Table -->
+      <p-card>
+        <p-table
+          [value]="benefitPolicies"
+          [loading]="isLoading"
+          [paginator]="true"
+          [rows]="10"
+          [showCurrentPageReport]="true"
+          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} policies"
+          [rowsPerPageOptions]="[10, 25, 50]"
+          styleClass="p-datatable-striped">
+
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="policyName">
+                Policy Name <p-sortIcon field="policyName"></p-sortIcon>
+              </th>
+              <th>Benefit Type</th>
+              <th>Coverage</th>
+              <th>Cost Sharing</th>
+              <th>Effective Period</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-policy>
+            <tr>
+              <td><strong>{{ policy.policyName }}</strong></td>
+              <td>{{ getBenefitMasterName(policy.benefitId) }}</td>
+              <td>{{ formatCoverage(policy) }}</td>
+              <td>
+                <small>{{ formatCostSharing(policy) }}</small>
+              </td>
+              <td>
+                <small>
+                  {{ policy.effectiveFrom | date: 'yyyy-MM-dd' }} -
+                  {{ policy.effectiveTo ? (policy.effectiveTo | date: 'yyyy-MM-dd') : 'Ongoing' }}
+                </small>
+              </td>
+              <td>
+                <span class="text-success" *ngIf="policy.active">
+                  <i class="pi pi-check-circle"></i> Active
+                </span>
+                <span class="text-danger" *ngIf="!policy.active">
+                  <i class="pi pi-times-circle"></i> Inactive
+                </span>
+                <span class="badge badge-info" *ngIf="policy.familyCoverageAllowed">
+                  <i class="pi pi-users"></i> Family
+                </span>
+              </td>
+              <td>
+                <button pButton
+                        icon="pi pi-calculator"
+                        class="p-button-rounded p-button-text p-button-help"
+                        pTooltip="Coverage Calculator"
+                        (click)="openCoverageCalculator(policy)">
+                </button>
+                <button pButton
+                        icon="pi pi-pencil"
+                        class="p-button-rounded p-button-text p-button-info"
+                        pTooltip="Edit"
+                        (click)="editPolicy(policy)">
+                </button>
+                <button pButton
+                        icon="pi pi-trash"
+                        class="p-button-rounded p-button-text p-button-danger"
+                        pTooltip="Archive"
+                        (click)="archivePolicy(policy)"
+                        *ngIf="policy.active">
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="7" style="text-align: center;">No benefit policies found</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+
+    </p-tabPanel>
+
+  </p-tabView>
+
+</div>
+
+<!-- Benefit Master Form Dialog (Placeholder) -->
+<!-- <app-benefit-master-form
+  *ngIf="showMasterForm"
+  [benefitMaster]="selectedBenefitMaster"
+  (close)="onMasterFormClose($event)">
+</app-benefit-master-form> -->
+
+<!-- Benefit Policy Form Dialog -->
+<app-benefit-policy-form
+  [(visible)]="showPolicyForm"
+  [policy]="selectedBenefitPolicy"
+  [isEditMode]="!!selectedBenefitPolicy"
+  (policySaved)="onPolicyFormClose(true)">
+</app-benefit-policy-form>
+
+<!-- Coverage Calculator Dialog (Placeholder) -->
+<p-dialog
+  header="Coverage Calculator"
+  [(visible)]="showCoverageCalculator"
+  [modal]="true"
+  [style]="{width: '600px'}"
+  (onHide)="onCoverageCalculatorClose()"
+  *ngIf="selectedBenefitPolicy">
+
+  <div class="calculator-content">
+    <p-card>
+      <h5>{{ selectedBenefitPolicy.policyName }}</h5>
+
+      <div class="p-field" *ngIf="selectedBenefitPolicy.coverageAmount">
+        <p><strong>Coverage Amount:</strong> ₹{{ selectedBenefitPolicy.coverageAmount?.toLocaleString() }}</p>
+      </div>
+
+      <div class="p-field" *ngIf="selectedBenefitPolicy.coveragePercentage">
+        <p><strong>Coverage Percentage:</strong> {{ selectedBenefitPolicy.coveragePercentage }}%</p>
+        <label>Base Amount:</label>
+        <input type="number" pInputText placeholder="Enter base amount to calculate">
+      </div>
+
+      <div class="p-field" *ngIf="selectedBenefitPolicy.coverageFormula">
+        <p><strong>Coverage Formula:</strong></p>
+        <pre>{{ selectedBenefitPolicy.coverageFormula | json }}</pre>
+        <small class="p-info">Formula-based calculation requires additional inputs</small>
+      </div>
+
+      <hr>
+
+      <h6>Cost Sharing</h6>
+      <p><strong>Employee Contribution:</strong> {{ selectedBenefitPolicy.employeeContributionPercentage }}%</p>
+      <p><strong>Employer Contribution:</strong> {{ selectedBenefitPolicy.employerContributionPercentage }}%</p>
+
+      <div class="p-field" *ngIf="selectedBenefitPolicy.familyCoverageAllowed">
+        <hr>
+        <h6>Family Coverage</h6>
+        <p><strong>Max Dependents:</strong> {{ selectedBenefitPolicy.maxDependents }}</p>
+        <p><strong>Dependent Coverage Amount:</strong> ₹{{ selectedBenefitPolicy.dependentCoverageAmount?.toLocaleString() || 'N/A' }}</p>
+      </div>
+    </p-card>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton
+            label="Close"
+            icon="pi pi-times"
+            class="p-button-secondary"
+            (click)="onCoverageCalculatorClose()">
+    </button>
+  </ng-template>
+</p-dialog>

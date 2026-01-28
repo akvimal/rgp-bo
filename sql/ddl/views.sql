@@ -96,7 +96,7 @@ AS SELECT p.id,
    FROM product p
      JOIN ( SELECT pii.product_id,
             pii.mrp_cost AS mrp,
-            pii.ptr_cost AS ptr,
+            pii.ptr_value::double precision AS ptr,
             pii.tax_pcnt AS tax
            FROM purchase_invoice_item pii
              JOIN purchase_invoice pi2 ON pi2.id = pii.invoice_id

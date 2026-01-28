@@ -2,7 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 
 import { InvoiceItem } from "./invoice-item.model";
-import { Invoice, VendorPayment, TaxCredit, InvoiceLifecycleSummary } from "./invoice.model";
+import { Invoice, VendorPayment, TaxCredit, InvoiceLifecycleSummary, ItemVerificationStatus } from "./invoice.model";
 import { environment } from "./../../../../environments/environment";
 
 @Injectable({
@@ -115,18 +115,40 @@ export class InvoiceService {
         return this.http.post(`${this.apiurl}/purchases/${invoiceId}/reopen`, {});
     }
 
+    // ========================================
+    // Item Verification Workflow
+    // ========================================
+
     /**
-     * Mark an invoice item as verified
+     * Verify a single invoice item
+     * Updates status to VERIFIED and records verifier/timestamp
      */
     verifyItem(itemId: number) {
-        return this.http.put(`${this.apiurl}/purchaseitems/${itemId}/verify`, {});
+        return this.http.post(`${this.apiurl}/purchaseitems/${itemId}/verify`, {});
     }
 
     /**
-     * Unverify an invoice item
+     * Reject an invoice item with reason
+     * Updates status to REJECTED and stores reason in comments
      */
-    unverifyItem(itemId: number) {
-        return this.http.put(`${this.apiurl}/purchaseitems/${itemId}/unverify`, {});
+    rejectItem(itemId: number, reason: string) {
+        return this.http.post(`${this.apiurl}/purchaseitems/${itemId}/reject`, { reason });
+    }
+
+    /**
+     * Bulk verify all items in an invoice
+     * Verifies all items with status NEW
+     */
+    verifyAllItems(invoiceId: number) {
+        return this.http.post(`${this.apiurl}/purchaseitems/invoice/${invoiceId}/verify-all`, {});
+    }
+
+    /**
+     * Get verification status summary for an invoice
+     * Returns counts of verified/rejected/pending items
+     */
+    getVerificationStatus(invoiceId: number) {
+        return this.http.get<ItemVerificationStatus>(`${this.apiurl}/purchaseitems/invoice/${invoiceId}/verification-status`);
     }
 
     // ========================================

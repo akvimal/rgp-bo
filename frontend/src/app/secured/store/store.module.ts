@@ -29,6 +29,7 @@ import { StockComponent } from "./stock/components/stock.component";
 import { PurchaseIntentComponent } from "./intent/purchase-intent.component";
 import { StockExpiryComponent } from "./stock/components/stock-expiry.component";
 import { StockExpiryItemsComponent } from "./stock/components/stock-expiry-items.component";
+import { NearExpiryDashboardComponent } from "./stock/near-expiry-dashboard.component";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
@@ -41,6 +42,7 @@ const routes: Routes = [
         { path: 'expiry', component: StockExpiryComponent, children: [{
           path: 'expiry/:month', component: StockExpiryItemsComponent
       }]  },
+        { path: 'near-expiry', component: NearExpiryDashboardComponent },
         { path: 'adjust', component: StockAdjustComponent }
       ] },
     { path: 'intent', component: PurchaseIntentComponent},
@@ -59,7 +61,8 @@ const routes: Routes = [
       StockExpiryItemsComponent,
       StockProductItemsComponent,
       StockAdjustFormComponent,
-      PurchaseIntentComponent
+      PurchaseIntentComponent,
+      NearExpiryDashboardComponent
     ],
     imports: [
         RouterModule.forChild(routes),

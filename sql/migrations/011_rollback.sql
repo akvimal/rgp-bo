@@ -1,40 +1,18 @@
--- ============================================================================
--- ROLLBACK: Update HSN Codes Detailed
--- Migration: 011
--- Date: 2026-01-11
--- Description: Rollback detailed HSN code updates
--- ============================================================================
+-- Rollback Migration 011: Product Pricing Enhancements
+-- Created: 2026-01-17
+-- Purpose: Remove pricing enhancement columns from product_price2
 
-BEGIN;
+-- Drop constraints first
+ALTER TABLE product_price2
+DROP CONSTRAINT IF EXISTS check_price_not_below_base,
+DROP CONSTRAINT IF EXISTS check_price_not_above_mrp,
+DROP CONSTRAINT IF EXISTS check_margin_pcnt_valid,
+DROP CONSTRAINT IF EXISTS check_discount_pcnt_valid;
 
--- ============================================================================
--- Rollback HSN Updates
--- ============================================================================
+-- Drop columns
+ALTER TABLE product_price2
+DROP COLUMN IF EXISTS base_price,
+DROP COLUMN IF EXISTS mrp,
+DROP COLUMN IF EXISTS margin_pcnt,
+DROP COLUMN IF EXISTS discount_pcnt;
 
--- This migration updates existing HSN codes with detailed classification
--- Rollback would need to revert those updates
-
--- Since this modifies existing data, rollback is not straightforward
--- You would need to restore from backup or manually correct the data
-
-RAISE NOTICE 'WARNING: Migration 011 modifies existing HSN code data';
-RAISE NOTICE 'WARNING: Full rollback requires database backup restoration';
-RAISE NOTICE 'INFO: This rollback does not modify data by default';
-
--- ============================================================================
--- Verification
--- ============================================================================
-
-SELECT
-    'Migration 011 rollback - No automatic changes' as status,
-    COUNT(*) as total_hsn_codes
-FROM public.hsn_tax_master;
-
-COMMIT;
-
--- ============================================================================
--- END OF ROLLBACK
--- ============================================================================
--- Note: This migration updates existing data
--- Full rollback requires restoring from pre-migration backup
--- ============================================================================

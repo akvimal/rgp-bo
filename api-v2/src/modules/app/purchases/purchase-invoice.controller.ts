@@ -25,11 +25,21 @@ export class PurchaseInvoiceController {
     }
 
     @Get()
-    async findByUnique(@Query() query: any) {
-      if(Object.keys(query).length > 0)
+    @ApiOperation({ summary: 'Get all invoices with optional pagination' })
+    @ApiResponse({ status: 200, description: 'Invoices retrieved successfully' })
+    async findByUnique(
+      @Query() query: any,
+      @Query('page') page?: string,
+      @Query('limit') limit?: string
+    ) {
+      // If specific query parameters provided, find by unique criteria
+      if(Object.keys(query).filter(key => key !== 'page' && key !== 'limit').length > 0)
         return this.purchaseInvoiceService.findByUnique(query);
-      else
-        return this.purchaseInvoiceService.findAll();
+
+      // Otherwise return all with optional pagination
+      const pageNum = page ? parseInt(page) : undefined;
+      const limitNum = limit ? parseInt(limit) : undefined;
+      return this.purchaseInvoiceService.findAll(pageNum, limitNum);
     }
 
     @Post()

@@ -4,6 +4,11 @@
 <nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
   <ul class="nav">
     <li class="nav-item" [routerLinkActive]="['is-active']" *isNavAuth>
+      <a class="nav-link" routerLink="/secure/products/dashboard">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+    </li>
+    <li class="nav-item" [routerLinkActive]="['is-active']" *isNavAuth>
       <a class="nav-link" routerLink="/secure/products/master">Master</a>
     </li>
     <li class="nav-item" [routerLinkActive]="['is-active']" *isNavAuth>

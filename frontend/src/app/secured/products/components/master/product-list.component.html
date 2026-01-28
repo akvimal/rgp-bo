@@ -1,101 +1,480 @@
-    <div class="d-flex justify-content-between mt-2">
-        <div class="row">
-            <div class="col-12 d-flex">
-                <div style="padding-right:.7em;">
-                    <label class="form-label">Active</label>
-                    <br>
-                    <input type="checkbox" style="width:25px;height:25px;margin-top:.4em" [(ngModel)]="criteria.active" (change)="filter()">
+    <div class="d-flex justify-content-between mt-2 mb-3">
+        <div class="d-flex gap-3 flex-wrap align-items-end">
+            <!-- Status Filter - Radio Buttons -->
+            <div>
+                <label class="form-label d-block">Status Filter</label>
+                <div class="btn-group" role="group" aria-label="Status filter">
+                    <input type="radio" class="btn-check" name="statusFilter"
+                           id="statusAll" value="all" [(ngModel)]="statusFilter" (change)="onStatusFilterChange()">
+                    <label class="btn btn-outline-primary btn-sm" for="statusAll">All Products</label>
+
+                    <input type="radio" class="btn-check" name="statusFilter"
+                           id="statusActive" value="active" [(ngModel)]="statusFilter" (change)="onStatusFilterChange()">
+                    <label class="btn btn-outline-success btn-sm" for="statusActive">Active Only</label>
+
+                    <input type="radio" class="btn-check" name="statusFilter"
+                           id="statusInactive" value="inactive" [(ngModel)]="statusFilter" (change)="onStatusFilterChange()">
+                    <label class="btn btn-outline-secondary btn-sm" for="statusInactive">Inactive Only</label>
                 </div>
-                <div style="padding-right:.5em">
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-control" [(ngModel)]="criteria.title" (input)="filter()" placeholder="Product">
-                </div>
+            </div>
+
+            <!-- Quick Search -->
+            <div>
+                <label class="form-label">Quick Search</label>
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="criteria.title"
+                       (input)="filter()"
+                       placeholder="Search by title..."
+                       style="min-width: 200px;">
+            </div>
+
+            <!-- Category Filter -->
+            <div>
+                <label class="form-label">Category</label>
+                <p-dropdown [options]="categories"
+                            [(ngModel)]="selectedCategory"
+                            (onChange)="onCategoryChange(selectedCategory)"
+                            [showClear]="true"
+                            placeholder="All Categories"
+                            styleClass="p-column-filter"
+                            [style]="{'min-width': '180px'}">
+                </p-dropdown>
+            </div>
+
+            <!-- Stock Status Filter -->
+            <div>
+                <label class="form-label">Stock Status</label>
+                <p-dropdown [options]="stockStatuses"
+                            [(ngModel)]="selectedStockStatus"
+                            (onChange)="filterByStockStatus()"
+                            optionLabel="label"
+                            optionValue="value"
+                            [showClear]="true"
+                            placeholder="All"
+                            styleClass="p-column-filter"
+                            [style]="{'min-width': '160px'}">
+                </p-dropdown>
+            </div>
+
+            <!-- Properties Filter -->
+            <div>
                 <app-props-form [entity]="'product'" [validate]="false" [default]="false" (updated)="propsUpdate($event)"></app-props-form>
             </div>
+
+            <!-- Advanced Filters Toggle -->
+            <div>
+                <button class="btn btn-sm btn-outline-info" (click)="toggleAdvancedFilters()">
+                    <i class="bi bi-funnel me-1"></i>
+                    {{showAdvancedFilters ? 'Hide' : 'Show'}} Advanced Filters
+                    <span *ngIf="hasAdvancedFilters()" class="badge bg-info ms-1">Active</span>
+                </button>
+            </div>
         </div>
-        <div>
-            <a *isAuth="'products.add'" [routerLink]="['../new']"><button class="btn btn-primary">Add New</button></a>
+
+        <!-- Add New Button -->
+        <div class="d-flex align-items-end">
+            <a *isAuth="'products.add'" [routerLink]="['../new']">
+                <button class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Add Product
+                </button>
+            </a>
         </div>
     </div>
-    <div class="row">
+
+    <!-- Advanced Filters Panel -->
+    <div *ngIf="showAdvancedFilters" class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title mb-3">
+                <i class="bi bi-funnel me-2"></i>Advanced Filters
+            </h6>
+            <div class="row g-3">
+                <!-- Date Range Filter -->
+                <div class="col-md-4">
+                    <label class="form-label">Last Updated Date Range</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="date" class="form-control form-control-sm"
+                                   [(ngModel)]="dateRangeFrom"
+                                   placeholder="From">
+                        </div>
+                        <div class="col-6">
+                            <input type="date" class="form-control form-control-sm"
+                                   [(ngModel)]="dateRangeTo"
+                                   placeholder="To">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Range Filter -->
+                <div class="col-md-4">
+                    <label class="form-label">Price Range (₹)</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm"
+                                   [(ngModel)]="priceMin"
+                                   placeholder="Min"
+                                   min="0"
+                                   step="0.01">
+                        </div>
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm"
+                                   [(ngModel)]="priceMax"
+                                   placeholder="Max"
+                                   min="0"
+                                   step="0.01">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Margin Range Filter -->
+                <div class="col-md-4">
+                    <label class="form-label">Margin Range (%)</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm"
+                                   [(ngModel)]="marginMin"
+                                   placeholder="Min"
+                                   min="0"
+                                   max="100"
+                                   step="0.1">
+                        </div>
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm"
+                                   [(ngModel)]="marginMax"
+                                   placeholder="Max"
+                                   min="0"
+                                   max="100"
+                                   step="0.1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Filter Actions -->
+            <div class="mt-3 text-end">
+                <button class="btn btn-sm btn-outline-secondary" (click)="clearAdvancedFilters()">
+                    <i class="bi bi-x-circle me-1"></i>Clear Advanced Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Column Visibility Toggles and Bulk Actions -->
+    <div class="mb-3 d-flex gap-2 align-items-center justify-content-between">
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-secondary" (click)="toggleColumns()">
+                <i class="bi bi-layout-three-columns me-1"></i>Customize Columns
+            </button>
+
+            <div *ngIf="showColumnToggles" class="d-flex gap-3 ms-3">
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" [(ngModel)]="columns.code"> Code
+                </label>
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" [(ngModel)]="columns.hsn"> HSN
+                </label>
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" [(ngModel)]="columns.brand"> Brand
+                </label>
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" [(ngModel)]="columns.stock"> Stock
+                </label>
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" [(ngModel)]="columns.price"> Price
+                </label>
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" [(ngModel)]="columns.margin"> Margin
+                </label>
+            </div>
+        </div>
+
+        <!-- Bulk Actions Toolbar -->
+        <div *ngIf="selectedCount > 0" class="d-flex gap-2 align-items-center">
+            <span class="badge bg-primary">{{selectedCount}} selected</span>
+            <button class="btn btn-sm btn-success" (click)="bulkActivate()" title="Activate selected products">
+                <i class="bi bi-check-circle me-1"></i>Activate
+            </button>
+            <button class="btn btn-sm btn-warning" (click)="bulkDeactivate()" title="Deactivate selected products">
+                <i class="bi bi-pause-circle me-1"></i>Deactivate
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" (click)="clearSelection()" title="Clear selection">
+                <i class="bi bi-x-circle me-1"></i>Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Loading products...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && products && products.length === 0" class="text-center py-5">
+        <i class="bi bi-inbox display-1 text-muted"></i>
+        <h5 class="mt-3 text-muted">No products found</h5>
+        <p class="text-muted">
+            <span *ngIf="hasActiveFilters()">Try adjusting your filters or</span>
+            <a [routerLink]="['../new']" class="text-primary">add your first product</a>
+        </p>
+        <button *ngIf="hasActiveFilters()" class="btn btn-outline-secondary btn-sm" (click)="clearFilters()">
+            <i class="bi bi-x-circle me-1"></i>Clear Filters
+        </button>
+    </div>
+
+    <div class="row" *ngIf="!loading">
             <div class="col-12">
-            <p-table [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
+            <p-table [value]="filteredProducts" [resizableColumns]="true" columnResizeMode="expand"
                 [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines p-datatable-sm mt-4"
-                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
                 [rowsPerPageOptions]="[10,25,50]">
-               
+
                 <ng-template pTemplate="header">
                     <tr>
-                        <!-- <th pSortableColumn="id">ID 
-                            <p-sortIcon field="id"></p-sortIcon>
-                        </th>   -->
-                        <th pSortableColumn="category">Category 
-                            <!-- <p-columnFilter type="text" field="category" display="menu"></p-columnFilter> -->
+                        <th style="width: 3rem">
+                            <input type="checkbox" class="form-check-input"
+                                   [(ngModel)]="selectAll"
+                                   (change)="toggleSelectAll()"
+                                   title="Select all">
+                        </th>
+                        <th pSortableColumn="category">Category
                             <p-sortIcon field="category"></p-sortIcon>
                         </th>
-                        <!-- <th pSortableColumn="code">Code 
-                            <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
+                        <th *ngIf="columns.code" pSortableColumn="code">Code
                             <p-sortIcon field="code"></p-sortIcon>
-                        </th>   -->
-                        <!-- <th pSortableColumn="hsn">HSN
-                            <p-columnFilter type="text" field="hsn" display="menu"></p-columnFilter>
+                        </th>
+                        <th *ngIf="columns.hsn" pSortableColumn="hsn">HSN
                             <p-sortIcon field="hsn"></p-sortIcon>
-                        </th> -->
-                        <th pSortableColumn="title">Product 
+                        </th>
+                        <th pSortableColumn="title">Product
                             <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                             <p-sortIcon field="title"></p-sortIcon>
                         </th>
                         <th>Properties</th>
-                        <!-- <th pSortableColumn="pack">Pack 
-                            <p-sortIcon field="pack"></p-sortIcon>
-                        </th> -->
-                        <!-- <th pSortableColumn="brand">Brand 
-                            <p-columnFilter type="text" field="brand" display="menu"></p-columnFilter>
+                        <th *ngIf="columns.brand" pSortableColumn="brand">Brand
                             <p-sortIcon field="brand"></p-sortIcon>
-                        </th> -->
-                        <!-- <th pSortableColumn="mfr">MFR
-                            <p-columnFilter type="text" field="mfr" display="menu"></p-columnFilter>
-                            <p-sortIcon field="mfr"></p-sortIcon>
-                        </th> -->
-                        <th pSortableColumn="updatedon">Latest 
+                        </th>
+                        <th *ngIf="columns.stock" pSortableColumn="currentStock" class="text-center">Stock
+                            <p-sortIcon field="currentStock"></p-sortIcon>
+                        </th>
+                        <th *ngIf="columns.price" pSortableColumn="salePrice" class="text-end">Price
+                            <p-sortIcon field="salePrice"></p-sortIcon>
+                        </th>
+                        <th *ngIf="columns.margin" pSortableColumn="margin" class="text-end">Margin
+                            <p-sortIcon field="margin"></p-sortIcon>
+                        </th>
+                        <th pSortableColumn="updatedon">Latest
                             <p-sortIcon field="updatedon"></p-sortIcon>
-                        </th>  
+                        </th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-product>
-                    <tr>
-                        <!-- <td>{{product.id}}</td> -->
-                        <td>{{product.category}}</td>
-                        <!-- <td>{{product.code}}</td> -->
-                        <!-- <td>{{product.hsn}}</td> -->
+                    <tr [ngClass]="{'table-active': isProductSelected(product.id)}">
                         <td>
-                            <h6>{{product.title}} ({{product.pack}})</h6>
+                            <input type="checkbox" class="form-check-input"
+                                   [checked]="isProductSelected(product.id)"
+                                   (change)="toggleProductSelection(product.id)">
+                        </td>
+                        <td>{{product.category}}</td>
+                        <td *ngIf="columns.code">{{product.code}}</td>
+                        <td *ngIf="columns.hsn">{{product.hsn}}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <h6 class="mb-0 me-2">{{product.title}} ({{product.pack}})</h6>
+                                <span class="badge" [ngClass]="product.isActive ? 'bg-success' : 'bg-secondary'">
+                                    {{product.isActive ? 'Active' : 'Inactive'}}
+                                </span>
+                            </div>
                         </td>
                         <td><app-props-print [props]="product.props"></app-props-print></td>
-                        <!-- <td style="text-align: center;">{{product.pack}}</td> -->
-                        <!-- <td>{{product.brand}}</td> -->
-                        <!-- <td>{{product.mfr}}</td> -->
+                        <td *ngIf="columns.brand">{{product.brand}}</td>
+                        <td *ngIf="columns.stock" class="text-center">
+                            <span [ngClass]="getStockBadgeClass(product)">
+                                {{product.currentStock || 0}} - {{getStockStatusText(product)}}
+                            </span>
+                        </td>
+                        <td *ngIf="columns.price" class="text-end">
+                            <strong>₹{{product.salePrice | number:'1.2-2'}}</strong>
+                            <div class="text-muted small" *ngIf="product.mrp">
+                                MRP: ₹{{product.mrp | number:'1.2-2'}}
+                            </div>
+                        </td>
+                        <td *ngIf="columns.margin" class="text-end">
+                            <span class="badge" [ngClass]="product.margin >= 20 ? 'bg-success' : (product.margin >= 10 ? 'bg-warning text-dark' : 'bg-danger')">
+                                {{product.margin | number:'1.1-1'}}%
+                            </span>
+                        </td>
                         <td>{{product.updatedon | date : 'dd/MM/yy'}}</td>
-                        <td style="text-align: center;">
-                            <h4 class="icon">
-                            <a *ngIf="product.isActive" [routerLink]="['../edit', product.id]">
-                                <i class="bi bi-pencil-square text-primary"></i>
-                            </a>
-                            <a *ngIf="product.isActive" (click)="changeActive(product.id, false)">
-                                <i class="bi bi-sign-stop-fill" style="color:red"></i>
-                            </a>
-                            <a *ngIf="!product.isActive" (click)="changeActive(product.id, true)">
-                                <i class="bi bi-play-fill" style="color:green"></i>
-                            </a>
-                            <a *ngIf="!product.isActive" (click)="archive(product.id)">
-                                <i class="bi bi-trash" style="color:gray"></i>
-                            </a>
-                        </h4>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-info"
+                                        (click)="openQuickView(product)"
+                                        title="Quick view">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+
+                                <button *ngIf="product.isActive"
+                                        class="btn btn-outline-primary"
+                                        [routerLink]="['../edit', product.id]"
+                                        title="Edit product">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+
+                                <button *ngIf="product.isActive"
+                                        class="btn btn-outline-warning"
+                                        (click)="confirmDeactivate(product)"
+                                        title="Deactivate product">
+                                    <i class="bi bi-pause-circle"></i>
+                                </button>
+
+                                <button *ngIf="!product.isActive"
+                                        class="btn btn-outline-success"
+                                        (click)="changeActive(product.id, true)"
+                                        title="Activate product">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+
+                                <button *ngIf="!product.isActive"
+                                        class="btn btn-outline-danger"
+                                        (click)="confirmArchive(product)"
+                                        title="Archive product">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 </ng-template>
             </p-table>
         </div>
     </div>
-    
+
+    <!-- Quick View Dialog -->
+    <p-dialog [(visible)]="showQuickView"
+              [modal]="true"
+              [style]="{width: '600px'}"
+              [draggable]="false"
+              [resizable]="false">
+        <ng-template pTemplate="header">
+            <h5 class="mb-0">Product Details</h5>
+        </ng-template>
+
+        <div *ngIf="quickViewProduct" class="p-3">
+            <!-- Product Header -->
+            <div class="mb-4">
+                <h4 class="mb-2">{{quickViewProduct.title}} ({{quickViewProduct.pack}})</h4>
+                <span class="badge me-2" [ngClass]="quickViewProduct.isActive ? 'bg-success' : 'bg-secondary'">
+                    {{quickViewProduct.isActive ? 'Active' : 'Inactive'}}
+                </span>
+                <span *ngIf="quickViewProduct.currentStock !== undefined"
+                      [ngClass]="getStockBadgeClass(quickViewProduct)">
+                    {{quickViewProduct.currentStock || 0}} - {{getStockStatusText(quickViewProduct)}}
+                </span>
+            </div>
+
+            <!-- Basic Information -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Category:</strong> {{quickViewProduct.category || 'N/A'}}
+                </div>
+                <div class="col-md-6" *ngIf="quickViewProduct.code">
+                    <strong>Code:</strong> {{quickViewProduct.code}}
+                </div>
+            </div>
+
+            <div class="row mb-3" *ngIf="quickViewProduct.hsn || quickViewProduct.brand">
+                <div class="col-md-6" *ngIf="quickViewProduct.hsn">
+                    <strong>HSN:</strong> {{quickViewProduct.hsn}}
+                </div>
+                <div class="col-md-6" *ngIf="quickViewProduct.brand">
+                    <strong>Brand:</strong> {{quickViewProduct.brand}}
+                </div>
+            </div>
+
+            <!-- Pricing Information -->
+            <div class="card mb-3" *ngIf="quickViewProduct.salePrice || quickViewProduct.mrp">
+                <div class="card-header bg-light">
+                    <strong>Pricing Information</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4" *ngIf="quickViewProduct.salePrice">
+                            <small class="text-muted">Sale Price</small>
+                            <div class="h5">₹{{quickViewProduct.salePrice | number:'1.2-2'}}</div>
+                        </div>
+                        <div class="col-md-4" *ngIf="quickViewProduct.mrp">
+                            <small class="text-muted">MRP</small>
+                            <div class="h5">₹{{quickViewProduct.mrp | number:'1.2-2'}}</div>
+                        </div>
+                        <div class="col-md-4" *ngIf="quickViewProduct.margin !== undefined">
+                            <small class="text-muted">Margin</small>
+                            <div>
+                                <span class="badge fs-6" [ngClass]="quickViewProduct.margin >= 20 ? 'bg-success' : (quickViewProduct.margin >= 10 ? 'bg-warning text-dark' : 'bg-danger')">
+                                    {{quickViewProduct.margin | number:'1.1-1'}}%
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-2" *ngIf="quickViewProduct.ptr">
+                        <div class="col-md-4">
+                            <small class="text-muted">PTR</small>
+                            <div>₹{{quickViewProduct.ptr | number:'1.2-2'}}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Information -->
+            <div class="card mb-3" *ngIf="quickViewProduct.currentStock !== undefined">
+                <div class="card-header bg-light">
+                    <strong>Stock Information</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">Current Stock</small>
+                            <div class="h5">{{quickViewProduct.currentStock || 0}} units</div>
+                        </div>
+                        <div class="col-md-6" *ngIf="quickViewProduct.lastSaleDate">
+                            <small class="text-muted">Last Sale</small>
+                            <div>{{quickViewProduct.lastSaleDate | date:'dd/MM/yyyy'}}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Properties -->
+            <div *ngIf="quickViewProduct.props" class="mb-3">
+                <strong>Properties:</strong>
+                <div class="mt-2">
+                    <app-props-print [props]="quickViewProduct.props"></app-props-print>
+                </div>
+            </div>
+
+            <!-- Last Updated -->
+            <div class="text-muted small">
+                <i class="bi bi-clock me-1"></i>Last updated: {{quickViewProduct.updatedon | date:'dd/MM/yyyy HH:mm'}}
+            </div>
+        </div>
+
+        <ng-template pTemplate="footer">
+            <button type="button" class="btn btn-outline-secondary" (click)="closeQuickView()">
+                Close
+            </button>
+            <button *ngIf="quickViewProduct?.isActive"
+                    type="button"
+                    class="btn btn-primary"
+                    [routerLink]="['../edit', quickViewProduct.id]"
+                    (click)="closeQuickView()">
+                <i class="bi bi-pencil me-1"></i>Edit Product
+            </button>
+        </ng-template>
+    </p-dialog>
+
+    <!-- Confirmation Dialog -->
+    <p-confirmDialog></p-confirmDialog>
+
+    <!-- Toast Messages -->
+    <p-toast></p-toast>

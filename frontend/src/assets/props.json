@@ -6,22 +6,26 @@
     "props":[
       {
         "id": "schedule",
-        "label": "Schedule",
+        "label": "Drug Schedule",
         "type": "SINGLE-SELECT",
         "required": true,
         "filter":true,
         "choices": [
           {
-            "label": "H",
+            "label": "H - Schedule H (Prescription Required)",
             "value": "H"
           },
           {
-            "label": "H1",
+            "label": "H1 - Schedule H1 (Restricted Sale)",
             "value": "H1"
           },
           {
-            "label": "X",
+            "label": "X - Schedule X (Narcotic - Special Register)",
             "value": "X"
+          },
+          {
+            "label": "OTC - Over The Counter (No Prescription)",
+            "value": "OTC"
           },
           {
             "label": "Other",

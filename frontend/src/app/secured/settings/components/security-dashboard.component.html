@@ -1,0 +1,219 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">Security Dashboard</h4>
+        <button class="btn btn-sm btn-outline-primary" (click)="refreshDashboard()" [disabled]="loading">
+          <i class="bi bi-arrow-clockwise me-2"></i>
+          Refresh
+        </button>
+      </div>
+
+      <!-- Success/Error Messages -->
+      <div class="alert alert-success alert-dismissible fade show" *ngIf="success">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        {{ success }}
+        <button type="button" class="btn-close" (click)="success = ''"></button>
+      </div>
+
+      <div class="alert alert-danger alert-dismissible fade show" *ngIf="error">
+        <i class="bi bi-exclamation-circle-fill me-2"></i>
+        {{ error }}
+        <button type="button" class="btn-close" (click)="error = ''"></button>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div *ngIf="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading security data...</p>
+      </div>
+
+      <!-- Dashboard Content -->
+      <div *ngIf="!loading">
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="card border-danger">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Expired Passwords</h6>
+                    <h3 class="mb-0 text-danger">{{ expiredPasswords.length }}</h3>
+                  </div>
+                  <i class="bi bi-shield-exclamation text-danger" style="font-size: 2.5rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-warning">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Locked Accounts</h6>
+                    <h3 class="mb-0 text-warning">{{ lockedAccounts.length }}</h3>
+                  </div>
+                  <i class="bi bi-lock-fill text-warning" style="font-size: 2.5rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-info">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Inactive Users</h6>
+                    <h3 class="mb-0 text-info">{{ inactiveUsers.length }}</h3>
+                  </div>
+                  <i class="bi bi-person-slash text-info" style="font-size: 2.5rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expired Passwords Table -->
+        <div class="card mb-4">
+          <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-shield-exclamation me-2"></i>Users with Expired Passwords</h5>
+          </div>
+          <div class="card-body">
+            <div *ngIf="expiredPasswords.length === 0" class="text-center text-muted py-3">
+              No users with expired passwords
+            </div>
+            <table class="table table-hover" *ngIf="expiredPasswords.length > 0">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Password Changed On</th>
+                  <th>Age (Days)</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let user of expiredPasswords">
+                  <td>{{ user.fullName }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ user.passwordChangedOn | date:'short' }}</td>
+                  <td><span class="badge bg-danger">{{ user.passwordAgeDays }} days</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-warning" (click)="forcePasswordChange(user.id, user.email)">
+                      <i class="bi bi-key-fill me-1"></i>
+                      Force Change
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Locked Accounts Table -->
+        <div class="card mb-4">
+          <div class="card-header bg-warning">
+            <h5 class="mb-0"><i class="bi bi-lock-fill me-2"></i>Locked Accounts</h5>
+          </div>
+          <div class="card-body">
+            <div *ngIf="lockedAccounts.length === 0" class="text-center text-muted py-3">
+              No locked accounts
+            </div>
+            <table class="table table-hover" *ngIf="lockedAccounts.length > 0">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Failed Attempts</th>
+                  <th>Locked Until</th>
+                  <th>Time Remaining</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let account of lockedAccounts">
+                  <td>{{ account.fullName }}</td>
+                  <td>{{ account.email }}</td>
+                  <td><span class="badge bg-danger">{{ account.failedLoginAttempts }}</span></td>
+                  <td>{{ account.lockedUntil | date:'short' }}</td>
+                  <td>{{ getMinutesUntilUnlock(account.lockedUntil) }} minutes</td>
+                  <td>
+                    <button class="btn btn-sm btn-success" (click)="unlockAccount(account.id, account.email)">
+                      <i class="bi bi-unlock-fill me-1"></i>
+                      Unlock
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Inactive Users Table -->
+        <div class="card mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-person-slash me-2"></i>Inactive Users (No login in {{ inactivityThresholdDays }} days)</h5>
+          </div>
+          <div class="card-body">
+            <div *ngIf="inactiveUsers.length === 0" class="text-center text-muted py-3">
+              No inactive users
+            </div>
+            <table class="table table-hover" *ngIf="inactiveUsers.length > 0">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Last Login</th>
+                  <th>Days Inactive</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let user of inactiveUsers">
+                  <td>{{ user.fullName }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ user.lastLogin ? (user.lastLogin | date:'short') : 'Never' }}</td>
+                  <td><span class="badge bg-info">{{ user.daysSinceLogin }} days</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Password Policy -->
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-gear-fill me-2"></i>Password Policy</h5>
+          </div>
+          <div class="card-body" *ngIf="passwordPolicy">
+            <div class="row">
+              <div class="col-md-6">
+                <h6 class="text-muted">Complexity Requirements</h6>
+                <ul class="list-unstyled">
+                  <li><i class="bi bi-check-circle-fill text-success me-2"></i>Minimum length: <strong>{{ passwordPolicy.minLength }} characters</strong></li>
+                  <li><i class="bi bi-check-circle-fill text-success me-2"></i>Uppercase letters: <strong>{{ passwordPolicy.requireUppercase ? 'Required' : 'Optional' }}</strong></li>
+                  <li><i class="bi bi-check-circle-fill text-success me-2"></i>Lowercase letters: <strong>{{ passwordPolicy.requireLowercase ? 'Required' : 'Optional' }}</strong></li>
+                  <li><i class="bi bi-check-circle-fill text-success me-2"></i>Numbers: <strong>{{ passwordPolicy.requireNumbers ? 'Required' : 'Optional' }}</strong></li>
+                  <li><i class="bi bi-check-circle-fill text-success me-2"></i>Special characters: <strong>{{ passwordPolicy.requireSpecialChars ? 'Required' : 'Optional' }}</strong></li>
+                  <li class="text-muted small" *ngIf="passwordPolicy.requireSpecialChars">Allowed special characters: {{ passwordPolicy.specialChars }}</li>
+                </ul>
+              </div>
+              <div class="col-md-6">
+                <h6 class="text-muted">Security Settings</h6>
+                <ul class="list-unstyled">
+                  <li><i class="bi bi-clock-fill text-primary me-2"></i>Password expiry: <strong>{{ passwordPolicy.maxPasswordAge }} days</strong></li>
+                  <li><i class="bi bi-arrow-repeat text-primary me-2"></i>Password history: <strong>Last {{ passwordPolicy.passwordHistory }} passwords</strong></li>
+                  <li><i class="bi bi-shield-fill-exclamation text-primary me-2"></i>Max login attempts: <strong>{{ passwordPolicy.maxLoginAttempts }}</strong></li>
+                  <li><i class="bi bi-lock-fill text-primary me-2"></i>Lockout duration: <strong>{{ passwordPolicy.lockoutDuration }} minutes</strong></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

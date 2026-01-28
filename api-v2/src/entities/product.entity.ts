@@ -9,6 +9,7 @@ import { ProductPrice2 } from "./product-price2.entity";
 import { PurchaseInvoiceItem } from "./purchase-invoice-item.entity";
 import { PurchaseRequest } from "./purchase-request.entity";
 import { SaleItem } from "./sale-item.entity";
+import { ProductBatch } from "./product-batch.entity";
   
   @Index("product_pk", ["id"], { unique: true })
   @Index("product_un", ["title"], { unique: true })
@@ -19,7 +20,7 @@ import { SaleItem } from "./sale-item.entity";
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
   
-    @Column("character varying", { name: "title", unique: true, length: 40 })
+    @Column("character varying", { name: "title", unique: true, length: 150 })
     title: string;
     
     @Column("character varying", { name: "product_code", length: 40 })
@@ -73,5 +74,11 @@ import { SaleItem } from "./sale-item.entity";
       (saleItem) => saleItem.product
     )
     saleItems: SaleItem[];
-  
+
+    @OneToMany(
+      () => ProductBatch,
+      (batch) => batch.product
+    )
+    batches: ProductBatch[];
+
 }

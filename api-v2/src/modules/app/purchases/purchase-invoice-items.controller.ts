@@ -45,19 +45,22 @@ export class PurchaseItemController {
       return price + (priceBeforeTax - (price * (1 + tax/100)));
       }
 
+    /**
+     * Create purchase invoice item
+     * Fix for issue #12: Atomic transaction now handled in service layer
+     * All operations (item creation, price update, total recalculation) happen atomically
+     */
     @Post()
     async createItem(@Body() createPurchaseInvoiceItemDto: CreatePurchaseInvoiceItemDto, @User() currentUser: any) {
-        const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);
+        // Calculate sale price from MRP cost and tax
+        const salePrice = this.getSalePrice(createPurchaseInvoiceItemDto.mrpcost, createPurchaseInvoiceItemDto.taxpcnt);
 
-        this.productService.addPrice({productid: item.productid, saleprice: this.getSalePrice(item.mrpcost,item.taxpcnt), reason: 'Purchase'} , currentUser.id);     
-        await this.purchaseInvoiceService.findAllItemsByInvoice(item.invoiceid).then(async (items:any) => {
-          let total = 0;
-          items.forEach(item => {
-            total += item.total && +item.total;
-          })
-          await this.purchaseInvoiceService.update([item.invoiceid],{total:Math.round(total)},currentUser.id)  
-        })
-        return item;
+        // Service now handles all operations in a single transaction
+        return await this.purchaseInvoiceService.createItem(
+            createPurchaseInvoiceItemDto,
+            currentUser.id,
+            salePrice
+        );
     }
 
     @Put()
@@ -73,8 +76,32 @@ export class PurchaseItemController {
           items.forEach(item => {
             total += item.total && +item.total;
           })
-          await this.purchaseInvoiceService.update([input.invoiceid],{total},currentUser.id)  
+          await this.purchaseInvoiceService.update([input.invoiceid],{total},currentUser.id)
         })
       })
+    }
+
+    @Post('/:id/verify')
+    async verifyItem(@Param('id') id: number, @User() currentUser: any) {
+      return this.purchaseInvoiceService.verifyItem(id, currentUser.id);
+    }
+
+    @Post('/:id/reject')
+    async rejectItem(
+      @Param('id') id: number,
+      @Body() input: {reason: string},
+      @User() currentUser: any
+    ) {
+      return this.purchaseInvoiceService.rejectItem(id, input.reason, currentUser.id);
+    }
+
+    @Post('/invoice/:invoiceId/verify-all')
+    async verifyAllItems(@Param('invoiceId') invoiceId: number, @User() currentUser: any) {
+      return this.purchaseInvoiceService.verifyAllItems(invoiceId, currentUser.id);
+    }
+
+    @Get('/invoice/:invoiceId/verification-status')
+    async getVerificationStatus(@Param('invoiceId') invoiceId: number) {
+      return this.purchaseInvoiceService.getItemVerificationStatus(invoiceId);
     }
 }

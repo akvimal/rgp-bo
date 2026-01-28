@@ -21,6 +21,15 @@ export class InvoiceFormComponent {
     currentDate = new Date();
     errorMessage:string = '';
 
+    // Delete Invoice Confirmation
+    showDeleteInvoiceConfirm: boolean = false;
+
+    // Quick Add Vendor (for OCR workflow)
+    showQuickAddVendor:boolean = false;
+    ocrExtractedVendorName:string = '';
+    ocrExtractedVendorGstin:string = '';
+    vendorNotFound:boolean = false;
+
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
         vendorid: new FormControl('',Validators.required),
@@ -121,6 +130,24 @@ export class InvoiceFormComponent {
     }
 
     submit(){
+      console.log('=== SUBMIT CALLED ===');
+      console.log('Form valid?', this.form.valid);
+      console.log('Form value:', this.form.value);
+      console.log('Form errors:', this.form.errors);
+
+      // Check for validation errors
+      if (!this.form.valid) {
+        console.error('Form is invalid. Errors:');
+        Object.keys(this.form.controls).forEach(key => {
+          const control = this.form.controls[key];
+          if (control.invalid) {
+            console.error(`  - ${key}: invalid`, control.errors);
+          }
+        });
+        this.errorMessage = 'Please fill all required fields correctly.';
+        return;
+      }
+
       const obj = {
         invoiceno: this.form.value.invoiceno.toUpperCase(),
         invoicedate: this.form.value.invoicedate,
@@ -130,17 +157,53 @@ export class InvoiceFormComponent {
         // Phase 3 fields
         doctype: this.form.value.doctype
       }
-        
+
+      console.log('Saving invoice with data:', obj);
+
       const id = this.form.value.id;
-      if(id)
-        this.service.save({id, ...obj}).subscribe(data => this.gotoEdit(id));
-      else
-        this.service.save(obj).subscribe((data:any) => {
-          if(data.status === 'ERROR')
-            this.errorMessage = data.message;
-          else
-            this.gotoEdit(data.id);
+      if(id) {
+        console.log('Updating existing invoice:', id);
+        this.service.save({id, ...obj}).subscribe({
+          next: (data) => {
+            console.log('Invoice updated successfully:', data);
+            this.gotoEdit(id);
+          },
+          error: (error) => {
+            console.error('Error updating invoice:', error);
+            this.errorMessage = error.error?.message || 'Failed to update invoice. Please try again.';
+          }
         });
+      } else {
+        console.log('Creating new invoice');
+        this.service.save(obj).subscribe({
+          next: (data:any) => {
+            console.log('Invoice save response:', data);
+            if(data.status === 'ERROR') {
+              console.error('Invoice save returned ERROR:', data.message);
+              this.errorMessage = data.message;
+            } else {
+              console.log('Invoice created successfully with ID:', data.id);
+              console.log('Navigating to items page...');
+              this.gotoEdit(data.id);
+            }
+          },
+          error: (error) => {
+            console.error('Error saving invoice:', error);
+
+            // Handle specific error types
+            const errorMsg = error.error?.message || error.message || 'Failed to save invoice. Please try again.';
+
+            if (errorMsg.toLowerCase().includes('duplicate') && errorMsg.toLowerCase().includes('invoice')) {
+              this.errorMessage = `⚠️ Invoice Number "${this.form.value.invoiceno}" already exists in the system.\n\nPlease check if this invoice was already entered, or modify the invoice number to make it unique.`;
+            } else {
+              this.errorMessage = errorMsg;
+            }
+
+            // Scroll to top to show error message
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        });
+      }
     }
 
     verify(){
@@ -157,7 +220,45 @@ export class InvoiceFormComponent {
       const idsSelected = s?.map(i => {return i.id});
 
       this.service.removeItems(idsSelected).subscribe(data => {
-        this.invoice.items = this.invoice.items?.filter(i => !idsSelected?.includes(i.id) )  
+        this.invoice.items = this.invoice.items?.filter(i => !idsSelected?.includes(i.id) )
+      });
+    }
+
+    /**
+     * Show delete invoice confirmation dialog
+     */
+    confirmDeleteInvoice() {
+      this.showDeleteInvoiceConfirm = true;
+    }
+
+    /**
+     * Cancel invoice deletion
+     */
+    cancelDeleteInvoice() {
+      this.showDeleteInvoiceConfirm = false;
+    }
+
+    /**
+     * Delete the invoice
+     */
+    deleteInvoice() {
+      if (!this.invoice.id) return;
+
+      this.service.remove(this.invoice.id).subscribe({
+        next: (data: any) => {
+          this.showDeleteInvoiceConfirm = false;
+
+          if (data.status && data.status === 'ERROR') {
+            this.errorMessage = `Items sold, unable to delete`;
+          } else {
+            // Navigate back to list after successful deletion
+            this.router.navigate(['/secure/purchases/invoices']);
+          }
+        },
+        error: (error) => {
+          this.showDeleteInvoiceConfirm = false;
+          this.errorMessage = error.error?.message || 'Cannot delete invoice. It may have associated items or payments.';
+        }
       });
     }
 
@@ -178,27 +279,45 @@ export class InvoiceFormComponent {
      * Populate the form with extracted invoice data
      */
     handleExtractedData(extractedData: any) {
-      console.log('Extracted data received:', extractedData);
+      console.log('=== handleExtractedData CALLED ===');
+      console.log('Full extracted data received:', extractedData);
+      console.log('Has extractedData?', !!extractedData);
+      console.log('Has extractedData.invoice?', !!extractedData?.invoice);
+      console.log('Form controls available?', !!this.form);
+      console.log('Form controls:', this.form?.controls);
 
       if (!extractedData || !extractedData.invoice) {
+        console.error('handleExtractedData: Missing required data structure. Expected extractedData.invoice');
+        console.error('Received:', JSON.stringify(extractedData, null, 2));
+        alert('Error: The extracted data is missing invoice information. Please try uploading the document again.');
         return;
       }
 
       const invoiceData = extractedData.invoice;
+      console.log('Invoice data to populate:', invoiceData);
 
       // Populate invoice number (document no)
       if (invoiceData.invoiceNumber) {
         this.form.controls['invoiceno'].setValue(invoiceData.invoiceNumber);
+        console.log('Set invoiceno to:', invoiceData.invoiceNumber);
+      } else {
+        console.log('No invoiceNumber in extracted data');
       }
 
       // Populate invoice date (document date)
       if (invoiceData.invoiceDate) {
         this.form.controls['invoicedate'].setValue(invoiceData.invoiceDate);
+        console.log('Set invoicedate to:', invoiceData.invoiceDate);
+      } else {
+        console.log('No invoiceDate in extracted data');
       }
 
       // Populate GR number if available
       if (invoiceData.grNumber) {
         this.form.controls['grno'].setValue(invoiceData.grNumber);
+        console.log('Set grno to:', invoiceData.grNumber);
+      } else {
+        console.log('No grNumber in extracted data');
       }
 
       // Try to match vendor by name if provided
@@ -215,12 +334,24 @@ export class InvoiceFormComponent {
           this.poService.findAllByCriteria({status:'SUBMITTED', vendorid:matchedVendor.id})
             .subscribe(data => this.orders = data);
           vendorMatched = true;
+          this.vendorNotFound = false;
+          console.log('Vendor matched:', matchedVendor.name);
         }
       }
 
-      // Show appropriate message based on vendor match
+      // Store OCR extracted vendor info for Quick Add
       if (!vendorMatched && invoiceData.vendorName) {
-        alert(`Invoice data extracted successfully!\n\nVendor "${invoiceData.vendorName}" was detected but not found in your vendor list.\n\n⚠️ ACTION REQUIRED:\n1. Select the vendor from the dropdown below\n2. Or add "${invoiceData.vendorName}" as a new vendor first\n3. Then save the invoice\n\nExtracted data:\n- Invoice No: ${invoiceData.invoiceNumber || 'N/A'}\n- Date: ${invoiceData.invoiceDate || 'N/A'}\n- Amount: ${invoiceData.totalAmount || 'N/A'}`);
+        this.ocrExtractedVendorName = invoiceData.vendorName;
+        this.ocrExtractedVendorGstin = invoiceData.vendorGstin || '';
+        this.vendorNotFound = true;
+        console.log('Vendor NOT found. Quick Add will be available:', {
+          name: this.ocrExtractedVendorName,
+          gstin: this.ocrExtractedVendorGstin
+        });
+
+        alert(`Invoice data extracted successfully!\n\nVendor "${invoiceData.vendorName}" was not found in your vendor list.\n\n✅ Use the "Quick Add Vendor" button below to add this vendor quickly.\n\nExtracted data:\n- Invoice No: ${invoiceData.invoiceNumber || 'N/A'}\n- Date: ${invoiceData.invoiceDate || 'N/A'}\n- Vendor: ${invoiceData.vendorName}\n- GSTIN: ${invoiceData.vendorGstin || 'Not provided'}`);
+      } else if (vendorMatched) {
+        alert('Invoice data has been populated from the uploaded document.\n\n✅ Vendor matched and auto-selected.\n\nPlease review all fields and click "Save Invoice" to continue.');
       } else {
         alert('Invoice data has been populated from the uploaded document. Please review and complete any missing fields.');
       }
@@ -233,5 +364,46 @@ export class InvoiceFormComponent {
         // Store in session storage to retrieve after invoice creation
         sessionStorage.setItem('pendingInvoiceItems', JSON.stringify(extractedData.items));
       }
+    }
+
+    /**
+     * Open Quick Add Vendor dialog
+     */
+    openQuickAddVendor() {
+      console.log('Opening Quick Add Vendor dialog');
+      this.showQuickAddVendor = true;
+    }
+
+    /**
+     * Handle vendor created from Quick Add dialog
+     */
+    onVendorCreated(vendor: any) {
+      console.log('Vendor created successfully:', vendor);
+
+      // Add new vendor to the vendors list
+      this.vendors.push(vendor);
+
+      // Auto-select the newly created vendor
+      this.form.controls['vendorid'].setValue(vendor.id);
+
+      // Load purchase orders for this vendor
+      this.poService.findAllByCriteria({status:'SUBMITTED', vendorid:vendor.id})
+        .subscribe(data => this.orders = data);
+
+      // Clear vendor not found state
+      this.vendorNotFound = false;
+      this.ocrExtractedVendorName = '';
+      this.ocrExtractedVendorGstin = '';
+
+      // Show success message
+      alert(`✅ Vendor "${vendor.name}" has been created successfully!\n\nThe vendor is now selected in the invoice form.\n\nYou can now click "Save Invoice" to continue.`);
+    }
+
+    /**
+     * Handle Quick Add dialog cancelled
+     */
+    onQuickAddCancelled() {
+      console.log('Quick Add Vendor cancelled');
+      // User can still manually select a vendor from dropdown
     }
 }

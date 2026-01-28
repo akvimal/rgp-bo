@@ -1,0 +1,448 @@
+<p-dialog
+  header="Claim Review & Processing"
+  [(visible)]="visible"
+  [modal]="true"
+  [style]="{width: '1000px', maxHeight: '90vh'}"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="claim-review-dialog"
+  (onHide)="closeDialog()"
+  *ngIf="claim">
+
+  <!-- Claim Header Info -->
+  <div class="claim-header">
+    <div class="claim-header-left">
+      <h4>{{ claim.claimNumber }}</h4>
+      <span class="badge" [ngClass]="getStatusBadgeClass(claim.status)">
+        {{ claim.status }}
+      </span>
+    </div>
+    <div class="claim-header-right">
+      <div class="header-info-item">
+        <label>User:</label>
+        <span>User #{{ claim.userId }}</span>
+      </div>
+      <div class="header-info-item">
+        <label>Claim Date:</label>
+        <span>{{ formatDate(claim.claimDate) }}</span>
+      </div>
+      <div class="header-info-item">
+        <label>Claim Type:</label>
+        <span>{{ claim.claimType }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Amount Breakdown Card -->
+  <p-card styleClass="amount-breakdown-card mb-3">
+    <div class="amount-breakdown">
+      <div class="amount-item claimed">
+        <div class="amount-label">Claimed</div>
+        <div class="amount-value">{{ formatCurrency(amountBreakdown.claimed) }}</div>
+      </div>
+      <div class="amount-separator">
+        <i class="pi pi-arrow-right"></i>
+      </div>
+      <div class="amount-item approved">
+        <div class="amount-label">Approved</div>
+        <div class="amount-value">{{ formatCurrency(amountBreakdown.approved) }}</div>
+      </div>
+      <div class="amount-separator">
+        <i class="pi pi-plus"></i>
+      </div>
+      <div class="amount-item rejected">
+        <div class="amount-label">Rejected</div>
+        <div class="amount-value">{{ formatCurrency(amountBreakdown.rejected) }}</div>
+      </div>
+      <div class="amount-separator">
+        <i class="pi pi-arrow-right"></i>
+      </div>
+      <div class="amount-item paid">
+        <div class="amount-label">Paid</div>
+        <div class="amount-value">{{ formatCurrency(amountBreakdown.paid) }}</div>
+      </div>
+    </div>
+    <div class="pending-amount" *ngIf="amountBreakdown.pending > 0">
+      <strong>Pending Amount:</strong> {{ formatCurrency(amountBreakdown.pending) }}
+    </div>
+  </p-card>
+
+  <!-- Tabbed Content -->
+  <p-tabView [(activeIndex)]="activeTabIndex">
+
+    <!-- Tab 1: Details -->
+    <p-tabPanel header="Details" leftIcon="pi pi-info-circle">
+      <div class="details-section">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Enrollment ID:</label>
+            <span>{{ claim.enrollmentId }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Benefit Policy ID:</label>
+            <span>{{ claim.benefitPolicyId }}</span>
+          </div>
+          <div class="detail-item" *ngIf="claim.incidentDate">
+            <label>Incident Date:</label>
+            <span>{{ formatDate(claim.incidentDate) }}</span>
+          </div>
+          <div class="detail-item full-width">
+            <label>Description:</label>
+            <p class="description-text">{{ claim.description }}</p>
+          </div>
+        </div>
+
+        <!-- Reviewer Information -->
+        <div class="reviewer-section" *ngIf="claim.reviewedBy">
+          <h5><i class="pi pi-eye"></i> Review Information</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Reviewed By:</label>
+              <span>Reviewer #{{ claim.reviewedBy }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Reviewed On:</label>
+              <span>{{ formatDate(claim.reviewedOn) }}</span>
+            </div>
+            <div class="detail-item full-width" *ngIf="claim.reviewerRemarks">
+              <label>Reviewer Remarks:</label>
+              <p class="remarks-text">{{ claim.reviewerRemarks }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Approval/Rejection Information -->
+        <div class="approval-section" *ngIf="claim.status === claimStatus.APPROVED || claim.status === claimStatus.PAID">
+          <h5><i class="pi pi-check-circle"></i> Approval Information</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Approved By:</label>
+              <span>Approver #{{ claim.approvedBy }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Approved On:</label>
+              <span>{{ formatDate(claim.approvedOn) }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Approved Amount:</label>
+              <strong class="text-success">{{ formatCurrency(claim.approvedAmount) }}</strong>
+            </div>
+            <div class="detail-item full-width" *ngIf="claim.approvalRemarks">
+              <label>Approval Remarks:</label>
+              <p class="remarks-text">{{ claim.approvalRemarks }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rejection-section" *ngIf="claim.status === claimStatus.REJECTED">
+          <h5><i class="pi pi-times-circle"></i> Rejection Information</h5>
+          <div class="detail-grid">
+            <div class="detail-item full-width">
+              <label>Rejection Reason:</label>
+              <p class="remarks-text rejection-reason">{{ claim.rejectionReason }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        <div class="payment-section" *ngIf="claim.status === claimStatus.PAID">
+          <h5><i class="pi pi-money-bill"></i> Payment Information</h5>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Payment Mode:</label>
+              <span>{{ claim.paymentMode }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Payment Reference:</label>
+              <span>{{ claim.paymentReference || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Payment Date:</label>
+              <span>{{ formatDate(claim.paymentDate) }}</span>
+            </div>
+            <div class="detail-item">
+              <label>Paid Amount:</label>
+              <strong class="text-info">{{ formatCurrency(claim.paidAmount) }}</strong>
+            </div>
+            <div class="detail-item" *ngIf="claim.payrollRunId">
+              <label>Payroll Run ID:</label>
+              <span>{{ claim.payrollRunId }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </p-tabPanel>
+
+    <!-- Tab 2: Documents -->
+    <p-tabPanel header="Documents" leftIcon="pi pi-file">
+      <div class="documents-section">
+        <div class="documents-grid" *ngIf="documents.length > 0">
+          <div class="document-card" *ngFor="let doc of documents">
+            <div class="document-icon">
+              <i class="pi" [ngClass]="{
+                'pi-image': doc.type === 'image',
+                'pi-file-pdf': doc.type === 'pdf',
+                'pi-file': doc.type === 'file'
+              }"></i>
+            </div>
+            <div class="document-info">
+              <div class="document-name">{{ doc.name }}</div>
+              <a [href]="doc.url" target="_blank" class="document-link">
+                <i class="pi pi-external-link"></i> View
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="empty-documents" *ngIf="documents.length === 0">
+          <i class="pi pi-inbox" style="font-size: 3rem; color: #999;"></i>
+          <p>No documents attached to this claim</p>
+        </div>
+      </div>
+    </p-tabPanel>
+
+    <!-- Tab 3: Timeline -->
+    <p-tabPanel header="Timeline" leftIcon="pi pi-clock">
+      <div class="timeline-section">
+        <p-timeline [value]="timeline" align="alternate" styleClass="custom-timeline">
+          <ng-template pTemplate="marker" let-event>
+            <div class="timeline-marker" [style.background-color]="event.color">
+              <i class="pi" [ngClass]="event.icon"></i>
+            </div>
+          </ng-template>
+          <ng-template pTemplate="content" let-event>
+            <p-card [header]="event.status">
+              <div class="timeline-content">
+                <div class="timeline-date" *ngIf="event.date">
+                  <i class="pi pi-calendar"></i>
+                  {{ formatDate(event.date) }}
+                </div>
+                <div class="timeline-user" *ngIf="event.user">
+                  <i class="pi pi-user"></i>
+                  {{ event.user }}
+                </div>
+                <div class="timeline-remarks" *ngIf="event.remarks">
+                  <p>{{ event.remarks }}</p>
+                </div>
+              </div>
+            </p-card>
+          </ng-template>
+        </p-timeline>
+      </div>
+    </p-tabPanel>
+
+    <!-- Tab 4: Actions -->
+    <p-tabPanel header="Actions" leftIcon="pi pi-cog">
+      <div class="actions-section">
+
+        <!-- Start Review (SUBMITTED -> UNDER_REVIEW) -->
+        <p-card *ngIf="canStartReview()" styleClass="action-card mb-3">
+          <ng-template pTemplate="header">
+            <h5><i class="pi pi-eye"></i> Start Review</h5>
+          </ng-template>
+          <form [formGroup]="reviewForm">
+            <div class="form-grid">
+              <div class="form-field half-width">
+                <label for="approvedAmount">Approved Amount (₹)</label>
+                <input
+                  type="number"
+                  id="approvedAmount"
+                  pInputText
+                  formControlName="approvedAmount"
+                  placeholder="0"
+                  [style]="{'width': '100%'}">
+              </div>
+              <div class="form-field half-width">
+                <label for="rejectedAmount">Rejected Amount (₹)</label>
+                <input
+                  type="number"
+                  id="rejectedAmount"
+                  pInputText
+                  formControlName="rejectedAmount"
+                  placeholder="0"
+                  [style]="{'width': '100%'}">
+              </div>
+              <div class="form-field full-width">
+                <label for="reviewerRemarks">Reviewer Remarks</label>
+                <textarea
+                  id="reviewerRemarks"
+                  pInputTextarea
+                  formControlName="reviewerRemarks"
+                  rows="3"
+                  placeholder="Add your review comments..."
+                  [style]="{'width': '100%'}">
+                </textarea>
+              </div>
+            </div>
+          </form>
+          <ng-template pTemplate="footer">
+            <button
+              pButton
+              label="Move to Review"
+              icon="pi pi-arrow-right"
+              class="p-button-warning"
+              (click)="startReview()"
+              [disabled]="isProcessing">
+            </button>
+          </ng-template>
+        </p-card>
+
+        <!-- Approve Claim (UNDER_REVIEW -> APPROVED) -->
+        <p-card *ngIf="canApprove()" styleClass="action-card mb-3">
+          <ng-template pTemplate="header">
+            <h5><i class="pi pi-check-circle"></i> Approve Claim</h5>
+          </ng-template>
+          <form [formGroup]="approveForm">
+            <div class="form-grid">
+              <div class="form-field half-width">
+                <label for="approveAmount">Approved Amount (₹) <span class="required">*</span></label>
+                <input
+                  type="number"
+                  id="approveAmount"
+                  pInputText
+                  formControlName="approvedAmount"
+                  placeholder="0"
+                  [style]="{'width': '100%'}">
+              </div>
+              <div class="form-field full-width">
+                <label for="approvalRemarks">Approval Remarks</label>
+                <textarea
+                  id="approvalRemarks"
+                  pInputTextarea
+                  formControlName="approvalRemarks"
+                  rows="3"
+                  placeholder="Add approval comments..."
+                  [style]="{'width': '100%'}">
+                </textarea>
+              </div>
+            </div>
+          </form>
+          <ng-template pTemplate="footer">
+            <button
+              pButton
+              label="Approve Claim"
+              icon="pi pi-check"
+              class="p-button-success"
+              (click)="approveClaim()"
+              [disabled]="isProcessing">
+            </button>
+          </ng-template>
+        </p-card>
+
+        <!-- Reject Claim -->
+        <p-card *ngIf="canReject()" styleClass="action-card mb-3">
+          <ng-template pTemplate="header">
+            <h5><i class="pi pi-times-circle"></i> Reject Claim</h5>
+          </ng-template>
+          <form [formGroup]="rejectForm">
+            <div class="form-grid">
+              <div class="form-field full-width">
+                <label for="rejectionReason">Rejection Reason <span class="required">*</span></label>
+                <textarea
+                  id="rejectionReason"
+                  pInputTextarea
+                  formControlName="rejectionReason"
+                  rows="3"
+                  placeholder="Explain why this claim is being rejected..."
+                  [style]="{'width': '100%'}">
+                </textarea>
+              </div>
+            </div>
+          </form>
+          <ng-template pTemplate="footer">
+            <button
+              pButton
+              label="Reject Claim"
+              icon="pi pi-times"
+              class="p-button-danger"
+              (click)="rejectClaim()"
+              [disabled]="isProcessing">
+            </button>
+          </ng-template>
+        </p-card>
+
+        <!-- Mark as Paid (APPROVED -> PAID) -->
+        <p-card *ngIf="canMarkAsPaid()" styleClass="action-card">
+          <ng-template pTemplate="header">
+            <h5><i class="pi pi-money-bill"></i> Mark as Paid</h5>
+          </ng-template>
+          <form [formGroup]="paymentForm">
+            <div class="form-grid">
+              <div class="form-field half-width">
+                <label for="paymentMode">Payment Mode <span class="required">*</span></label>
+                <p-dropdown
+                  id="paymentMode"
+                  formControlName="paymentMode"
+                  [options]="paymentModes"
+                  placeholder="Select payment mode"
+                  [style]="{'width': '100%'}">
+                </p-dropdown>
+              </div>
+              <div class="form-field half-width">
+                <label for="paymentReference">Payment Reference</label>
+                <input
+                  type="text"
+                  id="paymentReference"
+                  pInputText
+                  formControlName="paymentReference"
+                  placeholder="e.g., TXN123456"
+                  [style]="{'width': '100%'}">
+              </div>
+              <div class="form-field half-width">
+                <label for="paymentDate">Payment Date <span class="required">*</span></label>
+                <p-calendar
+                  inputId="paymentDate"
+                  formControlName="paymentDate"
+                  dateFormat="yy-mm-dd"
+                  [showIcon]="true"
+                  [style]="{'width': '100%'}">
+                </p-calendar>
+              </div>
+              <div class="form-field half-width">
+                <label for="payrollRunId">Payroll Run ID</label>
+                <input
+                  type="number"
+                  id="payrollRunId"
+                  pInputText
+                  formControlName="payrollRunId"
+                  placeholder="Optional"
+                  [style]="{'width': '100%'}">
+              </div>
+            </div>
+          </form>
+          <ng-template pTemplate="footer">
+            <button
+              pButton
+              label="Mark as Paid"
+              icon="pi pi-check"
+              class="p-button-info"
+              (click)="markAsPaid()"
+              [disabled]="isProcessing">
+            </button>
+          </ng-template>
+        </p-card>
+
+        <!-- No actions available -->
+        <div class="no-actions" *ngIf="!canStartReview() && !canApprove() && !canReject() && !canMarkAsPaid()">
+          <i class="pi pi-info-circle" style="font-size: 2rem; color: #999;"></i>
+          <p>No actions available for this claim in its current status.</p>
+          <p *ngIf="claim.status === claimStatus.PAID">This claim has been fully processed and paid.</p>
+          <p *ngIf="claim.status === claimStatus.REJECTED">This claim has been rejected.</p>
+        </div>
+
+      </div>
+    </p-tabPanel>
+
+  </p-tabView>
+
+  <ng-template pTemplate="footer">
+    <button
+      pButton
+      label="Close"
+      icon="pi pi-times"
+      class="p-button-secondary"
+      (click)="closeDialog()"
+      [disabled]="isProcessing">
+    </button>
+  </ng-template>
+
+</p-dialog>

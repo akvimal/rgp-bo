@@ -47,6 +47,21 @@ export class AppUser extends BaseEntity {
   @Column({ name: "last_login", type: 'timestamp', nullable: true, default: null })
   public lastlogin: Date | null;
 
+  @Column({ name: "password_changed_on", type: 'timestamp with time zone', default: () => 'CURRENT_TIMESTAMP' })
+  public passwordChangedOn: Date;
+
+  @Column({ name: "password_history", type: 'jsonb', default: '[]' })
+  public passwordHistory: string[];
+
+  @Column({ name: "failed_login_attempts", type: 'integer', default: 0 })
+  public failedLoginAttempts: number;
+
+  @Column({ name: "locked_until", type: 'timestamp with time zone', nullable: true })
+  public lockedUntil: Date | null;
+
+  @Column({ name: "last_login_attempt", type: 'timestamp with time zone', nullable: true })
+  public lastLoginAttempt: Date | null;
+
   @ManyToOne(() => AppRole, (appRole) => appRole.appUsers)
   @JoinColumn([{ name: "role_id", referencedColumnName: "id" }])
   role: AppRole;

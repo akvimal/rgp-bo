@@ -1,0 +1,281 @@
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">Near-Expiry Products Dashboard</h2>
+      <p class="text-muted mb-0">Monitor products approaching expiry dates to minimize losses</p>
+    </div>
+    <div>
+      <button class="btn btn-outline-primary me-2" (click)="refresh()" [disabled]="loading">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+      <button class="btn btn-success" (click)="exportToExcel()" [disabled]="loading || currentBatches.length === 0">
+        <i class="bi bi-file-earmark-excel"></i> Export to Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-3 text-muted">Loading near-expiry data...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="alert alert-danger" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    {{ error }}
+    <button class="btn btn-sm btn-outline-danger ms-3" (click)="refresh()">Retry</button>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!loading && !error">
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card border-danger">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="text-muted mb-1">30 Days (CRITICAL)</h6>
+                <h3 class="mb-0 text-danger">{{ count30 }}</h3>
+                <small class="text-muted">products expiring soon</small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-danger fs-6">URGENT</span>
+                <div class="mt-2">
+                  <small class="text-muted d-block">Value at Risk</small>
+                  <strong class="text-danger">₹{{ totalValueAtRisk30 | number:'1.2-2' }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card border-warning">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="text-muted mb-1">60 Days (WARNING)</h6>
+                <h3 class="mb-0 text-warning">{{ count60 }}</h3>
+                <small class="text-muted">products expiring soon</small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-warning fs-6">MEDIUM</span>
+                <div class="mt-2">
+                  <small class="text-muted d-block">Value at Risk</small>
+                  <strong class="text-warning">₹{{ totalValueAtRisk60 | number:'1.2-2' }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card border-info">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="text-muted mb-1">90 Days (CAUTION)</h6>
+                <h3 class="mb-0 text-info">{{ count90 }}</h3>
+                <small class="text-muted">products expiring soon</small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-info fs-6">LOW</span>
+                <div class="mt-2">
+                  <small class="text-muted d-block">Value at Risk</small>
+                  <strong class="text-info">₹{{ totalValueAtRisk90 | number:'1.2-2' }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Threshold Tabs -->
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item" *ngFor="let threshold of thresholds">
+        <a
+          class="nav-link"
+          [class.active]="selectedThreshold === threshold.value"
+          [class.text-danger]="threshold.value === 30"
+          [class.text-warning]="threshold.value === 60"
+          [class.text-info]="threshold.value === 90"
+          (click)="selectThreshold(threshold.value)"
+          style="cursor: pointer;">
+          <strong>{{ threshold.label }}</strong>
+          <span class="badge ms-2"
+                [class.bg-danger]="threshold.value === 30"
+                [class.bg-warning]="threshold.value === 60"
+                [class.bg-info]="threshold.value === 90">
+            {{
+              threshold.value === 30 ? count30 :
+              threshold.value === 60 ? count60 :
+              count90
+            }}
+          </span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- Search and Sort Controls -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Search by product name or batch number..."
+                [(ngModel)]="searchTerm">
+              <button class="btn btn-outline-secondary" *ngIf="searchTerm" (click)="searchTerm = ''">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center justify-content-end">
+              <label class="me-2">Sort by:</label>
+              <div class="btn-group" role="group">
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  [class.btn-primary]="sortField === 'days_to_expiry'"
+                  [class.btn-outline-primary]="sortField !== 'days_to_expiry'"
+                  (click)="sortBy('days_to_expiry')">
+                  Days to Expiry
+                  <i class="bi ms-1"
+                     [class.bi-arrow-up]="sortField === 'days_to_expiry' && sortDirection === 'asc'"
+                     [class.bi-arrow-down]="sortField === 'days_to_expiry' && sortDirection === 'desc'"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  [class.btn-primary]="sortField === 'quantity_remaining'"
+                  [class.btn-outline-primary]="sortField !== 'quantity_remaining'"
+                  (click)="sortBy('quantity_remaining')">
+                  Quantity
+                  <i class="bi ms-1"
+                     [class.bi-arrow-up]="sortField === 'quantity_remaining' && sortDirection === 'asc'"
+                     [class.bi-arrow-down]="sortField === 'quantity_remaining' && sortDirection === 'desc'"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  [class.btn-primary]="sortField === 'value_at_risk'"
+                  [class.btn-outline-primary]="sortField !== 'value_at_risk'"
+                  (click)="sortBy('value_at_risk')">
+                  Value
+                  <i class="bi ms-1"
+                     [class.bi-arrow-up]="sortField === 'value_at_risk' && sortDirection === 'asc'"
+                     [class.bi-arrow-down]="sortField === 'value_at_risk' && sortDirection === 'desc'"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <span [class]="'text-' + currentTab?.color">{{ currentTab?.label }}</span> -
+          {{ currentTab?.severity }} Priority
+          <small class="text-muted ms-2">({{ currentCount }} items, ₹{{ currentValueAtRisk | number:'1.2-2' }} at risk)</small>
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        <!-- Empty State -->
+        <div *ngIf="currentBatches.length === 0" class="text-center py-5">
+          <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+          <h4 class="mt-3">No Products Found</h4>
+          <p class="text-muted">
+            <span *ngIf="searchTerm">No results match your search "{{ searchTerm }}"</span>
+            <span *ngIf="!searchTerm">All products in this category are safe from expiry</span>
+          </p>
+        </div>
+
+        <!-- Table -->
+        <div *ngIf="currentBatches.length > 0" class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Priority</th>
+                <th>Product</th>
+                <th>Batch Number</th>
+                <th>Expiry Date</th>
+                <th class="text-center">Days Remaining</th>
+                <th class="text-end">Quantity</th>
+                <th class="text-end">Value at Risk</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let batch of currentBatches; let i = index"
+                  [class.table-danger]="batch.days_to_expiry <= 10"
+                  [class.table-warning]="batch.days_to_expiry > 10 && batch.days_to_expiry <= 30">
+                <td>
+                  <span [class]="getPriorityBadge(batch)">
+                    {{ getPriorityText(batch) }}
+                  </span>
+                </td>
+                <td>
+                  <strong>{{ batch.title }}</strong>
+                </td>
+                <td>
+                  <code>{{ batch.batch_number }}</code>
+                </td>
+                <td>
+                  <span [class]="getSeverityClass(batch)">
+                    {{ batch.expiry_date | date:'mediumDate' }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <span [class]="getSeverityClass(batch)" class="fw-bold">
+                    {{ batch.days_to_expiry }}
+                  </span>
+                  <small class="text-muted d-block">days</small>
+                </td>
+                <td class="text-end">
+                  <strong>{{ batch.quantity_remaining }}</strong>
+                  <small class="text-muted d-block">units</small>
+                </td>
+                <td class="text-end">
+                  <strong>₹{{ batch.value_at_risk | number:'1.2-2' }}</strong>
+                </td>
+                <td class="text-center">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button
+                      class="btn btn-outline-warning"
+                      (click)="markForDiscount(batch)"
+                      title="Apply discount">
+                      <i class="bi bi-tag"></i> Discount
+                    </button>
+                    <button
+                      class="btn btn-outline-info"
+                      (click)="returnToVendor(batch)"
+                      title="Return to vendor">
+                      <i class="bi bi-box-arrow-left"></i> Return
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

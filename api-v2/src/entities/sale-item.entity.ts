@@ -31,9 +31,12 @@ export class SaleItem extends BaseEntity {
 
   @Column("character varying", { name: "batch", nullable: true })
   batch: string | null;
-  
+
   @Column("date", { name: "exp_date", nullable: true })
   expdate: string | null;
+
+  @Column("json", { name: "batch_allocations", nullable: true })
+  batchAllocations: any;
 
   @Column("double precision", { name: "price", precision: 53 })
   price: number;
@@ -50,6 +53,15 @@ export class SaleItem extends BaseEntity {
 
   @Column("character varying", { name: "status", nullable: true })
   status: string | null;
+
+  @Column("character varying", { name: "pay_mode", nullable: true })
+  paymode: string | null;
+
+  @Column("character varying", { name: "reason", nullable: true })
+  reason: string | null;
+
+  @Column("text", { name: "comments", nullable: true })
+  comments: string | null;
 
   @ManyToOne(
     () => PurchaseInvoiceItem,

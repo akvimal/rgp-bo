@@ -1,0 +1,311 @@
+<div class="enrollment-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <h2>Enroll in Benefits</h2>
+    <p class="subtitle">Browse available benefits and enroll</p>
+  </div>
+
+  <!-- Available Benefits Grid -->
+  <div class="benefits-grid" *ngIf="availableBenefits.length > 0">
+    <div *ngFor="let benefit of availableBenefits" class="benefit-card">
+      <div class="benefit-header">
+        <h4>{{ benefit.policyName || 'Benefit Policy #' + benefit.id }}</h4>
+        <span class="badge badge-success" *ngIf="benefit.active">Active</span>
+      </div>
+
+      <div class="benefit-body">
+        <div class="benefit-info">
+          <div class="info-item">
+            <label>Coverage:</label>
+            <span class="value-primary">{{ calculateCoverage(benefit) }}</span>
+          </div>
+          <div class="info-item">
+            <label>Your Contribution:</label>
+            <span class="value-secondary">{{ formatCurrency(benefit.employeeContributionAmount) }}/month</span>
+          </div>
+          <div class="info-item" *ngIf="benefit.employerContributionAmount">
+            <label>Employer Contribution:</label>
+            <span>{{ formatCurrency(benefit.employerContributionAmount) }}/month</span>
+          </div>
+        </div>
+
+        <div class="benefit-features" *ngIf="benefit.familyCoverageAllowed">
+          <span class="feature-badge">
+            <i class="pi pi-users"></i> Family Coverage Available
+          </span>
+          <span class="feature-badge" *ngIf="benefit.maxDependents">
+            Max {{ benefit.maxDependents }} dependents
+          </span>
+        </div>
+
+        <div class="benefit-description" *ngIf="benefit.description">
+          <p>{{ benefit.description }}</p>
+        </div>
+      </div>
+
+      <div class="benefit-footer">
+        <button pButton
+                label="Enroll Now"
+                icon="pi pi-plus"
+                class="p-button-success"
+                (click)="enrollInBenefit(benefit)">
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <p-card *ngIf="availableBenefits.length === 0">
+    <div class="empty-state">
+      <i class="pi pi-inbox"></i>
+      <h3>No Available Benefits</h3>
+      <p>There are no benefits available for enrollment at this time.</p>
+    </div>
+  </p-card>
+</div>
+
+<!-- Enrollment Form Dialog -->
+<p-dialog
+  [(visible)]="showEnrollmentForm"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!isSubmitting"
+  [style]="{width: '800px'}"
+  styleClass="enrollment-form-dialog">
+
+  <ng-template pTemplate="header">
+    <h3>Enroll in Benefit</h3>
+  </ng-template>
+
+  <form [formGroup]="enrollmentForm" *ngIf="selectedBenefit">
+    <!-- Benefit Summary -->
+    <p-card styleClass="benefit-summary-card mb-3">
+      <div class="summary-header">
+        <h4>{{ selectedBenefit.policyName || 'Benefit Policy' }}</h4>
+      </div>
+      <div class="summary-body">
+        <div class="summary-item">
+          <label>Coverage:</label>
+          <span>{{ calculateCoverage(selectedBenefit) }}</span>
+        </div>
+        <div class="summary-item">
+          <label>Monthly Cost:</label>
+          <span>{{ formatCurrency(calculateMonthlyCost(selectedBenefit)) }}</span>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 1: Enrollment Type -->
+    <p-card styleClass="mb-3">
+      <div class="form-section">
+        <h4>Enrollment Type</h4>
+        <div class="form-field">
+          <label>Type <span class="required">*</span></label>
+          <p-dropdown
+            formControlName="enrollmentType"
+            [options]="enrollmentTypes"
+            placeholder="Select enrollment type"
+            styleClass="w-full">
+          </p-dropdown>
+          <small class="help-text">
+            Select SELF for individual coverage, FAMILY for family coverage, or DEPENDENT for dependent-only coverage
+          </small>
+        </div>
+      </div>
+    </p-card>
+
+    <!-- Section 2: Dependents (if family coverage allowed) -->
+    <p-card styleClass="mb-3" *ngIf="selectedBenefit?.familyCoverageAllowed">
+      <div class="form-section">
+        <div class="section-header">
+          <h4>Dependents Information</h4>
+          <button pButton
+                  type="button"
+                  label="Add Dependent"
+                  icon="pi pi-plus"
+                  class="p-button-sm"
+                  (click)="addDependent()"
+                  [disabled]="!canAddDependent(selectedBenefit)">
+          </button>
+        </div>
+
+        <div *ngIf="dependentsFormArray.length === 0" class="empty-dependents">
+          <p>No dependents added. Click "Add Dependent" to include family members.</p>
+        </div>
+
+        <div *ngFor="let dependent of dependentsFormArray.controls; let i = index"
+             class="dependent-form"
+             [formGroup]="$any(dependent)">
+          <div class="dependent-header">
+            <h5>Dependent {{ i + 1 }}</h5>
+            <button pButton
+                    type="button"
+                    icon="pi pi-times"
+                    class="p-button-rounded p-button-text p-button-danger"
+                    (click)="removeDependent(i)">
+            </button>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Name <span class="required">*</span></label>
+              <input type="text"
+                     pInputText
+                     formControlName="name"
+                     placeholder="Full name"
+                     [class.p-invalid]="isDependentFieldInvalid(i, 'name')">
+              <small class="p-error" *ngIf="isDependentFieldInvalid(i, 'name')">
+                Name is required
+              </small>
+            </div>
+
+            <div class="form-field">
+              <label>Relationship <span class="required">*</span></label>
+              <input type="text"
+                     pInputText
+                     formControlName="relationship"
+                     placeholder="e.g., Spouse, Child, Parent"
+                     [class.p-invalid]="isDependentFieldInvalid(i, 'relationship')">
+              <small class="p-error" *ngIf="isDependentFieldInvalid(i, 'relationship')">
+                Relationship is required
+              </small>
+            </div>
+
+            <div class="form-field">
+              <label>Date of Birth <span class="required">*</span></label>
+              <p-calendar
+                formControlName="dob"
+                dateFormat="yy-mm-dd"
+                [showIcon]="true"
+                placeholder="YYYY-MM-DD"
+                [maxDate]="maxDate"
+                styleClass="w-full"
+                [class.p-invalid]="isDependentFieldInvalid(i, 'dob')">
+              </p-calendar>
+              <small class="p-error" *ngIf="isDependentFieldInvalid(i, 'dob')">
+                Date of birth is required
+              </small>
+            </div>
+
+            <div class="form-field">
+              <label>Contact Number</label>
+              <input type="text"
+                     pInputText
+                     formControlName="contact"
+                     placeholder="Phone number">
+            </div>
+          </div>
+        </div>
+
+        <small class="help-text" *ngIf="selectedBenefit.maxDependents">
+          Maximum {{ selectedBenefit.maxDependents }} dependent(s) allowed
+        </small>
+      </div>
+    </p-card>
+
+    <!-- Section 3: Nominee Information -->
+    <p-card styleClass="mb-3">
+      <div class="form-section">
+        <h4>Nominee Information</h4>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Nominee Name <span class="required">*</span></label>
+            <input type="text"
+                   pInputText
+                   formControlName="nomineeName"
+                   placeholder="Full name"
+                   [class.p-invalid]="isFieldInvalid('nomineeName')">
+            <small class="p-error" *ngIf="isFieldInvalid('nomineeName')">
+              Nominee name is required
+            </small>
+          </div>
+
+          <div class="form-field">
+            <label>Relationship <span class="required">*</span></label>
+            <input type="text"
+                   pInputText
+                   formControlName="nomineeRelationship"
+                   placeholder="e.g., Spouse, Parent, Sibling"
+                   [class.p-invalid]="isFieldInvalid('nomineeRelationship')">
+            <small class="p-error" *ngIf="isFieldInvalid('nomineeRelationship')">
+              Relationship is required
+            </small>
+          </div>
+
+          <div class="form-field">
+            <label>Date of Birth <span class="required">*</span></label>
+            <p-calendar
+              formControlName="nomineeDob"
+              dateFormat="yy-mm-dd"
+              [showIcon]="true"
+              placeholder="YYYY-MM-DD"
+              [maxDate]="maxDate"
+              styleClass="w-full"
+              [class.p-invalid]="isFieldInvalid('nomineeDob')">
+            </p-calendar>
+            <small class="p-error" *ngIf="isFieldInvalid('nomineeDob')">
+              Date of birth is required
+            </small>
+          </div>
+
+          <div class="form-field">
+            <label>Contact Number</label>
+            <input type="text"
+                   pInputText
+                   formControlName="nomineeContact"
+                   placeholder="Phone number">
+          </div>
+
+          <div class="form-field">
+            <label>Percentage <span class="required">*</span></label>
+            <p-inputNumber
+              formControlName="nomineePercentage"
+              [min]="1"
+              [max]="100"
+              suffix="%"
+              styleClass="w-full"
+              [class.p-invalid]="isFieldInvalid('nomineePercentage')">
+            </p-inputNumber>
+            <small class="p-error" *ngIf="isFieldInvalid('nomineePercentage')">
+              Percentage must be between 1 and 100
+            </small>
+          </div>
+        </div>
+        <small class="help-text">
+          Nominee will receive benefits in case of an unfortunate event
+        </small>
+      </div>
+    </p-card>
+
+    <!-- Confirmation Notice -->
+    <div class="confirmation-notice">
+      <i class="pi pi-info-circle"></i>
+      <p>
+        By submitting this enrollment, you acknowledge that you have read and understood the benefit policy terms and conditions.
+        Your enrollment will be pending approval from the HR department.
+      </p>
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <button pButton
+            type="button"
+            label="Cancel"
+            icon="pi pi-times"
+            class="p-button-outlined"
+            (click)="closeEnrollmentForm()"
+            [disabled]="isSubmitting">
+    </button>
+    <button pButton
+            type="button"
+            label="Submit Enrollment"
+            icon="pi pi-check"
+            class="p-button-success"
+            (click)="submitEnrollment()"
+            [disabled]="enrollmentForm.invalid || isSubmitting"
+            [loading]="isSubmitting">
+    </button>
+  </ng-template>
+</p-dialog>

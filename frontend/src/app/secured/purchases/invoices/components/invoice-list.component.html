@@ -3,8 +3,8 @@
     <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button class="btn btn-primary">Add New</button></a>
   </div>
   <div class="col-12">
-    <p-table #dt1 [value]="invoices" 
-    [multiSortMeta]="[{field: 'invoice_date', order: -1}]"
+    <p-table #dt1 [value]="invoices"
+    [multiSortMeta]="[{field: 'invoicedate', order: -1}]"
     [resizableColumns]="true" columnResizeMode="expand" 
     [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
         currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
@@ -13,18 +13,18 @@
       <!-- <thead> -->
     <ng-template pTemplate="header">
     <tr>
-      <th pSortableColumn="invoice_no">No.
-        <p-sortIcon field="invoice_no"></p-sortIcon>
-        <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
+      <th pSortableColumn="invoiceno">No.
+        <p-sortIcon field="invoiceno"></p-sortIcon>
+        <p-columnFilter type="text" field="invoiceno" display="menu"></p-columnFilter>
       </th>
-      <th pSortableColumn="invoice_date">Date
-        <p-sortIcon field="invoice_date"></p-sortIcon>
-        <p-columnFilter type="date" field="invoice_date" display="menu"></p-columnFilter>
+      <th pSortableColumn="invoicedate">Date
+        <p-sortIcon field="invoicedate"></p-sortIcon>
+        <p-columnFilter type="date" field="invoicedate" display="menu"></p-columnFilter>
       </th>
       <th>Type</th>
-      <th pSortableColumn="business_name">Vendor
-        <p-sortIcon field="business_name"></p-sortIcon>
-        <p-columnFilter type="text" field="business_name" display="menu"></p-columnFilter>
+      <th pSortableColumn="vendor.name">Vendor
+        <p-sortIcon field="vendor.name"></p-sortIcon>
+        <p-columnFilter type="text" field="vendor.name" display="menu"></p-columnFilter>
       </th>
       <th pSortableColumn="items">Items</th>
       <th pSortableColumn="total">Amount
@@ -33,67 +33,68 @@
       </th>
       <th>Payment</th>
       <th>Tax</th>
-      <th>Lifecycle</th>
-      <th pSortableColumn="status">Status
-        <p-sortIcon field="status"></p-sortIcon>
-        <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
+      <th pSortableColumn="lifecyclestatus">Invoice Status
+        <p-sortIcon field="lifecyclestatus"></p-sortIcon>
+        <p-columnFilter type="text" field="lifecyclestatus" display="menu"></p-columnFilter>
       </th>
+      <th>Actions</th>
     </tr>
   </ng-template>
   <!-- </thead>
   <tbody> -->
     <ng-template pTemplate="body" let-p>
       <tr>
-        <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
-        <td style="text-align: center;">{{p.invoice_date | date : 'dd/MM/yy'}}</td>
+        <td><a [routerLink]="['../items',p.id]">{{p.invoiceno}}</a></td>
+        <td style="text-align: center;">{{p.invoicedate | date : 'dd/MM/yy'}}</td>
         <td>
           <span *ngIf="p.doctype === 'INVOICE'" class="badge bg-primary">INV</span>
           <span *ngIf="p.doctype === 'DELIVERY_CHALLAN'" class="badge bg-info">DC</span>
           <span *ngIf="!p.doctype" class="badge bg-secondary">-</span>
         </td>
-        <td>{{p.business_name}}</td>
+        <td>{{p.vendor?.name}}</td>
         <td style="text-align: center;">{{p.items}}</td>
         <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
         <td>
-          <span *ngIf="p.paymentstatus === 'PAID'" class="badge bg-success">Paid</span>
-          <span *ngIf="p.paymentstatus === 'PARTIAL'"
+          <span *ngIf="p.items > 0 && p.paymentstatus === 'PAID'" class="badge bg-success">Paid</span>
+          <span *ngIf="p.items > 0 && p.paymentstatus === 'PARTIAL'"
                 class="badge bg-warning text-dark"
                 style="cursor: pointer;"
                 (click)="openQuickPayment(p)"
                 title="Click to complete payment">
             Partial <i class="bi bi-pencil-square ms-1"></i>
           </span>
-          <span *ngIf="p.paymentstatus === 'UNPAID'"
+          <span *ngIf="p.items > 0 && p.paymentstatus === 'UNPAID'"
                 class="badge bg-danger"
                 style="cursor: pointer;"
                 (click)="openQuickPayment(p)"
                 title="Click to mark as paid">
             Unpaid <i class="bi bi-pencil-square ms-1"></i>
           </span>
-          <span *ngIf="!p.paymentstatus" class="badge bg-secondary">-</span>
+          <span *ngIf="!p.items || p.items === 0 || !p.paymentstatus" class="badge bg-secondary">-</span>
         </td>
         <td>
-          <span *ngIf="p.taxstatus === 'RECONCILED'" class="badge bg-success">Done</span>
-          <span *ngIf="p.taxstatus === 'CREDITED'" class="badge bg-info">Credit</span>
-          <span *ngIf="p.taxstatus === 'FILED'" class="badge bg-primary">Filed</span>
-          <span *ngIf="p.taxstatus === 'PENDING'" class="badge bg-warning text-dark">Pending</span>
-          <span *ngIf="p.taxstatus === 'MISMATCH'" class="badge bg-danger">Mismatch</span>
-          <span *ngIf="!p.taxstatus" class="badge bg-secondary">-</span>
+          <span *ngIf="p.items > 0 && p.taxstatus === 'RECONCILED'" class="badge bg-success">Done</span>
+          <span *ngIf="p.items > 0 && p.taxstatus === 'CREDITED'" class="badge bg-info">Credit</span>
+          <span *ngIf="p.items > 0 && p.taxstatus === 'FILED'" class="badge bg-primary">Filed</span>
+          <span *ngIf="p.items > 0 && p.taxstatus === 'PENDING'" class="badge bg-warning text-dark">Pending</span>
+          <span *ngIf="p.items > 0 && p.taxstatus === 'MISMATCH'" class="badge bg-danger">Mismatch</span>
+          <span *ngIf="!p.items || p.items === 0 || !p.taxstatus" class="badge bg-secondary">-</span>
         </td>
         <td>
           <span *ngIf="p.lifecyclestatus === 'CLOSED'" class="badge bg-dark">Closed</span>
-          <span *ngIf="p.lifecyclestatus === 'OPEN'" class="badge bg-primary">Open</span>
+          <span *ngIf="p.lifecyclestatus === 'OPEN'" class="badge bg-success">Open</span>
           <span *ngIf="!p.lifecyclestatus" class="badge bg-secondary">-</span>
         </td>
-        <td style="text-align: center;">{{p.status}}</td>
-      <td>
-        <span *ngIf="p.status === 'NEW'">
-      <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">
-        <i class="bi bi-pencil text-primary"></i>
-      </a>
-        <a *isAuth="'purchases.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
-      </span>
-      </td>
+        <td style="text-align: center;">
+          <span *ngIf="p.lifecyclestatus === 'OPEN'">
+            <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]" title="Edit Invoice">
+              <i class="bi bi-pencil text-primary"></i>
+            </a>
+          </span>
+          <span *ngIf="p.lifecyclestatus !== 'OPEN'" class="text-muted">
+            <i class="bi bi-lock" title="Invoice is closed"></i>
+          </span>
+        </td>
       <!-- <td>
         <a (click)="delete(p.id)">
           <i class="bi bi-trash text-danger"></i>
@@ -120,8 +121,8 @@
           [resizable]="false">
   <div class="p-fluid" *ngIf="selectedInvoice">
     <div class="mb-3">
-      <p><strong>Invoice:</strong> {{selectedInvoice.invoice_no}}</p>
-      <p><strong>Vendor:</strong> {{selectedInvoice.business_name}}</p>
+      <p><strong>Invoice:</strong> {{selectedInvoice.invoiceno}}</p>
+      <p><strong>Vendor:</strong> {{selectedInvoice.vendor?.name}}</p>
       <p><strong>Total Amount:</strong> ₹{{selectedInvoice.total | number:'1.2-2'}}</p>
       <p *ngIf="selectedInvoice.paymentstatus === 'PARTIAL'">
         <strong>Status:</strong> <span class="badge bg-warning text-dark">Partial Payment</span>

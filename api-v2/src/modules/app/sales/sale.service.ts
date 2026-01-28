@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
@@ -8,7 +8,10 @@ import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { SaleReturnItem } from "src/entities/salereturn-item.entity";
 import { Sale } from "src/entities/sale.entity";
+import { Product } from "src/entities/product.entity";
 import { DataScopeService } from "../../../core/services/data-scope.service";
+import { BatchAllocationService, BatchAllocation } from "../stock/batch-allocation.service";
+import { PricingRulesService } from "../products/pricing-rules.service";
 
 @Injectable()
 export class SaleService {
@@ -18,10 +21,17 @@ export class SaleService {
         @InjectRepository(Sale) private readonly saleRepository: Repository<Sale>,
         @InjectRepository(SaleItem) private readonly saleItemRepository: Repository<SaleItem>,
         @InjectRepository(SaleReturnItem) private readonly saleReturnItemRepository: Repository<SaleReturnItem>,
+        @InjectRepository(Product) private readonly productRepository: Repository<Product>,
         @InjectEntityManager() private manager: EntityManager,
-        private dataScopeService: DataScopeService
+        private dataScopeService: DataScopeService,
+        private batchAllocationService: BatchAllocationService,
+        private pricingRulesService: PricingRulesService
     ) { }
 
+    /**
+     * Create sale with FEFO batch allocation
+     * Fix for issue #127: Integrate batch/expiry tracking with FEFO enforcement
+     */
     async create(sale:any,userid:any) {
         // Wrap entire sale creation in transaction to prevent orphaned data
         return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
@@ -32,30 +42,114 @@ export class SaleService {
                     throw new Error('Sale must have at least one item');
                 }
 
-                // Step 2: Validate all items and stock availability
+                // Step 2: Allocate batches using FEFO for each item (Issue #127)
+                const itemBatchAllocations: Array<{item: any, allocations: BatchAllocation[]}> = [];
+
                 for (const item of sale.items) {
                     if (!item.productid || !item.qty || item.qty <= 0) {
                         throw new Error(`Invalid item: product ID and quantity are required`);
                     }
 
-                    // Check stock availability if purchase_item_id is provided
-                    if (item.purchase_item_id) {
-                        const stockCheck = await transactionManager.query(
-                            `SELECT available FROM inventory_view WHERE purchase_itemid = $1`,
-                            [item.purchase_item_id]
+                    // CRITICAL: Use FEFO batch allocation instead of purchase_item_id
+                    // This ensures earliest expiring batches are sold first
+                    try {
+                        const allocations = await this.batchAllocationService.allocateBatches(
+                            item.productid,
+                            item.qty,
+                            transactionManager
                         );
 
-                        if (!stockCheck || stockCheck.length === 0) {
-                            throw new Error(`Stock not found for item ID ${item.purchase_item_id}`);
+                        // Validate no expired batches in allocation
+                        const now = new Date();
+                        for (const allocation of allocations) {
+                            if (new Date(allocation.expiryDate) <= now) {
+                                throw new Error(
+                                    `Cannot sell expired product. Batch ${allocation.batchNumber} expired on ${allocation.expiryDate}`
+                                );
+                            }
                         }
 
-                        const availableStock = stockCheck[0].available;
-                        if (availableStock < item.qty) {
+                        // Store allocations for this item
+                        itemBatchAllocations.push({
+                            item: item,
+                            allocations: allocations
+                        });
+
+                        this.logger.log(
+                            `Allocated ${item.qty} units for product ${item.productid} ` +
+                            `across ${allocations.length} batch(es) using FEFO`
+                        );
+
+                    } catch (error) {
+                        // Specific error messages for common scenarios
+                        if (error.message.includes('expired')) {
                             throw new Error(
-                                `Insufficient stock for item. Available: ${availableStock}, Requested: ${item.qty}`
+                                `Product ${item.productid} has only expired batches. Cannot proceed with sale.`
                             );
                         }
+                        if (error.message.includes('Insufficient stock')) {
+                            throw new Error(
+                                `Insufficient stock for product ${item.productid}. ${error.message}`
+                            );
+                        }
+                        throw error;
                     }
+                }
+
+                // Step 2.5: Pricing Rule Enforcement (Issue #123)
+                // Validate pricing for each item before generating bill number
+                for (const item of sale.items) {
+                    // Get product details to access category
+                    const product = await transactionManager.findOne(Product, {
+                        where: { id: item.productid }
+                    });
+
+                    if (!product) {
+                        throw new Error(`Product ${item.productid} not found`);
+                    }
+
+                    // Calculate expected price using pricing rules
+                    // Use item's PTR and MRP if available, otherwise use default values
+                    const ptr = item.ptr || 100; // Default PTR if not provided
+                    const mrp = item.mrp || 120; // Default MRP if not provided
+                    const taxRate = product.taxpcnt || 0;
+
+                    const pricingResult = await this.pricingRulesService.calculatePriceWithRules(
+                        item.productid,
+                        product.category,
+                        ptr,
+                        mrp,
+                        taxRate,
+                        item.qty,
+                        false // taxInclusive
+                    );
+
+                    const expectedPrice = pricingResult.pricingResult.salePrice;
+                    const actualPrice = item.price;
+
+                    // Validate price matches expected (within tolerance of 0.01)
+                    const tolerance = 0.01;
+                    const priceDiff = Math.abs(actualPrice - expectedPrice);
+
+                    if (priceDiff > tolerance) {
+                        const appliedRuleName = pricingResult.appliedRule?.ruleName || 'Default pricing (20% margin)';
+                        const error = `Price validation failed for product "${product.title}". ` +
+                            `Expected: ₹${expectedPrice.toFixed(2)}, ` +
+                            `Provided: ₹${actualPrice.toFixed(2)}, ` +
+                            `Difference: ₹${priceDiff.toFixed(2)}. ` +
+                            `Applied rule: ${appliedRuleName}`;
+                        this.logger.error(error);
+                        throw new BadRequestException(error);
+                    }
+
+                    // Store applied rule ID for logging
+                    item.pricingRuleId = pricingResult.appliedRule?.ruleId || null;
+
+                    this.logger.log(
+                        `Price validated for product ${item.productid}: ` +
+                        `Expected ₹${expectedPrice.toFixed(2)}, Actual ₹${actualPrice.toFixed(2)}, ` +
+                        `Rule: ${pricingResult.appliedRule?.ruleName || 'Default'}`
+                    );
                 }
 
                 // Step 3: ONLY NOW generate order and bill numbers (after validation passes)
@@ -73,13 +167,69 @@ export class SaleService {
                     throw new Error('Failed to create sale header');
                 }
 
-                // Step 5: Save sale items with foreign key to sale
+                // Step 5: Deduct allocated batches and save sale items
                 if (sale.items && sale.items.length > 0) {
-                    sale.items.forEach(i => {
-                        i.saleid = savedSale.id;
-                    });
-                    await transactionManager.save(SaleItem, sale.items);
+                    for (let i = 0; i < sale.items.length; i++) {
+                        const item = sale.items[i];
+                        const { allocations } = itemBatchAllocations[i];
+
+                        // Set sale ID
+                        item.saleid = savedSale.id;
+
+                        // Store batch allocation info as JSON (for audit trail)
+                        item.batchAllocations = JSON.stringify(allocations.map(a => ({
+                            batchId: a.batchId,
+                            batchNumber: a.batchNumber,
+                            expiryDate: a.expiryDate,
+                            quantity: a.quantity
+                        })));
+
+                        // Set batch and expiry from first allocation (for backward compatibility)
+                        if (allocations.length > 0) {
+                            item.batch = allocations[0].batchNumber;
+                            item.expdate = allocations[0].expiryDate;
+                        }
+
+                        // Deduct from batches and log movements
+                        await this.batchAllocationService.deductAllocatedBatches(
+                            allocations,
+                            'SALE',
+                            savedSale.id,
+                            userid,
+                            transactionManager
+                        );
+                    }
+
+                    // Save all items
+                    const savedItems = await transactionManager.save(SaleItem, sale.items);
+
+                    // Log pricing rule applications for audit (Issue #123)
+                    for (let i = 0; i < savedItems.length; i++) {
+                        const savedItem = savedItems[i];
+                        const originalItem = sale.items[i];
+
+                        if (originalItem.pricingRuleId !== undefined) {
+                            await this.pricingRulesService.logSaleRuleApplication({
+                                pricingRuleId: originalItem.pricingRuleId,
+                                productId: savedItem.productid,
+                                saleId: savedSale.id,
+                                saleItemId: savedItem.id,
+                                calculatedPrice: savedItem.price,
+                                quantity: savedItem.qty,
+                                appliedBy: userid
+                            }, transactionManager);
+
+                            this.logger.log(
+                                `Logged pricing rule application for sale item ${savedItem.id} ` +
+                                `(rule: ${originalItem.pricingRuleId || 'default'})`
+                            );
+                        }
+                    }
                 }
+
+                this.logger.log(
+                    `Sale ${savedSale.billno} created with ${sale.items.length} items using FEFO batch allocation and pricing enforcement`
+                );
 
                 // Step 6: Fetch and return complete sale with relations
                 const completeSale = await transactionManager
@@ -95,6 +245,8 @@ export class SaleService {
             } catch (error) {
                 // Transaction will automatically rollback on error
                 // Bill number NOT consumed if error occurs before generation
+                // All batch allocations rolled back automatically
+                this.logger.error(`Failed to create sale: ${error.message}`, error.stack);
                 throw new Error(`Failed to create sale: ${error.message}`);
             }
         });

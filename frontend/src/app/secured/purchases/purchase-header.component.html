@@ -1,6 +1,11 @@
   <nav class="page-menu navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
     <ul class="nav">
       <li class="nav-item" *isNavAuth>
+        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/dashboard">
+          <i class="bi bi-speedometer2 me-1"></i>Dashboard
+        </a>
+      </li>
+      <li class="nav-item" *isNavAuth>
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/orders">Orders</a>
       </li>
       <li class="nav-item" *isNavAuth>

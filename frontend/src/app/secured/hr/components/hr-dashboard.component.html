@@ -90,12 +90,12 @@
                       stroke="#667eea"
                       stroke-width="8"
                       [attr.stroke-dasharray]="339.292"
-                      [attr.stroke-dashoffset]="339.292 - (339.292 * dashboard.currentMonth.totalScore / 100)"
+                      [attr.stroke-dashoffset]="339.292 - (339.292 * (dashboard.currentMonth.totalScore || 0) / 100)"
                       transform="rotate(-90 60 60)"
                     ></circle>
                   </svg>
                   <div class="score-text">
-                    <span class="score-number">{{ dashboard.currentMonth.totalScore.toFixed(1) }}</span>
+                    <span class="score-number">{{ formatScore(dashboard.currentMonth.totalScore) }}</span>
                     <span class="score-label">Score</span>
                   </div>
                 </div>
@@ -200,7 +200,7 @@
                           class="progress-bar bg-primary"
                           [style.width.%]="entry.totalScore"
                         >
-                          {{ entry.totalScore.toFixed(1) }}
+                          {{ formatScore(entry.totalScore) }}
                         </div>
                       </div>
                     </td>

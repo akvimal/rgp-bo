@@ -1,0 +1,511 @@
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Products Dashboard</h2>
+            <p class="text-muted mb-0">Overview of product inventory, pricing, and performance</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" (click)="refresh()" [disabled]="loading">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+            <button class="btn btn-primary" (click)="navigateToProductList()">
+                <i class="bi bi-list-ul me-1"></i>View All Products
+            </button>
+            <button class="btn btn-success" (click)="navigateToNewProduct()">
+                <i class="bi bi-plus-circle me-1"></i>Add Product
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Loading dashboard metrics...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error && !loading" class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+        <button class="btn btn-sm btn-outline-danger ms-3" (click)="refresh()">Retry</button>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div *ngIf="metrics && !loading">
+        <!-- Overview Metrics Cards -->
+        <div class="row g-3 mb-4">
+            <!-- Total Products -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-left-primary shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                    Total Active Products
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {{ formatNumber(metrics.overview.totalActive) }}
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    {{ formatNumber(metrics.overview.totalInactive) }} inactive
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-box-seam fs-2 text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-left-success shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                    Categories
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {{ formatNumber(metrics.overview.totalCategories) }}
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    Product categories
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-grid-3x3-gap fs-2 text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Stock Units -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-left-info shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                    Total Stock Units
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {{ formatNumber(metrics.overview.totalStockUnits) }}
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    Units in inventory
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-boxes fs-2 text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Value -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card border-left-warning shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                    Inventory Value
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {{ formatCurrency(metrics.overview.totalInventoryValue) }}
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    Total stock value
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-currency-rupee fs-2 text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Second Row of Metrics -->
+        <div class="row g-3 mb-4">
+            <!-- Average Margin -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                    Average Margin
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold"
+                                     [ngClass]="getMarginBadgeClass(metrics.overview.avgMargin).replace('badge', 'text')">
+                                    {{ formatPercentage(metrics.overview.avgMargin) }}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-percent fs-2 text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- High Margin Products -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                    High Margin (≥20%)
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-success">
+                                    {{ formatNumber(metrics.overview.highMarginCount) }}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-arrow-up-circle fs-2 text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Low Margin Products -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                    Low Margin (<10%)
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-danger">
+                                    {{ formatNumber(metrics.overview.lowMarginCount) }}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-arrow-down-circle fs-2 text-danger"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Archived Products -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card shadow h-100">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                    Archived Products
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-muted">
+                                    {{ formatNumber(metrics.overview.totalArchived) }}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-archive fs-2 text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-3 mb-4">
+            <!-- Products by Category -->
+            <div class="col-xl-4">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Products by Category</h6>
+                    </div>
+                    <div class="card-body" style="height: 300px;">
+                        <canvas *ngIf="categoryData.labels && categoryData.labels.length > 0"
+                                baseChart
+                                [data]="categoryData"
+                                [options]="pieChartOptions"
+                                [type]="pieChartType">
+                        </canvas>
+                        <div *ngIf="!categoryData.labels || categoryData.labels.length === 0"
+                             class="text-center text-muted py-5">
+                            <i class="bi bi-pie-chart fs-1"></i>
+                            <p class="mt-2">No category data available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Status Distribution -->
+            <div class="col-xl-4">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Stock Status</h6>
+                    </div>
+                    <div class="card-body" style="height: 300px;">
+                        <canvas *ngIf="stockStatusData.labels && stockStatusData.labels.length > 0"
+                                baseChart
+                                [data]="stockStatusData"
+                                [options]="doughnutChartOptions"
+                                [type]="doughnutChartType">
+                        </canvas>
+                        <div *ngIf="!stockStatusData.labels || stockStatusData.labels.length === 0"
+                             class="text-center text-muted py-5">
+                            <i class="bi bi-pie-chart fs-1"></i>
+                            <p class="mt-2">No stock data available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Margin Distribution -->
+            <div class="col-xl-4">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Top & Low Margin Products</h6>
+                    </div>
+                    <div class="card-body" style="height: 300px;">
+                        <canvas *ngIf="marginData.labels && marginData.labels.length > 0"
+                                baseChart
+                                [data]="marginData"
+                                [options]="barChartOptions"
+                                [type]="barChartType">
+                        </canvas>
+                        <div *ngIf="!marginData.labels || marginData.labels.length === 0"
+                             class="text-center text-muted py-5">
+                            <i class="bi bi-bar-chart fs-1"></i>
+                            <p class="mt-2">No margin data available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts and Lists Row -->
+        <div class="row g-3 mb-4">
+            <!-- Low Stock Alerts -->
+            <div class="col-xl-6">
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>Low Stock Alerts
+                        </h6>
+                        <span class="badge bg-warning text-dark">
+                            {{ metrics.alerts.lowStock.length }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div *ngIf="metrics.alerts.lowStock.length > 0" class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Stock</th>
+                                        <th class="text-end">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let product of metrics.alerts.lowStock">
+                                        <td>
+                                            <a href="javascript:void(0)"
+                                               (click)="navigateToProductEdit(product.id)"
+                                               class="text-decoration-none">
+                                                {{ product.title }} ({{ product.pack }})
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">{{ product.category }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span [ngClass]="getStockBadgeClass(product.current_stock)">
+                                                {{ product.current_stock }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            {{ formatCurrency(product.sale_price) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div *ngIf="metrics.alerts.lowStock.length === 0" class="text-center text-muted py-4">
+                            <i class="bi bi-check-circle fs-1"></i>
+                            <p class="mt-2">No low stock products</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Out of Stock Products -->
+            <div class="col-xl-6">
+                <div class="card shadow">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-danger">
+                            <i class="bi bi-x-circle me-2"></i>Out of Stock
+                        </h6>
+                        <span class="badge bg-danger">
+                            {{ metrics.alerts.outOfStock.length }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div *ngIf="metrics.alerts.outOfStock.length > 0" class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Last Sale</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let product of metrics.alerts.outOfStock">
+                                        <td>
+                                            <a href="javascript:void(0)"
+                                               (click)="navigateToProductEdit(product.id)"
+                                               class="text-decoration-none">
+                                                {{ product.title }} ({{ product.pack }})
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">{{ product.category }}</small>
+                                        </td>
+                                        <td>
+                                            <span *ngIf="product.last_sale_date">
+                                                {{ product.last_sale_date | date:'dd/MM/yyyy' }}
+                                            </span>
+                                            <span *ngIf="!product.last_sale_date" class="text-muted">
+                                                Never sold
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div *ngIf="metrics.alerts.outOfStock.length === 0" class="text-center text-muted py-4">
+                            <i class="bi bi-check-circle fs-1"></i>
+                            <p class="mt-2">No out of stock products</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Products and Top Margin -->
+        <div class="row g-3">
+            <!-- Recently Added Products -->
+            <div class="col-xl-6">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="bi bi-clock-history me-2"></i>Recently Added
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div *ngIf="metrics.recentProducts && metrics.recentProducts.length > 0" class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Stock</th>
+                                        <th class="text-end">Margin</th>
+                                        <th>Added</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let product of metrics.recentProducts">
+                                        <td>
+                                            <a href="javascript:void(0)"
+                                               (click)="navigateToProductEdit(product.id)"
+                                               class="text-decoration-none">
+                                                {{ product.title }} ({{ product.pack }})
+                                            </a>
+                                        </td>
+                                        <td class="text-center">
+                                            <span [ngClass]="getStockBadgeClass(product.current_stock)">
+                                                {{ product.current_stock }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span [ngClass]="getMarginBadgeClass(product.margin)">
+                                                {{ formatPercentage(product.margin) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small>{{ product.created_on | date:'dd/MM/yy' }}</small>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div *ngIf="!metrics.recentProducts || metrics.recentProducts.length === 0"
+                             class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <p class="mt-2">No recent products</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Margin Products -->
+            <div class="col-xl-6">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-success">
+                            <i class="bi bi-trophy me-2"></i>Top Margin Products
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div *ngIf="metrics.topProducts.byMargin && metrics.topProducts.byMargin.length > 0"
+                             class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Stock</th>
+                                        <th class="text-end">Margin</th>
+                                        <th class="text-end">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let product of metrics.topProducts.byMargin">
+                                        <td>
+                                            <a href="javascript:void(0)"
+                                               (click)="navigateToProductEdit(product.id)"
+                                               class="text-decoration-none">
+                                                {{ product.title }} ({{ product.pack }})
+                                            </a>
+                                        </td>
+                                        <td class="text-center">
+                                            <span [ngClass]="getStockBadgeClass(product.current_stock)">
+                                                {{ product.current_stock }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="badge bg-success">
+                                                {{ formatPercentage(product.margin) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            {{ formatCurrency(product.sale_price) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div *ngIf="!metrics.topProducts.byMargin || metrics.topProducts.byMargin.length === 0"
+                             class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <p class="mt-2">No margin data available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

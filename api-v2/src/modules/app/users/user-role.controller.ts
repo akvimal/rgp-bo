@@ -8,8 +8,10 @@ import {
   UseGuards,
   HttpStatus,
   ParseIntPipe,
-  NotFoundException
+  NotFoundException,
+  Req
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '../../auth/auth.guard';
 import { UserRoleService } from './user-role.service';
@@ -74,6 +76,7 @@ export class UserRoleController {
    *
    * @param dto - Contains userId and roleId to assign
    * @param currentUser - Currently authenticated user (from JWT)
+   * @param req - Request object for IP address extraction
    * @returns Created role assignment
    */
   @Post('assign')
@@ -92,12 +95,15 @@ export class UserRoleController {
   })
   async assignRole(
     @Body() dto: AssignRoleDto,
-    @User() currentUser: any
+    @User() currentUser: any,
+    @Req() req: Request
   ) {
+    const ipAddress = req['clientIp'] || req.ip;
     return this.userRoleService.assignRole(
       dto.userId,
       dto.roleId,
-      currentUser.id
+      currentUser.id,
+      ipAddress
     );
   }
 
@@ -106,6 +112,8 @@ export class UserRoleController {
    *
    * @param userId - User ID to remove role from
    * @param roleId - Role ID to remove
+   * @param currentUser - Currently authenticated user (from JWT)
+   * @param req - Request object for IP address extraction
    * @returns Updated role assignment (marked inactive)
    */
   @Delete(':userId/:roleId')
@@ -124,9 +132,12 @@ export class UserRoleController {
   })
   async removeRole(
     @Param('userId', ParseIntPipe) userId: number,
-    @Param('roleId', ParseIntPipe) roleId: number
+    @Param('roleId', ParseIntPipe) roleId: number,
+    @User() currentUser: any,
+    @Req() req: Request
   ) {
-    return this.userRoleService.removeRole(userId, roleId);
+    const ipAddress = req['clientIp'] || req.ip;
+    return this.userRoleService.removeRole(userId, roleId, currentUser.id, ipAddress);
   }
 
   /**

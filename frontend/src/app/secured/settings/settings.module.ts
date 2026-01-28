@@ -19,6 +19,9 @@ import { RoleFormComponent } from "./roles/components/role-form.component";
 import { UserListComponent } from "./users/components/user-list.component";
 import { UserFormComponent } from "./users/components/user-form.component";
 import { UserEditFormComponent } from "./users/components/user-edit-form.component";
+import { ChangePasswordComponent } from "./users/components/change-password.component";
+import { SecurityDashboardComponent } from "./components/security-dashboard.component";
+import { SecurityDashboardService } from "./security-dashboard.service";
 
 const routes: Routes = [
   { path: '', component: SettingsComponent, canActivate:[AuthGuard], children: [
@@ -33,7 +36,9 @@ const routes: Routes = [
       { path: 'list', component: RoleListComponent },
       { path: 'new', component: RoleFormComponent },
       { path: 'edit/:id', component: RoleFormComponent }
-    ]}
+    ]},
+    { path: 'change-password', component: ChangePasswordComponent },
+    { path: 'security-dashboard', component: SecurityDashboardComponent }
   ]},
 ];
 
@@ -46,7 +51,12 @@ const routes: Routes = [
       RoleFormComponent,
       UserListComponent,
       UserFormComponent,
-      UserEditFormComponent
+      UserEditFormComponent,
+      ChangePasswordComponent,
+      SecurityDashboardComponent
+    ],
+    providers: [
+      SecurityDashboardService
     ],
     imports: [
         RouterModule.forChild(routes),

@@ -9,26 +9,26 @@
         <div class="card-body">
             <div class="row text-center">
                 <div class="col">
-                    <small class="text-muted">PTR (Purchase Rate)</small>
+                    <small class="text-muted d-block mb-1">PTR (Purchase Rate)</small>
                     <h4 class="mb-0 text-info">₹{{current?.price?.ptr || 0 | number:'1.2-2'}}</h4>
                 </div>
                 <div class="col">
-                    <small class="text-muted">Current Sale Price</small>
+                    <small class="text-muted d-block mb-1">Current Sale Price</small>
                     <h4 class="mb-0 text-success">₹{{current?.price?.price || 0 | number:'1.2-2'}}</h4>
                 </div>
                 <div class="col">
-                    <small class="text-muted">MRP (Max Retail Price)</small>
+                    <small class="text-muted d-block mb-1">MRP (Max Retail Price)</small>
                     <h4 class="mb-0 text-danger">₹{{current?.price?.mrp || 0 | number:'1.2-2'}}</h4>
                 </div>
                 <div class="col">
-                    <small class="text-muted">Profit Margin</small>
-                    <h4 class="mb-0" [ngClass]="{'text-success': current?.price?.margin >= 25, 'text-warning': current?.price?.margin >= 15 && current?.price?.margin < 25, 'text-danger': current?.price?.margin < 15}">
-                        {{current?.price?.margin || 0}}%
+                    <small class="text-muted d-block mb-1">Profit Margin</small>
+                    <h4 class="mb-0" [ngClass]="getMarginClass(current?.price?.margin || 0)">
+                        {{current?.price?.margin || 0 | number:'1.2-2'}}%
                     </h4>
                 </div>
                 <div class="col">
-                    <small class="text-muted">Customer Discount</small>
-                    <h4 class="mb-0 text-primary">{{current?.price?.discount || 0}}%</h4>
+                    <small class="text-muted d-block mb-1">Customer Discount</small>
+                    <h4 class="mb-0 text-primary">{{current?.price?.discount || 0 | number:'1.2-2'}}%</h4>
                 </div>
             </div>
         </div>
@@ -78,8 +78,8 @@
                             <div class="card border-success">
                                 <div class="card-body text-center p-2">
                                     <small class="text-muted d-block">Profit Margin</small>
-                                    <h5 class="mb-0" [ngClass]="{'text-success': current?.price?.margin >= 25, 'text-warning': current?.price?.margin >= 15 && current?.price?.margin < 25, 'text-danger': current?.price?.margin < 15}">
-                                        {{current?.price?.margin || 0}}%
+                                    <h5 class="mb-0" [ngClass]="getMarginClass(current?.price?.margin || 0)">
+                                        {{current?.price?.margin || 0 | number:'1.2-2'}}%
                                     </h5>
                                     <small class="text-muted">₹{{((price?.sale || 0) - (current?.price?.ptr || 0)) | number:'1.2-2'}} profit</small>
                                 </div>

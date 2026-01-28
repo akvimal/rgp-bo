@@ -41,7 +41,7 @@
       <ul class="sidebar-nav" id="sidebar-nav">
 
         <!-- DASHBOARD -->
-        <li class="nav-item" *isNavAuth>
+        <li class="nav-item">
           <a class="nav-link" routerLink="dashboard">
             <i class="bi bi-grid"></i>
             <span>Dashboard</span>
@@ -92,14 +92,9 @@
                 <i class="bi bi-circle"></i><span>Customers</span>
               </a>
             </li>
-            <li *isAuth="'vendors.read'">
-              <a routerLink="vendors">
+            <li *isAuth="'purchases.read'">
+              <a routerLink="purchases/vendors">
                 <i class="bi bi-circle"></i><span>Vendors</span>
-              </a>
-            </li>
-            <li *isNavAuth>
-              <a routerLink="products">
-                <i class="bi bi-circle"></i><span>Products & Catalog</span>
               </a>
             </li>
           </ul>
@@ -139,11 +134,14 @@
             <i class="bi bi-chevron-down ms-auto"></i>
           </a>
           <ul id="hrMenu" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+            <!-- Dashboard -->
             <li>
               <a routerLink="hr/dashboard">
                 <i class="bi bi-circle"></i><span>HR Dashboard</span>
               </a>
             </li>
+
+            <!-- Attendance & Leave -->
             <li>
               <a routerLink="hr/attendance">
                 <i class="bi bi-circle"></i><span>Attendance & Time</span>
@@ -154,6 +152,8 @@
                 <i class="bi bi-circle"></i><span>Leave Management</span>
               </a>
             </li>
+
+            <!-- Shift Management -->
             <li>
               <a routerLink="hr/shifts">
                 <i class="bi bi-circle"></i><span>Shift Scheduling</span>
@@ -162,6 +162,55 @@
             <li>
               <a routerLink="hr/shift-assignments">
                 <i class="bi bi-circle"></i><span>Shift Assignments</span>
+              </a>
+            </li>
+
+            <!-- HR Policies & Benefits (Admin) -->
+            <li *isNavAuth>
+              <a routerLink="hr/policies">
+                <i class="bi bi-circle"></i><span>Policies</span>
+              </a>
+            </li>
+            <li *isNavAuth>
+              <a routerLink="hr/benefits">
+                <i class="bi bi-circle"></i><span>Benefits</span>
+              </a>
+            </li>
+            <li *isNavAuth>
+              <a routerLink="hr/enrollments">
+                <i class="bi bi-circle"></i><span>Enrollments</span>
+              </a>
+            </li>
+            <li *isNavAuth>
+              <a routerLink="hr/claims">
+                <i class="bi bi-circle"></i><span>Claims</span>
+              </a>
+            </li>
+
+            <!-- Employee Self-Service -->
+            <li>
+              <a routerLink="hr/my-policies">
+                <i class="bi bi-circle"></i><span>My Policies</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/my-benefits">
+                <i class="bi bi-circle"></i><span>My Benefits</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/enroll-benefits">
+                <i class="bi bi-circle"></i><span>Enroll in Benefits</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/submit-claim">
+                <i class="bi bi-circle"></i><span>Submit Claim</span>
+              </a>
+            </li>
+            <li>
+              <a routerLink="hr/my-claims">
+                <i class="bi bi-circle"></i><span>My Claims</span>
               </a>
             </li>
           </ul>
@@ -302,9 +351,13 @@
               </div>
           </div>
       </section>
-    </main>    
+    </main>
+
+    <!-- Bug Report FAB and Dialog -->
+    <app-bug-report-fab (fabClick)="showBugReportDialog = true"></app-bug-report-fab>
+    <app-bug-report-dialog [(visible)]="showBugReportDialog"></app-bug-report-dialog>
   </div>
-  
+
   <ng-template #annonymous>
     <router-outlet></router-outlet>
   </ng-template>        

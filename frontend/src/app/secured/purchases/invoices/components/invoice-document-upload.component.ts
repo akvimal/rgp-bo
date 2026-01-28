@@ -163,10 +163,18 @@ export class InvoiceDocumentUploadComponent {
    * Populate the invoice form with extracted data
    */
   populateForm() {
-    if (!this.extractedData) return;
+    if (!this.extractedData) {
+      console.warn('populateForm: No extracted data available');
+      return;
+    }
+
+    console.log('populateForm: Emitting extracted data:', this.extractedData);
+    console.log('populateForm: Data structure check - has invoice?', !!this.extractedData.invoice);
+    console.log('populateForm: Invoice data:', this.extractedData.invoice);
 
     // Emit the extracted data to parent component
     this.dataExtracted.emit(this.extractedData);
+    console.log('populateForm: Event emitted successfully');
 
     // Clear the upload component
     this.clearAll();

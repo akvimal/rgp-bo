@@ -5,6 +5,7 @@ import { UserRoleAssignment } from '../../../entities/user-role-assignment.entit
 import { AppUser } from '../../../entities/appuser.entity';
 import { AppRole } from '../../../entities/approle.entity';
 import { PermissionService } from '../../../core/services/permission.service';
+import { AuditService } from '../../../core/audit/audit.service';
 
 /**
  * UserRoleService
@@ -24,7 +25,8 @@ export class UserRoleService {
     private readonly userRepo: Repository<AppUser>,
     @InjectRepository(AppRole)
     private readonly roleRepo: Repository<AppRole>,
-    private readonly permissionService: PermissionService
+    private readonly permissionService: PermissionService,
+    private readonly auditService: AuditService
   ) {}
 
   /**
@@ -52,6 +54,7 @@ export class UserRoleService {
    * @param userId - User ID to assign role to
    * @param roleId - Role ID to assign
    * @param assignedBy - User ID who is making the assignment
+   * @param ipAddress - IP address of the requester (optional)
    * @returns Created role assignment
    *
    * @throws NotFoundException if user or role doesn't exist
@@ -60,7 +63,8 @@ export class UserRoleService {
   async assignRole(
     userId: number,
     roleId: number,
-    assignedBy: number
+    assignedBy: number,
+    ipAddress?: string
   ): Promise<UserRoleAssignment> {
     // Verify user exists
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -90,7 +94,18 @@ export class UserRoleService {
       existing.active = true;
       existing.assigned_by = assignedBy;
       existing.assigned_on = new Date();
-      return this.assignmentRepo.save(existing);
+      const reactivated = await this.assignmentRepo.save(existing);
+
+      // Log audit
+      await this.auditService.logRoleAssignment({
+        userId: assignedBy,
+        action: 'ROLE_ASSIGN',
+        targetUserId: userId,
+        roleId: roleId,
+        ipAddress: ipAddress,
+      });
+
+      return reactivated;
     }
 
     // Create new assignment
@@ -101,7 +116,18 @@ export class UserRoleService {
       active: true
     });
 
-    return this.assignmentRepo.save(assignment);
+    const savedAssignment = await this.assignmentRepo.save(assignment);
+
+    // Log audit
+    await this.auditService.logRoleAssignment({
+      userId: assignedBy,
+      action: 'ROLE_ASSIGN',
+      targetUserId: userId,
+      roleId: roleId,
+      ipAddress: ipAddress,
+    });
+
+    return savedAssignment;
   }
 
   /**
@@ -109,12 +135,14 @@ export class UserRoleService {
    *
    * @param userId - User ID to remove role from
    * @param roleId - Role ID to remove
+   * @param removedBy - User ID who is removing the role
+   * @param ipAddress - IP address of the requester (optional)
    * @returns Updated role assignment (inactive)
    *
    * @throws NotFoundException if user, role, or assignment doesn't exist
    * @throws BadRequestException if trying to remove user's last role
    */
-  async removeRole(userId: number, roleId: number): Promise<UserRoleAssignment> {
+  async removeRole(userId: number, roleId: number, removedBy: number, ipAddress?: string): Promise<UserRoleAssignment> {
     // Check user exists
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -146,7 +174,18 @@ export class UserRoleService {
 
     // Soft delete - mark as inactive
     assignment.active = false;
-    return this.assignmentRepo.save(assignment);
+    const removed = await this.assignmentRepo.save(assignment);
+
+    // Log audit
+    await this.auditService.logRoleAssignment({
+      userId: removedBy,
+      action: 'ROLE_REMOVE',
+      targetUserId: userId,
+      roleId: roleId,
+      ipAddress: ipAddress,
+    });
+
+    return removed;
   }
 
   /**

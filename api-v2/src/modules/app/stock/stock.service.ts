@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 
-import { EntityManager, Repository } from "typeorm";
+import { DataSource, EntityManager, Repository } from "typeorm";
 import { CreateProductPriceDto } from "./dto/create-product-price.dto";
 import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
 import { ProductPriceChange } from "src/entities/product-pricechange.entity";
@@ -12,7 +12,8 @@ export class StockService {
 
     constructor(@InjectEntityManager() private manager: EntityManager,
         @InjectRepository(ProductPriceChange) private readonly priceRepository: Repository<ProductPriceChange>,
-        @InjectRepository(ProductQtyChange) private readonly qtyRepository: Repository<ProductQtyChange>){}
+        @InjectRepository(ProductQtyChange) private readonly qtyRepository: Repository<ProductQtyChange>,
+        private dataSource: DataSource){}
     
         async findPurchaseItemsWithAvailable(ids:number[]){
             if (!ids || ids.length === 0) return [];
@@ -213,13 +214,18 @@ export class StockService {
     /**
      * Create stock quantity adjustment
      * Fix for issue #60: Validate negative adjustments don't make stock go below zero
+     * Fix for issue #13: Pessimistic locking to prevent concurrent adjustment race conditions
      */
     async createQty(dto: CreateProductQtyChangeDto, userid) {
-        // If negative adjustment, validate it won't make available stock go below zero
-        if (dto.qty < 0) {
-            // Check current available stock for this item
-            const stockCheck = await this.manager.query(
-                `SELECT available FROM inventory_view WHERE purchase_itemid = $1`,
+        // Wrap in SERIALIZABLE transaction with row-level locking
+        return await this.dataSource.transaction('SERIALIZABLE', async (transactionManager) => {
+            // Lock the inventory row using SELECT FOR UPDATE to prevent concurrent modifications
+            // This ensures that only one transaction can modify this stock at a time
+            const stockCheck = await transactionManager.query(
+                `SELECT purchase_itemid, available
+                 FROM inventory_view
+                 WHERE purchase_itemid = $1
+                 FOR UPDATE`,
                 [dto.itemid]
             );
 
@@ -228,17 +234,25 @@ export class StockService {
             }
 
             const currentStock = stockCheck[0].available;
-            const newStock = currentStock + dto.qty; // dto.qty is negative
+            const newStock = currentStock + dto.qty; // dto.qty can be positive or negative
 
+            // Validate that adjustment won't result in negative stock
             if (newStock < 0) {
                 throw new Error(
                     `Invalid adjustment: Cannot reduce stock below zero. ` +
                     `Current: ${currentStock}, Adjustment: ${dto.qty}, Would result in: ${newStock}`
                 );
             }
-        }
 
-        return this.qtyRepository.save({...dto, createdby:userid});
+            // Create the adjustment record
+            // The lock will be held until the transaction commits, preventing race conditions
+            const adjustment = await transactionManager.save(ProductQtyChange, {
+                ...dto,
+                createdby: userid
+            });
+
+            return adjustment;
+        });
     }
 
     async createStockAdjustments(items: CreateProductQtyChangeDto[], userid) {

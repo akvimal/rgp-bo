@@ -561,20 +561,77 @@ f3ec402c2 - docs: Add comprehensive verification and diagnostic documentation
 - **MANUAL_VERIFICATION_GUIDE.md**: Manual testing procedures
 - **HR_PERFORMANCE_GUIDE.md**: HR features performance optimization
 
-### Active Documentation (`docs/`)
-- **ENHANCED_INVOICE_LIFECYCLE.md**: Enhanced invoice lifecycle system
+### RBAC & Access Control (`docs/rbac/`)
+- **DYNAMIC_RBAC_MULTITENANCY_DESIGN.md**: RBAC and multi-tenancy design
+- **DYNAMIC_RBAC_QUICK_START.md**: Quick start guide for RBAC
+- **FEATURE_GROUPS_ACCESS_LEVELS_DESIGN.md**: Feature groups and access levels
+- **FEATURE_GROUPS_EXAMPLE.md**: Feature groups usage examples
+- **FEATURE_GROUPS_IMPLEMENTATION_COMPLETE.md**: Implementation summary
+- **DATA_SCOPE_IMPLEMENTATION_SALES.md**: Data scope for sales module
+- **DATA_SCOPE_TESTING_GUIDE.md**: Testing data scope features
+- **RBAC_CURRENT_STATE_ISSUES.md**: Current state and issues analysis
+- **RBAC_DOMAIN_ANALYSIS.md**: Domain-driven RBAC analysis
+- **RBAC_GAP_ANALYSIS_REVISED.md**: Gap analysis and recommendations
+- **RBAC_IMPLEMENTATION_SUMMARY.md**: Implementation summary
+- **RBAC_QUICK_REFERENCE.md**: Quick reference guide
+- **MULTI_ROLE_TESTING_GUIDE.md**: Testing with multiple roles
+
+### Payroll & Finance (`docs/payroll/`)
+- **FLEXIBLE_PAYROLL_SYSTEM_DESIGN.md**: Flexible payroll system design
+- **PAYROLL_BACKEND_IMPLEMENTATION.md**: Backend implementation guide
+- **PAYROLL_DESIGN_CORRECTIONS.md**: Design corrections and improvements
+- **PAYROLL_FINANCE_MODULE_DESIGN.md**: Complete payroll/finance module design
+- **PAYROLL_MIGRATIONS_SUMMARY.md**: Database migrations summary
+
+### Menu & UX (`docs/menu-ux/`)
+- **MENU_CONSOLIDATION_IMPLEMENTATION.md**: Menu consolidation implementation
+- **MENU_STRUCTURE_PROPOSAL.md**: Menu structure design proposal
+- **MODULAR_ERP_ARCHITECTURE.md**: Modular ERP architecture vision
+- **MODULAR_ERP_IMPLEMENTATION_ROADMAP.md**: Modular ERP roadmap
+
+### GST & Tax Management (`docs/gst/`)
+- **GST_2025_IMPACT_ANALYSIS.md**: GST 2025 impact analysis
+- **GST_FILING_AND_ITC_GUIDE.md**: GST filing and ITC reconciliation
 - **GST_REPORTING_SYSTEM_IMPLEMENTATION.md**: GST reporting implementation
 - **HSN_TAX_MANAGEMENT_GUIDE.md**: HSN code and tax management
-- **GST_FILING_AND_ITC_GUIDE.md**: GST filing and ITC reconciliation
-- **SMART_PO_IMPLEMENTATION_ROADMAP.md**: Smart purchase order roadmap
-- **NEXT_ACTIONS_ROADMAP.md**: Project roadmap and next actions
-- **MULTI_TENANT_STORE_ARCHITECTURE.md**: Multi-store architecture
-- **INVOICE_DOCUMENT_UPLOAD_OCR.md**: Invoice OCR capabilities
 - **PRICING_TAX_ANALYSIS_RECOMMENDATIONS.md**: Pricing and tax analysis
-- **GST_2025_IMPACT_ANALYSIS.md**: GST 2025 impact analysis
+
+### Issues & Bug Fixes (`docs/issues/`)
+- **ISSUE_58_FIX_SUMMARY.md**: Issue #58 fix summary
+- **ISSUE_59_VERIFICATION_REPORT.md**: Issue #59 verification report
+- **ISSUE_60_VERIFICATION_REPORT.md**: Issue #60 verification report
+- **BUG_ANALYSIS_REPORTED_ISSUES.md**: Comprehensive bug analysis
+- **CRITICAL_FIXES_IMPLEMENTATION_SUMMARY.md**: Critical fixes summary
+- **CRITICAL_FIXES_TESTING_GUIDE.md**: Testing critical fixes
+
+### Active Documentation (`docs/`)
+- **OCR_COMPREHENSIVE_GUIDE.md**: Complete OCR feature guide (multi-image, category selection, duplicate detection)
 - **AI_API_ERROR_HANDLING.md**: AI API error handling patterns
+- **ENHANCED_INVOICE_LIFECYCLE.md**: Enhanced invoice lifecycle system
+- **INVOICE_DOCUMENT_UPLOAD_OCR.md**: Invoice OCR capabilities
+- **MIGRATION_RENUMBERING_PROPOSAL.md**: Migration renumbering proposal
+- **MULTI_TENANT_STORE_ARCHITECTURE.md**: Multi-store architecture
+- **NEXT_ACTIONS_ROADMAP.md**: Project roadmap and next actions
 - **PULL_REQUEST_TEMPLATE.md**: PR submission template
 - **READY_FOR_PULL_REQUEST.md**: PR readiness checklist
+- **SMART_PO_IMPLEMENTATION_ROADMAP.md**: Smart purchase order roadmap
+
+### Implementation Documentation (`docs/implementations/`)
+- **FRONTEND_NEAR_EXPIRY_DASHBOARD_COMPLETE.md**: Near expiry dashboard implementation
+- **GITHUB_ISSUES_CREATED.md**: GitHub issues creation record
+- **ISSUE_111_IMPLEMENTATION_SUMMARY.md**: Issue #111 implementation summary
+
+### Planning Documentation (`docs/planning/`)
+- **GITHUB_ISSUES_SETUP.md**: GitHub issues setup guide
+- **GITHUB_PROJECT_SUMMARY.md**: Project dashboard reference
+- **github-issues-import.csv**: Issues import template
+
+### Database Migrations (`sql/migrations/`)
+- **MIGRATIONS_README.md**: Database migrations guide (moved from root)
+- **002_fix_bill_number_race_condition.sql**: Bill number race condition fix
+- **003_hr_management_tables.sql**: HR management schema
+- **004_setup_test_db.sql**: Test database setup
+- **005_update_hr_permissions.sql**: HR permissions update
 
 ### Historical Documentation (`docs/archive/`)
 - **phase-completions/**: Phase completion status documents
@@ -589,6 +646,43 @@ f3ec402c2 - docs: Add comprehensive verification and diagnostic documentation
   - HSN_TAX_IMPLEMENTATION_SUMMARY.md
   - MULTI_PRODUCT_INTENT_IMPLEMENTATION.md
 - **hr-implementation/**: HR feature planning and implementation documentation
+- **hr-testing/**: HR testing documentation
+  - HR_API_FIX_VERIFICATION.md
+  - HR_AVAILABLE_BENEFITS_FIX.md
+  - HR_BENEFITS_POLICIES_TESTING_GUIDE.md
+  - HR_MENU_PERMISSION_FIX.md
+  - HR_MODULE_TESTING_FLOWS.md
+  - HR_QUICK_TEST_SCENARIOS.md
+  - HR_WORKFLOW_DIAGRAMS.md
+- **2026-01-deployments/**: Deployment verification documents
+  - DEPLOYMENT_VERIFICATION_2026-01-17.md
+  - LOGIN_ROUTING_FIX_2026-01-18.md
+  - PHASE2-4_DEPLOYMENT_COMPLETE.md
+  - HR_IMPLEMENTATION_COMPLETE.md
+  - HR_MENU_STRUCTURE.md
+- **2026-01-implementations/**: January 2026 implementation documents
+  - DASHBOARD_FIX_VERIFICATION.md
+  - NEAR_EXPIRY_CARD_IMPLEMENTATION_2026-01-18.md
+  - NEAR_EXPIRY_DASHBOARD_TEST_RESULTS.md
+  - PHASE2_BATCH_IMPLEMENTATION_COMPLETE.md
+  - PHASE2_BATCH_IMPLEMENTATION_PROGRESS.md
+  - PRIORITY1_TEST_DATA_VERIFICATION.md
+  - PRIORITY2_FEFO_ALLOCATION_TEST_RESULTS.md
+  - PRIORITY3_PRICING_VALIDATION_TEST_RESULTS.md
+  - PURCHASES_DASHBOARD_IMPLEMENTATION.md
+  - PURCHASE_DASHBOARD_ENHANCEMENT_ANALYSIS.md
+- **product-implementations/**: Product feature implementations
+  - PRODUCT_LIST_PHASE1_IMPLEMENTATION_2026-01-18.md
+  - PRODUCT_LIST_PHASE2_IMPLEMENTATION_2026-01-18.md
+  - PRODUCT_LIST_PHASE3_IMPLEMENTATION_2026-01-18.md
+  - PRODUCT_LIST_UX_REVIEW_2026-01-18.md
+  - PRODUCT_PRICE_LIST_UX_IMPROVEMENTS.md
+  - PRODUCTS_DASHBOARD_IMPLEMENTATION_COMPLETE_2026-01-18.md
+  - PRODUCTS_DASHBOARD_IMPLEMENTATION_PLAN.md
+- **ocr-development/**: OCR feature development documentation
+  - MULTI_IMAGE_OCR_FIXES_2026-01-26.md
+  - MULTI_IMAGE_OCR_V2.1_COMBINED_CONTEXTUALIZATION.md
+  - PRODUCT_OCR_LLM_ENHANCEMENT.md
 - **PROJECT_CLEANUP_2024-11-29.md**: Previous cleanup summary (Nov 2024)
 - **PROJECT_CLEANUP_SUMMARY_2025-12-04.md**: Previous cleanup summary (Dec 2024)
 - **PHASE3_TEST_RESULTS.md**: Phase 3 test results
@@ -662,13 +756,42 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2025-12-17
+**Last Updated**: 2026-01-27
 **Maintainer**: Development Team
 **Claude Code Version**: This context is optimized for Claude Code
 
 ---
 
-## Recent Changes (2026-01-13)
+## Recent Changes (2026-01-27)
+
+### Project Cleanup & Organization (January 2026 - Phase 2)
+- **Documentation consolidation**: Created comprehensive OCR guide
+  - Consolidated 5 OCR-related docs into single `docs/OCR_COMPREHENSIVE_GUIDE.md`
+  - Moved OCR development docs to `docs/archive/ocr-development/`
+  - Comprehensive guide covers: multi-image processing, category selection, pack parsing, duplicate detection, delete & recreate workflow
+
+- **Documentation organized by timeframe**: Created archive subdirectories
+  - `docs/archive/2026-01-deployments/` - January 2026 deployment verification docs (5 files)
+  - `docs/archive/2026-01-implementations/` - January 2026 implementation docs (10 files)
+  - `docs/archive/product-implementations/` - Product feature implementations (7 files)
+  - `docs/archive/hr-testing/` - HR testing documentation (7 files)
+  - `docs/archive/ocr-development/` - OCR development documentation (3 files)
+
+- **Current implementations organized**: Created `docs/implementations/` directory
+  - Moved `FRONTEND_NEAR_EXPIRY_DASHBOARD_COMPLETE.md`
+  - Moved `GITHUB_ISSUES_CREATED.md`
+  - Moved `ISSUE_111_IMPLEMENTATION_SUMMARY.md`
+
+- **Root directory cleaned**: Removed 42+ temporary and consolidated files
+  - Archived all 2026-01 timestamped implementation docs
+  - Consolidated OCR documentation
+  - Kept only essential active documentation in root
+
+- **CLAUDE.md updated**: Reflects new documentation structure with all archive subdirectories
+
+### Previous Changes (2026-01-13)
+
+#### Project Cleanup & Organization (January 2026 - Phase 1)
 
 ### Project Cleanup & Organization (January 2026)
 - **Temporary files removed**: Cleaned up 42 temporary Claude working directory files

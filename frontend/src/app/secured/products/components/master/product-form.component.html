@@ -2,16 +2,16 @@
     <div class="card-body">
       <h5 class="card-title m-0 p-0">{{isNew ? 'New' : 'Edit'}} Product</h5>
 
-      <!-- OCR Image Upload Section -->
+      <!-- OCR Image Upload Section - Enhanced with Multi-Image Support -->
       <div class="row mt-3" *ngIf="isNew">
         <div class="col-12">
           <div class="card bg-light">
             <div class="card-body">
               <h6 class="card-title">
-                <i class="bi bi-camera"></i> Extract Product Info from Image (OCR)
+                <i class="bi bi-camera"></i> Extract Product Info from Images (AI-Powered OCR)
               </h6>
               <p class="text-muted small mb-2">
-                Upload a clear image of the product label or packaging to automatically extract product information
+                Upload one or multiple images (front, back, sides) of the product packaging to automatically extract information
               </p>
               <div class="row">
                 <div class="col-md-8">
@@ -19,15 +19,17 @@
                     type="file"
                     class="form-control"
                     accept="image/*"
+                    multiple
                     (change)="onFileSelected($event)"
                     [disabled]="ocrProcessing">
+                  <small class="text-muted">Supports multiple images (max 10MB per image)</small>
                 </div>
                 <div class="col-md-4">
                   <button
                     type="button"
                     class="btn btn-info w-100"
-                    [disabled]="!selectedFile || ocrProcessing"
-                    (click)="processImageWithOCR()">
+                    [disabled]="selectedFiles.length === 0 || ocrProcessing"
+                    (click)="processMultipleImages()">
                     <span *ngIf="!ocrProcessing">
                       <i class="bi bi-magic"></i> Extract Info
                     </span>
@@ -38,14 +40,157 @@
                   </button>
                 </div>
               </div>
-              <div *ngIf="ocrResult && ocrResult.success" class="mt-3">
-                <div class="alert alert-success">
-                  <strong><i class="bi bi-check-circle"></i> Extraction Successful!</strong>
-                  <p class="mb-0 small">Confidence: {{ocrResult.productInfo.confidence}}</p>
-                  <details class="mt-2">
-                    <summary class="text-primary" style="cursor: pointer;">View extracted text</summary>
-                    <pre class="mt-2 p-2 bg-white border rounded small">{{ocrResult.extractedText}}</pre>
-                  </details>
+
+              <!-- Individual Image Results -->
+              <div *ngIf="ocrResults.length > 0" class="mt-3">
+                <h6 class="mb-2"><i class="bi bi-images"></i> Processed Images ({{ocrResults.length}})</h6>
+                <div class="accordion" id="imageResultsAccordion">
+                  <div class="accordion-item" *ngFor="let result of ocrResults; let i = index">
+                    <h2 class="accordion-header">
+                      <button class="accordion-button collapsed" type="button"
+                              [attr.data-bs-toggle]="'collapse'"
+                              [attr.data-bs-target]="'#collapse' + i">
+                        <i class="bi" [ngClass]="result.success ? 'bi-check-circle text-success' : 'bi-x-circle text-danger'"></i>
+                        <span class="ms-2">{{result.fileName}}</span>
+                        <span class="badge bg-success ms-2" *ngIf="result.success">
+                          OCR Complete
+                        </span>
+                        <span class="badge bg-danger ms-2" *ngIf="!result.success">
+                          Failed
+                        </span>
+                      </button>
+                    </h2>
+                    <div [id]="'collapse' + i" class="accordion-collapse collapse"
+                         [attr.data-bs-parent]="'#imageResultsAccordion'">
+                      <div class="accordion-body">
+                        <div *ngIf="result.success">
+                          <h6 class="text-muted small">Extracted Text:</h6>
+                          <pre class="p-2 bg-white border rounded small" style="max-height: 150px; overflow-y: auto;">{{result.extractedText}}</pre>
+                        </div>
+                        <div *ngIf="!result.success" class="alert alert-danger">
+                          {{result.error}}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Merged/Contextualized Data -->
+              <div *ngIf="mergedProductInfo" class="mt-4">
+                <div class="card border-success">
+                  <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span>
+                      <i class="bi bi-check-circle-fill"></i> Extracted Product Information
+                    </span>
+                    <span class="badge bg-light text-dark" *ngIf="mergedProductInfo?.confidence">
+                      {{mergedProductInfo.confidence | uppercase}} Confidence ({{mergedProductInfo.confidenceScore || 0}}%)
+                    </span>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <!-- Brand -->
+                      <div class="col-md-6 mb-3" *ngIf="mergedProductInfo.brand">
+                        <label class="text-muted small mb-1">Brand</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.brand}}
+                        </div>
+                      </div>
+
+                      <!-- Manufacturer -->
+                      <div class="col-md-6 mb-3" *ngIf="mergedProductInfo.mfr">
+                        <label class="text-muted small mb-1">Manufacturer</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.mfr}}
+                        </div>
+                      </div>
+
+                      <!-- Title -->
+                      <div class="col-md-12 mb-3" *ngIf="mergedProductInfo.title">
+                        <label class="text-muted small mb-1">Product Title</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.title}}
+                        </div>
+                      </div>
+
+                      <!-- Pack Size & HSN Code -->
+                      <div class="col-md-6 mb-3" *ngIf="mergedProductInfo.pack">
+                        <label class="text-muted small mb-1">Pack Size</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.pack}}
+                        </div>
+                      </div>
+
+                      <div class="col-md-6 mb-3" *ngIf="mergedProductInfo.hsn">
+                        <label class="text-muted small mb-1">HSN Code</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.hsn}}
+                        </div>
+                      </div>
+
+                      <!-- Product Type -->
+                      <div class="col-md-6 mb-3" *ngIf="mergedProductInfo.productType">
+                        <label class="text-muted small mb-1">Product Type</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.productType}}
+                        </div>
+                      </div>
+
+                      <!-- Composition -->
+                      <div class="col-md-12 mb-3" *ngIf="mergedProductInfo.composition">
+                        <label class="text-muted small mb-1">Composition</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.composition}}
+                        </div>
+                      </div>
+
+                      <!-- Ingredients -->
+                      <div class="col-md-12 mb-3" *ngIf="mergedProductInfo.ingredients && mergedProductInfo.ingredients.length > 0">
+                        <label class="text-muted small mb-1">Ingredients ({{mergedProductInfo.ingredients.length}})</label>
+                        <div class="bg-white border p-2 rounded">
+                          <ul class="mb-0" style="max-height: 150px; overflow-y: auto;">
+                            <li *ngFor="let ingredient of mergedProductInfo.ingredients" class="small">
+                              {{ingredient}}
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <!-- Description -->
+                      <div class="col-md-12 mb-3" *ngIf="mergedProductInfo.description">
+                        <label class="text-muted small mb-1">Description</label>
+                        <div class="form-control-plaintext bg-white border p-2 rounded">
+                          {{mergedProductInfo.description}}
+                        </div>
+                      </div>
+
+                      <!-- Notes -->
+                      <div class="col-md-12 mb-3" *ngIf="mergedProductInfo.notes && mergedProductInfo.notes.length > 0">
+                        <label class="text-muted small mb-1">
+                          <i class="bi bi-info-circle"></i> Notes
+                        </label>
+                        <div class="alert alert-info small mb-0">
+                          <ul class="mb-0">
+                            <li *ngFor="let note of mergedProductInfo.notes">{{note}}</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <!-- Extraction Method -->
+                      <div class="col-md-12">
+                        <small class="text-muted">
+                          <i class="bi bi-gear"></i> Extraction Method: <strong>{{mergedProductInfo.extractionMethod}}</strong>
+                        </small>
+                      </div>
+                    </div>
+
+                    <!-- Apply to Form Button -->
+                    <div class="mt-3 d-grid">
+                      <button type="button" class="btn btn-success" (click)="applyMergedDataToForm()">
+                        <i class="bi bi-arrow-down-circle"></i> Apply to Form
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -55,104 +200,163 @@
 
       <!-- Multi Columns Form -->
       <form class="pt-2" [formGroup]="form" (ngSubmit)="onSave()">
-        <div class="row mt-2">
-          <div class="col-md-2" *ngIf="(productProps$ | async).length > 0">
-            <label for="category" class="form-label">Category</label>
-            <select formControlName="category" class="form-control" id="category" 
-            (change)="selectProps($event,undefined)" required>
-            <option value="">Select</option>
-            <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
-            </select>
+
+        <!-- Section 1: Product Classification -->
+        <div class="card mb-3 border-primary">
+          <div class="card-header bg-primary text-white">
+            <i class="bi bi-tag"></i> Product Classification
           </div>
-          <div class="col-md-2">
-            <label for="brand" class="form-label">Brand</label>
-            <!-- <input id="brand" class="form-control" type="text" formControlName="brand"> -->
-            <app-lookup [default]="form.value.brand" [entity]="'product'" [property]="'brand'" (update)="onLookupInput($event, 'brand')"></app-lookup>
-          </div>
-          <div class="col-md-3">
-            <label for="mfr" class="form-label">Manufacturer</label>
-            <!-- <input id="mfr" class="form-control" type="text" formControlName="mfr"> -->
-            <app-lookup [default]="form.value.mfr" [entity]="'product'" [property]="'mfr'" (update)="onLookupInput($event, 'mfr')"></app-lookup>
-          </div>
-          <div class="col-md-1">
-            <label for="pack" class="form-label">Pack <span class="required">*</span></label>
-            <input type="number" class="form-control" id="pack" formControlName="pack">
-          </div>
-        </div>
-  
-        <!-- <div class="row g-3 mt-2">
-          <div class="col-md-12" *isAuth="'products.add$description'">
-            <label for="description" class="form-label">Description</label>
-            <textarea class="form-control" id="description" formControlName="description" 
-              style="height: 100px;"></textarea>
-          </div>
-        </div> -->
-        <div class="row mt-2">
-         
-          <!-- <div class="col-md-3">
-            <label for="brand" class="form-label">Brand <span class="required">*</span></label>
-            <input id="brand" class="form-control" type="text" formControlName="brand" (input)="dataInput(undefined, 'brand', $event)">
-          </div>       -->
-        </div>
-        <div class="row g-2 bg-light pb-3 mt-2" formGroupName="props">
-          <div class="col-12 d-flex">
-            <div style="padding-right:1.5em" *ngFor="let pp of props">
-            <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
-            <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
-            (change)="dataInput(pp.type, pp.id, $event)">
-              <option value="">Select</option>
-              <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
-            </select> 
-            <!-- <span class="p-fluid">
-            <p-multiSelect [options]="pp.choices" formControlName={{pp.id}} optionLabel="label" *ngIf="pp.type === 'MULTI-SELECT'"></p-multiSelect>
-            </span> -->
-            <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)" 
-                      class="form-control" formControlName={{pp.id}}>
-            <textarea *ngIf="pp.type === 'TEXT'" cols="40" (input)="dataInput(pp.type, pp.id, $event)" class="form-control" formControlName={{pp.id}}></textarea>
-            <div *ngIf="pp.type === 'CHECK'">
-              <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)" [checked]="pp.default"
-              class="form-check-input" style="width:25px;height:25px" formControlName={{pp.id}}>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6" *ngIf="(productProps$ | async).length > 0">
+                <label for="category" class="form-label">Category <span class="text-danger">*</span>
+                  <i class="bi bi-info-circle text-muted ms-1" title="Select product category to enable category-specific fields"></i>
+                </label>
+                <select formControlName="category" class="form-control" id="category"
+                  (change)="selectProps($event,undefined)" required>
+                  <option value="">Select Category</option>
+                  <option value="Medicine">Medicine (Prescription drugs, Schedule H/H1/X)</option>
+                  <option value="OTC">OTC (Over-the-counter, supplements, devices)</option>
+                </select>
+                <small class="text-muted">Medicine requires regulatory fields, OTC for general products</small>
+              </div>
+              <div class="col-md-6">
+                <label for="hsncode" class="form-label">HSN Code
+                  <i class="bi bi-info-circle text-muted ms-1" title="Harmonized System Nomenclature for tax calculation"></i>
+                </label>
+                <select id="hsncode" class="form-control" formControlName="hsn" (change)="onHsnSelect($event)">
+                  <option value="">Select HSN</option>
+                  <option *ngFor="let hsn of hsnCodes" [value]="hsn.hsncode">
+                    {{hsn.hsncode}} - {{hsn.hsndescription || 'N/A'}} ({{hsn.igstrate}}% Tax)
+                  </option>
+                </select>
+                <small *ngIf="selectedHsn" class="text-info">
+                  <i class="bi bi-info-circle"></i> Tax: {{selectedHsn.cgstrate}}% CGST + {{selectedHsn.sgstrate}}% SGST = {{selectedHsn.igstrate}}% Total
+                </small>
               </div>
             </div>
           </div>
         </div>
-        <div class="row mt-2">
-          <div class="col-8">
-            <!-- {{form.controls['title'].value}} -->
-            <label for="title" class="form-label">Title <span class="required">*</span></label>
-            <!-- <input type="text" class="form-control" id="title" formControlName="title"> -->
-            
-            <app-lookup [default]="form.value.title" [entity]="'product'" [property]="'title'" (update)="onLookupInput($event, 'title')"></app-lookup>
-            <br>
-            <p>Title is shown in Sale, Purchase and other places. Title should be unique and easily recognized.
-              Each title should be linked to one product code. Include the properties of product to make the title unique.
-            </p>    
+  
+        <!-- Section 2: Category-Specific Properties -->
+        <div class="card mb-3 border-info" *ngIf="props && props.length > 0" formGroupName="props">
+          <div class="card-header bg-info text-white">
+            <i class="bi bi-list-check"></i> {{form.value.category}} Properties
+            <small class="ms-2">(Category-specific fields)</small>
           </div>
-          <div class="col-md-2">
-            <label for="prcode" class="form-label">Product Code</label>
-            <!-- <input type="text" class="form-control" id="prcode" formControlName="code"> -->
-            <app-lookup [default]="form.value.code" [entity]="'product'" [property]="'product_code'" (update)="onLookupInput($event, 'code')"></app-lookup>
-          </div>
-          <div class="col-md-2">
-            <label for="hsncode" class="form-label">HSN Code</label>
-            <select id="hsncode" class="form-control" formControlName="hsn" (change)="onHsnSelect($event)">
-              <option value="">Select HSN</option>
-              <option *ngFor="let hsn of hsnCodes" [value]="hsn.hsncode">
-                {{hsn.hsncode}} - {{hsn.hsndescription || 'N/A'}} ({{hsn.igstrate}}% Tax)
-              </option>
-            </select>
-            <small *ngIf="selectedHsn" class="text-muted">
-              Tax: {{selectedHsn.cgstrate}}% CGST + {{selectedHsn.sgstrate}}% SGST = {{selectedHsn.igstrate}}% Total
-            </small>
+          <div class="card-body">
+            <div class="row g-3">
+              <div *ngFor="let pp of props" [ngClass]="getFieldColumnClass(pp)">
+                <label class="form-label">
+                  {{pp.label}}
+                  <span class="text-danger" *ngIf="pp.required"> *</span>
+                  <i class="bi bi-info-circle text-muted ms-1" *ngIf="pp.id === 'schedule'"
+                     title="H = Schedule H (Prescription Required), H1 = Schedule H1 (Restricted), X = Schedule X (Narcotic - Special Register)"></i>
+                  <i class="bi bi-info-circle text-muted ms-1" *ngIf="pp.id === 'composition'"
+                     title="e.g., Paracetamol 500mg + Caffeine 65mg"></i>
+                </label>
+
+                <!-- Single Select Dropdown -->
+                <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
+                  (change)="dataInput(pp.type, pp.id, $event)"
+                  [class.is-invalid]="isFieldInvalid(pp.id)">
+                  <option value="">Select {{pp.label}}</option>
+                  <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
+                </select>
+
+                <!-- Text Input -->
+                <input *ngIf="!pp.type" type="text"
+                  (input)="dataInput(pp.type, pp.id, $event)"
+                  class="form-control"
+                  formControlName={{pp.id}}
+                  [class.is-invalid]="isFieldInvalid(pp.id)">
+
+                <!-- Textarea -->
+                <textarea *ngIf="pp.type === 'TEXT'"
+                  rows="3"
+                  (input)="dataInput(pp.type, pp.id, $event)"
+                  class="form-control"
+                  formControlName={{pp.id}}
+                  [class.is-invalid]="isFieldInvalid(pp.id)"
+                  [placeholder]="pp.id === 'composition' ? 'e.g., Paracetamol 500mg + Caffeine 65mg' : ''"></textarea>
+
+                <!-- Checkbox -->
+                <div *ngIf="pp.type === 'CHECK'" class="form-check form-switch">
+                  <input type="checkbox"
+                    (change)="dataInput(pp.type, pp.id, $event)"
+                    [checked]="pp.default"
+                    class="form-check-input"
+                    style="width:48px;height:24px;cursor:pointer"
+                    formControlName={{pp.id}}
+                    id="{{pp.id}}_check">
+                  <label class="form-check-label ms-2" for="{{pp.id}}_check" style="cursor:pointer">
+                    {{pp.id === 'chronic' ? 'Mark as chronic medication' : 'Mark as generic drug'}}
+                  </label>
+                </div>
+
+                <!-- Validation Error Message -->
+                <div *ngIf="isFieldInvalid(pp.id)" class="invalid-feedback d-block">
+                  {{pp.label}} is required
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      <div class="row mt-2">
-        <div class="col-md-12 text-center">
-          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-          <button type="reset" *ngIf="isNew" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
-          <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
+
+        <!-- Section 3: Product Identity -->
+        <div class="card mb-3 border-success">
+          <div class="card-header bg-success text-white">
+            <i class="bi bi-box"></i> Product Identity
+          </div>
+          <div class="card-body">
+            <div class="row mb-3">
+              <div class="col-12">
+                <label for="title" class="form-label">Product Title <span class="text-danger">*</span>
+                  <i class="bi bi-info-circle text-muted ms-1" title="Unique title shown in Sale, Purchase, and all transactions. Should be easily recognizable."></i>
+                </label>
+                <app-lookup [default]="form.value.title" [entity]="'product'" [property]="'title'" (update)="onLookupInput($event, 'title')"></app-lookup>
+                <small class="text-muted">
+                  <i class="bi bi-lightbulb"></i> Tip: Include brand, formulation, and strength to make the title unique (e.g., "DOLO 650MG TAB")
+                </small>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-3">
+                <label for="brand" class="form-label">Brand Name</label>
+                <app-lookup [default]="form.value.brand" [entity]="'product'" [property]="'brand'" (update)="onLookupInput($event, 'brand')"></app-lookup>
+              </div>
+              <div class="col-md-4">
+                <label for="mfr" class="form-label">Manufacturer</label>
+                <app-lookup [default]="form.value.mfr" [entity]="'product'" [property]="'mfr'" (update)="onLookupInput($event, 'mfr')"></app-lookup>
+              </div>
+              <div class="col-md-2">
+                <label for="pack" class="form-label">Pack Size <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="pack" formControlName="pack" min="1" placeholder="e.g., 10">
+                <small class="text-muted">Units per pack</small>
+              </div>
+              <div class="col-md-3">
+                <label for="prcode" class="form-label">Product Code</label>
+                <app-lookup [default]="form.value.code" [entity]="'product'" [property]="'product_code'" (update)="onLookupInput($event, 'code')"></app-lookup>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- Form Actions -->
+        <div class="row mt-3">
+          <div class="col-12 text-center">
+            <button type="submit" class="btn btn-primary btn-lg m-2" [disabled]="!form.valid">
+              <i class="bi bi-check-circle"></i> {{isNew ? 'Create Product' : 'Update Product'}}
+            </button>
+            <button type="reset" *ngIf="isNew" (click)="reset()" class="btn btn-outline-secondary m-2">
+              <i class="bi bi-arrow-clockwise"></i> Reset
+            </button>
+            <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">
+              <i class="bi bi-x-circle"></i> Cancel
+            </button>
+          </div>
+        </div>
       </form><!-- End Multi Columns Form -->
 
     </div>

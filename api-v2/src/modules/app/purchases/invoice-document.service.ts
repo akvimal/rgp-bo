@@ -168,13 +168,197 @@ export class InvoiceDocumentService {
   }
 
   /**
+   * Extract tables from PDF using pdfplumber (Python)
+   */
+  private async extractPdfTables(filepath: string): Promise<any> {
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execPromise = util.promisify(exec);
+
+    // In production (dist/), go up to app root, then into src/scripts
+    // In development (src/), go up to app root, then into src/scripts
+    const scriptPath = path.join(process.cwd(), 'src/scripts/extract-pdf-tables.py');
+
+    try {
+      this.logger.log(`Extracting tables from PDF: ${filepath}`);
+
+      const { stdout, stderr } = await execPromise(`python3 "${scriptPath}" "${filepath}"`);
+
+      if (stderr && !stderr.includes('DeprecationWarning')) {
+        this.logger.warn(`Python stderr: ${stderr}`);
+      }
+
+      const result = JSON.parse(stdout);
+
+      if (!result.success) {
+        throw new Error(result.error || 'PDF extraction failed');
+      }
+
+      this.logger.log(`Successfully extracted ${result.tables.length} tables from PDF`);
+      return result;
+
+    } catch (error) {
+      this.logger.error('Error extracting PDF tables:', error.message);
+      throw new HttpException(
+        'Failed to extract tables from PDF',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Perform hybrid PDF extraction: pdfplumber + LLM contextualization
+   */
+  private async performHybridPdfExtraction(
+    filepath: string,
+    docType: string,
+  ): Promise<any> {
+    this.logger.log(`Performing hybrid PDF extraction on: ${filepath}`);
+
+    try {
+      // Step 1: Extract tables using pdfplumber
+      const pdfData = await this.extractPdfTables(filepath);
+
+      // Step 2: Use LLM to contextualize the extracted data
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+
+      const prompt = `
+You are processing a pharmaceutical invoice. I have extracted the raw text and tables from the PDF.
+
+**Extracted Text:**
+${pdfData.text.substring(0, 2000)}
+
+**Extracted Tables:**
+${JSON.stringify(pdfData.tables, null, 2)}
+
+Your task: Convert this data into a structured JSON format.
+
+Return ONLY a valid JSON object with this structure:
+{
+  "confidence": <number 0-100>,
+  "invoice": {
+    "invoiceNumber": "extract from text",
+    "invoiceDate": "YYYY-MM-DD format",
+    "vendorName": "company name from top of invoice",
+    "vendorGstin": "15-character GSTIN",
+    "grNumber": "string or null",
+    "totalAmount": <number or null>,
+    "taxAmount": <number or null>,
+    "subtotal": <number or null>
+  },
+  "items": [
+    {
+      "productName": "from table column",
+      "batch": "from Batch column",
+      "expiryDate": "YYYY-MM format - convert from Exp/Expiry column (e.g., '06/25' → '2025-06')",
+      "quantity": <number from Qty column>,
+      "rate": <number from Rate column>,
+      "mrp": <number from MRP column or null>,
+      "taxPercent": <number from Tax% column or null>,
+      "amount": <number from Amount column>
+    }
+  ],
+  "notes": ["any issues or observations"]
+}
+
+CRITICAL REQUIREMENTS:
+1. Look for the items table in the extracted tables
+2. Common column names: Product/Item, Batch/Lot, Exp/Expiry, Qty/Quantity, Rate/Price, MRP, Tax%, Amount/Total
+3. For expiryDate: Expiry dates are in MM/YY format where YY is last 2 digits of year
+   - YY=25→2025, YY=26→2026, YY=27→2027, YY=28→2028, YY=29→2029, YY=30→2030
+   - "05/27" → "2027-05" (NOT 2025!)
+   - "06/27" → "2027-06" (NOT 2025!)
+   - "07/26" → "2026-07"
+   - "Jun-27" → "2027-06"
+4. EVERY item must have an expiryDate - this is a pharmaceutical invoice
+5. Vendor name is at the TOP of the invoice (not customer/bill-to section)
+
+Return only valid JSON, no markdown formatting.
+`;
+
+      const message = await AiApiErrorHandler.wrapApiCall(
+        () =>
+          anthropic.messages.create({
+            model: 'claude-3-haiku-20240307',
+            max_tokens: 4000,
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+          }),
+        'Anthropic Claude Haiku',
+      );
+
+      const responseText = message.content[0].type === 'text'
+        ? message.content[0].text
+        : '';
+
+      this.logger.log(`LLM contextualization complete`);
+
+      // Parse JSON response
+      let jsonText = responseText.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/```\n?/g, '');
+      }
+
+      const extractedData = JSON.parse(jsonText);
+      extractedData.documentType = docType;
+      extractedData.extractionMethod = 'hybrid-pdfplumber';
+
+      // Log extracted items with expiry dates
+      if (extractedData.items && extractedData.items.length > 0) {
+        this.logger.log(`Extracted ${extractedData.items.length} items:`);
+        extractedData.items.forEach((item: any, index: number) => {
+          this.logger.log(`  Item ${index + 1}: ${item.productName} - Batch: ${item.batch || 'N/A'} - Expiry: ${item.expiryDate || 'N/A'}`);
+        });
+      }
+
+      return extractedData;
+
+    } catch (error) {
+      this.logger.error('Error in hybrid PDF extraction:', error.stack);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      if (error.name === 'SyntaxError') {
+        this.logger.error('Failed to parse LLM response as JSON');
+        throw new HttpException(
+          'Failed to parse extraction results',
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+
+      throw new HttpException(
+        'PDF extraction failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * Perform OCR extraction using Anthropic Claude Vision
    */
   private async performOcrExtraction(
     filepath: string,
     docType: string,
   ): Promise<any> {
-    this.logger.log(`Performing OCR extraction on: ${filepath}`);
+    // Detect if file is PDF and use hybrid extraction
+    const isPdf = filepath.toLowerCase().endsWith('.pdf');
+
+    if (isPdf) {
+      this.logger.log(`PDF detected - using hybrid pdfplumber extraction`);
+      return this.performHybridPdfExtraction(filepath, docType);
+    }
+
+    this.logger.log(`Image detected - using vision-based OCR extraction on: ${filepath}`);
 
     try {
       // Initialize Anthropic client
@@ -214,9 +398,11 @@ export class InvoiceDocumentService {
 
       // Construct the extraction prompt
       const prompt = `
-Extract invoice data from this ${docType === 'DELIVERY_CHALLAN_SCAN' ? 'delivery challan' : 'invoice'} document.
+You are analyzing a PHARMACEUTICAL INVOICE image. Medicines ALWAYS have expiry dates on invoices.
 
-Return ONLY a valid JSON object (no markdown, no explanation) with the following structure:
+🎯 YOUR TASK: Extract ALL data from the invoice table, especially the EXPIRY DATE for each item.
+
+📋 EXPECTED JSON OUTPUT (Return ONLY this, no markdown, no explanation):
 {
   "confidence": <number 0-100>,
   "invoice": {
@@ -231,32 +417,82 @@ Return ONLY a valid JSON object (no markdown, no explanation) with the following
   },
   "items": [
     {
-      "productName": "string",
-      "batch": "string or null",
-      "quantity": <number>,
-      "rate": <number>,
-      "mrp": <number or null>,
-      "taxPercent": <number or null>,
-      "amount": <number>
+      "productName": "DAXAFLOW 4D CAP",
+      "batch": "MC-25406",
+      "expiryDate": "2025-06",
+      "quantity": 10,
+      "rate": 45,
+      "mrp": 50,
+      "taxPercent": 5,
+      "amount": 450
     }
   ],
-  "notes": ["any issues or important observations"]
+  "notes": ["any issues"]
 }
 
-CRITICAL - Vendor vs Customer Distinction:
-- **Vendor Name**: THIS IS THE COMPANY AT THE VERY TOP OF THE INVOICE (in the header/letterhead). This is the SELLER who is ISSUING the invoice. Look for the business name in the largest font at the top, usually with their address and contact details below it.
-- **DO NOT extract the Customer/Bill To/Ship To name** - ignore any section labeled "Customer", "Bill To", "Buyer", "Ship To" etc.
-- **Vendor GSTIN**: The GST number will be RIGHT NEXT to or near the vendor's name at the top. It's exactly 15 characters (format: 33AUEPA1476GZ22).
-- **Verify**: The vendor name and GSTIN should be in the SAME section at the TOP of the invoice.
+🔍 HOW TO FIND THE DATA:
 
-Other fields:
-- **Invoice Date**: Use YYYY-MM-DD format. Look for "Date", "Invoice Date", "Bill Date" in the invoice details section.
-- **Invoice Number**: Look for "Inv No", "Invoice No", "Bill No" - usually has a prefix like SP, INV, etc.
-- **Amounts**: Extract only numeric values (no ₹, Rs). Total = Subtotal + Tax Amount.
-- **Line Items**: Extract all products with quantities, rates, and amounts from the table.
-- **GR Number**: Goods Receipt Number, if present.
-- Set any field to null if not found
-- Provide confidence score (0-100)
+**TABLE STRUCTURE** - Look for a table/grid with these columns:
+┌─────────────────┬─────────┬──────┬─────┬──────┬─────┬─────┬────────┐
+│ Product Name    │ Batch   │ Exp  │ Qty │ Rate │ MRP │ Tax%│ Amount │
+├─────────────────┼─────────┼──────┼─────┼──────┼─────┼─────┼────────┤
+│ DAXAFLOW 4D CAP │MC-25406 │06/25 │ 10  │ 45.00│50.00│ 5   │ 450.00 │
+│ FLUKEM 150MG    │FLT25006 │08/25 │ 20  │ 30.00│35.00│ 5   │ 600.00 │
+└─────────────────┴─────────┴──────┴─────┴──────┴─────┴─────┴────────┘
+
+**CRITICAL - EXPIRY DATE COLUMN:**
+- Column header: "Exp", "Expiry", "Exp Date", or "Expiry Date"
+- Usually located AFTER the Batch column and BEFORE Qty
+- Contains dates in MM/YY format where YY is last 2 digits of year
+- YOU MUST CONVERT to YYYY-MM format
+
+  YEAR CONVERSION RULES (IMPORTANT!):
+  • YY = 25 → Year 2025 (20 + 25)
+  • YY = 26 → Year 2026 (20 + 26)
+  • YY = 27 → Year 2027 (20 + 27)
+  • YY = 28 → Year 2028 (20 + 28)
+  • YY = 29 → Year 2029 (20 + 29)
+  • YY = 30 → Year 2030 (20 + 30)
+
+  CONVERSION EXAMPLES:
+  • "05/27" → "2027-05" (May 2027, NOT 2025!)
+  • "06/27" → "2027-06" (June 2027, NOT 2025!)
+  • "07/27" → "2027-07" (July 2027, NOT 2025!)
+  • "12/26" → "2026-12" (December 2026)
+  • "01/28" → "2028-01" (January 2028)
+  • "Jun-27" → "2027-06" (June 2027)
+  • "08/2025" → "2025-08" (already has 4-digit year)
+
+**VENDOR NAME (Top of Invoice):**
+- The company name in LARGE FONT at the TOP (header/letterhead)
+- Usually: "XYZ PHARMACEUTICALS" or "ABC MEDICAL SUPPLIES"
+- IGNORE sections labeled "Bill To", "Ship To", "Customer" - those are buyers, not vendors
+- Vendor GSTIN is near the vendor name (15 characters: 33AUEPA1476GZ22)
+
+**EXTRACTION REQUIREMENTS:**
+✅ MUST extract expiryDate for EVERY item row
+✅ Convert all expiry formats to YYYY-MM
+✅ Extract ALL columns visible in the table
+✅ If Exp column shows "N/A" or blank, set expiryDate: null
+✅ Return valid JSON only (no backticks, no markdown)
+
+**EXAMPLE ROW EXTRACTION:**
+If you see this table row:
+"DAXAFLOW 4D CAP | MC-25406 | 06/25 | 10 | 45.00 | 50.00 | 5% | 450.00"
+
+Extract as:
+{
+  "productName": "DAXAFLOW 4D CAP",
+  "batch": "MC-25406",
+  "expiryDate": "2025-06",
+  "quantity": 10,
+  "rate": 45,
+  "mrp": 50,
+  "taxPercent": 5,
+  "amount": 450
+}
+
+Now analyze the invoice image and return the JSON.
 `;
 
       // Build content array based on file type
@@ -296,7 +532,7 @@ Other fields:
         ? message.content[0].text
         : '';
 
-      this.logger.log(`Claude response: ${responseText.substring(0, 200)}...`);
+      this.logger.log(`Claude response (first 500 chars): ${responseText.substring(0, 500)}...`);
 
       // Parse JSON response
       // Remove markdown code blocks if present
@@ -315,6 +551,14 @@ Other fields:
       this.logger.log(
         `Successfully extracted data with confidence: ${extractedData.confidence}%`,
       );
+
+      // Log extracted items with expiry dates for debugging
+      if (extractedData.items && extractedData.items.length > 0) {
+        this.logger.log(`Extracted ${extractedData.items.length} items:`);
+        extractedData.items.forEach((item: any, index: number) => {
+          this.logger.log(`  Item ${index + 1}: ${item.productName} - Batch: ${item.batch || 'N/A'} - Expiry: ${item.expiryDate || 'N/A'}`);
+        });
+      }
 
       return extractedData;
     } catch (error) {

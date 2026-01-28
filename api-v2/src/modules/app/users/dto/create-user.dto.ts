@@ -34,4 +34,11 @@ export class CreateUserDto {
     readonly roleid?: number;
 
     public lastlogin?: Date | null;
+
+    // Password policy fields (optional, managed by system)
+    public passwordChangedOn?: Date;
+    public passwordHistory?: string[];
+    public failedLoginAttempts?: number;
+    public lockedUntil?: Date | null;
+    public lastLoginAttempt?: Date | null;
 }

@@ -1,87 +1,754 @@
-<div class="row mt-2">
-    <div class="col-12 p-2 d-flex">
-       <div style="padding-right:.5em"><input type="text" class="form-control" [(ngModel)]="criteria.title" (input)="filter()" placeholder="Product"></div>
-       <div style="padding-right:.5em;padding-top: .5em;font-size: larger;"><input type="checkbox" style="width:25px;height:25px;" [(ngModel)]="criteria.active" (change)="filter()"> Active</div>
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mt-2 mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-tags"></i> Product Pricing</h4>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="filter()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing Alerts Section -->
+    <div class="row mb-3" *ngIf="hasAlerts() && !loading">
+        <div class="col-12">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Pricing Alerts</h6>
+                <div class="row">
+                    <!-- Below PTR Alert -->
+                    <div class="col-md-3" *ngIf="pricingAlerts.belowPTR.length > 0">
+                        <div class="card border-danger mb-2">
+                            <div class="card-body p-2">
+                                <h6 class="text-danger mb-1">
+                                    <i class="bi bi-exclamation-circle"></i> Below PTR
+                                </h6>
+                                <p class="mb-0"><strong>{{pricingAlerts.belowPTR.length}}</strong> products priced below purchase rate</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Negative Margin Alert -->
+                    <div class="col-md-3" *ngIf="pricingAlerts.negativeMargin.length > 0">
+                        <div class="card border-danger mb-2">
+                            <div class="card-body p-2">
+                                <h6 class="text-danger mb-1">
+                                    <i class="bi bi-dash-circle"></i> Negative Margin
+                                </h6>
+                                <p class="mb-0"><strong>{{pricingAlerts.negativeMargin.length}}</strong> products with negative margins</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- High Discount Alert -->
+                    <div class="col-md-3" *ngIf="pricingAlerts.highDiscount.length > 0">
+                        <div class="card border-warning mb-2">
+                            <div class="card-body p-2">
+                                <h6 class="text-warning mb-1">
+                                    <i class="bi bi-percent"></i> High Discount
+                                </h6>
+                                <p class="mb-0"><strong>{{pricingAlerts.highDiscount.length}}</strong> products with >30% discount</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stale Price Alert -->
+                    <div class="col-md-3" *ngIf="pricingAlerts.stalePrice.length > 0">
+                        <div class="card border-info mb-2">
+                            <div class="card-body p-2">
+                                <h6 class="text-info mb-1">
+                                    <i class="bi bi-clock-history"></i> Stale Prices
+                                </h6>
+                                <p class="mb-0"><strong>{{pricingAlerts.stalePrice.length}}</strong> prices not updated in 180+ days</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-3">
+                    <div class="row g-3">
+                        <!-- Product Search -->
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1">Search Product</label>
+                            <input type="text"
+                                   class="form-control"
+                                   [(ngModel)]="criteria.title"
+                                   (input)="filter()"
+                                   placeholder="Type product name...">
+                        </div>
+
+                        <!-- Status Filter (Radio Buttons) -->
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Product Status</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="statusFilter"
+                                       id="statusAll"
+                                       value="all"
+                                       [(ngModel)]="statusFilter"
+                                       (change)="onStatusFilterChange('all')">
+                                <label class="btn btn-outline-secondary btn-sm" for="statusAll">
+                                    All
+                                </label>
+
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="statusFilter"
+                                       id="statusActive"
+                                       value="active"
+                                       [(ngModel)]="statusFilter"
+                                       (change)="onStatusFilterChange('active')">
+                                <label class="btn btn-outline-success btn-sm" for="statusActive">
+                                    Active Only
+                                </label>
+
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="statusFilter"
+                                       id="statusInactive"
+                                       value="inactive"
+                                       [(ngModel)]="statusFilter"
+                                       (change)="onStatusFilterChange('inactive')">
+                                <label class="btn btn-outline-secondary btn-sm" for="statusInactive">
+                                    Inactive
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="col-md-5">
+                            <label class="form-label small mb-1">&nbsp;</label>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        (click)="showAdvancedFilters = !showAdvancedFilters">
+                                    <i class="bi" [ngClass]="showAdvancedFilters ? 'bi-funnel-fill' : 'bi-funnel'"></i>
+                                    Advanced Filters
+                                    <span class="badge bg-primary ms-1" *ngIf="hasActiveFilters()">{{filteredProducts.length}}</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        (click)="showColumnToggle = !showColumnToggle">
+                                    <i class="bi bi-eye"></i> Columns
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        *ngIf="hasActiveFilters()"
+                                        (click)="clearAdvancedFilters()">
+                                    <i class="bi bi-x-circle"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Filters (Collapsible) -->
+                    <div class="row mt-3 pt-3 border-top" *ngIf="showAdvancedFilters">
+                        <!-- Category Filter -->
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1">Category</label>
+                            <p-multiSelect
+                                [options]="availableCategories"
+                                [(ngModel)]="selectedCategories"
+                                (onChange)="onAdvancedFilterChange()"
+                                placeholder="Select categories"
+                                [style]="{'width':'100%'}"
+                                [filter]="true">
+                            </p-multiSelect>
+                        </div>
+
+                        <!-- Stock Status Filter -->
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1">Stock Status</label>
+                            <select class="form-select form-select-sm"
+                                    [(ngModel)]="stockStatusFilter"
+                                    (change)="onAdvancedFilterChange()">
+                                <option value="all">All Stock</option>
+                                <option value="out">Out of Stock</option>
+                                <option value="low">Low Stock</option>
+                                <option value="in">In Stock</option>
+                            </select>
+                        </div>
+
+                        <!-- Margin Range -->
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1">Margin Range (%)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number"
+                                       class="form-control"
+                                       [(ngModel)]="marginMin"
+                                       (input)="onAdvancedFilterChange()"
+                                       placeholder="Min"
+                                       min="0"
+                                       max="100">
+                                <span class="input-group-text">-</span>
+                                <input type="number"
+                                       class="form-control"
+                                       [(ngModel)]="marginMax"
+                                       (input)="onAdvancedFilterChange()"
+                                       placeholder="Max"
+                                       min="0"
+                                       max="100">
+                            </div>
+                        </div>
+
+                        <!-- Discount Range -->
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1">Discount Range (%)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number"
+                                       class="form-control"
+                                       [(ngModel)]="discountMin"
+                                       (input)="onAdvancedFilterChange()"
+                                       placeholder="Min"
+                                       min="0"
+                                       max="100">
+                                <span class="input-group-text">-</span>
+                                <input type="number"
+                                       class="form-control"
+                                       [(ngModel)]="discountMax"
+                                       (input)="onAdvancedFilterChange()"
+                                       placeholder="Max"
+                                       min="0"
+                                       max="100">
+                            </div>
+                        </div>
+
+                        <!-- Price Age Filter -->
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1">Price Age</label>
+                            <select class="form-select form-select-sm"
+                                    [(ngModel)]="priceAgeFilter"
+                                    (change)="onAdvancedFilterChange()">
+                                <option value="all">All Ages</option>
+                                <option value="recent">Recent (&lt; 30 days)</option>
+                                <option value="month">1-3 Months</option>
+                                <option value="quarter">3-6 Months</option>
+                                <option value="stale">Stale (6+ months)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Column Visibility Toggles (Collapsible) -->
+                    <div class="row mt-3 pt-3 border-top" *ngIf="showColumnToggle">
+                        <div class="col-12">
+                            <label class="form-label small mb-2"><strong>Show/Hide Columns:</strong></label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colCategory"
+                                           [(ngModel)]="columnVisibility.category"
+                                           (change)="toggleColumn('category')">
+                                    <label class="form-check-label small" for="colCategory">Category</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colStock"
+                                           [(ngModel)]="columnVisibility.stock"
+                                           (change)="toggleColumn('stock')">
+                                    <label class="form-check-label small" for="colStock">Stock</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colPTR"
+                                           [(ngModel)]="columnVisibility.ptr"
+                                           (change)="toggleColumn('ptr')">
+                                    <label class="form-check-label small" for="colPTR">PTR</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colPrice"
+                                           [(ngModel)]="columnVisibility.price"
+                                           (change)="toggleColumn('price')">
+                                    <label class="form-check-label small" for="colPrice">Price</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colMargin"
+                                           [(ngModel)]="columnVisibility.margin"
+                                           (change)="toggleColumn('margin')">
+                                    <label class="form-check-label small" for="colMargin">Margin</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colDiscount"
+                                           [(ngModel)]="columnVisibility.discount"
+                                           (change)="toggleColumn('discount')">
+                                    <label class="form-check-label small" for="colDiscount">Discount</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colMRP"
+                                           [(ngModel)]="columnVisibility.mrp"
+                                           (change)="toggleColumn('mrp')">
+                                    <label class="form-check-label small" for="colMRP">MRP</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colPriceAge"
+                                           [(ngModel)]="columnVisibility.priceAge"
+                                           (change)="toggleColumn('priceAge')">
+                                    <label class="form-check-label small" for="colPriceAge">Price Age</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="colUpdated"
+                                           [(ngModel)]="columnVisibility.updated"
+                                           (change)="toggleColumn('updated')">
+                                    <label class="form-check-label small" for="colUpdated">Last Updated</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Filters Indicator -->
+                    <div class="row mt-2" *ngIf="hasActiveFilters() && !showAdvancedFilters">
+                        <div class="col-12">
+                            <small class="text-muted">
+                                <i class="bi bi-funnel-fill"></i>
+                                Advanced filters active - Showing {{filteredProducts.length}} of {{allProducts.length}} products
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="row" *ngIf="loading">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading pricing data...</p>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div class="row" *ngIf="error && !loading">
+        <div class="col-12">
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{error}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Operations Toolbar -->
+    <div class="row mb-2" *ngIf="getSelectedCount() > 0 && !loading">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong><i class="bi bi-check-square"></i> {{getSelectedCount()}} products selected</strong>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-light" (click)="openBulkAdjustDialog()">
+                                <i class="bi bi-calculator"></i> Bulk Price Adjustment
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" (click)="clearSelection()">
+                                <i class="bi bi-x-circle"></i> Clear Selection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="row" *ngIf="!loading && !error">
+        <div class="col-12">
+            <p-table [value]="products"
+                     dataKey="id"
+                     styleClass="p-datatable-sm p-datatable-striped"
+                     [paginator]="true"
+                     [rows]="25"
+                     [showCurrentPageReport]="true"
+                     currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+                     [rowsPerPageOptions]="[25,50,100]">
+
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th style="width:3%" class="text-center">
+                            <input type="checkbox"
+                                   [(ngModel)]="selectAll"
+                                   (change)="toggleSelectAll()"
+                                   class="form-check-input">
+                        </th>
+                        <th style="width:25%" pSortableColumn="title">
+                            Product
+                            <p-sortIcon field="title"></p-sortIcon>
+                        </th>
+                        <th *ngIf="columnVisibility.category" style="width:10%" pSortableColumn="category">
+                            Category
+                            <p-sortIcon field="category"></p-sortIcon>
+                        </th>
+                        <th *ngIf="columnVisibility.stock" style="width:8%" class="text-center">Stock</th>
+                        <th *ngIf="columnVisibility.ptr" style="width:7%" class="text-end">PTR</th>
+                        <th *ngIf="columnVisibility.price" style="width:7%" class="text-end" pSortableColumn="price">
+                            Price
+                            <p-sortIcon field="price"></p-sortIcon>
+                        </th>
+                        <th *ngIf="columnVisibility.margin" style="width:8%" class="text-center" pSortableColumn="margin">
+                            Margin
+                            <p-sortIcon field="margin"></p-sortIcon>
+                        </th>
+                        <th *ngIf="columnVisibility.discount" style="width:8%" class="text-center" pSortableColumn="discount">
+                            Discount
+                            <p-sortIcon field="discount"></p-sortIcon>
+                        </th>
+                        <th *ngIf="columnVisibility.mrp" style="width:7%" class="text-end">MRP</th>
+                        <th *ngIf="columnVisibility.priceAge" style="width:8%" class="text-center">Price Age</th>
+                        <th *ngIf="columnVisibility.updated" style="width:6%" pSortableColumn="last_updated">
+                            Updated
+                            <p-sortIcon field="last_updated"></p-sortIcon>
+                        </th>
+                        <th style="width:8%" class="text-center">Actions</th>
+                    </tr>
+                </ng-template>
+
+                <ng-template pTemplate="body" let-product>
+                    <tr>
+                        <!-- Checkbox -->
+                        <td class="text-center">
+                            <input type="checkbox"
+                                   [checked]="isProductSelected(product.id)"
+                                   (change)="toggleProductSelection(product.id)"
+                                   class="form-check-input">
+                        </td>
+
+                        <!-- Product Title with Status -->
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span>{{product.title}}</span>
+                                <span class="badge bg-secondary ms-2" *ngIf="!product.active">Inactive</span>
+                                <i class="ms-2" [ngClass]="getPriceTrendIcon(product.price_trend)" *ngIf="product.price_trend"></i>
+                            </div>
+                        </td>
+
+                        <!-- Category -->
+                        <td *ngIf="columnVisibility.category">
+                            <span class="badge bg-light text-dark" *ngIf="product.category">
+                                {{product.category}}
+                            </span>
+                            <span class="text-muted" *ngIf="!product.category">-</span>
+                        </td>
+
+                        <!-- Stock with Badge -->
+                        <td *ngIf="columnVisibility.stock" class="text-center">
+                            <span [ngClass]="getStockBadgeClass(product.current_stock || 0)">
+                                {{product.current_stock || 0}}
+                            </span>
+                            <div>
+                                <small class="text-muted">{{getStockStatusText(product.current_stock || 0)}}</small>
+                            </div>
+                        </td>
+
+                        <!-- PTR -->
+                        <td *ngIf="columnVisibility.ptr" class="text-end">₹{{product.ptr | number : '1.2-2'}}</td>
+
+                        <!-- Price with Alert Icon -->
+                        <td *ngIf="columnVisibility.price" class="text-end">
+                            <strong>₹{{product.price | number : '1.2-2'}}</strong>
+                            <i class="bi bi-exclamation-triangle-fill text-danger ms-1"
+                               *ngIf="product.price < product.ptr"
+                               title="Price below PTR!"></i>
+                        </td>
+
+                        <!-- Margin with Badge -->
+                        <td *ngIf="columnVisibility.margin" class="text-center">
+                            <span [ngClass]="getMarginBadgeClass(product.margin || 0)">
+                                {{product.margin || 0 | number:'1.0-0'}}%
+                            </span>
+                        </td>
+
+                        <!-- Discount with Badge -->
+                        <td *ngIf="columnVisibility.discount" class="text-center">
+                            <span [ngClass]="getDiscountBadgeClass(product.discount || 0)">
+                                {{product.discount || 0 | number:'1.0-0'}}%
+                            </span>
+                        </td>
+
+                        <!-- MRP -->
+                        <td *ngIf="columnVisibility.mrp" class="text-end">₹{{product.mrp | number : '1.2-2'}}</td>
+
+                        <!-- Price Age -->
+                        <td *ngIf="columnVisibility.priceAge" class="text-center">
+                            <span [ngClass]="getPriceAgeBadgeClass(product.price_age_days)">
+                                {{formatPriceAge(product.price_age_days)}}
+                            </span>
+                        </td>
+
+                        <!-- Last Updated -->
+                        <td *ngIf="columnVisibility.updated" class="text-center">
+                            <small>{{product.last_updated | date : 'dd/MM/yy'}}</small>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary"
+                                        (click)="togglePriceHistory(product.id)"
+                                        [class.active]="isHistoryExpanded(product.id)"
+                                        title="Price History">
+                                    <i class="bi" [ngClass]="isHistoryExpanded(product.id) ? 'bi-chevron-up' : 'bi-clock-history'"></i>
+                                </button>
+                                <button class="btn btn-primary"
+                                        (click)="changePrice(product.id)"
+                                        title="Change Price">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Expandable Price History Row -->
+                    <tr *ngIf="isHistoryExpanded(product.id)">
+                        <td [attr.colspan]="11" class="p-0">
+                            <div class="bg-light p-3">
+                                <h6 class="mb-3">
+                                    <i class="bi bi-clock-history"></i> Price History - {{product.title}}
+                                </h6>
+
+                                <div *ngIf="loadingHistory" class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+
+                                <div *ngIf="!loadingHistory && priceHistory.length === 0" class="text-center text-muted py-3">
+                                    <small>No price history available</small>
+                                </div>
+
+                                <div *ngIf="!loadingHistory && priceHistory.length > 0" class="row">
+                                    <div class="col-12">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Effective Date</th>
+                                                    <th class="text-end">Sale Price</th>
+                                                    <th class="text-center">Margin</th>
+                                                    <th class="text-center">Discount</th>
+                                                    <th>Reason</th>
+                                                    <th>Comments</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr *ngFor="let h of priceHistory.slice(0, 5); let i = index"
+                                                    [class.table-primary]="i === 0">
+                                                    <td>
+                                                        {{h.eff_date | date:'mediumDate'}}
+                                                        <span class="badge bg-success ms-2" *ngIf="i === 0">Current</span>
+                                                    </td>
+                                                    <td class="text-end"><strong>₹{{h.sale_price | number:'1.2-2'}}</strong></td>
+                                                    <td class="text-center">
+                                                        <span [ngClass]="getMarginBadgeClass(h.margin_pcnt || 0)">
+                                                            {{h.margin_pcnt || 0}}%
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span [ngClass]="getDiscountBadgeClass(h.discount_pcnt || 0)">
+                                                            {{h.discount_pcnt || 0}}%
+                                                        </span>
+                                                    </td>
+                                                    <td><small>{{h.reason || '-'}}</small></td>
+                                                    <td><small class="text-muted">{{h.comments || '-'}}</small></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <small class="text-muted" *ngIf="priceHistory.length > 5">
+                                            Showing last 5 of {{priceHistory.length}} price changes
+                                        </small>
+                                    </div>
+
+                                    <!-- Advanced Metrics -->
+                                    <div class="col-12 mt-3">
+                                        <div class="row g-2">
+                                            <div class="col-md-4">
+                                                <div class="card">
+                                                    <div class="card-body p-2">
+                                                        <small class="text-muted d-block">Profit per Unit</small>
+                                                        <strong>₹{{calculateProfitPerUnit(product) | number:'1.2-2'}}</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card">
+                                                    <div class="card-body p-2">
+                                                        <small class="text-muted d-block">Potential Revenue</small>
+                                                        <strong>₹{{calculatePotentialRevenue(product) | number:'1.2-2'}}</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card">
+                                                    <div class="card-body p-2">
+                                                        <small class="text-muted d-block">Inventory Value</small>
+                                                        <strong>₹{{calculateInventoryValue(product) | number:'1.2-2'}}</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <!-- Empty State -->
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="11" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                <h5>No products found</h5>
+                                <p *ngIf="criteria.title">Try adjusting your search criteria</p>
+                                <p *ngIf="!criteria.title">No purchased products available with the selected filters</p>
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
     </div>
 </div>
 
-<div class="row mt-2">
-    <div class="col-12">
-        <p>Product not purchased are not shown below</p>
-    <p-table [value]="products" dataKey="id" editMode="row" styleClass="p-datatable-sm p-datatable-striped"
-            [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
-            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-            [rowsPerPageOptions]="[25,50,100]">
-
-        <ng-template pTemplate="header">
-            <tr>
-                <th style="width:42%" pSortableColumn="title">Product
-                    <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
-                    <p-sortIcon field="title"></p-sortIcon>
-                </th>
-                <th style="width:8%" pSortableColumn="last_updated">Updated
-                    <p-sortIcon field="last_updated"></p-sortIcon></th>
-                <th style="width:8%" class="text-end">PTR</th>
-                <th style="width:8%" class="text-end" pSortableColumn="price">Price
-                    <p-sortIcon field="price"></p-sortIcon></th>
-                <th style="width:8%" class="text-end" pSortableColumn="margin">Margin
-                    <p-columnFilter type="number" field="margin" display="menu"></p-columnFilter>
-                    <p-sortIcon field="margin"></p-sortIcon>
-                </th>
-                <th style="width:8%" class="text-end" pSortableColumn="discount">Discount
-                    <p-columnFilter type="number" field="discount" display="menu"></p-columnFilter>
-                    <p-sortIcon field="margin"></p-sortIcon>
-                </th>
-                <th style="width:8%" class="text-end">MRP</th>
-                <th style="width:8%" class="text-center">Actions</th>
-            </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-product let-editing="editing" let-ri="rowIndex">
-            <tr [pEditableRow]="product">
-                <td>{{product.title}}</td>
-                <td>{{product.last_updated | date : 'dd/MM/yy'}}</td>
-                <!-- <td class="text-center" pEditableColumn>
-                    <p-cellEditor>
-                        <ng-template pTemplate="input">
-                            <input pInputText type="text" [(ngModel)]="product.market_price">
-                        </ng-template>
-                        <ng-template pTemplate="output">
-                            {{product.market_price}}
-                        </ng-template>
-                    </p-cellEditor>
-                </td> -->
-                <td class="text-end">{{product.ptr | number : '1.2-2'}}</td>
-                <!-- <td class="text-center" pEditableColumn>
-                    <p-cellEditor>
-                        <ng-template pTemplate="input">
-                            <input pInputText type="text" [(ngModel)]="product.our_sale_price">
-                        </ng-template>
-                        <ng-template pTemplate="output">
-                            {{product.our_sale_price}}
-                        </ng-template>
-                    </p-cellEditor>
-                </td> -->
-                <td class="text-end">{{product.price | number : '1.2-2'}}</td>
-                <td class="text-end">{{product.margin}}%</td>
-                <td class="text-end">{{product.discount}}%</td>
-                <td class="text-end">{{product.mrp | number : '1.2-2'}}</td>
-                <td style="text-align:center">
-                    <h4 class="icon">
-                        <a (click)="changePrice(product.id)">
-                            <i class="bi bi-pencil-square text-primary"></i>
-                        </a>
-                    </h4>
-                    <!-- <button *ngIf="!editing" pButton pRipple type="button" pInitEditableRow icon="pi pi-pencil" (click)="onRowEditInit(product)" class="p-button-rounded p-button-text"></button>
-                    <button *ngIf="editing" pButton pRipple type="button" pSaveEditableRow icon="pi pi-check" (click)="onRowEditSave(product)" class="p-button-rounded p-button-text p-button-success p-mr-2"></button>
-                    <button *ngIf="editing" pButton pRipple type="button" pCancelEditableRow icon="pi pi-times" (click)="onRowEditCancel(product, ri)" class="p-button-rounded p-button-text p-button-danger"></button> -->
-                </td>
-            </tr>
-        </ng-template>
-    </p-table>
-</div>
-</div>
-
-<p-dialog [header]="'Price Change'" 
-        [(visible)]="showPriceChange" [modal]="true">
+<!-- Price Change Dialog -->
+<p-dialog [header]="'Change Price'"
+          [(visible)]="showPriceChange"
+          [modal]="true"
+          [style]="{width: '90vw', maxWidth: '1200px'}">
     <app-product-price-change [productid]="productid" (added)="changed($event)"></app-product-price-change>
+</p-dialog>
+
+<!-- Bulk Price Adjustment Dialog -->
+<p-dialog [header]="'Bulk Price Adjustment - ' + getSelectedCount() + ' Products'"
+          [(visible)]="showBulkAdjustDialog"
+          [modal]="true"
+          [style]="{width: '700px'}">
+    <div class="container-fluid">
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <strong><i class="bi bi-info-circle"></i> Note:</strong> Prices will be adjusted within PTR and MRP bounds.
+                    All prices below PTR will be set to PTR, and all prices above MRP will be set to MRP.
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Adjustment Type <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="bulkAdjustment.type">
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (₹)</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Operation <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="bulkAdjustment.operation">
+                    <option value="increase">Increase</option>
+                    <option value="decrease">Decrease</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">
+                    Value <span class="text-danger">*</span>
+                    <small class="text-muted">({{bulkAdjustment.type === 'percentage' ? '%' : '₹'}})</small>
+                </label>
+                <input type="number"
+                       class="form-control"
+                       [(ngModel)]="bulkAdjustment.value"
+                       [min]="0"
+                       [max]="bulkAdjustment.type === 'percentage' ? 100 : 999999"
+                       step="0.01"
+                       placeholder="Enter value">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Effective Date <span class="text-danger">*</span></label>
+                <input type="date"
+                       class="form-control"
+                       [(ngModel)]="bulkAdjustment.effectiveDate">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-12">
+                <label class="form-label">Reason <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="bulkAdjustment.reason">
+                    <option value="">-- Select Reason --</option>
+                    <option value="Purchase">Higher PTR</option>
+                    <option value="Market">Market Pressure</option>
+                    <option value="Competition">Competition</option>
+                    <option value="Promotion">Promotional Offer</option>
+                    <option value="Clearance">Clearance Sale</option>
+                    <option value="Seasonal">Seasonal Adjustment</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="row mb-3" *ngIf="bulkAdjustment.value > 0">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <strong>Preview (First 5 Products)</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th class="text-end">Current Price</th>
+                                    <th class="text-end">New Price</th>
+                                    <th class="text-center">Change</th>
+                                    <th class="text-center">New Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let item of calculateBulkPreview().slice(0, 5)">
+                                    <td><small>{{item.title}}</small></td>
+                                    <td class="text-end">₹{{item.oldPrice | number:'1.2-2'}}</td>
+                                    <td class="text-end"><strong>₹{{item.newPrice | number:'1.2-2'}}</strong></td>
+                                    <td class="text-center">
+                                        <span [class.text-success]="item.priceChange > 0" [class.text-danger]="item.priceChange < 0">
+                                            {{item.priceChange > 0 ? '+' : ''}}₹{{item.priceChange | number:'1.2-2'}}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span [ngClass]="getMarginBadgeClass(item.newMargin)">
+                                            {{item.newMargin | number:'1.0-0'}}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="p-2 text-center text-muted" *ngIf="getSelectedCount() > 5">
+                            <small>... and {{getSelectedCount() - 5}} more products</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-end gap-2">
+                    <button class="btn btn-secondary" (click)="cancelBulkAdjustment()">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                    <button class="btn btn-primary"
+                            (click)="applyBulkAdjustment()"
+                            [disabled]="!bulkAdjustment.reason || bulkAdjustment.value <= 0">
+                        <i class="bi bi-check-circle"></i> Apply to {{getSelectedCount()}} Products
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </p-dialog>

@@ -2,6 +2,7 @@ import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
 import { ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
+import { SharedModule } from "src/app/shared/shared.module";
 import { ChangePwdComponent } from "./changepwd/changepwd.component";
 import { LoginComponent } from "./login/login.component";
 import { LogoutComponent } from "./logout/logout.component";
@@ -23,7 +24,8 @@ const routes: Routes = [
     imports: [
         CommonModule,
         ReactiveFormsModule,
-        RouterModule.forChild(routes)
+        RouterModule.forChild(routes),
+        SharedModule
     ],
     exports: [RouterModule]
   })

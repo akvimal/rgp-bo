@@ -1,0 +1,399 @@
+.claims-management-container {
+  padding: 20px;
+}
+
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+// Dashboard Status Cards
+.dashboard-section {
+  margin-bottom: 20px;
+}
+
+.status-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.status-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+}
+
+.status-card-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+}
+
+.status-card-content {
+  flex: 1;
+}
+
+.status-card-count {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #495057;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+
+.status-card-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+// Summary Card
+.summary-card {
+  ::ng-deep .p-card-body {
+    padding: 15px 20px;
+  }
+}
+
+.summary-stats {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 20px;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.summary-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #495057;
+}
+
+// Filters Section
+.filters-section {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 180px;
+
+    label {
+      font-weight: 500;
+      color: #495057;
+      font-size: 0.875rem;
+    }
+
+    &.search-group {
+      min-width: 250px;
+    }
+  }
+}
+
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+// Badges
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.badge-danger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.badge-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.badge-warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge-primary {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.badge-secondary {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.badge-light {
+  background-color: #f8f9fa;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+// Text Colors
+.text-success {
+  color: #28a745;
+}
+
+.text-danger {
+  color: #dc3545;
+}
+
+.text-primary {
+  color: #007bff;
+}
+
+.text-muted {
+  color: #6c757d;
+}
+
+// Workflow Visualization
+.workflow-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 0;
+}
+
+.workflow-stage {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  border: 2px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  font-size: 0.75rem;
+  transition: all 0.3s ease;
+
+  &.active {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  }
+
+  &.rejected {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+  }
+}
+
+.workflow-connector {
+  width: 15px;
+  height: 2px;
+  background-color: #dee2e6;
+  transition: background-color 0.3s ease;
+
+  &.active {
+    background-color: #007bff;
+  }
+}
+
+// Empty Message
+.empty-message {
+  padding: 40px;
+  text-align: center;
+
+  p {
+    margin: 10px 0 5px;
+    font-size: 1.1rem;
+    color: #6c757d;
+  }
+
+  small {
+    color: #999;
+  }
+}
+
+// Claim Details Dialog
+.claim-details {
+  h5 {
+    margin-top: 0;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  &.full-width {
+    grid-column: 1 / -1;
+  }
+
+  strong {
+    color: #495057;
+    font-size: 0.875rem;
+  }
+
+  p {
+    margin: 5px 0 0;
+    color: #6c757d;
+  }
+}
+
+// PrimeNG Overrides
+::ng-deep {
+  .p-card {
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    .p-card-body {
+      padding: 1.25rem;
+    }
+  }
+
+  .p-datatable {
+    .p-datatable-thead > tr > th {
+      background: #f8f9fa;
+      color: #495057;
+      border: 1px solid #e9ecef;
+      border-width: 0 0 1px 0;
+      padding: 1rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .p-datatable-tbody > tr {
+      background: #ffffff;
+      color: #495057;
+      transition: background-color 0.2s;
+
+      > td {
+        border: 1px solid #e9ecef;
+        border-width: 0 0 1px 0;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+      }
+
+      &:hover {
+        background: #f8f9fa;
+      }
+    }
+  }
+
+  .p-dialog {
+    .p-dialog-header {
+      background-color: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+      padding: 1.5rem;
+    }
+
+    .p-dialog-content {
+      padding: 1.5rem;
+    }
+
+    .p-dialog-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #dee2e6;
+      background-color: #f8f9fa;
+    }
+  }
+}
+
+// Responsive Adjustments
+@media (max-width: 1200px) {
+  .status-cards {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .claims-management-container {
+    padding: 10px;
+  }
+
+  .status-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-stats {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters-section {
+    .filter-group {
+      min-width: 100%;
+
+      &.search-group {
+        min-width: 100%;
+      }
+    }
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-indicator {
+    flex-wrap: wrap;
+  }
+}

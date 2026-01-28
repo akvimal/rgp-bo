@@ -20,18 +20,18 @@ services:
     environment:
       NODE_ENV: production
       # DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
-      DATABASE_URL: postgresql://rgpapp:r9pAdmin7@host.docker.internal:5432/rgpdb
+      DATABASE_URL: postgresql://rgpapp:r9pAdmin7@postgres:5432/rgpdb
       LOG_SQL: false
       FILEUPLOAD_LOCATION: /app/upload
-      FILEUPOAD_SIZE_LIMIT: 512000
+      FILEUPLOAD_SIZE_LIMIT: 10485760
       JWT_KEY: dev
       JWT_EXPIRES: 24h
       PORT: 3000
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}  # Set via environment variable or .env file
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}  # Set via environment variable or .env file
     ports:
-      - 3000:3000
+      - 3002:3000
     networks:  
       - local
 
@@ -48,7 +48,7 @@ services:
       POSTGRES_PASSWORD: r9pAdmin7
       POSTGRES_DB: rgpdb
     ports:
-      - 5432:5432
+      - 5434:5432
 
   redis:
     image: redis:7-alpine
@@ -57,7 +57,7 @@ services:
     networks:
       - local
     ports:
-      - 6379:6379
+      - 6381:6379
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
 
   frontend:

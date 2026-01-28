@@ -1,0 +1,633 @@
+title,body,labels,milestone
+"[P0] Implement Batch/Expiry Tracking with FIFO/FEFO Enforcement","**Priority**: P0 - CRITICAL
+**Module**: Products
+**Type**: Feature / Compliance
+**Estimated Effort**: 8 story points (2 weeks)
+
+## Problem Statement
+- Currently no enforcement of First-In-First-Out (FIFO) or First-Expiry-First-Out (FEFO)
+- Risk of selling expired medicines (regulatory violation + customer safety)
+- No automated alerts for near-expiry products
+- Stock reports don't show batch-wise breakdown
+
+## Requirements
+
+### Database Schema
+- Add `batch_number` and `expiry_date` to `product_qtychange` table
+- Create `product_batch` table with comprehensive batch tracking
+- Add indexes on (product_id, expiry_date) for performance
+
+### Backend Implementation
+- Create `ProductBatchService` with FEFO allocation logic
+- Update `SaleService` to block expired product sales
+- Update `StockService` for batch-wise reporting
+- Implement automated expiry checking
+
+### Frontend Implementation
+- Purchase Invoice: Capture batch and expiry data
+- POS: Display batch info and block expired sales
+- Create Near Expiry Dashboard (30/60/90 day warnings)
+- Batch-wise stock reports
+
+### Automated Alerts
+- Daily cron job for near-expiry identification
+- Email alerts to inventory manager
+- Visual indicators in POS (yellow <90 days, red <30 days)
+
+## Acceptance Criteria
+- [ ] All purchase invoices capture batch number and expiry date
+- [ ] POS blocks sale of expired products with clear error message
+- [ ] Sales automatically allocate from earliest expiring batch (FEFO)
+- [ ] Near-expiry dashboard shows products expiring in next 90 days
+- [ ] Stock reports include batch-wise breakdown
+- [ ] Automated daily email alerts for near-expiry items
+- [ ] Unit tests for FEFO allocation logic (80% coverage)
+- [ ] Integration tests for expired batch blocking
+
+## Technical Notes
+- Use PostgreSQL CHECK constraint for expiry validation
+- Consider database triggers for automated checks
+- Include migration with rollback script
+
+**Related Issues**: Blocks #7, Related to #8","P0-critical,compliance,products,inventory,feature","Q1 2026 - Month 1"
+"[P0] Implement Immutable Stock Audit Trail","**Priority**: P0 - CRITICAL
+**Module**: Inventory / Stock
+**Type**: Security / Compliance
+**Estimated Effort**: 5 story points (1 week)
+
+## Problem Statement
+- Current stock tracking doesn't log all movements with audit trail
+- Can't trace who made stock adjustments and why
+- Shrinkage and theft difficult to detect
+- No accountability for stock discrepancies
+
+## Requirements
+
+### Database Schema
+- Create `stock_audit_log` table with immutable records
+- Fields: product_id, batch_id, movement_type, quantities, user, timestamp, reason
+- Add trigger to prevent UPDATE/DELETE (immutability)
+- Index on (product_id, created_on DESC)
+
+### Backend Implementation
+- Create `StockAuditService` with logging methods
+- Update all stock-changing services (Sale, Purchase, Adjustment, Return)
+- Atomic transactions: stock change + audit log together
+- Automated anomaly detection
+
+### Frontend Implementation
+- Stock Adjustment Form: Mandatory reason dropdown
+- Product Detail Page: Audit Trail tab
+- Stock Discrepancy Report
+- User Activity Report
+
+### Automated Monitoring
+- Daily job to detect anomalies (large adjustments, off-hours activity)
+- Alert store manager via email
+
+## Acceptance Criteria
+- [ ] All stock changes logged to immutable audit table
+- [ ] UPDATE/DELETE blocked on audit log via database trigger
+- [ ] Stock adjustments require mandatory reason
+- [ ] Product detail page shows complete audit trail
+- [ ] Discrepancy report highlights mismatches >5%
+- [ ] Daily automated anomaly alerts sent
+- [ ] Unit tests verify logging in all operations
+- [ ] Performance: Logging doesn't slow sales by >50ms
+
+## Technical Notes
+- Use database TRIGGER for immutability enforcement
+- Consider monthly partitioning for performance
+- Implement soft deletes for products with audit trail
+
+**Related Issues**: Blocks #25, Related to #1","P0-critical,security,inventory,compliance,feature","Q1 2026 - Month 1"
+"[P0] Fix Purchase Return Transaction Atomicity","**Priority**: P0 - CRITICAL
+**Module**: Purchases
+**Type**: Bug / Data Integrity
+**Estimated Effort**: 5 story points (1 week)
+
+## Problem Statement
+- Purchase returns may partially succeed (stock updated but accounts not)
+- No proper rollback mechanism if transaction fails
+- Can lead to inventory inaccuracies and financial errors
+- Data integrity at risk
+
+## Requirements
+
+### Backend Refactoring
+- Wrap entire return process in SERIALIZABLE transaction
+- Steps: Create return record → Update stock → Audit log → Update vendor payable → Update invoice status
+- All-or-nothing: Any failure rolls back entire transaction
+
+### Error Handling
+- User-friendly error messages (not technical stack traces)
+- Detailed server-side logging for debugging
+- Catch and handle all transaction errors
+
+### Validation
+- Pre-transaction checks: quantity, product existence, vendor account, invoice status
+- Throw BusinessException with clear messages on validation failure
+
+### Frontend Updates
+- Loading indicator during return processing
+- Success message with return ID
+- Friendly error messages on failure
+- Refresh invoice list after success
+
+### Testing
+- Unit tests for all validation rules
+- Integration tests for rollback scenarios
+- Load test: 10 concurrent returns without deadlocks
+
+## Acceptance Criteria
+- [ ] Entire return wrapped in SERIALIZABLE transaction
+- [ ] Any step failure triggers complete rollback
+- [ ] Pre-transaction validations prevent invalid returns
+- [ ] Error messages user-friendly
+- [ ] Stock, vendor payables, invoice status updated atomically
+- [ ] Unit tests verify rollback (80% coverage)
+- [ ] Integration test confirms no orphaned records
+- [ ] Load test passes with 10 concurrent returns
+
+## Technical Notes
+- SERIALIZABLE may cause deadlocks; implement retry with backoff
+- Consider stored procedure for complex logic
+- Monitor deadlock frequency in production
+
+**Related Issues**: Related to #2, #20","P0-critical,bug,data-integrity,purchases,backend","Q1 2026 - Month 1"
+"[P0] Implement Payroll Processing Audit Trail","**Priority**: P0 - CRITICAL
+**Module**: Payroll
+**Type**: Compliance / Feature
+**Estimated Effort**: 5 story points (1 week)
+
+## Problem Statement
+- No permanent record of payroll processing history
+- Can't trace who approved/processed payroll
+- Disputes unresolvable without audit trail
+- Compliance requirement for labor law audits
+
+## Requirements
+
+### Database Schema
+- Create `payroll_run_audit` table with immutable records
+- Fields: payroll_run_id, status, action, snapshot (JSONB), performed_by, timestamp
+- Trigger to prevent UPDATE/DELETE
+
+### Backend Implementation
+- Create `PayrollAuditService` for action logging
+- Update `PayrollService` to log all actions (CREATE, CALCULATE, APPROVE, PROCESS)
+- Approval workflow: DRAFT → PENDING_APPROVAL → APPROVED → PROCESSED
+- Full data snapshots at each stage
+
+### Frontend Implementation
+- Payroll Run List: Status badges
+- Payroll Detail: Audit Trail tab
+- Approval workflow buttons (Submit, Approve, Process)
+- Email notifications at each transition
+- View-only mode after PROCESSED
+
+### Approval Workflow
+- Role-based permissions (Clerk: Create, Manager: Approve, Admin: Process)
+- State transitions enforced
+- Reject with reason capability
+
+### Reports
+- Payroll History Report
+- Pending Approvals Dashboard
+- Processing Time Analysis
+
+## Acceptance Criteria
+- [ ] All payroll actions logged to immutable table
+- [ ] Approval workflow enforces role-based permissions
+- [ ] Full payroll snapshot captured at each stage
+- [ ] Email notifications sent at each transition
+- [ ] Processed payrolls cannot be edited
+- [ ] Audit trail visible on payroll detail page
+- [ ] Unit tests verify state transitions
+- [ ] Integration test covers full approval flow
+
+## Technical Notes
+- Store snapshots as JSONB for auditability
+- 7-year data retention for compliance
+- Implement ""Reprocess"" for failed runs
+
+**Related Issues**: Blocks #29, Related to #2, #4","P0-critical,compliance,payroll,feature","Q1 2026 - Month 1"
+"[P0] Implement Strong Password Policy & Security Controls","**Priority**: P0 - CRITICAL
+**Module**: Security / Users
+**Type**: Security / Feature
+**Estimated Effort**: 3 story points (3-4 days)
+
+## Problem Statement
+- Currently allows weak passwords
+- No complexity requirements or expiry
+- No account lockout on failed attempts
+- Security vulnerability for unauthorized access
+
+## Requirements
+
+### Password Policy Configuration
+- Configurable policy: min length 8, require upper/lower/numbers/special chars
+- Max password age: 90 days
+- Password history: 5 (can't reuse)
+- Max login attempts: 5, lockout: 30 minutes
+
+### Database Schema
+- Add to `app_user`: password_changed_on, password_history (JSONB), failed_login_attempts, locked_until
+- Create `password_reset_token` table
+
+### Backend Implementation
+- Create `PasswordPolicyService`: validate, check expiry, check history, hash
+- Update `AuthService`: check lockout, increment failures, reset password
+- Rate limiting: 10 requests/minute per IP on login endpoint
+
+### Frontend Implementation
+- Password Strength Indicator (weak/medium/strong)
+- Real-time validation with requirement checklist
+- Password expiry warning (<7 days)
+- Force change on expired password
+- Account locked message with countdown
+- Password reset via email (1-hour token)
+
+### Admin Tools
+- User Management: Force password change, unlock account buttons
+- Security Dashboard: Expired passwords, locked accounts, inactive users
+
+## Acceptance Criteria
+- [ ] Password must meet complexity rules (8+ chars, upper, lower, number, special)
+- [ ] Real-time strength indicator
+- [ ] Passwords expire after 90 days
+- [ ] Can't reuse last 5 passwords
+- [ ] Account locks after 5 failed attempts for 30 min
+- [ ] Login rate-limited to 10/min per IP
+- [ ] Password reset via email with 1-hour expiry
+- [ ] Admin tools for password management
+- [ ] Security dashboard shows at-risk accounts
+- [ ] Unit tests for validation logic
+- [ ] Integration test for lockout behavior
+
+## Technical Notes
+- Use bcrypt for hashing (NOT MD5/SHA1)
+- Store password history as hashes, not plain text
+- Consider 2FA (TOTP) in future sprint
+- Implement CAPTCHA after 3 failed attempts
+
+**Related Issues**: Blocks #6, Related to #27","P0-critical,security,users,feature","Q1 2026 - Month 1"
+"[P0] Implement Administrative Actions Audit Log","**Priority**: P0 - CRITICAL
+**Module**: Security / Settings
+**Type**: Security / Compliance
+**Estimated Effort**: 3 story points (3-4 days)
+
+## Problem Statement
+- No record of who changed system settings
+- Can't trace role/permission modifications
+- Configuration issues difficult to debug
+- Compliance requirement for audit trail
+
+## Requirements
+
+### Database Schema
+- Create `admin_audit_log` table: entity_type, entity_id, action, old_value (JSONB), new_value (JSONB), changed_fields, user, timestamp, IP, user agent
+- Indexes on entity and user
+
+### Backend Implementation
+- Create `AdminAuditService`: logAction, getEntityHistory, getUserActivity, compareValues
+- Create audit interceptor to auto-log actions
+- Apply to UsersController, RolesController, SettingsController
+
+### Frontend Implementation
+- Admin Dashboard: Recent actions widget
+- Audit Log Page: Filters (date, entity, action, user)
+- Entity Detail Pages: Audit History tab with diff view
+- User Activity Report
+
+### Automated Monitoring
+- Daily email summary to admin
+- Alerts on suspicious activity (bulk changes, off-hours, role escalations)
+
+### Reports
+- Administrative Actions Report
+- Configuration Change History
+- User Role Changes Report
+
+## Acceptance Criteria
+- [ ] All user create/update/delete logged
+- [ ] All role modifications logged with old vs new
+- [ ] All settings changes logged with before/after
+- [ ] Audit log filterable by date, entity, action, user
+- [ ] Entity pages show complete history
+- [ ] Diff view shows field-by-field changes
+- [ ] Daily summary email sent to admins
+- [ ] Suspicious activity alerts sent
+- [ ] Unit tests verify logging in admin controllers
+- [ ] Integration test confirms correct entries
+
+## Technical Notes
+- Store full entity snapshot as JSONB
+- Indefinite retention for compliance
+- Implement search/export for audits
+
+**Related Issues**: Depends on #5, Related to #2, #4","P0-critical,security,compliance,settings,feature","Q1 2026 - Month 2"
+"[P1] Optimize POS Performance with Virtual Scrolling & Caching","**Priority**: P1 - HIGH
+**Module**: Sales / POS
+**Type**: Performance / Enhancement
+**Estimated Effort**: 8 story points (2 weeks)
+
+## Problem Statement
+- POS slow with large product catalog (10,000+ products)
+- Product search takes 2-5 seconds
+- UI freezes during typing
+- Poor experience during busy hours
+
+## Requirements
+
+### Virtual Scrolling
+- Implement CDK Virtual Scroll
+- Render only visible items (20-30 at a time)
+- 60 FPS scrolling target
+
+### Debounced Search
+- 300ms debounce on search input
+- Cancel previous requests on new input
+- Loading indicator
+- Cache last 10 search results
+
+### Product Data Caching
+- Frontend: IndexedDB cache on app load
+- Backend: Redis cache for product list
+- Cache invalidation on CRUD
+- TTL: 1 hour
+
+### Backend Optimization
+- Add database indexes (title, active/archive, price lookup)
+- Full-text search with PostgreSQL to_tsvector
+- Limit results to 50 with pagination
+- Eager load price and stock in single query
+
+### Progressive Loading
+- Load favorites (most sold) first
+- Background load remaining products
+- Skeleton UI for loading state
+
+## Acceptance Criteria
+- [ ] 60 FPS scrolling with 10,000+ products
+- [ ] Search results in <500ms (95th percentile)
+- [ ] UI responsive during typing (no freeze)
+- [ ] Virtual scrolling renders 20-30 items only
+- [ ] 300ms search debounce
+- [ ] IndexedDB and Redis caching implemented
+- [ ] Database indexes created and verified with EXPLAIN
+- [ ] Load test: 10 concurrent POS users searching
+- [ ] Performance improvement: >50% faster search
+
+## Technical Notes
+- Use Angular CDK Virtual Scroll
+- Consider Web Workers for search filtering
+- Monitor memory usage (<50MB cache limit)
+
+**Related Issues**: Related to #9","P1-high,performance,sales,pos,enhancement","Q1 2026 - Month 2"
+"[P1] Integrate Payment Gateway (UPI, Razorpay, Card Terminals)","**Priority**: P1 - HIGH
+**Module**: Sales / Payments
+**Type**: Feature / Integration
+**Estimated Effort**: 13 story points (3 weeks)
+
+## Problem Statement
+- Currently only accepts cash
+- Customers prefer digital payments
+- Lost sales due to lack of payment options
+- Manual reconciliation of digital payments
+
+## Requirements
+
+### Payment Gateway Selection
+- Primary: Razorpay (wide adoption in India)
+- Backup: Paytm
+- Support: UPI, Cards (Visa/MC/Rupay), Wallets
+
+### Backend Integration
+- Create `PaymentGatewayService`: initiate, verify, refund
+- Create `payment_transaction` table
+- Implement webhook endpoints with signature verification
+- Update `SaleService` to link sale with payment
+
+### Frontend Implementation
+- POS Payment Screen: Method selector (Cash/UPI/Card/Wallet)
+- UPI: Show QR code + manual transaction ID entry
+- Card: Integrate terminal (if available)
+- Payment status display (loading/success/failure)
+- Payment history with refund option
+
+### UPI Integration
+- Generate QR code via Razorpay API
+- Customer scans with any UPI app
+- Webhook confirms payment
+- Auto-print receipt on success
+
+### Card Terminal Integration
+- Support USB/Bluetooth terminals (Ingenico, Verifone)
+- Send payment request to terminal
+- Store terminal transaction ID
+
+### Reconciliation
+- Daily Settlement Report (cash vs card vs UPI)
+- Gateway fee calculation
+- Auto-match transactions with sales
+- Flag unmatched for review
+
+## Acceptance Criteria
+- [ ] POS accepts UPI via QR code
+- [ ] POS accepts card via terminal
+- [ ] Payment status verified via webhook
+- [ ] Failed payments allow retry
+- [ ] Successful payments auto-print receipt
+- [ ] Transactions logged to database
+- [ ] Daily settlement report shows breakdown
+- [ ] Refunds initiate from admin panel
+- [ ] Unit tests for verification logic
+- [ ] Integration tests with Razorpay sandbox
+- [ ] Load test: 100 concurrent payments
+
+## Technical Notes
+- Use Razorpay Node.js SDK
+- Webhook secrets in environment variables
+- Implement idempotency for webhooks
+- Add retry logic for failed API calls
+
+**Related Issues**: Blocks #31, Related to #7","P1-high,feature,sales,payments,integration","Q1 2026 - Month 2"
+"[P1] Implement Multi-Device POS Synchronization","**Priority**: P1 - HIGH
+**Module**: Sales / POS
+**Type**: Feature / Architecture
+**Estimated Effort**: 13 story points (3 weeks)
+
+## Problem Statement
+- Multiple POS terminals operate independently
+- No real-time stock updates across terminals
+- Risk of overselling (2 terminals sell last unit)
+- Manual inventory reconciliation required
+
+## Requirements
+
+### WebSocket Infrastructure
+- Add Socket.io to NestJS
+- Create `PosGateway` for events: sale.created, stock.updated, product.updated
+- JWT authentication for WebSocket connections
+
+### Backend Implementation
+- Create `PosSyncService`: broadcast sales/stock/products
+- Implement optimistic locking with version column
+- Prevent concurrent sales of same product
+
+### Frontend Implementation
+- Establish WebSocket connection on POS load
+- Subscribe to real-time events
+- Conflict resolution: Show warning if stock depleted
+- POS Terminal Identifier (Counter 1, 2, etc.)
+
+### Offline Resilience
+- Queue sales locally if disconnected
+- Sync when connection restored
+- ""Offline Mode"" indicator
+- Prevent checkout if data stale (>5 min)
+
+### Admin Dashboard
+- Live POS Monitor: Connected terminals, real-time sales feed
+- Active carts visibility
+- Conflict Resolution Panel
+
+## Acceptance Criteria
+- [ ] All terminals connected via WebSocket
+- [ ] Stock updates broadcast in real-time
+- [ ] Optimistic locking prevents overselling
+- [ ] Offline sales queued and synced
+- [ ] Admin dashboard shows live activity
+- [ ] Conflict notification if stock depleted
+- [ ] Terminal ID visible on each POS
+- [ ] Unit tests for optimistic locking
+- [ ] Integration tests for WebSocket events
+- [ ] Load test: 10 terminals, 100 sales/hour each
+
+## Technical Notes
+- Use Socket.io for WebSocket
+- Consider Redis Pub/Sub for horizontal scaling
+- Heartbeat mechanism (ping/pong)
+- Reconnection with exponential backoff
+
+**Related Issues**: Depends on #7, Related to #8","P1-high,feature,sales,pos,realtime,architecture","Q1 2026 - Month 3"
+"[P1] Implement Vendor Payment Aging & Tracking","**Priority**: P1 - HIGH
+**Module**: Purchases / Vendors
+**Type**: Feature / Enhancement
+**Estimated Effort**: 8 story points (2 weeks)
+
+## Problem Statement
+- No visibility into outstanding vendor payments
+- Late payments strain vendor relationships
+- No aging analysis (0-30, 31-60, 61-90, >90 days)
+- Manual tracking of payment terms
+
+## Requirements
+
+### Database Schema
+- Add to `vendor`: payment_terms, credit_limit, outstanding_balance
+- Enhance `vendor_payment`: due_date, aging_bucket, payment_status
+- Create `vendor_payment_reminder` table
+
+### Backend Implementation
+- Create `VendorPaymentService`: aging calculation, overdue tracking, payment recording
+- Daily cron job: Calculate aging, send reminders (7/3/1 days before), overdue alerts
+
+### Frontend Implementation
+- Vendor Payment Dashboard: Total outstanding, overdue, due this week
+- Aging chart (0-30, 31-60, 61-90, >90 days)
+- Vendor-wise breakdown table
+- Payment Due Calendar (color-coded)
+- Payment Recording Form with partial payment support
+
+### Automated Reminders
+- Email to finance manager (daily/weekly/monthly)
+- SMS to vendor (7 days before, 1 day before, on due date)
+
+### Reports
+- Vendor Aging Report (grouped by vendor, aging bucket)
+- Payment History Report
+- Vendor Performance Report (payment delay analysis)
+
+## Acceptance Criteria
+- [ ] Dashboard shows total outstanding and aging
+- [ ] Aging buckets calculated correctly
+- [ ] Overdue payments highlighted in red
+- [ ] Daily email alerts for due today
+- [ ] Payment recording updates balance atomically
+- [ ] Partial payments supported
+- [ ] Vendor detail shows complete history
+- [ ] Calendar displays color-coded due dates
+- [ ] Aging report exportable to Excel
+- [ ] Unit tests for aging calculation
+- [ ] Integration test for payment workflow
+
+## Technical Notes
+- Use PostgreSQL date functions for aging
+- Index on (due_date, payment_status)
+- Payment terms templates (Net 15/30/60)
+
+**Related Issues**: Blocks #21, Related to #3","P1-high,feature,purchases,vendors,finance","Q1 2026 - Month 2"
+"[P1] Implement Customer Loyalty Program","**Priority**: P1 - HIGH
+**Module**: Customers
+**Type**: Feature / Business Growth
+**Estimated Effort**: 13 story points (3 weeks)
+
+## Problem Statement
+- No incentive for customers to return
+- Losing customers to competitors with loyalty programs
+- No way to reward frequent shoppers
+- Missing revenue from repeat customers
+
+## Requirements
+
+### Database Schema
+- Add to `customer`: loyalty_tier, loyalty_points, lifetime_points, lifetime_spend, enrollment_date
+- Create `loyalty_transaction` table: customer, type (EARN/REDEEM/EXPIRE), points, reference, balance, expiry
+- Create `loyalty_program_config` table: rules and thresholds
+
+### Backend Implementation
+- Create `LoyaltyService`: enroll, earn, redeem, get balance, calculate tier, expire points
+- Loyalty Rules: 1 point per ₹20 spent, 100 points = ₹10 discount, expire after 365 days, birthday bonus 100 points
+- Tier System: Bronze/Silver/Gold/Platinum based on lifetime spend
+- Update `SaleService`: Award points after sale, apply redemption discount
+
+### Frontend Implementation
+- Customer Enrollment: Quick enrollment at POS
+- POS Integration: Scan card/enter mobile, show points/tier, redeem option
+- Customer Portal: Dashboard, transaction history, perks
+- Admin Panel: Configuration, tier management, points adjustment
+
+### Automated Campaigns
+- Birthday Campaign: 100 bonus points + SMS
+- Tier Upgrade Notification: SMS/email on tier change
+- Inactivity Re-engagement: SMS after 60 days no purchase
+- Points Expiry Warning: 30 days before expiry
+
+### Reports
+- Loyalty Dashboard: Enrolled, active, points issued/redeemed/expired
+- Tier Distribution Report
+- ROI Analysis: Members vs non-members revenue
+
+## Acceptance Criteria
+- [ ] Customers enroll at POS with name and mobile
+- [ ] Points automatically awarded on sale
+- [ ] Points redeemable for discount at checkout
+- [ ] Tier calculated based on lifetime spend
+- [ ] Points expire after 365 days with warning
+- [ ] Birthday bonus awarded automatically
+- [ ] SMS notifications for tier upgrades and expiry
+- [ ] Customer portal shows balance and history
+- [ ] Admin can adjust points with audit log
+- [ ] Loyalty dashboard shows performance metrics
+- [ ] Unit tests for points calculation and tier logic
+- [ ] Integration test for full earn/redeem flow
+
+## Technical Notes
+- Use third-party SMS API (Twilio, MSG91)
+- Real-time points balance (no caching)
+- Double-entry accounting for points
+- Add fraud detection for gaming
+
+**Related Issues**: Blocks #12, Related to #13","P1-high,feature,customers,marketing,business-growth","Q1 2026 - Month 3"

@@ -1,0 +1,191 @@
+<div class="policy-management-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <h2>HR Policy Management</h2>
+    <button pButton
+            type="button"
+            label="New Policy"
+            icon="pi pi-plus"
+            class="p-button-success"
+            (click)="openNewPolicyForm()">
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <p-card>
+    <div class="p-grid p-align-center">
+      <div class="p-col-12 p-md-3">
+        <label>Category</label>
+        <p-dropdown [options]="policyCategories"
+                    [(ngModel)]="selectedCategory"
+                    placeholder="All Categories"
+                    [showClear]="true"
+                    (onChange)="onFilterChange()">
+        </p-dropdown>
+      </div>
+      <div class="p-col-12 p-md-2">
+        <label>Active Status</label>
+        <p-dropdown [options]="[{label: 'All', value: null}, {label: 'Active', value: true}, {label: 'Inactive', value: false}]"
+                    [(ngModel)]="activeFilter"
+                    optionLabel="label"
+                    optionValue="value"
+                    (onChange)="onFilterChange()">
+        </p-dropdown>
+      </div>
+      <div class="p-col-12 p-md-2">
+        <label>Mandatory</label>
+        <p-dropdown [options]="[{label: 'All', value: null}, {label: 'Yes', value: true}, {label: 'No', value: false}]"
+                    [(ngModel)]="mandatoryFilter"
+                    optionLabel="label"
+                    optionValue="value"
+                    (onChange)="onFilterChange()">
+        </p-dropdown>
+      </div>
+      <div class="p-col-12 p-md-2">
+        <button pButton
+                type="button"
+                label="Clear Filters"
+                icon="pi pi-filter-slash"
+                class="p-button-secondary"
+                (click)="clearFilters()">
+        </button>
+      </div>
+    </div>
+  </p-card>
+
+  <!-- Policies Table -->
+  <p-card style="margin-top: 20px;">
+    <p-table [value]="policies"
+             [loading]="isLoading"
+             [paginator]="true"
+             [rows]="10"
+             [showCurrentPageReport]="true"
+             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} policies"
+             [rowsPerPageOptions]="[10,25,50]"
+             styleClass="p-datatable-sm">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="policyCode">
+            Code <p-sortIcon field="policyCode"></p-sortIcon>
+          </th>
+          <th pSortableColumn="policyName">
+            Name <p-sortIcon field="policyName"></p-sortIcon>
+          </th>
+          <th pSortableColumn="policyCategory">
+            Category <p-sortIcon field="policyCategory"></p-sortIcon>
+          </th>
+          <th>Version</th>
+          <th>Effective From</th>
+          <th>Status</th>
+          <th>Mandatory</th>
+          <th>Requires Ack</th>
+          <th style="width: 300px">Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-policy>
+        <tr>
+          <td><strong>{{ policy.policyCode }}</strong></td>
+          <td>{{ policy.policyName }}</td>
+          <td>
+            <span class="badge" [ngClass]="getCategoryBadgeClass(policy.policyCategory)">
+              {{ policy.policyCategory }}
+            </span>
+          </td>
+          <td>v{{ policy.version }}</td>
+          <td>{{ formatDate(policy.effectiveFrom) }}</td>
+          <td>
+            <span class="badge" [ngClass]="policy.active ? 'badge-success' : 'badge-danger'">
+              {{ policy.active ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>
+            <i [class]="policy.isMandatory ? 'pi pi-check text-success' : 'pi pi-times text-danger'"></i>
+          </td>
+          <td>
+            <i [class]="policy.requiresAcknowledgment ? 'pi pi-check text-success' : 'pi pi-times text-danger'"></i>
+          </td>
+          <td>
+            <button pButton
+                    type="button"
+                    icon="pi pi-history"
+                    class="p-button-info p-button-sm"
+                    pTooltip="Version History"
+                    (click)="viewVersionHistory(policy)"
+                    style="margin-right: 5px">
+            </button>
+            <button pButton
+                    type="button"
+                    icon="pi pi-check-square"
+                    class="p-button-secondary p-button-sm"
+                    pTooltip="Acknowledgments"
+                    (click)="viewAcknowledgments(policy)"
+                    style="margin-right: 5px">
+            </button>
+            <button pButton
+                    type="button"
+                    icon="pi pi-pencil"
+                    class="p-button-warning p-button-sm"
+                    pTooltip="Edit Policy"
+                    (click)="editPolicy(policy)"
+                    style="margin-right: 5px">
+            </button>
+            <button pButton
+                    type="button"
+                    icon="pi pi-trash"
+                    class="p-button-danger p-button-sm"
+                    pTooltip="Archive Policy"
+                    (click)="deletePolicy(policy)">
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="9" style="text-align: center">
+            No policies found. Click "New Policy" to create one.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+
+  <!-- Policy Form Dialog -->
+  <app-policy-form
+    *ngIf="showPolicyForm"
+    [policy]="selectedPolicy"
+    (close)="onPolicyFormClose($event)">
+  </app-policy-form>
+
+  <!-- Version History Dialog -->
+  <p-dialog header="Policy Version History"
+            [(visible)]="showVersionHistory"
+            [modal]="true"
+            [style]="{width: '800px'}"
+            [draggable]="false"
+            [resizable]="false">
+    <p-table [value]="versionHistory" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Version</th>
+          <th>Effective From</th>
+          <th>Effective To</th>
+          <th>Modified By</th>
+          <th>Modified On</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-version>
+        <tr>
+          <td><strong>v{{ version.version }}</strong></td>
+          <td>{{ formatDate(version.effectiveFrom) }}</td>
+          <td>{{ formatDate(version.effectiveTo) }}</td>
+          <td>User #{{ version.updatedBy }}</td>
+          <td>{{ formatDate(version.updatedOn) }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-dialog>
+</div>

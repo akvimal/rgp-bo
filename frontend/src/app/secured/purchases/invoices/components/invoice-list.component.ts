@@ -28,21 +28,17 @@ export class InvoiceListComponent {
     }
 
     fetchInvoices(){
-      this.service.findAll().subscribe((data:any) => {
-        this.invoices = data.map((i:any) => {
+      this.service.findAll().subscribe((response:any) => {
+        console.log('Invoices API response:', response);
+
+        // Handle paginated response (backend returns {data, total, page, limit})
+        const invoicesArray = Array.isArray(response) ? response : (response.data || []);
+
+        this.invoices = invoicesArray.map((i:any) => {
           return {...i, received:i.status==='RECEIVED'}
         });
-      });
-    }
 
-    delete(id:any) {
-      this.service.remove(id).subscribe((data:any) => {
-        if(data.status && data.status === 'ERROR'){
-          this.displayError = true;
-          this.errorMessage = `Items sold, unable to delete`;
-        }
-        else
-          this.fetchInvoices()
+        console.log('Processed invoices:', this.invoices.length);
       });
     }
 

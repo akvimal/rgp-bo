@@ -14,7 +14,8 @@ export class ProductsService {
     constructor(private http:HttpClient){}
 
     findAll(criteria:any){
-        return this.http.post(this.apiurl,{criteria});
+        // Use GET endpoint to retrieve all active products
+        return this.http.get(this.apiurl);
     }
 
     findByCriteria(criteria:any){
@@ -23,6 +24,14 @@ export class ProductsService {
 
     findByCriteria2(criteria:any){
         return this.http.post(`${this.apiurl}/filter2`, criteria);
+    }
+
+    getCategories(){
+        return this.http.get<string[]>(`${this.apiurl}/categories`);
+    }
+
+    getDashboardMetrics(){
+        return this.http.get<any>(`${this.apiurl}/dashboard/metrics`);
     }
 
     findAllPrices(criteria:any){

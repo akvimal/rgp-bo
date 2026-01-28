@@ -1,0 +1,150 @@
+<p-dialog
+  header="Quick Add Vendor"
+  [(visible)]="visible"
+  (onHide)="cancel()"
+  [modal]="true"
+  [closable]="true"
+  [style]="{width: '600px'}"
+  styleClass="quick-add-vendor-dialog">
+
+  <div class="quick-add-form">
+    <!-- Info Alert -->
+    <div class="alert alert-info mb-3">
+      <i class="bi bi-info-circle me-2"></i>
+      <strong>Vendor not found in your system.</strong> Add this vendor to continue with invoice processing.
+    </div>
+
+    <!-- Error Message -->
+    <div class="alert alert-danger mb-3" *ngIf="errorMessage">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      {{errorMessage}}
+    </div>
+
+    <!-- Vendor Form -->
+    <form [formGroup]="vendorForm" (ngSubmit)="saveVendor()">
+
+      <!-- Vendor Name (Required) -->
+      <div class="mb-3">
+        <label for="vendorName" class="form-label">
+          Vendor Name <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          id="vendorName"
+          class="form-control"
+          formControlName="name"
+          placeholder="Enter vendor/supplier name"
+          [class.is-invalid]="vendorForm.get('name')?.invalid && vendorForm.get('name')?.touched">
+        <div class="invalid-feedback" *ngIf="vendorForm.get('name')?.errors?.['required']">
+          Vendor name is required
+        </div>
+        <div class="invalid-feedback" *ngIf="vendorForm.get('name')?.errors?.['minlength']">
+          Vendor name must be at least 2 characters
+        </div>
+        <small class="form-text text-muted">Pre-filled from OCR extraction</small>
+      </div>
+
+      <!-- GSTIN (Optional but validated) -->
+      <div class="mb-3">
+        <label for="vendorGstin" class="form-label">
+          GSTIN
+        </label>
+        <input
+          type="text"
+          id="vendorGstin"
+          class="form-control text-uppercase"
+          formControlName="gstn"
+          placeholder="e.g., 33AUEPA1476GZ22"
+          maxlength="15"
+          [class.is-invalid]="vendorForm.get('gstn')?.invalid && vendorForm.get('gstn')?.touched">
+        <div class="invalid-feedback" *ngIf="vendorForm.get('gstn')?.errors?.['pattern']">
+          Invalid GSTIN format (must be 15 characters: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric)
+        </div>
+        <small class="form-text text-muted">Pre-filled from OCR extraction. Leave blank if not GST registered.</small>
+      </div>
+
+      <!-- Contact Name -->
+      <div class="mb-3">
+        <label for="contactName" class="form-label">
+          Contact Person Name
+        </label>
+        <input
+          type="text"
+          id="contactName"
+          class="form-control"
+          formControlName="contactname"
+          placeholder="Enter contact person name">
+      </div>
+
+      <!-- Contact Phone -->
+      <div class="mb-3">
+        <label for="contactPhone" class="form-label">
+          Contact Phone
+        </label>
+        <input
+          type="tel"
+          id="contactPhone"
+          class="form-control"
+          formControlName="contactphone"
+          placeholder="10-digit mobile number"
+          maxlength="10"
+          [class.is-invalid]="vendorForm.get('contactphone')?.invalid && vendorForm.get('contactphone')?.touched">
+        <div class="invalid-feedback" *ngIf="vendorForm.get('contactphone')?.errors?.['pattern']">
+          Phone number must be exactly 10 digits
+        </div>
+      </div>
+
+      <!-- Address -->
+      <div class="mb-3">
+        <label for="address" class="form-label">
+          Address
+        </label>
+        <textarea
+          id="address"
+          class="form-control"
+          formControlName="address"
+          rows="2"
+          placeholder="Enter vendor address"></textarea>
+      </div>
+
+      <!-- Comments -->
+      <div class="mb-3">
+        <label for="comments" class="form-label">
+          Comments/Notes
+        </label>
+        <textarea
+          id="comments"
+          class="form-control"
+          formControlName="comments"
+          rows="2"
+          placeholder="Any additional notes about this vendor"></textarea>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Footer Buttons -->
+  <ng-template pTemplate="footer">
+    <button
+      type="button"
+      class="btn btn-secondary"
+      (click)="cancel()"
+      [disabled]="saving">
+      <i class="bi bi-x"></i> Cancel
+    </button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="saveVendor()"
+      [disabled]="saving || vendorForm.invalid">
+      <span *ngIf="!saving">
+        <i class="bi bi-check-circle"></i> Save Vendor & Continue
+      </span>
+      <span *ngIf="saving">
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        Saving...
+      </span>
+    </button>
+  </ng-template>
+
+</p-dialog>

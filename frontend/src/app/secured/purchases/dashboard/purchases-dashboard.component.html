@@ -1,0 +1,424 @@
+<div class="purchases-dashboard">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-3 text-muted">Loading analytics...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="alert alert-danger" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    {{ error }}
+    <button type="button" class="btn btn-sm btn-outline-danger ms-3" (click)="loadAnalytics()">
+      <i class="bi bi-arrow-clockwise me-1"></i> Retry
+    </button>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div *ngIf="!loading && !error && analytics">
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+      <!-- Total Purchase Value Card -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                  Total Purchase (This Month)
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ formatCurrency(summary?.totalPurchaseValueCurrentMonth || 0) }}
+                </div>
+                <div class="mt-2" *ngIf="summary">
+                  <span [class]="getChangeClass(summary.percentageChange)">
+                    <i [class]="'bi ' + getChangeIcon(summary.percentageChange)"></i>
+                    {{ summary.percentageChange | number: '1.1-1' }}%
+                  </span>
+                  <small class="text-muted ms-1">vs last month</small>
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="bi bi-cart-fill fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Invoices Card -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                  Pending Invoices
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ summary?.pendingInvoicesCount || 0 }}
+                </div>
+                <div class="mt-2">
+                  <small class="text-muted">
+                    Value: {{ formatCurrency(summary?.pendingInvoicesValue || 0) }}
+                  </small>
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="bi bi-clock-fill fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approved & Paid Card -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                  Approved & Paid
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ summary?.approvedPaidCount || 0 }}
+                </div>
+                <div class="mt-2">
+                  <small class="text-muted">
+                    Value: {{ formatCurrency(summary?.approvedPaidValue || 0) }}
+                  </small>
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="bi bi-check-circle-fill fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Vendor Card -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                  Top Vendor
+                </div>
+                <div class="h6 mb-0 font-weight-bold text-gray-800">
+                  {{ summary?.topVendorName || 'N/A' }}
+                </div>
+                <div class="mt-2">
+                  <small class="text-muted">
+                    {{ formatCurrency(summary?.topVendorValue || 0) }}
+                  </small>
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="bi bi-building fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Near-Expiry Inventory Row -->
+    <div class="row mb-4" *ngIf="analytics?.nearExpiryMetrics">
+      <!-- Near-Expiry Card -->
+      <div class="col-xl-12 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2" style="cursor: pointer" (click)="navigateToNearExpiry()">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                  <i class="bi bi-exclamation-triangle-fill me-1"></i> Near-Expiry Inventory
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ analytics.nearExpiryMetrics.totalCount }} Products
+                </div>
+                <div class="mt-1">
+                  <small class="text-muted">
+                    Total Value at Risk: {{ formatCurrency(analytics.nearExpiryMetrics.totalValue) }}
+                  </small>
+                </div>
+              </div>
+
+              <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span class="badge bg-danger text-white me-1">CRITICAL</span>
+                    <span class="fw-bold">{{ analytics.nearExpiryMetrics.criticalCount }}</span>
+                  </div>
+                  <small class="text-muted">{{ formatCurrency(analytics.nearExpiryMetrics.criticalValue) }}</small>
+                </div>
+                <small class="text-muted d-block mt-1">Expiring within 30 days</small>
+              </div>
+
+              <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span class="badge bg-warning text-dark me-1">WARNING</span>
+                    <span class="fw-bold">{{ analytics.nearExpiryMetrics.warningCount }}</span>
+                  </div>
+                  <small class="text-muted">{{ formatCurrency(analytics.nearExpiryMetrics.warningValue) }}</small>
+                </div>
+                <small class="text-muted d-block mt-1">Expiring within 60 days</small>
+              </div>
+
+              <div class="col-xl-3 col-md-6">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span class="badge bg-secondary text-white me-1">WATCH</span>
+                    <span class="fw-bold">{{ analytics.nearExpiryMetrics.watchCount }}</span>
+                  </div>
+                  <small class="text-muted">{{ formatCurrency(analytics.nearExpiryMetrics.watchValue) }}</small>
+                </div>
+                <small class="text-muted d-block mt-1">Expiring within 90 days</small>
+              </div>
+            </div>
+            <div class="row mt-2">
+              <div class="col-12 text-end">
+                <small class="text-primary">
+                  <i class="bi bi-arrow-right-circle me-1"></i>Click to view detailed expiry dashboard
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card shadow">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+          </div>
+          <div class="card-body">
+            <div class="btn-group-wrapper">
+              <button class="btn btn-primary me-2 mb-2" (click)="createNewInvoice()">
+                <i class="bi bi-file-earmark-plus me-1"></i> New Invoice
+              </button>
+              <button class="btn btn-outline-primary me-2 mb-2" (click)="createPurchaseOrder()">
+                <i class="bi bi-file-earmark-text me-1"></i> New Purchase Order
+              </button>
+              <button class="btn btn-outline-secondary me-2 mb-2" (click)="navigateToInvoices()">
+                <i class="bi bi-list-ul me-1"></i> View All Invoices
+              </button>
+              <button class="btn btn-outline-secondary mb-2" (click)="navigateToVendors()">
+                <i class="bi bi-people me-1"></i> Manage Vendors
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row 1: Monthly Trends & Status Breakdown -->
+    <div class="row mb-4">
+      <!-- Monthly Trends Chart -->
+      <div class="col-xl-8 col-lg-7 mb-4">
+        <div class="card shadow">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Purchase Trends (Last 6 Months)</h6>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart
+                [data]="monthlyTrendData"
+                [options]="lineChartOptions"
+                [type]="lineChartType">
+              </canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoice Status Breakdown -->
+      <div class="col-xl-4 col-lg-5 mb-4">
+        <div class="card shadow">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Invoice Status Breakdown</h6>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart
+                [data]="statusBreakdownData"
+                [options]="doughnutChartOptions"
+                [type]="doughnutChartType">
+              </canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row 2: Top Vendors & Category Spending -->
+    <div class="row mb-4">
+      <!-- Top Vendors Chart -->
+      <div class="col-xl-8 col-lg-7 mb-4">
+        <div class="card shadow">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Top 5 Vendors by Purchase Value</h6>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart
+                [data]="topVendorsData"
+                [options]="barChartOptions"
+                [type]="barChartType">
+              </canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Spending Chart -->
+      <div class="col-xl-4 col-lg-5 mb-4">
+        <div class="card shadow">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Category-wise Spending</h6>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height: 300px;">
+              <canvas baseChart
+                *ngIf="analytics.categorySpending.length > 0"
+                [data]="categorySpendingData"
+                [options]="pieChartOptions"
+                [type]="pieChartType">
+              </canvas>
+              <div *ngIf="analytics.categorySpending.length === 0" class="text-center text-muted py-5">
+                <i class="bi bi-pie-chart fa-3x mb-3"></i>
+                <p>No category data available</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Invoices Table -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card shadow">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Recent Invoices (Last 7 Days)</h6>
+            <button class="btn btn-sm btn-outline-primary" (click)="navigateToInvoices()">
+              View All <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Vendor</th>
+                    <th class="text-end">Amount</th>
+                    <th>Status</th>
+                    <th>Payment</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let invoice of analytics.recentInvoices">
+                    <td>{{ invoice.invoiceNo }}</td>
+                    <td>{{ invoice.invoiceDate | date: 'dd-MMM-yyyy' }}</td>
+                    <td>{{ invoice.vendorName }}</td>
+                    <td class="text-end">{{ formatCurrency(invoice.total) }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatusBadgeClass(invoice.lifecycleStatus)">
+                        {{ invoice.lifecycleStatus }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatusBadgeClass(invoice.paymentStatus)">
+                        {{ invoice.paymentStatus }}
+                      </span>
+                    </td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary" (click)="viewInvoice(invoice.id)">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="analytics.recentInvoices.length === 0">
+                    <td colspan="7" class="text-center text-muted py-4">
+                      <i class="bi bi-inbox fa-2x mb-2"></i>
+                      <p>No recent invoices in the last 7 days</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Timeline Table -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card shadow">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+              <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+              Payment Timeline - Unpaid Invoices
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Invoice No</th>
+                    <th>Vendor</th>
+                    <th>Invoice Date</th>
+                    <th class="text-end">Total Amount</th>
+                    <th class="text-end">Paid Amount</th>
+                    <th class="text-end">Outstanding</th>
+                    <th class="text-end">Days Overdue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let payment of analytics.paymentTimeline">
+                    <td>{{ payment.invoiceNo }}</td>
+                    <td>{{ payment.vendorName }}</td>
+                    <td>{{ payment.invoiceDate | date: 'dd-MMM-yyyy' }}</td>
+                    <td class="text-end">{{ formatCurrency(payment.totalAmount) }}</td>
+                    <td class="text-end">{{ formatCurrency(payment.paidAmount) }}</td>
+                    <td class="text-end fw-bold">{{ formatCurrency(payment.outstandingAmount) }}</td>
+                    <td class="text-end" [ngClass]="getOverdueClass(payment.daysOverdue)">
+                      <span *ngIf="payment.daysOverdue > 0">
+                        {{ payment.daysOverdue }} days
+                        <i class="bi bi-exclamation-circle ms-1" *ngIf="payment.daysOverdue > 15"></i>
+                      </span>
+                      <span *ngIf="payment.daysOverdue <= 0" class="text-muted">
+                        Due in {{ -payment.daysOverdue }} days
+                      </span>
+                    </td>
+                  </tr>
+                  <tr *ngIf="analytics.paymentTimeline.length === 0">
+                    <td colspan="7" class="text-center text-muted py-4">
+                      <i class="bi bi-check-circle fa-2x mb-2 text-success"></i>
+                      <p>All invoices are paid!</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

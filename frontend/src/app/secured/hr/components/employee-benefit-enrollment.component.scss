@@ -1,0 +1,203 @@
+.enrollment-container {
+  padding: 20px;
+}
+
+.header-section {
+  margin-bottom: 20px;
+  h2 { margin: 0 0 5px 0; color: #333; }
+  .subtitle { margin: 0; color: #6c757d; font-size: 0.95rem; }
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.benefit-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s;
+  &:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+
+  .benefit-header {
+    padding: 15px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    h4 { margin: 0; font-size: 1.1rem; }
+  }
+
+  .benefit-body {
+    padding: 15px;
+
+    .benefit-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        label { font-size: 0.9rem; color: #6c757d; }
+        .value-primary { font-size: 1.2rem; font-weight: 700; color: #28a745; }
+        .value-secondary { font-weight: 600; color: #007bff; }
+      }
+    }
+
+    .benefit-features {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+
+      .feature-badge {
+        padding: 0.3em 0.7em;
+        background: #e3f2fd;
+        color: #1976d2;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+    }
+
+    .benefit-description {
+      p { margin: 0; font-size: 0.9rem; color: #6c757d; line-height: 1.5; }
+    }
+  }
+
+  .benefit-footer {
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  i { font-size: 4rem; color: #6c757d; margin-bottom: 20px; }
+  h3 { margin: 0 0 10px 0; color: #333; }
+  p { color: #6c757d; margin: 0; }
+}
+
+.badge {
+  padding: 0.4em 0.8em;
+  font-size: 0.875rem;
+  border-radius: 4px;
+  &.badge-success { background: #28a745; color: white; }
+  &.badge-primary { background: #007bff; color: white; }
+}
+
+::ng-deep .enrollment-form-dialog {
+  .p-dialog-header {
+    background: #007bff;
+    color: white;
+    padding: 20px;
+    h3 { margin: 0; }
+  }
+
+  .p-card { border: 1px solid #dee2e6; }
+}
+
+.benefit-summary-card {
+  background: #f8f9fa;
+
+  .summary-header {
+    h4 { margin: 0 0 15px 0; color: #333; font-size: 1.2rem; }
+  }
+
+  .summary-body {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+
+    .summary-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      label { font-weight: 600; color: #6c757d; font-size: 0.85rem; }
+      span { font-size: 1.1rem; font-weight: 700; color: #28a745; }
+    }
+  }
+}
+
+.form-section {
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    h4 { margin: 0; color: #333; font-size: 1.1rem; }
+  }
+
+  h4 { margin: 0 0 15px 0; color: #333; font-size: 1.1rem; }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    label { font-weight: 500; .required { color: #dc3545; } }
+    .help-text { font-size: 0.85rem; color: #6c757d; margin-top: 4px; }
+    .p-error { color: #dc3545; font-size: 0.85rem; }
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+}
+
+.empty-dependents {
+  text-align: center;
+  padding: 30px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  p { margin: 0; color: #6c757d; }
+}
+
+.dependent-form {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background: #f8f9fa;
+
+  .dependent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    h5 { margin: 0; color: #333; font-size: 1rem; }
+  }
+}
+
+.confirmation-notice {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+  i { color: #856404; font-size: 1.3rem; flex-shrink: 0; }
+  p { margin: 0; color: #856404; font-size: 0.9rem; line-height: 1.5; }
+}
+
+.mb-3 { margin-bottom: 1rem; }
+.w-full { width: 100%; }
+
+@media (max-width: 768px) {
+  .benefits-grid { grid-template-columns: 1fr; }
+  .benefit-summary-card .summary-body { grid-template-columns: 1fr; }
+  .form-section .form-grid { grid-template-columns: 1fr; }
+}

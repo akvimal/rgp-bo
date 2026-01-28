@@ -1,0 +1,324 @@
+<div class="employee-policies-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <h2>Company Policies</h2>
+    <p class="subtitle">View and acknowledge company policies</p>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-section">
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-icon" style="background-color: #007bff;">
+          <i class="pi pi-file"></i>
+        </div>
+        <div class="summary-content">
+          <div class="summary-value">{{ allPolicies.length }}</div>
+          <div class="summary-label">Total Policies</div>
+        </div>
+      </div>
+
+      <div class="summary-card" [class.highlight]="getPendingAcknowledgmentCount() > 0">
+        <div class="summary-icon" style="background-color: #ffc107;">
+          <i class="pi pi-exclamation-triangle"></i>
+        </div>
+        <div class="summary-content">
+          <div class="summary-value">{{ getPendingAcknowledgmentCount() }}</div>
+          <div class="summary-label">Pending Acknowledgment</div>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-icon" style="background-color: #28a745;">
+          <i class="pi pi-check-circle"></i>
+        </div>
+        <div class="summary-content">
+          <div class="summary-value">{{ getAcknowledgedPoliciesCount() }}</div>
+          <div class="summary-label">Acknowledged</div>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-icon" style="background-color: #dc3545;">
+          <i class="pi pi-shield"></i>
+        </div>
+        <div class="summary-content">
+          <div class="summary-value">{{ getMandatoryPoliciesCount() }}</div>
+          <div class="summary-label">Mandatory</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <p-card styleClass="mb-3">
+    <div class="filters-section">
+      <!-- Search -->
+      <div class="filter-group search-group">
+        <label>Search:</label>
+        <input type="text"
+               pInputText
+               [(ngModel)]="searchText"
+               (ngModelChange)="onFilterChange()"
+               placeholder="Search by policy name or code">
+      </div>
+
+      <!-- Category Filter -->
+      <div class="filter-group">
+        <label>Category:</label>
+        <p-dropdown
+          [(ngModel)]="categoryFilter"
+          [options]="policyCategories"
+          placeholder="All Categories"
+          (onChange)="onFilterChange()"
+          [showClear]="true">
+        </p-dropdown>
+      </div>
+
+      <!-- Acknowledged Filter -->
+      <div class="filter-group checkbox-group">
+        <p-checkbox
+          [(ngModel)]="showAcknowledgedOnly"
+          [binary]="true"
+          inputId="ack-filter"
+          (onChange)="onFilterChange()">
+        </p-checkbox>
+        <label for="ack-filter">Acknowledged Only</label>
+      </div>
+
+      <!-- Mandatory Filter -->
+      <div class="filter-group checkbox-group">
+        <p-checkbox
+          [(ngModel)]="showMandatoryOnly"
+          [binary]="true"
+          inputId="mandatory-filter"
+          (onChange)="onFilterChange()">
+        </p-checkbox>
+        <label for="mandatory-filter">Mandatory Only</label>
+      </div>
+
+      <button pButton
+              label="Clear Filters"
+              icon="pi pi-filter-slash"
+              class="p-button-outlined p-button-secondary"
+              (click)="clearFilters()">
+      </button>
+    </div>
+  </p-card>
+
+  <!-- Policies Table -->
+  <p-card>
+    <p-table
+      [value]="policies"
+      [loading]="isLoading"
+      [paginator]="true"
+      [rows]="10"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} policies"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      styleClass="p-datatable-striped">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="policyCode">
+            Code <p-sortIcon field="policyCode"></p-sortIcon>
+          </th>
+          <th pSortableColumn="policyName">
+            Policy Name <p-sortIcon field="policyName"></p-sortIcon>
+          </th>
+          <th>Category</th>
+          <th>Version</th>
+          <th pSortableColumn="effectiveFrom">
+            Effective From <p-sortIcon field="effectiveFrom"></p-sortIcon>
+          </th>
+          <th>Status</th>
+          <th>Acknowledgment</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-policy>
+        <tr>
+          <!-- Policy Code -->
+          <td>
+            <strong>{{ policy.policyCode }}</strong>
+          </td>
+
+          <!-- Policy Name -->
+          <td>
+            <div class="policy-name-cell">
+              {{ policy.policyName }}
+              <span class="badge badge-danger badge-sm" *ngIf="policy.isMandatory">MANDATORY</span>
+            </div>
+          </td>
+
+          <!-- Category -->
+          <td>
+            <span class="badge" [ngClass]="getCategoryBadgeClass(policy.policyCategory)">
+              {{ policy.policyCategory }}
+            </span>
+          </td>
+
+          <!-- Version -->
+          <td>
+            <small>v{{ policy.version }}</small>
+          </td>
+
+          <!-- Effective From -->
+          <td>
+            <small>{{ formatDate(policy.effectiveFrom) }}</small>
+          </td>
+
+          <!-- Status -->
+          <td>
+            <span class="badge" [ngClass]="policy.active ? 'badge-success' : 'badge-secondary'">
+              {{ policy.active ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+
+          <!-- Acknowledgment -->
+          <td>
+            <div *ngIf="policy.requiresAcknowledgment">
+              <span class="badge badge-success" *ngIf="policy.acknowledgedOn">
+                <i class="pi pi-check"></i> Acknowledged
+              </span>
+              <span class="badge badge-warning" *ngIf="!policy.acknowledgedOn">
+                <i class="pi pi-exclamation-triangle"></i> Pending
+              </span>
+              <br *ngIf="policy.acknowledgedOn">
+              <small class="text-muted" *ngIf="policy.acknowledgedOn">
+                {{ formatDate(policy.acknowledgedOn) }}
+              </small>
+            </div>
+            <span class="text-muted" *ngIf="!policy.requiresAcknowledgment">
+              <small>Not Required</small>
+            </span>
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <button pButton
+                    icon="pi pi-eye"
+                    class="p-button-rounded p-button-text p-button-info"
+                    pTooltip="View Details"
+                    (click)="viewPolicyDetails(policy)">
+            </button>
+            <button pButton
+                    icon="pi pi-check"
+                    class="p-button-rounded p-button-text p-button-success"
+                    pTooltip="Acknowledge"
+                    (click)="acknowledgePolicy(policy)"
+                    *ngIf="isAcknowledgementRequired(policy)">
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" style="text-align: center;">
+            <div class="empty-message">
+              <i class="pi pi-inbox" style="font-size: 3rem; color: #999;"></i>
+              <p>No policies found</p>
+              <small *ngIf="categoryFilter || searchText || showAcknowledgedOnly || showMandatoryOnly">
+                Try adjusting your filters
+              </small>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>
+
+<!-- Policy Details Dialog -->
+<p-dialog
+  [(visible)]="showPolicyDialog"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{width: '800px'}"
+  styleClass="policy-details-dialog">
+
+  <ng-template pTemplate="header">
+    <div class="dialog-header">
+      <h3>{{ selectedPolicy?.policyName }}</h3>
+      <span class="badge" [ngClass]="getCategoryBadgeClass(selectedPolicy?.policyCategory!)">
+        {{ selectedPolicy?.policyCategory }}
+      </span>
+    </div>
+  </ng-template>
+
+  <div *ngIf="selectedPolicy" class="policy-details">
+    <!-- Policy Info -->
+    <div class="info-section">
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Policy Code:</label>
+          <span>{{ selectedPolicy.policyCode }}</span>
+        </div>
+        <div class="info-item">
+          <label>Version:</label>
+          <span>v{{ selectedPolicy.version }}</span>
+        </div>
+        <div class="info-item">
+          <label>Effective From:</label>
+          <span>{{ selectedPolicy.effectiveFrom | date: 'yyyy-MM-dd' }}</span>
+        </div>
+        <div class="info-item">
+          <label>Effective To:</label>
+          <span>{{ selectedPolicy.effectiveTo ? (selectedPolicy.effectiveTo | date: 'yyyy-MM-dd') : '-' }}</span>
+        </div>
+      </div>
+
+      <div class="badges-section">
+        <span class="badge badge-danger" *ngIf="selectedPolicy.isMandatory">
+          <i class="pi pi-shield"></i> Mandatory
+        </span>
+        <span class="badge badge-info" *ngIf="selectedPolicy.requiresAcknowledgment">
+          <i class="pi pi-file-check"></i> Requires Acknowledgment
+        </span>
+        <span class="badge" [ngClass]="selectedPolicy.active ? 'badge-success' : 'badge-secondary'">
+          {{ selectedPolicy.active ? 'Active' : 'Inactive' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Policy Content -->
+    <div class="content-section">
+      <h4>Policy Content</h4>
+      <div class="policy-content">
+        <pre>{{ parsePolicyContent(selectedPolicy.policyContent) | json }}</pre>
+      </div>
+    </div>
+
+    <!-- Acknowledgment Status -->
+    <div class="acknowledgment-section" *ngIf="selectedPolicy.requiresAcknowledgment">
+      <div *ngIf="selectedPolicy.acknowledgedOn" class="acknowledged-info">
+        <i class="pi pi-check-circle text-success"></i>
+        <span>You acknowledged this policy on {{ formatDate(selectedPolicy.acknowledgedOn) }}</span>
+      </div>
+      <div *ngIf="!selectedPolicy.acknowledgedOn" class="pending-info">
+        <i class="pi pi-exclamation-triangle text-warning"></i>
+        <span>You have not yet acknowledged this policy</span>
+      </div>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton
+            label="Close"
+            icon="pi pi-times"
+            class="p-button-outlined"
+            (click)="closePolicyDialog()">
+    </button>
+    <button pButton
+            label="Acknowledge Policy"
+            icon="pi pi-check"
+            class="p-button-success"
+            (click)="acknowledgePolicy(selectedPolicy!)"
+            *ngIf="selectedPolicy && isAcknowledgementRequired(selectedPolicy)">
+    </button>
+  </ng-template>
+</p-dialog>

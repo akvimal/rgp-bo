@@ -1,0 +1,250 @@
+<div class="claim-submission-container">
+  <p-toast></p-toast>
+
+  <div class="header-section">
+    <h2>Submit Benefit Claim</h2>
+    <p class="subtitle">Submit a claim for your enrolled benefits</p>
+  </div>
+
+  <!-- No Active Enrollments Message -->
+  <p-card *ngIf="activeEnrollments.length === 0 && !isSubmitting">
+    <div class="empty-state">
+      <i class="pi pi-exclamation-triangle text-warning"></i>
+      <h3>No Active Enrollments</h3>
+      <p>You need to enroll in a benefit before you can submit claims.</p>
+      <button pButton
+              label="Browse Benefits"
+              icon="pi pi-plus"
+              class="p-button-lg"
+              routerLink="/hr/enroll-benefits">
+      </button>
+    </div>
+  </p-card>
+
+  <!-- Claim Submission Form -->
+  <p-card *ngIf="activeEnrollments.length > 0">
+    <form [formGroup]="claimForm">
+      <!-- Section 1: Benefit Selection -->
+      <div class="form-section">
+        <h4>Benefit Selection</h4>
+        <div class="form-field">
+          <label>Select Enrolled Benefit <span class="required">*</span></label>
+          <p-dropdown
+            formControlName="enrollmentId"
+            [options]="activeEnrollments"
+            optionLabel="benefitPolicyId"
+            optionValue="id"
+            placeholder="Select an active benefit enrollment"
+            [filter]="true"
+            filterBy="benefitPolicyId"
+            styleClass="w-full"
+            [class.p-invalid]="isFieldInvalid('enrollmentId')">
+            <ng-template let-enrollment pTemplate="item">
+              <div class="enrollment-option">
+                <div class="option-label">Benefit Policy #{{ enrollment.benefitPolicyId }}</div>
+                <div class="option-detail">
+                  <span class="badge badge-sm badge-success">{{ enrollment.enrollmentType }}</span>
+                  <span>Coverage: {{ formatCurrency(enrollment.customCoverageAmount || enrollment.benefitPolicy?.coverageAmount) }}</span>
+                </div>
+              </div>
+            </ng-template>
+          </p-dropdown>
+          <small class="p-error" *ngIf="isFieldInvalid('enrollmentId')">
+            Please select a benefit enrollment
+          </small>
+        </div>
+
+        <!-- Selected Enrollment Info -->
+        <div class="enrollment-info" *ngIf="selectedEnrollment">
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Coverage Amount:</label>
+              <span class="value">{{ formatCurrency(selectedEnrollment.customCoverageAmount || selectedEnrollment.benefitPolicy?.coverageAmount) }}</span>
+            </div>
+            <div class="info-item">
+              <label>Enrollment Type:</label>
+              <span class="value">{{ selectedEnrollment.enrollmentType }}</span>
+            </div>
+            <div class="info-item">
+              <label>Enrolled On:</label>
+              <span class="value">{{ selectedEnrollment.enrollmentDate | date: 'yyyy-MM-dd' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Status:</label>
+              <span class="badge badge-success">{{ selectedEnrollment.status }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p-divider></p-divider>
+
+      <!-- Section 2: Claim Details -->
+      <div class="form-section">
+        <h4>Claim Details</h4>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Claim Type <span class="required">*</span></label>
+            <p-dropdown
+              formControlName="claimType"
+              [options]="claimTypes"
+              placeholder="Select claim type"
+              styleClass="w-full"
+              [class.p-invalid]="isFieldInvalid('claimType')">
+            </p-dropdown>
+            <small class="help-text">
+              REIMBURSEMENT: You paid and need refund | DIRECT_BILLING: Provider bills directly | CASHLESS: No payment needed
+            </small>
+            <small class="p-error" *ngIf="isFieldInvalid('claimType')">
+              Claim type is required
+            </small>
+          </div>
+
+          <div class="form-field">
+            <label>Claim Date <span class="required">*</span></label>
+            <p-calendar
+              formControlName="claimDate"
+              dateFormat="yy-mm-dd"
+              [showIcon]="true"
+              [maxDate]="today"
+              placeholder="YYYY-MM-DD"
+              styleClass="w-full"
+              [class.p-invalid]="isFieldInvalid('claimDate')">
+            </p-calendar>
+            <small class="help-text">Date when the expense was incurred</small>
+            <small class="p-error" *ngIf="isFieldInvalid('claimDate')">
+              Claim date is required
+            </small>
+          </div>
+
+          <div class="form-field full-width">
+            <label>Claimed Amount <span class="required">*</span></label>
+            <p-inputNumber
+              formControlName="claimedAmount"
+              mode="currency"
+              currency="INR"
+              locale="en-IN"
+              [min]="1"
+              placeholder="0.00"
+              styleClass="w-full"
+              [class.p-invalid]="isFieldInvalid('claimedAmount')">
+            </p-inputNumber>
+            <small class="help-text">Amount you are claiming (in ₹)</small>
+            <small class="p-error" *ngIf="isFieldInvalid('claimedAmount')">
+              Claimed amount must be greater than 0
+            </small>
+          </div>
+
+          <div class="form-field full-width">
+            <label>Description <span class="required">*</span></label>
+            <textarea
+              pInputTextarea
+              formControlName="description"
+              rows="4"
+              placeholder="Describe the nature of the claim, treatment/service received, and any other relevant details"
+              [class.p-invalid]="isFieldInvalid('description')">
+            </textarea>
+            <small class="help-text">Provide detailed information about your claim (max 1000 characters)</small>
+            <small class="p-error" *ngIf="isFieldInvalid('description')">
+              Description is required
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <p-divider></p-divider>
+
+      <!-- Section 3: Supporting Documents -->
+      <div class="form-section">
+        <h4>Supporting Documents</h4>
+        <div class="upload-section">
+          <div class="upload-area">
+            <input
+              type="file"
+              #fileInput
+              (change)="onFileSelect($event)"
+              accept=".jpg,.jpeg,.png,.pdf"
+              multiple
+              style="display: none;">
+
+            <button pButton
+                    type="button"
+                    label="Upload Documents"
+                    icon="pi pi-upload"
+                    class="p-button-outlined"
+                    (click)="fileInput.click()"
+                    [disabled]="isSubmitting">
+            </button>
+            <small class="help-text">
+              Upload bills, prescriptions, receipts, or other supporting documents (JPG, PNG, PDF only, max 5MB each)
+            </small>
+          </div>
+
+          <!-- Uploaded Documents List -->
+          <div class="documents-list" *ngIf="uploadedDocuments.length > 0">
+            <h5>Uploaded Documents ({{ uploadedDocuments.length }})</h5>
+            <div *ngFor="let doc of uploadedDocuments; let i = index" class="document-item">
+              <div class="document-icon">
+                <i class="pi" [ngClass]="getFileIcon(doc)"></i>
+              </div>
+              <div class="document-info">
+                <div class="document-name">{{ doc.name }}</div>
+                <div class="document-size">{{ getFileSizeDisplay(doc.size) }}</div>
+              </div>
+              <button pButton
+                      type="button"
+                      icon="pi pi-times"
+                      class="p-button-rounded p-button-text p-button-danger"
+                      (click)="removeDocument(i)"
+                      [disabled]="isSubmitting">
+              </button>
+            </div>
+          </div>
+
+          <!-- No Documents Message -->
+          <div class="no-documents" *ngIf="uploadedDocuments.length === 0">
+            <i class="pi pi-cloud-upload"></i>
+            <p>No documents uploaded yet. Please upload supporting documents for your claim.</p>
+          </div>
+        </div>
+      </div>
+
+      <p-divider></p-divider>
+
+      <!-- Important Notice -->
+      <div class="important-notice">
+        <i class="pi pi-info-circle"></i>
+        <div>
+          <h5>Important Information</h5>
+          <ul>
+            <li>Ensure all uploaded documents are clear and readable</li>
+            <li>Claims will be reviewed by the HR department and may take 3-5 business days</li>
+            <li>You will be notified of the claim status via email</li>
+            <li>Approved amounts will be processed in the next payroll cycle</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button pButton
+                type="button"
+                label="Reset"
+                icon="pi pi-refresh"
+                class="p-button-outlined p-button-secondary"
+                (click)="resetForm()"
+                [disabled]="isSubmitting">
+        </button>
+        <button pButton
+                type="button"
+                label="Submit Claim"
+                icon="pi pi-check"
+                class="p-button-success p-button-lg"
+                (click)="submitClaim()"
+                [disabled]="claimForm.invalid || uploadedDocuments.length === 0 || isSubmitting"
+                [loading]="isSubmitting">
+        </button>
+      </div>
+    </form>
+  </p-card>
+</div>
