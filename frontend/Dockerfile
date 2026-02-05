@@ -1,7 +1,7 @@
 ### STAGE 1:BUILD ###
 # Defining a node image to be used as giving it an alias of "build"
-# Which version of Node image to use depends on project dependencies 
-# This is needed to build and compile our code 
+# Which version of Node image to use depends on project dependencies
+# This is needed to build and compile our code
 # while generating the docker image
 FROM node:16.19.0 as build
 # Create a Virtual directory inside the docker image
@@ -13,6 +13,11 @@ RUN npm cache clean --force
 # Copy files from local machine to virtual directory in docker image
 COPY . .
 RUN npm install --legacy-peer-deps
+
+# Generate environment configuration from Railway environment variables
+# This allows runtime configuration of API_URL
+RUN chmod +x generate-env.sh && ./generate-env.sh
+
 RUN npm run build --prod
 
 ### STAGE 2:RUN ###
