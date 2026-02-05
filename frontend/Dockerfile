@@ -14,9 +14,9 @@ RUN npm cache clean --force
 COPY . .
 RUN npm install --legacy-peer-deps
 
-# Generate environment configuration from Railway environment variables
-# This allows runtime configuration of API_URL
-RUN chmod +x generate-env.sh && ./generate-env.sh
+# Replace API_URL placeholder in environment.prod.ts with actual value from Railway
+ARG API_URL=http://localhost:3002
+RUN sed -i "s|API_URL_PLACEHOLDER|${API_URL}|g" src/environments/environment.prod.ts
 
 RUN npm run build --prod
 
