@@ -9,8 +9,23 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
-  // Enable CORS
-  app.enableCors();
+  // Enable CORS with environment-based configuration
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+    : [
+        'http://localhost:4200',
+        'http://localhost:8000',
+        'http://localhost:3000'
+      ];
+
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
+  logger.log(`CORS enabled for origins: ${corsOrigins.join(', ')}`);
 
   // Global exception filter for consistent error handling
   app.useGlobalFilters(new HttpExceptionFilter());

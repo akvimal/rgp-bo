@@ -26,6 +26,7 @@ import { PayrollModule } from './modules/app/payroll/payroll.module';
 import { CoreModule } from './core/core.module';
 import { FeatureGroupModule } from './modules/app/feature-groups/feature-group.module';
 import { BugReportModule } from './modules/app/bug-report/bug-report.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { BugReportModule } from './modules/app/bug-report/bug-report.module';
     HrModule,
     PayrollModule,
     FeatureGroupModule,
-    BugReportModule
+    BugReportModule,
+    HealthModule
   ],
   controllers: [],
   providers: [DbBackupService],

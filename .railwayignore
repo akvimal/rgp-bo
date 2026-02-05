@@ -1,0 +1,59 @@
+# Railway ignore file - excludes files from deployment
+
+# Development files
+node_modules/
+*.log
+*.lock
+.env
+.env.local
+.env.test
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test files
+tests/
+*.test.ts
+*.spec.ts
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker (not needed on Railway)
+docker-compose.yml
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+tmpclaude-*
+
+# Build artifacts (will be rebuilt)
+dist/
+build/
+*.tsbuildinfo
+
+# Database files
+*.sql
+sql/
+
+# Uploads (should use Railway volumes or cloud storage)
+uploads/
+upload/
