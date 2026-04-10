@@ -134,12 +134,12 @@ export class SaleFormComponent {
       this.total = 0;
       let mrptotal = 0;
 
-      this.sale.items?.filter((i:any) => i.edited).forEach((i:any) => {        
-          this.total += Math.round(+i.total);
+      this.sale.items?.filter((i:any) => i.edited).forEach((i:any) => {
+          this.total += +i.total;  // Sum without rounding individual items
           mrptotal += +(i.mrpcost||0)*i.qty;
       });
 
-      this.sale.total = Math.round(this.total);
+      this.sale.total = Math.round(this.total);  // Round only the final total
       this.sale.mrptotal = Math.round(mrptotal);
       this.sale.totalitems = this.sale.items?.filter((i:any) => i.edited).length;
       this.sale.saving = this.prodUtilService.getSaving(mrptotal,Math.round(this.total));
