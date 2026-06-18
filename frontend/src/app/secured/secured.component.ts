@@ -61,7 +61,7 @@ export class SecuredComponent {
         '/documents': 'storeMenu',
         '/hr/': 'hrMenu',
         '/payroll': 'financeMenu',
-        '/finance': 'financeMenu',
+        '/reports/gst': 'financeMenu',
         '/reports': 'reportsMenu',
         '/settings': 'adminMenu'
       };
