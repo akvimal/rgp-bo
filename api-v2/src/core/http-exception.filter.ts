@@ -33,6 +33,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // Log the error (with full details for server logs)
     this.logError(exception, request, status);
 
+    if (response.headersSent) {
+      return;
+    }
+
     // Send sanitized response to client
     response.status(status).json(errorResponse);
   }

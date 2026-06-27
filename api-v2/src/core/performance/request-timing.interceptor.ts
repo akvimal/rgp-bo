@@ -50,13 +50,15 @@ export class RequestTimingInterceptor implements NestInterceptor {
       recorded = true;
 
       const totalMs = this.elapsedMs(state.startedAtNs);
-      response.setHeader(
-        'server-timing',
-        `api;dur=${totalMs.toFixed(1)}, db;dur=${state.dbTotalMs.toFixed(1)}`,
-      );
-      response.setHeader('x-api-duration-ms', totalMs.toFixed(1));
-      response.setHeader('x-db-duration-ms', state.dbTotalMs.toFixed(1));
-      response.setHeader('x-db-query-count', String(state.dbQueryCount));
+      if (!response.headersSent) {
+        response.setHeader(
+          'server-timing',
+          `api;dur=${totalMs.toFixed(1)}, db;dur=${state.dbTotalMs.toFixed(1)}`,
+        );
+        response.setHeader('x-api-duration-ms', totalMs.toFixed(1));
+        response.setHeader('x-db-duration-ms', state.dbTotalMs.toFixed(1));
+        response.setHeader('x-db-query-count', String(state.dbQueryCount));
+      }
 
       if (this.shouldLog(totalMs)) {
         const logPayload = {
