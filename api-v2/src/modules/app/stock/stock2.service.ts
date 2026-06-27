@@ -8,23 +8,98 @@ export class Stock2Service {
     constructor(@InjectEntityManager() private manager: EntityManager){}
     
     async findAll(criteria:any) {
-        
-        let sql = `select * from product_items_agg_view iv
-                        left join product_sale_agg_view av on av.product_id = iv.id`;
+        const expired = criteria.expired === true;
+        const expiryCondition = expired
+            ? 'pii.exp_date < current_date + 30'
+            : '(pii.exp_date is null or pii.exp_date >= current_date + 30)';
+        const availableCondition = criteria.available
+            ? `having sum(
+                    (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
+                    - coalesce(sold.sold, 0)
+                    + coalesce(adjusted.adjusted, 0)
+                ) > 0`
+            : '';
 
-        const arr:string[] = [];
-        if(criteria.available){
-            arr.push(`iv.balance > 0`);
-        }
+        const sql = `
+            with sold_by_item as (
+                select si.purchase_item_id,
+                       sum(si.qty) as sold,
+                       max(s.bill_date) as last_sale_date
+                from sale_item si
+                left join sale s on s.id = si.sale_id
+                where si.active = true and si.archive = false
+                group by si.purchase_item_id
+            ), adjusted_by_item as (
+                select pq.item_id,
+                       sum(pq.qty) as adjusted
+                from product_qtychange pq
+                where pq.active = true and pq.archive = false
+                group by pq.item_id
+            ), inventory as (
+                select p.id,
+                       p.title,
+                       p.active,
+                       $2::boolean as expired,
+                       max(i.invoice_date) as last_purchase_date,
+                       date(max(sold.last_sale_date)) as last_sale_date,
+                       sum((pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)) as purchased,
+                       sum(coalesce(sold.sold, 0)) as sold,
+                       sum(coalesce(adjusted.adjusted, 0)) as adjusted,
+                       sum(
+                           (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
+                           - coalesce(sold.sold, 0)
+                           + coalesce(adjusted.adjusted, 0)
+                       ) as balance
+                from product p
+                inner join purchase_invoice_item pii
+                    on pii.product_id = p.id
+                    and pii.active = true
+                    and pii.archive = false
+                inner join purchase_invoice i
+                    on i.id = pii.invoice_id
+                    and i.active = true
+                    and i.archive = false
+                left join sold_by_item sold on sold.purchase_item_id = pii.id
+                left join adjusted_by_item adjusted on adjusted.item_id = pii.id
+                where p.active = $1
+                  and p.archive = false
+                  and ${expiryCondition}
+                group by p.id, p.title, p.active
+                ${availableCondition}
+            ), monthly_sales as (
+                select si.product_id,
+                       date_trunc('month', s.bill_date) as sale_month,
+                       count(distinct s.customer_id) as total_customers,
+                       count(s.bill_no) as total_orders,
+                       sum(si.qty) as total_qty
+                from sale_item si
+                inner join sale s on s.id = si.sale_id
+                where s.bill_date >= current_date - interval '6 months'
+                  and s.active = true
+                  and s.archive = false
+                  and s.status = 'COMPLETE'
+                  and si.active = true
+                  and si.archive = false
+                group by si.product_id, date_trunc('month', s.bill_date)
+            ), sales_aggregate as (
+                select product_id,
+                       avg(total_customers) as average_customers,
+                       max(total_customers) as highest_customers,
+                       avg(total_orders) as average_orders,
+                       max(total_orders) as highest_orders,
+                       avg(total_qty) as average_sales,
+                       max(total_qty) as highest_sales
+                from monthly_sales
+                group by product_id
+            )
+            select iv.*, av.product_id, av.average_customers,
+                   av.highest_customers, av.average_orders, av.highest_orders,
+                   av.average_sales, av.highest_sales
+            from inventory iv
+            left join sales_aggregate av on av.product_id = iv.id
+            order by av.highest_customers desc nulls last, iv.title`;
 
-        arr.push(`iv.active = ${criteria.active}`);
-        arr.push(`iv.expired = ${criteria.expired}`);
-
-        if(arr.length > 0) {
-            sql += ` where ${arr.join(' and ')}`
-        }
-        sql += ` order by av.highest_customers desc`
-        return await this.manager.query(sql).then(data => {
+        return await this.manager.query(sql, [criteria.active === true, expired]).then(data => {
             data.forEach(rec => {
                 if(rec['balance']){
                     rec['balance'] = +rec['balance'];

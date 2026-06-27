@@ -15,6 +15,7 @@ export class SalesListComponent {
     returnSaleId = '';
 
     openH1DrugsTab = false;
+    productLevelLoaded = false;
     showReturnForm = false;
     
     totals = {digital:0,cash:0,net:0};
@@ -29,6 +30,12 @@ export class SalesListComponent {
 
     openH1Drugs(event:any){
       this.openH1DrugsTab = true;
+    }
+
+    onSalesTabChange(event:any){
+      if(event.index === 1){
+        this.productLevelLoaded = true;
+      }
     }
 
     fetchSales(filter:any){

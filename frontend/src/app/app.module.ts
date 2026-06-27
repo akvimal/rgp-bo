@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 import { environment } from 'src/environments/environment';
 import { AuthModule } from './@core/auth/auth.module';
 import { AuthTokenInterceptor } from './@core/auth/auth-token.interceptor';
+import { HttpTimingInterceptor } from './@core/performance/http-timing.interceptor';
 import { RouterModule } from '@angular/router';
 import { PosComponent } from './pos.component';
 import { ToastModule } from 'primeng/toast';
@@ -39,6 +40,11 @@ import { ToastModule } from 'primeng/toast';
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthTokenInterceptor,
+      multi: true,
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: HttpTimingInterceptor,
       multi: true,
     }
   ],

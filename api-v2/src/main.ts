@@ -16,8 +16,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
-  // Enable CORS
-  app.enableCors();
+  // Enable CORS and allow the frontend to inspect response timing data.
+  app.enableCors({
+    exposedHeaders: [
+      'x-request-id',
+      'x-api-duration-ms',
+      'x-db-duration-ms',
+      'x-db-query-count',
+      'server-timing',
+    ],
+  });
 
   // Global exception filter for consistent error handling
   app.useGlobalFilters(new HttpExceptionFilter());
