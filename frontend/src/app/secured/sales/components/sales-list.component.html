@@ -4,7 +4,7 @@
 <app-sale-header></app-sale-header>
 <div class="row">
   <div class="col-12">
-  <p-tabView>
+  <p-tabView (onChange)="onSalesTabChange($event)">
     <p-tabPanel header="Invoice Level" headerStyleClass="no-print">
     <div class="row mt-3 no-print">
       <div class="col-md-2">
@@ -148,7 +148,7 @@
 </div>
     </p-tabPanel>
     <p-tabPanel header="Product Level" headerStyleClass="no-print">
-      <app-sale-items></app-sale-items>
+      <app-sale-items *ngIf="productLevelLoaded"></app-sale-items>
 <!-- 
       <app-sale-items [category]="'Drug'" [props]="[{id:'schedule',value:'H1'}]"></app-sale-items>
    --></p-tabPanel>

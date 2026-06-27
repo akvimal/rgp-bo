@@ -43,17 +43,8 @@ export class SaleService {
                     await transactionManager.save(SaleItem, sale.items);
                 }
 
-                // Step 4: Fetch and return complete sale with relations
-                const completeSale = await transactionManager
-                    .createQueryBuilder(Sale, "sale")
-                    .leftJoinAndSelect("sale.customer", "customer")
-                    .leftJoinAndSelect("sale.items", "items")
-                    .leftJoinAndSelect("items.product", "product")
-                    .select(['sale','customer','items','product'])
-                    .where('sale.id = :id', { id: savedSale.id })
-                    .getOne();
-
-                return completeSale;
+                // The client only needs the saved header before loading the detail route.
+                return savedSale;
             } catch (error) {
                 // Transaction will automatically rollback on error
                 throw new Error(`Failed to create sale: ${error.message}`);
@@ -115,17 +106,8 @@ export class SaleService {
                     await transactionManager.save(SaleItem, sale.items);
                 }
 
-                // Step 3: Fetch and return complete sale with relations
-                const completeSale = await transactionManager
-                    .createQueryBuilder(Sale, "sale")
-                    .leftJoinAndSelect("sale.customer", "customer")
-                    .leftJoinAndSelect("sale.items", "items")
-                    .leftJoinAndSelect("items.product", "product")
-                    .select(['sale','customer','items','product'])
-                    .where('sale.id = :id', { id: updatedSale.id })
-                    .getOne();
-
-                return completeSale;
+                // The client only needs the saved header before loading the detail route.
+                return updatedSale;
             } catch (error) {
                 // Transaction will automatically rollback on error
                 throw new Error(`Failed to update sale: ${error.message}`);
@@ -171,7 +153,10 @@ export class SaleService {
             qb.andWhere('sale.createdby = :uid', { uid:userid });
         }
         if(query.date){
-            qb.andWhere(`DATE_TRUNC('day', sale.billdate) = :con`, { con:query.date });
+            qb.andWhere(
+                `sale.billdate >= CAST(:con AS date) AND sale.billdate < CAST(:con AS date) + INTERVAL '1 day'`,
+                { con:query.date },
+            );
         }
         if(query.billno){
             qb.andWhere(`sale.bill_no = :billno`, { billno:query.billno });
@@ -194,14 +179,19 @@ export class SaleService {
                     .leftJoinAndSelect("purchaseitem.product", "product")
                     .select(['item','sale','customer','purchaseitem','product'])
                     .where('sale.status = :st', { st:'COMPLETE' })
+                    .andWhere('sale.active = true AND sale.archive = false')
+                    .andWhere('item.active = true AND item.archive = false')
                     if(query.product){
                         qb.andWhere('product.title ilike :prod', { prod: query.product+'%' });
                     } 
         if(query.category){
             qb.andWhere('product.category = :ctg', { ctg:query.category });
-        }        
+        }
         if(query.fromdate && query.todate){
-            qb.andWhere('sale.billdate between :from and :to', { from:query.fromdate,to:query.todate });
+            qb.andWhere(
+                `sale.billdate >= CAST(:from AS date) AND sale.billdate < CAST(:to AS date) + INTERVAL '1 day'`,
+                { from:query.fromdate,to:query.todate },
+            );
         }
         // if(userid){
         //     qb.andWhere('sale.createdby = :uid', { uid:userid });
@@ -398,11 +388,54 @@ export class SaleService {
     }
 
     async findVisits(criteria:any){
-        const sql = `select c.id, name, mobile,  max(s.bill_date) as last_visited,
-        current_date - date(max(s.bill_date)) as days_lapsed,  get_days_diff_stats(c.id) as visit_pattern
-        from customer c inner join sale s on s.customer_id = c.id and (current_date - date(s.bill_date)) <= $1
-        group by c.id, name, mobile
-        order by max(s.bill_date) desc`
+        const sql = `
+        with relevant_sales as (
+            select s.customer_id, s.bill_date
+            from sale s
+            where s.active = true
+              and s.archive = false
+              and s.status = 'COMPLETE'
+              and s.bill_date >= least(
+                  current_date - interval '1 year',
+                  current_date - ($1::integer * interval '1 day')
+              )
+        ), visit_diffs as (
+            select customer_id, bill_date,
+                   extract(day from (
+                       bill_date - lag(bill_date) over (
+                           partition by customer_id order by bill_date desc
+                       )
+                   ))::integer * -1 as days_diff
+            from relevant_sales
+            where bill_date >= current_date - interval '1 year'
+        ), ranked_diffs as (
+            select customer_id, days_diff,
+                   row_number() over (
+                       partition by customer_id order by bill_date desc
+                   ) as interval_no
+            from visit_diffs
+            where days_diff is not null
+        ), visit_stats as (
+            select customer_id,
+                   array_agg(days_diff order by interval_no) as days_diff_array,
+                   avg(days_diff) as mean_diff,
+                   stddev(days_diff) as stddev_diff
+            from ranked_diffs
+            where interval_no <= 5
+            group by customer_id
+        ), recent_visits as (
+            select customer_id, max(bill_date) as last_visited
+            from relevant_sales
+            where bill_date >= current_date - ($1::integer * interval '1 day')
+            group by customer_id
+        )
+        select c.id, c.name, c.mobile, rv.last_visited,
+               current_date - date(rv.last_visited) as days_lapsed,
+               row(vs.days_diff_array, vs.mean_diff, vs.stddev_diff) as visit_pattern
+        from recent_visits rv
+        inner join customer c on c.id = rv.customer_id
+        left join visit_stats vs on vs.customer_id = rv.customer_id
+        order by rv.last_visited desc`
         return await this.manager.query(sql, [criteria.maxdays]);
     }
 

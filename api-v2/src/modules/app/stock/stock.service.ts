@@ -22,35 +22,37 @@ export class StockService {
         }
 
         async findByCriteria(criteria:any){
-
-            let sql =
-            `select piv.*, p.more_props, pp.sale_price from product_items_view piv
-            inner join product p on p.id = piv.id `;
-
             const params:any[] = [];
             let paramIndex = 1;
+            const conditions:string[] = [
+                'p.active = true',
+                'p.archive = false',
+                'pii.active = true',
+                'pii.archive = false',
+                'i.active = true',
+                'i.archive = false',
+            ];
 
             if(criteria['excludeItems'] && criteria['excludeItems'].length > 0){
                 const placeholders = criteria['excludeItems'].map(() => `$${paramIndex++}`).join(',');
-                sql += ` and piv.item_id not in (${placeholders}) `
+                conditions.push(`pii.id not in (${placeholders})`);
                 params.push(...criteria['excludeItems']);
             }
-            sql += `left join product_price2 pp on pp.product_id = piv.id and pp.end_date > current_date `;
 
-            const conditions:string[] = [];
-            if(criteria['expired']){
-                conditions.push(`piv.expired = $${paramIndex++}`)
-                params.push(criteria['expired']);
+            if(Object.prototype.hasOwnProperty.call(criteria, 'expired')){
+                conditions.push(criteria['expired']
+                    ? 'pii.exp_date < current_date + 30'
+                    : '(pii.exp_date is null or pii.exp_date >= current_date + 30)');
             }
 
             if(criteria['id']){
-                conditions.push(`piv.id = $${paramIndex++}`);
+                conditions.push(`p.id = $${paramIndex++}`);
                 params.push(criteria['id']);
             }
 
             if(!criteria['id'] && criteria['title']){
                 let titleCriteria = criteria['title'].startsWith('~') ? '%'+criteria['title'].substring(1) : criteria['title'];
-                conditions.push(`(piv.title ilike $${paramIndex}||'%' or p.more_props->>'composition' ilike $${paramIndex}||'%')`);
+                conditions.push(`(p.title ilike $${paramIndex}||'%' or p.more_props->>'composition' ilike $${paramIndex}||'%')`);
                 params.push(titleCriteria);
                 paramIndex++;
             }
@@ -58,19 +60,69 @@ export class StockService {
             if(criteria['status']){
                 let arr = criteria.status.split(',');
                 const placeholders = arr.map(() => `$${paramIndex++}`).join(',');
-                conditions.push(`piv.status in (${placeholders})`);
+                conditions.push(`pii.status in (${placeholders})`);
                 params.push(...arr);
             }
-            if(criteria['expired'])
-                conditions.push('piv.exp_date < current_date')
-            if(criteria['available'])
-                conditions.push('piv.balance > 0')
-
-            if(conditions.length > 0){
-                sql += ' where ' + conditions.join(' and ');
+            if(criteria['available']){
+                conditions.push(`(
+                    (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
+                    - sold.sold + adjusted.adjusted
+                ) > 0`);
             }
 
-            sql += ` order by piv.title, piv.exp_date`
+            let sql = `
+                select
+                    p.id,
+                    p.title,
+                    p.pack,
+                    p.active,
+                    i.invoice_date,
+                    i.invoice_no,
+                    pii.id as item_id,
+                    pii.batch,
+                    pii.exp_date,
+                    pii.status,
+                    pii.tax_pcnt,
+                    pii.mrp_cost,
+                    sold.last_sale_date,
+                    (pii.exp_date < current_date + 30) as expired,
+                    (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) as purchased,
+                    sold.sold,
+                    adjusted.adjusted,
+                    (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
+                        - sold.sold + adjusted.adjusted as balance,
+                    p.more_props,
+                    pp.sale_price
+                from product p
+                inner join purchase_invoice_item pii
+                    on pii.product_id = p.id
+                inner join purchase_invoice i
+                    on i.id = pii.invoice_id
+                left join lateral (
+                    select
+                        coalesce(sum(si.qty), 0) as sold,
+                        max(s.bill_date) as last_sale_date
+                    from sale_item si
+                    left join sale s on s.id = si.sale_id
+                    where si.purchase_item_id = pii.id
+                        and si.active = true
+                        and si.archive = false
+                ) sold on true
+                left join lateral (
+                    select coalesce(sum(pq.qty), 0) as adjusted
+                    from product_qtychange pq
+                    where pq.item_id = pii.id
+                        and pq.active = true
+                        and pq.archive = false
+                ) adjusted on true
+                left join product_price2 pp
+                    on pp.product_id = p.id
+                    and pp.end_date > current_date
+                    and pp.active = true
+                    and pp.archive = false
+                where ${conditions.join(' and ')}
+                order by p.title, pii.exp_date`;
+
             if(criteria['limit'] && criteria['limit'] > 0){
                 sql += ` limit $${paramIndex++}`;
                 params.push(criteria['limit']);
