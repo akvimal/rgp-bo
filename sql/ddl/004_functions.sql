@@ -39,8 +39,13 @@ $function$
 CREATE OR REPLACE FUNCTION public.generate_grn(text)
  RETURNS text
  LANGUAGE sql
- IMMUTABLE STRICT
-AS $function$select $1||to_char(current_date, 'YYMM')||lpad(nextval('grn_seq')::text,3,'0');$function$
+ VOLATILE STRICT
+AS $function$
+select $1
+    || to_char(current_date, 'YYMM')
+    || lpad(sequence_value, greatest(3, length(sequence_value)), '0')
+from (select nextval('grn_seq')::text as sequence_value) generated;
+$function$
 ;
 
 -- DROP FUNCTION public.generate_order_number();
