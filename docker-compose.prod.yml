@@ -9,6 +9,7 @@ services:
       - ${UPLOADS_PATH:-~/uploads}:/app/upload
     command: npm run start:prod
     environment:
+      TZ: ${TZ:-Asia/Kolkata}
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@${DB_HOST:?Set DB_HOST to the existing Postgres host}:${DB_PORT:-5432}/${POSTGRES_DB:?Set POSTGRES_DB}
       LOG_SQL: ${LOG_SQL:-false}

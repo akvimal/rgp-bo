@@ -191,8 +191,12 @@ export class SaleFormComponent {
     });
 
     if(this.sale.status == 'COMPLETE'){
-        this.sale['cashamt'] = this.payment.cashamt;
-        this.sale['digiamt'] = this.payment.digiamt;
+        const total = +(this.sale.total || 0);
+        const digiamt = Math.max(0, Math.min(total, +(this.payment.digiamt || 0)));
+        const cashamt = total - digiamt;
+
+        this.sale['cashamt'] = cashamt;
+        this.sale['digiamt'] = digiamt;
         this.sale['digimethod'] = this.payment.digimode;
         this.sale['digirefno'] = this.payment.digirefno;
     }
