@@ -1,0 +1,873 @@
+<title>RGP Back Office — Manual Test Plan</title>
+<style>
+  :root{
+    --bg:#eef2f1;
+    --surface:#ffffff;
+    --surface-2:#e6ece9;
+    --ink:#151d1b;
+    --ink-soft:#4b5854;
+    --rule:#d7ddda;
+    --accent:#0e6e62;
+    --accent-ink:#ffffff;
+    --accent-soft:#dcece7;
+    --tag-happy:#2e6f9e;      --tag-happy-bg:#e2edf5;
+    --tag-negative:#a8402c;   --tag-negative-bg:#f5e4e0;
+    --tag-edge:#9a6a12;       --tag-edge-bg:#f4ecd8;
+    --tag-permission:#5b4b9e; --tag-permission-bg:#e8e4f5;
+    --tag-integration:#3f7a73;--tag-integration-bg:#dfece9;
+    --shadow: 0 1px 2px rgba(20,30,28,.06), 0 6px 20px -10px rgba(20,30,28,.18);
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#111817;
+      --surface:#161f1d;
+      --surface-2:#1c2725;
+      --ink:#e8efec;
+      --ink-soft:#a9b8b3;
+      --rule:#2a3634;
+      --accent:#57bcac;
+      --accent-ink:#0a1615;
+      --accent-soft:#1c3230;
+      --tag-happy:#7fb2dd;      --tag-happy-bg:#1c2c38;
+      --tag-negative:#e2947c;   --tag-negative-bg:#37231e;
+      --tag-edge:#e0b95c;       --tag-edge-bg:#392f18;
+      --tag-permission:#b3a3ec; --tag-permission-bg:#2a2440;
+      --tag-integration:#7fd0c0;--tag-integration-bg:#173330;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#111817; --surface:#161f1d; --surface-2:#1c2725; --ink:#e8efec; --ink-soft:#a9b8b3; --rule:#2a3634;
+    --accent:#57bcac; --accent-ink:#0a1615; --accent-soft:#1c3230;
+    --tag-happy:#7fb2dd; --tag-happy-bg:#1c2c38;
+    --tag-negative:#e2947c; --tag-negative-bg:#37231e;
+    --tag-edge:#e0b95c; --tag-edge-bg:#392f18;
+    --tag-permission:#b3a3ec; --tag-permission-bg:#2a2440;
+    --tag-integration:#7fd0c0; --tag-integration-bg:#173330;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+  :root[data-theme="light"]{
+    --bg:#eef2f1; --surface:#ffffff; --surface-2:#e6ece9; --ink:#151d1b; --ink-soft:#4b5854; --rule:#d7ddda;
+    --accent:#0e6e62; --accent-ink:#ffffff; --accent-soft:#dcece7;
+    --tag-happy:#2e6f9e; --tag-happy-bg:#e2edf5;
+    --tag-negative:#a8402c; --tag-negative-bg:#f5e4e0;
+    --tag-edge:#9a6a12; --tag-edge-bg:#f4ecd8;
+    --tag-permission:#5b4b9e; --tag-permission-bg:#e8e4f5;
+    --tag-integration:#3f7a73; --tag-integration-bg:#dfece9;
+    --shadow: 0 1px 2px rgba(20,30,28,.06), 0 6px 20px -10px rgba(20,30,28,.18);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    font-size:15px; line-height:1.5;
+  }
+  ::selection{ background:var(--accent-soft); }
+  a{ color:var(--accent); }
+
+  .shell{
+    display:grid;
+    grid-template-columns: 288px minmax(0,1fr);
+    gap:0;
+    max-width:1320px;
+    margin:0 auto;
+  }
+
+  /* ---------- Rail ---------- */
+  .rail{
+    position:sticky; top:0; align-self:start;
+    height:100vh; overflow-y:auto;
+    padding:28px 20px 40px 28px;
+    border-right:1px solid var(--rule);
+  }
+  .rail-brand{
+    font-family:var(--serif); font-size:15px; letter-spacing:.02em;
+    color:var(--ink-soft); text-transform:uppercase; font-size:11px; letter-spacing:.12em;
+    margin-bottom:4px;
+  }
+  .rail-title{
+    font-family:var(--serif); font-weight:600; font-size:21px; line-height:1.25;
+    margin:0 0 18px 0; text-wrap:balance;
+  }
+  .progress-block{
+    background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+    padding:14px 14px 12px; margin-bottom:20px; box-shadow:var(--shadow);
+  }
+  .progress-label{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;}
+  .progress-num{ font-variant-numeric:tabular-nums; font-weight:600; color:var(--ink); }
+  .progress-track{ height:6px; border-radius:99px; background:var(--surface-2); overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--accent); border-radius:99px; transition:width .25s ease; }
+
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); margin:0 0 6px; }
+  .search{
+    width:100%; padding:9px 11px; border-radius:8px; border:1px solid var(--rule);
+    background:var(--surface); color:var(--ink); font-size:13.5px; margin-bottom:16px;
+  }
+  .search:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+  .chip{
+    font-size:11.5px; padding:5px 9px; border-radius:99px; border:1px solid var(--rule);
+    background:var(--surface); color:var(--ink-soft); cursor:pointer; user-select:none;
+    display:inline-flex; align-items:center; gap:5px; line-height:1.2;
+  }
+  .chip .dot{ width:7px; height:7px; border-radius:99px; display:inline-block; }
+  .chip[aria-pressed="true"]{ color:var(--ink); border-color:currentColor; background:var(--surface-2); font-weight:600; }
+
+  .toggle-row{ display:flex; align-items:center; gap:8px; margin-bottom:22px; font-size:13px; color:var(--ink-soft); }
+  .toggle-row input{ accent-color:var(--accent); width:15px; height:15px; }
+
+  .nav-list{ list-style:none; margin:0; padding:0; border-top:1px solid var(--rule); }
+  .nav-list li{ border-bottom:1px solid var(--rule); }
+  .nav-list a{
+    display:flex; justify-content:space-between; gap:10px; text-decoration:none; color:var(--ink);
+    padding:9px 2px; font-size:13.5px;
+  }
+  .nav-list a:hover{ color:var(--accent); }
+  .nav-count{ font-variant-numeric:tabular-nums; color:var(--ink-soft); font-size:12px; }
+
+  .rail-foot{ margin-top:22px; font-size:11.5px; color:var(--ink-soft); line-height:1.6; }
+  .rail-foot code{ font-family:var(--mono); background:var(--surface-2); padding:1px 5px; border-radius:4px; }
+
+  /* ---------- Main ---------- */
+  main{ padding:44px 40px 90px 40px; min-width:0; }
+  .page-head{ margin-bottom:34px; max-width:66ch; }
+  .eyebrow{ font-size:11.5px; text-transform:uppercase; letter-spacing:.14em; color:var(--accent); font-weight:600; margin-bottom:10px; }
+  h1.doc-title{
+    font-family:var(--serif); font-weight:600; font-size:34px; line-height:1.15; margin:0 0 12px; text-wrap:balance;
+  }
+  .dek{ color:var(--ink-soft); font-size:15.5px; max-width:60ch; }
+  .stat-strip{ display:flex; gap:26px; flex-wrap:wrap; margin-top:22px; padding-top:20px; border-top:1px solid var(--rule); }
+  .stat{ display:flex; flex-direction:column; gap:2px; }
+  .stat b{ font-family:var(--serif); font-size:22px; font-variant-numeric:tabular-nums; }
+  .stat span{ font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.08em; }
+
+  .module{ margin-bottom:46px; scroll-margin-top:24px; }
+  .module-head{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:6px; }
+  .module-name{ font-family:var(--serif); font-size:22px; font-weight:600; margin:0; }
+  .module-count{ font-size:12.5px; color:var(--ink-soft); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .module-blurb{ color:var(--ink-soft); font-size:14px; max-width:72ch; margin:0 0 16px; }
+
+  .case-table{ width:100%; border-collapse:separate; border-spacing:0; }
+  .table-wrap{ overflow-x:auto; border:1px solid var(--rule); border-radius:12px; background:var(--surface); box-shadow:var(--shadow); }
+  .case-table th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft);
+    padding:10px 14px; background:var(--surface-2); position:sticky; top:0;
+    border-bottom:1px solid var(--rule);
+  }
+  .case-table td{ padding:12px 14px; border-bottom:1px solid var(--rule); vertical-align:top; font-size:13.6px; }
+  .case-table tr:last-child td{ border-bottom:none; }
+  .case-table tr.status-pass{ background: color-mix(in srgb, var(--tag-happy-bg) 55%, transparent); }
+  .case-table tr.status-pass td{ color:var(--ink-soft); }
+  .case-table tr.status-pass .scenario-title{ text-decoration:line-through; text-decoration-color:var(--rule); color:var(--ink-soft); }
+  .case-table tr.status-fail{ background: color-mix(in srgb, var(--tag-negative-bg) 65%, transparent); box-shadow: inset 3px 0 0 var(--tag-negative); }
+  .case-table tr.is-hidden{ display:none; }
+
+  .col-result{ width:190px; }
+  .col-id{ width:88px; }
+  .id-tag{ font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
+  .col-feature{ width:150px; color:var(--ink-soft); font-size:12.8px; }
+  .scenario-title{ font-weight:600; margin:0 0 3px; }
+  .scenario-steps{ color:var(--ink-soft); font-size:13px; }
+  .col-tag{ width:118px; }
+
+  .tag{
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600;
+    padding:4px 9px; border-radius:99px; white-space:nowrap;
+  }
+  .tag.happy{ color:var(--tag-happy); background:var(--tag-happy-bg); }
+  .tag.negative{ color:var(--tag-negative); background:var(--tag-negative-bg); }
+  .tag.edge{ color:var(--tag-edge); background:var(--tag-edge-bg); }
+  .tag.permission{ color:var(--tag-permission); background:var(--tag-permission-bg); }
+  .tag.integration{ color:var(--tag-integration); background:var(--tag-integration-bg); }
+
+  .result-cell{ display:flex; flex-direction:column; gap:5px; }
+  select.status-select{
+    width:100%; padding:5px 6px; border-radius:6px; border:1px solid var(--rule);
+    background:var(--surface); color:var(--ink); font-size:12px; font-weight:600; cursor:pointer;
+  }
+  select.status-select:focus, textarea.issue-note:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  textarea.issue-note{
+    width:100%; min-height:64px; resize:vertical; border-radius:6px; border:1px solid var(--rule);
+    background:var(--surface); color:var(--ink); font-size:12px; padding:6px 7px; font-family:var(--sans); line-height:1.4;
+  }
+  textarea.issue-note::placeholder{ color:var(--ink-soft); opacity:.75; }
+
+  .fixlist-card{
+    margin:0 0 18px; padding:14px 16px 16px; border:1px dashed var(--rule); border-radius:10px;
+    background: color-mix(in srgb, var(--tag-edge-bg) 45%, transparent);
+  }
+  .fixlist-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .fixlist-head h3{ margin:0; font-size:12.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--tag-edge); font-weight:700; }
+  .fixlist-count{ font-size:11.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+  ul.fixlist{ list-style:none; margin:0 0 10px; padding:0; display:flex; flex-direction:column; gap:6px; }
+  ul.fixlist li{
+    display:flex; align-items:flex-start; gap:8px; font-size:13px; background:var(--surface);
+    border:1px solid var(--rule); border-radius:8px; padding:7px 9px;
+  }
+  ul.fixlist li.fixlist-empty{ color:var(--ink-soft); font-style:italic; background:transparent; border-style:dashed; }
+  .fixlist-text{ flex:1; }
+  .fixlist-date{ color:var(--ink-soft); font-size:11px; white-space:nowrap; font-variant-numeric:tabular-nums; padding-top:1px; }
+  .fixlist-remove{
+    border:none; background:transparent; color:var(--ink-soft); cursor:pointer; font-size:15px; line-height:1;
+    padding:0 2px; border-radius:4px;
+  }
+  .fixlist-remove:hover{ color:var(--tag-negative); }
+  .fixlist-form{ display:flex; gap:8px; }
+  .fixlist-input{
+    flex:1; padding:8px 10px; border-radius:7px; border:1px solid var(--rule);
+    background:var(--surface); color:var(--ink); font-size:13px;
+  }
+  .fixlist-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .fixlist-form button{
+    padding:8px 14px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
+    font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .fixlist-form button:hover{ filter:brightness(1.06); }
+
+  .progress-breakdown{ display:flex; gap:10px; margin-top:8px; font-size:11.5px; color:var(--ink-soft); }
+  .progress-breakdown b{ font-variant-numeric:tabular-nums; }
+  .dot-inline{ width:7px; height:7px; border-radius:99px; display:inline-block; margin-right:4px; }
+
+  .btn-export{
+    width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--rule); background:var(--surface);
+    color:var(--ink); font-size:12.5px; font-weight:600; cursor:pointer; margin-bottom:18px;
+  }
+  .btn-export:hover{ border-color:var(--accent); color:var(--accent); }
+
+  .empty-state{ padding:40px; text-align:center; color:var(--ink-soft); font-size:14px; }
+
+  @media (max-width: 980px){
+    .shell{ grid-template-columns: 1fr; }
+    .rail{ position:relative; height:auto; border-right:none; border-bottom:1px solid var(--rule); padding:20px; }
+    main{ padding:28px 20px 70px; }
+    .col-feature{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .progress-fill{ transition:none; }
+  }
+</style>
+
+<div class="shell">
+  <nav class="rail" aria-label="Test plan navigation">
+    <div class="rail-brand">RGP Back Office &middot; QA</div>
+    <h2 class="rail-title">Manual Test Plan</h2>
+
+    <div class="progress-block">
+      <div class="progress-label"><span>Overall progress</span><span class="progress-num" id="progressNum">0 / 0</span></div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="progress-breakdown">
+        <span><span class="dot-inline" style="background:var(--tag-happy)"></span><b id="passCount">0</b> pass</span>
+        <span><span class="dot-inline" style="background:var(--tag-negative)"></span><b id="failCount">0</b> fail</span>
+        <span><span class="dot-inline" style="background:var(--tag-edge)"></span><b id="fixCount">0</b> fix-list</span>
+      </div>
+    </div>
+
+    <button type="button" class="btn-export" id="exportBtn">Export findings (.md)</button>
+
+    <p class="field-label">Search</p>
+    <input class="search" id="searchBox" type="text" placeholder="Filter by keyword, endpoint, field, issue note&hellip;" autocomplete="off" />
+
+    <p class="field-label">Case type</p>
+    <div class="chips" id="tagChips"></div>
+
+    <label class="toggle-row"><input type="checkbox" id="hidePassed" /> Hide passed cases</label>
+    <label class="toggle-row"><input type="checkbox" id="onlyIssues" /> Only cases with an issue logged</label>
+
+    <p class="field-label">Modules</p>
+    <ul class="nav-list" id="moduleNav"></ul>
+
+    <p class="rail-foot">Results, issue notes, and fix-list items are saved locally in this browser (<code>localStorage</code>) &mdash; not shared or synced. Use <b>Export findings</b> to turn today's run into a Markdown report you can paste into a ticket or hand to teammates. Re-run against a clean seeded database where a case says so.</p>
+  </nav>
+
+  <main id="main">
+    <header class="page-head">
+      <div class="eyebrow">Exploratory QA &middot; branch <span id="branchName">feature/shift-cash-phase1</span></div>
+      <h1 class="doc-title">What to click, and what "correct" looks like</h1>
+      <p class="dek">Every screen and API rule found in the codebase, turned into scenarios you can run by hand &mdash; happy paths, the inputs that should be rejected, and the edge cases most likely to hide a bug. Organized the way the app is organized: by module, in the order a store actually uses them.</p>
+      <div class="stat-strip" id="statStrip"></div>
+    </header>
+
+    <div id="moduleContainer"></div>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const TAGS = {
+    happy:       { label: "Happy path" },
+    negative:    { label: "Negative" },
+    edge:        { label: "Edge case" },
+    permission:  { label: "Permission" },
+    integration: { label: "Integration" }
+  };
+
+  const DATA = [
+    {
+      id: "auth", name: "Authentication & Session",
+      blurb: "Login, token lifecycle, password change, and route protection for /secure/*.",
+      cases: [
+        { id:"AUTH-1", feature:"Login", tag:"happy", scenario:"Valid credentials", steps:"Log in with a valid username/password.", expected:"Redirected to dashboard, token stored, and the nav shows only the menu items this role is permitted to see." },
+        { id:"AUTH-2", feature:"Login", tag:"negative", scenario:"Wrong password", steps:"Log in with a valid username and an incorrect password.", expected:"Generic “invalid credentials” error; stays on login; no token stored." },
+        { id:"AUTH-3", feature:"Login", tag:"negative", scenario:"Unknown username", steps:"Log in with a username that doesn't exist.", expected:"Same generic error as AUTH-2 &mdash; doesn't reveal whether the account exists." },
+        { id:"AUTH-4", feature:"Route guard", tag:"permission", scenario:"Direct URL while logged out", steps:"While logged out, browse straight to any /secure/&hellip; URL.", expected:"AuthGuard redirects to /login before any secured content flashes on screen." },
+        { id:"AUTH-5", feature:"Token lifecycle", tag:"edge", scenario:"Expired or corrupted token", steps:"Let the JWT expire (or edit it in devtools), then trigger any API call.", expected:"App catches the 401 and returns to login, rather than showing a blank or broken screen." },
+        { id:"AUTH-6", feature:"Token lifecycle", tag:"integration", scenario:"Silent refresh", steps:"Stay logged in and active past the point the token would normally expire.", expected:"POST /auth/refresh renews the session in the background; user is never bounced to login mid-task." },
+        { id:"AUTH-7", feature:"Change password", tag:"happy", scenario:"Correct current password", steps:"Change password, supplying the correct current password.", expected:"Success message; the old password no longer logs in, only the new one does." },
+        { id:"AUTH-8", feature:"Change password", tag:"negative", scenario:"Wrong current password", steps:"Attempt a password change with an incorrect current password.", expected:"Rejected with a clear error; password remains unchanged." },
+        { id:"AUTH-9", feature:"Registration", tag:"permission", scenario:"Open POST /auth/register", steps:"Call POST /auth/register directly (e.g. via Swagger) with no auth token.", expected:"Confirm this is the intended design &mdash; the endpoint currently has no auth guard, so verify unauthenticated self-registration is really meant to be open, and that it can't grant an elevated role." },
+        { id:"AUTH-10", feature:"Logout", tag:"happy", scenario:"Logout clears session", steps:"Log out, then press the browser Back button.", expected:"Token/localStorage cleared; back navigation doesn't reveal a cached secured page." }
+      ]
+    },
+    {
+      id: "dashboard", name: "Dashboard",
+      blurb: "Landing page KPIs and charts for the currently selected store.",
+      cases: [
+        { id:"DASH-1", feature:"Overview", tag:"happy", scenario:"Normal load", steps:"Log in and land on the dashboard for a store with regular activity.", expected:"KPIs and charts render with no console errors and match store data." },
+        { id:"DASH-2", feature:"Overview", tag:"edge", scenario:"Store with no data", steps:"Select a store with zero sales/stock history.", expected:"Charts show a clean empty state &mdash; no NaN, no broken axes." },
+        { id:"DASH-3", feature:"Overview", tag:"integration", scenario:"Store switch refreshes widgets", steps:"While on the dashboard, switch the store in the header.", expected:"All widgets reload for the new store; nothing keeps showing the previous store's numbers." }
+      ]
+    },
+    {
+      id: "context", name: "Store Context & Multi-Store Switching",
+      blurb: "The store selector in the header drives every other module &mdash; stock, cash, sales all scope to it.",
+      cases: [
+        { id:"CTX-1", feature:"Store selector", tag:"happy", scenario:"Single-store user", steps:"Log in as a user assigned to exactly one store.", expected:"That store is auto-selected; switcher shows only it (or is hidden)." },
+        { id:"CTX-2", feature:"Store selector", tag:"happy", scenario:"Multi-store user", steps:"Log in as a user assigned to several stores.", expected:"Switcher lists all assigned stores; the one marked primary is auto-selected." },
+        { id:"CTX-3", feature:"Store selector", tag:"happy", scenario:"Unassigned / admin user", steps:"Log in as a user with no explicit store assignment.", expected:"All active, non-archived stores are selectable." },
+        { id:"CTX-4", feature:"Store selector", tag:"edge", scenario:"Archive the store in view", steps:"While viewing Store A, have another session archive Store A, then refresh the switcher.", expected:"Store A drops out of the switcher; the current screen doesn't crash." },
+        { id:"CTX-5", feature:"Store selector", tag:"integration", scenario:"Selection persists across screens", steps:"Pick a store on Store &gt; Cash, then navigate to Store &gt; Stock.", expected:"Stock screen shows data for the same store, not a reset default." }
+      ]
+    },
+    {
+      id: "products", name: "Products & Pricing",
+      blurb: "Product catalog, bulk price adjustment, and price estimation.",
+      cases: [
+        { id:"PROD-1", feature:"Catalog", tag:"happy", scenario:"Create a product", steps:"Add a product with all required fields.", expected:"Saved and immediately findable in the product list/search." },
+        { id:"PROD-2", feature:"Catalog", tag:"negative", scenario:"Missing required fields", steps:"Submit the product form with name or price blank.", expected:"Inline validation errors; nothing is saved." },
+        { id:"PROD-3", feature:"Catalog", tag:"happy", scenario:"Edit product details", steps:"Change name/HSN/category on an existing product.", expected:"List reflects the update; existing stock and past sale/invoice references still resolve correctly." },
+        { id:"PROD-4", feature:"Catalog", tag:"happy", scenario:"Search and filter", steps:"Search the product list by name or code.", expected:"Only matching products are returned." },
+        { id:"PROD-5", feature:"Price Adjustor", tag:"happy", scenario:"Bulk price change", steps:"Run a bulk price adjustment across a set of products.", expected:"New price applies to future sales; prices on already-issued invoices/sales are untouched." },
+        { id:"PROD-6", feature:"Price Estimator", tag:"happy", scenario:"Cost → sale price", steps:"Enter cost, tax %, and target margin into the estimator.", expected:"Computed sale price matches manual calculation." },
+        { id:"PROD-7", feature:"Catalog", tag:"negative", scenario:"Negative price or tax", steps:"Try to save a product/price with a negative price or negative tax %.", expected:"Rejected by validation (price and tax are both constrained to ≥ 0)." },
+        { id:"PROD-8", feature:"Price history", tag:"happy", scenario:"Price change log", steps:"Open Product Price Change history for a product that's had multiple price edits.", expected:"Chronological list with correct user and date per change." }
+      ]
+    },
+    {
+      id: "vendors", name: "Vendors",
+      blurb: "Vendor master records referenced from purchase orders, invoices, and payments.",
+      cases: [
+        { id:"VEND-1", feature:"Vendor master", tag:"happy", scenario:"Create a vendor", steps:"Add a vendor with contact and GST details.", expected:"Saved and selectable when creating a Purchase Order or Invoice." },
+        { id:"VEND-2", feature:"Vendor master", tag:"negative", scenario:"Duplicate vendor", steps:"Create a second vendor with the same name/GST as an existing one.", expected:"Confirm whether this should be blocked or merely warned &mdash; verify actual behavior matches intent." },
+        { id:"VEND-3", feature:"Vendor master", tag:"edge", scenario:"Deactivate a vendor", steps:"Deactivate a vendor that has existing purchase history.", expected:"No longer selectable on new orders; historical orders/invoices still display it correctly." },
+        { id:"VEND-4", feature:"Vendor payments", tag:"happy", scenario:"Record a payment", steps:"Record a payment against one or more outstanding vendor invoices.", expected:"Outstanding balance decreases by exactly the payment amount." }
+      ]
+    },
+    {
+      id: "intent", name: "Purchase Requests & Suggestions",
+      blurb: "Demand-driven purchase suggestions and manually raised purchase requests, upstream of Purchase Orders.",
+      cases: [
+        { id:"PREQ-1", feature:"Suggestions", tag:"happy", scenario:"Generate suggestions", steps:"Open Purchase Suggestions for a store with recent sales velocity.", expected:"Suggested products/quantities line up with genuinely low-stock, fast-moving items." },
+        { id:"PREQ-2", feature:"Suggestions", tag:"happy", scenario:"Create orders from suggestions", steps:"Select several suggestions across two vendors and convert to orders.", expected:"One Purchase Order per vendor is created, each with the correct products and quantities." },
+        { id:"PREQ-3", feature:"Requests", tag:"happy", scenario:"Manual purchase request", steps:"Raise a manual purchase request and set status/source/priority/vendor.", expected:"Saved and correctly filterable by each of those fields in the request list." },
+        { id:"PREQ-4", feature:"Requests", tag:"happy", scenario:"Cancel a request", steps:"Remove/cancel an open purchase request.", expected:"Status updates and it drops out of the active suggestion pipeline." }
+      ]
+    },
+    {
+      id: "po", name: "Purchase Orders",
+      blurb: "Draft → submit → approve/reject workflow, gated by a configurable value threshold and an “approve” role policy.",
+      cases: [
+        { id:"PO-1", feature:"Draft", tag:"happy", scenario:"Create a draft order", steps:"Create a Purchase Order and leave it unsubmitted.", expected:"Saved as editable; not yet visible to approvers." },
+        { id:"PO-2", feature:"Submit", tag:"happy", scenario:"Submit below approval threshold", steps:"Submit a PO whose total value is under the configured approval-value threshold.", expected:"Auto-approved immediately: status SUBMITTED, approvalstatus Approved, no manual step needed." },
+        { id:"PO-3", feature:"Submit", tag:"edge", scenario:"Submit above approval threshold", steps:"Submit a PO whose total value exceeds the threshold.", expected:"Status becomes PENDING_APPROVAL with a populated approval reason; not yet usable to raise an invoice/GRN." },
+        { id:"PO-4", feature:"Approval", tag:"permission", scenario:"Approve without the policy", steps:"As a role without a purchaseorders:approve policy, try to approve a pending order.", expected:"Action is blocked (and ideally not even shown) &mdash; verify via direct API call too, not just the hidden button." },
+        { id:"PO-5", feature:"Approval", tag:"happy", scenario:"Approve with the policy", steps:"As a role with purchaseorders:approve, approve a pending order.", expected:"Status becomes SUBMITTED/Approved; approver and timestamp are recorded." },
+        { id:"PO-6", feature:"Approval", tag:"happy", scenario:"Reject with a reason", steps:"Reject a pending order, supplying a rejection reason.", expected:"Status REJECTED; reason stored and visible on the order." },
+        { id:"PO-7", feature:"Validation", tag:"negative", scenario:"Submit with no line items", steps:"Try to submit a PO with zero items or a zero quantity line.", expected:"Blocked with a clear message rather than creating an empty order." },
+        { id:"PO-8", feature:"Lifecycle", tag:"edge", scenario:"Delete a draft vs. a submitted order", steps:"Delete a Draft order, then attempt to delete a Submitted/Approved order.", expected:"Draft deletes cleanly; confirm whether a Submitted/Approved order can (or correctly cannot) be deleted the same way." }
+      ]
+    },
+    {
+      id: "invoices", name: "Purchase Invoices & GRN",
+      blurb: "Goods receipt against approved orders; invoices are the point stock actually enters the store.",
+      cases: [
+        { id:"INV-1", feature:"Create from PO", tag:"happy", scenario:"Import an approved order", steps:"Create an invoice and import items from an Approved Purchase Order.", expected:"Invoice lines pre-fill with the PO's quantities and costs." },
+        { id:"INV-2", feature:"Create from PO", tag:"negative", scenario:"Import from a non-approved order", steps:"Attempt to import from a PO that's still Draft or Pending Approval.", expected:"Blocked with “Invoice can only be created from an approved purchase order.”" },
+        { id:"INV-3", feature:"Create from PO", tag:"negative", scenario:"Import from a nonexistent order", steps:"Call the import endpoint with an invalid/deleted purchase order id.", expected:"Clear “Linked purchase order not found” error &mdash; not a 500 or blank screen." },
+        { id:"INV-4", feature:"Line items", tag:"happy", scenario:"Edit batch, expiry, cost, MRP, tax", steps:"Edit an invoice line's batch number, expiry date, cost, MRP, and tax %.", expected:"Line and invoice totals recompute correctly." },
+        { id:"INV-5", feature:"Confirm", tag:"happy", scenario:"Confirm an invoice", steps:"Confirm a fully entered invoice.", expected:"Stock quantities increase by each confirmed item's quantity, in the correct store and batch." },
+        { id:"INV-6", feature:"Outstanding", tag:"happy", scenario:"Outstanding by vendor", steps:"Open the Outstanding Invoices view filtered to one vendor.", expected:"Total matches the sum of that vendor's unpaid invoice balances." },
+        { id:"INV-7", feature:"Delete", tag:"edge", scenario:"Delete a confirmed invoice", steps:"Delete an invoice that has already been confirmed (stock already received).", expected:"Stock is correctly reversed in the same transaction, or the delete is blocked if items were already sold &mdash; never left half-applied." },
+        { id:"INV-8", feature:"Sale price", tag:"happy", scenario:"Set sale price from invoice item", steps:"Use “set sale price” on an invoice line.", expected:"The product's downstream sale price updates to match." }
+      ]
+    },
+    {
+      id: "stock", name: "Stock",
+      blurb: "Available quantity, batch/expiry tracking, and manual adjustments with an audit-approval path.",
+      cases: [
+        { id:"STK-1", feature:"Stock list", tag:"happy", scenario:"Available quantity per product", steps:"Open Store &gt; Stock &gt; Products for the selected store.", expected:"Available quantity per product/batch is shown and matches expectation." },
+        { id:"STK-2", feature:"Stock list", tag:"happy", scenario:"Batch/expiry drill-down", steps:"Drill into a single product's stock items.", expected:"Batch/expiry/available-qty breakdown sums to the list-level total." },
+        { id:"STK-3", feature:"Adjustment", tag:"happy", scenario:"Manual quantity adjustment", steps:"Record a stock adjustment (e.g. breakage) with a reason.", expected:"A qty-change record is created and available stock updates accordingly." },
+        { id:"STK-4", feature:"Audit approval", tag:"happy", scenario:"Adjustment pending approval", steps:"Create an adjustment that requires audit approval, then approve it.", expected:"Stock stays unchanged while pending; applies only once approved." },
+        { id:"STK-5", feature:"Audit approval", tag:"edge", scenario:"Delete a pending adjustment", steps:"Delete a qty adjustment that hasn't been approved yet.", expected:"Removed cleanly with no partial effect on available stock." },
+        { id:"STK-6", feature:"Expiry", tag:"happy", scenario:"Expiry list by month", steps:"Open Stock &gt; Expiry and drill into a specific month.", expected:"Items are grouped correctly by expiry month, and the drill-down shows the right batches." },
+        { id:"STK-7", feature:"Availability", tag:"edge", scenario:"Sell more than available", steps:"On the POS/Sale screen, try to sell more units of a product than are currently in stock.", expected:"Blocked or clearly flagged &mdash; stock is not allowed to go negative silently." },
+        { id:"STK-8", feature:"Adjustment lists", tag:"happy", scenario:"Price-adjust vs qty-adjust lists stay separate", steps:"Compare the Price Adjust list and Qty Adjust list after making one of each kind of change.", expected:"Each list shows only its own adjustment type, correctly attributed to the acting user and date." }
+      ]
+    },
+    {
+      id: "cash", name: "Store Cash & Shifts",
+      blurb: "New in this branch: shift templates, opening/closing a till, cash-in/cash-out ledger entries, and deposit-threshold alerts.",
+      cases: [
+        { id:"CASH-1", feature:"Shift templates", tag:"happy", scenario:"Create a template", steps:"Create a shift template with name, start/end time, deposit threshold, and default assignee.", expected:"Saved and available to pick from when opening a shift." },
+        { id:"CASH-2", feature:"Open shift", tag:"happy", scenario:"Open from a template", steps:"Open a shift from a template, entering an opening cash float.", expected:"Shift shows as OPEN; dashboard's “open shift” reflects it; expected cash starts equal to the opening float." },
+        { id:"CASH-3", feature:"Open shift", tag:"edge", scenario:"No store selected", steps:"With no store chosen in the header, try to open a shift.", expected:"Blocked with “Select a store in the header to open a shift.”" },
+        { id:"CASH-4", feature:"Open shift", tag:"edge", scenario:"Second open shift on the same store", steps:"With Shift A already OPEN for a store, open Shift B for the same store.", expected:"Currently not blocked &mdash; verify this is intentional. Two concurrent open shifts will split cash totals unpredictably between them; confirm the expected behavior before relying on it." },
+        { id:"CASH-5", feature:"Assignment", tag:"happy", scenario:"Assign / reassign a shift", steps:"Assign a shift to a staff member, then reassign it to someone else.", expected:"Assignee updates immediately; an unassigned shift stays visible to every cashier at that store." },
+        { id:"CASH-6", feature:"Ledger", tag:"edge", scenario:"Cash entry with no open shift", steps:"Record an EXPENSE ledger entry for a store that currently has no open shift.", expected:"Confirm the expected linkage: entry should still save against the store (shift left blank), not be silently rejected." },
+        { id:"CASH-7", feature:"Ledger", tag:"happy", scenario:"Cash entry auto-links to open shift", steps:"With a shift open and no shift explicitly chosen, record a cash entry.", expected:"Entry auto-attaches to that user's currently open shift at the store." },
+        { id:"CASH-8", feature:"Ledger", tag:"edge", scenario:"Bank deposit entry", steps:"Record a BANK_DEPOSIT entry with an amount typed into the “deposit” field.", expected:"System moves the amount to “withdraw” (cash leaving the till to the bank) and detaches the entry from any shift." },
+        { id:"CASH-9", feature:"Cash balance", tag:"happy", scenario:"Balance reconciles with ledger", steps:"Sum all deposits and withdrawals for a store manually, compare to the dashboard cash balance.", expected:"Dashboard balance = Σ deposits − Σ withdrawals, exactly." },
+        { id:"CASH-10", feature:"Deposit threshold", tag:"happy", scenario:"Deposit-due flag", steps:"Push the cash balance up to (and past) the store's configured deposit threshold.", expected:"“Deposit due” turns on once balance ≥ threshold, with the excess amount shown correctly." },
+        { id:"CASH-11", feature:"Close shift", tag:"happy", scenario:"Counted cash matches expected", steps:"Close a shift, entering counted cash exactly equal to expected cash.", expected:"Shift closes with variance = 0." },
+        { id:"CASH-12", feature:"Close shift", tag:"edge", scenario:"Till short or over", steps:"Close a shift with counted cash lower than expected, then separately with counted cash higher than expected.", expected:"Variance = counted − expected in both cases, with the correct sign for short vs. over." },
+        { id:"CASH-13", feature:"Close shift", tag:"negative", scenario:"Close without entering counted cash", steps:"Close a shift while leaving the counted-cash field empty.", expected:"Backend defaults counted cash to 0, producing a large negative variance &mdash; confirm this fallback is intended rather than silently mis-recording an untallied drawer." },
+        { id:"CASH-14", feature:"Shift report", tag:"integration", scenario:"Report reconciles with sales", steps:"Close a shift with several completed sales split across staff, then open its report.", expected:"Bill count, cash sales, digital sales, net sales, returns, and per-staff breakdown all match the underlying sales for that shift." },
+        { id:"CASH-15", feature:"Close shift", tag:"edge", scenario:"Close an already-closed shift", steps:"Attempt to close a shift that is already CLOSED.", expected:"Verify the backend guards this transition rather than silently overwriting closedon/closedby a second time." },
+        { id:"CASH-16", feature:"Multi-store", tag:"integration", scenario:"Switching stores scopes cash data", steps:"While on Cash or Shifts, switch the store in the header.", expected:"Ledger, dashboard figures, and shift list all reload for the new store &mdash; nothing leaks from the previous store." }
+      ]
+    },
+    {
+      id: "sales", name: "Sales / POS",
+      blurb: "Billing, split payments, deliveries, and returns.",
+      cases: [
+        { id:"SALE-1", feature:"Billing", tag:"happy", scenario:"Multi-item sale, split payment", steps:"Ring up several items and pay part cash, part digital.", expected:"Totals, tax, and per-tender amounts are all correct; the sale links to the cashier's open shift." },
+        { id:"SALE-2", feature:"Billing", tag:"negative", scenario:"Payment doesn't add up", steps:"Enter cash + digital amounts that don't sum to the bill total.", expected:"Blocked or clearly flagged, not silently accepted." },
+        { id:"SALE-3", feature:"Billing", tag:"happy", scenario:"Stock decrements on completion", steps:"Complete a sale and check stock for each sold product.", expected:"Stock decreases by the sold quantity from the correct batch." },
+        { id:"SALE-4", feature:"Billing", tag:"edge", scenario:"Oversell attempt", steps:"Try to add a quantity greater than available stock to the bill.", expected:"Blocked or clearly warned; stock never goes negative silently (see STK-7)." },
+        { id:"SALE-5", feature:"Billing", tag:"happy", scenario:"Void before completion", steps:"Start a sale, then cancel it before payment.", expected:"No stock or cash impact recorded anywhere." },
+        { id:"SALE-6", feature:"Delivery", tag:"happy", scenario:"Book a delivery", steps:"Book a sale for delivery with receiver name/phone/address and a delivery method.", expected:"Delivery record created with status Pending." },
+        { id:"SALE-7", feature:"Delivery", tag:"happy", scenario:"Mark delivered & confirmed", steps:"Mark a booked delivery as delivered and confirmed (including a COD collection).", expected:"Status/timestamps update; for COD, collection status reflects payment collected." },
+        { id:"SALE-8", feature:"Delivery", tag:"negative", scenario:"Mark delivery failed", steps:"Mark a delivery as failed with a failure reason.", expected:"Status reflects Failed; reason is visible for follow-up." },
+        { id:"SALE-9", feature:"Returns", tag:"happy", scenario:"Partial return", steps:"Return part of the quantity from a completed sale, with a reason.", expected:"Stock increases by the returned quantity; reason/comments recorded; refund or credit reflects correctly." },
+        { id:"SALE-10", feature:"Returns", tag:"negative", scenario:"Over-return attempt", steps:"Try to return more units than were originally sold on that line.", expected:"Blocked." },
+        { id:"SALE-11", feature:"Billing", tag:"integration", scenario:"Split-payment sale reconciles in shift report", steps:"After SALE-1, check the shift report (CASH-14) for that sale.", expected:"Cash and digital portions both appear correctly attributed in the shift totals." }
+      ]
+    },
+    {
+      id: "customers", name: "Customers",
+      blurb: "Customer records, order history, and attached documents (e.g. prescriptions).",
+      cases: [
+        { id:"CUST-1", feature:"Customer master", tag:"happy", scenario:"Create a customer", steps:"Add a customer with contact details.", expected:"Available to select on the Sale/POS screen." },
+        { id:"CUST-2", feature:"Order history", tag:"happy", scenario:"View customer orders", steps:"Open the Orders tab for a customer with sales history.", expected:"Accurately lists that customer's past sales." },
+        { id:"CUST-3", feature:"Documents", tag:"happy", scenario:"Attach a document", steps:"Upload a document (e.g. prescription) against a customer.", expected:"Appears in the customer's Documents tab and is viewable/downloadable." },
+        { id:"CUST-4", feature:"Search", tag:"negative", scenario:"Search for a nonexistent customer", steps:"Search using a name/phone that matches nobody.", expected:"Clean empty state, no error thrown." }
+      ]
+    },
+    {
+      id: "documents", name: "Documents",
+      blurb: "File upload, viewing, and print output for invoices/bills and attachments.",
+      cases: [
+        { id:"DOC-1", feature:"Upload", tag:"happy", scenario:"Upload a supported file", steps:"Upload a PDF or image via the document upload screen.", expected:"Appears in the document list with correct name, type, and date." },
+        { id:"DOC-2", feature:"Viewer", tag:"happy", scenario:"View a document", steps:"Open an uploaded document in the viewer.", expected:"Renders correctly, matching the source file." },
+        { id:"DOC-3", feature:"Upload", tag:"negative", scenario:"Oversized or unsupported file", steps:"Attempt to upload a file that's too large or an unsupported type.", expected:"Rejected with a clear message, not a silent failure or hang." },
+        { id:"DOC-4", feature:"Print", tag:"happy", scenario:"Print an invoice/bill", steps:"Use Object Print on a completed invoice or sale.", expected:"Produces a correctly formatted, print-ready layout." }
+      ]
+    },
+    {
+      id: "reports", name: "Reports",
+      blurb: "Sale reporting and Excel export.",
+      cases: [
+        { id:"RPT-1", feature:"Sale report", tag:"happy", scenario:"Generate for a date range", steps:"Run a Sale report for a known date range.", expected:"Totals match the sum of individual sales in that range." },
+        { id:"RPT-2", feature:"Sale report", tag:"edge", scenario:"Range with zero sales", steps:"Run a report for a date range with no sales.", expected:"Empty/zero report, not an error." },
+        { id:"RPT-3", feature:"Export", tag:"happy", scenario:"Excel export", steps:"Export a report and open the downloaded file.", expected:"Columns and figures match what's shown on screen." },
+        { id:"RPT-4", feature:"Sale report", tag:"edge", scenario:"Very large date range", steps:"Run a report spanning a year or more of data.", expected:"Completes without timing out; performance stays acceptable." }
+      ]
+    },
+    {
+      id: "users", name: "Settings — Users",
+      blurb: "User accounts and their role assignment.",
+      cases: [
+        { id:"USR-1", feature:"User master", tag:"happy", scenario:"Create a user with a role", steps:"Create a user and assign a role.", expected:"They can log in and see only the menu items that role permits." },
+        { id:"USR-2", feature:"User master", tag:"negative", scenario:"Duplicate username/email", steps:"Create a user with a username/email that already exists.", expected:"Rejected with a clear error." },
+        { id:"USR-3", feature:"User master", tag:"happy", scenario:"Change a user's role", steps:"Edit an existing user's assigned role.", expected:"Confirm whether the new permissions apply on next login or immediately &mdash; and that it matches the intended design." },
+        { id:"USR-4", feature:"User master", tag:"happy", scenario:"Deactivate a user", steps:"Deactivate a user account.", expected:"They can no longer log in; their name still appears correctly as creator/updater on historical records." },
+        { id:"USR-5", feature:"Password reset", tag:"happy", scenario:"Admin resets another user's password", steps:"As an admin, reset a different user's password.", expected:"Target user can log in with the new password; the old one is rejected." }
+      ]
+    },
+    {
+      id: "roles", name: "Settings — Roles & Permissions",
+      blurb: "RBAC policies (resource + action) that gate both UI visibility and backend actions.",
+      cases: [
+        { id:"ROLE-1", feature:"Policies", tag:"happy", scenario:"Grant a specific policy", steps:"Create a role with just the purchaseorders:approve policy and assign it to a test user.", expected:"That user gains exactly PO approval capability (cross-check with PO-4/PO-5) and nothing extra." },
+        { id:"ROLE-2", feature:"Policies", tag:"happy", scenario:"Revoke a policy", steps:"Remove a policy from a role already in use.", expected:"Affected users lose the related UI action, and the equivalent backend call is rejected too &mdash; not just hidden client-side." },
+        { id:"ROLE-3", feature:"Role master", tag:"negative", scenario:"Archive a role in active use", steps:"Archive/deactivate a role that's currently assigned to active users.", expected:"Confirm the intended outcome (access revoked vs. forced reassignment) rather than an inconsistent in-between state." },
+        { id:"ROLE-4", feature:"Enforcement", tag:"permission", scenario:"Bypass the UI", steps:"Using a token from a role without the approve policy, call the approve-PO API endpoint directly.", expected:"Server rejects it &mdash; the check must not live only in the frontend button's visibility." }
+      ]
+    },
+    {
+      id: "businesses", name: "Settings — Businesses & Stores",
+      blurb: "Business/store hierarchy, including each store's cash deposit threshold.",
+      cases: [
+        { id:"BIZ-1", feature:"Business master", tag:"happy", scenario:"Create a business", steps:"Add a new business.", expected:"Available as a parent when creating a Store." },
+        { id:"BIZ-2", feature:"Store master", tag:"happy", scenario:"Create a store", steps:"Create a store under a business with a location and deposit threshold.", expected:"Appears in the store switcher and in Store Settings." },
+        { id:"BIZ-3", feature:"Store master", tag:"integration", scenario:"Change deposit threshold", steps:"Edit an existing store's deposit threshold, then reload the Cash dashboard.", expected:"CASH-10's “deposit due” flag reflects the new threshold on next load." },
+        { id:"BIZ-4", feature:"Store master", tag:"edge", scenario:"Archive a store", steps:"Archive a store that has historical sales and invoices.", expected:"Drops out of active switchers (CTX-4) while historical records tied to it remain viewable." }
+      ]
+    },
+    {
+      id: "delivery-partners", name: "Settings — Delivery Partners",
+      blurb: "Courier/partner master data used on the Sale Delivery form.",
+      cases: [
+        { id:"DLVP-1", feature:"Partner master", tag:"happy", scenario:"Create a delivery partner", steps:"Add a new courier/delivery partner.", expected:"Selectable as “courier partner” on the Sale Delivery form (see SALE-6)." },
+        { id:"DLVP-2", feature:"Partner master", tag:"edge", scenario:"Deactivate a partner", steps:"Deactivate a delivery partner already used on past deliveries.", expected:"No longer selectable for new deliveries; historical deliveries still display its name." }
+      ]
+    },
+    {
+      id: "crosscutting", name: "Cross-Cutting: Permissions & Data Integrity",
+      blurb: "Checks that span modules — authorization enforcement, concurrency, and failure handling.",
+      cases: [
+        { id:"XCUT-1", feature:"Permissions", tag:"permission", scenario:"Nav hides restricted modules", steps:"Log in as a low-privilege role and scan the full nav.", expected:"Items for modules the role lacks are hidden (isNavAuth/isAuth), not merely styled as disabled." },
+        { id:"XCUT-2", feature:"Permissions", tag:"permission", scenario:"URL access to a restricted module", steps:"As that same low-privilege role, browse directly to a restricted module's URL.", expected:"Either the route itself is blocked, or the API calls it makes are rejected server-side — access isn't purely nav-based." },
+        { id:"XCUT-3", feature:"Concurrency", tag:"edge", scenario:"Two cashiers, same store, same time", steps:"In two browser sessions, have two users work cash/stock actions on the same store simultaneously.", expected:"No lost updates — ledger totals and stock stay consistent across both sessions." },
+        { id:"XCUT-4", feature:"Failure handling", tag:"edge", scenario:"Network drop mid-action", steps:"Disconnect the network while confirming an invoice or completing a sale, then reconnect and retry.", expected:"User sees an error toast rather than a silently half-completed transaction; retrying doesn't create a duplicate GRN or duplicate sale." }
+      ]
+    }
+  ];
+
+  // ---------- render ----------
+  const container = document.getElementById("moduleContainer");
+  const navList = document.getElementById("moduleNav");
+  const tagChipsEl = document.getElementById("tagChips");
+  const statStrip = document.getElementById("statStrip");
+  const STORAGE_KEY = "rgp-manual-test-plan-v2";
+  const LEGACY_KEY = "rgp-manual-test-plan-v1";
+
+  let state = { cases: {}, moduleNotes: {} };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (saved && typeof saved === "object") {
+      state.cases = saved.cases || {};
+      state.moduleNotes = saved.moduleNotes || {};
+    } else {
+      // one-time migration from the older tested-checkbox-only format
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || "{}");
+      Object.keys(legacy).forEach(id => { if (legacy[id]) state.cases[id] = { status: "pass", note: "" }; });
+    }
+  } catch (e) { state = { cases: {}, moduleNotes: {} }; }
+
+  function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function caseState(id){ return state.cases[id] || { status: "", note: "" }; }
+  function setCaseField(id, field, value){
+    if (!state.cases[id]) state.cases[id] = { status: "", note: "" };
+    state.cases[id][field] = value;
+    saveState();
+  }
+
+  const activeTags = new Set();
+  let searchTerm = "";
+  let hidePassed = false;
+  let onlyIssues = false;
+
+  const totalCases = DATA.reduce((sum, m) => sum + m.cases.length, 0);
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));
+  }
+
+  function fmtDate(d){
+    return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function buildTagChips(){
+    tagChipsEl.innerHTML = Object.keys(TAGS).map(key => (
+      '<button type="button" class="chip" data-tag="' + key + '" aria-pressed="false" style="color:var(--tag-' + key + ')">' +
+        '<span class="dot" style="background:var(--tag-' + key + ')"></span>' + TAGS[key].label +
+      '</button>'
+    )).join("");
+    tagChipsEl.querySelectorAll(".chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tag = btn.getAttribute("data-tag");
+        if (activeTags.has(tag)) { activeTags.delete(tag); btn.setAttribute("aria-pressed","false"); }
+        else { activeTags.add(tag); btn.setAttribute("aria-pressed","true"); }
+        applyFilters();
+      });
+    });
+  }
+
+  function buildNav(){
+    navList.innerHTML = DATA.map(m =>
+      '<li><a href="#mod-' + m.id + '"><span>' + escapeHtml(m.name) + '</span><span class="nav-count" data-navcount="' + m.id + '">' + m.cases.length + '</span></a></li>'
+    ).join("");
+  }
+
+  function buildStats(){
+    const modCount = DATA.length;
+    statStrip.innerHTML =
+      '<div class="stat"><b>' + modCount + '</b><span>Modules covered</span></div>' +
+      '<div class="stat"><b>' + totalCases + '</b><span>Test cases</span></div>' +
+      '<div class="stat"><b>' + DATA.reduce((n,m)=>n + m.cases.filter(c=>c.tag==="negative"||c.tag==="edge").length,0) + '</b><span>Negative / edge cases</span></div>' +
+      '<div class="stat"><b>' + DATA.reduce((n,m)=>n + m.cases.filter(c=>c.tag==="permission").length,0) + '</b><span>Permission checks</span></div>' +
+      '<div class="stat"><b id="statFailed">0</b><span>Failed cases</span></div>' +
+      '<div class="stat"><b id="statFixItems">0</b><span>Fix-list items</span></div>';
+  }
+
+  function searchHayFor(c, note){
+    return escapeHtml((c.id + " " + c.feature + " " + c.scenario + " " + c.steps + " " + c.expected + " " + (note || "")).toLowerCase());
+  }
+
+  function rowHtml(mod, c){
+    const cs = caseState(c.id);
+    const statusClass = cs.status ? ("status-" + cs.status) : "";
+    return (
+      '<tr data-case-id="' + c.id + '" data-tag="' + c.tag + '" class="' + statusClass + '" ' +
+        'data-search="' + searchHayFor(c, cs.note) + '">' +
+        '<td class="col-result"><div class="result-cell">' +
+          '<select class="status-select" aria-label="Result for ' + c.id + '">' +
+            '<option value=""' + (cs.status === "" ? " selected" : "") + '>Not run</option>' +
+            '<option value="pass"' + (cs.status === "pass" ? " selected" : "") + '>Pass</option>' +
+            '<option value="fail"' + (cs.status === "fail" ? " selected" : "") + '>Fail</option>' +
+          '</select>' +
+          '<textarea class="issue-note" placeholder="Issue found while testing&hellip;" rows="3">' + escapeHtml(cs.note || "") + '</textarea>' +
+        '</div></td>' +
+        '<td class="col-id"><span class="id-tag">' + c.id + '</span></td>' +
+        '<td class="col-feature">' + escapeHtml(c.feature) + '</td>' +
+        '<td><p class="scenario-title">' + escapeHtml(c.scenario) + '</p><p class="scenario-steps">' + c.steps + '</p></td>' +
+        '<td>' + c.expected + '</td>' +
+        '<td class="col-tag"><span class="tag ' + c.tag + '">' + TAGS[c.tag].label + '</span></td>' +
+      '</tr>'
+    );
+  }
+
+  function fixItemHtml(item){
+    return (
+      '<li data-note-id="' + item.id + '">' +
+        '<span class="fixlist-text">' + escapeHtml(item.text) + '</span>' +
+        '<span class="fixlist-date">' + fmtDate(item.ts) + '</span>' +
+        '<button type="button" class="fixlist-remove" aria-label="Remove this item">&times;</button>' +
+      '</li>'
+    );
+  }
+
+  function fixListInnerHtml(modId){
+    const items = state.moduleNotes[modId] || [];
+    return items.length
+      ? items.slice().reverse().map(fixItemHtml).join("")
+      : '<li class="fixlist-empty">No open issues logged for this module yet.</li>';
+  }
+
+  function moduleHtml(mod){
+    const items = state.moduleNotes[mod.id] || [];
+    return (
+      '<section class="module" id="mod-' + mod.id + '">' +
+        '<div class="module-head"><h2 class="module-name">' + escapeHtml(mod.name) + '</h2>' +
+          '<span class="module-count">' + mod.cases.length + ' case' + (mod.cases.length===1?'':'s') + '</span></div>' +
+        '<p class="module-blurb">' + escapeHtml(mod.blurb) + '</p>' +
+        '<div class="fixlist-card" data-mod-id="' + mod.id + '">' +
+          '<div class="fixlist-head"><h3>Things to fix in this module</h3><span class="fixlist-count" data-fixcount="' + mod.id + '">' + items.length + '</span></div>' +
+          '<ul class="fixlist" data-fixlist="' + mod.id + '">' + fixListInnerHtml(mod.id) + '</ul>' +
+          '<form class="fixlist-form" data-mod-id="' + mod.id + '">' +
+            '<input type="text" class="fixlist-input" placeholder="Log something to fix in ' + escapeHtml(mod.name) + '&hellip;" maxlength="300" />' +
+            '<button type="submit">Add</button>' +
+          '</form>' +
+        '</div>' +
+        '<div class="table-wrap"><table class="case-table">' +
+          '<thead><tr><th class="col-result">Result</th><th class="col-id">ID</th><th class="col-feature">Feature</th><th>Scenario</th><th>Expected result</th><th class="col-tag">Type</th></tr></thead>' +
+          '<tbody>' + mod.cases.map(c => rowHtml(mod, c)).join("") + '</tbody>' +
+        '</table></div>' +
+      '</section>'
+    );
+  }
+
+  function render(){
+    container.innerHTML = DATA.map(moduleHtml).join("");
+  }
+
+  function updateAggregates(){
+    const all = DATA.reduce((arr, m) => arr.concat(m.cases), []);
+    const passCount = all.filter(c => caseState(c.id).status === "pass").length;
+    const failCount = all.filter(c => caseState(c.id).status === "fail").length;
+    const fixCount = Object.values(state.moduleNotes).reduce((n, list) => n + list.length, 0);
+    const testedCount = passCount + failCount;
+
+    document.getElementById("progressNum").textContent = testedCount + " / " + totalCases;
+    document.getElementById("progressFill").style.width = (totalCases ? (testedCount/totalCases*100) : 0) + "%";
+    document.getElementById("passCount").textContent = passCount;
+    document.getElementById("failCount").textContent = failCount;
+    document.getElementById("fixCount").textContent = fixCount;
+    const statFailed = document.getElementById("statFailed");
+    const statFixItems = document.getElementById("statFixItems");
+    if (statFailed) statFailed.textContent = failCount;
+    if (statFixItems) statFixItems.textContent = fixCount;
+
+    DATA.forEach(m => {
+      const done = m.cases.filter(c => { const s = caseState(c.id).status; return s === "pass" || s === "fail"; }).length;
+      const el = document.querySelector('[data-navcount="' + m.id + '"]');
+      if (el) el.textContent = done + "/" + m.cases.length;
+    });
+  }
+
+  function applyFilters(){
+    let anyVisiblePerModule = {};
+    document.querySelectorAll(".case-table tbody tr").forEach(tr => {
+      const modId = tr.closest(".module").id.replace("mod-", "");
+      const id = tr.getAttribute("data-case-id");
+      const tag = tr.getAttribute("data-tag");
+      const cs = caseState(id);
+      const searchHay = tr.getAttribute("data-search");
+
+      let visible = true;
+      if (activeTags.size && !activeTags.has(tag)) visible = false;
+      if (hidePassed && cs.status === "pass") visible = false;
+      if (onlyIssues && !(cs.status === "fail" || (cs.note && cs.note.trim()))) visible = false;
+      if (searchTerm && searchHay.indexOf(searchTerm) === -1) visible = false;
+
+      tr.classList.toggle("is-hidden", !visible);
+      if (visible) anyVisiblePerModule[modId] = true;
+    });
+
+    document.querySelectorAll(".module").forEach(sec => {
+      const id = sec.id.replace("mod-", "");
+      sec.style.display = anyVisiblePerModule[id] ? "" : "none";
+    });
+  }
+
+  function buildExportMarkdown(){
+    const now = new Date().toISOString().slice(0, 16).replace("T", " ");
+    const all = DATA.reduce((arr, m) => arr.concat(m.cases.map(c => ({ mod: m, c }))), []);
+    const passCount = all.filter(x => caseState(x.c.id).status === "pass").length;
+    const failCount = all.filter(x => caseState(x.c.id).status === "fail").length;
+    const fixCount = Object.values(state.moduleNotes).reduce((n, list) => n + list.length, 0);
+
+    let md = "# RGP Back Office — Manual Test Plan Findings\n\n";
+    md += "_Generated " + now + "_\n\n";
+    md += "**Summary:** " + (passCount + failCount) + "/" + totalCases + " cases run — " +
+          passCount + " passed, " + failCount + " failed. " + fixCount + " fix-list item(s) logged.\n\n";
+
+    const failed = all.filter(x => caseState(x.c.id).status === "fail");
+    if (failed.length) {
+      md += "## Failed test cases\n\n";
+      failed.forEach(x => {
+        const note = caseState(x.c.id).note;
+        md += "- **" + x.c.id + "** (" + x.mod.name + " — " + x.c.feature + ") — " + x.c.scenario +
+              (note && note.trim() ? ": " + note.trim() : " _(no note added)_") + "\n";
+      });
+      md += "\n";
+    }
+
+    const modsWithFixItems = DATA.filter(m => (state.moduleNotes[m.id] || []).length);
+    if (modsWithFixItems.length) {
+      md += "## Module fix lists\n\n";
+      modsWithFixItems.forEach(m => {
+        md += "### " + m.name + "\n\n";
+        (state.moduleNotes[m.id] || []).forEach(item => {
+          md += "- " + item.text + " _(" + fmtDate(item.ts) + ")_\n";
+        });
+        md += "\n";
+      });
+    }
+
+    if (!failed.length && !modsWithFixItems.length) {
+      md += "No failures or fix-list items logged yet.\n";
+    }
+    return md;
+  }
+
+  function downloadMarkdown(){
+    const md = buildExportMarkdown();
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rgp-manual-test-plan-findings-" + new Date().toISOString().slice(0,10) + ".md";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  buildTagChips();
+  buildNav();
+  buildStats();
+  render();
+  updateAggregates();
+
+  // Event delegation on the container: rows are re-rendered wholesale only once,
+  // fix-lists re-render per module, so binding here (not per-element) survives both.
+  container.addEventListener("change", (e) => {
+    if (!e.target.matches(".status-select")) return;
+    const tr = e.target.closest("tr");
+    const id = tr.getAttribute("data-case-id");
+    setCaseField(id, "status", e.target.value);
+    tr.className = e.target.value ? "status-" + e.target.value : "";
+    tr.setAttribute("data-search", searchHayFor(
+      DATA.reduce((f, m) => f || m.cases.find(c => c.id === id), null),
+      caseState(id).note
+    ));
+    updateAggregates();
+    applyFilters();
+  });
+
+  container.addEventListener("input", (e) => {
+    if (!e.target.matches(".issue-note")) return;
+    const tr = e.target.closest("tr");
+    const id = tr.getAttribute("data-case-id");
+    setCaseField(id, "note", e.target.value);
+    tr.setAttribute("data-search", searchHayFor(
+      DATA.reduce((f, m) => f || m.cases.find(c => c.id === id), null),
+      e.target.value
+    ));
+    if (onlyIssues || searchTerm) applyFilters();
+  });
+
+  container.addEventListener("submit", (e) => {
+    const form = e.target.closest(".fixlist-form");
+    if (!form) return;
+    e.preventDefault();
+    const modId = form.getAttribute("data-mod-id");
+    const input = form.querySelector(".fixlist-input");
+    const text = input.value.trim();
+    if (!text) return;
+    if (!state.moduleNotes[modId]) state.moduleNotes[modId] = [];
+    state.moduleNotes[modId].push({ id: "n" + Date.now() + Math.random().toString(36).slice(2,7), text, ts: new Date().toISOString() });
+    saveState();
+    input.value = "";
+    document.querySelector('[data-fixlist="' + modId + '"]').innerHTML = fixListInnerHtml(modId);
+    document.querySelector('[data-fixcount="' + modId + '"]').textContent = state.moduleNotes[modId].length;
+    updateAggregates();
+  });
+
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".fixlist-remove");
+    if (!btn) return;
+    const li = btn.closest("li");
+    const modId = li.closest(".fixlist-card").getAttribute("data-mod-id");
+    const noteId = li.getAttribute("data-note-id");
+    state.moduleNotes[modId] = (state.moduleNotes[modId] || []).filter(n => n.id !== noteId);
+    saveState();
+    document.querySelector('[data-fixlist="' + modId + '"]').innerHTML = fixListInnerHtml(modId);
+    document.querySelector('[data-fixcount="' + modId + '"]').textContent = state.moduleNotes[modId].length;
+    updateAggregates();
+  });
+
+  document.getElementById("searchBox").addEventListener("input", (e) => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    applyFilters();
+  });
+  document.getElementById("hidePassed").addEventListener("change", (e) => {
+    hidePassed = e.target.checked;
+    applyFilters();
+  });
+  document.getElementById("onlyIssues").addEventListener("change", (e) => {
+    onlyIssues = e.target.checked;
+    applyFilters();
+  });
+  document.getElementById("exportBtn").addEventListener("click", downloadMarkdown);
+})();
+</script>
