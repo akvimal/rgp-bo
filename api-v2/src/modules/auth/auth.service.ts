@@ -1,9 +1,9 @@
-import { HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { AppUser } from 'src/entities/appuser.entity';
 
 import { AuthHelper } from './auth.helper';
-import { ChangePasswordDto, LoginDto, RegisterDto } from './auth.dto';
+import { ChangePasswordDto, LoginDto } from './auth.dto';
 import { UserService } from '../app/users/user.service';
 
 @Injectable()
@@ -14,20 +14,6 @@ export class AuthService {
 
   constructor(
     private readonly userService: UserService){}
-
-  public async register(body: RegisterDto): Promise<AppUser | never> {
-
-    const { name, email, password }: RegisterDto = body;
-    let user = await this.userService.findByUsername(email);
-
-    if (user) {
-      throw new HttpException('Conflict', HttpStatus.CONFLICT);
-    }
-
-    // Don't hash password here - user.service.create() handles hashing
-    // Default to Admin role (role_id = 1) for new users
-    return this.userService.create({fullname:name,password,email,roleid:1});
-  }
 
   public async login(body: LoginDto): Promise<any | never> {
     const { email, password }: LoginDto = body;
@@ -62,8 +48,8 @@ export class AuthService {
     return {token: this.helper.generateToken(user)};
   }
 
-  public async refresh(user: AppUser): Promise<string> {
+  public async refresh(user: AppUser): Promise<{token: string}> {
     this.userService.update(user.id, { lastlogin: new Date() });
-    return this.helper.generateToken(user);
+    return {token: this.helper.generateToken(user)};
   }
 }

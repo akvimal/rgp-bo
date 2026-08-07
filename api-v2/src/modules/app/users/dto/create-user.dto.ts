@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsDefined, IsNumber, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsDefined, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateUserDto {
 
@@ -32,6 +32,16 @@ export class CreateUserDto {
     @IsNumber()
     @IsDefined()
     readonly roleid?: number;
+
+    @ApiPropertyOptional({ description: 'business to link this user to (Site Admin creating a Business Head)', example: 0 })
+    @IsNumber()
+    @IsOptional()
+    readonly businessid?: number;
+
+    @ApiPropertyOptional({ description: 'store ids to assign this user to', type: [Number] })
+    @IsArray()
+    @IsOptional()
+    readonly storeids?: number[];
 
     public lastlogin?: Date | null;
 }

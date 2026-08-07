@@ -5,12 +5,12 @@ import { UsersService } from "../users.service";
     templateUrl: 'user-list.component.html'
 })
 export class UserListComponent {
-    
+
     users:any;
 
     constructor(private service:UsersService){}
 
-    ngOnInit(){ 
+    ngOnInit(){
         this.fetchList();
     }
 

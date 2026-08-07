@@ -17,6 +17,10 @@ export class UsersService {
         return this.http.get(`${this.API_SERVER}/users`);
     }
 
+    public getStores() {
+        return this.http.get(`${this.API_SERVER}/stores`);
+    }
+
     public findById(id:any){
       return this.http.get(`${this.API_SERVER}/users/${id}`);
   }  
@@ -31,6 +35,9 @@ export class UsersService {
       
       public update(id:number, user:User){
         return this.http.put(`${this.API_SERVER}/users/${id}`, user);
+      }
+      public updateStores(id:number, storeids:any[]){
+        return this.http.put(`${this.API_SERVER}/users/${id}/stores`, { storeids });
       }
       public remove(id:any){
         return this.http.delete(`${this.API_SERVER}/users/${id}`);

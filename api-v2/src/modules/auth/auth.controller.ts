@@ -1,7 +1,7 @@
-import { Body, Controller, Inject, Post, ClassSerializerInterceptor, UseInterceptors, UseGuards, Req, Get, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Inject, Post, UseGuards, Req, Get, HttpStatus } from '@nestjs/common';
 import { Request } from 'express';
 
-import { RegisterDto, LoginDto, ChangePasswordDto } from './auth.dto';
+import { LoginDto, ChangePasswordDto } from './auth.dto';
 
 import { AuthService } from './auth.service';
 import { ApiTags } from '@nestjs/swagger';
@@ -18,12 +18,6 @@ export class AuthController {
   private readonly service: AuthService;
   @Inject(UserService)
   private readonly userService: UserService;
-
-  @Post('register')
-  @UseInterceptors(ClassSerializerInterceptor)
-  private register(@Body() body: RegisterDto): Promise<AppUser | never> {
-    return this.service.register(body);
-  }
 
   @Post('login')
   private async login(@Body() body: LoginDto): Promise<AppUser | never> {
@@ -43,7 +37,7 @@ export class AuthController {
 
   @Post('refresh')
   @UseGuards(AuthGuard)
-  private refresh(@Req() request: Request): Promise<string | never> {
+  private refresh(@Req() request: Request): Promise<{token: string} | never> {
     return this.service.refresh(<AppUser>request['user']);
   }
 }

@@ -4,6 +4,8 @@ import { Router } from "@angular/router";
 import { UsersService } from "src/app/secured/settings/users/users.service";
 import { AuthService } from "../auth.service";
 import { CredentialsService } from "../credentials.service";
+import { OperatorContextService } from "../../operator-context.service";
+import { TokenRefreshService } from "../token-refresh.service";
 
 @Component({
     selector: 'app-login',
@@ -20,12 +22,15 @@ export class LoginComponent {
 
     constructor(
         private router: Router,
-        private authService: AuthService, 
+        private authService: AuthService,
         private userService: UsersService,
-        private credService: CredentialsService){}
+        private credService: CredentialsService,
+        private operatorContext: OperatorContextService,
+        private tokenRefreshService: TokenRefreshService){}
 
     ngOnInit(){
         this.credService.clearCredentials();
+        this.operatorContext.clear();
     }
     
     onSubmit(){
@@ -36,7 +41,8 @@ export class LoginComponent {
             }).subscribe({
                     next: data => {
                         this.credService.setCredentials(data['token']);
-                        this.userService.getCurrentUser().subscribe((data:any) => {     
+                        this.tokenRefreshService.schedule(data['token']);
+                        this.userService.getCurrentUser().subscribe((data:any) => {
                                 if(data.rolename && data.permissions){
                                     this.authService.setPermissions(data.permissions);
                                     const landing_page = data.permissions[0]['path'][0]

@@ -7,7 +7,6 @@ export interface Credentials {
 }
 
 const credentialsKey = 'token';
-
 /**
  * Provides storage for authentication credentials.
  * The Credentials interface should be replaced with proper implementation.

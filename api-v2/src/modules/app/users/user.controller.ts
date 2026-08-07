@@ -16,27 +16,36 @@ export class UserController {
     constructor(private userService:UserService){}
 
     @Get()
-    async findAll() {
-      return this.userService.findAll();
+    async findAll(@User() currentUser: any) {
+      return this.userService.findAll(currentUser);
     }
 
     @Get(':id')
     async findOne(@Param('id') id: number) {
-      return this.userService.findById(id)  
+      return this.userService.findById(id)
     }
 
     @Post()
     async create(@Body() createDto: CreateUserDto,  @User() currentUser: any) {
-        return this.userService.createAdmin(createDto, currentUser.id);
+        return this.userService.createScoped(createDto, currentUser.id);
     }
 
     @Put(':id')
-    update(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto) {
-      return this.userService.update(id, updateUserDto);
+    async update(@Param('id') id: number, @Body() updateUserDto: any, @User() currentUser: any) {
+      const result = await this.userService.updateScoped(id, updateUserDto, currentUser.id);
+      if (updateUserDto?.storeids !== undefined) {
+        await this.userService.updateStoresScoped(id, updateUserDto.storeids || [], currentUser.id);
+      }
+      return result;
     }
-  
+
+    @Put(':id/stores')
+    updateStores(@Param('id') id: number, @Body() body: any, @User() currentUser: any) {
+      return this.userService.updateStoresScoped(id, body?.storeids || [], currentUser.id);
+    }
+
     @Delete(':id')
     remove(@Param('id') id: number, @User() currentUser: any) {
-      return this.userService.delete(id, currentUser);
+      return this.userService.deleteScoped(id, currentUser.id);
     }
 }

@@ -15,8 +15,14 @@ import { Store } from "./store.entity";
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
   
-    @Column("character varying", { name: "business_name", unique: true, length: 40 })
+    @Column("character varying", { name: "name", unique: true, length: 40 })
     name: string;
+
+    @Column({ name: "active", type: "boolean", default: true })
+    isActive: boolean;
+
+    @Column({ name: "archive", type: "boolean", default: false })
+    isArchived: boolean;
     
     @OneToMany(
       () => Store,

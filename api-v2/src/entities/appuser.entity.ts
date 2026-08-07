@@ -10,7 +10,9 @@ import {
 } from "typeorm";
 import { AppRole } from "./approle.entity";
 import { BaseEntity } from "./base.entity";
+import { Business } from "./business.entity";
 import { Sale } from "./sale.entity";
+import { UserStore } from "./user-store.entity";
 
 @Index("app_user_un", ["email"], { unique: true })
 @Index("app_user_pk", ["id"], { unique: true })
@@ -22,7 +24,14 @@ export class AppUser extends BaseEntity {
 
   @Column({type: "integer", name: "role_id" })
   roleid: number;
-  
+
+  @Column({ type: "integer", name: "business_id", nullable: true })
+  businessid: number | null;
+
+  @ManyToOne(() => Business)
+  @JoinColumn([{ name: "business_id", referencedColumnName: "id" }])
+  business: Business | null;
+
   @Column("character varying", { name: "email", length: 40 })
   email: string;
 
@@ -48,4 +57,7 @@ export class AppUser extends BaseEntity {
 
   @OneToMany(() => Sale, (sale) => sale.created)
   sales: Sale[];
+
+  @OneToMany(() => UserStore, (assignment) => assignment.user)
+  storeassignments: UserStore[];
 }
