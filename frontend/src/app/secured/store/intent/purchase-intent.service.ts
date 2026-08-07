@@ -23,6 +23,14 @@ export class PurchaseIntentService {
         return this.http.get(`${this.apiurl}/${id}`);
     }
 
+    findSuggestions(params:any){
+        return this.http.get(`${environment.apiHost}/purchase-suggestions`, { params });
+    }
+
+    createOrdersFromSuggestions(payload:any){
+        return this.http.post(`${environment.apiHost}/purchase-suggestions/create-orders`, payload);
+    }
+
     save(request:any){
         return this.http.post(this.apiurl,{...request, id: null});
     }

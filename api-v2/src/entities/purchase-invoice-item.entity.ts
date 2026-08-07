@@ -12,6 +12,7 @@ import {
 import { BaseEntity } from "./base.entity";
 import { SaleItem } from "./sale-item.entity";
 import { ProductClearance } from "./product-clearance.entity";
+import { PurchaseRequest } from "./purchase-request.entity";
   
   @Index("pur_invitem_un", ["batch", "invoiceid", "productid"], { unique: true })
   @Index("pur_invitem_pk", ["id"], { unique: true })
@@ -59,6 +60,9 @@ import { ProductClearance } from "./product-clearance.entity";
     @Column("integer", { name: "free_qty" })
     freeqty: number;
 
+    @Column("integer", { name: "request_id", nullable: true })
+    requestid: number | null;
+
     @Column("double precision", { name: "total", precision: 53 })
     total: number;
 
@@ -85,6 +89,10 @@ import { ProductClearance } from "./product-clearance.entity";
     @ManyToOne(() => Product, (product) => product.purchaseInvoiceItems)
     @JoinColumn([{ name: "product_id", referencedColumnName: "id" }])
     product: Product;
+
+    @ManyToOne(() => PurchaseRequest, { nullable: true })
+    @JoinColumn([{ name: "request_id", referencedColumnName: "id" }])
+    request: PurchaseRequest | null;
 
     @OneToMany(() => SaleItem, (saleItem) => saleItem.purchaseitem)
     saleitems: SaleItem[];

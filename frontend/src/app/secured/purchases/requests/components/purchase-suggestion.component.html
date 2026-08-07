@@ -1,0 +1,71 @@
+<div class="card mt-2">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">Days</label>
+        <input class="form-control" type="number" [(ngModel)]="days">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Target Days</label>
+        <input class="form-control" type="number" [(ngModel)]="targetdays">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Vendor</label>
+        <select class="form-select" [(ngModel)]="vendorid">
+          <option value="">All Vendors</option>
+          <option *ngFor="let vendor of vendors" [value]="vendor.id">{{vendor.name}}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-outline-primary" (click)="fetchSuggestions()">Refresh</button>
+      </div>
+    </div>
+    <div class="row g-3 align-items-end mt-2">
+      <div class="col-md-3">
+        <label class="form-label">Expected Date</label>
+        <input class="form-control" type="date" [(ngModel)]="expecteddate">
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Order Comments</label>
+        <input class="form-control" type="text" [(ngModel)]="comments">
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-primary" (click)="createOrders()">Create Orders From Selected ({{selectedCount()}})</button>
+      </div>
+    </div>
+    <div class="mt-3 text-success" *ngIf="feedback">{{feedback}}</div>
+  </div>
+</div>
+
+<p-table [value]="suggestions" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines mt-3">
+  <ng-template pTemplate="header">
+    <tr>
+      <th></th>
+      <th>Product</th>
+      <th>Vendor</th>
+      <th class="text-end">Stock</th>
+      <th class="text-end">Sales 30d</th>
+      <th class="text-end">Stock Days</th>
+      <th class="text-end">Trend Qty</th>
+      <th class="text-end">Ad-hoc Qty</th>
+      <th class="text-end">Final Qty</th>
+      <th>Reasons</th>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="body" let-item>
+    <tr>
+      <td><input type="checkbox" [(ngModel)]="item.selected"></td>
+      <td>{{item.title}}</td>
+      <td>{{item.vendor_name || '-'}}</td>
+      <td class="text-end">{{item.available_stock}}</td>
+      <td class="text-end">{{item.sales_qty}}</td>
+      <td class="text-end">{{item.stock_days_left !== null && item.stock_days_left !== undefined ? item.stock_days_left : '-'}}</td>
+      <td class="text-end">{{item.trend_qty}}</td>
+      <td class="text-end">{{item.adhoc_qty}}</td>
+      <td class="text-end" style="max-width:7rem;">
+        <input class="form-control text-end" type="number" [(ngModel)]="item.final_qty">
+      </td>
+      <td>{{item.reason_summary}}</td>
+    </tr>
+  </ng-template>
+</p-table>

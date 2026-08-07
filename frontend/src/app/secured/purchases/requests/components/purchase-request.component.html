@@ -1,0 +1,127 @@
+<div class="row">
+  <div class="col-12 mt-2">
+    <button class="btn btn-primary" (click)="add()">Add Request</button>
+  </div>
+  <div class="col-12 mt-3">
+    <p-table [value]="requests" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Product</th>
+          <th>Vendor</th>
+          <th>Source</th>
+          <th>Type</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th class="text-end">Qty</th>
+          <th>Needed By</th>
+          <th>Customer</th>
+          <th></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-request>
+        <tr>
+          <td>{{request.product?.title}}</td>
+          <td>{{request.vendor?.name || '-'}}</td>
+          <td>{{request.source}}</td>
+          <td>{{request.requesttype}}</td>
+          <td>{{request.priority}}</td>
+          <td>{{request.status}}</td>
+          <td class="text-end">{{request.qty}}</td>
+          <td>{{request.neededby | date:'dd/MM/yyyy'}}</td>
+          <td>{{request.customername || '-'}}</td>
+          <td class="text-center">
+            <a class="me-2" (click)="edit(request)"><i class="bi bi-pencil text-primary"></i></a>
+            <a class="me-2" *ngIf="request.status === 'Open'" (click)="markReviewed(request)"><i class="bi bi-check2 text-success"></i></a>
+            <a (click)="remove(request.id)"><i class="bi bi-trash text-danger"></i></a>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+  <p-dialog [header]="form.controls['id'].value ? 'Edit Request' : 'Add Request'" [(visible)]="displayForm" [modal]="true" [style]="{width: '50rem'}">
+  <form [formGroup]="form" (ngSubmit)="onSave()">
+    <div class="row g-3">
+      <div class="col-12" *ngIf="errorMessage">
+        <div class="alert alert-danger mb-0">{{errorMessage}}</div>
+      </div>
+      <div class="col-md-12">
+        <label class="form-label">Product <span class="text-danger">*</span></label>
+        <div *ngIf="selectedProduct" class="mb-2 text-muted">{{selectedProduct.title}}</div>
+        <app-product-select [reset]="productReset" (selected)="onProductSelect($event)"></app-product-select>
+        <div class="text-danger small mt-1" *ngIf="form.controls['productid'].touched && form.controls['productid'].invalid">
+          Product is required.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Qty <span class="text-danger">*</span></label>
+        <input class="form-control" type="number" formControlName="qty" [class.is-invalid]="form.controls['qty'].touched && form.controls['qty'].invalid">
+        <div class="invalid-feedback d-block" *ngIf="form.controls['qty'].touched && form.controls['qty'].invalid">
+          Qty is required.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Source <span class="text-danger">*</span></label>
+        <select class="form-select" formControlName="source" [class.is-invalid]="form.controls['source'].touched && form.controls['source'].invalid">
+          <option *ngFor="let source of sources" [value]="source">{{source}}</option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="form.controls['source'].touched && form.controls['source'].invalid">
+          Source is required.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Type <span class="text-danger">*</span></label>
+        <select class="form-select" formControlName="requesttype" [class.is-invalid]="form.controls['requesttype'].touched && form.controls['requesttype'].invalid">
+          <option *ngFor="let type of requestTypes" [value]="type">{{type}}</option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="form.controls['requesttype'].touched && form.controls['requesttype'].invalid">
+          Request type is required.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Priority <span class="text-danger">*</span></label>
+        <select class="form-select" formControlName="priority" [class.is-invalid]="form.controls['priority'].touched && form.controls['priority'].invalid">
+          <option *ngFor="let priority of priorities" [value]="priority">{{priority}}</option>
+        </select>
+        <div class="invalid-feedback d-block" *ngIf="form.controls['priority'].touched && form.controls['priority'].invalid">
+          Priority is required.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Vendor</label>
+        <select class="form-select" formControlName="vendorid">
+          <option value="">Select</option>
+          <option *ngFor="let vendor of vendors" [value]="vendor.id">{{vendor.name}}</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Needed By</label>
+        <input class="form-control" type="date" formControlName="neededby">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Customer Name</label>
+        <input class="form-control" type="text" formControlName="customername">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Customer Phone</label>
+        <input class="form-control" type="text" formControlName="customerphone">
+      </div>
+      <div class="col-md-12">
+        <label class="form-label">Source Reference</label>
+        <input class="form-control" type="text" formControlName="sourceref">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Comments</label>
+        <textarea class="form-control" rows="2" formControlName="comments"></textarea>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" rows="2" formControlName="notes"></textarea>
+      </div>
+      <div class="col-12 text-center">
+        <button class="btn btn-primary" type="submit" [disabled]="!form.valid">Save Request</button>
+      </div>
+    </div>
+  </form>
+</p-dialog>
