@@ -35,6 +35,11 @@ export class PurchaseItemController {
       return this.purchaseInvoiceService.findSalePrice(input);
     }
 
+    @Post('/import-order/:invoiceid')
+    async importOrderItems(@Param('invoiceid') invoiceid: number, @User() currentUser: any) {
+      return this.purchaseInvoiceService.importOrderItems(+invoiceid, currentUser.id);
+    }
+
     // @Get('/:id/items')
     // async findItemsByInvoice(@Param('id') id: string) {
     //   return this.purchaseInvoiceService.findAllItemsByInvoice(id);

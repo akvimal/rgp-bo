@@ -4,6 +4,7 @@ import { ActivatedRoute } from "@angular/router";
 import { map } from 'rxjs/operators';
 import { saveAs as importedSaveAs } from "file-saver";
 
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { PurchaseOrderService } from "../purchase-order.service";
 import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 
@@ -16,6 +17,8 @@ export class PurchaseOrderViewComponent {
     order:any;
     availrequests:any;
     displayForm:boolean = false;
+    displayReject:boolean = false;
+    rejectReason:string = '';
 
     form:FormGroup = new FormGroup({
         requestid: new FormControl('',Validators.required),
@@ -25,7 +28,8 @@ export class PurchaseOrderViewComponent {
 
     constructor(private route:ActivatedRoute, 
         private service:PurchaseOrderService, 
-        private reqService:PurchaseIntentService) {}
+        private reqService:PurchaseIntentService,
+        public authService:AuthService) {}
 
     ngOnInit() {
         this.route.params.pipe(map(p => p.id)).subscribe(id => {
@@ -40,7 +44,7 @@ export class PurchaseOrderViewComponent {
     }
 
     fetchAvailRequests(){
-        this.reqService.findAllByCriteria({status:'NEW'}).subscribe((data:any) => {
+        this.reqService.findAllByCriteria({status:'Reviewed'}).subscribe((data:any) => {
             this.availrequests = data;
         });
     }
@@ -50,10 +54,22 @@ export class PurchaseOrderViewComponent {
     }
 
     onProceed() {
-        this.service.update(this.order.id, {
-            status: 'SUBMITTED'
-        }).subscribe(data => {
-            this.fetchOrder(this.order.id);
+        this.service.submit(this.order.id).subscribe((data:any) => {
+            this.order = data;
+        });
+    }
+
+    onApprove() {
+        this.service.approve(this.order.id).subscribe((data:any) => {
+            this.order = data;
+        });
+    }
+
+    onReject() {
+        this.service.reject(this.order.id, this.rejectReason).subscribe((data:any) => {
+            this.order = data;
+            this.displayReject = false;
+            this.rejectReason = '';
         });
     }
 
@@ -66,7 +82,7 @@ export class PurchaseOrderViewComponent {
 
     onSave() {
         this.reqService.update(this.form.value.requestid, {
-            status: 'PENDING',
+            status: 'Ordered',
             orderid: this.order.id
         }).subscribe(data => {
             this.fetchOrder(this.order.id);
@@ -79,5 +95,9 @@ export class PurchaseOrderViewComponent {
             const blob = new Blob([data]);
             importedSaveAs(blob, `PO-${this.order.id}.pdf`);
           });
+    }
+
+    canEdit() {
+        return this.order?.status === 'PENDING' || this.order?.status === 'REJECTED';
     }
 }

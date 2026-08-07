@@ -1,5 +1,5 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { PurchaseService } from './purchase.service';
 import { CreatePurchaseOrderDto } from './dto/create-order.dto';
@@ -37,6 +37,27 @@ export class PurchaseOrderController {
   @Put(':id')
   update(@Param('id') id: string, @Body() updateDto:UpdatePurchaseOrderDto, @User() currentUser: any) {
     return this.service.updateOrder(id, updateDto, currentUser.id);
+  }
+
+  @Post(':id/submit')
+  submit(@Param('id') id: string, @User() currentUser: any) {
+    return this.service.submitOrder(+id, currentUser.id);
+  }
+
+  @Post(':id/approve')
+  async approve(@Param('id') id: string, @User() currentUser: any) {
+    if(!(await this.service.canApproveOrder(currentUser.roleid))){
+      throw new ForbiddenException('You are not allowed to approve purchase orders');
+    }
+    return this.service.approveOrder(+id, currentUser.id);
+  }
+
+  @Post(':id/reject')
+  async reject(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+    if(!(await this.service.canApproveOrder(currentUser.roleid))){
+      throw new ForbiddenException('You are not allowed to reject purchase orders');
+    }
+    return this.service.rejectOrder(+id, body?.reason || '', currentUser.id);
   }
 
   @Delete(':id')

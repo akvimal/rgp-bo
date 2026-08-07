@@ -1,0 +1,29 @@
+<div class="card mt-3">
+  <div class="card-body">
+    <h5 class="card-title">Purchase Settings</h5>
+    <form [formGroup]="form" (ngSubmit)="onSave()">
+      <div class="row">
+        <div class="col-md-4">
+          <label class="form-label" for="po-approval-threshold">PO Approval Value Threshold</label>
+          <input
+            id="po-approval-threshold"
+            class="form-control"
+            type="number"
+            min="0"
+            formControlName="purchaseOrderApprovalValueThreshold">
+          <small class="text-muted">Purchase orders above this estimated value will move to approval.</small>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label d-block">PO PDF Buyer Details</label>
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" id="po-pdf-buyer-details" formControlName="purchaseOrderPdfShowBuyerDetails">
+            <label class="form-check-label" for="po-pdf-buyer-details">Show pharmacy/buyer details on vendor PDF</label>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary" type="submit" [disabled]="!form.valid">Save</button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -32,6 +32,18 @@ export class PurchaseOrderService {
         return this.http.put(`${this.apiurl}/${id}`,order);
     }
 
+    submit(id:number){
+        return this.http.post(`${this.apiurl}/${id}/submit`, {});
+    }
+
+    approve(id:number){
+        return this.http.post(`${this.apiurl}/${id}/approve`, {});
+    }
+
+    reject(id:number, reason:string){
+        return this.http.post(`${this.apiurl}/${id}/reject`, { reason });
+    }
+
     remove(id:number){
         return this.http.delete(`${this.apiurl}/${id}`);
     }

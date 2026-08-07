@@ -1,63 +1,92 @@
-
-<div class="row">
-  <div *ngIf="order?.status === 'PENDING';else submitted" class="col-12">
-    <a (click)="onAdd()"><button class="btn btn-primary">Add</button></a>
-    &nbsp;<a *ngIf="order?.requests.length > 0" (click)="onProceed()">
-      <button class="btn btn-success">Proceed</button></a>
+<div *ngIf="order" class="d-grid gap-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+      <div class="fw-semibold fs-5">{{order?.vendor?.name}}</div>
+      <div class="text-muted small">PO #{{order?.ponumber || order?.id}} &middot; {{order?.createdon | date:'dd MMM yyyy'}}</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <span class="badge bg-secondary">{{order?.status}}</span>
+      <span class="badge" [ngClass]="order?.approvalstatus === 'Approved' ? 'bg-success' : (order?.approvalstatus === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark')">
+        {{order?.approvalstatus || 'Not Required'}}
+      </span>
+    </div>
   </div>
-  <ng-template #submitted>
-    <a><button class="btn btn-secondary" (click)="onDownload()">Download</button></a>
-  </ng-template>
+
+  <div class="row g-3 small">
+    <div class="col-md-4">
+      <div class="text-muted">Expected</div>
+      <div class="fw-semibold">{{order?.expecteddate ? (order?.expecteddate | date:'dd MMM yyyy') : '-'}}</div>
+    </div>
+    <div class="col-md-4">
+      <div class="text-muted">Estimated Value</div>
+      <div class="fw-semibold">{{order?.estimatedtotal !== undefined ? (order?.estimatedtotal | number:'1.2-2') : '-'}}</div>
+    </div>
+    <div class="col-md-4">
+      <div class="text-muted">Lines</div>
+      <div class="fw-semibold">{{order?.requests?.length || 0}}</div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <button type="button" class="btn btn-outline-primary" (click)="onDownload()">Download</button>
+    <button *ngIf="canEdit()" type="button" class="btn btn-primary" (click)="onAdd()">Add Request</button>
+    <button *ngIf="order?.requests?.length > 0 && canEdit()" type="button" class="btn btn-success" (click)="onProceed()">Proceed</button>
+    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-success" (click)="onApprove()">Approve</button>
+    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-danger" (click)="displayReject = true">Reject</button>
+  </div>
+
+  <div class="border rounded-3">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Product</th>
+            <th>Qty</th>
+            <th *ngIf="canEdit()">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let req of order?.requests">
+            <td>{{req.product?.title}}</td>
+            <td>{{req.qty}}</td>
+            <td *ngIf="canEdit()">
+              <button type="button" class="btn btn-link text-danger p-0" (click)="delete(req.id)">Remove</button>
+            </td>
+          </tr>
+          <tr *ngIf="!order?.requests?.length">
+            <td colspan="3" class="text-center text-muted py-4">No items linked to this PO.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
-<p-table [value]="order?.requests" 
-    [resizableColumns]="true" columnResizeMode="expand" 
-    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-    [tableStyle]="{'min-width': '50rem'}" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-    [rowsPerPageOptions]="[10,25,50]">
-    <ng-template pTemplate="header">
-        <tr>
-          <th pSortableColumn="product.title">Product
-          </th>
-          <th pSortableColumn="qty">Qty</th>
-          <th *ngIf="order.status === 'PENDING'">Actions</th>
-        </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-req>
-        <tr>
-          <td>{{req.product.title}}</td>
-          <td>{{req.qty}}</td>
-            <td *ngIf="order.status === 'PENDING'" style="text-align: center;">
-                  <!-- <i class="bi bi-pencil-square text-primary"></i> -->
-                  <a (click)="delete(req.id)">
-                    <i class="bi bi-trash text-danger"></i>
-                </a>
-          </td>
-        </tr>
-    </ng-template>
-</p-table> 
-
-<p-dialog [header]="'Add Request'" 
-          [(visible)]="displayForm" [modal]="true">
+<p-dialog [header]="'Add Request'" [(visible)]="displayForm" [modal]="true">
   <form [formGroup]="form" (ngSubmit)="onSave()">
-    <div class="container">
-      <div class="row">
-        <div class="col-9">
-          <label for="order" class="form-label">Request</label><br>
-            <select class="form-select" id="req" formControlName="requestid">
-              <option value="">Select</option>
-              <option *ngFor="let ar of availrequests" [value]="ar?.id">{{ar?.product?.title}}</option>
-            </select>
+    <div class="container px-0">
+      <div class="row g-3">
+        <div class="col-12">
+          <label for="req" class="form-label">Request</label>
+          <select class="form-select" id="req" formControlName="requestid">
+            <option value="">Select</option>
+            <option *ngFor="let ar of availrequests" [value]="ar?.id">{{ar?.product?.title}} | {{ar?.qty}}</option>
+          </select>
         </div>
-        <!-- <div class="col-3">
-          <label for="qty" class="form-label">Qty</label><br>
-        <input id="qty" class="form-control" type="number" formControlName="qty">
-        </div> -->
-      </div>
-     
-      <div class="col-12 text-center">
-        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+        <div class="col-12 text-end">
+          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
+        </div>
       </div>
     </div>
   </form>
+</p-dialog>
+
+<p-dialog [header]="'Reject Purchase Order'" [(visible)]="displayReject" [modal]="true">
+  <div class="mb-3">
+    <label class="form-label" for="rejectReason">Reason</label>
+    <textarea id="rejectReason" class="form-control" [(ngModel)]="rejectReason" style="height: 120px;"></textarea>
+  </div>
+  <div class="text-end">
+    <button class="btn btn-danger" (click)="onReject()">Reject</button>
+  </div>
 </p-dialog>

@@ -26,8 +26,11 @@ import { PurchasesComponent } from "./invoices/components/purchases.component";
 import { TabViewModule } from "primeng/tabview";
 import { PurchaseOrderComponent } from "./requests/components/purchase-order.component";
 import { PurchaseOrderViewComponent } from "./requests/components/purchase-order-view.component";
+import { PurchaseRequestComponent } from "./requests/components/purchase-request.component";
+import { PurchaseSuggestionComponent } from "./requests/components/purchase-suggestion.component";
 import { InvoicesComponent } from "./invoices/components/invoices.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
+import { PurchaseSettingsComponent } from "./purchase-settings.component";
 
 const routes: Routes = [
   { path: '', component: PurchaseHomeComponent, canActivate:[AuthGuard],
@@ -38,10 +41,14 @@ const routes: Routes = [
             { path: ':id', component: PurchaseOrderViewComponent }
           ]
       },
+      { path: 'requests', component: PurchaseRequestComponent },
+      { path: 'suggestions', component: PurchaseSuggestionComponent },
+      { path: 'settings', component: PurchaseSettingsComponent },
       { path: 'invoices', 
           children: [
             { path: '', redirectTo: 'list'},
             { path: 'list', component: InvoiceListComponent},
+            { path: 'outstanding', component: InvoiceListComponent},
             { path: 'new', component: InvoiceFormComponent},
             { path: 'edit/:id', component: InvoiceFormComponent},
             { path: 'items/:id', component: InvoiceItemsComponent}
@@ -61,12 +68,15 @@ const routes: Routes = [
       PurchaseHeaderComponent,
       PurchaseOrderComponent,
       PurchaseOrderViewComponent,
+      PurchaseRequestComponent,
+      PurchaseSuggestionComponent,
       InvoicesComponent,
       InvoiceListComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,
       InvoiceItemFormComponent,
-      InvoicePaymentComponent
+      InvoicePaymentComponent,
+      PurchaseSettingsComponent
     ],
     imports: [
         FormsModule,  
