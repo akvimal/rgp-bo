@@ -37,6 +37,21 @@
           </div>
         </div> -->
         <div class="row mt-2">
+          <div class="col-md-3">
+            <label class="form-label">Purchase Approval Required</label>
+            <div>
+              <input type="checkbox" class="form-check-input" formControlName="purchaseApprovalRequired">
+            </div>
+          </div>
+          <div class="col-md-3">
+            <label for="purchaseApprovalQtyThreshold" class="form-label">Approval Qty Threshold</label>
+            <input
+              id="purchaseApprovalQtyThreshold"
+              class="form-control"
+              type="number"
+              min="0"
+              formControlName="purchaseApprovalQtyThreshold">
+          </div>
          
           <!-- <div class="col-md-3">
             <label for="brand" class="form-label">Brand <span class="required">*</span></label>

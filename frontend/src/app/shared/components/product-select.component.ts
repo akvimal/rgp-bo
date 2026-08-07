@@ -6,7 +6,7 @@ import { ProductsService } from "src/app/secured/products/products.service";
     selector: 'app-product-select',
     template: `
     <span class="p-fluid">
-    <form [formGroup]="formGroup">
+    <div [formGroup]="formGroup">
         <p-autoComplete 
         (onSelect)="doneSelect($event)" 
         formControlName="title"
@@ -25,7 +25,7 @@ import { ProductsService } from "src/app/secured/products/products.service";
                 </div>
             </ng-template>
         </p-autoComplete>
-        </form>
+        </div>
     </span>
     `
 })

@@ -23,7 +23,9 @@ export class ProductFormComponent {
         mfr: new FormControl(''),
         brand: new FormControl(''),
         description: new FormControl(''),
-        props: new FormControl('')
+        props: new FormControl(''),
+        purchaseApprovalRequired: new FormControl(false),
+        purchaseApprovalQtyThreshold: new FormControl('')
       });
 
       pdata:any = {};
@@ -59,6 +61,8 @@ export class ProductFormComponent {
           this.form.controls['mfr'].setValue(data.mfr);
           this.form.controls['brand'].setValue(data.brand);
           this.form.controls['description'].setValue(data.description);
+          this.form.controls['purchaseApprovalRequired'].setValue(data.props?.purchaseApprovalRequired === true || data.props?.purchaseApprovalRequired === 'true');
+          this.form.controls['purchaseApprovalQtyThreshold'].setValue(data.props?.purchaseApprovalQtyThreshold || '');
 
           this.props = data.props;
           this.populateProps(data.category,data.props);
@@ -167,7 +171,11 @@ export class ProductFormComponent {
       }
   
       getTrimmedProps(props:any){
-        return props;
+        return {
+          ...(props || {}),
+          purchaseApprovalRequired: !!this.form.value.purchaseApprovalRequired,
+          purchaseApprovalQtyThreshold: this.form.value.purchaseApprovalQtyThreshold === '' ? null : +this.form.value.purchaseApprovalQtyThreshold
+        };
       }
 
       reset(){
