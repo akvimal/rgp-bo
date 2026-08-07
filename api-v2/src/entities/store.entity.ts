@@ -6,6 +6,9 @@ import {
   } from "typeorm";
 import { Business } from "./business.entity";
 import { StoreCashAccount } from "./store-cash-account.entity";
+import { StoreShift } from "./store-shift.entity";
+import { StoreShiftTemplate } from "./store-shift-template.entity";
+import { UserStore } from "./user-store.entity";
   
   @Index("store_pk", ["id"], { unique: true })
   @Entity("stores")
@@ -15,8 +18,17 @@ import { StoreCashAccount } from "./store-cash-account.entity";
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
   
-    @Column("character varying", { name: "location", length: 40 })
-    location: string;
+  @Column("character varying", { name: "location", length: 40 })
+  location: string;
+
+  @Column("double precision", { name: "deposit_threshold", precision: 53, default: 0 })
+  depositthreshold: number;
+
+  @Column({ name: "active", type: "boolean", default: true })
+  isActive: boolean;
+
+  @Column({ name: "archive", type: "boolean", default: false })
+  isArchived: boolean;
   
     @ManyToOne(
       () => Business,
@@ -30,4 +42,22 @@ import { StoreCashAccount } from "./store-cash-account.entity";
       (loc) => loc.store
     )
     transactions: StoreCashAccount[];
+
+    @OneToMany(
+      () => StoreShiftTemplate,
+      (template) => template.store
+    )
+    shifttemplates: StoreShiftTemplate[];
+
+    @OneToMany(
+      () => StoreShift,
+      (shift) => shift.store
+    )
+    shifts: StoreShift[];
+
+    @OneToMany(
+      () => UserStore,
+      (assignment) => assignment.store
+    )
+    userassignments: UserStore[];
 }

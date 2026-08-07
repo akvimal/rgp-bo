@@ -1,0 +1,207 @@
+<div class="pagetitle">
+  <h1>Shifts</h1>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Open Shift</h5>
+    <div class="alert alert-info" *ngIf="!selectedStoreId">
+      Select a store in the header to open or close shifts.
+    </div>
+    <div class="row g-2">
+      <div class="col-12 col-md-3">
+        <label class="form-label">Template</label>
+        <select class="form-select" [(ngModel)]="shiftForm.templateid">
+          <option value="">Custom</option>
+          <option *ngFor="let template of templates" [value]="template.id">{{template.name}}</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Assigned staff</label>
+        <select class="form-select" [(ngModel)]="shiftForm.assigneduserid">
+          <option value="">From template</option>
+          <option *ngFor="let user of users" [value]="user.id">{{user.fullname}}</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-control" [(ngModel)]="shiftForm.shiftdate">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Opening cash</label>
+        <input type="number" class="form-control" [(ngModel)]="shiftForm.openingcash">
+      </div>
+      <div class="col-12 col-md-2 d-flex align-items-end">
+        <button class="btn btn-primary w-100" type="button" (click)="saveShift()">Open Shift</button>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" rows="2" [(ngModel)]="shiftForm.notes"></textarea>
+      </div>
+    </div>
+
+    <div class="table-responsive mt-3">
+      <table class="table table-sm table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Shift</th>
+            <th>Assigned Staff</th>
+            <th class="text-end">Bills</th>
+            <th class="text-end">Cash Sales</th>
+            <th class="text-end">Digital</th>
+            <th class="text-end">Expected Cash</th>
+            <th class="text-end">Counted</th>
+            <th class="text-end">Variance</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let shift of shifts">
+            <td>{{shift.shiftdate}}</td>
+            <td>{{shift.name}}</td>
+            <td>
+              <select class="form-select form-select-sm" [ngModel]="shift.assigneduser?.id || ''" (change)="assignShift(shift, $event)">
+                <option value="">Unassigned</option>
+                <option *ngFor="let user of users" [value]="user.id">{{user.fullname}}</option>
+              </select>
+            </td>
+            <td class="text-end text-muted small">—</td>
+            <td class="text-end">{{shift.salescash | number:'1.0-0'}}</td>
+            <td class="text-end text-muted">—</td>
+            <td class="text-end">{{shift.expectedcash | number:'1.0-0'}}</td>
+            <td class="text-end">{{shift.countedcash !== null ? (shift.countedcash | number:'1.0-0') : '—'}}</td>
+            <td class="text-end" [class.text-danger]="shift.variance < 0" [class.text-success]="shift.variance > 0">
+              {{shift.variance !== null ? (shift.variance | number:'1.0-0') : '—'}}
+            </td>
+            <td><span class="badge" [ngClass]="shift.status === 'OPEN' ? 'bg-success' : 'bg-secondary'">{{shift.status}}</span></td>
+            <td class="text-end" style="white-space:nowrap">
+              <button class="btn btn-sm btn-outline-secondary me-1" type="button" (click)="viewReport(shift)">
+                <i class="bi bi-clipboard-data"></i> {{shift.status === 'OPEN' ? 'Close' : 'View'}}
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="!shifts?.length">
+            <td colspan="11" class="text-center text-muted py-3">No shift sessions yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="message" class="alert alert-danger mt-2">{{message}}</div>
+
+<!-- Shift Reconciliation Modal -->
+<p-dialog [header]="closing ? 'Close Shift' : 'Shift Report'"
+  [(visible)]="showReportModal" [modal]="true" [style]="{width:'600px'}" [closable]="true">
+
+  <div *ngIf="reportLoading" class="text-center py-4 text-muted">Loading report…</div>
+
+  <div *ngIf="shiftReport && !reportLoading">
+    <div class="mb-3">
+      <span class="fw-semibold">{{shiftReport.shift.name}}</span>
+      <span class="text-muted ms-2">{{shiftReport.shift.shiftdate}}</span>
+      <span class="ms-2 small text-muted" *ngIf="shiftReport.shift.assigneduser">
+        · {{shiftReport.shift.assigneduser.fullname}}
+      </span>
+    </div>
+
+    <!-- Reconciliation table -->
+    <table class="table table-sm table-borderless mb-3">
+      <tbody>
+        <tr>
+          <td class="text-muted">Opening Cash</td>
+          <td class="text-end fw-semibold">₹{{shiftReport.shift.openingcash | number:'1.0-0'}}</td>
+        </tr>
+        <tr>
+          <td class="text-muted">Cash Sales ({{shiftReport.sales.bill_count}} bills)</td>
+          <td class="text-end text-success">+ ₹{{shiftReport.sales.cash_sales | number:'1.0-0'}}</td>
+        </tr>
+        <tr *ngIf="shiftReport.returns.return_count > 0">
+          <td class="text-muted">Cash Returns ({{shiftReport.returns.return_count}} items)</td>
+          <td class="text-end text-danger">− ₹{{shiftReport.returns.return_value | number:'1.0-0'}}</td>
+        </tr>
+        <tr *ngIf="shiftReport.shift.withdraw > 0">
+          <td class="text-muted">Other Cash Out</td>
+          <td class="text-end text-danger">− ₹{{shiftReport.shift.withdraw | number:'1.0-0'}}</td>
+        </tr>
+        <tr class="border-top">
+          <td class="fw-semibold">Expected Closing Cash</td>
+          <td class="text-end fw-semibold">₹{{shiftReport.shift.expectedcash | number:'1.0-0'}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Digital info -->
+    <div class="d-flex justify-content-between small text-muted border-top pt-2 mb-3">
+      <span>Digital Collected</span>
+      <span>₹{{shiftReport.sales.digi_sales | number:'1.0-0'}} (bank / UPI — not in cash drawer)</span>
+    </div>
+
+    <!-- Staff breakdown -->
+    <div *ngIf="shiftReport.staff?.length > 1" class="mb-3">
+      <div class="small fw-semibold text-muted mb-1">Sales by Staff</div>
+      <table class="table table-sm table-bordered">
+        <thead class="table-light">
+          <tr>
+            <th>Staff</th>
+            <th class="text-end">Bills</th>
+            <th class="text-end">Cash</th>
+            <th class="text-end">Digital</th>
+            <th class="text-end">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of shiftReport.staff">
+            <td>{{s.staff_name || 'Unknown'}}</td>
+            <td class="text-end">{{s.bill_count}}</td>
+            <td class="text-end">₹{{s.cash_sales | number:'1.0-0'}}</td>
+            <td class="text-end">₹{{s.digi_sales | number:'1.0-0'}}</td>
+            <td class="text-end fw-semibold">₹{{s.net_sales | number:'1.0-0'}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Closed shift: show final reconciliation -->
+    <div *ngIf="!closing && shiftReport.shift.status === 'CLOSED'" class="border-top pt-2">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="text-muted">Counted Cash</span>
+        <span class="fw-semibold">₹{{shiftReport.shift.countedcash | number:'1.0-0'}}</span>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span class="text-muted">Variance</span>
+        <span class="fw-semibold" [class.text-danger]="shiftReport.shift.variance < 0" [class.text-success]="shiftReport.shift.variance > 0">
+          {{shiftReport.shift.variance >= 0 ? '+' : ''}}₹{{shiftReport.shift.variance | number:'1.0-0'}}
+        </span>
+      </div>
+    </div>
+
+    <!-- Close shift: enter counted cash -->
+    <div *ngIf="closing" class="border-top pt-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-6">
+          <label class="form-label mb-0 fw-semibold">Counted Cash</label>
+          <input type="number" class="form-control" [(ngModel)]="countedCash" placeholder="Enter amount">
+        </div>
+        <div class="col-6 pt-3" *ngIf="variance !== null">
+          <span class="small text-muted">Variance: </span>
+          <span class="fw-semibold" [class.text-danger]="variance < 0" [class.text-success]="variance >= 0">
+            {{variance >= 0 ? '+' : ''}}₹{{variance | number:'1.0-0'}}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button class="btn btn-secondary btn-sm" (click)="showReportModal = false">Close</button>
+    <button *ngIf="closing" class="btn btn-danger btn-sm ms-2"
+      [disabled]="countedCash === null || countedCash === undefined"
+      (click)="confirmClose()">
+      Confirm Close Shift
+    </button>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,120 @@
+<div class="pagetitle">
+  <h1>Cash</h1>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="alert mt-3 mb-0" [ngClass]="depositDue() ? 'alert-warning' : 'alert-light'">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="small text-muted">Store cash balance</div>
+              <div class="fw-bold">{{currentCashBalance() | number:'1.2-2'}}</div>
+            </div>
+            <span class="badge" [ngClass]="depositDue() ? 'bg-danger' : 'bg-secondary'">
+              {{depositDue() ? 'Deposit due' : 'OK'}}
+            </span>
+          </div>
+          <div class="mt-2 small d-flex justify-content-between">
+            <span>Deposit threshold</span>
+            <strong>{{depositThreshold() | number:'1.2-2'}}</strong>
+          </div>
+          <div class="mt-1 small d-flex justify-content-between">
+            <span>Excess over threshold</span>
+            <strong>{{depositExcess() | number:'1.2-2'}}</strong>
+          </div>
+          <div class="mt-1 small text-muted">
+            Bank deposits are independent of shift closing. Use the manager deposit entry when cash is collected.
+          </div>
+        </div>
+
+        <div class="mt-3 small text-muted">
+          Current store
+          <div class="fw-bold text-dark">
+            {{selectedStoreId === null ? 'All stores' : (selectedStore?.business?.name || '') + ' - ' + (selectedStore?.location || '')}}
+          </div>
+        </div>
+        <div class="mt-3 small text-muted">
+          Current shift
+          <div class="fw-bold text-dark">{{openShiftLabel()}}</div>
+        </div>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between"><span>Expected shift cash</span><strong>{{(dashboard?.openShift?.expectedcash || 0) | number:'1.2-2'}}</strong></div>
+          <div class="d-flex justify-content-between"><span>Counted shift cash</span><strong>{{(dashboard?.openShift?.countedcash || 0) | number:'1.2-2'}}</strong></div>
+          <div class="d-flex justify-content-between"><span>Shift variance</span><strong>{{(dashboard?.openShift?.variance || 0) | number:'1.2-2'}}</strong></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="card-title mb-0">Cash Movement</h5>
+      <div class="small text-muted">Ledger entries linked to the store; bank deposits are not forced to a shift.</div>
+    </div>
+    <div class="row g-2">
+      <div class="col-12 col-md-2">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-control" [(ngModel)]="ledgerForm.transdate">
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="form-label">Category</label>
+        <select class="form-select" [(ngModel)]="ledgerForm.category">
+          <option value="SALE">Sale</option>
+          <option value="EXPENSE">Expense</option>
+          <option value="REFUND">Refund</option>
+          <option value="BANK_DEPOSIT">Bank deposit</option>
+          <option value="ADJUSTMENT">Adjustment</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Description</label>
+        <input class="form-control" [(ngModel)]="ledgerForm.description">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Deposit</label>
+        <input type="number" class="form-control" [(ngModel)]="ledgerForm.deposit">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Withdraw</label>
+        <input type="number" class="form-control" [(ngModel)]="ledgerForm.withdraw">
+      </div>
+      <div class="col-12 col-md-1 d-flex align-items-end">
+        <button class="btn btn-primary w-100" type="button" (click)="saveLedger()">Add</button>
+      </div>
+    </div>
+    <div class="table-responsive mt-3">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th class="text-end">Deposit</th>
+            <th class="text-end">Withdraw</th>
+            <th>Shift</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let entry of ledger">
+            <td>{{entry.transdate}}</td>
+            <td>{{entry.category}}</td>
+            <td>{{entry.description}}</td>
+            <td class="text-end">{{entry.deposit | number:'1.2-2'}}</td>
+            <td class="text-end">{{entry.withdraw | number:'1.2-2'}}</td>
+            <td>{{entry.shift?.name || '-'}}</td>
+          </tr>
+          <tr *ngIf="!ledger?.length">
+            <td colspan="6" class="text-center text-muted py-3">No cash movements yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="message" class="alert alert-danger">{{message}}</div>

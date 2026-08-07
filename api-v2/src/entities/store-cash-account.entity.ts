@@ -5,6 +5,7 @@ import {
     PrimaryGeneratedColumn,
   } from "typeorm";
 import { Store } from "./store.entity";
+import { StoreShift } from "./store-shift.entity";
   
   @Index("store_acount_pk", ["id"], { unique: true })
   @Entity("store_cash_accounts")
@@ -33,4 +34,15 @@ import { Store } from "./store.entity";
     )
     @JoinColumn([{ name: "store_id", referencedColumnName: "id" }])
     store: Store;
+
+    @Column("integer", { name: "shift_id", nullable: true })
+    shiftid: number | null;
+
+    @ManyToOne(
+      () => StoreShift,
+      (shift) => shift.cashaccounts,
+      { nullable: true }
+    )
+    @JoinColumn([{ name: "shift_id", referencedColumnName: "id" }])
+    shift: StoreShift | null;
 }

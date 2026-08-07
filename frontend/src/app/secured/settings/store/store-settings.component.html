@@ -1,0 +1,186 @@
+<div class="card mt-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="card-title mb-0">Store Settings</h5>
+      <div class="small text-muted">Use the page store selector. This page edits store master, policy, and shift templates.</div>
+    </div>
+
+    <div class="border rounded p-3 mt-3">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+          <label class="form-label">Select Store</label>
+          <select class="form-select" [(ngModel)]="selectedStoreId" (change)="refreshSelectedStore()">
+            <option value="">Choose store</option>
+            <option *ngFor="let store of stores" [ngValue]="store.id">{{store.business?.name}} - {{store.location}}</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-8">
+          <ul class="nav nav-tabs">
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'master'" href="javascript:void(0)" (click)="selectTab('master')">Stores</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'policy'" href="javascript:void(0)" (click)="selectTab('policy')">Cash Policy</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'templates'" href="javascript:void(0)" (click)="selectTab('templates')">Shift Templates</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div *ngIf="activeTab === 'master'" class="mt-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h6 class="mb-0">Store Master</h6>
+        <div class="small text-muted">Create, edit, or archive store locations from admin.</div>
+      </div>
+      <div class="row g-2">
+        <div class="col-12 col-md-5">
+          <label class="form-label">Business</label>
+          <select class="form-select" [(ngModel)]="storeForm.businessid">
+            <option value="">Choose business</option>
+            <option *ngFor="let business of businesses" [ngValue]="business.id">{{business.name}}</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-5">
+          <label class="form-label">Location</label>
+          <input class="form-control" [(ngModel)]="storeForm.location" placeholder="e.g. Main Store">
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label">Deposit Threshold</label>
+          <input type="number" class="form-control" [(ngModel)]="storeForm.depositthreshold">
+        </div>
+        <div class="col-6 col-md-1 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="storeActive" [(ngModel)]="storeForm.isActive">
+            <label class="form-check-label" for="storeActive">Active</label>
+          </div>
+        </div>
+        <div class="col-12 col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary w-100" type="button" [disabled]="savingStore || !storeForm.location" (click)="saveStore()">
+            {{savingStore ? 'Saving...' : (storeForm.id ? 'Update Store' : 'Add Store')}}
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive mt-3">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Business</th>
+              <th class="text-end">Threshold</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let store of stores">
+              <td>{{store.location}}</td>
+              <td>{{store.business?.name || '-'}}</td>
+              <td class="text-end">{{store.depositthreshold | number:'1.2-2'}}</td>
+              <td>
+                <span class="badge bg-success" *ngIf="store.isActive && !store.isArchived">Active</span>
+                <span class="badge bg-secondary" *ngIf="!store.isActive || store.isArchived">Archived</span>
+              </td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-outline-secondary me-2" type="button" (click)="editStore(store)">Edit</button>
+                <button class="btn btn-sm btn-outline-danger" type="button" (click)="removeStore(store)">Archive</button>
+              </td>
+            </tr>
+            <tr *ngIf="!stores?.length">
+              <td colspan="5" class="text-center text-muted py-3">No stores yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+
+      <div *ngIf="activeTab === 'policy'" class="row g-3 mt-1">
+        <div class="col-12 col-xl-4">
+        <div class="border rounded p-3 h-100">
+          <h6 class="mb-3">Cash Policy</h6>
+          <div class="alert alert-info" *ngIf="!selectedStore?.id">
+            Select a store above to manage policy.
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Bank deposit threshold</label>
+            <input type="number" class="form-control" [(ngModel)]="selectedStore.depositthreshold">
+            <small class="text-muted">Used by Store - Cash to warn when balance crosses this amount.</small>
+          </div>
+          <button class="btn btn-primary" type="button" [disabled]="savingPolicy || !selectedStore?.id" (click)="savePolicy()">
+            {{savingPolicy ? 'Saving...' : 'Save Policy'}}
+          </button>
+        </div>
+      </div>
+      </div>
+
+      <div *ngIf="activeTab === 'templates'" class="row g-3 mt-1">
+      <div class="col-12 col-xl-8">
+        <div class="border rounded p-3 h-100">
+          <h6 class="mb-3">Shift Templates</h6>
+          <div class="alert alert-info" *ngIf="!selectedStore?.id">
+            Select a store above to manage templates.
+          </div>
+          <div class="row g-2">
+            <div class="col-12 col-md-4">
+              <label class="form-label">Name</label>
+              <input class="form-control" [(ngModel)]="templateForm.name">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label">Start</label>
+              <input class="form-control" [(ngModel)]="templateForm.starttime">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label">End</label>
+              <input class="form-control" [(ngModel)]="templateForm.endtime">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label">Threshold</label>
+              <input type="number" class="form-control" [(ngModel)]="templateForm.depositthreshold">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label">Default staff</label>
+              <select class="form-select" [(ngModel)]="templateForm.assigneduserid">
+                <option value="">Any</option>
+                <option *ngFor="let user of users" [value]="user.id">{{user.fullname}}</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-primary" type="button" (click)="saveTemplate()">Save Template</button>
+            </div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Time</th>
+                  <th>Staff</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let template of templates">
+                  <td>{{template.name}}</td>
+                  <td>{{template.starttime}} - {{template.endtime}}</td>
+                  <td>{{template.assigneduser?.fullname || '-'}}</td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" (click)="editTemplate(template)">Edit</button>
+                  </td>
+                </tr>
+                <tr *ngIf="!templates?.length">
+                  <td colspan="4" class="text-center text-muted py-3">No templates yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div *ngIf="message" class="alert alert-danger mt-3">{{message}}</div>
+  </div>
+</div>

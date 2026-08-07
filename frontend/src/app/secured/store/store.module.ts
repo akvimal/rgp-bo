@@ -21,6 +21,7 @@ import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
 import { StoreComponent } from "./store.component";
 import { CashComponent } from "./cash/components/cash.component";
+import { ShiftsComponent } from "./shifts/components/shifts.component";
 import { StockAdjustComponent } from "./stock/components/stock-adjust.component";
 import { StockProductsComponent } from "./stock/components/stock-products.component";
 import { StockProductItemsComponent } from "./stock/components/stock-product-items.component";
@@ -43,6 +44,7 @@ const routes: Routes = [
       }]  },
         { path: 'adjust', component: StockAdjustComponent }
       ] },
+    { path: 'shifts', component: ShiftsComponent},
     { path: 'intent', component: PurchaseIntentComponent},
     { path: 'cash', component: CashComponent}
   ]}
@@ -52,6 +54,7 @@ const routes: Routes = [
     declarations: [
       StoreComponent,
       CashComponent,
+      ShiftsComponent,
       StockComponent,
       StockAdjustComponent,
       StockProductsComponent,
