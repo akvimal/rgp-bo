@@ -5,6 +5,7 @@ import { User } from "src/core/decorator/user.decorator";
 import { CustomerService } from "../customers/customer.service";
 import { SaleDeliveryService } from "./sale-delivery.service";
 import { CreateSaleDeliveryDto } from "./dto/create-saledelivery.dto";
+import { UpdateSaleDeliveryDto } from "./dto/update-saledelivery.dto";
 
 @ApiTags('Deliveries')
 @Controller('deliveries')
@@ -23,6 +24,11 @@ export class SaleDeliveryController {
     @Get()
     async findAll(@Query() query: any, @User() currentUser: any) {
       return this.service.findAll(query,query['self']==='true'?currentUser.id:null);
+    }
+
+    @Put(':saleid')
+    async update(@Param('saleid') saleid: string, @Body() dto: UpdateSaleDeliveryDto, @User() currentUser: any) {
+      return this.service.save({ ...dto, saleid: +saleid }, currentUser.id);
     }
 
     @Delete(':id')

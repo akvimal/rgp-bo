@@ -13,6 +13,10 @@ export class SaleDeliveryService {
     constructor(private http:HttpClient){}
 
     save(delivery:SaleDelivery){
+        if(delivery.saleid){
+            return this.http.put(`${this.apiurl}/${delivery.saleid}`,delivery);
+        }
+
         return this.http.post(`${this.apiurl}`,delivery);
     }
 

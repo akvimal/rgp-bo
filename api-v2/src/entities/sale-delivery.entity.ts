@@ -18,8 +18,8 @@ export class SaleDelivery extends BaseEntity {
   @Column("integer", { name: "saleId", unique: true })
   saleId: number;
 
-  @Column("integer", { name: "booked_by", unique: true })
-  bookedby: number;
+  @Column("integer", { name: "booked_by", nullable: true })
+  bookedby: number | null;
   @Column("date", { name: "booked_date", nullable: true })
   bookeddate: string | null;
 
@@ -34,12 +34,33 @@ export class SaleDelivery extends BaseEntity {
   deliverydate: string | null;
   @Column("character varying", { name: "delivery_by", nullable: true })
   deliveryby: string | null;
-  
-  @Column("double precision", { name: "charges", precision: 53 })
-  charges: number;
-  
+
+  @Column("character varying", { name: "delivery_method", nullable: true })
+  deliverymethod: string | null;
+  @Column("character varying", { name: "courier_partner", nullable: true })
+  courierpartner: string | null;
+  @Column("timestamp without time zone", { name: "delivered_at", nullable: true })
+  deliveredat: Date | null;
+  @Column("boolean", { name: "confirmed", default: false })
+  confirmed: boolean;
+  @Column("character varying", { name: "confirmed_by", nullable: true })
+  confirmedby: string | null;
+  @Column("timestamp without time zone", { name: "confirmed_at", nullable: true })
+  confirmedat: Date | null;
+
+  @Column("double precision", { name: "charges", precision: 53, nullable: true })
+  charges: number | null;
+  @Column("double precision", { name: "actual_cost", precision: 53, nullable: true })
+  actualcost: number | null;
+
   @Column("character varying", { name: "status", nullable: true })
   status: string | null;
+  @Column("character varying", { name: "payment_mode", nullable: true })
+  paymentmode: string | null;
+  @Column("character varying", { name: "collection_status", nullable: true })
+  collectionstatus: string | null;
+  @Column("character varying", { name: "failure_reason", nullable: true })
+  failurereason: string | null;
   @Column("character varying", { name: "comments", nullable: true })
   comments: string | null;
 
@@ -48,7 +69,7 @@ export class SaleDelivery extends BaseEntity {
   // sale: Sale;
 
     
-    @OneToOne(() => Sale, (sale) => sale.delivery)
-    @JoinColumn()
-    sale: Sale;
+  @OneToOne(() => Sale, (sale) => sale.delivery)
+  @JoinColumn([{ name: "saleId", referencedColumnName: "id" }])
+  sale: Sale;
 }
