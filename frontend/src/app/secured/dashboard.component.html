@@ -1,77 +1,491 @@
-<div class="container">
-  <div class="row">
-    <div class="col-6">
-      <h5>Sales Trend</h5>
-      <div>
-        Frequency: <select [(ngModel)]="freq">
-          <option value="daily">Daily</option>
-          <option value="monthly">Monthly</option>
-        </select>
-        From: <input type="date" [(ngModel)]="fromdate" (input)="viewsale()">
-        Range: <input type="number" [(ngModel)]="count" (input)="viewsale()" min="7" max="31">
-        <button (click)="viewsale()">View</button>
+<div class="pagetitle">
+  <h1>Dashboard</h1>
+  <div class="small text-muted">Business snapshot for {{selectedStoreLabel}}</div>
+</div>
+
+<div *ngIf="error" class="alert alert-danger">{{error}}</div>
+<div *ngIf="loading" class="alert alert-light">Loading dashboard...</div>
+
+<!-- ── KPI cards ─────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-3">
+
+  <!-- Sales: combined today + month (freed one card slot) -->
+  <div class="col-6 col-xl-3" *isAuth="'sales'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted fw-semibold mb-1">Sales</div>
+        <div class="d-flex justify-content-between align-items-end">
+          <div>
+            <div class="small text-muted">Today</div>
+            <div class="fs-5 fw-bold">{{summary?.kpis?.sales_today | number:'1.2-2'}}</div>
+            <div class="small text-muted">{{summary?.kpis?.sales_today_orders || 0}} orders</div>
+          </div>
+          <div class="text-end">
+            <div class="small text-muted">This month</div>
+            <div class="fs-5 fw-bold">{{summary?.kpis?.sales_month | number:'1.2-2'}}</div>
+            <div class="small text-muted">{{summary?.kpis?.sales_month_orders || 0}} orders</div>
+          </div>
+        </div>
       </div>
-      <ngx-charts-bar-vertical 
-        [view]="[600,350]"
-        [results]="saleData"
-        [xAxisLabel]="'Period'"
-        [legendTitle]="'Sale Trend'"
-        [yAxisLabel]="'Sale'"
-        [legend]="false"
-        [showXAxisLabel]="true"
-        [showYAxisLabel]="true"
-        [xAxis]="true"
-        [yAxis]="true"
-        [gradient]="false">
-      </ngx-charts-bar-vertical>
     </div>
-    <div class="col-6">
-      <h5>Customer Visit Trend</h5>
-      <div>
-        Frequency: <select [(ngModel)]="custfreq">
-          <option value="daily">Daily</option>
-          <option value="monthly">Monthly</option>
-        </select>
-        From: <input type="date" [(ngModel)]="custfromdate" (input)="viewcustomer()">
-        Range: <input type="number" [(ngModel)]="custcount" (input)="viewcustomer()" min="7" max="31">
-        <button (click)="viewcustomer()">View</button>
+  </div>
+
+  <!-- Returns this month (extracted from buried Open Shifts card) -->
+  <div class="col-6 col-xl-3" *isAuth="'sales'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Returns this month</div>
+        <div class="fs-4 fw-bold">{{summary?.kpis?.sales_returns_month || 0}}</div>
+        <div class="small text-muted">units returned</div>
       </div>
-      <ngx-charts-bar-vertical-2d
-        [view]="[600,350]"
-        [results]="customerData"
-        [xAxis]="true"
-        [yAxis]="true"
-        [legend]="true"
-        [showXAxisLabel]="true"
-        [showYAxisLabel]="true"
-        [xAxisLabel]="'Period'"
-        [yAxisLabel]="'Customers'"
-        [legendTitle]="'Customers'">
-      </ngx-charts-bar-vertical-2d>
     </div>
-    <div class="col-6">
-      <h5>Report Req</h5>
-      <ul>
-        <li>Products Demand (most and least), based on total orders and qty</li>
-        <li>Products by age and its time left for expiry</li>
-        <li>Complaints on products and vendors</li>
-        <li>No. of orders by hourly, daily, weekly and monthly</li>
-      </ul>
+  </div>
+
+  <!-- Purchase month — restricted to purchaseorders (Business Head / Store Head; hidden from Sales Staff) -->
+  <div class="col-6 col-xl-3" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Purchase month</div>
+        <div class="fs-4 fw-bold">{{summary?.kpis?.purchase_month | number:'1.2-2'}}</div>
+        <div class="small text-muted">{{summary?.kpis?.purchase_month_invoices || 0}} invoices</div>
+      </div>
     </div>
-    <div class="col-6">
-      <h5>Fuctional Req</h5>
-      <ul>
-        <li>Intent / Follow up</li>
-        <li>Purchase Order</li>
-        <li>Returns</li>
-        <li>Credit</li>
-        <li>Branches</li>
-        <li>Transfers</li>
-        <li>Notifications</li>
-        <li>Complaint Mgmt</li>
-        <li>Accounts</li>
-        <li>Offers</li>
-      </ul>
+  </div>
+
+  <!-- Cash balance with progress bar showing balance vs deposit threshold -->
+  <div class="col-6 col-xl-3" *isAuth="'store'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div class="small text-muted">Cash balance</div>
+          <span *ngIf="summary?.kpis?.deposit_due" class="badge bg-warning text-dark" style="font-size:0.65rem">Deposit due</span>
+        </div>
+        <div class="fs-4 fw-bold mb-1">{{summary?.kpis?.cash_balance | number:'1.2-2'}}</div>
+        <div class="progress mb-1" style="height:6px" *ngIf="summary?.kpis?.deposit_threshold">
+          <div class="progress-bar"
+            [class.bg-success]="cashBalancePct < 75"
+            [class.bg-warning]="cashBalancePct >= 75 && cashBalancePct < 100"
+            [class.bg-danger]="cashBalancePct >= 100"
+            [style.width.%]="cashBalancePct">
+          </div>
+        </div>
+        <div class="small text-muted">Threshold: {{summary?.kpis?.deposit_threshold | number:'1.2-2'}}</div>
+        <div class="small text-muted">Expenses: {{summary?.kpis?.cash_expenses_month | number:'1.2-2'}} · Deposits: {{summary?.kpis?.bank_deposits_month | number:'1.2-2'}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending approvals -->
+  <div class="col-6 col-xl-3" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Pending approvals</div>
+        <div class="fs-4 fw-bold">{{summary?.kpis?.pending_purchase_approvals || 0}}</div>
+        <div class="small text-muted">POs awaiting review</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outstanding invoices — purchaseorders guard (not relevant to Sales Staff) -->
+  <div class="col-6 col-xl-3" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Outstanding invoices</div>
+        <div class="fs-4 fw-bold">{{summary?.kpis?.outstanding_invoices || 0}}</div>
+        <div class="small text-muted">{{summary?.kpis?.overdue_invoices || 0}} overdue</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Low stock -->
+  <div class="col-6 col-xl-3" *isAuth="'products'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Low stock items</div>
+        <div class="fs-4 fw-bold">{{summary?.kpis?.low_stock_items || 0}}</div>
+        <div class="small text-muted">Reorder suggestions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Open shifts -->
+  <div class="col-6 col-xl-3" *isAuth="'store'">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Open shifts</div>
+        <div class="fs-4 fw-bold">{{summary?.kpis?.open_shifts || 0}}</div>
+        <div class="small text-muted">currently active</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Admin KPI cards (Site Admin only) ─────────────────────────────── -->
+<div class="row g-3 mb-3" *isAuth="'businesses'">
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Businesses</div>
+        <div class="fs-4 fw-bold">{{adminSummary?.businesses || 0}}</div>
+        <div class="small text-muted">Active</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Stores</div>
+        <div class="fs-4 fw-bold">{{adminSummary?.stores || 0}}</div>
+        <div class="small text-muted">Active</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Users</div>
+        <div class="fs-4 fw-bold">{{adminSummary?.users || 0}}</div>
+        <div class="small text-muted">Active</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Roles</div>
+        <div class="fs-4 fw-bold">{{adminSummary?.roles || 0}}</div>
+        <div class="small text-muted">Configured</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Primary chart row: Sales trend (wide) + Payment split ─────────── -->
+<div class="row g-3 mb-3">
+  <div class="col-12 col-lg-8" *isAuth="'sales'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Sales trend <span class="small text-muted fw-normal">(last 14 days)</span></h5>
+        <ngx-charts-bar-vertical
+          [view]="[520,240]"
+          [results]="salesTrend"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="true"
+          [xAxisLabel]="'Day'"
+          [yAxisLabel]="'Sales (₹)'">
+        </ngx-charts-bar-vertical>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4" *isAuth="'sales'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Payment split <span class="small text-muted fw-normal">(this month)</span></h5>
+        <ngx-charts-advanced-pie-chart
+          [results]="paymentSplit"
+          [label]="'Total'">
+        </ngx-charts-advanced-pie-chart>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Secondary chart row: Purchase trend + Cash movement + Approval breakdown ── -->
+<div class="row g-3 mb-3">
+  <div class="col-12 col-lg-4" *isAuth="'purchases'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Purchase trend <span class="small text-muted fw-normal">(14 days)</span></h5>
+        <ngx-charts-bar-vertical
+          [view]="[300,200]"
+          [results]="purchaseTrend"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="false"
+          [showYAxisLabel]="true"
+          [yAxisLabel]="'Amount (₹)'">
+        </ngx-charts-bar-vertical>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4" *isAuth="'store'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Cash movement <span class="small text-muted fw-normal">(14 days)</span></h5>
+        <ngx-charts-bar-vertical-2d
+          [view]="[300,200]"
+          [results]="cashTrend"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="true"
+          [showXAxisLabel]="false"
+          [showYAxisLabel]="true"
+          [yAxisLabel]="'Amount (₹)'">
+        </ngx-charts-bar-vertical-2d>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">PO approvals <span class="small text-muted fw-normal">(this month)</span></h5>
+        <ngx-charts-pie-chart
+          [view]="[300,200]"
+          [results]="purchaseApprovalBreakdown"
+          [doughnut]="true"
+          [legend]="true">
+        </ngx-charts-pie-chart>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Admin charts (Site Admin only) ────────────────────────────────── -->
+<div class="row g-3 mb-3" *isAuth="'businesses'">
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Users by role</h5>
+        <ngx-charts-bar-vertical
+          [view]="[420,240]"
+          [results]="usersByRole"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="true"
+          [xAxisLabel]="'Role'"
+          [yAxisLabel]="'Users'">
+        </ngx-charts-bar-vertical>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Stores by business</h5>
+        <ngx-charts-bar-vertical
+          [view]="[420,240]"
+          [results]="storesByBusiness"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="true"
+          [xAxisLabel]="'Business'"
+          [yAxisLabel]="'Stores'">
+        </ngx-charts-bar-vertical>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Customer trends ────────────────────────────────────────────────── -->
+<div class="row g-3 mb-3" *isAuth="'customers'">
+  <div class="col-12">
+    <div class="small fw-semibold text-muted text-uppercase mb-1" style="letter-spacing:.05em">Customer trends</div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Customers served per day <span class="small text-muted fw-normal">(last 14 days)</span></h5>
+        <ngx-charts-bar-vertical
+          [view]="[420,220]"
+          [results]="customersPerDay"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="true"
+          [xAxisLabel]="'Date'"
+          [yAxisLabel]="'Customers'">
+        </ngx-charts-bar-vertical>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Top customers <span class="small text-muted fw-normal">(this month by revenue)</span></h5>
+        <ngx-charts-bar-horizontal
+          [view]="[420,220]"
+          [results]="topCustomers"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="false"
+          [xAxisLabel]="'Revenue (₹)'">
+        </ngx-charts-bar-horizontal>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Product trends ─────────────────────────────────────────────────── -->
+<div class="row g-3 mb-3" *isAuth="'products'">
+  <div class="col-12">
+    <div class="small fw-semibold text-muted text-uppercase mb-1" style="letter-spacing:.05em">Product trends</div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Top products by quantity <span class="small text-muted fw-normal">(this month)</span></h5>
+        <ngx-charts-bar-horizontal
+          [view]="[420,260]"
+          [results]="topProductsByQty"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="false"
+          [xAxisLabel]="'Units sold'">
+        </ngx-charts-bar-horizontal>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Top products by revenue <span class="small text-muted fw-normal">(this month)</span></h5>
+        <ngx-charts-bar-horizontal
+          [view]="[420,260]"
+          [results]="topProductsByRevenue"
+          [xAxis]="true"
+          [yAxis]="true"
+          [legend]="false"
+          [showXAxisLabel]="true"
+          [showYAxisLabel]="false"
+          [xAxisLabel]="'Revenue (₹)'">
+        </ngx-charts-bar-horizontal>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Action tables ──────────────────────────────────────────────────── -->
+<div class="row g-3 mb-3">
+  <div class="col-12 col-xl-4" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Pending approvals</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>PO</th>
+                <th>Vendor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of summary?.pendingapprovals">
+                <td>{{item.id}}</td>
+                <td>{{item.vendorname || '-'}}</td>
+                <td><span class="badge bg-warning text-dark">{{item.approvalstatus || item.status}}</span></td>
+              </tr>
+              <tr *ngIf="!summary?.pendingapprovals?.length">
+                <td colspan="3" class="text-center text-muted py-3">No pending approvals.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Overdue payables</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Vendor</th>
+                <th class="text-end">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of summary?.outstandinginvoices">
+                <td>{{item.invoice_no}}</td>
+                <td>{{item.business_name || '-'}}</td>
+                <td class="text-end">{{item.balance_amount | number:'1.2-2'}}</td>
+              </tr>
+              <tr *ngIf="!summary?.outstandinginvoices?.length">
+                <td colspan="3" class="text-center text-muted py-3">No overdue invoices.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4" *isAuth="'products'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Low stock</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="text-end">Reorder qty</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of summary?.lowstock">
+                <td>
+                  <div>{{item.title}}</div>
+                  <div class="small text-muted">{{item.reason_summary}}</div>
+                </td>
+                <td class="text-end fw-semibold">{{item.final_qty}}</td>
+              </tr>
+              <tr *ngIf="!summary?.lowstock?.length">
+                <td colspan="2" class="text-center text-muted py-3">No low stock items.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Open shifts table ──────────────────────────────────────────────── -->
+<div class="card" *isAuth="'store'">
+  <div class="card-body">
+    <h5 class="card-title">Open shifts</h5>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Store</th>
+            <th>Shift</th>
+            <th>Staff</th>
+            <th class="text-end">Expected cash</th>
+            <th class="text-end">Variance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let shift of summary?.openShifts">
+            <td>{{shift.store_location || '-'}}</td>
+            <td>{{shift.name}} <span class="small text-muted">({{shift.shiftdate}})</span></td>
+            <td>{{shift.assigned_user || '-'}}</td>
+            <td class="text-end">{{shift.expectedcash | number:'1.2-2'}}</td>
+            <td class="text-end" [class.text-danger]="shift.variance < 0" [class.text-success]="shift.variance > 0">
+              {{shift.variance | number:'1.2-2'}}
+            </td>
+          </tr>
+          <tr *ngIf="!summary?.openShifts?.length">
+            <td colspan="5" class="text-center text-muted py-3">No open shifts.</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
