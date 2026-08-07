@@ -13,6 +13,8 @@ import { PurchaseInvoice } from "./purchase-invoice.entity";
 import { Vendor } from "./vendor.entity";
   
 @Index("vendor_payment_pk", ["id"], { unique: true })
+@Index("vendor_payment_vendor_idx", ["vendorid"])
+@Index("vendor_payment_invoice_idx", ["invoiceid"])
 @Entity("vendor_payment")
 export class VendorPayment extends BaseEntity {
 
@@ -36,6 +38,24 @@ export class VendorPayment extends BaseEntity {
     
     @Column("character varying", { name: "trans_ref" })
     transref: string;
+
+    @Column("character varying", { name: "communication_status", nullable: true })
+    communicationstatus: string | null;
+
+    @Column("character varying", { name: "communication_channel", nullable: true })
+    communicationchannel: string | null;
+
+    @Column("timestamp without time zone", { name: "communicated_at", nullable: true })
+    communicatedat: Date | null;
+
+    @Column("timestamp without time zone", { name: "acknowledged_at", nullable: true })
+    acknowledgedat: Date | null;
+
+    @Column("character varying", { name: "acknowledgement_reference", nullable: true })
+    acknowledgementreference: string | null;
+
+    @Column("character varying", { name: "remarks", nullable: true })
+    remarks: string | null;
     
     @ManyToOne(
       () => Vendor,

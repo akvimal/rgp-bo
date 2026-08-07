@@ -32,13 +32,25 @@ import { VendorPayment } from "./vendor-payment.entity";
     @Column("character varying", { name: "gr_no" })
     grno: string;
 
+    @Column("date", { name: "due_date", nullable: true })
+    duedate: string | null;
+
+    @Column("character varying", { name: "payment_status", nullable: true })
+    paymentstatus: string | null;
+
+    @Column("character varying", { name: "reference_no", nullable: true })
+    referenceno: string | null;
+
     @Column("double precision", { name: "total", precision: 53 })
     total: number;
 
     @Column("character varying", { name: "comments" })
     comments: string;
+
+    @Column("character varying", { name: "notes", nullable: true })
+    notes: string | null;
   
-    @Column("integer", { name: "vendor_id", unique: true })
+    @Column("integer", { name: "vendor_id" })
     vendorid: number;
     
     @Column("character varying", { name: "purchase_order_id" })

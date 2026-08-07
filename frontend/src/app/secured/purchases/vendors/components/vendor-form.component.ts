@@ -72,6 +72,6 @@ export class VendorFormComponent{
       }
 
       gotoList() {
-        this.router.navigate(['/secure/purchases/vendors'])
+        this.router.navigate(['/secure/purchases/vendors/list'])
       }
 }

@@ -5,18 +5,34 @@
             <div class="col-lg-12 col-md-12 label text-center h4">{{invoice.vendor?.name}}</div>
             <div class="col-lg-3 col-md-3 label"><strong>Invoice No:</strong> {{invoice.invoiceno}}</div>
             <div class="col-lg-3 col-md-3 label"><strong>Invoice Date:</strong> {{invoice.invoicedate | date : 'dd/MM/yyyy'}}</div>
-
-            <!-- <div class="col-lg-4 col-md-4 label">PO ID: {{invoice.purchaseorderid}}</div> -->
+            <div class="col-lg-3 col-md-3 label"><strong>Due Date:</strong> {{invoice.duedate | date : 'dd/MM/yyyy'}}</div>
             <div class="col-lg-3 col-md-3 label text-end"><strong>GRN:</strong><span class="text-success"> {{invoice.grno}}</span></div>
-            <div class="col-lg-3 col-md-3 label text-end"><strong>Status:</strong> {{invoice.status}}
+            <div class="col-lg-3 col-md-3 label"><strong>Invoice Status:</strong> {{invoice.status}}</div>
+            <div class="col-lg-3 col-md-3 label"><strong>Payment Status:</strong> {{invoice.paymentstatus}}</div>
+            <div class="col-lg-3 col-md-3 label"><strong>Total:</strong> {{invoice.total | number:'1.2-2'}}</div>
+            <div class="col-lg-3 col-md-3 label"><strong>Paid:</strong> {{(invoice.paidamount || 0) | number:'1.2-2'}}</div>
+            <div class="col-lg-3 col-md-3 label"><strong>Balance:</strong> {{(invoice.balanceamount || 0) | number:'1.2-2'}}</div>
+            <div class="col-lg-3 col-md-3 label text-end"><strong>Reference:</strong> {{invoice.referenceno || '-' }}
                 <a [routerLink]="['../../edit',invoice.id]">Edit</a>
             </div>
         </div>
-        
+        <div class="row mt-2" *ngIf="invoice.notes">
+            <div class="col-lg-12 col-md-12 label"><strong>Notes:</strong> {{invoice.notes}}</div>
+        </div>
     </div>
 </div>
 <div class="card p-0" *ngIf="invoice.status === 'NEW'">
     <div class="card-body">
+            <div class="row mb-3" *ngIf="invoice.purchaseorderid">
+                <div class="col-lg-12 d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Linked PO:</strong> {{invoice.purchaseorderid}}
+                        <span class="text-muted ms-2">Import linked request lines as draft invoice items.</span>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="importOrderItems()">Import PO Items</button>
+                </div>
+                <div class="col-lg-12 mt-2 text-success" *ngIf="importFeedback">{{importFeedback}}</div>
+            </div>
             <app-invoice-item-form [invoiceid]="invoice.id" (added)="fetchItems($event)"></app-invoice-item-form>
         </div>
     </div>
@@ -144,22 +160,13 @@
         </div> -->
     </div>
 </div>
-        <!-- <app-invoice-payment *ngIf="invoice.status === 'RECEIVED'" 
-            [invoiceid]="invoice.id" [invoiceamt]="invoice.total"
-            (payUpdated)="onPaid($event)"></app-invoice-payment>
-
-        <div class="row" *ngIf="invoice.status === 'PAID'">
-            <div class="col-lg-12">
-                <h5>Payment Info</h5>
-                <ul>
-                    <li>Date: {{invoice.paydate}}</li>
-                    <li>Mode: {{invoice.paymode}}</li>
-                    <li>Amount: {{invoice.payamount}}</li>
-                    <li>Ref #: {{invoice.payrefno}}</li>
-                    <li>Comments: {{invoice.paycomments}}</li>
-                </ul>
-            </div>
-        </div> -->
+<app-invoice-payment
+    [invoiceid]="invoice.id"
+    [vendorid]="invoice.vendorid"
+    [invoiceamt]="invoice.total"
+    [balanceamount]="invoice.balanceamount"
+    [paymentstatus]="invoice.paymentstatus"
+    (payUpdated)="onPaid($event)"></app-invoice-payment>
 
         <p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()"
         [(visible)]="displayEditItem" [modal]="true">

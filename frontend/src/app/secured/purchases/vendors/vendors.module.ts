@@ -10,10 +10,12 @@ import { VendorsComponent } from "./components/vendors.component";
 import {TableModule} from 'primeng/table';
 
 const routes: Routes = [
-  { path: '', redirectTo: 'list'},
-    {path: 'list', component: VendorListComponent, canActivate:[AuthGuard]},
-    {path: 'new', component: VendorFormComponent, canActivate:[AuthGuard]},
-    {path: 'edit/:id', component: VendorFormComponent, canActivate:[AuthGuard]}
+  { path: '', component: VendorsComponent, canActivate:[AuthGuard], children: [
+    { path: '', redirectTo: 'list' },
+    { path: 'list', component: VendorListComponent },
+    { path: 'new', component: VendorFormComponent },
+    { path: 'edit/:id', component: VendorFormComponent }
+  ]}
 ];
 
 @NgModule({

@@ -1,6 +1,12 @@
 <div class="row">
   <div class="col-12 mt-2">
-    <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button class="btn btn-primary">Add New</button></a>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button class="btn btn-primary">Add New</button></a>
+      <div class="btn-group">
+        <a class="btn btn-outline-primary" [class.active]="!isOutstanding" [routerLink]="['/secure/purchases/invoices/list']">Invoices</a>
+        <a class="btn btn-outline-primary" [class.active]="isOutstanding" [routerLink]="['/secure/purchases/invoices/outstanding']">Outstanding</a>
+      </div>
+    </div>
   </div>
   <div class="col-12">
     <p-table #dt1 [value]="invoices" 
@@ -24,6 +30,9 @@
         <p-sortIcon field="invoice_date"></p-sortIcon>
         <p-columnFilter type="date" field="invoice_date" display="menu"></p-columnFilter>
       </th>
+      <th pSortableColumn="due_date">Due
+        <p-sortIcon field="due_date"></p-sortIcon>
+      </th>
       <th pSortableColumn="business_name">Vendor
         <p-sortIcon field="business_name"></p-sortIcon>
         <p-columnFilter type="text" field="business_name" display="menu"></p-columnFilter>
@@ -34,9 +43,19 @@
         <p-sortIcon field="total"></p-sortIcon>
         <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
       </th>
+      <th pSortableColumn="paid_amount">Paid
+        <p-sortIcon field="paid_amount"></p-sortIcon>
+      </th>
+      <th pSortableColumn="balance_amount">Balance
+        <p-sortIcon field="balance_amount"></p-sortIcon>
+      </th>
       <th pSortableColumn="status">Status
         <p-sortIcon field="status"></p-sortIcon>
         <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
+      </th>
+      <th pSortableColumn="payment_status">Payment
+        <p-sortIcon field="payment_status"></p-sortIcon>
+        <p-columnFilter type="text" field="payment_status" display="menu"></p-columnFilter>
       </th>
       <!-- <th  pSortableColumn="category">Actions</th> -->
       <!-- <th></th> -->
@@ -51,10 +70,14 @@
         <!-- <td>{{p.id}}</td> -->
         <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
       <td style="text-align: center;">{{p.invoice_date | date : 'dd/MM/yy'}}</td>
+      <td style="text-align: center;">{{p.due_date | date : 'dd/MM/yy'}}</td>
       <td>{{p.business_name}}</td>
       <td style="text-align: center;">{{p.items}}</td>
       <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
+      <td style="text-align: right">{{p.paid_amount | number:'0.0-9'}}</td>
+      <td style="text-align: right">{{p.balance_amount | number:'0.0-9'}}</td>
       <td style="text-align: center;">{{p.status}}</td>
+      <td style="text-align: center;">{{p.payment_status}}</td>
       <!-- <td>
         <span *ngIf="p.status === 'NEW'">
       <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">

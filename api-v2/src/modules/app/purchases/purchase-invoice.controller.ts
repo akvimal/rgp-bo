@@ -14,6 +14,11 @@ export class PurchaseInvoiceController {
 
     constructor(private purchaseInvoiceService:PurchaseInvoiceService){}
 
+    @Get('/outstanding')
+    async findOutstanding(@Query() query: any) {
+      return this.purchaseInvoiceService.findOutstanding(query);
+    }
+
     @Get('/:id')
     async findById(@Param('id') id: string) {
       return this.purchaseInvoiceService.findById(id);
@@ -21,10 +26,14 @@ export class PurchaseInvoiceController {
 
     @Get()
     async findByUnique(@Query() query: any) {
-      if(Object.keys(query).length > 0)
+      const hasFilter = Object.keys(query).some(k => !['page', 'limit'].includes(k));
+      if (hasFilter)
         return this.purchaseInvoiceService.findByUnique(query);
-      else
-        return this.purchaseInvoiceService.findAll();
+      else {
+        const page = query.page ? +query.page : 1;
+        const limit = query.limit ? +query.limit : 50;
+        return this.purchaseInvoiceService.findAll(page, limit);
+      }
     }
 
     @Post()

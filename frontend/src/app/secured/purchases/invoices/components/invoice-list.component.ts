@@ -1,4 +1,5 @@
 import { Component } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import { InvoiceService } from "../invoices.service";
 
 @Component({
@@ -9,16 +10,21 @@ export class InvoiceListComponent {
     invoices:any = [];
     displayError:boolean = false;
     errorMessage:string = '';
+    isOutstanding:boolean = false;
     
-    constructor(private service:InvoiceService){}
+    constructor(private service:InvoiceService, private route:ActivatedRoute){}
 
     ngOnInit(){
-        this.fetchInvoices()
+        this.route.url.subscribe(segments => {
+          this.isOutstanding = segments?.[0]?.path === 'outstanding';
+          this.fetchInvoices();
+        });
     }
 
     fetchInvoices(){
-      this.service.findAll().subscribe((data:any) => {
-        this.invoices = data.map((i:any) => {
+      const request = this.isOutstanding ? this.service.findOutstanding() : this.service.findAll();
+      request.subscribe((data:any) => {
+        this.invoices = (data || []).map((i:any) => {
           return {...i, received:i.status==='RECEIVED'}
         });
       });

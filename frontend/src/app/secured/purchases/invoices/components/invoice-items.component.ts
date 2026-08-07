@@ -20,6 +20,8 @@ export class InvoiceItemsComponent {
     taxtotal:number = 0;
     disctotal:number = 0;
     nettotal:number = 0;
+    outstandingBalance:number = 0;
+    importFeedback:string = '';
 
     constructor(private route:ActivatedRoute, private invService: InvoiceService){}
 
@@ -46,6 +48,7 @@ export class InvoiceItemsComponent {
                 return {...i, selected:false}
             });
             this.nettotal = this.grosstotal - this.disctotal + this.taxtotal;
+            this.outstandingBalance = +(inv.balanceamount || 0);
             
             if(this.items) {
                 this.itemSelected =  this.items.filter((i:any) => i.selected).length > 0;
@@ -92,6 +95,14 @@ export class InvoiceItemsComponent {
     
     confirmInvoice(){
         this.invService.confirm([this.invoice.id],{status:'COMPLETE',comments:this.feedback}).subscribe(data => {
+            this.fetchItems(this.invoice.id);
+        });
+    }
+
+    importOrderItems(){
+        this.importFeedback = '';
+        this.invService.importOrderItems(this.invoice.id).subscribe((result:any) => {
+            this.importFeedback = result.message || 'PO items imported.';
             this.fetchItems(this.invoice.id);
         });
     }

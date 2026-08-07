@@ -1,9 +1,42 @@
 <div class="card">
     <div class="card-body">
-      <h5 class="card-title">Payment Info</h5>
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="card-title">Payments</h5>
+        <div class="text-end">
+          <div><strong>Status:</strong> {{paymentstatus || 'Unpaid'}}</div>
+          <div><strong>Balance:</strong> {{(balanceamount || 0) | number:'1.2-2'}}</div>
+        </div>
+      </div>
+
+      <div class="table-responsive mb-4" *ngIf="payments.length > 0">
+        <table class="table table-sm table-bordered align-middle">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Mode</th>
+              <th>Reference</th>
+              <th>Communication</th>
+              <th class="text-end">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let payment of payments">
+              <td>{{payment.paydate | date:'dd/MM/yyyy'}}</td>
+              <td>{{payment.paymode}}</td>
+              <td>{{payment.transref || '-'}}</td>
+              <td>{{payment.communicationstatus || 'Not Sent'}}<span *ngIf="payment.communicationchannel"> / {{payment.communicationchannel}}</span></td>
+              <td class="text-end">{{payment.amount | number:'1.2-2'}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="(balanceamount || 0) <= 0" class="alert alert-light border mb-0">
+        This invoice is fully paid. Payment history remains visible, and new payments are disabled.
+      </div>
 
       <!-- Multi Columns Form -->
-      <form class="row g-3" [formGroup]="form" (ngSubmit)="submit()">
+      <form class="row g-3" *ngIf="(balanceamount || 0) > 0" [formGroup]="form" (ngSubmit)="submit()">
         <div class="row">
         <div class="col-md-4">
           <label for="paydate" class="form-label">Date</label>
@@ -12,9 +45,8 @@
         <div class="col-md-4">
           <label for="paymode" class="form-label">Mode</label>
           <select class="form-select" id="paymode" formControlName="paymode" aria-label="Mode">
-            <option>Select</option>
-            <option value="Cash">Cash</option>
-            <option value="Transfer">Transfer</option>
+            <option value="">Select</option>
+            <option *ngFor="let mode of paymentModes" [value]="mode">{{mode}}</option>
           </select>
           </div>
           <div class="col-md-4">
@@ -27,14 +59,28 @@
             <label for="payamount" class="form-label">Amount</label>
             <input type="text" class="form-control" id="payamount" formControlName="payamount">
           </div>
+          <div class="col-md-4">
+            <label for="communicationstatus" class="form-label">Communication Status</label>
+            <select class="form-select" id="communicationstatus" formControlName="communicationstatus">
+              <option *ngFor="let status of communicationStatuses" [value]="status">{{status}}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="communicationchannel" class="form-label">Channel</label>
+            <select class="form-select" id="communicationchannel" formControlName="communicationchannel">
+              <option *ngFor="let channel of communicationChannels" [value]="channel">{{channel}}</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
           <div class="col-md-8">
-            <label for="paycomments" class="form-label">Comments</label>
+            <label for="paycomments" class="form-label">Remarks</label>
             <textarea class="form-control" id="paycomments" formControlName="paycomments"></textarea>
           </div>
 
         </div>
         <div class="text-center">
-          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
+          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Record Payment</button>
         </div>
       </form><!-- End Multi Columns Form -->
 

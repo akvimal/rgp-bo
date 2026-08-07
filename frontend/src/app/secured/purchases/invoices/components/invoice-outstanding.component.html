@@ -1,0 +1,78 @@
+<div class="row mt-2">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted">Outstanding Invoices</div>
+        <div class="h4 mb-0">{{totals.invoices}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted">Outstanding Amount</div>
+        <div class="h4 mb-0">{{totals.outstanding | number:'1.2-2'}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted">Overdue Amount</div>
+        <div class="h4 mb-0 text-danger">{{totals.overdue | number:'1.2-2'}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-body">
+    <div class="row align-items-end">
+      <div class="col-md-4">
+        <label for="vendorfilter" class="form-label">Vendor</label>
+        <select id="vendorfilter" class="form-select" [(ngModel)]="vendorid" (change)="fetchOutstanding()">
+          <option value="">All Vendors</option>
+          <option *ngFor="let vendor of vendors" [value]="vendor.id">{{vendor.name}}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive mt-3">
+      <table class="table table-bordered table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Date</th>
+            <th>Due</th>
+            <th>Vendor</th>
+            <th class="text-end">Total</th>
+            <th class="text-end">Paid</th>
+            <th class="text-end">Balance</th>
+            <th>Payment Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let invoice of invoices">
+            <td>{{invoice.invoice_no}}</td>
+            <td>{{invoice.invoice_date | date:'dd/MM/yyyy'}}</td>
+            <td>{{invoice.due_date | date:'dd/MM/yyyy'}}</td>
+            <td>{{invoice.business_name}}</td>
+            <td class="text-end">{{invoice.total | number:'1.2-2'}}</td>
+            <td class="text-end">{{invoice.paid_amount | number:'1.2-2'}}</td>
+            <td class="text-end">{{invoice.balance_amount | number:'1.2-2'}}</td>
+            <td>
+              <span [ngClass]="{'text-danger': invoice.is_overdue}">{{invoice.payment_status}}</span>
+            </td>
+            <td class="text-center">
+              <a [routerLink]="['../items', invoice.id]" class="btn btn-sm btn-outline-primary">Open</a>
+            </td>
+          </tr>
+          <tr *ngIf="invoices.length === 0">
+            <td colspan="9" class="text-center text-muted">No outstanding invoices.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

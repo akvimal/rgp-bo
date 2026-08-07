@@ -25,6 +25,9 @@ export class InvoiceFormComponent {
         vendorid: new FormControl('',Validators.required),
         invoiceno: new FormControl('',[Validators.required,Validators.pattern('^[a-zA-Z0-9-]+$')]),
         invoicedate: new FormControl(this.getCurrentDateStr(),Validators.required),
+        duedate: new FormControl(this.getCurrentDateStr(),Validators.required),
+        referenceno: new FormControl(''),
+        notes: new FormControl(''),
         purchaseorderid: new FormControl(''),
         grno: new FormControl('')
       });
@@ -48,6 +51,9 @@ export class InvoiceFormComponent {
         this.form.controls['vendorid'].setValue(data.vendorid);
         this.form.controls['invoiceno'].setValue(data.invoiceno);
         this.form.controls['invoicedate'].setValue(data.invoicedate);
+        this.form.controls['duedate'].setValue(data.duedate || data.invoicedate);
+        this.form.controls['referenceno'].setValue(data.referenceno);
+        this.form.controls['notes'].setValue(data.notes);
         
         this.form.controls['purchaseorderid'].setValue(data.purchaseorderid);
         this.form.controls['grno'].setValue(data.grno);
@@ -68,7 +74,7 @@ export class InvoiceFormComponent {
 
     fetchOrders(event:any){
       this.form.controls['purchaseorderid'].setValue('')
-      this.poService.findAllByCriteria({status:'SUBMITTED', vendorid:event.target.value}).subscribe(data => this.orders = data);
+      this.poService.findAllByCriteria({status:'SUBMITTED', approvalstatus:'Approved', vendorid:event.target.value}).subscribe(data => this.orders = data);
     }
 
     getCurrentDateStr(){
@@ -93,6 +99,9 @@ export class InvoiceFormComponent {
       const obj = { 
         invoiceno: this.form.value.invoiceno.toUpperCase(), 
         invoicedate: this.form.value.invoicedate,
+        duedate: this.form.value.duedate,
+        referenceno: this.form.value.referenceno,
+        notes: this.form.value.notes,
         vendorid: this.form.value.vendorid,
         purchaseorderid: this.form.value.purchaseorderid,
         grno: this.form.value.grno

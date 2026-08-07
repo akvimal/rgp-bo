@@ -3,15 +3,17 @@ export interface Invoice {
     invoiceno?:string,
     grno?:string,
     invoicedate?:string,
+    duedate?:string,
     vendorid?:number,
     purchaseorderid?:number,
     vendor?:any,
     status?:string,
+    paymentstatus?:string,
     total?:number,
+    paidamount?:number,
+    balanceamount?:number,
+    referenceno?:string,
+    notes?:string,
     items?:any[],
-    payamount?:number,
-    paycomments?:string,
-    paydate?:string,
-    paymode?:string,
-    payrefno?:string
+    payments?:any[]
 }

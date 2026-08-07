@@ -3,6 +3,7 @@ import { Injectable } from "@angular/core";
 
 import { InvoiceItem } from "./invoice-item.model";
 import { Invoice } from "./invoice.model";
+import { VendorPayment } from "./vendor-payment.model";
 import { environment } from "./../../../../environments/environment";
 
 @Injectable({
@@ -22,6 +23,10 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchases`);
     }
 
+    findOutstanding(params?:any){
+        return this.http.get(`${this.apiurl}/purchases/outstanding`, { params });
+    }
+
     save(invoice:Invoice){
         return this.http.post(`${this.apiurl}/purchases`,invoice);
     }
@@ -36,6 +41,18 @@ export class InvoiceService {
 
     remove(id:number){
         return this.http.delete(`${this.apiurl}/purchases/${id}`);//
+    }
+
+    findPayments(invoiceid:any){
+        return this.http.get(`${this.apiurl}/vendorpayments/invoice/${invoiceid}`);
+    }
+
+    savePayment(payment:VendorPayment){
+        return this.http.post(`${this.apiurl}/vendorpayments`, payment);
+    }
+
+    updatePayment(id:number, payment:VendorPayment){
+        return this.http.put(`${this.apiurl}/vendorpayments/${id}`, payment);
     }
 
     //////
@@ -62,6 +79,10 @@ export class InvoiceService {
             }
           }
         return this.http.post(`${this.apiurl}/purchaseitems`,obj);
+    }
+
+    importOrderItems(invoiceid:any){
+        return this.http.post(`${this.apiurl}/purchaseitems/import-order/${invoiceid}`, {});
     }
 
     updateItems(ids:any, values:any){
