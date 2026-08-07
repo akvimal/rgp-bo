@@ -101,6 +101,28 @@ CREATE TABLE public.documents (
 );
 
 
+-- public.delivery_partner definition
+
+-- DROP TABLE public.delivery_partner;
+
+CREATE TABLE public.delivery_partner (
+	id serial4 NOT NULL,
+	"name" varchar(80) NOT NULL,
+	contact_name varchar(80) NULL,
+	contact_phone varchar(40) NULL,
+	address varchar(200) NULL,
+	"comments" varchar(400) NULL,
+	active bool DEFAULT true NOT NULL,
+	created_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	created_by int4 NOT NULL,
+	updated_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_by int4 NOT NULL,
+	archive bool DEFAULT false NOT NULL,
+	CONSTRAINT delivery_partner_pk PRIMARY KEY (id),
+	CONSTRAINT delivery_partner_un UNIQUE (name)
+);
+
+
 -- public.langchain_chat_histories definition
 
 -- Drop table
@@ -128,6 +150,25 @@ CREATE TABLE public.lookup (
 	value varchar NOT NULL,
 	active bool DEFAULT true NOT NULL,
 	CONSTRAINT lookup_pk PRIMARY KEY (id)
+);
+
+
+-- public.app_setting definition
+
+CREATE TABLE public.app_setting (
+	id serial4 NOT NULL,
+	category varchar(80) NULL,
+	setting_key varchar(120) NOT NULL,
+	setting_value varchar(400) NULL,
+	description varchar(400) NULL,
+	active bool DEFAULT true NOT NULL,
+	archive bool DEFAULT false NOT NULL,
+	created_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	created_by int4 NULL,
+	updated_by int4 NULL,
+	CONSTRAINT app_setting_pk PRIMARY KEY (id),
+	CONSTRAINT app_setting_key_un UNIQUE (setting_key)
 );
 
 
@@ -320,9 +361,11 @@ CREATE TABLE public.purchase_invoice (
 	id serial4 NOT NULL,
 	invoice_no varchar NOT NULL,
 	invoice_date date NOT NULL,
+	due_date date NULL,
 	vendor_id int4 NOT NULL,
 	active bool DEFAULT true NOT NULL,
 	status varchar DEFAULT 'NEW'::character varying NOT NULL,
+	payment_status varchar DEFAULT 'Unpaid'::character varying NULL,
 	gr_no varchar NULL,
 	archive bool DEFAULT false NOT NULL,
 	created_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -330,7 +373,9 @@ CREATE TABLE public.purchase_invoice (
 	created_by int4 NULL,
 	updated_by int4 NULL,
 	purchase_order_id varchar NULL,
+	reference_no varchar NULL,
 	"comments" varchar NULL,
+	notes varchar NULL,
 	total float4 NULL,
 	gr_date date NULL,
 	CONSTRAINT purchase_invoice_pk PRIMARY KEY (id),
@@ -357,6 +402,17 @@ CREATE TABLE public.purchase_order (
 	created_by int4 NULL,
 	updated_by int4 NULL,
 	po_number varchar NULL,
+	expected_date date NULL,
+	source_summary varchar NULL,
+	approval_status varchar NULL,
+	approval_reason varchar(400) NULL,
+	approval_requested_by int4 NULL,
+	approval_requested_at timestamptz NULL,
+	approved_by int4 NULL,
+	approved_at timestamptz NULL,
+	rejected_by int4 NULL,
+	rejected_at timestamptz NULL,
+	rejection_reason varchar(400) NULL,
 	CONSTRAINT purchase_order_pk PRIMARY KEY (id),
 	CONSTRAINT purchase_order_fk FOREIGN KEY (vendor_id) REFERENCES public.vendor(id)
 );
@@ -371,11 +427,22 @@ CREATE TABLE public.purchase_order (
 CREATE TABLE public.purchase_request (
 	id serial4 NOT NULL,
 	product_id int4 NULL,
+	vendor_id int4 NULL,
 	request_type varchar DEFAULT 'REFILL'::character varying NOT NULL,
+	source varchar NULL,
+	priority varchar NULL,
 	qty int4 NOT NULL,
+	suggested_qty int4 NULL,
+	ordered_qty int4 NULL,
+	fulfilled_qty int4 NULL,
 	order_id int4 NULL,
 	status varchar DEFAULT 'NEW'::character varying NOT NULL,
+	customer_name varchar NULL,
+	customer_phone varchar NULL,
+	needed_by date NULL,
+	source_ref varchar NULL,
 	"comments" varchar NULL,
+	notes varchar NULL,
 	active bool DEFAULT true NULL,
 	archive bool DEFAULT false NOT NULL,
 	created_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -384,6 +451,7 @@ CREATE TABLE public.purchase_request (
 	updated_by int4 NULL,
 	CONSTRAINT purchase_request_pk PRIMARY KEY (id),
 	CONSTRAINT purchase_request_fk FOREIGN KEY (product_id) REFERENCES public.product(id),
+	CONSTRAINT purchase_request_vendor_fk FOREIGN KEY (vendor_id) REFERENCES public.vendor(id),
 	CONSTRAINT purchase_request_fk1 FOREIGN KEY (order_id) REFERENCES public.purchase_order(id)
 );
 
@@ -441,8 +509,18 @@ CREATE TABLE public.sale_deliveries (
 	receiver_address varchar NULL,
 	delivery_date date NULL,
 	delivery_by varchar NULL,
+	delivery_method varchar NULL,
+	courier_partner varchar NULL,
+	delivered_at timestamp NULL,
+	confirmed bool DEFAULT false NULL,
+	confirmed_by varchar NULL,
+	confirmed_at timestamp NULL,
 	charges float4 NULL,
+	actual_cost float4 NULL,
 	status varchar NULL,
+	payment_mode varchar NULL,
+	collection_status varchar NULL,
+	failure_reason varchar NULL,
 	"comments" varchar NULL,
 	active bool DEFAULT true NULL,
 	created_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -470,6 +548,18 @@ CREATE TABLE public.vendor_payment (
 	amount float4 NOT NULL,
 	pay_mode varchar NULL,
 	trans_ref varchar NULL,
+	communication_status varchar NULL,
+	communication_channel varchar NULL,
+	communicated_at timestamp NULL,
+	acknowledged_at timestamp NULL,
+	acknowledgement_reference varchar NULL,
+	remarks varchar NULL,
+	active bool DEFAULT true NOT NULL,
+	archive bool DEFAULT false NOT NULL,
+	created_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	created_by int4 NULL,
+	updated_on timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	updated_by int4 NULL,
 	CONSTRAINT vendor_payment_pk PRIMARY KEY (id),
 	CONSTRAINT vendor_payment_fk FOREIGN KEY (vendor_id) REFERENCES public.vendor(id),
 	CONSTRAINT vendor_payment_fk_1 FOREIGN KEY (invoice_id) REFERENCES public.purchase_invoice(id)

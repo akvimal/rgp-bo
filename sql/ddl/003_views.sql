@@ -60,6 +60,7 @@ AS SELECT pii.id,
      LEFT JOIN ( SELECT product_qtychange.item_id,
             sum(product_qtychange.qty) AS bal
            FROM product_qtychange
+          WHERE coalesce(product_qtychange.status, 'APPROVED') = 'APPROVED'
           GROUP BY product_qtychange.item_id) pq ON pq.item_id = pii.id
      LEFT JOIN app_user au ON pii.verified_by = au.id
   ORDER BY p.title, pii.exp_date DESC;
@@ -156,6 +157,7 @@ AS SELECT p.id,
              LEFT JOIN sale s ON s.id = si.sale_id
           GROUP BY i.invoice_date, i.invoice_no, pii.id, pii.tax_pcnt, pii.mrp_cost, pii.product_id, pii.batch, pii.exp_date, pii.qty, pii.status) pi ON pi.product_id = p.id
      LEFT JOIN product_qtychange pq ON pq.item_id = pi.id
+      AND coalesce(pq.status, 'APPROVED') = 'APPROVED'
   GROUP BY p.id, p.title, pi.invoice_date, pi.invoice_no, pi.tax_pcnt, pi.mrp_cost, pi.id, pi.batch, pi.exp_date, pi.last_sale_date, pi.qty, pi.status, pi.sold
   ORDER BY p.title;
 
@@ -296,6 +298,7 @@ AS SELECT pii.id,
      LEFT JOIN ( SELECT pc.item_id,
             sum(pc.qty) AS adj_qty
            FROM product_qtychange pc
+          WHERE coalesce(pc.status, 'APPROVED') = 'APPROVED'
           GROUP BY pc.item_id) y ON y.item_id = pii.id
   WHERE pii.status::text = 'VERIFIED'::text;
 
