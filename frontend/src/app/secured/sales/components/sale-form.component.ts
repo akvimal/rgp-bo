@@ -7,6 +7,7 @@ import { SaleHelper } from "../sale.helper";
 import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
 import { CustomersService } from "../../customers/customers.service";
+import { OperatorContextService } from "src/app/@core/operator-context.service";
 
 @Component({
     templateUrl: 'sale-form.component.html'
@@ -28,6 +29,7 @@ export class SaleFormComponent {
 
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
+    activeStaffName:string = '';
 
     form:FormGroup = new FormGroup({});
 
@@ -48,7 +50,8 @@ export class SaleFormComponent {
       private service: SaleService,
       private customerService: CustomersService,
       private stockService: StockService,
-      private prodUtilService: ProductUtilService){}
+      private prodUtilService: ProductUtilService,
+      private operatorContext: OperatorContextService){}
 
     ngOnInit(){
       
@@ -56,6 +59,9 @@ export class SaleFormComponent {
       this.sale['customer'] = this.customer;
       this.sale['ordertype'] = 'Walk-in';
       this.sale['deliverytype'] = 'Counter';
+      this.operatorContext.selectedOperatorName$.subscribe((name:any) => {
+        this.activeStaffName = name || '';
+      });
       //get the id from url query params
       this.route.paramMap.subscribe(params => {  
         const saleId =  params.get("id");
@@ -214,6 +220,7 @@ export class SaleFormComponent {
     }
     
     this.sale.props = {documents: this.documents};
+    this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
 
     this.service.save({...obj, billdate:new Date(), status}).subscribe((data:any) => {
       this.redirectAfterSubmit(data.status, data.id);

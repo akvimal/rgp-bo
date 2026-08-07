@@ -18,6 +18,7 @@ export class SaleViewComponent {
     finalAmt:number = 0;
     itemsCount:number = 0;
     itemsTotal:number = 0;
+    saleStaff:string = '';
 
     constructor(private route: ActivatedRoute,
       private router: Router, 
@@ -58,6 +59,9 @@ export class SaleViewComponent {
             const {mobile,name,email} = data.customer;
             this.sale.customer = {mobile,name,email};
           }
+          this.sale.actinguser = data.actinguser;
+          this.sale.created = data.created;
+          this.saleStaff = data?.actinguser?.fullname || data?.created?.fullname || '';
           // this.roundDecimal = (data.total - Math.round(data.total)).toFixed(2); 
           this.itemsCount = this.sale.items?.length || 0;
           this.sale.total = data.total;

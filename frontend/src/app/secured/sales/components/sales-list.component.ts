@@ -1,31 +1,58 @@
-import { Component } from "@angular/core";
+import { Component, OnDestroy } from "@angular/core";
 import { DateUtilService } from "../../date-util.service";
 import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
+import { Subscription } from "rxjs";
+import { OperatorContextService } from "src/app/@core/operator-context.service";
+import { StoreContextService } from "src/app/@core/store-context.service";
 
 @Component({
     templateUrl: './sales-list.component.html'
 })
-export class SalesListComponent {
-    
+export class SalesListComponent implements OnDestroy {
+
     sales:Sale[] = [];
-    // criteria = {billno:'',date:'',self:true,status:'',customer:''}
     date:string = '';
-    self:boolean = true;
     returnSaleId = '';
+    selectedOperatorId: number | null = null;
+    selectedStoreId: number | null = null;
+    private subs = new Subscription();
 
     openH1DrugsTab = false;
     productLevelLoaded = false;
     showReturnForm = false;
-    
+
     totals = {digital:0,cash:0,net:0};
 
-    constructor(private service:SaleService, private dateService:DateUtilService){}
+    staffSummary: any[] = [];
+    staffPeriod = 'today';
+    staffFromDate = '';
+    staffToDate = '';
+    staffTotals = {bills:0, cash:0, digi:0, net:0, returns:0, returnValue:0};
+
+    constructor(
+      private service:SaleService,
+      private dateService:DateUtilService,
+      private operatorContext: OperatorContextService,
+      private storeContext: StoreContextService
+    ){}
 
     ngOnInit(){
       this.date = this.dateService.getFormatDate(new Date());
-      this.fetchSales({date:this.date,
-        self:this.self});
+      this.staffFromDate = this.date;
+      this.staffToDate = this.date;
+      this.selectedStoreId = this.storeContext.selectedStoreId;
+      this.subs.add(
+        this.storeContext.selectedStoreId$.subscribe((storeId: any) => {
+          this.selectedStoreId = storeId;
+          this.fetchSales();
+        })
+      );
+      this.fetchSales();
+    }
+
+    ngOnDestroy(): void {
+      this.subs.unsubscribe();
     }
 
     openH1Drugs(event:any){
@@ -36,14 +63,69 @@ export class SalesListComponent {
       if(event.index === 1){
         this.productLevelLoaded = true;
       }
+      if(event.index === 2){
+        this.loadStaffSummary();
+      }
     }
 
-    fetchSales(filter:any){
+    setStaffPeriod(period: string) {
+      this.staffPeriod = period;
+      const today = this.dateService.getFormatDate(new Date());
+      if (period === 'today') {
+        this.staffFromDate = today;
+        this.staffToDate = today;
+      } else if (period === 'week') {
+        const d = new Date();
+        d.setDate(d.getDate() - d.getDay() + 1);
+        this.staffFromDate = this.dateService.getFormatDate(d);
+        this.staffToDate = today;
+      } else if (period === 'month') {
+        const d = new Date();
+        d.setDate(1);
+        this.staffFromDate = this.dateService.getFormatDate(d);
+        this.staffToDate = today;
+      }
+      if (period !== 'custom') {
+        this.loadStaffSummary();
+      }
+    }
+
+    loadStaffSummary() {
+      const params: any = {};
+      if (this.staffFromDate) params.fromdate = this.staffFromDate;
+      if (this.staffToDate) params.todate = this.staffToDate;
+      if (this.selectedStoreId !== null) params.storeid = this.selectedStoreId;
+      this.service.getStaffSummary(params).subscribe((data: any[]) => {
+        this.staffSummary = data || [];
+        this.staffTotals = this.staffSummary.reduce((acc, r) => ({
+          bills: acc.bills + (+r.sales_count || 0),
+          cash: acc.cash + (+r.cash_total || 0),
+          digi: acc.digi + (+r.digi_total || 0),
+          net: acc.net + (+r.net_total || 0),
+          returns: acc.returns + (+r.return_count || 0),
+          returnValue: acc.returnValue + (+r.return_value || 0),
+        }), {bills:0, cash:0, digi:0, net:0, returns:0, returnValue:0});
+      });
+    }
+
+    private buildCriteria(filter:any = {}){
+      const criteria:any = {...filter};
+      if (this.date && !criteria.date) {
+        criteria.date = this.date;
+      }
+      if (this.selectedStoreId !== null && this.selectedStoreId !== undefined) {
+        criteria.storeid = this.selectedStoreId;
+      }
+      return criteria;
+    }
+
+    fetchSales(filter:any = {}){
       this.totals['digital'] = 0;
       this.totals['cash'] = 0;
       this.totals['net'] = 0;
 
-        this.service.findAll({...filter,status:'COMPLETE'}).subscribe((data:any) => {
+        this.service.findAll({...this.buildCriteria(filter),status:'COMPLETE'}).subscribe((result:any) => {
+          const data: any[] = result?.data ?? (Array.isArray(result) ? result : []);
           data.forEach((sale:any) => {
             if(sale['customer']){
               sale['custinfo'] = `${sale['customer']['name']} (${sale['customer']['mobile']})`
@@ -73,9 +155,7 @@ export class SalesListComponent {
 
   filterDateSales(input:any, event:any){
       if(event === 'date')
-      this.fetchSales({date:input.target.value,self:this.self});
-      else if(event === 'self')
-      this.fetchSales({date:this.date,self:input.target.checked});
+      this.fetchSales({date:input.target.value});
     }
 
     filterBillSales(input:any){
@@ -87,14 +167,6 @@ export class SalesListComponent {
         // this.criteria.customer = id || 0;
         this.fetchSales({customer:id});
       }
-
-      // clearFilter(){
-      //   this.criteria.billno = ''
-      //   this.criteria.date = ''
-      //   this.criteria.customer = ''
-      //   this.criteria.status = ''
-      //   this.criteria.self = true
-      // }
 
       isActionAllowed(action:string,sale:any){
         let allowed = false;

@@ -20,11 +20,6 @@
         <label for="sustomer">Customer</label><br>
         <app-customer-select id="customer" (customerSelected)="filterCustomerSales($event)"></app-customer-select>
       </div>  
-      <div class="col-md-1">
-        <br>
-        <input class="form-check-input" style="width: 25px; height: 25px;" type="checkbox" name="self" id="self" [(ngModel)]="self" (change)="filterDateSales($event, 'self')"/>
-        <label for="self" style="padding-top: .5em;">&nbsp;Self</label>
-      </div>
       <!-- <div class="col-md-2">
         <label for="status">Status</label>
         <select name="filterbystatus" id="status" class="form-control" [(ngModel)]="criteria.status" (change)="fetchSales()">
@@ -75,7 +70,7 @@
               <th>Cash</th>
               <th>Total</th>
               
-              <th *ngIf="!self">Sale Person</th>
+              <th>Sale Staff</th>
               <th>Actions</th>
             </tr>
           <!-- </thead>
@@ -107,7 +102,7 @@
                 <td style="text-align: right;">{{s.cashamt}}</td>
                 <td style="text-align: right;">{{s.total}}</td>
                 
-                <td *ngIf="!self">{{s.created ? s.created.fullname : ''}}</td>
+                <td>{{s.actinguser ? s.actinguser.fullname : (s.created ? s.created.fullname : '')}}</td>
                 <td>
                   <h4 class="icon"*ngIf="isActionAllowed('Print',s)">
                     <a [routerLink]="['../pos/view',s.id]"><i class="bi bi-eye"></i></a>
@@ -149,9 +144,72 @@
     </p-tabPanel>
     <p-tabPanel header="Product Level" headerStyleClass="no-print">
       <app-sale-items *ngIf="productLevelLoaded"></app-sale-items>
-<!-- 
+<!--
       <app-sale-items [category]="'Drug'" [props]="[{id:'schedule',value:'H1'}]"></app-sale-items>
    --></p-tabPanel>
+
+    <p-tabPanel header="Staff Report" headerStyleClass="no-print">
+      <div class="mt-3">
+        <!-- Period selector -->
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+          <div class="btn-group btn-group-sm">
+            <button class="btn" [class.btn-primary]="staffPeriod==='today'" [class.btn-outline-primary]="staffPeriod!=='today'"
+              (click)="setStaffPeriod('today')">Today</button>
+            <button class="btn" [class.btn-primary]="staffPeriod==='week'" [class.btn-outline-primary]="staffPeriod!=='week'"
+              (click)="setStaffPeriod('week')">This Week</button>
+            <button class="btn" [class.btn-primary]="staffPeriod==='month'" [class.btn-outline-primary]="staffPeriod!=='month'"
+              (click)="setStaffPeriod('month')">This Month</button>
+            <button class="btn" [class.btn-primary]="staffPeriod==='custom'" [class.btn-outline-primary]="staffPeriod!=='custom'"
+              (click)="setStaffPeriod('custom')">Custom</button>
+          </div>
+          <ng-container *ngIf="staffPeriod === 'custom'">
+            <input type="date" class="form-control form-control-sm" style="width:auto" [(ngModel)]="staffFromDate" (change)="loadStaffSummary()">
+            <span class="text-muted small">to</span>
+            <input type="date" class="form-control form-control-sm" style="width:auto" [(ngModel)]="staffToDate" (change)="loadStaffSummary()">
+          </ng-container>
+        </div>
+
+        <!-- Summary table -->
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Staff</th>
+                <th class="text-end">Bills</th>
+                <th class="text-end">Cash</th>
+                <th class="text-end">Digital</th>
+                <th class="text-end">Net Sales</th>
+                <th class="text-end">Returns</th>
+                <th class="text-end">Returns Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of staffSummary">
+                <td>{{row.staff_name || 'Unassigned'}}</td>
+                <td class="text-end">{{row.sales_count}}</td>
+                <td class="text-end">₹{{row.cash_total | number:'1.0-0'}}</td>
+                <td class="text-end">₹{{row.digi_total | number:'1.0-0'}}</td>
+                <td class="text-end fw-semibold">₹{{row.net_total | number:'1.0-0'}}</td>
+                <td class="text-end text-muted">{{row.return_count}}</td>
+                <td class="text-end text-danger">{{row.return_count > 0 ? ('₹' + (row.return_value | number:'1.0-0')) : '—'}}</td>
+              </tr>
+              <tr *ngIf="staffSummary.length > 1" class="table-secondary fw-semibold">
+                <td>Total</td>
+                <td class="text-end">{{staffTotals.bills}}</td>
+                <td class="text-end">₹{{staffTotals.cash | number:'1.0-0'}}</td>
+                <td class="text-end">₹{{staffTotals.digi | number:'1.0-0'}}</td>
+                <td class="text-end">₹{{staffTotals.net | number:'1.0-0'}}</td>
+                <td class="text-end">{{staffTotals.returns}}</td>
+                <td class="text-end text-danger">₹{{staffTotals.returnValue | number:'1.0-0'}}</td>
+              </tr>
+              <tr *ngIf="!staffSummary.length">
+                <td colspan="7" class="text-center text-muted py-3">No sales data for this period.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </p-tabPanel>
   </p-tabView>
 
 

@@ -13,8 +13,12 @@ import { BaseEntity } from "./base.entity";
 import { Customer } from "./customer.entity";
 import { SaleDelivery } from "./sale-delivery.entity";
 import { SaleItem } from "./sale-item.entity";
+import { StoreShift } from "./store-shift.entity";
 
 @Index("sale_pk", ["id"], { unique: true })
+@Index("sale_customer_idx", ["customerid"])
+@Index("sale_shift_idx", ["shiftid"])
+@Index("sale_acting_user_idx", ["actinguserid"])
 @Entity("sale")
 export class Sale extends BaseEntity {
   @PrimaryGeneratedColumn({ type: "integer", name: "id" })
@@ -32,6 +36,12 @@ export class Sale extends BaseEntity {
   
   @Column("integer", { name: "customer_id"})
   customerid: number;  
+
+  @Column("integer", { name: "shift_id", nullable: true })
+  shiftid: number | null;
+
+  @Column("integer", { name: "acting_user_id", nullable: true })
+  actinguserid: number | null;
 
   @Column("character varying", { name: "status", nullable: true })
   status: string | null;
@@ -74,6 +84,14 @@ export class Sale extends BaseEntity {
   @ManyToOne(() => AppUser, (user) => user.sales)
   @JoinColumn([{ name: "created_by", referencedColumnName: "id" }])
   created: AppUser;
+
+  @ManyToOne(() => AppUser, { nullable: true })
+  @JoinColumn([{ name: "acting_user_id", referencedColumnName: "id" }])
+  actinguser: AppUser | null;
+
+  @ManyToOne(() => StoreShift, { nullable: true })
+  @JoinColumn([{ name: "shift_id", referencedColumnName: "id" }])
+  shift: StoreShift | null;
 
   @OneToMany(() => SaleItem, (item) => item.sale)
   items: SaleItem[];

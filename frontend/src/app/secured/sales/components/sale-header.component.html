@@ -1,5 +1,15 @@
-<div class="pagetitle">
+<div class="pagetitle d-flex justify-content-between align-items-center">
   <h1>Sales</h1>
+  <div class="d-flex align-items-center gap-2">
+    <label class="small text-muted mb-0">Staff</label>
+    <select class="form-select form-select-sm" style="width:auto"
+      [ngModel]="selectedOperatorId === null ? '' : selectedOperatorId"
+      (change)="changeOperator($event)"
+      aria-label="Select active staff">
+      <option value="">Select staff</option>
+      <option *ngFor="let op of operators" [value]="op.id">{{op.fullname || op.email}}</option>
+    </select>
+  </div>
 </div>
 <nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
     <ul class="nav page-menu">

@@ -42,6 +42,7 @@
                     <!-- Bill Info-->
                     <td class="text-end">
                         <strong>Bill Date:</strong>&nbsp;{{sale.billdate | date: 'dd/MM/yy'}}
+                        <span class="ms-3"><strong>Staff:</strong>&nbsp;{{activeStaffName || 'Not selected'}}</span>
                         <span *ngIf="sale.status !== 'NEW' && sale.billno">&nbsp;<strong>Bill No:</strong>&nbsp;{{sale.billno}}</span>
                     </td>
                 </tr>
@@ -108,7 +109,7 @@
         <div class="col-8 d-flex">
             <button (click)="submit('PENDING')" 
                 class="btn btn-secondary" [disabled]="total === 0" style="margin-right:1em">Save</button>
-            <button (click)="discard()" *ngIf="sale.id && sale.status !== 'NEW'"
+            <button type="button" (click)="discard()" *ngIf="sale.id && sale.status === 'PENDING'"
             class="btn btn-outline-danger">Discard</button>
             
         </div>

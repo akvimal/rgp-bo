@@ -17,6 +17,7 @@
                     <td style="text-align: right;">
                        <strong>Bill No.:</strong> {{sale.billno}}<br>
                         <strong>Bill Date:</strong> {{sale.billdate | date: 'dd/MM/yyyy'}}<br>
+                       <strong>Sale Staff:</strong> {{saleStaff || 'Not selected'}}<br>
                        <span *ngIf="sale.customer?.name"><strong>Name:</strong> {{sale.customer?.name}}</span><br>
                        <span *ngIf="sale.customer?.mobile"><strong>Phone:</strong> {{sale.customer?.mobile}}</span>
                     </td>

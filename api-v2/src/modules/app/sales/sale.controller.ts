@@ -26,7 +26,8 @@ export class SaleController {
           customer = await this.custService.save(createSaleDto.customer);
         }
         
-        return this.saleService.create({...createSaleDto, customer}, currentUser.id);
+        const actingUserId = createSaleDto.actinguserid ? Number(createSaleDto.actinguserid) : currentUser.id;
+        return this.saleService.create({...createSaleDto, customer}, currentUser.id, actingUserId);
       }
 
       @Put()
@@ -46,7 +47,8 @@ export class SaleController {
         if(customer){ //if customer not present before
           customer = await this.custService.save(updateSaleDto.customer);
         }
-        return this.saleService.updateSale({...updateSaleDto, customer}, currentUser.id);
+        const actingUserId = updateSaleDto.actinguserid ? Number(updateSaleDto.actinguserid) : currentUser.id;
+        return this.saleService.updateSale({...updateSaleDto, customer}, currentUser.id, actingUserId);
       }
 
     @Post('/items')
@@ -108,7 +110,20 @@ export class SaleController {
 
     @Get()
     async findAll(@Query() query: any, @User() currentUser: any) {
-      return this.saleService.findAll(query,query['self']==='true'?currentUser.id:null);
+      const actingUserId = query['actinguserid'] ? Number(query['actinguserid']) : null;
+      return this.saleService.findAll(query, actingUserId, currentUser?.id);
+    }
+
+    @Get('/staff-summary')
+    async getStaffSummary(@Query() query: any, @User() currentUser: any) {
+      return this.saleService.getStaffSummary(query, currentUser?.id);
+    }
+
+    @Get('/page/count')
+    async countAll(@Query() query: any, @User() currentUser: any) {
+      const actingUserId = query['actinguserid'] ? Number(query['actinguserid']) : null;
+      const result = await this.saleService.findAll({ ...query, page: '1', limit: '1' }, actingUserId, currentUser?.id);
+      return { total: result.total };
     }
 
     @Get('/saved')
@@ -155,8 +170,8 @@ export class SaleController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string) {
-      return this.saleService.delete(id);
+    remove(@Param('id') id: string, @User() currentUser: any) {
+      return this.saleService.delete(id, currentUser?.id);
     }
     
     @Delete('items/:id')

@@ -77,6 +77,10 @@ export class SaleService {
         return this.http.get(`${this.apiurl}`,{params:criteria});
     }
 
+    getStaffSummary(params:any){
+        return this.http.get(`${this.apiurl}/staff-summary`, {params});
+    }
+
     findAllReturns(criteria:any){
         return this.http.get(`${this.apiurl}/returns`);
     }

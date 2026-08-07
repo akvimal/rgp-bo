@@ -25,5 +25,7 @@ export interface Sale {
     expreturndays?:number,
     totalitems?:number,
     ordertype?:string,
-    deliverytype?:string
+    deliverytype?:string,
+    actinguserid?:number,
+    actinguser?:any
 }

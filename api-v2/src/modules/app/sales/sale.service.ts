@@ -8,6 +8,55 @@ import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { SaleReturnItem } from "src/entities/salereturn-item.entity";
 import { Sale } from "src/entities/sale.entity";
+import { SaleDelivery } from "src/entities/sale-delivery.entity";
+import { StoreCashAccount } from "src/entities/store-cash-account.entity";
+
+export interface SaleListQuery {
+  date?: string;
+  billno?: string;
+  customer?: string;
+  status?: string;
+  actinguserid?: string;
+  storeid?: string;
+  page?: string;
+  limit?: string;
+}
+
+export interface SaleItemsQuery {
+  product?: string;
+  category?: string;
+  fromdate?: string;
+  todate?: string;
+  props?: Array<{ id: string; value: string }>;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+interface SalePayload {
+  billdate?: string;
+  orderdate?: Date | string;
+  orderno?: number;
+  billno?: number;
+  status?: string;
+  ordertype?: string;
+  deliverytype?: string;
+  digimethod?: string | null;
+  digirefno?: string | null;
+  digiamt?: number;
+  cashamt?: number;
+  expreturndays?: number;
+  docpending?: boolean;
+  customerid?: number;
+  customer?: any;
+  actinguserid?: number | null;
+  shiftid?: number | null;
+  items?: any[];
+}
 
 @Injectable()
 export class SaleService {
@@ -17,7 +66,7 @@ export class SaleService {
     @InjectRepository(SaleReturnItem) private readonly saleReturnItemRepository: Repository<SaleReturnItem>,
     @InjectEntityManager() private manager: EntityManager) { }
 
-    async create(sale:any,userid:any) {
+    async create(sale: SalePayload, userid: number, actingUserid?: number) {
         // Wrap entire sale creation in transaction to prevent orphaned data
         return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
@@ -28,8 +77,20 @@ export class SaleService {
                 sale['orderdate'] = new Date();
                 sale['billno'] = nos[0]['bill_no'];
 
+                const storeRows = await transactionManager.query(`select id from stores order by id asc limit 1`);
+                const storeid = storeRows?.[0]?.id || null;
+                let shiftid = null;
+                if (storeid) {
+                    const shiftRows = await transactionManager.query(
+                        `select id from store_shifts where store_id = $1 and status = 'OPEN' and (assigned_user_id = $2 or assigned_user_id is null) order by shift_date desc, id desc limit 1`,
+                        [storeid, userid],
+                    );
+                    shiftid = shiftRows?.[0]?.id || null;
+                }
+                sale['shiftid'] = shiftid;
+
                 // Step 2: Save sale header
-                const savedSale = await transactionManager.save(Sale, {...sale, createdby:userid});
+                const savedSale = await transactionManager.save(Sale, {...sale, createdby:userid, actinguserid: actingUserid || userid});
 
                 if (!savedSale || !savedSale.id) {
                     throw new Error('Failed to create sale header');
@@ -41,6 +102,18 @@ export class SaleService {
                         i.saleid = savedSale.id;
                     });
                     await transactionManager.save(SaleItem, sale.items);
+                }
+
+                if (shiftid && Number(savedSale['cashamt'] || sale['cashamt'] || 0) > 0) {
+                    await transactionManager.save(StoreCashAccount, {
+                        transdate: new Date().toISOString().slice(0, 10),
+                        category: 'SALE',
+                        description: `Sale ${savedSale['billno'] || savedSale['id']}`,
+                        deposit: Number(savedSale['cashamt'] || sale['cashamt'] || 0),
+                        withdraw: 0,
+                        store: { id: storeid },
+                        shift: { id: shiftid },
+                    } as any);
                 }
 
                 // The client only needs the saved header before loading the detail route.
@@ -56,7 +129,7 @@ export class SaleService {
      * Create return items with transaction protection
      * Fixed: Batch insert now atomic, preventing orphaned return items
      */
-    async createReturnItems(items:CreateSaleReturnItemDto[],userid:any){
+    async createReturnItems(items: CreateSaleReturnItemDto[], userid: number) {
         return await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
                 items.forEach(item => {
@@ -74,7 +147,7 @@ export class SaleService {
      * Update return item with transaction protection
      * Fixed: Update now atomic, ensuring consistency
      */
-    async updateReturnItem(item:UpdateSaleReturnItemDto,userid:any){
+    async updateReturnItem(item: UpdateSaleReturnItemDto, userid: number) {
         return await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
                 item['updatedby'] = userid;
@@ -87,12 +160,12 @@ export class SaleService {
     }
 
 
-    async updateSale(sale:any,userid:any) {
+    async updateSale(sale: SalePayload & { id?: number }, userid: number, actingUserid?: number) {
         // Wrap entire sale update in transaction to maintain data consistency
         return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
                 // Step 1: Update sale header
-                const updatedSale = await transactionManager.save(Sale, {...sale, updatedby:userid});
+                const updatedSale = await transactionManager.save(Sale, {...sale, updatedby:userid, actinguserid: actingUserid || sale.actinguserid || userid});
 
                 if (!updatedSale || !updatedSale.id) {
                     throw new Error('Failed to update sale header');
@@ -142,36 +215,71 @@ export class SaleService {
         return await this.manager.query(query);
     }
     
-    async findAll(query:any,userid:any){
+    async findAll(query: SaleListQuery, userid: number | null, currentUserId?: number): Promise<PaginatedResult<Sale>> {
+        const page = Math.max(1, parseInt(query.page || '1', 10));
+        const limit = Math.min(200, Math.max(1, parseInt(query.limit || '50', 10)));
+
+        // Determine which stores this user is allowed to see
+        let allowedStoreIds: number[] | null = null;
+        if (currentUserId) {
+            const assignments: { store_id: number }[] = await this.manager.query(
+                `SELECT store_id FROM user_stores WHERE user_id = $1`, [currentUserId]
+            );
+            if (assignments.length > 0) {
+                allowedStoreIds = assignments.map(a => a.store_id);
+            }
+        }
+
         const qb = this.saleRepository.createQueryBuilder("sale")
         .leftJoinAndSelect("sale.delivery", "delivery")
         .leftJoinAndSelect("sale.customer", "customer")
-                    .leftJoinAndSelect("sale.created", "created")
-                    .select(['sale','customer','customer.name','customer.mobile','created.id','created.fullname', 'delivery'])
-                    .where('sale.active = :flag', { flag:true }); 
-        if(userid){
-            qb.andWhere('sale.createdby = :uid', { uid:userid });
+        .leftJoinAndSelect("sale.created", "created")
+        .leftJoinAndSelect("sale.actinguser", "actinguser")
+        .leftJoin("sale.shift", "shift")
+        .select(['sale', 'customer', 'customer.name', 'customer.mobile', 'created.id', 'created.fullname', 'actinguser.id', 'actinguser.fullname', 'delivery'])
+        .where('sale.active = :flag', { flag: true });
+
+        if (userid) {
+            qb.andWhere('(sale.acting_user_id = :uid OR sale.created_by = :uid)', { uid: userid });
         }
-        if(query.date){
+
+        // Store filtering: restrict to allowed stores, optionally narrowed by query param
+        if (allowedStoreIds !== null) {
+            if (query.storeid) {
+                const requested = Number(query.storeid);
+                const effective = allowedStoreIds.includes(requested) ? [requested] : [];
+                if (effective.length === 0) return { data: [], total: 0, page, limit };
+                qb.andWhere('shift.storeid IN (:...storeids)', { storeids: effective });
+            } else {
+                qb.andWhere('shift.storeid IN (:...storeids)', { storeids: allowedStoreIds });
+            }
+        } else if (query.storeid) {
+            // Business Head with a specific store selected
+            qb.andWhere('shift.storeid = :storeid', { storeid: Number(query.storeid) });
+        }
+
+        if (query.date) {
             qb.andWhere(
                 `sale.billdate >= CAST(:con AS date) AND sale.billdate < CAST(:con AS date) + INTERVAL '1 day'`,
-                { con:query.date },
+                { con: query.date },
             );
         }
-        if(query.billno){
-            qb.andWhere(`sale.bill_no = :billno`, { billno:query.billno });
+        if (query.billno) {
+            qb.andWhere(`sale.bill_no = :billno`, { billno: query.billno });
         }
-        if(query.customer){
-            qb.andWhere(`customer.id = :cid`, { cid:query.customer });
+        if (query.customer) {
+            qb.andWhere(`customer.id = :cid`, { cid: query.customer });
         }
-        if(query.status){
-            qb.andWhere(`sale.status = :st`, { st:query.status });
+        if (query.status) {
+            qb.andWhere(`sale.status = :st`, { st: query.status });
         }
-        qb.orderBy('sale.updatedon','DESC')
-        return qb.getMany();
+
+        qb.orderBy('sale.updatedon', 'DESC').skip((page - 1) * limit).take(limit);
+        const [data, total] = await qb.getManyAndCount();
+        return { data, total, page, limit };
     }
 
-    async findAllItems(query:any,userid:any){        
+    async findAllItems(query: SaleItemsQuery, userid: number | null | undefined) {
        const qb = await this.saleItemRepository.createQueryBuilder("item")
                     .leftJoinAndSelect("item.sale", "sale")
                     .leftJoinAndSelect("sale.customer", "customer")
@@ -198,12 +306,71 @@ export class SaleService {
         // }
         
         if(query.props){
-            query.props.forEach(p => {
-                qb.andWhere(`product.more_props->>'${p.id}' = :value`, { value: p.value });
-            })
+            query.props.forEach((p, idx) => {
+                const key = String(p.id).replace(/[^a-zA-Z0-9_]/g, '');
+                if(key){
+                    qb.andWhere(`product.more_props->>'${key}' = :propval${idx}`, { [`propval${idx}`]: p.value });
+                }
+            });
         }
         qb.orderBy('sale.billdate','DESC')
         return qb.getMany();
+    }
+
+    async getStaffSummary(query: any, currentUserId?: number) {
+        let allowedStoreIds: number[] | null = null;
+        if (currentUserId) {
+            const assignments: { store_id: number }[] = await this.manager.query(
+                `SELECT store_id FROM user_stores WHERE user_id = $1`, [currentUserId]
+            );
+            if (assignments.length > 0) {
+                allowedStoreIds = assignments.map(a => a.store_id);
+            }
+        }
+
+        const params: any[] = [];
+        const conditions: string[] = [
+            `s.status = 'COMPLETE'`, `s.active = true`
+        ];
+
+        if (query.fromdate) {
+            params.push(query.fromdate);
+            conditions.push(`s.bill_date >= CAST($${params.length} AS date)`);
+        }
+        if (query.todate) {
+            params.push(query.todate);
+            conditions.push(`s.bill_date < CAST($${params.length} AS date) + INTERVAL '1 day'`);
+        }
+
+        if (query.storeid) {
+            params.push(Number(query.storeid));
+            conditions.push(`ss.store_id = $${params.length}`);
+        } else if (allowedStoreIds !== null) {
+            params.push(allowedStoreIds);
+            conditions.push(`ss.store_id = ANY($${params.length}::int[])`);
+        }
+
+        const where = conditions.join(' AND ');
+        const sql = `
+            SELECT
+                au.id AS staff_id,
+                au.full_name AS staff_name,
+                COUNT(DISTINCT s.id)::int AS sales_count,
+                COALESCE(SUM(s.cash_amount), 0) AS cash_total,
+                COALESCE(SUM(s.digi_amount), 0) AS digi_total,
+                COALESCE(SUM(s.total), 0) AS net_total,
+                COUNT(DISTINCT sri.id)::int AS return_count,
+                COALESCE(SUM(sri.qty * si.price), 0) AS return_value
+            FROM sale s
+            LEFT JOIN app_user au ON au.id = s.acting_user_id
+            LEFT JOIN store_shifts ss ON ss.id = s.shift_id
+            LEFT JOIN sale_item si ON si.sale_id = s.id
+            LEFT JOIN sale_return_item sri ON sri.sale_item_id = si.id
+            WHERE ${where}
+            GROUP BY au.id, au.full_name
+            ORDER BY net_total DESC
+        `;
+        return this.manager.query(sql, params);
     }
 
     getFormatDate(dt:Date){
@@ -366,7 +533,9 @@ export class SaleService {
         .leftJoinAndSelect("sale.customer", "customer")
         .leftJoinAndSelect("sale.items", "items")
         .leftJoinAndSelect("items.product", "product")
-          .select(['sale','customer','items','product'])
+        .leftJoinAndSelect("sale.created", "created")
+        .leftJoinAndSelect("sale.actinguser", "actinguser")
+          .select(['sale','customer','items','product','created.id','created.fullname','actinguser.id','actinguser.fullname'])
           .where('sale.id = :id', { id })
           .getOne();
     }
@@ -439,20 +608,31 @@ export class SaleService {
         return await this.manager.query(sql, [criteria.maxdays]);
     }
 
-    async update(id:any, values:any, userid:any){
+    async update(id: number, values: Partial<Sale>, userid: number) {
         await this.saleRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             const obj = await this.saleRepository.findOne({where:{id}});
             await transaction.update(Sale, id, {...obj, ...values, updatedby:userid});
         });
     } 
 
-    async delete(id:any){
+    async delete(id: number | string, userid: number) {
         await this.saleRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
-            await transaction.delete(Sale, id);
+            const sale = await transaction.findOne(Sale, { where: { id: +id }, relations: ['delivery', 'items'] });
+            if (!sale) {
+                throw new Error('Sale not found');
+            }
+            if (sale.status !== 'PENDING' && sale.status !== 'NEW') {
+                throw new Error('Only pending sales can be discarded');
+            }
+            await transaction.update(Sale, id, { isActive: false, isArchived: true, status: 'DISCARDED', updatedby: userid });
+            await transaction.update(SaleItem, { saleid: Number(id) } as any, { isActive: false, isArchived: true, updatedby: userid });
+            if (sale.delivery?.id) {
+                await transaction.update(SaleDelivery, sale.delivery.id, { isActive: false, isArchived: true, updatedby: userid });
+            }
         });
     } 
     
-    async removeItem(itemid:any, userid:any){
+    async removeItem(itemid: number | string, userid: number) {
         await this.saleItemRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             await transaction.update(SaleItem, itemid, {isArchived:true, updatedby:userid});
         });
