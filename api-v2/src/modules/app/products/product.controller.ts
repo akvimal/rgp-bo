@@ -1,12 +1,13 @@
 import { ProductService } from "./product.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { UpdateProductPrice2Dto } from "./dto/update-product-price2.dto";
 import { User } from "src/core/decorator/user.decorator";
+import { PermissionService } from "../roles/permission.service";
 
 @ApiTags('Products')
 @Controller('products')
@@ -14,7 +15,19 @@ import { User } from "src/core/decorator/user.decorator";
 @UseGuards(AuthGuard)
 export class ProductController {
 
-    constructor(private productService:ProductService){}
+    constructor(private productService:ProductService, private permissions: PermissionService){}
+
+    private async assertPricingAccess(currentUser: any) {
+      if (!(await this.permissions.canManagePricing(currentUser.roleid))) {
+        throw new ForbiddenException('Pricing access denied');
+      }
+    }
+
+    private async assertCostAccess(currentUser: any) {
+      if (!(await this.permissions.canViewCost(currentUser.roleid))) {
+        throw new ForbiddenException('Cost access denied');
+      }
+    }
 
     @Post()
     async create(@Body() createDto: CreateProductDto,  @User() currentUser: any) {
@@ -32,11 +45,13 @@ export class ProductController {
 
     @Post('prices/add')
     async addPrice(@Body() body,  @User() currentUser: any) {
+        await this.assertPricingAccess(currentUser);
         return this.productService.addPrice(body, currentUser.id);
     } 
     
     @Put('prices/:id')
     async updatePrice(@Param('id') id: number, @Body() dto: UpdateProductPrice2Dto,  @User() currentUser: any) {
+        await this.assertPricingAccess(currentUser);
         return this.productService.updatePrice(id, dto, currentUser.id);
     }
 
@@ -51,11 +66,11 @@ export class ProductController {
     // }
 
     @Get('/prices/:prodid')
-    findPriceById(@Param() param: any, @User() currentUser: any) {
-      return this.productService.findPriceById(param.prodid).then(async (price:any) => {
-        const history = await this.productService.findPriceHistoryById(price[0].id);
-        return {price:price[0], history};
-      });
+    async findPriceById(@Param() param: any, @User() currentUser: any) {
+      await this.assertCostAccess(currentUser);
+      const price:any = await this.productService.findPriceById(param.prodid);
+      const history = await this.productService.findPriceHistoryById(price[0].id);
+      return {price:price[0], history};
     }
 
     @Get()
@@ -64,7 +79,8 @@ export class ProductController {
     }
 
     @Post('/prices')
-    findAllPrices(@Body() criteria:any) {
+    async findAllPrices(@Body() criteria:any, @User() currentUser: any) {
+      await this.assertCostAccess(currentUser);
       return this.productService.findPrices(criteria);
     }
     

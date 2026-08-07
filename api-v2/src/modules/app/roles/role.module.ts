@@ -6,12 +6,14 @@ import { AppUser } from 'src/entities/appuser.entity';
 import { AppRole } from 'src/entities/approle.entity';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { RoleService } from './role.service';
+import { PermissionService } from './permission.service';
 import { JwtService } from '@nestjs/jwt';
+import { PermissionGuard } from 'src/core/guards/permission.guard';
 
 @Module({
   imports: [TypeOrmModule.forFeature([AppUser,AppRole]),AuthModule],
   controllers: [RoleController],
-  providers: [RoleService,JwtService],
-  exports: [RoleService]
+  providers: [RoleService, PermissionService, JwtService, PermissionGuard],
+  exports: [RoleService, PermissionService, PermissionGuard]
 })
 export class RoleModule {}

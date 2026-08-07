@@ -114,6 +114,7 @@ export class StockService {
                     where pq.item_id = pii.id
                         and pq.active = true
                         and pq.archive = false
+                        and coalesce(pq.status, 'APPROVED') = 'APPROVED'
                 ) adjusted on true
                 left join product_price2 pp
                     on pp.product_id = p.id
@@ -244,6 +245,17 @@ export class StockService {
           return qb.getMany();
     } 
 
+    async findQtyAudits() {
+        const qb = this.qtyRepository.createQueryBuilder('q')
+        .leftJoinAndSelect("q.purchaseitem", "item")
+        .leftJoinAndSelect("item.product", "product")
+        .select(['q','item','product'])
+            .where('q.isActive = :flag', { flag: true })
+            .andWhere(`coalesce(q.status, 'PENDING') = 'PENDING'`)
+            .orderBy('q.createdon','DESC');
+          return qb.getMany();
+    }
+
     async findAllPriceByItem(id:number){
         return this.priceRepository.createQueryBuilder(`p`)
             .where('p.itemid = :id', { id }).getMany();
@@ -263,15 +275,34 @@ export class StockService {
     }
     
     async createQty(dto: CreateProductQtyChangeDto, userid) {
-        return this.qtyRepository.save({...dto, createdby:userid});
+        return this.qtyRepository.save({...dto, status: dto.status || 'APPROVED', createdby:userid});
     }
 
     async createStockAdjustments(items: CreateProductQtyChangeDto[], userid) {
-        items.forEach(item => {
-            item['createdby'] = userid;
-        })
-        return this.qtyRepository.save(items);
+        const payload = items.map(item => ({
+            ...item,
+            createdby: userid,
+            status: item.status || 'APPROVED'
+        }));
+        return this.qtyRepository.save(payload);
         // return this.qtyRepository.save({...dto, createdby:userid});
+    }
+
+    async createStockAudit(items: any[], userid) {
+        const payload = (items || []).map((item) => ({
+            itemid: item.itemid,
+            qty: (+item.countedqty || 0) - (+item.bookqty || 0),
+            price: item.price ?? 0,
+            reason: item.reason || 'AUDIT',
+            comments: item.comments || `book:${item.bookqty ?? 0};counted:${item.countedqty ?? 0}`,
+            status: 'PENDING',
+            createdby: userid
+        }));
+        return this.qtyRepository.save(payload);
+    }
+
+    async approveQtyAudit(id:any, userid:any) {
+        return this.qtyRepository.update(id, {status:'APPROVED', updatedby:userid});
     }
     // async findByCriteria(criteria){
     //     let query = `select * from stock_view`;

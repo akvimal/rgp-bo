@@ -34,6 +34,7 @@ export class Stock2Service {
                        sum(pq.qty) as adjusted
                 from product_qtychange pq
                 where pq.active = true and pq.archive = false
+                  and coalesce(pq.status, 'APPROVED') = 'APPROVED'
                 group by pq.item_id
             ), inventory as (
                 select p.id,

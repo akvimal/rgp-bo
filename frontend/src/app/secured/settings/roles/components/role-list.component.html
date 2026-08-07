@@ -12,7 +12,10 @@
         <tr *ngFor="let p of roles">
             <td>{{p.id}}</td>
             <td *isAuth="'roles.read$name'">{{p.name}}</td>
-            <td *isAuth="'roles.read$permissions'">{{p.permissions}}</td>
+            <td *isAuth="'roles.read$permissions'">
+                <span class="badge bg-light text-dark border me-1 mb-1" *ngFor="let label of p.resourceLabels">{{label}}</span>
+                <span class="text-muted small" *ngIf="!p.resourceLabels?.length">No permissions granted</span>
+            </td>
             <td>
                 <a *isAuth="'roles.edit'" [routerLink]="['../edit', p.id]">
                 <i class="bi bi-pencil text-primary"></i></a>

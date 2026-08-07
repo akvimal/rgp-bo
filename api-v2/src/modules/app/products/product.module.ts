@@ -6,9 +6,10 @@ import { ProductService } from "./product.service";
 import { Product } from "src/entities/product.entity";
 import { ProductPrice2 } from "src/entities/product-price2.entity";
 import { AuthModule } from "src/modules/auth/auth.module";
+import { RoleModule } from "../roles/role.module";
 import { JwtService } from "@nestjs/jwt";
 @Module({
-    imports: [TypeOrmModule.forFeature([Product, ProductPrice2]),AuthModule],
+    imports: [TypeOrmModule.forFeature([Product, ProductPrice2]),AuthModule,RoleModule],
     controllers: [ProductController],
     providers: [ProductService,JwtService],
     exports: [ProductService],

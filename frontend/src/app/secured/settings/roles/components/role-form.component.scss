@@ -1,0 +1,85 @@
+.role-form {
+  .permission-group {
+    &:last-child {
+      margin-bottom: 0 !important;
+    }
+  }
+
+  .permission-group-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6c757d;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .permission-resource {
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.65rem;
+    background: #fff;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:has(.form-check-input:checked) {
+      border-color: #b6d4fe;
+      background: #f8fbff;
+    }
+  }
+
+  .permission-resource-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.75rem;
+    row-gap: 0.15rem;
+  }
+
+  .permission-resource-desc {
+    flex-basis: 100%;
+  }
+
+  .permission-pages {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #e9ecef;
+  }
+
+  .permission-actions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #e9ecef;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem 1rem;
+  }
+
+  .permission-action {
+    align-self: start;
+  }
+
+  .permission-properties {
+    margin-top: 0.35rem;
+    margin-left: 1.6rem;
+    padding-left: 0.6rem;
+    border-left: 2px solid #f1f3f5;
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.9rem;
+  }
+
+  .permission-bundle-note {
+    margin-top: 0.4rem;
+  }
+
+  .json-editor {
+    resize: vertical;
+  }
+
+  .form-switch .form-check-input {
+    cursor: pointer;
+  }
+}

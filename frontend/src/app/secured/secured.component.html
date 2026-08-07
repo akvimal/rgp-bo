@@ -1,14 +1,26 @@
-<div *ngIf="user; else annonymous">
+<div *ngIf="user; else annonymous"
+  [class.sidebar-collapsed]="sidebarCollapsed"
+  [class.sidebar-drawer-open]="sidebarDrawerOpen">
     <header id="header" class="header fixed-top d-flex align-items-center">
       
       <div class="d-flex align-items-center justify-content-between">
+        <button type="button" class="btn btn-link p-0 me-2 sidebar-toggle-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+          <i class="bi bi-list"></i>
+        </button>
         <img src="assets/img/rgp-logo.png" alt="" width="50px">
         <a href="index.html" class="logo d-flex align-items-center">
-          <span class="d-none d-lg-block">RGP</span>
+          <span class="brand-text d-none d-lg-block">RGP</span>
         </a>
-        <!-- <i class="bi bi-list toggle-sidebar-btn"></i> -->
+        <span *ngIf="businessName && !isSiteAdmin" class="d-none d-lg-block small text-muted ms-2">{{businessName}}</span>
       </div><!-- End Logo -->
-    
+
+      <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin">
+        <select class="form-select form-select-sm" [ngModel]="selectedStoreId === null ? '' : selectedStoreId" (change)="changeStore($event)" aria-label="Select store">
+          <option value="">All stores</option>
+          <option *ngFor="let store of stores" [value]="store.id">{{store.business?.name}} - {{store.location}}</option>
+        </select>
+      </div>
+
       <!-- <div class="search-bar">
         <form class="search-form d-flex align-items-center" method="POST" action="#">
           <input type="text" name="query" placeholder="Search" title="Enter search keyword">
@@ -19,8 +31,6 @@
     
       <nav class="header-nav ms-auto">
         <ul class="d-flex align-items-center">
-    
-        
           <li class="nav-item dropdown pe-3">
     
             <a class="nav-link nav-profile d-flex align-items-center pe-0" href="javascript:void(0)" data-bs-toggle="dropdown">
@@ -40,28 +50,34 @@
   
       <ul class="sidebar-nav" id="sidebar-nav">
     
-        <li class="nav-item" *isNavAuth>
-          <a class="nav-link" routerLink="dashboard">
-            <i class="bi bi-grid"></i>
+        <li class="nav-item" *isAuth="'site'">
+          <a class="nav-link" routerLink="dashboard" title="Dashboard" aria-label="Dashboard">
+            <i class="bi bi-speedometer2"></i>
             <span>Dashboard</span>
           </a>
         </li>
-        <li class="nav-item" *isNavAuth>
-          <a class="nav-link collapsed" routerLink="sales">
-            <i class="bi bi-envelope"></i>
+        <li class="nav-item" *isAuth="'purchases.read'">
+          <a class="nav-link collapsed" routerLink="/secure/purchases/vendors/list" title="Vendors" aria-label="Vendors">
+            <i class="bi bi-truck"></i>
+            <span>Vendors</span>
+          </a>
+        </li>
+        <li class="nav-item" *isAuth="'sales'">
+          <a class="nav-link collapsed" routerLink="sales" title="Sales" aria-label="Sales">
+            <i class="bi bi-cash-coin"></i>
             <span>Sales</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'store.read'">
-          <a class="nav-link collapsed" routerLink="store">
-            <i class="bi bi-envelope"></i>
+          <a class="nav-link collapsed" routerLink="store" title="Store" aria-label="Store">
+            <i class="bi bi-box-seam"></i>
             <span>Store</span>
           </a>
         </li>
 
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'purchases.read'">
-          <a class="nav-link collapsed" routerLink="purchases">
-            <i class="bi bi-envelope"></i>
+          <a class="nav-link collapsed" routerLink="purchases" title="Purchase" aria-label="Purchase">
+            <i class="bi bi-bag-check"></i>
             <span>Purchase</span>
           </a>
         </li>
@@ -89,15 +105,15 @@
           </a>
         </li> -->
     
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isNavAuth>
-          <a class="nav-link collapsed" routerLink="products">
-            <i class="bi bi-envelope"></i>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products'">
+          <a class="nav-link collapsed" routerLink="products" title="Products" aria-label="Products">
+            <i class="bi bi-boxes"></i>
             <span>Products</span>
           </a>
         </li>
         <li class="nav-item" *isAuth="'customers.read'">
-          <a class="nav-link collapsed" routerLink="customers/cust/list">
-            <i class="bi bi-envelope"></i>
+          <a class="nav-link collapsed" routerLink="customers/cust/list" title="Customers" aria-label="Customers">
+            <i class="bi bi-people"></i>
             <span>Customers</span>
           </a>
         </li>
@@ -107,17 +123,46 @@
             <span>Returns</span>
           </a>
         </li> -->
-        <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="reports">
-            <i class="bi bi-envelope"></i>
+        <li class="nav-item" *isAuth="'reports'">
+          <a class="nav-link collapsed" routerLink="reports" title="Reports" aria-label="Reports">
+            <i class="bi bi-graph-up"></i>
             <span>Reports</span>
           </a>
         </li>
         <li class="nav-item" *isAuth="'settings.read'">
-          <a class="nav-link collapsed" routerLink="settings">
-            <i class="bi bi-envelope"></i>
+          <a class="nav-link" [class.collapsed]="!settingsMenuOpen"
+            (click)="toggleSettingsMenu()" title="Settings" aria-label="Settings">
+            <i class="bi bi-gear"></i>
             <span>Settings</span>
+            <i class="bi bi-chevron-down ms-auto"></i>
           </a>
+          <ul class="nav-content" *ngIf="settingsMenuOpen">
+            <li *isAuth="'businesses.manage'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/businesses">
+                <i class="bi bi-circle"></i><span>Businesses</span>
+              </a>
+            </li>
+            <li *isAuth="'roles'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/roles">
+                <i class="bi bi-circle"></i><span>Roles</span>
+              </a>
+            </li>
+            <li *isAuth="'users'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/users">
+                <i class="bi bi-circle"></i><span>Users</span>
+              </a>
+            </li>
+            <li *isAuth="'purchases'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/delivery-partners">
+                <i class="bi bi-circle"></i><span>Delivery Partners</span>
+              </a>
+            </li>
+            <li *isAuth="'storesettings'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/store">
+                <i class="bi bi-circle"></i><span>Store</span>
+              </a>
+            </li>
+          </ul>
         </li>
         <!-- <li class="nav-item">
           <a class="nav-link collapsed">
@@ -144,22 +189,24 @@
           </a>
         </li> -->
     
-        <li class="nav-item">
-          <a class="nav-link collapsed" (click)="openPricing()">
-            <i class="bi bi-box-arrow-in-left"></i>
+        <li class="nav-item" *isAuth="'products.price'">
+          <a class="nav-link collapsed" (click)="openPricing()" title="Pricing" aria-label="Pricing">
+            <i class="bi bi-tag"></i>
             <span>Pricing</span>
           </a>
         </li>
 
         <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="/logout">
-            <i class="bi bi-box-arrow-in-left"></i>
+          <a class="nav-link collapsed" routerLink="/logout" title="Logout" aria-label="Logout">
+            <i class="bi bi-box-arrow-right"></i>
             <span>Logout</span>
           </a>
         </li><!-- End Login Page Nav -->
       </ul>
     
     </aside><!-- End Sidebar-->
+
+  <div class="sidebar-backdrop" *ngIf="sidebarDrawerOpen" (click)="closeSidebar()"></div>
   
   <main id="main" class="main">
       <!-- <div class="pagetitle">
