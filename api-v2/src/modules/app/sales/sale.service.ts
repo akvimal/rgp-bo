@@ -236,7 +236,8 @@ export class SaleService {
             from sale s inner join
             (select date(generate_series($1::date,$2,'1 day')) as dt)x on to_char(s.bill_date,'yyyy-mm-dd') = x.dt::text
             and s.status = 'COMPLETE'
-            group by to_char(s.bill_date,'yyyy-mm-dd');`
+            group by to_char(s.bill_date,'yyyy-mm-dd')
+            order by to_char(s.bill_date,'yyyy-mm-dd');`
             params = [todate, fromdate];
         }
         else {
