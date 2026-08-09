@@ -12,8 +12,8 @@ export class Stock2Service {
         const expiryThresholdDays = getExpiryThresholdDays();
         const expired = criteria.expired === true;
         const expiryCondition = expired
-            ? 'pii.exp_date < current_date + $3'
-            : '(pii.exp_date is null or pii.exp_date >= current_date + $3)';
+            ? 'pii.exp_date < current_date + $3::int'
+            : '(pii.exp_date is null or pii.exp_date >= current_date + $3::int)';
         const availableCondition = criteria.available
             ? `having sum(
                     (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
