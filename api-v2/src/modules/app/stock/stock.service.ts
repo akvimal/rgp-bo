@@ -6,6 +6,7 @@ import { CreateProductPriceDto } from "./dto/create-product-price.dto";
 import { CreateProductQtyChangeDto } from "./dto/create-product-qtychange.dto";
 import { ProductPriceChange } from "src/entities/product-pricechange.entity";
 import { ProductQtyChange } from "src/entities/product-qtychange.entity";
+import { getExpiryThresholdDays } from "src/core/config/expiry-threshold";
 
 @Injectable()
 export class StockService {
@@ -22,8 +23,9 @@ export class StockService {
         }
 
         async findByCriteria(criteria:any){
-            const params:any[] = [];
-            let paramIndex = 1;
+            const expiryThresholdDays = getExpiryThresholdDays();
+            const params:any[] = [expiryThresholdDays];
+            let paramIndex = 2;
             const conditions:string[] = [
                 'p.active = true',
                 'p.archive = false',
@@ -41,8 +43,8 @@ export class StockService {
 
             if(Object.prototype.hasOwnProperty.call(criteria, 'expired')){
                 conditions.push(criteria['expired']
-                    ? 'pii.exp_date < current_date + 30'
-                    : '(pii.exp_date is null or pii.exp_date >= current_date + 30)');
+                    ? 'pii.exp_date < current_date + $1'
+                    : '(pii.exp_date is null or pii.exp_date >= current_date + $1)');
             }
 
             if(criteria['id']){
@@ -85,7 +87,7 @@ export class StockService {
                     pii.tax_pcnt,
                     pii.mrp_cost,
                     sold.last_sale_date,
-                    (pii.exp_date < current_date + 30) as expired,
+                    (pii.exp_date < current_date + $1) as expired,
                     (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) as purchased,
                     sold.sold,
                     adjusted.adjusted,
@@ -138,12 +140,14 @@ export class StockService {
 
         async findByProducts(ids:number[]){
             if (!ids || ids.length === 0) return [];
-            const placeholders = ids.map((_, index) => `$${index + 1}`).join(',');
+            const expiryThresholdDays = getExpiryThresholdDays();
+            const placeholders = ids.map((_, index) => `$${index + 2}`).join(',');
             return await this.manager.query(`
             select piv.*, p.more_props, pp.sale_price from product_items_view piv
             inner join product p on p.id = piv.id and p.id in (${placeholders})
-            left join product_price2 pp on pp.product_id = piv.id where piv.expired = false and piv.balance > 0
-            order by piv.exp_date asc`, ids);
+            left join product_price2 pp on pp.product_id = piv.id
+            where (piv.exp_date is null or piv.exp_date >= current_date + $1) and piv.balance > 0
+            order by piv.exp_date asc`, [expiryThresholdDays, ...ids]);
         }
 
         // async findAvailableQty(prodid:number, batch:string, expdate:string){
