@@ -21,6 +21,7 @@ services:
       # DATABASE_URL: postgresql://postgres:postgres@rgp-db:5432/rgpdb
       DATABASE_URL: postgresql://rgpapp:r9pAdmin7@host.docker.internal:5432/rgpdb
       LOG_SQL: false
+      EXPIRY_THRESHOLD_DAYS: 0
       FILEUPLOAD_LOCATION: /app/upload
       FILEUPOAD_SIZE_LIMIT: 512000
       JWT_KEY: dev

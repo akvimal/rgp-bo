@@ -16,6 +16,7 @@ services:
       NODE_ENV: development
       DATABASE_URL: postgresql://${POSTGRES_USER:-rgpapp}:${POSTGRES_PASSWORD:-r9pAdmin7}@${DB_HOST:-host.docker.internal}:${DB_PORT:-5432}/${POSTGRES_DB:-rgpdb}
       LOG_SQL: ${LOG_SQL:-true}
+      EXPIRY_THRESHOLD_DAYS: ${EXPIRY_THRESHOLD_DAYS:-0}
       FILEUPLOAD_LOCATION: ${FILEUPLOAD_LOCATION:-/app/upload}
       FILEUPOAD_SIZE_LIMIT: ${FILEUPOAD_SIZE_LIMIT:-512000}
       JWT_KEY: ${JWT_KEY:-dev}

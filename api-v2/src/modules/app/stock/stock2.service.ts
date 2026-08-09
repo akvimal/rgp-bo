@@ -1,17 +1,19 @@
 import { Injectable } from "@nestjs/common";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
+import { getExpiryThresholdDays } from "src/core/config/expiry-threshold";
 
 @Injectable()
 export class Stock2Service {
 
     constructor(@InjectEntityManager() private manager: EntityManager){}
-    
+
     async findAll(criteria:any) {
+        const expiryThresholdDays = getExpiryThresholdDays();
         const expired = criteria.expired === true;
         const expiryCondition = expired
-            ? 'pii.exp_date < current_date + 30'
-            : '(pii.exp_date is null or pii.exp_date >= current_date + 30)';
+            ? 'pii.exp_date < current_date + $3'
+            : '(pii.exp_date is null or pii.exp_date >= current_date + $3)';
         const availableCondition = criteria.available
             ? `having sum(
                     (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
@@ -99,7 +101,7 @@ export class Stock2Service {
             left join sales_aggregate av on av.product_id = iv.id
             order by av.highest_customers desc nulls last, iv.title`;
 
-        return await this.manager.query(sql, [criteria.active === true, expired]).then(data => {
+        return await this.manager.query(sql, [criteria.active === true, expired, expiryThresholdDays]).then(data => {
             data.forEach(rec => {
                 if(rec['balance']){
                     rec['balance'] = +rec['balance'];
