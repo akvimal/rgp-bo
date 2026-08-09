@@ -43,8 +43,8 @@ export class StockService {
 
             if(Object.prototype.hasOwnProperty.call(criteria, 'expired')){
                 conditions.push(criteria['expired']
-                    ? 'pii.exp_date < current_date + $1'
-                    : '(pii.exp_date is null or pii.exp_date >= current_date + $1)');
+                    ? 'pii.exp_date < current_date + $1::int'
+                    : '(pii.exp_date is null or pii.exp_date >= current_date + $1::int)');
             }
 
             if(criteria['id']){
@@ -87,7 +87,7 @@ export class StockService {
                     pii.tax_pcnt,
                     pii.mrp_cost,
                     sold.last_sale_date,
-                    (pii.exp_date < current_date + $1) as expired,
+                    (pii.exp_date < current_date + $1::int) as expired,
                     (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) as purchased,
                     sold.sold,
                     adjusted.adjusted,
@@ -146,7 +146,7 @@ export class StockService {
             select piv.*, p.more_props, pp.sale_price from product_items_view piv
             inner join product p on p.id = piv.id and p.id in (${placeholders})
             left join product_price2 pp on pp.product_id = piv.id
-            where (piv.exp_date is null or piv.exp_date >= current_date + $1) and piv.balance > 0
+            where (piv.exp_date is null or piv.exp_date >= current_date + $1::int) and piv.balance > 0
             order by piv.exp_date asc`, [expiryThresholdDays, ...ids]);
         }
 
