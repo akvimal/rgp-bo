@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 **Branch:** feature/shift-cash-phase1 (or a dedicated `feature/purchasing-gst`)
-**Status:** Decisions locked (2026-09-04) — **WS-1, WS-2, WS-3 (phase 6a) done**; WS-3 phase 6b (needs an LLM, deferred with WS-6), WS-4 onward not started.
+**Status:** Decisions locked (2026-09-04) — **WS-1, WS-2, WS-3 (phase 6a), WS-4 done**; WS-3 phase 6b and WS-6 deferred (need an LLM); WS-5 not started.
 **Covers:** the PO/invoice/payment review findings + **GST inward-supply (GSTR-2A/2B) reconciliation** + AI invoice extraction.
 **Companion doc:** `PURCHASE_ORDER_REVAMP.md` (PO UX + demand analytics — referenced, not repeated here).
 
@@ -111,7 +111,21 @@ suite 136/136 across 3 clean runs; coverage-check 120/120; only PO-1's UI assert
 
 Master/detail (not "below the grid"), suggestions-first "Reorder" tab, PO estimated-value + line count in the list, a **fulfilment view** on the PO (qty ordered vs invoiced vs received, per line), and the demand-signal upgrades in that doc's §6b. Independent of the GST track.
 
-### WS-4 — GST data model  ·  ~4 days  ·  schema + backfill
+### WS-4 — GST data model  ·  ~4 days  ·  schema + backfill  ·  **DONE**
+
+Shipped: migration `027` (business gstin/legal_name/state_code/address/pincode;
+purchase_invoice + purchase_invoice_item GST columns per the tables below, with a one-time backfill
+from vendor.gstn / product.hsn_code / invoice_date, assuming intra-state 50/50 CGST-SGST for existing
+rows). `purchase-invoice.service` now derives supplier GSTIN / place of supply / supply type on every
+new invoice (from the vendor's GSTIN vs the business's own state code), splits each line's tax into
+taxable value + CGST/SGST or IGST, and sums lines back to the header (incl. round-off vs the invoice
+total) on every item add/edit/remove and once the header total itself is set at GRN completion. The
+GRN screen (`invoice-items.component`) gained a GST Details card - editable fields while the invoice
+is still NEW, plus a read-only tax breakdown with an OK/Mismatch check. `business.service` now accepts
+the new GST fields via `PUT /businesses/:id`; a business-settings UI for them is a follow-up (the
+existing businesses screen has unrelated in-flight edits from the user's own session, left untouched).
+Verified: qa/ suite 141/141 across 3 clean runs (new `qa/specs/gst-data-model.spec.ts`, GST-1..4 + a
+GRN-screen UI check); coverage-check 120/120; manual browser pass on a real seeded invoice.
 
 Foundation for WS-5. Also feeds better GST reporting on the sales side later.
 
