@@ -2,10 +2,21 @@
 
 **Date:** 2026-09-04
 **Branch:** feature/shift-cash-phase1
-**Status:** Scope — not started
-**Goal:** retire the paper shift-handover form. Let the cashier close their own shift from a
-focused screen, entering the drawer count by denomination; keep the manager in the loop for
-variance sign-off.
+**Status:** Decisions locked (2026-09-04) — ready to build
+**Goal:** retire the paper shift-handover form. The person at the till opens and closes the
+shift themselves, entering both the opening float and the closing drawer count by denomination.
+Managers review variances after the fact.
+
+## Decisions (locked)
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Identity model | **B — shared terminal login + operator pick.** The "cashier" for a shift is the **selected operator** (`selected_operator_id`), not the JWT user. Permissions are checked on the terminal login's role; the operator is a label for *who was at the till*. |
+| 2 | Close flow | **Direct close.** Cashier closes straight to `CLOSED`. No `PENDING_REVIEW` state. Managers review variances on the dashboard afterwards. |
+| 3 | Can staff open shifts? | **Yes.** Sales Staff get `store.shift.open` **and** `store.shift.close`. |
+| 4 | Opening float by denomination? | **Yes.** The open-shift form captures the float as a denomination grid; `opening_cash` = its sum. |
+| 5 | Denomination set | **Fixed in code.** No per-business setting. |
+| 6 | Shift required before POS? | **Yes.** A `COMPLETE` sale is rejected when the store has no `OPEN` shift. `PENDING`/parked sales are still allowed. |
 
 ---
 
@@ -26,141 +37,174 @@ variance sign-off.
 
 ## Design
 
-### 1. Identity — who is the cashier? (decide first)
+### 1. Identity model (decision 1 — B)
 
-Sales Staff have individual logins, but the POS operator-picker means a store *could* run on one
-shared terminal login. This choice drives everything else.
+The shift belongs to a **store**, not a person. Whoever is at the terminal picks themselves in the
+existing POS **Staff** dropdown (`selected_operator_id`). That operator id is:
 
-- **Option A — one login per cashier (recommended).** The shift's `assigned_user_id` is a real
-  person; they log in as themselves, see "My Shift", close it; `closed_by` / `submitted_by` come
-  from their JWT. The operator-picker stays for stores that still share a terminal, but the
-  *default and expected* path is self-identified.
-- **Option B — shared terminal login + operator pick.** "My Shift" resolves via the selected
-  operator, not the JWT. Weaker audit trail (the JWT user isn't the person counting), and the
-  close action can't be permission-gated per person. Only choose this if stores genuinely can't
-  give each cashier a login.
+- written to the shift as `assigned_user_id` when the shift is opened
+- written to a new `closed_operator_id` when it is closed
+- already written to every sale as `acting_user_id`
 
-Rest of this doc assumes **A**.
+Permissions are checked on the **terminal login's role** (the JWT). There is no per-person scoping
+— if your role has `store.shift.open` / `store.shift.close` and the shift is at a store you're
+assigned to, you can do it. `opened_by` / `closed_by` keep recording the JWT user as the hard
+system-of-record; the operator fields record *who was physically counting* for the shift report.
+
+Consequence: the operator dropdown must have a real selection before open/close (today it can be
+blank). Block the action with "Select the staff member at the till first" when it isn't set.
 
 ### 2. Permissions
 
-Add actions to the `store` resource (or split a new `shifts` resource — cleaner):
+Add two actions to the `store` resource (keep it on `store`, not a new resource — the nav path is
+already there):
 
-| Action | Who | Scope |
+| Action key | Roles | Front-end gate |
 |---|---|---|
-| `shift.open` | Store Head; optionally Sales Staff | their assigned store |
-| `shift.close` | Store Head; **Sales Staff (new)** | Sales Staff limited to a shift assigned to them, at their store |
-| `shift.assign` | Store Head only | — |
-| `shift.review` | Store Head only | confirm a submitted count |
+| `store.shift.open` | Store Head, **Sales Staff (new)** | `*isAuth="'store.shift.open'"` on the Open button |
+| `store.shift.close` | Store Head, **Sales Staff (new)** | `*isAuth="'store.shift.close'"` on the Close button |
 
-- Front-end: `*isAuth="'store.shift.close'"` gates the button; `AuthGuard` already allows
-  `/secure/store/shifts` for the roles that need it (migration `023`).
-- **Back-end: add real checks to `store-cash.controller`** — resolve the caller's role +
-  store assignment, reject `close` when the shift's `assigned_user_id` ≠ caller and the caller
-  isn't a manager. This closes the current hole regardless of the UI.
+`store.shift.assign` (reassign a shift to a different operator) stays Store-Head-only — Sales Staff
+open with themselves and can't move a shift to someone else.
 
-### 3. "My Shift" cashier screen
+**Back-end (this is a live gap — do it regardless):** `store-cash.controller` is JWT-only today.
+Add a guard/service check on `POST /store-cash/shifts`, `PUT /store-cash/shifts/:id/close`,
+`PUT /store-cash/shifts/:id/assign`, `POST /store-cash/ledger`:
+- caller's role must carry the matching `store.shift.*` / `store` action
+- the target store must be one the caller is assigned to (or the caller is a Business Head)
+- reject `assign` for non-managers
 
-A focused route (e.g. `/secure/store/my-shift`) **or** a card on the POS landing
-(`sale-pos.component`) — the latter is better, the cashier is already there.
+### 3. "My Shift" on the POS landing (decision 2 — direct close)
 
-Shows the cashier's current open shift **for their assigned store**:
-- opening float, running expected cash, bill count, *their* sales total (cash + digital)
-- a "no open shift" state with a note that sales won't be reconciled until one is opened
-- **Close my shift** → opens the denomination sheet (below)
+A card at the top of `sale-pos.component` (the cashier is already there — no separate route):
 
-Hard limits: can only see/close a shift assigned to them (or unassigned) at their store; cannot
-reopen, cannot touch past or other-store shifts, cannot assign.
+**No open shift for the store:**
+> ⚠ No open shift — sales cannot be completed. **[ Open shift ]**
+> → opens the denomination sheet in *opening* mode (float count) + optional notes.
 
-### 4. Denomination tally
+**Open shift:**
+> Shift: Morning (2026-09-04) · opened by {operator} at 09:04
+> Opening float ₹2,000 · Expected now ₹8,450 · 23 bills · your sales ₹6,450
+> **[ Close shift ]** → denomination sheet in *closing* mode → confirm → `CLOSED`.
 
-**Storage** — `jsonb` on `store_shifts`, no new table (denominations are only ever read as a block
-with the shift):
+Direct close: on confirm, `PUT /store-cash/shifts/:id/close` with the tally; status goes straight
+to `CLOSED`, `variance = counted − expected`. Managers review variances on the dashboard / Shift
+Report afterwards. No intermediate state.
+
+Sales Staff still can't reach `/secure/store/cash` or the manager Shifts list — only this card.
+
+### 4. Denomination tally (decisions 4 & 5 — opening + closing, fixed set)
+
+**Fixed denomination set** (code constant, shared FE/BE):
+`2000, 500, 200, 100, 50, 20, 10` (notes) · `20, 10, 5, 2, 1` (coins).
+
+**Storage** — `jsonb` on `store_shifts`, no new table:
 
 ```
-counted_denominations   jsonb   -- [{ "d": 500, "n": 12 }, { "d": 200, "n": 5 }, ...]
-opening_denominations   jsonb   -- optional: the float counted at open
+opening_denominations   jsonb   -- [{ "d": 500, "n": 4 }, { "d": 100, "n": 0 }, ...]
+counted_denominations   jsonb   -- same shape, at close
 ```
 
-**Denomination set** — Indian default, fixed in code to start:
-`500, 200, 100, 50, 20, 10` (notes) · `20, 10, 5, 2, 1` (coins). Make it a `Setting` key later if a
-business needs to change it.
-
-**UI** — replace the single "Counted Cash" input with a small grid:
+**UI** — one reusable denomination grid, used in both the open sheet and the close sheet:
 
 ```
   ₹500  ×  [ 12 ]  =  6,000
   ₹200  ×  [  5 ]  =  1,000
   ...
-  ────────────────────────
-  Counted total          7,000     ← derived, read-only
-  Expected               6,850
-  Variance               +150      ← live, coloured
+  ─────────────────────────
+  Total          7,000            ← derived, read-only
+  (close mode only)
+  Expected       6,850
+  Variance       +150             ← live, coloured
 ```
 
-`counted_cash` stays the authoritative total = `Σ d×n`. Variance maths unchanged. The manager's
-Shift Report gains a denomination breakdown row.
+- Opening: `opening_cash` = `Σ d×n` of the grid (the manual "Opening cash" number field is removed).
+- Closing: `counted_cash` = `Σ d×n`. Variance maths unchanged.
+- The Shift Report (manager modal) gains an opening-vs-closing denomination breakdown.
 
-**Guard (fixes CASH-13):** reject a close with an empty/zero tally — "Enter the drawer count" —
-instead of silently recording 0.
+**Guard (fixes CASH-13):** reject a close whose tally sums to 0 / is empty — "Enter the drawer
+count" — instead of silently recording 0. Same for opening a shift with a 0 float (allow 0 only if
+explicitly confirmed).
 
-### 5. Manager sign-off (recommended — this is the real paper-form replacement)
+### 5. Shift required before a sale (decision 6 — yes)
 
-Two-step, mirroring "cashier fills the form, manager signs it":
+`sale.service.create`: when `status` is `COMPLETE`, resolve the store's `OPEN` shift; if there is
+none, reject with **"Open a shift before completing sales."** (`BadRequestException`). `PENDING` /
+parked sales are unaffected — you can build a cart without a shift, you just can't finalise it.
 
-1. Cashier submits the count → shift `status = 'PENDING_REVIEW'`, `submitted_by` / `submitted_on`
-   set. Sales for that shift stop (a new shift must be opened).
-2. Manager sees it on the Shifts screen / dashboard ("1 shift awaiting review"), verifies the
-   physical cash, confirms → `status = 'CLOSED'`, `closed_by` / `closed_on` set. Manager can
-   adjust the count with a reason before confirming.
+This makes shift discipline enforceable and removes the silent `shift_id = null` orphan case.
+Pairs with the "No open shift" banner on the POS card so the cashier knows what to do.
 
-Simpler alternative if you don't want the extra state: cashier closes straight to `CLOSED`,
-manager reviews variances after the fact on the dashboard (already possible). Loses the
-"nothing is final until the manager checks the drawer" property.
+### 6. Manager view — unchanged
+
+Store Head keeps the full Shifts screen (open/assign/close/report for any shift at their stores)
+and the Cash screen. The Shift Report just gains the denomination breakdown. No PENDING_REVIEW
+state, no new manager screen.
 
 ---
 
 ## Schema changes
 
-`sql/migrations/024_shift_denominations.sql` (+ rollback):
+`sql/migrations/024_shift_denominations.sql` (+ `024_rollback.sql`):
 
 ```sql
 alter table public.store_shifts
-  add column if not exists counted_denominations jsonb,
   add column if not exists opening_denominations jsonb,
-  add column if not exists submitted_by int4 references public.app_user(id),
-  add column if not exists submitted_on timestamp;
--- status already varchar(20); 'PENDING_REVIEW' needs no DDL change
+  add column if not exists counted_denominations jsonb,
+  add column if not exists closed_operator_id int4 references public.app_user(id);
 ```
 
-Seed: add the new `store.shift.*` actions to Sales Staff and Store Head in `sql/ddl/005_seed.sql`
-+ a permissions-patch migration (same pattern as `023`).
+Permissions: add `store.shift.open` + `store.shift.close` actions to the **Sales Staff** and
+**Store Head** role rows — in `sql/ddl/005_seed.sql` and a jsonb-patch migration
+`025_shift_permissions.sql` (same pattern as `023_nav_permission_paths.sql`) for existing DBs.
 
 ---
+
+## Backend surface
+
+| Endpoint | Change |
+|---|---|
+| `POST /store-cash/shifts` | accept `opening_denominations` (→ `opening_cash` = Σ); require a valid operator; permission check; reject 0-float unless `allowZero` |
+| `PUT /store-cash/shifts/:id/close` | accept `counted_denominations` (→ `counted_cash` = Σ) + `closedoperatorid`; reject empty tally; permission check; `closeShift` already guards re-close (#140) |
+| `PUT /store-cash/shifts/:id/assign` | manager-only check |
+| `POST /store-cash/ledger` | permission + store-assignment check |
+| `GET /store-cash/dashboard` | already returns `openShift`; add `opening_denominations` / `counted_denominations` passthrough |
+| `POST /sales` (`sale.service.create`) | reject `COMPLETE` with no `OPEN` shift for the store |
+| `GET /store-cash/shifts/:id/report` | include both denomination blocks |
+
+## Frontend surface
+
+- `support/` denomination constant + a `<app-denomination-grid>` shared component (grid + live total).
+- `sale-pos.component` — the "My Shift" card (open/close, both use the grid).
+- `shifts.component` (manager) — Open form: swap the "Opening cash" number for the grid; Close
+  modal: swap "Counted Cash" for the grid; Report: show breakdown.
+- `sale-header` operator dropdown — surface a validation message when unset and an open/close is attempted.
+- New `store.shift.*` entries in `permission-catalog.ts`.
+
+## QA / seed impact
+
+- `qa/seed/operations.ts` already opens shifts before selling — update `createShift` / close calls
+  to send denomination arrays; the "shift required before sale" rule then holds for the seed.
+- Specs that ring up `COMPLETE` sales assume an open shift exists — verify the seed guarantees one
+  on store 1 for the whole run (it closes the demo shift then leaves the final one open — keep that).
+- CASH-13 spec flips from "defaults to 0" → "rejected". New specs: SHIFT open/close by a Sales
+  Staff token; `COMPLETE` sale with no open shift rejected; denomination sum = counted_cash.
 
 ## Effort
 
 | Item | Effort |
 |---|---|
-| Denomination tally — jsonb + UI grid + derived total + empty guard | S–M |
-| "My Shift" card on POS + self-close, store/assignee scoped | M |
-| Back-end authorization on `store-cash` endpoints + new permission actions + seed/migration | M |
-| Manager PENDING_REVIEW sign-off step | M (optional) |
-| **Total** | **M–L (~2–4 days)** depending on the sign-off step |
-
-Back-end authorization is worth doing regardless — it's a live gap.
-
-## Open questions
-
-1. **One login per cashier, or shared terminal?** (Option A vs B above.)
-2. **Direct close, or submit → manager confirms?** (§5)
-3. **Can Sales Staff also *open* a shift, or manager-only open + cashier-only close?**
-4. **Capture the opening float by denomination too, or just the closing count?**
-5. **Denomination set** — Indian default hard-coded, or per-business setting from day one?
-6. Should opening a shift be **required** before the POS accepts a sale (vs. today's silent
-   `shift_id = null`)?
+| `<app-denomination-grid>` + constant | S |
+| Migration 024/025 + seed permission rows | S |
+| Backend: denomination in open/close, Σ → cash, empty guard, operator required | S–M |
+| Backend: authorization on store-cash endpoints + catalog actions | M |
+| Backend: block `COMPLETE` sale with no open shift | S |
+| POS "My Shift" card (open + close) | M |
+| Manager Shifts screen: grid in open form + close modal + report breakdown | M |
+| QA: seed update + flip CASH-13 + ~3 new specs | S–M |
+| **Total** | **M–L (~2–3 days)** |
 
 ## Not in scope
 
 Multiple tills per store / mid-shift cashier hand-off with drawer custody; petty-cash sub-accounts;
-digital (UPI/card) reconciliation against a payment gateway. Separate tracks.
+digital (UPI/card) reconciliation against a payment gateway; per-business denomination sets. Separate tracks.
