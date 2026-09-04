@@ -249,12 +249,12 @@ export class PurchaseInvoiceService {
   
   async findSalePrice(input){
     return await this.manager.query(`select
-    pii.mfr_date, pii.exp_date, pii.batch, p.pack, pii.mrp_cost, pii.sale_price, product_id, tax_pcnt, pii.created_on,
-    round(ptr_value::numeric ,2) as ptr_value
+    pii.mfr_date, pii.exp_date, pii.batch, p.pack, pii.mrp_cost, pii.sale_price, pii.product_id, pii.tax_pcnt, pii.created_on,
+    round(pii.ptr_value::numeric ,2) as ptr_value
     from purchase_invoice_item pii
     inner join product p on p.id = pii.product_id
-    where product_id = $1
-    and upper(batch) = upper($2)
+    where pii.product_id = $1
+    and upper(pii.batch) = upper($2)
     order by pii.created_on desc
     limit 1`, [input.productid, input.batch]);
 }

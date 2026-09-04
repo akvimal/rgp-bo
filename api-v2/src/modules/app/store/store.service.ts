@@ -502,7 +502,7 @@ export class StoreService {
 
     const ledger = await this.cashAccountRepository.find({
       where: { shiftid: shiftId },
-      order: { created_on: 'ASC' } as any,
+      order: { transdate: 'ASC', id: 'ASC' },
     });
 
     return {

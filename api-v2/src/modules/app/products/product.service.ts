@@ -144,18 +144,32 @@ export class ProductService {
             [createProductPrice2Dto.productid]
           );
 
-          // Step 2: End current price if one exists
+          // A new price applies forward only. If the given effective date is not
+          // after the latest existing price, clamp it to the day after so the
+          // history stays chronological and ranges never overlap or invert.
+          let applyFrom = effdate;
+          const latestEff = priceHistory?.[0]?.eff_date
+            ? new Date(priceHistory[0].eff_date).toISOString().split('T')[0]
+            : null;
+          if (latestEff && applyFrom <= latestEff) {
+            const d = new Date(latestEff);
+            d.setDate(d.getDate() + 1);
+            applyFrom = d.toISOString().split('T')[0];
+          }
+
+          // Step 2: Close the currently-open price row at the new start date.
           if (priceHistory && priceHistory.length > 0) {
             await transactionManager.query(
-              `UPDATE product_price2 SET end_date = $1 WHERE product_id = $2 AND end_date = '2099-12-31'`,
-              [effdate, createProductPrice2Dto.productid]
+              `UPDATE product_price2 SET end_date = $1
+               WHERE product_id = $2 AND end_date = '2099-12-31' AND eff_date < $1`,
+              [applyFrom, createProductPrice2Dto.productid]
             );
           }
 
           // Step 3: Save new price with default values
           const newPrice = await transactionManager.save(ProductPrice2, {
             ...createProductPrice2Dto,
-            effdate: effdate,
+            effdate: applyFrom,
             enddate: enddate,
             createdby: userid
           });

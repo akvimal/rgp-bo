@@ -68,9 +68,12 @@ export class ProductController {
     @Get('/prices/:prodid')
     async findPriceById(@Param() param: any, @User() currentUser: any) {
       await this.assertCostAccess(currentUser);
-      const price:any = await this.productService.findPriceById(param.prodid);
-      const history = await this.productService.findPriceHistoryById(price[0].id);
-      return {price:price[0], history};
+      const prodid = +param.prodid;
+      // price_view only has a row once the product has been received via a GRN;
+      // a product priced manually before its first purchase has none.
+      const price: any = await this.productService.findPriceById(prodid);
+      const history = await this.productService.findPriceHistoryById(prodid);
+      return { price: price[0] ?? null, history };
     }
 
     @Get()
