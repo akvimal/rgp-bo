@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 **Branch:** feature/shift-cash-phase1 (or a dedicated `feature/purchasing-gst`)
-**Status:** Decisions locked (2026-09-04) — **WS-1, WS-2, WS-3 (phase 6a), WS-4 done**; WS-3 phase 6b and WS-6 deferred (need an LLM); WS-5 not started.
+**Status:** Decisions locked (2026-09-04) — **WS-1 through WS-5 done** (WS-3 is phase 6a only); WS-3 phase 6b and WS-6 remain, both deferred pending an LLM provider decision.
 **Covers:** the PO/invoice/payment review findings + **GST inward-supply (GSTR-2A/2B) reconciliation** + AI invoice extraction.
 **Companion doc:** `PURCHASE_ORDER_REVAMP.md` (PO UX + demand analytics — referenced, not repeated here).
 
@@ -156,7 +156,25 @@ Foundation for WS-5. Also feeds better GST reporting on the sales side later.
 
 **GRN screen (WS-1 rebuild):** capture `supplier_gstin` (prefilled), `place_of_supply`, `reverse_charge`, `itc_eligibility`; compute and show the CGST/SGST/IGST breakdown and the invoice-value vs (taxable + tax + round-off) check.
 
-### WS-5 — GST inward-supply reconciliation  ·  ~2 weeks  ·  new module
+### WS-5 — GST inward-supply reconciliation  ·  ~2 weeks  ·  new module  ·  **DONE**
+
+Shipped: migration `028` (`gst_return_period`, `gst_inward_supply`, `gst_reconciliation`, per the
+tables below); a new `gst` backend module (`POST /gst/import` - accepts the real GSTR-2A/2B JSON or a
+flat array, idempotent per business+period+source; `POST /gst/match` - the exact/probable/mismatch/
+missing-in-2B/missing-in-books engine below, never overwriting a human-resolved row on re-run;
+`GET /gst/summary` + `GET /gst/worklist`; per-row accept/dispute/exclude/carry-forward/create-invoice
+actions; `POST /gst/periods/:period/lock` snapshotting the ITC ledger and flipping invoices'
+`gst_recon_status`); a `/secure/purchases/gst` workspace (period picker, Import 2B/2A, Run Match,
+summary tiles, a status-filterable worklist, Lock Period). Permission gate folds into Business Head
+via the existing privileged-role bypass (decision #4) rather than a migration-seeded `gst` permission
+resource, since Business Head already passes every check. **Simplified vs. the full plan** (see the
+commit for detail): JSON import only, no Excel; carry-forward is an explicit worklist action rather
+than an automatic period-to-period roll; no vendor "chase" comms action; no separate GSTR-2B-vs-books/
+ITC-register/vendor-non-compliance reports (the summary tiles + worklist cover the same numbers).
+Verified: qa/ suite 147/147 across 3 clean runs (new `qa/specs/gst-reconciliation.spec.ts` - exact
+match, mismatch, missing-in-2B, a resolved row surviving re-match, period lock + double-lock guard,
+and the permission gate); coverage-check 120/120; a full manual curl walkthrough of import → match →
+row actions → lock against real seeded invoices, and a manual browser pass on the workspace UI.
 
 **New tables**
 
