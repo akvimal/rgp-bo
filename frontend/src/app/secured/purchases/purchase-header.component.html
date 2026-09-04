@@ -13,6 +13,9 @@
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/invoices">Invoices</a>
       </li>
       <li class="nav-item" *isAuth="'purchases'">
+        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/payables" data-testid="nav-payables">Payables</a>
+      </li>
+      <li class="nav-item" *isAuth="'purchases'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/settings">Settings</a>
       </li>
       <!-- <li class="nav-item" *isNavAuth>

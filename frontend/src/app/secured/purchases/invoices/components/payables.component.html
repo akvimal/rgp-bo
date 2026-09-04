@@ -1,0 +1,142 @@
+<div class="row g-3 mt-1">
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Vendors with a balance</div>
+        <div class="fs-4 fw-bold">{{totals.vendorCount}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Total outstanding</div>
+        <div class="fs-4 fw-bold">&#8377;{{totals.outstanding | number:'1.2-2'}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Total overdue</div>
+        <div class="fs-4 fw-bold text-danger">&#8377;{{totals.overdue | number:'1.2-2'}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="message" class="alert alert-info mt-3 py-2" data-testid="payables-message">{{message}}</div>
+
+<div class="card mt-3">
+  <div class="card-body">
+    <p-table [value]="vendors" [loading]="loading" [paginator]="vendors.length > 10" [rows]="10"
+      styleClass="p-datatable-sm p-datatable-gridlines" [rowsPerPageOptions]="[10,25,50]">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Vendor</th>
+          <th class="text-end">Invoices</th>
+          <th class="text-end">Outstanding</th>
+          <th class="text-end">Overdue</th>
+          <th>Ageing (0-30 / 31-60 / 61-90 / 90+)</th>
+          <th>Oldest Due</th>
+          <th class="text-end"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-v>
+        <tr data-testid="payables-row" [attr.data-vendor]="v.vendor_name">
+          <td>
+            {{v.vendor_name}}
+            <span class="badge bg-warning text-dark ms-1" *ngIf="v.on_hold_count" title="Invoices on hold">{{v.on_hold_count}} on hold</span>
+          </td>
+          <td class="text-end">{{v.invoice_count}}</td>
+          <td class="text-end fw-semibold">{{v.total_outstanding | number:'1.2-2'}}</td>
+          <td class="text-end" [class.text-danger]="v.total_overdue > 0">{{v.total_overdue | number:'1.2-2'}}</td>
+          <td class="small text-muted">
+            {{v.ageing.d0_30 | number:'1.0-0'}} / {{v.ageing.d31_60 | number:'1.0-0'}} / {{v.ageing.d61_90 | number:'1.0-0'}} / {{v.ageing.d90_plus | number:'1.0-0'}}
+          </td>
+          <td>{{v.oldest_due_date ? (v.oldest_due_date | date:'dd/MM/yy') : '-'}}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-primary" data-testid="payables-pay" (click)="openPay(v)">Pay</button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="7" class="text-center text-muted py-4">No outstanding balances.</td></tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-dialog [header]="'Pay ' + (payVendor?.vendor_name || '')" [(visible)]="showPay" [modal]="true" [style]="{width:'52rem'}">
+  <div *ngIf="payVendor">
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-md-3">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-control" [(ngModel)]="payForm.paydate">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Mode</label>
+        <select class="form-select" [(ngModel)]="payForm.paymode">
+          <option value="">Select</option>
+          <option value="Cash">Cash</option>
+          <option value="Transfer">Transfer</option>
+          <option value="Cheque">Cheque</option>
+          <option value="UPI">UPI</option>
+          <option value="Card">Card</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Reference No.</label>
+        <input type="text" class="form-control" [(ngModel)]="payForm.transref">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Available amount</label>
+        <div class="input-group">
+          <input type="number" min="0" class="form-control" [(ngModel)]="payAvailable" placeholder="optional">
+          <button class="btn btn-outline-secondary" type="button" (click)="autoAllocate()">Auto-fill</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:2em"></th>
+            <th>Invoice</th>
+            <th>Due</th>
+            <th class="text-end">Balance</th>
+            <th class="text-end" style="width:9rem">Pay amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of payInvoices">
+            <td class="text-center">
+              <input type="checkbox" [checked]="row.checked" (change)="toggle(row)">
+            </td>
+            <td>{{row.invoice_no}}</td>
+            <td [class.text-danger]="row.payment_status === 'Overdue'">{{row.due_date | date:'dd/MM/yy'}}</td>
+            <td class="text-end">{{row.balance_amount | number:'1.2-2'}}</td>
+            <td class="text-end">
+              <input type="number" min="0" [max]="row.balance_amount" class="form-control form-control-sm text-end"
+                [(ngModel)]="row.payamount" [disabled]="!row.checked">
+            </td>
+          </tr>
+          <tr *ngIf="!payInvoices.length">
+            <td colspan="5" class="text-center text-muted py-3">No payable invoices for this vendor.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <div class="fw-semibold">Total to pay: &#8377;{{selectedTotal | number:'1.2-2'}}</div>
+      <div *ngIf="message" class="text-danger small">{{message}}</div>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button class="btn btn-outline-secondary" (click)="closePay()">Cancel</button>
+    <button class="btn btn-primary" data-testid="payables-submit" [disabled]="!canSubmit || saving" (click)="submitPayRun()">Record Payment</button>
+  </ng-template>
+</p-dialog>

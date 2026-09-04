@@ -28,6 +28,10 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchases/outstanding`, { params });
     }
 
+    findPayables(){
+        return this.http.get(`${this.apiurl}/purchases/payables`);
+    }
+
     save(invoice:Invoice){
         return this.http.post(`${this.apiurl}/purchases`,invoice);
     }
@@ -50,6 +54,10 @@ export class InvoiceService {
 
     savePayment(payment:VendorPayment){
         return this.http.post(`${this.apiurl}/vendorpayments`, payment);
+    }
+
+    payRun(payload:any){
+        return this.http.post(`${this.apiurl}/vendorpayments/batch`, payload);
     }
 
     updatePayment(id:number, payment:VendorPayment){

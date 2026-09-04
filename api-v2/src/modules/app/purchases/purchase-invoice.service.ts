@@ -262,6 +262,69 @@ export class PurchaseInvoiceService {
       }));
   }
   
+  /**
+   * WS-2 vendor payables rollup: every vendor with an outstanding balance,
+   * with an ageing breakdown by days past due. Backs the Payables screen's
+   * vendor list and the pay-run dialog.
+   */
+  async findPayablesSummary() {
+    const outstanding = await this.findOutstanding({});
+    const today = new Date(new Date().toDateString());
+    const byVendor = new Map<number, any>();
+
+    for (const inv of outstanding) {
+      const key = inv.vendor_id;
+      if (!byVendor.has(key)) {
+        byVendor.set(key, {
+          vendor_id: key,
+          vendor_name: inv.business_name,
+          invoice_count: 0,
+          total_outstanding: 0,
+          total_overdue: 0,
+          on_hold_count: 0,
+          oldest_due_date: null as string | null,
+          ageing: { d0_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0 },
+        });
+      }
+      const row = byVendor.get(key);
+      const balance = Number(inv.balance_amount || 0);
+
+      row.invoice_count += 1;
+      row.total_outstanding += balance;
+      if (inv.is_overdue) {
+        row.total_overdue += balance;
+      }
+      if (inv.payment_status === 'On Hold') {
+        row.on_hold_count += 1;
+      }
+      if (inv.due_date && (!row.oldest_due_date || inv.due_date < row.oldest_due_date)) {
+        row.oldest_due_date = inv.due_date;
+      }
+
+      const dueDate = inv.due_date ? new Date(inv.due_date) : today;
+      const ageDays = Math.floor((today.getTime() - dueDate.getTime()) / 86400000);
+      if (ageDays <= 30) row.ageing.d0_30 += balance;
+      else if (ageDays <= 60) row.ageing.d31_60 += balance;
+      else if (ageDays <= 90) row.ageing.d61_90 += balance;
+      else row.ageing.d90_plus += balance;
+    }
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return Array.from(byVendor.values())
+      .map((row) => ({
+        ...row,
+        total_outstanding: round2(row.total_outstanding),
+        total_overdue: round2(row.total_overdue),
+        ageing: {
+          d0_30: round2(row.ageing.d0_30),
+          d31_60: round2(row.ageing.d31_60),
+          d61_90: round2(row.ageing.d61_90),
+          d90_plus: round2(row.ageing.d90_plus),
+        },
+      }))
+      .sort((a, b) => b.total_outstanding - a.total_outstanding);
+  }
+
   async findSalePrice(input){
     return await this.manager.query(`select
     pii.mfr_date, pii.exp_date, pii.batch, p.pack, pii.mrp_cost, pii.sale_price, pii.product_id, pii.tax_pcnt, pii.created_on,

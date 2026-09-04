@@ -19,6 +19,11 @@ export class PurchaseInvoiceController {
       return this.purchaseInvoiceService.findOutstanding(query);
     }
 
+    @Get('/payables')
+    async findPayables() {
+      return this.purchaseInvoiceService.findPayablesSummary();
+    }
+
     @Get('/:id')
     async findById(@Param('id') id: string) {
       return this.purchaseInvoiceService.findById(id);

@@ -8,6 +8,7 @@ import { InvoiceFormComponent } from "./invoices/components/invoice-form.compone
 import { InvoiceItemsComponent } from "./invoices/components/invoice-items.component";
 import { InvoicePaymentComponent } from "./invoices/components/invoice-payment.component";
 import { InvoiceListComponent } from "./invoices/components/invoice-list.component";
+import { PayablesComponent } from "./invoices/components/payables.component";
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import {DialogModule} from 'primeng/dialog';
 import {TableModule} from 'primeng/table';
@@ -41,6 +42,7 @@ const routes: Routes = [
       },
       { path: 'requests', component: PurchaseRequestComponent },
       { path: 'suggestions', component: PurchaseSuggestionComponent },
+      { path: 'payables', component: PayablesComponent },
       { path: 'settings', component: PurchaseSettingsComponent },
       { path: 'invoices', 
           children: [
@@ -68,6 +70,7 @@ const routes: Routes = [
       PurchaseRequestComponent,
       PurchaseSuggestionComponent,
       InvoiceListComponent,
+      PayablesComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,
       InvoiceItemFormComponent,

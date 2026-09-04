@@ -23,6 +23,11 @@ export class VendorPaymentController {
         return this.service.create(dto, currentUser.id);
     }
 
+    @Post('batch')
+    payRun(@Body() dto: any, @User() currentUser: any) {
+        return this.service.payRun(dto, currentUser.id);
+    }
+
     @Put(':id')
     update(@Param('id') id: string, @Body() dto: UpdateVendorPaymentDto, @User() currentUser: any) {
         return this.service.update(+id, dto, currentUser.id);
