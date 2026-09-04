@@ -56,7 +56,17 @@ export class VendorPayment extends BaseEntity {
 
     @Column("character varying", { name: "remarks", nullable: true })
     remarks: string | null;
-    
+
+    @Column("character varying", { name: "status", default: "RECORDED" })
+    status: string;
+
+    @Column("integer", { name: "reverses_id", nullable: true })
+    reversesid: number | null;
+
+    @Column("character varying", { name: "batch_ref", nullable: true })
+    batchref: string | null;
+
+
     @ManyToOne(
       () => Vendor,
       (vendor) => vendor.payments

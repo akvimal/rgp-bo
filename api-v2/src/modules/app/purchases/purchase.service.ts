@@ -101,6 +101,13 @@ export class PurchaseService {
     }
 
     async createOrder(dto: CreatePurchaseOrderDto, userid: number) {
+        if(!dto.vendorid){
+            throw new BadRequestException('Vendor is required.');
+        }
+        const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
+        if(!vendor){
+            throw new BadRequestException('Vendor not found.');
+        }
         const order = await this.orderRepository.save({
             ...dto,
             status: dto.status || 'PENDING',

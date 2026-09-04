@@ -40,6 +40,9 @@ import { VendorPayment } from "./vendor-payment.entity";
     @Column("json", { name: "more_props", nullable: true })
     props: object | null;
 
+    @Column("integer", { name: "payment_terms_days", default: 0 })
+    paymenttermsdays: number;
+
     @OneToMany(() => PurchaseInvoice, (purchaseInvoice) => purchaseInvoice.vendor)
     purchaseInvoices: PurchaseInvoice[];
 

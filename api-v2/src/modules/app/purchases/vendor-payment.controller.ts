@@ -27,4 +27,9 @@ export class VendorPaymentController {
     update(@Param('id') id: string, @Body() dto: UpdateVendorPaymentDto, @User() currentUser: any) {
         return this.service.update(+id, dto, currentUser.id);
     }
+
+    @Post(':id/reverse')
+    reverse(@Param('id') id: string, @Body() body: { reason?: string }, @User() currentUser: any) {
+        return this.service.reverse(+id, currentUser.id, body?.reason);
+    }
 }

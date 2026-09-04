@@ -12,7 +12,10 @@ export class CreateVendorDto {
     @ApiProperty({ description: 'address', example: '' })
     readonly address: string;
     @ApiProperty({ description: 'gstn', example: '' })
-    readonly gstn: string;    
+    readonly gstn: string;
+    @ApiPropertyOptional({ description: 'payment terms in days, used to default an invoice due date', example: 0 })
+    @IsOptional()
+    readonly paymenttermsdays: number;
     @ApiProperty({ description: 'comments', example: '' })
     readonly comments: string;
     @ApiPropertyOptional({ description: 'props', example: '{}' })

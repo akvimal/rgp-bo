@@ -24,9 +24,13 @@
           <label for="contactphone" class="form-label">Contact Phone</label>
           <input type="text" class="form-control" id="contactphone" data-testid="vendor-f-phone" formControlName="contactphone">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label for="address" class="form-label">Address</label>
           <textarea class="form-control" id="address" formControlName="address"></textarea>
+        </div>
+        <div class="col-md-2">
+          <label for="paymenttermsdays" class="form-label">Payment Terms (days)</label>
+          <input type="number" min="0" class="form-control" id="paymenttermsdays" data-testid="vendor-f-terms" formControlName="paymenttermsdays">
         </div>
       </div>
       <div class="row">

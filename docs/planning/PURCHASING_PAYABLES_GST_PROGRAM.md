@@ -2,9 +2,24 @@
 
 **Date:** 2026-09-04
 **Branch:** feature/shift-cash-phase1 (or a dedicated `feature/purchasing-gst`)
-**Status:** Plan — not started
+**Status:** Decisions locked (2026-09-04) — **WS-1 done**; WS-2 onward not started.
 **Covers:** the PO/invoice/payment review findings + **GST inward-supply (GSTR-2A/2B) reconciliation** + AI invoice extraction.
 **Companion doc:** `PURCHASE_ORDER_REVAMP.md` (PO UX + demand analytics — referenced, not repeated here).
+
+## Decisions (locked 2026-09-04)
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1 | GSTIN scope | **One GSTIN per business** (v1). Multi-state deferred. | Matches the single-state-chain assumption already in the schema (one `business` row, no state field yet). Revisit if a business registers in a second state. |
+| 2 | 2B import | **Manual JSON/Excel upload only** (v1). GSP API deferred. | Needs no vendor subscription or API credentials to ship; the portal JSON download is free and works today. |
+| 3 | Who claims ITC | **Business-level, always** — no per-store apportionment. | Follows from #1; stores don't have their own GST registration. |
+| 4 | Finance role | **Fold into Business Head** for v1; no new role yet. | Avoids a permission-matrix change before there's a real second finance user; `gst.*` actions still exist as a distinct resource so a Finance role can be split out later without a data migration. |
+| 5 | Till-cash vendor payments | **No — vendor payments are always business-level (bank), never from till cash.** | Keeps WS-2 schema simple (no `store_cash_accounts` link). If a store genuinely pays a vendor from the drawer, that's already recordable as a manual `EXPENSE` ledger entry today; it just isn't auto-linked to the vendor payment record. |
+| 6 | AI provider + cost ceiling | **Anthropic API (Claude)**, opt-in per business, monthly cost cap set via a `Setting` (default a conservative cap), extraction pauses when the period's cap is hit rather than hard-failing mid-job. | Consistent with the model family already used for this session; a soft cap avoids surprise bills without silently dropping in-flight work. |
+| 7 | Matcher tolerances | **±₹1 absolute, ±1% relative** on value/date fuzzy matches, as proposed. | Standard rounding/paise-difference tolerance; tune after the first real reconciliation. |
+| 8 | Historical scope | **Backfill the WS-4 data-model fields for all existing invoices** (so reporting is consistent), but **reconciliation itself starts from the first open period going forward** — no retroactive matching of already-closed periods. | Reconciling old, already-filed periods has no ITC value and would just generate noise; the data backfill is still worth doing once, cheaply, in the migration. |
+
+Anything not listed here (exact UI copy, table column order, etc.) is left to normal implementation judgement.
 
 ---
 
@@ -28,9 +43,21 @@
 
 ## 2. Workstreams
 
-### WS-1 — Cleanup & correctness  ·  ~3 days  ·  no schema (or trivial)
+### WS-1 — Cleanup & correctness  ·  ~3 days  ·  no schema (or trivial)  ·  **DONE**
 
 Small, independent, unblocks the rest. Do first.
+
+Shipped: migration `026` (`vendor.payment_terms_days`, `vendor_payment.status`/`reverses_id`/`batch_ref`);
+`invoice-items.component` rebuilt; `vendor-payment.service` validates amount `> 0`, `≤ balance`, and
+invoice `status === 'COMPLETE'`; a `reverse()` endpoint + UI action instead of in-place edit;
+`invoice-payment.component`'s `ngOnChanges` was also fixed to actually fetch payment history once the
+invoice id arrives (it never had before — a pre-existing bug, payments always rendered empty); invoice
+due date defaults to `invoicedate + vendor.paymenttermsdays`; invoice list now unwraps
+`{data,total,page,limit}` via `[lazy]` paging instead of calling `.map` on it; dead `invoices.component`
+/ `purchases.component` deleted; `/secure/store/intent` (unreachable, no nav link) redirects to the
+canonical `/secure/purchases/requests`; `createOrder` validates `vendorid`. Verified: qa/ suite 132/132
+across 3 clean runs; the QA seed's confirm-invoice step was also fixed from a stray `status:'VERIFIED'`
+to the real `'COMPLETE'` terminal status (found because the new payment guard caught it).
 
 - **Rebuild `invoice-items.component`** — kill the dead markup, blank `<th>`s, inline `[ngStyle]`, `<h4>` icon wrappers; clean header/body/footer; `p-datatable-sm`; `grid-actions`.
 - **Payment validation** (backend `vendor-payment.service.create` + FE):
@@ -176,16 +203,9 @@ Each with a rollback. Add all to `qa/scripts/bootstrap-db.sh`.
 | WS-6 AI extraction | ~1.5 wk + provider setup |
 | **Total** | **~7–8 weeks**, sequenced |
 
-## 6. Open decisions
+## 6. Decisions
 
-1. **One GSTIN per business, or per state / per store?** (A pharmacy chain in one state = one GSTIN per business; multi-state needs GSTIN per registration and place-of-supply logic everywhere.)
-2. **2B import:** manual JSON/Excel upload only for v1, or invest in a GSP API integration (vendor selection + subscription + credentials)?
-3. **Which entity claims ITC** — always business-level? Any per-store apportionment?
-4. **New "Finance" role**, or GST reconciliation folded into Business Head?
-5. **Vendor payments from till cash** — does it happen? If yes, WS-2 needs the `store_cash_accounts` link and a `VENDOR_PAYMENT` ledger category.
-6. **AI provider + monthly cost ceiling** per business; and whether extraction is opt-in per vendor or always offered.
-7. **Round-off / rate-mismatch tolerance** for the matcher (₹1 and 1% proposed).
-8. **Historical scope** — reconcile from which period? (Backfill GST fields for all invoices, but only reconcile from an agreed start month.)
+See the table at the top of this doc — all eight are locked as of 2026-09-04.
 
 ## 7. Not in scope
 

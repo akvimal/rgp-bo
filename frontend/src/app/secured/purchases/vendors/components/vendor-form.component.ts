@@ -15,6 +15,7 @@ export class VendorFormComponent{
         contactphone: new FormControl(''),
         gstn: new FormControl(''),
         address: new FormControl(''),
+        paymenttermsdays: new FormControl(0),
         comments: new FormControl('')
       });
 
@@ -31,6 +32,7 @@ export class VendorFormComponent{
           this.form.controls['address'].setValue(data.address);
           this.form.controls['comments'].setValue(data.comments);
           this.form.controls['gstn'].setValue(data.gstn);
+          this.form.controls['paymenttermsdays'].setValue(data.paymenttermsdays || 0);
         })
       }
   
@@ -45,6 +47,7 @@ export class VendorFormComponent{
           contactphone: this.form.value.contactphone,
           gstn: this.form.value.gstn,
           address: this.form.value.address,
+          paymenttermsdays: +(this.form.value.paymenttermsdays || 0),
           comments: this.form.value.comments,
          }
   

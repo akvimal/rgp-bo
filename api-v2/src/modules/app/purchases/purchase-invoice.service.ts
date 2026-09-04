@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
@@ -9,6 +9,7 @@ import { VendorPayment } from "src/entities/vendor-payment.entity";
 import { PurchaseOrder } from "src/entities/purchase-order.entity";
 import { PurchaseRequest } from "src/entities/purchase-request.entity";
 import { Product } from "src/entities/product.entity";
+import { Vendor } from "src/entities/vendor.entity";
 
 @Injectable()
 export class PurchaseInvoiceService {
@@ -19,6 +20,7 @@ export class PurchaseInvoiceService {
     @InjectRepository(PurchaseOrder) private readonly purchaseOrderRepository: Repository<PurchaseOrder>,
     @InjectRepository(PurchaseRequest) private readonly purchaseRequestRepository: Repository<PurchaseRequest>,
     @InjectRepository(Product) private readonly productRepository: Repository<Product>,
+    @InjectRepository(Vendor) private readonly vendorRepository: Repository<Vendor>,
     @InjectEntityManager() private manager: EntityManager) { }
 
     private getDerivedPaymentStatus(invoice:any, paidAmount:number){
@@ -60,9 +62,22 @@ export class PurchaseInvoiceService {
         if(dto.purchaseorderid){
           await this.assertApprovedPurchaseOrder(+dto.purchaseorderid);
         }
+        if(!dto.vendorid){
+          throw new BadRequestException('Vendor is required.');
+        }
+
+        let duedate = dto.duedate;
+        if(!duedate && dto.invoicedate){
+          const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
+          const termsDays = Number(vendor?.paymenttermsdays || 0);
+          const base = new Date(dto.invoicedate);
+          base.setDate(base.getDate() + termsDays);
+          duedate = base.toISOString().slice(0, 10);
+        }
+
         return this.purchaseInvoiceRepository.save({
           ...dto,
-          duedate: dto.duedate || dto.invoicedate,
+          duedate: duedate || dto.invoicedate,
           paymentstatus: dto.paymentstatus || 'Unpaid',
           createdby:userid
         });

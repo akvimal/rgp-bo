@@ -13,12 +13,13 @@ import { PurchaseInvoiceItem } from "src/entities/purchase-invoice-item.entity";
 import { PurchaseOrder } from "src/entities/purchase-order.entity";
 import { PurchaseRequest } from "src/entities/purchase-request.entity";
 import { VendorPayment } from "src/entities/vendor-payment.entity";
+import { Vendor } from "src/entities/vendor.entity";
 import { JwtService } from "@nestjs/jwt";
 import { AuthModule } from "src/modules/auth/auth.module";
 import { RoleModule } from "../roles/role.module";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Product, ProductPriceChange, ProductQtyChange, PurchaseInvoice, PurchaseInvoiceItem, PurchaseOrder, PurchaseRequest, VendorPayment]),AuthModule,RoleModule],
+    imports: [TypeOrmModule.forFeature([Product, ProductPriceChange, ProductQtyChange, PurchaseInvoice, PurchaseInvoiceItem, PurchaseOrder, PurchaseRequest, VendorPayment, Vendor]),AuthModule,RoleModule],
     controllers: [StockController,Stock2Controller],
     providers: [StockService,Stock2Service,PurchaseInvoiceService,JwtService],
     exports: [StockService, PurchaseInvoiceService],

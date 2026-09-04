@@ -17,6 +17,8 @@
               <th>Reference</th>
               <th>Communication</th>
               <th class="text-end">Amount</th>
+              <th>Status</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -25,11 +27,23 @@
               <td>{{payment.paymode}}</td>
               <td>{{payment.transref || '-'}}</td>
               <td>{{payment.communicationstatus || 'Not Sent'}}<span *ngIf="payment.communicationchannel"> / {{payment.communicationchannel}}</span></td>
-              <td class="text-end">{{payment.amount | number:'1.2-2'}}</td>
+              <td class="text-end" [class.text-danger]="payment.amount < 0">{{payment.amount | number:'1.2-2'}}</td>
+              <td>
+                <span class="badge" [ngClass]="payment.status === 'REVERSED' ? 'bg-secondary' : (payment.reversesid ? 'bg-warning text-dark' : 'bg-success')">
+                  {{payment.reversesid ? 'Reversal' : (payment.status || 'Recorded')}}
+                </span>
+              </td>
+              <td class="text-end">
+                <div class="grid-actions" *ngIf="canReverse(payment)">
+                  <a (click)="reverse(payment)" title="Reverse"><i class="bi bi-arrow-counterclockwise text-danger"></i></a>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <div *ngIf="message" class="alert alert-danger py-2 mb-3">{{message}}</div>
 
       <div *ngIf="(balanceamount || 0) <= 0" class="alert alert-light border mb-0">
         This invoice is fully paid. Payment history remains visible, and new payments are disabled.
@@ -57,7 +71,10 @@
         <div class="row mt-4">
           <div class="col-md-4">
             <label for="payamount" class="form-label">Amount</label>
-            <input type="text" class="form-control" id="payamount" formControlName="payamount">
+            <input type="number" min="0.01" step="0.01" class="form-control" id="payamount" formControlName="payamount">
+            <div class="form-text" *ngIf="form.controls['payamount'].dirty && form.controls['payamount'].invalid">
+              Enter an amount up to the outstanding balance ({{balanceamount || invoiceamt || 0 | number:'1.2-2'}}).
+            </div>
           </div>
           <div class="col-md-4">
             <label for="communicationstatus" class="form-label">Communication Status</label>

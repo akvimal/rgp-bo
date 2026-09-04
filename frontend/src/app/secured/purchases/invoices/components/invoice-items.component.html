@@ -1,166 +1,144 @@
-
 <div class="card">
     <div class="card-body">
-        <div class="row">
-            <div class="col-lg-12 col-md-12 label text-center h4">{{invoice.vendor?.name}}</div>
-            <div class="col-lg-3 col-md-3 label"><strong>Invoice No:</strong> {{invoice.invoiceno}}</div>
-            <div class="col-lg-3 col-md-3 label"><strong>Invoice Date:</strong> {{invoice.invoicedate | date : 'dd/MM/yyyy'}}</div>
-            <div class="col-lg-3 col-md-3 label"><strong>Due Date:</strong> {{invoice.duedate | date : 'dd/MM/yyyy'}}</div>
-            <div class="col-lg-3 col-md-3 label text-end"><strong>GRN:</strong><span class="text-success"> {{invoice.grno}}</span></div>
-            <div class="col-lg-3 col-md-3 label"><strong>Invoice Status:</strong> {{invoice.status}}</div>
-            <div class="col-lg-3 col-md-3 label"><strong>Payment Status:</strong> {{invoice.paymentstatus}}</div>
-            <div class="col-lg-3 col-md-3 label"><strong>Total:</strong> {{invoice.total | number:'1.2-2'}}</div>
-            <div class="col-lg-3 col-md-3 label"><strong>Paid:</strong> {{(invoice.paidamount || 0) | number:'1.2-2'}}</div>
-            <div class="col-lg-3 col-md-3 label"><strong>Balance:</strong> {{(invoice.balanceamount || 0) | number:'1.2-2'}}</div>
-            <div class="col-lg-3 col-md-3 label text-end"><strong>Reference:</strong> {{invoice.referenceno || '-' }}
-                <a [routerLink]="['../../edit',invoice.id]">Edit</a>
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <div class="fw-semibold fs-5">{{invoice.vendor?.name}}</div>
+                <div class="text-muted small">
+                    Invoice #{{invoice.invoiceno}} &middot; {{invoice.invoicedate | date:'dd MMM yyyy'}}
+                    <span *ngIf="invoice.duedate"> &middot; Due {{invoice.duedate | date:'dd MMM yyyy'}}</span>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <span class="badge bg-secondary">{{invoice.status}}</span>
+                <span class="badge" [ngClass]="invoice.paymentstatus === 'Paid' ? 'bg-success' : (invoice.paymentstatus === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark')">
+                    {{invoice.paymentstatus}}
+                </span>
             </div>
         </div>
-        <div class="row mt-2" *ngIf="invoice.notes">
-            <div class="col-lg-12 col-md-12 label"><strong>Notes:</strong> {{invoice.notes}}</div>
+
+        <div class="row g-3 small mt-1">
+            <div class="col-6 col-md-3">
+                <div class="text-muted">GRN</div>
+                <div class="fw-semibold text-success">{{invoice.grno || '-'}}</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted">Reference</div>
+                <div class="fw-semibold">{{invoice.referenceno || '-'}} <a [routerLink]="['../../edit',invoice.id]">Edit</a></div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="text-muted">Total</div>
+                <div class="fw-semibold">{{invoice.total | number:'1.2-2'}}</div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="text-muted">Paid</div>
+                <div class="fw-semibold">{{(invoice.paidamount || 0) | number:'1.2-2'}}</div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="text-muted">Balance</div>
+                <div class="fw-semibold">{{(invoice.balanceamount || 0) | number:'1.2-2'}}</div>
+            </div>
+        </div>
+
+        <div class="mt-2 small" *ngIf="invoice.notes">
+            <span class="text-muted">Notes:</span> {{invoice.notes}}
         </div>
     </div>
 </div>
-<div class="card p-0" *ngIf="invoice.status === 'NEW'">
-    <div class="card-body">
-            <div class="row mb-3" *ngIf="invoice.purchaseorderid">
-                <div class="col-lg-12 d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>Linked PO:</strong> {{invoice.purchaseorderid}}
-                        <span class="text-muted ms-2">Import linked request lines as draft invoice items.</span>
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="importOrderItems()">Import PO Items</button>
+
+<div *ngIf="invoice.status === 'NEW'">
+    <div class="card mt-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" *ngIf="invoice.purchaseorderid">
+                <div>
+                    <strong>Linked PO:</strong> {{invoice.purchaseorderid}}
+                    <span class="text-muted ms-2 small">Import linked request lines as draft invoice items.</span>
                 </div>
-                <div class="col-lg-12 mt-2 text-success" *ngIf="importFeedback">{{importFeedback}}</div>
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="importOrderItems()">Import PO Items</button>
             </div>
-            <app-invoice-item-form [invoiceid]="invoice.id" (added)="fetchItems($event)"></app-invoice-item-form>
+            <div class="text-success small mt-2" *ngIf="importFeedback">{{importFeedback}}</div>
+
+            <app-invoice-item-form [invoiceid]="invoice.id" (added)="onItemAdd($event)"></app-invoice-item-form>
         </div>
     </div>
-    <div class="card">
+
+    <div class="card mt-3">
         <div class="card-body">
-            <div class="row">
-                <div class="col-12">
-                    Import
-                </div>
-            </div>
-        <div class="row">
-            <div class="col-lg-12">
-                <p-table [value]="items" 
-                    [resizableColumns]="true" columnResizeMode="expand" styleClass="p-datatable-gridlines mt-0">
+            <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" styleClass="p-datatable-sm p-datatable-gridlines">
                 <ng-template pTemplate="header">
-                        <tr>
-                            <th *ngIf="invoice.status !== 'COMPLETE'"></th>
-                            <th *ngIf="invoice.status !== 'COMPLETE'"></th>
-                            <th pSortableColumn="product.title">Product
-                                <p-sortIcon field="product.title"></p-sortIcon>
-                            </th>
-                            <th>Batch</th>
-                            <!-- <th>MFR Date</th> -->
-                            <th pSortableColumn="expdate" class="text-center">Expiry
-                                <p-sortIcon field="expdate"></p-sortIcon>
-                            </th>
-                            <th class="text-end">MRP</th>
-                            <!-- <th>Pack</th> -->
-                            <th class="text-end">QTY</th>
-                            <th class="text-end">Free</th>
-                            <th class="text-end">Rate</th>
-                            <th class="text-end">Disc</th>
-                            <th class="text-end">Tax</th>
-                            <th class="text-end">Total</th>
-                        </tr>
-                    <!-- </thead>
-                <tbody> -->
+                    <tr>
+                        <th style="width:2.5em"></th>
+                        <th style="width:2.5em"></th>
+                        <th pSortableColumn="product.title">Product <p-sortIcon field="product.title"></p-sortIcon></th>
+                        <th>Batch</th>
+                        <th class="text-center" pSortableColumn="expdate">Expiry <p-sortIcon field="expdate"></p-sortIcon></th>
+                        <th class="text-end">MRP</th>
+                        <th class="text-end">Qty</th>
+                        <th class="text-end">Free</th>
+                        <th class="text-end">Rate</th>
+                        <th class="text-end">Disc</th>
+                        <th class="text-end">Tax</th>
+                        <th class="text-end">Total</th>
+                    </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
-                    <!-- <tr *ngFor="let i of invoice.items"> -->
-                        <tr [ngStyle]="{'background':i.selected ? '#ddd' : 'inherit'}">
-                            <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center"  style="width:2em">
-                                <input type="checkbox" class="form-conrol-input checkmark" *ngIf="i.status === 'NEW'" (change)="selectItem($event,i.id)">
-                            </td>
-                            <td *ngIf="invoice.status !== 'COMPLETE'" class="text-center" style="width:2em">
-                                <h4 style="margin:0;padding:0;">
-                                    <a (click)="showItemEdit(i.id)" *ngIf="i.status == 'NEW'">
-                                        <i class="bi bi-pencil-square text-primary"></i>
-                                    </a>
-                                </h4>
-                            </td>
-                            <td>{{i.product?.title}}</td>
-                            <td>{{i.batch}}</td>
-                            <!-- <td class="text-center">{{i.mfrdate | date: 'MMM-yy'}}</td> -->
-                            <td class="text-center">{{i.expdate | date: 'MMM-yy'}}</td>
-                            <td class="text-end">{{i.mrpcost | number:'1.2-2'}}</td>
-                            <!-- <td style="text-align: right;">{{i.product.pack}}</td> -->
-                            <td class="text-end">{{i.qty}}</td>
-                            <td class="text-end">{{i.freeqty}}</td>
-                            <td class="text-end">{{i.ptrvalue | number:'1.2-2'}}</td>
-                            <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
-                            <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
-                            <td class="text-end">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
-                            <!-- <td class="text-center">{{i.status}}</td> -->
-                        </tr>
-                        <!-- <tr>
-                        
-                            <td colspan="9" style="text-align: right;">Total ({{invoice.items?.length}} Items)</td>
-                            <td style="text-align: right;">{{invoice.total}}</td>
-                            <td></td>
-                        </tr> -->
-                    <!-- </tbody>
-                </table> -->
-
+                    <tr [class.table-active]="i.selected">
+                        <td class="text-center">
+                            <input type="checkbox" *ngIf="i.status === 'NEW'" (change)="selectItem($event,i.id)">
+                        </td>
+                        <td class="text-center">
+                            <a *ngIf="i.status === 'NEW'" (click)="showItemEdit(i.id)" title="Edit">
+                                <i class="bi bi-pencil-square text-primary"></i>
+                            </a>
+                        </td>
+                        <td>{{i.product?.title}}</td>
+                        <td>{{i.batch}}</td>
+                        <td class="text-center">{{i.expdate | date:'MMM-yy'}}</td>
+                        <td class="text-end">{{i.mrpcost | number:'1.2-2'}}</td>
+                        <td class="text-end">{{i.qty}}</td>
+                        <td class="text-end">{{i.freeqty}}</td>
+                        <td class="text-end">{{i.ptrvalue | number:'1.2-2'}}</td>
+                        <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
+                        <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
+                        <td class="text-end">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
+                    </tr>
                 </ng-template>
                 <ng-template pTemplate="footer">
                     <tr>
-                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
-                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
-                        <td colspan="7"></td>
+                        <td colspan="9" class="text-end text-muted">{{items?.length || 0}} items &middot; Disc / Tax</td>
                         <td class="text-end">{{disctotal | number:'1.2-2'}}</td>
                         <td class="text-end">{{taxtotal | number:'1.2-2'}}</td>
-                        <td class="text-end">{{grosstotal | number:'1.2-2'}}</td>
+                        <td></td>
                     </tr>
-                    <tr>
-                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
-                        <td *ngIf="invoice.status !== 'COMPLETE'"></td>
-                        <td colspan="7" class="text-end">{{invoice.items?.length}} Items</td>
-                        <td colspan="3" class="text-end">
-                            <span style="color:blue;font-size:larger">{{nettotal | number:'1.2-2'}}</span></td>
+                    <tr class="fw-semibold">
+                        <td colspan="11" class="text-end">Net total</td>
+                        <td class="text-end fs-5 text-primary">{{nettotal | number:'1.2-2'}}</td>
                     </tr>
                 </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="12" class="text-center text-muted py-4">No items added yet.</td></tr>
+                </ng-template>
             </p-table>
-            </div>
-            <!-- <div class="col-lg-12">
-                Total ({{invoice.items?.length}} items) Gross: {{grosstotal | number:'1.2-2'}} | Disc: {{disctotal | number:'1.2-2'}} | Tax: {{taxtotal | number:'1.2-2'}} | Net: {{nettotal | number:'1.2-2'}} 
-            </div> -->
-        </div>
 
-        <div class="row">
-            <div class="col-lg-12">
-                <button type="button" *ngIf="itemSelected" class="btn btn-primary m-2" (click)="verifyItems()">Verify</button>
-                <button type="button" *ngIf="itemSelected" class="btn btn-outline-primary m-2" (click)="removeItems()">Remove</button>
+            <div class="mt-3" *ngIf="itemSelected">
+                <button type="button" class="btn btn-primary me-2" (click)="verifyItems()">Verify</button>
+                <button type="button" class="btn btn-outline-danger" (click)="removeItems()">Remove</button>
+            </div>
+
+            <div class="row g-3 mt-1 border-top pt-3" *ngIf="allVerified">
+                <div class="col-md-8">
+                    <label for="feedback" class="form-label">Comments</label>
+                    <textarea id="feedback" class="form-control" rows="2" [value]="feedback" (change)="updateFeedback($event)"></textarea>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="button" class="btn btn-primary" (click)="confirmInvoice()">Complete</button>
+                </div>
             </div>
         </div>
-        <!-- </div></div> -->
-<!-- <div class="card">
-    <div class="card-body"> -->
-        <div class="row mt-4" *ngIf="allVerified && invoice.status === 'NEW'">
-            <!-- <div class="col-lg-6">
-                <label for="grn" class="col-sm-2 col-form-label">GRN</label>
-                <input type="text" id="grn" class="form-control" name="grn" [value]="grn"  (change)="updateGrn($event)">
-            </div> -->
-            <div class="col-lg-6">
-                <label for="feedback">Comments</label>
-                <textarea name="feedback" [value]="feedback" (change)="updateFeedback($event)" 
-                id="feedback"  class="form-control" cols="30" rows="2"></textarea>
-            </div>
-            <div class="col-lg-12 mt-2">
-                <button type="button" class="btn btn-primary"  (click)="confirmInvoice()">Complete</button>
-            </div>
-        </div>
-        <!-- <div *ngIf="invoice.status === 'RECEIVED'">
-            GRN: {{invoice.grn}}
-        </div> -->
     </div>
 </div>
+
 <app-invoice-payment
+    class="d-block mt-3"
     [invoiceid]="invoice.id"
     [vendorid]="invoice.vendorid"
     [invoiceamt]="invoice.total"
@@ -168,8 +146,7 @@
     [paymentstatus]="invoice.paymentstatus"
     (payUpdated)="onPaid($event)"></app-invoice-payment>
 
-        <p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()"
-        [(visible)]="displayEditItem" [modal]="true">
-            <app-invoice-item-form [mode]="'edit'" [invoiceid]="invoice.id" [itemid]="itemid" 
-            (added)="closeEditItem()"></app-invoice-item-form>
-        </p-dialog>
+<p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()" [(visible)]="displayEditItem" [modal]="true">
+    <app-invoice-item-form [mode]="'edit'" [invoiceid]="invoice.id" [itemid]="itemid"
+        (added)="closeEditItem()"></app-invoice-item-form>
+</p-dialog>

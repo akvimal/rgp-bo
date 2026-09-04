@@ -1,19 +1,21 @@
 <div class="row">
   <div class="col-12 mt-2">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button class="btn btn-primary">Add New</button></a>
+      <a *isAuth="'purchases.add'" [routerLink]="['/secure/purchases/invoices/new']"><button class="btn btn-primary" data-testid="inv-add">Add New</button></a>
       <div class="btn-group">
-        <a class="btn btn-outline-primary" [class.active]="!isOutstanding" [routerLink]="['/secure/purchases/invoices/list']">Invoices</a>
-        <a class="btn btn-outline-primary" [class.active]="isOutstanding" [routerLink]="['/secure/purchases/invoices/outstanding']">Outstanding</a>
+        <a class="btn btn-outline-primary" [class.active]="!isOutstanding" data-testid="inv-tab-invoices" [routerLink]="['/secure/purchases/invoices/list']">Invoices</a>
+        <a class="btn btn-outline-primary" [class.active]="isOutstanding" data-testid="inv-tab-outstanding" [routerLink]="['/secure/purchases/invoices/outstanding']">Outstanding</a>
       </div>
     </div>
   </div>
   <div class="col-12">
-    <p-table #dt1 [value]="invoices" 
+    <p-table #dt1 [value]="invoices"
+    [lazy]="!isOutstanding" (onLazyLoad)="loadInvoices($event)"
+    [totalRecords]="totalRecords" [loading]="loading"
     [multiSortMeta]="[{field: 'invoice_date', order: -1}]"
-    [resizableColumns]="true" columnResizeMode="expand" 
+    [resizableColumns]="true" columnResizeMode="expand"
     [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
         [rowsPerPageOptions]="[10,25,50]">
     <!-- <table *isAuth="'purchases.read'" class="table table-bordered mt-3"> -->
       <!-- <thead> -->
@@ -66,7 +68,7 @@
     <ng-template pTemplate="body" let-p>
     <!-- <tr *ngFor="let p of invoices"> -->
       <!-- <td>{{p.id}}</td> -->
-      <tr>
+      <tr data-testid="inv-row" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount">
         <!-- <td>{{p.id}}</td> -->
         <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
       <td style="text-align: center;">{{p.invoice_date | date : 'dd/MM/yy'}}</td>
@@ -75,7 +77,7 @@
       <td style="text-align: center;">{{p.items}}</td>
       <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
       <td style="text-align: right">{{p.paid_amount | number:'0.0-9'}}</td>
-      <td style="text-align: right">{{p.balance_amount | number:'0.0-9'}}</td>
+      <td style="text-align: right" data-testid="inv-balance">{{p.balance_amount | number:'0.0-9'}}</td>
       <td style="text-align: center;">{{p.status}}</td>
       <td style="text-align: center;">{{p.payment_status}}</td>
       <!-- <td>

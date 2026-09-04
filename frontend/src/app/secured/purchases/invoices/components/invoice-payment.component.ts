@@ -1,12 +1,13 @@
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { InvoiceService } from "../invoices.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     selector: 'app-invoice-payment',
     templateUrl: "./invoice-payment.component.html"
 })
-export class InvoicePaymentComponent {
+export class InvoicePaymentComponent implements OnInit, OnChanges {
 
     @Input() invoiceid:any;
     @Input() vendorid:any;
@@ -24,13 +25,13 @@ export class InvoicePaymentComponent {
         paydate: new FormControl('',Validators.required),
         paymode: new FormControl('',Validators.required),
         payrefno: new FormControl(''),
-        payamount: new FormControl('',Validators.required),
+        payamount: new FormControl('',[Validators.required, Validators.min(0.01)]),
         communicationstatus: new FormControl('Not Sent', Validators.required),
         communicationchannel: new FormControl('WhatsApp'),
         paycomments: new FormControl('')
       });
 
-      constructor(private invService:InvoiceService){}
+      constructor(private invService:InvoiceService, private confirm:ConfirmService){}
 
       ngOnInit(){
         this.form.controls['paydate'].setValue(this.getCurrentDateStr());
@@ -38,8 +39,13 @@ export class InvoicePaymentComponent {
         this.fetchPayments();
       }
 
-      ngOnChanges(){
+      ngOnChanges(changes:SimpleChanges){
         this.form.controls['payamount'].setValue(this.balanceamount || this.invoiceamt || 0);
+        // the invoice (and its id) often arrive after this component's own ngOnInit,
+        // since the parent starts with an empty {} while the invoice loads
+        if(changes['invoiceid'] && changes['invoiceid'].currentValue && changes['invoiceid'].currentValue !== changes['invoiceid'].previousValue){
+          this.fetchPayments();
+        }
       }
 
       getCurrentDateStr(){
@@ -56,7 +62,10 @@ export class InvoicePaymentComponent {
         this.invService.findPayments(this.invoiceid).subscribe((data:any) => this.payments = data || []);
       }
 
+      message = '';
+
       submit(){
+        this.message = '';
         this.invService.savePayment({
             invoiceid: this.invoiceid,
             vendorid: this.vendorid,
@@ -67,7 +76,8 @@ export class InvoicePaymentComponent {
             communicationstatus: this.form.value.communicationstatus,
             communicationchannel: this.form.value.communicationchannel,
             remarks:this.form.value.paycomments
-        }).subscribe(() => {
+        }).subscribe({
+          next: () => {
             this.form.controls['payamount'].setValue(this.balanceamount || this.invoiceamt || 0);
             this.form.controls['payrefno'].setValue('');
             this.form.controls['paycomments'].setValue('');
@@ -75,6 +85,21 @@ export class InvoicePaymentComponent {
             this.form.controls['communicationchannel'].setValue('WhatsApp');
             this.fetchPayments();
             this.payUpdated.emit(this.invoiceid)
+          },
+          error: (err) => this.message = err?.error?.message || 'Unable to record the payment.'
         });
+      }
+
+      canReverse(payment:any): boolean {
+        return payment?.status !== 'REVERSED' && !payment?.reversesid && Number(payment?.amount) > 0;
+      }
+
+      reverse(payment:any){
+        this.confirm.confirmDelete(`payment of ${payment.amount}`, () => {
+          this.invService.reversePayment(payment.id).subscribe({
+            next: () => { this.fetchPayments(); this.payUpdated.emit(this.invoiceid); },
+            error: (err) => this.message = err?.error?.message || 'Unable to reverse the payment.'
+          });
+        }, { entity: 'payment', verb: 'Reverse', consequence: 'A new offsetting entry will be added; the original stays on record.' });
       }
 }

@@ -27,7 +27,6 @@ import { StockProductsComponent } from "./stock/components/stock-products.compon
 import { StockProductItemsComponent } from "./stock/components/stock-product-items.component";
 import { StockAdjustFormComponent } from "./stock/components/stock-adjust-form.component";
 import { StockComponent } from "./stock/components/stock.component";
-import { PurchaseIntentComponent } from "./intent/purchase-intent.component";
 import { StockExpiryComponent } from "./stock/components/stock-expiry.component";
 import { StockExpiryItemsComponent } from "./stock/components/stock-expiry-items.component";
 
@@ -45,7 +44,9 @@ const routes: Routes = [
         { path: 'adjust', component: StockAdjustComponent }
       ] },
     { path: 'shifts', component: ShiftsComponent},
-    { path: 'intent', component: PurchaseIntentComponent},
+    // superseded by the fuller Requests screen at /secure/purchases/requests (same
+    // purchase_request data via PurchaseIntentService); kept as a redirect for old links.
+    { path: 'intent', redirectTo: '/secure/purchases/requests', pathMatch: 'full' },
     { path: 'cash', component: CashComponent}
   ]}
 ];
@@ -61,8 +62,7 @@ const routes: Routes = [
       StockExpiryComponent,
       StockExpiryItemsComponent,
       StockProductItemsComponent,
-      StockAdjustFormComponent,
-      PurchaseIntentComponent
+      StockAdjustFormComponent
     ],
     imports: [
         RouterModule.forChild(routes),

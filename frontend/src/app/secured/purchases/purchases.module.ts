@@ -22,13 +22,11 @@ import {ProgressBarModule} from 'primeng/progressbar';
 import {InputTextModule} from 'primeng/inputtext';
 import { InvoiceItemFormComponent } from "./invoices/components/invoice-item-form.component";
 import { PurchaseHeaderComponent } from "./purchase-header.component";
-import { PurchasesComponent } from "./invoices/components/purchases.component";
 import { TabViewModule } from "primeng/tabview";
 import { PurchaseOrderComponent } from "./requests/components/purchase-order.component";
 import { PurchaseOrderViewComponent } from "./requests/components/purchase-order-view.component";
 import { PurchaseRequestComponent } from "./requests/components/purchase-request.component";
 import { PurchaseSuggestionComponent } from "./requests/components/purchase-suggestion.component";
-import { InvoicesComponent } from "./invoices/components/invoices.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
 import { PurchaseSettingsComponent } from "./purchase-settings.component";
 
@@ -64,13 +62,11 @@ const routes: Routes = [
 @NgModule({
     declarations: [
       PurchaseHomeComponent,
-      PurchasesComponent,
       PurchaseHeaderComponent,
       PurchaseOrderComponent,
       PurchaseOrderViewComponent,
       PurchaseRequestComponent,
       PurchaseSuggestionComponent,
-      InvoicesComponent,
       InvoiceListComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,

@@ -19,8 +19,9 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchases/${id}`);
     }
 
-    findAll(){
-        return this.http.get(`${this.apiurl}/purchases`);
+    findAll(page = 1, limit = 50){
+        return this.http.get<{ data: any[]; total: number; page: number; limit: number }>(
+            `${this.apiurl}/purchases`, { params: { page: String(page), limit: String(limit) } });
     }
 
     findOutstanding(params?:any){
@@ -53,6 +54,10 @@ export class InvoiceService {
 
     updatePayment(id:number, payment:VendorPayment){
         return this.http.put(`${this.apiurl}/vendorpayments/${id}`, payment);
+    }
+
+    reversePayment(id:number, reason?:string){
+        return this.http.post(`${this.apiurl}/vendorpayments/${id}/reverse`, { reason });
     }
 
     //////
