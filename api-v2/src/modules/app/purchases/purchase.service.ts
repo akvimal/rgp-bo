@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { CreatePurchaseOrderDto } from "./dto/create-order.dto";
@@ -178,6 +178,11 @@ export class PurchaseService {
         const order = await this.findOrderById(`${id}`);
         if(!order){
             return null;
+        }
+
+        const activeRequests = (order.requests || []).filter((r:any) => r?.isActive !== false && +(r?.qty || 0) > 0);
+        if(activeRequests.length === 0){
+            throw new BadRequestException('Cannot submit a purchase order with no line items.');
         }
 
         const summary = await this.evaluateOrderApproval(order);

@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { CreateProductPrice2Dto } from "./dto/create-product-price2.dto";
@@ -122,6 +122,9 @@ export class ProductService {
     }
 
     async create(createProductDto: CreateProductDto, userid) {
+      if (createProductDto.taxpcnt !== undefined && Number(createProductDto.taxpcnt) < 0) {
+        throw new BadRequestException('Tax percent cannot be negative.');
+      }
       return this.productRepository.save({...createProductDto, createdby:userid});
     }
 
@@ -131,6 +134,9 @@ export class ProductService {
      * Fixed: SQL injection vulnerabilities in helper methods
      */
     async addPrice(createProductPrice2Dto: CreateProductPrice2Dto, userid) {
+      if (Number(createProductPrice2Dto.saleprice) < 0) {
+        throw new BadRequestException('Sale price cannot be negative.');
+      }
       // Wrap entire operation in SERIALIZABLE transaction to prevent race conditions
       return await this.priceRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
         try {
@@ -187,6 +193,9 @@ export class ProductService {
     }
 
     async updatePrice(id:any, values:any, userid){
+        if (values?.saleprice !== undefined && Number(values.saleprice) < 0) {
+          throw new BadRequestException('Sale price cannot be negative.');
+        }
         return this.priceRepository.update(id, {...values, updatedby:userid});
     }
 

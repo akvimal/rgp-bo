@@ -21,6 +21,10 @@ import { ToastModule } from 'primeng/toast';
     PosComponent
   ],
   imports: [
+    // AuthModule (login / logout / changepassword) must register its routes
+    // before AppRoutingModule so its concrete paths are matched ahead of the
+    // '**' wildcard redirect declared there.
+    AuthModule,
     AppRoutingModule,
     BrowserModule,
     BrowserAnimationsModule,
@@ -30,7 +34,6 @@ import { ToastModule } from 'primeng/toast';
     RouterModule,
     CommonModule,
     FormsModule,
-    AuthModule,
     StoreDevtoolsModule.instrument({
       name: 'Pharma App',
       logOnly: environment.production

@@ -22,7 +22,7 @@ export class DashboardController {
   }
 
   @Get("/admin-summary")
-  adminSummary() {
-    return this.service.adminSummary();
+  adminSummary(@User() currentUser: any) {
+    return this.service.adminSummary(currentUser?.roleid);
   }
 }

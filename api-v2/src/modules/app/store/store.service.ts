@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { Store } from "src/entities/store.entity";
@@ -220,6 +220,10 @@ export class StoreService {
     if (!storeid) {
       throw new Error("Store is required");
     }
+    const existingOpen = await this.shiftRepository.findOne({ where: { storeid, status: "OPEN" } });
+    if (existingOpen) {
+      throw new ConflictException("This store already has an open shift. Close it before opening another.");
+    }
     const template = body.templateid ? await this.templateRepository.findOne({ where: { id: Number(body.templateid) } }) : null;
     const shift = await this.shiftRepository.save({
       storeid,
@@ -263,6 +267,9 @@ export class StoreService {
     const shift = await this.shiftRepository.findOne({ where: { id } });
     if (!shift) {
       throw new Error("Shift not found");
+    }
+    if (shift.status === "CLOSED") {
+      throw new BadRequestException("This shift is already closed.");
     }
     await this.shiftRepository.update(id, {
       status: "CLOSED",

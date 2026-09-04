@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
@@ -70,6 +70,51 @@ export class SaleService {
         // Wrap entire sale creation in transaction to prevent orphaned data
         return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
+                const items = Array.isArray(sale.items) ? sale.items : [];
+
+                // A completed bill must not oversell stock, and a counter sale must
+                // be fully tendered (delivery sales collect payment via the delivery flow).
+                if ((sale.status || '').toUpperCase() === 'COMPLETE') {
+                    const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
+                    const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0);
+                    const total = Number(sale['total'] || 0);
+                    if (isCounter && Math.abs(tendered - total) > 0.5) {
+                        throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
+                    }
+
+                    const positiveLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
+                    if (positiveLines.length) {
+                        // available = same calc as the stock list (stock.service filter):
+                        // purchased - all active sale_item qty + approved adjustments
+                        const rows = await transactionManager.query(
+                            `select pii.id as item_id,
+                                (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
+                                - coalesce((select sum(si.qty) from sale_item si
+                                            where si.purchase_item_id = pii.id and si.active = true and si.archive = false), 0)
+                                + coalesce((select sum(pq.qty) from product_qtychange pq
+                                            where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED'), 0)
+                                as available
+                             from purchase_invoice_item pii
+                             inner join product p on p.id = pii.product_id
+                             where pii.id = any($1::int[])`,
+                            [positiveLines.map((i: any) => Number(i.itemid))],
+                        );
+                        const avail = new Map<number, number>(rows.map((r: any) => [Number(r.item_id), Number(r.available)]));
+                        // aggregate requested qty per batch (a bill can list the same batch twice)
+                        const requested = new Map<number, number>();
+                        for (const i of positiveLines) {
+                            const k = Number(i.itemid);
+                            requested.set(k, (requested.get(k) || 0) + Number(i.qty));
+                        }
+                        for (const [k, want] of requested) {
+                            const have = avail.get(k) ?? 0;
+                            if (want > have) {
+                                throw new BadRequestException(`Not enough stock for one of the items (requested ${want}, available ${have}).`);
+                            }
+                        }
+                    }
+                }
+
                 // Step 1: Generate order and bill numbers (uses database sequences/locking)
                 const nos = await transactionManager.query(`select generate_order_number() as order_no, generate_bill_number() as bill_no`);
 

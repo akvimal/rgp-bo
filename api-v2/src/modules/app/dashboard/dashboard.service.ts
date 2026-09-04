@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
@@ -434,7 +434,13 @@ export class DashboardService {
     return rows.map((r: any) => ({ name: r.name, value: +r.value || 0 }));
   }
 
-  async adminSummary() {
+  async adminSummary(roleid?: number) {
+    // Cross-business rollup - only roles that legitimately see across stores.
+    const allowed = ['Site Admin', 'Business Head'];
+    const roleRow = await this.manager.query(`SELECT name FROM app_role WHERE id = $1`, [roleid || 0]);
+    if (!allowed.includes(roleRow?.[0]?.name)) {
+      throw new ForbiddenException('Not authorized to view the admin summary.');
+    }
     const [bizRows, storeRows, userRows, roleRows, byRole, byBiz] = await Promise.all([
       this.manager.query(`SELECT count(*)::int AS count FROM business WHERE active = true AND archive = false`),
       this.manager.query(`SELECT count(*)::int AS count FROM stores WHERE active = true AND archive = false`),

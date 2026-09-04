@@ -27,6 +27,11 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
+    // A deactivated / archived account must not be able to sign in.
+    if (user.isActive === false || user.isArchived === true) {
+      throw new UnauthorizedException();
+    }
+
     this.userService.update(user.id, { lastlogin: new Date() });
     return {token: this.helper.generateToken(user)};
   }

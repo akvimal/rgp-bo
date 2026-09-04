@@ -1,5 +1,5 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { PurchaseService } from './purchase.service';
 import { CreatePurchaseOrderDto } from './dto/create-order.dto';
@@ -61,7 +61,11 @@ export class PurchaseOrderController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @User() currentUser: any) {
+  async remove(@Param('id') id: string, @User() currentUser: any) {
+    const order = await this.service.findOrderById(id);
+    if (order && order.status && order.status !== 'PENDING') {
+      throw new BadRequestException(`Only a draft (PENDING) purchase order can be deleted; this one is ${order.status}.`);
+    }
     return this.service.updateOrder(id, {isActive:false}, currentUser.id);
   }
 }
