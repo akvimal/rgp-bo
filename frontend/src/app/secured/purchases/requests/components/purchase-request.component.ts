@@ -5,6 +5,7 @@ import { VendorsService } from "../../vendors/vendors.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
+    selector: 'app-purchase-request',
     templateUrl: './purchase-request.component.html'
 })
 export class PurchaseRequestComponent {

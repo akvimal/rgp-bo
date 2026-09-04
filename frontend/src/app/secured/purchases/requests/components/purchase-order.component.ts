@@ -1,11 +1,14 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
+import { NavigationEnd, Router } from "@angular/router";
+import { filter } from "rxjs/operators";
 import { VendorsService } from "src/app/secured/purchases/vendors/vendors.service";
 import { PurchaseOrderService } from "../purchase-order.service";
 
 @Component({
     selector: 'app-purchase-order',
-    templateUrl: './purchase-order.component.html'
+    templateUrl: './purchase-order.component.html',
+    styleUrls: ['./purchase-order.component.scss']
 })
 export class PurchaseOrderComponent {
 
@@ -15,6 +18,8 @@ export class PurchaseOrderComponent {
     searchTerm: string = '';
     statusFilter: string = 'ALL';
     approvalFilter: string = 'ALL';
+    hasDetail: boolean = false;
+    activeOrderId: number | null = null;
 
     form: FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -25,11 +30,19 @@ export class PurchaseOrderComponent {
     });
 
     constructor(private service: PurchaseOrderService,
-        private vendorService: VendorsService) { }
+        private vendorService: VendorsService,
+        private router: Router) { }
 
     ngOnInit() {
         this.filter();
         this.vendorService.findAll().subscribe(data => this.vendors = data);
+        this.updateActiveOrderId();
+        this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.updateActiveOrderId());
+    }
+
+    private updateActiveOrderId() {
+        const match = this.router.url.match(/\/purchases\/orders\/(\d+)/);
+        this.activeOrderId = match ? +match[1] : null;
     }
 
     filter() {

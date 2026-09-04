@@ -1,4 +1,4 @@
-<div *ngIf="order" class="d-grid gap-3">
+<div *ngIf="order" class="d-grid gap-3" data-testid="po-detail" [attr.data-po-status]="order?.status" [attr.data-po-approval]="order?.approvalstatus || 'Not Required'">
   <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
     <div>
       <div class="fw-semibold fs-5">{{order?.vendor?.name}}</div>
@@ -29,32 +29,36 @@
 
   <div class="d-flex flex-wrap gap-2">
     <button type="button" class="btn btn-outline-primary" (click)="onDownload()">Download</button>
-    <button *ngIf="canEdit()" type="button" class="btn btn-primary" (click)="onAdd()">Add Request</button>
-    <button *ngIf="order?.requests?.length > 0 && canEdit()" type="button" class="btn btn-success" (click)="onProceed()">Proceed</button>
-    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-success" (click)="onApprove()">Approve</button>
-    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-danger" (click)="displayReject = true">Reject</button>
+    <button *ngIf="canEdit()" type="button" class="btn btn-primary" data-testid="po-add-request" (click)="onAdd()">Add Request</button>
+    <button *ngIf="order?.requests?.length > 0 && canEdit()" type="button" class="btn btn-success" data-testid="po-proceed" (click)="onProceed()">Proceed</button>
+    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-success" data-testid="po-approve" (click)="onApprove()">Approve</button>
+    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-danger" data-testid="po-reject-open" (click)="displayReject = true">Reject</button>
   </div>
 
   <div class="border rounded-3">
     <div class="table-responsive">
-      <table class="table table-sm mb-0 align-middle">
+      <table class="table table-sm mb-0 align-middle" data-testid="po-fulfilment">
         <thead class="table-light">
           <tr>
             <th>Product</th>
-            <th>Qty</th>
+            <th class="text-end">Ordered</th>
+            <th class="text-end">Invoiced</th>
+            <th class="text-end">Received</th>
             <th *ngIf="canEdit()">Action</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let req of order?.requests">
+          <tr *ngFor="let req of order?.requests" [attr.data-testid]="'po-fulfilment-row'">
             <td>{{req.product?.title}}</td>
-            <td>{{req.qty}}</td>
+            <td class="text-end">{{req.orderedqty ?? req.qty}}</td>
+            <td class="text-end" [class.text-success]="req.invoicedqty >= (req.orderedqty ?? req.qty)" [class.text-muted]="!req.invoicedqty">{{req.invoicedqty ?? 0}}</td>
+            <td class="text-end" [class.text-success]="req.receivedqty >= (req.orderedqty ?? req.qty)" [class.text-muted]="!req.receivedqty">{{req.receivedqty ?? 0}}</td>
             <td *ngIf="canEdit()">
               <button type="button" class="btn btn-link text-danger p-0" (click)="delete(req.id)">Remove</button>
             </td>
           </tr>
           <tr *ngIf="!order?.requests?.length">
-            <td colspan="3" class="text-center text-muted py-4">No items linked to this PO.</td>
+            <td colspan="5" class="text-center text-muted py-4">No items linked to this PO.</td>
           </tr>
         </tbody>
       </table>
@@ -84,9 +88,9 @@
 <p-dialog [header]="'Reject Purchase Order'" [(visible)]="displayReject" [modal]="true">
   <div class="mb-3">
     <label class="form-label" for="rejectReason">Reason</label>
-    <textarea id="rejectReason" class="form-control" [(ngModel)]="rejectReason" style="height: 120px;"></textarea>
+    <textarea id="rejectReason" data-testid="po-reject-reason" class="form-control" [(ngModel)]="rejectReason" style="height: 120px;"></textarea>
   </div>
   <div class="text-end">
-    <button class="btn btn-danger" (click)="onReject()">Reject</button>
+    <button class="btn btn-danger" data-testid="po-reject-confirm" (click)="onReject()">Reject</button>
   </div>
 </p-dialog>

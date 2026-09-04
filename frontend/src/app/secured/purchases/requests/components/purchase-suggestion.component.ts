@@ -3,6 +3,7 @@ import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-int
 import { VendorsService } from "../../vendors/vendors.service";
 
 @Component({
+    selector: 'app-purchase-suggestion',
     templateUrl: './purchase-suggestion.component.html'
 })
 export class PurchaseSuggestionComponent {

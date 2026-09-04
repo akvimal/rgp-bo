@@ -28,6 +28,7 @@ import { PurchaseOrderComponent } from "./requests/components/purchase-order.com
 import { PurchaseOrderViewComponent } from "./requests/components/purchase-order-view.component";
 import { PurchaseRequestComponent } from "./requests/components/purchase-request.component";
 import { PurchaseSuggestionComponent } from "./requests/components/purchase-suggestion.component";
+import { PurchaseOrdersHomeComponent } from "./requests/components/purchase-orders-home.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
 import { PurchaseSettingsComponent } from "./purchase-settings.component";
 
@@ -35,13 +36,13 @@ const routes: Routes = [
   { path: '', component: PurchaseHomeComponent, canActivate:[AuthGuard],
     children: [
       { path: '', redirectTo: 'invoices'},
-      { path: 'orders', component: PurchaseOrderComponent,
+      { path: 'orders', component: PurchaseOrdersHomeComponent, data: { tab: 'reorder' },
           children: [
             { path: ':id', component: PurchaseOrderViewComponent }
           ]
       },
-      { path: 'requests', component: PurchaseRequestComponent },
-      { path: 'suggestions', component: PurchaseSuggestionComponent },
+      { path: 'requests', component: PurchaseOrdersHomeComponent, data: { tab: 'requests' } },
+      { path: 'suggestions', component: PurchaseOrdersHomeComponent, data: { tab: 'reorder' } },
       { path: 'payables', component: PayablesComponent },
       { path: 'settings', component: PurchaseSettingsComponent },
       { path: 'invoices', 
@@ -65,6 +66,7 @@ const routes: Routes = [
     declarations: [
       PurchaseHomeComponent,
       PurchaseHeaderComponent,
+      PurchaseOrdersHomeComponent,
       PurchaseOrderComponent,
       PurchaseOrderViewComponent,
       PurchaseRequestComponent,

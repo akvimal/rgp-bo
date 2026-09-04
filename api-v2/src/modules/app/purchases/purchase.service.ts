@@ -77,10 +77,11 @@ export class PurchaseService {
         if(criteria.vendorid){
             whereclause += ' and or.vendorid = :vendorid'
         }
-        return this.orderRepository.createQueryBuilder('or')
+        const orders = await this.orderRepository.createQueryBuilder('or')
         .innerJoinAndSelect("or.vendor", "vendor")
         .select(['or','vendor.name'])
               .where(whereclause, {...criteria, flag: true }).orderBy('or.createdon', 'DESC').getMany();
+        return this.attachOrderSummaries(orders);
     }
 
     async findAllOrders(query: { status?: string; approvalstatus?: string; vendorid?: number | string }) {
@@ -97,7 +98,41 @@ export class PurchaseService {
         if(query.vendorid){
             qb.andWhere('or.vendorid = :vendorid', { vendorid: query.vendorid });
         }
-            return qb.orderBy('or.createdon', 'DESC').getMany();
+        const orders = await qb.orderBy('or.createdon', 'DESC').getMany();
+        return this.attachOrderSummaries(orders);
+    }
+
+    /** Adds `linecount` (active requests) + `estimatedtotal` (qty x latest unit cost) to a list of orders, in one batch query. */
+    private async attachOrderSummaries(orders: any[]) {
+        if(orders.length === 0){
+            return orders;
+        }
+        const ids = orders.map((o:any) => o.id);
+        const rows = await this.manager.query(`
+            select
+                pr.order_id as order_id,
+                count(*)::int as line_count,
+                coalesce(sum(coalesce(pr.ordered_qty, pr.qty, 0) * coalesce(latest.ptr_cost, 0)), 0) as estimated_total
+            from purchase_request pr
+            left join lateral (
+                select pii.ptr_cost
+                from purchase_invoice_item pii
+                inner join purchase_invoice pi on pi.id = pii.invoice_id
+                where pii.product_id = pr.product_id
+                  and pii.active = true and pii.archive = false
+                  and pi.active = true and pi.archive = false
+                order by pi.invoice_date desc, pi.id desc, pii.id desc
+                limit 1
+            ) latest on true
+            where pr.order_id = any($1::int[])
+              and pr.active = true and pr.archive = false
+            group by pr.order_id
+        `, [ids]);
+        const summaries = new Map<number, any>(rows.map((r:any) => [+r.order_id, { linecount: +r.line_count, estimatedtotal: +(+r.estimated_total).toFixed(2) }]));
+        return orders.map((order:any) => ({
+            ...order,
+            ...(summaries.get(order.id) || { linecount: 0, estimatedtotal: 0 })
+        }));
     }
 
     async createOrder(dto: CreatePurchaseOrderDto, userid: number) {
@@ -503,12 +538,44 @@ export class PurchaseService {
 
     private async enrichOrder(order:any){
         const summary = await this.evaluateOrderApproval(order);
+        const fulfilment = await this.getFulfilmentByRequest((order.requests || []).map((r:any) => r.id));
         return {
             ...order,
             estimatedtotal: summary.estimatedtotal,
             approvalrequired: summary.approvalrequired,
-            approvalreasons: summary.approvalreasons
+            approvalreasons: summary.approvalreasons,
+            requests: (order.requests || []).map((request:any) => ({
+                ...request,
+                ...(fulfilment.get(request.id) || { invoicedqty: 0, receivedqty: 0 })
+            }))
         };
+    }
+
+    /** Per-request qty invoiced (on any invoice) vs received (invoice status COMPLETE = stock raised). */
+    private async getFulfilmentByRequest(requestIds:number[]){
+        const result = new Map<number, { invoicedqty:number; receivedqty:number }>();
+        if(requestIds.length === 0){
+            return result;
+        }
+        const rows = await this.manager.query(`
+            select
+                pii.request_id,
+                sum(pii.qty)::numeric as invoiced_qty,
+                sum(pii.qty) filter (where pi.status = 'COMPLETE')::numeric as received_qty
+            from purchase_invoice_item pii
+            inner join purchase_invoice pi on pi.id = pii.invoice_id
+            where pii.request_id = any($1::int[])
+              and pii.active = true and pii.archive = false
+              and pi.active = true and pi.archive = false
+            group by pii.request_id
+        `, [requestIds]);
+        for(const row of rows){
+            result.set(+row.request_id, {
+                invoicedqty: +(row.invoiced_qty || 0),
+                receivedqty: +(row.received_qty || 0)
+            });
+        }
+        return result;
     }
 
     private async evaluateOrderApproval(order:any){

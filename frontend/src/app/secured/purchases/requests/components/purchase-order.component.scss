@@ -1,0 +1,42 @@
+.po-master-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+
+  .po-list {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .po-detail-panel {
+    display: none;
+  }
+
+  &.has-detail {
+    .po-list {
+      flex: 0 0 44%;
+      max-width: 44%;
+    }
+
+    .po-detail-panel {
+      display: block;
+      flex: 1 1 56%;
+      min-width: 0;
+      position: sticky;
+      top: 0.5rem;
+    }
+  }
+}
+
+@media (max-width: 991.98px) {
+  .po-master-detail.has-detail {
+    flex-direction: column;
+
+    .po-list,
+    .po-detail-panel {
+      flex: 1 1 100%;
+      max-width: 100%;
+      position: static;
+    }
+  }
+}
