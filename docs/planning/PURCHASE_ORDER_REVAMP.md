@@ -82,6 +82,13 @@ Everything else is more SQL in `findSuggestions` plus new columns the Reorder ta
 2. For 6b, is the LLM "situation summary" in scope now, or start with the deterministic signals only?
 3. Should the Reorder view be store-scoped (per the header store switcher) or business-wide?
 
-## Not in scope
+## Part of a larger program
 
-GRN / invoice matching, vendor payment terms, budget approval workflow — separate tracks.
+This doc is workstream **WS-3** of `PURCHASING_PAYABLES_GST_PROGRAM.md`, which also covers the
+invoice/GRN + payment cleanup (WS-1), vendor payables (WS-2), the GST data model (WS-4), GSTR-2A/2B
+inward-supply reconciliation (WS-5), and AI invoice extraction (WS-6).
+
+## Not in scope (here)
+
+GRN / invoice matching, vendor payment terms, GST reconciliation, budget approval workflow — see the
+program doc.
