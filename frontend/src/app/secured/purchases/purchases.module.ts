@@ -29,6 +29,7 @@ import { PurchaseOrderViewComponent } from "./requests/components/purchase-order
 import { PurchaseRequestComponent } from "./requests/components/purchase-request.component";
 import { PurchaseSuggestionComponent } from "./requests/components/purchase-suggestion.component";
 import { PurchaseOrdersHomeComponent } from "./requests/components/purchase-orders-home.component";
+import { GstReconciliationComponent } from "./gst/components/gst-reconciliation.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
 import { PurchaseSettingsComponent } from "./purchase-settings.component";
 
@@ -44,6 +45,7 @@ const routes: Routes = [
       { path: 'requests', component: PurchaseOrdersHomeComponent, data: { tab: 'requests' } },
       { path: 'suggestions', component: PurchaseOrdersHomeComponent, data: { tab: 'reorder' } },
       { path: 'payables', component: PayablesComponent },
+      { path: 'gst', component: GstReconciliationComponent },
       { path: 'settings', component: PurchaseSettingsComponent },
       { path: 'invoices', 
           children: [
@@ -73,6 +75,7 @@ const routes: Routes = [
       PurchaseSuggestionComponent,
       InvoiceListComponent,
       PayablesComponent,
+      GstReconciliationComponent,
       InvoiceFormComponent,
       InvoiceItemsComponent,
       InvoiceItemFormComponent,

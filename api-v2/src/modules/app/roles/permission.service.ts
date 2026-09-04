@@ -195,4 +195,23 @@ export class PermissionService {
       throw new ForbiddenException('Stock audit access denied');
     }
   }
+
+  /**
+   * GST reconciliation (WS-5). Decision #4 (locked 2026-09-04): folded into Business Head for v1 -
+   * no separate Finance role yet - but `gst` stays a distinct permission resource so a role can be
+   * granted just `gst.<action>` later without a data migration.
+   */
+  async canUseGst(roleid: number | string, action: 'read' | 'import' | 'reconcile' | 'lock'): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return this.privilegedRoles.has(role.name) || this.hasPermission(role, 'gst', action);
+  }
+
+  async assertCanUseGst(roleid: number | string, action: 'read' | 'import' | 'reconcile' | 'lock'): Promise<void> {
+    if (!(await this.canUseGst(roleid, action))) {
+      throw new ForbiddenException(`You are not allowed to ${action} GST reconciliation data`);
+    }
+  }
 }

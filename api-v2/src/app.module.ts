@@ -21,6 +21,7 @@ import { DeliveryPartnerModule } from './modules/app/delivery-partners/delivery-
 import { SettingsModule } from './modules/app/settings/settings.module';
 import { StoreModule } from './modules/app/store/store.module';
 import { BusinessModule } from './modules/app/business/business.module';
+import { GstModule } from './modules/app/gst/gst.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DbBackupService } from './modules/app/backup/db.backup';
 import { APP_INTERCEPTOR } from '@nestjs/core';
@@ -53,7 +54,8 @@ import { DbTimingService } from './core/performance/db-timing.service';
     DeliveryPartnerModule,
     SettingsModule,
     StoreModule,
-    BusinessModule
+    BusinessModule,
+    GstModule
   ],
   controllers: [],
   providers: [

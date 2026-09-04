@@ -1,0 +1,128 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <label class="form-label mb-0">Period</label>
+    <input type="month" class="form-control" style="width:11rem" [(ngModel)]="period" (change)="refresh()" data-testid="gst-period">
+    <span class="badge" [ngClass]="isLocked ? 'bg-dark' : 'bg-success'" data-testid="gst-period-status">{{isLocked ? 'LOCKED' : 'OPEN'}}</span>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <label class="btn btn-outline-primary btn-sm mb-0">
+      Import 2B
+      <input type="file" accept="application/json" hidden (change)="onFileSelected($event, '2B')" data-testid="gst-import-2b">
+    </label>
+    <label class="btn btn-outline-secondary btn-sm mb-0">
+      Import 2A
+      <input type="file" accept="application/json" hidden (change)="onFileSelected($event, '2A')" data-testid="gst-import-2a">
+    </label>
+    <button type="button" class="btn btn-primary btn-sm" (click)="runMatch()" data-testid="gst-run-match">Run Match</button>
+    <button type="button" class="btn btn-outline-dark btn-sm" [disabled]="isLocked" (click)="lockPeriod()" data-testid="gst-lock">Lock Period</button>
+  </div>
+</div>
+
+<div *ngIf="message" class="alert alert-success py-2" data-testid="gst-message">{{message}}</div>
+<div *ngIf="error" class="alert alert-danger py-2" data-testid="gst-error">{{error}}</div>
+
+<div class="row g-3" *ngIf="summary">
+  <div class="col-6 col-lg-2">
+    <div class="card h-100"><div class="card-body">
+      <div class="small text-muted">Matched</div>
+      <div class="fs-5 fw-bold">{{summary.matched.count}}</div>
+      <div class="small text-success">&#8377;{{summary.matched.itc | number:'1.0-0'}}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-2">
+    <div class="card h-100"><div class="card-body">
+      <div class="small text-muted">Mismatch</div>
+      <div class="fs-5 fw-bold">{{summary.mismatch.count}}</div>
+      <div class="small text-danger">&#8377;{{summary.mismatch.itc_at_risk | number:'1.0-0'}} at risk</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-2">
+    <div class="card h-100"><div class="card-body">
+      <div class="small text-muted">Missing in 2B</div>
+      <div class="fs-5 fw-bold">{{summary.missing_in_2b.count}}</div>
+      <div class="small text-warning">&#8377;{{summary.missing_in_2b.itc_at_risk | number:'1.0-0'}} at risk</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-2">
+    <div class="card h-100"><div class="card-body">
+      <div class="small text-muted">Missing in books</div>
+      <div class="fs-5 fw-bold">{{summary.missing_in_books.count}}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-2">
+    <div class="card h-100"><div class="card-body">
+      <div class="small text-muted">ITC claimable</div>
+      <div class="fs-5 fw-bold text-success" data-testid="gst-itc-claimable">&#8377;{{summary.itc_claimable | number:'1.0-0'}}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-2">
+    <div class="card h-100"><div class="card-body">
+      <div class="small text-muted">ITC on hold / carried fwd</div>
+      <div class="fs-5 fw-bold">&#8377;{{(summary.itc_on_hold + summary.itc_carried_forward) | number:'1.0-0'}}</div>
+    </div></div>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mt-3">
+  <li class="nav-item" *ngFor="let tab of statusTabs">
+    <a class="nav-link" [class.active]="statusFilter === tab.key" style="cursor:pointer" (click)="setStatusFilter(tab.key)" [attr.data-testid]="'gst-tab-' + tab.key">{{tab.label}}</a>
+  </li>
+</ul>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered align-middle" data-testid="gst-worklist">
+        <thead class="table-light">
+          <tr>
+            <th>Status</th>
+            <th>Books invoice</th>
+            <th>Vendor</th>
+            <th class="text-end">Books value</th>
+            <th>Portal invoice</th>
+            <th>Portal supplier</th>
+            <th class="text-end">Portal value</th>
+            <th style="width:14rem">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of worklist" data-testid="gst-row">
+            <td><span class="badge" [ngClass]="statusBadgeClass(row.status)">{{row.status}}</span></td>
+            <td>{{row.invoice_no || '-'}} <span class="text-muted small d-block" *ngIf="row.invoice_date">{{row.invoice_date | date:'dd/MM/yy'}}</span></td>
+            <td>{{row.vendor_name || '-'}}</td>
+            <td class="text-end">{{row.invoice_total ? (row.invoice_total | number:'1.2-2') : '-'}}</td>
+            <td>{{row.portal_invoice_no || '-'}} <span class="text-muted small d-block" *ngIf="row.portal_invoice_date">{{row.portal_invoice_date | date:'dd/MM/yy'}}</span></td>
+            <td>{{row.portal_supplier_name || '-'}}</td>
+            <td class="text-end">{{row.portal_value ? (row.portal_value | number:'1.2-2') : '-'}}</td>
+            <td>
+              <div class="d-flex flex-wrap gap-1">
+                <button *ngIf="['PROBABLE','MISMATCH','MISSING_IN_2B'].includes(row.status)" class="btn btn-outline-success btn-sm" (click)="openAction(row, 'accept')">Accept</button>
+                <button *ngIf="row.status !== 'DISPUTED'" class="btn btn-outline-danger btn-sm" (click)="openAction(row, 'dispute')">Dispute</button>
+                <button *ngIf="!['EXCLUDED','MATCHED'].includes(row.status)" class="btn btn-outline-secondary btn-sm" (click)="openAction(row, 'exclude')">Exclude</button>
+                <button *ngIf="row.status === 'MISSING_IN_2B'" class="btn btn-outline-info btn-sm" (click)="openAction(row, 'carryForward')">Carry Fwd</button>
+                <button *ngIf="row.status === 'MISSING_IN_BOOKS'" class="btn btn-outline-primary btn-sm" (click)="createInvoice(row)">Create Invoice</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="!worklist.length">
+            <td colspan="8" class="text-center text-muted py-4">No rows for this period{{statusFilter !== 'ALL' ? ' with status ' + statusFilter : ''}}. Import a return and run the match.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<p-dialog [header]="dialogAction | titlecase" [(visible)]="showDialog" [modal]="true" [style]="{width:'32rem'}">
+  <div *ngIf="dialogRow">
+    <p class="small text-muted">
+      {{dialogRow.invoice_no || dialogRow.portal_invoice_no}} &middot; {{dialogRow.status}}
+    </p>
+    <label class="form-label">Note {{dialogAction === 'dispute' ? '(required)' : '(optional)'}}</label>
+    <textarea class="form-control" rows="3" [(ngModel)]="dialogNote" data-testid="gst-action-note"></textarea>
+  </div>
+  <ng-template pTemplate="footer">
+    <button class="btn btn-outline-secondary" (click)="closeAction()">Cancel</button>
+    <button class="btn btn-primary" data-testid="gst-action-confirm" [disabled]="dialogAction === 'dispute' && !dialogNote" (click)="confirmAction()">Confirm</button>
+  </ng-template>
+</p-dialog>
