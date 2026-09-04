@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 **Branch:** feature/shift-cash-phase1 (or a dedicated `feature/purchasing-gst`)
-**Status:** Decisions locked (2026-09-04) — **WS-1 done**; WS-2 onward not started.
+**Status:** Decisions locked (2026-09-04) — **WS-1 done, WS-2 done**; WS-3 onward not started.
 **Covers:** the PO/invoice/payment review findings + **GST inward-supply (GSTR-2A/2B) reconciliation** + AI invoice extraction.
 **Companion doc:** `PURCHASE_ORDER_REVAMP.md` (PO UX + demand analytics — referenced, not repeated here).
 
@@ -71,7 +71,25 @@ to the real `'COMPLETE'` terminal status (found because the new payment guard ca
 - **`createOrder` validation** — reject a missing/invalid `vendorid`.
 - **Consolidate** `purchase-request` + `store/intent` (`purchase-intent.component`) — they are two UIs over the same `purchase_request` table. Keep one, redirect the other.
 
-### WS-2 — Vendor payables view  ·  ~3 days  ·  minor schema
+### WS-2 — Vendor payables view  ·  ~3 days  ·  minor schema  ·  **DONE**
+
+Shipped: `GET /purchases/payables` (per-vendor rollup: invoice count, total outstanding, total
+overdue, on-hold count, oldest due date, 0-30/31-60/61-90/90+ ageing buckets, built on top of the
+existing `findOutstanding()`); `POST /vendorpayments/batch` (pay run — one or more `{invoiceid,
+amount}` allocations for a single vendor, written inside one `SERIALIZABLE` transaction under a
+shared `batch_ref`, sharing `vendor-payment.service`'s existing amount/status/On-Hold validation so
+an invalid line rolls back the whole batch); new `/secure/purchases/payables` screen (KPI band +
+per-vendor ageing table + a "Pay" dialog listing that vendor's outstanding invoices oldest-first,
+with an "Auto-fill" button that allocates a given available amount oldest-first capped at each
+invoice's balance) with a "Payables" nav link. No new schema needed — `vendor_payment.status` /
+`reverses_id` / `batch_ref` already existed from WS-1's migration `026`. Till-cash question (item 5
+above) resolved as part of the locked decisions: vendor payments stay business-level bank only, no
+`paid_from` column. Verified: qa/ suite 136/136 across 3 clean runs on a fresh bootstrap+reseed
+(includes new `qa/specs/payables.spec.ts`: nav reachability, rollup-totals-match-manual-sum, a
+two-invoice split pay run sharing one `batch_ref`, and atomic rollback of a batch containing one
+invalid line); `coverage-check` still 120/120 (the new spec covers a feature outside the original
+manual test plan, by design); manual browser pass confirmed the KPI band, ageing table, and
+Auto-fill allocation all matched the API's numbers before/after submitting a real pay run.
 
 - **Vendor payables rollup** — new screen / tab: per vendor → open invoices, total outstanding, total overdue, oldest due date, ageing buckets (0-30 / 31-60 / 61-90 / 90+).
 - **"Pay run"** — select a vendor (or several), see the outstanding invoices oldest-first, tick the ones to pay, record one payment batch that splits across invoices (respecting each balance, skipping `On Hold`).
