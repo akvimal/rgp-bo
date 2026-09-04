@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 **Branch:** feature/shift-cash-phase1 (or a dedicated `feature/purchasing-gst`)
-**Status:** Decisions locked (2026-09-04) — **WS-1 done, WS-2 done**; WS-3 onward not started.
+**Status:** Decisions locked (2026-09-04) — **WS-1, WS-2, WS-3 (phase 6a) done**; WS-3 phase 6b (needs an LLM, deferred with WS-6), WS-4 onward not started.
 **Covers:** the PO/invoice/payment review findings + **GST inward-supply (GSTR-2A/2B) reconciliation** + AI invoice extraction.
 **Companion doc:** `PURCHASE_ORDER_REVAMP.md` (PO UX + demand analytics — referenced, not repeated here).
 
@@ -96,7 +96,18 @@ Auto-fill allocation all matched the API's numbers before/after submitting a rea
 - Schema: `vendor_payment.status` (`RECORDED` / `REVERSED`), `vendor_payment.reverses_id` (nullable FK), `vendor_payment.batch_ref` (nullable, groups a pay run).
 - **Decision needed:** are vendor payments ever paid from **till cash** (→ needs a `store_cash_accounts` entry, category `VENDOR_PAYMENT`), or always business-level bank? If mixed, add `vendor_payment.paid_from` (`BANK` / `TILL`) + a store link, and write a ledger row for `TILL`.
 
-### WS-3 — PO revamp  ·  ~1.5 weeks  ·  per `PURCHASE_ORDER_REVAMP.md`
+### WS-3 — PO revamp  ·  ~1.5 weeks  ·  per `PURCHASE_ORDER_REVAMP.md`  ·  **phase 6a DONE**
+
+Phase 6a (UX revamp) shipped: Reorder (suggestions) is now the default landing tab on
+`/secure/purchases/orders`, with Orders and Requests folded in as tabs on the same screen instead of
+three separate nav links; opening a PO shows its detail in a side-by-side master/detail panel instead
+of below the grid; the order list gained Lines + Est. Value columns; the PO detail gained a
+**fulfilment view** (Ordered / Invoiced / Received qty per line, the latter two from
+`purchase_invoice_item.request_id`). Phase 6b (trend/seasonality/stock-out-risk signals and an LLM
+"situation summary") is **deferred alongside WS-6** — the situation-summary piece needs an LLM and the
+deterministic signals were judged not worth their own pass separate from that work. Verified: qa/
+suite 136/136 across 3 clean runs; coverage-check 120/120; only PO-1's UI assertion needed updating
+(switches to the Orders tab first, since Reorder is now the default).
 
 Master/detail (not "below the grid"), suggestions-first "Reorder" tab, PO estimated-value + line count in the list, a **fulfilment view** on the PO (qty ordered vs invoiced vs received, per line), and the demand-signal upgrades in that doc's §6b. Independent of the GST track.
 
