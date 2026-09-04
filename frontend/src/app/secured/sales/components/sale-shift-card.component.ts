@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from "@angular/core";
 import { Subscription } from "rxjs";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
+import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../../store/cash/cash.service";
 import { DenominationRow } from "src/app/shared/denominations";
 
@@ -22,7 +23,6 @@ export class SaleShiftCardComponent implements OnInit, OnDestroy {
   operatorId: number | null = null;
   operatorName = "";
   openShift: any = null;
-  loading = false;
   message = "";
 
   mode: "" | "open" | "close" = "";
@@ -33,13 +33,18 @@ export class SaleShiftCardComponent implements OnInit, OnDestroy {
   constructor(
     private storeContext: StoreContextService,
     private operatorContext: OperatorContextService,
+    private shiftContext: ShiftContextService,
     private cash: CashService,
   ) {}
 
   ngOnInit(): void {
     this.subs.add(this.storeContext.selectedStoreId$.subscribe((id: any) => {
       this.storeId = id;
-      this.refresh();
+      this.shiftContext.refresh(id);
+    }));
+    this.subs.add(this.shiftContext.openShift$.subscribe((s: any) => {
+      this.openShift = s;
+      if (!s && this.mode === "close") { this.mode = ""; }
     }));
     this.subs.add(this.operatorContext.selectedOperatorId$.subscribe((id: any) => (this.operatorId = id)));
     this.subs.add(this.operatorContext.selectedOperatorName$.subscribe((n: any) => (this.operatorName = n || "")));
@@ -50,18 +55,7 @@ export class SaleShiftCardComponent implements OnInit, OnDestroy {
   }
 
   refresh(): void {
-    if (this.storeId === null || this.storeId === undefined) {
-      this.openShift = null;
-      return;
-    }
-    this.loading = true;
-    this.cash.getDashboard(this.storeId).subscribe({
-      next: (data: any) => {
-        this.openShift = data?.openShift || null;
-        this.loading = false;
-      },
-      error: () => (this.loading = false),
-    });
+    this.shiftContext.reload();
   }
 
   startOpen(): void {

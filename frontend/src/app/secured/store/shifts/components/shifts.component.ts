@@ -1,5 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { StoreContextService } from "src/app/@core/store-context.service";
+import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../../cash/cash.service";
 import { DenominationRow } from "src/app/shared/denominations";
 
@@ -30,7 +31,7 @@ export class ShiftsComponent implements OnInit {
   countedTotal = 0;
   closing = false;
 
-  constructor(private cashService:CashService, private storeContext: StoreContextService) {}
+  constructor(private cashService:CashService, private storeContext: StoreContextService, private shiftContext: ShiftContextService) {}
 
   ngOnInit(): void {
     this.storeContext.stores$.subscribe((stores:any) => {
@@ -61,6 +62,7 @@ export class ShiftsComponent implements OnInit {
     this.cashService.getShifts(this.selectedStoreId).subscribe((shifts:any) => {
       this.shifts = shifts || [];
     });
+    this.shiftContext.refresh(this.selectedStoreId);
   }
 
   saveShift() {

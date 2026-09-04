@@ -9,6 +9,8 @@ import { CustomersService } from "./customers/customers.service";
 import { UsersService } from "./settings/users/users.service";
 import { StoreContextService } from "../@core/store-context.service";
 import { OperatorContextService } from "../@core/operator-context.service";
+import { ShiftContextService } from "../@core/shift-context.service";
+import { AuthService } from "../@core/auth/auth.service";
 
 @Component({
     templateUrl: 'secured.component.html'
@@ -44,13 +46,30 @@ export class SecuredComponent {
     userMenuOpen:boolean = false;
     
     constructor(
-      private appStateService:AppStateService, 
+      private appStateService:AppStateService,
       private customerService:CustomersService,
       private userService:UsersService, private titleService: Title,
       private router: Router,
       private storeContextService: StoreContextService,
-      private operatorContextService: OperatorContextService){
+      private operatorContextService: OperatorContextService,
+      public shiftContext: ShiftContextService,
+      private authService: AuthService){
         this.state$ = this.appStateService.state;
+    }
+
+    /** show the header shift pill for till-capable roles once a specific store is picked */
+    get shiftPillVisible(): boolean {
+      return !this.isSiteAdmin
+        && this.selectedStoreId !== null && this.selectedStoreId !== undefined
+        && (this.authService.isActionAuthorized('store.shift.open')
+            || this.authService.isActionAuthorized('store.shift.close')
+            || this.authService.isUrlAuthorized('/secure/store/shifts'));
+    }
+
+    get shiftLink(): string {
+      return this.authService.isUrlAuthorized('/secure/store/shifts')
+        ? '/secure/store/shifts'
+        : '/secure/sales/pos';
     }
     
     ngOnInit(){
@@ -67,6 +86,7 @@ export class SecuredComponent {
       this.storeContextService.selectedStoreId$.subscribe((selected:any) => {
         this.selectedStoreId = selected;
         this.operatorContextService.loadOperators(selected, this.user?.id).subscribe();
+        this.shiftContext.refresh(selected);
       });
       this.customerService.findByMobile('0000000000').subscribe(data => {
         data && localStorage.setItem('nil', data['id']);
@@ -75,6 +95,7 @@ export class SecuredComponent {
       this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
         .subscribe(() => {
           this.userMenuOpen = false;
+          this.shiftContext.reload();
           if (this.isMobileViewport()) {
             this.sidebarDrawerOpen = false;
           }

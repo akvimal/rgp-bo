@@ -31,6 +31,24 @@
     
       <nav class="header-nav ms-auto">
         <ul class="d-flex align-items-center">
+
+          <li class="nav-item pe-3" *ngIf="shiftPillVisible" data-testid="header-shift">
+            <a class="shift-pill" [routerLink]="shiftLink"
+               [class.shift-pill-open]="(shiftContext.openShift$ | async)"
+               [class.shift-pill-none]="!(shiftContext.openShift$ | async)"
+               [attr.title]="(shiftContext.openShift$ | async) ? 'Open shift — click for detail' : 'No open shift — click to open one'">
+              <ng-container *ngIf="shiftContext.openShift$ | async as sh; else noShift">
+                <i class="bi bi-clock-history"></i>
+                <span class="d-none d-lg-inline">{{ sh.name || 'Shift' }}</span>
+                <span class="shift-pill-amt">&#8377;{{ sh.expectedcash | number:'1.0-0' }}</span>
+              </ng-container>
+              <ng-template #noShift>
+                <i class="bi bi-exclamation-circle"></i>
+                <span>No open shift</span>
+              </ng-template>
+            </a>
+          </li>
+
           <li class="nav-item dropdown pe-3" [class.show]="userMenuOpen">
 
             <a class="nav-link nav-profile d-flex align-items-center pe-0" href="javascript:void(0)" data-testid="user-menu"
