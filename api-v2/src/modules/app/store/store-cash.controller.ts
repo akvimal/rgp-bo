@@ -3,13 +3,17 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { User } from "src/core/decorator/user.decorator";
 import { StoreService } from "./store.service";
+import { PermissionService } from "../roles/permission.service";
 
 @ApiTags("Store Cash")
 @Controller("store-cash")
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class StoreCashController {
-  constructor(private readonly service: StoreService) {}
+  constructor(
+    private readonly service: StoreService,
+    private readonly permissions: PermissionService,
+  ) {}
 
   @Get("templates")
   findTemplates(@Query() query: any) {
@@ -37,17 +41,20 @@ export class StoreCashController {
   }
 
   @Post("shifts")
-  createShift(@Body() body: any, @User() currentUser: any) {
+  async createShift(@Body() body: any, @User() currentUser: any) {
+    await this.permissions.assertCanOpenShift(currentUser?.roleid);
     return this.service.createShift(body, currentUser?.id);
   }
 
   @Put("shifts/:id/close")
-  closeShift(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
+  async closeShift(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
+    await this.permissions.assertCanCloseShift(currentUser?.roleid);
     return this.service.closeShift(Number(id), body, currentUser?.id);
   }
 
   @Put("shifts/:id/assign")
-  assignShift(@Param("id") id: string, @Body() body: any) {
+  async assignShift(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
+    await this.permissions.assertCanManageShifts(currentUser?.roleid);
     return this.service.assignShift(Number(id), body);
   }
 
@@ -62,7 +69,9 @@ export class StoreCashController {
   }
 
   @Post("ledger")
-  createLedger(@Body() body: any, @User() currentUser: any) {
+  async createLedger(@Body() body: any, @User() currentUser: any) {
+    // anyone who can run a till can record its cash movements
+    await this.permissions.assertCanCloseShift(currentUser?.roleid);
     return this.service.saveLedger(body, currentUser?.id);
   }
 

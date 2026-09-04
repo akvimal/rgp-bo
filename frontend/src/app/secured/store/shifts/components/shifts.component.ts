@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { CashService } from "../../cash/cash.service";
+import { DenominationRow } from "src/app/shared/denominations";
 
 @Component({
   templateUrl: './shifts.component.html'
@@ -17,14 +18,16 @@ export class ShiftsComponent implements OnInit {
     templateid: '',
     assigneduserid: '',
     shiftdate: new Date().toISOString().slice(0, 10),
-    openingcash: 0,
     notes: ''
   };
+  openingDenoms:DenominationRow[] = [];
+  openingTotal = 0;
 
   showReportModal = false;
   reportLoading = false;
   shiftReport:any = null;
-  countedCash:number | null = null;
+  countedDenoms:DenominationRow[] = [];
+  countedTotal = 0;
   closing = false;
 
   constructor(private cashService:CashService, private storeContext: StoreContextService) {}
@@ -69,14 +72,16 @@ export class ShiftsComponent implements OnInit {
     }
     const payload = {
       ...this.shiftForm,
-      openingcash: Number(this.shiftForm.openingcash || 0),
+      openingdenominations: this.openingDenoms,
+      openingcash: this.openingTotal,
       assigneduserid: this.shiftForm.assigneduserid || null
     };
     this.cashService.createShift(payload).subscribe(() => {
       this.shiftForm.templateid = '';
       this.shiftForm.assigneduserid = '';
-      this.shiftForm.openingcash = 0;
       this.shiftForm.notes = '';
+      this.openingDenoms = [];
+      this.openingTotal = 0;
       this.refresh();
     }, err => this.message = err?.error?.message || 'Unable to open shift');
   }
@@ -87,7 +92,8 @@ export class ShiftsComponent implements OnInit {
 
   viewReport(shift:any) {
     this.shiftReport = null;
-    this.countedCash = null;
+    this.countedDenoms = [];
+    this.countedTotal = 0;
     this.closing = shift.status === 'OPEN';
     this.showReportModal = true;
     this.reportLoading = true;
@@ -98,13 +104,20 @@ export class ShiftsComponent implements OnInit {
   }
 
   confirmClose() {
-    if (!this.shiftReport || this.countedCash === null) return;
+    if (!this.shiftReport || !this.countedDenoms.length) return;
     const shiftId = this.shiftReport.shift.id;
-    this.cashService.closeShift(shiftId, { countedcash: this.countedCash, notes: this.shiftReport.shift.notes || '' })
+    this.cashService.closeShift(shiftId, { counteddenominations: this.countedDenoms, notes: this.shiftReport.shift.notes || '' })
       .subscribe(() => {
         this.showReportModal = false;
         this.refresh();
       }, err => this.message = err?.error?.message || 'Unable to close shift');
+  }
+
+  reportDenoms = [2000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
+
+  denomCount(rows:any[], d:number): number {
+    const row = (rows || []).find((r:any) => Number(r?.d) === d);
+    return row ? Number(row.n) || 0 : 0;
   }
 
   get expectedCash(): number {
@@ -112,7 +125,7 @@ export class ShiftsComponent implements OnInit {
   }
 
   get variance(): number | null {
-    if (this.countedCash === null || this.countedCash === undefined) return null;
-    return Number(this.countedCash) - this.expectedCash;
+    if (!this.countedDenoms.length) return null;
+    return this.countedTotal - this.expectedCash;
   }
 }

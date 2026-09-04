@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { AutoCompleteModule } from "primeng/autocomplete";
 import { MultiSelectModule } from 'primeng/multiselect';
 import { CustomerSelectComponent } from "./components/customer-select.component";
+import { DenominationGridComponent } from "./components/denomination-grid.component";
 import { LookupComponent } from "./components/lookup.component";
 import { ProductSelectComponent } from "./components/product-select.component";
 import { PropsPrintComponent } from "./components/props-print.component";
@@ -21,7 +22,8 @@ import { TextWrapPipe } from "./text-wrap.pipe";
       IsAuthDirective,
       TextWrapPipe,
       PropsPrintComponent,
-      LookupComponent
+      LookupComponent,
+      DenominationGridComponent
     ],
     imports: [
         FormsModule,
@@ -35,7 +37,8 @@ import { TextWrapPipe } from "./text-wrap.pipe";
       TextWrapPipe, 
       ProductSelectComponent,
       StockSelectComponent,
-      CustomerSelectComponent,PropsPrintComponent, LookupComponent
+      CustomerSelectComponent,PropsPrintComponent, LookupComponent,
+      DenominationGridComponent
     ]
   })
 export class SharedModule{}

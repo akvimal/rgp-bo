@@ -48,6 +48,15 @@ export class StoreShift {
   @Column("double precision", { name: "counted_cash", precision: 53, nullable: true })
   countedcash: number | null;
 
+  @Column("jsonb", { name: "opening_denominations", nullable: true })
+  openingdenominations: Array<{ d: number; n: number }> | null;
+
+  @Column("jsonb", { name: "counted_denominations", nullable: true })
+  counteddenominations: Array<{ d: number; n: number }> | null;
+
+  @Column("integer", { name: "closed_operator_id", nullable: true })
+  closedoperatorid: number | null;
+
   @Column("double precision", { name: "variance", precision: 53, nullable: true })
   variance: number | null;
 

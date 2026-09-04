@@ -15,6 +15,7 @@ SET permissions = (
     CASE
       WHEN elem->>'resource' = 'store'
            AND jsonb_typeof(elem->'path') = 'array'
+           AND jsonb_array_length(elem->'path') > 0
            AND NOT (elem->'path' @> '["/secure/store/shifts"]'::jsonb)
         THEN jsonb_set(elem, '{path}', (elem->'path') || '["/secure/store/shifts"]'::jsonb)
       WHEN elem->>'resource' = 'purchases'

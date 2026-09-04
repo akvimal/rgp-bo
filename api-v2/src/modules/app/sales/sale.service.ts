@@ -126,11 +126,17 @@ export class SaleService {
                 const storeid = storeRows?.[0]?.id || null;
                 let shiftid = null;
                 if (storeid) {
+                    // one OPEN shift per store (enforced on open); the sale links to it
                     const shiftRows = await transactionManager.query(
-                        `select id from store_shifts where store_id = $1 and status = 'OPEN' and (assigned_user_id = $2 or assigned_user_id is null) order by shift_date desc, id desc limit 1`,
-                        [storeid, userid],
+                        `select id from store_shifts where store_id = $1 and status = 'OPEN' order by shift_date desc, id desc limit 1`,
+                        [storeid],
                     );
                     shiftid = shiftRows?.[0]?.id || null;
+                }
+                // A completed bill is a cash event — it must belong to an open shift so
+                // it is reconciled at close. Parked (PENDING) bills are exempt.
+                if ((sale.status || '').toUpperCase() === 'COMPLETE' && storeid && !shiftid) {
+                    throw new BadRequestException('Open a shift before completing sales.');
                 }
                 sale['shiftid'] = shiftid;
 
@@ -164,7 +170,9 @@ export class SaleService {
                 // The client only needs the saved header before loading the detail route.
                 return savedSale;
             } catch (error) {
-                // Transaction will automatically rollback on error
+                // Transaction will automatically rollback on error.
+                // Preserve validation errors (400s) instead of masking them as 500.
+                if (error instanceof HttpException) { throw error; }
                 throw new Error(`Failed to create sale: ${error.message}`);
             }
         });

@@ -1,0 +1,64 @@
+<div class="card mt-2" data-testid="shift-card" *ngIf="storeId !== null && storeId !== undefined">
+  <div class="card-body py-2">
+
+    <!-- No open shift -->
+    <div *ngIf="!loading && !openShift && mode !== 'open'" class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="text-danger">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>No open shift</strong> — sales can't be completed until a shift is open.
+      </div>
+      <button class="btn btn-primary btn-sm" type="button" *isAuth="'store.shift.open'"
+        data-testid="shift-card-open" (click)="startOpen()">Open shift</button>
+    </div>
+
+    <!-- Open shift summary -->
+    <div *ngIf="!loading && openShift && mode !== 'close'" class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="small">
+        <span class="badge bg-success me-2">OPEN</span>
+        <strong>{{ openShift.name }}</strong>
+        <span class="text-muted">({{ openShift.shiftdate }})</span>
+        <span class="text-muted ms-2">
+          Opening &#8377;{{ openShift.openingcash | number:'1.0-0' }} ·
+          Expected now &#8377;{{ openShift.expectedcash | number:'1.0-0' }}
+        </span>
+      </div>
+      <button class="btn btn-outline-danger btn-sm" type="button" *isAuth="'store.shift.close'"
+        data-testid="shift-card-close" (click)="startClose()">Close shift</button>
+    </div>
+
+    <!-- Open form -->
+    <div *ngIf="mode === 'open'">
+      <div class="fw-semibold small mb-2">Count the opening float — {{ operatorName || 'select staff' }}</div>
+      <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
+      <div class="mt-2 d-flex gap-2">
+        <button class="btn btn-primary btn-sm" type="button" [disabled]="busy"
+          data-testid="shift-card-open-confirm" (click)="confirmOpen()">Open shift with &#8377;{{ denomTotal | number:'1.0-0' }}</button>
+        <button class="btn btn-outline-secondary btn-sm" type="button" (click)="cancel()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Close form -->
+    <div *ngIf="mode === 'close' && openShift">
+      <div class="fw-semibold small mb-2">Count the drawer — {{ operatorName || 'select staff' }}</div>
+      <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
+      <div class="small mt-2">
+        <div class="d-flex justify-content-between" style="max-width:22rem">
+          <span class="text-muted">Expected</span><span>&#8377;{{ expected | number:'1.0-0' }}</span>
+        </div>
+        <div class="d-flex justify-content-between" style="max-width:22rem">
+          <span class="text-muted">Variance</span>
+          <span class="fw-semibold" [class.text-danger]="variance < 0" [class.text-success]="variance > 0">
+            {{ variance >= 0 ? '+' : '' }}&#8377;{{ variance | number:'1.0-0' }}
+          </span>
+        </div>
+      </div>
+      <div class="mt-2 d-flex gap-2">
+        <button class="btn btn-danger btn-sm" type="button" [disabled]="busy || !denoms.length"
+          data-testid="shift-card-close-confirm" (click)="confirmClose()">Close shift</button>
+        <button class="btn btn-outline-secondary btn-sm" type="button" (click)="cancel()">Cancel</button>
+      </div>
+    </div>
+
+    <div *ngIf="message" class="alert alert-warning py-1 px-2 mb-0 mt-2 small" data-testid="shift-card-message">{{ message }}</div>
+  </div>
+</div>

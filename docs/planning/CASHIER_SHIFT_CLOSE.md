@@ -2,7 +2,9 @@
 
 **Date:** 2026-09-04
 **Branch:** feature/shift-cash-phase1
-**Status:** Decisions locked (2026-09-04) — ready to build
+**Status:** BUILT (2026-09-04) — migrations 024/025, denomination grid, POS "My Shift" card,
+manager grid + report breakdown, backend authorization, shift-required-before-sale. qa/ suite
+132/132 green; verified end-to-end in the browser.
 **Goal:** retire the paper shift-handover form. The person at the till opens and closes the
 shift themselves, entering both the opening float and the closing drawer count by denomination.
 Managers review variances after the fact.

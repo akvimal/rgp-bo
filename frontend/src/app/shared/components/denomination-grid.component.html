@@ -1,0 +1,18 @@
+<table class="denom-grid table table-sm mb-0">
+  <tbody>
+    <tr *ngFor="let d of denoms">
+      <td class="face">&#8377;{{ d }}</td>
+      <td>&times;</td>
+      <td>
+        <input type="number" min="0" step="1" class="form-control form-control-sm"
+          [(ngModel)]="counts[d]" [disabled]="disabled" (ngModelChange)="onChange()"
+          [attr.data-testid]="'denom-' + d" placeholder="0">
+      </td>
+      <td class="sub">{{ sub(d) | number:'1.0-0' }}</td>
+    </tr>
+    <tr class="total-row">
+      <td colspan="3">Total</td>
+      <td class="sub" data-testid="denom-total">&#8377;{{ total | number:'1.0-0' }}</td>
+    </tr>
+  </tbody>
+</table>

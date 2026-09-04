@@ -115,6 +115,49 @@ export class PermissionService {
     return this.hasPermission(role, 'businesses', 'manage');
   }
 
+  async canOpenShift(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return this.privilegedRoles.has(role.name) || this.hasPermission(role, 'store', 'shift.open');
+  }
+
+  async canCloseShift(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return this.privilegedRoles.has(role.name) || this.hasPermission(role, 'store', 'shift.close');
+  }
+
+  /** Reassigning a shift / manager-only cash actions. */
+  async canManageShifts(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return this.privilegedRoles.has(role.name) || this.hasPermission(role, 'store', 'adjust');
+  }
+
+  async assertCanOpenShift(roleid: number | string): Promise<void> {
+    if (!(await this.canOpenShift(roleid))) {
+      throw new ForbiddenException('Not allowed to open a shift');
+    }
+  }
+
+  async assertCanCloseShift(roleid: number | string): Promise<void> {
+    if (!(await this.canCloseShift(roleid))) {
+      throw new ForbiddenException('Not allowed to close a shift');
+    }
+  }
+
+  async assertCanManageShifts(roleid: number | string): Promise<void> {
+    if (!(await this.canManageShifts(roleid))) {
+      throw new ForbiddenException('Manager access required');
+    }
+  }
+
   async canAuditStock(roleid: number | string): Promise<boolean> {
     const role = await this.findRole(roleid);
     if (!role) {

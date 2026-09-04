@@ -5,38 +5,41 @@
 <div class="card">
   <div class="card-body">
     <h5 class="card-title">Open Shift</h5>
-    <div class="alert alert-info" *ngIf="!selectedStoreId">
+    <div class="alert alert-info" *ngIf="!selectedStoreId" data-testid="shift-no-store">
       Select a store in the header to open or close shifts.
     </div>
     <div class="row g-2">
       <div class="col-12 col-md-3">
         <label class="form-label">Template</label>
-        <select class="form-select" [(ngModel)]="shiftForm.templateid">
+        <select class="form-select" data-testid="shift-template" [(ngModel)]="shiftForm.templateid">
           <option value="">Custom</option>
           <option *ngFor="let template of templates" [value]="template.id">{{template.name}}</option>
         </select>
       </div>
       <div class="col-12 col-md-3">
         <label class="form-label">Assigned staff</label>
-        <select class="form-select" [(ngModel)]="shiftForm.assigneduserid">
+        <select class="form-select" data-testid="shift-assignee" [(ngModel)]="shiftForm.assigneduserid">
           <option value="">From template</option>
           <option *ngFor="let user of users" [value]="user.id">{{user.fullname}}</option>
         </select>
       </div>
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-md-3">
         <label class="form-label">Date</label>
-        <input type="date" class="form-control" [(ngModel)]="shiftForm.shiftdate">
+        <input type="date" class="form-control" data-testid="shift-date" [(ngModel)]="shiftForm.shiftdate">
       </div>
-      <div class="col-6 col-md-2">
-        <label class="form-label">Opening cash</label>
-        <input type="number" class="form-control" [(ngModel)]="shiftForm.openingcash">
-      </div>
-      <div class="col-12 col-md-2 d-flex align-items-end">
-        <button class="btn btn-primary w-100" type="button" (click)="saveShift()">Open Shift</button>
+      <div class="col-12">
+        <label class="form-label">Opening float</label>
+        <app-denomination-grid [rows]="openingDenoms" (rowsChange)="openingDenoms = $event" (totalChange)="openingTotal = $event"></app-denomination-grid>
+        <input type="hidden" data-testid="shift-opening-cash" [value]="openingTotal">
       </div>
       <div class="col-12">
         <label class="form-label">Notes</label>
         <textarea class="form-control" rows="2" [(ngModel)]="shiftForm.notes"></textarea>
+      </div>
+      <div class="col-12 col-md-3">
+        <button class="btn btn-primary w-100" type="button" data-testid="shift-open" (click)="saveShift()">
+          Open shift &mdash; &#8377;{{ openingTotal | number:'1.0-0' }}
+        </button>
       </div>
     </div>
 
@@ -58,7 +61,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let shift of shifts">
+          <tr *ngFor="let shift of shifts" data-testid="shift-row" [attr.data-shift-id]="shift.id" [attr.data-shift-status]="shift.status">
             <td>{{shift.shiftdate}}</td>
             <td>{{shift.name}}</td>
             <td>
@@ -77,7 +80,7 @@
             </td>
             <td><span class="badge" [ngClass]="shift.status === 'OPEN' ? 'bg-success' : 'bg-secondary'">{{shift.status}}</span></td>
             <td class="text-end" style="white-space:nowrap">
-              <button class="btn btn-sm btn-outline-secondary me-1" type="button" (click)="viewReport(shift)">
+              <button class="btn btn-sm btn-outline-secondary me-1" type="button" data-testid="shift-action" (click)="viewReport(shift)">
                 <i class="bi bi-clipboard-data"></i> {{shift.status === 'OPEN' ? 'Close' : 'View'}}
               </button>
             </td>
@@ -91,7 +94,7 @@
   </div>
 </div>
 
-<div *ngIf="message" class="alert alert-danger mt-2">{{message}}</div>
+<div *ngIf="message" class="alert alert-danger mt-2" data-testid="shift-message">{{message}}</div>
 
 <!-- Shift Reconciliation Modal -->
 <p-dialog [header]="closing ? 'Close Shift' : 'Shift Report'"
@@ -99,7 +102,7 @@
 
   <div *ngIf="reportLoading" class="text-center py-4 text-muted">Loading report…</div>
 
-  <div *ngIf="shiftReport && !reportLoading">
+  <div *ngIf="shiftReport && !reportLoading" data-testid="shift-report-body">
     <div class="mb-3">
       <span class="fw-semibold">{{shiftReport.shift.name}}</span>
       <span class="text-muted ms-2">{{shiftReport.shift.shiftdate}}</span>
@@ -165,6 +168,23 @@
       </table>
     </div>
 
+    <!-- Denomination breakdown (opening float / closing count as recorded) -->
+    <div *ngIf="shiftReport.shift.openingdenominations?.length || shiftReport.shift.counteddenominations?.length" class="mb-3">
+      <div class="small fw-semibold text-muted mb-1">Drawer count</div>
+      <table class="table table-sm table-bordered mb-0">
+        <thead class="table-light">
+          <tr><th>Denom</th><th class="text-end">Opening</th><th class="text-end" *ngIf="shiftReport.shift.counteddenominations?.length">Closing</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let d of reportDenoms">
+            <td>₹{{d}}</td>
+            <td class="text-end">{{ denomCount(shiftReport.shift.openingdenominations, d) }}</td>
+            <td class="text-end" *ngIf="shiftReport.shift.counteddenominations?.length">{{ denomCount(shiftReport.shift.counteddenominations, d) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- Closed shift: show final reconciliation -->
     <div *ngIf="!closing && shiftReport.shift.status === 'CLOSED'" class="border-top pt-2">
       <div class="d-flex justify-content-between mb-1">
@@ -179,17 +199,17 @@
       </div>
     </div>
 
-    <!-- Close shift: enter counted cash -->
+    <!-- Close shift: count the drawer -->
     <div *ngIf="closing" class="border-top pt-3">
-      <div class="row g-2 align-items-center">
-        <div class="col-6">
-          <label class="form-label mb-0 fw-semibold">Counted Cash</label>
-          <input type="number" class="form-control" [(ngModel)]="countedCash" placeholder="Enter amount">
-        </div>
-        <div class="col-6 pt-3" *ngIf="variance !== null">
-          <span class="small text-muted">Variance: </span>
-          <span class="fw-semibold" [class.text-danger]="variance < 0" [class.text-success]="variance >= 0">
-            {{variance >= 0 ? '+' : ''}}₹{{variance | number:'1.0-0'}}
+      <label class="form-label mb-1 fw-semibold">Count the drawer</label>
+      <app-denomination-grid [rows]="countedDenoms" (rowsChange)="countedDenoms = $event" (totalChange)="countedTotal = $event"></app-denomination-grid>
+      <input type="hidden" data-testid="shift-counted" [value]="countedTotal">
+      <div class="small mt-2" style="max-width:22rem">
+        <div class="d-flex justify-content-between"><span class="text-muted">Expected</span><span>₹{{expectedCash | number:'1.0-0'}}</span></div>
+        <div class="d-flex justify-content-between" *ngIf="variance !== null">
+          <span class="text-muted">Variance</span>
+          <span class="fw-semibold" [class.text-danger]="variance! < 0" [class.text-success]="variance! >= 0">
+            {{variance! >= 0 ? '+' : ''}}₹{{variance | number:'1.0-0'}}
           </span>
         </div>
       </div>
@@ -198,8 +218,8 @@
 
   <ng-template pTemplate="footer">
     <button class="btn btn-secondary btn-sm" (click)="showReportModal = false">Close</button>
-    <button *ngIf="closing" class="btn btn-danger btn-sm ms-2"
-      [disabled]="countedCash === null || countedCash === undefined"
+    <button *ngIf="closing" class="btn btn-danger btn-sm ms-2" data-testid="shift-close-confirm"
+      [disabled]="!countedDenoms.length"
       (click)="confirmClose()">
       Confirm Close Shift
     </button>

@@ -8,6 +8,7 @@ import { StoreShiftTemplate } from "src/entities/store-shift-template.entity";
 import { AppUser } from "src/entities/appuser.entity";
 import { UserStore } from "src/entities/user-store.entity";
 import { Business } from "src/entities/business.entity";
+import { denominationTotal, normalizeDenominations } from "./denominations";
 
 @Injectable()
 export class StoreService {
@@ -225,6 +226,11 @@ export class StoreService {
       throw new ConflictException("This store already has an open shift. Close it before opening another.");
     }
     const template = body.templateid ? await this.templateRepository.findOne({ where: { id: Number(body.templateid) } }) : null;
+
+    // Opening float: prefer the denomination breakdown; fall back to a plain number.
+    const openingDenoms = normalizeDenominations(body.openingdenominations);
+    const openingcash = openingDenoms ? denominationTotal(openingDenoms) : Number(body.openingcash || 0);
+
     const shift = await this.shiftRepository.save({
       storeid,
       templateid: template ? template.id : null,
@@ -234,8 +240,10 @@ export class StoreService {
       starttime: body.starttime || template?.starttime || "09:00",
       endtime: body.endtime || template?.endtime || "18:00",
       status: "OPEN",
-      openingcash: Number(body.openingcash || 0),
-      expectedcash: Number(body.openingcash || 0),
+      openingcash,
+      expectedcash: openingcash,
+      openingdenominations: openingDenoms,
+      counteddenominations: null,
       countedcash: null,
       variance: null,
       depositthreshold: Number(body.depositthreshold || template?.depositthreshold || 0),
@@ -271,9 +279,29 @@ export class StoreService {
     if (shift.status === "CLOSED") {
       throw new BadRequestException("This shift is already closed.");
     }
+
+    // Drawer count: prefer the denomination breakdown; fall back to a plain
+    // number; reject an empty count unless the caller explicitly allows zero.
+    const countedDenoms = normalizeDenominations(body.counteddenominations);
+    let countedcash: number;
+    if (countedDenoms) {
+      countedcash = denominationTotal(countedDenoms);
+    } else if (body.countedcash !== null && body.countedcash !== undefined && body.countedcash !== "" && Number(body.countedcash) > 0) {
+      countedcash = Number(body.countedcash);
+    } else if (body.allowZero === true) {
+      countedcash = 0;
+    } else {
+      throw new BadRequestException("Enter the drawer count before closing the shift.");
+    }
+
+    const closedOperatorId = body.closedoperatorid ? Number(body.closedoperatorid)
+      : (body.operatorid ? Number(body.operatorid) : (shift.assigneduserid || null));
+
     await this.shiftRepository.update(id, {
       status: "CLOSED",
-      countedcash: body.countedcash === null || body.countedcash === undefined || body.countedcash === "" ? 0 : Number(body.countedcash),
+      countedcash,
+      counteddenominations: countedDenoms,
+      closedoperatorid: closedOperatorId,
       closedon: new Date(),
       closedby: userid ? { id: userid } as any : null,
       notes: body.notes || shift.notes,
@@ -326,10 +354,10 @@ export class StoreService {
     if (category === "BANK_DEPOSIT") {
       shiftid = null;
     } else if (!shiftid && storeid) {
+      // one OPEN shift per store — attach the entry to it regardless of assignee
       const openShift = await this.shiftRepository.createQueryBuilder("shift")
         .where("shift.store_id = :storeid", { storeid })
         .andWhere("shift.status = 'OPEN'")
-        .andWhere("(shift.assigned_user_id = :userid OR shift.assigned_user_id IS NULL)", { userid })
         .orderBy("shift.shift_date", "DESC")
         .addOrderBy("shift.id", "DESC")
         .getOne();
@@ -361,11 +389,11 @@ export class StoreService {
       .leftJoinAndSelect("store.business", "business")
       .where("store.id = :storeid", { storeid })
       .getOne() : null;
+    // one OPEN shift per store — return it regardless of who is assigned
     const openShiftQb = this.shiftRepository.createQueryBuilder("shift")
       .leftJoinAndSelect("shift.template", "template")
       .leftJoinAndSelect("shift.assigneduser", "assigneduser")
       .where("shift.status = 'OPEN'")
-      .andWhere("(shift.assigned_user_id = :userid OR shift.assigned_user_id IS NULL)", { userid })
       .orderBy("shift.shift_date", "DESC")
       .addOrderBy("shift.id", "DESC");
     if (storeid) {

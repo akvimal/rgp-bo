@@ -20,6 +20,7 @@ import { TableModule } from "primeng/table";
 import { SaleDashboardComponent } from "./components/sale-dashboard.component";
 import { SaleHeaderComponent } from "./components/sale-header.component";
 import { SalePosComponent } from "./components/sale-pos.component";
+import { SaleShiftCardComponent } from "./components/sale-shift-card.component";
 import { SaleReturnsComponent } from "./components/sale-returns.component";
 import { SaleReminderComponent } from "./components/sale-reminder.component";
 import { SaleDeliveryComponent } from "./components/sale-delivery.component";
@@ -50,6 +51,7 @@ const routes: Routes = [
     declarations: [
       SalesComponent,
       SalePosComponent,
+      SaleShiftCardComponent,
       SaleHeaderComponent,
       SaleDashboardComponent,
       SalesListComponent,

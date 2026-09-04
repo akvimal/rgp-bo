@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtService } from "@nestjs/jwt";
 import { AuthModule } from "src/modules/auth/auth.module";
+import { RoleModule } from "../roles/role.module";
 import { Store } from "src/entities/store.entity";
 import { StoreCashAccount } from "src/entities/store-cash-account.entity";
 import { StoreShift } from "src/entities/store-shift.entity";
@@ -14,7 +15,7 @@ import { StoreCashController } from "./store-cash.controller";
 import { StoreService } from "./store.service";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule],
+  imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule, RoleModule],
   controllers: [StoreController, StoreCashController],
   providers: [StoreService, JwtService],
   exports: [StoreService],

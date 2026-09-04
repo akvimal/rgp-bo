@@ -71,6 +71,11 @@ export class AuthService {
   }
 
   private matchesPath(url:string, path:string):boolean {
+    // An empty / missing path authorizes nothing (some resources carry actions
+    // but no navigable route).
+    if (!path) {
+      return false;
+    }
     // Exact match, url is under path (leaf access), or url is a parent "hub" page
     // of an authorized path (e.g. /secure/settings should be reachable if the
     // user has access to /secure/settings/businesses).
