@@ -15,5 +15,19 @@ export interface Invoice {
     referenceno?:string,
     notes?:string,
     items?:any[],
-    payments?:any[]
+    payments?:any[],
+    suppliergstin?:string,
+    placeofsupply?:string,
+    supplytype?:string,
+    invoicetype?:string,
+    reversecharge?:boolean,
+    taxablevalue?:number,
+    cgstamount?:number,
+    sgstamount?:number,
+    igstamount?:number,
+    cessamount?:number,
+    roundoff?:number,
+    itceligibility?:string,
+    gstreconstatus?:string,
+    gstperiod?:string
 }

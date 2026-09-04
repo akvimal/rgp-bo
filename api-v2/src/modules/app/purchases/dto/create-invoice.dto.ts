@@ -76,4 +76,35 @@ export class CreatePurchaseInvoiceDto {
     @IsArray()
     readonly items: [];
 
+    @ApiProperty({ description: 'supplier GSTIN (defaults to the vendor\'s GSTIN)', example: '', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(15)
+    readonly suppliergstin: string;
+
+    @ApiProperty({ description: 'place of supply (state code, defaults from the supplier GSTIN)', example: '', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(2)
+    readonly placeofsupply: string;
+
+    @ApiProperty({ description: 'INTRA or INTER (defaults from place of supply vs the business\'s own state)', example: 'INTRA', required: false })
+    @IsOptional()
+    @IsString()
+    readonly supplytype: string;
+
+    @ApiProperty({ description: 'REGULAR / SEZ / IMPORT / DEEMED_EXPORT', example: 'REGULAR', required: false })
+    @IsOptional()
+    @IsString()
+    readonly invoicetype: string;
+
+    @ApiProperty({ description: 'reverse charge applicable', example: false, required: false })
+    @IsOptional()
+    readonly reversecharge: boolean;
+
+    @ApiProperty({ description: 'INPUTS / CAPITAL_GOODS / INELIGIBLE', example: 'INPUTS', required: false })
+    @IsOptional()
+    @IsString()
+    readonly itceligibility: string;
+
 }

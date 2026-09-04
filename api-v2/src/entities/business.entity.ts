@@ -23,7 +23,22 @@ import { Store } from "./store.entity";
 
     @Column({ name: "archive", type: "boolean", default: false })
     isArchived: boolean;
-    
+
+    @Column("character varying", { name: "gstin", length: 15, nullable: true })
+    gstin: string | null;
+
+    @Column("character varying", { name: "legal_name", nullable: true })
+    legalname: string | null;
+
+    @Column("character varying", { name: "state_code", length: 2, nullable: true })
+    statecode: string | null;
+
+    @Column("character varying", { name: "address", nullable: true })
+    address: string | null;
+
+    @Column("character varying", { name: "pincode", length: 10, nullable: true })
+    pincode: string | null;
+
     @OneToMany(
       () => Store,
       (loc) => loc.business

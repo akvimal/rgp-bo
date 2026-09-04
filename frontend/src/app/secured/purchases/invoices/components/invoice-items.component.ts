@@ -23,6 +23,9 @@ export class InvoiceItemsComponent {
     outstandingBalance:number = 0;
     importFeedback:string = '';
 
+    editingGst:boolean = false;
+    gstForm:any = {};
+
     constructor(private route:ActivatedRoute, private invService: InvoiceService){}
 
     ngOnInit(){
@@ -122,6 +125,39 @@ export class InvoiceItemsComponent {
 
     closeEditItem(){
         this.fetchItems(this.invoice.id);
-        this.displayEditItem = false;    
+        this.displayEditItem = false;
+    }
+
+    get gstCheckOk(){
+        const total = +(this.invoice.total || 0);
+        const summed = +((this.invoice as any).taxablevalue || 0)
+            + +((this.invoice as any).cgstamount || 0)
+            + +((this.invoice as any).sgstamount || 0)
+            + +((this.invoice as any).igstamount || 0)
+            + +((this.invoice as any).roundoff || 0);
+        return Math.abs(total - summed) < 0.5;
+    }
+
+    startEditGst(){
+        const inv:any = this.invoice;
+        this.gstForm = {
+            suppliergstin: inv.suppliergstin || '',
+            placeofsupply: inv.placeofsupply || '',
+            supplytype: inv.supplytype || 'INTRA',
+            itceligibility: inv.itceligibility || 'INPUTS',
+            reversecharge: !!inv.reversecharge
+        };
+        this.editingGst = true;
+    }
+
+    cancelEditGst(){
+        this.editingGst = false;
+    }
+
+    saveGst(){
+        this.invService.update([this.invoice.id], this.gstForm).subscribe(() => {
+            this.editingGst = false;
+            this.fetchItems(this.invoice.id);
+        });
     }
 }

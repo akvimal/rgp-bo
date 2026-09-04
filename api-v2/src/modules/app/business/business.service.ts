@@ -20,6 +20,7 @@ export class BusinessService {
       name: body.name,
       isActive: body.isActive !== false,
       isArchived: false,
+      ...this.gstFields(body),
     };
     return this.businessRepository.save(payload);
   }
@@ -33,8 +34,20 @@ export class BusinessService {
       name: body.name,
       isActive: body.isActive === undefined ? current.isActive : !!body.isActive,
       isArchived: body.isArchived === undefined ? current.isArchived : !!body.isArchived,
+      ...this.gstFields(body),
     });
     return this.businessRepository.findOne({ where: { id } });
+  }
+
+  /** GST registration fields (WS-4): only touched when the caller actually sends them, so a plain name/status edit is a no-op here. */
+  private gstFields(body: any) {
+    const fields: any = {};
+    if (body.gstin !== undefined) fields.gstin = body.gstin || null;
+    if (body.legalname !== undefined) fields.legalname = body.legalname || null;
+    if (body.statecode !== undefined) fields.statecode = body.statecode || null;
+    if (body.address !== undefined) fields.address = body.address || null;
+    if (body.pincode !== undefined) fields.pincode = body.pincode || null;
+    return fields;
   }
 
   async remove(id: number) {

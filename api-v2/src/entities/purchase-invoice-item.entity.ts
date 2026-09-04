@@ -78,7 +78,25 @@ import { PurchaseRequest } from "./purchase-request.entity";
     verifystartdate: Date;
     @Column({ name: 'verify_end_date', type: 'date'})
     verifyenddate: Date;
-    
+
+    @Column("character varying", { name: "hsn", length: 40, nullable: true })
+    hsn: string | null;
+
+    @Column("double precision", { name: "taxable_value", precision: 53, nullable: true })
+    taxablevalue: number | null;
+
+    @Column("double precision", { name: "cgst_amount", precision: 53 })
+    cgstamount: number;
+
+    @Column("double precision", { name: "sgst_amount", precision: 53 })
+    sgstamount: number;
+
+    @Column("double precision", { name: "igst_amount", precision: 53 })
+    igstamount: number;
+
+    @Column("double precision", { name: "cess_amount", precision: 53 })
+    cessamount: number;
+
     @ManyToOne(
       () => PurchaseInvoice,
       (purchaseInvoice) => purchaseInvoice.items

@@ -16,6 +16,7 @@ import { AppRole } from "src/entities/approle.entity";
 import { Setting } from "src/entities/setting.entity";
 import { VendorPayment } from "src/entities/vendor-payment.entity";
 import { Vendor } from "src/entities/vendor.entity";
+import { Business } from "src/entities/business.entity";
 import { AuthModule } from "src/modules/auth/auth.module";
 import { JwtService } from "@nestjs/jwt";
 import { ProductModule } from "../products/product.module";
@@ -34,6 +35,7 @@ import { PurchaseDownloadController } from "./purchase-download.controller";
       PurchaseInvoiceItem,
       AppRole,
       VendorPayment,
+      Business,
       Setting]),AuthModule,ProductModule],
     controllers: [
       PurchaseRequestController,

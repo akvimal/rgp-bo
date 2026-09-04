@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, Repository } from "typeorm";
+import { EntityManager, In, Repository } from "typeorm";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
@@ -10,6 +10,7 @@ import { PurchaseOrder } from "src/entities/purchase-order.entity";
 import { PurchaseRequest } from "src/entities/purchase-request.entity";
 import { Product } from "src/entities/product.entity";
 import { Vendor } from "src/entities/vendor.entity";
+import { Business } from "src/entities/business.entity";
 
 @Injectable()
 export class PurchaseInvoiceService {
@@ -21,6 +22,7 @@ export class PurchaseInvoiceService {
     @InjectRepository(PurchaseRequest) private readonly purchaseRequestRepository: Repository<PurchaseRequest>,
     @InjectRepository(Product) private readonly productRepository: Repository<Product>,
     @InjectRepository(Vendor) private readonly vendorRepository: Repository<Vendor>,
+    @InjectRepository(Business) private readonly businessRepository: Repository<Business>,
     @InjectEntityManager() private manager: EntityManager) { }
 
     private getDerivedPaymentStatus(invoice:any, paidAmount:number){
@@ -66,25 +68,79 @@ export class PurchaseInvoiceService {
           throw new BadRequestException('Vendor is required.');
         }
 
+        const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
+
         let duedate = dto.duedate;
         if(!duedate && dto.invoicedate){
-          const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
           const termsDays = Number(vendor?.paymenttermsdays || 0);
           const base = new Date(dto.invoicedate);
           base.setDate(base.getDate() + termsDays);
           duedate = base.toISOString().slice(0, 10);
         }
 
+        const gst = await this.deriveInvoiceGstContext(vendor, dto);
+
         return this.purchaseInvoiceRepository.save({
           ...dto,
           duedate: duedate || dto.invoicedate,
           paymentstatus: dto.paymentstatus || 'Unpaid',
+          ...gst,
           createdby:userid
         });
     }
-    
+
     async createItem(dto: CreatePurchaseInvoiceItemDto, userid:any) {
-        return this.purchaseInvoiceItemRepository.save({...dto, createdby:userid});
+        const invoice = await this.purchaseInvoiceRepository.findOne({ where: { id: +dto.invoiceid } });
+        const gstLine = this.computeLineGst(+(dto.total || 0), (dto as any).taxpcnt, invoice?.supplytype || 'INTRA');
+        const saved = await this.purchaseInvoiceItemRepository.save({...dto, ...gstLine, createdby:userid});
+        await this.recomputeInvoiceGstTotals(+dto.invoiceid);
+        return saved;
+    }
+
+    /** GSTIN/place-of-supply/supply-type defaults for a new invoice header (decision #1: one GSTIN per business). */
+    private async deriveInvoiceGstContext(vendor: Vendor | null, dto: any){
+        const business = await this.businessRepository.findOne({ where: { isActive: true } as any, order: { id: 'ASC' } as any });
+        const suppliergstin = dto.suppliergstin || vendor?.gstn || null;
+        const placeofsupply = dto.placeofsupply || (suppliergstin ? suppliergstin.substring(0, 2) : null) || business?.statecode || null;
+        const buyerstate = business?.statecode || null;
+        const supplytype = dto.supplytype || (placeofsupply && buyerstate ? (placeofsupply === buyerstate ? 'INTRA' : 'INTER') : 'INTRA');
+        return {
+          suppliergstin,
+          placeofsupply,
+          supplytype,
+          invoicetype: dto.invoicetype || 'REGULAR',
+          reversecharge: dto.reversecharge ?? false,
+          itceligibility: dto.itceligibility || 'INPUTS',
+          gstreconstatus: 'UNRECONCILED',
+          gstperiod: dto.invoicedate ? `${dto.invoicedate}`.slice(0, 7) : null
+        };
+    }
+
+    /** Split one line's total into taxable value + CGST/SGST (intra-state) or IGST (inter-state). */
+    private computeLineGst(total: number, taxpcnt: any, supplytype: string){
+        const pcnt = Number(taxpcnt || 0);
+        const taxablevalue = pcnt > 0 ? +(total / (1 + pcnt / 100)).toFixed(2) : +(+total).toFixed(2);
+        const taxamount = +(total - taxablevalue).toFixed(2);
+        if(supplytype === 'INTER'){
+          return { taxablevalue, cgstamount: 0, sgstamount: 0, igstamount: taxamount };
+        }
+        const half = +(taxamount / 2).toFixed(2);
+        return { taxablevalue, cgstamount: half, sgstamount: +(taxamount - half).toFixed(2), igstamount: 0 };
+    }
+
+    /** Sums active line GST splits back up to the invoice header, plus the rounding remainder vs `total`. */
+    private async recomputeInvoiceGstTotals(invoiceid: number){
+        const invoice = await this.purchaseInvoiceRepository.findOne({ where: { id: invoiceid } });
+        if(!invoice){
+          return;
+        }
+        const items = await this.purchaseInvoiceItemRepository.find({ where: { invoiceid, isActive: true, isArchived: false } });
+        const taxablevalue = +items.reduce((sum, i:any) => sum + +(i.taxablevalue || 0), 0).toFixed(2);
+        const cgstamount = +items.reduce((sum, i:any) => sum + +(i.cgstamount || 0), 0).toFixed(2);
+        const sgstamount = +items.reduce((sum, i:any) => sum + +(i.sgstamount || 0), 0).toFixed(2);
+        const igstamount = +items.reduce((sum, i:any) => sum + +(i.igstamount || 0), 0).toFixed(2);
+        const roundoff = +((+(invoice.total || 0)) - (taxablevalue + cgstamount + sgstamount + igstamount)).toFixed(2);
+        await this.purchaseInvoiceRepository.update(invoiceid, { taxablevalue, cgstamount, sgstamount, igstamount, roundoff });
     }
 
     async importOrderItems(invoiceid:number, userid:number){
@@ -159,6 +215,7 @@ export class PurchaseInvoiceService {
         const saleprice = +(defaults.sale_price ?? 0);
         const ptrcost = +(defaults.ptr_cost ?? +(ptrvalue * (1 + (taxpcnt / 100))).toFixed(2));
         const total = +(qty * ptrvalue * (1 - (discpcnt / 100))).toFixed(2);
+        const gstLine = this.computeLineGst(total, taxpcnt, invoice.supplytype || 'INTRA');
 
         await this.purchaseInvoiceItemRepository.save({
           invoiceid,
@@ -167,6 +224,7 @@ export class PurchaseInvoiceService {
           batch: defaults.batch ?? null,
           expdate: defaults.exp_date ?? null,
           mfrdate: defaults.mfr_date ?? null,
+          hsn: product?.hsn ?? null,
           ptrvalue,
           ptrcost,
           mrpcost,
@@ -176,6 +234,7 @@ export class PurchaseInvoiceService {
           qty,
           freeqty: 0,
           total,
+          ...gstLine,
           comments: request.comments || `Imported from PO #${order.id}`,
           status: 'NEW',
           createdby: userid,
@@ -187,6 +246,7 @@ export class PurchaseInvoiceService {
       const items = await this.findAllItemsByInvoice(invoiceid);
       const total = items.reduce((sum:number, item:any) => sum + +(item.total || 0), 0);
       await this.update([invoiceid], { total: Math.round(total * 100) / 100 }, userid);
+      await this.recomputeInvoiceGstTotals(invoiceid);
 
       return {
         imported,
@@ -432,10 +492,19 @@ export class PurchaseInvoiceService {
         if(values?.purchaseorderid){
           await this.assertApprovedPurchaseOrder(+values.purchaseorderid);
         }
-        return this.purchaseInvoiceRepository.createQueryBuilder('invoice')
+        const result = await this.purchaseInvoiceRepository.createQueryBuilder('invoice')
         .update(PurchaseInvoice, {...values, updatedby: userid})
         .where("id in (:...ids)", { ids })
         .execute();
+
+        // `total` (set at GRN completion, after all items exist) drives round_off - recompute once it lands.
+        if(values?.total !== undefined){
+          for(const id of ids){
+            await this.recomputeInvoiceGstTotals(id);
+          }
+        }
+
+        return result;
       }
 
       async updateItems(ids:number[], values:any, userid:any){
@@ -443,20 +512,48 @@ export class PurchaseInvoiceService {
         if(values['status'] && values['status'] == 'VERIFIED'){
           obj['verifiedby'] = userid;
         }
-       return await this.purchaseInvoiceItemRepository.createQueryBuilder('items')
+       const result = await this.purchaseInvoiceItemRepository.createQueryBuilder('items')
         .update(PurchaseInvoiceItem, obj)
         .where("id in (:...ids)", { ids })
         .execute();
-        
+
+        // total/taxpcnt changed -> the line's GST split (and its invoice's header totals) is stale.
+        if(values['total'] !== undefined || values['taxpcnt'] !== undefined){
+          await this.recomputeLineGstForItems(ids);
+        }
+
+        return result;
       }
 
       async removeItems(ids:number[]){
-          return this.purchaseInvoiceItemRepository.createQueryBuilder('items')
+          const affectedInvoiceIds = new Set<number>(
+            (await this.purchaseInvoiceItemRepository.find({ where: { id: In(ids) } })).map((i:any) => i.invoiceid)
+          );
+          const result = await this.purchaseInvoiceItemRepository.createQueryBuilder('items')
           .delete()
           .from(PurchaseInvoiceItem)
           .where("id in (:...ids)", { ids })
           .execute();
+          for(const invoiceid of affectedInvoiceIds){
+            await this.recomputeInvoiceGstTotals(invoiceid);
+          }
+          return result;
         }
+
+      /** Recomputes the GST split for individual items (after a manual edit to total/taxpcnt), then their invoices' header totals. */
+      private async recomputeLineGstForItems(ids: number[]){
+        const items = await this.purchaseInvoiceItemRepository.find({ where: { id: In(ids) } });
+        const invoiceIds = new Set<number>();
+        for(const item of items as any[]){
+          const invoice = await this.purchaseInvoiceRepository.findOne({ where: { id: item.invoiceid } });
+          const gstLine = this.computeLineGst(+(item.total || 0), item.taxpcnt, invoice?.supplytype || 'INTRA');
+          await this.purchaseInvoiceItemRepository.update(item.id, gstLine);
+          invoiceIds.add(item.invoiceid);
+        }
+        for(const invoiceid of invoiceIds){
+          await this.recomputeInvoiceGstTotals(invoiceid);
+        }
+      }
 
     private async assertApprovedPurchaseOrder(id:number){
       const order = await this.purchaseOrderRepository.createQueryBuilder('po')
