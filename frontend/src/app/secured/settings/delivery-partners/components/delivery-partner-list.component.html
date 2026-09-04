@@ -9,7 +9,6 @@
             [rowsPerPageOptions]="[10,25,50]">
             <ng-template pTemplate="header">
                 <tr>
-                    <th>ID</th>
                     <th>Name</th>
                     <th>Contact</th>
                     <th>Phone</th>
@@ -18,15 +17,14 @@
             </ng-template>
             <ng-template pTemplate="body" let-partner>
                 <tr>
-                    <td>{{partner.id}}</td>
                     <td>{{partner.name}}</td>
                     <td>{{partner.contactname}}</td>
                     <td>{{partner.contactphone}}</td>
-                    <td style="text-align: center;">
-                        <h5>
-                            <a [routerLink]="['../edit', partner.id]"><i class="bi bi-pencil-square text-primary"></i></a>&nbsp;&nbsp;
-                            <a (click)="delete(partner.id)"><i class="bi bi-trash text-danger"></i></a>
-                        </h5>
+                    <td class="text-center">
+                        <div class="grid-actions">
+                            <a [routerLink]="['../edit', partner.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
+                            <a (click)="delete(partner)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
+                        </div>
                     </td>
                 </tr>
             </ng-template>

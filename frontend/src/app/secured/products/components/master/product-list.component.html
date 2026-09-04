@@ -77,21 +77,21 @@
                         <!-- <td>{{product.brand}}</td> -->
                         <!-- <td>{{product.mfr}}</td> -->
                         <td>{{product.updatedon | date : 'dd/MM/yy'}}</td>
-                        <td style="text-align: center;">
-                            <h4 class="icon">
-                            <a *ngIf="product.isActive" [routerLink]="['../edit', product.id]">
-                                <i class="bi bi-pencil-square text-primary"></i>
-                            </a>
-                            <a *ngIf="product.isActive" (click)="changeActive(product.id, false)">
-                                <i class="bi bi-sign-stop-fill" style="color:red"></i>
-                            </a>
-                            <a *ngIf="!product.isActive" (click)="changeActive(product.id, true)">
-                                <i class="bi bi-play-fill" style="color:green"></i>
-                            </a>
-                            <a *ngIf="!product.isActive" (click)="archive(product.id)">
-                                <i class="bi bi-trash" style="color:gray"></i>
-                            </a>
-                        </h4>
+                        <td class="text-center">
+                            <div class="grid-actions">
+                                <a *ngIf="product.isActive" [routerLink]="['../edit', product.id]" title="Edit">
+                                    <i class="bi bi-pencil-square text-primary"></i>
+                                </a>
+                                <a *ngIf="product.isActive" (click)="changeActive(product.id, false)" title="Deactivate">
+                                    <i class="bi bi-sign-stop-fill" style="color:red"></i>
+                                </a>
+                                <a *ngIf="!product.isActive" (click)="changeActive(product.id, true)" title="Activate">
+                                    <i class="bi bi-play-fill" style="color:green"></i>
+                                </a>
+                                <a *ngIf="!product.isActive" (click)="archive(product)" title="Archive">
+                                    <i class="bi bi-trash" style="color:gray"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 </ng-template>

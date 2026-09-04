@@ -41,6 +41,7 @@ export class SecuredComponent {
     sidebarCollapsed:boolean = true;
     sidebarDrawerOpen:boolean = false;
     settingsMenuOpen:boolean = false;
+    userMenuOpen:boolean = false;
     
     constructor(
       private appStateService:AppStateService, 
@@ -73,6 +74,7 @@ export class SecuredComponent {
       this.settingsMenuOpen = this.router.url.startsWith('/secure/settings');
       this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
         .subscribe(() => {
+          this.userMenuOpen = false;
           if (this.isMobileViewport()) {
             this.sidebarDrawerOpen = false;
           }
@@ -82,6 +84,28 @@ export class SecuredComponent {
 
     toggleSettingsMenu(){
       this.settingsMenuOpen = !this.settingsMenuOpen;
+    }
+
+    toggleUserMenu(event:Event){
+      event.stopPropagation();
+      this.userMenuOpen = !this.userMenuOpen;
+    }
+
+    closeUserMenu(){
+      this.userMenuOpen = false;
+    }
+
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event:Event){
+      const target = event.target as HTMLElement;
+      if (this.userMenuOpen && !target.closest('.nav-item.dropdown')) {
+        this.userMenuOpen = false;
+      }
+    }
+
+    @HostListener('document:keydown.escape')
+    onEscape(){
+      this.userMenuOpen = false;
     }
 
     openPricing(){

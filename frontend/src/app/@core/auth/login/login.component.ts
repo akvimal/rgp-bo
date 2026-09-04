@@ -33,6 +33,18 @@ export class LoginComponent {
         this.operatorContext.clear();
     }
     
+    /**
+     * Land on the dashboard whenever the role can see it, otherwise fall back to
+     * the first permitted path. The `site` permission's path list is the source
+     * of truth for a role's home area, but its order is not reliable (some roles
+     * list the dashboard after settings pages) so we look for it explicitly.
+     */
+    private resolveLandingPage(permissions:any[]):string {
+        const site = (permissions || []).find((p:any) => p.resource === 'site');
+        const dashboard = (site?.path || []).find((path:string) => path === '/secure/dashboard' || path.endsWith('/dashboard'));
+        return dashboard || permissions[0]['path'][0];
+    }
+
     onSubmit(){
         // console.log(this.form.value);
         this.authService.login({
@@ -45,8 +57,7 @@ export class LoginComponent {
                         this.userService.getCurrentUser().subscribe((data:any) => {
                                 if(data.rolename && data.permissions){
                                     this.authService.setPermissions(data.permissions);
-                                    const landing_page = data.permissions[0]['path'][0]
-                                    this.router.navigate([landing_page]); //TODO: redirect to path accessed    
+                                    this.router.navigate([this.resolveLandingPage(data.permissions)]);
                                 }
                                 else {
                                     this.error = 'Unauthorized Access. Please Contact Admin!!'

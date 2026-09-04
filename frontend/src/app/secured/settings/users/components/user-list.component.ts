@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import { UsersService } from "../users.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     templateUrl: 'user-list.component.html'
@@ -8,14 +9,16 @@ export class UserListComponent {
 
     users:any;
 
-    constructor(private service:UsersService){}
+    constructor(private service:UsersService, private confirm:ConfirmService){}
 
     ngOnInit(){
         this.fetchList();
     }
 
-    delete(id:number){
-        this.service.remove(id).subscribe(data => this.fetchList() )
+    delete(user:any){
+        this.confirm.confirmDelete(user?.fullname, () => {
+            this.service.remove(user.id).subscribe(() => this.fetchList());
+        }, { entity: 'user', consequence: 'They will no longer be able to sign in; historical records are kept.' });
     }
 
     fetchList(){

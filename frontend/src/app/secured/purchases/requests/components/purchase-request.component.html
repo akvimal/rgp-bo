@@ -30,9 +30,11 @@
           <td>{{request.neededby | date:'dd/MM/yyyy'}}</td>
           <td>{{request.customername || '-'}}</td>
           <td class="text-center">
-            <a class="me-2" (click)="edit(request)"><i class="bi bi-pencil text-primary"></i></a>
-            <a class="me-2" *ngIf="request.status === 'Open'" (click)="markReviewed(request)"><i class="bi bi-check2 text-success"></i></a>
-            <a (click)="remove(request.id)"><i class="bi bi-trash text-danger"></i></a>
+            <div class="grid-actions">
+              <a (click)="edit(request)" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
+              <a *ngIf="request.status === 'Open'" (click)="markReviewed(request)" title="Mark reviewed"><i class="bi bi-check2 text-success"></i></a>
+              <a (click)="remove(request)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
+            </div>
           </td>
         </tr>
       </ng-template>

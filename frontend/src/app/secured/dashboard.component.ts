@@ -1,4 +1,5 @@
 import { Component, OnDestroy } from "@angular/core";
+import { LegendPosition } from "@swimlane/ngx-charts";
 import { Subscription } from "rxjs";
 import { DateUtilService } from "./date-util.service";
 import { DashboardService } from "./dashboard.service";
@@ -8,6 +9,8 @@ import { StoreContextService } from "../@core/store-context.service";
     templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnDestroy {
+
+    legendBelow = LegendPosition.Below;
 
     summary:any = {
         kpis: {}

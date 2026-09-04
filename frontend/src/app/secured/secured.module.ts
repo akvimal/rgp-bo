@@ -5,8 +5,11 @@ import { RouterModule, Routes } from "@angular/router";
 import { StoreModule } from "@ngrx/store";
 import { NgxChartsModule } from "@swimlane/ngx-charts";
 import { DialogModule } from "primeng/dialog";
+import { ConfirmDialogModule } from "primeng/confirmdialog";
+import { ConfirmationService } from "primeng/api";
 import { AuthGuard } from "../@core/auth/auth.guard";
 import { SharedModule } from "../shared/shared.module";
+import { ConfirmService } from "../shared/confirm.service";
 import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
 import { DocumentsModule } from "./documents/documents.module";
@@ -74,8 +77,10 @@ const routes: Routes = [
         CustomersModule,
         SalesModule,
         DocumentsModule,
-        DialogModule
+        DialogModule,
+        ConfirmDialogModule
     ],
+    providers: [ConfirmationService, ConfirmService],
     exports: [RouterModule]
   })
 export class SecuredModule{}

@@ -37,7 +37,7 @@
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
-                    <tr>
+                    <tr data-testid="stk-adjust-row" [attr.data-adj-id]="i.id">
                       <!-- <td>{{i.itemid}}</td> -->
                         <td>
                             <p class="m-0">{{i.title}}</p>
@@ -53,12 +53,9 @@
                         </td>
                         <!-- <td>{{i.status}}</td> -->
                         <td>
-                          <!-- <h5 style="float:left; margin-right: 0.3em;">
-                            <a (click)="edit(i.id)"><i class="bi bi-pencil"></i></a>
-                          </h5> -->
-                          <h5 style="float:left; margin-right: 0.3em;">
-                            <a (click)="delete(i.id)"><i class="bi bi-trash text-danger"></i></a>
-                          </h5>
+                          <div class="grid-actions">
+                            <a (click)="delete(i)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
+                          </div>
                         </td>
                     </tr>
                 </ng-template>

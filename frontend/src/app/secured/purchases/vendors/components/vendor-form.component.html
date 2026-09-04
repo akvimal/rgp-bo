@@ -8,21 +8,21 @@
         <div class="row mt-4">
         <div class="col-md-8">
           <label for="name" class="form-label">Business Name</label>
-          <input type="text" class="form-control" id="name" formControlName="name">
-        </div>        
+          <input type="text" class="form-control" id="name" data-testid="vendor-f-name" formControlName="name">
+        </div>
         <div class="col-md-4">
           <label for="gstn" class="form-label">GSTN</label>
-          <input type="text" class="form-control" id="gstn" formControlName="gstn">
+          <input type="text" class="form-control" id="gstn" data-testid="vendor-f-gstn" formControlName="gstn">
         </div>
       </div>
       <div class="row">
         <div class="col-md-4">
           <label for="contactname" class="form-label">Contact Name</label>
-          <input type="text" class="form-control" id="contactname" formControlName="contactname">
+          <input type="text" class="form-control" id="contactname" data-testid="vendor-f-contact" formControlName="contactname">
         </div>
         <div class="col-md-2">
           <label for="contactphone" class="form-label">Contact Phone</label>
-          <input type="text" class="form-control" id="contactphone" formControlName="contactphone">
+          <input type="text" class="form-control" id="contactphone" data-testid="vendor-f-phone" formControlName="contactphone">
         </div>
         <div class="col-md-6">
           <label for="address" class="form-label">Address</label>
@@ -36,8 +36,8 @@
         </div>
       </div>
         <div class="text-center">
-          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-          <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+          <button type="submit" class="btn btn-primary m-2" data-testid="vendor-f-submit" [disabled]="!form.valid">Submit</button>
+          <button type="button" *ngIf="!form.get('id')?.value" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
           <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
         </div>
       </form><!-- End Multi Columns Form -->

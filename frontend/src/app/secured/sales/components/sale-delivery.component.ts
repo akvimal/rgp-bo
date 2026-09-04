@@ -12,6 +12,7 @@ export class SaleDeliveryComponent {
     deliveries:SaleDelivery[] = []
     editingDelivery:SaleDelivery = {}
     showEditor = false
+    useSaleCustomer = false
     currentMonthLabel = ''
     summary = {
         total: 0,
@@ -131,19 +132,26 @@ export class SaleDeliveryComponent {
             collectionstatus: delivery.collectionstatus || 'Pending',
             confirmed: !!delivery.confirmed
         };
+        // pre-check the box when the receiver details already match the customer on file
+        this.useSaleCustomer = !!customer.name
+            && this.editingDelivery.receivername === (customer.name || '')
+            && this.editingDelivery.receiverphone === (customer.mobile || '');
         this.showEditor = true;
     }
 
     closeEditor(){
         this.showEditor = false;
         this.editingDelivery = {};
+        this.useSaleCustomer = false;
     }
 
-    useSaleCustomerInfo(){
-        const customer = this.editingDelivery.sale?.customer || {};
-        this.editingDelivery.receivername = customer.name || '';
-        this.editingDelivery.receiverphone = customer.mobile || '';
-        this.editingDelivery.receiveraddress = customer.address || '';
+    onUseSaleCustomerChange(){
+        if(this.useSaleCustomer){
+            const customer = this.editingDelivery.sale?.customer || {};
+            this.editingDelivery.receivername = customer.name || '';
+            this.editingDelivery.receiverphone = customer.mobile || '';
+            this.editingDelivery.receiveraddress = customer.address || '';
+        }
     }
 
     onStatusChange(){

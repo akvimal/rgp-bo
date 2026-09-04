@@ -7,7 +7,7 @@
         <div class="row g-3">
           <div class="col-md-5" *isAuth="'roles.add$name'">
             <label for="name" class="form-label">Role name</label>
-            <input type="text" class="form-control" id="name" formControlName="name" placeholder="e.g. Regional Manager">
+            <input type="text" class="form-control" id="name" data-testid="role-f-name" formControlName="name" placeholder="e.g. Regional Manager">
           </div>
         </div>
 
@@ -44,6 +44,7 @@
             <div class="permission-resource-header">
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" [id]="'res-' + resource.key"
+                  [attr.data-testid]="'role-f-res-' + resource.key"
                   [checked]="selection[resource.key]?.enabled"
                   (change)="toggleResource(resource, $any($event.target).checked)">
                 <label class="form-check-label fw-semibold" [for]="'res-' + resource.key">{{resource.label}}</label>
@@ -65,6 +66,7 @@
               <div class="permission-action" *ngFor="let action of resource.actions">
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" [id]="'act-' + resource.key + '-' + action.key"
+                    [attr.data-testid]="'role-f-act-' + resource.key + '-' + action.key"
                     [checked]="selection[resource.key]?.actions?.[action.key]"
                     (change)="toggleAction(resource, action.key, $any($event.target).checked)">
                   <label class="form-check-label" [for]="'act-' + resource.key + '-' + action.key">{{action.label}}</label>
@@ -108,8 +110,8 @@
         </div>
 
         <div class="text-center">
-          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-          <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+          <button type="submit" class="btn btn-primary m-2" data-testid="role-f-submit" [disabled]="!form.valid">Submit</button>
+          <button type="button" *ngIf="!form.get('id')?.value" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
           <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
         </div>
       </form>

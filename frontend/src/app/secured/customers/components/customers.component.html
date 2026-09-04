@@ -51,17 +51,10 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <!-- <td>{{c.srctype}}</td> -->
       <!-- <td>{{c.srcdesc}}</td> -->
       <!-- <td>{{c.createdon | date : 'dd/MM/yy'}}</td> -->
-      <td style="text-align: center;">
-        <h4 class="icon">
-        <a [routerLink]="['../edit',c.id]">
-          <i class="bi bi-pencil-square text-primary"></i>
-        </a>
-      </h4>
-      <!-- <h4 class="icon"><i class="bi bi-files"></i></h4> -->
-  <!--       
-        <a (click)="onRemove(c.id)">
-          <i class="bi bi-trash text-danger"></i>
-        </a> -->
+      <td class="text-center">
+        <div class="grid-actions">
+          <a [routerLink]="['../edit',c.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
+        </div>
       </td>
     </tr>
 </ng-template>

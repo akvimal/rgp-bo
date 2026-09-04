@@ -9,9 +9,6 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="id">ID
-                            <p-sortIcon field="id"></p-sortIcon>
-                        </th>
                         <th pSortableColumn="name">Name
                             <p-sortIcon field="name"></p-sortIcon>
                         </th>
@@ -33,18 +30,16 @@
                 </ng-template>
                 <ng-template pTemplate="body" let-vendor>
                     <tr>
-                        <td>{{vendor.id}}</td>
                         <td>{{vendor.name}}</td>
                         <td>{{vendor.contactname}}</td>
                         <!-- <td>{{vendor.gstn}}</td> -->
                         <td>{{vendor.contactphone}}</td>
                         <!-- <td>{{vendor.address}}</td> -->
-                        <td style="text-align: center;">
-                            <h5>
-                            <a [routerLink]="['../edit', vendor.id]">
-                            <i class="bi bi-pencil-square text-primary"></i></a>&nbsp;&nbsp;
-                            <a (click)="delete(vendor.id)"><i class="bi bi-trash text-danger"></i></a>
-                            </h5>
+                        <td class="text-center">
+                            <div class="grid-actions">
+                                <a [routerLink]="['../edit', vendor.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
+                                <a (click)="delete(vendor)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
+                            </div>
                         </td>
                     </tr>
                 </ng-template>

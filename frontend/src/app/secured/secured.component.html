@@ -4,7 +4,7 @@
     <header id="header" class="header fixed-top d-flex align-items-center">
       
       <div class="d-flex align-items-center justify-content-between">
-        <button type="button" class="btn btn-link p-0 me-2 sidebar-toggle-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <button type="button" data-testid="sidebar-toggle" class="btn btn-link p-0 me-2 sidebar-toggle-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
           <i class="bi bi-list"></i>
         </button>
         <img src="assets/img/rgp-logo.png" alt="" width="50px">
@@ -14,8 +14,8 @@
         <span *ngIf="businessName && !isSiteAdmin" class="d-none d-lg-block small text-muted ms-2">{{businessName}}</span>
       </div><!-- End Logo -->
 
-      <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin">
-        <select class="form-select form-select-sm" [ngModel]="selectedStoreId === null ? '' : selectedStoreId" (change)="changeStore($event)" aria-label="Select store">
+      <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin" data-testid="store-switcher-wrap">
+        <select class="form-select form-select-sm" data-testid="store-switcher" [ngModel]="selectedStoreId === null ? '' : selectedStoreId" (change)="changeStore($event)" aria-label="Select store">
           <option value="">All stores</option>
           <option *ngFor="let store of stores" [value]="store.id">{{store.business?.name}} - {{store.location}}</option>
         </select>
@@ -31,15 +31,40 @@
     
       <nav class="header-nav ms-auto">
         <ul class="d-flex align-items-center">
-          <li class="nav-item dropdown pe-3">
-    
-            <a class="nav-link nav-profile d-flex align-items-center pe-0" href="javascript:void(0)" data-bs-toggle="dropdown">
+          <li class="nav-item dropdown pe-3" [class.show]="userMenuOpen">
+
+            <a class="nav-link nav-profile d-flex align-items-center pe-0" href="javascript:void(0)" data-testid="user-menu"
+              (click)="toggleUserMenu($event)" [attr.aria-expanded]="userMenuOpen">
               <img src="assets/img/profile-img.jpg" alt="Profile" class="rounded-circle">
-              <span class="d-none d-md-block dropdown-toggle ps-2">{{user.fullname}}</span>
-            </a><!-- End Profile Iamge Icon -->
-    <!-- End Profile Dropdown Items -->
+              <span class="d-none d-md-block ps-2" data-testid="user-fullname">{{user.fullname}}</span>
+              <i class="bi bi-chevron-down ms-1 small"></i>
+            </a><!-- End Profile Image Icon -->
+
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile" [class.show]="userMenuOpen">
+              <li class="dropdown-header">
+                <h6 class="mb-0">{{user.fullname}}</h6>
+                <span class="small text-muted">{{user.rolename}}</span>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center" routerLink="/secure/profile" data-testid="user-menu-profile" (click)="closeUserMenu()">
+                  <i class="bi bi-person me-2"></i><span>My Profile</span>
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center" routerLink="/changepassword" data-testid="user-menu-changepw" (click)="closeUserMenu()">
+                  <i class="bi bi-shield-lock me-2"></i><span>Change Password</span>
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center" routerLink="/logout" data-testid="user-menu-logout" (click)="closeUserMenu()">
+                  <i class="bi bi-box-arrow-right me-2"></i><span>Logout</span>
+                </a>
+              </li>
+            </ul>
           </li><!-- End Profile Nav -->
-    
+
         </ul>
       </nav><!-- End Icons Navigation -->
     
@@ -51,32 +76,32 @@
       <ul class="sidebar-nav" id="sidebar-nav">
     
         <li class="nav-item" *isAuth="'site'">
-          <a class="nav-link" routerLink="dashboard" title="Dashboard" aria-label="Dashboard">
+          <a class="nav-link" routerLink="dashboard" data-testid="nav-dashboard" title="Dashboard" aria-label="Dashboard">
             <i class="bi bi-speedometer2"></i>
             <span>Dashboard</span>
           </a>
         </li>
         <li class="nav-item" *isAuth="'purchases.read'">
-          <a class="nav-link collapsed" routerLink="/secure/purchases/vendors/list" title="Vendors" aria-label="Vendors">
+          <a class="nav-link collapsed" routerLink="/secure/purchases/vendors/list" data-testid="nav-vendors" title="Vendors" aria-label="Vendors">
             <i class="bi bi-truck"></i>
             <span>Vendors</span>
           </a>
         </li>
         <li class="nav-item" *isAuth="'sales'">
-          <a class="nav-link collapsed" routerLink="sales" title="Sales" aria-label="Sales">
+          <a class="nav-link collapsed" routerLink="sales" data-testid="nav-sales" title="Sales" aria-label="Sales">
             <i class="bi bi-cash-coin"></i>
             <span>Sales</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'store.read'">
-          <a class="nav-link collapsed" routerLink="store" title="Store" aria-label="Store">
+          <a class="nav-link collapsed" routerLink="store" data-testid="nav-store" title="Store" aria-label="Store">
             <i class="bi bi-box-seam"></i>
             <span>Store</span>
           </a>
         </li>
 
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'purchases.read'">
-          <a class="nav-link collapsed" routerLink="purchases" title="Purchase" aria-label="Purchase">
+          <a class="nav-link collapsed" routerLink="purchases" data-testid="nav-purchases" title="Purchase" aria-label="Purchase">
             <i class="bi bi-bag-check"></i>
             <span>Purchase</span>
           </a>
@@ -106,13 +131,13 @@
         </li> -->
     
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products'">
-          <a class="nav-link collapsed" routerLink="products" title="Products" aria-label="Products">
+          <a class="nav-link collapsed" routerLink="products" data-testid="nav-products" title="Products" aria-label="Products">
             <i class="bi bi-boxes"></i>
             <span>Products</span>
           </a>
         </li>
         <li class="nav-item" *isAuth="'customers.read'">
-          <a class="nav-link collapsed" routerLink="customers/cust/list" title="Customers" aria-label="Customers">
+          <a class="nav-link collapsed" routerLink="customers/cust/list" data-testid="nav-customers" title="Customers" aria-label="Customers">
             <i class="bi bi-people"></i>
             <span>Customers</span>
           </a>
@@ -124,13 +149,13 @@
           </a>
         </li> -->
         <li class="nav-item" *isAuth="'reports'">
-          <a class="nav-link collapsed" routerLink="reports" title="Reports" aria-label="Reports">
+          <a class="nav-link collapsed" routerLink="reports" data-testid="nav-reports" title="Reports" aria-label="Reports">
             <i class="bi bi-graph-up"></i>
             <span>Reports</span>
           </a>
         </li>
         <li class="nav-item" *isAuth="'settings.read'">
-          <a class="nav-link" [class.collapsed]="!settingsMenuOpen"
+          <a class="nav-link" [class.collapsed]="!settingsMenuOpen" data-testid="nav-settings"
             (click)="toggleSettingsMenu()" title="Settings" aria-label="Settings">
             <i class="bi bi-gear"></i>
             <span>Settings</span>
@@ -138,27 +163,27 @@
           </a>
           <ul class="nav-content" *ngIf="settingsMenuOpen">
             <li *isAuth="'businesses.manage'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/businesses">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/businesses" data-testid="nav-settings-businesses">
                 <i class="bi bi-circle"></i><span>Businesses</span>
               </a>
             </li>
             <li *isAuth="'roles'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/roles">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/roles" data-testid="nav-settings-roles">
                 <i class="bi bi-circle"></i><span>Roles</span>
               </a>
             </li>
             <li *isAuth="'users'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/users">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/users" data-testid="nav-settings-users">
                 <i class="bi bi-circle"></i><span>Users</span>
               </a>
             </li>
             <li *isAuth="'purchases'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/delivery-partners">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/delivery-partners" data-testid="nav-settings-delivery-partners">
                 <i class="bi bi-circle"></i><span>Delivery Partners</span>
               </a>
             </li>
             <li *isAuth="'storesettings'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/store">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/store" data-testid="nav-settings-store">
                 <i class="bi bi-circle"></i><span>Store</span>
               </a>
             </li>
@@ -197,7 +222,7 @@
         </li>
 
         <li class="nav-item">
-          <a class="nav-link collapsed" routerLink="/logout" title="Logout" aria-label="Logout">
+          <a class="nav-link collapsed" routerLink="/logout" data-testid="nav-logout" title="Logout" aria-label="Logout">
             <i class="bi bi-box-arrow-right"></i>
             <span>Logout</span>
           </a>
@@ -235,7 +260,9 @@
   <!-- <p-dialog header="Profile" [modal]="true" [(visible)]="showUserPopup" [style]="{ width: '25rem' }">
     <app-webcam-snapshot></app-webcam-snapshot>
   </p-dialog> -->
-  <p-dialog [header]="'Price'" 
+  <p-dialog [header]="'Price'"
         [(visible)]="pricing" [modal]="true">
     <app-price-estimator></app-price-estimator>
 </p-dialog>
+
+<p-confirmDialog [style]="{width: '30rem'}" [baseZIndex]="10000" acceptButtonStyleClass="p-button-danger"></p-confirmDialog>

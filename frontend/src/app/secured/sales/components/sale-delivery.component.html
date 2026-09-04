@@ -173,20 +173,24 @@
             <input class="form-control" type="date" [(ngModel)]="editingDelivery.deliverydate">
         </div>
 
+        <div class="col-md-12">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="useSaleCustomer"
+                    [(ngModel)]="useSaleCustomer" (ngModelChange)="onUseSaleCustomerChange()">
+                <label class="form-check-label" for="useSaleCustomer">Use sale customer details</label>
+            </div>
+        </div>
         <div class="col-md-6">
             <label class="form-label">Receiver Name</label>
-            <input class="form-control" [(ngModel)]="editingDelivery.receivername">
+            <input class="form-control" [(ngModel)]="editingDelivery.receivername" [disabled]="useSaleCustomer">
         </div>
         <div class="col-md-6">
             <label class="form-label">Receiver Phone</label>
-            <div class="d-flex gap-2">
-                <input class="form-control" [(ngModel)]="editingDelivery.receiverphone">
-                <button type="button" class="btn btn-outline-secondary" (click)="useSaleCustomerInfo()">Use Sale Customer</button>
-            </div>
+            <input class="form-control" [(ngModel)]="editingDelivery.receiverphone" [disabled]="useSaleCustomer">
         </div>
         <div class="col-md-12">
             <label class="form-label">Receiver Address</label>
-            <textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.receiveraddress"></textarea>
+            <textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.receiveraddress" [disabled]="useSaleCustomer"></textarea>
             <small class="text-muted" *ngIf="editingDelivery.sale?.customer?.address">Customer address: {{editingDelivery.sale?.customer?.address}}</small>
         </div>
 

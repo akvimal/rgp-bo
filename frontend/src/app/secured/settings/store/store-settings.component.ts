@@ -1,5 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { CashService } from "src/app/secured/store/cash/cash.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
   templateUrl: './store-settings.component.html'
@@ -33,7 +34,7 @@ export class StoreSettingsComponent implements OnInit {
     active: true
   };
 
-  constructor(private cashService: CashService) {}
+  constructor(private cashService: CashService, private confirm: ConfirmService) {}
 
   ngOnInit(): void {
     this.cashService.getUsers().subscribe((users:any) => this.users = users || []);
@@ -106,12 +107,11 @@ export class StoreSettingsComponent implements OnInit {
   }
 
   removeStore(row:any) {
-    if (!confirm(`Archive store "${row.location}"?`)) {
-      return;
-    }
-    this.cashService.deleteStore(row.id).subscribe(() => {
-      this.refreshStoreList();
-    }, err => this.message = err?.error?.message || 'Unable to archive store');
+    this.confirm.confirmDelete(row?.location, () => {
+      this.cashService.deleteStore(row.id).subscribe(() => {
+        this.refreshStoreList();
+      }, err => this.message = err?.error?.message || 'Unable to archive store');
+    }, { entity: 'store', verb: 'Archive' });
   }
 
   savePolicy() {

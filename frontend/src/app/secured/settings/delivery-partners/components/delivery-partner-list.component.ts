@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import { DeliveryPartnersService } from "../delivery-partners.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     templateUrl: 'delivery-partner-list.component.html'
@@ -7,7 +8,7 @@ import { DeliveryPartnersService } from "../delivery-partners.service";
 export class DeliveryPartnerListComponent {
     partners: any;
 
-    constructor(private service: DeliveryPartnersService) {}
+    constructor(private service: DeliveryPartnersService, private confirm: ConfirmService) {}
 
     ngOnInit() {
         this.fetchList();
@@ -17,7 +18,9 @@ export class DeliveryPartnerListComponent {
         this.service.findAll().subscribe(data => this.partners = data);
     }
 
-    delete(id: number) {
-        this.service.remove(id).subscribe(() => this.fetchList());
+    delete(partner: any) {
+        this.confirm.confirmDelete(partner?.name, () => {
+            this.service.remove(partner.id).subscribe(() => this.fetchList());
+        }, { entity: 'delivery partner' });
     }
 }

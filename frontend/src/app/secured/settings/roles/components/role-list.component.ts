@@ -2,6 +2,7 @@ import { Component } from "@angular/core";
 import { Router } from "@angular/router";
 import { RolesService } from "../roles.service";
 import { PERMISSION_CATALOG } from "../permission-catalog";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     templateUrl: 'role-list.component.html'
@@ -10,14 +11,16 @@ export class RoleListComponent {
 
     roles:any;
 
-    constructor(private service:RolesService, private router:Router){}
+    constructor(private service:RolesService, private router:Router, private confirm:ConfirmService){}
 
     ngOnInit(){
         this.fetchList();
     }
 
-    delete(id:number){
-        this.service.remove(id).subscribe(data => this.fetchList() )
+    delete(role:any){
+        this.confirm.confirmDelete(role?.name, () => {
+            this.service.remove(role.id).subscribe(() => this.fetchList());
+        }, { entity: 'role', consequence: 'Users assigned to it will lose its permissions.' });
     }
 
     fetchList(){

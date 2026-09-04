@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import { ProductsService } from "../../products.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     templateUrl: 'product-list.component.html'
@@ -9,19 +10,22 @@ export class ProductListComponent {
     products:any;
     criteria:any = {active:true, title: ''};
 
-    constructor( 
-        private service:ProductsService){}
+    constructor(
+        private service:ProductsService,
+        private confirm:ConfirmService){}
 
-    ngOnInit(){ 
+    ngOnInit(){
         this.fetchList()
     }
 
     selectCategory(event:any){
         this.fetchList();
     }
-      
-    archive(id:number){
-        this.service.update(id, {isArchived:true}).subscribe(data => this.fetchList());
+
+    archive(product:any){
+        this.confirm.confirmDelete(product?.title, () => {
+            this.service.update(product.id, {isArchived:true}).subscribe(() => this.fetchList());
+        }, { entity: 'product', verb: 'Archive', consequence: 'It will be hidden from lists; stock history is kept.' });
     }
 
     changeActive(id:number, flag:boolean){

@@ -1,13 +1,15 @@
-<div class="pagetitle">
+<div class="pagetitle dashboard" data-testid="dash-root">
   <h1>Dashboard</h1>
   <div class="small text-muted">Business snapshot for {{selectedStoreLabel}}</div>
 </div>
+<div class="dashboard">
 
-<div *ngIf="error" class="alert alert-danger">{{error}}</div>
-<div *ngIf="loading" class="alert alert-light">Loading dashboard...</div>
+
+<div *ngIf="error" class="alert alert-danger" data-testid="dash-error">{{error}}</div>
+<div *ngIf="loading" class="alert alert-light" data-testid="dash-loading">Loading dashboard...</div>
 
 <!-- ── KPI cards ─────────────────────────────────────────────────────── -->
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-3" data-testid="dash-kpis">
 
   <!-- Sales: combined today + month (freed one card slot) -->
   <div class="col-6 col-xl-3" *isAuth="'sales'">
@@ -17,7 +19,7 @@
         <div class="d-flex justify-content-between align-items-end">
           <div>
             <div class="small text-muted">Today</div>
-            <div class="fs-5 fw-bold">{{summary?.kpis?.sales_today | number:'1.2-2'}}</div>
+            <div class="fs-5 fw-bold" data-testid="dash-sales-today">{{summary?.kpis?.sales_today | number:'1.2-2'}}</div>
             <div class="small text-muted">{{summary?.kpis?.sales_today_orders || 0}} orders</div>
           </div>
           <div class="text-end">
@@ -166,17 +168,18 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Sales trend <span class="small text-muted fw-normal">(last 14 days)</span></h5>
-        <ngx-charts-bar-vertical
-          [view]="[520,240]"
-          [results]="salesTrend"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="true"
-          [xAxisLabel]="'Day'"
-          [yAxisLabel]="'Sales (₹)'">
-        </ngx-charts-bar-vertical>
+        <div class="chart-box">
+          <ngx-charts-bar-vertical
+            [results]="salesTrend"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Sales (₹)'">
+          </ngx-charts-bar-vertical>
+        </div>
       </div>
     </div>
   </div>
@@ -184,10 +187,15 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Payment split <span class="small text-muted fw-normal">(this month)</span></h5>
-        <ngx-charts-advanced-pie-chart
-          [results]="paymentSplit"
-          [label]="'Total'">
-        </ngx-charts-advanced-pie-chart>
+        <div class="chart-box">
+          <ngx-charts-pie-chart
+            [results]="paymentSplit"
+            [labels]="true"
+            [legend]="true"
+            [legendPosition]="legendBelow"
+            [doughnut]="true">
+          </ngx-charts-pie-chart>
+        </div>
       </div>
     </div>
   </div>
@@ -199,16 +207,18 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Purchase trend <span class="small text-muted fw-normal">(14 days)</span></h5>
-        <ngx-charts-bar-vertical
-          [view]="[300,200]"
-          [results]="purchaseTrend"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="false"
-          [showYAxisLabel]="true"
-          [yAxisLabel]="'Amount (₹)'">
-        </ngx-charts-bar-vertical>
+        <div class="chart-box chart-box-sm">
+          <ngx-charts-bar-vertical
+            [results]="purchaseTrend"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Amount (₹)'">
+          </ngx-charts-bar-vertical>
+        </div>
       </div>
     </div>
   </div>
@@ -216,16 +226,19 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Cash movement <span class="small text-muted fw-normal">(14 days)</span></h5>
-        <ngx-charts-bar-vertical-2d
-          [view]="[300,200]"
-          [results]="cashTrend"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="true"
-          [showXAxisLabel]="false"
-          [showYAxisLabel]="true"
-          [yAxisLabel]="'Amount (₹)'">
-        </ngx-charts-bar-vertical-2d>
+        <div class="chart-box chart-box-sm">
+          <ngx-charts-bar-vertical-2d
+            [results]="cashTrend"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="true"
+            [legendPosition]="legendBelow"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Amount (₹)'">
+          </ngx-charts-bar-vertical-2d>
+        </div>
       </div>
     </div>
   </div>
@@ -233,12 +246,15 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">PO approvals <span class="small text-muted fw-normal">(this month)</span></h5>
-        <ngx-charts-pie-chart
-          [view]="[300,200]"
-          [results]="purchaseApprovalBreakdown"
-          [doughnut]="true"
-          [legend]="true">
-        </ngx-charts-pie-chart>
+        <div class="chart-box chart-box-sm">
+          <ngx-charts-pie-chart
+            [results]="purchaseApprovalBreakdown"
+            [doughnut]="true"
+            [legend]="true"
+            [legendPosition]="legendBelow"
+            [labels]="false">
+          </ngx-charts-pie-chart>
+        </div>
       </div>
     </div>
   </div>
@@ -250,17 +266,18 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Users by role</h5>
-        <ngx-charts-bar-vertical
-          [view]="[420,240]"
-          [results]="usersByRole"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="true"
-          [xAxisLabel]="'Role'"
-          [yAxisLabel]="'Users'">
-        </ngx-charts-bar-vertical>
+        <div class="chart-box">
+          <ngx-charts-bar-vertical
+            [results]="usersByRole"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Users'">
+          </ngx-charts-bar-vertical>
+        </div>
       </div>
     </div>
   </div>
@@ -268,17 +285,18 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Stores by business</h5>
-        <ngx-charts-bar-vertical
-          [view]="[420,240]"
-          [results]="storesByBusiness"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="true"
-          [xAxisLabel]="'Business'"
-          [yAxisLabel]="'Stores'">
-        </ngx-charts-bar-vertical>
+        <div class="chart-box">
+          <ngx-charts-bar-vertical
+            [results]="storesByBusiness"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Stores'">
+          </ngx-charts-bar-vertical>
+        </div>
       </div>
     </div>
   </div>
@@ -293,17 +311,18 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Customers served per day <span class="small text-muted fw-normal">(last 14 days)</span></h5>
-        <ngx-charts-bar-vertical
-          [view]="[420,220]"
-          [results]="customersPerDay"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="true"
-          [xAxisLabel]="'Date'"
-          [yAxisLabel]="'Customers'">
-        </ngx-charts-bar-vertical>
+        <div class="chart-box">
+          <ngx-charts-bar-vertical
+            [results]="customersPerDay"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Customers'">
+          </ngx-charts-bar-vertical>
+        </div>
       </div>
     </div>
   </div>
@@ -311,16 +330,17 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Top customers <span class="small text-muted fw-normal">(this month by revenue)</span></h5>
-        <ngx-charts-bar-horizontal
-          [view]="[420,220]"
-          [results]="topCustomers"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="false"
-          [xAxisLabel]="'Revenue (₹)'">
-        </ngx-charts-bar-horizontal>
+        <div class="chart-box">
+          <ngx-charts-bar-horizontal
+            [results]="topCustomers"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="false">
+          </ngx-charts-bar-horizontal>
+        </div>
       </div>
     </div>
   </div>
@@ -335,16 +355,17 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Top products by quantity <span class="small text-muted fw-normal">(this month)</span></h5>
-        <ngx-charts-bar-horizontal
-          [view]="[420,260]"
-          [results]="topProductsByQty"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="false"
-          [xAxisLabel]="'Units sold'">
-        </ngx-charts-bar-horizontal>
+        <div class="chart-box">
+          <ngx-charts-bar-horizontal
+            [results]="topProductsByQty"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="false">
+          </ngx-charts-bar-horizontal>
+        </div>
       </div>
     </div>
   </div>
@@ -352,16 +373,17 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Top products by revenue <span class="small text-muted fw-normal">(this month)</span></h5>
-        <ngx-charts-bar-horizontal
-          [view]="[420,260]"
-          [results]="topProductsByRevenue"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="false"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="false"
-          [xAxisLabel]="'Revenue (₹)'">
-        </ngx-charts-bar-horizontal>
+        <div class="chart-box">
+          <ngx-charts-bar-horizontal
+            [results]="topProductsByRevenue"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="false">
+          </ngx-charts-bar-horizontal>
+        </div>
       </div>
     </div>
   </div>
@@ -489,3 +511,4 @@
     </div>
   </div>
 </div>
+</div><!-- /.dashboard -->

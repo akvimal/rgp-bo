@@ -1,0 +1,49 @@
+<div class="pagetitle">
+  <h1>My Profile</h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div class="profile-avatar mx-auto mb-2">{{initials}}</div>
+        <h5 class="mb-0">{{user.fullname || '-'}}</h5>
+        <div class="text-muted small">{{user.rolename || '-'}}</div>
+        <a routerLink="/changepassword" class="btn btn-outline-primary btn-sm mt-3" data-testid="profile-changepw">
+          <i class="bi bi-shield-lock me-1"></i> Change Password
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-8">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Account</h5>
+        <dl class="row mb-0 small">
+          <dt class="col-sm-4 text-muted fw-normal">Full name</dt>
+          <dd class="col-sm-8">{{user.fullname || '-'}}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal">Role</dt>
+          <dd class="col-sm-8">{{user.rolename || '-'}}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal">Business</dt>
+          <dd class="col-sm-8">{{user.businessname || 'All businesses'}}</dd>
+
+          <dt class="col-sm-4 text-muted fw-normal">Last login</dt>
+          <dd class="col-sm-8">{{user.lastlogin ? (user.lastlogin | date:'dd MMM yyyy, h:mm a') : '-'}}</dd>
+        </dl>
+
+        <h5 class="card-title mt-4">Assigned stores</h5>
+        <div *ngIf="stores.length; else noStores" class="d-flex flex-wrap gap-2">
+          <span class="badge bg-light text-dark border" *ngFor="let s of stores">
+            {{s.business?.name ? s.business.name + ' - ' : ''}}{{s.location}}
+          </span>
+        </div>
+        <ng-template #noStores>
+          <div class="text-muted small">No specific store assignment.</div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>

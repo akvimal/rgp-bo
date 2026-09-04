@@ -2,6 +2,7 @@ import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 import { VendorsService } from "../../vendors/vendors.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     templateUrl: './purchase-request.component.html'
@@ -38,7 +39,8 @@ export class PurchaseRequestComponent {
 
     constructor(
         private requestService: PurchaseIntentService,
-        private vendorService: VendorsService
+        private vendorService: VendorsService,
+        private confirm: ConfirmService
     ) {}
 
     ngOnInit(){
@@ -103,8 +105,10 @@ export class PurchaseRequestComponent {
         this.requestService.update(request.id, { status: 'Reviewed' }).subscribe(() => this.fetchRequests());
     }
 
-    remove(id:number){
-        this.requestService.remove(id).subscribe(() => this.fetchRequests());
+    remove(request:any){
+        this.confirm.confirmDelete(request?.product?.title, () => {
+            this.requestService.remove(request.id).subscribe(() => this.fetchRequests());
+        }, { entity: 'purchase request' });
     }
 
     onSave(){

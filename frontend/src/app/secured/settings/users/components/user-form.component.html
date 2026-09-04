@@ -6,41 +6,41 @@
         <div class="row">
           <div class="col-md-3" *isAuth="'users.add$email'">
             <label for="email" class="form-label">Email</label>
-            <input type="text" class="form-control" id="email" formControlName="email">
+            <input type="text" class="form-control" id="email" data-testid="user-f-email" formControlName="email">
           </div>
           <div class="col-md-3" *isAuth="'users.add$password'">
             <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" formControlName="password">
+            <input type="password" class="form-control" id="password" data-testid="user-f-password" formControlName="password">
           </div>
           <div class="col-md-3">
             <label for="confirmpassword" class="form-label">Confirm Password</label>
-            <input type="password" class="form-control" id="confirmpassword" formControlName="confirmpassword">
+            <input type="password" class="form-control" id="confirmpassword" data-testid="user-f-confirm" formControlName="confirmpassword">
           </div>
         </div>
         <div class="row mt-3">
           <div class="col-md-3" *isAuth="'users.add$fullname'">
             <label for="fullname" class="form-label">Full Name</label>
-            <input type="text" class="form-control" id="fullname" formControlName="fullname">
+            <input type="text" class="form-control" id="fullname" data-testid="user-f-fullname" formControlName="fullname">
           </div>
           <div class="col-md-3" *isAuth="'users.add$phone'">
             <label for="phone" class="form-label">Phone</label>
-            <input type="text" class="form-control" id="phone" formControlName="phone">
+            <input type="text" class="form-control" id="phone" data-testid="user-f-phone" formControlName="phone">
           </div>
           <div class="col-md-3" *isAuth="'users.add$location'">
             <label for="location" class="form-label">Location</label>
-            <input type="text" class="form-control" id="location" formControlName="location">
+            <input type="text" class="form-control" id="location" data-testid="user-f-location" formControlName="location">
           </div>
           </div>
           <div class="row mt-3">
           <div class="col-md-3" *isAuth="'users.add$role'">
             <label for="role" class="form-label">Role</label>
-            <select class="form-control" id="role" formControlName="roleid">
+            <select class="form-control" id="role" data-testid="user-f-role" formControlName="roleid">
               <option *ngFor="let r of roles" [value]="r.id">{{r.name}}</option>
             </select>
           </div>
           <div class="col-md-3" *isAuth="'users.add$businessid'">
             <label for="businessid" class="form-label">Business</label>
-            <select class="form-control" id="businessid" formControlName="businessid">
+            <select class="form-control" id="businessid" data-testid="user-f-business" formControlName="businessid">
               <option value="">Choose business</option>
               <option *ngFor="let b of businesses" [value]="b.id">{{b.name}}</option>
             </select>
@@ -56,7 +56,7 @@
               <div class="row g-2">
                 <div class="col-12 col-md-6 col-lg-4" *ngFor="let store of stores">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" [id]="'store-' + store.id" [checked]="isStoreSelected(store.id)" (change)="toggleStore(store.id, $any($event.target).checked)">
+                    <input class="form-check-input" type="checkbox" [id]="'store-' + store.id" [attr.data-testid]="'user-f-store-' + store.id" [checked]="isStoreSelected(store.id)" (change)="toggleStore(store.id, $any($event.target).checked)">
                     <label class="form-check-label" [for]="'store-' + store.id">
                       {{store.business?.name}} - {{store.location}}
                     </label>
@@ -68,8 +68,8 @@
           </div>
         
           <div class="text-center">
-            <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-            <button type="reset" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+            <button type="submit" class="btn btn-primary m-2" data-testid="user-f-submit" [disabled]="!form.valid">Submit</button>
+            <button type="button" *ngIf="!form.get('id')?.value" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
             <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
           </div>
         </div>

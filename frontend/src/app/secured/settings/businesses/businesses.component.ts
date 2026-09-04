@@ -1,5 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { BusinessesService } from "./businesses.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
   templateUrl: "./businesses.component.html"
@@ -15,7 +16,7 @@ export class BusinessesComponent implements OnInit {
     isActive: true
   };
 
-  constructor(private readonly service: BusinessesService) {}
+  constructor(private readonly service: BusinessesService, private readonly confirm: ConfirmService) {}
 
   ngOnInit(): void {
     this.refresh();
@@ -68,11 +69,10 @@ export class BusinessesComponent implements OnInit {
   }
 
   archive(row:any) {
-    if (!confirm(`Archive business "${row.name}"?`)) {
-      return;
-    }
-    this.service.deleteBusiness(row.id).subscribe(() => this.refresh(), err => {
-      this.message = err?.error?.message || 'Unable to archive business';
-    });
+    this.confirm.confirmDelete(row?.name, () => {
+      this.service.deleteBusiness(row.id).subscribe(() => this.refresh(), err => {
+        this.message = err?.error?.message || 'Unable to archive business';
+      });
+    }, { entity: 'business', verb: 'Archive' });
   }
 }

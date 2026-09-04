@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { DocumentsService } from "../documents.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     selector: 'app-document-list',
@@ -14,7 +15,7 @@ export class DocumentListComponent {
     documents:any[] = [];
     document:any;
 
-    constructor(private service:DocumentsService){}
+    constructor(private service:DocumentsService, private confirm:ConfirmService){}
 
     ngOnChanges(changes: SimpleChanges){
        if(changes.ids.currentValue){
@@ -35,9 +36,13 @@ export class DocumentListComponent {
     }
 
     deleteSelectedItem(){
-        const ids = this.getSelectedItems().map((d:any) => d.id);
-        this.documents = [...this.documents].filter(d => !ids.includes(d.id) )
-        this.removed.emit(ids);
+        const items = this.getSelectedItems();
+        const ids = items.map((d:any) => d.id);
+        const label = items.length === 1 ? (items[0].alias || items[0].category || 'this document') : `${items.length} documents`;
+        this.confirm.confirmDelete(label, () => {
+            this.documents = [...this.documents].filter(d => !ids.includes(d.id));
+            this.removed.emit(ids);
+        }, { entity: items.length === 1 ? 'document' : 'documents' });
     }
 
     selectDocument(id:number,event:any){

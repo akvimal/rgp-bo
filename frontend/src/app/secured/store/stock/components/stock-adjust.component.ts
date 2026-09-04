@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import { StockService } from "../stock.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 @Component({
     templateUrl: './stock-adjust.component.html',
@@ -13,7 +14,7 @@ export class StockAdjustComponent {
 
     quantities:[] = [];
 
-    constructor(private stockService:StockService) {}
+    constructor(private stockService:StockService, private confirm:ConfirmService) {}
 
     ngOnInit() {
        this.fetchAdjustments();
@@ -29,9 +30,11 @@ export class StockAdjustComponent {
 
     }
 
-    delete(id:number){
-        this.stockService.deleteQtyAdjustment(id).subscribe(result => {
-            this.fetchAdjustments();
-        })
+    delete(item:any){
+        const id = typeof item === 'object' ? item?.id : item;
+        const label = typeof item === 'object' ? (item?.product?.title || item?.title || 'this adjustment') : 'this adjustment';
+        this.confirm.confirmDelete(label, () => {
+            this.stockService.deleteQtyAdjustment(id).subscribe(() => this.fetchAdjustments());
+        }, { entity: 'stock adjustment', consequence: 'Available stock will be recalculated.' });
     }
 }

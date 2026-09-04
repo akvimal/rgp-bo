@@ -1,4 +1,4 @@
-<a *isAuth="'users.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary">Add New</button></a>
+<a *isAuth="'users.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary" data-testid="user-add">Add New</button></a>
 
 <table *isAuth="'users.read'" class="table table-bordered mt-3">
     <thead>
@@ -13,17 +13,18 @@
         </tr>
     </thead>
     <tbody>
-        <tr *ngFor="let p of users">
+        <tr *ngFor="let p of users" data-testid="user-row" [attr.data-user-email]="p.email">
             <td *isAuth="'users.read$fullname'">{{p.fullname}}</td>
-            <td *isAuth="'users.read$email'">{{p.email}}</td>
+            <td *isAuth="'users.read$email'" data-testid="user-row-email">{{p.email}}</td>
             <td *isAuth="'users.read$phone'">{{p.phone}}</td>
-            <td>{{p.role}}</td>
-            <td *isAuth="'businesses'">{{p.business || '—'}}</td>
+            <td data-testid="user-row-role">{{p.role}}</td>
+            <td *isAuth="'businesses'" data-testid="user-row-business">{{p.business || '—'}}</td>
             <td>{{p.store || '—'}}</td>
             <td>
-                <a *isAuth="'users.edit'" [routerLink]="['../edit', p.id]">
-                <i class="bi bi-pencil text-primary"></i></a>
-                <a *isAuth="'users.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
+                <div class="grid-actions">
+                    <a *isAuth="'users.edit'" [routerLink]="['../edit', p.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
+                    <a *isAuth="'users.delete'" (click)="delete(p)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
+                </div>
             </td>
         </tr>
     </tbody>
