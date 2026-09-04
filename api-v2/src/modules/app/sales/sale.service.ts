@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
@@ -177,12 +177,43 @@ export class SaleService {
     async createReturnItems(items: CreateSaleReturnItemDto[], userid: number) {
         return await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
+                // Never let the returned quantity for a sale line exceed what
+                // was sold on it (net of returns already recorded).
+                const wanted = new Map<number, number>();
+                for (const item of items) {
+                    const id = Number(item.saleitemid);
+                    const qty = Number(item.qty);
+                    if (!Number.isFinite(id) || !Number.isFinite(qty) || qty <= 0) {
+                        throw new BadRequestException('Each return line needs a sale item and a positive quantity.');
+                    }
+                    wanted.set(id, (wanted.get(id) || 0) + qty);
+                }
+                for (const [saleItemId, qty] of wanted) {
+                    const [row] = await transactionManager.query(
+                        `select si.qty - coalesce(sum(sri.qty), 0) as eligible
+                           from sale_item si
+                           left join sale_return_item sri
+                             on sri.sale_item_id = si.id and sri.active = true and sri.archive = false
+                          where si.id = $1
+                          group by si.qty`,
+                        [saleItemId],
+                    );
+                    if (!row) {
+                        throw new BadRequestException(`Sale item ${saleItemId} not found.`);
+                    }
+                    if (qty > Number(row.eligible)) {
+                        throw new BadRequestException(
+                            `Cannot return ${qty}; only ${Number(row.eligible)} of that item is eligible.`);
+                    }
+                }
+
                 items.forEach(item => {
                     item['createdby'] = userid;
                 });
                 return await transactionManager.save(SaleReturnItem, items);
             } catch (error) {
                 // Transaction will automatically rollback on error
+                if (error instanceof HttpException) { throw error; }
                 throw new Error(`Failed to create return items: ${error.message}`);
             }
         });

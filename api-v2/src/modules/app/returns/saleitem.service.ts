@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
@@ -25,12 +25,34 @@ export class SaleItemService {
             if(!purchaseItem){
                 throw new NotFoundException('Sale item not found');
             }
+
+            const qty = Number(dto.qty);
+            if (!Number.isFinite(qty) || qty <= 0) {
+                throw new BadRequestException('Return quantity must be a positive number.');
+            }
+
+            // Returns are stored as negative-qty rows against the same
+            // (sale, purchase item); the net of every row for that pair is what
+            // is still returnable. Never let returns exceed what was sold.
+            const [{ remaining }] = await this.manager.query(
+                `select coalesce(sum(qty), 0) as remaining
+                   from sale_item
+                  where sale_id = $1 and purchase_item_id = $2
+                    and active = true and archive = false`,
+                [purchaseItem.saleid, purchaseItem.itemid],
+            );
+            if (qty > Number(remaining)) {
+                throw new BadRequestException(
+                    `Cannot return ${qty}; only ${Number(remaining)} of this item remains against the sale.`);
+            }
+
             return this.saleItemRepo.save({
                 saleid: purchaseItem.saleid,
                 itemid: purchaseItem.itemid,
-                qty: (-1 * dto.qty),
+                productid: purchaseItem.productid,
+                qty: (-1 * qty),
                 price: purchaseItem.price,
-                total: purchaseItem.price * (-1 * dto.qty),
+                total: purchaseItem.price * (-1 * qty),
                 paymode: dto.paymode,
                 status: dto.status,
                 reason: dto.reason,

@@ -122,10 +122,20 @@ export class ProductService {
     }
 
     async create(createProductDto: CreateProductDto, userid) {
+      const title = (createProductDto.title ?? '').toString().trim();
+      if (!title) {
+        throw new BadRequestException('Product title is required.');
+      }
       if (createProductDto.taxpcnt !== undefined && Number(createProductDto.taxpcnt) < 0) {
         throw new BadRequestException('Tax percent cannot be negative.');
       }
-      return this.productRepository.save({...createProductDto, createdby:userid});
+      const dup = await this.productRepository.createQueryBuilder('p')
+        .where('lower(trim(p.title)) = lower(:title)', { title })
+        .getCount();
+      if (dup > 0) {
+        throw new BadRequestException(`A product titled "${title}" already exists.`);
+      }
+      return this.productRepository.save({...createProductDto, title, createdby:userid});
     }
 
     /**
@@ -189,6 +199,20 @@ export class ProductService {
     }
     
     async update(id:any, values:any, userid){
+      if (values && 'title' in values) {
+        const title = (values.title ?? '').toString().trim();
+        if (!title) {
+          throw new BadRequestException('Product title is required.');
+        }
+        const dup = await this.productRepository.createQueryBuilder('p')
+          .where('lower(trim(p.title)) = lower(:title)', { title })
+          .andWhere('p.id != :id', { id })
+          .getCount();
+        if (dup > 0) {
+          throw new BadRequestException(`A product titled "${title}" already exists.`);
+        }
+        values = { ...values, title };
+      }
       return this.productRepository.update(id, {...values, updatedby:userid});
     }
 
