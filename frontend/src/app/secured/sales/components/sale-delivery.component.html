@@ -1,274 +1,257 @@
 <app-sale-header></app-sale-header>
 
-<div class="row mt-3">
-    <div class="col-md-2">
-        <div class="border rounded p-3 bg-light">
-            <div class="text-muted">Delivery Orders</div>
-            <h3 class="mb-0">{{summary.total}}</h3>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="border rounded p-3 bg-light">
-            <div class="text-muted">Pending</div>
-            <h3 class="mb-0">{{summary.pending}}</h3>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="border rounded p-3 bg-light">
-            <div class="text-muted">Delivered</div>
-            <h3 class="mb-0">{{summary.delivered}}</h3>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="border rounded p-3 bg-light">
-            <div class="text-muted">Failed</div>
-            <h3 class="mb-0">{{summary.failed}}</h3>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="border rounded p-3 bg-light">
-            <div class="text-muted">Charge</div>
-            <h3 class="mb-0">{{summary.charge | number:'1.0-0'}}</h3>
-        </div>
-    </div>
-    <div class="col-md-2">
-        <div class="border rounded p-3 bg-light">
-            <div class="text-muted">Actual Cost</div>
-            <h3 class="mb-0">{{summary.cost | number:'1.0-0'}}</h3>
-        </div>
-    </div>
+<div class="d-flex justify-content-between align-items-baseline mt-3 mb-1">
+  <h5 class="mb-0">Deliveries</h5>
+  <span class="small text-muted">This month &middot; {{currentMonthLabel}}</span>
 </div>
 
-<div class="row mt-3">
+<!-- ── KPI band (dashboard-consistent) ──────────────────────────────── -->
+<div class="row g-3">
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Deliveries this month</div>
+        <div class="fs-4 fw-bold">{{monthSummary.total}}</div>
+        <div class="small text-muted">
+          {{monthSummary.delivered}} delivered &middot; {{monthSummary.failed}} failed &middot; {{monthSummary.pending}} in progress
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Success rate</div>
+        <div class="fs-4 fw-bold">{{monthSummary.successRate}}%</div>
+        <div class="progress mb-1" style="height:6px">
+          <div class="progress-bar bg-success" [style.width.%]="monthSummary.successRate"></div>
+        </div>
+        <div class="small text-muted">{{monthSummary.failureRate}}% failed</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Charges collected</div>
+        <div class="fs-4 fw-bold">&#8377;{{monthSummary.charge | number:'1.0-0'}}</div>
+        <div class="small text-muted">All time: &#8377;{{summary.charge | number:'1.0-0'}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted">Delivery cost</div>
+        <div class="fs-4 fw-bold">&#8377;{{monthSummary.cost | number:'1.0-0'}}</div>
+        <div class="small" [class.text-success]="monthMargin >= 0" [class.text-danger]="monthMargin < 0">
+          Margin: &#8377;{{monthMargin | number:'1.0-0'}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Deliveries table ────────────────────────────────────────────── -->
+<div class="card mt-3">
+  <div class="card-body">
+    <p-table #dt2 [value]="deliveries"
+      [paginator]="deliveries.length > 0" [rows]="10" [showCurrentPageReport]="true"
+      styleClass="p-datatable-sm p-datatable-gridlines"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} deliveries"
+      [rowsPerPageOptions]="[10,25,50]" sortField="bookeddate" [sortOrder]="-1">
+
+      <ng-template pTemplate="caption">
+        <span class="small text-muted">{{deliveries.length}} deliveries &middot; {{summary.pending}} in progress</span>
+      </ng-template>
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="sale.billno">Bill <p-sortIcon field="sale.billno"></p-sortIcon></th>
+          <th>Customer</th>
+          <th>Method</th>
+          <th pSortableColumn="status">Status <p-sortIcon field="status"></p-sortIcon></th>
+          <th>Assigned</th>
+          <th pSortableColumn="deliverydate">Schedule <p-sortIcon field="deliverydate"></p-sortIcon></th>
+          <th class="text-end">Charge</th>
+          <th class="text-end">Cost</th>
+          <th>Collection</th>
+          <th class="text-center">Confirmed</th>
+          <th class="text-end"></th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-i>
+        <tr>
+          <td>
+            <div class="fw-semibold">#{{i.sale?.billno}}</div>
+            <small class="text-muted">{{i.sale?.ordertype || '-'}} &middot; {{i.sale?.billdate | date:'dd/MM/yy'}}</small>
+          </td>
+          <td>
+            <div>{{i.receivername || i.sale?.customer?.name || '-'}}</div>
+            <small class="text-muted">{{i.receiverphone || i.sale?.customer?.mobile}}</small>
+          </td>
+          <td>
+            <div>{{i.deliverymethod}}</div>
+            <small class="text-muted" *ngIf="i.courierpartner">{{i.courierpartner}}</small>
+          </td>
+          <td><span class="badge" [ngClass]="statusClass(i.status)">{{i.status || 'Pending'}}</span></td>
+          <td>
+            <div>{{i.deliveryby || '-'}}</div>
+            <small class="text-muted">{{i.saleperson}}</small>
+          </td>
+          <td class="text-nowrap">{{ i.deliverydate ? (i.deliverydate | date:'dd/MM/yy') : '-' }}</td>
+          <td class="text-end">{{i.charges || 0 | number:'1.2-2'}}</td>
+          <td class="text-end">{{i.actualcost || 0 | number:'1.2-2'}}</td>
+          <td>
+            <div>{{i.paymentmode || '-'}}</div>
+            <small class="text-muted">{{i.collectionstatus || '-'}}</small>
+          </td>
+          <td class="text-center">
+            <i class="bi" [class.bi-check-circle-fill]="i.confirmed" [class.text-success]="i.confirmed"
+               [class.bi-dash-circle]="!i.confirmed" [class.text-muted]="!i.confirmed"></i>
+          </td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-secondary me-2" [routerLink]="['/secure/sales/pos/view', i.saleid]">Sale</a>
+            <button class="btn btn-sm btn-outline-primary" (click)="editDelivery(i)">Manage</button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="11" class="text-center text-muted py-4">No deliveries yet.</td></tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<!-- ── Manage delivery ─────────────────────────────────────────────── -->
+<p-dialog [header]="'Manage Delivery — #' + (editingDelivery.sale?.billno || '')" [(visible)]="showEditor" [modal]="true" [style]="{ width: '58rem' }">
+  <div class="row g-3" *ngIf="editingDelivery.saleid">
+
+    <div class="col-12"><div class="fw-semibold text-muted small text-uppercase">Status &amp; schedule</div></div>
+    <div class="col-md-4">
+      <label class="form-label">Status</label>
+      <select class="form-select" [(ngModel)]="editingDelivery.status" (ngModelChange)="onStatusChange()">
+        <option value="Pending">Pending</option>
+        <option value="Assigned">Assigned</option>
+        <option value="Delivered">Delivered</option>
+        <option value="Failed">Failed</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Method</label>
+      <select class="form-select" [(ngModel)]="editingDelivery.deliverymethod">
+        <option value="Staff Delivery">Staff Delivery</option>
+        <option value="Courier">Courier</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Scheduled date</label>
+      <input class="form-control" type="date" [(ngModel)]="editingDelivery.deliverydate">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Assigned to</label>
+      <input class="form-control" [(ngModel)]="editingDelivery.deliveryby">
+    </div>
+    <div class="col-md-4" *ngIf="editingDelivery.deliverymethod === 'Courier'">
+      <label class="form-label">Courier partner</label>
+      <select class="form-select" [(ngModel)]="editingDelivery.courierpartner">
+        <option value="">Select partner</option>
+        <option *ngFor="let partner of deliveryPartners" [value]="partner.name">{{partner.name}}</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Delivered at</label>
+      <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.deliveredat">
+    </div>
+    <div class="col-md-6" *ngIf="editingDelivery.status === 'Failed'">
+      <label class="form-label">Failure reason</label>
+      <select class="form-select" [(ngModel)]="editingDelivery.failurereason">
+        <option value="Customer unavailable">Customer unavailable</option>
+        <option value="Wrong address">Wrong address</option>
+        <option value="Phone unreachable">Phone unreachable</option>
+        <option value="Payment issue">Payment issue</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Receiver</div></div>
     <div class="col-12">
-        <div class="border rounded p-3 bg-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="mb-1">Monthly Delivery Snapshot</h5>
-                    <div class="text-muted">{{currentMonthLabel}}</div>
-                </div>
-                <div class="text-end">
-                    <div>Success: <strong>{{monthSummary.successRate}}%</strong></div>
-                    <div>Failure: <strong>{{monthSummary.failureRate}}%</strong></div>
-                </div>
-            </div>
-            <div class="row mt-3">
-                <div class="col-md-2">
-                    <div class="text-muted">Monthly Orders</div>
-                    <div><strong>{{monthSummary.total}}</strong></div>
-                </div>
-                <div class="col-md-2">
-                    <div class="text-muted">Delivered</div>
-                    <div><strong>{{monthSummary.delivered}}</strong></div>
-                </div>
-                <div class="col-md-2">
-                    <div class="text-muted">Failed</div>
-                    <div><strong>{{monthSummary.failed}}</strong></div>
-                </div>
-                <div class="col-md-2">
-                    <div class="text-muted">In Progress</div>
-                    <div><strong>{{monthSummary.pending}}</strong></div>
-                </div>
-                <div class="col-md-2">
-                    <div class="text-muted">Monthly Charge</div>
-                    <div><strong>{{monthSummary.charge | number:'1.0-0'}}</strong></div>
-                </div>
-                <div class="col-md-2">
-                    <div class="text-muted">Monthly Cost</div>
-                    <div><strong>{{monthSummary.cost | number:'1.0-0'}}</strong></div>
-                </div>
-            </div>
-        </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="useSaleCustomer"
+          [(ngModel)]="useSaleCustomer" (ngModelChange)="onUseSaleCustomerChange()">
+        <label class="form-check-label" for="useSaleCustomer">Use sale customer details</label>
+      </div>
     </div>
-</div>
-
-<div class="row mt-2">
-    <div class="col-12">
-          <p-table #dt2 [value]="deliveries" [resizableColumns]="true" columnResizeMode="expand"
-          [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-              currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-              [rowsPerPageOptions]="[10,25,50]">
-              <ng-template pTemplate="header">
-                  <tr>
-                    <th>Bill No</th>
-                    <th>Sale</th>
-                    <th>Customer</th>
-                    <th>Method</th>
-                    <th>Status</th>
-                    <th>Assigned</th>
-                    <th>Schedule</th>
-                    <th>Charge</th>
-                    <th>Cost</th>
-                    <th>Collection</th>
-                    <th>Confirmed</th>
-                    <th></th>
-                  </tr>
-                </ng-template>
-                <ng-template pTemplate="body" let-i>
-                    <tr>
-                      <td>
-                        <div><strong>{{i.sale?.billno}}</strong></div>
-                        <small class="text-muted">Sale ID {{i.saleid}}</small>
-                      </td>
-                      <td>
-                        <div>Total {{i.sale?.total || 0}}</div>
-                        <small class="text-muted">{{i.sale?.ordertype || '-'}} | {{i.sale?.billdate | date:'dd/MM/yy h:mm a'}}</small>
-                      </td>
-                      <td>
-                        <div>{{i.receivername || i.sale?.customer?.name}}</div>
-                        <small class="text-muted">{{i.receiverphone || i.sale?.customer?.mobile}}</small>
-                      </td>
-                      <td>
-                        <div>{{i.deliverymethod}}</div>
-                        <small class="text-muted" *ngIf="i.courierpartner">{{i.courierpartner}}</small>
-                      </td>
-                      <td>{{i.status}}</td>
-                      <td>
-                        <div>{{i.deliveryby || '-'}}</div>
-                        <small class="text-muted">{{i.saleperson}}</small>
-                      </td>
-                      <td>{{i.deliverydate || '-'}}</td>
-                      <td>{{i.charges || 0}}</td>
-                      <td>{{i.actualcost || 0}}</td>
-                      <td>
-                        <div>{{i.paymentmode || '-'}}</div>
-                        <small class="text-muted">{{i.collectionstatus || '-'}}</small>
-                      </td>
-                      <td>{{i.confirmed ? 'Yes' : 'No'}}</td>
-                      <td>
-                        <a class="btn btn-sm btn-outline-secondary me-2" [routerLink]="['/secure/sales/pos/view', i.saleid]">Sale</a>
-                        <button class="btn btn-sm btn-outline-primary" (click)="editDelivery(i)">Manage</button>
-                      </td>
-                    </tr>
-                </ng-template>
-          </p-table>
+    <div class="col-md-6">
+      <label class="form-label">Receiver name</label>
+      <input class="form-control" [(ngModel)]="editingDelivery.receivername" [disabled]="useSaleCustomer">
     </div>
-</div>
-
-<p-dialog [header]="'Manage Delivery'" [(visible)]="showEditor" [modal]="true" [style]="{ width: '60rem' }">
-    <div class="row g-3" *ngIf="editingDelivery.saleid">
-        <div class="col-md-3">
-            <label class="form-label">Bill No</label>
-            <input class="form-control" [ngModel]="editingDelivery.sale?.billno" disabled>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Status</label>
-            <select class="form-control" [(ngModel)]="editingDelivery.status" (ngModelChange)="onStatusChange()">
-                <option value="Pending">Pending</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Failed">Failed</option>
-                <option value="Cancelled">Cancelled</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Method</label>
-            <select class="form-control" [(ngModel)]="editingDelivery.deliverymethod">
-                <option value="Staff Delivery">Staff Delivery</option>
-                <option value="Courier">Courier</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Scheduled Date</label>
-            <input class="form-control" type="date" [(ngModel)]="editingDelivery.deliverydate">
-        </div>
-
-        <div class="col-md-12">
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="useSaleCustomer"
-                    [(ngModel)]="useSaleCustomer" (ngModelChange)="onUseSaleCustomerChange()">
-                <label class="form-check-label" for="useSaleCustomer">Use sale customer details</label>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <label class="form-label">Receiver Name</label>
-            <input class="form-control" [(ngModel)]="editingDelivery.receivername" [disabled]="useSaleCustomer">
-        </div>
-        <div class="col-md-6">
-            <label class="form-label">Receiver Phone</label>
-            <input class="form-control" [(ngModel)]="editingDelivery.receiverphone" [disabled]="useSaleCustomer">
-        </div>
-        <div class="col-md-12">
-            <label class="form-label">Receiver Address</label>
-            <textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.receiveraddress" [disabled]="useSaleCustomer"></textarea>
-            <small class="text-muted" *ngIf="editingDelivery.sale?.customer?.address">Customer address: {{editingDelivery.sale?.customer?.address}}</small>
-        </div>
-
-        <div class="col-md-4">
-            <label class="form-label">Assigned To</label>
-            <input class="form-control" [(ngModel)]="editingDelivery.deliveryby">
-        </div>
-        <div class="col-md-4" *ngIf="editingDelivery.deliverymethod === 'Courier'">
-            <label class="form-label">Courier Partner</label>
-            <select class="form-control" [(ngModel)]="editingDelivery.courierpartner">
-                <option value="">Select partner</option>
-                <option *ngFor="let partner of deliveryPartners" [value]="partner.name">{{partner.name}}</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Delivered At</label>
-            <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.deliveredat">
-        </div>
-
-        <div class="col-md-4">
-            <label class="form-label">Delivery Charge</label>
-            <input class="form-control" type="number" [(ngModel)]="editingDelivery.charges">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Actual Cost</label>
-            <input class="form-control" type="number" [(ngModel)]="editingDelivery.actualcost">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Payment Mode</label>
-            <select class="form-control" [(ngModel)]="editingDelivery.paymentmode">
-                <option value="Prepaid">Prepaid</option>
-                <option value="COD">COD</option>
-                <option value="Collect by Courier">Collect by Courier</option>
-            </select>
-        </div>
-
-        <div class="col-md-4">
-            <label class="form-label">Collection Status</label>
-            <select class="form-control" [(ngModel)]="editingDelivery.collectionstatus">
-                <option value="Pending">Pending</option>
-                <option value="Collected">Collected</option>
-                <option value="Not Collected">Not Collected</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Confirmed</label>
-            <select class="form-control" [(ngModel)]="editingDelivery.confirmed" (ngModelChange)="onConfirmedChange()">
-                <option [ngValue]="false">No</option>
-                <option [ngValue]="true">Yes</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Confirmed By</label>
-            <input class="form-control" [(ngModel)]="editingDelivery.confirmedby" [disabled]="!editingDelivery.confirmed">
-        </div>
-
-        <div class="col-md-6">
-            <label class="form-label">Confirmed At</label>
-            <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.confirmedat" [disabled]="!editingDelivery.confirmed">
-        </div>
-        <div class="col-md-6" *ngIf="editingDelivery.status === 'Failed'">
-            <label class="form-label">Failure Reason</label>
-            <select class="form-control" [(ngModel)]="editingDelivery.failurereason">
-                <option value="Customer unavailable">Customer unavailable</option>
-                <option value="Wrong address">Wrong address</option>
-                <option value="Phone unreachable">Phone unreachable</option>
-                <option value="Payment issue">Payment issue</option>
-                <option value="Other">Other</option>
-            </select>
-        </div>
-        <div class="col-md-12">
-            <label class="form-label">Remarks</label>
-            <textarea class="form-control" rows="3" [(ngModel)]="editingDelivery.comments"></textarea>
-        </div>
+    <div class="col-md-6">
+      <label class="form-label">Receiver phone</label>
+      <input class="form-control" [(ngModel)]="editingDelivery.receiverphone" [disabled]="useSaleCustomer">
+    </div>
+    <div class="col-md-12">
+      <label class="form-label">Receiver address</label>
+      <textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.receiveraddress" [disabled]="useSaleCustomer"></textarea>
+      <small class="text-muted" *ngIf="editingDelivery.sale?.customer?.address">On file: {{editingDelivery.sale?.customer?.address}}</small>
     </div>
 
-    <ng-template pTemplate="footer">
-        <button class="btn btn-outline-secondary me-2" (click)="closeEditor()">Close</button>
-        <button class="btn btn-primary" (click)="saveDelivery()">Save</button>
-    </ng-template>
+    <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Payment</div></div>
+    <div class="col-md-4">
+      <label class="form-label">Delivery charge</label>
+      <input class="form-control" type="number" [(ngModel)]="editingDelivery.charges">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Actual cost</label>
+      <input class="form-control" type="number" [(ngModel)]="editingDelivery.actualcost">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Payment mode</label>
+      <select class="form-select" [(ngModel)]="editingDelivery.paymentmode">
+        <option value="Prepaid">Prepaid</option>
+        <option value="COD">COD</option>
+        <option value="Collect by Courier">Collect by Courier</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Collection status</label>
+      <select class="form-select" [(ngModel)]="editingDelivery.collectionstatus">
+        <option value="Pending">Pending</option>
+        <option value="Collected">Collected</option>
+        <option value="Not Collected">Not Collected</option>
+      </select>
+    </div>
+
+    <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Confirmation</div></div>
+    <div class="col-md-4">
+      <label class="form-label">Confirmed</label>
+      <select class="form-select" [(ngModel)]="editingDelivery.confirmed" (ngModelChange)="onConfirmedChange()">
+        <option [ngValue]="false">No</option>
+        <option [ngValue]="true">Yes</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Confirmed by</label>
+      <input class="form-control" [(ngModel)]="editingDelivery.confirmedby" [disabled]="!editingDelivery.confirmed">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Confirmed at</label>
+      <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.confirmedat" [disabled]="!editingDelivery.confirmed">
+    </div>
+    <div class="col-md-12">
+      <label class="form-label">Remarks</label>
+      <textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.comments"></textarea>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button class="btn btn-outline-secondary me-2" (click)="closeEditor()">Close</button>
+    <button class="btn btn-primary" (click)="saveDelivery()">Save</button>
+  </ng-template>
 </p-dialog>

@@ -182,4 +182,18 @@ export class SaleDeliveryComponent {
             this.loadDeliveries();
         });
     }
+
+    get monthMargin(): number {
+        return (this.monthSummary.charge || 0) - (this.monthSummary.cost || 0);
+    }
+
+    statusClass(status:string): string {
+        switch((status || '').toLowerCase()){
+            case 'delivered': return 'bg-success';
+            case 'failed': return 'bg-danger';
+            case 'cancelled': return 'bg-secondary';
+            case 'assigned': return 'bg-info text-dark';
+            default: return 'bg-warning text-dark';
+        }
+    }
 }
