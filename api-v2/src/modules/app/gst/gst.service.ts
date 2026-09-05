@@ -473,8 +473,17 @@ export class GstService {
             throw new BadRequestException(`No vendor found with GSTIN ${inward.suppliergstin || '(none)'} - add the vendor first, then create the invoice manually and re-run the match.`);
         }
 
+        // purchase_invoice.store_id is NOT NULL (WS-6) - this draft path bypasses
+        // PurchaseInvoiceService.create(), so it must resolve one itself.
+        const storeRows = await this.manager.query(`select id from stores order by id asc limit 1`);
+        const storeid = storeRows?.[0]?.id;
+        if (!storeid) {
+            throw new BadRequestException('No store is configured to receive this invoice.');
+        }
+
         const invoice = await this.invoiceRepository.save({
             vendorid: vendor.id,
+            storeid,
             invoiceno: inward.invoiceno,
             invoicedate: inward.invoicedate || new Date().toISOString().slice(0, 10),
             status: 'NEW',

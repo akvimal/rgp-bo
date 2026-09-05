@@ -53,6 +53,10 @@ export class Stock2Controller {
     async getMonthAvailableList() {
       return this.service.getMonthAvailableList();
     }
+    @Get('/expiries/near-count')
+    async getNearExpiryCount() {
+      return this.service.getNearExpiryCount();
+    }
     @Get('/expiries/month/:month')
     async getProductsByExpiryMonths(@Param('month') month: string) {
       return this.service.findProductsByExpiries(month);

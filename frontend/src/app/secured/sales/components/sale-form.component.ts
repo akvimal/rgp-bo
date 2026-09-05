@@ -8,6 +8,7 @@ import { Sale } from "../models/sale.model";
 import { SaleService } from "../sales.service";
 import { CustomersService } from "../../customers/customers.service";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
+import { StoreContextService } from "src/app/@core/store-context.service";
 
 @Component({
     templateUrl: 'sale-form.component.html'
@@ -51,7 +52,8 @@ export class SaleFormComponent {
       private customerService: CustomersService,
       private stockService: StockService,
       private prodUtilService: ProductUtilService,
-      private operatorContext: OperatorContextService){}
+      private operatorContext: OperatorContextService,
+      private storeContext: StoreContextService){}
 
     ngOnInit(){
       
@@ -221,6 +223,7 @@ export class SaleFormComponent {
     
     this.sale.props = {documents: this.documents};
     this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
+    this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
 
     this.service.save({...obj, billdate:new Date(), status}).subscribe((data:any) => {
       this.redirectAfterSubmit(data.status, data.id);

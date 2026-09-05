@@ -1,6 +1,7 @@
 import { Component } from "@angular/core";
 import { StockService } from "../stock.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
+import { STOCK_ADJUSTMENT_REASONS } from "../reason-codes";
 
 @Component({
     templateUrl: './stock-adjust.component.html',
@@ -12,7 +13,12 @@ import { ConfirmService } from "src/app/shared/confirm.service";
 })
 export class StockAdjustComponent {
 
-    quantities:[] = [];
+    quantities:any[] = [];
+    reasonOptions = STOCK_ADJUSTMENT_REASONS;
+
+    displayEditDialog = false;
+    editForm:any = { id: null, qty: 0, reasoncode: '', comments: '' };
+    message = '';
 
     constructor(private stockService:StockService, private confirm:ConfirmService) {}
 
@@ -26,8 +32,31 @@ export class StockAdjustComponent {
         });
     }
 
-    edit(id:number){
+    edit(item:any){
+        this.message = '';
+        this.editForm = {
+            id: item.id,
+            qty: item.qty,
+            reasoncode: item.reasoncode || item.reason || '',
+            comments: item.comments || ''
+        };
+        this.displayEditDialog = true;
+    }
 
+    saveEdit(){
+        this.message = '';
+        this.stockService.updateQtyAdjustment(this.editForm.id, this.editForm).subscribe(() => {
+            this.displayEditDialog = false;
+            this.fetchAdjustments();
+        }, (err:any) => this.message = err?.error?.message || 'Unable to update this adjustment.');
+    }
+
+    approve(item:any){
+        this.stockService.approveAdjustment(item.id).subscribe(() => this.fetchAdjustments());
+    }
+
+    reject(item:any){
+        this.stockService.rejectAdjustment(item.id).subscribe(() => this.fetchAdjustments());
     }
 
     delete(item:any){

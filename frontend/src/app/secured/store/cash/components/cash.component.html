@@ -10,19 +10,19 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <div class="small text-muted">Store cash balance</div>
-              <div class="fw-bold">{{currentCashBalance() | number:'1.2-2'}}</div>
+              <div class="fw-bold" data-testid="cash-balance">{{currentCashBalance() | number:'1.2-2'}}</div>
             </div>
-            <span class="badge" [ngClass]="depositDue() ? 'bg-danger' : 'bg-secondary'">
+            <span class="badge" data-testid="cash-deposit-badge" [ngClass]="depositDue() ? 'bg-danger' : 'bg-secondary'">
               {{depositDue() ? 'Deposit due' : 'OK'}}
             </span>
           </div>
           <div class="mt-2 small d-flex justify-content-between">
             <span>Deposit threshold</span>
-            <strong>{{depositThreshold() | number:'1.2-2'}}</strong>
+            <strong data-testid="cash-threshold">{{depositThreshold() | number:'1.2-2'}}</strong>
           </div>
           <div class="mt-1 small d-flex justify-content-between">
             <span>Excess over threshold</span>
-            <strong>{{depositExcess() | number:'1.2-2'}}</strong>
+            <strong data-testid="cash-excess">{{depositExcess() | number:'1.2-2'}}</strong>
           </div>
           <div class="mt-1 small text-muted">
             Bank deposits are independent of shift closing. Use the manager deposit entry when cash is collected.
@@ -63,7 +63,7 @@
       </div>
       <div class="col-12 col-md-2">
         <label class="form-label">Category</label>
-        <select class="form-select" [(ngModel)]="ledgerForm.category">
+        <select class="form-select" data-testid="cash-category" [(ngModel)]="ledgerForm.category">
           <option value="SALE">Sale</option>
           <option value="EXPENSE">Expense</option>
           <option value="REFUND">Refund</option>
@@ -73,18 +73,33 @@
       </div>
       <div class="col-12 col-md-3">
         <label class="form-label">Description</label>
-        <input class="form-control" [(ngModel)]="ledgerForm.description">
+        <input class="form-control" data-testid="cash-description" [(ngModel)]="ledgerForm.description">
       </div>
       <div class="col-6 col-md-2">
         <label class="form-label">Deposit</label>
-        <input type="number" class="form-control" [(ngModel)]="ledgerForm.deposit">
+        <input type="number" class="form-control" data-testid="cash-deposit" [(ngModel)]="ledgerForm.deposit">
       </div>
       <div class="col-6 col-md-2">
         <label class="form-label">Withdraw</label>
-        <input type="number" class="form-control" [(ngModel)]="ledgerForm.withdraw">
+        <input type="number" class="form-control" data-testid="cash-withdraw" [(ngModel)]="ledgerForm.withdraw">
       </div>
       <div class="col-12 col-md-1 d-flex align-items-end">
-        <button class="btn btn-primary w-100" type="button" (click)="saveLedger()">Add</button>
+        <button class="btn btn-primary w-100" type="button" data-testid="cash-add" (click)="saveLedger()">Add</button>
+      </div>
+      <div class="col-12 col-md-3" *ngIf="ledgerForm.category === 'BANK_DEPOSIT'">
+        <label class="form-label">Deposit Slip / UTR No.</label>
+        <input class="form-control" data-testid="cash-reference" [(ngModel)]="ledgerForm.referenceno" maxlength="40">
+      </div>
+      <div class="col-12 col-md-3" *ngIf="ledgerForm.category === 'EXPENSE'">
+        <label class="form-label">Expense Category</label>
+        <select class="form-select" data-testid="cash-expense-category" [(ngModel)]="ledgerForm.expensecategory">
+          <option value="">Select</option>
+          <option *ngFor="let c of expenseCategories" [value]="c.value">{{c.label}}</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4" *ngIf="ledgerForm.category === 'EXPENSE'">
+        <label class="form-label">Receipt (optional)</label>
+        <input type="file" class="form-control" accept="image/*,.pdf" (change)="onReceiptSelected($event)">
       </div>
     </div>
     <div class="table-responsive mt-3">
@@ -97,19 +112,25 @@
             <th class="text-end">Deposit</th>
             <th class="text-end">Withdraw</th>
             <th>Shift</th>
+            <th>Detail</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let entry of ledger">
+          <tr *ngFor="let entry of ledger" data-testid="cash-ledger-row" [attr.data-category]="entry.category">
             <td>{{entry.transdate}}</td>
             <td>{{entry.category}}</td>
             <td>{{entry.description}}</td>
             <td class="text-end">{{entry.deposit | number:'1.2-2'}}</td>
             <td class="text-end">{{entry.withdraw | number:'1.2-2'}}</td>
             <td>{{entry.shift?.name || '-'}}</td>
+            <td>
+              <span *ngIf="entry.category === 'BANK_DEPOSIT' && entry.referenceno">Ref: {{entry.referenceno}}</span>
+              <span *ngIf="entry.category === 'EXPENSE' && entry.expensecategory">{{entry.expensecategory}}</span>
+              <i *ngIf="entry.receiptpath" class="bi bi-paperclip ms-1" title="Receipt attached"></i>
+            </td>
           </tr>
           <tr *ngIf="!ledger?.length">
-            <td colspan="6" class="text-center text-muted py-3">No cash movements yet.</td>
+            <td colspan="7" class="text-center text-muted py-3">No cash movements yet.</td>
           </tr>
         </tbody>
       </table>
@@ -117,4 +138,19 @@
   </div>
 </div>
 
-<div *ngIf="message" class="alert alert-danger">{{message}}</div>
+<div class="card mb-3" *ngIf="expenseSummary?.length">
+  <div class="card-body">
+    <h5 class="card-title">Expenses by Category (this month)</h5>
+    <table class="table table-sm">
+      <thead><tr><th>Category</th><th class="text-end">Total</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let row of expenseSummary">
+          <td>{{row.category}}</td>
+          <td class="text-end">{{row.total | number:'1.2-2'}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div *ngIf="message" class="alert alert-danger" data-testid="cash-message">{{message}}</div>

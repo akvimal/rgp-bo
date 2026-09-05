@@ -1,6 +1,8 @@
 import { Component, OnInit } from "@angular/core";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { CashService } from "../cash.service";
+import { FileUploadService } from "src/app/secured/documents/file-upload.service";
+import { EXPENSE_CATEGORIES } from "../expense-categories";
 
 @Component({
     templateUrl: './cash.component.html'
@@ -13,6 +15,8 @@ export class CashComponent implements OnInit {
     ledger:any[] = [];
     loading:boolean = false;
     message:string = '';
+    expenseCategories = EXPENSE_CATEGORIES;
+    expenseSummary:any[] = [];
     ledgerForm:any = {
       storeid: '',
       shiftid: '',
@@ -20,10 +24,13 @@ export class CashComponent implements OnInit {
       category: 'EXPENSE',
       description: '',
       deposit: 0,
-      withdraw: 0
+      withdraw: 0,
+      referenceno: '',
+      expensecategory: '',
+      receiptpath: ''
     };
 
-    constructor(private cashService:CashService, private storeContext: StoreContextService){}
+    constructor(private cashService:CashService, private storeContext: StoreContextService, private fileUploadService: FileUploadService){}
 
     ngOnInit(): void {
       this.storeContext.stores$.subscribe((stores:any) => {
@@ -47,6 +54,17 @@ export class CashComponent implements OnInit {
         this.selectedStore = this.dashboard.store || this.selectedStore;
         this.loading = false;
       }, () => this.loading = false);
+      this.cashService.getExpenseSummary(this.selectedStoreId).subscribe((data:any) => {
+        this.expenseSummary = data || [];
+      }, () => this.expenseSummary = []);
+    }
+
+    onReceiptSelected(event:any) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      this.fileUploadService.upload(file, `expense=${this.selectedStoreId || 'na'}-${Date.now()}`).subscribe((res:any) => {
+        this.ledgerForm.receiptpath = res?.path || '';
+      }, () => this.message = 'Unable to upload the receipt.');
     }
 
     saveLedger() {
@@ -71,6 +89,9 @@ export class CashComponent implements OnInit {
         this.ledgerForm.description = '';
         this.ledgerForm.deposit = 0;
         this.ledgerForm.withdraw = 0;
+        this.ledgerForm.referenceno = '';
+        this.ledgerForm.expensecategory = '';
+        this.ledgerForm.receiptpath = '';
         this.refresh();
       }, err => this.message = err?.error?.message || 'Unable to save cash movement');
     }

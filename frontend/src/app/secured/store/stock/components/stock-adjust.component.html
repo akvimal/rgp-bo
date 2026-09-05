@@ -29,10 +29,9 @@
                         <p-columnFilter type="text" field="reason" display="menu"></p-columnFilter>
                           <!-- <p-sortIcon field="reason"></p-sortIcon> -->
                       </th>
-                      <!-- <th pSortableColumn="status">Status
-                        <p-columnFilter type="date" field="status" display="menu"></p-columnFilter>
+                      <th pSortableColumn="status">Status
                         <p-sortIcon field="status"></p-sortIcon>
-                    </th> -->
+                      </th>
                       <th>Actions</th>
                     </tr>
                 </ng-template>
@@ -42,18 +41,23 @@
                         <td>
                             <p class="m-0">{{i.title}}</p>
                             <span class="batch">{{i.batch}}/{{i.expdate | date :'MMM-yy'}}</span>
-                            
+
                         </td>
                         <td>{{i.qty}}</td>
                         <!-- <td style="text-align: right;">{{i.price}}</td> -->
                         <td>{{i.date | date : 'dd/MM/yyyy'}}</td>
-                        <td>{{i.reason}} 
+                        <td>{{i.reasoncode || i.reason}}
                           <h5 *ngIf="i.comments" style="float:left; margin-right: 0.3em;"><i class="bi bi-chat text-danger"></i>
                           </h5>
                         </td>
-                        <!-- <td>{{i.status}}</td> -->
+                        <td>
+                          <span class="badge" [ngClass]="{'bg-warning text-dark': i.status === 'PENDING', 'bg-success': i.status === 'APPROVED', 'bg-secondary': i.status === 'REJECTED'}">{{i.status || 'APPROVED'}}</span>
+                        </td>
                         <td>
                           <div class="grid-actions">
+                            <button *ngIf="i.status === 'PENDING'" type="button" class="btn btn-sm btn-outline-success" (click)="approve(i)">Approve</button>
+                            <button *ngIf="i.status === 'PENDING'" type="button" class="btn btn-sm btn-outline-danger" (click)="reject(i)">Reject</button>
+                            <a (click)="edit(i)" title="Edit"><i class="bi bi-pencil text-primary"></i></a>
                             <a (click)="delete(i)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
                           </div>
                         </td>
@@ -62,3 +66,34 @@
             </p-table>
       </div>
     </div>
+
+<p-dialog header="Edit Stock Adjustment" [(visible)]="displayEditDialog" [modal]="true" [style]="{width: '30vw'}">
+  <div class="row mt-2">
+    <div class="col-12">
+      <label class="col-form-label">Quantity</label>
+      <input type="number" class="form-control" [(ngModel)]="editForm.qty">
+    </div>
+  </div>
+  <div class="row mt-2">
+    <div class="col-12">
+      <label class="col-form-label">Reason</label>
+      <select class="form-select" [(ngModel)]="editForm.reasoncode">
+        <option value="">Select</option>
+        <option *ngFor="let r of reasonOptions" [value]="r.value">{{r.label}}</option>
+      </select>
+    </div>
+  </div>
+  <div class="row mt-2">
+    <div class="col-12">
+      <label class="col-form-label">Comments</label>
+      <textarea class="form-control" rows="2" [(ngModel)]="editForm.comments"></textarea>
+    </div>
+  </div>
+  <div class="row mt-2" *ngIf="message">
+    <div class="col-12 text-danger">{{message}}</div>
+  </div>
+  <p-footer>
+    <button type="button" class="btn btn-outline-secondary" (click)="displayEditDialog = false">Cancel</button>
+    <button type="button" class="btn btn-primary" (click)="saveEdit()">Save</button>
+  </p-footer>
+</p-dialog>

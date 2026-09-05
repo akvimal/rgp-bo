@@ -102,6 +102,10 @@
             <!-- <input type="text" class="form-control" id="hsncode" formControlName="hsn" maxlength="8"> -->
             <app-lookup [default]="form.value.hsn" [entity]="'product'" [property]="'hsn_code'" (update)="onLookupInput($event, 'hsn')"></app-lookup>
           </div>
+          <div class="col-md-2">
+            <label for="binlocation" class="form-label">Bin / Rack</label>
+            <input type="text" class="form-control" id="binlocation" formControlName="binlocation" maxlength="40" placeholder="e.g. A-12">
+          </div>
         </div>
       <div class="row mt-2">
         <div class="col-md-12 text-center">

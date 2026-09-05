@@ -55,7 +55,7 @@ export class StoreCashController {
   @Put("shifts/:id/assign")
   async assignShift(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
     await this.permissions.assertCanManageShifts(currentUser?.roleid);
-    return this.service.assignShift(Number(id), body);
+    return this.service.assignShift(Number(id), body, currentUser?.id);
   }
 
   @Get("users")
@@ -78,5 +78,10 @@ export class StoreCashController {
   @Get("dashboard")
   getDashboard(@Query() query: any, @User() currentUser: any) {
     return this.service.getDashboard(query, currentUser?.id);
+  }
+
+  @Get("expenses/summary")
+  getExpenseSummary(@Query() query: any) {
+    return this.service.getExpenseSummary(query);
   }
 }

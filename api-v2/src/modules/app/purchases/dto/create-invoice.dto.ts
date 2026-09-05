@@ -65,6 +65,12 @@ export class CreatePurchaseInvoiceDto {
     @IsPositive()
     readonly vendorid: number;
 
+    @ApiProperty({ description: 'store receiving this stock (defaults to the business\'s first store)', required: false })
+    @IsOptional()
+    @IsNumber()
+    @IsPositive()
+    readonly storeid?: number;
+
     @ApiProperty({ description: 'purchase order id', example: '' })
     @IsOptional()
     @IsString()

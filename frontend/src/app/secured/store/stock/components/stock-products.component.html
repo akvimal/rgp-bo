@@ -31,6 +31,10 @@
                             <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
                             <p-sortIcon field="title"></p-sortIcon>
                         </th>
+                        <th pSortableColumn="bin_location">Location
+                            <p-columnFilter type="text" field="bin_location" display="menu"></p-columnFilter>
+                            <p-sortIcon field="bin_location"></p-sortIcon>
+                        </th>
                         <th pSortableColumn="last_sale_date">Last
                             <p-sortIcon field="last_sale_date"></p-sortIcon>
                         </th>
@@ -57,6 +61,7 @@
                             </a> -->
 
                             {{i.title}}</td>
+                        <td>{{i.bin_location}}</td>
                         <td>{{i.last_sale_date | date : 'MM/yy'}}</td>
                         <!-- <td>{{i.average_customers | number:'1.0-0'}}</td> -->
                         <td class="right">{{i.highest_customers}}</td>

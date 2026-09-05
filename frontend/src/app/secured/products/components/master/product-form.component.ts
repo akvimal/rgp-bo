@@ -22,6 +22,7 @@ export class ProductFormComponent {
         category: new FormControl(''),
         mfr: new FormControl(''),
         brand: new FormControl(''),
+        binlocation: new FormControl(''),
         description: new FormControl(''),
         props: new FormControl(''),
         purchaseApprovalRequired: new FormControl(false),
@@ -60,6 +61,7 @@ export class ProductFormComponent {
           this.form.controls['category'].setValue(data.category);
           this.form.controls['mfr'].setValue(data.mfr);
           this.form.controls['brand'].setValue(data.brand);
+          this.form.controls['binlocation'].setValue(data.binlocation);
           this.form.controls['description'].setValue(data.description);
           this.form.controls['purchaseApprovalRequired'].setValue(data.props?.purchaseApprovalRequired === true || data.props?.purchaseApprovalRequired === 'true');
           this.form.controls['purchaseApprovalQtyThreshold'].setValue(data.props?.purchaseApprovalQtyThreshold || '');
@@ -147,8 +149,9 @@ export class ProductFormComponent {
           pack:this.form.value.pack, 
           category:this.form.value.category, 
           props: this.getTrimmedProps(this.form.value.props),
-          mfr:this.form.value.mfr.trim(), 
-          brand:this.form.value.brand?.trim(), 
+          mfr:this.form.value.mfr.trim(),
+          brand:this.form.value.brand?.trim(),
+          binlocation: this.form.value.binlocation?.trim() || null,
           description: this.form.value.description?.trim() }
   // console.log('before product save',obj);
           // console.log(this.form.value.props);

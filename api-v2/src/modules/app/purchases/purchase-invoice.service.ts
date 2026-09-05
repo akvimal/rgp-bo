@@ -60,12 +60,24 @@ export class PurchaseInvoiceService {
       };
     }
 
+    /** WS-6: which store this invoice's stock is received into. Falls back to the business's
+     * first store when the caller doesn't say - keeps every existing single-store caller working. */
+    private async resolveDefaultStoreId(){
+        const rows = await this.manager.query(`select id from stores order by id asc limit 1`);
+        return rows?.[0]?.id ?? null;
+    }
+
     async create(dto: CreatePurchaseInvoiceDto, userid:any) {
         if(dto.purchaseorderid){
           await this.assertApprovedPurchaseOrder(+dto.purchaseorderid);
         }
         if(!dto.vendorid){
           throw new BadRequestException('Vendor is required.');
+        }
+
+        const storeid = dto.storeid || await this.resolveDefaultStoreId();
+        if(!storeid){
+          throw new BadRequestException('No store is configured to receive this invoice.');
         }
 
         const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
@@ -82,6 +94,7 @@ export class PurchaseInvoiceService {
 
         return this.purchaseInvoiceRepository.save({
           ...dto,
+          storeid,
           duedate: duedate || dto.invoicedate,
           paymentstatus: dto.paymentstatus || 'Unpaid',
           ...gst,

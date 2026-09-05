@@ -13,6 +13,9 @@ import { Component } from "@angular/core";
             <li class="nav-item">
                 <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="adjust">Adjustments</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="count">Count</a>
+            </li>
         </ul>
     </nav>
     <router-outlet></router-outlet>`

@@ -49,6 +49,9 @@ import { SaleItem } from "./sale-item.entity";
     @Column("json", { name: "more_props", nullable: true })
     props: object | null;
 
+    @Column("character varying", { name: "bin_location", length: 40, nullable: true })
+    binlocation: string | null;
+
 
     @OneToMany(
       () => ProductPrice2,

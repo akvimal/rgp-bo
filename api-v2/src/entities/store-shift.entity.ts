@@ -54,6 +54,12 @@ export class StoreShift {
   @Column("jsonb", { name: "counted_denominations", nullable: true })
   counteddenominations: Array<{ d: number; n: number }> | null;
 
+  @Column("jsonb", { name: "opening_checklist", nullable: true })
+  openingchecklist: string[] | null;
+
+  @Column("jsonb", { name: "closing_checklist", nullable: true })
+  closingchecklist: string[] | null;
+
   @Column("integer", { name: "closed_operator_id", nullable: true })
   closedoperatorid: number | null;
 

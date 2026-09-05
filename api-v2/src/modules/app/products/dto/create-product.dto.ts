@@ -38,4 +38,8 @@ export class CreateProductDto {
     @IsOptional()
     @IsObject()
     readonly props: object;
+
+    @ApiPropertyOptional({ description: 'shelf/rack/bin label, for picking', example: 'A-12' })
+    @IsOptional()
+    readonly binlocation: string;
 }

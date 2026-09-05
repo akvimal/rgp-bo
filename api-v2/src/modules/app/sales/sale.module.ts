@@ -16,11 +16,13 @@ import { AppRole } from "src/entities/approle.entity";
 import { RoleService } from "../roles/role.service";
 import { ProductPriceChange } from "src/entities/product-pricechange.entity";
 import { ProductQtyChange } from "src/entities/product-qtychange.entity";
+import { Setting } from "src/entities/setting.entity";
+import { StockCount } from "src/entities/stock-count.entity";
 import { JwtService } from "@nestjs/jwt";
 import { AuthModule } from "src/modules/auth/auth.module";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange]),AuthModule],
+    imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule],
     controllers: [SaleController,SaleDeliveryController],
     providers: [SaleService,SaleDeliveryService,CustomerService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],

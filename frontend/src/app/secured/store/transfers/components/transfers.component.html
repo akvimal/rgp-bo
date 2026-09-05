@@ -1,0 +1,99 @@
+<div class="row mt-2">
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <h5 class="m-0">Stock Transfers</h5>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openDialog()">New Transfer</button>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <p-table [value]="transfers" [loading]="loading" [paginator]="true" [rows]="10"
+      [showCurrentPageReport]="true" currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+      [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Product</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Qty</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-t>
+        <tr>
+          <td>
+            <p class="m-0">{{t.item?.product?.title}}</p>
+            <span class="batch">{{t.item?.batch}}/{{t.item?.expdate | date:'MMM-yy'}}</span>
+          </td>
+          <td>{{t.fromstore?.location}}</td>
+          <td>{{t.tostore?.location}}</td>
+          <td>{{t.receivedqty ?? t.qty}}{{t.status === 'RECEIVED' && t.receivedqty && t.receivedqty < t.qty ? ' / ' + t.qty : ''}}</td>
+          <td><span class="badge" [ngClass]="{'bg-warning text-dark': t.status === 'IN_TRANSIT', 'bg-success': t.status === 'RECEIVED', 'bg-secondary': t.status === 'CANCELLED'}">{{t.status}}</span></td>
+          <td>{{t.createdon | date:'dd/MM/yyyy'}}</td>
+          <td>
+            <div class="grid-actions">
+              <button *ngIf="canReceive(t)" type="button" class="btn btn-sm btn-outline-success" (click)="receive(t)">Receive</button>
+              <button *ngIf="t.status === 'IN_TRANSIT'" type="button" class="btn btn-sm btn-outline-danger" (click)="cancel(t)">Cancel</button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-dialog header="New Stock Transfer" [(visible)]="displayDialog" [modal]="true" [style]="{width: '40vw'}">
+  <div class="row mt-2">
+    <div class="col-12">
+      <label class="col-form-label">Product</label>
+      <app-product-select (selected)="selectProduct($event)"></app-product-select>
+    </div>
+  </div>
+  <div class="row mt-2" *ngIf="batches.length">
+    <div class="col-12">
+      <label class="col-form-label">Batch</label>
+      <select class="form-select" [(ngModel)]="form.purchaseitemid" (change)="onBatchOrStoreChange()">
+        <option value="">Select</option>
+        <option *ngFor="let b of batches" [value]="b.id">{{b.batch}} / {{b.expdate | date:'MMM-yy'}}</option>
+      </select>
+    </div>
+  </div>
+  <div class="row mt-2">
+    <div class="col-6">
+      <label class="col-form-label">From Store</label>
+      <select class="form-select" [(ngModel)]="form.fromstoreid" (change)="onBatchOrStoreChange()">
+        <option value="">Select</option>
+        <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
+      </select>
+      <small *ngIf="available !== null" class="text-muted">Available: {{available}}</small>
+    </div>
+    <div class="col-6">
+      <label class="col-form-label">To Store</label>
+      <select class="form-select" [(ngModel)]="form.tostoreid">
+        <option value="">Select</option>
+        <option *ngFor="let s of stores" [value]="s.id" [disabled]="s.id === form.fromstoreid">{{s.location}}</option>
+      </select>
+    </div>
+  </div>
+  <div class="row mt-2">
+    <div class="col-6">
+      <label class="col-form-label">Quantity</label>
+      <input type="number" class="form-control" [(ngModel)]="form.qty" min="1">
+    </div>
+  </div>
+  <div class="row mt-2">
+    <div class="col-12">
+      <label class="col-form-label">Notes</label>
+      <textarea class="form-control" rows="2" [(ngModel)]="form.notes"></textarea>
+    </div>
+  </div>
+  <div class="row mt-2" *ngIf="message">
+    <div class="col-12 text-danger">{{message}}</div>
+  </div>
+  <p-footer>
+    <button type="button" class="btn btn-outline-secondary" (click)="displayDialog = false">Cancel</button>
+    <button type="button" class="btn btn-primary" (click)="dispatch()">Dispatch</button>
+  </p-footer>
+</p-dialog>

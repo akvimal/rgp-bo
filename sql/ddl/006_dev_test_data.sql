@@ -113,15 +113,15 @@ VALUES
      'Replenish before weekend', 'Linked to PO-3002', true, false, 2, 2);
 
 INSERT INTO public.purchase_invoice (
-    id, invoice_no, invoice_date, due_date, vendor_id, active, status, payment_status, gr_no,
+    id, invoice_no, invoice_date, due_date, vendor_id, store_id, active, status, payment_status, gr_no,
     archive, created_by, updated_by, purchase_order_id, comments, reference_no, notes, total
 )
 VALUES
-    (4001, 'INV-1001', CURRENT_DATE - INTERVAL '12 days', CURRENT_DATE - INTERVAL '2 days', 101, true, 'COMPLETE', 'Paid', 'GRN-1001', false, 2, 2, NULL,
+    (4001, 'INV-1001', CURRENT_DATE - INTERVAL '12 days', CURRENT_DATE - INTERVAL '2 days', 101, 1, true, 'COMPLETE', 'Paid', 'GRN-1001', false, 2, 2, NULL,
      'Monthly replenishment', 'MED-1001', 'Fully settled invoice for local testing', 2200.00),
-    (4002, 'INV-1002', CURRENT_DATE - INTERVAL '8 days', CURRENT_DATE + INTERVAL '4 days', 102, true, 'COMPLETE', 'Part Paid', 'GRN-1002', false, 2, 2, '3001',
+    (4002, 'INV-1002', CURRENT_DATE - INTERVAL '8 days', CURRENT_DATE + INTERVAL '4 days', 102, 1, true, 'COMPLETE', 'Part Paid', 'GRN-1002', false, 2, 2, '3001',
      'Emergency cough syrup order', 'HB-1002', 'Linked to approved PO-3001', 3000.00),
-    (4003, 'INV-1003', CURRENT_DATE - INTERVAL '15 days', CURRENT_DATE - INTERVAL '1 day', 103, true, 'COMPLETE', 'Overdue', 'GRN-1003', false, 2, 2, '3002',
+    (4003, 'INV-1003', CURRENT_DATE - INTERVAL '15 days', CURRENT_DATE - INTERVAL '1 day', 103, 1, true, 'COMPLETE', 'Overdue', 'GRN-1003', false, 2, 2, '3002',
      'Weekend replenishment', 'CC-1003', 'Unpaid overdue invoice for outstanding checks', 2520.00);
 
 INSERT INTO public.purchase_invoice_item (

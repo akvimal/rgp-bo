@@ -55,6 +55,7 @@ interface SalePayload {
   customer?: any;
   actinguserid?: number | null;
   shiftid?: number | null;
+  storeid?: number | null;
   items?: any[];
 }
 
@@ -72,7 +73,22 @@ export class SaleService {
             try {
                 const items = Array.isArray(sale.items) ? sale.items : [];
 
-                // A completed bill must not oversell stock, and a counter sale must
+                // WS-6: which store this sale belongs to. The caller (POS, via the header's store
+                // selector) says which store it's at; fall back to the business's first store so
+                // every existing single-store caller (including the qa seed) keeps working unchanged.
+                let storeid: number | null = sale.storeid ? Number(sale.storeid) : null;
+                if (storeid) {
+                    const validRows = await transactionManager.query(`select id from stores where id = $1`, [storeid]);
+                    if (!validRows?.length) {
+                        storeid = null;
+                    }
+                }
+                if (!storeid) {
+                    const storeRows = await transactionManager.query(`select id from stores order by id asc limit 1`);
+                    storeid = storeRows?.[0]?.id || null;
+                }
+
+                // A completed bill must not oversell stock at this store, and a counter sale must
                 // be fully tendered (delivery sales collect payment via the delivery flow).
                 if ((sale.status || '').toUpperCase() === 'COMPLETE') {
                     const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
@@ -84,20 +100,26 @@ export class SaleService {
 
                     const positiveLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
                     if (positiveLines.length) {
-                        // available = same calc as the stock list (stock.service filter):
-                        // purchased - all active sale_item qty + approved adjustments
+                        // available at this store = batch qty (only where it was received into this
+                        // store) - sale_item qty sold at this store + approved adjustments/transfer
+                        // postings at this store. Same shape as stock.service.findByCriteria's storeid path.
                         const rows = await transactionManager.query(
                             `select pii.id as item_id,
-                                (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
+                                (case when i.store_id = $2 then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
                                 - coalesce((select sum(si.qty) from sale_item si
-                                            where si.purchase_item_id = pii.id and si.active = true and si.archive = false), 0)
+                                            inner join sale s on s.id = si.sale_id
+                                            where si.purchase_item_id = pii.id and si.active = true and si.archive = false
+                                              and s.store_id = $2), 0)
                                 + coalesce((select sum(pq.qty) from product_qtychange pq
-                                            where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED'), 0)
+                                            where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED'
+                                              and pq.active = true and pq.archive = false
+                                              and pq.store_id = $2), 0)
                                 as available
                              from purchase_invoice_item pii
+                             inner join purchase_invoice i on i.id = pii.invoice_id
                              inner join product p on p.id = pii.product_id
                              where pii.id = any($1::int[])`,
-                            [positiveLines.map((i: any) => Number(i.itemid))],
+                            [positiveLines.map((i: any) => Number(i.itemid)), storeid],
                         );
                         const avail = new Map<number, number>(rows.map((r: any) => [Number(r.item_id), Number(r.available)]));
                         // aggregate requested qty per batch (a bill can list the same batch twice)
@@ -122,8 +144,6 @@ export class SaleService {
                 sale['orderdate'] = new Date();
                 sale['billno'] = nos[0]['bill_no'];
 
-                const storeRows = await transactionManager.query(`select id from stores order by id asc limit 1`);
-                const storeid = storeRows?.[0]?.id || null;
                 let shiftid = null;
                 if (storeid) {
                     // one OPEN shift per store (enforced on open); the sale links to it
@@ -139,6 +159,7 @@ export class SaleService {
                     throw new BadRequestException('Open a shift before completing sales.');
                 }
                 sale['shiftid'] = shiftid;
+                sale['storeid'] = storeid;
 
                 // Step 2: Save sale header
                 const savedSale = await transactionManager.save(Sale, {...sale, createdby:userid, actinguserid: actingUserid || userid});

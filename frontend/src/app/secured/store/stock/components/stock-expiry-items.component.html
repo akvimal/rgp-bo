@@ -14,29 +14,25 @@
                             <th>Product</th>
                             <th>Batch</th>
                             <th>Qty</th>
-                            <!-- <th></th> -->
+                            <th></th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-i>
                         <tr>
-                       
+
                         <td>{{i.title}}</td>
                         <td>{{i.batch}}</td>
                         <td style="text-align:right">{{i.balance}}</td>
-                        <!-- <td>
-                            <h5 class="icon">
-                                <a href="javascript:void(0)" (click)="showQtyDialog(i.item_id)">
-                                <i class="bi bi-pencil-square text-primary"></i>
-                                </a>
-                            </h5>
-                        </td> -->
-                        </tr>    
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="showQtyDialog(i)">Return to Vendor</button>
+                        </td>
+                        </tr>
                     </ng-template>
-                    </p-table>    
+                    </p-table>
                 </div>
-            
+
 </div>
 
-<p-dialog header="Stock Adjustment" [(visible)]="displayQtyAdjForm" [modal]="true">
-    <app-stock-adjust-form [item]="selectedItem" (saved)="closeAdjForm($event)"></app-stock-adjust-form>
+<p-dialog header="Return to Vendor" [(visible)]="displayQtyAdjForm" [modal]="true">
+    <app-stock-adjust-form [item]="selectedItem" [defaultReason]="'RETURNED_TO_VENDOR'" (saved)="closeAdjForm($event)"></app-stock-adjust-form>
 </p-dialog>

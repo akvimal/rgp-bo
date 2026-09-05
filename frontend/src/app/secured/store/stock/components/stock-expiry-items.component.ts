@@ -33,7 +33,9 @@ export class StockExpiryItemsComponent {
 
     closeAdjForm(event:any){
         this.displayQtyAdjForm = false;
-        this.service.findByProduct(this.selectedItem.id);
+        this.service.getProductsByExpiryMonths(this.month).subscribe((data:any) => {
+            this.data = data;
+        });
     }
 
 }

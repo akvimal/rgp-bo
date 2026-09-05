@@ -1,12 +1,35 @@
 import { Injectable } from "@nestjs/common";
-import { InjectEntityManager } from "@nestjs/typeorm";
-import { EntityManager } from "typeorm";
+import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
+import { EntityManager, Repository } from "typeorm";
+import { Setting } from "src/entities/setting.entity";
 
 @Injectable()
 export class Stock2Service {
 
-    constructor(@InjectEntityManager() private manager: EntityManager){}
-    
+    constructor(@InjectEntityManager() private manager: EntityManager,
+        @InjectRepository(Setting) private readonly settingRepository: Repository<Setting>){}
+
+    /** WS-4: how many days ahead counts as "near expiry" - fixed-in-code default, overridable
+     * via the same Setting mechanism as the PO/stock-adjustment approval thresholds. */
+    async getExpiryAlertDays(): Promise<number> {
+        const setting = await this.settingRepository.findOne({
+            where: { key: 'expiry_alert_days', isActive: true, isArchived: false }
+        });
+        const parsed = Number(setting?.value);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+    }
+
+    async getNearExpiryCount() {
+        const days = await this.getExpiryAlertDays();
+        const rows = await this.manager.query(
+            `select count(distinct item_id)::int as count
+             from product_items_view
+             where active = true and balance > 0 and exp_date <= current_date + ($1 || ' days')::interval`,
+            [days],
+        );
+        return { count: Number(rows?.[0]?.count || 0), days };
+    }
+
     async findAll(criteria:any) {
         const expired = criteria.expired === true;
         const expiryCondition = expired
@@ -40,6 +63,7 @@ export class Stock2Service {
                 select p.id,
                        p.title,
                        p.active,
+                       p.bin_location,
                        $2::boolean as expired,
                        max(i.invoice_date) as last_purchase_date,
                        date(max(sold.last_sale_date)) as last_sale_date,
@@ -65,7 +89,7 @@ export class Stock2Service {
                 where p.active = $1
                   and p.archive = false
                   and ${expiryCondition}
-                group by p.id, p.title, p.active
+                group by p.id, p.title, p.active, p.bin_location
                 ${availableCondition}
             ), monthly_sales as (
                 select si.product_id,
@@ -122,9 +146,9 @@ export class Stock2Service {
     }
 
     findProductsByExpiries(month:string){
-        const sql = `select item_id, title, batch, balance 
-            from product_items_view where active = true and exp_date = '${month}' and balance > 0`;
-        return this.manager.query(sql);
+        const sql = `select item_id, title, batch, balance
+            from product_items_view where active = true and exp_date = $1 and balance > 0`;
+        return this.manager.query(sql, [month]);
     }
 
     async findProductItemsById(id:number) {

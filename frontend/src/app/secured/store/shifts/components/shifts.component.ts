@@ -1,4 +1,5 @@
 import { Component, OnInit } from "@angular/core";
+import { ConfirmationService } from "primeng/api";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../../cash/cash.service";
@@ -31,7 +32,12 @@ export class ShiftsComponent implements OnInit {
   countedTotal = 0;
   closing = false;
 
-  constructor(private cashService:CashService, private storeContext: StoreContextService, private shiftContext: ShiftContextService) {}
+  constructor(
+    private cashService:CashService,
+    private storeContext: StoreContextService,
+    private shiftContext: ShiftContextService,
+    private confirmation: ConfirmationService,
+  ) {}
 
   ngOnInit(): void {
     this.storeContext.stores$.subscribe((stores:any) => {
@@ -72,11 +78,27 @@ export class ShiftsComponent implements OnInit {
       this.message = 'Select a store in the header to open a shift.';
       return;
     }
+    if (this.openingTotal <= 0) {
+      this.confirmation.confirm({
+        header: 'Open with no float?',
+        message: 'No opening cash has been counted. Open this shift with a &#8377;0 float?',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Open with &#8377;0',
+        rejectLabel: 'Cancel',
+        accept: () => this.submitShift(true),
+      });
+      return;
+    }
+    this.submitShift(false);
+  }
+
+  private submitShift(allowZero: boolean) {
     const payload = {
       ...this.shiftForm,
       openingdenominations: this.openingDenoms,
       openingcash: this.openingTotal,
-      assigneduserid: this.shiftForm.assigneduserid || null
+      assigneduserid: this.shiftForm.assigneduserid || null,
+      allowZero,
     };
     this.cashService.createShift(payload).subscribe(() => {
       this.shiftForm.templateid = '';

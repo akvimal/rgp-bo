@@ -80,4 +80,8 @@ export class CashService {
         return this.http.post(`${this.apiurl}/store-cash/ledger`, body);
     }
 
+    getExpenseSummary(storeid:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/expenses/summary`, { params: { storeid: storeid || '' } });
+    }
+
 }

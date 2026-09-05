@@ -94,9 +94,17 @@ export class StockController {
         batch: data.purchaseitem.batch,
         expdate: data.purchaseitem.expdate,
         reason: data.reason,
+        reasoncode: data.reasoncode,
         status: data.status,
         comments: data.comments
       }));
+    }
+
+    @Put('/adjust/qty/:id')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async updateQtyAdjustment(@Param('id') id: string, @Body() dto: any, @User() currentUser: any) {
+      return this.service.updateQtyAdjustment(id, dto, currentUser.id);
     }
 
     @Post('/adjust/price')
@@ -120,7 +128,11 @@ export class StockController {
     async updateQtyBulkToZero(@Body() obj: any, @User() currentUser: any) {
       const data = await this.service.findPurchaseItemsWithAvailable(obj.ids);
       for (const element of data) {
-        await this.service.createQty({ itemid: element['purchase_itemid'], qty: -1 * +element['available'], status: 'APPROVED', reason: obj['reason'], comments: obj['comments'] }, currentUser.id);
+        if (+element['available'] === 0) continue; // nothing to clear at this store
+        await this.service.createQty({
+          itemid: element['purchase_itemid'], qty: -1 * +element['available'], status: 'APPROVED',
+          reason: obj['reason'], comments: obj['comments'], storeid: element['storeid'],
+        } as any, currentUser.id);
       }
       return data;
     }
@@ -151,6 +163,41 @@ export class StockController {
     @Permission('auditStock')
     async approveAudit(@Param('id') id: string, @User() currentUser: any) {
       return this.service.approveQtyAudit(id, currentUser.id);
+    }
+
+    @Put('/audit/:id/reject')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async rejectAudit(@Param('id') id: string, @User() currentUser: any) {
+      return this.service.rejectQtyAudit(id, currentUser.id);
+    }
+
+    @Post('/counts')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async startCount(@Body() body: any, @User() currentUser: any) {
+      return this.service.startCount(body, currentUser.id);
+    }
+
+    @Get('/counts')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async findCounts() {
+      return this.service.findCounts();
+    }
+
+    @Get('/counts/:id')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async findCountDetail(@Param('id') id: string) {
+      return this.service.findCountDetail(+id);
+    }
+
+    @Post('/counts/:id/submit')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async submitCount(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      return this.service.submitCount(+id, body.items, currentUser.id);
     }
 
     @Delete('/adjust/qty/:id')

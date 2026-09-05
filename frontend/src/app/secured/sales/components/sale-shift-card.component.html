@@ -30,8 +30,15 @@
     <div *ngIf="mode === 'open'">
       <div class="fw-semibold small mb-2">Count the opening float — {{ operatorName || 'select staff' }}</div>
       <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
+      <div class="small mt-3">
+        <div class="fw-semibold mb-1">Opening checklist</div>
+        <div class="form-check" *ngFor="let c of checklist">
+          <input type="checkbox" class="form-check-input" [id]="'open-' + c.key" [(ngModel)]="c.checked" [attr.data-testid]="'shift-checklist-' + c.key">
+          <label class="form-check-label" [for]="'open-' + c.key">{{ c.label }}</label>
+        </div>
+      </div>
       <div class="mt-2 d-flex gap-2">
-        <button class="btn btn-primary btn-sm" type="button" [disabled]="busy"
+        <button class="btn btn-primary btn-sm" type="button" [disabled]="busy || !checklistComplete"
           data-testid="shift-card-open-confirm" (click)="confirmOpen()">Open shift with &#8377;{{ denomTotal | number:'1.0-0' }}</button>
         <button class="btn btn-outline-secondary btn-sm" type="button" (click)="cancel()">Cancel</button>
       </div>
@@ -52,8 +59,15 @@
           </span>
         </div>
       </div>
+      <div class="small mt-3">
+        <div class="fw-semibold mb-1">Closing checklist</div>
+        <div class="form-check" *ngFor="let c of checklist">
+          <input type="checkbox" class="form-check-input" [id]="'close-' + c.key" [(ngModel)]="c.checked" [attr.data-testid]="'shift-checklist-' + c.key">
+          <label class="form-check-label" [for]="'close-' + c.key">{{ c.label }}</label>
+        </div>
+      </div>
       <div class="mt-2 d-flex gap-2">
-        <button class="btn btn-danger btn-sm" type="button" [disabled]="busy || !denoms.length"
+        <button class="btn btn-danger btn-sm" type="button" [disabled]="busy || !denoms.length || !checklistComplete"
           data-testid="shift-card-close-confirm" (click)="confirmClose()">Close shift</button>
         <button class="btn btn-outline-secondary btn-sm" type="button" (click)="cancel()">Cancel</button>
       </div>

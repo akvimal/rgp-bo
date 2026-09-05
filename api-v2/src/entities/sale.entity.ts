@@ -14,6 +14,7 @@ import { Customer } from "./customer.entity";
 import { SaleDelivery } from "./sale-delivery.entity";
 import { SaleItem } from "./sale-item.entity";
 import { StoreShift } from "./store-shift.entity";
+import { Store } from "./store.entity";
 
 @Index("sale_pk", ["id"], { unique: true })
 @Index("sale_customer_idx", ["customerid"])
@@ -39,6 +40,9 @@ export class Sale extends BaseEntity {
 
   @Column("integer", { name: "shift_id", nullable: true })
   shiftid: number | null;
+
+  @Column("integer", { name: "store_id", nullable: true })
+  storeid: number | null;
 
   @Column("integer", { name: "acting_user_id", nullable: true })
   actinguserid: number | null;
@@ -92,6 +96,10 @@ export class Sale extends BaseEntity {
   @ManyToOne(() => StoreShift, { nullable: true })
   @JoinColumn([{ name: "shift_id", referencedColumnName: "id" }])
   shift: StoreShift | null;
+
+  @ManyToOne(() => Store, { nullable: true })
+  @JoinColumn([{ name: "store_id", referencedColumnName: "id" }])
+  store: Store | null;
 
   @OneToMany(() => SaleItem, (item) => item.sale)
   items: SaleItem[];

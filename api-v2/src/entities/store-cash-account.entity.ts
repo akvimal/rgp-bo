@@ -28,6 +28,15 @@ import { StoreShift } from "./store-shift.entity";
     @Column("double precision", { name: "withdraw", precision: 53 })
     withdraw: number;
 
+    @Column("character varying", { name: "reference_no", length: 40, nullable: true })
+    referenceno: string | null;
+
+    @Column("character varying", { name: "expense_category", length: 30, nullable: true })
+    expensecategory: string | null;
+
+    @Column("character varying", { name: "receipt_path", length: 255, nullable: true })
+    receiptpath: string | null;
+
     @ManyToOne(
       () => Store,
       (store) => store.transactions

@@ -36,7 +36,11 @@ export class StockService {
     getProductsByExpiryMonths(month:string){
         return this.http.get(this.stock2url+'/expiries/month/'+month);
     }
-    
+    getNearExpiryCount(){
+        return this.http.get(this.stock2url+'/expiries/near-count');
+    }
+
+
     findAll(criteria:any){
         this.filter = criteria;
         this.http.post(this.stock2url, this.filter).subscribe(data => {
@@ -90,9 +94,42 @@ export class StockService {
     }
     
     updateQty(qtyForm:any){
-        return this.http.post(`${this.apiurl}/stock/adjust/qty`,{...qtyForm, status: 'APPROVED'});
-    }   
-        
+        // no explicit status: the backend decides APPROVED vs PENDING from the value threshold (WS-3).
+        return this.http.post(`${this.apiurl}/stock/adjust/qty`, qtyForm);
+    }
+
+    updateQtyAdjustment(id:number, payload:any){
+        return this.http.put(`${this.apiurl}/stock/adjust/qty/${id}`, payload);
+    }
+
+    findPendingAdjustments(){
+        return this.http.get(`${this.apiurl}/stock/audit`);
+    }
+
+    approveAdjustment(id:number){
+        return this.http.put(`${this.apiurl}/stock/audit/${id}/approve`, {});
+    }
+
+    rejectAdjustment(id:number){
+        return this.http.put(`${this.apiurl}/stock/audit/${id}/reject`, {});
+    }
+
+    startCount(category?:string, storeid?:number|null){
+        return this.http.post(`${this.apiurl}/stock/counts`, { category: category || null, storeid: storeid || null });
+    }
+
+    findCounts(){
+        return this.http.get(`${this.apiurl}/stock/counts`);
+    }
+
+    findCountDetail(id:number){
+        return this.http.get(`${this.apiurl}/stock/counts/${id}`);
+    }
+
+    submitCount(id:number, items:any[]){
+        return this.http.post(`${this.apiurl}/stock/counts/${id}/submit`, { items });
+    }
+
     updateQtyToZero(obj:any){
         return this.http.post(`${this.apiurl}/stock/adjust/qty/bulk`,obj);
     }   

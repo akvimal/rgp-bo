@@ -6,6 +6,7 @@ import { Invoice } from "../invoice.model";
 import { InvoiceService } from "../invoices.service";
 import { ProductsService } from "../../../products/products.service";
 import { PurchaseOrderService } from "../../requests/purchase-order.service";
+import { StoreContextService } from "src/app/@core/store-context.service";
 
 @Component({
     templateUrl: './invoice-form.component.html'
@@ -15,6 +16,7 @@ export class InvoiceFormComponent {
     invoice:Invoice = {}
     orders:any = [];
     vendors:any = [];
+    stores:any[] = [];
     products:any = [];
     total:number = 0;
     currentDate = new Date();
@@ -23,6 +25,7 @@ export class InvoiceFormComponent {
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
         vendorid: new FormControl('',Validators.required),
+        storeid: new FormControl('',Validators.required),
         invoiceno: new FormControl('',[Validators.required,Validators.pattern('^[a-zA-Z0-9-]+$')]),
         invoicedate: new FormControl(this.getCurrentDateStr(),Validators.required),
         duedate: new FormControl(this.getCurrentDateStr(),Validators.required),
@@ -38,10 +41,18 @@ export class InvoiceFormComponent {
       private service:InvoiceService,
       private vendorService:VendorsService,
       // private prodService:ProductsService,
-      private poService:PurchaseOrderService){}
+      private poService:PurchaseOrderService,
+      private storeContext:StoreContextService){}
 
     ngOnInit(){
       const id = this.route.snapshot.paramMap.get('id');
+
+      this.storeContext.stores$.subscribe((stores:any) => {
+        this.stores = stores || [];
+        if(!id && !this.form.controls['storeid'].value){
+          this.form.controls['storeid'].setValue(this.storeContext.selectedStoreId || (this.stores[0] && this.stores[0].id) || '');
+        }
+      });
 
       id && this.service.find(id).subscribe((data:any) => {
         this.invoice = data;
@@ -49,6 +60,7 @@ export class InvoiceFormComponent {
 
         this.form.controls['id'].setValue(data.id);
         this.form.controls['vendorid'].setValue(data.vendorid);
+        this.form.controls['storeid'].setValue(data.storeid);
         this.form.controls['invoiceno'].setValue(data.invoiceno);
         this.form.controls['invoicedate'].setValue(data.invoicedate);
         this.form.controls['duedate'].setValue(data.duedate || data.invoicedate);
@@ -103,6 +115,7 @@ export class InvoiceFormComponent {
         referenceno: this.form.value.referenceno,
         notes: this.form.value.notes,
         vendorid: this.form.value.vendorid,
+        storeid: this.form.value.storeid,
         purchaseorderid: this.form.value.purchaseorderid,
         grno: this.form.value.grno
       }

@@ -9,6 +9,7 @@ import { AppUser } from "src/entities/appuser.entity";
 import { UserStore } from "src/entities/user-store.entity";
 import { Business } from "src/entities/business.entity";
 import { denominationTotal, normalizeDenominations } from "./denominations";
+import { CLOSING_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
 
 @Injectable()
 export class StoreService {
@@ -79,6 +80,27 @@ export class StoreService {
       isArchived: true,
     });
     return { success: true };
+  }
+
+  /** WS-9: a shift/ledger action against a given store requires the caller to actually be
+   * assigned to it - Business Head is the one role that oversees every store in the business
+   * and bypasses this (Store Head does not: they're scoped to their own store(s), same as the
+   * role that already gates *which* actions they can take). */
+  private async assertUserAssignedToStore(userid: number | null | undefined, storeid: number | null | undefined) {
+    if (!storeid) {
+      return;
+    }
+    if (!userid) {
+      throw new ForbiddenException("You are not assigned to this store.");
+    }
+    const caller = await this.userRepository.findOne({ where: { id: userid }, relations: ["role"] });
+    if (caller?.role?.name === "Business Head") {
+      return;
+    }
+    const assignment = await this.userStoreRepository.findOne({ where: { userid, storeid } as any });
+    if (!assignment) {
+      throw new ForbiddenException("You are not assigned to this store.");
+    }
   }
 
   private async getCallerForStoreManagement(userid: number) {
@@ -221,15 +243,28 @@ export class StoreService {
     if (!storeid) {
       throw new Error("Store is required");
     }
+    await this.assertUserAssignedToStore(userid, storeid);
     const existingOpen = await this.shiftRepository.findOne({ where: { storeid, status: "OPEN" } });
     if (existingOpen) {
       throw new ConflictException("This store already has an open shift. Close it before opening another.");
     }
     const template = body.templateid ? await this.templateRepository.findOne({ where: { id: Number(body.templateid) } }) : null;
 
-    // Opening float: prefer the denomination breakdown; fall back to a plain number.
+    // Opening float: prefer the denomination breakdown; fall back to a plain number. A silent
+    // zero float used to be allowed - now it needs an explicit confirmation, same guard shape
+    // as the empty-drawer-count check on close below.
     const openingDenoms = normalizeDenominations(body.openingdenominations);
     const openingcash = openingDenoms ? denominationTotal(openingDenoms) : Number(body.openingcash || 0);
+    if (openingcash <= 0 && body.allowZero !== true) {
+      throw new BadRequestException("Enter the opening float before opening the shift.");
+    }
+    // WS-7: only validated when the caller actually sends a checklist (the POS card always does).
+    if (body.openingchecklist !== undefined) {
+      const checklistError = validateChecklist(OPENING_CHECKLIST_KEYS, body.openingchecklist);
+      if (checklistError) {
+        throw new BadRequestException(checklistError);
+      }
+    }
 
     const shift = await this.shiftRepository.save({
       storeid,
@@ -243,6 +278,7 @@ export class StoreService {
       openingcash,
       expectedcash: openingcash,
       openingdenominations: openingDenoms,
+      openingchecklist: Array.isArray(body.openingchecklist) ? body.openingchecklist : null,
       counteddenominations: null,
       countedcash: null,
       variance: null,
@@ -260,7 +296,12 @@ export class StoreService {
     });
   }
 
-  async assignShift(id: number, body: any) {
+  async assignShift(id: number, body: any, userid?: number) {
+    const shift = await this.shiftRepository.findOne({ where: { id } });
+    if (!shift) {
+      throw new Error("Shift not found");
+    }
+    await this.assertUserAssignedToStore(userid, shift.storeid);
     const assigneduserid = body.assigneduserid === null || body.assigneduserid === undefined || body.assigneduserid === ""
       ? null
       : Number(body.assigneduserid);
@@ -276,6 +317,7 @@ export class StoreService {
     if (!shift) {
       throw new Error("Shift not found");
     }
+    await this.assertUserAssignedToStore(userid, shift.storeid);
     if (shift.status === "CLOSED") {
       throw new BadRequestException("This shift is already closed.");
     }
@@ -293,6 +335,13 @@ export class StoreService {
     } else {
       throw new BadRequestException("Enter the drawer count before closing the shift.");
     }
+    // WS-7: only validated when the caller actually sends a checklist (the POS card always does).
+    if (body.closingchecklist !== undefined) {
+      const checklistError = validateChecklist(CLOSING_CHECKLIST_KEYS, body.closingchecklist);
+      if (checklistError) {
+        throw new BadRequestException(checklistError);
+      }
+    }
 
     const closedOperatorId = body.closedoperatorid ? Number(body.closedoperatorid)
       : (body.operatorid ? Number(body.operatorid) : (shift.assigneduserid || null));
@@ -301,11 +350,12 @@ export class StoreService {
       status: "CLOSED",
       countedcash,
       counteddenominations: countedDenoms,
+      closingchecklist: Array.isArray(body.closingchecklist) ? body.closingchecklist : null,
       closedoperatorid: closedOperatorId,
       closedon: new Date(),
       closedby: userid ? { id: userid } as any : null,
       notes: body.notes || shift.notes,
-    });
+    } as any);
     await this.syncShiftTotals(id);
     return this.shiftRepository.findOne({
       where: { id },
@@ -343,6 +393,7 @@ export class StoreService {
     if (!storeid) {
       throw new Error("Store is required");
     }
+    await this.assertUserAssignedToStore(userid, storeid);
     let shiftid = body.shiftid ? Number(body.shiftid) : null;
     const category = body.category || "ADJUSTMENT";
     let deposit = Number(body.deposit || 0);
@@ -370,6 +421,9 @@ export class StoreService {
       description: body.description || "",
       deposit,
       withdraw,
+      referenceno: category === "BANK_DEPOSIT" ? (body.referenceno || null) : null,
+      expensecategory: category === "EXPENSE" ? (body.expensecategory || null) : null,
+      receiptpath: category === "EXPENSE" ? (body.receiptpath || null) : null,
       store: { id: storeid } as any,
       shift: shiftid ? ({ id: shiftid } as any) : null,
     });
@@ -381,6 +435,24 @@ export class StoreService {
       where: { id: record.id },
       relations: ["store", "shift"],
     });
+  }
+
+  /** WS-2: expense-by-category rollup for the Cash screen. Defaults to the current calendar month. */
+  async getExpenseSummary(query: any) {
+    const storeid = await this.resolveStoreId(query.storeid);
+    const now = new Date();
+    const fromdate = query.fromdate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const todate = query.todate || this.today();
+    const qb = this.cashAccountRepository.createQueryBuilder("ledger")
+      .select("coalesce(ledger.expensecategory, 'MISC')", "category")
+      .addSelect("coalesce(sum(ledger.withdraw), 0)", "total")
+      .where("ledger.category = 'EXPENSE'")
+      .andWhere("ledger.trans_date >= CAST(:fromdate AS date) AND ledger.trans_date <= CAST(:todate AS date)", { fromdate, todate });
+    if (storeid) {
+      qb.andWhere("ledger.store_id = :storeid", { storeid });
+    }
+    const rows = await qb.groupBy("coalesce(ledger.expensecategory, 'MISC')").orderBy("total", "DESC").getRawMany();
+    return rows.map((row: any) => ({ category: row.category, total: Number(row.total || 0) }));
   }
 
   async getDashboard(query: any, userid?: any) {
