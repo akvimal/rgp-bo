@@ -1,0 +1,35 @@
+{
+  "name": "rgp-bo-qa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-running Playwright test suite + realistic API data generator for RGP Back Office",
+  "type": "module",
+  "scripts": {
+    "stack:up": "bash scripts/stack-up.sh",
+    "stack:down": "bash scripts/stack-down.sh",
+    "stack:bootstrap": "bash scripts/bootstrap-db.sh",
+    "verify:password": "node scripts/verify-password.mjs",
+    "seed": "tsx seed/run.ts",
+    "seed:reset": "tsx seed/run.ts --reset",
+    "test": "playwright test",
+    "test:p0": "playwright test --grep @p0",
+    "test:p1": "playwright test --grep @p1",
+    "test:p2": "playwright test --grep @p2",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report report/playwright",
+    "coverage-check": "tsx coverage-check.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^9.3.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "pg": "^8.13.1"
+  }
+}

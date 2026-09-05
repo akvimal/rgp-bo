@@ -27,7 +27,7 @@
                       <label for="email" class="form-label">Username</label>
                       <div class="input-group has-validation">
                         <span class="input-group-text" id="inputGroupPrepend">@</span>
-                        <input type="text" name="username"
+                        <input type="text" name="username" data-testid="cp-email"
                         id="email" formControlName="email" class="form-control" required>
                         <div class="invalid-feedback">Please enter your username.</div>
                       </div>
@@ -35,7 +35,7 @@
 
                     <div class="col-12">
                       <label for="password" class="form-label">Current Password</label>
-                      <input type="password" name="password"
+                      <input type="password" name="password" data-testid="cp-current"
                       id="password" formControlName="password"
                       class="form-control" required>
                         <div class="invalid-feedback">Please enter your password.</div>
@@ -43,13 +43,13 @@
 
                     <div class="col-12">
                       <label for="newpassword" class="form-label">New Password</label>
-                      <input type="password" name="newpassword"
+                      <input type="password" name="newpassword" data-testid="cp-new"
                       id="newpassword" formControlName="newpassword"
                       class="form-control" required>
                     </div>
                     <div class="col-12">
                       <label for="confirmpassword" class="form-label">Confirm New Password</label>
-                      <input type="password" name="configmpassword"
+                      <input type="password" name="configmpassword" data-testid="cp-confirm"
                       id="confirmpassword" formControlName="confirmpassword"
                       class="form-control" required>
                       <div *ngIf="form.value.newpassword != form.value.confirmpassword">Password doesn't match</div>
@@ -63,7 +63,7 @@
                       </div>
                     </div> -->
                     <div class="col-12">
-                      <button class="btn btn-primary w-100" type="submit" 
+                      <button class="btn btn-primary w-100" type="submit" data-testid="cp-submit"
                       [disabled]="!form.valid">Submit</button>
                     </div>
                     <div class="col-12">

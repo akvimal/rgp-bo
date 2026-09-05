@@ -8,16 +8,16 @@
     <div class="row g-2 mt-3">
       <div class="col-12 col-md-6">
         <label class="form-label">Business Name</label>
-        <input class="form-control" [(ngModel)]="form.name" placeholder="e.g. RGP Pharmacy">
+        <input class="form-control" data-testid="biz-f-name" [(ngModel)]="form.name" placeholder="e.g. RGP Pharmacy">
       </div>
       <div class="col-6 col-md-3 d-flex align-items-end">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="businessActive" [(ngModel)]="form.isActive">
+          <input class="form-check-input" type="checkbox" id="businessActive" data-testid="biz-f-active" [(ngModel)]="form.isActive">
           <label class="form-check-label" for="businessActive">Active</label>
         </div>
       </div>
       <div class="col-6 col-md-3 d-flex align-items-end">
-        <button class="btn btn-primary w-100" type="button" [disabled]="saving || !form.name" (click)="save()">
+        <button class="btn btn-primary w-100" type="button" data-testid="biz-f-save" [disabled]="saving || !form.name" (click)="save()">
           {{saving ? 'Saving...' : (form.id ? 'Update Business' : 'Add Business')}}
         </button>
       </div>
@@ -33,7 +33,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let business of businesses">
+          <tr *ngFor="let business of businesses" data-testid="biz-row" [attr.data-biz-name]="business.name">
             <td>
               {{business.name}}
               <div class="small text-warning mt-1" *ngIf="!hasBusinessHead(business)">
@@ -56,6 +56,6 @@
       </table>
     </div>
 
-    <div *ngIf="message" class="alert alert-danger mt-3">{{message}}</div>
+    <div *ngIf="message" class="alert alert-danger mt-3" data-testid="biz-message">{{message}}</div>
   </div>
 </div>

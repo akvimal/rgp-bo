@@ -208,7 +208,7 @@ export class UserService {
     if (currentUser) {
       const caller = await this.userRepository.findOne({ where: { id: currentUser.id }, relations: ['role'] });
       if (caller?.role?.name === 'Business Head') {
-        qb.andWhere('u.business_id = :businessid', { businessid: caller.businessid });
+        qb.andWhere('COALESCE(ownbusiness.id, storebusiness.id) = :businessid', { businessid: caller.businessid });
       } else if (caller?.role?.name === 'Site Admin') {
         qb.andWhere('role.name = :rolename', { rolename: 'Business Head' });
       }

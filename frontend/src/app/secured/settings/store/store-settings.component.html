@@ -9,7 +9,7 @@
       <div class="row g-2 align-items-end">
         <div class="col-12 col-md-4">
           <label class="form-label">Select Store</label>
-          <select class="form-select" [(ngModel)]="selectedStoreId" (change)="refreshSelectedStore()">
+          <select class="form-select" data-testid="store-s-select" [(ngModel)]="selectedStoreId" (change)="refreshSelectedStore()">
             <option value="">Choose store</option>
             <option *ngFor="let store of stores" [ngValue]="store.id">{{store.business?.name}} - {{store.location}}</option>
           </select>
@@ -17,13 +17,13 @@
         <div class="col-12 col-md-8">
           <ul class="nav nav-tabs">
             <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'master'" href="javascript:void(0)" (click)="selectTab('master')">Stores</a>
+              <a class="nav-link" [class.active]="activeTab === 'master'" data-testid="store-s-tab-master" href="javascript:void(0)" (click)="selectTab('master')">Stores</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'policy'" href="javascript:void(0)" (click)="selectTab('policy')">Cash Policy</a>
+              <a class="nav-link" [class.active]="activeTab === 'policy'" data-testid="store-s-tab-policy" href="javascript:void(0)" (click)="selectTab('policy')">Cash Policy</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'templates'" href="javascript:void(0)" (click)="selectTab('templates')">Shift Templates</a>
+              <a class="nav-link" [class.active]="activeTab === 'templates'" data-testid="store-s-tab-templates" href="javascript:void(0)" (click)="selectTab('templates')">Shift Templates</a>
             </li>
           </ul>
         </div>
@@ -37,27 +37,27 @@
       <div class="row g-2">
         <div class="col-12 col-md-5">
           <label class="form-label">Business</label>
-          <select class="form-select" [(ngModel)]="storeForm.businessid">
+          <select class="form-select" data-testid="store-s-business" [(ngModel)]="storeForm.businessid">
             <option value="">Choose business</option>
             <option *ngFor="let business of businesses" [ngValue]="business.id">{{business.name}}</option>
           </select>
         </div>
         <div class="col-12 col-md-5">
           <label class="form-label">Location</label>
-          <input class="form-control" [(ngModel)]="storeForm.location" placeholder="e.g. Main Store">
+          <input class="form-control" data-testid="store-s-location" [(ngModel)]="storeForm.location" placeholder="e.g. Main Store">
         </div>
         <div class="col-6 col-md-2">
           <label class="form-label">Deposit Threshold</label>
-          <input type="number" class="form-control" [(ngModel)]="storeForm.depositthreshold">
+          <input type="number" class="form-control" data-testid="store-s-threshold" [(ngModel)]="storeForm.depositthreshold">
         </div>
         <div class="col-6 col-md-1 d-flex align-items-end">
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="storeActive" [(ngModel)]="storeForm.isActive">
+            <input class="form-check-input" type="checkbox" id="storeActive" data-testid="store-s-active" [(ngModel)]="storeForm.isActive">
             <label class="form-check-label" for="storeActive">Active</label>
           </div>
         </div>
         <div class="col-12 col-md-2 d-flex align-items-end">
-          <button class="btn btn-primary w-100" type="button" [disabled]="savingStore || !storeForm.location" (click)="saveStore()">
+          <button class="btn btn-primary w-100" type="button" data-testid="store-s-save" [disabled]="savingStore || !storeForm.location" (click)="saveStore()">
             {{savingStore ? 'Saving...' : (storeForm.id ? 'Update Store' : 'Add Store')}}
           </button>
         </div>
@@ -75,7 +75,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let store of stores">
+            <tr *ngFor="let store of stores" data-testid="store-s-row" [attr.data-store-id]="store.id">
               <td>{{store.location}}</td>
               <td>{{store.business?.name || '-'}}</td>
               <td class="text-end">{{store.depositthreshold | number:'1.2-2'}}</td>
@@ -105,10 +105,10 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Bank deposit threshold</label>
-            <input type="number" class="form-control" [(ngModel)]="selectedStore.depositthreshold">
+            <input type="number" class="form-control" data-testid="store-s-policy-threshold" [(ngModel)]="selectedStore.depositthreshold">
             <small class="text-muted">Used by Store - Cash to warn when balance crosses this amount.</small>
           </div>
-          <button class="btn btn-primary" type="button" [disabled]="savingPolicy || !selectedStore?.id" (click)="savePolicy()">
+          <button class="btn btn-primary" type="button" data-testid="store-s-policy-save" [disabled]="savingPolicy || !selectedStore?.id" (click)="savePolicy()">
             {{savingPolicy ? 'Saving...' : 'Save Policy'}}
           </button>
         </div>
@@ -125,29 +125,29 @@
           <div class="row g-2">
             <div class="col-12 col-md-4">
               <label class="form-label">Name</label>
-              <input class="form-control" [(ngModel)]="templateForm.name">
+              <input class="form-control" data-testid="store-s-tpl-name" [(ngModel)]="templateForm.name">
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label">Start</label>
-              <input class="form-control" [(ngModel)]="templateForm.starttime">
+              <input class="form-control" data-testid="store-s-tpl-start" [(ngModel)]="templateForm.starttime">
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label">End</label>
-              <input class="form-control" [(ngModel)]="templateForm.endtime">
+              <input class="form-control" data-testid="store-s-tpl-end" [(ngModel)]="templateForm.endtime">
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label">Threshold</label>
-              <input type="number" class="form-control" [(ngModel)]="templateForm.depositthreshold">
+              <input type="number" class="form-control" data-testid="store-s-tpl-threshold" [(ngModel)]="templateForm.depositthreshold">
             </div>
             <div class="col-6 col-md-2">
               <label class="form-label">Default staff</label>
-              <select class="form-select" [(ngModel)]="templateForm.assigneduserid">
+              <select class="form-select" data-testid="store-s-tpl-assignee" [(ngModel)]="templateForm.assigneduserid">
                 <option value="">Any</option>
                 <option *ngFor="let user of users" [value]="user.id">{{user.fullname}}</option>
               </select>
             </div>
             <div class="col-12">
-              <button class="btn btn-primary" type="button" (click)="saveTemplate()">Save Template</button>
+              <button class="btn btn-primary" type="button" data-testid="store-s-tpl-save" (click)="saveTemplate()">Save Template</button>
             </div>
           </div>
 
@@ -181,6 +181,6 @@
       </div>
     </div>
 
-    <div *ngIf="message" class="alert alert-danger mt-3">{{message}}</div>
+    <div *ngIf="message" class="alert alert-danger mt-3" data-testid="store-s-message">{{message}}</div>
   </div>
 </div>

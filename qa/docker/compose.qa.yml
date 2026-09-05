@@ -1,0 +1,54 @@
+# QA override for docker-compose.dev.yml.
+#
+# Run from the repo root:
+#   docker compose -f docker-compose.dev.yml -f qa/docker/compose.qa.yml ...
+# with FRONTEND_PORT / API_PORT / DB_PORT / JWT_EXPIRES exported (scripts/*.sh do this).
+#
+# Two things this override changes vs the dev stack:
+#  1. Shadows the ./sql/ddl init-scripts mount with an empty dir so a fresh cluster
+#     comes up with an EMPTY database. scripts/bootstrap-db.sh then applies
+#     ddl 001-005 -> migrations 008-022 -> ddl 006 in the correct order (the dev
+#     stack's plain init aborts because 006_dev_test_data.sql needs migrations 014-018).
+#  2. Enables pg_stat_statements for the perf report.
+#
+# Port remap and JWT_EXPIRES are handled via env vars (the base file already
+# parameterises them) - see scripts/_env.sh.
+
+services:
+  postgres:
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+      - ./qa/db-init:/docker-entrypoint-initdb.d
+      - ./sql:/sql:ro
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=1GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - "log_line_prefix=%t [%p]: user=%u,db=%d,app=%a "
+      - -c
+      - log_lock_waits=on
+
+  api:
+    environment:
+      # useful for the perf report; api-v2/.env already bakes these but be explicit
+      REQUEST_TIMING_ENABLED: "true"
+      REQUEST_TIMING_LOG_MIN_MS: "0"

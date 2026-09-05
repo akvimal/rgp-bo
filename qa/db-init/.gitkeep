@@ -1,0 +1,2 @@
+# Intentionally empty. Mounted over /docker-entrypoint-initdb.d so a fresh postgres
+# cluster initialises with an EMPTY database; scripts/bootstrap-db.sh does the ordered load.

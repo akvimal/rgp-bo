@@ -3,15 +3,15 @@
   <div class="row">
     <div class="col-md-4">
       <label for="name" class="form-label">Name <span class="required">*</span></label>
-      <input id="name" type="text" class="form-control" formControlName="name">
+      <input id="name" data-testid="cust-f-name" type="text" class="form-control" formControlName="name">
     </div>
     <div class="col-md-4">
       <label for="mobile" class="form-label">Mobile<span class="required">*</span></label>
-      <input id="mobile" type="text" class="form-control" formControlName="mobile">
+      <input id="mobile" data-testid="cust-f-mobile" type="text" class="form-control" formControlName="mobile">
     </div>
     <div class="col-md-4">
       <label for="email" class="form-label">Email</label>
-      <input id="email" type="text" class="form-control" formControlName="email">
+      <input id="email" data-testid="cust-f-email" type="text" class="form-control" formControlName="email">
     </div>
   </div>
   <div class="row">
@@ -35,7 +35,7 @@
     <div class="row">
     <div class="col-md-3">
       <label for="srctype" class="form-label">Source Type <span class="required">*</span></label>
-      <select id="srctype" class="form-control" formControlName="srctype">
+      <select id="srctype" data-testid="cust-f-srctype" class="form-control" formControlName="srctype">
         <option value="">Select</option>
         <option *ngFor="let t of custLeadTypes" [value]="t.value">{{t.label}}</option>
       </select>
@@ -48,7 +48,7 @@
   </div>
   <div class="row mt-3">
     <div class="col-md-12">
-      <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Save</button>
+      <button type="submit" class="btn btn-primary m-2" data-testid="cust-f-save" [disabled]="!form.valid">Save</button>
       <button type="button" *ngIf="customer.id === 0" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
       <a [routerLink]="['/secure/customers/cust/list']"><button class="btn btn-outline-secondary">Cancel</button></a>
     </div>
