@@ -24,6 +24,12 @@ import { UserStore } from "./user-store.entity";
   @Column("double precision", { name: "deposit_threshold", precision: 53, default: 0 })
   depositthreshold: number;
 
+  @Column("character varying", { name: "telegram_chat_id", length: 40, nullable: true })
+  telegramchatid: string | null;
+
+  @Column({ name: "telegram_digest_enabled", type: "boolean", default: true })
+  telegramdigestenabled: boolean;
+
   @Column({ name: "active", type: "boolean", default: true })
   isActive: boolean;
 
