@@ -24,6 +24,7 @@ import { DeliveryPartnerListComponent } from "./delivery-partners/components/del
 import { DeliveryPartnerFormComponent } from "./delivery-partners/components/delivery-partner-form.component";
 import { StoreSettingsComponent } from "./store/store-settings.component";
 import { BusinessesComponent } from "./businesses/businesses.component";
+import { NotificationsComponent } from "./notifications/notifications.component";
 
 const routes: Routes = [
   { path: '', component: SettingsComponent, canActivate:[AuthGuard], children: [
@@ -46,7 +47,8 @@ const routes: Routes = [
       { path: 'edit/:id', component: DeliveryPartnerFormComponent }
     ]},
     { path: 'businesses', component: BusinessesComponent },
-    { path: 'store', component: StoreSettingsComponent }
+    { path: 'store', component: StoreSettingsComponent },
+    { path: 'notifications', component: NotificationsComponent }
   ]},
 ];
 
@@ -64,7 +66,8 @@ const routes: Routes = [
       DeliveryPartnerListComponent,
       DeliveryPartnerFormComponent,
       StoreSettingsComponent,
-      BusinessesComponent
+      BusinessesComponent,
+      NotificationsComponent
     ],
     imports: [
         RouterModule.forChild(routes),

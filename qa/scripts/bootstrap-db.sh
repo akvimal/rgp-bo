@@ -18,7 +18,7 @@ MIGRATIONS=(
   027_gst_data_model 028_gst_reconciliation
   029_store_stock 030_product_bin_location 031_stock_adjustment_reason_code
   032_cash_deposit_reference 033_cash_expense_category 034_shift_checklist
-  035_stock_count
+  035_stock_count 036_telegram_notifications 037_notifications_permission
 )
 
 echo "[bootstrap] reset public schema"

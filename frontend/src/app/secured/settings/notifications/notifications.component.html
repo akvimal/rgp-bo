@@ -1,0 +1,158 @@
+<div class="card mt-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="card-title mb-0">Telegram Notifications</h5>
+      <div class="small text-muted">A daily sales &amp; purchase digest. Cash and margin figures are never included.</div>
+    </div>
+
+    <div *ngIf="!loading && !botConfigured" class="alert alert-warning mt-3" data-testid="nt-bot-warning">
+      The Telegram bot is not configured on the server (<code>TELEGRAM_BOT_TOKEN</code> is not set), so nothing can be sent yet.
+      Settings below can still be saved.
+    </div>
+
+    <div *ngIf="loading" class="text-muted mt-3">Loading...</div>
+
+    <ng-container *ngIf="!loading">
+      <div class="row g-3 mt-1">
+        <div class="col-12 col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="dailyEnabled" data-testid="nt-daily-enabled" [(ngModel)]="config.dailyenabled">
+            <label class="form-check-label" for="dailyEnabled">Send the daily digest</label>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Send time (IST)</label>
+          <input class="form-control" type="time" data-testid="nt-daily-time" [(ngModel)]="config.dailytime">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">All-stores chat ID <span class="text-muted small">(optional)</span></label>
+          <div class="input-group">
+            <input class="form-control" data-testid="nt-consolidated-chat" [(ngModel)]="config.consolidatedchatid" placeholder="e.g. -1001234567890">
+            <button class="btn btn-outline-secondary" type="button" data-testid="nt-consolidated-test"
+              [disabled]="testing['all'] || !botConfigured" (click)="test('all', config.consolidatedchatid)">Send test</button>
+          </div>
+          <div class="small text-muted mt-1">Totals across every store, plus purchases, PO approvals and overdue invoices.</div>
+          <div class="small mt-1" *ngIf="testResult['all']" data-testid="nt-consolidated-test-result">{{testResult['all']}}</div>
+        </div>
+      </div>
+
+      <h6 class="mt-4">Store chats <span class="text-muted small">({{configuredStores}} of {{config.stores?.length || 0}} routed)</span></h6>
+      <div class="small text-muted mb-2">
+        Add the bot to the store's Telegram group, then paste the group's chat ID. Stores with no chat ID, or switched off, get no digest.
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Store</th>
+              <th style="min-width:220px">Chat ID</th>
+              <th class="text-center">Send digest</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let store of config.stores" data-testid="nt-store-row" [attr.data-store-name]="store.location">
+              <td>{{store.location}}</td>
+              <td><input class="form-control form-control-sm" data-testid="nt-store-chat" [(ngModel)]="store.telegramchatid" placeholder="not set"></td>
+              <td class="text-center"><input class="form-check-input" type="checkbox" data-testid="nt-store-enabled" [(ngModel)]="store.telegramdigestenabled"></td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-testid="nt-store-test"
+                  [disabled]="testing['s' + store.id] || !botConfigured" (click)="test('s' + store.id, store.telegramchatid)">Send test</button>
+                <div class="small" *ngIf="testResult['s' + store.id]">{{testResult['s' + store.id]}}</div>
+              </td>
+            </tr>
+            <tr *ngIf="!config.stores?.length">
+              <td colspan="4" class="text-center text-muted py-3">No stores yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-flex align-items-center gap-3 mt-2">
+        <button class="btn btn-primary" type="button" data-testid="nt-save" [disabled]="saving" (click)="save()">
+          {{saving ? 'Saving...' : 'Save settings'}}
+        </button>
+        <span class="text-success" *ngIf="message" data-testid="nt-saved">{{message}}</span>
+      </div>
+    </ng-container>
+
+    <div *ngIf="error" class="alert alert-danger mt-3" data-testid="nt-error">{{error}}</div>
+  </div>
+</div>
+
+<div class="card mt-3" *ngIf="!loading">
+  <div class="card-body">
+    <h5 class="card-title">Preview &amp; send now</h5>
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-3">
+        <label class="form-label">Date</label>
+        <input class="form-control" type="date" data-testid="nt-date" [(ngModel)]="digestDate">
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label">Message</label>
+        <select class="form-select" data-testid="nt-preview-scope" [(ngModel)]="previewScope">
+          <option value="all">All stores</option>
+          <option *ngFor="let store of config.stores" [value]="store.id">{{store.location}}</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-5 d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-primary" type="button" data-testid="nt-preview" [disabled]="previewing || !digestDate" (click)="preview()">
+          {{previewing ? 'Building...' : 'Preview'}}
+        </button>
+        <button class="btn btn-outline-danger" type="button" data-testid="nt-send-now" [disabled]="sending || !botConfigured || !digestDate" (click)="sendNow()">
+          {{sending ? 'Sending...' : 'Send to all routed chats'}}
+        </button>
+      </div>
+    </div>
+    <div class="form-check mt-2">
+      <input class="form-check-input" type="checkbox" id="forceSend" data-testid="nt-force" [(ngModel)]="forceSend">
+      <label class="form-check-label small" for="forceSend">Resend even if this date was already sent</label>
+    </div>
+
+    <pre *ngIf="previewText" class="border rounded p-3 mt-3 mb-0" style="white-space:pre-wrap; font-family:inherit" data-testid="nt-preview-text" [innerHTML]="previewText"></pre>
+
+    <div class="table-responsive mt-3" *ngIf="sendResults.length">
+      <table class="table table-sm align-middle" data-testid="nt-send-results">
+        <thead><tr><th>Destination</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of sendResults">
+            <td>{{scopeLabel(r.scope)}}</td>
+            <td>
+              <span class="badge" [ngClass]="r.status === 'SENT' ? 'bg-success' : (r.status === 'FAILED' ? 'bg-danger' : 'bg-secondary')">{{r.status}}</span>
+              <span class="small text-muted ms-2" *ngIf="r.error">{{r.error}}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3" *ngIf="!loading">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center">
+      <h5 class="card-title mb-0">Recent sends</h5>
+      <button class="btn btn-sm btn-outline-secondary" type="button" (click)="loadLog()">Refresh</button>
+    </div>
+    <div class="table-responsive mt-2">
+      <table class="table table-sm table-striped align-middle" data-testid="nt-log">
+        <thead><tr><th>Date</th><th>Destination</th><th>Status</th><th>Attempts</th><th>Sent at</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let l of log" data-testid="nt-log-row">
+            <td>{{l.periodkey}}</td>
+            <td>{{scopeLabel(l.scope)}}</td>
+            <td>
+              <span class="badge" [ngClass]="l.status === 'SENT' ? 'bg-success' : 'bg-danger'">{{l.status}}</span>
+              <div class="small text-muted" *ngIf="l.error">{{l.error}}</div>
+            </td>
+            <td>{{l.attempts}}</td>
+            <td>{{l.senton | date:'medium'}}</td>
+          </tr>
+          <tr *ngIf="!log.length">
+            <td colspan="5" class="text-center text-muted py-3">Nothing sent yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

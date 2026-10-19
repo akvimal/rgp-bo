@@ -19,6 +19,7 @@ services:
       JWT_KEY: ${JWT_KEY:-dev}
       JWT_EXPIRES: ${JWT_EXPIRES:-24h}
       PORT: ${API_PORT:-3000}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     ports:
       - "${API_PORT:-3000}:${API_PORT:-3000}"
       # Expose debugging port for development

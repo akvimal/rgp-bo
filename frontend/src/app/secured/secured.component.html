@@ -200,6 +200,11 @@
                 <i class="bi bi-circle"></i><span>Delivery Partners</span>
               </a>
             </li>
+            <li *isAuth="'notifications.manage'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/notifications" data-testid="nav-settings-notifications">
+                <i class="bi bi-circle"></i><span>Notifications</span>
+              </a>
+            </li>
             <li *isAuth="'storesettings'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/store" data-testid="nav-settings-store">
                 <i class="bi bi-circle"></i><span>Store</span>

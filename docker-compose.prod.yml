@@ -18,6 +18,7 @@ services:
       JWT_KEY: ${JWT_KEY:?Set JWT_KEY}
       JWT_EXPIRES: ${JWT_EXPIRES:-24h}
       PORT: ${API_PORT:-3000}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     expose:
       - "${API_PORT:-3000}"
     networks:

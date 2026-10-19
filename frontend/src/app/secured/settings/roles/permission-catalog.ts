@@ -112,6 +112,19 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'notifications',
+    label: 'Notifications',
+    description: 'Configure Telegram digests: per-store chats, send time, preview and send now.',
+    group: 'Administration',
+    path: '/secure/settings/notifications',
+    settingsPath: true,
+    bundle: true,
+    bundleLabel: 'Can manage notifications',
+    actions: [
+      { key: 'manage', label: 'Manage' },
+    ],
+  },
+  {
     key: 'storesettings',
     label: 'Store Settings',
     description: 'Add, edit, and archive store locations, cash policy, and shift templates.',
