@@ -319,8 +319,8 @@
         { id:"AUTH-4", feature:"Route guard", tag:"permission", scenario:"Direct URL while logged out", steps:"While logged out, browse straight to any /secure/&hellip; URL.", expected:"AuthGuard redirects to /login before any secured content flashes on screen." },
         { id:"AUTH-5", feature:"Token lifecycle", tag:"edge", scenario:"Expired or corrupted token", steps:"Let the JWT expire (or edit it in devtools), then trigger any API call.", expected:"App catches the 401 and returns to login, rather than showing a blank or broken screen." },
         { id:"AUTH-6", feature:"Token lifecycle", tag:"integration", scenario:"Silent refresh", steps:"Stay logged in and active past the point the token would normally expire.", expected:"POST /auth/refresh renews the session in the background; user is never bounced to login mid-task." },
-        { id:"AUTH-7", feature:"Change password", tag:"happy", scenario:"Correct current password", steps:"Change password, supplying the correct current password.", expected:"Success message; the old password no longer logs in, only the new one does. BLOCKED: no UI entry point &mdash; the /changepassword route exists (ChangePwdComponent) but nothing links to it; the login-page link is commented out and there's no menu item once logged in. Reach it by typing the URL directly, or wire up a link first." },
-        { id:"AUTH-8", feature:"Change password", tag:"negative", scenario:"Wrong current password", steps:"Attempt a password change with an incorrect current password.", expected:"Rejected with a clear error; password remains unchanged. BLOCKED: same missing UI entry point as AUTH-7 &mdash; see note there." },
+        { id:"AUTH-7", feature:"Change password", tag:"happy", scenario:"Correct current password", steps:"Change password, supplying the correct current password.", expected:"Success message; the old password no longer logs in, only the new one does. Reachable from the login page link at /changepassword." },
+        { id:"AUTH-8", feature:"Change password", tag:"negative", scenario:"Wrong current password", steps:"Attempt a password change with an incorrect current password.", expected:"Rejected with a clear error; password remains unchanged." },
         { id:"AUTH-9", feature:"Registration", tag:"permission", scenario:"Open POST /auth/register", steps:"Call POST /auth/register directly (e.g. via Swagger) with no auth token.", expected:"FIXED: the endpoint was an unauthenticated privilege-escalation bug (anyone could self-register with the hardcoded Business Head role, the top-level admin role). It has been removed entirely &mdash; account creation only happens via the guarded Settings &gt; Users UI (POST /users). Verify the call now 404s." },
         { id:"AUTH-10", feature:"Logout", tag:"happy", scenario:"Logout clears session", steps:"Log out, then press the browser Back button.", expected:"Token/localStorage cleared; back navigation doesn't reveal a cached secured page." },
         { id:"AUTH-11", feature:"Login", tag:"permission", scenario:"Site Admin lands on Dashboard, not Settings", steps:"Log in as siteadmin.", expected:"FIXED: the role's stored permissions listed a Settings path before /secure/dashboard in its “site” resource, so every Site Admin login landed on Settings instead. Reordered so /secure/dashboard is first. Verify Site Admin now lands on the Dashboard." },
@@ -333,7 +333,8 @@
       cases: [
         { id:"DASH-1", feature:"Overview", tag:"happy", scenario:"Normal load", steps:"Log in and land on the dashboard for a store with regular activity.", expected:"KPIs and charts render with no console errors and match store data." },
         { id:"DASH-2", feature:"Overview", tag:"edge", scenario:"Store with no data", steps:"Select a store with zero sales/stock history.", expected:"Charts show a clean empty state &mdash; no NaN, no broken axes." },
-        { id:"DASH-3", feature:"Overview", tag:"integration", scenario:"Store switch refreshes widgets", steps:"While on the dashboard, switch the store in the header.", expected:"All widgets reload for the new store; nothing keeps showing the previous store's numbers." }
+        { id:"DASH-3", feature:"Overview", tag:"integration", scenario:"Store switch refreshes widgets", steps:"While on the dashboard, switch the store in the header.", expected:"All widgets reload for the new store; nothing keeps showing the previous store's numbers." },
+        { id:"DASH-ADMIN", feature:"Admin rollup", tag:"permission", scenario:"Admin summary is admin-only", steps:"As a Sales Staff user, request the admin dashboard summary; then repeat as Site Admin and Business Head.", expected:"Sales Staff is refused; only Site Admin / Business Head receive the rollup." }
       ]
     },
     {
@@ -358,7 +359,8 @@
         { id:"PROD-5", feature:"Price Adjustor", tag:"happy", scenario:"Bulk price change", steps:"Run a bulk price adjustment across a set of products.", expected:"New price applies to future sales; prices on already-issued invoices/sales are untouched." },
         { id:"PROD-6", feature:"Price Estimator", tag:"happy", scenario:"Cost → sale price", steps:"Enter cost, tax %, and target margin into the estimator.", expected:"Computed sale price matches manual calculation." },
         { id:"PROD-7", feature:"Catalog", tag:"negative", scenario:"Negative price or tax", steps:"Try to save a product/price with a negative price or negative tax %.", expected:"Rejected by validation (price and tax are both constrained to ≥ 0)." },
-        { id:"PROD-8", feature:"Price history", tag:"happy", scenario:"Price change log", steps:"Open Product Price Change history for a product that's had multiple price edits.", expected:"Chronological list with correct user and date per change." }
+        { id:"PROD-8", feature:"Price history", tag:"happy", scenario:"Price change log", steps:"Open Product Price Change history for a product that's had multiple price edits.", expected:"Chronological list with correct user and date per change." },
+        { id:"BIN-LOCATION", feature:"Catalog", tag:"happy", scenario:"Shelf / rack label", steps:"Create a product with a bin location (shelf/rack label), then edit it.", expected:"The label saves on create, updates on edit, and shows on the product afterwards." }
       ]
     },
     {
@@ -368,7 +370,8 @@
         { id:"VEND-1", feature:"Vendor master", tag:"happy", scenario:"Create a vendor", steps:"Add a vendor with contact and GST details.", expected:"Saved and selectable when creating a Purchase Order or Invoice." },
         { id:"VEND-2", feature:"Vendor master", tag:"negative", scenario:"Duplicate vendor", steps:"Create a second vendor with the same name/GST as an existing one.", expected:"Confirm whether this should be blocked or merely warned &mdash; verify actual behavior matches intent." },
         { id:"VEND-3", feature:"Vendor master", tag:"edge", scenario:"Deactivate a vendor", steps:"Deactivate a vendor that has existing purchase history.", expected:"No longer selectable on new orders; historical orders/invoices still display it correctly." },
-        { id:"VEND-4", feature:"Vendor payments", tag:"happy", scenario:"Record a payment", steps:"Record a payment against one or more outstanding vendor invoices.", expected:"Outstanding balance decreases by exactly the payment amount." }
+        { id:"VEND-4", feature:"Vendor payments", tag:"happy", scenario:"Record a payment", steps:"Record a payment against one or more outstanding vendor invoices.", expected:"Outstanding balance decreases by exactly the payment amount." },
+        { id:"VEND-4B", feature:"Payments", tag:"edge", scenario:"Partial then clearing payments", steps:"Record a partial payment, then a payment that clears the balance.", expected:"The outstanding balance tracks each payment exactly and ends at zero." }
       ]
     },
     {
@@ -392,7 +395,7 @@
         { id:"PO-5", feature:"Approval", tag:"happy", scenario:"Approve with the policy", steps:"As a role with purchaseorders:approve, approve a pending order.", expected:"Status becomes SUBMITTED/Approved; approver and timestamp are recorded." },
         { id:"PO-6", feature:"Approval", tag:"happy", scenario:"Reject with a reason", steps:"Reject a pending order, supplying a rejection reason.", expected:"Status REJECTED; reason stored and visible on the order." },
         { id:"PO-7", feature:"Validation", tag:"negative", scenario:"Submit with no line items", steps:"Try to submit a PO with zero items or a zero quantity line.", expected:"Blocked with a clear message rather than creating an empty order." },
-        { id:"PO-8", feature:"Lifecycle", tag:"edge", scenario:"Delete a draft vs. a submitted order", steps:"Delete a Draft order, then attempt to delete a Submitted/Approved order.", expected:"Draft deletes cleanly; confirm whether a Submitted/Approved order can (or correctly cannot) be deleted the same way." },
+        { id:"PO-8", feature:"Lifecycle", tag:"edge", scenario:"Delete a draft vs. a submitted order", steps:"Delete a Draft order, then attempt to delete a Submitted/Approved order.", expected:"Only a Pending/Draft order can be deleted; a Submitted or Approved order is rejected." },
         { id:"PO-9", feature:"Settings", tag:"integration", scenario:"Change the approval threshold", steps:"Open Purchases &gt; Settings (moved here from the old Settings &gt; Application tab, which was mislabeled — it only ever held these two purchase-order fields), change the PO Approval Value Threshold and save.", expected:"New threshold persists and immediately governs PO-2/PO-3 (submit just under vs. just over the new value). Tab is gated by the purchases permission, so Site Admin — who has no purchases access — correctly won't see it." }
       ]
     },
@@ -421,7 +424,18 @@
         { id:"STK-5", feature:"Audit approval", tag:"edge", scenario:"Delete a pending adjustment", steps:"Delete a qty adjustment that hasn't been approved yet.", expected:"Removed cleanly with no partial effect on available stock." },
         { id:"STK-6", feature:"Expiry", tag:"happy", scenario:"Expiry list by month", steps:"Open Stock &gt; Expiry and drill into a specific month.", expected:"Items are grouped correctly by expiry month, and the drill-down shows the right batches." },
         { id:"STK-7", feature:"Availability", tag:"edge", scenario:"Sell more than available", steps:"On the POS/Sale screen, try to sell more units of a product than are currently in stock.", expected:"Blocked or clearly flagged &mdash; stock is not allowed to go negative silently." },
-        { id:"STK-8", feature:"Adjustment lists", tag:"happy", scenario:"Price-adjust vs qty-adjust lists stay separate", steps:"Compare the Price Adjust list and Qty Adjust list after making one of each kind of change.", expected:"Each list shows only its own adjustment type, correctly attributed to the acting user and date." }
+        { id:"STK-8", feature:"Adjustment lists", tag:"happy", scenario:"Price-adjust vs qty-adjust lists stay separate", steps:"Compare the Price Adjust list and Qty Adjust list after making one of each kind of change.", expected:"Each list shows only its own adjustment type, correctly attributed to the acting user and date." },
+        { id:"ADJ-REASON-CODE", feature:"Adjustments", tag:"happy", scenario:"Small adjustment auto-approves", steps:"Record a quantity adjustment below the value threshold with a reason code and no explicit status.", expected:"It is approved automatically and available stock moves immediately." },
+        { id:"ADJ-THRESHOLD", feature:"Adjustments", tag:"happy", scenario:"High-value adjustment held", steps:"Record an adjustment above the value threshold with no explicit status.", expected:"It is held as pending approval and stock is unchanged until approved." },
+        { id:"ADJ-REJECT", feature:"Adjustments", tag:"edge", scenario:"Reject a pending adjustment", steps:"Reject a pending adjustment.", expected:"Stock stays untouched and the adjustment shows as rejected." },
+        { id:"ADJ-EDIT", feature:"Adjustments", tag:"happy", scenario:"Edit an adjustment", steps:"Edit an existing adjustment (e.g. quantity or reason).", expected:"The same row is updated in place, not deleted and recreated; its id and history are kept." },
+        { id:"BULK-ZERO-STORE-SPLIT", feature:"Adjustments", tag:"edge", scenario:"Zero a batch across stores", steps:"For a batch held at more than one store, clear it to zero.", expected:"Each store’s slice is cleared separately, not only the home store’s." },
+        { id:"WS4-NEAR-EXPIRY", feature:"Expiry", tag:"happy", scenario:"Near-expiry count", steps:"Open the near-expiry summary (dashboard / stock expiry view).", expected:"It returns a count and the expiry window used." },
+        { id:"WS4-RETURN-TO-VENDOR", feature:"Expiry", tag:"happy", scenario:"Return an expiring batch to the vendor", steps:"Return an expiring batch to its vendor.", expected:"A coded adjustment is recorded and the batch balance falls by the returned quantity." },
+        { id:"WS5-COUNT-LIFECYCLE", feature:"Cycle count", tag:"happy", scenario:"Count records a variance", steps:"Start a cycle count, enter a counted quantity different from the book quantity, and submit.", expected:"A pending adjustment for the variance is created and linked to the count." },
+        { id:"WS5-COUNT-STORE-SCOPED", feature:"Cycle count", tag:"happy", scenario:"Count is store-scoped", steps:"After transferring stock between stores, run a count scoped to one store.", expected:"The book quantity is that store’s balance, not the business-wide total." },
+        { id:"WS5-COUNT-NO-CHANGE", feature:"Cycle count", tag:"edge", scenario:"Count matches book", steps:"Submit a count line equal to the book quantity.", expected:"No adjustment is created for that line." },
+        { id:"WS5-COUNT-DOUBLE-SUBMIT", feature:"Cycle count", tag:"negative", scenario:"Submit a completed count again", steps:"Submit a cycle count that is already completed.", expected:"Rejected; no duplicate adjustments are created." }
       ]
     },
     {
@@ -431,7 +445,7 @@
         { id:"CASH-1", feature:"Shift templates", tag:"happy", scenario:"Create a template", steps:"Create a shift template with name, start/end time, deposit threshold, and default assignee.", expected:"Saved and available to pick from when opening a shift." },
         { id:"CASH-2", feature:"Open shift", tag:"happy", scenario:"Open from a template", steps:"Open a shift from a template, entering an opening cash float.", expected:"Shift shows as OPEN; dashboard's “open shift” reflects it; expected cash starts equal to the opening float." },
         { id:"CASH-3", feature:"Open shift", tag:"edge", scenario:"No store selected", steps:"With no store chosen in the header, try to open a shift.", expected:"Blocked with “Select a store in the header to open a shift.”" },
-        { id:"CASH-4", feature:"Open shift", tag:"edge", scenario:"Second open shift on the same store", steps:"With Shift A already OPEN for a store, open Shift B for the same store.", expected:"Currently not blocked &mdash; verify this is intentional. Two concurrent open shifts will split cash totals unpredictably between them; confirm the expected behavior before relying on it." },
+        { id:"CASH-4", feature:"Open shift", tag:"edge", scenario:"Second open shift on the same store", steps:"With Shift A already OPEN for a store, open Shift B for the same store.", expected:"Blocked: a second OPEN shift for the same store is rejected, so cash totals never split between two concurrent shifts." },
         { id:"CASH-5", feature:"Assignment", tag:"happy", scenario:"Assign / reassign a shift", steps:"Assign a shift to a staff member, then reassign it to someone else.", expected:"Assignee updates immediately; an unassigned shift stays visible to every cashier at that store." },
         { id:"CASH-6", feature:"Ledger", tag:"edge", scenario:"Cash entry with no open shift", steps:"Record an EXPENSE ledger entry for a store that currently has no open shift.", expected:"Confirm the expected linkage: entry should still save against the store (shift left blank), not be silently rejected." },
         { id:"CASH-7", feature:"Ledger", tag:"happy", scenario:"Cash entry auto-links to open shift", steps:"With a shift open and no shift explicitly chosen, record a cash entry.", expected:"Entry auto-attaches to that user's currently open shift at the store." },
@@ -440,10 +454,19 @@
         { id:"CASH-10", feature:"Deposit threshold", tag:"happy", scenario:"Deposit-due flag", steps:"Push the cash balance up to (and past) the store's configured deposit threshold.", expected:"“Deposit due” turns on once balance ≥ threshold, with the excess amount shown correctly." },
         { id:"CASH-11", feature:"Close shift", tag:"happy", scenario:"Counted cash matches expected", steps:"Close a shift, entering counted cash exactly equal to expected cash.", expected:"Shift closes with variance = 0." },
         { id:"CASH-12", feature:"Close shift", tag:"edge", scenario:"Till short or over", steps:"Close a shift with counted cash lower than expected, then separately with counted cash higher than expected.", expected:"Variance = counted − expected in both cases, with the correct sign for short vs. over." },
-        { id:"CASH-13", feature:"Close shift", tag:"negative", scenario:"Close without entering counted cash", steps:"Close a shift while leaving the counted-cash field empty.", expected:"Backend defaults counted cash to 0, producing a large negative variance &mdash; confirm this fallback is intended rather than silently mis-recording an untallied drawer." },
+        { id:"CASH-13", feature:"Close shift", tag:"negative", scenario:"Close without entering counted cash", steps:"Close a shift while leaving the counted-cash field empty.", expected:"Rejected (400) and the shift stays OPEN. The drawer must be counted (by denomination); the count is never silently defaulted to 0." },
         { id:"CASH-14", feature:"Shift report", tag:"integration", scenario:"Report reconciles with sales", steps:"Close a shift with several completed sales split across staff, then open its report.", expected:"Bill count, cash sales, digital sales, net sales, returns, and per-staff breakdown all match the underlying sales for that shift." },
-        { id:"CASH-15", feature:"Close shift", tag:"edge", scenario:"Close an already-closed shift", steps:"Attempt to close a shift that is already CLOSED.", expected:"Verify the backend guards this transition rather than silently overwriting closedon/closedby a second time." },
-        { id:"CASH-16", feature:"Multi-store", tag:"integration", scenario:"Switching stores scopes cash data", steps:"While on Cash or Shifts, switch the store in the header.", expected:"Ledger, dashboard figures, and shift list all reload for the new store &mdash; nothing leaks from the previous store." }
+        { id:"CASH-15", feature:"Close shift", tag:"edge", scenario:"Close an already-closed shift", steps:"Attempt to close a shift that is already CLOSED.", expected:"Rejected: a CLOSED shift cannot be closed again, so closedon/closedby are never overwritten." },
+        { id:"CASH-16", feature:"Multi-store", tag:"integration", scenario:"Switching stores scopes cash data", steps:"While on Cash or Shifts, switch the store in the header.", expected:"Ledger, dashboard figures, and shift list all reload for the new store &mdash; nothing leaks from the previous store." },
+        { id:"SHIFT-STAFF", feature:"Open / close shift", tag:"permission", scenario:"Sales Staff runs a shift", steps:"As a Sales Staff user assigned to a store, open a shift with a denomination count and close it with a counted denomination.", expected:"Both succeed and the shift ends CLOSED." },
+        { id:"SHIFT-REQUIRED", feature:"Open shift", tag:"negative", scenario:"No sale without an open shift", steps:"With no OPEN shift at the store, try to complete a sale.", expected:"The sale is rejected until a shift is opened." },
+        { id:"WS9-STORE-SCOPE", feature:"Open shift", tag:"negative", scenario:"Shift at an unassigned store", steps:"As a Sales Staff user, try to open a shift at a store you are not assigned to.", expected:"Rejected. Business Head can still open shifts at any store." },
+        { id:"WS9-ZERO-FLOAT", feature:"Open shift", tag:"negative", scenario:"Zero opening float", steps:"Open (and close) a shift with a zero float.", expected:"Rejected unless the zero amount is explicitly confirmed." },
+        { id:"WS9-DEPOSIT-REF", feature:"Ledger", tag:"happy", scenario:"Bank deposit reference", steps:"Record a BANK_DEPOSIT with a reference number (e.g. UTR).", expected:"The reference number is saved and returned on the ledger entry." },
+        { id:"WS7-CHECKLIST", feature:"Open / close shift", tag:"happy", scenario:"Open and close checklists", steps:"Open and close a shift with the checklist complete, then with items missing.", expected:"A complete checklist is accepted; an incomplete one is rejected, and a shift stays open if its closing checklist is incomplete." },
+        { id:"WS7-CHECKLIST-OPTIONAL", feature:"Open / close shift", tag:"edge", scenario:"Checklist omitted", steps:"Open and close a shift through a flow that sends no checklist (manager / API).", expected:"Unaffected; only the POS card enforces the checklist." },
+        { id:"WS2-EXPENSE-CATEGORY", feature:"Ledger", tag:"happy", scenario:"Expense category", steps:"Record an EXPENSE with a category (e.g. Cleaning) and open the monthly expense summary.", expected:"The category saves and its total appears in the month’s summary." },
+        { id:"SHIFTS-NAV", feature:"Navigation", tag:"permission", scenario:"Shifts screen is reachable", steps:"Open the Shifts screen from the menu as a permitted role.", expected:"It loads instead of bouncing to /login." }
       ]
     },
     {
@@ -531,6 +554,54 @@
         { id:"DLVP-1", feature:"Partner master", tag:"happy", scenario:"Create a delivery partner", steps:"Add a new courier/delivery partner.", expected:"Selectable as “courier partner” on the Sale Delivery form (see SALE-6)." },
         { id:"DLVP-2", feature:"Partner master", tag:"edge", scenario:"Deactivate a partner", steps:"Deactivate a delivery partner already used on past deliveries.", expected:"No longer selectable for new deliveries; historical deliveries still display its name." },
         { id:"DLVP-3", feature:"Navigation", tag:"permission", scenario:"Open Delivery Partners from the Settings menu", steps:"As a role with purchases access (e.g. Business Head), click Settings &gt; Delivery Partners in the left nav.", expected:"KNOWN BUG, not yet fixed: the link is shown to any role with the purchases permission, but no role's stored permissions actually include the /secure/settings/delivery-partners path itself (only /secure/purchases and /secure/purchases/vendors), so AuthGuard rejects it and bounces to /login — same symptom as AUTH-12. Needs the path added to the relevant roles' purchases permission block." }
+      ]
+    },
+    {
+      id: "xfer", name: "Store Stock Transfer",
+      blurb: "Stock is held per store: a batch received at one store is invisible to the others until transferred.",
+      cases: [
+        { id:"INVOICE-STORE", feature:"Receiving", tag:"happy", scenario:"Invoice with no store", steps:"Confirm a purchase invoice without choosing a store.", expected:"Stock lands at the business’s first store." },
+        { id:"XFER-SPLIT", feature:"Visibility", tag:"happy", scenario:"Stock is per store", steps:"Receive a batch at store A and look at store B’s stock.", expected:"Invisible at B until transferred." },
+        { id:"XFER-LIFECYCLE", feature:"Transfer", tag:"happy", scenario:"Dispatch then receive", steps:"Dispatch a transfer from A to B, then receive it at B.", expected:"A’s balance falls on dispatch; B’s rises on receipt." },
+        { id:"XFER-OVERDRAW", feature:"Transfer", tag:"edge", scenario:"Dispatch more than held", steps:"Dispatch more units than the source store has.", expected:"Rejected." },
+        { id:"XFER-CANCEL", feature:"Transfer", tag:"edge", scenario:"Cancel in transit", steps:"Cancel a transfer that is in transit.", expected:"The source store’s balance is restored." }
+      ]
+    },
+    {
+      id: "payables", name: "Payables & Pay Runs",
+      blurb: "Vendor-level payables rollup and pay runs that settle several invoices in one payment.",
+      cases: [
+        { id:"PAYABLES-NAV", feature:"Payables", tag:"happy", scenario:"Open Payables", steps:"Open the Payables screen.", expected:"It loads and lists a vendor with an outstanding balance." },
+        { id:"PAYABLES-SUMMARY", feature:"Payables", tag:"happy", scenario:"Rollup matches invoices", steps:"Compare a vendor’s rollup total with its outstanding invoices.", expected:"The rollup equals the sum of that vendor’s outstanding invoices." },
+        { id:"PAYRUN-SPLIT", feature:"Pay run", tag:"happy", scenario:"Split across invoices", steps:"Pay one amount across two invoices in a pay run.", expected:"It is allocated oldest invoice first." },
+        { id:"PAYRUN-ATOMIC", feature:"Pay run", tag:"negative", scenario:"One bad line", steps:"Submit a pay run with one invalid line.", expected:"Nothing is committed; no invoice is partly paid." }
+      ]
+    },
+    {
+      id: "gst", name: "GST Data & GSTR-2A/2B Reconciliation",
+      blurb: "GST fields on purchase invoices, and matching books against the portal’s inward-supply import.",
+      cases: [
+        { id:"GST-1", feature:"Data model", tag:"happy", scenario:"Invoice classification", steps:"Complete a purchase invoice.", expected:"It gets a supplier GSTIN, a period and an INTRA/INTER classification." },
+        { id:"GST-2", feature:"Data model", tag:"happy", scenario:"Header split sums up", steps:"Compare the CGST/SGST/IGST split with the invoice total.", expected:"They agree within rounding." },
+        { id:"GST-3", feature:"Data model", tag:"happy", scenario:"Line level tax", steps:"Open an invoice line.", expected:"It carries its own taxable value, tax split and the product’s HSN." },
+        { id:"GST-4", feature:"Data model", tag:"happy", scenario:"Edit GST details", steps:"Edit place of supply, reverse charge and ITC eligibility.", expected:"The changes persist." },
+        { id:"GSTRECON-1", feature:"Reconciliation", tag:"permission", scenario:"Screen access", steps:"Open the GST screen as a privileged role and as a restricted one.", expected:"Reachable for privileged roles only." },
+        { id:"GSTRECON-2", feature:"Reconciliation", tag:"happy", scenario:"Exact match", steps:"Import a portal row with the same GSTIN, invoice number and value.", expected:"Auto-matched, carrying the invoice’s ITC." },
+        { id:"GSTRECON-3", feature:"Reconciliation", tag:"negative", scenario:"Value mismatch", steps:"Import a portal row whose value differs.", expected:"Flagged with the variances, not silently matched." },
+        { id:"GSTRECON-4", feature:"Reconciliation", tag:"edge", scenario:"Missing in 2B", steps:"Have a books invoice absent from the portal import.", expected:"Shown as MISSING_IN_2B." },
+        { id:"GSTRECON-5", feature:"Reconciliation", tag:"happy", scenario:"Manual verdict survives", steps:"Resolve a row manually, then re-run the match.", expected:"The manual verdict is kept." },
+        { id:"GSTRECON-6", feature:"Reconciliation", tag:"edge", scenario:"Lock a period", steps:"Lock a period, then try to lock it again.", expected:"The ITC ledger is snapshotted and a second lock is blocked." }
+      ]
+    },
+    {
+      id: "notifications", name: "Settings — Telegram Notifications",
+      blurb: "The daily Telegram sales and purchase digest: who can configure it, what is saved and what the preview shows.",
+      cases: [
+        { id:"NOTIF-1", feature:"Access", tag:"permission", scenario:"Screen access", steps:"Open Settings > Notifications as Site Admin and as Business Head.", expected:"Both can open it and see the store rows and the menu link. The bot-not-configured banner shows only when the server has no token." },
+        { id:"NOTIF-2", feature:"Settings", tag:"happy", scenario:"Settings persist", steps:"Save chat IDs, the send time and the toggles, then reload.", expected:"Everything saved is shown again after the reload." },
+        { id:"NOTIF-3", feature:"Preview", tag:"integration", scenario:"Digest preview", steps:"Preview a store and then All stores for a date with activity.", expected:"The digest shows sales and purchases for that scope and never cash, margin, balances, deposits, expenses or variances." },
+        { id:"NOTIF-4", feature:"Access", tag:"edge", scenario:"Restricted roles blocked", steps:"Open the screen and call the config API as a role without the permission.", expected:"The screen redirects to login and the API answers 403 for both read and save." },
+        { id:"NOTIF-5", feature:"Settings", tag:"edge", scenario:"Invalid send time", steps:"Save a send time that is not HH:mm, such as 25:99.", expected:"The API rejects it with 400 and the previously saved time is unchanged." }
       ]
     },
     {
