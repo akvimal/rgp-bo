@@ -7,8 +7,8 @@ import { User } from "src/core/decorator/user.decorator";
 import { NotificationService } from "./notification.service";
 import { SaveNotificationConfigDto, TestMessageDto } from "./dto/notification-config.dto";
 
-// Same cross-store roles the dashboard admin summary uses.
-const ALLOWED_ROLES = ["Site Admin", "Business Head"];
+// Business-level setting: only the business owner. Site Admin is a platform role with no business data.
+const ALLOWED_ROLES = ["Business Head"];
 
 @ApiTags("Notifications")
 @Controller("notifications")

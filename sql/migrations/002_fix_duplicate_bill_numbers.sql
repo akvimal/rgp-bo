@@ -1,8 +1,11 @@
 -- ============================================================================
 -- Migration: 002_fix_duplicate_bill_numbers.sql
 -- Description: Fix race condition in bill number generation and add unique constraint
--- Date: 2025-10-20
+-- Date: 2025-10-20 (revised 2026-10-20 for the prod upgrade)
 -- Impact: Prevents duplicate bill numbers in concurrent transactions
+-- Revision: NO global UNIQUE(bill_no). Bill numbers restart every year, and the prod history
+--           holds legacy duplicates (imports), so such a constraint cannot be added. Safety comes
+--           from the row-locking generate_bill_number() below. Safe to re-run.
 -- Estimated Time: < 1 minute
 -- ============================================================================
 
@@ -12,83 +15,37 @@
 BEGIN;
 
 -- ============================================================================
--- STEP 1: Create sequence for temporary bill number assignment
+-- STEP 1: Drop the old global unique constraint if an earlier version of this file added it
 -- ============================================================================
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'temp_bill_seq') THEN
-        CREATE SEQUENCE temp_bill_seq START 1;
-    END IF;
-END $$;
+ALTER TABLE sale DROP CONSTRAINT IF EXISTS sale_bill_no_unique;
 
 -- ============================================================================
--- STEP 2: Initialize sales_meta table with current maximum bill number
+-- STEP 2: One sales_meta row per fiscal_year_start (collapse any duplicates first)
 -- ============================================================================
--- This ensures the function starts from the correct number
-INSERT INTO sales_meta (fiscal_year_start, last_bill_no)
-SELECT
-    DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '3 months' - INTERVAL '1 day' AS fiscal_year_start,
-    COALESCE(MAX(bill_no), 0) AS last_bill_no
-FROM sale
-WHERE bill_no IS NOT NULL
-ON CONFLICT DO NOTHING;
+DELETE FROM sales_meta m
+USING sales_meta k
+WHERE m.fiscal_year_start = k.fiscal_year_start
+  AND (m.last_bill_no < k.last_bill_no OR (m.last_bill_no = k.last_bill_no AND m.id > k.id));
 
--- If no sales exist yet, ensure we have a row
-INSERT INTO sales_meta (fiscal_year_start, last_bill_no)
-SELECT
-    DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '3 months' - INTERVAL '1 day',
-    0
-WHERE NOT EXISTS (SELECT 1 FROM sales_meta);
-
--- ============================================================================
--- STEP 3: Update NULL bill numbers with unique temporary values
--- ============================================================================
--- This is necessary before we can add the unique constraint
-UPDATE sale
-SET bill_no = nextval('temp_bill_seq')
-WHERE bill_no IS NULL;
-
--- ============================================================================
--- STEP 4: Add unique constraint on bill_no
--- ============================================================================
--- This prevents duplicate bill numbers at the database level
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
-        WHERE conname = 'sale_bill_no_unique'
-        AND conrelid = 'sale'::regclass
+        WHERE conname = 'sales_meta_fiscal_year_unique' AND conrelid = 'sales_meta'::regclass
     ) THEN
-        ALTER TABLE sale
-        ADD CONSTRAINT sale_bill_no_unique
-        UNIQUE (bill_no);
-
-        RAISE NOTICE 'Added unique constraint: sale_bill_no_unique';
-    ELSE
-        RAISE NOTICE 'Unique constraint already exists: sale_bill_no_unique';
+        ALTER TABLE sales_meta ADD CONSTRAINT sales_meta_fiscal_year_unique UNIQUE (fiscal_year_start);
     END IF;
 END $$;
 
 -- ============================================================================
--- STEP 5: Add unique constraint on sales_meta.fiscal_year_start
+-- STEP 3: Make sure the counter row for the current period exists and is ahead of every bill
+-- already issued in that period (the key is the one generate_bill_number() computes)
 -- ============================================================================
--- This prevents duplicate fiscal year entries
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'sales_meta_fiscal_year_unique'
-        AND conrelid = 'sales_meta'::regclass
-    ) THEN
-        ALTER TABLE sales_meta
-        ADD CONSTRAINT sales_meta_fiscal_year_unique
-        UNIQUE (fiscal_year_start);
-
-        RAISE NOTICE 'Added unique constraint: sales_meta_fiscal_year_unique';
-    ELSE
-        RAISE NOTICE 'Unique constraint already exists: sales_meta_fiscal_year_unique';
-    END IF;
-END $$;
+INSERT INTO sales_meta (fiscal_year_start, last_bill_no)
+SELECT key, COALESCE((SELECT MAX(bill_no) FROM sale WHERE bill_date >= date_trunc('year', CURRENT_DATE)), 0)
+FROM (SELECT (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '3 months' - INTERVAL '1 day')::date AS key) k
+ON CONFLICT (fiscal_year_start) DO UPDATE
+    SET last_bill_no = GREATEST(sales_meta.last_bill_no, EXCLUDED.last_bill_no);
 
 -- ============================================================================
 -- STEP 6: Fix generate_bill_number() function with row-level locking
@@ -160,7 +117,7 @@ BEGIN
     END IF;
 END $$;
 
--- Check for duplicate bill numbers (should be 0)
+-- Legacy duplicate bill numbers (informational)
 DO $$
 DECLARE
     dup_count INT;
@@ -175,7 +132,7 @@ BEGIN
     ) duplicates;
 
     IF dup_count > 0 THEN
-        RAISE WARNING 'Found % duplicate bill numbers - manual intervention required', dup_count;
+        RAISE NOTICE '% legacy duplicate bill numbers exist (expected on upgraded data; not enforced)', dup_count;
     ELSE
         RAISE NOTICE 'No duplicate bill numbers found ✓';
     END IF;

@@ -7,24 +7,27 @@
 import { test, expect } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
-const ADMIN = 'siteadmin@local.test';
-const MGR = 'businesshead@local.test';
+const SITE_ADMIN = 'siteadmin@local.test';
+const ADMIN = 'businesshead@local.test';
 const CASHIER = 'cashier.harbourh70@qa.local';
 const PAGE = '/secure/settings/notifications';
 
 test.describe('Settings — Notifications @p1', () => {
-  test('NOTIF-1 Site Admin and Business Head can open Settings > Notifications @happy', async ({ app, api }) => {
-    for (const who of [ADMIN, MGR]) {
-      const { page } = await app.open(who, PAGE);
-      await expectShell(page);
-      await expect(page.getByRole('heading', { name: 'Telegram Notifications' })).toBeVisible();
-      await expect(page.getByTestId('nt-store-row').first()).toBeVisible();
-      await expect(page.getByTestId('nav-settings-notifications')).toBeVisible();
-    }
+  test('NOTIF-1 Business Head can open Settings > Notifications @happy', async ({ app, api }) => {
+    const { page } = await app.open(ADMIN, PAGE);
+    await expectShell(page);
+    await expect(page.getByRole('heading', { name: 'Telegram Notifications' })).toBeVisible();
+    await expect(page.getByTestId('nt-store-row').first()).toBeVisible();
+    await expect(page.getByTestId('nav-settings-notifications')).toBeVisible();
     // the missing-token banner must follow the server's actual state
     const cfg = await api.request('GET', '/notifications/config', undefined, ADMIN);
-    const { page } = await app.open(ADMIN, PAGE);
     await expect(page.getByTestId('nt-bot-warning')).toHaveCount(cfg.body.botconfigured ? 0 : 1);
+  });
+
+  test('NOTIF-1b Site Admin has no Notifications screen or API access @permission', async ({ app, api }) => {
+    const { page } = await app.open(SITE_ADMIN, PAGE);
+    await expect(page).toHaveURL(/\/login/);
+    expect((await api.request('GET', '/notifications/config', undefined, SITE_ADMIN)).status).toBe(403);
   });
 
   test('NOTIF-2 saved chat IDs, send time and toggles persist across a reload @happy', async ({ app, api }) => {
