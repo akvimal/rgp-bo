@@ -37,3 +37,26 @@ Entries made after the backup are lost, which is why the old app must be stopped
 - bill-number reset: 1 Jan (as today) or 1 Apr
 - D5 HR tables, D6 `upload/` folder copy, D7 negative-stock batches
 - rename "Main Store" to the real name (Settings -> Store); assign users to stores as needed
+
+## Data fixes, review lists and sheets
+
+Fixes done by hand on a rehearsal copy do not carry to prod. Anything that must happen at cutover is a file here
+and is replayed on a fresh dump. See `docs/testing/prod-data-fixes.md` for what each one is for.
+
+```bash
+# fixes run automatically after the migrations; some need an explicit OK because they change stock numbers
+scripts/prod-upgrade.sh rehearse rgp_prod.dump --fixes-dry-run --approve "01 03"   # counts only, nothing written
+scripts/prod-upgrade.sh rehearse rgp_prod.dump --approve "01 03" --writeoff-days 180
+scripts/prod-upgrade.sh cutover --approve "01 03"
+
+# review lists (CSV, customer data: write them outside the repo)
+PGDATABASE=<db> scripts/prod-upgrade.sh report D:/workspace/rgp-migration/reports
+
+# vendor sheet: fill GSTIN / payment terms / phone in vendor_sheet.csv, then
+PGDATABASE=<db> scripts/prod-upgrade.sh load-vendors vendor_sheet.csv --fixes-dry-run   # check first
+PGDATABASE=<db> scripts/prod-upgrade.sh load-vendors vendor_sheet.csv
+```
+
+`fixes/NN_name.sql` run in order and must be safe to run twice. A first line `-- approval: required` makes the runner skip
+the file unless `--approve NN` is given. `reports/*.sql` are single read-only SELECTs. `sheets/` hold the loaders.
+

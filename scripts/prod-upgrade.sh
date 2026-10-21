@@ -4,6 +4,8 @@
 #   rehearse <dump>   restore a pg_dump -Fc into a scratch database and run the full upgrade on it
 #   cutover           run the same upgrade in place on the live database (backup + safety checks first)
 #   verify            print the invariants for a database (no changes)
+#   report <outdir>   write the review lists (sql/prod-upgrade/reports) as CSV files, read-only
+#   load-vendors <csv>  load a filled-in vendor sheet (GSTIN, payment terms, phone); add --fixes-dry-run to rehearse it
 #
 # Both modes run identical steps: pre-snapshot -> migrations -> optional opening payables -> post-check
 # that history is unchanged. Applied files are recorded in schema_migrations, so a re-run only applies
@@ -17,6 +19,10 @@
 #   For direct (non-docker) connections also set PGHOST / PGPORT / PGPASSWORD as usual.
 #
 # Options:
+#   --skip-fixes          do not run the data fixes (sql/prod-upgrade/fixes)
+#   --fixes-dry-run       run the fixes and the vendor load in report-only mode (nothing is written)
+#   --approve "01 03"     fixes marked "approval: required" run only when listed here (they change stock numbers)
+#   --writeoff-days N     expiry write-off: only batches expired more than N days ago (default 180)
 #   --cutoff YYYY-MM-DD   also settle COMPLETE purchase invoices dated before this (sql/prod-upgrade/opening_payables.sql)
 #   --assume-applied "001 003 ..."   migrations already on the target (default: 001 003 004 005 006 007)
 #   --scratch NAME        rehearse: scratch database name (default rgp_rehearsal)
@@ -36,13 +42,19 @@ export PGUSER
 mode="${1:-}"; shift || true
 dump=""; cutoff=""; scratch="rgp_rehearsal"; backup_dir="$ROOT/backups"; force=0; yes=0
 assume="001 003 004 005 006 007"
+skip_fixes=0; fixes_dry=0; approve=""; writeoff_days=180; arg1=""
 if [ "$mode" = "rehearse" ]; then dump="${1:-}"; shift || true; fi
+if [ "$mode" = "report" ] || [ "$mode" = "load-vendors" ]; then arg1="${1:-}"; shift || true; fi
 while [ $# -gt 0 ]; do
   case "$1" in
     --cutoff) cutoff="$2"; shift 2;;
     --assume-applied) assume="$2"; shift 2;;
     --scratch) scratch="$2"; shift 2;;
     --backup-dir) backup_dir="$2"; shift 2;;
+    --skip-fixes) skip_fixes=1; shift;;
+    --fixes-dry-run) fixes_dry=1; shift;;
+    --approve) approve="$2"; shift 2;;
+    --writeoff-days) writeoff_days="$2"; shift 2;;
     --force) force=1; shift;;
     --yes) yes=1; shift;;
     *) echo "unknown option: $1" >&2; exit 2;;
@@ -105,6 +117,24 @@ apply_migrations() {
   echo "  $applied migration(s) applied"
 }
 
+# Data fixes, in file order. Each file is safe to re-run. A file whose first line is "-- approval: required"
+# changes numbers people rely on (stock), so it is skipped unless its number is listed in --approve.
+apply_fixes() {
+  local db="$1" f n out
+  [ "$skip_fixes" = 1 ] && { echo "  (--skip-fixes)"; return; }
+  [ "$fixes_dry" = 1 ] && echo "  (dry run: nothing is written)"
+  for f in "$ROOT"/sql/prod-upgrade/fixes/[0-9][0-9]_*.sql; do
+    [ -f "$f" ] || continue
+    n=$(basename "$f" | cut -c1-2)
+    if head -1 "$f" | grep -q "approval: required" && ! echo " $approve " | grep -q " $n "; then
+      echo "  SKIPPED $(basename "$f") (needs --approve $n)"; continue
+    fi
+    out=$(psql_db "$db" -v dry_run="$fixes_dry" -v older_than_days="$writeoff_days" < "$f" 2>&1) \
+      || { echo "$out" | sed 's/^/  /'; die "fix $(basename "$f") failed; nothing after it was applied."; }
+    echo "$out" | { grep -E '^(FIX|ERROR)' || true; } | sed 's/^/  /'
+  done
+}
+
 settle_payables() {
   local db="$1"
   [ -n "$cutoff" ] || { echo "  (no --cutoff: purchase invoices stay Unpaid; see decision D4)"; return; }
@@ -134,6 +164,7 @@ run_upgrade() {
   local before; before="$(snapshot "$db"; stock_snapshot "$db")"
   echo "$before" | sed 's/^/  /' | head -12
   say "migrations"; ensure_tracking "$db"; apply_migrations "$db"
+  say "fixes"; apply_fixes "$db"
   say "opening payables"; settle_payables "$db"
   say "checks"; post_checks "$db" "$before"
 }
@@ -174,6 +205,27 @@ case "$mode" in
     ;;
   verify)
     snapshot "$PGDATABASE"; stock_snapshot "$PGDATABASE"
+    ;;
+  report)
+    [ -n "$arg1" ] || die "usage: $0 report <output dir>   (the files contain customer data: keep the folder outside the repo)"
+    mkdir -p "$arg1"
+    for f in "$ROOT"/sql/prod-upgrade/reports/*.sql; do
+      name=$(basename "$f" .sql)
+      body=$(grep -v '^--' "$f" | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}')
+      echo "COPY ($body) TO STDOUT WITH CSV HEADER" | psql_db "$PGDATABASE" > "$arg1/$name.csv"
+      printf '  %-28s %s rows\n' "$name.csv" "$(( $(wc -l < "$arg1/$name.csv") - 1 ))"
+    done
+    ;;
+  load-vendors)
+    [ -f "$arg1" ] || die "usage: $0 load-vendors <csv from reports/vendor_sheet.csv> [--fixes-dry-run]"
+    { echo "begin;"
+      echo "create temp table _v_in (vendor_id int, business_name text, gstn text, payment_terms_days text, contact_phone text, invoices text, purchased_last_12_months text);"
+      echo "copy _v_in from stdin with (format csv, header true);"
+      tr -d '\r' < "$arg1"
+      echo '\.'
+      cat "$ROOT/sql/prod-upgrade/sheets/load_vendors.sql"
+    } | psql_db "$PGDATABASE" -v dry_run="$fixes_dry" 2>&1 | { grep -E '^(LOAD|ERROR)|invalid_gstin|^ *[0-9]+ \|' || true; }
+    [ "${PIPESTATUS[1]}" = 0 ] || die "vendor load failed; nothing was changed."
     ;;
   *) sed -n '2,29p' "$0"; exit 2;;
 esac
