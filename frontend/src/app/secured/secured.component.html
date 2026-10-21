@@ -191,6 +191,11 @@
                 <i class="bi bi-circle"></i><span>Businesses</span>
               </a>
             </li>
+            <li *isAuth="'businessprofile'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/business-profile" data-testid="nav-settings-business-profile">
+                <i class="bi bi-circle"></i><span>Business details</span>
+              </a>
+            </li>
             <li *isAuth="'roles'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/roles" data-testid="nav-settings-roles">
                 <i class="bi bi-circle"></i><span>Roles</span>

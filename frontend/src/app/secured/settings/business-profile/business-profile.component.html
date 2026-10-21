@@ -1,0 +1,40 @@
+<div class="card mt-3" style="max-width:46rem">
+  <div class="card-body">
+    <h5 class="card-title">Business details</h5>
+    <p class="small text-muted">These appear on GST returns and reconciliation. The GSTIN is checked, and the state follows from it.</p>
+
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="biz-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="biz-error">{{error}}</div>
+
+    <form *ngIf="loaded" (ngSubmit)="save()" autocomplete="off">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Business name</label>
+          <input class="form-control" name="name" [(ngModel)]="form.name" maxlength="40" required data-testid="biz-name">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Legal name (as registered)</label>
+          <input class="form-control" name="legalname" [(ngModel)]="form.legalname" maxlength="120" data-testid="biz-legalname">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">GSTIN</label>
+          <input class="form-control text-uppercase" name="gstin" [(ngModel)]="form.gstin" maxlength="15" placeholder="15 characters" data-testid="biz-gstin">
+          <div class="form-text" *ngIf="stateFromGstin">State code {{stateFromGstin}}</div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">State code</label>
+          <input class="form-control" name="statecode" [ngModel]="stateFromGstin || form.statecode" (ngModelChange)="form.statecode = $event" [readonly]="!!stateFromGstin" maxlength="2" data-testid="biz-state">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Pincode</label>
+          <input class="form-control" name="pincode" [(ngModel)]="form.pincode" maxlength="6" data-testid="biz-pincode">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Address</label>
+          <textarea class="form-control" name="address" rows="2" [(ngModel)]="form.address" maxlength="200" data-testid="biz-address"></textarea>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-3" [disabled]="saving" data-testid="biz-save">Save</button>
+    </form>
+  </div>
+</div>

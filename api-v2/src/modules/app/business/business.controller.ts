@@ -22,6 +22,17 @@ export class BusinessController {
     return this.service.findAll();
   }
 
+  /** The Business Head's own business (static routes first, so they are not read as an id). */
+  @Get("mine")
+  async mine(@User() currentUser: any) {
+    return this.service.mine(currentUser);
+  }
+
+  @Put("mine")
+  async updateMine(@Body() body: any, @User() currentUser: any) {
+    return this.service.updateMine(currentUser, body);
+  }
+
   @Post()
   async create(@Body() body: any, @User() currentUser: any) {
     await this.assertAccess(currentUser);

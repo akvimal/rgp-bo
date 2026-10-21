@@ -24,6 +24,7 @@ import { DeliveryPartnerListComponent } from "./delivery-partners/components/del
 import { DeliveryPartnerFormComponent } from "./delivery-partners/components/delivery-partner-form.component";
 import { StoreSettingsComponent } from "./store/store-settings.component";
 import { BusinessesComponent } from "./businesses/businesses.component";
+import { BusinessProfileComponent } from "./business-profile/business-profile.component";
 import { NotificationsComponent } from "./notifications/notifications.component";
 
 const routes: Routes = [
@@ -47,6 +48,7 @@ const routes: Routes = [
       { path: 'edit/:id', component: DeliveryPartnerFormComponent }
     ]},
     { path: 'businesses', component: BusinessesComponent },
+    { path: 'business-profile', component: BusinessProfileComponent },
     { path: 'store', component: StoreSettingsComponent },
     { path: 'notifications', component: NotificationsComponent }
   ]},
@@ -67,6 +69,7 @@ const routes: Routes = [
       DeliveryPartnerFormComponent,
       StoreSettingsComponent,
       BusinessesComponent,
+      BusinessProfileComponent,
       NotificationsComponent
     ],
     imports: [

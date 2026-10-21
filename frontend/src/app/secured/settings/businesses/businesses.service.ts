@@ -12,6 +12,14 @@ export class BusinessesService {
     return this.http.get(`${this.apiurl}/businesses`);
   }
 
+  getMine() {
+    return this.http.get(`${this.apiurl}/businesses/mine`);
+  }
+
+  updateMine(body: any) {
+    return this.http.put(`${this.apiurl}/businesses/mine`, body);
+  }
+
   getStores() {
     return this.http.get(`${this.apiurl}/stores`);
   }

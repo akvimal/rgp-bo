@@ -440,11 +440,11 @@ export class GstService {
         const issues: Array<{ code: string; severity: 'blocker' | 'warning' | 'info'; text: string; count?: number; action?: string }> = [];
         if (!biz?.gstin || !biz.gstin_ok) {
             issues.push({ code: 'BUSINESS_GSTIN', severity: 'blocker', action: 'business',
-                text: biz?.gstin ? 'The business GSTIN is not valid. Correct it in Settings > Businesses.' : 'The business GSTIN is not set. Add it in Settings > Businesses.' });
+                text: biz?.gstin ? 'The business GSTIN is not valid. Correct it in Settings > Business details.' : 'The business GSTIN is not set. Add it in Settings > Business details.' });
         }
         if (!biz?.state_code) {
             issues.push({ code: 'BUSINESS_STATE', severity: 'warning', action: 'business',
-                text: 'The business state code is not set, so every purchase is treated as within the state (CGST and SGST). Add it in Settings > Businesses.' });
+                text: 'The business state code is not set, so every purchase is treated as within the state (CGST and SGST). Add it in Settings > Business details.' });
         }
         const withoutGstin = inv.complete - inv.with_gstin;
         const fillable = noGstin.filter((r: any) => r.can_fill).reduce((t: number, r: any) => t + r.invoices, 0);
