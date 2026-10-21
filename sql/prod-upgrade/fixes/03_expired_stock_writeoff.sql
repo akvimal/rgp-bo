@@ -16,10 +16,10 @@
   \set older_than_days 180
 \endif
 
-select u.id as actor_id
-  from app_user u join app_role r on r.id = u.role_id
- where r.name = 'Business Head' and u.active and not u.archive
- order by u.id limit 1 \gset
+select coalesce((select u.id from app_user u join app_role r on r.id = u.role_id
+                  where r.name = 'Business Head' and u.active and not u.archive order by u.id limit 1), 0) > 0 as has_actor,
+       coalesce((select u.id from app_user u join app_role r on r.id = u.role_id
+                  where r.name = 'Business Head' and u.active and not u.archive order by u.id limit 1), 0) as actor_id \gset
 
 create temp table _expired_wo as
 with sold as (
@@ -50,7 +50,7 @@ select count(*) as n, coalesce(sum(remaining), 0) as units,
 \if :dry_run
 \echo FIX 03: dry run, nothing written
 \else
-  \if :{?actor_id}
+  \if :has_actor
     insert into product_qtychange (item_id, qty, reason, reason_code, comments, status, store_id, created_by, updated_by)
     select item_id, -remaining, 'Expired', 'EXPIRED',
            'Opening clean-up at cutover: expired more than ' || :older_than_days || ' days before', 'APPROVED', store_id, :actor_id, :actor_id

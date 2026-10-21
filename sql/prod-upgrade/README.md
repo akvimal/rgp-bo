@@ -60,3 +60,27 @@ PGDATABASE=<db> scripts/prod-upgrade.sh load-vendors vendor_sheet.csv
 `fixes/NN_name.sql` run in order and must be safe to run twice. A first line `-- approval: required` makes the runner skip
 the file unless `--approve NN` is given. `reports/*.sql` are single read-only SELECTs. `sheets/` hold the loaders.
 
+## Opening stock (shelf count)
+
+The books show almost no stock because purchases were not all entered (see `docs/testing/prod-data-fixes.md`, item 2).
+The count is done on the shelf at cutover and posted so the POS can sell what is really there.
+
+```bash
+# 1. sheet: one line per active product, in category / title order (reports/opening_stock_sheet.csv)
+PGDATABASE=<db> scripts/prod-upgrade.sh report D:/workspace/rgp-migration/reports
+
+# 2. fill strips + loose_units, and batch + expiry (YYYY-MM) for what is on the shelf; add a line per extra batch.
+#    Blank strips AND loose_units = not counted (product untouched). Write 0 for "none on the shelf".
+# 3. check, then post
+PGDATABASE=<db> scripts/prod-upgrade.sh load-opening-stock count.csv --fixes-dry-run
+PGDATABASE=<db> scripts/prod-upgrade.sh load-opening-stock count.csv
+```
+
+For each counted product the books end up equal to the count: a batch that matches a line (batch no. + expiry month) is
+adjusted to the counted units, every other batch of that product is adjusted to zero, and an unmatched line becomes a new
+batch on an `OPENING-<date>` purchase invoice (vendor `OPENING STOCK`, total 0, so it never shows in payables or GST
+reconciliation; costed from the product's latest purchase unless `mrp` and `ptr` are given). Adjustments are approved
+"Opening stock" corrections. Rows with bad numbers, a missing or past expiry, an unknown product or a duplicate batch stop
+the whole load with a list of the problems. Running the same sheet again changes nothing. Do the count with the shop
+closed and load it during the freeze, before the new app opens.
+

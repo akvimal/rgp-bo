@@ -6,6 +6,7 @@
 #   verify            print the invariants for a database (no changes)
 #   report <outdir>   write the review lists (sql/prod-upgrade/reports) as CSV files, read-only
 #   load-vendors <csv>  load a filled-in vendor sheet (GSTIN, payment terms, phone); add --fixes-dry-run to rehearse it
+#   load-opening-stock <csv>  post a shelf count (reports/opening_stock_sheet.csv) as the stock on the books; --fixes-dry-run first
 #
 # Both modes run identical steps: pre-snapshot -> migrations -> optional opening payables -> post-check
 # that history is unchanged. Applied files are recorded in schema_migrations, so a re-run only applies
@@ -44,7 +45,7 @@ dump=""; cutoff=""; scratch="rgp_rehearsal"; backup_dir="$ROOT/backups"; force=0
 assume="001 003 004 005 006 007"
 skip_fixes=0; fixes_dry=0; approve=""; writeoff_days=180; arg1=""
 if [ "$mode" = "rehearse" ]; then dump="${1:-}"; shift || true; fi
-if [ "$mode" = "report" ] || [ "$mode" = "load-vendors" ]; then arg1="${1:-}"; shift || true; fi
+if [ "$mode" = "report" ] || [ "$mode" = "load-vendors" ] || [ "$mode" = "load-opening-stock" ]; then arg1="${1:-}"; shift || true; fi
 while [ $# -gt 0 ]; do
   case "$1" in
     --cutoff) cutoff="$2"; shift 2;;
@@ -227,5 +228,16 @@ case "$mode" in
     } | psql_db "$PGDATABASE" -v dry_run="$fixes_dry" 2>&1 | { grep -E '^(LOAD|ERROR)|invalid_gstin|^ *[0-9]+ \|' || true; }
     [ "${PIPESTATUS[1]}" = 0 ] || die "vendor load failed; nothing was changed."
     ;;
-  *) sed -n '2,29p' "$0"; exit 2;;
+  load-opening-stock)
+    [ -f "$arg1" ] || die "usage: $0 load-opening-stock <csv from reports/opening_stock_sheet.csv> [--fixes-dry-run]"
+    { echo "begin;"
+      echo "create temp table _o_in (product_id text, title text, pack text, category text, system_units text, units_sold_90d text, strips text, loose_units text, batch text, expiry text, mrp text, ptr text);"
+      echo "copy _o_in from stdin with (format csv, header true);"
+      tr -d '\r' < "$arg1"
+      echo '\.'
+      cat "$ROOT/sql/prod-upgrade/sheets/load_opening_stock.sql"
+    } | psql_db "$PGDATABASE" -v dry_run="$fixes_dry" 2>&1 | { grep -E '^(LOAD|ERROR)|^ *LOAD ' || true; }
+    [ "${PIPESTATUS[1]}" = 0 ] || die "opening stock load failed; nothing was changed."
+    ;;
+  *) sed -n '2,32p' "$0"; exit 2;;
 esac
