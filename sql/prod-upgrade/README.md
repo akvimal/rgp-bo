@@ -66,7 +66,8 @@ The books show almost no stock because purchases were not all entered (see `docs
 The count is done on the shelf at cutover and posted so the POS can sell what is really there.
 
 ```bash
-# 1. sheet: one line per active product, in category / title order (reports/opening_stock_sheet.csv)
+# 1. sheets: opening_stock_priority.csv (about 160 products sold recently with nothing sellable on the books: count in the freeze)
+#    and opening_stock_sheet.csv (every active product, in category / title order, for the full count in the following weeks)
 PGDATABASE=<db> scripts/prod-upgrade.sh report D:/workspace/rgp-migration/reports
 
 # 2. fill strips + loose_units, and batch + expiry (YYYY-MM) for what is on the shelf; add a line per extra batch.
