@@ -313,6 +313,8 @@ export class PurchaseInvoiceService {
       .leftJoinAndSelect("invoice.payments", "payments")
       .select(['invoice', 'vendor.id', 'vendor.name', 'payments'])
       .where('invoice.isActive = :flag', { flag: true })
+      // a draft invoice has not been received, so nothing is owed on it yet (and a payment against it is refused)
+      .andWhere("invoice.status = 'COMPLETE'")
       .orderBy('invoice.invoicedate', 'DESC');
 
     if (query.vendorid) {

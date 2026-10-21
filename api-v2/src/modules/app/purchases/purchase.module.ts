@@ -1,3 +1,4 @@
+import { InvoiceViewService } from "./invoice-view.service";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -45,7 +46,7 @@ import { PurchaseDownloadController } from "./purchase-download.controller";
       PurchaseItemController,
       VendorPaymentController,
       PurchaseDownloadController],
-    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,JwtService],
+    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,InvoiceViewService,JwtService],
     exports: [PurchaseService,PurchaseInvoiceService,VendorPaymentService],
   })
   export class PurchaseModule {}

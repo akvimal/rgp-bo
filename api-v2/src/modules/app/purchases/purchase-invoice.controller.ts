@@ -1,6 +1,7 @@
 import { PurchaseInvoiceService } from "./purchase-invoice.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { InvoiceViewService } from "./invoice-view.service";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { UpdateInvoicesDto } from "./dto/update-invoices.dto";
@@ -12,7 +13,39 @@ import { User } from "src/core/decorator/user.decorator";
 @UseGuards(AuthGuard)
 export class PurchaseInvoiceController {
 
-    constructor(private purchaseInvoiceService:PurchaseInvoiceService){}
+    constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService){}
+
+    private filterOf(q:any){
+      return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, q: q.q };
+    }
+
+    /** The invoice list: view = all | pending | overdue | due7 | hold | paid | draft, with vendor / date / invoice-no filters and paging. */
+    @Get('/search')
+    async search(@Query() q:any) {
+      return this.view.search(this.filterOf(q), q.view, q.sort, q.dir, q.page ? +q.page : 1, q.limit ? +q.limit : 25);
+    }
+
+    /** Totals for the chips above the list. */
+    @Get('/summary')
+    async summary(@Query() q:any) {
+      return this.view.summary(this.filterOf(q));
+    }
+
+    @Get('/:id/payments')
+    async payments(@Param('id', ParseIntPipe) id:number) {
+      return this.view.payments(id);
+    }
+
+    @Post('/:id/hold')
+    async hold(@Param('id', ParseIntPipe) id:number, @Body() body:any, @User() currentUser:any) {
+      if(typeof body?.reason !== 'string') throw new BadRequestException('Give a reason.');
+      return this.view.hold(id, body.reason, currentUser.id);
+    }
+
+    @Post('/:id/release')
+    async release(@Param('id', ParseIntPipe) id:number, @User() currentUser:any) {
+      return this.view.release(id, currentUser.id);
+    }
 
     @Get('/outstanding')
     async findOutstanding(@Query() query: any) {

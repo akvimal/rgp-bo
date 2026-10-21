@@ -8,105 +8,173 @@
       </div>
     </div>
   </div>
-  <div class="col-12 mt-2" *ngIf="vendorId" data-testid="inv-vendor-filter">
-    <span class="badge bg-primary fs-6 fw-normal">
-      Vendor: {{vendorName || ('#' + vendorId)}}
-      <a class="text-white ms-2" role="button" title="Show all vendors" data-testid="inv-vendor-clear" [routerLink]="[]" [queryParams]="{vendor: null}" queryParamsHandling="merge">&times;</a>
-    </span>
+
+  <!-- what is pending: one button per view, with live totals -->
+  <div class="col-12 mt-3" data-testid="inv-chips" *ngIf="summary">
+    <div class="row g-2">
+      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'pending' ? 'btn-primary' : 'btn-outline-primary'" data-testid="inv-chip-pending" (click)="setView('pending')">
+        <div class="small">Pending</div><div class="fs-6 fw-bold">&#8377;{{summary.pending.amount | number:'1.0-0'}}</div><div class="small">{{summary.pending.count}} invoice{{summary.pending.count === 1 ? '' : 's'}}</div></button></div>
+      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'overdue' ? 'btn-danger' : 'btn-outline-danger'" data-testid="inv-chip-overdue" (click)="setView('overdue')">
+        <div class="small">Overdue</div><div class="fs-6 fw-bold">&#8377;{{summary.overdue.amount | number:'1.0-0'}}</div><div class="small">{{summary.overdue.count}} invoice{{summary.overdue.count === 1 ? '' : 's'}}</div></button></div>
+      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'due7' ? 'btn-info' : 'btn-outline-info'" data-testid="inv-chip-due7" (click)="setView('due7')">
+        <div class="small">Due in 7 days</div><div class="fs-6 fw-bold">&#8377;{{summary.due7.amount | number:'1.0-0'}}</div><div class="small">{{summary.due7.count}} invoice{{summary.due7.count === 1 ? '' : 's'}}</div></button></div>
+      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'hold' ? 'btn-warning' : 'btn-outline-warning'" data-testid="inv-chip-hold" (click)="setView('hold')">
+        <div class="small">On hold</div><div class="fs-6 fw-bold">&#8377;{{summary.hold.amount | number:'1.0-0'}}</div><div class="small">{{summary.hold.count}} invoice{{summary.hold.count === 1 ? '' : 's'}}</div></button></div>
+      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'paid' ? 'btn-success' : 'btn-outline-success'" data-testid="inv-chip-paid" (click)="setView('paid')">
+        <div class="small">Paid</div><div class="fs-6 fw-bold">&#8377;{{summary.paid.amount | number:'1.0-0'}}</div><div class="small">{{summary.paid.count}} invoice{{summary.paid.count === 1 ? '' : 's'}}</div></button></div>
+      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'draft' ? 'btn-secondary' : 'btn-outline-secondary'" data-testid="inv-chip-draft" (click)="setView('draft')" title="Entered but not received: nothing is owed on these yet">
+        <div class="small">Drafts</div><div class="fs-6 fw-bold">&#8377;{{summary.draft.amount | number:'1.0-0'}}</div><div class="small">{{summary.draft.count}} not received</div></button></div>
+    </div>
   </div>
-  <div class="col-12">
-    <p-table #dt1 [value]="invoices"
-    [lazy]="!isOutstanding" (onLazyLoad)="loadInvoices($event)"
-    [totalRecords]="totalRecords" [loading]="loading"
-    [multiSortMeta]="[{field: 'invoice_date', order: -1}]"
-    [resizableColumns]="true" columnResizeMode="expand"
-    [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-        [rowsPerPageOptions]="[10,25,50]">
-    <!-- <table *isAuth="'purchases.read'" class="table table-bordered mt-3"> -->
-      <!-- <thead> -->
-    <ng-template pTemplate="header">
-    <tr>
-      <!-- <th pSortableColumn="id">ID
-        <p-sortIcon field="id"></p-sortIcon>
-      </th> -->
-      <th pSortableColumn="invoice_no">No.
-        <p-sortIcon field="invoice_no"></p-sortIcon>
-        <p-columnFilter type="text" field="invoice_no" display="menu"></p-columnFilter>
-      </th>
-      <th pSortableColumn="invoice_date">Date
-        <p-sortIcon field="invoice_date"></p-sortIcon>
-        <p-columnFilter type="date" field="invoice_date" display="menu"></p-columnFilter>
-      </th>
-      <th pSortableColumn="due_date">Due
-        <p-sortIcon field="due_date"></p-sortIcon>
-      </th>
-      <th pSortableColumn="business_name">Vendor
-        <p-sortIcon field="business_name"></p-sortIcon>
-        <p-columnFilter type="text" field="business_name" display="menu"></p-columnFilter>
-      </th>
-      
-      <th pSortableColumn="items">Items</th>
-      <th pSortableColumn="total">Amount
-        <p-sortIcon field="total"></p-sortIcon>
-        <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
-      </th>
-      <th pSortableColumn="paid_amount">Paid
-        <p-sortIcon field="paid_amount"></p-sortIcon>
-      </th>
-      <th pSortableColumn="balance_amount">Balance
-        <p-sortIcon field="balance_amount"></p-sortIcon>
-      </th>
-      <th pSortableColumn="status">Status
-        <p-sortIcon field="status"></p-sortIcon>
-        <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
-      </th>
-      <th pSortableColumn="payment_status">Payment
-        <p-sortIcon field="payment_status"></p-sortIcon>
-        <p-columnFilter type="text" field="payment_status" display="menu"></p-columnFilter>
-      </th>
-      <!-- <th  pSortableColumn="category">Actions</th> -->
-      <!-- <th></th> -->
-    </tr>
-  </ng-template>
-  <!-- </thead>
-  <tbody> -->
-    <ng-template pTemplate="body" let-p>
-    <!-- <tr *ngFor="let p of invoices"> -->
-      <!-- <td>{{p.id}}</td> -->
-      <tr data-testid="inv-row" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount">
-        <!-- <td>{{p.id}}</td> -->
-        <td><a [routerLink]="['../items',p.id]">{{p.invoice_no}}</a></td>
-      <td style="text-align: center;">{{p.invoice_date | date : 'dd/MM/yy'}}</td>
-      <td style="text-align: center;">{{p.due_date | date : 'dd/MM/yy'}}</td>
-      <td>{{p.business_name}}</td>
-      <td style="text-align: center;">{{p.items}}</td>
-      <td style="text-align: right">{{p.total | number:'0.0-9'}}</td>
-      <td style="text-align: right">{{p.paid_amount | number:'0.0-9'}}</td>
-      <td style="text-align: right" data-testid="inv-balance">{{p.balance_amount | number:'0.0-9'}}</td>
-      <td style="text-align: center;">{{p.status}}</td>
-      <td style="text-align: center;">{{p.payment_status}}</td>
-      <!-- <td>
-        <span *ngIf="p.status === 'NEW'">
-      <a *isAuth="'purchases.edit'" [routerLink]="['../edit', p.id]">
-        <i class="bi bi-pencil text-primary"></i>
-      </a>
-        <a *isAuth="'purchases.delete'" (click)="delete(p.id)"><i class="bi bi-trash text-danger"></i></a>
-      </span>
-      </td> -->
-      <!-- <td>
-        <a (click)="delete(p.id)">
-          <i class="bi bi-trash text-danger"></i>
-        </a>
-      </td> -->
-    </tr>
-  <!-- </tbody>
-</table> -->
-</ng-template>
-</p-table>
+
+  <!-- filters -->
+  <div class="col-12 mt-3">
+    <div class="row g-2 align-items-end" data-testid="inv-filters">
+      <div class="col-md-3" data-testid="inv-vendor-filter">
+        <label class="form-label small mb-0">Vendor</label>
+        <select class="form-select form-select-sm" data-testid="inv-vendor" [ngModel]="vendorId" (ngModelChange)="setVendor($event)">
+          <option [ngValue]="null">All vendors</option>
+          <option *ngFor="let v of vendors" [ngValue]="v.id">{{v.name}}<span *ngIf="v.status !== 'ACTIVE'"> ({{v.status | lowercase}})</span></option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">Invoice date from</label><input type="date" class="form-control form-control-sm" data-testid="inv-from" [(ngModel)]="from" (change)="applyFilters()"></div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">to</label><input type="date" class="form-control form-control-sm" data-testid="inv-to" [(ngModel)]="to" (change)="applyFilters()"></div>
+      <div class="col-md-3"><label class="form-label small mb-0">Invoice no.</label><input class="form-control form-control-sm" placeholder="part of the number" data-testid="inv-search" [(ngModel)]="q" (keyup.enter)="applyFilters()" (change)="applyFilters()"></div>
+      <div class="col-md-2 text-md-end"><button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="hasFilters || view !== (isOutstanding ? 'pending' : 'all')" data-testid="inv-clear" (click)="clearFilters()">Clear filters</button></div>
+    </div>
+  </div>
+
+  <div class="col-12 mt-2" *ngIf="message"><div class="alert alert-success py-2 mb-0" data-testid="inv-message">{{message}}</div></div>
+  <div class="col-12 mt-2" *ngIf="error"><div class="alert alert-danger py-2 mb-0" data-testid="inv-error">{{error}}</div></div>
+
+  <div class="col-12 mt-3">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle" data-testid="inv-table">
+        <thead class="table-light">
+          <tr>
+            <th role="button" (click)="sortBy('invoice_no')">No. {{sortIcon('invoice_no')}}</th>
+            <th role="button" (click)="sortBy('invoice_date')">Date {{sortIcon('invoice_date')}}</th>
+            <th role="button" (click)="sortBy('due_date')">Due {{sortIcon('due_date')}}</th>
+            <th role="button" (click)="sortBy('business_name')">Vendor {{sortIcon('business_name')}}</th>
+            <th class="text-end" role="button" (click)="sortBy('total')">Amount {{sortIcon('total')}}</th>
+            <th class="text-end" role="button" (click)="sortBy('paid_amount')">Paid {{sortIcon('paid_amount')}}</th>
+            <th class="text-end" role="button" (click)="sortBy('balance_amount')">Balance {{sortIcon('balance_amount')}}</th>
+            <th class="text-center" role="button" (click)="sortBy('payment_status')">Payment {{sortIcon('payment_status')}}</th>
+            <th class="text-center" title="GST 2B reconciliation">GST</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of invoices" data-testid="inv-row" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount">
+            <td class="text-nowrap"><a [routerLink]="['../items', p.id]">{{p.invoice_no}}</a><div class="small text-muted" *ngIf="p.items === 0">no items</div></td>
+            <td class="text-nowrap">{{p.invoice_date | date:'dd/MM/yy'}}</td>
+            <td class="text-nowrap">{{p.due_date | date:'dd/MM/yy'}}<div class="small text-danger" *ngIf="p.days_overdue > 0" data-testid="inv-late">{{p.days_overdue}} day{{p.days_overdue === 1 ? '' : 's'}} late</div></td>
+            <td>{{p.business_name}}</td>
+            <td class="text-end">{{p.total | number:'1.2-2'}}</td>
+            <td class="text-end">{{p.paid_amount | number:'1.2-2'}}<div class="small text-muted" *ngIf="p.last_payment">{{p.last_payment | date:'dd MMM'}}</div></td>
+            <td class="text-end fw-semibold" data-testid="inv-balance" [class.text-danger]="p.days_overdue > 0">{{p.balance_amount | number:'1.2-2'}}</td>
+            <td class="text-center"><span class="badge" [ngClass]="payClass(p.payment_status)" data-testid="inv-payment">{{p.payment_status}}</span>
+              <div class="small text-muted" *ngIf="p.on_hold" [title]="p.hold_reason">{{p.hold_reason}}</div></td>
+            <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
+            <td class="text-end text-nowrap">
+              <button class="btn btn-primary btn-sm py-0" data-testid="inv-pay" *ngIf="canPay(p)" (click)="openPay(p)" title="Record a payment">Pay</button>
+              <button class="btn btn-outline-secondary btn-sm py-0 ms-1" data-testid="inv-history" *ngIf="p.payments > 0" (click)="openHistory(p)" title="Payments recorded">Payments</button>
+              <button class="btn btn-outline-warning btn-sm py-0 ms-1" data-testid="inv-hold" *ngIf="p.status === 'COMPLETE' && p.balance_amount > 0 && !p.on_hold" (click)="openHold(p)" title="Hold: no payment until released">Hold</button>
+              <button class="btn btn-warning btn-sm py-0 ms-1" data-testid="inv-release" *ngIf="p.on_hold" (click)="release(p)">Release</button>
+            </td>
+          </tr>
+          <tr *ngIf="!loading && !invoices.length"><td colspan="10" class="text-center text-muted py-4" data-testid="inv-empty">No invoices match.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="small text-muted" data-testid="inv-count">{{total}} invoice{{total === 1 ? '' : 's'}}</div>
+      <div class="d-flex align-items-center gap-2">
+        <select class="form-select form-select-sm w-auto" [(ngModel)]="rows" (change)="changeRows()"><option *ngFor="let n of pageSizes" [ngValue]="n">{{n}} per page</option></select>
+        <button class="btn btn-outline-secondary btn-sm" data-testid="inv-prev" [disabled]="page <= 1" (click)="go(-1)">Previous</button>
+        <span class="small">Page {{page}} of {{pages}}</span>
+        <button class="btn btn-outline-secondary btn-sm" data-testid="inv-next" [disabled]="page >= pages" (click)="go(1)">Next</button>
+      </div>
+    </div>
   </div>
 </div>
-<p-dialog [header]="'Warning'" (onHide)="closeDeleteWarn()"
-[(visible)]="displayError" [modal]="true">
-    ERROR: {{errorMessage}}
+
+<!-- record a payment -->
+<p-dialog [header]="'Pay ' + (payInv?.invoice_no || '')" [visible]="!!payInv" (visibleChange)="$event || (payInv = null)" [modal]="true" [style]="{width:'34rem'}">
+  <div *ngIf="payInv" data-testid="inv-pay-dialog">
+    <div class="small text-muted mb-2">{{payInv.business_name}} &middot; balance &#8377;{{payInv.balance_amount | number:'1.2-2'}}</div>
+    <div class="row g-2">
+      <div class="col-6"><label class="form-label small mb-0">Date</label><input type="date" class="form-control form-control-sm" [(ngModel)]="pay.paydate"></div>
+      <div class="col-6"><label class="form-label small mb-0">Amount</label><input type="number" min="0" class="form-control form-control-sm" data-testid="inv-pay-amount" [(ngModel)]="pay.amount"></div>
+      <div class="col-6"><label class="form-label small mb-0">Paid by</label>
+        <select class="form-select form-select-sm" data-testid="inv-pay-mode" [(ngModel)]="pay.paymode"><option *ngFor="let m of modes" [value]="m">{{m}}</option></select></div>
+      <div class="col-6"><label class="form-label small mb-0">Reference (UTR / cheque no.)</label><input class="form-control form-control-sm" maxlength="40" data-testid="inv-pay-ref" [(ngModel)]="pay.transref"></div>
+      <div class="col-12"><label class="form-label small mb-0">Remarks</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="pay.remarks"></div>
+    </div>
+    <div class="text-danger small mt-2" *ngIf="payError" data-testid="inv-pay-error">{{payError}}</div>
+    <div class="mt-3 text-end">
+      <button class="btn btn-outline-secondary btn-sm me-2" (click)="payInv = null">Cancel</button>
+      <button class="btn btn-primary btn-sm" data-testid="inv-pay-save" [disabled]="paying" (click)="savePay()">Record payment</button>
+    </div>
+  </div>
+</p-dialog>
+
+<!-- payments of one invoice: correct the details, or reverse -->
+<p-dialog [header]="'Payments on ' + (histInv?.invoice_no || '')" [visible]="!!histInv" (visibleChange)="$event || (histInv = null)" [modal]="true" [style]="{width:'60rem'}">
+  <div *ngIf="histInv" data-testid="inv-history-dialog">
+    <div class="small text-muted mb-2">{{histInv.business_name}} &middot; invoice &#8377;{{histInv.total | number:'1.2-2'}}. Reference, mode, date and remarks can be corrected. The amount cannot: reverse the payment and record the right one.</div>
+    <table class="table table-sm align-middle">
+      <thead class="table-light"><tr><th>Date</th><th class="text-end">Amount</th><th>Paid by</th><th>Reference</th><th>Remarks</th><th>Recorded by</th><th></th></tr></thead>
+      <tbody>
+        <ng-container *ngFor="let p of payments">
+          <tr data-testid="inv-pay-row" [class.text-muted]="p.status === 'REVERSED'" [class.fst-italic]="p.reversesid">
+            <ng-container *ngIf="editId !== p.id; else editing">
+              <td class="text-nowrap">{{p.paydate | date:'dd/MM/yy'}}</td>
+              <td class="text-end">{{p.amount | number:'1.2-2'}}</td>
+              <td>{{p.paymode}}</td>
+              <td>{{p.transref}}</td>
+              <td class="small">{{p.remarks}}<span *ngIf="p.status === 'REVERSED'" class="badge bg-secondary ms-1">reversed</span><span *ngIf="p.reversesid" class="badge bg-light text-dark border ms-1">reversal</span></td>
+              <td class="small">{{p.createdby}}<div class="text-muted">{{p.createdon | date:'dd MMM, HH:mm'}}</div></td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-outline-primary btn-sm py-0" data-testid="inv-pay-edit" *ngIf="isEditable(p)" (click)="startEdit(p)">Edit</button>
+                <button class="btn btn-outline-danger btn-sm py-0 ms-1" data-testid="inv-pay-reverse" *ngIf="isEditable(p) && p.amount > 0" (click)="askReverse(p)">Reverse</button>
+              </td>
+            </ng-container>
+            <ng-template #editing>
+              <td><input type="date" class="form-control form-control-sm" [(ngModel)]="edit.paydate"></td>
+              <td class="text-end">{{p.amount | number:'1.2-2'}}</td>
+              <td><select class="form-select form-select-sm" [(ngModel)]="edit.paymode"><option *ngFor="let m of modeOptions()" [value]="m">{{m}}</option></select></td>
+              <td><input class="form-control form-control-sm" maxlength="40" data-testid="inv-edit-ref" [(ngModel)]="edit.transref"></td>
+              <td><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="edit.remarks"></td>
+              <td></td>
+              <td class="text-end text-nowrap"><button class="btn btn-primary btn-sm py-0" data-testid="inv-edit-save" (click)="saveEdit()">Save</button> <button class="btn btn-outline-secondary btn-sm py-0 ms-1" (click)="editId = null">Cancel</button></td>
+            </ng-template>
+          </tr>
+        </ng-container>
+        <tr *ngIf="!payments.length"><td colspan="7" class="text-center text-muted py-3">No payments recorded.</td></tr>
+      </tbody>
+    </table>
+    <div class="text-danger small" *ngIf="editError" data-testid="inv-edit-error">{{editError}}</div>
+    <div class="border rounded p-2 bg-light mt-2" *ngIf="reversing" data-testid="inv-reverse-form">
+      Reverse the payment of &#8377;{{reversing.amount | number:'1.2-2'}} ({{reversing.transref || reversing.paymode}})? The invoice balance goes back up and a reversal line is kept.
+      <div class="input-group input-group-sm mt-2">
+        <input class="form-control" placeholder="Reason (optional)" maxlength="200" [(ngModel)]="reverseReason">
+        <button class="btn btn-danger" data-testid="inv-reverse-confirm" (click)="confirmReverse()">Reverse</button>
+        <button class="btn btn-outline-secondary" (click)="reversing = null">Cancel</button>
+      </div>
+    </div>
+  </div>
+</p-dialog>
+
+<!-- hold -->
+<p-dialog [header]="'Hold ' + (holdInv?.invoice_no || '')" [visible]="!!holdInv" (visibleChange)="$event || (holdInv = null)" [modal]="true" [style]="{width:'30rem'}">
+  <div *ngIf="holdInv" data-testid="inv-hold-dialog">
+    <div class="small text-muted mb-2">No payment can be recorded against a held invoice until you release it.</div>
+    <input class="form-control form-control-sm" maxlength="200" placeholder="Why? e.g. rate differs from the PO" data-testid="inv-hold-reason" [(ngModel)]="holdReason" (keyup.enter)="saveHold()">
+    <div class="text-danger small mt-1" *ngIf="holdError" data-testid="inv-hold-error">{{holdError}}</div>
+    <div class="mt-3 text-end">
+      <button class="btn btn-outline-secondary btn-sm me-2" (click)="holdInv = null">Cancel</button>
+      <button class="btn btn-warning btn-sm" data-testid="inv-hold-save" (click)="saveHold()">Put on hold</button>
+    </div>
+  </div>
 </p-dialog>

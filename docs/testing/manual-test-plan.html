@@ -691,6 +691,20 @@
       ]
     },
     {
+      id: "invoiceview", name: "Purchase Invoices — Pending, Payments and Holds",
+      blurb: "The invoice list for the person who pays: totals for Pending, Overdue, Due in 7 days, On hold, Paid and Drafts; filters by vendor, date and invoice number; per-invoice payments with corrections, reversal and hold. A draft invoice is not received, so nothing is owed on it. Needs migration 045. PINV-7 and PINV-8 are manual only.",
+      cases: [
+        { id:"PINV-1", feature:"Totals", tag:"integration", scenario:"Chips match the lists", steps:"Open Purchase > Invoices. Click each chip and compare its count and amount with the rows listed.", expected:"Each chip's count equals the number of rows of its list and its amount equals the sum of the balances. Overdue, due-in-7-days and on-hold are parts of Pending." },
+        { id:"PINV-2", feature:"Drafts", tag:"edge", scenario:"Drafts are not owed", steps:"Find a draft invoice. Look for it under Pending, Outstanding and Payables, and try to pay it.", expected:"It appears only under Drafts, in none of the owed lists, and a payment against it is refused." },
+        { id:"PINV-3", feature:"Filters", tag:"happy", scenario:"Filters and paging", steps:"Filter by one vendor, then by part of an invoice number, then by a date range. Change page size and page.", expected:"Only matching invoices are listed, the count updates, and paging shows every invoice once." },
+        { id:"PINV-4", feature:"Payment info", tag:"integration", scenario:"Correct a payment, never its amount", steps:"Record a payment. Open its Payments panel and change the reference, mode, date and remarks. Try to change the amount. Reverse the payment, then try to edit it.", expected:"Details can be corrected and each change is in the Audit log. The amount cannot be changed (reverse and re-record instead). A reversed payment and its reversal line cannot be edited." },
+        { id:"PINV-5", feature:"Hold", tag:"edge", scenario:"Hold and release", steps:"Put a pending invoice on hold with a reason, try to pay it, then release it.", expected:"It shows On hold with its reason and cannot be paid. After release it can be paid again. Both steps are in the Audit log." },
+        { id:"PINV-6", feature:"Pay from the list", tag:"happy", scenario:"Record a payment from the list", steps:"Click Pay on a pending invoice, enter amount, mode and reference, and save.", expected:"The payment is recorded, the balance and the chip totals drop, and the payment appears in the invoice's Payments panel." },
+        { id:"PINV-7", feature:"Navigation", tag:"happy", scenario:"From the Vendors list", steps:"On Vendors, follow a vendor's invoice count and its Owed amount.", expected:"The list opens filtered to that vendor (Invoices or Outstanding), with the vendor selected, and Clear filters returns to all vendors." },
+        { id:"PINV-8", feature:"GST", tag:"happy", scenario:"GST badge", steps:"Look at the GST column of received invoices before and after importing 2B for the period and running the match.", expected:"Not checked before; Matched, Probable, Mismatch or Missing in 2B after the match." }
+      ]
+    },
+    {
       id: "crosscutting", name: "Cross-Cutting: Permissions & Data Integrity",
       blurb: "Checks that span modules — authorization enforcement, concurrency, and failure handling.",
       cases: [

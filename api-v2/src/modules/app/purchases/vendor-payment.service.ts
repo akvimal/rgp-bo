@@ -3,12 +3,14 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { VendorPayment } from "src/entities/vendor-payment.entity";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
+import { AuditService } from "src/core/audit/audit.service";
 
 @Injectable()
 export class VendorPaymentService {
     constructor(
         @InjectRepository(VendorPayment) private readonly paymentRepository: Repository<VendorPayment>,
         @InjectRepository(PurchaseInvoice) private readonly invoiceRepository: Repository<PurchaseInvoice>,
+        private readonly audit: AuditService,
     ) {}
 
     async create(dto: any, userid: number) {
@@ -60,13 +62,62 @@ export class VendorPaymentService {
         });
     }
 
-    update(id: number, dto: any, userid: number) {
-        return this.paymentRepository.update(id, {
-            ...dto,
-            communicatedat: dto.communicatedat ? new Date(dto.communicatedat) : null,
-            acknowledgedat: dto.acknowledgedat ? new Date(dto.acknowledgedat) : null,
-            updatedby: userid,
-        });
+    /**
+     * Corrects the details of a recorded payment: mode, reference (UTR / cheque no.), date, remarks and the
+     * communication fields. Only what is sent changes. The amount, invoice and vendor can never be changed here:
+     * reverse the payment and record the right one instead. Every change is written to the audit log.
+     */
+    async update(id: number, dto: any, userid: number) {
+        const cur = await this.paymentRepository.findOne({ where: { id } });
+        if (!cur) throw new NotFoundException('Payment not found.');
+        for (const k of ['amount', 'invoiceid', 'vendorid']) {
+            if (dto?.[k] !== undefined && Number(dto[k]) !== Number((cur as any)[k])) {
+                throw new BadRequestException('The amount, invoice and vendor of a recorded payment cannot be changed. Reverse it and record the right one.');
+            }
+        }
+        if (cur.status === 'REVERSED' || (cur as any).reversesid) {
+            throw new BadRequestException('A reversed payment, and the entry that reverses it, cannot be edited.');
+        }
+        const patch: any = {};
+        const text = (k: string, max: number, label: string) => {
+            if (dto?.[k] === undefined) return;
+            const v = dto[k] === null ? null : String(dto[k]).trim();
+            if (v && v.length > max) throw new BadRequestException(`${label} is too long (${max} characters at most).`);
+            patch[k] = v || null;
+        };
+        if (dto?.paymode !== undefined) {
+            const m = String(dto.paymode ?? '').trim();
+            if (!m) throw new BadRequestException('Choose how it was paid.');
+            if (m.length > 30) throw new BadRequestException('Payment mode is too long.');
+            patch.paymode = m;
+        }
+        text('transref', 40, 'The reference');
+        text('remarks', 200, 'Remarks');
+        text('communicationstatus', 30, 'Communication status');
+        text('communicationchannel', 30, 'Communication channel');
+        text('acknowledgementreference', 60, 'Acknowledgement reference');
+        if (dto?.paydate !== undefined) {
+            const d = String(dto.paydate ?? '').slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new BadRequestException('The payment date must be YYYY-MM-DD.');
+            if (d > new Date().toISOString().slice(0, 10)) throw new BadRequestException('The payment date cannot be in the future.');
+            patch.paydate = d;
+        }
+        for (const k of ['communicatedat', 'acknowledgedat']) {
+            if (dto?.[k] !== undefined) patch[k] = dto[k] ? new Date(dto[k]) : null;
+        }
+
+        const before: any = {}, after: any = {};
+        for (const k of Object.keys(patch)) {
+            const was = (cur as any)[k];
+            const norm = (x: any) => (x instanceof Date ? x.toISOString().slice(0, 10) : x ?? null);
+            if (String(norm(was)) !== String(norm(patch[k]))) { before[k] = norm(was); after[k] = norm(patch[k]); }
+        }
+        if (!Object.keys(after).length) return this.paymentRepository.findOne({ where: { id } });
+
+        await this.paymentRepository.update(id, { ...patch, updatedby: userid });
+        await this.audit.record({ userId: userid, action: 'payment.info_updated', entityType: 'vendorpayments', entityId: id,
+            summary: `payment #${id} details changed (${Object.keys(after).join(', ')})`, details: { before, after, invoiceid: cur.invoiceid } });
+        return this.paymentRepository.findOne({ where: { id } });
     }
 
     /**

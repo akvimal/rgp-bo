@@ -61,6 +61,34 @@ export class InvoiceService {
         return this.http.post(`${this.apiurl}/vendorpayments/batch`, payload);
     }
 
+    /** the invoice list: view, vendor / date / invoice-no filters, sort and paging are query params */
+    search(params:any){
+        return this.http.get(`${this.apiurl}/purchases/search`, { params });
+    }
+
+    /** totals for the chips above the list (same filters, not the view) */
+    summary(params:any){
+        return this.http.get<any>(`${this.apiurl}/purchases/summary`, { params });
+    }
+
+    /** payments of one invoice with who recorded each */
+    paymentsOf(invoiceid:number){
+        return this.http.get<any[]>(`${this.apiurl}/purchases/${invoiceid}/payments`);
+    }
+
+    hold(invoiceid:number, reason:string){
+        return this.http.post(`${this.apiurl}/purchases/${invoiceid}/hold`, { reason });
+    }
+
+    release(invoiceid:number){
+        return this.http.post(`${this.apiurl}/purchases/${invoiceid}/release`, {});
+    }
+
+    /** correct reference / mode / date / remarks of a recorded payment (never the amount) */
+    updatePaymentInfo(id:number, body:any){
+        return this.http.put(`${this.apiurl}/vendorpayments/${id}`, body);
+    }
+
     updatePayment(id:number, payment:VendorPayment){
         return this.http.put(`${this.apiurl}/vendorpayments/${id}`, payment);
     }
