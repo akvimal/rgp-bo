@@ -8,6 +8,9 @@ import { Component } from "@angular/core";
       <li class="nav-item" *isAuth="'grievances.view'">
         <a class="nav-link" routerLink="grievances" routerLinkActive="active" data-testid="tab-grievances">Grievances</a>
       </li>
+      <li class="nav-item" *isAuth="'refills.view'">
+        <a class="nav-link" routerLink="refills" routerLinkActive="active" data-testid="tab-refills">Refills</a>
+      </li>
       <li class="nav-item" *isAuth="'staffsales.view'">
         <a class="nav-link" routerLink="staff-sales" routerLinkActive="active" data-testid="tab-staff-sales">Staff sales</a>
       </li>

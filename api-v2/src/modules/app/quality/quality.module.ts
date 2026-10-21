@@ -5,10 +5,12 @@ import { GrievanceService } from './grievance.service';
 import { QualityController } from './quality.controller';
 import { QualityService } from './quality.service';
 import { DiscrepancyService } from './discrepancy.service';
+import { RefillController } from './refill.controller';
+import { RefillService } from './refill.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [QualityController, GrievanceController],
-  providers: [QualityService, GrievanceService, DiscrepancyService],
+  controllers: [QualityController, GrievanceController, RefillController],
+  providers: [QualityService, GrievanceService, DiscrepancyService, RefillService],
 })
 export class QualityModule {}

@@ -8,12 +8,14 @@ import { AuditLogComponent } from "./audit-log.component";
 import { DiscrepanciesComponent } from "./discrepancies.component";
 import { GrievancesComponent } from "./grievances.component";
 import { QualityShellComponent } from "./quality-shell.component";
+import { RefillsComponent } from "./refills.component";
 import { StaffSalesComponent } from "./staff-sales.component";
 
 const routes: Routes = [
   { path: "", component: QualityShellComponent, children: [
     { path: "", redirectTo: "grievances", pathMatch: "full" },
     { path: "grievances", component: GrievancesComponent, canActivate: [AuthGuard] },
+    { path: "refills", component: RefillsComponent, canActivate: [AuthGuard] },
     { path: "discrepancies", component: DiscrepanciesComponent, canActivate: [AuthGuard] },
     { path: "staff-sales", component: StaffSalesComponent, canActivate: [AuthGuard] },
     { path: "audit", component: AuditLogComponent, canActivate: [AuthGuard] },
@@ -22,7 +24,7 @@ const routes: Routes = [
 
 /** Staff & Quality: oversight of people and service quality. More pages (grievances, reviews) land here. */
 @NgModule({
-  declarations: [QualityShellComponent, GrievancesComponent, StaffSalesComponent, DiscrepanciesComponent, AuditLogComponent],
+  declarations: [QualityShellComponent, GrievancesComponent, RefillsComponent, StaffSalesComponent, DiscrepanciesComponent, AuditLogComponent],
   imports: [CommonModule, FormsModule, SharedModule, RouterModule.forChild(routes)],
 })
 export class QualityModule {}
