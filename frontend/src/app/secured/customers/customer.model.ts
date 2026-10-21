@@ -3,6 +3,7 @@ export interface Customer {
     
     name:string,
     mobile?:string,
+    altmobile?:string,
     email?:string,
     
     address?:string,

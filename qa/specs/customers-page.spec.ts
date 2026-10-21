@@ -172,4 +172,61 @@ test.describe('Customers page @p1', () => {
     await expect(p2.getByRole('heading', { name: 'Edit customer' })).toBeVisible();
     await expect(p2.getByTestId('cust-f-save-add')).toHaveCount(0);
   });
+
+  test('CUST-12 an alternate number is checked, stored, found by the counter lookup, and can be cleared @happy', async ({ api }) => {
+    const stamp = Date.now();
+    const m = mobile();
+    const alt = mobile();
+    const post = (b: any) => api.request('POST', '/customers', b, MGR);
+    expect((await post(mk(`QA Alt Bad ${stamp}`, mobile(), { altmobile: '12345' }))).status).toBe(400);
+    expect((await post(mk(`QA Alt Same ${stamp}`, m, { altmobile: m }))).status).toBe(400);
+    expect((await post(mk(`QA Alt Nil ${stamp}`, mobile(), { altmobile: '0000000000' }))).status).toBe(400);
+
+    const made = await post(mk(`QA Alt Ok ${stamp}`, m, { altmobile: `+91 ${alt.slice(0, 5)} ${alt.slice(5)}` }));
+    expect(made.status).toBeLessThan(300);
+    expect(made.body.altmobile).toBe(alt);
+
+    // ringing from the alternate number finds the customer; a primary holder of that number wins
+    const found = await api.request('GET', `/customers/search/mobile/${alt}`, undefined, MGR);
+    expect(found.body.id).toBe(made.body.id);
+    const owner = (await post(mk(`QA Alt Owner ${stamp}`, alt))).body;
+    expect((await api.request('GET', `/customers/search/mobile/${alt}`, undefined, MGR)).body.id).toBe(owner.id);
+
+    // an edit that does not mention it keeps it; a blank clears it
+    const keep = await post({ id: made.body.id, name: made.body.name, mobile: m, locality: 'QA Town' });
+    expect(keep.body.altmobile).toBe(alt);
+    const cleared = await post({ id: made.body.id, name: made.body.name, mobile: m, altmobile: '' });
+    expect(cleared.body.altmobile).toBeNull();
+  });
+
+  test('CUST-13 the form takes an alternate number and the list shows it @happy', async ({ app, api }) => {
+    const stamp = Date.now();
+    const m = mobile();
+    const alt = mobile();
+    const { page } = await app.open(MGR, '/secure/customers/cust/new');
+    await page.getByTestId(TID.custFName).fill(`QA Two Numbers ${stamp}`);
+    await page.getByTestId(TID.custFMobile).fill(m);
+    await page.getByTestId(TID.custFMobile).blur();
+    await page.getByTestId('cust-f-altmobile').fill('12345');
+    await page.getByTestId('cust-f-altmobile').blur();
+    await expect(page.getByTestId('cust-f-altmobile-error')).toBeVisible();
+    await expect(page.getByTestId(TID.custFSave)).toBeDisabled();
+    await page.getByTestId('cust-f-altmobile').fill(m);
+    await page.getByTestId('cust-f-altmobile').blur();
+    await expect(page.getByTestId('cust-f-hint')).toContainText('same as the mobile');
+    await page.getByTestId('cust-f-altmobile').fill(`0${alt}`);
+    await page.getByTestId('cust-f-altmobile').blur();
+    await expect(page.getByTestId('cust-f-altmobile')).toHaveValue(alt);             // tidied
+    await expect(page.getByTestId(TID.custFSave)).toBeEnabled();
+    const [resp] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/customers') && r.request().method() === 'POST'),
+      page.getByTestId(TID.custFSave).click(),
+    ]);
+    expect(resp.status()).toBeLessThan(300);
+
+    const list = await app.open(MGR, '/secure/customers/cust/list');
+    await list.page.getByTestId('cust-search').fill(alt);                            // searchable by the alternate too
+    await expect(list.page.locator('tbody tr', { hasText: `QA Two Numbers ${stamp}` })).toHaveCount(1);
+    await expect(list.page.getByTestId('cust-alt').first()).toContainText(alt);
+  });
 });

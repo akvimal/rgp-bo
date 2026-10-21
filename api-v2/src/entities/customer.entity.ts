@@ -22,6 +22,9 @@ export class Customer extends BaseEntity {
   @Column("character varying", { name: "mobile", nullable: true, unique: true })
   mobile: string | null;
 
+  @Column("character varying", { name: "alt_mobile", length: 10, nullable: true })
+  altmobile: string | null;
+
   @Column("character varying", { name: "email", nullable: true, unique: true })
   email: string | null;
 

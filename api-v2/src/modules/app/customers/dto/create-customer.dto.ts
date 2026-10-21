@@ -6,6 +6,8 @@ export class CreateCustomerDto {
     readonly name: string;
     @ApiProperty({ description: 'mobile', example: '' })
     readonly mobile: string;
+    @ApiProperty({ description: 'a second number: a family member, or another line', required: false })
+    readonly altmobile?: string;
     @ApiProperty({ description: 'email', example: '' })
     readonly email: string;
     

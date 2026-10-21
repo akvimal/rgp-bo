@@ -13,6 +13,12 @@
       <div class="invalid-feedback d-block" *ngIf="mobileInvalid" data-testid="cust-f-mobile-error">Enter a 10-digit mobile number starting with 6, 7, 8 or 9.</div>
     </div>
     <div class="col-md-4">
+      <label for="altmobile" class="form-label">Alternate number</label>
+      <input id="altmobile" data-testid="cust-f-altmobile" type="text" class="form-control" [class.is-invalid]="altInvalid || altSameAsMobile" formControlName="altmobile" inputmode="tel" (blur)="onAltBlur()" placeholder="optional">
+      <div class="invalid-feedback d-block" *ngIf="altInvalid" data-testid="cust-f-altmobile-error">Enter a 10-digit mobile number starting with 6, 7, 8 or 9, or leave it blank.</div>
+      <div class="invalid-feedback d-block" *ngIf="!altInvalid && altSameAsMobile">That is the same as the mobile number.</div>
+    </div>
+    <div class="col-md-4">
       <label for="email" class="form-label">Email</label>
       <input id="email" data-testid="cust-f-email" type="text" class="form-control" [class.is-invalid]="form.controls['email'].invalid && form.controls['email'].dirty" formControlName="email">
       <div class="invalid-feedback d-block" *ngIf="form.controls['email'].invalid && form.controls['email'].dirty">That email address is not valid.</div>

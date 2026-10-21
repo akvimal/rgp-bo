@@ -43,6 +43,14 @@ export class CustomerService {
         }
 
         const values: any = { name, mobile };
+        if (dto.altmobile !== undefined) {
+            const alt = normaliseMobile(dto.altmobile);
+            if (alt === NIL_MOBILE) throw new BadRequestException('Enter a real alternate mobile number.');
+            if (alt && alt === mobile) throw new BadRequestException('The alternate number is the same as the mobile number.');
+            values.altmobile = alt;
+        } else if (existing?.altmobile && existing.altmobile === mobile) {
+            values.altmobile = null;   // the primary was changed to the number held as the alternate
+        }
         if (dto.email !== undefined) values.email = cleanEmail(dto.email);
         if (dto.locality !== undefined) values.locality = cleanText(dto.locality, 60, 'The location');
         if (dto.address !== undefined) values.address = cleanText(dto.address, 200, 'The address');
@@ -115,9 +123,9 @@ export class CustomerService {
                 const r = await tx.query(`update ${t} set customer_id = $1 where customer_id = any($2::int[])`, [keepid, mergeids]);
                 moved[t] = Array.isArray(r) ? (r[1] ?? 0) : 0;
             }
-            for (const col of ['email', 'address', 'locality', 'area']) {
+            for (const col of ['email', 'address', 'locality', 'area', 'alt_mobile']) {
                 if (!keep[col]) {
-                    const donor = rows.find((r: any) => r.id !== keepid && r[col]);
+                    const donor = rows.find((r: any) => r.id !== keepid && r[col] && (col !== 'alt_mobile' || r[col] !== keep.mobile));
                     if (donor) await tx.query(`update customer set ${col} = $2 where id = $1`, [keepid, donor[col]]);
                 }
             }
@@ -179,8 +187,13 @@ export class CustomerService {
     }
 
     async findByMobile(mobile:string) {
-        return this.customerRepository.createQueryBuilder('c')
+        // the primary mobile wins; an alternate number finds the customer when nothing has it as a primary
+        const primary = await this.customerRepository.createQueryBuilder('c')
             .where('c.mobile = :mobile', { mobile }).getOne();
+        if (primary) return primary;
+        return this.customerRepository.createQueryBuilder('c')
+            .where('c.altmobile = :mobile and c.active = true and c.archive = false', { mobile })
+            .orderBy('c.id', 'ASC').getOne();
     }
 
     // async findSaleData(criteria:any) {

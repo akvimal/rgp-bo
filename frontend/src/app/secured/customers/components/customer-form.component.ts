@@ -51,6 +51,7 @@ export class CustomerFormComponent implements AfterViewInit {
         id: new FormControl(''),
         name: new FormControl('',[Validators.required, Validators.minLength(2)]),
         mobile: new FormControl('',[Validators.required, mobileValidator]),
+        altmobile: new FormControl('', mobileValidator),
         email: new FormControl('', Validators.email),
         address: new FormControl(''),
         locality: new FormControl(''),
@@ -95,6 +96,7 @@ export class CustomerFormComponent implements AfterViewInit {
             this.form.controls['id'].setValue(data.id);
             this.form.controls['name'].setValue(data.name);
             this.form.controls['mobile'].setValue(data.mobile);
+            this.form.controls['altmobile'].setValue(data.altmobile);
             this.form.controls['email'].setValue(data.email);
             // this.form.controls['area'].setValue(data.area);
             this.form.controls['locality'].setValue(data.locality);
@@ -107,6 +109,22 @@ export class CustomerFormComponent implements AfterViewInit {
     get mobileInvalid(): boolean {
       const c = this.form.controls['mobile'];
       return c.invalid && (c.dirty || c.touched) && !!c.value;
+    }
+
+    get altInvalid(): boolean {
+      const c = this.form.controls['altmobile'];
+      return c.invalid && (c.dirty || c.touched) && !!c.value;
+    }
+
+    get altSameAsMobile(): boolean {
+      const a = normaliseMobile(this.form.value.altmobile);
+      return !!a && a === normaliseMobile(this.form.value.mobile);
+    }
+
+    onAltBlur() {
+      const c = this.form.controls['altmobile'];
+      const n = normaliseMobile(c.value);
+      if (n && n !== '0000000000') c.setValue(n);
     }
 
     /** tidy the number as typed and look for other customers on it */
@@ -122,16 +140,18 @@ export class CustomerFormComponent implements AfterViewInit {
     }
 
     get canSave(): boolean {
-      return this.form.valid && !this.saving && (!this.sameNumber.length || this.confirmDuplicate);
+      return this.form.valid && !this.altSameAsMobile && !this.saving && (!this.sameNumber.length || this.confirmDuplicate);
     }
 
     /** why Save is off, in words */
     get blockedReason(): string {
       const f = this.form.controls;
-      if (this.saving || this.form.valid && (!this.sameNumber.length || this.confirmDuplicate)) return '';
+      if (this.saving || this.canSave) return '';
       if (f['name'].invalid) return 'Enter the customer name (at least 2 letters).';
       if (f['mobile'].invalid) return f['mobile'].value ? 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.' : 'Enter the mobile number.';
       if (f['email'].invalid) return 'The email address is not valid.';
+      if (f['altmobile'].invalid) return 'The alternate number must be a 10-digit mobile starting with 6, 7, 8 or 9, or left blank.';
+      if (this.altSameAsMobile) return 'The alternate number is the same as the mobile number.';
       if (this.sameNumber.length && !this.confirmDuplicate) return 'Tick the box above to confirm this is a different person on the same number.';
       return '';
     }
@@ -140,6 +160,7 @@ export class CustomerFormComponent implements AfterViewInit {
         const obj: any = {
           name: this.form.value.name,
           mobile: normaliseMobile(this.form.value.mobile) || this.form.value.mobile,
+          altmobile: normaliseMobile(this.form.value.altmobile) || this.form.value.altmobile || '',
           email: this.form.value.email,
           address: this.form.value.address,
           locality: this.form.value.locality,
@@ -156,7 +177,7 @@ export class CustomerFormComponent implements AfterViewInit {
             this.saving = false;
             this.saved.emit(data);
             if (addAnother && !id) {
-              this.form.reset({ id: '', name: '', mobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '' });
+              this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '' });
               this.sameNumber = [];
               this.confirmDuplicate = false;
               this.saveNote = `${data.name} saved. Add the next customer.`;
