@@ -216,6 +216,7 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
       { key: 'edit', label: 'Edit purchases', properties: [{ key: 'name', label: 'Name' }] },
       { key: 'vendors.edit', label: 'Edit vendors', properties: [{ key: 'name', label: 'Name' }] },
       { key: 'delete', label: 'Delete purchases' },
+      { key: 'request', label: 'Raise purchase requests only' },
     ],
   },
   {

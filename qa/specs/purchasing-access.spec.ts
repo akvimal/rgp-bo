@@ -2,7 +2,7 @@
  * Purchasing access by role, and the grouped menu — PACC-1..3
  * The menu only hid buttons; the purchasing API itself now checks the role's `purchases` permission.
  */
-import { test, expect } from '../fixtures/index.js';
+import { test, expect, data } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
 const MGR = 'businesshead@local.test';
@@ -29,7 +29,20 @@ test.describe('Purchasing access and menu @p0', () => {
     await denied('PUT', `/vendors/${vendor.id}`, { name: 'x' });
     await denied('POST', `/vendors/${vendor.id}/block`, { reason: 'no way' });
     await denied('POST', '/purchaseorders', { vendorid: vendor.id });
-    await denied('POST', '/purchaserequests', { productid: 1, qty: 1, vendorid: vendor.id });
+  });
+
+  test('PACC-1b Sales Staff can raise a purchase request but not edit, review or delete one @edge', async ({ api }) => {
+    const vendor = (await api.request('GET', '/vendors', undefined, MGR)).body.find((v: any) => v.isActive !== false && !v.blocked);
+    const made = await api.request('POST', '/purchaserequests', { productid: data.m.products[7].id, qty: 3, vendorid: vendor.id }, SALES);
+    expect(made.status).toBeLessThan(300);
+    const id = made.body.id;
+    try {
+      expect((await api.request('PUT', `/purchaserequests/${id}`, { status: 'Reviewed' }, SALES)).status).toBe(403);
+      expect((await api.request('DELETE', `/purchaserequests/${id}`, undefined, SALES)).status).toBe(403);
+      expect((await api.request('GET', '/purchaserequests', undefined, SALES)).status).toBe(200);
+    } finally {
+      await api.request('DELETE', `/purchaserequests/${id}`, undefined, MGR);
+    }
   });
 
   test('PACC-2 the Business Head can still do all of it @happy', async ({ api }) => {
@@ -54,5 +67,11 @@ test.describe('Purchasing access and menu @p0', () => {
     await expect(sales.page.getByTestId('nav-section-admin')).toHaveCount(0);
     await expect(sales.page.getByTestId('nav-section-oversight')).toHaveCount(0);
     await expect(sales.page.getByTestId('nav-dashboard')).toHaveCount(0);   // not open to this role
+    await expect(sales.page.getByTestId('nav-vendors')).toHaveCount(0);
+    await expect(sales.page.getByTestId('nav-purchases')).toHaveCount(0);   // no purchasing workspace ...
+    await expect(sales.page.getByTestId('nav-purchase-requests')).toBeVisible();   // ... only the requests page
+    await sales.page.getByTestId('nav-purchase-requests').click();
+    await expect(sales.page).toHaveURL(/purchases\/my-requests/);
+    await expect(sales.page.getByTestId('nav-payables')).toHaveCount(0);
   });
 });

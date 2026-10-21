@@ -43,6 +43,7 @@ const routes: Routes = [
           ]
       },
       { path: 'requests', component: PurchaseOrdersHomeComponent, data: { tab: 'requests' } },
+      { path: 'my-requests', component: PurchaseRequestComponent },
       { path: 'suggestions', component: PurchaseOrdersHomeComponent, data: { tab: 'reorder' } },
       { path: 'payables', component: PayablesComponent },
       { path: 'gst', component: GstReconciliationComponent },

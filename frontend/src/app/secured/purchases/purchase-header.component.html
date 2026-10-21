@@ -1,21 +1,24 @@
   <nav class="page-menu navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
     <ul class="nav">
-      <li class="nav-item" *isAuth="'purchases'">
+      <li class="nav-item" *isAuth="'purchases.request'">
+        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/my-requests" data-testid="nav-requests">Purchase requests</a>
+      </li>
+      <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/orders">Orders</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases'">
+      <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/invoices">Invoices</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases'">
+      <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/payables" data-testid="nav-payables">Payables</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases'">
+      <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/vendors/list" data-testid="nav-vendors">Vendors</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases'">
+      <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/gst" data-testid="nav-gst">GST</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases'">
+      <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/settings">Settings</a>
       </li>
       <!-- <li class="nav-item" *isNavAuth>

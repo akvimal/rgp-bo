@@ -1,7 +1,7 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "src/modules/auth/auth.guard";
-import { PurchasingGuard } from "../roles/purchasing.guard";
+import { PurchasingAlsoAllow, PurchasingGuard } from "../roles/purchasing.guard";
 import { PurchaseService } from './purchase.service';
 import { CreatePurchaseRequestDto } from './dto/create-request.dto';
 import { User } from 'src/core/decorator/user.decorator';
@@ -31,6 +31,7 @@ export class PurchaseRequestController {
     }
 
     @Post()
+    @PurchasingAlsoAllow('request')
     async create(@Body() createDto: CreatePurchaseRequestDto,  @User() currentUser: any) {
         return this.service.createRequest(createDto, currentUser.id);
     }
