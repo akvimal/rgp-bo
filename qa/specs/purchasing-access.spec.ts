@@ -74,4 +74,52 @@ test.describe('Purchasing access and menu @p0', () => {
     await expect(sales.page).toHaveURL(/purchases\/my-requests/);
     await expect(sales.page.getByTestId('nav-payables')).toHaveCount(0);
   });
+
+  test('PACC-4 a request-only role sees only its own requests, cannot set the buying side, and gets the form from the counter @edge', async ({ app, api }) => {
+    const vendor = (await api.request('GET', '/vendors', undefined, MGR)).body.find((v: any) => v.isActive !== false && !v.blocked);
+    const stamp = Date.now();
+    const product = data.m.products[9].id;
+    // a manager's request exists; the Sales Staff user must not see it
+    const theirs = await api.request('POST', '/purchaserequests', { productid: product, qty: 2, vendorid: vendor.id, notes: 'internal note' }, MGR);
+    expect(theirs.status).toBeLessThan(300);
+
+    // Sales Staff try to set the buying side of their own request
+    const mine = await api.request('POST', '/purchaserequests', {
+      productid: product, qty: 4, source: 'Customer', requesttype: 'Stockout', priority: 'High', customername: `QA Cust ${stamp}`,
+      status: 'Ordered', orderedqty: 4, fulfilledqty: 4, vendorid: vendor.id, notes: 'sneaky',
+    }, SALES);
+    expect(mine.status).toBeLessThan(300);
+    expect(mine.body.status).toBe('Open');
+    expect(mine.body.vendorid ?? null).toBeNull();
+    expect(mine.body.notes ?? null).toBeNull();
+    expect(mine.body.orderedqty ?? null).toBeNull();
+
+    const list = (await api.request('GET', '/purchaserequests', undefined, SALES)).body;
+    expect(list.some((r: any) => r.id === mine.body.id)).toBe(true);
+    expect(list.some((r: any) => r.id === theirs.body.id)).toBe(false);          // not someone else's
+    expect(list.every((r: any) => r.vendor === null && r.notes === null)).toBe(true);
+    expect((await api.request('GET', `/purchaserequests/${theirs.body.id}`, undefined, SALES)).body?.id).toBeUndefined();
+    // the manager still sees both, with the buying side's fields
+    const all = (await api.request('GET', '/purchaserequests', undefined, MGR)).body;
+    expect(all.find((r: any) => r.id === theirs.body.id).notes).toBe('internal note');
+
+    // the screen: no action icons, no vendor column or field for Sales Staff
+    const { page } = await app.open(SALES, '/secure/purchases/my-requests');
+    await expectShell(page);
+    await expect(page.getByTestId('req-add')).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Vendor' })).toHaveCount(0);
+    await expect(page.locator('i.bi-pencil-square, i.bi-check2, i.bi-trash')).toHaveCount(0);
+
+    // from the counter: a link that opens the Add form already filled with the bill's customer
+    const pos = await app.open(SALES, '/secure/sales/pos/new', { operatorId: 3, operatorName: 'Sale Staff One' });
+    const link = pos.page.getByTestId('pos-request-product');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('target', '_blank');
+    expect(await link.getAttribute('href')).toContain('/secure/purchases/my-requests');
+    const direct = await app.open(SALES, `/secure/purchases/my-requests?add=1&cname=${encodeURIComponent('QA Counter Customer')}&cphone=9812345678`);
+    await expect(direct.page.getByRole('dialog')).toBeVisible();
+    await expect(direct.page.locator('input[formcontrolname=customername]')).toHaveValue('QA Counter Customer');
+    await expect(direct.page.locator('input[formcontrolname=customerphone]')).toHaveValue('9812345678');
+    await expect(direct.page.getByText('Vendor', { exact: true })).toHaveCount(0);
+  });
 });

@@ -1,4 +1,5 @@
 import { Component } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 import { VendorsService } from "../../vendors/vendors.service";
@@ -41,11 +42,18 @@ export class PurchaseRequestComponent {
     constructor(
         private requestService: PurchaseIntentService,
         private vendorService: VendorsService,
-        private confirm: ConfirmService
+        private confirm: ConfirmService,
+        private route: ActivatedRoute
     ) {}
 
     ngOnInit(){
         this.fetchRequests();
+        // opened from the counter with the bill's customer: the Add form comes up already filled in
+        const q = this.route.snapshot.queryParamMap;
+        if (q.get('add')) {
+            this.add();
+            this.form.patchValue({ customername: q.get('cname') || '', customerphone: q.get('cphone') || '', source: 'Customer' });
+        }
         this.vendorService.findUsable().subscribe((data:any) => this.vendors = data || []);
     }
 

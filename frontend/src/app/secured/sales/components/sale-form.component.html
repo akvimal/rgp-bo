@@ -38,6 +38,13 @@
                                         </a>
                                     </h4>
                                 </div>
+                        <div class="mt-2" *isAuth="'purchases.read'">
+                            <a class="small" target="_blank" rel="noopener" data-testid="pos-request-product"
+                               [routerLink]="['/secure/purchases/my-requests']"
+                               [queryParams]="{add: 1, cname: sale.customer?.name || '', cphone: sale.customer?.mobile || ''}">
+                                <i class="bi bi-bag-plus"></i> Request a product we don't have
+                            </a>
+                        </div>
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">

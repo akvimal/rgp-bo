@@ -20,7 +20,12 @@ export class PurchaseService {
             @InjectRepository(Vendor) private readonly vendorRepository: Repository<Vendor>,
             @InjectEntityManager() private manager: EntityManager) { }
 
-    async findAllRequests(query: { status?: string; source?: string; priority?: string; vendorid?: number | string }) {
+    /** what a request-only role (Sales Staff) is allowed to see of a request: no vendor, no internal notes */
+    private forRequester(rows: any[]) {
+        return rows.map((r) => ({ ...r, vendor: null, vendorid: null, notes: null }));
+    }
+
+    async findAllRequests(query: { status?: string; source?: string; priority?: string; vendorid?: number | string }, ownerId?: number) {
         const qb = this.requestRepository.createQueryBuilder('req')
         .innerJoinAndSelect("req.product", "product")
         .leftJoinAndSelect("req.vendor", "vendor")
@@ -40,11 +45,18 @@ export class PurchaseService {
         if(query.vendorid){
             qb.andWhere('req.vendorid = :vendorid', { vendorid: query.vendorid });
         }
-        return qb.orderBy('req.createdon', 'DESC').getMany();
+        if(ownerId){
+            qb.andWhere('req.createdby = :ownerId', { ownerId });
+        }
+        const rows = await qb.orderBy('req.createdon', 'DESC').getMany();
+        return ownerId ? this.forRequester(rows) : rows;
     }    
 
-    async findAllRequestsByCriteria(criteria: { status?: string; source?: string; priority?: string; vendorid?: number | string }) {
+    async findAllRequestsByCriteria(criteria: { status?: string; source?: string; priority?: string; vendorid?: number | string }, ownerId?: number) {
         let whereclause = 'req.isActive = :flag'
+        if(ownerId){
+            whereclause += ' and req.createdby = :ownerId'
+        }
         if(criteria.status){
             whereclause += ' and req.status = :status'
         }
@@ -57,14 +69,15 @@ export class PurchaseService {
         if(criteria.vendorid){
             whereclause += ' and req.vendorid = :vendorid'
         }
-        return this.requestRepository.createQueryBuilder('req')
+        const rows = await this.requestRepository.createQueryBuilder('req')
         .innerJoinAndSelect("req.product", "product")
         .leftJoinAndSelect("req.vendor", "vendor")
         .leftJoinAndSelect("req.po", "po")
         .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
-        .where(whereclause, {...criteria, flag: true })
+        .where(whereclause, {...criteria, flag: true, ownerId })
         .orderBy('req.createdon', 'DESC')
         .getMany();
+        return ownerId ? this.forRequester(rows) : rows;
     }
 
     async findAllOrdersByCriteria(criteria: { status?: string; approvalstatus?: string; vendorid?: number | string }) {
@@ -154,7 +167,19 @@ export class PurchaseService {
         return order;
     }
     
-    async createRequest(dto: CreatePurchaseRequestDto, userid: number) {
+    /**
+     * A request-only role (Sales Staff) states what is needed and why. Everything the buying side decides (vendor, status,
+     * ordered and fulfilled quantities, internal notes) is ignored for them: a new request is always Open.
+     */
+    async createRequest(dto: CreatePurchaseRequestDto, userid: number, requestOnly = false) {
+        if (requestOnly) {
+            const d: any = dto;
+            dto = {
+                productid: d.productid, qty: d.qty, source: d.source, requesttype: d.requesttype, priority: d.priority,
+                neededby: d.neededby, customername: d.customername, customerphone: d.customerphone,
+                sourceref: d.sourceref, comments: d.comments,
+            } as any;
+        }
         await assertVendorUsable(this.vendorRepository.manager, dto.vendorid, 'a new purchase request');
         const normalize = (value:any) => {
             if(value === undefined || value === null){
@@ -198,14 +223,16 @@ export class PurchaseService {
         return order ? this.enrichOrder(order) : order;
     }
 
-    async findRequestById(id:number){
-          return this.requestRepository.createQueryBuilder('req')
+    async findRequestById(id:number, ownerId?: number){
+          const qb = this.requestRepository.createQueryBuilder('req')
           .innerJoinAndSelect("req.product", "product")
           .leftJoinAndSelect("req.vendor", "vendor")
           .leftJoinAndSelect("req.po", "po")
           .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
-          .where('req.id = :id', { id })
-          .getOne();
+          .where('req.id = :id', { id });
+          if (ownerId) qb.andWhere('req.createdby = :ownerId', { ownerId });
+          const row = await qb.getOne();
+          return row && ownerId ? this.forRequester([row])[0] : row;
     }
     
     async updateRequest(id: number | string, values: Partial<PurchaseRequest>, userid: number) {
