@@ -596,6 +596,10 @@
       id: "gst", name: "GST Data & GSTR-2A/2B Reconciliation",
       blurb: "GST fields on purchase invoices, and matching books against the portal’s inward-supply import.",
       cases: [
+        { id:"GSTR-1", feature:"Readiness", tag:"integration", scenario:"Readiness counts", steps:"Open Purchase > GST for a period with invoices.", expected:"Received, with-GSTIN and without-GSTIN counts agree; a blocker shows when any received invoice has no supplier GSTIN; drafts are listed as not counted." },
+        { id:"GSTR-2", feature:"Readiness", tag:"integration", scenario:"ITC by vendor", steps:"Open the ITC by vendor panel.", expected:"Each vendor shows safe, to-review, missing-in-2B and no-GSTIN credit; the biggest risk is first and the no-GSTIN figures add up to the readiness count." },
+        { id:"GSTR-3", feature:"Backfill", tag:"edge", scenario:"Fill supplier GSTIN", steps:"Click Fill from vendor records, then click it again.", expected:"Blank invoices get their vendor's valid GSTIN; the second run changes nothing; invoices in a locked period and invoices that already have a GSTIN are untouched; non-GST staff are refused." },
+        { id:"GSTR-4", feature:"Backfill", tag:"happy", scenario:"Vendor GSTIN saved later", steps:"Save a GSTIN on a vendor that has older invoices, then open GST.", expected:"Its blank invoices now carry the GSTIN and no longer count under no-GSTIN." },
         { id:"GST-1", feature:"Data model", tag:"happy", scenario:"Invoice classification", steps:"Complete a purchase invoice.", expected:"It gets a supplier GSTIN, a period and an INTRA/INTER classification." },
         { id:"GST-2", feature:"Data model", tag:"happy", scenario:"Header split sums up", steps:"Compare the CGST/SGST/IGST split with the invoice total.", expected:"They agree within rounding." },
         { id:"GST-3", feature:"Data model", tag:"happy", scenario:"Line level tax", steps:"Open an invoice line.", expected:"It carries its own taxable value, tax split and the product’s HSN." },

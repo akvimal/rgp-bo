@@ -55,6 +55,18 @@ export class GstService {
         return this.http.post(`${this.apiurl}/reconciliation/${id}/create-invoice`, {});
     }
 
+    readiness(period: string) {
+        return this.http.get<any>(`${this.apiurl}/readiness`, { params: { period } });
+    }
+
+    vendorRisk(period: string) {
+        return this.http.get<any[]>(`${this.apiurl}/vendor-risk`, { params: { period } });
+    }
+
+    backfillGstin() {
+        return this.http.post<any>(`${this.apiurl}/backfill-gstin`, {});
+    }
+
     lockPeriod(period: string) {
         return this.http.post(`${this.apiurl}/periods/${period}/lock`, {});
     }

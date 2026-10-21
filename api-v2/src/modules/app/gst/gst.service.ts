@@ -7,6 +7,7 @@ import { GstReconciliation } from "src/entities/gst-reconciliation.entity";
 import { PurchaseInvoice } from "src/entities/purchase-invoice.entity";
 import { Business } from "src/entities/business.entity";
 import { Vendor } from "src/entities/vendor.entity";
+import { AuditService } from "src/core/audit/audit.service";
 
 /** A status a human has already ruled on - the matcher must never overwrite these on re-run. */
 const RESOLVED_STATUSES = new Set(['ACCEPTED', 'DISPUTED', 'EXCLUDED', 'CARRIED_FORWARD']);
@@ -26,6 +27,7 @@ export class GstService {
         @InjectRepository(Business) private readonly businessRepository: Repository<Business>,
         @InjectRepository(Vendor) private readonly vendorRepository: Repository<Vendor>,
         @InjectEntityManager() private manager: EntityManager,
+        private readonly audit: AuditService,
     ) {}
 
     /** Single-GSTIN-per-business assumption (decision #1): resolve "the" business when none is passed. */
@@ -211,7 +213,8 @@ export class GstService {
 
         return this.manager.transaction('SERIALIZABLE', async (tm) => {
             const inward = await tm.find(GstInwardSupply, { where: { businessid, period, isActive: true, isArchived: false } });
-            const books = await tm.find(PurchaseInvoice, { where: { gstperiod: period, isActive: true, isArchived: false } as any });
+            // received invoices only: a draft has not happened yet, so it carries no ITC to reconcile
+            const books = await tm.find(PurchaseInvoice, { where: { gstperiod: period, status: 'COMPLETE', isActive: true, isArchived: false } as any });
 
             const existing = await tm.find(GstReconciliation, { where: { businessid, period } });
             const resolvedByInward = new Set(existing.filter((r) => r.inwardsupplyid && RESOLVED_STATUSES.has(r.status)).map((r) => r.inwardsupplyid));
@@ -401,6 +404,111 @@ export class GstService {
             itc_on_hold: round2(mismatchItc + disputedItc),
             itc_carried_forward: round2(carriedForwardItc),
         };
+    }
+
+    // ---------------------------------------------------------------------------
+    // Readiness, vendor risk, GSTIN backfill
+    // ---------------------------------------------------------------------------
+
+    /**
+     * What stands between this period and a reliable reconciliation. The matcher quietly skips an invoice that has no
+     * supplier GSTIN (it would appear in no list), so those are counted and named here instead.
+     */
+    async readiness(businessidRaw: any, period: string) {
+        const businessid = await this.resolveBusinessId(businessidRaw);
+        if (!/^\d{4}-\d{2}$/.test(period || '')) throw new BadRequestException('A period (YYYY-MM) is required.');
+        const [biz] = await this.manager.query(
+            `select name, gstin, state_code, coalesce(public.is_valid_gstin(upper(btrim(gstin))), false) as gstin_ok from business where id = $1`, [businessid]);
+        const [inv] = await this.manager.query(
+            `select count(*) filter (where status = 'COMPLETE')::int as complete,
+                    count(*) filter (where status = 'COMPLETE' and coalesce(btrim(supplier_gstin), '') <> '')::int as with_gstin,
+                    count(*) filter (where status <> 'COMPLETE')::int as drafts
+               from purchase_invoice where gst_period = $1 and active and not archive`, [period]);
+        const [portal] = await this.manager.query(
+            `select count(*)::int as n from gst_inward_supply where business_id = $1 and period = $2 and active`, [businessid, period]);
+        const [per] = await this.manager.query(`select status from gst_return_period where business_id = $1 and period = $2`, [businessid, period]);
+        const noGstin = await this.manager.query(
+            `select v.id as vendor_id, btrim(v.business_name) as name, coalesce(btrim(v.gstn), '') as gstn,
+                    (coalesce(btrim(v.gstn), '') <> '' and not public.is_valid_gstin(upper(btrim(v.gstn)))) as gstin_invalid,
+                    (coalesce(btrim(v.gstn), '') <> '' and public.is_valid_gstin(upper(btrim(v.gstn)))) as can_fill,
+                    count(*)::int as invoices,
+                    round(coalesce(sum(coalesce(i.cgst_amount, 0) + coalesce(i.sgst_amount, 0) + coalesce(i.igst_amount, 0)), 0)::numeric, 2) as itc
+               from purchase_invoice i join vendor v on v.id = i.vendor_id
+              where i.gst_period = $1 and i.status = 'COMPLETE' and i.active and not i.archive and coalesce(btrim(i.supplier_gstin), '') = ''
+              group by v.id, v.business_name, v.gstn order by itc desc limit 20`, [period]);
+
+        const issues: Array<{ code: string; severity: 'blocker' | 'warning' | 'info'; text: string; count?: number; action?: string }> = [];
+        if (!biz?.gstin || !biz.gstin_ok) {
+            issues.push({ code: 'BUSINESS_GSTIN', severity: 'blocker', action: 'business',
+                text: biz?.gstin ? 'The business GSTIN is not valid. Correct it in Settings > Businesses.' : 'The business GSTIN is not set. Add it in Settings > Businesses.' });
+        }
+        if (!biz?.state_code) {
+            issues.push({ code: 'BUSINESS_STATE', severity: 'warning', action: 'business',
+                text: 'The business state code is not set, so every purchase is treated as within the state (CGST and SGST). Add it in Settings > Businesses.' });
+        }
+        const withoutGstin = inv.complete - inv.with_gstin;
+        const fillable = noGstin.filter((r: any) => r.can_fill).reduce((t: number, r: any) => t + r.invoices, 0);
+        if (withoutGstin > 0) {
+            issues.push({ code: 'NO_SUPPLIER_GSTIN', severity: 'blocker', count: withoutGstin, action: 'vendors',
+                text: `${withoutGstin} received invoice${withoutGstin === 1 ? ' has' : 's have'} no supplier GSTIN, so ${withoutGstin === 1 ? 'it cannot' : 'they cannot'} be matched and will not appear in any list below.` });
+        }
+        if (fillable > 0) {
+            issues.push({ code: 'BACKFILL_AVAILABLE', severity: 'warning', count: fillable, action: 'backfill',
+                text: `${fillable} of those belong to vendors whose GSTIN is already on file. They can be filled in from the vendor record.` });
+        }
+        if (portal.n === 0) {
+            issues.push({ code: 'NO_PORTAL_DATA', severity: 'info', action: 'import', text: 'No GSTR-2B or 2A has been imported for this period yet.' });
+        }
+        if (inv.drafts > 0) {
+            issues.push({ code: 'DRAFTS_EXCLUDED', severity: 'info', count: inv.drafts, text: `${inv.drafts} draft invoice${inv.drafts === 1 ? ' is' : 's are'} not counted: nothing has been received.` });
+        }
+        if (per?.status === 'LOCKED') {
+            issues.push({ code: 'PERIOD_LOCKED', severity: 'info', text: 'This period is locked.' });
+        }
+        return {
+            period, ready: !issues.some((i) => i.severity === 'blocker'),
+            business: { name: biz?.name, gstin: biz?.gstin || null, gstin_valid: !!biz?.gstin_ok, state_code: biz?.state_code || null },
+            invoices: { received: inv.complete, with_supplier_gstin: inv.with_gstin, without_supplier_gstin: withoutGstin, drafts: inv.drafts },
+            portal_rows: portal.n, status: per?.status || 'OPEN',
+            issues, vendors_without_gstin: noGstin,
+        };
+    }
+
+    /** Per vendor: how much input tax credit is safe, and how much is at risk, for the period. Biggest risk first. */
+    async vendorRisk(businessidRaw: any, period: string) {
+        const businessid = await this.resolveBusinessId(businessidRaw);
+        if (!/^\d{4}-\d{2}$/.test(period || '')) throw new BadRequestException('A period (YYYY-MM) is required.');
+        const rows = await this.manager.query(
+            `with inv as (
+               select i.id, i.vendor_id, coalesce(i.cgst_amount, 0) + coalesce(i.sgst_amount, 0) + coalesce(i.igst_amount, 0) as itc,
+                      coalesce(btrim(i.supplier_gstin), '') = '' as no_gstin,
+                      (select r.status from gst_reconciliation r where r.purchase_invoice_id = i.id and r.business_id = $2 and r.period = $1 and r.active
+                        order by r.id desc limit 1) as rs
+                 from purchase_invoice i where i.gst_period = $1 and i.status = 'COMPLETE' and i.active and not i.archive)
+             select v.id as vendor_id, btrim(v.business_name) as name, coalesce(btrim(v.gstn), '') as gstn,
+                    count(*)::int as invoices, round(sum(itc)::numeric, 2) as itc_total,
+                    count(*) filter (where rs in ('MATCHED', 'ACCEPTED'))::int as matched_n,
+                    round(coalesce(sum(itc) filter (where rs in ('MATCHED', 'ACCEPTED')), 0)::numeric, 2) as matched_itc,
+                    count(*) filter (where rs in ('MISMATCH', 'PROBABLE', 'DISPUTED'))::int as attention_n,
+                    round(coalesce(sum(itc) filter (where rs in ('MISMATCH', 'PROBABLE', 'DISPUTED')), 0)::numeric, 2) as attention_itc,
+                    count(*) filter (where rs in ('MISSING_IN_2B', 'CARRIED_FORWARD'))::int as missing_n,
+                    round(coalesce(sum(itc) filter (where rs in ('MISSING_IN_2B', 'CARRIED_FORWARD')), 0)::numeric, 2) as missing_itc,
+                    count(*) filter (where no_gstin)::int as no_gstin_n,
+                    round(coalesce(sum(itc) filter (where no_gstin), 0)::numeric, 2) as no_gstin_itc,
+                    count(*) filter (where rs is null and not no_gstin)::int as unchecked_n
+               from inv join vendor v on v.id = inv.vendor_id
+              group by v.id, v.business_name, v.gstn
+              order by coalesce(sum(itc) filter (where no_gstin or rs in ('MISMATCH', 'PROBABLE', 'DISPUTED', 'MISSING_IN_2B', 'CARRIED_FORWARD')), 0) desc, v.business_name`,
+            [period, businessid]);
+        return rows.map((r: any) => ({ ...r, at_risk_itc: Math.round((+r.attention_itc + +r.missing_itc + +r.no_gstin_itc) * 100) / 100 }));
+    }
+
+    /** Fills the supplier GSTIN on invoices from each vendor's own GSTIN (blanks only, valid GSTINs only, locked periods untouched). */
+    async backfillSupplierGstin(userid: number) {
+        const [r] = await this.manager.query(
+            `select coalesce(sum(public.backfill_vendor_invoice_gstin(id)), 0)::int as updated from vendor where active and coalesce(btrim(gstn), '') <> ''`);
+        await this.audit.record({ userId: userid, action: 'gst.gstin_backfill', entityType: 'purchases', summary: `supplier GSTIN filled on ${r.updated} invoice(s) from vendor records`, details: { updated: r.updated } });
+        return { updated: r.updated };
     }
 
     // ---------------------------------------------------------------------------

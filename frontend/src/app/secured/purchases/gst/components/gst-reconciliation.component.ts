@@ -17,6 +17,11 @@ export class GstReconciliationComponent {
     message: string = '';
     error: string = '';
 
+    readiness: any = null;
+    vendorRisk: any[] = [];
+    showRisk: boolean = false;
+    backfilling: boolean = false;
+
     showDialog: boolean = false;
     dialogRow: any = null;
     dialogAction: string = '';
@@ -63,6 +68,22 @@ export class GstReconciliationComponent {
         });
         this.loadWorklist();
         this.refreshPeriods();
+        this.service.readiness(this.period).subscribe((r: any) => this.readiness = r, () => this.readiness = null);
+        this.service.vendorRisk(this.period).subscribe((r: any) => this.vendorRisk = r || [], () => this.vendorRisk = []);
+    }
+
+    backfill() {
+        this.message = '';
+        this.error = '';
+        this.backfilling = true;
+        this.service.backfillGstin().subscribe({
+            next: (r: any) => { this.backfilling = false; this.message = `Supplier GSTIN filled on ${r.updated} invoice(s) from the vendor records. Run the match again.`; this.refresh(); },
+            error: (err) => { this.backfilling = false; this.error = err?.error?.message || 'Unable to fill the GSTINs.'; },
+        });
+    }
+
+    issueClass(sev: string) {
+        return sev === 'blocker' ? 'alert-danger' : sev === 'warning' ? 'alert-warning' : 'alert-light border';
     }
 
     loadWorklist() {

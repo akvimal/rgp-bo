@@ -21,6 +21,14 @@
 <div *ngIf="message" class="alert alert-success py-2" data-testid="gst-message">{{message}}</div>
 <div *ngIf="error" class="alert alert-danger py-2" data-testid="gst-error">{{error}}</div>
 
+<div *ngIf="readiness && readiness.issues.length" class="mb-3" data-testid="gst-readiness">
+  <div *ngFor="let i of readiness.issues" class="alert py-2 mb-2 d-flex justify-content-between align-items-center gap-2" [ngClass]="issueClass(i.severity)" [attr.data-testid]="'gst-issue-' + i.code">
+    <span>{{i.text}}</span>
+    <button *ngIf="i.action === 'backfill' && !isLocked" type="button" class="btn btn-sm btn-dark text-nowrap" [disabled]="backfilling" (click)="backfill()" data-testid="gst-backfill">Fill from vendor records</button>
+    <a *ngIf="i.action === 'vendors'" class="btn btn-sm btn-outline-dark text-nowrap" routerLink="/secure/purchases/vendors">Vendors</a>
+  </div>
+</div>
+
 <div class="row g-3" *ngIf="summary">
   <div class="col-6 col-lg-2">
     <div class="card h-100"><div class="card-body">
@@ -60,6 +68,30 @@
       <div class="small text-muted">ITC on hold / carried fwd</div>
       <div class="fs-5 fw-bold">&#8377;{{(summary.itc_on_hold + summary.itc_carried_forward) | number:'1.0-0'}}</div>
     </div></div>
+  </div>
+</div>
+
+<div class="card mt-3" *ngIf="vendorRisk.length" data-testid="gst-vendor-risk">
+  <div class="card-header py-2 d-flex justify-content-between align-items-center" style="cursor:pointer" (click)="showRisk = !showRisk">
+    <span class="fw-semibold">ITC by vendor</span>
+    <span class="small text-muted">{{showRisk ? 'Hide' : 'Show'}} &middot; biggest risk first</span>
+  </div>
+  <div class="card-body p-0" *ngIf="showRisk">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light"><tr><th>Vendor</th><th class="text-end">Invoices</th><th class="text-end">ITC</th><th class="text-end">Safe (matched)</th><th class="text-end">To review</th><th class="text-end">Missing in 2B</th><th class="text-end">No GSTIN</th><th class="text-end">At risk</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let v of vendorRisk" data-testid="gst-risk-row">
+          <td>{{v.name}} <span class="text-muted small d-block">{{v.gstn || 'no GSTIN on file'}}</span></td>
+          <td class="text-end">{{v.invoices}}</td>
+          <td class="text-end">{{v.itc_total | number:'1.0-0'}}</td>
+          <td class="text-end text-success">{{v.matched_itc | number:'1.0-0'}}</td>
+          <td class="text-end">{{v.attention_itc | number:'1.0-0'}}</td>
+          <td class="text-end">{{v.missing_itc | number:'1.0-0'}}</td>
+          <td class="text-end">{{v.no_gstin_itc | number:'1.0-0'}}</td>
+          <td class="text-end fw-bold" [class.text-danger]="v.at_risk_itc > 0">{{v.at_risk_itc | number:'1.0-0'}}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
 

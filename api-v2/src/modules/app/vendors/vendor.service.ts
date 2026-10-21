@@ -120,6 +120,7 @@ export class VendorService {
         const id = await this.conflictAware(() => this.manager.transaction(async (tx) => {
             const saved: any = await tx.getRepository(Vendor).save({ ...data, createdby: userid, updatedby: userid } as any);
             if (dto.licenses) await this.replaceLicenses(tx, saved.id, dto.licenses, userid);
+            await tx.query(`select public.backfill_vendor_invoice_gstin($1)`, [saved.id]);   // reconcile needs the GSTIN on its invoices
             return saved.id as number;
         }));
         return this.findById(id);
@@ -138,6 +139,7 @@ export class VendorService {
         await this.conflictAware(() => this.manager.transaction(async (tx) => {
             if (Object.keys(data).length) await tx.getRepository(Vendor).update(vid, { ...data, updatedby: userid } as any);
             if (dto.licenses) await this.replaceLicenses(tx, vid, dto.licenses, userid);
+            await tx.query(`select public.backfill_vendor_invoice_gstin($1)`, [vid]);   // fills blank invoice GSTINs only
         }));
         return this.findById(vid);
     }

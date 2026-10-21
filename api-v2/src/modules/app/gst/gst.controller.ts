@@ -36,6 +36,24 @@ export class GstController {
         return this.service.worklist(businessid, period, status);
     }
 
+    @Get("readiness")
+    async readiness(@Query("businessid") businessid: string, @Query("period") period: string, @User() currentUser: any) {
+        await this.permissions.assertCanUseGst(currentUser.roleid, "read");
+        return this.service.readiness(businessid, period);
+    }
+
+    @Get("vendor-risk")
+    async vendorRisk(@Query("businessid") businessid: string, @Query("period") period: string, @User() currentUser: any) {
+        await this.permissions.assertCanUseGst(currentUser.roleid, "read");
+        return this.service.vendorRisk(businessid, period);
+    }
+
+    @Post("backfill-gstin")
+    async backfillGstin(@User() currentUser: any) {
+        await this.permissions.assertCanUseGst(currentUser.roleid, "reconcile");
+        return this.service.backfillSupplierGstin(currentUser.id);
+    }
+
     @Post("import")
     async import(@Body() dto: any, @User() currentUser: any) {
         await this.permissions.assertCanUseGst(currentUser.roleid, "import");
