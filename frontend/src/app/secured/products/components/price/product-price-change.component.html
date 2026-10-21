@@ -1,47 +1,62 @@
 <h5>{{current?.price?.title}}</h5>
 <div class="row mt-4">
-    <div class="col-6">
-        <div class="row">
-            <app-price-adjustor [price]="current?.price" (ready)="priceData($event)"></app-price-adjustor>
-            <div class="col-12 mt-2 d-flex">
-                <div>
-                    <label>Effective Date</label>
-                    <input type="date" class="form-control" [(ngModel)]="price.date">
-                </div>
-                <div style="margin-left:1em">
-                    <label>Reason</label>
-                    <select class="form-control" [(ngModel)]="price.reason">
-                        <option value="Purchase">Initial</option>
-                        <option value="Purchase">Higher PTR</option>
-                        <option value="Market">Market Pressure</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>    
-            </div>
-            <div class="col-12 mt-2">
-                <label>Comments</label>
-                <textarea class="form-control" [(ngModel)]="price.comments"></textarea>
-            </div>
-            <div class="col-12 mt-2">
-                <button class="btn btn-primary" [disabled]="!isValid()" (click)="onSave()">Save</button>
-            </div>
+  <div class="col-6">
+    <div class="row">
+      <div class="col-12 d-flex flex-wrap gap-3 mb-2">
+        <div class="price-comp"><label>PTR</label><h6 data-testid="price-ptr">{{ptr ? (ptr | number:'1.2-2') : '-'}}</h6></div>
+        <div class="price-comp"><label>MRP</label><h6 data-testid="price-mrp">{{mrp ? (mrp | number:'1.2-2') : '-'}}</h6></div>
+        <div class="price-comp"><label>Margin</label><h6 style="color:blueviolet">{{margin !== null ? margin + '%' : '-'}}</h6></div>
+        <div class="price-comp"><label>Discount</label><h6 style="color:blue">{{discount !== null ? discount + '%' : '-'}}</h6></div>
+      </div>
+      <div class="col-12">
+        <label>Sale price</label>
+        <input type="number" min="0" step="0.01" class="form-control" style="max-width:12rem;text-align:right" [(ngModel)]="price.sale" data-testid="price-dialog-price">
+        <div class="small text-muted mt-1" *ngIf="!ptr">No purchase on record yet, so there is no MRP or cost to check this price against.</div>
+        <div class="alert alert-info py-1 mt-2 mb-0" *ngIf="cappedAt" data-testid="price-note-cap">A price cannot be above the MRP: it will be saved as {{cappedAt | number:'1.2-2'}}.</div>
+        <div class="alert alert-danger py-1 mt-2 mb-0" *ngIf="tooHigh" data-testid="price-note-error">A margin of {{margin}}% looks like a typing mistake (the limit is 1,000%). Check the price and the purchase cost.</div>
+        <div class="alert alert-warning py-1 mt-2 mb-0" *ngIf="high" data-testid="price-note-warn">High margin: {{margin}}% on the purchase cost. Is this price right?</div>
+        <div class="alert alert-warning py-1 mt-2 mb-0" *ngIf="belowCost" data-testid="price-note-below">This price is below the purchase cost ({{ptr | number:'1.2-2'}}).</div>
+      </div>
+      <div class="col-12 mt-2 d-flex">
+        <div>
+          <label>Effective Date</label>
+          <input type="date" class="form-control" [(ngModel)]="price.date">
         </div>
-    </div>
-    <div class="col-6">
-        <div class="row">
-            <div class="col-12">
-                <h6 style="padding:.3em;border-bottom: 4px solid #999;background:#ddd">History</h6>
-                <div>
-                    <div class="change" *ngFor="let h of current.history">
-                        <div>
-                        <strong>{{h.eff_date | date}}</strong>: {{h.sale_price}}
-                        <p><label>{{h.reason}}</label>{{h.comments}}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div style="margin-left:1em">
+          <label>Reason</label>
+          <select class="form-control" [(ngModel)]="price.reason" data-testid="price-reason">
+            <option value="">Select</option>
+            <option value="Initial">Initial</option>
+            <option value="Higher PTR">Higher PTR</option>
+            <option value="Market">Market Pressure</option>
+            <option value="Other">Other</option>
+          </select>
         </div>
+      </div>
+      <div class="col-12 mt-2">
+        <label>Comments</label>
+        <textarea class="form-control" [(ngModel)]="price.comments"></textarea>
+      </div>
+      <div class="col-12 mt-2">
+        <div class="alert alert-danger py-1" *ngIf="error" data-testid="price-error">{{error}}</div>
+        <button class="btn btn-primary" [disabled]="!isValid()" (click)="onSave()" data-testid="price-save">Save</button>
+      </div>
     </div>
+  </div>
+  <div class="col-6">
+    <div class="row">
+      <div class="col-12">
+        <h6 style="padding:.3em;border-bottom: 4px solid #999;background:#ddd">History</h6>
+        <div>
+          <div class="change" *ngFor="let h of current.history">
+            <div>
+              <strong>{{h.eff_date | date}}</strong>: {{h.sale_price}}
+              <p><label>{{h.reason}}</label>{{h.comments}}</p>
+            </div>
+          </div>
+          <div class="small text-muted" *ngIf="!current.history?.length">No earlier prices.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
-
-

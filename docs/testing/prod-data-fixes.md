@@ -37,6 +37,7 @@ Everything found in the live-database copy (dump of 2026-10, 61,847 sales, 1,739
 | 22 | Purchases | Draft invoices (status NEW). Outstanding, Payables and the invoice list now treat a draft as not received, so it is no longer counted as owed and cannot be offered for payment; drafts show under their own Drafts chip. They are still worth clearing | 25, Rs 1.28 lakh; 11 for Karthikeyan Drug House, oldest Nov 2024 | Complete or delete the stale ones, or decide that drafts should not count as owed | You |
 | 23 | Purchases | Invoice lines not VERIFIED | 3 | Verify or remove | Both |
 | 24 | Vendors | No phone | 18 | Fill over time | You |
+| 29 | Prices | Prices above the MRP (illegal to sell), below cost, margins over 300% (over 1,000% are typing mistakes), and products with no price. 42 above MRP, 36 below cost, 23 over 1,000%, 320 with no price on the current dump | see `price_review.csv` (about 485 rows, worst first) | Fix 06 caps the above-MRP ones (needs `--approve 06`); the rest are corrected on the Price page, where the API now caps at MRP, refuses over 1,000% and warns over 300% | You review, Me cap |
 
 ## C. Known and accepted (no action, recorded for the record)
 
@@ -62,6 +63,7 @@ Nothing done by hand in a rehearsal copy carries over. Everything is replayed on
 | 03 | Write off batches expired more than 180 days ago (141 batches, Rs 47,978) | required |
 | 04 | Customer mobiles, safe part only: 258 empty strings become NULL, formatted numbers become 10 digits (none in the current dump), 3 text-only mobiles become NULL; old values kept in `customer_data_fix_log`. Rehearsed on a fresh dump: PASS | no |
 | 05 | Customer names: stray spaces trimmed (2,244 had a leading or trailing space), and names written all in capitals or all in lower case become Title Case (3,282 of 3,355 were capitals). Mixed-case names keep their capitals, the NIL walk-in is skipped, and any change that would clash on name + mobile is skipped. Old values kept in `customer_data_fix_log`. The API applies the same rule to new entries | no |
+| 06 | Sale prices above the MRP: the price in force is capped at the MRP of the product's latest purchase (42 on the current dump, e.g. a diaper pack at 115,200 against an MRP of 1,499). Read `price_review.csv` first: a wrong purchase cost behind a huge margin is not fixed here. Old prices kept in `price_data_fix_log` | required |
 
 ## Suggested order
 

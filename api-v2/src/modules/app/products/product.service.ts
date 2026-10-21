@@ -85,8 +85,49 @@ export class ProductService {
   // }
 
   async findPrices(criteria:any){
+    // values are bound, never glued into the SQL; % and _ in the title are taken literally
+    const active = !(criteria?.active === false || criteria?.active === 'false');
+    const title = String(criteria?.title ?? '').replace(/[\\%_]/g, (c) => '\\' + c) + '%';
     return await this.manager.query(
-      `select * from price_view where active = ${criteria.active} and title ilike '${criteria.title}%'`);
+      `select * from price_view where active = $1 and title ilike $2`, [active, title]);
+  }
+
+  /**
+   * The rules for a sale price, from the latest purchase of the product (the same MRP and PTR the price page shows;
+   * with several lines on that invoice the lowest MRP and the highest PTR are used, so the limit is the safe one).
+   *   - a price above MRP is capped at MRP (it is an offence to sell above it);
+   *   - a margin above 1,000% on cost is refused as a typing mistake; above 300% it is saved with a warning;
+   *   - a price below cost is saved with a warning.
+   * A product with no purchase yet has no MRP or PTR to check against and is saved as given.
+   */
+  private async checkPrice(manager: EntityManager, productid: number, raw: any) {
+    const price = Number(raw);
+    if (!(price > 0)) {
+      throw new BadRequestException('Enter a sale price above 0.');
+    }
+    const [lim] = await manager.query(
+      `select min(pii.mrp_cost) as mrp, max(pii.ptr_cost) as ptr
+         from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
+        where pii.product_id = $1 and pii.mrp_cost > 0 and pii.ptr_cost > 0
+          and pi.invoice_date = (select max(pi2.invoice_date) from purchase_invoice_item pii2
+                                   join purchase_invoice pi2 on pi2.id = pii2.invoice_id where pii2.product_id = $1)`, [productid]);
+    const mrp = lim?.mrp != null ? Number(lim.mrp) : null;
+    const ptr = lim?.ptr != null ? Number(lim.ptr) : null;
+    let final = price;
+    let capped = false;
+    if (mrp && price > mrp) { final = mrp; capped = true; }
+    final = Math.round(final * 100) / 100;
+    const warnings: string[] = [];
+    let margin: number | null = null;
+    if (ptr) {
+      margin = Math.round((final - ptr) / ptr * 10000) / 100;
+      if (margin > 1000) {
+        throw new BadRequestException(`A margin of ${margin}% on a cost of ${ptr} looks like a typing mistake (the limit is 1,000%). Check the price${capped ? ` (it was capped at the MRP ${mrp})` : ''} and the purchase cost.`);
+      }
+      if (margin > 300) warnings.push(`High margin: ${margin}% on a cost of ${ptr}.`);
+      if (final < ptr) warnings.push(`The price is below the purchase cost (${ptr}).`);
+    }
+    return { price: final, capped, mrp, ptr, margin, warnings };
   }
 
   async findPriceById(productid:number){
@@ -144,12 +185,13 @@ export class ProductService {
      * Fixed: SQL injection vulnerabilities in helper methods
      */
     async addPrice(createProductPrice2Dto: CreateProductPrice2Dto, userid) {
-      if (Number(createProductPrice2Dto.saleprice) < 0) {
-        throw new BadRequestException('Sale price cannot be negative.');
+      if (!(Number(createProductPrice2Dto.saleprice) > 0)) {
+        throw new BadRequestException('Enter a sale price above 0.');
       }
       // Wrap entire operation in SERIALIZABLE transaction to prevent race conditions
       return await this.priceRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
         try {
+          const check = await this.checkPrice(transactionManager, Number(createProductPrice2Dto.productid), createProductPrice2Dto.saleprice);
           // Set default values for effdate and enddate if not provided
           const effdate = createProductPrice2Dto.effdate || new Date().toISOString().split('T')[0];
           const enddate = createProductPrice2Dto.enddate || '2099-12-31';
@@ -185,14 +227,16 @@ export class ProductService {
           // Step 3: Save new price with default values
           const newPrice = await transactionManager.save(ProductPrice2, {
             ...createProductPrice2Dto,
+            saleprice: check.price,
             effdate: applyFrom,
             enddate: enddate,
             createdby: userid
           });
 
-          return newPrice;
+          return { ...newPrice, capped: check.capped, mrp: check.mrp, ptr: check.ptr, margin: check.margin, warnings: check.warnings };
         } catch (error) {
           // Transaction will automatically rollback on error
+          if (error instanceof BadRequestException) throw error;
           throw new Error(`Failed to add price: ${error.message}`);
         }
       });
@@ -217,8 +261,11 @@ export class ProductService {
     }
 
     async updatePrice(id:any, values:any, userid){
-        if (values?.saleprice !== undefined && Number(values.saleprice) < 0) {
-          throw new BadRequestException('Sale price cannot be negative.');
+        if (values?.saleprice !== undefined) {
+          const row = await this.priceRepository.findOne({ where: { id } });
+          if (!row) throw new BadRequestException('Price not found.');
+          const check = await this.checkPrice(this.manager, Number(row.productid), values.saleprice);
+          values = { ...values, saleprice: check.price };
         }
         return this.priceRepository.update(id, {...values, updatedby:userid});
     }

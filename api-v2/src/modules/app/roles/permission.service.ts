@@ -93,6 +93,15 @@ export class PermissionService {
     );
   }
 
+  /** Creating, editing, (de)activating and archiving products: the managers, or a role granted products add / edit. */
+  async canEditProducts(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return this.privilegedRoles.has(role.name) || this.hasPermission(role, 'products', 'edit') || this.hasPermission(role, 'products', 'add');
+  }
+
   async canManagePricing(roleid: number | string): Promise<boolean> {
     const role = await this.findRole(roleid);
     if (!role) {

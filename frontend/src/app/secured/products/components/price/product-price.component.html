@@ -2,13 +2,23 @@
     <div class="col-12 p-2 d-flex">
        <div style="padding-right:.5em"><input type="text" class="form-control" [(ngModel)]="criteria.title" (input)="filter()" placeholder="Product"></div>
        <div style="padding-right:.5em;padding-top: .5em;font-size: larger;"><input type="checkbox" style="width:25px;height:25px;" [(ngModel)]="criteria.active" (change)="filter()"> Active</div>
+       <div style="padding-left:1em">
+         <select class="form-select" [(ngModel)]="flagFilter" data-testid="price-flag-filter">
+           <option value="">All prices</option>
+           <option value="above">Above MRP</option>
+           <option value="below">Below cost</option>
+           <option value="high">Margin over 300%</option>
+           <option value="none">No price</option>
+         </select>
+       </div>
     </div>
 </div>
 
 <div class="row mt-2">
     <div class="col-12">
-        <p>Product not purchased are not shown below</p>
-    <p-table [value]="products" dataKey="id" editMode="row" styleClass="p-datatable-sm p-datatable-striped"
+        <p>Products not purchased are not shown below</p>
+        <div class="alert alert-success py-2" *ngIf="message" data-testid="price-message">{{message}}</div>
+    <p-table [value]="visible" dataKey="id" editMode="row" styleClass="p-datatable-sm p-datatable-striped"
             [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
             [rowsPerPageOptions]="[25,50,100]">
@@ -38,7 +48,12 @@
         </ng-template>
         <ng-template pTemplate="body" let-product let-editing="editing" let-ri="rowIndex">
             <tr [pEditableRow]="product">
-                <td>{{product.title}}</td>
+                <td>{{product.title}}
+                <span class="badge bg-danger ms-1" *ngIf="flagsOf(product).includes('above')" title="Above the MRP: a new price is capped at it">above MRP</span>
+                <span class="badge bg-warning text-dark ms-1" *ngIf="flagsOf(product).includes('below')">below cost</span>
+                <span class="badge bg-warning text-dark ms-1" *ngIf="flagsOf(product).includes('high')">margin over 300%</span>
+                <span class="badge bg-secondary ms-1" *ngIf="flagsOf(product).includes('none')">no price</span>
+            </td>
                 <td>{{product.last_updated | date : 'dd/MM/yy'}}</td>
                 <!-- <td class="text-center" pEditableColumn>
                     <p-cellEditor>

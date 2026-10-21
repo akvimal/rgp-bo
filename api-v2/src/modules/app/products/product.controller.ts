@@ -23,6 +23,12 @@ export class ProductController {
       }
     }
 
+    private async assertProductEditAccess(currentUser: any) {
+      if (!(await this.permissions.canEditProducts(currentUser.roleid))) {
+        throw new ForbiddenException('Only a manager can change the product master.');
+      }
+    }
+
     private async assertCostAccess(currentUser: any) {
       if (!(await this.permissions.canViewCost(currentUser.roleid))) {
         throw new ForbiddenException('Cost access denied');
@@ -31,6 +37,7 @@ export class ProductController {
 
     @Post()
     async create(@Body() createDto: CreateProductDto,  @User() currentUser: any) {
+        await this.assertProductEditAccess(currentUser);
         return this.productService.create(createDto, currentUser.id);
     }
 
@@ -56,7 +63,8 @@ export class ProductController {
     }
 
     @Put(':id')
-    update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @User() currentUser: any) {
+    async update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @User() currentUser: any) {
+      await this.assertProductEditAccess(currentUser);
       return this.productService.update(id, updateDto, currentUser.id);
     }
 
@@ -98,7 +106,8 @@ export class ProductController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string, @User() currentUser: any) {
+    async remove(@Param('id') id: string, @User() currentUser: any) {
+      await this.assertProductEditAccess(currentUser);
       return this.productService.update(id, {isActive:false}, currentUser.id);
     }
 

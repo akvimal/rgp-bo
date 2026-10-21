@@ -28,8 +28,14 @@ export class ProductListComponent {
         }, { entity: 'product', verb: 'Archive', consequence: 'It will be hidden from lists; stock history is kept.' });
     }
 
-    changeActive(id:number, flag:boolean){
-        this.service.update(id, {isActive:flag}).subscribe(data => this.fetchList());
+    changeActive(id:number, flag:boolean, title?:string){
+        if (flag) {
+            this.service.update(id, {isActive:true}).subscribe(() => this.fetchList());
+            return;
+        }
+        this.confirm.confirmDelete(title, () => {
+            this.service.update(id, {isActive:false}).subscribe(() => this.fetchList());
+        }, { entity: 'product', verb: 'Deactivate', reversible: true, consequence: 'It will no longer be offered at the counter or on new orders. Stock and history are kept, and you can activate it again.' });
     }
 
     fetchList(){
