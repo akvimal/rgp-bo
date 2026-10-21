@@ -40,7 +40,7 @@ export class SecuredComponent {
     state$!:Observable<AppState>;
 
     pricing:boolean = false;
-    sidebarCollapsed:boolean = true;
+    sidebarCollapsed:boolean = false;
     sidebarDrawerOpen:boolean = false;
     settingsMenuOpen:boolean = false;
     userMenuOpen:boolean = false;

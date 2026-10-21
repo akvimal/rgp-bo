@@ -374,9 +374,9 @@ h6 {
   line-height: 1;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 992px) {
   .logo {
-    width: 280px;
+    width: 190px;
   }
 }
 
@@ -618,10 +618,10 @@ h6 {
   top: 60px;
   left: 0;
   bottom: 0;
-  width: 300px;
+  width: 230px;
   z-index: 996;
   transition: all 0.3s;
-  padding: 20px;
+  padding: 14px 12px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #aab7cf transparent;
@@ -629,9 +629,9 @@ h6 {
   background-color: #fff;
 }
 
-@media (max-width: 1199px) {
+@media (max-width: 991px) {
   .sidebar {
-    left: -300px;
+    left: -230px;
   }
 }
 
@@ -645,21 +645,21 @@ h6 {
   background-color: #aab7cf;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 992px) {
 
   #main,
   #footer {
-    margin-left: 300px;
+    margin-left: 230px;
   }
 }
 
-@media (max-width: 1199px) {
+@media (max-width: 991px) {
   .toggle-sidebar .sidebar {
     left: 0;
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 992px) {
 
   .toggle-sidebar #main,
   .toggle-sidebar #footer {
@@ -667,7 +667,7 @@ h6 {
   }
 
   .toggle-sidebar .sidebar {
-    left: -300px;
+    left: -230px;
   }
 }
 
@@ -750,6 +750,7 @@ h6 {
   display: flex;
   align-items: center;
   font-size: 14px;
+  text-decoration: none;
   font-weight: 600;
   color: #012970;
   transition: 0.3;

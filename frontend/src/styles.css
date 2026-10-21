@@ -105,6 +105,11 @@
   display: none;
 }
 
+.sidebar-collapsed .sidebar-nav .nav-heading,
+.sidebar-collapsed .sidebar-nav .nav-content {
+  display: none;
+}
+
 .sidebar-collapsed .sidebar-nav .nav-link {
   justify-content: center;
   padding-left: .5rem;
