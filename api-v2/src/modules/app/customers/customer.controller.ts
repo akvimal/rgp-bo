@@ -1,6 +1,7 @@
 import { CustomerService } from "./customer.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { User } from "src/core/decorator/user.decorator";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 
@@ -30,6 +31,21 @@ export class CustomerController {
     @Post('/filter')
     async filterByCriteria(@Body() criteria: any) {
       return this.customerService.filterByCriteria(criteria);
+    }
+
+    @Get('by-mobile/:mobile')
+    async byMobile(@Param('mobile') mobile: string) {
+      return this.customerService.byMobile(mobile);
+    }
+
+    @Get('duplicates')
+    async duplicates(@User() currentUser: any) {
+      return this.customerService.duplicates(currentUser);
+    }
+
+    @Post('merge')
+    async merge(@Body() body: any, @User() currentUser: any) {
+      return this.customerService.merge(body, currentUser);
     }
 
     @Get('search/mobile/:mobile')

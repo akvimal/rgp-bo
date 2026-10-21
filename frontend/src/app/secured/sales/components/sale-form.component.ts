@@ -105,11 +105,15 @@ export class SaleFormComponent {
     }
 
     saveCustomer(){
+      // at the counter a second person on a known number is normal (family), so the duplicate warning is pre-confirmed
       this.customerService.save({name:this.sale.customer.name,
         mobile:this.sale.customer.mobile,
-        email:this.sale.customer.email}).subscribe(data => {
+        email:this.sale.customer.email, confirmduplicate: true} as any).subscribe(data => {
           // console.log('customer saved',data);
           this.sale.customer = {...data, existing: true};
+        }, err => {
+          const m = err?.error?.message;
+          this.submitError = Array.isArray(m) ? m.join(' ') : (m || 'Could not save the customer.');
         });
     }
 

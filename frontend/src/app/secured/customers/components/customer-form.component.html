@@ -7,13 +7,26 @@
     </div>
     <div class="col-md-4">
       <label for="mobile" class="form-label">Mobile<span class="required">*</span></label>
-      <input id="mobile" data-testid="cust-f-mobile" type="text" class="form-control" formControlName="mobile">
+      <input id="mobile" data-testid="cust-f-mobile" type="text" class="form-control" [class.is-invalid]="mobileInvalid" formControlName="mobile" inputmode="tel" (blur)="onMobileBlur()">
+      <div class="invalid-feedback d-block" *ngIf="mobileInvalid" data-testid="cust-f-mobile-error">Enter a 10-digit mobile number starting with 6, 7, 8 or 9.</div>
     </div>
     <div class="col-md-4">
       <label for="email" class="form-label">Email</label>
-      <input id="email" data-testid="cust-f-email" type="text" class="form-control" formControlName="email">
+      <input id="email" data-testid="cust-f-email" type="text" class="form-control" [class.is-invalid]="form.controls['email'].invalid && form.controls['email'].dirty" formControlName="email">
+      <div class="invalid-feedback d-block" *ngIf="form.controls['email'].invalid && form.controls['email'].dirty">That email address is not valid.</div>
     </div>
   </div>
+  <div class="alert alert-warning mt-3 py-2" *ngIf="sameNumber.length" data-testid="cust-f-dup-warning">
+    <div><strong>{{form.value.mobile}}</strong> is already used by:
+      <span *ngFor="let m of sameNumber; let last = last">{{m.name || '(no name)'}} <span class="text-muted">({{m.bills}} bills)</span><span *ngIf="!last">, </span></span>.
+    </div>
+    <div class="form-check mt-1">
+      <input class="form-check-input" type="checkbox" id="confirmDup" data-testid="cust-f-dup-confirm" [(ngModel)]="confirmDuplicate" [ngModelOptions]="{standalone: true}">
+      <label class="form-check-label" for="confirmDup">This is a different person on the same number (for example a family member)</label>
+    </div>
+  </div>
+  <div class="alert alert-danger mt-3 py-2" *ngIf="saveError" data-testid="cust-f-error">{{saveError}}</div>
+
   <div class="row">
     <!-- <div class="col-md-4">
       <label for="area" class="form-label">Area</label>
@@ -48,7 +61,7 @@
   </div>
   <div class="row mt-3">
     <div class="col-md-12">
-      <button type="submit" class="btn btn-primary m-2" data-testid="cust-f-save" [disabled]="!form.valid">Save</button>
+      <button type="submit" class="btn btn-primary m-2" data-testid="cust-f-save" [disabled]="!canSave">Save</button>
       <button type="button" *ngIf="customer.id === 0" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
       <a [routerLink]="['/secure/customers/cust/list']"><button class="btn btn-outline-secondary">Cancel</button></a>
     </div>

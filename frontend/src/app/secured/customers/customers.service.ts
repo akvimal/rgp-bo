@@ -32,6 +32,18 @@ export class CustomersService {
         return this.http.get(`${this.apiurl}/search/mobile/${mobile}`);
     }
 
+    byMobile(mobile:any){
+        return this.http.get<any[]>(`${this.apiurl}/by-mobile/${encodeURIComponent(mobile)}`);
+    }
+
+    duplicates(){
+        return this.http.get<any[]>(`${this.apiurl}/duplicates`);
+    }
+
+    merge(keepid:number, mergeids:number[]){
+        return this.http.post<any>(`${this.apiurl}/merge`, { keepid, mergeids });
+    }
+
     findAllApi(){
         return this.http.get(`${this.apiurl}`);
     }

@@ -1,28 +1,150 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { Customer } from "src/entities/customer.entity";
 import { Sale } from "src/entities/sale.entity";
 import { EntityManager, Repository } from "typeorm";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
+import { AuditService } from "src/core/audit/audit.service";
+import { NIL_MOBILE, cleanEmail, cleanText, likelySamePerson, normaliseMobile } from "./customer-rules";
 
 @Injectable()
 export class CustomerService {
 
     constructor(@InjectRepository(Customer) private readonly customerRepository: Repository<Customer>,
     @InjectRepository(Sale) private readonly saleRepository: Repository<Sale>,
-    @InjectEntityManager() private manager: EntityManager) { }
+    @InjectEntityManager() private manager: EntityManager,
+    private readonly audit: AuditService) { }
 
-    async save(createCustomerDto: CreateCustomerDto) {
-        return this.customerRepository.save(createCustomerDto);
-      }
+    /**
+     * Creates or edits a customer (the screens post both here). The name and mobile are checked and cleaned; a mobile
+     * already held by another person is refused until the caller confirms it is a different person on the same number
+     * (a family often shares one), and an identical name + mobile is always refused.
+     */
+    async save(dto: CreateCustomerDto & { id?: number | string; confirmduplicate?: boolean }) {
+        const id = dto.id ? Number(dto.id) : null;
+        const existing = id ? await this.customerRepository.findOne({ where: { id } }) : null;
+        if (id && !existing) throw new NotFoundException('Customer not found.');
+
+        const name = cleanText(dto.name ?? existing?.name, 80, 'The name');
+        if (!name || name.length < 2) throw new BadRequestException('The customer name is required.');
+        const mobile = dto.mobile === undefined ? (existing?.mobile ?? null) : normaliseMobile(dto.mobile);
+        if (!existing && !mobile) throw new BadRequestException('The mobile number is required.');
+
+        if (mobile && mobile !== NIL_MOBILE && (!existing || existing.mobile !== mobile || (existing.name || '').trim().toLowerCase() !== name.toLowerCase())) {
+            const others = await this.manager.query(
+                `select id, name from customer where mobile = $1 and active and not archive and id <> $2 order by id`, [mobile, id ?? 0]);
+            if (others.some((o: any) => String(o.name || '').trim().toLowerCase() === name.toLowerCase())) {
+                throw new ConflictException(`A customer named ${name} with the mobile ${mobile} already exists.`);
+            }
+            if (others.length && !dto.confirmduplicate) {
+                const who = others.slice(0, 3).map((o: any) => String(o.name || '').trim() || '(no name)').join(', ');
+                throw new ConflictException(`The mobile ${mobile} is already used by ${who}${others.length > 3 ? ' and others' : ''}. Confirm that this is a different person on the same number.`);
+            }
+        }
+
+        const values: any = { name, mobile };
+        if (dto.email !== undefined) values.email = cleanEmail(dto.email);
+        if (dto.locality !== undefined) values.locality = cleanText(dto.locality, 60, 'The location');
+        if (dto.address !== undefined) values.address = cleanText(dto.address, 200, 'The address');
+        if (dto.area !== undefined) values.area = cleanText(dto.area, 60, 'The area');
+        if (dto.srctype !== undefined) values.srctype = cleanText(dto.srctype, 30, 'The source');
+        if (dto.srcdesc !== undefined) values.srcdesc = cleanText(dto.srcdesc, 120, 'The source text');
+        try {
+            return await this.customerRepository.save(existing ? { ...existing, ...values } : values);
+        } catch (e: any) {
+            if (String(e?.code) === '23505') throw new ConflictException(`A customer named ${name} with the mobile ${mobile} already exists.`);
+            throw e;
+        }
+    }
+
+    /** Active customers on a mobile, with their bills, for the "already used by" warning. */
+    async byMobile(raw: string) {
+        let mobile: string | null = null;
+        try { mobile = normaliseMobile(raw); } catch { return []; }
+        if (!mobile) return [];
+        return this.manager.query(
+            `select c.id, c.name, c.mobile, count(s.id)::int as bills, max(s.bill_date) as lastvisit
+               from customer c left join sale s on s.customer_id = c.id and s.status = 'COMPLETE'
+              where c.mobile = $1 and c.active and not c.archive group by c.id order by c.id`, [mobile]);
+    }
+
+    private async assertBusinessHead(user: any) {
+        const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
+        if (role?.name !== 'Business Head') throw new ForbiddenException('Only the Business Head can merge customers.');
+    }
+
+    /** Numbers held by more than one customer, most likely duplicates first. The NIL walk-in and blank numbers are left out. */
+    async duplicates(user: any) {
+        await this.assertBusinessHead(user);
+        const rows = await this.manager.query(
+            `select c.id, c.name, c.mobile, count(s.id)::int as bills, max(s.bill_date) as lastvisit
+               from customer c left join sale s on s.customer_id = c.id and s.status = 'COMPLETE'
+              where c.active and not c.archive and c.mobile ~ '^[6-9][0-9]{9}$'
+                and c.mobile in (select mobile from customer where active and not archive and mobile ~ '^[6-9][0-9]{9}$' group by mobile having count(*) > 1)
+              group by c.id order by c.mobile, bills desc, c.id`);
+        const groups = new Map<string, any[]>();
+        for (const r of rows) {
+            if (!groups.has(r.mobile)) groups.set(r.mobile, []);
+            groups.get(r.mobile)!.push(r);
+        }
+        const out = [...groups.entries()].map(([mobile, members]) => {
+            let likely = false;
+            for (let i = 0; i < members.length && !likely; i++)
+                for (let j = i + 1; j < members.length && !likely; j++) likely = likelySamePerson(members[i].name, members[j].name);
+            return { mobile, likelysame: likely, bills: members.reduce((t, m) => t + m.bills, 0), members };
+        });
+        out.sort((a, b) => Number(b.likelysame) - Number(a.likelysame) || b.bills - a.bills);
+        return out.slice(0, 300);
+    }
+
+    /** Folds duplicate records into one: bills, documents, grievances, refill notes and transactions move to the kept
+     *  customer, blanks on it are filled from the others, and the merged records are archived (never deleted). */
+    async merge(body: { keepid: number; mergeids: number[] }, user: any) {
+        await this.assertBusinessHead(user);
+        const keepid = Number(body?.keepid);
+        const mergeids = [...new Set((body?.mergeids || []).map(Number))].filter((n) => n && n !== keepid);
+        if (!keepid || !mergeids.length) throw new BadRequestException('Pick the customer to keep and at least one to merge into it.');
+        if (mergeids.length > 20) throw new BadRequestException('Merge at most 20 records at a time.');
+        const result = await this.manager.transaction(async (tx) => {
+            const rows = await tx.query(`select * from customer where id = any($1::int[]) and active and not archive for update`, [[keepid, ...mergeids]]);
+            if (rows.length !== mergeids.length + 1) throw new NotFoundException('One of the customers does not exist or is already merged.');
+            if (rows.some((r: any) => r.mobile === NIL_MOBILE)) throw new BadRequestException('The NIL walk-in customer cannot be merged.');
+            const keep = rows.find((r: any) => r.id === keepid);
+            const moved: Record<string, number> = {};
+            for (const t of ['sale', 'customer_documents', 'customer_transaction', 'grievance', 'refill_followup']) {
+                const r = await tx.query(`update ${t} set customer_id = $1 where customer_id = any($2::int[])`, [keepid, mergeids]);
+                moved[t] = Array.isArray(r) ? (r[1] ?? 0) : 0;
+            }
+            for (const col of ['email', 'address', 'locality', 'area']) {
+                if (!keep[col]) {
+                    const donor = rows.find((r: any) => r.id !== keepid && r[col]);
+                    if (donor) await tx.query(`update customer set ${col} = $2 where id = $1`, [keepid, donor[col]]);
+                }
+            }
+            await tx.query(`update customer set active = false, archive = true, updated_on = now() where id = any($1::int[])`, [mergeids]);
+            return { keep: { id: keep.id, name: keep.name, mobile: keep.mobile }, merged: rows.filter((r: any) => r.id !== keepid).map((r: any) => ({ id: r.id, name: r.name, mobile: r.mobile })), moved };
+        });
+        await this.audit.record({
+            userId: user.id, action: 'customer.merged', entityType: 'customers', entityId: keepid,
+            summary: `${result.merged.length} record(s) merged into ${String(result.keep.name).trim()}`, details: result,
+        });
+        return result;
+    }
     
     async findAll(){
-        const [customers, segments] = await Promise.all([
+        const [customers, segments, visits] = await Promise.all([
             this.customerRepository.createQueryBuilder('c')
-                .where('c.active = :flag', { flag: true }).getMany(),
+                .where('c.active = :flag', { flag: true }).andWhere('c.archive = false').getMany(),
             this.segmentsByCustomer(),
+            this.manager.query(`select customer_id as id, count(*)::int as bills, max(bill_date) as lastvisit from sale
+                                 where status = 'COMPLETE' and customer_id is not null group by customer_id`),
         ]);
-        return customers.map(c => Object.assign(c, { segment: segments.get(c.id) || 'No purchases' }));
+        const seen = new Map<number, any>(visits.map((v: any) => [+v.id, v]));
+        return customers.map(c => Object.assign(c, {
+            segment: segments.get(c.id) || 'No purchases',
+            bills: seen.get(c.id)?.bills ?? 0,
+            lastvisit: seen.get(c.id)?.lastvisit ?? null,
+        }));
     }
 
     /**

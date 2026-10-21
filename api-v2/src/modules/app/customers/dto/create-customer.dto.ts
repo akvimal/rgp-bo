@@ -20,4 +20,9 @@ export class CreateCustomerDto {
     readonly srctype: string;
     @ApiProperty({ description: 'source desc', example: '' })
     readonly srcdesc: string;
+
+    @ApiProperty({ description: 'confirm a different person on a mobile another customer already has', required: false })
+    readonly confirmduplicate?: boolean;
+    @ApiProperty({ description: 'set when editing', required: false })
+    readonly id?: number;
 }

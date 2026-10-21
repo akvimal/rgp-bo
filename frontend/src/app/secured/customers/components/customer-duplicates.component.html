@@ -1,0 +1,35 @@
+<div class="pagetitle d-flex flex-wrap align-items-center gap-3">
+  <h1 class="mb-0">Duplicate mobiles</h1>
+  <a [routerLink]="['../list']" class="btn btn-outline-secondary btn-sm">Back to customers</a>
+</div>
+<p class="small text-muted mt-2">
+  Customers who share a mobile number. A family often shares one, so only merge records that are the same person
+  (names that are spellings of each other are marked). Merging moves every bill and note to the customer you keep and
+  archives the others; nothing is deleted.
+</p>
+<div *ngIf="message" class="alert alert-success py-2" data-testid="dup-message">{{message}}</div>
+<div *ngIf="error" class="alert alert-danger py-2" data-testid="dup-error">{{error}}</div>
+<div *ngIf="!loading && !groups.length" class="text-muted" data-testid="dup-empty">No duplicate mobiles.</div>
+
+<div class="card mb-3" *ngFor="let g of groups" data-testid="dup-group" [attr.data-mobile]="g.mobile">
+  <div class="card-header py-2 d-flex flex-wrap align-items-center gap-2">
+    <strong>{{g.mobile}}</strong>
+    <span class="badge bg-warning text-dark" *ngIf="g.likelysame">looks like the same person</span>
+    <span class="small text-muted">{{g.members.length}} records, {{g.bills}} bills</span>
+    <button class="btn btn-sm btn-primary ms-auto" data-testid="dup-merge" [disabled]="!toMerge(g).length || working === g.mobile" (click)="merge(g)">
+      Merge {{toMerge(g).length || ''}} into the kept record
+    </button>
+  </div>
+  <table class="table table-sm mb-0 align-middle">
+    <thead><tr><th style="width:5rem">Keep</th><th style="width:6rem">Merge</th><th>Name</th><th class="text-end">Bills</th><th>Last visit</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let m of g.members" data-testid="dup-row">
+        <td><input type="radio" [name]="'keep-' + g.mobile" [value]="m.id" [(ngModel)]="keep[g.mobile]" data-testid="dup-keep"></td>
+        <td><input type="checkbox" [disabled]="keep[g.mobile] === m.id" [(ngModel)]="picked[m.id]" data-testid="dup-pick"></td>
+        <td>{{m.name || '(no name)'}}</td>
+        <td class="text-end">{{m.bills}}</td>
+        <td>{{m.lastvisit ? (m.lastvisit | date:'dd/MM/yy') : '-'}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
