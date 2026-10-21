@@ -49,4 +49,32 @@ test.describe('UI standard @p2', () => {
     expect(lastVisit).toMatch(/^\d{2} [A-Z][a-z]{2} \d{4}$/);                       // 21 Oct 2026, never 21/10/26
     expect(await page.locator('link[rel=stylesheet][href*="vendor/bootstrap/css"]').count()).toBe(0);
   });
+
+  test('UI-4 the primary Add button is on the right of every list, and Vendors keeps the Purchase tabs @happy', async ({ app }) => {
+    const lists: Array<[string, string]> = [
+      ['/secure/customers/cust/list', 'cust-add'],
+      ['/secure/products/master/list', 'prod-add'],
+      ['/secure/purchases/vendors/list', 'vendor-add'],
+      ['/secure/purchases/invoices/list', 'inv-add'],
+      ['/secure/settings/users', 'user-add'],
+      ['/secure/settings/roles', 'role-add'],
+      ['/secure/settings/delivery-partners/list', 'partner-add'],
+    ];
+    for (const [path, testid] of lists) {
+      const { page } = await app.open(MGR, path);
+      await expectShell(page);
+      const add = page.getByTestId(testid);
+      await expect(add, `${path} add button`).toBeVisible();
+      const box = await add.boundingBox();
+      const main = await page.locator('#main').boundingBox();
+      expect(box!.x + box!.width, `${path}: right edge of Add`).toBeGreaterThan(main!.x + main!.width - 60);   // flush to the right margin
+      expect(box!.y, `${path}: Add sits near the top`).toBeLessThan(260);
+    }
+    const vendors = await app.open(MGR, '/secure/purchases/vendors/list');
+    await expect(vendors.page.getByTestId('nav-vendors')).toBeVisible();
+    await expect(vendors.page.locator('.navbar .nav-link.is-active', { hasText: 'Vendors' })).toBeVisible();
+    await expect(vendors.page.getByRole('link', { name: 'Invoices', exact: true })).toBeVisible();      // the other tabs are still there
+    const vform = await app.open(MGR, '/secure/purchases/vendors/new');
+    await expect(vform.page.locator('.navbar .nav-link.is-active', { hasText: 'Vendors' })).toBeVisible();
+  });
 });

@@ -68,6 +68,19 @@ small, .small { font-size: .8rem; }
 .text-muted { color: var(--rgp-muted) !important; }
 .required { color: #dc3545; margin-left: 2px; }
 
+/* ------------------------------------------------------------------ page header and toolbar */
+/* title on the left, actions on the right (app-page-header) */
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .75rem; flex-wrap: wrap; }
+.page-header h1 { margin: 0; }
+.page-header .page-subtitle { margin: .15rem 0 0; color: var(--rgp-muted); font-size: .85rem; }
+.page-header-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.page-header-actions:empty { display: none; }
+.page-header-actions [actions] { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+/* the row under a title or tab bar: filters and search on the left, the primary action on the right */
+.page-toolbar { display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.page-toolbar > .page-toolbar-main { display: flex; align-items: flex-end; gap: .75rem; flex-wrap: wrap; }
+.page-toolbar > .page-toolbar-actions, .page-toolbar > .ms-auto { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
+
 /* ------------------------------------------------------------------ links */
 a { color: var(--rgp-brand); text-decoration: none; cursor: pointer; }
 a:hover { color: var(--rgp-brand-active); text-decoration: underline; }
@@ -283,6 +296,8 @@ nav.navbar ul.page-menu { border: 0; margin: 0 !important; }
 .p-datatable .p-sortable-column .p-sortable-column-icon { color: #8b95aa; }
 .p-datatable .p-sortable-column.p-highlight, .p-datatable .p-sortable-column.p-highlight .p-sortable-column-icon { color: var(--rgp-brand); }
 .p-paginator { font-size: .85rem; }
+/* a wide table scrolls inside its card instead of running off the page */
+.p-datatable .p-datatable-wrapper { overflow-x: auto; }
 
 /* ------------------------------------------------------------------ sidebar */
 .sidebar-nav .nav-item { margin-bottom: 2px; }

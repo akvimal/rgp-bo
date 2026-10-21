@@ -1,6 +1,6 @@
-    <div class="d-flex justify-content-between mt-2">
-        <div class="row">
-            <div class="col-12 d-flex">
+    <div class="page-toolbar mt-2">
+        <div class="page-toolbar-main">
+            <div class="d-flex">
                 <div style="padding-right:.7em;">
                     <label class="form-label">Active</label>
                     <br>
@@ -13,8 +13,8 @@
                 <app-props-form [entity]="'product'" [validate]="false" [default]="false" (updated)="propsUpdate($event)"></app-props-form>
             </div>
         </div>
-        <div>
-            <a *isAuth="'products.add'" [routerLink]="['../new']"><button class="btn btn-primary">Add New</button></a>
+        <div class="page-toolbar-actions">
+            <a *isAuth="'products.add'" class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="prod-add">Add New</a>
         </div>
     </div>
     <div class="row">

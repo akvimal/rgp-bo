@@ -1,4 +1,4 @@
-<div class="pagetitle"><h1>{{isNew ? 'New customer' : 'Edit customer'}}<small class="text-muted fs-5" *ngIf="!isNew && customer.name"> &middot; {{customer.name}}</small></h1></div>
+<app-page-header [title]="isNew ? 'New customer' : 'Edit customer'" [subtitle]="!isNew && customer.name ? customer.name : ''"></app-page-header>
 <div class="alert alert-success py-2" *ngIf="saveNote" data-testid="cust-f-note">{{saveNote}}</div>
 <form [formGroup]="form" (ngSubmit)="onSave()" autocomplete="off">
   <div class="row">

@@ -9,7 +9,7 @@ The look is set in one place: `frontend/src/theme.css`, loaded last so it wins o
 | Font | Nunito everywhere; body 14.4px, page title 24px, section title 17px, captions 12.8px |
 | Page title | `<div class="pagetitle"><h1>…</h1></div>`; a page inside a section says where it is ("Settings · Users") |
 | Tabs | One underlined style at every level (`nav.navbar` / `nav.page-menu` / `.nav-tabs` / PrimeNG tabs). Active = brand colour with a 2px underline |
-| Buttons | Page actions in the default size, row actions `btn-sm` or icons. "Add X", "Save", "Cancel". Primary action once per page |
+| Buttons | Page actions in the default size, row actions `btn-sm` or icons. "Add New", "Save", "Cancel". Primary action once per page, **top right**: in `<app-page-header>` when the page owns its title, otherwise in a `.page-toolbar` row (filters left, action right) |
 | Row action icons | Edit = pencil (brand blue), delete = bin (red), deactivate = slashed circle, archive = archive box |
 | Tables | Light header, 0.55rem cell padding, right-aligned numbers, hover tint. Bootstrap and PrimeNG tables look alike |
 | Forms | In a card or on the page, label above (600 weight, 13.6px), required marker `*` after the label, error under the field |
@@ -18,5 +18,5 @@ The look is set in one place: `frontend/src/theme.css`, loaded last so it wins o
 | Money | `₹` on cards and totals, whole rupees on dashboard cards; plain numbers with two decimals in table columns |
 | Links | Brand colour, underline on hover only |
 
-Not yet moved onto the standard: the placement of the primary "Add" button (left on most lists, right on Products), the mix of
-PrimeNG and Bootstrap tables, and the longer forms' own spacing. A shared page header and action-icon component would finish that.
+Not yet moved onto the standard: the mix of PrimeNG and Bootstrap tables, and the longer forms' own spacing. Pages that own their title
+(Customers and its form and duplicates page) use `<app-page-header>`; Dashboard, Reports and Profile still use the plain `.pagetitle` block (same look).

@@ -24,6 +24,6 @@ export class PurchaseHomeComponent {
     }
 
     private updateShell(url: string) {
-        this.showPurchaseHeader = !url.includes('/purchases/vendors');
+        this.showPurchaseHeader = true;   // Vendors is a tab of Purchase now, so the tab bar stays
     }
 }

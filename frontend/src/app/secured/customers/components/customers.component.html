@@ -1,23 +1,26 @@
-<div class="pagetitle">
-  <h1>Customers</h1>
-</div>
-<div class="d-flex flex-wrap align-items-center gap-2">
-  <a [routerLink]="['../new']"><button type="submit" class="btn btn-primary" data-testid="cust-add">Add New</button></a>
-  <input type="search" class="form-control" style="max-width:22rem" placeholder="Search name, mobile or location" data-testid="cust-search"
-    (input)="dt.filterGlobal($any($event.target).value, 'contains')">
-  <!-- merging is the Business Head's job: only that role holds the audit permission -->
-  <a *isAuth="'audit.view'" [routerLink]="['../duplicates']" class="btn btn-outline-secondary" data-testid="cust-dups-link">Duplicate mobiles</a>
-</div>
+<app-page-header title="Customers" subtitle="Everyone who has bought from you, with their buying pattern.">
+  <div actions>
+    <!-- merging is the Business Head's job: only that role holds the audit permission -->
+    <a *isAuth="'audit.view'" [routerLink]="['../duplicates']" class="btn btn-outline-secondary" data-testid="cust-dups-link">Duplicate mobiles</a>
+    <a class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="cust-add">Add New</a>
+  </div>
+</app-page-header>
 
-<div class="d-flex align-items-center gap-2 mt-4">
-  <label for="segmentFilter" class="small text-muted mb-0">Buying pattern</label>
-  <select id="segmentFilter" class="form-select form-select-sm w-auto" data-testid="cust-segment-filter"
-    (change)="dt.filter($any($event.target).value, 'segment', 'equals')">
-    <option value="">All customers</option>
-    <option *ngFor="let sg of segments" [value]="sg">{{sg}}</option>
-  </select>
-  <span class="small text-muted">OTC / Chronic only = every bill line was OTC or a chronic medicine. "Other" includes products not yet categorised.</span>
+<div class="page-toolbar">
+  <div class="page-toolbar-main">
+    <input type="search" class="form-control" style="width:22rem" placeholder="Search name, mobile or location" data-testid="cust-search"
+      (input)="dt.filterGlobal($any($event.target).value, 'contains')">
+    <div class="d-flex align-items-center gap-2">
+      <label for="segmentFilter" class="mb-0">Buying pattern</label>
+      <select id="segmentFilter" class="form-select form-select-sm w-auto" data-testid="cust-segment-filter"
+        (change)="dt.filter($any($event.target).value, 'segment', 'equals')">
+        <option value="">All customers</option>
+        <option *ngFor="let sg of segments" [value]="sg">{{sg}}</option>
+      </select>
+    </div>
+  </div>
 </div>
+<p class="small text-muted mt-n2">OTC / Chronic only = every bill line was OTC or a chronic medicine. "Other" includes products not yet categorised.</p>
 
 <div *ngIf="message" class="alert alert-success py-2 mt-3 mb-0" data-testid="cust-message">{{message}}</div>
 <div *ngIf="error" class="alert alert-danger py-2 mt-3 mb-0" data-testid="cust-error">{{error}}</div>

@@ -5,6 +5,7 @@ import { AutoCompleteModule } from "primeng/autocomplete";
 import { MultiSelectModule } from 'primeng/multiselect';
 import { CustomerSelectComponent } from "./components/customer-select.component";
 import { DenominationGridComponent } from "./components/denomination-grid.component";
+import { PageHeaderComponent } from "./components/page-header.component";
 import { LookupComponent } from "./components/lookup.component";
 import { ProductSelectComponent } from "./components/product-select.component";
 import { PropsPrintComponent } from "./components/props-print.component";
@@ -23,7 +24,8 @@ import { TextWrapPipe } from "./text-wrap.pipe";
       TextWrapPipe,
       PropsPrintComponent,
       LookupComponent,
-      DenominationGridComponent
+      DenominationGridComponent,
+      PageHeaderComponent
     ],
     imports: [
         FormsModule,
@@ -38,7 +40,8 @@ import { TextWrapPipe } from "./text-wrap.pipe";
       ProductSelectComponent,
       StockSelectComponent,
       CustomerSelectComponent,PropsPrintComponent, LookupComponent,
-      DenominationGridComponent
+      DenominationGridComponent,
+      PageHeaderComponent
     ]
   })
 export class SharedModule{}

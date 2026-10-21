@@ -1,4 +1,6 @@
-<a *isAuth="'users.add'" [routerLink]="['../new']"><button type="submit" class="btn btn-primary" data-testid="user-add">Add New</button></a>
+<div class="page-toolbar justify-content-end">
+    <a *isAuth="'users.add'" class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="user-add">Add New</a>
+</div>
 
 <table *isAuth="'users.read'" class="table table-bordered mt-3">
     <thead>
