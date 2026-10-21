@@ -24,7 +24,7 @@ test.describe('Settings — Notifications @p1', () => {
     await expect(page.getByTestId('nt-bot-warning')).toHaveCount(cfg.body.botconfigured ? 0 : 1);
   });
 
-  test('NOTIF-1b Site Admin has no Notifications screen or API access @permission', async ({ app, api }) => {
+  test('NOTIF-1B Site Admin has no Notifications screen or API access @permission', async ({ app, api }) => {
     const { page } = await app.open(SITE_ADMIN, PAGE);
     await expect(page).toHaveURL(/\/login/);
     expect((await api.request('GET', '/notifications/config', undefined, SITE_ADMIN)).status).toBe(403);

@@ -1,8 +1,25 @@
 import { Injectable } from "@nestjs/common";
 import * as ExcelJS from 'exceljs';
 
+/** printed at the top of every exported report */
+const SHOP_LINES = [
+    'Ramesh Generic Pharmacy',
+    '1/256 Kalamegam Salai, 4th Street, Mogappair West, Chennai - 600037',
+    'DL#: TN-Z04-20-00009, TN-Z04-21-00009',
+];
+
 @Injectable()
 export class GeneratorService {
+
+   /** A workbook that only says why there is nothing to show (an export of an empty report). */
+   async excelNote(sheetName: string, message: string) {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(sheetName || 'Report');
+        SHOP_LINES.forEach((line, i) => { worksheet.getCell(`A${i + 1}`).value = line; worksheet.getCell(`A${i + 1}`).font = { name: 'Calibri', size: 10, bold: true }; });
+        worksheet.getCell('A5').value = message;
+        worksheet.getColumn(1).width = 80;
+        return await workbook.xlsx.writeBuffer();
+   }
 
    async excel(request){
 
@@ -12,9 +29,7 @@ export class GeneratorService {
           });
           
         worksheet.columns = request.header;
-        worksheet.insertRow(1,['Ramesh Generic Pharmacy']);
-        worksheet.insertRow(2,['1/256 Kalamegam Salai, 4th Street, Mogappair West, Chennai - 600037']);
-        worksheet.insertRow(3,['DL#: TN-Z04-20-00009, TN-Z04-21-00009']);
+        SHOP_LINES.forEach((line, i) => worksheet.insertRow(i + 1, [line]));
         const header_font = {
             name: 'Calibri',
             family: 4,

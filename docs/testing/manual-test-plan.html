@@ -526,6 +526,8 @@
         { id:"RPT-1", feature:"Sale report", tag:"happy", scenario:"Generate for a date range", steps:"Run a Sale report for a known date range.", expected:"Totals match the sum of individual sales in that range." },
         { id:"RPT-2", feature:"Sale report", tag:"edge", scenario:"Range with zero sales", steps:"Run a report for a date range with no sales.", expected:"Empty/zero report, not an error." },
         { id:"RPT-3", feature:"Export", tag:"happy", scenario:"Excel export", steps:"Export a report and open the downloaded file.", expected:"Columns and figures match what's shown on screen." },
+        { id:"RPT-3B", feature:"Export", tag:"edge", scenario:"Export with nothing to list", steps:"Export the sale report for dates with no sales.", expected:"A file is still downloaded, with the pharmacy header and the line 'No sales match the selected dates and filters.' The button does not appear to do nothing." },
+        { id:"RPT-3C", feature:"Export", tag:"negative", scenario:"Request without an action", steps:"Call the sale report API with no action, or one other than search or export.", expected:"400 with a message, not a request that never answers." },
         { id:"RPT-4", feature:"Sale report", tag:"edge", scenario:"Very large date range", steps:"Run a report spanning a year or more of data.", expected:"Completes without timing out; performance stays acceptable." }
       ]
     },
@@ -611,6 +613,7 @@
       blurb: "The daily Telegram sales and purchase digest: who can configure it, what is saved and what the preview shows. Needs TELEGRAM_BOT_TOKEN set on the API (recreate the container after changing it), the bot added to a Telegram group, and migration 037 applied. NOTIF-6 to NOTIF-9 send real Telegram messages and are manual only.",
       cases: [
         { id:"NOTIF-1", feature:"Access", tag:"permission", scenario:"Screen access", steps:"Open Settings > Notifications as Business Head, then as Site Admin.", expected:"Business Head can open it and sees the store rows and the menu link. Site Admin has no menu link, is redirected from the URL, and the API answers 403. The bot-not-configured banner shows only when the server has no token." },
+        { id:"NOTIF-1B", feature:"Access", tag:"permission", scenario:"Site Admin has no Notifications access", steps:"Sign in as Site Admin and open Settings > Notifications by its URL; call the notifications API.", expected:"No menu link, a redirect to sign-in, and 403 from the API: Telegram digests are a business setting for the Business Head." },
         { id:"NOTIF-2", feature:"Settings", tag:"happy", scenario:"Settings persist", steps:"Save chat IDs, the send time and the toggles, then reload.", expected:"Everything saved is shown again after the reload." },
         { id:"NOTIF-3", feature:"Preview", tag:"integration", scenario:"Digest preview", steps:"Preview a store and then All stores for a date with activity.", expected:"The digest shows sales and purchases for that scope and never cash, margin, balances, deposits, expenses or variances." },
         { id:"NOTIF-4", feature:"Access", tag:"edge", scenario:"Restricted roles blocked", steps:"Open the screen and call the config API as a role without the permission.", expected:"The screen redirects to login and the API answers 403 for both read and save." },
