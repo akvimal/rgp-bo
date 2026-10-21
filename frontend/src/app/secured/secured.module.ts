@@ -52,6 +52,10 @@ const routes: Routes = [
       loadChildren: () => import('./reports/reports.module').then(m => m.ReportsModule)
     },
     {
+      path: 'quality', canActivate:[AuthGuard],
+      loadChildren: () => import('./quality/quality.module').then(m => m.QualityModule)
+    },
+    {
       path: 'settings', canActivate:[AuthGuard],
       loadChildren: () => import('./settings/settings.module').then(m => m.SettingsModule)
     }

@@ -29,6 +29,7 @@ export const PERMISSION_GROUPS = [
   'Administration',
   'Catalog & Purchasing',
   'Sales & Store Operations',
+  'Staff & Quality',
   'Reporting',
 ];
 
@@ -122,6 +123,56 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     bundleLabel: 'Can manage notifications',
     actions: [
       { key: 'manage', label: 'Manage' },
+    ],
+  },
+  {
+    key: 'grievances',
+    label: 'Grievances',
+    description: 'Log and follow up customer complaints: assign, resolve within the due date, keep a timeline.',
+    group: 'Staff & Quality',
+    path: '/secure/quality/grievances',
+    bundle: true,
+    bundleLabel: 'Can handle grievances',
+    actions: [
+      { key: 'view', label: 'View' },
+      { key: 'add', label: 'Log and add notes' },
+      { key: 'manage', label: 'Assign, resolve and reopen' },
+    ],
+  },
+  {
+    key: 'discrepancies',
+    label: 'Cash & Shifts',
+    description: 'Shifts that did not balance, expenses without receipts, shifts never closed.',
+    group: 'Staff & Quality',
+    path: '/secure/quality/discrepancies',
+    bundle: true,
+    bundleLabel: 'Can view cash and shift discrepancies',
+    actions: [
+      { key: 'view', label: 'View' },
+    ],
+  },
+  {
+    key: 'staffsales',
+    label: 'Staff Sales',
+    description: 'Sales, bills, discounts, returns and edits per person.',
+    group: 'Staff & Quality',
+    path: '/secure/quality/staff-sales',
+    bundle: true,
+    bundleLabel: 'Can view staff sales',
+    actions: [
+      { key: 'view', label: 'View' },
+    ],
+  },
+  {
+    key: 'audit',
+    label: 'Audit Log',
+    description: 'See who did what and when: sign-ins, edits to bills, changes made on behalf of others.',
+    group: 'Staff & Quality',
+    path: '/secure/quality/audit',
+    bundle: true,
+    bundleLabel: 'Can view the audit log',
+    actions: [
+      { key: 'view', label: 'View' },
     ],
   },
   {

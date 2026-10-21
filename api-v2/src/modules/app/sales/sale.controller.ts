@@ -8,6 +8,9 @@ import { User } from "src/core/decorator/user.decorator";
 import { CustomerService } from "../customers/customer.service";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
 import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
+import { InjectEntityManager } from "@nestjs/typeorm";
+import { EntityManager } from "typeorm";
+import { AuditService } from "src/core/audit/audit.service";
 
 @ApiTags('Sales')
 @Controller('sales')
@@ -16,7 +19,27 @@ import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 export class SaleController {
 
     constructor(private saleService:SaleService, 
-      private custService:CustomerService){}
+      private custService:CustomerService,
+      private audit:AuditService,
+      @InjectEntityManager() private manager:EntityManager){}
+
+      /**
+       * Who the bill is recorded against. Sales Staff always act as themselves (each person signs in
+       * with their own login); Store Head / Business Head may enter a bill on behalf of someone else.
+       * Every on-behalf entry, and every blocked attempt, is written to the audit log.
+       */
+      private async resolveActingUser(requested: any, currentUser: any, saleId?: number): Promise<number> {
+        const asked = requested ? Number(requested) : currentUser.id;
+        if (asked === currentUser.id) return asked;
+        const row = await this.manager.query(`select name from app_role where id = $1`, [currentUser.roleid || 0]);
+        const blocked = row?.[0]?.name === 'Sales Staff';
+        await this.audit.record({
+          userId: currentUser.id, actingUserId: asked, action: blocked ? 'sale.acting_blocked' : 'sale.on_behalf',
+          entityType: 'sales', entityId: saleId ?? null,
+          summary: blocked ? 'Sales Staff tried to bill as another user; recorded under own login' : 'bill entered on behalf of another user',
+        });
+        return blocked ? currentUser.id : asked;
+      }
 
       @Post()
       async create(@Body() createSaleDto: CreateSaleDto, @User() currentUser: any) {
@@ -26,7 +49,7 @@ export class SaleController {
           customer = await this.custService.save(createSaleDto.customer);
         }
         
-        const actingUserId = createSaleDto.actinguserid ? Number(createSaleDto.actinguserid) : currentUser.id;
+        const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser);
         return this.saleService.create({...createSaleDto, customer}, currentUser.id, actingUserId);
       }
 
@@ -47,9 +70,39 @@ export class SaleController {
         if(customer){ //if customer not present before
           customer = await this.custService.save(updateSaleDto.customer);
         }
-        const actingUserId = updateSaleDto.actinguserid ? Number(updateSaleDto.actinguserid) : currentUser.id;
-        return this.saleService.updateSale({...updateSaleDto, customer}, currentUser.id, actingUserId);
+        const actingUserId = await this.resolveActingUser(updateSaleDto.actinguserid, currentUser, updateSaleDto.id);
+        const saved = await this.saleService.updateSale({...updateSaleDto, customer}, currentUser.id, actingUserId);
+        await this.recordSaleEdit(sale, updateSaleDto, currentUser.id, actingUserId);
+        return saved;
       }
+
+    /** What changed on an edited bill: the facts a reviewer needs (total, discount, status, lines removed, price/qty changes). */
+    private async recordSaleEdit(before: any, after: any, userId: number, actingUserId: number) {
+      if (!before) return;
+      const changes: Record<string, any> = {};
+      const track = (k: string, a: any, b: any) => { if (a !== undefined && b !== undefined && Number(a) !== Number(b) && String(a) !== String(b)) changes[k] = { from: a, to: b }; };
+      track('total', before.total, after.total);
+      track('discamount', before.discamount, after.discamount);
+      track('status', before.status, after.status);
+      track('cashamt', before.cashamt, after.cashamt);
+      track('digiamt', before.digiamt, after.digiamt);
+      const oldItems = new Map<number, any>((before.items || []).map((i: any) => [i.id, i]));
+      const newIds = new Set<number>((after.items || []).map((i: any) => i.id));
+      const removed = [...oldItems.keys()].filter(id => !newIds.has(id)).length;
+      if (removed) changes['items_removed'] = removed;
+      const edited = (after.items || []).filter((i: any) => {
+        const o = oldItems.get(i.id);
+        return o && (Number(o.price) !== Number(i.price) || Number(o.qty) !== Number(i.qty) || Number(o.total) !== Number(i.total));
+      }).length;
+      if (edited) changes['items_changed'] = edited;
+      if (!Object.keys(changes).length) return;
+      await this.audit.record({
+        userId, actingUserId: actingUserId !== userId ? actingUserId : null, action: 'sale.edit',
+        entityType: 'sales', entityId: after.id,
+        summary: `bill ${before.billno ?? after.id} edited (${Object.keys(changes).join(', ')})`,
+        details: { billno: before.billno, billdate: before.billdate, changes },
+      });
+    }
 
     @Post('/items')
     async createItem(@Body() createSaleItemDto: CreateSaleItemDto, @User() currentUser: any) {

@@ -76,6 +76,13 @@ export class SecuredComponent {
       this.userService.getCurrentUser().subscribe(data => {
         this.titleService.setTitle(`RGP - ${data['fullname']}`)
         this.user = data;
+        // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).
+        const fresh = data['permissions'];
+        if (Array.isArray(fresh) && JSON.stringify(fresh) !== JSON.stringify(this.authService.getPermissions())) {
+          this.authService.setPermissions(fresh);
+          window.location.reload();
+          return;
+        }
         this.operatorContextService.loadOperators(this.selectedStoreId, data['id']).subscribe();
       });
       this.storeContextService.loadContext().subscribe((context:any) => {

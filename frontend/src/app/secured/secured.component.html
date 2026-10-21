@@ -172,6 +172,12 @@
             <span>Reports</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'grievances.view'">
+          <a class="nav-link collapsed" routerLink="quality" data-testid="nav-quality" title="Staff &amp; Quality" aria-label="Staff &amp; Quality">
+            <i class="bi bi-shield-check"></i>
+            <span>Staff &amp; Quality</span>
+          </a>
+        </li>
         <li class="nav-item" *isAuth="'settings.read'">
           <a class="nav-link" [class.collapsed]="!settingsMenuOpen" data-testid="nav-settings"
             (click)="toggleSettingsMenu()" title="Settings" aria-label="Settings">

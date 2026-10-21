@@ -1,0 +1,215 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <h5 class="card-title mb-0">Grievances</h5>
+        <div class="small text-muted">Customer complaints, who they concern, and whether they were resolved in time.</div>
+      </div>
+      <button class="btn btn-primary btn-sm" data-testid="gr-new" (click)="openForm()" *isAuth="'grievances.add'">Log a grievance</button>
+    </div>
+
+    <div class="row g-2 mt-1" *ngIf="summary" data-testid="gr-summary">
+      <div class="col-6 col-md-2"><button class="btn btn-outline-primary w-100 text-start" data-testid="gr-chip-open" (click)="quick('OPEN')"><div class="fs-5">{{summary.open}}</div><div class="small">Open</div></button></div>
+      <div class="col-6 col-md-2"><button class="btn btn-outline-info w-100 text-start" data-testid="gr-chip-progress" (click)="quick('IN_PROGRESS')"><div class="fs-5">{{summary.in_progress}}</div><div class="small">In progress</div></button></div>
+      <div class="col-6 col-md-2"><button class="btn w-100 text-start" [ngClass]="summary.overdue ? 'btn-danger' : 'btn-outline-secondary'" data-testid="gr-chip-overdue" (click)="quick('overdue')"><div class="fs-5">{{summary.overdue}}</div><div class="small">Overdue</div></button></div>
+      <div class="col-6 col-md-2"><button class="btn btn-outline-danger w-100 text-start" data-testid="gr-chip-high" (click)="quick('high')"><div class="fs-5">{{summary.high_open}}</div><div class="small">High severity open</div></button></div>
+      <div class="col-6 col-md-2"><button class="btn btn-outline-success w-100 text-start" (click)="quick('resolved')"><div class="fs-5">{{summary.resolved_30d}}</div><div class="small">Resolved, 30 days</div></button></div>
+      <div class="col-6 col-md-2"><div class="border rounded px-3 py-2"><div class="fs-5">{{summary.avg_days_to_resolve === null ? '—' : summary.avg_days_to_resolve}}</div><div class="small text-muted">Avg days to resolve</div></div></div>
+    </div>
+
+    <div class="mt-3 small" *ngIf="summary?.staff?.length" data-testid="gr-staff">
+      <span class="text-muted">Most complaints about, last 90 days:</span>
+      <button *ngFor="let s of summary.staff" class="btn btn-link btn-sm py-0" (click)="filterByPerson(s.userid)">{{s.name}} ({{s.complaints}})</button>
+    </div>
+
+    <!-- new grievance -->
+    <div *ngIf="showForm" class="border rounded p-3 mt-3" data-testid="gr-form">
+      <h6>New grievance</h6>
+      <div class="row g-2">
+        <div class="col-md-3" *ngIf="stores.length > 1">
+          <label class="form-label small mb-0">Store</label>
+          <select class="form-select form-select-sm" data-testid="gr-f-store" [(ngModel)]="form.storeid">
+            <option value="">Choose…</option>
+            <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small mb-0">What is it about</label>
+          <select class="form-select form-select-sm" data-testid="gr-f-category" [(ngModel)]="form.category">
+            <option *ngFor="let c of categories" [value]="c.value">{{c.label}}</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-0">Severity</label>
+          <select class="form-select form-select-sm" data-testid="gr-f-severity" [(ngModel)]="form.severity">
+            <option *ngFor="let s of severities" [value]="s">{{s | titlecase}}</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-0">Came in by</label>
+          <select class="form-select form-select-sm" [(ngModel)]="form.source">
+            <option *ngFor="let s of sources" [value]="s.value">{{s.label}}</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-0">Summary</label>
+          <input class="form-control form-control-sm" maxlength="200" data-testid="gr-f-summary" [(ngModel)]="form.summary" placeholder="e.g. Given a different brand than the one on the prescription">
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-0">Details <span class="text-muted">(optional)</span></label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.description"></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small mb-0">Customer <span class="text-muted">(optional)</span></label>
+          <div *ngIf="pickedCustomer" class="small">{{pickedCustomer.name}} <button class="btn btn-link btn-sm p-0" (click)="pickedCustomer = null">change</button></div>
+          <ng-container *ngIf="!pickedCustomer">
+            <input class="form-control form-control-sm" data-testid="gr-f-customer" placeholder="Name or mobile (3+ letters)" [(ngModel)]="custQuery" (input)="searchCustomer()">
+            <div class="list-group position-absolute shadow-sm" style="z-index:5" *ngIf="custResults.length">
+              <button type="button" class="list-group-item list-group-item-action py-1 small" *ngFor="let c of custResults" (click)="pickCustomer(c)">{{c.name}} <span class="text-muted">{{c.mobile}}</span></button>
+            </div>
+          </ng-container>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small mb-0">Bill no. <span class="text-muted">(optional)</span></label>
+          <div *ngIf="pickedBill" class="small">#{{pickedBill.bill_no}} · {{pickedBill.bill_date | date:'dd MMM yyyy'}} · {{pickedBill.total | currency:'INR':'symbol':'1.0-0'}} <button class="btn btn-link btn-sm p-0" (click)="pickedBill = null">change</button></div>
+          <ng-container *ngIf="!pickedBill">
+            <input class="form-control form-control-sm" type="number" data-testid="gr-f-bill" placeholder="Bill number" [(ngModel)]="billNo" (change)="searchBill()">
+            <div class="list-group position-absolute shadow-sm" style="z-index:5" *ngIf="billResults.length">
+              <button type="button" class="list-group-item list-group-item-action py-1 small" *ngFor="let b of billResults" (click)="pickBill(b)">#{{b.bill_no}} · {{b.bill_date | date:'dd MMM yyyy'}} · {{b.customer_name}} · {{b.total | currency:'INR':'symbol':'1.0-0'}}</button>
+            </div>
+          </ng-container>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-0">Concerns <span class="text-muted">(staff)</span></label>
+          <select class="form-select form-select-sm" data-testid="gr-f-about" [(ngModel)]="form.aboutuserid">
+            <option value="">No one in particular</option>
+            <option *ngFor="let p of people" [value]="p.id">{{p.name}}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-0">Assign to</label>
+          <select class="form-select form-select-sm" [(ngModel)]="form.assignedto">
+            <option value="">Not assigned</option>
+            <option *ngFor="let p of people" [value]="p.id">{{p.name}}</option>
+          </select>
+        </div>
+      </div>
+      <div class="text-danger small mt-2" *ngIf="formError" data-testid="gr-f-error">{{formError}}</div>
+      <div class="mt-2">
+        <button class="btn btn-primary btn-sm me-2" data-testid="gr-f-save" [disabled]="saving" (click)="save()">Save</button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="showForm = false">Cancel</button>
+        <span class="small text-muted ms-2">Due in 1 day (high), 3 days (medium) or 7 days (low).</span>
+      </div>
+    </div>
+
+    <!-- detail -->
+    <div *ngIf="selected" class="border rounded p-3 mt-3" data-testid="gr-detail">
+      <div class="d-flex justify-content-between flex-wrap gap-2">
+        <div>
+          <strong>{{selected.ticket}}</strong> · {{selected.summary}}
+          <span class="badge ms-2" [ngClass]="sevClass(selected.severity)">{{selected.severity | titlecase}}</span>
+          <span class="badge ms-1" [ngClass]="statusClass(selected.status)" data-testid="gr-d-status">{{selected.status.replace('_',' ') | titlecase}}</span>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" (click)="closeDetail()">Close panel</button>
+      </div>
+      <div class="row small mt-2 g-2">
+        <div class="col-6 col-md-3"><span class="text-muted">About:</span> {{label(categories, selected.category)}}</div>
+        <div class="col-6 col-md-3"><span class="text-muted">Came in by:</span> {{label(sources, selected.source)}}</div>
+        <div class="col-6 col-md-3"><span class="text-muted">Customer:</span> {{selected.customer_name || '—'}} <span class="text-muted">{{selected.customer_mobile}}</span></div>
+        <div class="col-6 col-md-3"><span class="text-muted">Bill:</span> <span *ngIf="selected.bill_no">#{{selected.bill_no}} · {{selected.bill_date | date:'dd MMM yyyy'}}</span><span *ngIf="!selected.bill_no">—</span></div>
+        <div class="col-6 col-md-3"><span class="text-muted">Concerns:</span> {{selected.about_name || '—'}}</div>
+        <div class="col-6 col-md-3"><span class="text-muted">Assigned to:</span> {{selected.assigned_name || '—'}}</div>
+        <div class="col-6 col-md-3"><span class="text-muted">Due:</span> <span [class.text-danger]="selected.overdue">{{selected.due_on | date:'dd MMM yyyy'}}<span *ngIf="selected.overdue"> (overdue)</span></span></div>
+        <div class="col-6 col-md-3"><span class="text-muted">Logged by:</span> {{selected.created_name}}, {{selected.created_on | date:'dd MMM, HH:mm'}}</div>
+      </div>
+      <p class="small mt-2 mb-1" *ngIf="selected.description">{{selected.description}}</p>
+      <p class="small mt-2 mb-1" *ngIf="selected.resolution"><span class="text-muted">Resolution:</span> {{selected.resolution}}</p>
+
+      <div class="mt-2" *isAuth="'grievances.manage'">
+        <button class="btn btn-sm btn-outline-info me-1" data-testid="gr-d-start" *ngIf="selected.status === 'OPEN'" (click)="change({status: 'IN_PROGRESS'})">Start work</button>
+        <button class="btn btn-sm btn-outline-success me-1" data-testid="gr-d-resolve" *ngIf="selected.status === 'OPEN' || selected.status === 'IN_PROGRESS'" (click)="showResolve = !showResolve">Resolve…</button>
+        <button class="btn btn-sm btn-outline-secondary me-1" data-testid="gr-d-close" *ngIf="selected.status === 'RESOLVED'" (click)="change({status: 'CLOSED'})">Close</button>
+        <button class="btn btn-sm btn-outline-warning me-1" data-testid="gr-d-reopen" *ngIf="selected.status === 'RESOLVED' || selected.status === 'CLOSED'" (click)="change({status: 'OPEN'})">Reopen</button>
+        <select class="form-select form-select-sm d-inline-block w-auto" [ngModel]="selected.assigned_to" (ngModelChange)="change({assignedto: +$event})" *ngIf="selected.status === 'OPEN' || selected.status === 'IN_PROGRESS'">
+          <option [ngValue]="null" disabled>Assign to…</option>
+          <option *ngFor="let p of people" [ngValue]="p.id">{{p.name}}</option>
+        </select>
+        <div *ngIf="showResolve" class="mt-2">
+          <textarea class="form-control form-control-sm" rows="2" data-testid="gr-d-resolution" placeholder="What was done for the customer?" [(ngModel)]="resolution"></textarea>
+          <button class="btn btn-success btn-sm mt-1" data-testid="gr-d-resolve-save" (click)="resolve()">Mark resolved</button>
+        </div>
+      </div>
+      <div class="text-danger small mt-1" *ngIf="detailError" data-testid="gr-d-error">{{detailError}}</div>
+
+      <h6 class="mt-3 mb-1">Timeline</h6>
+      <ul class="list-unstyled small mb-2" data-testid="gr-d-notes">
+        <li *ngFor="let n of selected.notes" class="mb-1">
+          <span class="text-muted">{{n.created_on | date:'dd MMM, HH:mm'}} · {{n.author}}</span>
+          <span class="badge bg-light text-dark border ms-1" *ngIf="n.kind !== 'NOTE'">{{n.kind === 'ASSIGN' ? 'assigned' : 'status'}}</span>
+          {{n.note}}
+        </li>
+      </ul>
+      <div class="input-group input-group-sm" *isAuth="'grievances.add'">
+        <input class="form-control" data-testid="gr-d-note" placeholder="Add a note" [(ngModel)]="newNote" (keyup.enter)="addNote()">
+        <button class="btn btn-outline-primary" data-testid="gr-d-note-add" (click)="addNote()">Add</button>
+      </div>
+    </div>
+
+    <!-- filters + list -->
+    <div class="row g-2 align-items-end mt-3">
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0">Show</label>
+        <select class="form-select form-select-sm" data-testid="gr-status" [(ngModel)]="filter.status" (change)="load()">
+          <option *ngFor="let s of statuses" [value]="s.value">{{s.label}}</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0">About</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filter.category" (change)="load()">
+          <option value="">Anything</option>
+          <option *ngFor="let c of categories" [value]="c.value">{{c.label}}</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0">Severity</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filter.severity" (change)="load()">
+          <option value="">Any</option>
+          <option *ngFor="let s of severities" [value]="s">{{s | titlecase}}</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0">Concerns</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filter.aboutuserid" (change)="load()">
+          <option value="">Anyone</option>
+          <option *ngFor="let p of people" [value]="p.id">{{p.name}}</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label small mb-0">Search</label>
+        <input class="form-control form-control-sm" data-testid="gr-search" placeholder="Ticket, customer, mobile or words in the summary" [(ngModel)]="filter.q" (keyup.enter)="load()" (change)="load()">
+      </div>
+    </div>
+
+    <div *ngIf="error" class="alert alert-danger mt-3" data-testid="gr-error">{{error}}</div>
+
+    <div class="table-responsive mt-3">
+      <table class="table table-sm table-hover align-middle" data-testid="gr-table">
+        <thead><tr><th>Ticket</th><th>Summary</th><th>Customer</th><th>Concerns</th><th>About</th><th>Severity</th><th>Status</th><th>Assigned</th><th>Due</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let g of rows" role="button" data-testid="gr-row" (click)="open(g.id)" [class.table-active]="selected?.id === g.id">
+            <td class="text-nowrap">{{g.ticket}}<div class="small text-muted">{{g.age_days}}d old</div></td>
+            <td>{{g.summary}}</td>
+            <td>{{g.customer_name || '—'}}</td>
+            <td>{{g.about_name || '—'}}</td>
+            <td class="small">{{label(categories, g.category)}}</td>
+            <td><span class="badge" [ngClass]="sevClass(g.severity)">{{g.severity | titlecase}}</span></td>
+            <td><span class="badge" [ngClass]="statusClass(g.status)">{{g.status.replace('_',' ') | titlecase}}</span></td>
+            <td>{{g.assigned_name || '—'}}</td>
+            <td class="text-nowrap" [class.text-danger]="g.overdue">{{g.due_on | date:'dd MMM'}}<span *ngIf="g.overdue" data-testid="gr-overdue"> · overdue</span></td>
+          </tr>
+          <tr *ngIf="!loading && !rows.length"><td colspan="9" class="text-center text-muted py-4" data-testid="gr-empty">No grievances match these filters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

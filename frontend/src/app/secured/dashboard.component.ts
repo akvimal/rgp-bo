@@ -24,6 +24,7 @@ export class DashboardComponent implements OnDestroy {
     usersByRole:any[] = [];
     storesByBusiness:any[] = [];
     customersPerDay:any[] = [];
+    customerScheme:any = { domain: ['#2f9e44', '#1c7ed6'] };  // New, Returning
     topCustomers:any[] = [];
     topProductsByQty:any[] = [];
     topProductsByRevenue:any[] = [];

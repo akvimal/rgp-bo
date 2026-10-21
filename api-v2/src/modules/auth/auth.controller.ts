@@ -20,8 +20,8 @@ export class AuthController {
   private readonly userService: UserService;
 
   @Post('login')
-  private async login(@Body() body: LoginDto): Promise<AppUser | never> {
-      return this.service.login(body);
+  private async login(@Body() body: LoginDto, @Req() request: Request): Promise<AppUser | never> {
+      return this.service.login(body, request.ip);
   }  
   
   @Post('changepwd')

@@ -17,8 +17,39 @@ export class CustomerService {
       }
     
     async findAll(){
-        return this.customerRepository.createQueryBuilder('c')
-            .where('c.active = :flag', { flag: true }).getMany();
+        const [customers, segments] = await Promise.all([
+            this.customerRepository.createQueryBuilder('c')
+                .where('c.active = :flag', { flag: true }).getMany(),
+            this.segmentsByCustomer(),
+        ]);
+        return customers.map(c => Object.assign(c, { segment: segments.get(c.id) || 'No purchases' }));
+    }
+
+    /**
+     * What a customer buys, from every completed bill line (product.category = 'OTC'; chronic comes from the
+     * product's `chronic` property):
+     *   OTC only | Chronic only | OTC + Chronic - nothing else was ever bought
+     *   Other                                   - anything else, including products not yet categorised
+     *   No purchases                            - no completed bill
+     */
+    private async segmentsByCustomer(): Promise<Map<number, string>> {
+        const rows = await this.manager.query(`
+            select s.customer_id as id,
+              case
+                when count(*) filter (where not (coalesce(p.category, '') = 'OTC' or coalesce(p.more_props->>'chronic', '') = 'true')) > 0 then 'Other'
+                when count(*) filter (where p.category = 'OTC') > 0
+                 and count(*) filter (where coalesce(p.category, '') <> 'OTC') > 0 then 'OTC + Chronic'
+                when count(*) filter (where p.category = 'OTC') > 0 then 'OTC only'
+                else 'Chronic only'
+              end as segment
+            from sale_item si
+            inner join sale s on s.id = si.sale_id
+            inner join product p on p.id = si.product_id
+            where s.status = 'COMPLETE' and s.active = true and s.archive = false
+              and si.active = true and si.archive = false and s.customer_id is not null
+            group by s.customer_id
+        `);
+        return new Map<number, string>(rows.map((r: any) => [+r.id, r.segment]));
     }
     
     async findById(id:number) {

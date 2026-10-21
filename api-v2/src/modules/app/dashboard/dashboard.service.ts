@@ -59,6 +59,8 @@ export class DashboardService {
         pending_purchase_approvals: pendingApprovals.length,
         low_stock_items: lowStock.length,
         sales_returns_month: salesReturns.qty,
+        sales_returns_invoices_month: salesReturns.invoices,
+        sales_returns_value_month: salesReturns.value,
       },
       salestrend: salesTrend,
       purchasetrend: purchaseTrend,
@@ -316,18 +318,21 @@ export class DashboardService {
   private async getSalesReturnsMonth(storeid: number | null) {
     const rows = await this.manager.query(`
       select
-        coalesce(count(sri.id), 0) as returns,
-        coalesce(sum(sri.qty), 0) as qty
+        coalesce(count(distinct s.id), 0) as invoices,
+        coalesce(sum(sri.qty), 0) as qty,
+        coalesce(sum(sri.qty * si.total / nullif(si.qty, 0)), 0) as value
       from sale_return_item sri
       inner join sale_item si on si.id = sri.sale_item_id
       inner join sale s on s.id = si.sale_id
       left join store_shifts sh on sh.id = s.shift_id
       where sri.created_on >= date_trunc('month', current_date)
+        and sri.active = true and sri.archive = false
         and ($1::int is null or sh.store_id = $1::int)
     `, [storeid]);
     return {
-      returns: +rows?.[0]?.returns || 0,
+      invoices: +rows?.[0]?.invoices || 0,
       qty: +rows?.[0]?.qty || 0,
+      value: Math.round((+rows?.[0]?.value || 0) * 100) / 100,
     };
   }
 
@@ -357,22 +362,40 @@ export class DashboardService {
     return { customersPerDay, topCustomers, topProductsByQty, topProductsByRevenue };
   }
 
+  /**
+   * Distinct customers billed per day, split into New (their first completed bill with the business is
+   * that day) and Returning (they had bought before). "First" looks at the whole history, not only the
+   * 14-day window or the selected store, so a returning customer is never miscounted as new.
+   */
   private async getCustomersServedPerDay(storeid: number | null) {
     const rows = await this.manager.query(`
+      with first_bill as (
+        select customer_id, min(bill_date)::date as first_day
+        from sale
+        where status = 'COMPLETE' and active = true and archive = false and customer_id is not null
+        group by customer_id
+      )
       select
-        to_char(date_trunc('day', s.bill_date), 'yyyy-mm-dd') as name,
-        count(distinct s.customer_id)::int as value
+        to_char(s.bill_date::date, 'yyyy-mm-dd') as name,
+        count(distinct s.customer_id) filter (where fb.first_day = s.bill_date::date)::int as new_customers,
+        count(distinct s.customer_id) filter (where fb.first_day < s.bill_date::date)::int as returning_customers
       from sale s
+      inner join first_bill fb on fb.customer_id = s.customer_id
       left join store_shifts sh on sh.id = s.shift_id
       where s.status = 'COMPLETE'
         and s.active = true and s.archive = false
         and s.bill_date >= current_date - interval '13 days'
-        and s.customer_id is not null
         and ($1::int is null or sh.store_id = $1::int)
       group by 1
       order by 1
     `, [storeid]);
-    return rows.map((r: any) => ({ name: String(r.name).slice(5), value: +r.value || 0 }));
+    return rows.map((r: any) => ({
+      name: String(r.name).slice(5),
+      series: [
+        { name: 'New', value: +r.new_customers || 0 },
+        { name: 'Returning', value: +r.returning_customers || 0 },
+      ],
+    }));
   }
 
   private async getTopCustomers(storeid: number | null) {

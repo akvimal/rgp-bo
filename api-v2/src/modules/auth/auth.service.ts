@@ -5,6 +5,7 @@ import { AppUser } from 'src/entities/appuser.entity';
 import { AuthHelper } from './auth.helper';
 import { ChangePasswordDto, LoginDto } from './auth.dto';
 import { UserService } from '../app/users/user.service';
+import { AuditService } from 'src/core/audit/audit.service';
 
 @Injectable()
 export class AuthService {
@@ -13,26 +14,26 @@ export class AuthService {
   private readonly helper: AuthHelper;
 
   constructor(
-    private readonly userService: UserService){}
+    private readonly userService: UserService,
+    private readonly audit: AuditService){}
 
-  public async login(body: LoginDto): Promise<any | never> {
+  public async login(body: LoginDto, ip?: string): Promise<any | never> {
     const { email, password }: LoginDto = body;
     const user = await this.userService.findByUsername(email );
-    if (!user) {
+    const reject = (reason: string) => {
+      this.audit.record({ userId: user?.id ?? null, action: 'auth.login_failed', summary: reason, details: { email }, status: 401, ip });
       throw new UnauthorizedException();
-    }
+    };
+    if (!user) return reject('unknown email');
 
     const isPasswordValid: boolean = this.helper.isPasswordValid(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException();
-    }
+    if (!isPasswordValid) return reject('wrong password');
 
     // A deactivated / archived account must not be able to sign in.
-    if (user.isActive === false || user.isArchived === true) {
-      throw new UnauthorizedException();
-    }
+    if (user.isActive === false || user.isArchived === true) return reject('inactive account');
 
     this.userService.update(user.id, { lastlogin: new Date() });
+    this.audit.record({ userId: user.id, action: 'auth.login', summary: 'signed in', status: 200, ip });
     return {token: this.helper.generateToken(user)};
   }
 
@@ -49,6 +50,7 @@ export class AuthService {
     }
 
     this.userService.update(user.id, { password: this.helper.encodePassword(newpassword), lastlogin: new Date() });
+    this.audit.record({ userId: user.id, action: 'auth.password_changed', summary: 'password changed' });
 
     return {token: this.helper.generateToken(user)};
   }

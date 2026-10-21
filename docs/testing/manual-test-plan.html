@@ -609,6 +609,52 @@
       ]
     },
     {
+      id: "audit", name: "Staff & Quality — Audit Log",
+      blurb: "Append-only record of who did what: sign-ins, failed sign-ins, bill edits, bills entered on behalf of someone else, and every write request. Needs migration 038 applied. Business Head only. AUDIT-4 to AUDIT-6 are manual only.",
+      cases: [
+        { id:"AUDIT-1", feature:"Access", tag:"happy", scenario:"Open the log", steps:"Sign in as Business Head and open Staff & Quality.", expected:"The audit log opens from the menu and lists recent activity; filtering to Sign-ins shows the entries." },
+        { id:"AUDIT-2", feature:"Sign-in", tag:"integration", scenario:"Failed sign-in recorded", steps:"Try to sign in with a wrong password, then open the log filtered to Failed sign-ins.", expected:"The attempt appears with the email that was tried and the reason." },
+        { id:"AUDIT-3", feature:"Access", tag:"permission", scenario:"Restricted roles blocked", steps:"Open the URL as Sales Staff and as Site Admin.", expected:"Both are redirected to sign-in and the API answers 403." },
+        { id:"AUDIT-4", feature:"Billing", tag:"permission", scenario:"No billing as someone else", steps:"As Sales Staff, send a bill with another person as the biller. As Store Head, do the same.", expected:"Sales Staff's bill is saved under their own name and a Blocked entry is logged. Store Head's bill is saved for the chosen person and a Billed-on-behalf entry is logged." },
+        { id:"AUDIT-5", feature:"Billing", tag:"happy", scenario:"Bill edit recorded", steps:"Change the total, discount or a line price on a saved bill and save.", expected:"A Bill edit entry shows the bill number and the old and new values." },
+        { id:"AUDIT-6", feature:"Integrity", tag:"edge", scenario:"Entries cannot be changed", steps:"Try to update or delete a row in audit_event directly.", expected:"The database refuses with 'audit_event is append-only'." }
+      ]
+    },
+    {
+      id: "staffsales", name: "Staff & Quality — Staff Sales",
+      blurb: "Per-person sales for a period (today, 7 days, this month, 30 days or a custom range), following the store chosen in the header. Business Head only; needs migration 039. STAFF-4 and STAFF-5 are manual only.",
+      cases: [
+        { id:"STAFF-1", feature:"Report", tag:"happy", scenario:"Per-person sales", steps:"Open Staff & Quality > Staff sales for a period with bills.", expected:"One row per person who billed, with sales, bills, average bill, units, customers, discount, returns and edits. The totals above the table equal the sum of the rows." },
+        { id:"STAFF-2", feature:"Validation", tag:"edge", scenario:"Bad dates rejected", steps:"Call the API with a malformed date, then with From after To.", expected:"Both answer 400." },
+        { id:"STAFF-3", feature:"Access", tag:"permission", scenario:"Restricted roles blocked", steps:"Open the URL as Sales Staff and as Site Admin.", expected:"Both are redirected to sign-in and the API answers 403." },
+        { id:"STAFF-4", feature:"Report", tag:"integration", scenario:"Bills follow the person who served", steps:"Have a Store Head enter a bill on behalf of a staff member, then look at both people.", expected:"The bill counts for the staff member, not the Store Head." },
+        { id:"STAFF-5", feature:"Report", tag:"edge", scenario:"Flags", steps:"Compare someone with discounts or edits far above the team average, with at least 20 bills.", expected:"A yellow flag names what to look at (High discounts, Many edits, High returns). Nobody with fewer than 20 bills is flagged." }
+      ]
+    },
+    {
+      id: "grievances", name: "Staff & Quality — Grievances",
+      blurb: "Customer complaints: log, assign, resolve within a due date (1 day high, 3 medium, 7 low), timeline of notes. Business Head sees every store; Store Head sees their own stores. Needs migration 040. GRV-5 and GRV-6 are manual only.",
+      cases: [
+        { id:"GRV-1", feature:"Log", tag:"happy", scenario:"Log from the screen", steps:"Open Staff & Quality > Grievances, choose Log a grievance, fill category, severity and summary, save.", expected:"The ticket opens in the detail panel as Open and can be found by searching its summary." },
+        { id:"GRV-2", feature:"Lifecycle", tag:"integration", scenario:"Open to closed", steps:"Start work, try to resolve without text, resolve with text, close, then try to move it again. Add a note.", expected:"Resolving without text is refused. Closed tickets accept no further moves. The timeline shows every step and note in order." },
+        { id:"GRV-3", feature:"Validation", tag:"edge", scenario:"Bad input and due dates", steps:"Save with an unknown category or a very short summary. Log one high and one low ticket.", expected:"Bad input is refused. The low ticket is due 6 days after the high one." },
+        { id:"GRV-4", feature:"Access", tag:"permission", scenario:"Restricted roles blocked", steps:"Open the URL and call the API as Sales Staff and as Site Admin.", expected:"Both are redirected to sign-in and the API answers 403." },
+        { id:"GRV-5", feature:"Scope", tag:"permission", scenario:"Store Head limits", steps:"As Store Head, list grievances, log one, resolve it, then try to close it.", expected:"Only tickets of the Store Head's own stores are listed. Resolving works. Closing or reopening a closed ticket is refused: only Business Head can." },
+        { id:"GRV-6", feature:"Oversight", tag:"happy", scenario:"Complaints per person", steps:"Log three tickets that concern the same staff member, then reload.", expected:"The 'Most complaints about' line names that person with the count, and clicking it filters the list. Overdue tickets turn red and count in the Overdue box." }
+      ]
+    },
+    {
+      id: "discrepancies", name: "Staff & Quality — Cash & Shifts",
+      blurb: "Closed shifts whose counted cash differs from expected, a rollup by the person who closed the till, expenses recorded without a receipt, and shifts left open after their day. Business Head only; needs migration 041. DISC-4 and DISC-5 are manual only.",
+      cases: [
+        { id:"DISC-1", feature:"Report", tag:"happy", scenario:"Report opens", steps:"Open Staff & Quality > Cash & shifts and pick 90 days.", expected:"Totals above the tables equal the number of rows in the shifts and receipts tables." },
+        { id:"DISC-2", feature:"Report", tag:"integration", scenario:"Differences add up", steps:"Compare counted minus expected with the difference shown, and short plus over with the net per person.", expected:"They agree to the paisa; short shifts are negative. A malformed date is refused with 400." },
+        { id:"DISC-3", feature:"Access", tag:"permission", scenario:"Restricted roles blocked", steps:"Open the URL and call the API as Sales Staff and as Site Admin.", expected:"Both are redirected to sign-in and the API answers 403." },
+        { id:"DISC-4", feature:"Report", tag:"happy", scenario:"Short and over shifts", steps:"Close a shift with less cash than expected and another with more. Open the report.", expected:"Both appear with Short or Over and the amount; the person who closed each is named; differences of 100 rupees or more are highlighted." },
+        { id:"DISC-5", feature:"Controls", tag:"edge", scenario:"Receipts and stale shifts", steps:"Record an expense with no receipt photo. Leave a shift open past its day.", expected:"The expense is listed under 'Expenses with no receipt'. A yellow banner names the shift that was never closed." }
+      ]
+    },
+    {
       id: "crosscutting", name: "Cross-Cutting: Permissions & Data Integrity",
       blurb: "Checks that span modules — authorization enforcement, concurrency, and failure handling.",
       cases: [

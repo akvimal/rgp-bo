@@ -8,7 +8,8 @@ import { CustomersService } from "../customers.service";
 })
 export class CustomersComponent {
 
-    customers:Customer[] = [];
+    customers:any[] = [];
+    segments = ['OTC only', 'Chronic only', 'OTC + Chronic', 'Other', 'No purchases'];
     
     constructor(private service:CustomersService){}
 

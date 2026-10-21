@@ -1,0 +1,63 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <h5 class="card-title mb-0">Audit log</h5>
+    <div class="small text-muted mb-2">Who did what and when. Entries cannot be edited or deleted.</div>
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0">From</label>
+        <input type="date" class="form-control" data-testid="aud-from" [(ngModel)]="filter.from" (change)="load(true)">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0">To</label>
+        <input type="date" class="form-control" data-testid="aud-to" [(ngModel)]="filter.to" (change)="load(true)">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-0">Person</label>
+        <select class="form-select" data-testid="aud-user" [(ngModel)]="filter.userid" (change)="load(true)">
+          <option value="">Everyone</option>
+          <option *ngFor="let u of users" [value]="u.id">{{u.name}}</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-0">Activity</label>
+        <select class="form-select" data-testid="aud-action" [(ngModel)]="filter.action" (change)="load(true)">
+          <option *ngFor="let a of actionGroups" [value]="a.value">{{a.label}}</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 text-md-end small text-muted" data-testid="aud-total">{{total}} entries</div>
+    </div>
+
+    <div *ngIf="error" class="alert alert-danger mt-3" data-testid="aud-error">{{error}}</div>
+
+    <div class="table-responsive mt-3">
+      <table class="table table-sm align-middle" data-testid="aud-table">
+        <thead>
+          <tr><th>When</th><th>Person</th><th>Activity</th><th>Detail</th><th>Result</th><th></th></tr>
+        </thead>
+        <tbody>
+          <ng-container *ngFor="let r of rows">
+            <tr data-testid="aud-row">
+              <td class="text-nowrap">{{r.occurred_on | date:'dd MMM, HH:mm:ss'}}</td>
+              <td>
+                {{r.user_name || '—'}}
+                <span *ngIf="r.acting_user_name" class="text-muted small">for {{r.acting_user_name}}</span>
+              </td>
+              <td><span class="badge" [ngClass]="badge(r.action)">{{r.action}}</span></td>
+              <td>{{r.summary}}<span *ngIf="r.entity_id" class="text-muted small"> · #{{r.entity_id}}</span></td>
+              <td>{{r.status || ''}}</td>
+              <td class="text-end"><button *ngIf="r.details" class="btn btn-link btn-sm p-0" (click)="toggle(r.id)">{{expanded === r.id ? 'hide' : 'details'}}</button></td>
+            </tr>
+            <tr *ngIf="expanded === r.id"><td colspan="6"><pre class="small mb-0" data-testid="aud-details">{{r.details | json}}</pre></td></tr>
+          </ng-container>
+          <tr *ngIf="!loading && !rows.length"><td colspan="6" class="text-center text-muted py-4" data-testid="aud-empty">Nothing recorded for these filters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <button class="btn btn-outline-secondary btn-sm" data-testid="aud-prev" [disabled]="page <= 1" (click)="go(-1)">Previous</button>
+      <span class="small text-muted">Page {{page}} of {{pages}}</span>
+      <button class="btn btn-outline-secondary btn-sm" data-testid="aud-next" [disabled]="page >= pages" (click)="go(1)">Next</button>
+    </div>
+  </div>
+</div>
