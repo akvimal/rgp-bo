@@ -23,6 +23,9 @@ export class RefillsComponent implements OnInit, OnDestroy {
     { value: "NOT_NEEDED", label: "Stopped / no longer needed" },
   ];
 
+  /** the API leaves the typical bill out for the counter; the column follows */
+  get showValue(): boolean { return !!this.data?.rows?.length && this.data.rows[0].typical_value !== undefined; }
+
   bucket = "";
   showSnoozed = false;
   data: any = null;

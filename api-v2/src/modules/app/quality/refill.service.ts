@@ -96,6 +96,10 @@ export class RefillService {
     if (!REFILL_OUTCOMES.includes(outcome)) throw new BadRequestException('Unknown outcome.');
     const [c] = await this.manager.query(`select id from customer where id = $1`, [customerId]);
     if (!c) throw new NotFoundException('Customer not found.');
+    if (sc.storeIds) {   // a store's staff log contacts for customers who buy at their store
+      const [mine] = await this.manager.query(`select 1 as ok from sale where customer_id = $1 and store_id = any($2::int[]) limit 1`, [customerId, sc.storeIds]);
+      if (!mine) throw new NotFoundException('Customer not found.');
+    }
     const [row] = await this.manager.query(
       `insert into refill_followup (customer_id, outcome, note, snoozed_until, created_by)
        values ($1, $2, $3, current_date + $4::int, $5) returning id, snoozed_until`,

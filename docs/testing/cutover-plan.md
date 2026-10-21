@@ -1,6 +1,6 @@
 # Production cutover plan
 
-From the live database (branch `v2`, migrations 001 and 003-007) to the current app (migrations 002 to 049). The database is
+From the live database (branch `v2`, migrations 001 and 003-007) to the current app (migrations 002 to 052). The database is
 upgraded in place after a verified backup; the old app stays stopped until the new one is confirmed. Rollback is restoring the backup.
 Detail behind each step: `sql/prod-upgrade/README.md` (commands), `docs/testing/prod-data-fixes.md` (what is wrong in the data and why),
 `docs/testing/prod-data-validation-plan.md` (checks after cutover).

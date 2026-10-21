@@ -24,7 +24,7 @@
 
     <div class="table-responsive mt-3">
       <table class="table table-sm align-middle" data-testid="rf-table">
-        <thead><tr><th>Customer</th><th>Usually buys</th><th>Last bought</th><th>Usual gap</th><th>Status</th><th class="text-end">Typical bill</th><th>Last contact</th><th></th></tr></thead>
+        <thead><tr><th>Customer</th><th>Usually buys</th><th>Last bought</th><th>Usual gap</th><th>Status</th><th class="text-end" *ngIf="showValue">Typical bill</th><th>Last contact</th><th></th></tr></thead>
         <tbody>
           <ng-container *ngFor="let r of data?.rows">
             <tr data-testid="rf-row">
@@ -33,7 +33,7 @@
               <td class="text-nowrap">{{r.last_bought | date:'dd MMM yyyy'}}</td>
               <td>{{r.usual_gap}} days</td>
               <td><span class="badge" [ngClass]="bucketClass(r.bucket)">{{r.bucket === 'UPCOMING' ? 'Due in ' + (-r.days_over) + 'd' : r.days_over + 'd late'}}</span></td>
-              <td class="text-end">{{r.typical_value | currency:'INR':'symbol':'1.0-0'}}</td>
+              <td class="text-end" *ngIf="showValue">{{r.typical_value | currency:'INR':'symbol':'1.0-0'}}</td>
               <td class="small"><span *ngIf="r.last_outcome">{{label(r.last_outcome)}}<div class="text-muted">{{r.last_contact | date:'dd MMM'}} · {{r.last_contact_by}}</div></span><span *ngIf="!r.last_outcome" class="text-muted">—</span></td>
               <td class="text-end"><button class="btn btn-outline-primary btn-sm" data-testid="rf-log" *isAuth="'refills.manage'" (click)="openForm(r.customer_id)">Log contact</button></td>
             </tr>

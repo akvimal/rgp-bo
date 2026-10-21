@@ -167,11 +167,6 @@ export class SaleController {
       return await this.saleService.getSaleReturnItems(id);
     }
 
-    @Get('/visits/:days')
-    async findDaysVisited(@Param('days') days: number) {
-      return this.saleService.findVisits({maxdays:days})
-    }
-    
     @Get('/returns')
     async findAllReturns() {
       return this.saleService.getReturns();
@@ -180,11 +175,6 @@ export class SaleController {
     @Post('/data')
     async getSalesByFreq(@Body() criteria: any) {
       return this.saleService.getSalesByFreq(criteria.fromdate,criteria.freq,criteria.count);
-    }
-
-    @Post('/visits')
-    async getCustomerByFreq(@Body() criteria: any) {
-      return this.saleService.getCustomerVisitByFreq(criteria.fromdate,criteria.freq,criteria.count);
     }
 
     @Get()

@@ -529,71 +529,6 @@ export class SaleService {
         return await this.manager.query(query, params);
     }
 
-    async getCustomerVisitByFreq(fromdate:string,freq:string,count:number){
-
-        const dt = new Date(fromdate);
-        let query = ''
-        let params: any[] = []
-
-        if(freq === 'daily'){
-            const date = new Date(dt.setDate(dt.getDate()+1));
-            const other = date.setDate(date.getDate()-count);
-            const todate = this.getFormatDate(new Date(other));
-            query = `select to_char(x.dt,'yyyy-mm-dd') as date, scv.return_status, count(scv.recent_sale_id)
-             from (select date(generate_series($1::date,$2,'1 day')) as dt)x
-             left join sale_customer_view scv on x.dt = scv.recent_visit
-             where scv.mobile != '0000000000'
-             group by x.dt, scv.return_status
-              order by x.dt`
-            params = [todate, fromdate];
-        }
-        else {
-            const date = new Date();
-            const other = date.setMonth((date.getMonth()-1)-count);
-            const todate = this.getFormatDate(new Date(other));
-            query = `select x.dt as date, scv.return_status, count(scv.recent_sale_id)
-            from (select months($1,$2)::text as dt) x
-            left join sale_customer_view scv on x.dt = date_part('year',scv.recent_visit::date)||'-'||lpad(date_part('month',scv.recent_visit::date)::text,2,'0')
-            where scv.mobile != '0000000000'
-            group by x.dt, scv.return_status
-             order by x.dt`
-            params = [fromdate, todate];
-        }
-        return await this.manager.query(query, params);
-    }
-
-    // async findCustomerSaleByPeriod(custid,year,month){
-
-    //   let day = 31;
-    //   if(month == 2)
-    //     day = year%4 == 0 ? 29 : 28;
-    //   if(month <= 6 && month != 2 && month%2 == 0)
-    //     day = 30;
-    //   if(month > 8 && month%2 == 1)
-    //     day = 30;
-      
-        
-    //     return await this.saleRepository.createQueryBuilder("sale")
-	// 	  	.innerJoinAndSelect("sale.customer", "customer")
-	//           .leftJoinAndSelect("sale.items", "items")
-	//           .leftJoinAndSelect("items.purchaseitem", "purchaseitem")
-	//           .leftJoinAndSelect("purchaseitem.product", "product")
-	//             .select(['sale','customer','items','purchaseitem','product'])
-    //       .where(`sale.status = 'COMPLETE' and items.status = 'Complete' and sale.customer_id = ${custid}
-    //        and sale.bill_date between '${year}-${month}-01' and '${year}-${month}-${day}'`)
-    //       .orderBy(`sale.billdate`,'DESC')
-    //       .getMany();
-    // }
-
-    // async findCustomerSaleMonths(custid){
-    //     return await this.manager.query(`
-    //     select x.yr, x.mon, sum(x.total) as total, count(*) from
-    //         (select date_part('year',s.bill_date) as yr, date_part('month',s.bill_date) as mon, s.id, s.total
-    //             from sale s 
-    //             where s.status = 'COMPLETE' and s.customer_id = ${custid} and s.bill_date between (current_date - 365) and current_date) x 
-    //     group by x.yr, x.mon order by x.yr desc, x.mon desc`);
-    // }
-
     async getSales(){
         return await this.manager.query(`   
         select s.id, s.bill_date, s.status , s.customer_id, c.name, c.mobile, ss.itemcount, ss.total 
@@ -659,58 +594,6 @@ export class SaleService {
         group by sale_id, purchase_item_id) x on x.sid = s.sale_id and x.pid = s.purchase_item_id and x.net > 0 and status is null
         inner join purchase_invoice_item pii on pii.id = s.purchase_item_id
         inner join product p on p.id = pii.product_id`, [id]);
-    }
-
-    async findVisits(criteria:any){
-        const sql = `
-        with relevant_sales as (
-            select s.customer_id, s.bill_date
-            from sale s
-            where s.active = true
-              and s.archive = false
-              and s.status = 'COMPLETE'
-              and s.bill_date >= least(
-                  current_date - interval '1 year',
-                  current_date - ($1::integer * interval '1 day')
-              )
-        ), visit_diffs as (
-            select customer_id, bill_date,
-                   extract(day from (
-                       bill_date - lag(bill_date) over (
-                           partition by customer_id order by bill_date desc
-                       )
-                   ))::integer * -1 as days_diff
-            from relevant_sales
-            where bill_date >= current_date - interval '1 year'
-        ), ranked_diffs as (
-            select customer_id, days_diff,
-                   row_number() over (
-                       partition by customer_id order by bill_date desc
-                   ) as interval_no
-            from visit_diffs
-            where days_diff is not null
-        ), visit_stats as (
-            select customer_id,
-                   array_agg(days_diff order by interval_no) as days_diff_array,
-                   avg(days_diff) as mean_diff,
-                   stddev(days_diff) as stddev_diff
-            from ranked_diffs
-            where interval_no <= 5
-            group by customer_id
-        ), recent_visits as (
-            select customer_id, max(bill_date) as last_visited
-            from relevant_sales
-            where bill_date >= current_date - ($1::integer * interval '1 day')
-            group by customer_id
-        )
-        select c.id, c.name, c.mobile, rv.last_visited,
-               current_date - date(rv.last_visited) as days_lapsed,
-               row(vs.days_diff_array, vs.mean_diff, vs.stddev_diff) as visit_pattern
-        from recent_visits rv
-        inner join customer c on c.id = rv.customer_id
-        left join visit_stats vs on vs.customer_id = rv.customer_id
-        order by rv.last_visited desc`
-        return await this.manager.query(sql, [criteria.maxdays]);
     }
 
     async update(id: number, values: Partial<Sale>, userid: number) {

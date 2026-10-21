@@ -293,11 +293,11 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
   {
     key: 'sales',
     label: 'Sales & POS',
-    description: 'Point of sale, sales list, returns, reminders, and deliveries.',
+    description: 'Point of sale, sales list, returns, and deliveries.',
     group: 'Sales & Store Operations',
     path: [
       '/secure/sales/pos', '/secure/sales/pos/new', '/secure/sales/list', '/secure/sales/view',
-      '/secure/sales/new', '/secure/sales/edit', '/secure/sales/returns', '/secure/sales/reminders',
+      '/secure/sales/new', '/secure/sales/edit', '/secure/sales/returns',
       '/secure/sales/deliveries',
     ],
     pathOptions: [
@@ -308,7 +308,6 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
       { key: '/secure/sales/new', label: 'New sale' },
       { key: '/secure/sales/edit', label: 'Edit sale' },
       { key: '/secure/sales/returns', label: 'Returns' },
-      { key: '/secure/sales/reminders', label: 'Reminders' },
       { key: '/secure/sales/deliveries', label: 'Deliveries' },
     ],
     actions: [

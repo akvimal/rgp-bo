@@ -30,6 +30,21 @@ export class GrievanceService {
     throw new ForbiddenException('Not authorized for grievances.');
   }
 
+  /**
+   * Who may work the refill list: the Business Head (every store), the Store Head and the counter staff (their own
+   * stores). Grievances stay with the first two; this is separate so the counter cannot reach them.
+   */
+  async refillScopeFor(user: any): Promise<GrievanceScope> {
+    const r = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
+    const role = r?.[0]?.name;
+    if (role === 'Business Head') return { userId: user.id, role, storeIds: null };
+    if (role === 'Store Head' || role === 'Sales Staff') {
+      const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
+      return { userId: user.id, role, storeIds: s.map((x: any) => x.store_id) };
+    }
+    throw new ForbiddenException('Not authorized for refills.');
+  }
+
   private inScope(sc: GrievanceScope, storeId: number) {
     return sc.storeIds === null || sc.storeIds.includes(storeId);
   }

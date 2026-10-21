@@ -30,11 +30,6 @@ export class SaleService {
         return this.http.post(`${this.apiurl}/items/criteria`,criteria);
     }
 
-    findCustomerSalePattern(criteria:any){
-        return this.http.get(`${this.apiurl}/visits/${criteria.days}`);
-    }
-
-     
     findEligibleReturnItems(saleid:any){
         return this.http.get(`${this.apiurl}/returns/${saleid}/eligible`);
     }
@@ -105,10 +100,6 @@ export class SaleService {
         return this.http.post(`${this.apiurl}/data`,criteria);
     }
 
-    getCustomerData(criteria:any){
-        return this.http.post(`${this.apiurl}/visits`,criteria);
-    }   
-     
     download(criteria:any){
         return this.http.post(`${environment.apiHost}/download/salereport`, criteria, {responseType: "blob"});
     }

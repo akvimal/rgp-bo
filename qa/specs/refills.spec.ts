@@ -1,5 +1,5 @@
 /**
- * Staff & Quality — Refill follow-up — REFILL-1..3
+ * Staff & Quality — Refill follow-up — REFILL-1..4
  * Chronic customers due for a refill, computed from their own buying pattern; contacts are logged.
  */
 import { test, expect, data } from '../fixtures/index.js';
@@ -44,10 +44,43 @@ test.describe('Staff & Quality — Refill follow-up @p1', () => {
   });
 
   test('REFILL-3 roles without access cannot open the page or call the API @permission', async ({ app, api }) => {
-    for (const who of [CASHIER, SITE_ADMIN]) {
+    for (const who of ['role.readonly@qa.local', SITE_ADMIN]) {
       const { page } = await app.open(who, PAGE);
       await expect(page).toHaveURL(/\/login/);
       expect((await api.request('GET', '/refills', undefined, who)).status).toBe(403);
     }
+  });
+
+  test('REFILL-4 the counter works the refill list for its own store, without the money, and without grievances @edge', async ({ app, api }) => {
+    const COUNTER = 'sales1@local.test';
+    // the list and the contact log are open to the counter
+    const mine = await api.request('GET', '/refills', undefined, COUNTER);
+    expect(mine.status).toBe(200);
+    expect(mine.body.rows.every((r: any) => r.typical_value === undefined)).toBe(true);        // what a customer spends is the manager's
+    const owner = (await api.request('GET', '/refills', undefined, OWNER)).body;
+    expect(owner.rows.every((r: any) => 'typical_value' in r)).toBe(true);
+    // a contact can only be logged for a customer who buys at their store
+    const stranger = (await api.request('POST', '/customers', { name: `QA Refill ${Date.now()}`, mobile: `9${Math.floor(100000000 + Math.random() * 899999999)}` }, OWNER)).body;
+    expect((await api.request('POST', `/refills/${stranger.id}/followup`, { outcome: 'NO_ANSWER' }, COUNTER)).status).toBe(404);
+    expect((await api.request('POST', `/refills/${stranger.id}/followup`, { outcome: 'NO_ANSWER' }, OWNER)).status).toBeLessThan(300);
+    // the rest of Staff & Quality stays closed to them
+    expect((await api.request('GET', '/grievances', undefined, COUNTER)).status).toBe(403);
+    expect((await api.request('GET', '/audit', undefined, COUNTER)).status).toBe(403);
+
+    // the screen: a Refills entry in the menu, no Staff & Quality, no Customers tab on Sales, the page named for what it is
+    const { page } = await app.open(COUNTER, '/secure/sales/pos/new');
+    await expectShell(page);
+    await expect(page.getByTestId('nav-refills')).toBeVisible();
+    await expect(page.getByTestId('nav-quality')).toHaveCount(0);
+    await expect(page.locator('.navbar a[href$="/secure/sales/reminders"]')).toHaveCount(0);
+    await page.getByTestId('nav-refills').click();
+    await expect(page).toHaveURL(/\/secure\/quality\/refills/);
+    await expect(page.locator('#main h1').first()).toHaveText('Refill follow-up');
+    await expect(page.getByTestId('tab-refills')).toBeVisible();
+    await expect(page.getByTestId('tab-grievances')).toHaveCount(0);
+
+    // the old Sales > Customers address lands on the refill list
+    const old = await app.open(OWNER, '/secure/sales/reminders');
+    await expect(old.page).toHaveURL(/\/secure\/quality\/refills/);
   });
 });

@@ -22,7 +22,6 @@ import { SaleHeaderComponent } from "./components/sale-header.component";
 import { SalePosComponent } from "./components/sale-pos.component";
 import { SaleShiftCardComponent } from "./components/sale-shift-card.component";
 import { SaleReturnsComponent } from "./components/sale-returns.component";
-import { SaleReminderComponent } from "./components/sale-reminder.component";
 import { SaleDeliveryComponent } from "./components/sale-delivery.component";
 import { SalePaymentComponent } from "./components/sale-payment.component";
 import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
@@ -43,7 +42,7 @@ const routes: Routes = [
     {path: 'edit/:id', component: SaleFormComponent },
     {path: 'view/:id', component: SaleViewComponent }
   ], canActivate:[AuthGuard]},
-  {path: 'reminders', component: SaleReminderComponent, canActivate:[AuthGuard]},
+  {path: 'reminders', redirectTo: '/secure/quality/refills', pathMatch: 'full'},   // the old Customers tab: the refill list is the one place
   {path: 'deliveries', component: SaleDeliveryComponent, canActivate:[AuthGuard]}
 ];
 
@@ -64,7 +63,6 @@ const routes: Routes = [
       SaleReturnsComponent,
       SaleReturnAdjustFormComponent,
       SaleReturnFormComponent,
-      SaleReminderComponent,
       SaleDeliveryComponent,
       SaleDeliveryFormComponent
     ],

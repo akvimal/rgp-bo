@@ -1,9 +1,10 @@
 import { Component } from "@angular/core";
+import { AuthService } from "../../@core/auth/auth.service";
 
 @Component({
   selector: "app-quality-shell",
   template: `
-    <div class="pagetitle"><h1>Staff &amp; Quality</h1></div>
+    <div class="pagetitle"><h1>{{title}}</h1></div>
     <ul class="nav nav-tabs mb-3">
       <li class="nav-item" *isAuth="'grievances.view'">
         <a class="nav-link" routerLink="grievances" routerLinkActive="active" data-testid="tab-grievances">Grievances</a>
@@ -24,4 +25,10 @@ import { Component } from "@angular/core";
     <router-outlet></router-outlet>
   `
 })
-export class QualityShellComponent {}
+export class QualityShellComponent {
+  /** the counter only has the refill list, so the page is named for what it is */
+  title = 'Staff & Quality';
+  constructor(private auth: AuthService) {
+    this.title = this.auth.isActionAuthorized('grievances.view') ? 'Staff & Quality' : 'Refill follow-up';
+  }
+}
