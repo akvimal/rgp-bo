@@ -45,7 +45,7 @@ const routes: Routes = [
       { path: 'requests', component: PurchaseOrdersHomeComponent, data: { tab: 'requests' } },
       { path: 'my-requests', component: PurchaseRequestComponent },
       { path: 'suggestions', component: PurchaseOrdersHomeComponent, data: { tab: 'reorder' } },
-      { path: 'payables', component: PayablesComponent },
+      { path: 'payables', redirectTo: 'invoices/by-vendor', pathMatch: 'full' },
       { path: 'gst', component: GstReconciliationComponent },
       { path: 'settings', component: PurchaseSettingsComponent },
       { path: 'invoices', 
@@ -53,6 +53,7 @@ const routes: Routes = [
             { path: '', redirectTo: 'list'},
             { path: 'list', component: InvoiceListComponent},
             { path: 'outstanding', component: InvoiceListComponent},
+            { path: 'by-vendor', component: PayablesComponent},
             { path: 'new', component: InvoiceFormComponent},
             { path: 'edit/:id', component: InvoiceFormComponent},
             { path: 'items/:id', component: InvoiceItemsComponent}

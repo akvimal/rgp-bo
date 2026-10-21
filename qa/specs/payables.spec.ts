@@ -30,10 +30,16 @@ async function completedInvoice(api: any, tag: string) {
 }
 
 test.describe('Vendor Payables @p1', () => {
-  test('PAYABLES-NAV the Payables screen is reachable and lists a vendor with a balance @happy', async ({ app }) => {
-    const { page } = await app.open(MGR, '/secure/purchases/payables');
+  test('PAYABLES-NAV the By vendor view is reachable (old URL redirects) and lists a vendor with a balance @happy', async ({ app }) => {
+    const { page } = await app.open(MGR, '/secure/purchases/payables');   // the old URL still works
     await expectShell(page);
+    await expect(page).toHaveURL(/invoices\/by-vendor/);
     await expect(page.getByRole('heading', { name: 'Purchase' })).toBeVisible();
+    await expect(page.getByTestId('payables-row').first()).toBeVisible();
+    await expect(page.getByTestId('nav-payables')).toHaveCount(0);           // no separate tab any more
+    await page.getByTestId('inv-tab-outstanding').click();                   // and the toggle leads back to the invoice view
+    await expect(page.getByTestId('inv-chip-pending')).toBeVisible();
+    await page.getByTestId('inv-tab-byvendor').click();
     await expect(page.getByTestId('payables-row').first()).toBeVisible();
   });
 

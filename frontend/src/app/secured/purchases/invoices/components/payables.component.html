@@ -1,3 +1,12 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+  <span class="small text-muted">What is owed, vendor by vendor. Pay one vendor's invoices in a single payment.</span>
+  <div class="btn-group">
+    <a class="btn btn-outline-primary" data-testid="inv-tab-invoices" [routerLink]="['/secure/purchases/invoices/list']">Invoices</a>
+    <a class="btn btn-outline-primary" data-testid="inv-tab-outstanding" [routerLink]="['/secure/purchases/invoices/outstanding']">Outstanding</a>
+    <a class="btn btn-outline-primary active" data-testid="inv-tab-byvendor" [routerLink]="['/secure/purchases/invoices/by-vendor']">By vendor</a>
+  </div>
+</div>
+
 <div class="row g-3 mt-1">
   <div class="col-6 col-xl-3">
     <div class="card h-100">

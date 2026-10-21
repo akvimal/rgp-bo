@@ -5,6 +5,7 @@
       <div class="btn-group">
         <a class="btn btn-outline-primary" [class.active]="!isOutstanding" data-testid="inv-tab-invoices" [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="vendorId ? {vendor: vendorId} : {}">Invoices</a>
         <a class="btn btn-outline-primary" [class.active]="isOutstanding" data-testid="inv-tab-outstanding" [routerLink]="['/secure/purchases/invoices/outstanding']" [queryParams]="vendorId ? {vendor: vendorId} : {}">Outstanding</a>
+        <a class="btn btn-outline-primary"  data-testid="inv-tab-byvendor" [routerLink]="['/secure/purchases/invoices/by-vendor']">By vendor</a>
       </div>
     </div>
   </div>

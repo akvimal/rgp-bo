@@ -586,7 +586,7 @@
       id: "payables", name: "Payables & Pay Runs",
       blurb: "Vendor-level payables rollup and pay runs that settle several invoices in one payment.",
       cases: [
-        { id:"PAYABLES-NAV", feature:"Payables", tag:"happy", scenario:"Open Payables", steps:"Open the Payables screen.", expected:"It loads and lists a vendor with an outstanding balance." },
+                { id:"PAYABLES-NAV", feature:"Payables", tag:"happy", scenario:"Open By vendor", steps:"Purchase > Invoices > By vendor (the old /purchases/payables address redirects there).", expected:"The vendor rollup with ageing and a Pay button per vendor opens; there is no separate Payables tab; the Invoices / Outstanding / By vendor toggle moves between the three views." },
         { id:"PAYABLES-SUMMARY", feature:"Payables", tag:"happy", scenario:"Rollup matches invoices", steps:"Compare a vendor’s rollup total with its outstanding invoices.", expected:"The rollup equals the sum of that vendor’s outstanding invoices." },
         { id:"PAYRUN-SPLIT", feature:"Pay run", tag:"happy", scenario:"Split across invoices", steps:"Pay one amount across two invoices in a pay run.", expected:"It is allocated oldest invoice first." },
         { id:"PAYRUN-ATOMIC", feature:"Pay run", tag:"negative", scenario:"One bad line", steps:"Submit a pay run with one invalid line.", expected:"Nothing is committed; no invoice is partly paid." }
