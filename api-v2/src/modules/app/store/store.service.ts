@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { Store } from "src/entities/store.entity";
@@ -8,6 +8,7 @@ import { StoreShiftTemplate } from "src/entities/store-shift-template.entity";
 import { AppUser } from "src/entities/appuser.entity";
 import { UserStore } from "src/entities/user-store.entity";
 import { Business } from "src/entities/business.entity";
+import { AuditService } from "src/core/audit/audit.service";
 import { denominationTotal, normalizeDenominations } from "./denominations";
 import { CLOSING_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
 
@@ -22,15 +23,127 @@ export class StoreService {
     @InjectRepository(UserStore) private readonly userStoreRepository: Repository<UserStore>,
     @InjectRepository(Business) private readonly businessRepository: Repository<Business>,
     @InjectEntityManager() private readonly manager: EntityManager,
+    private readonly audit: AuditService,
   ) {}
 
   async findStores() {
-    return this.storeRepository.createQueryBuilder("store")
+    const stores: any[] = await this.storeRepository.createQueryBuilder("store")
       .leftJoinAndSelect("store.business", "business")
       .where("store.active = true")
       .andWhere("store.archive = false")
       .orderBy("store.id", "ASC")
       .getMany();
+    const lic = await this.manager.query(`select store_id, license_type, valid_to::text as valid_to from store_license`);
+    for (const s of stores) {
+      const st = this.licenseStatus(lic.filter((l: any) => l.store_id === s.id));
+      s.licensestatus = st.status;
+      s.licensenextexpiry = st.nextexpiry;
+    }
+    return stores;
+  }
+
+  // ---------------------------------------------------------------- licences and ship-to
+  private licenseStatus(rows: Array<{ license_type: string; valid_to: string | null }>): { status: string; nextexpiry: string | null } {
+    if (!rows.length) return { status: "NONE", nextexpiry: null };
+    const today = new Date().toISOString().slice(0, 10);
+    const soon = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
+    const latest = new Map<string, string | null>();
+    for (const r of rows) {
+      const d = r.valid_to ? String(r.valid_to).slice(0, 10) : null;
+      const cur = latest.get(r.license_type);
+      if (!latest.has(r.license_type) || d === null || (cur !== null && cur !== undefined && d > cur)) latest.set(r.license_type, d);
+    }
+    let worst = "VALID";
+    let next: string | null = null;
+    for (const d of latest.values()) {
+      if (d === null) continue;
+      if (d < today) worst = "EXPIRED";
+      else if (d <= soon && worst !== "EXPIRED") worst = "EXPIRING";
+      if (next === null || d < next) next = d;
+    }
+    return { status: worst, nextexpiry: next };
+  }
+
+  private async ownStore(userid: number, id: number) {
+    const caller = await this.getCallerForStoreManagement(userid);
+    const store = await this.storeRepository.findOne({ where: { id }, relations: ["business"] });
+    if (!store) throw new NotFoundException("Store not found.");
+    if (store.business?.id !== caller.businessid) throw new ForbiddenException("You can only manage stores in your own business");
+    return store;
+  }
+
+  async getLicenses(id: number, userid: number) {
+    const store = await this.ownStore(userid, id);
+    const licenses = await this.manager.query(
+      `select id, license_type as licensetype, number, valid_from::text as validfrom, valid_to::text as validto, notes
+         from store_license where store_id = $1 order by license_type, valid_to desc nulls first, id`, [id]);
+    const st = this.licenseStatus(licenses.map((l: any) => ({ license_type: l.licensetype, valid_to: l.validto })));
+    return { id, location: store.location, address: store.address, pincode: store.pincode, phone: store.phone, licenses, licensestatus: st.status, licensenextexpiry: st.nextexpiry };
+  }
+
+  /** Replaces the store's ship-to details and licences (the list sent is the whole list), checked and audited. */
+  async saveLicenses(id: number, body: any, userid: number) {
+    const store = await this.ownStore(userid, id);
+    const TYPES = ["RETAIL_20_21", "WHOLESALE_20B_21B", "FSSAI", "OTHER"];
+    const text = (v: any, max: number, label: string) => {
+      const t = typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
+      if (t.length > max) throw new BadRequestException(`${label} can be at most ${max} characters.`);
+      return t || null;
+    };
+    const fields: any = {};
+    if (body.address !== undefined) fields.address = text(body.address, 200, "The address");
+    if (body.phone !== undefined) {
+      const p = text(body.phone, 20, "The phone");
+      if (p && !/^[0-9+() -]{6,20}$/.test(p)) throw new BadRequestException("The phone number is not valid.");
+      fields.phone = p;
+    }
+    if (body.pincode !== undefined) {
+      const p = text(body.pincode, 10, "The pincode");
+      if (p && !/^[0-9]{6}$/.test(p)) throw new BadRequestException("The pincode must be 6 digits.");
+      fields.pincode = p;
+    }
+    let list: any[] | null = null;
+    if (body.licenses !== undefined) {
+      if (!Array.isArray(body.licenses)) throw new BadRequestException("licenses must be a list.");
+      const seen = new Set<string>();
+      list = body.licenses.map((l: any) => {
+        if (!TYPES.includes(l?.licensetype)) throw new BadRequestException(`Licence type must be one of ${TYPES.join(", ")}.`);
+        const number = text(l.number, 40, "The licence number");
+        if (!number) throw new BadRequestException("Every licence needs a number.");
+        const date = (v: any, label: string) => {
+          if (v === undefined || v === null || v === "") return null;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v)) || isNaN(Date.parse(String(v)))) throw new BadRequestException(`${label} must be a date (YYYY-MM-DD).`);
+          return String(v);
+        };
+        const validfrom = date(l.validfrom, "Valid-from");
+        const validto = date(l.validto, "Valid-to");
+        if (validfrom && validto && validto < validfrom) throw new BadRequestException(`Licence ${number}: valid-to is before valid-from.`);
+        const key = `${l.licensetype}|${number.toUpperCase()}`;
+        if (seen.has(key)) throw new BadRequestException(`The licence ${number} is listed twice.`);
+        seen.add(key);
+        return { licensetype: l.licensetype, number, validfrom, validto, notes: text(l.notes, 200, "Notes") };
+      });
+    }
+    const before = await this.getLicenses(id, userid);
+    await this.manager.transaction(async (tx) => {
+      if (Object.keys(fields).length) await tx.getRepository(Store).update(id, fields);
+      if (list) {
+        await tx.query(`delete from store_license where store_id = $1`, [id]);
+        for (const l of list) {
+          await tx.query(
+            `insert into store_license (store_id, license_type, number, valid_from, valid_to, notes, created_by) values ($1,$2,$3,$4,$5,$6,$7)`,
+            [id, l.licensetype, l.number, l.validfrom, l.validto, l.notes, userid]);
+        }
+      }
+    });
+    const after = await this.getLicenses(id, userid);
+    const brief = (r: any) => ({ address: r.address, pincode: r.pincode, phone: r.phone, licenses: r.licenses.map((l: any) => `${l.licensetype} ${l.number} ${l.validto || "open"}`) });
+    await this.audit.record({
+      userId: userid, action: "store.licenses_updated", entityType: "stores", entityId: id,
+      summary: `${store.location}: ${after.licenses.length} licence(s), ${after.licensestatus}`,
+      details: { before: brief(before), after: brief(after) },
+    });
+    return after;
   }
 
   async createStore(body: any, userid: any) {

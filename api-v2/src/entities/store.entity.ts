@@ -30,6 +30,15 @@ import { UserStore } from "./user-store.entity";
   @Column({ name: "telegram_digest_enabled", type: "boolean", default: true })
   telegramdigestenabled: boolean;
 
+  @Column("character varying", { name: "address", length: 200, nullable: true })
+  address: string | null;
+
+  @Column("character varying", { name: "pincode", length: 10, nullable: true })
+  pincode: string | null;
+
+  @Column("character varying", { name: "phone", length: 20, nullable: true })
+  phone: string | null;
+
   @Column({ name: "active", type: "boolean", default: true })
   isActive: boolean;
 

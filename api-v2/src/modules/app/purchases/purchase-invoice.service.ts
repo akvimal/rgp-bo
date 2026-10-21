@@ -1,3 +1,4 @@
+import { assertStoreLicensed } from "../store/store-guard";
 import { assertVendorUsable } from "../vendors/vendor-guard";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
@@ -82,6 +83,8 @@ export class PurchaseInvoiceService {
         if(!storeid){
           throw new BadRequestException('No store is configured to receive this invoice.');
         }
+
+        await assertStoreLicensed(this.vendorRepository.manager, storeid, 'receiving an invoice');
 
         const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
 

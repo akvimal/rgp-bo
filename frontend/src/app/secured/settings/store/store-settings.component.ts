@@ -15,7 +15,18 @@ export class StoreSettingsComponent implements OnInit {
   message:string = '';
   savingPolicy:boolean = false;
   savingStore:boolean = false;
-  activeTab:'master' | 'policy' | 'templates' = 'master';
+  activeTab:'master' | 'policy' | 'templates' | 'licences' = 'master';
+  readonly licenceTypes = [
+    { key: 'RETAIL_20_21', label: 'Retail drug licence (Form 20 / 21)' },
+    { key: 'WHOLESALE_20B_21B', label: 'Wholesale drug licence (Form 20B / 21B)' },
+    { key: 'FSSAI', label: 'FSSAI' },
+    { key: 'OTHER', label: 'Other' },
+  ];
+  licStoreId:any = '';
+  lic:any = null;
+  licMessage:string = '';
+  licError:string = '';
+  licSaving:boolean = false;
   storeForm:any = {
     id: null,
     businessid: '',
@@ -42,9 +53,9 @@ export class StoreSettingsComponent implements OnInit {
     this.refreshStoreList();
   }
 
-  selectTab(tab:'master' | 'policy' | 'templates') {
+  selectTab(tab:'master' | 'policy' | 'templates' | 'licences') {
     this.activeTab = tab;
-    if (tab !== 'master') {
+    if (tab !== 'master' && tab !== 'licences') {
       this.refreshSelectedStore();
     }
   }
@@ -74,6 +85,46 @@ export class StoreSettingsComponent implements OnInit {
     this.cashService.getTemplates(this.selectedStore.id).subscribe((templates:any) => {
       this.templates = templates || [];
     });
+  }
+
+  openLicences(id:any) {
+    this.licStoreId = id;
+    this.licMessage = '';
+    this.licError = '';
+    this.lic = null;
+    if (!id) return;
+    this.cashService.getStoreLicenses(id).subscribe(
+      (r:any) => this.lic = r,
+      err => this.licError = err?.error?.message || 'Unable to load the licences');
+  }
+
+  addLicence() {
+    this.lic.licenses.push({ licensetype: 'RETAIL_20_21', number: '', validfrom: '', validto: '', notes: '' });
+  }
+
+  removeLicence(i:number) {
+    this.lic.licenses.splice(i, 1);
+  }
+
+  saveLicences() {
+    this.licMessage = '';
+    this.licError = '';
+    this.licSaving = true;
+    const body = {
+      address: this.lic.address || '', pincode: this.lic.pincode || '', phone: this.lic.phone || '',
+      licenses: this.lic.licenses.map((l:any) => ({ licensetype: l.licensetype, number: l.number, validfrom: l.validfrom || null, validto: l.validto || null, notes: l.notes || '' })),
+    };
+    this.cashService.saveStoreLicenses(this.licStoreId, body).subscribe(
+      (r:any) => { this.licSaving = false; this.lic = r; this.licMessage = 'Licences and address saved.'; this.refreshStoreList(); },
+      err => { this.licSaving = false; this.licError = err?.error?.message || 'Unable to save the licences'; });
+  }
+
+  licenceBadge(status:string) {
+    return status === 'VALID' ? 'bg-success' : status === 'EXPIRING' ? 'bg-warning text-dark' : status === 'EXPIRED' ? 'bg-danger' : 'bg-light text-dark border';
+  }
+
+  licenceLabel(status:string) {
+    return status === 'VALID' ? 'Licence valid' : status === 'EXPIRING' ? 'Licence expiring' : status === 'EXPIRED' ? 'Licence expired' : 'No licence on file';
   }
 
   saveStore() {

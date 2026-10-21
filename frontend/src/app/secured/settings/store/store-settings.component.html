@@ -25,6 +25,9 @@
             <li class="nav-item">
               <a class="nav-link" [class.active]="activeTab === 'templates'" data-testid="store-s-tab-templates" href="javascript:void(0)" (click)="selectTab('templates')">Shift Templates</a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'licences'" data-testid="store-s-tab-licences" href="javascript:void(0)" (click)="selectTab('licences'); openLicences(licStoreId || stores[0]?.id)">Licences &amp; address</a>
+            </li>
           </ul>
         </div>
       </div>
@@ -71,6 +74,7 @@
               <th>Business</th>
               <th class="text-end">Threshold</th>
               <th>Status</th>
+              <th>Licence</th>
               <th></th>
             </tr>
           </thead>
@@ -83,17 +87,69 @@
                 <span class="badge bg-success" *ngIf="store.isActive && !store.isArchived">Active</span>
                 <span class="badge bg-secondary" *ngIf="!store.isActive || store.isArchived">Archived</span>
               </td>
+              <td><span class="badge" [ngClass]="licenceBadge(store.licensestatus)" data-testid="store-row-lic">{{licenceLabel(store.licensestatus)}}</span></td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-secondary me-2" type="button" (click)="editStore(store)">Edit</button>
                 <button class="btn btn-sm btn-outline-danger" type="button" (click)="removeStore(store)">Archive</button>
               </td>
             </tr>
             <tr *ngIf="!stores?.length">
-              <td colspan="5" class="text-center text-muted py-3">No stores yet.</td>
+              <td colspan="6" class="text-center text-muted py-3">No stores yet.</td>
             </tr>
           </tbody>
         </table>
       </div>
+      </div>
+
+      <div *ngIf="activeTab === 'licences'" class="mt-3" data-testid="store-lic-panel">
+        <div class="small text-muted mb-2">A drug licence belongs to the premises, so each store has its own. Vendors ask for the licence number and address of the store they deliver to. The GSTIN is one per business and is kept under Business details.</div>
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-12 col-md-4">
+            <label class="form-label">Store</label>
+            <select class="form-select" data-testid="store-lic-store" [ngModel]="licStoreId" (ngModelChange)="openLicences($event)">
+              <option *ngFor="let s of stores" [ngValue]="s.id">{{s.location}}</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4" *ngIf="lic">
+            <span class="badge" [ngClass]="licenceBadge(lic.licensestatus)" data-testid="store-lic-status">{{licenceLabel(lic.licensestatus)}}</span>
+            <span class="small text-muted ms-2" *ngIf="lic.licensenextexpiry">next expiry {{lic.licensenextexpiry}}</span>
+          </div>
+        </div>
+        <div *ngIf="licMessage" class="alert alert-success py-2" data-testid="store-lic-message">{{licMessage}}</div>
+        <div *ngIf="licError" class="alert alert-danger py-2" data-testid="store-lic-error">{{licError}}</div>
+        <div *ngIf="lic">
+          <div class="row g-2">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Address (ship-to)</label>
+              <input class="form-control" maxlength="200" [(ngModel)]="lic.address" data-testid="store-lic-address">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Pincode</label>
+              <input class="form-control" maxlength="6" [(ngModel)]="lic.pincode" data-testid="store-lic-pincode">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Phone</label>
+              <input class="form-control" maxlength="20" [(ngModel)]="lic.phone" data-testid="store-lic-phone">
+            </div>
+          </div>
+          <div class="table-responsive mt-3">
+            <table class="table table-sm align-middle">
+              <thead><tr><th>Type</th><th>Number</th><th>Valid from</th><th>Valid to</th><th></th></tr></thead>
+              <tbody>
+                <tr *ngFor="let l of lic.licenses; let i = index" data-testid="store-lic-row">
+                  <td><select class="form-select form-select-sm" [(ngModel)]="l.licensetype"><option *ngFor="let t of licenceTypes" [ngValue]="t.key">{{t.label}}</option></select></td>
+                  <td><input class="form-control form-control-sm" maxlength="40" [(ngModel)]="l.number" data-testid="store-lic-number"></td>
+                  <td><input type="date" class="form-control form-control-sm" [(ngModel)]="l.validfrom"></td>
+                  <td><input type="date" class="form-control form-control-sm" [(ngModel)]="l.validto" data-testid="store-lic-validto"></td>
+                  <td class="text-end"><button class="btn btn-sm btn-outline-danger" type="button" (click)="removeLicence(i)">Remove</button></td>
+                </tr>
+                <tr *ngIf="!lic.licenses.length"><td colspan="5" class="text-center text-muted py-3">No licences yet. A renewal is a new row with the new dates: the latest per type counts.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm me-2" type="button" data-testid="store-lic-add" (click)="addLicence()">Add licence</button>
+          <button class="btn btn-primary btn-sm" type="button" data-testid="store-lic-save" [disabled]="licSaving" (click)="saveLicences()">{{licSaving ? 'Saving...' : 'Save'}}</button>
+        </div>
       </div>
 
       <div *ngIf="activeTab === 'policy'" class="row g-3 mt-1">

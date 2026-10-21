@@ -31,6 +31,16 @@ export class StoreController {
     return this.service.createStoreScoped(body, currentUser?.id);
   }
 
+  @Get(":id/licenses")
+  getLicenses(@Param("id") id: string, @User() currentUser: any) {
+    return this.service.getLicenses(Number(id), currentUser?.id);
+  }
+
+  @Put(":id/licenses")
+  saveLicenses(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
+    return this.service.saveLicenses(Number(id), body, currentUser?.id);
+  }
+
   @Put(":id")
   updateOne(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
     return this.service.updateStoreScoped(Number(id), body, currentUser?.id);

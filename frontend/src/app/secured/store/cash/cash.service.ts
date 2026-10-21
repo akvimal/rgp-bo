@@ -24,6 +24,14 @@ export class CashService {
         return this.http.post(`${this.apiurl}/stores`, body);
     }
 
+    getStoreLicenses(id:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/stores/${id}/licenses`);
+    }
+
+    saveStoreLicenses(id:any, body:any): Observable<any> {
+        return this.http.put(`${this.apiurl}/stores/${id}/licenses`, body);
+    }
+
     updateStore(id:any, body:any): Observable<any> {
         return this.http.put(`${this.apiurl}/stores/${id}`, body);
     }
