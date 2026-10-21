@@ -125,4 +125,51 @@ test.describe('Customers page @p1', () => {
     ]);
     expect(resp.status()).toBeLessThan(300);
   });
+
+  test('CUST-10 a name typed in capitals is saved in Title Case; a mixed-case name is left alone @happy', async ({ api }) => {
+    const stamp = Date.now();
+    const caps = await api.request('POST', '/customers', mk(`  QA   ROHAN  KUMAR ${stamp} `, mobile()), MGR);
+    expect(caps.body.name).toBe(`Qa Rohan Kumar ${stamp}`);
+    const mixed = await api.request('POST', '/customers', mk(`QA McDonald ${stamp}`, mobile()), MGR);
+    expect(mixed.body.name).toBe(`QA McDonald ${stamp}`);
+    // the same name in other capitals is the same person on the same number
+    const m = mobile();
+    await api.request('POST', '/customers', mk(`QA Same Person ${stamp}`, m), MGR);
+    expect((await api.request('POST', '/customers', { ...mk(`QA SAME PERSON ${stamp}`, m), confirmduplicate: true }, MGR)).status).toBe(409);
+  });
+
+  test('CUST-11 the form: source is optional, add-another keeps going, and Save says why it is off @happy', async ({ app, api }) => {
+    const stamp = Date.now();
+    const { page } = await app.open(MGR, '/secure/customers/cust/new');
+    await expectShell(page);
+    await expect(page.getByRole('heading', { name: 'New customer' })).toBeVisible();
+    await expect(page.getByTestId(TID.custFName)).toBeFocused();
+    await expect(page.getByTestId('cust-f-srcdesc')).toHaveCount(0);                 // only for referral / other
+    await page.getByTestId(TID.custFSrctype).selectOption('Referral');
+    await expect(page.getByTestId('cust-f-srcdesc')).toBeVisible();
+    await page.getByTestId(TID.custFSrctype).selectOption('');
+
+    await expect(page.getByTestId(TID.custFSave)).toBeDisabled();
+    await expect(page.getByTestId('cust-f-hint')).toContainText('name');
+    await page.getByTestId(TID.custFName).fill(`QA ADD ONE ${stamp}`);
+    await page.getByTestId(TID.custFName).blur();
+    await expect(page.getByTestId(TID.custFName)).toHaveValue(`Qa Add One ${stamp}`);   // tidied as you leave it
+    await page.getByTestId(TID.custFMobile).fill(mobile());
+    await page.getByTestId(TID.custFMobile).blur();
+    await expect(page.getByTestId(TID.custFSave)).toBeEnabled();                     // no source needed
+    const [resp] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/customers') && r.request().method() === 'POST'),
+      page.getByTestId('cust-f-save-add').click(),
+    ]);
+    expect(resp.status()).toBeLessThan(300);
+    await expect(page.getByTestId('cust-f-note')).toContainText(`Qa Add One ${stamp}`);
+    await expect(page.getByTestId(TID.custFName)).toHaveValue('');                   // ready for the next one
+    await expect(page).toHaveURL(/cust\/new/);
+
+    const edit = await api.request('GET', '/customers', undefined, MGR);
+    const mine = edit.body.find((c: any) => c.name === `Qa Add One ${stamp}`);
+    const { page: p2 } = await app.open(MGR, `/secure/customers/cust/edit/${mine.id}`);
+    await expect(p2.getByRole('heading', { name: 'Edit customer' })).toBeVisible();
+    await expect(p2.getByTestId('cust-f-save-add')).toHaveCount(0);
+  });
 });

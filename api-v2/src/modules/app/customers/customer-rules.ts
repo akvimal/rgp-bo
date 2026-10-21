@@ -36,6 +36,19 @@ export function cleanEmail(value: unknown): string | null {
   return t.toLowerCase();
 }
 
+/**
+ * A name typed or imported in capitals (or all lower case) becomes Title Case; a name that already mixes cases is
+ * left as written (McDonald, A. K. Raj). Runs of spaces collapse. The same rule as fix 05 uses on the old records.
+ */
+export function tidyName(value: string | null): string | null {
+  if (!value) return value;
+  const t = value.trim().replace(/\s+/g, ' ');
+  const noLower = !/[a-z]/.test(t) && /[A-Z]/.test(t);
+  const noUpper = !/[A-Z]/.test(t) && /[a-z]/.test(t);
+  if (!noLower && !noUpper) return t;
+  return t.toLowerCase().replace(/(^|[^A-Za-z0-9])([a-z])/g, (_m, p, c) => p + c.toUpperCase());
+}
+
 function letters(name: string): string {
   return String(name || '').toLowerCase().replace(/[^a-z]/g, '');
 }

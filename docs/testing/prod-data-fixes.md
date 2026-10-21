@@ -61,6 +61,7 @@ Nothing done by hand in a rehearsal copy carries over. Everything is replayed on
 | 02 | Attach the 4 completed bills with no customer to the NIL customer | no |
 | 03 | Write off batches expired more than 180 days ago (141 batches, Rs 47,978) | required |
 | 04 | Customer mobiles, safe part only: 258 empty strings become NULL, formatted numbers become 10 digits (none in the current dump), 3 text-only mobiles become NULL; old values kept in `customer_data_fix_log`. Rehearsed on a fresh dump: PASS | no |
+| 05 | Customer names: stray spaces trimmed (2,244 had a leading or trailing space), and names written all in capitals or all in lower case become Title Case (3,282 of 3,355 were capitals). Mixed-case names keep their capitals, the NIL walk-in is skipped, and any change that would clash on name + mobile is skipped. Old values kept in `customer_data_fix_log`. The API applies the same rule to new entries | no |
 
 ## Suggested order
 

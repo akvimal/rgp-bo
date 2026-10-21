@@ -5,7 +5,7 @@ import { Sale } from "src/entities/sale.entity";
 import { EntityManager, Repository } from "typeorm";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuditService } from "src/core/audit/audit.service";
-import { NIL_MOBILE, cleanEmail, cleanText, likelySamePerson, normaliseMobile } from "./customer-rules";
+import { NIL_MOBILE, cleanEmail, cleanText, likelySamePerson, normaliseMobile, tidyName } from "./customer-rules";
 
 @Injectable()
 export class CustomerService {
@@ -25,7 +25,7 @@ export class CustomerService {
         const existing = id ? await this.customerRepository.findOne({ where: { id } }) : null;
         if (id && !existing) throw new NotFoundException('Customer not found.');
 
-        const name = cleanText(dto.name ?? existing?.name, 80, 'The name');
+        const name = tidyName(cleanText(dto.name ?? existing?.name, 80, 'The name'));
         if (!name || name.length < 2) throw new BadRequestException('The customer name is required.');
         const mobile = dto.mobile === undefined ? (existing?.mobile ?? null) : normaliseMobile(dto.mobile);
         if (!existing && !mobile) throw new BadRequestException('The mobile number is required.');

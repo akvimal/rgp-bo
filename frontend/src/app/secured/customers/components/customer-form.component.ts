@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, Output, SimpleChanges, ViewChild } from "@angular/core";
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { Customer } from "../customer.model";
@@ -12,6 +12,14 @@ export function normaliseMobile(value: any): string | null {
   return /^[6-9][0-9]{9}$/.test(d) || d === '0000000000' ? d : null;
 }
 
+/** the same rule the API applies: capitals or all lower case become Title Case, mixed case is left alone */
+export function tidyName(v: any): string {
+  const t = String(v ?? '').trim().replace(/\s+/g, ' ');
+  const noLower = !/[a-z]/.test(t) && /[A-Z]/.test(t);
+  const noUpper = !/[A-Z]/.test(t) && /[a-z]/.test(t);
+  return noLower || noUpper ? t.toLowerCase().replace(/(^|[^A-Za-z0-9])([a-z])/g, (_m, p, c) => p + c.toUpperCase()) : t;
+}
+
 function mobileValidator(c: AbstractControl): ValidationErrors | null {
   const v = String(c.value ?? '').trim();
   return !v || normaliseMobile(v) ? null : { mobile: true };
@@ -21,7 +29,9 @@ function mobileValidator(c: AbstractControl): ValidationErrors | null {
     selector: 'app-customer-form',
     templateUrl: './customer-form.component.html'
 })
-export class CustomerFormComponent {
+export class CustomerFormComponent implements AfterViewInit {
+
+  @ViewChild('nameInput') nameInput?: ElementRef<HTMLInputElement>;
 
   customer:Customer = {name:''}
   @Output() saved = new EventEmitter();
@@ -45,7 +55,7 @@ export class CustomerFormComponent {
         address: new FormControl(''),
         locality: new FormControl(''),
         // area: new FormControl(''),
-        srctype: new FormControl('',Validators.required),
+        srctype: new FormControl(''),
         srcdesc: new FormControl('')
     });
 
@@ -53,12 +63,28 @@ export class CustomerFormComponent {
     sameNumber: any[] = [];                 // other customers on the typed number
     confirmDuplicate = false;
     saveError = '';
+    saveNote = '';
     saving = false;
 
     constructor(
       private route: ActivatedRoute,
       private service:CustomersService,
       private router:Router){}
+
+    get isNew(): boolean { return !this.form.value.id; }
+
+    /** the source text only means something for a referral or "other" */
+    get sourceNeedsText(): boolean { return ['Referral', 'Other'].includes(this.form.value.srctype); }
+
+    ngAfterViewInit() {
+      setTimeout(() => this.isNew && this.nameInput?.nativeElement.focus());
+    }
+
+    onNameBlur() {
+      const c = this.form.controls['name'];
+      const t = tidyName(c.value);
+      if (t !== c.value) c.setValue(t);
+    }
 
     ngOnInit(){
       const id = this.route.snapshot.paramMap.get('id');
@@ -99,7 +125,18 @@ export class CustomerFormComponent {
       return this.form.valid && !this.saving && (!this.sameNumber.length || this.confirmDuplicate);
     }
 
-    onSave(){
+    /** why Save is off, in words */
+    get blockedReason(): string {
+      const f = this.form.controls;
+      if (this.saving || this.form.valid && (!this.sameNumber.length || this.confirmDuplicate)) return '';
+      if (f['name'].invalid) return 'Enter the customer name (at least 2 letters).';
+      if (f['mobile'].invalid) return f['mobile'].value ? 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.' : 'Enter the mobile number.';
+      if (f['email'].invalid) return 'The email address is not valid.';
+      if (this.sameNumber.length && !this.confirmDuplicate) return 'Tick the box above to confirm this is a different person on the same number.';
+      return '';
+    }
+
+    onSave(addAnother = false){
         const obj: any = {
           name: this.form.value.name,
           mobile: normaliseMobile(this.form.value.mobile) || this.form.value.mobile,
@@ -115,10 +152,18 @@ export class CustomerFormComponent {
         const id = this.form.value.id;
         this.saveError = '';
         this.saving = true;
-          this.service.save(id ? {id, ...obj} : obj).subscribe(data => {
+          this.service.save(id ? {id, ...obj} : obj).subscribe((data: any) => {
             this.saving = false;
-            this.form.reset();
             this.saved.emit(data);
+            if (addAnother && !id) {
+              this.form.reset({ id: '', name: '', mobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '' });
+              this.sameNumber = [];
+              this.confirmDuplicate = false;
+              this.saveNote = `${data.name} saved. Add the next customer.`;
+              setTimeout(() => this.nameInput?.nativeElement.focus());
+              return;
+            }
+            this.form.reset();
             this.router.navigate(['/secure/customers/cust/list'])
           }, err => {
             this.saving = false;
@@ -142,8 +187,5 @@ export class CustomerFormComponent {
         this.form.controls['srcdesc'].setValue(cust.srcdesc);    
       }
 
-      reset(){
-        this.form.reset();
-      }
 
   }
