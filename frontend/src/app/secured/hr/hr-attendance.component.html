@@ -1,0 +1,24 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="small text-muted mb-2">Click a day to mark it: present, absent, half day, weekly off, holiday, then clear. A day nobody marks is paid as worked, so only mark absences and half days if you are not tracking everything. Leave shows as L (paid) or U (unpaid).</div>
+    <div class="page-toolbar">
+      <div class="page-toolbar-main"><div><label class="form-label">Month</label><input type="month" class="form-control" style="width:12rem" [(ngModel)]="period" (change)="load()" data-testid="hr-att-period"></div></div>
+    </div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
+
+    <div class="table-responsive" *ngIf="grid">
+      <table class="table table-sm table-bordered text-center align-middle mb-0" data-testid="hr-att-grid" style="font-size:.8rem">
+        <thead><tr><th class="text-start">Staff</th><th *ngFor="let d of days" style="min-width:2rem">{{d}}</th><th>P</th><th>A</th><th>H</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let s of grid.staff" [attr.data-emp]="s.id" data-testid="hr-att-row">
+            <td class="text-start text-nowrap">{{s.name}}</td>
+            <td *ngFor="let d of days" [ngClass]="cell(s, d).cls" [title]="cell(s, d).title" [style.cursor]="cell(s, d).locked ? 'default' : 'pointer'"
+                (click)="click(s, d)" [attr.data-testid]="'hr-att-' + s.id + '-' + d">{{cell(s, d).text}}</td>
+            <td>{{count(s, 'PRESENT')}}</td><td>{{count(s, 'ABSENT')}}</td><td>{{count(s, 'HALF_DAY')}}</td>
+          </tr>
+          <tr *ngIf="!grid.staff.length"><td [attr.colspan]="days.length + 4" class="text-muted py-3">No staff employed in that month.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

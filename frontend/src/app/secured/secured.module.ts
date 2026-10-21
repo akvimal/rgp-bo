@@ -56,6 +56,10 @@ const routes: Routes = [
       loadChildren: () => import('./quality/quality.module').then(m => m.QualityModule)
     },
     {
+      path: 'hr', canActivate:[AuthGuard],
+      loadChildren: () => import('./hr/hr.module').then(m => m.HrModule)
+    },
+    {
       path: 'settings', canActivate:[AuthGuard],
       loadChildren: () => import('./settings/settings.module').then(m => m.SettingsModule)
     }

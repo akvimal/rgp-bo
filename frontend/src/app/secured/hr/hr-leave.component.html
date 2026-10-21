@@ -1,0 +1,65 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="page-toolbar">
+      <div class="page-toolbar-main"><div class="small text-muted">Paid leave counts against the yearly entitlement; unpaid leave and absences reduce pay. Weekly offs and holidays are not counted as leave.</div></div>
+      <div class="page-toolbar-actions"><button class="btn btn-primary" type="button" (click)="add()" data-testid="hr-leave-add">Record leave</button></div>
+    </div>
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
+
+    <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="hr-leave-form">
+      <div class="row g-3">
+        <div class="col-md-3"><label class="form-label">Staff *</label>
+          <select class="form-select" [(ngModel)]="form.employee_id" data-testid="hr-l-emp"><option [ngValue]="null">Choose</option><option *ngFor="let s of staff" [ngValue]="s.id">{{s.name}}</option></select></div>
+        <div class="col-md-3"><label class="form-label">Type *</label>
+          <select class="form-select" [(ngModel)]="form.leave_type_id" data-testid="hr-l-type"><option [ngValue]="null">Choose</option><option *ngFor="let t of types" [ngValue]="t.id">{{t.name}} ({{t.paid ? 'paid' : 'unpaid'}})</option></select></div>
+        <div class="col-md-2"><label class="form-label">From *</label><input type="date" class="form-control" [(ngModel)]="form.from_date" data-testid="hr-l-from"></div>
+        <div class="col-md-2"><label class="form-label">To *</label><input type="date" class="form-control" [(ngModel)]="form.to_date" data-testid="hr-l-to"></div>
+        <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="half" [(ngModel)]="form.half_day"><label class="form-check-label" for="half">Half day</label></div></div>
+        <div class="col-md-9"><label class="form-label">Reason</label><input class="form-control" maxlength="200" [(ngModel)]="form.reason"></div>
+        <div class="col-md-3 d-flex align-items-end"><button class="btn btn-primary" type="button" (click)="save()" data-testid="hr-l-save">Save</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
+      </div>
+    </div>
+
+    <div *ngIf="deciding" class="row g-2 align-items-end mb-3">
+      <div class="col-md-6"><label class="form-label">Why is it rejected?</label><input class="form-control" maxlength="200" [(ngModel)]="deciding.note" data-testid="hr-l-note"></div>
+      <div class="col-md-3"><button class="btn btn-danger" type="button" (click)="decide(deciding.id, 'reject')" data-testid="hr-l-reject-go">Reject</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="deciding = null">Cancel</button></div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="hr-leave-table">
+        <thead><tr><th>Staff</th><th>Type</th><th>From</th><th>To</th><th class="text-end">Days</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of requests" data-testid="hr-leave-row" [attr.data-status]="r.status">
+            <td>{{r.name}}</td><td>{{r.type}} <span class="small text-muted">{{r.paid ? 'paid' : 'unpaid'}}</span></td>
+            <td>{{r.from_date | date:'dd MMM yyyy'}}</td><td>{{r.to_date | date:'dd MMM yyyy'}}</td><td class="text-end">{{r.days}}</td>
+            <td>{{r.reason}}<div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div></td>
+            <td><span class="badge" [ngClass]="badge(r.status)">{{r.status | titlecase}}</span></td>
+            <td class="text-end text-nowrap">
+              <ng-container *ngIf="r.status === 'PENDING'">
+                <button class="btn btn-outline-success btn-sm" type="button" (click)="decide(r.id, 'approve')" data-testid="hr-l-approve">Approve</button>
+                <button class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="decide(r.id, 'reject')" data-testid="hr-l-reject">Reject</button>
+              </ng-container>
+              <button *ngIf="r.status === 'APPROVED' || r.status === 'PENDING'" class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="decide(r.id, 'cancel')" data-testid="hr-l-cancel">Cancel</button>
+            </td>
+          </tr>
+          <tr *ngIf="!requests.length"><td colspan="8" class="text-center text-muted py-3">No leave recorded.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex align-items-end gap-3 mt-4 mb-2"><h6 class="mb-0">Balances</h6>
+      <input type="number" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="year" (change)="load()" data-testid="hr-l-year"></div>
+    <div class="row g-3">
+      <div class="col-md-4" *ngFor="let p of people">
+        <div class="border rounded p-2">
+          <strong>{{p.name}}</strong>
+          <table class="table table-sm mb-0"><tbody>
+            <tr *ngFor="let b of p.rows"><td>{{b.type}}</td>
+              <td class="text-end"><span *ngIf="b.paid">{{b.used}} used of {{b.entitled}}<span *ngIf="b.pending"> (+{{b.pending}} pending)</span></span><span *ngIf="!b.paid">{{b.used}} taken</span></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

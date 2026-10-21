@@ -1,0 +1,89 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="small text-muted mb-2">Pay is on a fixed 30-day month: salary x paid days / 30. Unpaid days come from absences, half days and unpaid leave; days nobody marked count as worked. Staff-credit balances are taken in the run.</div>
+
+    <div class="page-toolbar">
+      <div class="page-toolbar-main">
+        <div><label class="form-label">Salary month</label><input type="month" class="form-control" style="width:12rem" [(ngModel)]="period" (change)="pick(period)" data-testid="hr-pay-period"></div>
+        <span *ngIf="run" class="badge mb-2" [ngClass]="run.status === 'APPROVED' ? 'bg-success' : 'bg-warning text-dark'" data-testid="hr-pay-status">{{run.status === 'APPROVED' ? 'Approved' : 'Draft'}}</span>
+      </div>
+      <div class="page-toolbar-actions">
+        <button class="btn btn-outline-secondary" type="button" *ngIf="run" (click)="download()" data-testid="hr-pay-export">Bank sheet (Excel)</button>
+        <button class="btn btn-outline-secondary" type="button" *ngIf="run?.status === 'APPROVED'" (click)="reopening = !reopening" data-testid="hr-pay-reopen">Reopen</button>
+        <button class="btn btn-outline-primary" type="button" *ngIf="!run || run.status === 'DRAFT'" [disabled]="busy" (click)="generate()" data-testid="hr-pay-generate">{{run ? 'Work out again' : 'Work out ' + period}}</button>
+        <button class="btn btn-primary" type="button" *ngIf="run?.status === 'DRAFT'" (click)="approve()" data-testid="hr-pay-approve">Approve</button>
+      </div>
+    </div>
+
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
+    <div *ngFor="let w of warnings" class="alert alert-warning py-2">{{w}}</div>
+
+    <div *ngIf="reopening" class="row g-2 align-items-end mb-3">
+      <div class="col-md-6"><label class="form-label">Why reopen {{period}}?</label><input class="form-control" [(ngModel)]="reopenReason" maxlength="200" data-testid="hr-pay-reopen-reason"></div>
+      <div class="col-md-3"><button class="btn btn-danger" type="button" (click)="reopen()" data-testid="hr-pay-reopen-go">Reopen month</button></div>
+    </div>
+
+    <div *ngIf="!run" class="text-muted py-3">Nothing worked out for {{period}} yet.</div>
+
+    <div class="table-responsive" *ngIf="run">
+      <table class="table table-sm align-middle" data-testid="hr-pay-table">
+        <thead><tr><th>Staff</th><th class="text-end">Paid days</th><th class="text-end">Earnings</th><th class="text-end">Incentive</th><th class="text-end">Adjust</th><th class="text-end">Deductions</th><th class="text-end">Staff credit</th><th class="text-end">Net pay</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let l of run.lines" data-testid="hr-pay-row" [attr.data-emp]="l.employee_id">
+            <td>{{l.name}}<div class="small text-muted">{{l.emp_code}} {{l.designation}}</div></td>
+            <td class="text-end">{{l.payable_days}}<div class="small text-muted" *ngIf="l.unpaid_days">{{l.unpaid_days}} unpaid</div></td>
+            <td class="text-end">{{l.earnings_paid | number:'1.2-2'}}</td>
+            <td class="text-end">{{l.kpi_incentive | number:'1.2-2'}}</td>
+            <td class="text-end">{{l.adjustment | number:'1.2-2'}}</td>
+            <td class="text-end">{{(l.fixed_deductions + l.extra_deduction) | number:'1.2-2'}}</td>
+            <td class="text-end">{{l.staff_credit_recovery | number:'1.2-2'}}</td>
+            <td class="text-end fw-bold" data-testid="hr-pay-net">{{l.net | number:'1.2-2'}}</td>
+            <td class="text-end text-nowrap">
+              <button class="btn btn-outline-secondary btn-sm" type="button" *ngIf="run.status === 'DRAFT'" (click)="startEdit(l)" data-testid="hr-pay-edit">Edit</button>
+              <button class="btn btn-outline-primary btn-sm ms-1" type="button" (click)="showStub(l)" data-testid="hr-pay-stub">Pay stub</button>
+            </td>
+          </tr>
+          <tr class="fw-bold"><td>Total</td><td></td><td class="text-end">{{run.total_earnings | number:'1.2-2'}}</td><td></td><td></td><td class="text-end">{{run.total_deductions | number:'1.2-2'}}</td><td></td><td class="text-end" data-testid="hr-pay-total">{{run.total_net | number:'1.2-2'}}</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- edit a line -->
+    <div *ngIf="edit" class="border rounded p-3 mb-3" data-testid="hr-pay-edit-form">
+      <h6>{{edit.name}}</h6>
+      <div class="row g-3">
+        <div class="col-md-2"><label class="form-label">Unpaid days</label><input type="number" step="0.5" min="0" class="form-control" [(ngModel)]="edit.unpaid_days" data-testid="hr-e-unpaid"></div>
+        <div class="col-md-2"><label class="form-label">Incentive</label><input type="number" min="0" class="form-control" [(ngModel)]="edit.kpi_incentive"></div>
+        <div class="col-md-2"><label class="form-label">Other deduction</label><input type="number" min="0" class="form-control" [(ngModel)]="edit.extra_deduction" data-testid="hr-e-extra"></div>
+        <div class="col-md-3"><label class="form-label">Staff credit recovered <span class="text-muted small">(owes {{edit.owed | number:'1.2-2'}})</span></label><input type="number" min="0" class="form-control" [(ngModel)]="edit.staff_credit_recovery" data-testid="hr-e-recovery"></div>
+        <div class="col-md-3"><label class="form-label">Adjustment (+/-)</label><input type="number" class="form-control" [(ngModel)]="edit.adjustment" data-testid="hr-e-adjust"></div>
+        <div class="col-md-9"><label class="form-label">Adjustment note</label><input class="form-control" maxlength="200" [(ngModel)]="edit.adjustment_note" data-testid="hr-e-adjust-note"></div>
+        <div class="col-md-3 d-flex align-items-end"><button class="btn btn-primary" type="button" (click)="saveEdit()" data-testid="hr-e-save">Save line</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="edit = null">Cancel</button></div>
+      </div>
+    </div>
+
+    <!-- pay stub -->
+    <div *ngIf="stub" class="border rounded p-3 mb-3" data-testid="hr-stub">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><h6 class="mb-0">{{stub.name}} - pay stub {{stub.period}}</h6><div class="small text-muted">{{stub.emp_code}} {{stub.designation}} &middot; {{stub.payable_days}} of 30 days paid</div></div>
+        <div><button class="btn btn-outline-primary btn-sm" type="button" (click)="print()" data-testid="hr-stub-print">Print / save as PDF</button><button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="stub = null">Close</button></div>
+      </div>
+      <table class="table table-sm mt-2 mb-0">
+        <tr *ngFor="let e of stub.earnings"><td>{{e.name}}</td><td class="text-end">{{e.paid | number:'1.2-2'}}</td></tr>
+        <tr *ngIf="stub.kpi_incentive"><td>Incentive</td><td class="text-end">{{stub.kpi_incentive | number:'1.2-2'}}</td></tr>
+        <tr *ngIf="stub.adjustment"><td>{{stub.adjustment_note || 'Adjustment'}}</td><td class="text-end">{{stub.adjustment | number:'1.2-2'}}</td></tr>
+        <tr *ngFor="let d of stub.deductions"><td>{{d.name}}</td><td class="text-end">-{{d.amount | number:'1.2-2'}}</td></tr>
+        <tr *ngIf="stub.extra_deduction"><td>Other deduction</td><td class="text-end">-{{stub.extra_deduction | number:'1.2-2'}}</td></tr>
+        <tr *ngIf="stub.staff_credit_recovery"><td>Staff credit recovered</td><td class="text-end">-{{stub.staff_credit_recovery | number:'1.2-2'}}</td></tr>
+        <tr class="fw-bold"><td>Net pay</td><td class="text-end" data-testid="hr-stub-net">{{stub.net | number:'1.2-2'}}</td></tr>
+      </table>
+    </div>
+
+    <h6 class="mt-4">Earlier months</h6>
+    <table class="table table-sm" *ngIf="runs.length">
+      <thead><tr><th>Month</th><th>Status</th><th class="text-end">Staff</th><th class="text-end">Net pay</th></tr></thead>
+      <tbody><tr *ngFor="let r of runs" (click)="pick(r.period)" style="cursor:pointer"><td>{{r.period}}</td><td>{{r.status === 'APPROVED' ? 'Approved' : 'Draft'}}</td><td class="text-end">{{r.staff}}</td><td class="text-end">{{r.total_net | number:'1.2-2'}}</td></tr></tbody>
+    </table>
+  </div>
+</div>

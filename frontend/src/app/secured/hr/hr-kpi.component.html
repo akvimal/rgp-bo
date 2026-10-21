@@ -1,0 +1,40 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="small text-muted mb-2">Score each person on the measures set up under Setup. The score's band decides the incentive (a percentage of the month's earnings); payroll picks it up when it is worked out. Bills and sales are shown as a reference from the till.</div>
+    <div class="page-toolbar">
+      <div class="page-toolbar-main"><div><label class="form-label">Month</label><input type="month" class="form-control" style="width:12rem" [(ngModel)]="period" (change)="load()" data-testid="hr-kpi-period"></div></div>
+    </div>
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
+    <div *ngIf="!metrics.length" class="alert alert-warning py-2">No KPI measures yet. Add them under Setup.</div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="hr-kpi-table">
+        <thead><tr><th>Staff</th><th class="text-end">Bills</th><th class="text-end">Sales</th><th class="text-end">Score</th><th>Band</th><th class="text-end">Incentive</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of rows" data-testid="hr-kpi-row">
+            <td>{{r.name}}<div class="small text-muted">{{r.designation}}</div></td>
+            <td class="text-end">{{r.bills}}</td><td class="text-end">{{r.sales_value | number:'1.0-0'}}</td>
+            <td class="text-end">{{r.review_id ? (r.percent + '% (' + r.total_points + '/' + r.max_points + ')') : '-'}}</td>
+            <td>{{r.band_label}}</td><td class="text-end">{{r.review_id ? (r.incentive_percent + '%') : ''}}</td>
+            <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="start(r)" [disabled]="!metrics.length" data-testid="hr-kpi-score">{{r.review_id ? 'Re-score' : 'Score'}}</button></td>
+          </tr>
+          <tr *ngIf="!rows.length"><td colspan="7" class="text-center text-muted py-3">No staff in that month.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="scoring" class="border rounded p-3" data-testid="hr-kpi-form">
+      <h6>{{scoring.name}} - {{period}} <span class="small text-muted">({{scoring.bills}} bills, {{scoring.sales_value | number:'1.0-0'}} sales)</span></h6>
+      <div class="row g-3">
+        <div class="col-md-3" *ngFor="let m of metrics">
+          <label class="form-label">{{m.name}} <span class="text-muted small">(max {{m.max_points}})</span></label>
+          <input type="number" min="0" [max]="m.max_points" class="form-control" [(ngModel)]="scoring.points[m.id]" [attr.data-testid]="'hr-kpi-m-' + m.id">
+          <div class="small text-muted" *ngIf="m.description">{{m.description}}</div>
+        </div>
+        <div class="col-md-9"><label class="form-label">Note</label><input class="form-control" maxlength="200" [(ngModel)]="scoring.note"></div>
+        <div class="col-md-3 d-flex align-items-end"><button class="btn btn-primary" type="button" (click)="save()" data-testid="hr-kpi-save">Save score</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="scoring = null">Cancel</button></div>
+      </div>
+    </div>
+  </div>
+</div>

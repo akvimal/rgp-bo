@@ -166,6 +166,19 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'hr',
+    label: 'HR',
+    description: 'Staff records, salary and revisions, leave, attendance, KPI and monthly payroll with pay stubs. Business Head only.',
+    group: 'Staff & Quality',
+    path: '/secure/hr',
+    bundle: true,
+    bundleLabel: 'Can manage HR and payroll',
+    actions: [
+      { key: 'view', label: 'View' },
+      { key: 'manage', label: 'Change staff, pay and leave' },
+    ],
+  },
+  {
     key: 'staffcredit',
     label: 'Staff Credit',
     description: 'Monthly credit limit per person, what staff took on credit and what was recovered from salary.',
