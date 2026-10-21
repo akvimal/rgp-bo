@@ -140,6 +140,32 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'refills',
+    label: 'Refill Follow-up',
+    description: 'Customers due a refill: log the contact and the outcome.',
+    group: 'Staff & Quality',
+    path: '/secure/quality/refills',
+    bundle: true,
+    bundleLabel: 'Can follow up refills',
+    actions: [
+      { key: 'view', label: 'View' },
+      { key: 'manage', label: 'Log contacts' },
+    ],
+  },
+  {
+    key: 'businessprofile',
+    label: 'Business Details',
+    description: 'Name, legal name, GSTIN, state, address and pincode of the business.',
+    group: 'Administration',
+    path: '/secure/settings/business-profile',
+    settingsPath: true,
+    bundle: true,
+    bundleLabel: 'Can edit business details',
+    actions: [
+      { key: 'manage', label: 'Manage' },
+    ],
+  },
+  {
     key: 'discrepancies',
     label: 'Cash & Shifts',
     description: 'Shifts that did not balance, expenses without receipts, shifts never closed.',

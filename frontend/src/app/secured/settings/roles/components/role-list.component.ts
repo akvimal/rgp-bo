@@ -37,6 +37,7 @@ export class RoleListComponent {
         PERMISSION_CATALOG.forEach(r => catalogLabels[r.key] = r.label);
         return (permissions || [])
             .filter((p:any) => !skip.has(p.resource))
-            .map((p:any) => catalogLabels[p.resource] || p.resource);
+            .map((p:any) => catalogLabels[p.resource] || p.resource)
+            .filter((label:string, i:number, all:string[]) => all.indexOf(label) === i);
     }
 }

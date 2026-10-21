@@ -28,7 +28,7 @@
         <td><input type="checkbox" [disabled]="keep[g.mobile] === m.id" [(ngModel)]="picked[m.id]" data-testid="dup-pick"></td>
         <td>{{m.name || '(no name)'}}</td>
         <td class="text-end">{{m.bills}}</td>
-        <td>{{m.lastvisit ? (m.lastvisit | date:'dd/MM/yy') : '-'}}</td>
+        <td>{{m.lastvisit ? (m.lastvisit | date:'dd MMM yyyy') : '-'}}</td>
       </tr>
     </tbody>
   </table>

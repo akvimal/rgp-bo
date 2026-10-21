@@ -69,7 +69,7 @@
           <td *ngFor="let col of cols" [class.text-end]="col.align === 'end'"
             [class.text-nowrap]="col.type === 'date'">
             <ng-container [ngSwitch]="col.type">
-              <span *ngSwitchCase="'date'">{{ row[col.field] | date:'dd/MM/yy' }}</span>
+              <span *ngSwitchCase="'date'">{{ row[col.field] | date:'dd MMM yyyy' }}</span>
               <span *ngSwitchCase="'numeric'">{{ row[col.field] | number:'1.2-2' }}</span>
               <span *ngSwitchDefault>{{ row[col.field] }}</span>
             </ng-container>

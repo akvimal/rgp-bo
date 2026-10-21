@@ -14,7 +14,7 @@
                         <ul class="list-group mt-2">
                             <li class="list-group-item" style="background-color: rgb(184, 219, 254);">
                                 <input type="checkbox" style="width:15px;height:15px;" (change)="toggleAll(i,$event)">
-                                <span class="text-primary fs-6 pl-2">&nbsp;&nbsp; <strong>{{s.billdate | date : 'dd-MMM-yy'}}</strong></span>
+                                <span class="text-primary fs-6 pl-2">&nbsp;&nbsp; <strong>{{s.billdate | date : 'dd MMM yyyy'}}</strong></span>
                             </li>
                             <li class="list-group-item" *ngFor="let i of s.items">
                                 <input type="checkbox" style="width:15px;height:15px;" (change)="selectItem(i.productid,$event)" [checked]="i.selected">

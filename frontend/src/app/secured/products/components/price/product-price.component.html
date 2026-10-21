@@ -65,7 +65,7 @@
                 <span class="badge bg-warning text-dark ms-1" *ngIf="flagsOf(product).includes('high')">margin over 300%</span>
                 <span class="badge bg-secondary ms-1" *ngIf="flagsOf(product).includes('none')">no price</span>
             </td>
-                <td>{{product.last_updated | date : 'dd/MM/yy'}}</td>
+                <td>{{product.last_updated | date : 'dd MMM yyyy'}}</td>
                 <!-- <td class="text-center" pEditableColumn>
                     <p-cellEditor>
                         <ng-template pTemplate="input">

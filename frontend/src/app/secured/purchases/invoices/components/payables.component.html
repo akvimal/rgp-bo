@@ -63,7 +63,7 @@
           <td class="small text-muted">
             {{v.ageing.d0_30 | number:'1.0-0'}} / {{v.ageing.d31_60 | number:'1.0-0'}} / {{v.ageing.d61_90 | number:'1.0-0'}} / {{v.ageing.d90_plus | number:'1.0-0'}}
           </td>
-          <td>{{v.oldest_due_date ? (v.oldest_due_date | date:'dd/MM/yy') : '-'}}</td>
+          <td>{{v.oldest_due_date ? (v.oldest_due_date | date:'dd MMM yyyy') : '-'}}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-primary" data-testid="payables-pay" (click)="openPay(v)">Pay</button>
           </td>
@@ -124,7 +124,7 @@
               <input type="checkbox" [checked]="row.checked" (change)="toggle(row)">
             </td>
             <td>{{row.invoice_no}}</td>
-            <td [class.text-danger]="row.payment_status === 'Overdue'">{{row.due_date | date:'dd/MM/yy'}}</td>
+            <td [class.text-danger]="row.payment_status === 'Overdue'">{{row.due_date | date:'dd MMM yyyy'}}</td>
             <td class="text-end">{{row.balance_amount | number:'1.2-2'}}</td>
             <td class="text-end">
               <input type="number" min="0" [max]="row.balance_amount" class="form-control form-control-sm text-end"

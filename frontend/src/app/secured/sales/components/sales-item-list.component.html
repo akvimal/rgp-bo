@@ -99,7 +99,7 @@
                 <td>
                   <a [routerLink]="['../view',item.sale.id]">{{item.sale.billno}}</a>
                 </td>
-                <td>{{item.sale.billdate | date: 'dd/MM/yy h:mm a'}}</td>
+                <td>{{item.sale.billdate | date: 'dd MMM yyyy, h:mm a'}}</td>
                 <td>{{item.sale.customer?.name}}</td>
                 <!-- <td>
                   <div *ngIf="item.sale.props && item.sale.props.documents" class="documents">

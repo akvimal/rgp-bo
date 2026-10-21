@@ -15,7 +15,7 @@ import { ProductsService } from "src/app/secured/products/products.service";
         [suggestions]="filteredProducts" 
         [minLength]="2"
         (completeMethod)="filterProduct($event)" 
-        [inputStyle]="{'background-color':'#9df'}">
+        [inputStyle]="{'background-color':'#f4f7ff'}">
             <ng-template let-product pTemplate="item">
                 <div>
                     <h6 style="margin:0;padding:0;font-weight:bold">{{product.title}}</h6>

@@ -9,7 +9,7 @@ import { CustomersService } from "../../secured/customers/customers.service";
                 (onKeyUp)="input($event)"
                 field="''" placeholder="Mobile"
                 [suggestions]="filteredCustomer" 
-                [inputStyle]="{'background-color':'#9df'}"
+                [inputStyle]="{'background-color':'#f4f7ff'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="2">
                 <ng-template let-customer pTemplate="item">
                     <div>{{customer.name}} - {{customer.mobile}}</div>

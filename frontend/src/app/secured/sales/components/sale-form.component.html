@@ -48,7 +48,7 @@
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
-                        <strong>Bill Date:</strong>&nbsp;{{sale.billdate | date: 'dd/MM/yy'}}
+                        <strong>Bill Date:</strong>&nbsp;{{sale.billdate | date: 'dd MMM yyyy'}}
                         <span class="ms-3"><strong>Staff:</strong>&nbsp;{{activeStaffName || 'Not selected'}}</span>
                         <span *ngIf="sale.status !== 'NEW' && sale.billno">&nbsp;<strong>Bill No:</strong>&nbsp;{{sale.billno}}</span>
                     </td>
@@ -173,7 +173,7 @@
                 <li>Receive prescription dated within last 6 months for H1 drugs</li>
                 <li>Sell least expiry products first</li>
                 <li>Receive customer mobile and name</li>
-                <li>Accept CARD, only if bill amount is above Rs.1000/- for generic items</li>
+                <li>Accept CARD, only if bill amount is above ₹1,000 for generic items</li>
                 <li>Avoid any mistakes in data entry</li>
             </ul>
         </div>

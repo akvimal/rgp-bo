@@ -23,7 +23,7 @@
           </thead>
           <tbody>
             <tr *ngFor="let payment of payments">
-              <td>{{payment.paydate | date:'dd/MM/yyyy'}}</td>
+              <td>{{payment.paydate | date:'dd MMM yyyy'}}</td>
               <td>{{payment.paymode}}</td>
               <td>{{payment.transref || '-'}}</td>
               <td>{{payment.communicationstatus || 'Not Sent'}}<span *ngIf="payment.communicationchannel"> / {{payment.communicationchannel}}</span></td>

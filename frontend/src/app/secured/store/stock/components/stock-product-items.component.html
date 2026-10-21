@@ -31,7 +31,7 @@
                     </ng-template>
                     <ng-template pTemplate="body" let-i>
                         <tr [ngClass]="{'expired': i.expired == true}">
-                        <td>{{i.invoice_date | date : 'dd/MM/yy'}}</td>
+                        <td>{{i.invoice_date | date : 'dd MMM yyyy'}}</td>
                         <td>{{i.invoice_no}}</td>
                         <td>{{i.batch}}</td>
                         <td>{{i.exp_date | date : 'MMM-yy'}}</td>

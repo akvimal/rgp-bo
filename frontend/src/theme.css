@@ -1,0 +1,294 @@
+/*
+ * RGP Back Office - one visual standard.
+ *
+ * Loaded last (see angular.json) so it wins over the admin template (assets/css/style.css), Bootstrap and the
+ * PrimeNG theme, which otherwise each bring their own colour, font and sizing. Change a value here, not in a page.
+ *
+ *   brand      #4154f1  (links, primary buttons, active tabs, focus)
+ *   font       Nunito, 14.4px body; page title 24px; section 17px; caption 12.8px
+ *   density    compact: 6px radius, 0.4rem control padding, 0.55rem table cell padding
+ *   formats    dates "dd MMM yyyy", money with the rupee sign and 2 decimals in cards, plain numbers in table columns
+ */
+
+:root {
+  --rgp-brand: #4154f1;
+  --rgp-brand-hover: #3445d4;
+  --rgp-brand-active: #2c3bbd;
+  --rgp-brand-soft: #eef0fe;
+  --rgp-navy: #012970;
+  --rgp-text: #37383c;
+  --rgp-muted: #6b7280;
+  --rgp-line: #e3e8f2;
+  --rgp-head-bg: #f6f8fd;
+  --rgp-hover-bg: #f6f8ff;
+  --rgp-radius: 6px;
+  --rgp-font: "Nunito", "Open Sans", -apple-system, "Segoe UI", sans-serif;
+
+  --bs-primary: #4154f1;
+  --bs-primary-rgb: 65, 84, 241;
+  --bs-link-color: #4154f1;
+  --bs-link-hover-color: #2c3bbd;
+  --bs-body-font-family: var(--rgp-font);
+  --bs-body-font-size: .9rem;
+  --bs-body-color: var(--rgp-text);
+  --font-family: var(--rgp-font);   /* PrimeNG */
+}
+
+/* ------------------------------------------------------------------ type */
+html, body {
+  font-family: var(--rgp-font);
+}
+
+body {
+  font-size: .9rem;
+  color: var(--rgp-text);
+}
+
+h1, h2, h3, h4, h5, h6,
+.card-title, .card-header, .p-dialog-title {
+  font-family: var(--rgp-font);
+  color: var(--rgp-navy);
+  font-weight: 700;
+}
+
+#main h1, .pagetitle h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 .5rem;
+  line-height: 1.25;
+}
+
+.pagetitle { margin-bottom: .75rem; }
+h4 { font-size: 1.2rem; }
+h5, .card-title { font-size: 1.05rem; }
+h6 { font-size: .95rem; }
+.card-title { padding: .9rem 0 .6rem; }
+.card-title span { font-size: .85rem; }
+small, .small { font-size: .8rem; }
+.text-muted { color: var(--rgp-muted) !important; }
+.required { color: #dc3545; margin-left: 2px; }
+
+/* ------------------------------------------------------------------ links */
+a { color: var(--rgp-brand); text-decoration: none; cursor: pointer; }
+a:hover { color: var(--rgp-brand-active); text-decoration: underline; }
+a.btn, a.nav-link, .sidebar a, .page-menu a, .grid-actions a, .dropdown-item, .p-paginator a { text-decoration: none; }
+.sidebar-nav a:hover, .page-menu a:hover, .grid-actions a:hover { text-decoration: none; }
+
+/* ------------------------------------------------------------------ buttons */
+.btn {
+  --bs-btn-padding-y: .4rem;
+  --bs-btn-padding-x: .9rem;
+  --bs-btn-font-size: .9rem;
+  --bs-btn-font-weight: 600;
+  --bs-btn-border-radius: var(--rgp-radius);
+}
+.btn-sm {
+  --bs-btn-padding-y: .25rem;
+  --bs-btn-padding-x: .6rem;
+  --bs-btn-font-size: .8rem;
+  --bs-btn-border-radius: 5px;
+}
+.btn-primary {
+  --bs-btn-bg: var(--rgp-brand);
+  --bs-btn-border-color: var(--rgp-brand);
+  --bs-btn-hover-bg: var(--rgp-brand-hover);
+  --bs-btn-hover-border-color: var(--rgp-brand-hover);
+  --bs-btn-active-bg: var(--rgp-brand-active);
+  --bs-btn-active-border-color: var(--rgp-brand-active);
+  --bs-btn-disabled-bg: var(--rgp-brand);
+  --bs-btn-disabled-border-color: var(--rgp-brand);
+  --bs-btn-focus-shadow-rgb: 65, 84, 241;
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--rgp-brand);
+  --bs-btn-border-color: var(--rgp-brand);
+  --bs-btn-hover-bg: var(--rgp-brand);
+  --bs-btn-hover-border-color: var(--rgp-brand);
+  --bs-btn-active-bg: var(--rgp-brand-active);
+  --bs-btn-active-border-color: var(--rgp-brand-active);
+  --bs-btn-disabled-color: var(--rgp-brand);
+  --bs-btn-disabled-border-color: var(--rgp-brand);
+  --bs-btn-focus-shadow-rgb: 65, 84, 241;
+}
+.btn-outline-secondary {
+  --bs-btn-color: #5b6478;
+  --bs-btn-border-color: #c5cbd8;
+  --bs-btn-hover-bg: #eef0f6;
+  --bs-btn-hover-color: #2f3747;
+  --bs-btn-hover-border-color: #aeb6c7;
+  --bs-btn-active-bg: #e3e7f1;
+  --bs-btn-active-color: #2f3747;
+}
+.btn:disabled, .btn.disabled, fieldset:disabled .btn { opacity: .5; }
+.text-primary { color: var(--rgp-brand) !important; }
+.bg-primary { background-color: var(--rgp-brand) !important; }
+.border-primary { border-color: var(--rgp-brand) !important; }
+
+/* row actions: always the same small icons, same colours */
+.grid-actions { gap: .75rem; font-size: 1rem; }
+.grid-actions i, td a > i.bi { font-size: 1rem; }
+.grid-actions .bi-pencil-square, .grid-actions .bi-pencil, td a > i.bi-pencil-square { color: var(--rgp-brand) !important; }
+.grid-actions .bi-trash, td a > i.bi-trash { color: #dc3545 !important; }
+
+/* ------------------------------------------------------------------ forms */
+.form-control, .form-select, .p-inputtext, .p-dropdown {
+  font-size: .9rem;
+  border-radius: var(--rgp-radius);
+}
+.form-control, .form-select {
+  padding: .4rem .7rem;
+  border-color: #ccd2e0;
+}
+.form-select { padding-right: 2.25rem; }
+.form-control-sm, .form-select-sm { font-size: .85rem; padding: .25rem .5rem; }
+.form-select-sm { padding-right: 2rem; }
+.form-control:focus, .form-select:focus {
+  border-color: var(--rgp-brand);
+  box-shadow: 0 0 0 .2rem rgba(65, 84, 241, .15);
+}
+.form-label, #main label:not(.form-check-label):not(.btn):not(.p-component) {
+  font-size: .85rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: .25rem;
+}
+.form-check-input:checked { background-color: var(--rgp-brand); border-color: var(--rgp-brand); }
+.form-check-input:focus { border-color: var(--rgp-brand); box-shadow: 0 0 0 .2rem rgba(65, 84, 241, .15); }
+/* a few templates size their checkboxes inline (25px): one size everywhere */
+#main input[type=checkbox] { width: 1.1rem !important; height: 1.1rem !important; }
+.invalid-feedback, .form-text { font-size: .8rem; }
+
+/* ------------------------------------------------------------------ cards, dialogs, alerts, badges */
+.card {
+  border: 1px solid var(--rgp-line);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(1, 41, 112, .06);
+}
+.card-header { background: var(--rgp-head-bg); border-bottom: 1px solid var(--rgp-line); font-size: .95rem; }
+
+.alert { padding: .55rem .9rem; font-size: .9rem; border-radius: var(--rgp-radius); margin-bottom: .75rem; }
+.badge { font-weight: 600; font-size: .72rem; border-radius: 4px; }
+
+.p-component { font-family: var(--rgp-font); font-size: .9rem; }
+.p-dialog .p-dialog-header { padding: 1rem 1.25rem; }
+.p-dialog .p-dialog-title { font-size: 1.05rem; }
+.p-dialog .p-dialog-content { padding: 0 1.25rem 1.25rem; }
+
+/* ------------------------------------------------------------------ tabs: one underlined style at every level */
+/* pages build their tab bar three ways (nav.page-menu, ul.page-menu inside a nav, a bare nav.navbar): all look alike */
+nav.navbar.bg-light, nav.page-menu {
+  background: transparent !important;
+  border-bottom: 1px solid var(--rgp-line);
+  margin: 0 0 1rem 0 !important;
+  padding: 0 !important;
+}
+nav.navbar ul.page-menu { border: 0; margin: 0 !important; }
+.navbar .nav-link {
+  font-size: .95rem;
+  font-weight: 600;
+  color: #5b6478;
+  padding: .6rem 1rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+}
+.navbar .nav-link:hover { color: var(--rgp-brand); }
+.navbar .nav-link.is-active, .navbar .nav-item.is-active > .nav-link, .navbar .nav-link.active {
+  color: var(--rgp-brand);
+  border-bottom-color: var(--rgp-brand);
+  background: transparent;
+}
+.page-menu {
+  background: transparent !important;
+  border-bottom: 1px solid var(--rgp-line);
+  margin-bottom: 1rem !important;
+}
+.page-menu a, .page-menu .nav-link {
+  font-size: .95rem;
+  font-weight: 600;
+  color: #5b6478;
+  padding: .6rem 1rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+}
+.page-menu a:hover, .page-menu .nav-link:hover { color: var(--rgp-brand); }
+.page-menu a.is-active, .page-menu .nav-link.is-active, .page-menu .is-active > a {
+  color: var(--rgp-brand);
+  border-bottom-color: var(--rgp-brand);
+  background: transparent;
+}
+.is-active { background-color: transparent; }
+
+.nav-tabs { border-bottom: 1px solid var(--rgp-line); margin-bottom: .75rem; }
+.nav-tabs .nav-link {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #5b6478;
+  font-weight: 600;
+  font-size: .9rem;
+  padding: .55rem 1rem;
+  margin-bottom: -1px;
+}
+.nav-tabs .nav-link:hover { color: var(--rgp-brand); border-bottom-color: transparent; }
+.nav-tabs .nav-link.active, .nav-tabs .nav-item.show .nav-link {
+  color: var(--rgp-brand);
+  background: transparent;
+  border-bottom-color: var(--rgp-brand);
+}
+
+.p-tabview .p-tabview-nav { border: 0; border-bottom: 1px solid var(--rgp-line); background: transparent; }
+.p-tabview .p-tabview-nav li .p-tabview-nav-link {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #5b6478;
+  font-weight: 600;
+  padding: .55rem 1rem;
+  margin: 0 0 -1px 0;
+}
+.p-tabview .p-tabview-nav li:not(.p-highlight):not(.p-disabled):hover .p-tabview-nav-link {
+  background: transparent; color: var(--rgp-brand); border-bottom-color: transparent;
+}
+.p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  background: transparent; color: var(--rgp-brand); border-bottom-color: var(--rgp-brand);
+}
+.p-tabview .p-tabview-panels { padding: .9rem 0; background: transparent; }
+
+/* ------------------------------------------------------------------ tables: bootstrap and PrimeNG look the same */
+.table { font-size: .9rem; --bs-table-bg: transparent; }
+.table > :not(caption) > * > * { padding: .55rem .75rem; }
+.table-sm > :not(caption) > * > * { padding: .4rem .6rem; }
+.table thead th, .table > thead > tr > th {
+  background: var(--rgp-head-bg);
+  color: #3b4a6b;
+  font-weight: 700;
+  font-size: .82rem;
+  border-bottom: 1px solid var(--rgp-line);
+  vertical-align: middle;
+}
+.table-hover > tbody > tr:hover > * { --bs-table-accent-bg: var(--rgp-hover-bg); }
+
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--rgp-head-bg);
+  color: #3b4a6b;
+  font-weight: 700;
+  font-size: .82rem;
+  padding: .6rem .75rem;
+  border-color: var(--rgp-line);
+}
+.p-datatable .p-datatable-tbody > tr > td { padding: .5rem .75rem; border-color: var(--rgp-line); }
+.p-datatable .p-datatable-tbody > tr:hover { background: var(--rgp-hover-bg); }
+.p-datatable .p-sortable-column .p-sortable-column-icon { color: #8b95aa; }
+.p-datatable .p-sortable-column.p-highlight, .p-datatable .p-sortable-column.p-highlight .p-sortable-column-icon { color: var(--rgp-brand); }
+.p-paginator { font-size: .85rem; }
+
+/* ------------------------------------------------------------------ sidebar */
+.sidebar-nav .nav-item { margin-bottom: 2px; }
+.sidebar-nav .nav-link { font-size: .9rem; padding: .55rem .9rem; }
+.sidebar-nav .nav-content a { font-weight: 500; font-size: .85rem; }
+.sidebar-nav .nav-heading { font-size: .68rem; letter-spacing: .06em; margin: 14px 0 4px 14px; }
+
+/* ------------------------------------------------------------------ counter lookup fields keep a quiet tint, not cyan */
+.p-autocomplete .p-inputtext { border-color: #b9c4f7; }

@@ -65,7 +65,7 @@
             <td>
               <a [routerLink]="['../view',s.saleid]">{{s.billno}}</a>
             </td>
-            <td>{{s.returndate | date : 'dd/MM/yyyy'}}</td>
+            <td>{{s.returndate | date : 'dd MMM yyyy'}}</td>
             <td>{{s.customer}}</td>
             <td>{{s.product}}<br>
              <span style="color: blue;font-size:smaller">{{s.batch}}

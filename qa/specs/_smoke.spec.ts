@@ -17,7 +17,7 @@ test.describe('@smoke', () => {
   test('auth injection opens a secured page directly', async ({ app }) => {
     const { page } = await app.open('businesshead@local.test', '/secure/store/cash');
     await expectShell(page);
-    await expect(page.getByRole('heading', { name: 'Cash', exact: true })).toBeVisible();
+    await expect(page.locator('.navbar .nav-link.is-active', { hasText: 'Cash' })).toBeVisible();   // the active Store tab names the page
   });
 
   test('logged-out visit to a secured URL bounces to login', async ({ browser }) => {

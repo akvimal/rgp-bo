@@ -52,7 +52,7 @@ test.describe('Store Cash & Shifts @p0', () => {
     const { page } = await app.open(MGR, '/secure/store/shifts', { storeId: STORE1 });
     await expectShell(page);
     await expect(page).toHaveURL(/\/secure\/store\/shifts/);
-    await expect(page.getByRole('heading', { name: 'Shifts' })).toBeVisible();
+    await expect(page.locator('.navbar .nav-link.is-active', { hasText: 'Shifts' })).toBeVisible();   // the active Store tab names the page
   });
 
   test('CASH-1 a created shift template is available when opening a shift @happy', async ({ api }) => {

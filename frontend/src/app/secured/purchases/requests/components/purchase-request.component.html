@@ -27,7 +27,7 @@
           <td>{{request.priority}}</td>
           <td>{{request.status}}</td>
           <td class="text-end">{{request.qty}}</td>
-          <td>{{request.neededby | date:'dd/MM/yyyy'}}</td>
+          <td>{{request.neededby | date:'dd MMM yyyy'}}</td>
           <td>{{request.customername || '-'}}</td>
           <td class="text-center" *isAuth="'purchases.add'">
             <div class="grid-actions">

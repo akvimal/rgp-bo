@@ -76,20 +76,20 @@
                         <!-- <td style="text-align: center;">{{product.pack}}</td> -->
                         <!-- <td>{{product.brand}}</td> -->
                         <!-- <td>{{product.mfr}}</td> -->
-                        <td>{{product.updatedon | date : 'dd/MM/yy'}}</td>
+                        <td>{{product.updatedon | date : 'dd MMM yyyy'}}</td>
                         <td class="text-center">
                             <div class="grid-actions">
                                 <a *ngIf="product.isActive" [routerLink]="['../edit', product.id]" title="Edit">
                                     <i class="bi bi-pencil-square text-primary"></i>
                                 </a>
                                 <a *ngIf="product.isActive" (click)="changeActive(product.id, false, product.title)" title="Deactivate" data-testid="prod-deactivate">
-                                    <i class="bi bi-sign-stop-fill" style="color:red"></i>
+                                    <i class="bi bi-slash-circle text-secondary"></i>
                                 </a>
                                 <a *ngIf="!product.isActive" (click)="changeActive(product.id, true)" title="Activate">
-                                    <i class="bi bi-play-fill" style="color:green"></i>
+                                    <i class="bi bi-check-circle text-success"></i>
                                 </a>
                                 <a *ngIf="!product.isActive" (click)="archive(product)" title="Archive">
-                                    <i class="bi bi-trash" style="color:gray"></i>
+                                    <i class="bi bi-archive text-secondary"></i>
                                 </a>
                             </div>
                         </td>

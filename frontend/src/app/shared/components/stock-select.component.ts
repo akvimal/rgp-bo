@@ -11,7 +11,7 @@ import { PropsService } from "../props.service";
                     placeholder="Name / Composition"
                     [suggestions]="filteredStock" 
                     (completeMethod)="filterStock($event)" [minLength]="2"
-                    [inputStyle]="{'background-color':'#9df'}">
+                    [inputStyle]="{'background-color':'#f4f7ff'}">
                     <ng-template let-stock pTemplate="item">
                         <div [ngStyle]="{maxWidth:'800px',backgroundColor:stock.balance < 1?'#ffc0c0':'inherit'}">
                             <h6 style="margin:0;padding:0;font-weight:bold">{{stock.title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||'None'}})</h6>

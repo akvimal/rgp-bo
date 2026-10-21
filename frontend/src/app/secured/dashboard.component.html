@@ -19,12 +19,12 @@
         <div class="d-flex justify-content-between align-items-end">
           <div>
             <div class="small text-muted">Today</div>
-            <div class="fs-5 fw-bold" data-testid="dash-sales-today">{{summary?.kpis?.sales_today | number:'1.2-2'}}</div>
+            <div class="fs-5 fw-bold" data-testid="dash-sales-today">₹{{summary?.kpis?.sales_today | number:'1.0-0'}}</div>
             <div class="small text-muted">{{summary?.kpis?.sales_today_orders || 0}} orders</div>
           </div>
           <div class="text-end">
             <div class="small text-muted">This month</div>
-            <div class="fs-5 fw-bold">{{summary?.kpis?.sales_month | number:'1.2-2'}}</div>
+            <div class="fs-5 fw-bold">₹{{summary?.kpis?.sales_month | number:'1.0-0'}}</div>
             <div class="small text-muted">{{summary?.kpis?.sales_month_orders || 0}} orders</div>
           </div>
         </div>
@@ -48,7 +48,7 @@
     <div class="card h-100">
       <div class="card-body">
         <div class="small text-muted">Purchase month</div>
-        <div class="fs-4 fw-bold">{{summary?.kpis?.purchase_month | number:'1.2-2'}}</div>
+        <div class="fs-4 fw-bold">₹{{summary?.kpis?.purchase_month | number:'1.0-0'}}</div>
         <div class="small text-muted">{{summary?.kpis?.purchase_month_invoices || 0}} invoices</div>
       </div>
     </div>
@@ -62,7 +62,7 @@
           <div class="small text-muted">Cash balance</div>
           <span *ngIf="summary?.kpis?.deposit_due" class="badge bg-warning text-dark" style="font-size:0.65rem">Deposit due</span>
         </div>
-        <div class="fs-4 fw-bold mb-1">{{summary?.kpis?.cash_balance | number:'1.2-2'}}</div>
+        <div class="fs-4 fw-bold mb-1">₹{{summary?.kpis?.cash_balance | number:'1.0-0'}}</div>
         <div class="progress mb-1" style="height:6px" *ngIf="summary?.kpis?.deposit_threshold">
           <div class="progress-bar"
             [class.bg-success]="cashBalancePct < 75"
@@ -71,8 +71,8 @@
             [style.width.%]="cashBalancePct">
           </div>
         </div>
-        <div class="small text-muted">Threshold: {{summary?.kpis?.deposit_threshold | number:'1.2-2'}}</div>
-        <div class="small text-muted">Expenses: {{summary?.kpis?.cash_expenses_month | number:'1.2-2'}} · Deposits: {{summary?.kpis?.bank_deposits_month | number:'1.2-2'}}</div>
+        <div class="small text-muted">Threshold: ₹{{summary?.kpis?.deposit_threshold | number:'1.0-0'}}</div>
+        <div class="small text-muted">Expenses: ₹{{summary?.kpis?.cash_expenses_month | number:'1.0-0'}} · Deposits: ₹{{summary?.kpis?.bank_deposits_month | number:'1.0-0'}}</div>
       </div>
     </div>
   </div>

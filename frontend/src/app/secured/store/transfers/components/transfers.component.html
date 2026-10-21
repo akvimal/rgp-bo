@@ -31,7 +31,7 @@
           <td>{{t.tostore?.location}}</td>
           <td>{{t.receivedqty ?? t.qty}}{{t.status === 'RECEIVED' && t.receivedqty && t.receivedqty < t.qty ? ' / ' + t.qty : ''}}</td>
           <td><span class="badge" [ngClass]="{'bg-warning text-dark': t.status === 'IN_TRANSIT', 'bg-success': t.status === 'RECEIVED', 'bg-secondary': t.status === 'CANCELLED'}">{{t.status}}</span></td>
-          <td>{{t.createdon | date:'dd/MM/yyyy'}}</td>
+          <td>{{t.createdon | date:'dd MMM yyyy'}}</td>
           <td>
             <div class="grid-actions">
               <button *ngIf="canReceive(t)" type="button" class="btn btn-sm btn-outline-success" (click)="receive(t)">Receive</button>

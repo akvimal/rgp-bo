@@ -10,7 +10,7 @@
             <div class="d-flex">
                 <input type="checkbox" style="width:20px;height:20px;" (change)="selectDocument(d.id,$event)" [checked]="d.selected">
                 <div class="document-nav" (click)="viewDoc(d.id)" style="margin-left:.5em;">
-                    <span style="color: blue;">{{d.createdon | date : 'dd/MM/yy'}}</span> {{d.alias}} <br>
+                    <span style="color: blue;">{{d.createdon | date : 'dd MMM yyyy'}}</span> {{d.alias}} <br>
                     <strong>{{d.category}}</strong><br>
                     <app-obj-print [obj]="d.docprops" [json]="true"></app-obj-print>
                 </div>

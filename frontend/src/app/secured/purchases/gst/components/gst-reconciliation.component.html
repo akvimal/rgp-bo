@@ -120,10 +120,10 @@
         <tbody>
           <tr *ngFor="let row of worklist" data-testid="gst-row">
             <td><span class="badge" [ngClass]="statusBadgeClass(row.status)">{{row.status}}</span></td>
-            <td>{{row.invoice_no || '-'}} <span class="text-muted small d-block" *ngIf="row.invoice_date">{{row.invoice_date | date:'dd/MM/yy'}}</span></td>
+            <td>{{row.invoice_no || '-'}} <span class="text-muted small d-block" *ngIf="row.invoice_date">{{row.invoice_date | date:'dd MMM yyyy'}}</span></td>
             <td>{{row.vendor_name || '-'}}</td>
             <td class="text-end">{{row.invoice_total ? (row.invoice_total | number:'1.2-2') : '-'}}</td>
-            <td>{{row.portal_invoice_no || '-'}} <span class="text-muted small d-block" *ngIf="row.portal_invoice_date">{{row.portal_invoice_date | date:'dd/MM/yy'}}</span></td>
+            <td>{{row.portal_invoice_no || '-'}} <span class="text-muted small d-block" *ngIf="row.portal_invoice_date">{{row.portal_invoice_date | date:'dd MMM yyyy'}}</span></td>
             <td>{{row.portal_supplier_name || '-'}}</td>
             <td class="text-end">{{row.portal_value ? (row.portal_value | number:'1.2-2') : '-'}}</td>
             <td>

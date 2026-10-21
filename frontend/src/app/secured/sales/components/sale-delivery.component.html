@@ -88,7 +88,7 @@
         <tr>
           <td>
             <div class="fw-semibold">#{{i.sale?.billno}}</div>
-            <small class="text-muted">{{i.sale?.ordertype || '-'}} &middot; {{i.sale?.billdate | date:'dd/MM/yy'}}</small>
+            <small class="text-muted">{{i.sale?.ordertype || '-'}} &middot; {{i.sale?.billdate | date:'dd MMM yyyy'}}</small>
           </td>
           <td>
             <div>{{i.receivername || i.sale?.customer?.name || '-'}}</div>
@@ -103,7 +103,7 @@
             <div>{{i.deliveryby || '-'}}</div>
             <small class="text-muted">{{i.saleperson}}</small>
           </td>
-          <td class="text-nowrap">{{ i.deliverydate ? (i.deliverydate | date:'dd/MM/yy') : '-' }}</td>
+          <td class="text-nowrap">{{ i.deliverydate ? (i.deliverydate | date:'dd MMM yyyy') : '-' }}</td>
           <td class="text-end">{{i.charges || 0 | number:'1.2-2'}}</td>
           <td class="text-end">{{i.actualcost || 0 | number:'1.2-2'}}</td>
           <td>

@@ -43,7 +43,7 @@
                     
                     <input [value]="item.qty" 
                         [disabled]="item.maxqty == 0"
-                        [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#9df','width':'80px','text-align':'right','padding-right':'.5em','border-color':'#ddd'}"
+                        [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#f4f7ff','width':'80px','text-align':'right','padding-right':'.5em','border-color':'#ddd'}"
                         (input)="changeItemQty(item.itemid,$event)">
                     
                     <label [ngStyle]="{'text-align':'right','background':item.unitsbal < 0 ? '#faa' : '#ddd','width':'50px','padding-right':'.25em','border-color':'#ddd','color':'#66a'}">{{item.unitsbal}}</label>

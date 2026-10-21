@@ -73,11 +73,11 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
         <span class="badge" [ngClass]="{'bg-success': c.segment === 'Chronic only', 'bg-info text-dark': c.segment === 'OTC only', 'bg-primary': c.segment === 'OTC + Chronic', 'bg-secondary': c.segment === 'Other', 'bg-light text-muted border': c.segment === 'No purchases'}">{{c.segment}}</span>
       </td>
       <td class="text-end" data-testid="cust-bills">{{c.bills}}</td>
-      <td>{{c.lastvisit ? (c.lastvisit | date:'dd/MM/yy') : '-'}}</td>
+      <td>{{c.lastvisit ? (c.lastvisit | date:'dd MMM yyyy') : '-'}}</td>
       <!-- <td>{{c.address}}</td> -->
       <!-- <td>{{c.srctype}}</td> -->
       <!-- <td>{{c.srcdesc}}</td> -->
-      <!-- <td>{{c.createdon | date : 'dd/MM/yy'}}</td> -->
+      <!-- <td>{{c.createdon | date : 'dd MMM yyyy'}}</td> -->
       <td class="text-center">
         <div class="grid-actions">
           <a [routerLink]="['../edit',c.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
