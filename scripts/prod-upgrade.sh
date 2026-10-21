@@ -5,7 +5,7 @@
 #   cutover           run the same upgrade in place on the live database (backup + safety checks first)
 #   verify            print the invariants for a database (no changes)
 #   report <outdir>   write the review lists (sql/prod-upgrade/reports) as CSV files, read-only
-#   load-vendors <csv>  load a filled-in vendor sheet (GSTIN, payment terms, phone); add --fixes-dry-run to rehearse it
+#   load-vendors <csv>  load a filled-in vendor sheet (GSTIN, registration, contacts, terms, bank, licence); add --fixes-dry-run to rehearse it
 #   load-opening-stock <csv>  post a shelf count (reports/opening_stock_sheet.csv) as the stock on the books; --fixes-dry-run first
 #
 # Both modes run identical steps: pre-snapshot -> migrations -> optional opening payables -> post-check
@@ -220,12 +220,12 @@ case "$mode" in
   load-vendors)
     [ -f "$arg1" ] || die "usage: $0 load-vendors <csv from reports/vendor_sheet.csv> [--fixes-dry-run]"
     { echo "begin;"
-      echo "create temp table _v_in (vendor_id int, business_name text, gstn text, payment_terms_days text, contact_phone text, invoices text, purchased_last_12_months text);"
+      echo "create temp table _v_in (vendor_id text, business_name text, legal_name text, vendor_type text, registration_type text, gstn text, state_code text, address text, city text, pincode text, contact_name text, phone text, mobile text, email text, rep_name text, rep_phone text, payment_terms_days text, credit_limit text, discount_pcnt text, licences text, bank_name text, bank_account text, bank_ifsc text, upi_id text, comments text, invoices text, purchased_last_12_months text);"
       echo "copy _v_in from stdin with (format csv, header true);"
       tr -d '\r' < "$arg1"
       echo '\.'
       cat "$ROOT/sql/prod-upgrade/sheets/load_vendors.sql"
-    } | psql_db "$PGDATABASE" -v dry_run="$fixes_dry" 2>&1 | { grep -E '^(LOAD|ERROR)|invalid_gstin|^ *[0-9]+ \|' || true; }
+    } | psql_db "$PGDATABASE" -v dry_run="$fixes_dry" 2>&1 | { grep -E '^(LOAD|ERROR)|problem|^ *[0-9]+ +\|' || true; }
     [ "${PIPESTATUS[1]}" = 0 ] || die "vendor load failed; nothing was changed."
     ;;
   load-opening-stock)

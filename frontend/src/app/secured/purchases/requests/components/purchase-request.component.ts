@@ -46,7 +46,7 @@ export class PurchaseRequestComponent {
 
     ngOnInit(){
         this.fetchRequests();
-        this.vendorService.findAll().subscribe((data:any) => this.vendors = data || []);
+        this.vendorService.findUsable().subscribe((data:any) => this.vendors = data || []);
     }
 
     fetchRequests(){

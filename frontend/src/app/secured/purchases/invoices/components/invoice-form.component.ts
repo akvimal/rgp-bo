@@ -80,7 +80,7 @@ export class InvoiceFormComponent {
         
       });
 
-      this.vendorService.findAll().subscribe(data => this.vendors = data);
+      this.vendorService.findUsable().subscribe(data => this.vendors = data);
       // this.prodService.findAll(null).subscribe(data => this.products = data);
     }
 

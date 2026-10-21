@@ -8,6 +8,8 @@ interface ConfirmDeleteOptions {
     consequence?: string;
     /** Verb shown on the confirm button + header. Defaults to "Delete". */
     verb?: string;
+    /** The action can be reversed later: drop the "cannot be undone" sentence. */
+    reversible?: boolean;
 }
 
 /**
@@ -28,7 +30,7 @@ export class ConfirmService {
 
         this.confirmation.confirm({
             header: `${verb} ${entity}`,
-            message: `This will ${verb.toLowerCase()} <b>${safeName}</b>.${consequence} This action cannot be undone.`,
+            message: `This will ${verb.toLowerCase()} <b>${safeName}</b>.${consequence}${options.reversible ? '' : ' This action cannot be undone.'}`,
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: verb,
             rejectLabel: 'Cancel',

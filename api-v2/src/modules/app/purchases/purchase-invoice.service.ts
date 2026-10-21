@@ -1,3 +1,4 @@
+import { assertVendorUsable } from "../vendors/vendor-guard";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, In, Repository } from "typeorm";
@@ -74,6 +75,8 @@ export class PurchaseInvoiceService {
         if(!dto.vendorid){
           throw new BadRequestException('Vendor is required.');
         }
+
+        await assertVendorUsable(this.vendorRepository.manager, dto.vendorid, 'receiving an invoice');
 
         const storeid = dto.storeid || await this.resolveDefaultStoreId();
         if(!storeid){

@@ -1,5 +1,6 @@
 /** Realistic-ish pharmacy catalogue generation. */
 import { faker } from '@faker-js/faker';
+import { randomGstin } from '../support/gstin.js';
 
 const MOLECULES = [
   'Paracetamol', 'Amoxicillin', 'Azithromycin', 'Cetirizine', 'Metformin', 'Amlodipine',
@@ -41,7 +42,7 @@ export function makeVendor(i: number) {
     contactname: faker.person.fullName(),
     contactphone: faker.string.numeric(10),
     address: faker.location.streetAddress(true),
-    gstn: `${faker.string.numeric(2)}${faker.string.alpha({ length: 5, casing: 'upper' })}${faker.string.numeric(4)}${faker.string.alpha({ length: 1, casing: 'upper' })}1Z${faker.string.numeric(1)}`,
+    gstn: randomGstin(),
     comments: '',
   };
 }

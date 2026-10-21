@@ -1,3 +1,4 @@
+import { assertVendorUsable } from "../vendors/vendor-guard";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
@@ -143,6 +144,7 @@ export class PurchaseService {
         if(!vendor){
             throw new BadRequestException('Vendor not found.');
         }
+        await assertVendorUsable(this.vendorRepository.manager, dto.vendorid, 'a new purchase order');
         const order = await this.orderRepository.save({
             ...dto,
             status: dto.status || 'PENDING',
@@ -153,6 +155,7 @@ export class PurchaseService {
     }
     
     async createRequest(dto: CreatePurchaseRequestDto, userid: number) {
+        await assertVendorUsable(this.vendorRepository.manager, dto.vendorid, 'a new purchase request');
         const normalize = (value:any) => {
             if(value === undefined || value === null){
                 return undefined;
@@ -463,6 +466,7 @@ export class PurchaseService {
             const createdOrders:any[] = [];
 
             for(const [vendorid, vendorItems] of grouped.entries()){
+                await assertVendorUsable(transactionManager, vendorid, 'a new purchase order');
                 const vendor = await this.vendorRepository.findOne({ where: { id: vendorid, isActive: true, isArchived: false }});
                 const sourceSummary = Array.from(new Set(vendorItems.map((item:any) => item.reasonsummary).filter(Boolean))).join(' | ');
                 const orderRepo = transactionManager.getRepository(PurchaseOrder);

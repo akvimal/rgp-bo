@@ -35,7 +35,7 @@ export class PurchaseOrderComponent {
 
     ngOnInit() {
         this.filter();
-        this.vendorService.findAll().subscribe(data => this.vendors = data);
+        this.vendorService.findUsable().subscribe(data => this.vendors = data);
         this.updateActiveOrderId();
         this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.updateActiveOrderId());
     }

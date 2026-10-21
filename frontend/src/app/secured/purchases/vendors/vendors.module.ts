@@ -1,6 +1,6 @@
 import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
-import { ReactiveFormsModule } from "@angular/forms";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { SharedModule } from "src/app/shared/shared.module";
@@ -26,6 +26,7 @@ const routes: Routes = [
     ],
     imports: [
         CommonModule,
+        FormsModule,
         ReactiveFormsModule,
         RouterModule.forChild(routes),
         SharedModule,

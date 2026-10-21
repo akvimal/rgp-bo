@@ -1,50 +1,185 @@
 
 <div class="card mt-2">
     <div class="card-body">
-      <h5 class="card-title p-0 m-0">New Vendor</h5>
+      <h5 class="card-title p-0 m-0">{{isEdit ? 'Edit Vendor' : 'New Vendor'}}</h5>
 
-      <!-- Multi Columns Form -->
       <form [formGroup]="form" (ngSubmit)="onSave()">
+
+        <h6 class="mt-4 text-primary">Identity</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="name" class="form-label">Business name</label>
+            <input type="text" class="form-control" id="name" maxlength="40" data-testid="vendor-f-name" formControlName="name">
+          </div>
+          <div class="col-md-4">
+            <label for="legalname" class="form-label">Legal name <span class="text-muted small">(as on the GST certificate)</span></label>
+            <input type="text" class="form-control" id="legalname" maxlength="120" data-testid="vendor-f-legal" formControlName="legalname">
+          </div>
+          <div class="col-md-4">
+            <label for="vendortype" class="form-label">Type</label>
+            <select class="form-select" id="vendortype" data-testid="vendor-f-type" formControlName="vendortype">
+              <option *ngFor="let t of vendorTypes" [value]="t.value">{{t.label}}</option>
+            </select>
+          </div>
+        </div>
+
+        <h6 class="mt-4 text-primary">GST</h6>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="registrationtype" class="form-label">Registration</label>
+            <select class="form-select" id="registrationtype" data-testid="vendor-f-regtype" formControlName="registrationtype">
+              <option *ngFor="let t of registrationTypes" [value]="t.value">{{t.label}}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="gstn" class="form-label">GSTIN</label>
+            <input type="text" class="form-control text-uppercase" id="gstn" maxlength="15" data-testid="vendor-f-gstn" formControlName="gstn" (input)="onGstinChange()">
+            <div class="small mt-1" data-testid="vendor-f-gstn-status"
+                 [class.text-success]="gstinInfo.state === 'ok'" [class.text-danger]="gstinInfo.state === 'bad'">{{gstinInfo.text}}</div>
+          </div>
+          <div class="col-md-3">
+            <label for="statecode" class="form-label">State</label>
+            <select class="form-select" id="statecode" data-testid="vendor-f-state" formControlName="statecode">
+              <option value="">Not set</option>
+              <option *ngFor="let s of states" [value]="s.code">{{s.name}} ({{s.code}})</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label for="pan" class="form-label">PAN</label>
+            <input type="text" class="form-control text-uppercase" id="pan" maxlength="10" data-testid="vendor-f-pan" formControlName="pan">
+          </div>
+        </div>
+
+        <h6 class="mt-4 text-primary">Address</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="address" class="form-label">Address</label>
+            <textarea class="form-control" id="address" rows="2" maxlength="200" formControlName="address"></textarea>
+          </div>
+          <div class="col-md-3">
+            <label for="city" class="form-label">City</label>
+            <input type="text" class="form-control" id="city" maxlength="60" formControlName="city">
+          </div>
+          <div class="col-md-3">
+            <label for="pincode" class="form-label">Pincode</label>
+            <input type="text" class="form-control" id="pincode" maxlength="6" data-testid="vendor-f-pincode" formControlName="pincode">
+          </div>
+        </div>
+
+        <h6 class="mt-4 text-primary">Contact</h6>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="contactname" class="form-label">Contact name</label>
+            <input type="text" class="form-control" id="contactname" data-testid="vendor-f-contact" formControlName="contactname">
+          </div>
+          <div class="col-md-3">
+            <label for="contactphone" class="form-label">Phone</label>
+            <input type="text" class="form-control" id="contactphone" data-testid="vendor-f-phone" formControlName="contactphone">
+          </div>
+          <div class="col-md-3">
+            <label for="mobile" class="form-label">Mobile / WhatsApp</label>
+            <input type="text" class="form-control" id="mobile" data-testid="vendor-f-mobile" formControlName="mobile">
+            <div class="text-danger small" *ngIf="form.get('mobile')?.invalid">10-digit mobile number</div>
+          </div>
+          <div class="col-md-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" data-testid="vendor-f-email" formControlName="email">
+            <div class="text-danger small" *ngIf="form.get('email')?.invalid">Not a valid email</div>
+          </div>
+          <div class="col-md-3">
+            <label for="repname" class="form-label">Sales representative</label>
+            <input type="text" class="form-control" id="repname" data-testid="vendor-f-rep-name" formControlName="repname">
+          </div>
+          <div class="col-md-3">
+            <label for="repphone" class="form-label">Representative's mobile</label>
+            <input type="text" class="form-control" id="repphone" data-testid="vendor-f-rep-phone" formControlName="repphone">
+            <div class="text-danger small" *ngIf="form.get('repphone')?.invalid">10-digit mobile number</div>
+          </div>
+        </div>
+
+        <h6 class="mt-4 text-primary">Terms</h6>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="paymenttermsdays" class="form-label">Payment terms (days)</label>
+            <input type="number" min="0" max="365" class="form-control" id="paymenttermsdays" data-testid="vendor-f-terms" formControlName="paymenttermsdays">
+          </div>
+          <div class="col-md-3">
+            <label for="creditlimit" class="form-label">Credit limit (Rs)</label>
+            <input type="number" min="0" class="form-control" id="creditlimit" data-testid="vendor-f-credit" formControlName="creditlimit">
+          </div>
+          <div class="col-md-3">
+            <label for="discountpcnt" class="form-label">Standard discount (%)</label>
+            <input type="number" min="0" max="100" step="0.01" class="form-control" id="discountpcnt" data-testid="vendor-f-discount" formControlName="discountpcnt">
+          </div>
+        </div>
+
+        <h6 class="mt-4 text-primary">Bank</h6>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="bankname" class="form-label">Bank</label>
+            <input type="text" class="form-control" id="bankname" data-testid="vendor-f-bank" formControlName="bankname">
+          </div>
+          <div class="col-md-3">
+            <label for="bankaccount" class="form-label">Account number</label>
+            <input type="text" class="form-control" id="bankaccount" data-testid="vendor-f-account" formControlName="bankaccount">
+            <div class="text-danger small" *ngIf="form.get('bankaccount')?.invalid">6 to 30 letters or digits</div>
+          </div>
+          <div class="col-md-3">
+            <label for="bankifsc" class="form-label">IFSC</label>
+            <input type="text" class="form-control text-uppercase" id="bankifsc" maxlength="11" data-testid="vendor-f-ifsc" formControlName="bankifsc">
+            <div class="text-danger small" *ngIf="form.get('bankifsc')?.invalid">Looks like HDFC0001234</div>
+          </div>
+          <div class="col-md-3">
+            <label for="upiid" class="form-label">UPI id</label>
+            <input type="text" class="form-control" id="upiid" data-testid="vendor-f-upi" formControlName="upiid">
+            <div class="text-danger small" *ngIf="form.get('upiid')?.invalid">Looks like name&#64;bank</div>
+          </div>
+        </div>
+
+        <h6 class="mt-4 text-primary">Licences <span class="text-muted small fw-normal">(drug licence, FSSAI; add a new line on renewal, the latest end date counts)</span></h6>
+        <div formArrayName="licenses">
+          <div class="row g-2 align-items-end mb-2" *ngFor="let l of licenses.controls; let i = index" [formGroupName]="i" data-testid="vendor-f-lic-row">
+            <div class="col-md-3">
+              <label class="form-label small mb-0">Type</label>
+              <select class="form-select form-select-sm" formControlName="licensetype" [attr.data-testid]="'vendor-f-lic-type-' + i">
+                <option *ngFor="let t of licenseTypes" [value]="t.value">{{t.label}}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-0">Number</label>
+              <input class="form-control form-control-sm" maxlength="40" formControlName="number" [attr.data-testid]="'vendor-f-lic-number-' + i">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-0">Valid from</label>
+              <input type="date" class="form-control form-control-sm" formControlName="validfrom">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-0">Valid to</label>
+              <input type="date" class="form-control form-control-sm" formControlName="validto" [attr.data-testid]="'vendor-f-lic-to-' + i">
+            </div>
+            <div class="col-md-2 small" [ngClass]="licenseHint(i).cls">{{licenseHint(i).text}}</div>
+            <div class="col-md-1 text-end">
+              <button type="button" class="btn btn-outline-danger btn-sm" title="Remove" (click)="removeLicense(i)"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-testid="vendor-f-lic-add" (click)="addLicense()">Add a licence</button>
+
         <div class="row mt-4">
-        <div class="col-md-8">
-          <label for="name" class="form-label">Business Name</label>
-          <input type="text" class="form-control" id="name" data-testid="vendor-f-name" formControlName="name">
+          <div class="col-md-12">
+            <label for="comments" class="form-label">Comments</label>
+            <textarea class="form-control" id="comments" rows="2" maxlength="400" formControlName="comments"></textarea>
+          </div>
         </div>
-        <div class="col-md-4">
-          <label for="gstn" class="form-label">GSTN</label>
-          <input type="text" class="form-control" id="gstn" data-testid="vendor-f-gstn" formControlName="gstn">
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-md-4">
-          <label for="contactname" class="form-label">Contact Name</label>
-          <input type="text" class="form-control" id="contactname" data-testid="vendor-f-contact" formControlName="contactname">
-        </div>
-        <div class="col-md-2">
-          <label for="contactphone" class="form-label">Contact Phone</label>
-          <input type="text" class="form-control" id="contactphone" data-testid="vendor-f-phone" formControlName="contactphone">
-        </div>
-        <div class="col-md-4">
-          <label for="address" class="form-label">Address</label>
-          <textarea class="form-control" id="address" formControlName="address"></textarea>
-        </div>
-        <div class="col-md-2">
-          <label for="paymenttermsdays" class="form-label">Payment Terms (days)</label>
-          <input type="number" min="0" class="form-control" id="paymenttermsdays" data-testid="vendor-f-terms" formControlName="paymenttermsdays">
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-md-12">
-          <label for="comments" class="form-label">Comments</label>
-          <textarea class="form-control" id="comments" formControlName="comments"></textarea>
-        </div>
-      </div>
+
+        <div class="alert alert-danger mt-3" *ngIf="error" data-testid="vendor-f-error">{{error}}</div>
+
         <div class="text-center">
-          <button type="submit" class="btn btn-primary m-2" data-testid="vendor-f-submit" [disabled]="!form.valid">Submit</button>
-          <button type="button" *ngIf="!form.get('id')?.value" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
+          <button type="submit" class="btn btn-primary m-2" data-testid="vendor-f-submit" [disabled]="!form.valid || saving || gstinBlocks">Submit</button>
+          <button type="button" *ngIf="!isEdit" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
           <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
         </div>
-      </form><!-- End Multi Columns Form -->
+      </form>
 
     </div>
   </div>

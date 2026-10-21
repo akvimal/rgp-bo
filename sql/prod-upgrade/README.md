@@ -52,7 +52,8 @@ scripts/prod-upgrade.sh cutover --approve "01 03"
 # review lists (CSV, customer data: write them outside the repo)
 PGDATABASE=<db> scripts/prod-upgrade.sh report D:/workspace/rgp-migration/reports
 
-# vendor sheet: fill GSTIN / payment terms / phone in vendor_sheet.csv, then
+# vendor sheet: fill GSTIN, registration type, contacts, sales rep, terms, bank and wholesale licence in
+# vendor_sheet.csv (export a fresh one, delete the rows you did not touch), then
 PGDATABASE=<db> scripts/prod-upgrade.sh load-vendors vendor_sheet.csv --fixes-dry-run   # check first
 PGDATABASE=<db> scripts/prod-upgrade.sh load-vendors vendor_sheet.csv
 ```
