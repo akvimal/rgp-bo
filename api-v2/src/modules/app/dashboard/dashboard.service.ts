@@ -4,6 +4,9 @@ import { EntityManager } from "typeorm";
 import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
 import { PurchaseService } from "../purchases/purchase.service";
 
+/** Customer record used at the counter when no mobile number is given (mobile '0000000000', name NIL). */
+const NO_MOBILE_PLACEHOLDER = '0000000000';
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -353,13 +356,14 @@ export class DashboardService {
 
   async trends(query: any) {
     const storeid = this.toNumber(query?.storeid);
-    const [customersPerDay, topCustomers, topProductsByQty, topProductsByRevenue] = await Promise.all([
+    const [customersPerDay, topCustomers, walkin, topProductsByQty, topProductsByRevenue] = await Promise.all([
       this.getCustomersServedPerDay(storeid),
       this.getTopCustomers(storeid),
+      this.getWalkinShare(storeid),
       this.getTopProductsByQty(storeid),
       this.getTopProductsByRevenue(storeid),
     ]);
-    return { customersPerDay, topCustomers, topProductsByQty, topProductsByRevenue };
+    return { customersPerDay, topCustomers, walkin, topProductsByQty, topProductsByRevenue };
   }
 
   /**
@@ -410,11 +414,37 @@ export class DashboardService {
         and s.active = true and s.archive = false
         and s.bill_date >= date_trunc('month', current_date)
         and ($1::int is null or sh.store_id = $1::int)
+        and coalesce(c.mobile, '') <> '${NO_MOBILE_PLACEHOLDER}'
       group by s.customer_id, c.name
       order by value desc
       limit 8
     `, [storeid]);
     return rows.map((r: any) => ({ name: r.name, value: +r.value || 0 }));
+  }
+
+  /** Bills sold to the "NIL" placeholder customer (no mobile given) this month, against all bills. */
+  private async getWalkinShare(storeid: number | null) {
+    const rows = await this.manager.query(`
+      select
+        count(*) filter (where c.mobile = '${NO_MOBILE_PLACEHOLDER}') as walkin_bills,
+        count(*) as bills,
+        coalesce(sum(s.total) filter (where c.mobile = '${NO_MOBILE_PLACEHOLDER}'), 0) as walkin_value,
+        coalesce(sum(s.total), 0) as value
+      from sale s
+      left join customer c on c.id = s.customer_id
+      left join store_shifts sh on sh.id = s.shift_id
+      where s.status = 'COMPLETE'
+        and s.active = true and s.archive = false
+        and s.bill_date >= date_trunc('month', current_date)
+        and ($1::int is null or sh.store_id = $1::int)
+    `, [storeid]);
+    const r = rows?.[0] || {};
+    const bills = +r.bills || 0, value = +r.value || 0;
+    const wb = +r.walkin_bills || 0, wv = +r.walkin_value || 0;
+    return {
+      bills: wb, totalbills: bills, billspct: bills ? Math.round((1000 * wb) / bills) / 10 : 0,
+      value: Math.round(wv), totalvalue: Math.round(value), valuepct: value ? Math.round((1000 * wv) / value) / 10 : 0,
+    };
   }
 
   private async getTopProductsByQty(storeid: number | null) {

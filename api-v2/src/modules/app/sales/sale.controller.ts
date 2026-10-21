@@ -1,6 +1,6 @@
 import { SaleService } from "./sale.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreateSaleDto } from "./dto/create-sale.dto";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
@@ -22,6 +22,30 @@ export class SaleController {
       private custService:CustomerService,
       private audit:AuditService,
       @InjectEntityManager() private manager:EntityManager){}
+
+      /**
+       * A completed bill that includes a chronic medicine must carry a real customer mobile number: those
+       * customers are the ones refill reminders and follow-ups depend on. "NIL" (mobile 0000000000) or no
+       * customer does not qualify.
+       */
+      private async assertMobileForChronic(sale: any, customer: any) {
+        if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return;
+        const productIds = (Array.isArray(sale.items) ? sale.items : [])
+          .map((i: any) => Number(i.productid ?? i.product_id)).filter((n: number) => Number.isFinite(n) && n > 0);
+        if (!productIds.length) return;
+        let mobile: string = String(customer?.mobile ?? '').trim();
+        const customerId = customer?.id ?? sale.customerid;
+        if (!mobile && customerId) {
+          const row = await this.manager.query(`select mobile from customer where id = $1`, [customerId]);
+          mobile = String(row?.[0]?.mobile ?? '').trim();
+        }
+        if (mobile && mobile !== '0000000000') return;
+        const chronic = await this.manager.query(
+          `select title from product where id = any($1::int[]) and more_props->>'chronic' = 'true' order by title limit 5`, [productIds]);
+        if (chronic.length) {
+          throw new BadRequestException(`A customer mobile number is required for bills with chronic medicines (${chronic.map((c: any) => c.title).join(', ')}).`);
+        }
+      }
 
       /**
        * Who the bill is recorded against. Sales Staff always act as themselves (each person signs in
@@ -49,6 +73,7 @@ export class SaleController {
           customer = await this.custService.save(createSaleDto.customer);
         }
         
+        await this.assertMobileForChronic(createSaleDto, customer);
         const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser);
         return this.saleService.create({...createSaleDto, customer}, currentUser.id, actingUserId);
       }
@@ -70,6 +95,7 @@ export class SaleController {
         if(customer){ //if customer not present before
           customer = await this.custService.save(updateSaleDto.customer);
         }
+        await this.assertMobileForChronic(updateSaleDto, customer);
         const actingUserId = await this.resolveActingUser(updateSaleDto.actinguserid, currentUser, updateSaleDto.id);
         const saved = await this.saleService.updateSale({...updateSaleDto, customer}, currentUser.id, actingUserId);
         await this.recordSaleEdit(sale, updateSaleDto, currentUser.id, actingUserId);

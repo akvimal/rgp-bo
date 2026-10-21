@@ -26,6 +26,7 @@ export class DashboardComponent implements OnDestroy {
     customersPerDay:any[] = [];
     customerScheme:any = { domain: ['#2f9e44', '#1c7ed6'] };  // New, Returning
     topCustomers:any[] = [];
+    walkin:any = null;
     topProductsByQty:any[] = [];
     topProductsByRevenue:any[] = [];
 
@@ -103,6 +104,7 @@ export class DashboardComponent implements OnDestroy {
         next: (data:any) => {
           this.customersPerDay = data?.customersPerDay || [];
           this.topCustomers = data?.topCustomers || [];
+          this.walkin = data?.walkin || null;
           this.topProductsByQty = data?.topProductsByQty || [];
           this.topProductsByRevenue = data?.topProductsByRevenue || [];
         },

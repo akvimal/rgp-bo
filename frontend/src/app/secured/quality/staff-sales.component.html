@@ -36,6 +36,7 @@
             <th role="button" class="text-end" (click)="sort('avg_bill')">Avg bill</th>
             <th role="button" class="text-end" (click)="sort('units')">Units</th>
             <th role="button" class="text-end" (click)="sort('customers')">Customers</th>
+            <th role="button" class="text-end" (click)="sort('mobile_pct')" title="Share of bills where a customer mobile number was taken">Mobile taken</th>
             <th role="button" class="text-end" (click)="sort('discount_pct')">Discount</th>
             <th role="button" class="text-end" (click)="sort('return_value')">Returns</th>
             <th role="button" class="text-end" (click)="sort('edits')">Edits</th>
@@ -51,12 +52,13 @@
             <td class="text-end">{{r.avg_bill | currency:'INR':'symbol':'1.0-0'}}</td>
             <td class="text-end">{{r.units}}</td>
             <td class="text-end">{{r.customers}}</td>
+            <td class="text-end" data-testid="ss-mobile">{{r.mobile_pct}}%</td>
             <td class="text-end">{{r.discount_pct}}%<div class="small text-muted">{{r.discount | currency:'INR':'symbol':'1.0-0'}}</div></td>
             <td class="text-end">{{r.return_value | currency:'INR':'symbol':'1.0-0'}}<div class="small text-muted">{{r.return_bills}} bills</div></td>
             <td class="text-end">{{r.edits}}</td>
             <td><span *ngFor="let f of flags(r)" class="badge bg-warning text-dark me-1" data-testid="ss-flag">{{f}}</span></td>
           </tr>
-          <tr *ngIf="!loading && !rows.length"><td colspan="11" class="text-center text-muted py-4" data-testid="ss-empty">No completed bills in this period.</td></tr>
+          <tr *ngIf="!loading && !rows.length"><td colspan="12" class="text-center text-muted py-4" data-testid="ss-empty">No completed bills in this period.</td></tr>
         </tbody>
       </table>
     </div>

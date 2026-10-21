@@ -655,6 +655,15 @@
       ]
     },
     {
+      id: "chronicmobile", name: "Billing — Mobile number for chronic medicines",
+      blurb: "A completed bill that includes a chronic medicine must carry a real customer mobile number; the NIL walk-in customer does not count. Enforced on the billing screen and again by the server. All cases are manual (they need a product flagged chronic).",
+      cases: [
+        { id:"MOB-1", feature:"Billing screen", tag:"negative", scenario:"Chronic medicine, no mobile", steps:"Add a chronic medicine to a bill and leave the mobile number empty.", expected:"A yellow note asks for the mobile number and Complete is disabled. Save (draft) still works." },
+        { id:"MOB-2", feature:"Billing screen", tag:"happy", scenario:"Chronic medicine with mobile", steps:"Enter a customer mobile number, or pick an existing customer, then Complete.", expected:"The bill completes." },
+        { id:"MOB-3", feature:"Server", tag:"negative", scenario:"Rule enforced by the API", steps:"Send a COMPLETE bill with a chronic medicine and the NIL customer straight to the API.", expected:"400 naming the medicine. The same bill as PENDING is accepted, and a non-chronic bill for NIL is unaffected." }
+      ]
+    },
+    {
       id: "crosscutting", name: "Cross-Cutting: Permissions & Data Integrity",
       blurb: "Checks that span modules — authorization enforcement, concurrency, and failure handling.",
       cases: [

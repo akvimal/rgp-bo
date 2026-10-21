@@ -16,8 +16,10 @@ export class QualityService {
     const rows = await this.manager.query(
       `with bills as (
          select s.id, s.total, s.disc_amount, s.customer_id, s.bill_date,
+                (c.mobile is distinct from '0000000000') as has_mobile,
                 coalesce(s.acting_user_id, s.created_by) as uid
            from sale s
+          left join customer c on c.id = s.customer_id
           where s.status = 'COMPLETE'
             and s.bill_date >= $1::date and s.bill_date < ($2::date + 1)
             and ($3::int is null or s.store_id = $3::int)
@@ -52,6 +54,7 @@ export class QualityService {
                    then round((100 * coalesce(sum(b.disc_amount), 0) / sum(b.total + coalesce(b.disc_amount, 0)))::numeric, 1)
                    else 0 end as discount_pct,
               count(distinct b.customer_id)::int as customers,
+              round((100.0 * count(*) filter (where b.has_mobile) / count(*))::numeric, 1) as mobile_pct,
               count(distinct b.bill_date::date)::int as active_days,
               coalesce(rt.return_bills, 0)::int as return_bills,
               round(coalesce(rt.return_value, 0)::numeric, 2) as return_value,

@@ -167,6 +167,22 @@ export class SaleFormComponent {
     this.recalculateTotal();
   }
 
+  /** chronic medicines on the bill (more_props.chronic is stored as true or "true") */
+  get chronicItems(): any[] {
+    return (this.sale.items || []).filter((i:any) => i.edited && String(i.more_props?.chronic) === 'true');
+  }
+
+  /** a bill with a chronic medicine needs a real customer mobile; the NIL walk-in does not count */
+  get chronicMobileMissing(): boolean {
+    if (!this.chronicItems.length) return false;
+    const mobile = String(this.sale.customer?.mobile ?? '').trim();
+    if (mobile && mobile !== '0000000000') return false;
+    const id = this.sale.customerid;
+    return !id || id === +(localStorage.getItem('nil') || 0);
+  }
+
+  submitError = '';
+
   doesProductContains(items:any, prop:string, value:any){
     const props = items.filter((i:any) => i.more_props && i.more_props[prop] === value);
     return props && props.length > 0;
@@ -181,6 +197,11 @@ export class SaleFormComponent {
 
   submit(status:any){
 
+    this.submitError = '';
+    if (status === 'COMPLETE' && this.chronicMobileMissing) {
+      this.submitError = 'Enter the customer mobile number: this bill has a chronic medicine.';
+      return;
+    }
     this.sale.status = status;
     
     this.sale.items = this.sale.items?.map((item:any) => {
@@ -228,6 +249,9 @@ export class SaleFormComponent {
     this.service.save({...obj, billdate:new Date(), status}).subscribe((data:any) => {
       this.redirectAfterSubmit(data.status, data.id);
       this.service.refreshSavedSales();
+    }, (err:any) => {
+      const m = err?.error?.message;
+      this.submitError = Array.isArray(m) ? m.join(' ') : (m || 'Could not save the bill.');
     });
   }
 

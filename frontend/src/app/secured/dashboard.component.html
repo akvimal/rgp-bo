@@ -342,6 +342,10 @@
             [showYAxisLabel]="false">
           </ngx-charts-bar-horizontal>
         </div>
+        <div class="small text-muted mt-2" *ngIf="walkin" data-testid="dash-walkin">
+          Not shown: bills with no mobile number (NIL) &mdash; {{walkin.bills}} of {{walkin.totalbills}} bills ({{walkin.billspct}}%),
+          {{walkin.value | currency:'INR':'symbol':'1.0-0'}} ({{walkin.valuepct}}% of sales).
+        </div>
       </div>
     </div>
   </div>

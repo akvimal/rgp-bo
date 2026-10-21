@@ -105,6 +105,13 @@
             <app-sale-delivery-form></app-sale-delivery-form>
         </div>
     </div> -->
+    <div class="row" *ngIf="chronicMobileMissing || submitError">
+        <div class="col-12">
+            <div class="alert alert-warning py-2 mb-2" data-testid="sale-chronic-mobile">
+                {{submitError || 'This bill has a chronic medicine: enter the customer mobile number before completing.'}}
+            </div>
+        </div>
+    </div>
     <div class="row">
         <div class="col-8 d-flex">
             <button (click)="submit('PENDING')" 
@@ -133,7 +140,7 @@
             </div>
             <div>
             <button (click)="submit('COMPLETE')" class="btn btn-primary" 
-                        [disabled]="!isSaleFormValid()">Complete</button>    
+                        [disabled]="!isSaleFormValid() || chronicMobileMissing">Complete</button>    
                     </div>
             <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
                 <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
