@@ -4,24 +4,32 @@
   <div class="row">
     <div class="col-md-4">
       <label for="name" class="form-label">Name <span class="required">*</span></label>
-      <input id="name" #nameInput data-testid="cust-f-name" type="text" class="form-control" [class.is-invalid]="form.controls['name'].invalid && form.controls['name'].dirty" formControlName="name" (blur)="onNameBlur()" maxlength="80">
-      <div class="invalid-feedback d-block" *ngIf="form.controls['name'].invalid && form.controls['name'].dirty" data-testid="cust-f-name-error">Enter the customer name (at least 2 letters).</div>
+      <input id="name" #nameInput data-testid="cust-f-name" type="text" class="form-control" [class.is-invalid]="!!fieldError('name')" formControlName="name" (blur)="onNameBlur()" maxlength="80">
+      <div style="min-height:1.6rem">
+        <div class="invalid-feedback d-block" *ngIf="fieldError('name')" data-testid="cust-f-name-error">{{fieldError('name')}}</div>
+      </div>
     </div>
     <div class="col-md-4">
       <label for="mobile" class="form-label">Mobile<span class="required">*</span></label>
-      <input id="mobile" data-testid="cust-f-mobile" type="text" class="form-control" [class.is-invalid]="mobileInvalid" formControlName="mobile" inputmode="tel" (blur)="onMobileBlur()">
-      <div class="invalid-feedback d-block" *ngIf="mobileInvalid" data-testid="cust-f-mobile-error">Enter a 10-digit mobile number starting with 6, 7, 8 or 9.</div>
+      <input id="mobile" data-testid="cust-f-mobile" type="text" class="form-control" [class.is-invalid]="!!fieldError('mobile')" formControlName="mobile" inputmode="tel" (blur)="onMobileBlur()">
+      <div style="min-height:1.6rem">
+        <div class="invalid-feedback d-block" *ngIf="fieldError('mobile')" data-testid="cust-f-mobile-error">{{fieldError('mobile')}}</div>
+      </div>
     </div>
     <div class="col-md-4">
       <label for="altmobile" class="form-label">Alternate number</label>
       <input id="altmobile" data-testid="cust-f-altmobile" type="text" class="form-control" [class.is-invalid]="altInvalid || altSameAsMobile" formControlName="altmobile" inputmode="tel" (blur)="onAltBlur()" placeholder="optional">
-      <div class="invalid-feedback d-block" *ngIf="altInvalid" data-testid="cust-f-altmobile-error">Enter a 10-digit mobile number starting with 6, 7, 8 or 9, or leave it blank.</div>
-      <div class="invalid-feedback d-block" *ngIf="!altInvalid && altSameAsMobile">That is the same as the mobile number.</div>
+      <div style="min-height:1.6rem">
+        <div class="invalid-feedback d-block" *ngIf="altInvalid" data-testid="cust-f-altmobile-error">Enter a 10-digit mobile number starting with 6, 7, 8 or 9, or leave it blank.</div>
+        <div class="invalid-feedback d-block" *ngIf="!altInvalid && altSameAsMobile">That is the same as the mobile number.</div>
+      </div>
     </div>
     <div class="col-md-4">
       <label for="email" class="form-label">Email</label>
       <input id="email" data-testid="cust-f-email" type="text" class="form-control" [class.is-invalid]="form.controls['email'].invalid && form.controls['email'].dirty" formControlName="email">
-      <div class="invalid-feedback d-block" *ngIf="form.controls['email'].invalid && form.controls['email'].dirty">That email address is not valid.</div>
+      <div style="min-height:1.6rem">
+        <div class="invalid-feedback d-block" *ngIf="form.controls['email'].invalid && form.controls['email'].dirty">That email address is not valid.</div>
+      </div>
     </div>
   </div>
   <div class="alert alert-warning mt-3 py-2" *ngIf="sameNumber.length" data-testid="cust-f-dup-warning">
@@ -69,10 +77,10 @@
   </div>
   <div class="row mt-3">
     <div class="col-md-12">
-      <button type="submit" class="btn btn-primary m-2" data-testid="cust-f-save" [disabled]="!canSave">Save</button>
-      <button type="button" *ngIf="isNew" class="btn btn-outline-primary m-2" data-testid="cust-f-save-add" [disabled]="!canSave" (click)="onSave(true)">Save and add another</button>
+      <button type="submit" class="btn btn-primary m-2" data-testid="cust-f-save" [disabled]="saving">Save</button>
+      <button type="button" *ngIf="isNew" class="btn btn-outline-primary m-2" data-testid="cust-f-save-add" [disabled]="saving" (click)="onSave(true)">Save and add another</button>
       <a class="btn btn-outline-secondary" [routerLink]="['/secure/customers/cust/list']" data-testid="cust-f-cancel">Cancel</a>
-      <div class="small text-muted mt-1 ms-2" *ngIf="blockedReason" data-testid="cust-f-hint">{{blockedReason}}</div>
+      <div class="small mt-1 ms-2" [class.text-danger]="attempted" [class.text-muted]="!attempted" *ngIf="blockedReason" data-testid="cust-f-hint">{{blockedReason}}</div>
     </div>
   </div>
   </form>

@@ -116,7 +116,11 @@ test.describe('Customers page @p1', () => {
     await expect(page.getByTestId(TID.custFMobile)).toHaveValue(m);          // tidied
     await expect(page.getByTestId('cust-f-dup-warning')).toContainText(known.name);
     await page.getByTestId(TID.custFSrctype).selectOption({ index: 1 });
-    await expect(page.getByTestId(TID.custFSave)).toBeDisabled();           // until it is confirmed as a different person
+    const sent: string[] = [];
+    page.on('request', (r) => { if (r.method() === 'POST' && r.url().includes('/customers')) sent.push(r.url()); });
+    await page.getByTestId(TID.custFSave).click();                           // until it is confirmed as a different person
+    await expect(page.getByTestId('cust-f-hint')).toContainText('different person');
+    expect(sent).toEqual([]);
     await page.getByTestId('cust-f-dup-confirm').check();
     await expect(page.getByTestId(TID.custFSave)).toBeEnabled();
     const [resp] = await Promise.all([
@@ -149,7 +153,7 @@ test.describe('Customers page @p1', () => {
     await expect(page.getByTestId('cust-f-srcdesc')).toBeVisible();
     await page.getByTestId(TID.custFSrctype).selectOption('');
 
-    await expect(page.getByTestId(TID.custFSave)).toBeDisabled();
+    await page.getByTestId(TID.custFSave).click();                                   // empty: says what is missing
     await expect(page.getByTestId('cust-f-hint')).toContainText('name');
     await page.getByTestId(TID.custFName).fill(`QA ADD ONE ${stamp}`);
     await page.getByTestId(TID.custFName).blur();
@@ -210,7 +214,8 @@ test.describe('Customers page @p1', () => {
     await page.getByTestId('cust-f-altmobile').fill('12345');
     await page.getByTestId('cust-f-altmobile').blur();
     await expect(page.getByTestId('cust-f-altmobile-error')).toBeVisible();
-    await expect(page.getByTestId(TID.custFSave)).toBeDisabled();
+    await page.getByTestId(TID.custFSave).click();
+    await expect(page.getByTestId('cust-f-hint')).toContainText('alternate');
     await page.getByTestId('cust-f-altmobile').fill(m);
     await page.getByTestId('cust-f-altmobile').blur();
     await expect(page.getByTestId('cust-f-hint')).toContainText('same as the mobile');
@@ -228,5 +233,67 @@ test.describe('Customers page @p1', () => {
     await list.page.getByTestId('cust-search').fill(alt);                            // searchable by the alternate too
     await expect(list.page.locator('tbody tr', { hasText: `QA Two Numbers ${stamp}` })).toHaveCount(1);
     await expect(list.page.getByTestId('cust-alt').first()).toContainText(alt);
+  });
+
+  test('CUST-14 saving an empty form, or one of only spaces, shows what is required and sends nothing @negative', async ({ app, api }) => {
+    const { page } = await app.open(MGR, '/secure/customers/cust/new');
+    await expectShell(page);
+    const sent: string[] = [];
+    page.on('request', (r) => { if (r.method() === 'POST' && r.url().includes('/customers')) sent.push(r.url()); });
+
+    await page.getByTestId(TID.custFSave).click();
+    await expect(page.getByTestId('cust-f-name-error')).toContainText('required');
+    await expect(page.getByTestId('cust-f-mobile-error')).toContainText('required');
+    await expect(page.getByTestId('cust-f-hint')).toContainText('required');
+
+    await page.getByTestId(TID.custFName).fill('     ');
+    await page.getByTestId(TID.custFMobile).fill('   ');
+    await page.getByTestId(TID.custFSave).click();
+    await page.getByTestId(TID.custFName).press('Enter');                             // Enter must not slip it through either
+    await page.getByTestId('cust-f-save-add').click();
+    await expect(page.getByTestId('cust-f-name-error')).toContainText('required');
+    await expect(page.getByTestId('cust-f-mobile-error')).toContainText('required');
+    await page.waitForTimeout(400);
+    expect(sent).toEqual([]);
+
+    // and the API refuses the same input whatever the screen does
+    expect((await api.request('POST', '/customers', {}, MGR)).status).toBe(400);
+    expect((await api.request('POST', '/customers', { name: '   ', mobile: '   ' }, MGR)).status).toBe(400);
+    const made = (await api.request('POST', '/customers', { name: `QA Keep Mobile ${Date.now()}`, mobile: `9${Math.floor(100000000 + Math.random() * 899999999)}` }, MGR)).body;
+    expect((await api.request('POST', '/customers', { id: made.id, name: made.name, mobile: '' }, MGR)).status).toBe(400);   // an edit cannot blank it
+  });
+
+  test('CUST-15 a customer can be deleted: removed if unused, archived if it has history; NIL and Sales Staff are refused @edge', async ({ app, api }) => {
+    const stamp = Date.now();
+    const unused = (await api.request('POST', '/customers', mk(`QA Delete Me ${stamp}`, mobile()), MGR)).body;
+    expect((await api.request('DELETE', `/customers/${unused.id}`, undefined, SALES)).status).toBe(403);
+    const gone = await api.request('DELETE', `/customers/${unused.id}`, undefined, MGR);
+    expect(gone.status).toBeLessThan(300);
+    expect(gone.body.result).toBe('deleted');
+    expect((await api.request('GET', `/customers/${unused.id}`, undefined, MGR)).body?.id).toBeUndefined();
+
+    // one with a document attached has history: archived, hidden, not removed
+    const used = (await api.request('POST', '/customers', mk(`QA Archive Me ${stamp}`, mobile()), MGR)).body;
+    const doc = await api.request('POST', '/documents', { name: `QA Doc ${stamp}`, path: 'qa/fake/rx.pdf', extn: 'pdf', category: 'prescription', alias: 'RX' }, MGR);
+    await api.request('POST', '/customers/documents/add', { customerId: used.id, documentId: doc.body.id }, MGR);
+    const arch = await api.request('DELETE', `/customers/${used.id}`, undefined, MGR);
+    expect(arch.body.result).toBe('archived');
+    expect(arch.body.history.documents).toBe(1);
+    expect((await api.request('GET', '/customers', undefined, MGR)).body.some((c: any) => c.id === used.id)).toBe(false);
+    expect((await api.request('GET', `/customers/${used.id}`, undefined, MGR)).body?.id).toBe(used.id);   // the record is still there
+
+    const nil = (await api.request('GET', '/customers/search/mobile/0000000000', undefined, MGR)).body;
+    if (nil?.id) expect((await api.request('DELETE', `/customers/${nil.id}`, undefined, MGR)).status).toBe(400);
+
+    // from the screen
+    const shown = (await api.request('POST', '/customers', mk(`QA Delete Screen ${stamp}`, mobile()), MGR)).body;
+    const { page } = await app.open(MGR, '/secure/customers/cust/list');
+    await page.getByTestId('cust-search').fill(shown.name);
+    const row = page.locator('tbody tr', { hasText: shown.name });
+    await expect(row).toHaveCount(1);
+    await row.getByTestId('cust-delete').click();
+    await page.getByRole('button', { name: 'Delete', exact: true }).last().click();
+    await expect(page.getByTestId('cust-message')).toContainText('was deleted');
+    await expect(page.locator('tbody tr', { hasText: shown.name })).toHaveCount(0);
   });
 });

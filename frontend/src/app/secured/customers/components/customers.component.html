@@ -19,6 +19,9 @@
   <span class="small text-muted">OTC / Chronic only = every bill line was OTC or a chronic medicine. "Other" includes products not yet categorised.</span>
 </div>
 
+<div *ngIf="message" class="alert alert-success py-2 mt-3 mb-0" data-testid="cust-message">{{message}}</div>
+<div *ngIf="error" class="alert alert-danger py-2 mt-3 mb-0" data-testid="cust-error">{{error}}</div>
+
 <p-table #dt [value]="customers" [resizableColumns]="true" columnResizeMode="expand" 
 [paginator]="true" [rows]="10" [globalFilterFields]="['name','mobile','altmobile','locality']" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
@@ -78,6 +81,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <td class="text-center">
         <div class="grid-actions">
           <a [routerLink]="['../edit',c.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
+          <ng-container *isAuth="'customers.delete'"><a *ngIf="c.mobile !== '0000000000'" href="javascript:void(0)" (click)="deleteCustomer(c)" title="Delete" data-testid="cust-delete" class="ms-3"><i class="bi bi-trash text-danger"></i></a></ng-container>
         </div>
       </td>
     </tr>

@@ -64,8 +64,8 @@ export class CustomerController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string) {
-      return this.customerService.update(id, {isActive:false});
+    remove(@Param('id') id: string, @User() currentUser: any) {
+      return this.customerService.remove(Number(id), currentUser);
     }
 
     @Get('/:id/periods')

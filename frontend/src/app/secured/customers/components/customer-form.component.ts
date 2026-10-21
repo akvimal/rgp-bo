@@ -20,6 +20,15 @@ export function tidyName(v: any): string {
   return noLower || noUpper ? t.toLowerCase().replace(/(^|[^A-Za-z0-9])([a-z])/g, (_m, p, c) => p + c.toUpperCase()) : t;
 }
 
+/** Angular's required lets "   " through; a name or number of only spaces is empty */
+function requiredTrim(c: AbstractControl): ValidationErrors | null {
+  return String(c.value ?? '').trim() ? null : { required: true };
+}
+
+function nameValidator(c: AbstractControl): ValidationErrors | null {
+  return String(c.value ?? '').trim().length >= 2 ? null : { name: true };
+}
+
 function mobileValidator(c: AbstractControl): ValidationErrors | null {
   const v = String(c.value ?? '').trim();
   return !v || normaliseMobile(v) ? null : { mobile: true };
@@ -49,8 +58,8 @@ export class CustomerFormComponent implements AfterViewInit {
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
-        name: new FormControl('',[Validators.required, Validators.minLength(2)]),
-        mobile: new FormControl('',[Validators.required, mobileValidator]),
+        name: new FormControl('',[requiredTrim, nameValidator]),
+        mobile: new FormControl('',[requiredTrim, mobileValidator]),
         altmobile: new FormControl('', mobileValidator),
         email: new FormControl('', Validators.email),
         address: new FormControl(''),
@@ -65,6 +74,7 @@ export class CustomerFormComponent implements AfterViewInit {
     confirmDuplicate = false;
     saveError = '';
     saveNote = '';
+    attempted = false;   // Save was pressed: show every problem, not only the fields already touched
     saving = false;
 
     constructor(
@@ -111,6 +121,15 @@ export class CustomerFormComponent implements AfterViewInit {
       return c.invalid && (c.dirty || c.touched) && !!c.value;
     }
 
+    /** the message under a field, once it has been touched or Save was pressed */
+    fieldError(name: 'name' | 'mobile'): string {
+      const c = this.form.controls[name];
+      if (!c.invalid || !(c.dirty || c.touched || this.attempted)) return '';
+      const empty = !String(c.value ?? '').trim();
+      if (name === 'name') return empty ? 'Name is required.' : 'Enter the customer name (at least 2 letters).';
+      return empty ? 'Mobile number is required.' : 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.';
+    }
+
     get altInvalid(): boolean {
       const c = this.form.controls['altmobile'];
       return c.invalid && (c.dirty || c.touched) && !!c.value;
@@ -147,8 +166,11 @@ export class CustomerFormComponent implements AfterViewInit {
     get blockedReason(): string {
       const f = this.form.controls;
       if (this.saving || this.canSave) return '';
-      if (f['name'].invalid) return 'Enter the customer name (at least 2 letters).';
-      if (f['mobile'].invalid) return f['mobile'].value ? 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.' : 'Enter the mobile number.';
+      const noName = !String(f['name'].value ?? '').trim();
+      const noMobile = !String(f['mobile'].value ?? '').trim();
+      if (noName && noMobile) return 'The customer name and mobile number are required.';
+      if (f['name'].invalid) return noName ? 'The customer name is required.' : 'Enter the customer name (at least 2 letters).';
+      if (f['mobile'].invalid) return noMobile ? 'The mobile number is required.' : 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.';
       if (f['email'].invalid) return 'The email address is not valid.';
       if (f['altmobile'].invalid) return 'The alternate number must be a 10-digit mobile starting with 6, 7, 8 or 9, or left blank.';
       if (this.altSameAsMobile) return 'The alternate number is the same as the mobile number.';
@@ -157,6 +179,13 @@ export class CustomerFormComponent implements AfterViewInit {
     }
 
     onSave(addAnother = false){
+        // Save is always clickable: pressing it with something missing says what, and sends nothing
+        this.attempted = true;
+        this.form.markAllAsTouched();
+        if (!this.canSave) {
+          this.saveNote = '';
+          return;
+        }
         const obj: any = {
           name: this.form.value.name,
           mobile: normaliseMobile(this.form.value.mobile) || this.form.value.mobile,
@@ -180,6 +209,7 @@ export class CustomerFormComponent implements AfterViewInit {
               this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '' });
               this.sameNumber = [];
               this.confirmDuplicate = false;
+              this.attempted = false;
               this.saveNote = `${data.name} saved. Add the next customer.`;
               setTimeout(() => this.nameInput?.nativeElement.focus());
               return;

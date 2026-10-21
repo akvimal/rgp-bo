@@ -261,6 +261,7 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     path: '/secure/customers',
     actions: [
       { key: 'read', label: 'View customers', fixedProperties: [] },
+      { key: 'delete', label: 'Delete customers', fixedProperties: [] },
     ],
   },
   {

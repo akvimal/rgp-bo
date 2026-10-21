@@ -28,7 +28,7 @@ export class CustomerService {
         const name = tidyName(cleanText(dto.name ?? existing?.name, 80, 'The name'));
         if (!name || name.length < 2) throw new BadRequestException('The customer name is required.');
         const mobile = dto.mobile === undefined ? (existing?.mobile ?? null) : normaliseMobile(dto.mobile);
-        if (!existing && !mobile) throw new BadRequestException('The mobile number is required.');
+        if (!mobile && (!existing || existing.mobile)) throw new BadRequestException('The mobile number is required.');
 
         if (mobile && mobile !== NIL_MOBILE && (!existing || existing.mobile !== mobile || (existing.name || '').trim().toLowerCase() !== name.toLowerCase())) {
             const others = await this.manager.query(
@@ -74,6 +74,40 @@ export class CustomerService {
             `select c.id, c.name, c.mobile, count(s.id)::int as bills, max(s.bill_date) as lastvisit
                from customer c left join sale s on s.customer_id = c.id and s.status = 'COMPLETE'
               where c.mobile = $1 and c.active and not c.archive group by c.id order by c.id`, [mobile]);
+    }
+
+    /**
+     * Deletes a customer. One with no bills, documents, notes or transactions is removed for good; one with history
+     * cannot be removed without breaking those records, so it is archived instead (hidden from lists and lookups, the
+     * bills keep the name and number). The NIL walk-in is never touched. Business Head and Store Head only.
+     */
+    async remove(id: number, user: any) {
+        const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
+        if (!['Business Head', 'Store Head'].includes(role?.name)) throw new ForbiddenException('Only a manager can delete a customer.');
+        const c = await this.customerRepository.findOne({ where: { id } });
+        if (!c) throw new NotFoundException('Customer not found.');
+        if (c.mobile === NIL_MOBILE) throw new BadRequestException('The NIL walk-in customer cannot be deleted.');
+        const [n] = await this.manager.query(
+            `select (select count(*) from sale where customer_id = $1)::int as bills,
+                    (select count(*) from customer_documents where customer_id = $1)::int as documents,
+                    (select count(*) from customer_transaction where customer_id = $1)::int as transactions,
+                    (select count(*) from grievance where customer_id = $1)::int as grievances,
+                    (select count(*) from refill_followup where customer_id = $1)::int as refills`, [id]);
+        const history = Number(n.bills) + Number(n.documents) + Number(n.transactions) + Number(n.grievances) + Number(n.refills);
+        const who = { id: c.id, name: String(c.name || '').trim(), mobile: c.mobile };
+        let result: 'deleted' | 'archived';
+        if (history === 0) {
+            await this.manager.query(`delete from customer where id = $1`, [id]);
+            result = 'deleted';
+        } else {
+            await this.manager.query(`update customer set active = false, archive = true, updated_on = now() where id = $1`, [id]);
+            result = 'archived';
+        }
+        await this.audit.record({
+            userId: user.id, action: result === 'deleted' ? 'customer.deleted' : 'customer.archived', entityType: 'customers', entityId: id,
+            summary: `${who.name} ${result}${history ? ` (${n.bills} bills, ${history - Number(n.bills)} other records kept)` : ''}`, details: { customer: who, history: n },
+        });
+        return { result, customer: who, history: n };
     }
 
     private async assertBusinessHead(user: any) {
