@@ -2,12 +2,12 @@
  * Staff & Quality — Refill follow-up — REFILL-1..3
  * Chronic customers due for a refill, computed from their own buying pattern; contacts are logged.
  */
-import { test, expect } from '../fixtures/index.js';
+import { test, expect, data } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
 const SITE_ADMIN = 'siteadmin@local.test';
 const OWNER = 'businesshead@local.test';
-const CASHIER = 'cashier.harbourh70@qa.local';
+const CASHIER = data.m.users.find((u: any) => u.role === 'Sales Staff')!.email;   // whichever ids the seed handed out
 const PAGE = '/secure/quality/refills';
 
 test.describe('Staff & Quality — Refill follow-up @p1', () => {

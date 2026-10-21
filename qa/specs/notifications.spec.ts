@@ -4,12 +4,12 @@
  * Sending is deliberately not exercised here (it would reach a real Telegram chat); the send path
  * is covered by the unit spec + a mock-Telegram run documented in the feature commit.
  */
-import { test, expect } from '../fixtures/index.js';
+import { test, expect, data } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
 const SITE_ADMIN = 'siteadmin@local.test';
 const ADMIN = 'businesshead@local.test';
-const CASHIER = 'cashier.harbourh70@qa.local';
+const CASHIER = data.m.users.find((u: any) => u.role === 'Sales Staff')!.email;   // whichever ids the seed handed out
 const PAGE = '/secure/settings/notifications';
 
 test.describe('Settings — Notifications @p1', () => {

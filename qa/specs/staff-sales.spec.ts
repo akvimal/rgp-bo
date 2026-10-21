@@ -2,12 +2,12 @@
  * Staff & Quality — Staff sales — STAFF-1..3
  * Per-person sales for a period: bills, value, discount, returns, edits.
  */
-import { test, expect } from '../fixtures/index.js';
+import { test, expect, data } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
 const SITE_ADMIN = 'siteadmin@local.test';
 const OWNER = 'businesshead@local.test';
-const CASHIER = 'cashier.harbourh70@qa.local';
+const CASHIER = data.m.users.find((u: any) => u.role === 'Sales Staff')!.email;   // whichever ids the seed handed out
 const PAGE = '/secure/quality/staff-sales';
 
 test.describe('Staff & Quality — Staff sales @p1', () => {

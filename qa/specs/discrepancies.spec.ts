@@ -2,12 +2,12 @@
  * Staff & Quality — Cash & shifts — DISC-1..3
  * Shifts that did not balance, expenses without receipts, shifts never closed.
  */
-import { test, expect } from '../fixtures/index.js';
+import { test, expect, data } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
 const SITE_ADMIN = 'siteadmin@local.test';
 const OWNER = 'businesshead@local.test';
-const CASHIER = 'cashier.harbourh70@qa.local';
+const CASHIER = data.m.users.find((u: any) => u.role === 'Sales Staff')!.email;   // whichever ids the seed handed out
 const PAGE = '/secure/quality/discrepancies';
 
 test.describe('Staff & Quality — Cash & shifts @p1', () => {

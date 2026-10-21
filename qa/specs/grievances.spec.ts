@@ -2,12 +2,12 @@
  * Staff & Quality — Grievances — GRV-1..4
  * Customer complaints: log, assign, resolve, close, with a timeline and due dates.
  */
-import { test, expect } from '../fixtures/index.js';
+import { test, expect, data } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
 const SITE_ADMIN = 'siteadmin@local.test';
 const OWNER = 'businesshead@local.test';
-const CASHIER = 'cashier.harbourh70@qa.local';
+const CASHIER = data.m.users.find((u: any) => u.role === 'Sales Staff')!.email;   // whichever ids the seed handed out
 const PAGE = '/secure/quality/grievances';
 
 async function firstStoreId(api: any): Promise<number> {

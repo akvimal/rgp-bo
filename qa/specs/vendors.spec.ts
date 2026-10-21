@@ -15,7 +15,7 @@ test.describe('Vendors @p1', () => {
     const { page } = await app.open(MGR, '/secure/purchases/vendors/new');
     await expectShell(page);
     await page.getByTestId(TID.vendorFName).fill(name);
-    await page.getByTestId(TID.vendorFGstn).fill(withCheck('29ABCDE1234F1Z'));
+    await page.getByTestId(TID.vendorFGstn).fill(randomGstin('29'));
     await page.getByTestId(TID.vendorFContact).fill('QA Contact');
     await page.getByTestId(TID.vendorFPhone).fill('9812345678');
     await expect(page.getByTestId(TID.vendorFSubmit)).toBeEnabled();
