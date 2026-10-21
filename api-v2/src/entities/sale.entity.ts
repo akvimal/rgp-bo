@@ -56,6 +56,10 @@ export class Sale extends BaseEntity {
   digirefno: string | null;
   @Column("character varying", { name: "digi_provider", length: 20, nullable: true })
   digiprovider: string | null;
+  @Column("real", { name: "staff_credit_amount", default: 0 })
+  staffcreditamt: number;
+  @Column("integer", { name: "staff_credit_user_id", nullable: true })
+  staffcredituserid: number | null;
 
   @Column("double precision", { name: "digi_amount", precision: 53 })
   digiamt: number;

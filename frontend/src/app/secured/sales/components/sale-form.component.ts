@@ -228,10 +228,22 @@ export class SaleFormComponent {
         const digiamt = Math.max(0, Math.min(total, +(this.payment.digiamt || 0)));
         const cashamt = total - digiamt;
 
-        this.sale['cashamt'] = cashamt;
-        this.sale['digiamt'] = digiamt;
-        this.sale['digimethod'] = this.payment.digimode;
-        this.sale['digirefno'] = this.payment.digirefno;
+        if(this.payment['staffcredit']){
+            // the whole bill on one person's credit: no cash or digital part
+            this.sale['cashamt'] = 0;
+            this.sale['digiamt'] = 0;
+            this.sale['digimethod'] = null;
+            this.sale['digirefno'] = null;
+            this.sale['staffcreditamt'] = total;
+            this.sale['staffcredituserid'] = this.payment['staffcredituserid'];
+        } else {
+            this.sale['cashamt'] = cashamt;
+            this.sale['digiamt'] = digiamt;
+            this.sale['digimethod'] = this.payment.digimode;
+            this.sale['digirefno'] = this.payment.digirefno;
+            this.sale['staffcreditamt'] = 0;
+            this.sale['staffcredituserid'] = null;
+        }
     }
 
     const obj = this.sale;
@@ -341,6 +353,7 @@ export class SaleFormComponent {
 
   /** a digital amount needs the provider's reference, so the bill can be matched to the settlement file */
   digitalValid(){
+    if(this.payment?.staffcredit) return !!this.payment.staffcredituserid;   // the whole bill, on someone's credit
     if(!(+(this.payment?.digiamt || 0) > 0)) return true;
     return /^[A-Za-z0-9][A-Za-z0-9\-_\/]{5,39}$/.test(String(this.payment?.digirefno || '').replace(/\s+/g, ''));
   }

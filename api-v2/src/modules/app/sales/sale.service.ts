@@ -1,5 +1,6 @@
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
+import { recordStaffCredit } from "./staff-credit-rule";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
@@ -48,6 +49,8 @@ interface SalePayload {
   digimethod?: string | null;
   digirefno?: string | null;
   digiprovider?: string | null;
+  staffcreditamt?: number;
+  staffcredituserid?: number | null;
   digiamt?: number;
   cashamt?: number;
   expreturndays?: number;
@@ -93,7 +96,7 @@ export class SaleService {
                 // be fully tendered (delivery sales collect payment via the delivery flow).
                 if ((sale.status || '').toUpperCase() === 'COMPLETE') {
                     const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
-                    const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0);
+                    const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0);
                     const total = Number(sale['total'] || 0);
                     if (isCounter && Math.abs(tendered - total) > 0.5) {
                         throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
@@ -176,6 +179,7 @@ export class SaleService {
                     });
                     await transactionManager.save(SaleItem, sale.items);
                 }
+                await recordStaffCredit(transactionManager, savedSale, actingUserid || userid);
 
                 if (shiftid && Number(savedSale['cashamt'] || sale['cashamt'] || 0) > 0) {
                     await transactionManager.save(StoreCashAccount, {
@@ -284,6 +288,7 @@ export class SaleService {
                     });
                     await transactionManager.save(SaleItem, sale.items);
                 }
+                await recordStaffCredit(transactionManager, updatedSale, actingUserid || userid);
 
                 // The client only needs the saved header before loading the detail route.
                 return updatedSale;

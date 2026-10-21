@@ -15,6 +15,9 @@ import { AuthService } from "../../@core/auth/auth.service";
       <li class="nav-item" *isAuth="'staffsales.view'">
         <a class="nav-link" routerLink="staff-sales" routerLinkActive="active" data-testid="tab-staff-sales">Staff sales</a>
       </li>
+      <li class="nav-item" *isAuth="'staffcredit.view'">
+        <a class="nav-link" routerLink="staff-credit" routerLinkActive="active" data-testid="tab-staff-credit">Staff credit</a>
+      </li>
       <li class="nav-item" *isAuth="'discrepancies.view'">
         <a class="nav-link" routerLink="discrepancies" routerLinkActive="active" data-testid="tab-discrepancies">Cash &amp; shifts</a>
       </li>

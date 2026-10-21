@@ -26,7 +26,7 @@ test.beforeAll(async () => {
 
 /** a counter bill of one line, paid partly or fully digitally */
 function bill(pay: { cash: number; digi: number; method?: string | null; ref?: string | null }, total = 100) {
-  const s = POOL[0];
+  const s = POOL[POOL.length - 1];   // the other end of the pool: stock-transfer specs use the first lines
   const now = new Date().toISOString();
   return {
     customerid: data.anyCustomer(), billdate: now, orderdate: now,

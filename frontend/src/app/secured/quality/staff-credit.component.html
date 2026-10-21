@@ -1,0 +1,79 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <h5 class="card-title mb-0">Staff credit</h5>
+    <div class="small text-muted mb-2">Bills staff put on their own credit, taken from their salary. Set each person's monthly limit; a bill that would pass it is refused at the counter. Salary is worked out in Excel: download the month for that sheet, then record what was deducted.</div>
+
+    <div class="page-toolbar">
+      <div class="page-toolbar-main">
+        <div>
+          <label class="form-label">Salary month</label>
+          <input type="month" class="form-control" style="width:12rem" [(ngModel)]="period" (change)="load()" data-testid="sc-period">
+        </div>
+        <div class="small text-muted pb-2">Taken this month <strong data-testid="sc-month-total">{{totalMonth | number:'1.2-2'}}</strong> &middot; still to recover <strong data-testid="sc-total">{{totalOutstanding | number:'1.2-2'}}</strong></div>
+      </div>
+      <div class="page-toolbar-actions">
+        <button class="btn btn-outline-secondary" type="button" (click)="download()" data-testid="sc-download">Download for the salary sheet</button>
+      </div>
+    </div>
+
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="sc-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="sc-error">{{error}}</div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="sc-table">
+        <thead><tr><th>Staff</th><th style="width:11rem">Monthly limit</th><th class="text-end">Taken this month</th><th class="text-end">Left this month</th><th class="text-end">Recovered this month</th><th class="text-end">Still to recover</th><th></th></tr></thead>
+        <tbody>
+          <ng-container *ngFor="let r of rows">
+            <tr data-testid="sc-row" [attr.data-user]="r.user_id">
+              <td>{{r.name}}<div class="small text-muted">{{r.role}}</div></td>
+              <td>
+                <div class="input-group input-group-sm">
+                  <input type="number" min="0" class="form-control" [(ngModel)]="capEdit[r.user_id]" data-testid="sc-cap">
+                  <button class="btn btn-outline-primary" type="button" [disabled]="+capEdit[r.user_id] === r.cap" (click)="saveCap(r)" data-testid="sc-cap-save">Set</button>
+                </div>
+              </td>
+              <td class="text-end">{{r.credit_month | number:'1.2-2'}}</td>
+              <td class="text-end">{{(r.cap - r.credit_month) > 0 ? ((r.cap - r.credit_month) | number:'1.2-2') : '0.00'}}</td>
+              <td class="text-end">{{r.recovered_month | number:'1.2-2'}}</td>
+              <td class="text-end fw-bold" [class.text-danger]="r.outstanding > 0">{{r.outstanding | number:'1.2-2'}}</td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-outline-secondary btn-sm" type="button" (click)="show(r)" data-testid="sc-entries">Entries</button>
+                <button class="btn btn-outline-primary btn-sm ms-1" type="button" *ngIf="r.outstanding > 0" (click)="startMode('recover', r)" data-testid="sc-recover">Record recovery</button>
+                <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="startMode('adjust', r)" data-testid="sc-adjust">Adjust</button>
+              </td>
+            </tr>
+            <tr *ngIf="openId === r.user_id" data-testid="sc-detail">
+              <td colspan="7" class="bg-light">
+                <div class="row g-2 align-items-end mb-2" *ngIf="mode">
+                  <div class="col-md-3">
+                    <label class="form-label">{{mode === 'recover' ? 'Amount taken from the salary' : 'Amount (negative takes it off)'}}</label>
+                    <input type="number" class="form-control" [(ngModel)]="form.amount" data-testid="sc-amount">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">{{mode === 'recover' ? 'Note (optional)' : 'Why'}}</label>
+                    <input type="text" class="form-control" maxlength="200" [(ngModel)]="form.note" data-testid="sc-note">
+                  </div>
+                  <div class="col-md-3">
+                    <button class="btn btn-primary" type="button" (click)="save(r)" data-testid="sc-save">{{mode === 'recover' ? 'Record recovery for ' + period : 'Save adjustment'}}</button>
+                    <button class="btn btn-outline-secondary ms-1" type="button" (click)="mode = ''">Cancel</button>
+                  </div>
+                </div>
+                <table class="table table-sm mb-0" *ngIf="entries.length; else none">
+                  <thead><tr><th>Date</th><th>What</th><th>Month</th><th class="text-end">Amount</th><th>Note</th><th>By</th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let e of entries" data-testid="sc-entry">
+                      <td>{{e.entry_date | date:'dd MMM yyyy'}}</td><td>{{kindLabel(e.kind)}}</td><td>{{e.period}}</td>
+                      <td class="text-end" [class.text-danger]="e.amount > 0">{{e.amount | number:'1.2-2'}}</td><td>{{e.note}}</td><td>{{e.by_name}}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <ng-template #none><div class="small text-muted">No entries yet.</div></ng-template>
+              </td>
+            </tr>
+          </ng-container>
+          <tr *ngIf="!rows.length && !loading"><td colspan="7" class="text-center text-muted py-3">No staff found.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

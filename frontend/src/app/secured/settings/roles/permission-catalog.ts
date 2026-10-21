@@ -166,6 +166,19 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'staffcredit',
+    label: 'Staff Credit',
+    description: 'Monthly credit limit per person, what staff took on credit and what was recovered from salary.',
+    group: 'Staff & Quality',
+    path: '/secure/quality/staff-credit',
+    bundle: true,
+    bundleLabel: 'Can manage staff credit',
+    actions: [
+      { key: 'view', label: 'View' },
+      { key: 'manage', label: 'Set limits and record recoveries' },
+    ],
+  },
+  {
     key: 'discrepancies',
     label: 'Cash & Shifts',
     description: 'Shifts that did not balance, expenses without receipts, shifts never closed.',

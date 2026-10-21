@@ -16,6 +16,8 @@ export interface Sale {
     discamount?:number,
     digimethod?:string,
     digirefno?:string,
+    staffcreditamt?:number,
+    staffcredituserid?:number|null,
     digiamt?:number,
     cashamt?:number,
     props?:any,
