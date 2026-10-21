@@ -12,12 +12,19 @@ export class ProductPriceComponent {
 
     products:any[] = [];
     flagFilter = '';
+    calcOpen = true;   // the price calculator panel above the list; the choice is remembered per browser
     message = '';
     showPriceChange:boolean = false;
 
     constructor(private service:ProductsService){}
 
-    ngOnInit(){ 
+    toggleCalc() {
+        this.calcOpen = !this.calcOpen;
+        try { localStorage.setItem('priceCalcOpen', this.calcOpen ? '1' : '0'); } catch { /* storage may be blocked */ }
+    }
+
+    ngOnInit(){
+        try { this.calcOpen = localStorage.getItem('priceCalcOpen') !== '0'; } catch { /* default open */ } 
        this.filter();
     }
 

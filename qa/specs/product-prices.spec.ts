@@ -120,4 +120,32 @@ test.describe('Product prices @p1', () => {
     expect(resp.status()).toBeLessThan(300);
     await expect(page.getByTestId('price-message')).toContainText('Price saved at 180');
   });
+
+  test('PRICE-7 the price calculator is a panel on the Price page, not a menu popup @happy', async ({ app }) => {
+    const { page } = await app.open(MGR, '/secure/products/price');
+    await expectShell(page);
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await expect(page.locator('#sidebar-nav').getByText('Pricing', { exact: true })).toHaveCount(0);   // no longer in the left menu
+    const panel = page.getByTestId('price-calc-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.locator('input[type=number]')).toHaveCount(2);
+
+    // typing a cost before a category is picked must not break anything
+    await panel.locator('input[type=number]').nth(0).fill('100');
+    await panel.locator('input[type=number]').nth(1).fill('300');
+    // Generic: at least 50% on cost, at most 80% off MRP -> 150
+    await panel.locator('select').selectOption('Generic');
+    await expect(panel).toContainText('150');
+    expect(errors).toEqual([]);
+
+    // hide and show; the choice is remembered
+    await page.getByTestId('price-calc-toggle').click();
+    await expect(panel.locator('input[type=number]')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('price-calc-panel').locator('input[type=number]')).toHaveCount(0);
+    await page.getByTestId('price-calc-toggle').click();
+    await expect(page.getByTestId('price-calc-panel').locator('input[type=number]')).toHaveCount(2);
+  });
 });

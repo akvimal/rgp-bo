@@ -111,7 +111,7 @@
             <span>Customers</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('store.read','products','products.price')" data-testid="nav-section-stock">Stock</li>
+        <li class="nav-heading" *ngIf="has('store.read','products')" data-testid="nav-section-stock">Stock</li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'store.read'">
           <a class="nav-link collapsed" routerLink="store" data-testid="nav-store" title="Store" aria-label="Store">
             <i class="bi bi-box-seam"></i>
@@ -122,12 +122,6 @@
           <a class="nav-link collapsed" routerLink="products" data-testid="nav-products" title="Products" aria-label="Products">
             <i class="bi bi-boxes"></i>
             <span>Products</span>
-          </a>
-        </li>
-        <li class="nav-item" *isAuth="'products.price'">
-          <a class="nav-link collapsed" (click)="openPricing()" title="Pricing" aria-label="Pricing">
-            <i class="bi bi-tag"></i>
-            <span>Pricing</span>
           </a>
         </li>
         <li class="nav-heading" *ngIf="has('purchases.add','purchases.request')" data-testid="nav-section-buy">Buy &amp; pay</li>
@@ -236,9 +230,5 @@
   <!-- <p-dialog header="Profile" [modal]="true" [(visible)]="showUserPopup" [style]="{ width: '25rem' }">
     <app-webcam-snapshot></app-webcam-snapshot>
   </p-dialog> -->
-  <p-dialog [header]="'Price'"
-        [(visible)]="pricing" [modal]="true">
-    <app-price-estimator></app-price-estimator>
-</p-dialog>
 
 <p-confirmDialog [style]="{width: '30rem'}" [baseZIndex]="10000" acceptButtonStyleClass="p-button-danger"></p-confirmDialog>

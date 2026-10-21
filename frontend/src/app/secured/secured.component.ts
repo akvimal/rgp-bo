@@ -39,7 +39,6 @@ export class SecuredComponent {
     allStores:boolean = false;
     state$!:Observable<AppState>;
 
-    pricing:boolean = false;
     sidebarCollapsed:boolean = false;
     sidebarDrawerOpen:boolean = false;
     settingsMenuOpen:boolean = false;
@@ -143,10 +142,6 @@ export class SecuredComponent {
     @HostListener('document:keydown.escape')
     onEscape(){
       this.userMenuOpen = false;
-    }
-
-    openPricing(){
-      this.pricing = true;
     }
 
     changeStore(event:any) {

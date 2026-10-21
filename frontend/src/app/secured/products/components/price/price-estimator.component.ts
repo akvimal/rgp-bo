@@ -24,6 +24,12 @@ export class PriceEstimatorComponent{
     calculate(){
         
          const range = this.range.find(c=>c.category == this.data.category)
+         if (!range) {            // no category picked yet: nothing to work out
+            this.data.price = '';
+            this.data.margin = null;
+            this.data.discount = null;
+            return;
+         }
          const {margin,discount} = range;
 
          if(this.data.ptr > 0 && this.data.mrp > 0){
