@@ -3,6 +3,15 @@
     <div class="card-body">
       <h5 class="card-title p-0 m-0">{{isEdit ? 'Edit Vendor' : 'New Vendor'}}</h5>
 
+      <div class="row g-3 mt-1 border rounded bg-light py-2 mx-0" *ngIf="isEdit && stats" data-testid="vendor-f-summary">
+        <div class="col-6 col-md-2"><div class="small text-muted">Invoices</div><div>{{stats.invoices}}</div></div>
+        <div class="col-6 col-md-2"><div class="small text-muted">Last purchase</div><div>{{stats.lastpurchase ? (stats.lastpurchase | date:'dd MMM yyyy') : '-'}}</div></div>
+        <div class="col-6 col-md-2"><div class="small text-muted">Last 12 months</div><div>{{stats.last12 | currency:'INR':'symbol':'1.0-0'}}</div></div>
+        <div class="col-6 col-md-2"><div class="small text-muted">All time</div><div>{{stats.total | currency:'INR':'symbol':'1.0-0'}}</div></div>
+        <div class="col-6 col-md-2"><div class="small text-muted">Owed</div><div [class.text-danger]="stats.overdue > 0">{{stats.outstanding | currency:'INR':'symbol':'1.0-0'}}<span class="small" *ngIf="stats.overdue > 0"> ({{stats.overdue | currency:'INR':'symbol':'1.0-0'}} overdue)</span></div></div>
+        <div class="col-6 col-md-2 align-self-center"><a [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="{vendor: vendorId}" data-testid="vendor-f-invoices">View invoices</a></div>
+      </div>
+
       <form [formGroup]="form" (ngSubmit)="onSave()">
 
         <h6 class="mt-4 text-primary">Identity</h6>

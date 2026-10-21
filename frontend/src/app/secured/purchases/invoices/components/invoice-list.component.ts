@@ -1,6 +1,8 @@
-import { Component } from "@angular/core";
+import { Component, ViewChild } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
+import { Table } from "primeng/table";
 import { InvoiceService } from "../invoices.service";
+import { VendorsService } from "../../vendors/vendors.service";
 
 @Component({
     templateUrl: 'invoice-list.component.html'
@@ -14,9 +16,28 @@ export class InvoiceListComponent {
     errorMessage:string = '';
     isOutstanding:boolean = false;
 
-    constructor(private service:InvoiceService, private route:ActivatedRoute){}
+    /** set when arriving from the Vendors list: only this vendor's invoices */
+    vendorId:number|null = null;
+    vendorName = '';
+    @ViewChild('dt1') table?: Table;
+
+    constructor(private service:InvoiceService, private route:ActivatedRoute, private vendors:VendorsService){}
 
     ngOnInit(){
+        this.route.queryParamMap.subscribe(q => {
+          const v = q.get('vendor');
+          const next = v && /^[0-9]+$/.test(v) ? +v : null;
+          const changed = next !== this.vendorId;
+          this.vendorId = next;
+          this.vendorName = '';
+          if(next){
+            this.vendors.findById(next).subscribe((x:any) => this.vendorName = (x?.name || '').trim());
+          }
+          if(changed){
+            if(this.isOutstanding){ this.fetchOutstanding(); }
+            else if(this.table){ this.table.reset(); }
+          }
+        });
         this.route.url.subscribe(segments => {
           this.isOutstanding = segments?.[0]?.path === 'outstanding';
           if(this.isOutstanding){
@@ -32,7 +53,7 @@ export class InvoiceListComponent {
 
     fetchOutstanding(){
       this.loading = true;
-      this.service.findOutstanding().subscribe((data:any) => {
+      this.service.findOutstanding(this.vendorId ? { vendorid: String(this.vendorId) } : undefined).subscribe((data:any) => {
         this.invoices = (data || []).map((i:any) => this.mapRow(i));
         this.totalRecords = this.invoices.length;
         this.loading = false;
@@ -47,7 +68,7 @@ export class InvoiceListComponent {
       this.loading = true;
       const rows = event?.rows || 10;
       const page = Math.floor((event?.first || 0) / rows) + 1;
-      this.service.findAll(page, rows).subscribe((resp:any) => {
+      this.service.findAll(page, rows, this.vendorId).subscribe((resp:any) => {
         this.invoices = (resp?.data || []).map((i:any) => this.mapRow(i));
         this.totalRecords = resp?.total || 0;
         this.loading = false;

@@ -247,3 +247,23 @@ test.describe('Vendor block and disable @p1', () => {
     expect(log.body.rows.find((r: any) => r.action === 'vendor.blocked').details.reason).toBe('Quality complaint');
   });
 });
+
+test.describe('Vendor purchase figures @p1', () => {
+  test('VEND-16 a vendor\'s figures match its invoice list, and the vendor filter returns only that vendor @integration', async ({ api }) => {
+    const vendors = (await api.request('GET', '/vendors', undefined, MGR)).body;
+    const v = vendors.find((x: any) => x.stats?.invoices > 0 && x.stats.invoices <= 150);
+    test.skip(!v, 'no vendor with a manageable number of invoices in this data set');
+    const list = await api.request('GET', `/purchases?page=1&limit=200&vendor=${v.id}`, undefined, MGR);
+    expect(list.status).toBe(200);
+    expect(list.body.data.length).toBe(list.body.total);
+    expect(list.body.data.every((r: any) => r.vendor_id === v.id)).toBe(true);
+    const done = list.body.data.filter((r: any) => r.status === 'COMPLETE');
+    expect(done.length).toBe(v.stats.invoices);
+    const latest = done.map((r: any) => String(r.invoice_date).slice(0, 10)).sort().pop();
+    expect(latest).toBe(v.stats.lastpurchase);
+    expect(Math.abs(done.reduce((t: number, r: any) => t + Number(r.total), 0) - v.stats.total)).toBeLessThan(1);
+    // without the filter the list is wider than this vendor
+    const all = await api.request('GET', '/purchases?page=1&limit=5', undefined, MGR);
+    expect(all.body.total).toBeGreaterThanOrEqual(list.body.total);
+  });
+});

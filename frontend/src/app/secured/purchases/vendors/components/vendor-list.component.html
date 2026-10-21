@@ -34,7 +34,7 @@
         </div>
 
         <div class="col-12">
-            <p-table #dt1 [value]="vendors" [resizableColumns]="true" columnResizeMode="expand"
+            <p-table #dt1 [value]="vendors" sortField="stats.lastpurchase" [sortOrder]="-1" [resizableColumns]="true" columnResizeMode="expand"
                 [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
                 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
                 [rowsPerPageOptions]="[10,25,50]">
@@ -49,12 +49,17 @@
                         <th pSortableColumn="contactname">Contact
                             <p-sortIcon field="contactname"></p-sortIcon>
                         </th>
-                        <th>Phone</th>
-                        <th pSortableColumn="paymenttermsdays">Terms
-                            <p-sortIcon field="paymenttermsdays"></p-sortIcon>
-                        </th>
                         <th pSortableColumn="licensestatus">Licence
                             <p-sortIcon field="licensestatus"></p-sortIcon>
+                        </th>
+                        <th pSortableColumn="stats.lastpurchase">Last purchase
+                            <p-sortIcon field="stats.lastpurchase"></p-sortIcon>
+                        </th>
+                        <th class="text-end" pSortableColumn="stats.last12" title="Completed invoices only">Purchases
+                            <p-sortIcon field="stats.last12"></p-sortIcon>
+                        </th>
+                        <th class="text-end" pSortableColumn="stats.outstanding" title="Still unpaid on completed invoices. Draft invoices are not counted here, but the Outstanding page does list them.">Owed
+                            <p-sortIcon field="stats.outstanding"></p-sortIcon>
                         </th>
                         <th>Actions</th>
                     </tr>
@@ -75,16 +80,41 @@
                             </span>
                             <div class="small text-muted" *ngIf="vendor.statecode">{{stateName(vendor.statecode)}}</div>
                         </td>
-                        <td>{{vendor.contactname}}<div class="small text-muted" *ngIf="vendor.repname">Rep: {{vendor.repname}}</div></td>
-                        <td>{{vendor.mobile || vendor.contactphone}}</td>
-                        <td>{{vendor.paymenttermsdays}}<span *ngIf="vendor.paymenttermsdays !== null && vendor.paymenttermsdays !== undefined"> d</span></td>
+                        <td>{{vendor.contactname}}
+                            <div class="small">{{vendor.mobile || vendor.contactphone}}</div>
+                            <div class="small text-muted" *ngIf="vendor.repname">Rep: {{vendor.repname}}</div>
+                        </td>
                         <td data-testid="vendor-license-status">
                             <span class="badge" [ngClass]="licenseClass(vendor.licensestatus)">{{licenseText(vendor.licensestatus)}}</span>
                             <div class="small text-muted" *ngIf="vendor.licensenextexpiry">till {{vendor.licensenextexpiry | date:'dd MMM yyyy'}}</div>
                             <div class="small text-muted" *ngIf="vendor.licensecount && !vendor.licensenextexpiry" data-testid="vendor-license-noend">{{vendor.licensecount}} on file, no end date recorded</div>
                         </td>
+                        <td class="text-nowrap" data-testid="vendor-last-purchase">
+                            <ng-container *ngIf="vendor.stats?.invoices; else noPurchases">
+                                {{vendor.stats.lastpurchase | date:'dd MMM yyyy'}}
+                                <div class="small"><a [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="{vendor: vendor.id}" data-testid="vendor-invoices-link">{{vendor.stats.invoices}} invoice{{vendor.stats.invoices === 1 ? '' : 's'}}</a></div>
+                            </ng-container>
+                            <ng-template #noPurchases><span class="text-muted">none yet</span></ng-template>
+                        </td>
+                        <td class="text-end text-nowrap" data-testid="vendor-purchases">
+                            <ng-container *ngIf="vendor.stats?.invoices">
+                                {{vendor.stats.last12 | currency:'INR':'symbol':'1.0-0'}}
+                                <div class="small text-muted">last 12 months</div>
+                                <div class="small text-muted">{{vendor.stats.total | currency:'INR':'symbol':'1.0-0'}} in all</div>
+                            </ng-container>
+                        </td>
+                        <td class="text-end text-nowrap" data-testid="vendor-owed">
+                            <ng-container *ngIf="vendor.stats?.outstanding > 0; else settled">
+                                <a [routerLink]="['/secure/purchases/invoices/outstanding']" [queryParams]="{vendor: vendor.id}" [class.text-danger]="vendor.stats.overdue > 0">{{vendor.stats.outstanding | currency:'INR':'symbol':'1.0-0'}}</a>
+                                <div class="small text-danger" *ngIf="vendor.stats.overdue > 0">{{vendor.stats.overdue | currency:'INR':'symbol':'1.0-0'}} overdue</div>
+                            </ng-container>
+                            <ng-template #settled><span class="text-muted" *ngIf="vendor.stats?.invoices">nil</span></ng-template>
+                            <div class="small text-muted" *ngIf="vendor.paymenttermsdays">{{vendor.paymenttermsdays}} day terms</div>
+                            <div class="small text-muted" *ngIf="vendor.stats?.lastpayment">paid {{vendor.stats.lastpayment | date:'dd MMM'}}</div>
+                        </td>
                         <td class="text-center text-nowrap">
                             <div class="grid-actions">
+                                <a [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="{vendor: vendor.id}" title="View invoices" data-testid="vendor-view-invoices"><i class="bi bi-receipt text-secondary"></i></a>
                                 <a [routerLink]="['../edit', vendor.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
                                 <a *ngIf="vendor.status === 'ACTIVE'" (click)="openBlock(vendor)" title="Block: no new orders or invoices" data-testid="vendor-block"><i class="bi bi-slash-circle text-warning"></i></a>
                                 <a *ngIf="vendor.status === 'BLOCKED'" (click)="unblock(vendor)" title="Unblock" data-testid="vendor-unblock"><i class="bi bi-unlock text-success"></i></a>

@@ -31,13 +31,14 @@ export class PurchaseInvoiceController {
 
     @Get()
     async findByUnique(@Query() query: any) {
-      const hasFilter = Object.keys(query).some(k => !['page', 'limit'].includes(k));
+      const hasFilter = Object.keys(query).some(k => !['page', 'limit', 'vendor'].includes(k));
       if (hasFilter)
         return this.purchaseInvoiceService.findByUnique(query);
       else {
         const page = query.page ? +query.page : 1;
         const limit = query.limit ? +query.limit : 50;
-        return this.purchaseInvoiceService.findAll(page, limit);
+        const vendor = /^[0-9]+$/.test(String(query.vendor ?? '')) ? +query.vendor : undefined;
+        return this.purchaseInvoiceService.findAll(page, limit, vendor);
       }
     }
 

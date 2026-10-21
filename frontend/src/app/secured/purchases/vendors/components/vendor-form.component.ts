@@ -62,6 +62,8 @@ export class VendorFormComponent{
 
       error = '';
       saving = false;
+      stats:any = null;
+      vendorId:any = null;
       private originalGstn = '';
 
       constructor(private service:VendorsService, private router:Router,
@@ -98,6 +100,8 @@ export class VendorFormComponent{
             comments: data.comments,
           });
           this.originalGstn = (data.gstn || '').trim().toUpperCase();
+          this.stats = data.stats || null;
+          this.vendorId = id;
           (data.licenses || []).forEach((l:any) => this.addLicense(l));
         })
       }

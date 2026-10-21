@@ -175,6 +175,23 @@ export class VendorService {
         const bad = await this.manager.query(
             `select id from vendor where id = any($1::int[]) and coalesce(btrim(gstn), '') <> '' and not public.is_valid_gstin(upper(btrim(gstn)))`, [ids]);
         const badSet = new Set<number>(bad.map((r: any) => r.id));
+        // purchase figures from completed invoices; balance = invoice total less every payment recorded against it
+        const inv = await this.manager.query(
+            `with inv as (
+               select i.vendor_id, i.invoice_date, coalesce(i.due_date, i.invoice_date) as due, i.total::numeric as total,
+                      coalesce((select sum(p.amount) from vendor_payment p where p.invoice_id = i.id), 0)::numeric as paid
+                 from purchase_invoice i
+                where i.vendor_id = any($1::int[]) and i.status = 'COMPLETE' and i.active and not i.archive)
+             select vendor_id, count(*)::int as invoices, to_char(max(invoice_date), 'YYYY-MM-DD') as last_purchase,
+                    round(coalesce(sum(total), 0), 2) as total,
+                    round(coalesce(sum(total) filter (where invoice_date >= current_date - 365), 0), 2) as last12,
+                    round(coalesce(sum(greatest(total - paid, 0)), 0), 2) as outstanding,
+                    round(coalesce(sum(greatest(total - paid, 0)) filter (where due < current_date), 0), 2) as overdue
+               from inv group by vendor_id`, [ids]);
+        const pay = await this.manager.query(
+            `select vendor_id, to_char(max(pay_date), 'YYYY-MM-DD') as last_payment from vendor_payment where vendor_id = any($1::int[]) group by vendor_id`, [ids]);
+        const statsBy = new Map<number, any>(inv.map((r: any) => [r.vendor_id, r]));
+        const payBy = new Map<number, string>(pay.map((r: any) => [r.vendor_id, r.last_payment]));
         const byVendor = new Map<number, any[]>();
         for (const l of lic) {
             if (!byVendor.has(l.vendor_id)) byVendor.set(l.vendor_id, []);
@@ -183,7 +200,14 @@ export class VendorService {
         return vendors.map((v) => {
             const rows = byVendor.get(v.id) || [];
             const st = this.status(rows);
-            const base: any = { ...v, status: !v.isActive ? "DISABLED" : v.blocked ? "BLOCKED" : "ACTIVE", licensestatus: st.status, licensenextexpiry: st.nextexpiry, licensecount: rows.length, gstinInvalid: badSet.has(v.id) };
+            const s = statsBy.get(v.id);
+            const base: any = { ...v,
+                stats: {
+                    invoices: s?.invoices ?? 0, lastpurchase: s?.last_purchase ?? null,
+                    total: +(s?.total ?? 0), last12: +(s?.last12 ?? 0),
+                    outstanding: +(s?.outstanding ?? 0), overdue: +(s?.overdue ?? 0), lastpayment: payBy.get(v.id) ?? null,
+                },
+                status: !v.isActive ? "DISABLED" : v.blocked ? "BLOCKED" : "ACTIVE", licensestatus: st.status, licensenextexpiry: st.nextexpiry, licensecount: rows.length, gstinInvalid: badSet.has(v.id) };
             if (withLicenses) {
                 base.licenses = rows.map((r) => ({
                     id: r.id, licensetype: r.license_type, number: r.number,

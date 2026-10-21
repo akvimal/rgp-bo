@@ -7,6 +7,17 @@ export interface VendorLicense {
     notes?:string|null,
 }
 
+/** purchase figures from completed invoices; outstanding = what is still owed, overdue = the part past its due date */
+export interface VendorStats {
+    invoices:number,
+    lastpurchase:string|null,
+    total:number,
+    last12:number,
+    outstanding:number,
+    overdue:number,
+    lastpayment:string|null,
+}
+
 export interface Vendor {
     id?:number,
     name:string,
@@ -37,6 +48,7 @@ export interface Vendor {
     licensestatus?:'NONE'|'VALID'|'EXPIRING'|'EXPIRED',
     licensenextexpiry?:string|null,
     gstinInvalid?:boolean,
+    stats?:VendorStats,
     status?:'ACTIVE'|'BLOCKED'|'DISABLED',
     blocked?:boolean,
     blockreason?:string|null,

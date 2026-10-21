@@ -34,7 +34,7 @@ Everything found in the live-database copy (dump of 2026-10, 61,847 sales, 1,739
 | 19 | Sales | Completed bills with zero or negative total (e.g. -Rs 424 in Mar 2022) | 14 | Likely old credit notes. Keep; list for review | You |
 | 20 | Sales | Completed bills with no customer | 4 | Point to the NIL customer | Me |
 | 21 | Sales | Sale lines with quantity 0 or less | 2 | Review and remove | Both |
-| 22 | Purchases | Draft invoices (status NEW) | 25, Rs 1.28 lakh; 11 for Karthikeyan Drug House, oldest Nov 2024 | Complete or delete the stale ones | You |
+| 22 | Purchases | Draft invoices (status NEW). The Outstanding and Payables screens count them as money owed, so they inflate what you owe (Karthikeyan alone by Rs 97,663). The vendor list figures count completed invoices only | 25, Rs 1.28 lakh; 11 for Karthikeyan Drug House, oldest Nov 2024 | Complete or delete the stale ones, or decide that drafts should not count as owed | You |
 | 23 | Purchases | Invoice lines not VERIFIED | 3 | Verify or remove | Both |
 | 24 | Vendors | No phone | 18 | Fill over time | You |
 

@@ -19,9 +19,10 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchases/${id}`);
     }
 
-    findAll(page = 1, limit = 50){
-        return this.http.get<{ data: any[]; total: number; page: number; limit: number }>(
-            `${this.apiurl}/purchases`, { params: { page: String(page), limit: String(limit) } });
+    findAll(page = 1, limit = 50, vendorId?: number | null){
+        const params: any = { page: String(page), limit: String(limit) };
+        if (vendorId) params.vendor = String(vendorId);
+        return this.http.get<{ data: any[]; total: number; page: number; limit: number }>(`${this.apiurl}/purchases`, { params });
     }
 
     findOutstanding(params?:any){

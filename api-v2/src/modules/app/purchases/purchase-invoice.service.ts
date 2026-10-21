@@ -271,7 +271,7 @@ export class PurchaseInvoiceService {
       };
     }
     
-    async findAll(page = 1, limit = 50): Promise<{ data: any[]; total: number; page: number; limit: number }> {
+    async findAll(page = 1, limit = 50, vendorId?: number): Promise<{ data: any[]; total: number; page: number; limit: number }> {
       const safePage = Math.max(1, page);
       const safeLimit = Math.min(200, Math.max(1, limit));
 
@@ -280,6 +280,7 @@ export class PurchaseInvoiceService {
         .leftJoinAndSelect("invoice.items", "items")
         .leftJoinAndSelect("invoice.payments", "payments")
         .select(['invoice', 'vendor.id', 'vendor.name', 'payments', 'items.id'])
+        .where(vendorId ? 'invoice.vendorid = :vendorId' : '1 = 1', { vendorId })
         .orderBy('invoice.invoicedate', 'DESC')
         .skip((safePage - 1) * safeLimit)
         .take(safeLimit)

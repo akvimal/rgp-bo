@@ -365,7 +365,7 @@
     },
     {
       id: "vendors", name: "Vendors",
-      blurb: "Vendor master records referenced from purchase orders, invoices, and payments: identity, GST registration and GSTIN check, contact and sales rep, terms, bank, and supplier licences with expiry. Needs migration 043. VEND-10, VEND-12 and VEND-14 are manual only. Needs migration 044 for block and disable.",
+      blurb: "Vendor master records referenced from purchase orders, invoices, and payments: identity, GST registration and GSTIN check, contact and sales rep, terms, bank, and supplier licences with expiry. Needs migration 043. VEND-10, VEND-12, VEND-14 and VEND-17 are manual only. Needs migration 044 for block and disable.",
       cases: [
         { id:"VEND-1", feature:"Vendor master", tag:"happy", scenario:"Create a vendor", steps:"Add a vendor with contact and GST details.", expected:"Saved and selectable when creating a Purchase Order or Invoice." },
         { id:"VEND-2", feature:"Vendor master", tag:"negative", scenario:"Duplicate vendor", steps:"Create a second vendor with the same name/GST as an existing one.", expected:"Confirm whether this should be blocked or merely warned &mdash; verify actual behavior matches intent." },
@@ -383,6 +383,8 @@
         { id:"VEND-13", feature:"Disable", tag:"happy", scenario:"Disable and enable", steps:"Disable a vendor, look at the Disabled view, then enable it.", expected:"A disabled vendor leaves the Active list and every purchase form, shows greyed in Disabled, cannot take new documents, and keeps its history. Enabling brings it back. A disabled vendor cannot be blocked." },
         { id:"VEND-14", feature:"Disable", tag:"edge", scenario:"Enable blocked by a duplicate GSTIN", steps:"Disable a vendor, give its GSTIN to a new vendor, then try to enable the first.", expected:"Enabling is refused: the GSTIN already belongs to another vendor." },
         { id:"VEND-15", feature:"Audit", tag:"integration", scenario:"Block and disable are logged", steps:"Block, unblock, disable and enable a vendor, then open Staff & Quality > Audit log.", expected:"Four entries (vendor.blocked with the reason, vendor.unblocked, vendor.disabled, vendor.enabled) name who did it and when." },
+        { id:"VEND-16", feature:"Vendor figures", tag:"integration", scenario:"Figures match the invoices", steps:"For a vendor with invoices, compare the Vendors list (invoice count, last purchase) with that vendor's invoice list.", expected:"The count of completed invoices and the latest invoice date agree, and the vendor-filtered invoice list holds only that vendor." },
+        { id:"VEND-17", feature:"Vendor figures", tag:"happy", scenario:"Summary and links on the Vendors screen", steps:"Open Vendors. Sort by Purchases. Follow a vendor's invoice link, switch to Outstanding, then clear the vendor chip. Open the vendor's edit page.", expected:"Each vendor shows last purchase date and invoice count, 12-month and all-time purchases, what is owed (red when overdue) and the last payment. The link opens that vendor's invoices, Outstanding keeps the filter, the chip clears it, and the edit page shows the same figures in a summary strip." },
       ]
     },
     {
