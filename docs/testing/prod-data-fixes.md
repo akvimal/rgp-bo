@@ -29,7 +29,7 @@ Everything found in the live-database copy (dump of 2026-10, 61,847 sales, 1,739
 | 14 | Products | Chronic flag not set (blank or missing); the chronic-mobile rule and refill list treat these as not chronic | 1,258 of 3,469 (535 marked chronic, 497 marked not) | Review `chronic_candidates.csv`: 87 products bought repeatedly by the same customers (e.g. NIVABION FORTE, NEUROVITT, BYCALVIT, PARACIP). Mark y/n and I apply | You review, Me apply |
 | 15 | Products | No manufacturer | 669 | Optional; fill over time | You |
 | 16 | Customers | Same mobile number on several customer records | 102 numbers, 228 records | Merge duplicates (review list first). Affects refill follow-up and history per customer | Both |
-| 17 | Customers | No mobile / odd mobile / no name | 265 / 5 / 10 | Collect at next purchase (chronic bills now require it); fix the 5 and 10 by hand | You |
+| 17 | Customers | No mobile / odd mobile / no name. The 265 with no mobile are 258 empty strings and 7 NULL. Odd mobiles: 17 (text such as HAND BILL, test digits such as 1234567890 and 1111111111, a short number, a foreign number). The NIL walk-in customer 0000000000 is deliberate and stays | 265 / 17 / 10 | Fix 04 turns empty strings into NULL, strips formatting (+91, spaces, a leading 0) and clears text-only mobiles, logging every change in `customer_data_fix_log`. The rest need a person: `customer_mobile_review.csv` lists them, busiest first. Collect missing numbers at the next purchase (chronic bills require it) | Me (04), You (review list) |
 | 18 | Sales | Completed bills with no line items | 312 bills, Rs 29,903 (2022-2026) | Probably incomplete saves. Decide: keep as revenue, or mark void | You |
 | 19 | Sales | Completed bills with zero or negative total (e.g. -Rs 424 in Mar 2022) | 14 | Likely old credit notes. Keep; list for review | You |
 | 20 | Sales | Completed bills with no customer | 4 | Point to the NIL customer | Me |
@@ -60,6 +60,7 @@ Nothing done by hand in a rehearsal copy carries over. Everything is replayed on
 | 01 | Align `stock_view` with the POS stock formula (it ignored sales and subtracted adjustments). Affects the ready-to-sell list, stock-demand report and the single-batch lookup, not the POS | required |
 | 02 | Attach the 4 completed bills with no customer to the NIL customer | no |
 | 03 | Write off batches expired more than 180 days ago (141 batches, Rs 47,978) | required |
+| 04 | Customer mobiles, safe part only: 258 empty strings become NULL, formatted numbers become 10 digits (none in the current dump), 3 text-only mobiles become NULL; old values kept in `customer_data_fix_log`. Rehearsed on a fresh dump: PASS | no |
 
 ## Suggested order
 
