@@ -47,6 +47,7 @@ interface SalePayload {
   deliverytype?: string;
   digimethod?: string | null;
   digirefno?: string | null;
+  digiprovider?: string | null;
   digiamt?: number;
   cashamt?: number;
   expreturndays?: number;

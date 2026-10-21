@@ -3,12 +3,14 @@
         <select class="form-control" [(ngModel)]="payment.digimode" (change)="digimodechange($event)">
             <option value="UPI">UPI</option>
             <option value="Card">Card</option>
+            <option value="Wallet">Wallet</option>
             <option value="Other">Other</option>
         </select>
         <input type="text" class="form-control" [(ngModel)]="payment.digiamt" (input)="digiamtchange($event)">
-        <input type="text" class="form-control" [(ngModel)]="payment.digirefno" placeholder="Ref#">
+        <input type="text" class="form-control" [(ngModel)]="payment.digirefno" placeholder="Paytm ref / UTR" data-testid="pos-digi-ref" [class.is-invalid]="refMissing" maxlength="40">
         <input type="text" class="form-control" [(ngModel)]="payment.cashamt" (input)="cashamtchange($event)">
     </div>
+    <div class="col-12 small text-danger" *ngIf="refMissing" data-testid="pos-digi-ref-msg">Enter the Paytm reference (transaction or UTR number) for the digital amount.</div>
     <ng-template #cash>
         <div class="col-7 d-flex flex-row">&nbsp;</div>
     </ng-template>

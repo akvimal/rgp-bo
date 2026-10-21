@@ -11,6 +11,12 @@ export class SalePaymentComponent {
     @Input() payment:{digimode?:string,digiamt?:number,
         digirefno?:string,cashamt?:number,valid?:boolean}={};
     cashbal = 0;
+
+    /** a digital amount with no (or a malformed) reference: the bill cannot be completed and cannot be reconciled later */
+    get refMissing(): boolean {
+        return !this.cashonly && +(this.payment.digiamt || 0) > 0
+            && !/^[A-Za-z0-9][A-Za-z0-9\-_\/]{5,39}$/.test(String(this.payment.digirefno || '').replace(/\s+/g, ''));
+    }
     cashonly = false;
 
     @Output() updated:EventEmitter<any> = new EventEmitter();

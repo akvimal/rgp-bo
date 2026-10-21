@@ -32,7 +32,7 @@ async function ringUp(api: any, over: Partial<{ cash: number; digi: number; tota
   const now = new Date().toISOString();
   return api.request('POST', '/sales', {
     customerid: data.anyCustomer(), billdate: now, orderdate: now,
-    cashamt: over.cash ?? total, digiamt: over.digi ?? 0, digimethod: (over.digi ?? 0) > 0 ? 'UPI' : null,
+    cashamt: over.cash ?? total, digiamt: over.digi ?? 0, digimethod: (over.digi ?? 0) > 0 ? 'UPI' : null, digirefno: (over.digi ?? 0) > 0 ? `QASALE${Date.now()}${Math.floor(Math.random() * 1e4)}` : null,
     total, discamount: 0, expreturndays: 7, status: 'COMPLETE', ordertype: 'Walk-in',
     deliverytype: over.deliverytype ?? 'Counter',
     items: [{ itemid: s.itemid, productid: s.productid, batch: s.batch, price: s.price, mrpcost: s.mrpcost, taxpcnt: s.taxpcnt, qty: 2, total }],
@@ -107,7 +107,7 @@ test.describe('Sales / POS @p1', () => {
     // read the report for whatever shift THIS sale lands on
     const sale = await api.request('POST', '/sales', {
       customerid: data.anyCustomer(), billdate: now, orderdate: now,
-      cashamt: cashPart, digiamt: digiPart, digimethod: 'Card', digirefno: 'SALE11REF',
+      cashamt: cashPart, digiamt: digiPart, digimethod: 'Card', digirefno: `SALE11REF${Date.now()}${Math.floor(Math.random() * 1e4)}`,
       total, discamount: 0, expreturndays: 7, status: 'COMPLETE', ordertype: 'Walk-in', deliverytype: 'Counter',
       items: [{ itemid: s.itemid, productid: s.productid, batch: s.batch, price: s.price, mrpcost: s.mrpcost, taxpcnt: s.taxpcnt, qty: 4, total }],
     }, CASHIER);

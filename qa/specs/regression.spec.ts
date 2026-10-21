@@ -51,7 +51,7 @@ test.describe('P0 regression — sales / stock / invoices @p0', () => {
     const now = new Date().toISOString();
     const { status, body } = await api.request('POST', '/sales', {
       customerid: data.anyCustomer(), billdate: now, orderdate: now,
-      cashamt: cash, digiamt: digi, digimethod: 'UPI', digirefno: 'QAREF1234',
+      cashamt: cash, digiamt: digi, digimethod: 'UPI', digirefno: `QAREF${Date.now()}${Math.floor(Math.random() * 1e4)}`,
       total, discamount: 0, expreturndays: 7, status: 'COMPLETE',
       ordertype: 'Walk-in', deliverytype: 'Counter', items,
     }, CASHIER);

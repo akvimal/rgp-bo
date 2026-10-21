@@ -16,7 +16,7 @@ import { StoreContextService } from "src/app/@core/store-context.service";
 export class SaleFormComponent {
 
     customer = {existing:false,mobile:'',name:''}
-    sale:Sale = {status:'NEW',items:[],digimethod:'PayTM'}
+    sale:Sale = {status:'NEW',items:[],digimethod:'UPI'}
     
     showDocument = false;
     docpath = '';
@@ -336,7 +336,13 @@ export class SaleFormComponent {
 
     return (this.doctypes.length == 0 || 
       (this.isDocumentProvided() || (this.sale.customer.mobile.length == 10 && this.sale.docpending)))
-      && customerValid;
+      && customerValid && this.digitalValid();
+  }
+
+  /** a digital amount needs the provider's reference, so the bill can be matched to the settlement file */
+  digitalValid(){
+    if(!(+(this.payment?.digiamt || 0) > 0)) return true;
+    return /^[A-Za-z0-9][A-Za-z0-9\-_\/]{5,39}$/.test(String(this.payment?.digirefno || '').replace(/\s+/g, ''));
   }
 
   removeDocument(id:number){
