@@ -10,6 +10,9 @@
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/payables" data-testid="nav-payables">Payables</a>
       </li>
       <li class="nav-item" *isAuth="'purchases'">
+        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/vendors/list" data-testid="nav-vendors">Vendors</a>
+      </li>
+      <li class="nav-item" *isAuth="'purchases'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/gst" data-testid="nav-gst">GST</a>
       </li>
       <li class="nav-item" *isAuth="'purchases'">

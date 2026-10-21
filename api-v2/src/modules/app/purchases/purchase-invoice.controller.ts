@@ -4,13 +4,14 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe
 import { InvoiceViewService } from "./invoice-view.service";
 import { CreatePurchaseInvoiceDto } from "./dto/create-invoice.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
+import { PurchasingGuard } from "../roles/purchasing.guard";
 import { UpdateInvoicesDto } from "./dto/update-invoices.dto";
 import { User } from "src/core/decorator/user.decorator";
 
 @ApiTags('PurchaseInvoices')
 @Controller('purchases')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PurchasingGuard)
 export class PurchaseInvoiceController {
 
     constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService){}

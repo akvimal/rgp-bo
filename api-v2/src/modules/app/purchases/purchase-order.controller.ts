@@ -1,6 +1,7 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "src/modules/auth/auth.guard";
+import { PurchasingGuard } from "../roles/purchasing.guard";
 import { PurchaseService } from './purchase.service';
 import { CreatePurchaseOrderDto } from './dto/create-order.dto';
 import { User } from 'src/core/decorator/user.decorator';
@@ -9,7 +10,7 @@ import { UpdatePurchaseOrderDto } from './dto/update-order.dto';
 @ApiTags('PurchaseOrders')
 @Controller('purchaseorders')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PurchasingGuard)
 export class PurchaseOrderController {
 
   constructor(private service:PurchaseService){}

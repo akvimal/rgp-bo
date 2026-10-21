@@ -7,11 +7,13 @@ import { CreateVendorDto } from "./dto/create-vendor.dto";
 import { UpdateVendorDto } from "./dto/update-vendor.dto";
 import { User } from "src/core/decorator/user.decorator";
 import { AuthGuard } from "src/modules/auth/auth.guard";
+import { PurchasingGuard, PurchasingWriteAction } from "../roles/purchasing.guard";
 
 @ApiTags('Vendors')
 @Controller('vendors')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PurchasingGuard)
+@PurchasingWriteAction('vendors.edit')
 // No global ValidationPipe in this app; vendor input is checked here (GSTIN, PAN, IFSC, mobile, ...).
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class VendorController {

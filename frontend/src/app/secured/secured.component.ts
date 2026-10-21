@@ -66,6 +66,15 @@ export class SecuredComponent {
             || this.authService.isUrlAuthorized('/secure/store/shifts'));
     }
 
+    /** menu entries and section headings follow what the role may open */
+    canOpen(url: string): boolean {
+      return this.authService.isUrlAuthorized(url);
+    }
+
+    has(...keys: string[]): boolean {
+      return keys.some((k) => this.authService.isActionAuthorized(k));
+    }
+
     get shiftLink(): string {
       return this.authService.isUrlAuthorized('/secure/store/shifts')
         ? '/secure/store/shifts'

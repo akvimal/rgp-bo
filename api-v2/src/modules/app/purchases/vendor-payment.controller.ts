@@ -1,6 +1,7 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "src/modules/auth/auth.guard";
+import { PurchasingGuard } from "../roles/purchasing.guard";
 import { User } from "src/core/decorator/user.decorator";
 import { VendorPaymentService } from "./vendor-payment.service";
 import { CreateVendorPaymentDto } from "./dto/create-vendor-payment.dto";
@@ -9,7 +10,7 @@ import { UpdateVendorPaymentDto } from "./dto/update-vendor-payment.dto";
 @ApiTags('VendorPayments')
 @Controller('vendorpayments')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PurchasingGuard)
 export class VendorPaymentController {
     constructor(private service: VendorPaymentService) {}
 

@@ -1,3 +1,4 @@
+import { RoleModule } from "../roles/role.module";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -18,7 +19,7 @@ import { AuthModule } from "src/modules/auth/auth.module";
 import { JwtService } from "@nestjs/jwt";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Vendor]),AuthModule],
+    imports: [TypeOrmModule.forFeature([Vendor]),AuthModule,RoleModule],
     controllers: [VendorController],
     providers: [VendorService,JwtService],
     exports: [VendorService],

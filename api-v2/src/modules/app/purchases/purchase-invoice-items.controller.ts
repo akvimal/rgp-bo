@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
+import { PurchasingGuard } from "../roles/purchasing.guard";
 import { UpdateInvoiceItemsDto } from "./dto/update-invoice-items.dto";
 import { User } from "src/core/decorator/user.decorator";
 import { ProductService } from "../products/product.service";
@@ -10,7 +11,7 @@ import { ProductService } from "../products/product.service";
 @ApiTags('PurchaseItems')
 @Controller('purchaseitems')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PurchasingGuard)
 export class PurchaseItemController {
 
     constructor(private purchaseInvoiceService:PurchaseInvoiceService, private productService: ProductService){}

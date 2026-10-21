@@ -1,3 +1,4 @@
+import { RoleModule } from "../roles/role.module";
 import { InvoiceViewService } from "./invoice-view.service";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -27,7 +28,7 @@ import { PurchaseSuggestionController } from "./purchase-suggestion.controller";
 import { PurchaseDownloadController } from "./purchase-download.controller";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([
+    imports: [RoleModule, TypeOrmModule.forFeature([
       Product,
       Vendor,
       PurchaseRequest,

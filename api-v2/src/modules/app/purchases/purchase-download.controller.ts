@@ -4,13 +4,14 @@ import { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
+import { PurchasingGuard } from "../roles/purchasing.guard";
 import { Setting } from 'src/entities/setting.entity';
 import { PurchaseService } from './purchase.service';
 
 @ApiTags('PurchaseDownload')
 @Controller('download')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PurchasingGuard)
 export class PurchaseDownloadController {
   constructor(
     private readonly service: PurchaseService,
