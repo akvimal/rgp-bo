@@ -169,4 +169,88 @@ test.describe('Authentication & Session @p0', () => {
     await expect(page.getByTestId('cp-email')).toBeVisible();
     await ctx.close();
   });
+
+  test('AUTH-14 sign in and change password are the same frame, fields and look, for business and platform @happy', async ({ browser }) => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
+    const card = async () => (await page.locator('.auth-card').boundingBox())!;
+
+    await page.goto('/login');
+    await expect(page.getByTestId('auth-brand')).toContainText('Ramesh Generic Pharmacy');
+    await expect(page.getByTestId('auth-title')).toHaveText('Sign in');
+    const loginCard = await card();
+    const loginBtn = await box('login-submit');
+    const loginField = await box('login-email');
+    const loginPwd = await box('login-password');
+    // a password can be shown while typing
+    await page.getByTestId('login-password').fill('secret');
+    await expect(page.getByTestId('login-password')).toHaveAttribute('type', 'password');
+    await page.getByTestId('login-password-toggle').click();
+    await expect(page.getByTestId('login-password')).toHaveAttribute('type', 'text');
+
+    await page.goto('/changepassword');
+    await expect(page.getByTestId('auth-brand')).toContainText('Ramesh Generic Pharmacy');
+    await expect(page.getByTestId('auth-title')).toHaveText('Change your password');
+    expect((await card()).width).toBeCloseTo(loginCard.width, 0);                    // the same card
+    expect((await box('cp-submit')).width).toBeCloseTo(loginBtn.width, 0);           // the same button
+    expect((await box('cp-email')).width).toBeCloseTo(loginField.width, 0);          // the same field
+    expect((await box('cp-current')).height).toBeCloseTo(loginPwd.height, 0);
+    for (const id of ['cp-current', 'cp-new', 'cp-confirm']) await expect(page.getByTestId(`${id}-toggle`)).toBeVisible();
+    await expect(page.getByText('BootstrapMade')).toHaveCount(0);                      // no template credits
+    await expect(page.getByTestId('cp-back')).toHaveAttribute('href', '/login');
+
+    // the platform pages share the dark look, and the change-password link keeps it
+    await page.goto('/platform/login');
+    await expect(page.getByTestId('login-platform-banner')).toBeVisible();
+    await expect(page.getByTestId('auth-title')).toContainText('platform');
+    await expect(page.locator('main[data-login-scope=platform]')).toHaveCount(1);
+    expect(await page.getByTestId('login-changepw-link').getAttribute('href')).toContain('scope=platform');
+    await page.getByTestId('login-changepw-link').click();
+    await expect(page.getByTestId('login-platform-banner')).toBeVisible();
+    await expect(page.locator('main[data-login-scope=platform]')).toHaveCount(1);
+    await expect(page.getByTestId('cp-back')).toHaveAttribute('href', '/platform/login');
+    await ctx.close();
+  });
+
+  test('AUTH-15 changing a password: clear messages, the rules, and a success that leads back to sign in @happy', async ({ api, browser }) => {
+    // the rules, through the API
+    const email = `qa.cp.${Date.now()}@local.test`;
+    const made = await api.request('POST', '/users', { fullname: 'QA Pwd', email, password: PASS, phone: '9000007777', location: 'x', roleid: 2, storeids: [1] }, 'businesshead@local.test');
+    expect(made.status).toBeLessThan(300);
+    const change = (b: any) => api.request('POST', '/auth/changepwd', { email, password: PASS, newpassword: 'newpass123', ...b });
+    expect((await change({ password: 'not-my-password' })).status).toBe(401);
+    expect((await change({ email: 'nobody@local.test' })).status).toBe(401);                 // the same answer for an unknown user
+    expect((await change({ newpassword: 'short' })).status).toBe(400);
+    expect((await change({ newpassword: PASS })).status).toBe(400);                          // not the same as the current one
+
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.goto('/changepassword');
+    await page.getByTestId('cp-email').fill(email);
+    await page.getByTestId('cp-current').fill(PASS);
+    await page.getByTestId('cp-new').fill('short');
+    await expect(page.getByTestId('cp-new-hint')).toHaveClass(/text-danger/);
+    await expect(page.getByTestId('cp-submit')).toBeDisabled();
+    await page.getByTestId('cp-new').fill('newpass123');
+    await page.getByTestId('cp-confirm').fill('different123');
+    await expect(page.getByTestId('cp-mismatch')).toBeVisible();
+    await expect(page.getByTestId('cp-submit')).toBeDisabled();
+
+    // a wrong current password says so, in the page
+    await page.getByTestId('cp-confirm').fill('newpass123');
+    await page.getByTestId('cp-current').fill('wrong-current');
+    await expect(page.getByTestId('cp-submit')).toBeEnabled();
+    await page.getByTestId('cp-submit').click();
+    await expect(page.getByTestId('cp-error')).toContainText('not correct');
+
+    // and the real one succeeds, then leads back to sign in; the new password works, the old one does not
+    await page.getByTestId('cp-current').fill(PASS);
+    await page.getByTestId('cp-submit').click();
+    await expect(page.getByTestId('cp-success')).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/, { timeout: 8000 });
+    await expect.poll(async () => (await api.request('POST', '/auth/login', { email, password: 'newpass123' })).status, { timeout: 5000 }).not.toBe(401);
+    expect((await api.request('POST', '/auth/login', { email, password: PASS })).status).toBe(401);
+    await ctx.close();
+  });
 });

@@ -5,6 +5,8 @@ import { RouterModule, Routes } from "@angular/router";
 import { ChangePwdComponent } from "./changepwd/changepwd.component";
 import { LoginComponent } from "./login/login.component";
 import { LogoutComponent } from "./logout/logout.component";
+import { AuthShellComponent } from "./shared/auth-shell.component";
+import { AuthPasswordComponent } from "./shared/auth-password.component";
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -16,7 +18,9 @@ const routes: Routes = [
 @NgModule({
     declarations: [
       LoginComponent,
-      ChangePwdComponent
+      ChangePwdComponent,
+      AuthShellComponent,
+      AuthPasswordComponent
     ],
     imports: [
         CommonModule,

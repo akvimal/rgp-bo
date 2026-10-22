@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { AppUser } from 'src/entities/appuser.entity';
 
@@ -44,14 +44,17 @@ export class AuthService {
   public async changepwd(body: ChangePasswordDto): Promise<any | never> {
     const { email, password, newpassword }: ChangePasswordDto = body;
     const user = await this.userService.findByUsername(email);
-    if (!user) {
-      throw new Error('Invalid Credentials');
-    }
+    // the same answer for an unknown user and a wrong current password
+    const wrong = () => {
+      this.audit.record({ userId: user?.id ?? null, action: 'auth.password_change_failed', summary: user ? 'wrong current password' : 'unknown email', details: { email }, status: 401 });
+      throw new UnauthorizedException('The username or current password is not correct.');
+    };
+    if (!user) return wrong();
+    if (!this.helper.isPasswordValid(password, user.password)) return wrong();
+    if (user.isActive === false || user.isArchived === true) return wrong();
 
-    const isPasswordValid: boolean = this.helper.isPasswordValid(password, user.password);
-    if (!isPasswordValid) {
-      throw new Error('Invalid Credentials');
-    }
+    if (String(newpassword || '').length < 8) throw new BadRequestException('The new password must be at least 8 characters.');
+    if (newpassword === password) throw new BadRequestException('The new password must be different from the current one.');
 
     this.userService.update(user.id, { password: this.helper.encodePassword(newpassword), lastlogin: new Date() });
     this.audit.record({ userId: user.id, action: 'auth.password_changed', summary: 'password changed' });

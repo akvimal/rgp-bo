@@ -1,41 +1,65 @@
-import { Component } from "@angular/core";
+import { Component, OnInit } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
-import { Router } from "@angular/router";
-import { UsersService } from "src/app/secured/settings/users/users.service";
+import { ActivatedRoute, Router } from "@angular/router";
 import { AuthService } from "../auth.service";
-import { CredentialsService } from "../credentials.service";
 
+/** Change password: the same frame, fields and messages as sign in. */
 @Component({
     templateUrl: './changepwd.component.html'
 })
-export class ChangePwdComponent {
+export class ChangePwdComponent implements OnInit {
 
-    error?:any;
+    readonly minLength = 8;
+
+    /** the platform-administration look, when you arrive from that sign-in page */
+    platform = false;
+    error = '';
+    done = false;
+    busy = false;
 
     form = new FormGroup({
-        email: new FormControl('',Validators.required),
-        password: new FormControl('',Validators.required),
-        newpassword: new FormControl('',Validators.required),
-        confirmpassword: new FormControl('',Validators.required),
+        email: new FormControl('', Validators.required),
+        password: new FormControl('', Validators.required),
+        newpassword: new FormControl('', Validators.required),
+        confirmpassword: new FormControl('', Validators.required),
     });
 
-    constructor(
-        private router: Router,
-        private authService: AuthService, 
-        private userService: UsersService,
-        private credService: CredentialsService){}
+    constructor(private authService: AuthService, private route: ActivatedRoute, private router: Router) {}
+
+    ngOnInit() {
+        this.platform = this.route.snapshot.queryParamMap.get('scope') === 'platform' || this.authService.loginUrl() === '/platform/login';
+    }
+
+    get loginLink(): string { return this.platform ? '/platform/login' : '/login'; }
+
+    get newTooShort(): boolean { const v = this.form.value.newpassword || ''; return v.length > 0 && v.length < this.minLength; }
+    get sameAsCurrent(): boolean { const v = this.form.value; return !!v.newpassword && v.newpassword === v.password; }
+    get mismatch(): boolean { const v = this.form.value; return !!v.confirmpassword && v.newpassword !== v.confirmpassword; }
+
+    get canSubmit(): boolean {
+        return this.form.valid && !this.newTooShort && !this.sameAsCurrent && !this.mismatch;
+    }
 
     onSubmit(){
+        if (!this.canSubmit) { return; }
+        this.error = '';
+        this.busy = true;
         this.authService.changepwd({
-            email:this.form.value.email,
-            password:this.form.value.password,
-            newpassword:this.form.value.newpassword,
-        }).subscribe({next: data => {
-            //TODO: show confirmation
-            this.router.navigate(['/login']);
-        }, error : err => {
-            //TODO: show error
-            this.error = err.message;
-            }})
-      }
+            email: this.form.value.email,
+            password: this.form.value.password,
+            newpassword: this.form.value.newpassword,
+        }).subscribe({
+            next: () => {
+                this.busy = false;
+                this.done = true;
+                setTimeout(() => this.router.navigate([this.loginLink]), 1800);
+            },
+            error: err => {
+                this.busy = false;
+                const m = err?.error?.message;
+                this.error = (Array.isArray(m) ? m.join(' ') : m) || 'The password could not be changed. Try again.';
+                this.form.controls['password'].reset();
+            },
+        });
+    }
 }

@@ -1,93 +1,25 @@
-<main [ngStyle]="platform ? {background: '#12171f', minHeight: '100vh'} : null" [attr.data-login-scope]="platform ? 'platform' : 'business'">
-    <div class="container">
-
-      <section class="section register min-vh-100 d-flex flex-column align-items-center justify-content-center py-4">
-        <!-- <div class="container">
-          <div class="row justify-content-center">
-            <div class="col-lg-4 col-md-6 d-flex flex-column align-items-center justify-content-center"> -->
-
-              <div class="card p-4" [ngClass]="{'border-0 shadow-lg': platform}" [ngStyle]="platform ? {background: '#1c232e', color: '#e6e9ee', borderTop: '4px solid #f0a020'} : null">
-                <div class="card-body">
-                  
-                  <form class="row g-3 needs-validation" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-                  <div class="row">
-                  <div class="col-3 mt-4 pb-2 text-center" *ngIf="!platform">
-                    <img src="assets/img/rgp-logo.png" alt="" width="100px" height="100px">
-                    <div class="mt-2">Ramesh <br> Generic Pharmacy</div>
-                    <!-- <h5 class="card-title text-center mt-0 pb-0 fs-4">Login</h5> -->
-                    <!-- <p class="text-center small">Enter your username & password to login</p> -->
-                  </div>
-                  
-                  <div class="col-3 mt-4 pb-2 text-center" *ngIf="platform" data-testid="login-platform-banner">
-                    <i class="bi bi-shield-lock" style="font-size: 64px; color: #f0a020;"></i>
-                    <div class="mt-2 fw-semibold">Platform<br>administration</div>
-                    <div class="small mt-2" style="color: #9aa4b2;">Authorised staff only</div>
-                  </div>
-
-                    <div class="col-9 p-4">
-                          <div class="row">
-                            
-                            <div class="col-12">                        
-                              <label for="email" class="form-label">Username</label>
-                              <div class="input-group has-validation">
-                                <span class="input-group-text" id="inputGroupPrepend">@</span>
-                                <input type="text" name="username" data-testid="login-email"
-                                id="email" formControlName="email" class="form-control" required>
-                                <div class="invalid-feedback">Please enter your username.</div>
-                              </div>
-                            </div>
-
-                            <div class="col-12 p-2">
-                              <label for="password" class="form-label">Password</label>
-                              <input type="password" name="password" id="password" formControlName="password"
-                              data-testid="login-password" class="form-control" required>
-                              <div class="invalid-feedback">Please enter your password!</div>
-                            
-                            <!-- {{form.controls['password'].dirty}} -->
-                            <div class="col-12 text-center alert alert-danger" data-testid="login-error" *ngIf="!form.controls['password'].dirty && error && error !== ''">Invalid Credentials</div>
-                            <div class="col-12">
-                              <div *ngIf="error" data-testid="login-error-detail">{{error}}</div>
-                            </div>
-                                <!-- <div class="col-12">
-                                  <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="remember" value="true" id="rememberMe">
-                                    <label class="form-check-label" for="rememberMe">Remember me</label>
-                                  </div>
-                                </div> -->
-                         
-                    <div class="col-12">
-                      <p class="small mb-0"><a routerLink="/changepassword" data-testid="login-changepw-link" [style.color]="platform ? '#f0a020' : null">Change Password</a></p>
-                    </div>
-                        
-                 
-                    </div>
-                          </div>
-                    </div>
-                      <div class="col-12 text-center">
-                        <button class="btn btn-primary" type="submit" data-testid="login-submit"
-                        [disabled]="!form.valid">{{platform ? 'Sign in to platform' : 'Login'}}</button>
-                      </div>
-                  </div>
-                </form>
-
-                </div>
-              </div>
-            <!-- </div>
-          </div>
-        </div> -->
-
-      </section>
-
+<app-auth-shell [platform]="platform" [title]="platform ? 'Sign in to platform administration' : 'Sign in'">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="d-grid gap-3">
+    <div>
+      <label for="email" class="form-label">Username</label>
+      <div class="input-group">
+        <span class="input-group-text">@</span>
+        <input type="text" name="username" id="email" formControlName="email" class="form-control" data-testid="login-email" autocomplete="username" required>
+      </div>
     </div>
-  </main><!-- End #main -->
 
-<!-- 
+    <div>
+      <app-auth-password label="Password" inputId="password" [control]="$any(form.controls['password'])" testid="login-password" autocomplete="current-password"></app-auth-password>
+    </div>
 
-<form [formGroup]="form" (ngSubmit)="onSubmit()">
-    <input id="email" type="text" formControlName="email" placeholder="Email">
-    <br>
-    <input id="password" type="password" formControlName="password" placeholder="Password">
-    <br>
-    <button type="submit" [disabled]="!form.valid">Submit</button>
-</form>
--->
+    <div class="alert alert-danger py-2 mb-0" role="alert" data-testid="login-error" *ngIf="error && !form.controls['password'].dirty">
+      Invalid credentials. Check your username and password.
+    </div>
+
+    <button class="btn btn-primary" type="submit" data-testid="login-submit" [disabled]="!form.valid">{{platform ? 'Sign in to platform' : 'Sign in'}}</button>
+
+    <div class="text-center small">
+      <a routerLink="/changepassword" [queryParams]="platform ? {scope: 'platform'} : null" data-testid="login-changepw-link">Change password</a>
+    </div>
+  </form>
+</app-auth-shell>
