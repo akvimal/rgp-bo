@@ -15,6 +15,12 @@ export class HrLeaveComponent implements OnInit {
   form: any = null;
   deciding: { id: number; action: string; note: string } | null = null;
 
+  /** leave types open to the chosen person's role */
+  get typesForPerson(): any[] {
+    const role = this.staff.find(s => s.id === this.form?.employee_id)?.role_name || null;
+    return this.types.filter(t => !t.applies_roles?.length || (role && t.applies_roles.includes(role)));
+  }
+
   constructor(private hr: HrService) {}
 
   ngOnInit() {

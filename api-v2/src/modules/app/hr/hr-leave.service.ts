@@ -13,7 +13,12 @@ export function datesBetween(from: string, to: string): string[] {
   for (let t = Date.parse(from + 'T00:00:00Z'); t <= Date.parse(to + 'T00:00:00Z'); t += 86400000) out.push(new Date(t).toISOString().slice(0, 10));
   return out;
 }
-const isSunday = (d: string) => new Date(d + 'T00:00:00Z').getUTCDay() === 0;
+const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+/** an off day: outside a part-timer's working days, or the weekly off of everyone else */
+const isOffDay = (d: string, emp: { weekly_off: string; work_days?: string[] | null }) => {
+  const day = DAY_NAMES[new Date(d + 'T00:00:00Z').getUTCDay()];
+  return emp.work_days?.length ? !emp.work_days.includes(day) : day === emp.weekly_off;
+};
 const iso = (d: any) => (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
 
 /** Leave types, holidays, leave requests, and the attendance grid. */
@@ -23,7 +28,33 @@ export class HrLeaveService {
 
   // ------------------------------------------------------------------ leave types and holidays
   types() {
-    return this.manager.query(`select id, code, name, paid, annual_days::float as annual_days, active from hr_leave_type order by paid desc, name`);
+    return this.manager.query(`select id, code, name, paid, annual_days::float as annual_days, active, applies_roles from hr_leave_type order by paid desc, name`);
+  }
+
+  /** deleted when no leave was ever asked for under it; otherwise made inactive, since the leave history refers to it */
+  async removeType(id: number, by: any) {
+    const [t] = await this.manager.query(`select id, name from hr_leave_type where id = $1`, [id]);
+    if (!t) throw new NotFoundException('Leave type not found.');
+    const [u] = await this.manager.query(`select count(*)::int as n from hr_leave_request where leave_type_id = $1`, [id]);
+    if (u.n > 0) {
+      await this.manager.query(`update hr_leave_type set active = false where id = $1`, [id]);
+      await this.audit.record({ userId: by.id, action: 'hr.leave_type_deactivated', entityType: 'hr_leave_type', entityId: id, summary: `Leave type ${t.name} made inactive (${u.n} requests)`, details: {} });
+      return { removed: false, deactivated: true, uses: u.n };
+    }
+    await this.manager.query(`delete from hr_leave_type where id = $1`, [id]);
+    await this.audit.record({ userId: by.id, action: 'hr.leave_type_removed', entityType: 'hr_leave_type', entityId: id, summary: `Leave type ${t.name} removed`, details: {} });
+    return { removed: true, deactivated: false, uses: 0 };
+  }
+
+  roleList(v: any): string[] | null {
+    const a = Array.from(new Set((Array.isArray(v) ? v : []).map((x: any) => String(x).trim()).filter(Boolean))).slice(0, 20) as string[];
+    return a.length ? a : null;
+  }
+
+  async checkRoles(roles: string[] | null) {
+    if (!roles) return;
+    const known = await this.manager.query(`select name from app_role where name = any($1::text[]) and name <> 'Site Admin'`, [roles]);
+    if (known.length !== roles.length) throw new BadRequestException('One of the roles is not a role in this system.');
   }
 
   async saveType(id: number | null, b: any, by: any) {
@@ -32,17 +63,19 @@ export class HrLeaveService {
     const paid = b?.paid !== false;
     const days = Number(b?.annual_days ?? 0);
     if (!Number.isFinite(days) || days < 0 || days > 366) throw new BadRequestException('Days a year must be between 0 and 366.');
+    const roles = this.roleList(b?.applies_roles);
+    await this.checkRoles(roles);
     if (id) {
       const [cur] = await this.manager.query(`select paid from hr_leave_type where id = $1`, [id]);
       if (!cur) throw new NotFoundException('Leave type not found.');
       if (cur.paid !== paid) throw new BadRequestException('A leave type cannot change between paid and unpaid; add a new one.');
-      await this.manager.query(`update hr_leave_type set name = $2, annual_days = $3, active = $4 where id = $1`, [id, name, days, b.active !== false]);
+      await this.manager.query(`update hr_leave_type set name = $2, annual_days = $3, active = $4, applies_roles = $5 where id = $1`, [id, name, days, b.active !== false, roles]);
     } else {
       const code = String(b?.code || name).toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 10);
       if (!code) throw new BadRequestException('Give the leave type a code.');
       const [ex] = await this.manager.query(`select 1 from hr_leave_type where code = $1`, [code]);
       if (ex) throw new BadRequestException(`A leave type with code ${code} exists.`);
-      const [r] = await this.manager.query(`insert into hr_leave_type (code, name, paid, annual_days) values ($1,$2,$3,$4) returning id`, [code, name, paid, days]);
+      const [r] = await this.manager.query(`insert into hr_leave_type (code, name, paid, annual_days, applies_roles) values ($1,$2,$3,$4,$5) returning id`, [code, name, paid, days, roles]);
       id = r.id;
     }
     await this.audit.record({ userId: by.id, action: 'hr.leave_type_saved', entityType: 'hr_leave_type', entityId: id, summary: `Leave type ${name} saved`, details: {} });
@@ -73,7 +106,7 @@ export class HrLeaveService {
   /** working days a leave takes: not holidays, and not the weekly-off Sunday for staff who have a fixed one */
   private async countDays(emp: any, from: string, to: string, half: boolean) {
     const hol = new Set((await this.manager.query(`select to_char(holiday_date, 'YYYY-MM-DD') as d from hr_holiday where holiday_date between $1 and $2`, [from, to])).map((h: any) => h.d));
-    const days = datesBetween(from, to).filter(d => !hol.has(d) && !(emp.weekly_off === 'SUNDAY' && isSunday(d)));
+    const days = datesBetween(from, to).filter(d => !hol.has(d) && !isOffDay(d, emp));
     return { days, count: half ? 0.5 : days.length };
   }
 
@@ -84,7 +117,7 @@ export class HrLeaveService {
     if (q.status) { args.push(q.status); where.push(`r.status = $${args.length}`); }
     if (q.employee) { args.push(q.employee); where.push(`r.employee_id = $${args.length}`); }
     return this.manager.query(
-      `select r.id, r.employee_id, u.full_name as name, t.name as type, t.code, t.paid, r.from_date, r.to_date, r.days::float as days, r.half_day,
+      `select r.id, r.employee_id, coalesce(e.full_name, u.full_name) as name, t.name as type, t.code, t.paid, r.from_date, r.to_date, r.days::float as days, r.half_day,
               r.reason, r.status, r.decision_note, d.full_name as decided_by_name, r.decided_on
          from hr_leave_request r join hr_employee e on e.id = r.employee_id left join app_user u on u.id = e.user_id
          join hr_leave_type t on t.id = r.leave_type_id left join app_user d on d.id = r.decided_by
@@ -92,10 +125,13 @@ export class HrLeaveService {
   }
 
   async create(b: any, by: any) {
-    const [emp] = await this.manager.query(`select e.id, e.weekly_off, e.join_date, e.exit_date, u.full_name from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [Number(b?.employee_id)]);
+    const [emp] = await this.manager.query(
+      `select e.id, e.weekly_off, e.work_days, e.join_date, e.exit_date, coalesce(e.full_name, u.full_name) as full_name, (select r.name from app_role r where r.id = u.role_id) as role_name
+         from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [Number(b?.employee_id)]);
     if (!emp) throw new BadRequestException('Choose the staff member.');
-    const [type] = await this.manager.query(`select id, name, paid from hr_leave_type where id = $1 and active`, [Number(b?.leave_type_id)]);
+    const [type] = await this.manager.query(`select id, name, paid, applies_roles from hr_leave_type where id = $1 and active`, [Number(b?.leave_type_id)]);
     if (!type) throw new BadRequestException('Choose the leave type.');
+    if (type.applies_roles?.length && !type.applies_roles.includes(emp.role_name)) throw new BadRequestException(`${type.name} does not apply to ${emp.role_name ? 'the ' + emp.role_name + ' role' : 'staff without a login'}.`);
     if (!DATE.test(b?.from_date || '') || !DATE.test(b?.to_date || '')) throw new BadRequestException('Give the from and to dates.');
     if (b.to_date < b.from_date) throw new BadRequestException('The to date is before the from date.');
     if (iso(emp.join_date) > b.from_date) throw new BadRequestException('The leave starts before the joining date.');
@@ -118,7 +154,7 @@ export class HrLeaveService {
     const action = String(b?.action || '');
     if (!['approve', 'reject', 'cancel'].includes(action)) throw new BadRequestException('Approve, reject or cancel.');
     const [r] = await this.manager.query(
-      `select r.*, e.weekly_off, t.paid, t.name as type_name, t.annual_days::float as annual, u.full_name
+      `select r.*, e.weekly_off, e.work_days, t.paid, t.name as type_name, t.annual_days::float as annual, coalesce(e.full_name, u.full_name) as full_name
          from hr_leave_request r join hr_employee e on e.id = r.employee_id join hr_leave_type t on t.id = r.leave_type_id left join app_user u on u.id = e.user_id where r.id = $1`, [id]);
     if (!r) throw new NotFoundException('Leave request not found.');
     const note = String(b?.note || '').trim().slice(0, 200) || null;
@@ -161,15 +197,15 @@ export class HrLeaveService {
   /** entitlement, used and pending per person for a year */
   async balances(year: number) {
     return this.manager.query(
-      `select e.id as employee_id, u.full_name as name, t.id as type_id, t.code, t.name as type, t.paid, t.annual_days::float as entitled,
+      `select e.id as employee_id, coalesce(e.full_name, u.full_name) as name, t.id as type_id, t.code, t.name as type, t.paid, t.annual_days::float as entitled,
               coalesce(sum(r.days) filter (where r.status = 'APPROVED'), 0)::float as used,
               coalesce(sum(r.days) filter (where r.status = 'PENDING'), 0)::float as pending
-         from hr_employee e left join app_user u on u.id = e.user_id
+         from hr_employee e left join app_user u on u.id = e.user_id left join app_role ro on ro.id = u.role_id
          cross join hr_leave_type t
          left join hr_leave_request r on r.employee_id = e.id and r.leave_type_id = t.id and extract(year from r.from_date) = $1
-        where e.status = 'ACTIVE' and t.active
-        group by e.id, u.full_name, t.id, t.code, t.name, t.paid, t.annual_days
-        order by u.full_name, t.paid desc, t.name`, [year]);
+        where e.status = 'ACTIVE' and t.active and (t.applies_roles is null or cardinality(t.applies_roles) = 0 or ro.name = any(t.applies_roles))
+        group by e.id, coalesce(e.full_name, u.full_name), t.id, t.code, t.name, t.paid, t.annual_days
+        order by coalesce(e.full_name, u.full_name), t.paid desc, t.name`, [year]);
   }
 
   // ------------------------------------------------------------------ attendance
@@ -178,10 +214,10 @@ export class HrLeaveService {
     if (!PERIOD.test(period || '')) throw new BadRequestException('A month (YYYY-MM) is required.');
     const start = period + '-01';
     const emps = await this.manager.query(
-      `select e.id, u.full_name as name, e.weekly_off, to_char(e.join_date, 'YYYY-MM-DD') as join_date, to_char(e.exit_date, 'YYYY-MM-DD') as exit_date
+      `select e.id, coalesce(e.full_name, u.full_name) as name, e.weekly_off, e.work_days, to_char(e.work_start, 'HH24:MI') as work_start, to_char(e.work_end, 'HH24:MI') as work_end, to_char(e.join_date, 'YYYY-MM-DD') as join_date, to_char(e.exit_date, 'YYYY-MM-DD') as exit_date
          from hr_employee e left join app_user u on u.id = e.user_id
         where e.join_date <= (date_trunc('month', $1::date) + interval '1 month - 1 day') and (e.exit_date is null or e.exit_date >= $1::date)
-        order by u.full_name`, [start]);
+        order by coalesce(e.full_name, u.full_name)`, [start]);
     const marks = await this.manager.query(
       `select employee_id, to_char(att_date, 'YYYY-MM-DD') as d, status from hr_attendance
         where att_date >= $1::date and att_date < ($1::date + interval '1 month')`, [start]);
@@ -202,7 +238,7 @@ export class HrLeaveService {
   }
 
   async mark(b: any, by: any) {
-    const [emp] = await this.manager.query(`select e.id, e.join_date, e.exit_date, u.full_name from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [Number(b?.employee_id)]);
+    const [emp] = await this.manager.query(`select e.id, e.join_date, e.exit_date, coalesce(e.full_name, u.full_name) as full_name from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [Number(b?.employee_id)]);
     if (!emp) throw new BadRequestException('Choose the staff member.');
     if (!DATE.test(b?.date || '')) throw new BadRequestException('Give the date.');
     if (b.date > new Date().toISOString().slice(0, 10)) throw new BadRequestException('Attendance cannot be marked for a future date.');

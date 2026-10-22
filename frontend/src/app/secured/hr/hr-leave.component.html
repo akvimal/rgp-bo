@@ -12,7 +12,7 @@
         <div class="col-md-3"><label class="form-label">Staff *</label>
           <select class="form-select" [(ngModel)]="form.employee_id" data-testid="hr-l-emp"><option [ngValue]="null">Choose</option><option *ngFor="let s of staff" [ngValue]="s.id">{{s.name}}</option></select></div>
         <div class="col-md-3"><label class="form-label">Type *</label>
-          <select class="form-select" [(ngModel)]="form.leave_type_id" data-testid="hr-l-type"><option [ngValue]="null">Choose</option><option *ngFor="let t of types" [ngValue]="t.id">{{t.name}} ({{t.paid ? 'paid' : 'unpaid'}})</option></select></div>
+          <select class="form-select" [(ngModel)]="form.leave_type_id" data-testid="hr-l-type"><option [ngValue]="null">Choose</option><option *ngFor="let t of typesForPerson" [ngValue]="t.id">{{t.name}} ({{t.paid ? 'paid' : 'unpaid'}})</option></select></div>
         <div class="col-md-2"><label class="form-label">From *</label><input type="date" class="form-control" [(ngModel)]="form.from_date" data-testid="hr-l-from"></div>
         <div class="col-md-2"><label class="form-label">To *</label><input type="date" class="form-control" [(ngModel)]="form.to_date" data-testid="hr-l-to"></div>
         <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="half" [(ngModel)]="form.half_day"><label class="form-check-label" for="half">Half day</label></div></div>

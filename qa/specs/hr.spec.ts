@@ -1,9 +1,9 @@
 /**
- * Mini HR — HR-1..6
+ * Mini HR — HR-1..13
  * Staff, salary revisions, leave, attendance, KPI, and the monthly payroll with pay stubs (Business Head only).
  * The specs run in order: HR-2 creates the staff record the later ones use. Re-running needs a fresh seed.
  */
-import { test, expect } from '../fixtures/index.js';
+import { test, expect, data } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
 
 const MGR = 'businesshead@local.test';
@@ -19,6 +19,8 @@ const day = (n: number) => {
   while (d.getUTCDay() !== 1) d = new Date(d.getTime() + 86400000);
   return new Date(d.getTime() + n * 86400000).toISOString().slice(0, 10);
 };
+/** three months back: payroll for it is never approved by these specs */
+const Q = (() => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 3); return d.toISOString().slice(0, 7); })();
 const MON = () => day(0), TUE = () => day(1), WED = () => day(2), THU = () => day(3), FRI = () => day(4);
 
 let empId = 0;
@@ -245,12 +247,316 @@ test.describe('HR @p1', () => {
     await expect(page.getByTestId('hr-stub-print')).toBeVisible();
 
     await page.getByTestId('hr-tab-setup').click();
-    const values = (id: string) => page.getByTestId(id).locator('input.form-control').evaluateAll((els: any[]) => els.map(e => e.value));
-    await expect.poll(() => values('hr-set-components')).toContain('Basic');
-    await expect.poll(() => values('hr-set-types')).toContain('Casual leave');
+    // grouped into collapsible sections: the first is open, the rest open on demand
+    await expect(page.getByTestId('hr-sec-pay-body')).toBeVisible();
+    await expect(page.getByTestId('hr-sec-kpi-body')).toHaveCount(0);
+    await page.getByTestId('hr-sec-collapse').click();
+    await expect(page.getByTestId('hr-sec-pay-body')).toHaveCount(0);
+    await page.getByTestId('hr-sec-expand').click();
+    await expect(page.getByTestId('hr-set-metrics')).toBeVisible();
+    await expect(page.getByTestId('hr-set-bands')).toBeVisible();
+    await expect(page.getByTestId('hr-set-holidays')).toBeVisible();
+    await expect(page.getByTestId('hr-set-components')).toBeVisible();
+    await expect(page.getByTestId('hr-set-types')).toBeVisible();
+    await expect(page.getByTestId('hr-set-comp-remove').first()).toBeVisible();
+    await expect(page.getByTestId('hr-set-type-remove').first()).toBeVisible();
 
     // other roles have no menu entry or page
     const sh = await app.open(STOREHEAD, '/secure/dashboard');
     await expect(sh.page.getByTestId('nav-hr')).toHaveCount(0);
+  });
+
+  test('HR-7 Settings > Users shows the staff record of each login and starts one for those without @happy', async ({ app, api }) => {
+    await employee(api);
+    const { page } = await app.open(MGR, '/secure/settings/users');
+    await expectShell(page);
+    const linked = page.locator(`[data-testid=user-row][data-user-email="${STAFF_EMAIL}"]`);
+    await expect(linked.getByTestId('user-staff-open')).toBeVisible();
+    const free = page.locator(`[data-testid=user-row][data-user-email="${COUNTER}"]`);
+    await free.getByTestId('user-staff-add').click();
+    await page.waitForURL(/\/secure\/hr\/staff\?user=/);
+    await expect(page.getByTestId('hr-f-user')).toBeVisible();
+    expect(await page.getByTestId('hr-f-user').evaluate((el: any) => el.selectedOptions[0].textContent)).toContain(COUNTER);
+
+    // the form is grouped, and the stores are the login's own mappings
+    for (const sec of ['employment', 'stores', 'personal', 'bank']) await expect(page.getByTestId(`hr-sec-${sec}`)).toBeVisible();
+    const cand = (await api.request('GET', '/hr/staff/candidates', undefined, MGR)).body.find((c: any) => c.email === COUNTER);
+    expect(cand.stores.length).toBeGreaterThan(0);
+    for (const st of cand.stores) await expect(page.getByTestId('hr-f-stores')).toContainText(st.name);
+    const outside = (await api.request('GET', '/hr/stores', undefined, MGR)).body.find((st: any) => !cand.stores.some((m: any) => m.id === st.id));
+    if (outside) {
+      const bad = await api.request('POST', '/hr/staff', { user_id: cand.id, join_date: '2025-01-01', store_id: outside.id }, MGR);
+      expect(bad.status).toBe(400);
+    }
+
+    // roles without HR access are not offered the column
+    const sh = await app.open(STOREHEAD, '/secure/settings/users');
+    await expect(sh.page.getByTestId('user-row-staff')).toHaveCount(0);
+  });
+
+  test('HR-8 staff without a login, and a weekly off on any day @edge', async ({ app, api }) => {
+    const store = data.storesOf(1)[0].id;
+    const add = (b: any) => api.request('POST', '/hr/staff', { join_date: '2025-01-01', ...b }, MGR);
+    expect((await add({})).status).toBe(400);                                          // neither a login nor a name
+    expect((await add({ full_name: 'QA Cleaner', weekly_off: 'FUNDAY' })).status).toBe(400);
+    expect((await add({ full_name: 'QA Cleaner', phone: 'abc' })).status).toBe(400);
+
+    const made = await add({ full_name: 'QA Cleaner', phone: '9876500011', store_id: store, emp_type: 'PART_TIME', weekly_off: 'WEDNESDAY' });
+    expect(made.status).toBeLessThan(300);
+    const list = (await api.request('GET', '/hr/staff', undefined, MGR)).body;
+    const row = list.find((r: any) => r.id === made.body.id);
+    expect(row.name).toBe('QA Cleaner');
+    expect(row.has_login).toBe(false);
+
+    // the weekly off is Wednesday, so a Tuesday-to-Thursday leave is two days
+    const types = (await api.request('GET', '/hr/leave/types', undefined, MGR)).body;
+    const CL = types.find((t: any) => t.code === 'CL').id;
+    const leave = await api.request('POST', '/hr/leave/requests', { employee_id: made.body.id, leave_type_id: CL, from_date: TUE(), to_date: THU(), reason: 'QA' }, MGR);
+    expect(leave.status).toBeLessThan(300);
+    expect(leave.body.days).toBe(2);
+    const onOff = await api.request('POST', '/hr/leave/requests', { employee_id: made.body.id, leave_type_id: CL, from_date: WED(), to_date: WED() }, MGR);
+    expect(onOff.status).toBe(400);
+
+    // a name can be corrected for someone with no login
+    expect((await api.request('PUT', `/hr/staff/${made.body.id}`, { full_name: 'QA Cleaner Two' }, MGR)).status).toBeLessThan(300);
+    expect((await api.request('GET', `/hr/staff/${made.body.id}`, undefined, MGR)).body.name).toBe('QA Cleaner Two');
+
+    const { page } = await app.open(MGR, '/secure/hr');
+    await expectShell(page);
+    await page.getByTestId('hr-staff-add').click();
+    await page.getByTestId('hr-f-nologin').check();
+    await expect(page.getByTestId('hr-f-name')).toBeVisible();
+    await expect(page.getByTestId('hr-f-user')).toHaveCount(0);
+    await expect(page.getByTestId('hr-f-weeklyoff').locator('option')).toHaveCount(8);
+  });
+
+  test('HR-9 a part-timer has working days and hours on the staff record @edge', async ({ app, api }) => {
+    const add = (b: any) => api.request('POST', '/hr/staff', { join_date: '2025-01-01', full_name: 'QA Parttimer', ...b }, MGR);
+    expect((await add({ work_days: ['MONDAY'] })).status).toBe(400);                                   // full time by default
+    expect((await add({ emp_type: 'PART_TIME', work_days: ['FUNDAY'] })).status).toBe(400);
+    expect((await add({ emp_type: 'PART_TIME', work_start: '09:00' })).status).toBe(400);              // both times or neither
+    expect((await add({ emp_type: 'PART_TIME', work_start: '13:00', work_end: '09:00' })).status).toBe(400);
+    expect((await add({ emp_type: 'PART_TIME', work_start: '9am', work_end: '1pm' })).status).toBe(400);
+
+    const made = await add({ emp_type: 'PART_TIME', work_days: ['MONDAY', 'TUESDAY', 'THURSDAY'], work_start: '09:00', work_end: '13:00' });
+    expect(made.status).toBeLessThan(300);
+    const got = (await api.request('GET', `/hr/staff/${made.body.id}`, undefined, MGR)).body;
+    expect(got.work_days).toEqual(['MONDAY', 'TUESDAY', 'THURSDAY']);
+    expect([got.work_start, got.work_end]).toEqual(['09:00', '13:00']);
+
+    // Monday to Thursday, but Wednesday is not a working day: three days of leave
+    const types = (await api.request('GET', '/hr/leave/types', undefined, MGR)).body;
+    const CL = types.find((t: any) => t.code === 'CL').id;
+    const ask = (from: string, to: string) => api.request('POST', '/hr/leave/requests', { employee_id: made.body.id, leave_type_id: CL, from_date: from, to_date: to }, MGR);
+    const lv = await ask(MON(), THU());
+    expect(lv.status).toBeLessThan(300);
+    expect(lv.body.days).toBe(3);
+    expect((await ask(WED(), WED())).status).toBe(400);                                                // not a working day
+
+    // the grid carries the hours
+    const grid = (await api.request('GET', `/hr/attendance?period=${P}`, undefined, MGR)).body;
+    const me = grid.staff.find((r: any) => r.id === made.body.id);
+    expect(me.work_start).toBe('09:00');
+
+    // moving to full time clears the schedule; a schedule cannot be put back on a full-timer
+    expect((await api.request('PUT', `/hr/staff/${made.body.id}`, { emp_type: 'FULL_TIME' }, MGR)).status).toBeLessThan(300);
+    const ft = (await api.request('GET', `/hr/staff/${made.body.id}`, undefined, MGR)).body;
+    expect(ft.work_days).toBeNull();
+    expect(ft.work_start).toBeNull();
+    expect((await api.request('PUT', `/hr/staff/${made.body.id}`, { work_start: '09:00', work_end: '13:00' }, MGR)).status).toBe(400);
+
+    // the form shows the schedule only for part time
+    const { page } = await app.open(MGR, '/secure/hr');
+    await expectShell(page);
+    await page.getByTestId('hr-staff-add').click();
+    await expect(page.getByTestId('hr-sec-schedule')).toHaveCount(0);
+    await page.locator('select').filter({ has: page.locator('option[value="PART_TIME"]') }).selectOption('PART_TIME');
+    await expect(page.getByTestId('hr-sec-schedule')).toBeVisible();
+    await expect(page.getByTestId('hr-f-wd-MONDAY')).toBeVisible();
+  });
+
+  test('HR-10 a login can be linked to a staff record later @edge', async ({ app, api }) => {
+    const add = (b: any) => api.request('POST', '/hr/staff', { join_date: '2025-01-01', ...b }, MGR);
+    const cands = (await api.request('GET', '/hr/staff/candidates', undefined, MGR)).body;
+    const cand = cands.find((c: any) => c.email === COUNTER);
+    expect(cand).toBeTruthy();
+
+    const a = await add({ full_name: 'QA Joiner One' });
+    const b = await add({ full_name: 'QA Joiner Two' });
+    const link = (id: number, user_id: any) => api.request('POST', `/hr/staff/${id}/login`, { user_id }, MGR);
+
+    expect((await link(a.body.id, null)).status).toBe(400);                   // nothing chosen
+    expect((await link(a.body.id, 99999999)).status).toBe(400);                // no such login
+    // a base store outside the login's stores is refused at link time
+    const outside = (await api.request('GET', '/hr/stores', undefined, MGR)).body.find((st: any) => !cand.stores.some((m: any) => m.id === st.id));
+    if (outside) {
+      const c = await add({ full_name: 'QA Joiner Three', store_id: outside.id });
+      expect((await link(c.body.id, cand.id)).status).toBe(400);
+    }
+
+    expect((await link(a.body.id, cand.id)).status).toBeLessThan(300);
+    const got = (await api.request('GET', `/hr/staff/${a.body.id}`, undefined, MGR)).body;
+    expect(got.has_login).toBe(true);
+    expect(got.email).toBe(COUNTER);
+    expect(got.name).not.toBe('QA Joiner One');                                // the login's name takes over
+    expect((await link(a.body.id, cand.id)).status).toBe(400);                 // already linked
+    expect((await link(b.body.id, cand.id)).status).toBe(400);                 // the login is taken
+    expect((await api.request('POST', `/hr/staff/${a.body.id}/login`, { user_id: cand.id }, STOREHEAD)).status).toBe(403);
+
+    // the HR page offers the link on a record without a login
+    const { page } = await app.open(MGR, '/secure/hr');
+    await expectShell(page);
+    await page.getByTestId('hr-staff-row').filter({ hasText: 'QA Joiner Two' }).click();
+    await expect(page.getByTestId('hr-link-login')).toBeVisible();
+    await expect(page.getByTestId('hr-link-save')).toBeDisabled();
+  });
+
+  test('HR-11 setup items are limited to roles, and bands are a set per role @edge', async ({ api }) => {
+    await employee(api);
+    const roles = (await api.request('GET', '/hr/roles', undefined, MGR)).body.map((r: any) => r.name);
+    expect(roles).toEqual(expect.arrayContaining(['Business Head', 'Store Head', 'Sales Staff']));
+    expect(roles).not.toContain('Site Admin');
+
+    // a pay component for Store Heads cannot go on a Sales Staff salary
+    expect((await api.request('POST', '/hr/components', { name: 'QA Bad Role', kind: 'EARNING', applies_roles: ['Nope'] }, MGR)).status).toBe(400);
+    const sh = await api.request('POST', '/hr/components', { name: 'QA SH Allowance', kind: 'EARNING', applies_roles: ['Store Head'] }, MGR);
+    expect(sh.status).toBeLessThan(300);
+    const comps = (await api.request('GET', '/hr/components', undefined, MGR)).body;
+    expect(comps.find((c: any) => c.id === sh.body.id).applies_roles).toEqual(['Store Head']);
+    const rev = await api.request('POST', `/hr/staff/${empId}/revisions`, { effective_from: '2031-01-01', lines: [{ component_id: comp.BASIC, amount: 1000 }, { component_id: sh.body.id, amount: 10 }] }, MGR);
+    expect(rev.status).toBe(400);
+    expect(JSON.stringify(rev.body)).toContain('does not apply');
+
+    // so is a leave type
+    const lt = await api.request('POST', '/hr/leave/types', { name: 'QA SH Leave', paid: true, annual_days: 3, applies_roles: ['Store Head'] }, MGR);
+    expect(lt.status).toBeLessThan(300);
+    const ask = await api.request('POST', '/hr/leave/requests', { employee_id: empId, leave_type_id: lt.body.id, from_date: MON(), to_date: MON() }, MGR);
+    expect(ask.status).toBe(400);
+    expect((await api.request('GET', '/hr/leave/types', undefined, MGR)).body.find((t: any) => t.id === lt.body.id).applies_roles).toEqual(['Store Head']);
+
+    // bands: a set for one role, the default for the rest
+    expect((await api.request('PUT', '/hr/kpi/bands', { role_name: 'Bogus', bands: [{ min_percent: 0, label: 'x', incentive_percent: 0 }] }, MGR)).status).toBe(400);
+    expect((await api.request('PUT', '/hr/kpi/bands', { role_name: 'Sales Staff', bands: [{ min_percent: 0, label: 'Low', incentive_percent: 0 }, { min_percent: 50, label: 'Own', incentive_percent: 7 }] }, MGR)).status).toBeLessThan(300);
+    const bands = (await api.request('GET', '/hr/kpi/bands', undefined, MGR)).body;
+    expect(bands.filter((b: any) => b.role_name === 'Sales Staff').length).toBe(2);
+    expect(bands.filter((b: any) => !b.role_name).length).toBeGreaterThan(0);                  // the default set is untouched
+  });
+
+  test('HR-12 KPI: system measures, manager ratings, overrides, finalising, and the staff view @happy', async ({ api }) => {
+    await employee(api);
+    const metric = (b: any) => api.request('POST', '/hr/kpi/metrics', { max_points: 10, ...b }, MGR);
+    // rules have to make sense for the measure
+    expect((await metric({ name: 'QA no key', source: 'SYSTEM', rule: { kind: 'linear', target: 0, floor: 3 } })).status).toBe(400);
+    expect((await metric({ name: 'QA steps on sales', source: 'SYSTEM', system_key: 'SALES_VALUE', rule: { kind: 'steps', steps: [{ upto: 1, pct: 100 }] } })).status).toBe(400);
+    expect((await metric({ name: 'QA wrong way', source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: { kind: 'linear', target: 5, floor: 1 } })).status).toBe(400);
+    expect((await metric({ name: 'QA steps down', source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: { kind: 'steps', steps: [{ upto: 2, pct: 50 }, { upto: 1, pct: 100 }] } })).status).toBe(400);
+    expect((await metric({ name: 'QA scale', source: 'MANUAL', rating_scale: 1 })).status).toBe(400);
+
+    // the earlier QA measures (HR-4) would otherwise wait for ratings
+    for (const m of (await api.request('GET', '/hr/kpi/metrics', undefined, MGR)).body.filter((x: any) => ['QA Service', 'QA Accuracy'].includes(x.name))) {
+      await api.request('PUT', `/hr/kpi/metrics/${m.id}`, { name: m.name, max_points: m.max_points, active: false }, MGR);
+    }
+    const sys = await metric({ name: 'QA Absence', source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: { kind: 'steps', steps: [{ upto: 0, pct: 100 }, { upto: 2, pct: 50 }], otherwise: 0 }, applies_roles: ['Sales Staff'] });
+    const man = await metric({ name: 'QA Housekeeping', source: 'MANUAL', rating_scale: 5, applies_roles: ['Sales Staff'] });
+    const other = await metric({ name: 'QA SH Only', source: 'MANUAL', applies_roles: ['Store Head'] });
+    for (const m of [sys, man, other]) expect(m.status).toBeLessThan(300);
+
+    const day = `${Q}-12`;
+    expect((await api.request('PUT', '/hr/attendance', { employee_id: empId, date: day, status: 'ABSENT' }, MGR)).status).toBeLessThan(300);
+
+    const row = async () => (await api.request('GET', `/hr/kpi/month?period=${Q}`, undefined, MGR)).body.find((x: any) => x.employee_id === empId);
+    let r = await row();
+    const item = (name: string) => r.items.find((i: any) => i.name === name);
+    expect(item('QA Absence')).toMatchObject({ source: 'SYSTEM', raw: 1, points: 5, state: 'SCORED' });      // one day absent: 50%
+    expect(item('QA Housekeeping').state).toBe('PENDING');
+    expect(item('QA SH Only')).toBeUndefined();                                                              // another role's measure
+    expect(r.pending).toContain('QA Housekeeping');
+
+    // ratings: managers only, within the scale, manual measures only
+    const rate = (who: string, b: any) => api.request('PUT', '/kpi/rate', { employee_id: empId, period: Q, metric_id: man.body.id, ...b }, who);
+    expect((await rate(COUNTER, { rating: 3 })).status).toBe(403);                                           // counter staff cannot rate
+    expect((await rate(MGR, { rating: 6 })).status).toBe(400);
+    expect((await rate(MGR, { rating: 3, metric_id: sys.body.id })).status).toBe(400);                       // system measure
+    expect((await rate(MGR, { rating: 3, metric_id: other.body.id })).status).toBe(400);                     // does not apply
+    expect((await api.request('GET', `/kpi/rate?period=${Q}`, undefined, COUNTER)).status).toBe(403);
+    expect((await api.request('GET', `/kpi/rate?period=${Q}`, undefined, STOREHEAD)).status).toBe(200);
+
+    // cannot finalise while a rating is missing, unless told to leave it out
+    const miss = await api.request('POST', '/hr/kpi/finalise', { period: Q, employee_id: empId }, MGR);
+    expect(miss.body.finalised).toBe(0);
+    expect(JSON.stringify(miss.body.skipped)).toContain('QA Housekeeping');
+
+    expect((await rate(MGR, { rating: 3, note: 'tidy most days' })).status).toBeLessThan(300);
+    r = await row();
+    expect(item('QA Housekeeping')).toMatchObject({ rating: 3, points: 6, state: 'SCORED', note: 'tidy most days' });
+
+    // an override needs a reason and stays within the maximum
+    const ov = (b: any) => api.request('POST', '/hr/kpi/override', { employee_id: empId, period: Q, metric_id: sys.body.id, ...b }, MGR);
+    expect((await ov({ points: 8 })).status).toBe(400);
+    expect((await ov({ points: 11, reason: 'x' })).status).toBe(400);
+    expect((await ov({ points: 8, reason: 'covered a family emergency' })).status).toBeLessThan(300);
+    r = await row();
+    expect(item('QA Absence')).toMatchObject({ points: 5, override_points: 8, final_points: 8 });
+    expect(r.draft.percent).toBe(70);
+
+    // finalise: frozen, with the role's own band; then locked until reopened
+    const fin = await api.request('POST', '/hr/kpi/finalise', { period: Q, employee_id: empId }, MGR);
+    expect(fin.body.finalised).toBe(1);
+    r = await row();
+    expect(r).toMatchObject({ finalised: true, percent: 70, band_label: 'Own', incentive_percent: 7 });
+    expect((await rate(MGR, { rating: 5 })).status).toBe(400);
+    expect((await ov({ points: 9, reason: 'again' })).status).toBe(400);
+
+    // the staff member sees it, with the evidence; nobody else's, and a login without a staff record sees nothing
+    const mine = (await api.request('GET', '/kpi/mine', undefined, STAFF_EMAIL)).body;
+    expect(mine.staff).toBe(true);
+    const mo = mine.months.find((m: any) => m.period === Q);
+    expect(mo.percent).toBe(70);
+    expect(mo.scores.find((x: any) => x.name === 'QA Absence')).toMatchObject({ evidence: '1 day absent', overridden: true });
+    expect((await api.request('GET', '/kpi/mine', undefined, STOREHEAD)).status).toBe(200);
+
+    expect((await api.request('POST', '/hr/kpi/reopen', { period: Q, employee_id: empId }, MGR)).status).toBeLessThan(300);
+    expect((await rate(MGR, { rating: 4 })).status).toBeLessThan(300);
+    expect((await api.request('GET', '/kpi/mine', undefined, STAFF_EMAIL)).body.months.find((m: any) => m.period === Q)).toBeUndefined();   // no longer final
+  });
+
+  test('HR-13 pay components and leave types can be removed; ones already in use are made inactive @edge', async ({ api, app }) => {
+    await employee(api);
+    const comps = async () => (await api.request('GET', '/hr/components', undefined, MGR)).body;
+    const types = async () => (await api.request('GET', '/hr/leave/types', undefined, MGR)).body;
+
+    // never used: gone for good
+    const c = await api.request('POST', '/hr/components', { name: 'QA Throwaway', kind: 'EARNING' }, MGR);
+    expect((await api.request('DELETE', `/hr/components/${c.body.id}`, undefined, MGR)).body).toMatchObject({ removed: true });
+    expect((await comps()).find((x: any) => x.id === c.body.id)).toBeUndefined();
+    const t = await api.request('POST', '/hr/leave/types', { name: 'QA Throwaway', paid: true, annual_days: 1 }, MGR);
+    expect((await api.request('DELETE', `/hr/leave/types/${t.body.id}`, undefined, MGR)).body).toMatchObject({ removed: true });
+    expect((await types()).find((x: any) => x.id === t.body.id)).toBeUndefined();
+
+    // in the salary / leave history: cannot be deleted, so it goes inactive
+    const basic = (await comps()).find((x: any) => x.code === 'BASIC');
+    const gone = await api.request('DELETE', `/hr/components/${basic.id}`, undefined, MGR);
+    expect(gone.body).toMatchObject({ removed: false, deactivated: true });
+    expect(gone.body.uses).toBeGreaterThan(0);
+    expect((await comps()).find((x: any) => x.id === basic.id).active).toBe(false);
+    await api.request('PUT', `/hr/components/${basic.id}`, { name: basic.name, kind: basic.kind, active: true }, MGR);   // put it back for the other specs
+    const cl = (await types()).find((x: any) => x.code === 'CL');
+    expect((await api.request('DELETE', `/hr/leave/types/${cl.id}`, undefined, MGR)).body).toMatchObject({ removed: false, deactivated: true });
+    await api.request('PUT', `/hr/leave/types/${cl.id}`, { name: cl.name, paid: cl.paid, annual_days: cl.annual_days, active: true }, MGR);
+
+    expect((await api.request('DELETE', '/hr/components/99999999', undefined, MGR)).status).toBe(404);
+    expect((await api.request('DELETE', `/hr/components/${basic.id}`, undefined, 'storehead@local.test')).status).toBe(403);
+
+    // the page offers it
+    const { page } = await app.open(MGR, '/secure/hr/setup');
+    await expect(page.getByTestId('hr-set-comp-row').first()).toBeVisible();
+    await api.request('POST', '/hr/components', { name: 'QA Page Remove', kind: 'EARNING' }, MGR);
+    await page.reload();
+    const names = () => page.getByTestId('hr-set-comp-row').evaluateAll((rows: any[]) => rows.map(r => (r.querySelector('input') as HTMLInputElement).value));
+    const idx = (await names()).indexOf('QA Page Remove');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    await page.getByTestId('hr-set-comp-row').nth(idx).getByTestId('hr-set-comp-remove').click();
+    await expect(page.getByTestId('hr-message')).toContainText('removed');
+    await expect.poll(names).not.toContain('QA Page Remove');
   });
 });

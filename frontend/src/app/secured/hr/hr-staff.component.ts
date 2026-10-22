@@ -1,4 +1,5 @@
 import { Component, OnInit } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import { HrService } from "./hr.service";
 
 /** Staff list, profile and salary revisions. */
@@ -15,35 +16,84 @@ export class HrStaffComponent implements OnInit {
   editing: any = null;
   detail: any = null;
   exitDate = "";
+  readonly days = [["SUNDAY", "Sunday"], ["MONDAY", "Monday"], ["TUESDAY", "Tuesday"], ["WEDNESDAY", "Wednesday"], ["THURSDAY", "Thursday"], ["FRIDAY", "Friday"], ["SATURDAY", "Saturday"]];
 
   revising = false;
   rev: any = { effective_from: "", reason: "", amounts: {} };
 
-  constructor(private hr: HrService) {}
+  constructor(private hr: HrService, private route: ActivatedRoute) {}
 
   ngOnInit() { this.load(); }
 
   load() {
     this.hr.get("staff").subscribe(r => this.rows = r, e => this.error = this.hr.msg(e));
-    this.hr.get("staff/candidates").subscribe(r => this.candidates = r);
+    this.hr.get("staff/candidates").subscribe(r => {
+      this.candidates = r;
+      this.openFromQuery();
+    });
     this.hr.get("stores").subscribe(r => this.stores = r);
     this.hr.get("components").subscribe(r => this.components = (r || []).filter((c: any) => c.active));
+  }
+
+  /** arriving from Settings > Users: ?user=<login> starts a record for it, ?staff=<id> opens the existing one */
+  private openFromQuery() {
+    const q = this.route.snapshot.queryParamMap;
+    const userId = Number(q.get("user")), staffId = Number(q.get("staff"));
+    if (staffId && !this.editing) { this.open({ id: staffId }); return; }
+    if (userId && !this.editing && this.candidates.some(c => c.id === userId)) {
+      this.add();
+      this.editing.user_id = userId;
+      this.loginChanged();
+    }
   }
 
   add() {
     this.message = this.error = "";
     this.detail = null;
-    this.editing = { id: 0, user_id: null, emp_code: "", designation: "", store_id: null, emp_type: "FULL_TIME", join_date: this.hr.today(), weekly_off: "SUNDAY" };
+    this.editing = { id: 0, work_days: [], work_start: "", work_end: "", has_login: true, full_name: "", phone: "", user_id: null, emp_code: "", designation: "", store_id: null, emp_type: "FULL_TIME", join_date: this.hr.today(), weekly_off: "SUNDAY" };
   }
 
   open(r: any) {
     this.message = this.error = "";
     this.hr.get(`staff/${r.id}`).subscribe(d => {
       this.detail = d;
-      this.editing = { ...d, join_date: String(d.join_date).slice(0, 10), dob: d.dob ? String(d.dob).slice(0, 10) : "" };
+      this.editing = { ...d, work_days: d.work_days || [], work_start: d.work_start || "", work_end: d.work_end || "", join_date: String(d.join_date).slice(0, 10), dob: d.dob ? String(d.dob).slice(0, 10) : "" };
       this.revising = false;
       this.exitDate = this.hr.today();
     }, e => this.error = this.hr.msg(e));
+  }
+
+  /** the stores of the chosen login (new record) or of the person being edited */
+  get loginStores(): any[] {
+    const e = this.editing;
+    if (!e) return [];
+    if (!e.id && !e.has_login) return this.stores;
+    if (e.id && !e.has_login) return this.stores;
+    if (e.id) return e.stores || [];
+    return this.candidates.find(c => c.id === e.user_id)?.stores || [];
+  }
+
+  loginChanged() {
+    const st = this.loginStores;
+    this.editing.store_id = st.length === 1 && this.editing.has_login ? st[0].id : null;
+  }
+
+  toggleDay(code: string) {
+    const d: string[] = this.editing.work_days || [];
+    this.editing.work_days = d.includes(code) ? d.filter(x => x !== code) : [...d, code];
+  }
+
+  /** "Mon, Wed, Fri 09:00-13:00" for the list */
+  schedule(r: any): string {
+    if (r.emp_type !== "PART_TIME") return "";
+    const days = (r.work_days || []).map((x: string) => x.charAt(0) + x.slice(1, 3).toLowerCase()).join(", ");
+    const hrs = r.work_start && r.work_end ? `${r.work_start}-${r.work_end}` : "";
+    return [days, hrs].filter(Boolean).join(" ");
+  }
+
+  storeNames(r: any): string {
+    const names = (r.stores || []).map((s: any) => s.name);
+    return names.length ? names.join(", ") : (r.store || "");
   }
 
   back() { this.editing = null; this.detail = null; this.load(); }
@@ -56,12 +106,29 @@ export class HrStaffComponent implements OnInit {
       dob: e.dob || null, address: e.address, emergency_name: e.emergency_name, emergency_phone: e.emergency_phone,
       pan: e.pan, aadhaar_last4: e.aadhaar_last4, bank_name: e.bank_name, account_no: e.account_no, ifsc: e.ifsc, notes: e.notes,
     };
+    const pt = e.emp_type === "PART_TIME";
+    body.work_days = pt ? e.work_days : [];
+    body.work_start = pt && e.work_start ? e.work_start : null;
+    body.work_end = pt && e.work_end ? e.work_end : null;
+    if (!e.has_login) { body.full_name = e.full_name; body.phone = e.phone; }
     if (!e.id) {
-      body.user_id = e.user_id;
+      body.user_id = e.has_login ? e.user_id : null;
       this.hr.post("staff", body).subscribe(r => { this.message = `Staff record added (${r.emp_code}). Now set their salary.`; this.open({ id: r.id }); }, err => this.error = this.hr.msg(err));
     } else {
       this.hr.put(`staff/${e.id}`, body).subscribe(() => { this.message = "Saved."; this.open({ id: e.id }); }, err => this.error = this.hr.msg(err));
     }
+  }
+
+  linkUserId: number | null = null;
+
+  linkLogin() {
+    this.error = this.message = "";
+    this.hr.post(`staff/${this.editing.id}/login`, { user_id: this.linkUserId }).subscribe(() => {
+      this.message = "Login linked.";
+      this.linkUserId = null;
+      this.hr.get("staff/candidates").subscribe(r => this.candidates = r);
+      this.open({ id: this.editing.id });
+    }, e => this.error = this.hr.msg(e));
   }
 
   leave() {
@@ -74,17 +141,23 @@ export class HrStaffComponent implements OnInit {
   }
 
   // ------------------------------------------------------------ salary
+  /** the pay components that apply to this person's role */
+  get revisionComponents(): any[] {
+    const role = this.detail?.role_name || null;
+    return this.components.filter(c => !c.applies_roles?.length || (role && c.applies_roles.includes(role)));
+  }
+
   startRevision() {
     const last = this.detail?.revisions?.[0];
     const amounts: any = {};
-    for (const c of this.components) amounts[c.id] = last?.lines?.find((l: any) => l.component_id === c.id)?.amount ?? null;
+    for (const c of this.revisionComponents) amounts[c.id] = last?.lines?.find((l: any) => l.component_id === c.id)?.amount ?? null;
     this.rev = { effective_from: this.hr.today().slice(0, 8) + "01", reason: "", amounts };
     this.revising = true;
   }
 
   saveRevision() {
     this.error = this.message = "";
-    const lines = this.components.map(c => ({ component_id: c.id, amount: this.rev.amounts[c.id] })).filter(l => +l.amount > 0);
+    const lines = this.revisionComponents.map(c => ({ component_id: c.id, amount: this.rev.amounts[c.id] })).filter(l => +l.amount > 0);
     this.hr.post(`staff/${this.editing.id}/revisions`, { effective_from: this.rev.effective_from, reason: this.rev.reason, lines })
       .subscribe(() => { this.message = "Salary revision saved."; this.open({ id: this.editing.id }); }, e => this.error = this.hr.msg(e));
   }

@@ -14,8 +14,8 @@
           <thead><tr><th>Code</th><th>Name</th><th>Designation</th><th>Type</th><th>Store</th><th>Joined</th><th class="text-end">Monthly earnings</th><th>Status</th></tr></thead>
           <tbody>
             <tr *ngFor="let r of rows" (click)="open(r)" style="cursor:pointer" data-testid="hr-staff-row">
-              <td>{{r.emp_code}}</td><td>{{r.name}}<div class="small text-muted">{{r.email}}</div></td><td>{{r.designation}}</td>
-              <td>{{r.emp_type === 'FULL_TIME' ? 'Full time' : 'Part time'}}</td><td>{{r.store}}</td><td>{{r.join_date | date:'dd MMM yyyy'}}</td>
+              <td>{{r.emp_code}}</td><td>{{r.name}}<div class="small text-muted">{{r.has_login ? r.email : 'No login'}}</div></td><td>{{r.designation}}</td>
+              <td>{{r.emp_type === 'FULL_TIME' ? 'Full time' : 'Part time'}}<div class="small text-muted">{{schedule(r)}}</div></td><td>{{storeNames(r)}}</td><td>{{r.join_date | date:'dd MMM yyyy'}}</td>
               <td class="text-end">{{r.monthly_earnings ? (r.monthly_earnings | number:'1.2-2') : '-'}}</td>
               <td><span class="badge" [ngClass]="r.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'">{{r.status === 'ACTIVE' ? 'Active' : 'Left'}}</span></td>
             </tr>
@@ -32,33 +32,105 @@
         <div class="page-toolbar-actions"><button class="btn btn-outline-secondary" type="button" (click)="back()" data-testid="hr-staff-back">Back to list</button></div>
       </div>
 
-      <div class="row g-3">
-        <div class="col-md-4" *ngIf="!editing.id">
-          <label class="form-label">Login *</label>
-          <select class="form-select" [(ngModel)]="editing.user_id" data-testid="hr-f-user">
-            <option [ngValue]="null">Choose</option>
-            <option *ngFor="let c of candidates" [ngValue]="c.id">{{c.name}} ({{c.email}})</option>
-          </select>
-        </div>
-        <div class="col-md-2"><label class="form-label">Staff code</label><input class="form-control" [(ngModel)]="editing.emp_code" placeholder="auto" data-testid="hr-f-code"></div>
-        <div class="col-md-3"><label class="form-label">Designation</label><input class="form-control" [(ngModel)]="editing.designation" data-testid="hr-f-designation"></div>
-        <div class="col-md-3"><label class="form-label">Store</label>
-          <select class="form-select" [(ngModel)]="editing.store_id"><option [ngValue]="null">-</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.name}}</option></select></div>
-        <div class="col-md-2"><label class="form-label">Type</label>
-          <select class="form-select" [(ngModel)]="editing.emp_type"><option value="FULL_TIME">Full time</option><option value="PART_TIME">Part time</option></select></div>
-        <div class="col-md-2"><label class="form-label">Joined *</label><input type="date" class="form-control" [(ngModel)]="editing.join_date" data-testid="hr-f-join"></div>
-        <div class="col-md-2"><label class="form-label">Weekly off</label>
-          <select class="form-select" [(ngModel)]="editing.weekly_off"><option value="SUNDAY">Sunday</option><option value="ROTATION">Rotation</option></select></div>
-        <div class="col-md-2"><label class="form-label">Date of birth</label><input type="date" class="form-control" [(ngModel)]="editing.dob"></div>
-        <div class="col-md-6"><label class="form-label">Address</label><input class="form-control" [(ngModel)]="editing.address" maxlength="300"></div>
-        <div class="col-md-3"><label class="form-label">Emergency contact</label><input class="form-control" [(ngModel)]="editing.emergency_name" maxlength="80"></div>
-        <div class="col-md-3"><label class="form-label">Emergency phone</label><input class="form-control" [(ngModel)]="editing.emergency_phone" maxlength="20"></div>
-        <div class="col-md-3"><label class="form-label">PAN</label><input class="form-control text-uppercase" [(ngModel)]="editing.pan" maxlength="10" data-testid="hr-f-pan"></div>
-        <div class="col-md-3"><label class="form-label">Aadhaar (last 4 digits)</label><input class="form-control" [(ngModel)]="editing.aadhaar_last4" maxlength="4"></div>
-        <div class="col-md-3"><label class="form-label">Bank</label><input class="form-control" [(ngModel)]="editing.bank_name" maxlength="60"></div>
-        <div class="col-md-3"><label class="form-label">Account number</label><input class="form-control" [(ngModel)]="editing.account_no" maxlength="30"></div>
-        <div class="col-md-3"><label class="form-label">IFSC</label><input class="form-control text-uppercase" [(ngModel)]="editing.ifsc" maxlength="15"></div>
-        <div class="col-md-9"><label class="form-label">Notes</label><input class="form-control" [(ngModel)]="editing.notes" maxlength="300"></div>
+      <div class="d-flex flex-column gap-3">
+        <fieldset class="border rounded p-3" data-testid="hr-sec-employment">
+          <legend class="float-none w-auto px-2 fs-6 mb-0">Employment</legend>
+          <div class="row g-3">
+            <div class="col-12" *ngIf="!editing.id">
+              <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="hr-login-yes" [value]="true" [(ngModel)]="editing.has_login" (ngModelChange)="loginChanged()" data-testid="hr-f-haslogin"><label class="form-check-label" for="hr-login-yes">Has a login</label></div>
+              <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="hr-login-no" [value]="false" [(ngModel)]="editing.has_login" (ngModelChange)="loginChanged()" data-testid="hr-f-nologin"><label class="form-check-label" for="hr-login-no">No login</label></div>
+            </div>
+            <div class="col-md-4" *ngIf="!editing.id && editing.has_login">
+              <label class="form-label">Login *</label>
+              <select class="form-select" [(ngModel)]="editing.user_id" (ngModelChange)="loginChanged()" data-testid="hr-f-user">
+                <option [ngValue]="null">Choose</option>
+                <option *ngFor="let c of candidates" [ngValue]="c.id">{{c.name}} ({{c.email}})</option>
+              </select>
+            </div>
+            <div class="col-12" *ngIf="editing.id && !editing.has_login" data-testid="hr-link-login">
+              <div class="border rounded p-2 d-flex gap-2 align-items-center flex-wrap bg-light">
+                <span class="small">No login yet. When one is created under Settings &gt; Users, link it here.</span>
+                <select class="form-select form-select-sm w-auto" [(ngModel)]="linkUserId" data-testid="hr-link-user">
+                  <option [ngValue]="null">Choose a login</option>
+                  <option *ngFor="let c of candidates" [ngValue]="c.id">{{c.name}} ({{c.email}})</option>
+                </select>
+                <button class="btn btn-sm btn-outline-primary" type="button" [disabled]="!linkUserId" (click)="linkLogin()" data-testid="hr-link-save">Link login</button>
+              </div>
+            </div>
+            <ng-container *ngIf="!editing.has_login">
+              <div class="col-md-4"><label class="form-label">Name *</label><input class="form-control" [(ngModel)]="editing.full_name" maxlength="80" data-testid="hr-f-name"></div>
+              <div class="col-md-3"><label class="form-label">Phone</label><input class="form-control" [(ngModel)]="editing.phone" maxlength="20" data-testid="hr-f-phone"></div>
+            </ng-container>
+            <div class="col-md-2"><label class="form-label">Staff code</label><input class="form-control" [(ngModel)]="editing.emp_code" placeholder="auto" data-testid="hr-f-code"></div>
+            <div class="col-md-3"><label class="form-label">Designation</label><input class="form-control" [(ngModel)]="editing.designation" data-testid="hr-f-designation"></div>
+            <div class="col-md-3"><label class="form-label">Type</label>
+              <select class="form-select" [(ngModel)]="editing.emp_type"><option value="FULL_TIME">Full time</option><option value="PART_TIME">Part time</option></select></div>
+            <div class="col-md-3"><label class="form-label">Joined *</label><input type="date" class="form-control" [(ngModel)]="editing.join_date" data-testid="hr-f-join"></div>
+            <div class="col-md-3"><label class="form-label">Weekly off</label>
+              <select class="form-select" [(ngModel)]="editing.weekly_off" data-testid="hr-f-weeklyoff"><option *ngFor="let d of days" [value]="d[0]">{{d[1]}}</option><option value="ROTATION">Rotation (marked in attendance)</option></select></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="border rounded p-3" *ngIf="editing.emp_type === 'PART_TIME'" data-testid="hr-sec-schedule">
+          <legend class="float-none w-auto px-2 fs-6 mb-0">Part-time schedule</legend>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Working days</label>
+              <div>
+                <div class="form-check form-check-inline" *ngFor="let d of days">
+                  <input class="form-check-input" type="checkbox" [id]="'hr-wd-' + d[0]" [checked]="editing.work_days.includes(d[0])" (change)="toggleDay(d[0])" [attr.data-testid]="'hr-f-wd-' + d[0]">
+                  <label class="form-check-label" [for]="'hr-wd-' + d[0]">{{d[1].slice(0, 3)}}</label>
+                </div>
+              </div>
+              <div class="form-text">Leave empty if the days change; the weekly off then applies. Days not ticked are off days, not absences.</div>
+            </div>
+            <div class="col-md-2"><label class="form-label">From</label><input type="time" class="form-control" [(ngModel)]="editing.work_start" data-testid="hr-f-wstart"></div>
+            <div class="col-md-2"><label class="form-label">To</label><input type="time" class="form-control" [(ngModel)]="editing.work_end" data-testid="hr-f-wend"></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="border rounded p-3" data-testid="hr-sec-stores">
+          <legend class="float-none w-auto px-2 fs-6 mb-0">Stores</legend>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Works at</label>
+              <div data-testid="hr-f-stores">
+                <ng-container *ngIf="editing.has_login"><span *ngFor="let s of loginStores" class="badge bg-light text-dark border me-1">{{s.name}}</span></ng-container>
+                <span *ngIf="!loginStores.length && editing.has_login" class="text-muted small">{{editing.user_id || editing.id ? 'This login is not mapped to any store yet.' : 'Choose a login to see its stores.'}}</span>
+                <span *ngIf="!editing.has_login" class="text-muted small">No login, so no store mapping. Pick the store they work at as the base store.</span>
+              </div>
+              <div class="form-text" *ngIf="editing.has_login">Taken from the login's store mapping. Change it under Settings &gt; Users.</div>
+            </div>
+            <div class="col-md-4"><label class="form-label">Base store</label>
+              <select class="form-select" [(ngModel)]="editing.store_id" data-testid="hr-f-store">
+                <option [ngValue]="null">-</option><option *ngFor="let s of loginStores" [ngValue]="s.id">{{s.name}}</option></select>
+              <div class="form-text">Shown in the staff list.</div></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="border rounded p-3" data-testid="hr-sec-personal">
+          <legend class="float-none w-auto px-2 fs-6 mb-0">Personal &amp; emergency contact</legend>
+          <div class="row g-3">
+            <div class="col-md-3"><label class="form-label">Date of birth</label><input type="date" class="form-control" [(ngModel)]="editing.dob"></div>
+            <div class="col-md-9"><label class="form-label">Address</label><input class="form-control" [(ngModel)]="editing.address" maxlength="300"></div>
+            <div class="col-md-6"><label class="form-label">Emergency contact</label><input class="form-control" [(ngModel)]="editing.emergency_name" maxlength="80"></div>
+            <div class="col-md-6"><label class="form-label">Emergency phone</label><input class="form-control" [(ngModel)]="editing.emergency_phone" maxlength="20"></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="border rounded p-3" data-testid="hr-sec-bank">
+          <legend class="float-none w-auto px-2 fs-6 mb-0">Identity &amp; bank</legend>
+          <div class="row g-3">
+            <div class="col-md-3"><label class="form-label">PAN</label><input class="form-control text-uppercase" [(ngModel)]="editing.pan" maxlength="10" data-testid="hr-f-pan"></div>
+            <div class="col-md-3"><label class="form-label">Aadhaar (last 4 digits)</label><input class="form-control" [(ngModel)]="editing.aadhaar_last4" maxlength="4"></div>
+            <div class="col-md-6"></div>
+            <div class="col-md-4"><label class="form-label">Bank</label><input class="form-control" [(ngModel)]="editing.bank_name" maxlength="60"></div>
+            <div class="col-md-4"><label class="form-label">Account number</label><input class="form-control" [(ngModel)]="editing.account_no" maxlength="30"></div>
+            <div class="col-md-4"><label class="form-label">IFSC</label><input class="form-control text-uppercase" [(ngModel)]="editing.ifsc" maxlength="15"></div>
+          </div>
+        </fieldset>
+
+        <div><label class="form-label">Notes</label><input class="form-control" [(ngModel)]="editing.notes" maxlength="300"></div>
       </div>
       <div class="mt-3 d-flex gap-2 flex-wrap">
         <button class="btn btn-primary" type="button" (click)="save()" data-testid="hr-staff-save">{{editing.id ? 'Save' : 'Add staff'}}</button>
@@ -83,7 +155,7 @@
           <div class="row g-3">
             <div class="col-md-3"><label class="form-label">Effective from *</label><input type="date" class="form-control" [(ngModel)]="rev.effective_from" data-testid="hr-rev-date"></div>
             <div class="col-md-9"><label class="form-label">Reason</label><input class="form-control" [(ngModel)]="rev.reason" maxlength="200" placeholder="Annual increment, promotion, joining..."></div>
-            <div class="col-md-3" *ngFor="let c of components">
+            <div class="col-md-3" *ngFor="let c of revisionComponents">
               <label class="form-label">{{c.name}} <span class="text-muted small">({{c.kind === 'EARNING' ? 'earning' : 'deduction'}})</span></label>
               <input type="number" min="0" class="form-control" [(ngModel)]="rev.amounts[c.id]" [attr.data-testid]="'hr-rev-' + c.code">
             </div>

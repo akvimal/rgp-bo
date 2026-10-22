@@ -1,83 +1,192 @@
 <div class="card">
   <div class="card-body pt-3">
+    <div class="small text-muted mb-3">Everything here except holidays can be limited to roles; with no role chosen it applies to every role. To give two roles different leave days, add a leave type for each role. Remove deletes an item that was never used; one already in the salary or leave history is made inactive instead.</div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
 
-    <div class="row g-4">
-      <!-- pay components -->
-      <div class="col-lg-6">
-        <h6>Pay components</h6>
-        <table class="table table-sm align-middle" data-testid="hr-set-components">
-          <thead><tr><th>Name</th><th>Kind</th><th class="text-center">Active</th><th></th></tr></thead>
-          <tbody>
-            <tr *ngFor="let c of components"><td><input class="form-control form-control-sm" [(ngModel)]="c.name" maxlength="60"></td><td>{{c.kind === 'EARNING' ? 'Earning' : 'Deduction'}}</td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="c.active"></td><td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="saveComponent(c)">Save</button></td></tr>
-            <tr><td><input class="form-control form-control-sm" placeholder="New component" [(ngModel)]="newComp.name" maxlength="60" data-testid="hr-set-comp-name"></td>
-              <td><select class="form-select form-select-sm" [(ngModel)]="newComp.kind"><option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option></select></td>
-              <td></td><td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addComponent()" data-testid="hr-set-comp-add">Add</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- leave types -->
-      <div class="col-lg-6">
-        <h6>Leave types</h6>
-        <table class="table table-sm align-middle" data-testid="hr-set-types">
-          <thead><tr><th>Name</th><th>Paid</th><th>Days a year</th><th class="text-center">Active</th><th></th></tr></thead>
-          <tbody>
-            <tr *ngFor="let t of leaveTypes"><td><input class="form-control form-control-sm" [(ngModel)]="t.name" maxlength="40"></td><td>{{t.paid ? 'Paid' : 'Unpaid'}}</td>
-              <td><input type="number" min="0" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="t.annual_days" [disabled]="!t.paid"></td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="t.active"></td><td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="saveType(t)">Save</button></td></tr>
-            <tr><td><input class="form-control form-control-sm" placeholder="New leave type" [(ngModel)]="newType.name" maxlength="40" data-testid="hr-set-type-name"></td>
-              <td><select class="form-select form-select-sm" [(ngModel)]="newType.paid"><option [ngValue]="true">Paid</option><option [ngValue]="false">Unpaid</option></select></td>
-              <td><input type="number" min="0" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="newType.annual_days"></td><td></td>
-              <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addType()" data-testid="hr-set-type-add">Add</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- holidays -->
-      <div class="col-lg-6">
-        <div class="d-flex align-items-end gap-3 mb-1"><h6 class="mb-0">Holidays</h6><input type="number" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="year" (change)="load()"></div>
-        <table class="table table-sm align-middle" data-testid="hr-set-holidays">
-          <tbody>
-            <tr *ngFor="let h of holidays"><td>{{h.date | date:'dd MMM yyyy'}}</td><td>{{h.name}}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" type="button" (click)="removeHoliday(h)">Remove</button></td></tr>
-            <tr><td><input type="date" class="form-control form-control-sm" [(ngModel)]="newHoliday.date" data-testid="hr-set-hol-date"></td>
-              <td><input class="form-control form-control-sm" placeholder="Name" [(ngModel)]="newHoliday.name" maxlength="60" data-testid="hr-set-hol-name"></td>
-              <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addHoliday()" data-testid="hr-set-hol-add">Add</button></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- KPI -->
-      <div class="col-lg-6">
-        <h6>KPI measures</h6>
-        <table class="table table-sm align-middle" data-testid="hr-set-metrics">
-          <thead><tr><th>Measure</th><th>Max points</th><th class="text-center">Active</th><th></th></tr></thead>
-          <tbody>
-            <tr *ngFor="let m of metrics"><td><input class="form-control form-control-sm" [(ngModel)]="m.name" maxlength="60"></td>
-              <td><input type="number" min="1" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="m.max_points"></td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="m.active"></td><td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="saveMetric(m)">Save</button></td></tr>
-            <tr><td><input class="form-control form-control-sm" placeholder="New measure (e.g. Customer service)" [(ngModel)]="newMetric.name" maxlength="60" data-testid="hr-set-metric-name"></td>
-              <td><input type="number" min="1" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="newMetric.max_points" data-testid="hr-set-metric-max"></td><td></td>
-              <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addMetric()" data-testid="hr-set-metric-add">Add</button></td></tr>
-          </tbody>
-        </table>
-        <h6 class="mt-3">Incentive bands</h6>
-        <div class="small text-muted mb-1">A score at or above the percentage earns the incentive, as a percentage of the month's earnings.</div>
-        <table class="table table-sm align-middle" data-testid="hr-set-bands">
-          <thead><tr><th>Score from %</th><th>Label</th><th>Incentive %</th><th></th></tr></thead>
-          <tbody>
-            <tr *ngFor="let b of bands; let i = index" data-testid="hr-set-band">
-              <td><input type="number" min="0" max="100" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="b.min_percent"></td>
-              <td><input class="form-control form-control-sm" [(ngModel)]="b.label" maxlength="30"></td>
-              <td><input type="number" min="0" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="b.incentive_percent"></td>
-              <td class="text-end"><button class="btn btn-outline-danger btn-sm" type="button" (click)="removeBand(i)">Remove</button></td></tr>
-          </tbody>
-        </table>
-        <button class="btn btn-outline-secondary btn-sm" type="button" (click)="addBand()" data-testid="hr-set-band-add">Add band</button>
-        <button class="btn btn-primary btn-sm ms-2" type="button" (click)="saveBands()" data-testid="hr-set-bands-save">Save bands</button>
-      </div>
+    <div class="d-flex justify-content-end gap-3 small mb-2">
+      <a role="button" (click)="setAll(true)" data-testid="hr-sec-expand">Expand all</a>
+      <a role="button" (click)="setAll(false)" data-testid="hr-sec-collapse">Collapse all</a>
     </div>
+
+    <section class="border rounded mb-3" data-testid="hr-sec-pay">
+      <button type="button" class="w-100 d-flex justify-content-between align-items-center btn btn-light text-start px-3 py-2 rounded-0 rounded-top"
+              (click)="toggle('pay')" [attr.aria-expanded]="isOpen('pay')" data-testid="hr-sec-pay-toggle">
+        <span><strong>Pay</strong> <span class="text-muted small ms-2">pay components on a salary</span></span>
+        <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-pay-count">{{components.length}} components</span><i class="bi" [ngClass]="isOpen('pay') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
+      </button>
+      <div class="p-3" *ngIf="isOpen('pay')" data-testid="hr-sec-pay-body">
+        <!-- pay components -->
+          <table class="table table-sm align-middle" data-testid="hr-set-components">
+            <thead><tr><th>Name</th><th>Kind</th><th>Applies to</th><th class="text-center">Active</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let c of components" data-testid="hr-set-comp-row" [attr.data-comp]="c.code"><td><input class="form-control form-control-sm" [(ngModel)]="c.name" maxlength="60"></td><td>{{c.kind === 'EARNING' ? 'Earning' : 'Deduction'}}</td>
+                <td><app-hr-roles [roles]="roles" [(value)]="c.applies_roles"></app-hr-roles></td>
+                <td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="c.active"></td>
+                <td class="text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="saveComponent(c)">Save</button>
+                  <button class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="removeComponent(c)" data-testid="hr-set-comp-remove">Remove</button></td></tr>
+              <tr><td><input class="form-control form-control-sm" placeholder="New component" [(ngModel)]="newComp.name" maxlength="60" data-testid="hr-set-comp-name"></td>
+                <td><select class="form-select form-select-sm" [(ngModel)]="newComp.kind"><option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option></select></td>
+                <td><app-hr-roles [roles]="roles" [(value)]="newComp.applies_roles"></app-hr-roles></td>
+                <td></td><td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addComponent()" data-testid="hr-set-comp-add">Add</button></td></tr>
+            </tbody>
+          </table>
+      </div>
+    </section>
+
+    <section class="border rounded mb-3" data-testid="hr-sec-leave">
+      <button type="button" class="w-100 d-flex justify-content-between align-items-center btn btn-light text-start px-3 py-2 rounded-0 rounded-top"
+              (click)="toggle('leave')" [attr.aria-expanded]="isOpen('leave')" data-testid="hr-sec-leave-toggle">
+        <span><strong>Leave and holidays</strong> <span class="text-muted small ms-2">leave types, and the holidays everyone shares</span></span>
+        <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-leave-count">{{leaveTypes.length}} types · {{holidays.length}} holidays</span><i class="bi" [ngClass]="isOpen('leave') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
+      </button>
+      <div class="p-3" *ngIf="isOpen('leave')" data-testid="hr-sec-leave-body">
+        <div class="row g-4">
+          <div class="col-lg-7">
+            <!-- leave types -->
+              <h6>Leave types</h6>
+              <table class="table table-sm align-middle" data-testid="hr-set-types">
+                <thead><tr><th>Name</th><th>Paid</th><th>Days a year</th><th>Applies to</th><th class="text-center">Active</th><th></th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let t of leaveTypes" data-testid="hr-set-type-row" [attr.data-type]="t.code"><td><input class="form-control form-control-sm" [(ngModel)]="t.name" maxlength="40"></td><td>{{t.paid ? 'Paid' : 'Unpaid'}}</td>
+                    <td><input type="number" min="0" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="t.annual_days" [disabled]="!t.paid"></td>
+                    <td><app-hr-roles [roles]="roles" [(value)]="t.applies_roles"></app-hr-roles></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="t.active"></td>
+                    <td class="text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="saveType(t)">Save</button>
+                      <button class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="removeType(t)" data-testid="hr-set-type-remove">Remove</button></td></tr>
+                  <tr><td><input class="form-control form-control-sm" placeholder="New leave type" [(ngModel)]="newType.name" maxlength="40" data-testid="hr-set-type-name"></td>
+                    <td><select class="form-select form-select-sm" [(ngModel)]="newType.paid"><option [ngValue]="true">Paid</option><option [ngValue]="false">Unpaid</option></select></td>
+                    <td><input type="number" min="0" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="newType.annual_days"></td>
+                    <td><app-hr-roles [roles]="roles" [(value)]="newType.applies_roles"></app-hr-roles></td><td></td>
+                    <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addType()" data-testid="hr-set-type-add">Add</button></td></tr>
+                </tbody>
+              </table>
+          </div>
+          <div class="col-lg-5">
+            <!-- holidays -->
+              <div class="d-flex align-items-end gap-3 mb-1"><h6 class="mb-0">Holidays</h6><span class="small text-muted">shared by every role</span><input type="number" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="year" (change)="load()"></div>
+              <table class="table table-sm align-middle" data-testid="hr-set-holidays">
+                <tbody>
+                  <tr *ngFor="let h of holidays"><td>{{h.date | date:'dd MMM yyyy'}}</td><td>{{h.name}}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" type="button" (click)="removeHoliday(h)">Remove</button></td></tr>
+                  <tr><td><input type="date" class="form-control form-control-sm" [(ngModel)]="newHoliday.date" data-testid="hr-set-hol-date"></td>
+                    <td><input class="form-control form-control-sm" placeholder="Name" [(ngModel)]="newHoliday.name" maxlength="60" data-testid="hr-set-hol-name"></td>
+                    <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addHoliday()" data-testid="hr-set-hol-add">Add</button></td></tr>
+                </tbody>
+              </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="border rounded mb-3" data-testid="hr-sec-kpi">
+      <button type="button" class="w-100 d-flex justify-content-between align-items-center btn btn-light text-start px-3 py-2 rounded-0 rounded-top"
+              (click)="toggle('kpi')" [attr.aria-expanded]="isOpen('kpi')" data-testid="hr-sec-kpi-toggle">
+        <span><strong>KPI</strong> <span class="text-muted small ms-2">measures, and the incentive bands scores earn</span></span>
+        <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-kpi-count">{{metrics.length}} measures</span><i class="bi" [ngClass]="isOpen('kpi') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
+      </button>
+      <div class="p-3" *ngIf="isOpen('kpi')" data-testid="hr-sec-kpi-body">
+        <!-- KPI measures -->
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">KPI measures</h6>
+            <button class="btn btn-primary btn-sm" type="button" (click)="newMeasure()" data-testid="hr-set-metric-new">Add measure</button>
+          </div>
+          <div class="small text-muted mb-2">A measure is either measured by the system or rated by a manager each month, and can be limited to roles, staff types and designations.</div>
+          <table class="table table-sm align-middle" data-testid="hr-set-metrics">
+            <thead><tr><th>Measure</th><th>How</th><th class="text-end">Max points</th><th>Applies to</th><th class="text-center">Active</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let m of metrics" data-testid="hr-set-metric-row">
+                <td>{{m.name}}<div class="small text-muted" *ngIf="m.description">{{m.description}}</div></td>
+                <td>{{m.source === 'SYSTEM' ? 'System: ' + (m.system_key | titlecase) : 'Rated by a manager (1-' + m.rating_scale + ')'}}</td>
+                <td class="text-end">{{m.max_points}}</td>
+                <td>{{roleSummary(m.applies_roles)}}<span class="small text-muted d-block" *ngIf="m.applies_types?.length || m.applies_designations?.length">{{(m.applies_types || []).join(', ')}} {{(m.applies_designations || []).join(', ')}}</span></td>
+                <td class="text-center">{{m.active ? 'Yes' : 'No'}}</td>
+                <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="editMeasure(m)" data-testid="hr-set-metric-edit">Edit</button></td></tr>
+              <tr *ngIf="!metrics.length"><td colspan="6" class="text-center text-muted py-3">No measures yet.</td></tr>
+            </tbody>
+          </table>
+
+          <div *ngIf="mf" class="border rounded p-3" data-testid="hr-set-metric-form">
+            <h6>{{mf.id ? 'Edit measure' : 'New measure'}}</h6>
+            <div class="row g-3">
+              <div class="col-md-4"><label class="form-label">Name *</label><input class="form-control" [(ngModel)]="mf.name" maxlength="60" data-testid="hr-set-metric-name"></div>
+              <div class="col-md-2"><label class="form-label">Max points *</label><input type="number" min="1" class="form-control" [(ngModel)]="mf.max_points" data-testid="hr-set-metric-max"></div>
+              <div class="col-md-3"><label class="form-label">Measured by</label>
+                <select class="form-select" [(ngModel)]="mf.source" data-testid="hr-set-metric-source"><option value="MANUAL">A manager's rating</option><option value="SYSTEM">The system</option></select></div>
+              <div class="col-md-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfactive" [(ngModel)]="mf.active"><label class="form-check-label" for="mfactive">Active</label></div></div>
+              <div class="col-12"><label class="form-label">Description</label><input class="form-control" [(ngModel)]="mf.description" maxlength="200" placeholder="What good looks like"></div>
+
+              <ng-container *ngIf="mf.source === 'MANUAL'">
+                <div class="col-md-3"><label class="form-label">Rating scale (1 to)</label><input type="number" min="2" max="10" class="form-control" [(ngModel)]="mf.rating_scale" data-testid="hr-set-metric-scale"></div>
+                <div class="col-md-9 small text-muted align-self-end">A rating of {{mf.rating_scale}} earns all the points; each step below earns proportionally less.</div>
+              </ng-container>
+
+              <ng-container *ngIf="mf.source === 'SYSTEM'">
+                <div class="col-md-5"><label class="form-label">What to measure *</label>
+                  <select class="form-select" [(ngModel)]="mf.system_key" (ngModelChange)="systemChanged()" data-testid="hr-set-metric-key">
+                    <option value="">Choose</option><option *ngFor="let s of systemMeasures" [value]="s.key">{{s.label}}</option></select>
+                  <div class="form-text">{{measureHint}}</div></div>
+                <div class="col-md-3"><label class="form-label">Judged only after</label><input type="number" min="0" class="form-control" [(ngModel)]="mf.min_activity" data-testid="hr-set-metric-minact">
+                  <div class="form-text">activity needed (bills, shifts, inquiries); below it the measure drops out</div></div>
+                <div class="col-md-4" *ngIf="mf.system_key">
+                  <label class="form-label">Points from the figure</label>
+                  <select class="form-select" [(ngModel)]="mf.rule_kind" data-testid="hr-set-metric-rule"><option value="steps" [disabled]="direction === 'higher'">Steps (less is better)</option><option value="linear">Target and floor</option></select></div>
+                <div class="col-12" *ngIf="mf.system_key && mf.rule_kind === 'steps'" data-testid="hr-set-metric-steps">
+                  <div class="small text-muted mb-1">Up to each limit the person earns that share of the points ({{measureUnit}}).</div>
+                  <div class="d-flex gap-2 align-items-center mb-1" *ngFor="let s of mf.steps; let i = index">
+                    <span class="small">up to</span><input type="number" min="0" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="s.upto">
+                    <span class="small">earns</span><input type="number" min="0" max="100" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="s.pct"><span class="small">%</span>
+                    <button class="btn btn-outline-danger btn-sm" type="button" (click)="removeStep(i)">Remove</button></div>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" (click)="addStep()">Add step</button>
+                  <span class="small ms-3">Beyond the last step earns</span> <input type="number" min="0" max="100" class="form-control form-control-sm d-inline-block" style="width:5rem" [(ngModel)]="mf.otherwise"> <span class="small">%</span>
+                </div>
+                <div class="col-12" *ngIf="mf.system_key && mf.rule_kind === 'linear'" data-testid="hr-set-metric-linear">
+                  <div class="d-flex gap-2 align-items-center">
+                    <span class="small">Full points at</span><input type="number" class="form-control form-control-sm" style="width:7rem" [(ngModel)]="mf.target" data-testid="hr-set-metric-target">
+                    <span class="small">no points at</span><input type="number" class="form-control form-control-sm" style="width:7rem" [(ngModel)]="mf.floor" data-testid="hr-set-metric-floor">
+                    <span class="small text-muted">({{measureUnit}}; points scale evenly in between)</span></div>
+                </div>
+              </ng-container>
+
+              <div class="col-12"><label class="form-label">Applies to roles</label><app-hr-roles [roles]="roles" [(value)]="mf.applies_roles"></app-hr-roles></div>
+              <div class="col-md-4"><label class="form-label">Staff types</label>
+                <div>
+                  <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="mft1" [checked]="mf.applies_types.includes('FULL_TIME')" (change)="toggleType('FULL_TIME')"><label class="form-check-label" for="mft1">Full time</label></div>
+                  <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="mft2" [checked]="mf.applies_types.includes('PART_TIME')" (change)="toggleType('PART_TIME')"><label class="form-check-label" for="mft2">Part time</label></div>
+                </div><div class="form-text">none ticked = both</div></div>
+              <div class="col-md-8"><label class="form-label">Designations</label><input class="form-control" [(ngModel)]="mf.designations" placeholder="e.g. Cashier, Pharmacist (blank = all)"></div>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn-primary" type="button" (click)="saveMeasure()" [disabled]="!mf.name" data-testid="hr-set-metric-save">Save measure</button>
+              <button class="btn btn-outline-secondary ms-2" type="button" (click)="mf = null">Cancel</button>
+            </div>
+          </div>
+        <hr>
+        <!-- KPI incentive bands, a set per role -->
+          <h6>Incentive bands</h6>
+          <div class="small text-muted mb-1">A score at or above the percentage earns the incentive, as a percentage of the month's earnings. A role with no set of its own uses the default set.</div>
+          <div class="d-flex gap-2 align-items-center mb-2">
+            <select class="form-select form-select-sm w-auto" [(ngModel)]="bandRole" (ngModelChange)="showBands()" data-testid="hr-set-band-role">
+              <option value="">Default set</option>
+              <option *ngFor="let r of roles" [value]="r">{{r}}</option>
+            </select>
+            <span class="small text-muted" *ngIf="bandRole && !hasOwnBands">No set of its own yet; this role uses the default.</span>
+            <button *ngIf="bandRole && !hasOwnBands && !bands.length" class="btn btn-outline-secondary btn-sm" type="button" (click)="startOwnBands()" data-testid="hr-set-band-copy">Start from the default</button>
+          </div>
+          <table class="table table-sm align-middle" data-testid="hr-set-bands">
+            <thead><tr><th>Score from %</th><th>Label</th><th>Incentive %</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let b of bands; let i = index" data-testid="hr-set-band">
+                <td><input type="number" min="0" max="100" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="b.min_percent"></td>
+                <td><input class="form-control form-control-sm" [(ngModel)]="b.label" maxlength="30"></td>
+                <td><input type="number" min="0" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="b.incentive_percent"></td>
+                <td class="text-end"><button class="btn btn-outline-danger btn-sm" type="button" (click)="removeBand(i)">Remove</button></td></tr>
+            </tbody>
+          </table>
+          <button class="btn btn-outline-secondary btn-sm" type="button" (click)="addBand()" data-testid="hr-set-band-add">Add band</button>
+          <button class="btn btn-primary btn-sm ms-2" type="button" (click)="saveBands()" data-testid="hr-set-bands-save">Save bands</button>
+          <span class="small text-muted ms-2" *ngIf="bandRole && hasOwnBands">Saving an empty set returns this role to the default.</span>
+      </div>
+    </section>
+
   </div>
 </div>

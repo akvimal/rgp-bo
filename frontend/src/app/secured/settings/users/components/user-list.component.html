@@ -11,6 +11,7 @@
             <th scope="col">Role</th>
             <th *isAuth="'businesses'" scope="col">Business</th>
             <th scope="col">Store</th>
+            <th *isAuth="'hr.view'" scope="col">Staff record</th>
             <th scope="col">Actions</th>
         </tr>
     </thead>
@@ -22,6 +23,10 @@
             <td data-testid="user-row-role">{{p.role}}</td>
             <td *isAuth="'businesses'" data-testid="user-row-business">{{p.business || '—'}}</td>
             <td>{{p.store || '—'}}</td>
+            <td *isAuth="'hr.view'" data-testid="user-row-staff">
+                <a *ngIf="staffOf(p.id) as st; else noStaff" routerLink="/secure/hr/staff" [queryParams]="{staff: st.id}" [attr.data-testid]="'user-staff-open'">{{st.emp_code}}{{st.designation ? ' · ' + st.designation : ''}}{{st.status !== 'ACTIVE' ? ' (left)' : ''}}</a>
+                <ng-template #noStaff><a routerLink="/secure/hr/staff" [queryParams]="{user: p.id}" data-testid="user-staff-add">Add as staff</a></ng-template>
+            </td>
             <td>
                 <div class="grid-actions">
                     <a *isAuth="'users.edit'" [routerLink]="['../edit', p.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>

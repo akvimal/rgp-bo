@@ -31,12 +31,12 @@ export class HrPayrollService {
     const [run] = await this.manager.query(`select r.*, a.full_name as approved_by_name from hr_payroll_run r left join app_user a on a.id = r.approved_by where r.period = $1`, [period]);
     if (!run) return null;
     const lines = await this.manager.query(
-      `select l.id, l.employee_id, u.full_name as name, e.emp_code, e.designation, l.payable_days::float as payable_days, l.unpaid_days::float as unpaid_days, l.not_employed_days::float as not_employed_days,
+      `select l.id, l.employee_id, coalesce(e.full_name, u.full_name) as name, e.emp_code, e.designation, l.payable_days::float as payable_days, l.unpaid_days::float as unpaid_days, l.not_employed_days::float as not_employed_days,
               l.earnings, l.deductions, l.earnings_paid::float as earnings_paid, l.fixed_deductions::float as fixed_deductions, l.extra_deduction::float as extra_deduction,
               l.staff_credit_recovery::float as staff_credit_recovery, l.kpi_incentive::float as kpi_incentive, l.adjustment::float as adjustment, l.adjustment_note, l.net::float as net,
               coalesce((select sum(amount) from staff_credit_entry c where c.user_id = e.user_id), 0)::float as credit_outstanding
          from hr_payroll_line l join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id
-        where l.run_id = $1 order by u.full_name`, [run.id]);
+        where l.run_id = $1 order by coalesce(e.full_name, u.full_name)`, [run.id]);
     return { ...run, lines };
   }
 
@@ -50,9 +50,9 @@ export class HrPayrollService {
     const end = `${period}-${String(dim).padStart(2, '0')}`;
 
     const emps = await this.manager.query(
-      `select e.id, e.user_id, to_char(e.join_date, 'YYYY-MM-DD') as join_date, to_char(e.exit_date, 'YYYY-MM-DD') as exit_date, u.full_name
+      `select e.id, e.user_id, to_char(e.join_date, 'YYYY-MM-DD') as join_date, to_char(e.exit_date, 'YYYY-MM-DD') as exit_date, coalesce(e.full_name, u.full_name) as full_name
          from hr_employee e left join app_user u on u.id = e.user_id
-        where e.join_date <= $2::date and (e.exit_date is null or e.exit_date >= $1::date) order by u.full_name`, [start, end]);
+        where e.join_date <= $2::date and (e.exit_date is null or e.exit_date >= $1::date) order by coalesce(e.full_name, u.full_name)`, [start, end]);
     if (!emps.length) throw new BadRequestException('There is no staff employed in that month.');
 
     const warnings: string[] = [];
@@ -128,7 +128,7 @@ export class HrPayrollService {
 
   async editLine(id: number, b: any, by: any) {
     const [l] = await this.manager.query(
-      `select l.*, r.status, r.period, r.id as rid, e.user_id, u.full_name from hr_payroll_line l join hr_payroll_run r on r.id = l.run_id join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id where l.id = $1`, [id]);
+      `select l.*, r.status, r.period, r.id as rid, e.user_id, coalesce(e.full_name, u.full_name) as full_name from hr_payroll_line l join hr_payroll_run r on r.id = l.run_id join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id where l.id = $1`, [id]);
     if (!l) throw new NotFoundException('Payroll line not found.');
     if (l.status !== 'DRAFT') throw new BadRequestException('This month is approved and locked.');
     const num = (v: any, def: number, name: string, allowNeg = false) => {
@@ -206,7 +206,7 @@ export class HrPayrollService {
   /** everything a pay stub shows */
   async stub(lineId: number) {
     const [l] = await this.manager.query(
-      `select l.id, r.period, r.status, e.emp_code, e.designation, e.pan, e.bank_name, e.account_no, e.ifsc, to_char(e.join_date, 'DD Mon YYYY') as join_date, u.full_name as name,
+      `select l.id, r.period, r.status, e.emp_code, e.designation, e.pan, e.bank_name, e.account_no, e.ifsc, to_char(e.join_date, 'DD Mon YYYY') as join_date, coalesce(e.full_name, u.full_name) as name,
               l.payable_days::float as payable_days, l.unpaid_days::float as unpaid_days, l.not_employed_days::float as not_employed_days, l.earnings, l.deductions,
               l.earnings_paid::float as earnings_paid, l.fixed_deductions::float as fixed_deductions, l.extra_deduction::float as extra_deduction, l.staff_credit_recovery::float as staff_credit_recovery,
               l.kpi_incentive::float as kpi_incentive, l.adjustment::float as adjustment, l.adjustment_note, l.net::float as net
@@ -223,7 +223,7 @@ export class HrPayrollService {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(`Payroll ${period}`);
     const rows = await this.manager.query(
-      `select l.id, e.emp_code, u.full_name as name, e.bank_name, e.account_no, e.ifsc from hr_payroll_line l join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id where l.run_id = $1`, [run.id]);
+      `select l.id, e.emp_code, coalesce(e.full_name, u.full_name) as name, e.bank_name, e.account_no, e.ifsc from hr_payroll_line l join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id where l.run_id = $1`, [run.id]);
     const bank = new Map<number, any>(rows.map((r: any) => [r.id, r]));
     ws.columns = [
       { header: 'Code', key: 'code', width: 9 }, { header: 'Name', key: 'name', width: 24 }, { header: 'Payable days', key: 'days', width: 13 },

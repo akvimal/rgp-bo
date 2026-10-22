@@ -1,40 +1,69 @@
 <div class="card">
   <div class="card-body pt-3">
-    <div class="small text-muted mb-2">Score each person on the measures set up under Setup. The score's band decides the incentive (a percentage of the month's earnings); payroll picks it up when it is worked out. Bills and sales are shown as a reference from the till.</div>
+    <div class="small text-muted mb-2">System measures work themselves out from sales, shifts, grievances, inquiries and attendance; managers rate the others under KPI &gt; Rate staff. Open a person to see the evidence behind each score. Finalising freezes the month; payroll picks up the incentive from the band the score falls in.</div>
     <div class="page-toolbar">
       <div class="page-toolbar-main"><div><label class="form-label">Month</label><input type="month" class="form-control" style="width:12rem" [(ngModel)]="period" (change)="load()" data-testid="hr-kpi-period"></div></div>
+      <div class="page-toolbar-actions"><button class="btn btn-primary" type="button" (click)="finalise(null)" data-testid="hr-kpi-finalise-all">Finalise the month</button></div>
     </div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
-    <div *ngIf="!metrics.length" class="alert alert-warning py-2">No KPI measures yet. Add them under Setup.</div>
 
     <div class="table-responsive">
       <table class="table table-sm align-middle" data-testid="hr-kpi-table">
-        <thead><tr><th>Staff</th><th class="text-end">Bills</th><th class="text-end">Sales</th><th class="text-end">Score</th><th>Band</th><th class="text-end">Incentive</th><th></th></tr></thead>
+        <thead><tr><th>Staff</th><th class="text-end">Bills</th><th class="text-end">Sales</th><th class="text-end">Score</th><th>Band</th><th class="text-end">Incentive</th><th>Status</th><th></th></tr></thead>
         <tbody>
-          <tr *ngFor="let r of rows" data-testid="hr-kpi-row">
-            <td>{{r.name}}<div class="small text-muted">{{r.designation}}</div></td>
+          <tr *ngFor="let r of rows" data-testid="hr-kpi-row" [attr.data-emp]="r.employee_id">
+            <td>{{r.name}}<div class="small text-muted">{{r.designation}}<span *ngIf="r.role"> · {{r.role}}</span></div></td>
             <td class="text-end">{{r.bills}}</td><td class="text-end">{{r.sales_value | number:'1.0-0'}}</td>
-            <td class="text-end">{{r.review_id ? (r.percent + '% (' + r.total_points + '/' + r.max_points + ')') : '-'}}</td>
-            <td>{{r.band_label}}</td><td class="text-end">{{r.review_id ? (r.incentive_percent + '%') : ''}}</td>
-            <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="start(r)" [disabled]="!metrics.length" data-testid="hr-kpi-score">{{r.review_id ? 'Re-score' : 'Score'}}</button></td>
+            <td class="text-end">{{r.items.length || r.finalised ? (percentOf(r) + '%') : '-'}}</td>
+            <td>{{bandOf(r)}}</td><td class="text-end">{{(r.items.length || r.finalised) ? (incentiveOf(r) + '%') : ''}}</td>
+            <td>
+              <span class="badge bg-success" *ngIf="r.finalised">Finalised</span>
+              <span class="badge bg-warning text-dark" *ngIf="!r.finalised && r.pending.length" [title]="r.pending.join(', ')">Awaiting ratings</span>
+              <span class="badge bg-secondary" *ngIf="!r.finalised && !r.pending.length && r.items.length">Draft</span>
+              <span class="small text-muted" *ngIf="!r.items.length && !r.finalised">No measures apply</span>
+            </td>
+            <td class="text-end text-nowrap">
+              <button class="btn btn-outline-primary btn-sm" type="button" (click)="show(r)" data-testid="hr-kpi-open">{{open?.employee_id === r.employee_id ? 'Hide' : 'Details'}}</button>
+            </td>
           </tr>
-          <tr *ngIf="!rows.length"><td colspan="7" class="text-center text-muted py-3">No staff in that month.</td></tr>
+          <tr *ngIf="!rows.length"><td colspan="8" class="text-center text-muted py-3">No staff in that month.</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div *ngIf="scoring" class="border rounded p-3" data-testid="hr-kpi-form">
-      <h6>{{scoring.name}} - {{period}} <span class="small text-muted">({{scoring.bills}} bills, {{scoring.sales_value | number:'1.0-0'}} sales)</span></h6>
-      <div class="row g-3">
-        <div class="col-md-3" *ngFor="let m of metrics">
-          <label class="form-label">{{m.name}} <span class="text-muted small">(max {{m.max_points}})</span></label>
-          <input type="number" min="0" [max]="m.max_points" class="form-control" [(ngModel)]="scoring.points[m.id]" [attr.data-testid]="'hr-kpi-m-' + m.id">
-          <div class="small text-muted" *ngIf="m.description">{{m.description}}</div>
+    <div *ngIf="open" class="border rounded p-3" data-testid="hr-kpi-form">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <h6 class="mb-2">{{open.name}} - {{period}} <span class="small text-muted">({{open.bills}} bills, {{open.sales_value | number:'1.0-0'}} sales)</span></h6>
+        <div class="d-flex gap-2">
+          <button *ngIf="!open.finalised && !open.payroll_locked" class="btn btn-primary btn-sm" type="button" (click)="finalise(open)" data-testid="hr-kpi-finalise">Finalise</button>
+          <button *ngIf="!open.finalised && !open.payroll_locked && open.pending.length" class="btn btn-outline-secondary btn-sm" type="button" (click)="finalise(open, true)" data-testid="hr-kpi-finalise-unrated">Finalise without the unrated</button>
+          <button *ngIf="open.finalised && !open.payroll_locked" class="btn btn-outline-secondary btn-sm" type="button" (click)="reopen(open)" data-testid="hr-kpi-reopen">Reopen</button>
         </div>
-        <div class="col-md-9"><label class="form-label">Note</label><input class="form-control" maxlength="200" [(ngModel)]="scoring.note"></div>
-        <div class="col-md-3 d-flex align-items-end"><button class="btn btn-primary" type="button" (click)="save()" data-testid="hr-kpi-save">Save score</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="scoring = null">Cancel</button></div>
       </div>
+      <div class="small text-muted mb-2" *ngIf="open.payroll_locked">Payroll for this month is approved; reopen it to change KPI.</div>
+      <table class="table table-sm align-middle mb-0" data-testid="hr-kpi-items">
+        <thead><tr><th>Measure</th><th>How</th><th>Evidence</th><th class="text-end">Points</th><th>Override</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let i of open.items" data-testid="hr-kpi-item" [attr.data-metric]="i.metric_id">
+            <td>{{i.name}}</td>
+            <td class="small">{{i.source === 'SYSTEM' ? 'System' : 'Manager rating'}}</td>
+            <td class="small">{{i.source === 'SYSTEM' ? (i.evidence || '') : (i.rating !== null ? ('Rated ' + i.rating + ' of ' + i.scale) : '')}}<div class="text-muted" *ngIf="i.note">{{i.note}}</div></td>
+            <td class="text-end text-nowrap"><span [ngClass]="i.state === 'SCORED' ? '' : 'text-muted'">{{stateText(i)}}</span>
+              <div class="small text-warning" *ngIf="i.override_points !== null">overridden (computed {{i.points ?? '-'}})</div></td>
+            <td class="text-nowrap" *ngIf="!open.locked">
+              <input type="number" min="0" [max]="i.max" class="form-control form-control-sm d-inline-block" style="width:5rem" [(ngModel)]="ov[i.metric_id].points" [attr.data-testid]="'hr-kpi-ov-' + i.metric_id">
+              <input class="form-control form-control-sm d-inline-block ms-1" style="width:11rem" placeholder="Reason" maxlength="200" [(ngModel)]="ov[i.metric_id].reason" [attr.data-testid]="'hr-kpi-ovr-' + i.metric_id">
+              <button class="btn btn-outline-primary btn-sm ms-1" type="button" (click)="setOverride(i)" [attr.data-testid]="'hr-kpi-ovs-' + i.metric_id">Set</button>
+              <button class="btn btn-outline-secondary btn-sm ms-1" type="button" *ngIf="i.override_points !== null" (click)="clearOverride(i)">Clear</button>
+            </td>
+            <td *ngIf="open.locked" class="small text-muted">{{i.override_reason}}</td>
+          </tr>
+          <tr *ngIf="!open.items.length"><td colspan="5" class="text-center text-muted py-2">No measures apply to this person's role, type or designation.</td></tr>
+        </tbody>
+      </table>
+      <div class="small mt-2" *ngIf="open.finalised">Finalised: {{open.percent}}% ({{open.total_points}}/{{open.max_points}}) {{open.band_label}}, incentive {{open.incentive_percent}}%.</div>
+      <div class="small mt-2" *ngIf="!open.finalised">Draft: {{open.draft.percent}}% ({{open.draft.total}}/{{open.draft.max}}) {{open.draft.band_label}}, incentive {{open.draft.incentive_percent}}%.</div>
     </div>
   </div>
 </div>

@@ -11,7 +11,7 @@
         <thead><tr><th class="text-start">Staff</th><th *ngFor="let d of days" style="min-width:2rem">{{d}}</th><th>P</th><th>A</th><th>H</th></tr></thead>
         <tbody>
           <tr *ngFor="let s of grid.staff" [attr.data-emp]="s.id" data-testid="hr-att-row">
-            <td class="text-start text-nowrap">{{s.name}}</td>
+            <td class="text-start text-nowrap">{{s.name}}<div class="small text-muted" *ngIf="s.work_start" data-testid="hr-att-hours">{{s.work_start}}-{{s.work_end}}</div></td>
             <td *ngFor="let d of days" [ngClass]="cell(s, d).cls" [title]="cell(s, d).title" [style.cursor]="cell(s, d).locked ? 'default' : 'pointer'"
                 (click)="click(s, d)" [attr.data-testid]="'hr-att-' + s.id + '-' + d">{{cell(s, d).text}}</td>
             <td>{{count(s, 'PRESENT')}}</td><td>{{count(s, 'ABSENT')}}</td><td>{{count(s, 'HALF_DAY')}}</td>

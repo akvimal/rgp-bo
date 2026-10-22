@@ -39,9 +39,11 @@ export class HrAttendanceComponent implements OnInit {
       const cls = m === "PRESENT" ? "bg-success text-white" : m === "ABSENT" ? "bg-danger text-white" : m === "HALF_DAY" ? "bg-warning text-dark" : "bg-light text-muted";
       return { text: this.short[m], cls, title: m.replace("_", " ").toLowerCase(), locked: false };
     }
-    const sunday = new Date(dt + "T00:00:00Z").getUTCDay() === 0 && s.weekly_off === "SUNDAY";
+    const dayName = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"][new Date(dt + "T00:00:00Z").getUTCDay()];
+    const partTime = s.work_days && s.work_days.length;
+    const sunday = partTime ? !s.work_days.includes(dayName) : dayName === s.weekly_off; // a part-timer's non-working day, or the weekly off
     const hol = this.grid.holidays.find((h: any) => h.d === dt);
-    return { text: "", cls: sunday || hol ? "bg-light" : "", title: hol ? hol.name : sunday ? "Weekly off (Sunday)" : "Not marked: paid as worked", locked: false };
+    return { text: "", cls: sunday || hol ? "bg-light" : "", title: hol ? hol.name : sunday ? (partTime ? "Not a working day" : `Weekly off (${dayName.charAt(0) + dayName.slice(1).toLowerCase()})`) : "Not marked: paid as worked", locked: false };
   }
 
   click(s: any, d: number) {
