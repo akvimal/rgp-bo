@@ -1,15 +1,15 @@
-<div class="card">
+<div class="card mt-3" data-testid="invoice-payments">
     <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center">
-        <h5 class="card-title">Payments</h5>
-        <div class="text-end">
-          <div><strong>Status:</strong> {{paymentstatus || 'Unpaid'}}</div>
-          <div><strong>Balance:</strong> {{(balanceamount || 0) | number:'1.2-2'}}</div>
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h6 class="inv-title mb-0">Payments</h6>
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge" [ngClass]="paymentstatus === 'Paid' ? 'bg-success' : (paymentstatus === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark')" data-testid="invoice-pay-status">{{paymentstatus || 'Unpaid'}}</span>
+          <span><span class="inv-label me-1">Balance</span><span class="inv-value" data-testid="invoice-pay-balance">{{(balanceamount || 0) | number:'1.2-2'}}</span></span>
         </div>
       </div>
 
-      <div class="table-responsive mb-4" *ngIf="payments.length > 0">
-        <table class="table table-sm table-bordered align-middle">
+      <div class="table-responsive" [class.mb-3]="payments.length > 0" *ngIf="payments.length > 0">
+        <table class="table table-sm table-bordered align-middle inv-table mb-0">
           <thead>
             <tr>
               <th>Date</th>
@@ -42,16 +42,15 @@
           </tbody>
         </table>
       </div>
+      <div *ngIf="payments.length === 0" class="inv-label mb-3" data-testid="invoice-pay-none">No payments recorded yet.</div>
 
       <div *ngIf="message" class="alert alert-danger py-2 mb-3">{{message}}</div>
 
-      <div *ngIf="(balanceamount || 0) <= 0" class="alert alert-light border mb-0">
+      <div *ngIf="(balanceamount || 0) <= 0" class="alert alert-light border py-2 mb-0">
         This invoice is fully paid. Payment history remains visible, and new payments are disabled.
       </div>
 
-      <!-- Multi Columns Form -->
-      <form class="row g-3" *ngIf="(balanceamount || 0) > 0" [formGroup]="form" (ngSubmit)="submit()">
-        <div class="row">
+      <form class="row g-3" *ngIf="(balanceamount || 0) > 0" [formGroup]="form" (ngSubmit)="submit()" data-testid="invoice-pay-form">
         <div class="col-md-4">
           <label for="paydate" class="form-label">Date</label>
           <input type="date" class="form-control" id="paydate" formControlName="paydate">
@@ -62,44 +61,37 @@
             <option value="">Select</option>
             <option *ngFor="let mode of paymentModes" [value]="mode">{{mode}}</option>
           </select>
-          </div>
-          <div class="col-md-4">
-            <label for="payrefno" class="form-label">Reference No.</label>
-            <input type="text" class="form-control" id="payrefno" formControlName="payrefno">
+        </div>
+        <div class="col-md-4">
+          <label for="payrefno" class="form-label">Reference no.</label>
+          <input type="text" class="form-control" id="payrefno" formControlName="payrefno">
+        </div>
+        <div class="col-md-4">
+          <label for="payamount" class="form-label">Amount</label>
+          <input type="number" min="0.01" step="0.01" class="form-control" id="payamount" formControlName="payamount">
+          <div class="form-text" *ngIf="form.controls['payamount'].dirty && form.controls['payamount'].invalid">
+            Enter an amount up to the outstanding balance ({{balanceamount || invoiceamt || 0 | number:'1.2-2'}}).
           </div>
         </div>
-        <div class="row mt-4">
-          <div class="col-md-4">
-            <label for="payamount" class="form-label">Amount</label>
-            <input type="number" min="0.01" step="0.01" class="form-control" id="payamount" formControlName="payamount">
-            <div class="form-text" *ngIf="form.controls['payamount'].dirty && form.controls['payamount'].invalid">
-              Enter an amount up to the outstanding balance ({{balanceamount || invoiceamt || 0 | number:'1.2-2'}}).
-            </div>
-          </div>
-          <div class="col-md-4">
-            <label for="communicationstatus" class="form-label">Communication Status</label>
-            <select class="form-select" id="communicationstatus" formControlName="communicationstatus">
-              <option *ngFor="let status of communicationStatuses" [value]="status">{{status}}</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label for="communicationchannel" class="form-label">Channel</label>
-            <select class="form-select" id="communicationchannel" formControlName="communicationchannel">
-              <option *ngFor="let channel of communicationChannels" [value]="channel">{{channel}}</option>
-            </select>
-          </div>
+        <div class="col-md-4">
+          <label for="communicationstatus" class="form-label">Communication status</label>
+          <select class="form-select" id="communicationstatus" formControlName="communicationstatus">
+            <option *ngFor="let status of communicationStatuses" [value]="status">{{status}}</option>
+          </select>
         </div>
-        <div class="row">
-          <div class="col-md-8">
-            <label for="paycomments" class="form-label">Remarks</label>
-            <textarea class="form-control" id="paycomments" formControlName="paycomments"></textarea>
-          </div>
-
+        <div class="col-md-4">
+          <label for="communicationchannel" class="form-label">Channel</label>
+          <select class="form-select" id="communicationchannel" formControlName="communicationchannel">
+            <option *ngFor="let channel of communicationChannels" [value]="channel">{{channel}}</option>
+          </select>
         </div>
-        <div class="text-center">
-          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Record Payment</button>
+        <div class="col-md-8">
+          <label for="paycomments" class="form-label">Remarks</label>
+          <input type="text" class="form-control" id="paycomments" formControlName="paycomments" maxlength="300">
         </div>
-      </form><!-- End Multi Columns Form -->
-
+        <div class="col-md-4 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary" [disabled]="!form.valid" data-testid="invoice-pay-save">Record payment</button>
+        </div>
+      </form>
     </div>
   </div>

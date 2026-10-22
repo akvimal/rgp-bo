@@ -1,5 +1,5 @@
 <form [formGroup]="form" (ngSubmit)="submit()">
-    <table>
+    <table class="inv-entry w-100">
         <tr>
             <th>Product</th>
             <th>Batch</th>
@@ -10,7 +10,7 @@
             <th>Rate</th>
             <th>Disc%</th>
             <th>Tax%</th>
-            <th style="text-align: right;">Total</th>
+            <th class="text-end">Total</th>
             <th></th>
         </tr>
         <tr>
@@ -50,11 +50,11 @@
             <td width="5%">
                 <input type="number" id="taxpcnt" class="form-control" formControlName="taxpcnt" size="4" (input)="calculate()">
             </td>
-            <td width="6%" style="text-align: right;padding-right:1em;font-weight: bolder;background: #dea;">
+            <td width="6%" class="inv-total">
                 {{total | number:'1.2-2'}}
             </td>
             <td width="4%">
-                <button type="submit" [disabled]="total == 0 || total == undefined" class="btn btn-primary">Add</button>
+                <button type="submit" [disabled]="total == 0 || total == undefined" class="btn btn-primary w-100">Add</button>
             </td>
         </tr>
     </table>

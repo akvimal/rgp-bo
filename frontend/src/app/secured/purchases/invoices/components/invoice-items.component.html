@@ -3,7 +3,7 @@
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
                 <div class="fw-semibold fs-5">{{invoice.vendor?.name}}</div>
-                <div class="text-muted small">
+                <div class="inv-label">
                     Invoice #{{invoice.invoiceno}} &middot; {{invoice.invoicedate | date:'dd MMM yyyy'}}
                     <span *ngIf="invoice.duedate"> &middot; Due {{invoice.duedate | date:'dd MMM yyyy'}}</span>
                 </div>
@@ -16,75 +16,59 @@
                 <a class="btn btn-outline-secondary btn-sm py-0" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-edit">Edit details</a>
                 <a *ngIf="invoice.documentpath" role="button" class="btn btn-outline-secondary btn-sm py-0" (click)="viewDocument()" data-testid="invoice-copy"><i class="bi bi-paperclip"></i> Invoice copy</a>
                 <span class="badge bg-secondary">{{invoice.status === 'NEW' ? 'Draft' : 'Received'}}</span>
-                <span class="badge" [ngClass]="invoice.paymentstatus === 'Paid' ? 'bg-success' : (invoice.paymentstatus === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark')">
+                <span class="badge" *ngIf="invoice.status !== 'NEW'" [ngClass]="invoice.paymentstatus === 'Paid' ? 'bg-success' : (invoice.paymentstatus === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark')">
                     {{invoice.paymentstatus}}
                 </span>
             </div>
         </div>
 
-        <div class="row g-3 small mt-1">
-            <div class="col-6 col-md-3">
-                <div class="text-muted">GRN</div>
-                <div class="fw-semibold text-success">{{invoice.grno || '-'}}</div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="text-muted">Reference</div>
-                <div class="fw-semibold">{{invoice.referenceno || '-'}}</div>
-            </div>
-            <div class="col-4 col-md-2">
-                <div class="text-muted">Total</div>
-                <div class="fw-semibold">{{invoice.total | number:'1.2-2'}}</div>
-            </div>
-            <div class="col-4 col-md-2">
-                <div class="text-muted">Paid</div>
-                <div class="fw-semibold">{{(invoice.paidamount || 0) | number:'1.2-2'}}</div>
-            </div>
-            <div class="col-4 col-md-2">
-                <div class="text-muted">Balance</div>
-                <div class="fw-semibold">{{(invoice.balanceamount || 0) | number:'1.2-2'}}</div>
-            </div>
+        <div class="row g-3 mt-1" data-testid="invoice-figures">
+            <div class="col-6 col-md-2"><div class="inv-label">GRN</div><div class="inv-value text-success">{{invoice.grno || '-'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Reference</div><div class="inv-value">{{invoice.referenceno || '-'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Invoice total</div><div class="inv-value">{{invoice.printedtotal ? (invoice.printedtotal | number:'1.2-2') : '-'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Lines total (with tax)</div><div class="inv-value">{{nettotal | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-2" *ngIf="invoice.status !== 'NEW'"><div class="inv-label">Paid</div><div class="inv-value">{{(invoice.paidamount || 0) | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-2" *ngIf="invoice.status !== 'NEW'"><div class="inv-label">Balance</div><div class="inv-value">{{(invoice.balanceamount || 0) | number:'1.2-2'}}</div></div>
         </div>
-
-        <div class="row g-3 small mt-1" *ngIf="invoice.printedtotal" data-testid="invoice-check">
-            <div class="col-6 col-md-3"><div class="text-muted">Invoice total (printed)</div><div class="fw-semibold">{{invoice.printedtotal | number:'1.2-2'}}</div></div>
-            <div class="col-6 col-md-3"><div class="text-muted">Lines total</div><div class="fw-semibold">{{invoice.total | number:'1.2-2'}}</div></div>
-            <div class="col-12 col-md-6 d-flex align-items-end">
-                <span *ngIf="totalsAgree" class="text-success fw-semibold" data-testid="invoice-check-ok"><i class="bi bi-check-circle"></i> Lines match the invoice total</span>
-                <span *ngIf="!totalsAgree" class="text-danger fw-semibold" data-testid="invoice-check-diff"><i class="bi bi-exclamation-triangle"></i> Lines are {{(printedDiff || 0) > 0 ? 'more' : 'less'}} than the invoice total by &#8377;{{(printedDiff || 0) | number:'1.2-2'}} (a line may be missing or mistyped)</span>
-            </div>
+        <div class="mt-2 small" *ngIf="invoice.printedtotal" data-testid="invoice-check">
+            <span *ngIf="totalsAgree" class="text-success fw-semibold" data-testid="invoice-check-ok"><i class="bi bi-check-circle"></i> Lines match the invoice total</span>
+            <span *ngIf="!totalsAgree" class="text-danger fw-semibold" data-testid="invoice-check-diff"><i class="bi bi-exclamation-triangle"></i> Lines are {{(printedDiff || 0) > 0 ? 'more' : 'less'}} than the invoice total by &#8377;{{(printedDiff || 0) | number:'1.2-2'}} (a line may be missing or mistyped)</span>
         </div>
         <div class="text-danger small mt-2" *ngIf="deleteError" data-testid="invoice-delete-error">{{deleteError}}</div>
         <div class="mt-2 small" *ngIf="invoice.notes">
-            <span class="text-muted">Notes:</span> {{invoice.notes}}
+            <span class="inv-label">Notes:</span> {{invoice.notes}}
         </div>
     </div>
 </div>
 
 <div class="card mt-3" data-testid="invoice-gst-card">
-    <div class="card-body py-2">
-        <div class="d-flex flex-wrap align-items-center gap-3 small">
-            <span class="fw-semibold">GST</span>
-            <span>Supplier GSTIN <b data-testid="invoice-gst-gstin-text">{{invoice.suppliergstin || 'not recorded'}}</b></span>
-            <span>Place of supply <b>{{placeText}}</b></span>
-            <span>{{invoice.supplytype === 'INTER' ? 'Inter-state (IGST)' : 'Intra-state (CGST + SGST)'}}</span>
-            <span>ITC: {{itcLabel}}</span>
-            <span class="badge bg-info text-dark" *ngIf="invoice.reversecharge">Reverse charge</span>
-            <a *ngIf="invoice.status === 'NEW'" class="ms-auto" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-gst-edit" title="Change the GST details in the invoice details">Change</a>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="inv-title mb-0">GST</h6>
+            <a *ngIf="invoice.status === 'NEW'" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-gst-edit" title="Change the GST details in the invoice details">Change</a>
         </div>
-        <div *ngIf="!invoice.suppliergstin" class="alert alert-warning py-1 px-2 small mt-2 mb-0" data-testid="invoice-gst-missing">
+        <div class="row g-3" data-testid="invoice-gst-summary">
+            <div class="col-6 col-md-2"><div class="inv-label">Supplier GSTIN</div><div class="inv-value" data-testid="invoice-gst-gstin-text">{{invoice.suppliergstin || 'not recorded'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Place of supply</div><div class="inv-value">{{placeText}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Supply</div><div class="inv-value">{{invoice.supplytype === 'INTER' ? 'Inter-state' : 'Intra-state'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Input tax credit</div><div class="inv-value">{{itcLabel}}<span class="badge bg-info text-dark ms-1" *ngIf="invoice.reversecharge">Reverse charge</span></div></div>
+        </div>
+        <div *ngIf="!invoice.suppliergstin" class="alert alert-warning py-2 small mt-3 mb-0" data-testid="invoice-gst-missing">
             This vendor has no GSTIN recorded, so this invoice cannot be matched in GST reconciliation.
             <a [routerLink]="['/secure/purchases/vendors/edit', invoice.vendorid]">Add it on the vendor</a>.
         </div>
-        <div class="row g-3 small mt-1 border-top pt-2">
-            <div class="col-6 col-md-2"><div class="text-muted">Taxable</div><div class="fw-semibold">{{invoice.taxablevalue | number:'1.2-2'}}</div></div>
-            <div class="col-6 col-md-2"><div class="text-muted">CGST</div><div class="fw-semibold">{{invoice.cgstamount | number:'1.2-2'}}</div></div>
-            <div class="col-6 col-md-2"><div class="text-muted">SGST</div><div class="fw-semibold">{{invoice.sgstamount | number:'1.2-2'}}</div></div>
-            <div class="col-6 col-md-2"><div class="text-muted">IGST</div><div class="fw-semibold">{{invoice.igstamount | number:'1.2-2'}}</div></div>
-            <div class="col-6 col-md-2"><div class="text-muted">Round-off</div><div class="fw-semibold">{{invoice.roundoff | number:'1.2-2'}}</div></div>
+        <div class="border-top pt-3 mt-3">
+        <div class="row g-3">
+            <div class="col-6 col-md-2"><div class="inv-label">Taxable</div><div class="inv-value">{{invoice.taxablevalue | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">CGST</div><div class="inv-value">{{invoice.cgstamount | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">SGST</div><div class="inv-value">{{invoice.sgstamount | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">IGST</div><div class="inv-value">{{invoice.igstamount | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Round-off</div><div class="inv-value">{{invoice.roundoff | number:'1.2-2'}}</div></div>
             <div class="col-6 col-md-2">
-                <div class="text-muted">Check</div>
-                <div class="fw-semibold" data-testid="invoice-gst-check" [class.text-success]="gstCheckOk" [class.text-danger]="!gstCheckOk">{{gstCheckOk ? 'OK' : 'Mismatch'}}</div>
+                <div class="inv-label">Check</div>
+                <div class="inv-value" data-testid="invoice-gst-check" [class.text-success]="gstCheckOk" [class.text-danger]="!gstCheckOk">{{gstCheckOk ? 'OK' : 'Mismatch'}}</div>
             </div>
+        </div>
         </div>
     </div>
 </div>
@@ -92,7 +76,8 @@
 <div>
     <div class="card mt-3" *ngIf="invoice.status === 'NEW'">
         <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" *ngIf="invoice.purchaseorderid">
+            <h6 class="inv-title mb-3">Add item</h6>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3" *ngIf="invoice.purchaseorderid">
                 <div>
                     <strong>Linked PO:</strong> {{invoice.purchaseorderid}}
                     <span class="text-muted ms-2 small">Import linked request lines as draft invoice items.</span>
@@ -107,7 +92,8 @@
 
     <div class="card mt-3">
         <div class="card-body">
-            <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" styleClass="p-datatable-sm p-datatable-gridlines">
+            <h6 class="inv-title mb-3">Items <span class="inv-label fw-normal">({{items?.length || 0}})</span></h6>
+            <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" styleClass="p-datatable-sm p-datatable-gridlines inv-table">
                 <ng-template pTemplate="header">
                     <tr>
                         <th style="width:2.5em"><input type="checkbox" *ngIf="invoice.status === 'NEW'" [checked]="allSelected" (change)="selectAll($event)" data-testid="invoice-select-all" aria-label="Select all lines"></th>
@@ -148,14 +134,14 @@
                 </ng-template>
                 <ng-template pTemplate="footer">
                     <tr>
-                        <td colspan="9" class="text-end text-muted">{{items?.length || 0}} items &middot; Disc / Tax</td>
+                        <td colspan="9" class="text-end text-muted">Discount / Tax</td>
                         <td class="text-end">{{disctotal | number:'1.2-2'}}</td>
                         <td class="text-end">{{taxtotal | number:'1.2-2'}}</td>
                         <td></td>
                     </tr>
                     <tr class="fw-semibold">
                         <td colspan="11" class="text-end">Net total</td>
-                        <td class="text-end fs-5 text-primary">{{nettotal | number:'1.2-2'}}</td>
+                        <td class="text-end inv-value text-primary">{{nettotal | number:'1.2-2'}}</td>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage">
@@ -181,8 +167,8 @@
     </div>
 </div>
 
-<app-invoice-payment
-    class="d-block mt-3"
+<app-invoice-payment *ngIf="invoice.status !== 'NEW'"
+    class="d-block"
     [invoiceid]="invoice.id"
     [vendorid]="invoice.vendorid"
     [invoiceamt]="invoice.total"

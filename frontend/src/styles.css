@@ -394,3 +394,20 @@
     padding: 0;
     display: inline-flex;
 }
+
+/* Purchase invoice page: one type scale and one rhythm for every card (title, label, value, table, entry row) */
+.inv-title { font-size: 1rem; font-weight: 600; color: #012970; }
+.inv-label { font-size: .8125rem; color: #6c757d; }
+.inv-value { font-size: .9375rem; font-weight: 600; }
+.inv-table, .p-datatable.inv-table { font-size: .875rem; }
+.inv-table th { font-size: .8125rem; font-weight: 600; color: #4b5563; background: #f6f9ff; white-space: nowrap; }
+.inv-table th, .inv-table td { padding: .4rem .6rem; vertical-align: middle; }
+.p-datatable.inv-table .p-datatable-thead > tr > th { font-size: .8125rem; font-weight: 600; color: #4b5563; background: #f6f9ff; padding: .4rem .6rem; }
+.p-datatable.inv-table .p-datatable-tbody > tr > td, .p-datatable.inv-table .p-datatable-tfoot > tr > td { font-size: .875rem; padding: .4rem .6rem; }
+.p-datatable.inv-table .p-datatable-tfoot > tr > td { background: #f6f9ff; }
+.inv-entry th { font-size: .8125rem; font-weight: 600; color: #4b5563; padding: 0 .25rem .25rem; white-space: nowrap; }
+.inv-entry td { padding: .25rem; vertical-align: middle; }
+.inv-entry .form-control, .inv-entry .p-inputtext { height: 2.375rem; font-size: .875rem; }
+.inv-entry .p-autocomplete, .inv-entry .p-calendar { width: 100%; display: flex; }
+.inv-entry .p-autocomplete .p-autocomplete-input, .inv-entry .p-calendar .p-inputtext { flex: 1 1 auto; min-width: 0; }
+.inv-entry .inv-total { text-align: right; font-weight: 600; font-size: .9375rem; background: #f6f9ff; border-radius: .375rem; padding-right: .75rem; }
