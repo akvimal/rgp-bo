@@ -114,8 +114,8 @@ export class StockService {
         return this.http.put(`${this.apiurl}/stock/audit/${id}/reject`, {});
     }
 
-    startCount(category?:string, storeid?:number|null){
-        return this.http.post(`${this.apiurl}/stock/counts`, { category: category || null, storeid: storeid || null });
+    startCount(category?:string, storeid?:number|null, auditid?:number|null){
+        return this.http.post(`${this.apiurl}/stock/counts`, { category: category || null, storeid: storeid || null, auditid: auditid || undefined });
     }
 
     findCounts(){

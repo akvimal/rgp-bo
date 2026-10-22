@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 
 import { EntityManager, Repository } from "typeorm";
@@ -435,6 +435,19 @@ export class StockService {
      * discrepancies, so they always get a human look, same as a manual audit today). */
     async startCount(body: any, userid: number) {
         const storeid = body.storeid ? Number(body.storeid) : null;
+        // a count started for a routine stock audit must be the audit's store and category, by someone allowed to do it
+        let audit: any = null;
+        if (body.auditid) {
+            [audit] = await this.manager.query(`select * from stock_audit where id = $1`, [Number(body.auditid)]);
+            if (!audit) throw new NotFoundException('Audit not found.');
+            if (!['PLANNED', 'IN_PROGRESS'].includes(audit.status)) throw new BadRequestException('This audit is already finished.');
+            if (storeid !== audit.store_id) throw new BadRequestException('Select the store this audit is for in the header before starting the count.');
+            if (audit.category && (body.category || null) !== audit.category) throw new BadRequestException(`This audit covers ${audit.category} only.`);
+            const [who] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+            if (audit.assigned_to && audit.assigned_to !== userid && !['Business Head', 'Store Head'].includes(who?.name)) {
+                throw new ForbiddenException('This audit is assigned to someone else.');
+            }
+        }
         const count = await this.countRepository.save({
             category: body.category || null,
             storeid,
@@ -442,6 +455,9 @@ export class StockService {
             startedon: new Date(),
             status: 'IN_PROGRESS',
         } as any);
+        if (audit) {
+            await this.manager.query(`update stock_audit set count_id = $2, status = 'IN_PROGRESS', started_on = now() where id = $1`, [audit.id, (count as any).id]);
+        }
         const items = await this.getCountSnapshot(body.category, storeid);
         return { count, items };
     }
@@ -501,6 +517,24 @@ export class StockService {
             completedby: userid,
             completedon: new Date(),
         } as any);
+
+        // a count that was started for a routine audit completes that audit, with what it found
+        const [audit] = await this.manager.query(`select id from stock_audit where count_id = $1 and status = 'IN_PROGRESS'`, [id]);
+        if (audit) {
+            const ids = (items || []).map((i: any) => Number(i.itemid)).filter(Boolean);
+            const costs = ids.length ? await this.manager.query(
+                `select pii.id, (pii.ptr_cost / greatest(coalesce(p.pack, 1), 1))::float as unit from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`, [ids]) : [];
+            const unit = new Map<number, number>(costs.map((c: any) => [Number(c.id), Number(c.unit)]));
+            let units = 0, value = 0;
+            for (const i of items || []) {
+                const diff = Number(i.countedqty) - Number(i.bookqty);
+                units += diff;
+                value += diff * (unit.get(Number(i.itemid)) || 0);
+            }
+            await this.manager.query(
+                `update stock_audit set status = 'DONE', completed_on = now(), completed_by = $2, lines_counted = $3, lines_changed = $4, variance_units = $5, variance_value = $6 where id = $1`,
+                [audit.id, userid, (items || []).length, changed.length, units, Math.round(value * 100) / 100]);
+        }
 
         return { linesCounted: (items || []).length, linesChanged: changed.length, adjustments };
     }

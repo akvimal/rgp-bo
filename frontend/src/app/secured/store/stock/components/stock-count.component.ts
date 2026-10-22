@@ -1,4 +1,5 @@
 import { Component, OnInit } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import { StockService } from "../stock.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
 
@@ -16,9 +17,15 @@ export class StockCountComponent implements OnInit {
     submitting = false;
     result:any = null;
 
-    constructor(private service: StockService, private storeContext: StoreContextService) {}
+    /** set when this count was opened from a routine stock audit */
+    auditId:number|null = null;
+
+    constructor(private service: StockService, private storeContext: StoreContextService, private route: ActivatedRoute) {}
 
     ngOnInit(): void {
+        const q = this.route.snapshot.queryParamMap;
+        this.auditId = Number(q.get('audit')) || null;
+        if (this.auditId && q.get('category')) { this.categoryFilter = q.get('category') as string; }
         this.refresh();
     }
 
@@ -36,7 +43,7 @@ export class StockCountComponent implements OnInit {
         // scoped to the store currently selected in the header - a physical count is done at
         // one location, and the resulting adjustments should land there, not at whichever
         // store originally received each batch.
-        this.service.startCount(this.categoryFilter || undefined, this.storeContext.selectedStoreId).subscribe((data:any) => {
+        this.service.startCount(this.categoryFilter || undefined, this.storeContext.selectedStoreId, this.auditId).subscribe((data:any) => {
             this.active = {
                 count: data.count,
                 items: (data.items || []).map((i:any) => ({ ...i, countedqty: i.balance }))
@@ -63,6 +70,7 @@ export class StockCountComponent implements OnInit {
             this.result = res;
             this.active = null;
             this.categoryFilter = '';
+            if (this.auditId) { this.message = 'Audit completed.'; this.auditId = null; }
             this.refresh();
         }, (err:any) => {
             this.submitting = false;
