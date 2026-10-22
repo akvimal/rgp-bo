@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { Component, ElementRef, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { StockService } from "../../store/stock/stock.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { Offer } from "../models/offer.model";
@@ -41,13 +41,23 @@ export class SaleFormItemsComponent{
     private helper: SaleHelper,
     private offerService:OfferService,
     private stockService:StockService,
-    private storeContext:StoreContextService){}
+    private storeContext:StoreContextService,
+    private host:ElementRef){}
 
   selectProduct(selected:any) {
     const item = this.helper.mapStockToSaleItem(selected, true);
     
     this.calculateTotalWithQtyChange(item);
     this.itemAdded.emit(item);
+    this.focusUnits(item.itemid);
+  }
+
+  /** the cashier types the product, then the units: focus goes to the new line's units (Tab then returns to the product search) */
+  private focusUnits(itemid:any){
+    setTimeout(() => {
+      const box = this.host.nativeElement.querySelector('input[data-itemid="' + itemid + '"]') as HTMLInputElement;
+      if(box && !box.disabled){ box.focus(); box.select(); }
+    }, 50);
   }
 
   applyDiscount(){

@@ -20,14 +20,14 @@ test.describe('POS requests @p1', () => {
     await expect(page.getByTestId('shift-card')).toHaveCount(0);                       // no shift strip on the POS
     await expect(page.getByTestId('shift-card-link')).toHaveCount(0);
 
-    // the link sits right under the product search (above the grid), and opens a popup instead of leaving the bill
+    // the link sits right under the product search (in the new row of the grid), and opens a popup instead of leaving the bill
     const link = page.getByTestId('pos-request-product');
     await expect(link).toBeVisible();
     const search = await page.locator('[data-testid=sale-add-item] app-stock-select').boundingBox();
     const grid = await page.locator('app-sale-form-items table').first().boundingBox();
     const at = await link.boundingBox();
     expect(at!.y).toBeGreaterThanOrEqual(search!.y + search!.height - 2);
-    expect(at!.y + at!.height).toBeLessThanOrEqual(grid!.y + 2);
+    expect(at!.y + at!.height).toBeLessThanOrEqual(grid!.y + grid!.height + 2);          // the last line of the grid, after the search
     const url = page.url();
     await link.click();
     const dlg = page.getByTestId('pos-request-dialog');
