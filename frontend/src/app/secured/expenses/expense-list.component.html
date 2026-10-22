@@ -1,0 +1,68 @@
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="page-toolbar">
+      <div class="page-toolbar-main">
+        <div><label class="form-label">Month</label><input type="month" class="form-control" style="width:11rem" [(ngModel)]="filter.period" (change)="load()" data-testid="exp-f-period"></div>
+        <div><label class="form-label">Status</label>
+          <select class="form-select" [(ngModel)]="filter.status" (change)="load()" data-testid="exp-f-status"><option value="">All</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option></select></div>
+        <div *ngIf="isBusinessHead || stores.length > 1"><label class="form-label">Store</label>
+          <select class="form-select" [(ngModel)]="filter.store" (change)="load()"><option value="">All</option><option *ngIf="isBusinessHead" value="business">Business level</option><option *ngFor="let s of stores" [value]="s.id">{{s.name}}</option></select></div>
+        <div><label class="form-label">Category</label>
+          <select class="form-select" [(ngModel)]="filter.category" (change)="load()"><option value="">All</option><option *ngFor="let c of categories" [value]="c.id">{{c.name}}</option></select></div>
+        <span *ngIf="pendingForMe" class="badge bg-warning text-dark mb-2" data-testid="exp-pending-badge">{{pendingForMe}} waiting for you</span>
+      </div>
+      <div class="page-toolbar-actions"><button class="btn btn-primary" type="button" (click)="add()" data-testid="exp-add">Add expense</button></div>
+    </div>
+
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="exp-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="exp-error">{{error}}</div>
+
+    <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="exp-form">
+      <div class="row g-3">
+        <div class="col-md-2"><label class="form-label">Date *</label><input type="date" class="form-control" [(ngModel)]="form.expense_date" data-testid="exp-d-date"></div>
+        <div class="col-md-3"><label class="form-label">Store</label>
+          <select class="form-select" [(ngModel)]="form.store_id" data-testid="exp-d-store"><option [ngValue]="null" *ngIf="isBusinessHead">Business level</option><option [ngValue]="null" *ngIf="!isBusinessHead">Choose</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.name}}</option></select></div>
+        <div class="col-md-3"><label class="form-label">Category *</label>
+          <select class="form-select" [(ngModel)]="form.category_id" data-testid="exp-d-category"><option [ngValue]="null">Choose</option><option *ngFor="let c of categories" [ngValue]="c.id">{{c.name}}</option></select></div>
+        <div class="col-md-2"><label class="form-label">Amount *</label><input type="number" min="0" class="form-control" [(ngModel)]="form.amount" data-testid="exp-d-amount"></div>
+        <div class="col-md-2"><label class="form-label">GST included</label><input type="number" min="0" class="form-control" [(ngModel)]="form.gst_amount" data-testid="exp-d-gst"></div>
+        <div class="col-md-3"><label class="form-label">Paid to</label><input class="form-control" maxlength="100" [(ngModel)]="form.payee" data-testid="exp-d-payee"></div>
+        <div class="col-md-2"><label class="form-label">Bill no.</label><input class="form-control" maxlength="40" [(ngModel)]="form.bill_no"></div>
+        <div class="col-md-2"><label class="form-label">Paid by *</label>
+          <select class="form-select" [(ngModel)]="form.pay_mode" data-testid="exp-d-mode"><option *ngFor="let m of modes" [value]="m[0]">{{m[1]}}</option></select></div>
+        <div class="col-md-5"><label class="form-label">What for</label><input class="form-control" maxlength="300" [(ngModel)]="form.description" data-testid="exp-d-desc"></div>
+        <div class="col-md-4"><label class="form-label">Receipt / bill copy</label><input type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)"><div class="small text-success" *ngIf="form.receipt_path">Attached</div></div>
+        <div class="col-md-8 small text-muted align-self-end" data-testid="exp-d-hint">{{willNeedApproval()}}</div>
+        <div class="col-md-12"><button class="btn btn-primary" type="button" (click)="save()" data-testid="exp-d-save">{{form.id ? 'Save changes' : 'Save expense'}}</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
+      </div>
+    </div>
+
+    <div *ngIf="deciding" class="row g-2 align-items-end mb-3">
+      <div class="col-md-6"><label class="form-label">Why is it rejected?</label><input class="form-control" maxlength="200" [(ngModel)]="deciding.note" data-testid="exp-reject-note"></div>
+      <div class="col-md-3"><button class="btn btn-danger" type="button" (click)="decide({id: deciding.id}, 'reject')" data-testid="exp-reject-go">Reject</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="deciding = null">Cancel</button></div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="exp-table">
+        <thead><tr><th>Date</th><th>Category</th><th>Store</th><th>Paid to / for</th><th>Paid by</th><th class="text-end">Amount</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of rows" data-testid="exp-row" [attr.data-status]="r.status">
+            <td>{{r.expense_date | date:'dd MMM yyyy'}}</td><td>{{r.category}}</td><td>{{r.store || 'Business'}}</td>
+            <td>{{r.payee}}<div class="small text-muted">{{r.description}} <span *ngIf="r.bill_no">&middot; bill {{r.bill_no}}</span> <span *ngIf="r.recurring_id">&middot; recurring</span></div></td>
+            <td>{{mode(r.pay_mode)}}</td>
+            <td class="text-end">{{r.amount | number:'1.2-2'}}<div class="small text-muted" *ngIf="r.gst_amount">GST {{r.gst_amount | number:'1.2-2'}}</div></td>
+            <td><span class="badge" [ngClass]="badge(r.status)">{{r.status | titlecase}}</span><div class="small text-muted">{{r.raised_by_name}}<span *ngIf="r.decided_by_name"> &rarr; {{r.decided_by_name}}</span></div><div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div></td>
+            <td class="text-end text-nowrap">
+              <button *ngIf="r.receipt_path" class="btn btn-outline-secondary btn-sm" type="button" (click)="viewReceipt(r.receipt_path)">Receipt</button>
+              <button *ngIf="r.can_decide" class="btn btn-outline-success btn-sm ms-1" type="button" (click)="decide(r, 'approve')" data-testid="exp-approve">Approve</button>
+              <button *ngIf="r.can_decide" class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="decide(r, 'reject')" data-testid="exp-reject">Reject</button>
+              <button *ngIf="r.can_edit" class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="edit(r)" data-testid="exp-edit">Edit</button>
+              <button *ngIf="r.can_edit" class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="remove(r)" data-testid="exp-remove">Remove</button>
+            </td>
+          </tr>
+          <tr *ngIf="!rows.length"><td colspan="8" class="text-center text-muted py-3">No expenses for these filters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

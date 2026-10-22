@@ -166,6 +166,19 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'expenses',
+    label: 'Expenses',
+    description: 'Business- and store-level expenses with approval, recurring entries and a report.',
+    group: 'Staff & Quality',
+    path: '/secure/expenses',
+    actions: [
+      { key: 'view', label: 'View (own, or their store)' },
+      { key: 'add', label: 'Raise expenses' },
+      { key: 'approve', label: 'Approve within their limit; see the report' },
+      { key: 'manage', label: 'Set the limit, categories and recurring entries' },
+    ],
+  },
+  {
     key: 'hr',
     label: 'HR',
     description: 'Staff records, salary and revisions, leave, attendance, KPI and monthly payroll with pay stubs. Business Head only.',
