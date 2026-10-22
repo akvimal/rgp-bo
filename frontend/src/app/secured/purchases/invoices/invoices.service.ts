@@ -123,6 +123,11 @@ export class InvoiceService {
         return this.http.post(`${this.apiurl}/purchaseitems`,obj);
     }
 
+    /** reads an uploaded invoice copy (PDF text or OCR of a photo); nothing is saved */
+    extract(path:string){
+        return this.http.post<any>(`${this.apiurl}/purchases/extract`, { path });
+    }
+
     importOrderItems(invoiceid:any){
         return this.http.post(`${this.apiurl}/purchaseitems/import-order/${invoiceid}`, {});
     }

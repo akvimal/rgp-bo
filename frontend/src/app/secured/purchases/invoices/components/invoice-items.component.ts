@@ -30,9 +30,9 @@ export class InvoiceItemsComponent {
 
     constructor(private route:ActivatedRoute, private router:Router, private invService: InvoiceService, private files: FileUploadService){}
 
-    /** lines total (the sum of the lines, which follows them) against the total printed on the vendor's invoice */
+    /** the lines with their tax (the Net total below) against the total printed on the vendor's invoice, which includes the tax */
     get printedDiff(): number | null {
-        return this.invoice.printedtotal ? +((+(this.invoice.total || 0)) - +this.invoice.printedtotal).toFixed(2) : null;
+        return this.invoice.printedtotal ? +(this.nettotal - +this.invoice.printedtotal).toFixed(2) : null;
     }
     get totalsAgree(): boolean { return this.printedDiff === null || Math.abs(this.printedDiff) <= 1; }
 

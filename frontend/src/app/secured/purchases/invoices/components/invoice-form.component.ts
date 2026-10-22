@@ -1,4 +1,6 @@
 import { Component, OnInit } from "@angular/core";
+import { from } from "rxjs";
+import { concatMap, toArray } from "rxjs/operators";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { VendorsService } from "../../vendors/vendors.service";
@@ -29,6 +31,15 @@ export class InvoiceFormComponent implements OnInit {
     changingDue = false;
     duplicate:any = null;
     uploading = false;
+
+    // what was read from the attached invoice copy
+    extracting = false;
+    extractError = '';
+    extracted:any = null;
+    lines:any[] = [];
+    showText = false;
+    filled:string[] = [];
+    addProblem = '';
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -150,15 +161,125 @@ export class InvoiceFormComponent implements OnInit {
       if(!file) return;
       this.uploading = true;
       this.files.upload(file, `invoice=${this.form.value.vendorid || 'new'}-${Date.now()}`).subscribe(
-        (res:any) => { this.form.controls['documentpath'].setValue(res?.path || ''); this.uploading = false; },
+        (res:any) => { this.form.controls['documentpath'].setValue(res?.path || ''); this.uploading = false; this.read(res?.path); },
         () => { this.errorMessage = 'Could not attach the file. Use a PDF or photo under 10 MB.'; this.uploading = false; });
+    }
+
+    /** read the attached copy: show what was found and fill the empty fields of the form */
+    read(path:string){
+      if(!path) return;
+      this.extracting = true; this.extractError = ''; this.extracted = null; this.lines = []; this.filled = []; this.showText = false;
+      this.service.extract(path).subscribe(
+        (r:any) => {
+          this.extracting = false;
+          this.extracted = r;
+          this.lines = (r.lines || []).map((l:any) => this.toRow(l));
+          this.applyHeader(false);
+        },
+        (err:any) => {
+          this.extracting = false;
+          const m = err?.error?.message;
+          this.extractError = (Array.isArray(m) ? m.join(' ') : m) || 'The invoice copy could not be read. Enter the invoice by hand.';
+        });
+    }
+
+    private toRow(l:any){
+      const product = l.product || null;
+      const row:any = {
+        description: l.description, suggestions: l.suggestions || [], searching: false,
+        productid: product ? product.id : null, productTitle: product ? product.title : '',
+        batch: l.batch || '', exp: l.expdate ? String(l.expdate).slice(0, 7) : '',
+        mrp: l.mrp, qty: l.qty, free: l.free || 0, rate: l.rate, disc: l.disc || 0,
+        tax: l.tax !== null && l.tax !== undefined ? l.tax : (product ? product.tax_pcnt : null),
+        warnings: l.warnings || [], include: false
+      };
+      row.include = this.ready(row);
+      return row;
+    }
+
+    /** a line can be added to the draft when the item form's own required things are there */
+    ready(r:any): boolean {
+      return !!r.productid && !!String(r.batch || '').trim() && !!r.exp && +r.qty > 0 && +r.rate >= 0 && r.rate !== null && r.rate !== '' && +r.mrp > 0;
+    }
+
+    missingFor(r:any): string {
+      const out: string[] = [];
+      if(!r.productid) out.push('product');
+      if(!String(r.batch || '').trim()) out.push('batch');
+      if(!r.exp) out.push('expiry');
+      if(!(+r.mrp > 0)) out.push('MRP');
+      if(!(+r.qty > 0)) out.push('quantity');
+      if(r.rate === null || r.rate === '' || r.rate === undefined) out.push('rate');
+      return out.join(', ');
+    }
+
+    amountOf(r:any): number {
+      const a = (+r.qty || 0) * (+r.rate || 0) * (1 - (+r.disc || 0) / 100);
+      return Math.round(a * 100) / 100;
+    }
+
+    netOf(r:any): number { return Math.round(this.amountOf(r) * (1 + (+r.tax || 0) / 100) * 100) / 100; }
+
+    pick(r:any){
+      const s = r.suggestions.find((x:any) => x.id === r.productid);
+      r.productTitle = s ? s.title : '';
+      if(s && (r.tax === null || r.tax === undefined)) r.tax = s.tax_pcnt;
+      r.include = this.ready(r);
+    }
+
+    pickProduct(r:any, p:any){
+      r.productid = p?.id || null; r.productTitle = p?.title || ''; r.searching = false;
+      if(p && (r.tax === null || r.tax === undefined)) r.tax = p.taxpcnt ?? p.tax_pcnt ?? null;
+      r.include = this.ready(r);
+    }
+
+    get readyLines(): any[] { return this.lines.filter(l => l.include && this.ready(l)); }
+    get linesNet(): number { return Math.round(this.readyLines.reduce((t, l) => t + this.netOf(l), 0) * 100) / 100; }
+    get linesAgree(): boolean {
+      const printed = +this.form.getRawValue().printedtotal || 0;
+      return !printed || Math.abs(this.linesNet - printed) <= 1;
+    }
+
+    /** put what was read into the form: only the fields still empty, or all of them when asked */
+    applyHeader(overwrite:boolean){
+      if(!this.extracted) return;
+      const h = this.extracted.header || {};
+      const v = this.extracted.vendor;
+      const f = this.form;
+      const raw = f.getRawValue();
+      this.filled = [];
+      const set = (name:string, value:any, label:string) => {
+        if(value === null || value === undefined || value === '') return;
+        const control = f.controls[name];
+        if(!overwrite && !control.pristine && raw[name]) return;                 // the person already typed something here
+        control.setValue(value);
+        control.markAsDirty();
+        this.filled.push(label);
+      };
+      if(v?.id && !this.id && (overwrite || !raw.vendorid)){
+        f.controls['vendorid'].setValue(String(v.id));
+        this.filled.push('vendor');
+        this.vendorChanged();
+      }
+      set('invoiceno', h.invoiceno, 'invoice no.');
+      set('invoicedate', h.invoicedate, 'invoice date');
+      set('printedtotal', h.printedtotal, 'invoice total');
+      if(h.duedate){ this.changingDue = true; f.controls['duedate'].setValue(h.duedate); this.filled.push('due date'); }
+      if(h.suppliergstin && (!this.vendor || String(this.vendor.gstn || '').toUpperCase() !== h.suppliergstin)){
+        set('suppliergstin', h.suppliergstin, 'supplier GSTIN');
+        this.showMore = true;
+      }
+      this.checkDuplicate();
     }
 
     viewDocument(){
       this.files.view(this.form.value.documentpath).subscribe((b:any) => window.open(URL.createObjectURL(b), '_blank'), () => this.errorMessage = 'Could not open the attached file.');
     }
 
-    removeDocument(){ this.form.controls['documentpath'].setValue(''); }
+    removeDocument(){
+      this.form.controls['documentpath'].setValue('');
+      this.extracted = null; this.lines = []; this.extractError = ''; this.filled = [];
+    }
 
     /** a GSTIN typed here overrides the vendor's: it must be a real one */
     get gstinBad(): boolean {
@@ -202,18 +323,43 @@ export class InvoiceFormComponent implements OnInit {
       if(v.itceligibility) obj.itceligibility = v.itceligibility;
       obj.reversecharge = !!v.reversecharge;
       this.saving = true;
+      this.addProblem = '';
       const id = v.id;
       this.service.save(id ? { id, ...obj } : obj).subscribe(
         (data:any) => {
-          this.saving = false;
-          if(data?.status === 'ERROR') this.errorMessage = data.message;
-          else this.gotoEdit(id || data.id);
+          if(data?.status === 'ERROR'){ this.saving = false; this.errorMessage = data.message; return; }
+          const invoiceid = id || data.id;
+          if(!id) this.form.controls['id'].setValue(invoiceid);          // a second Save edits this invoice rather than making another
+          const todo = this.readyLines;
+          if(!todo.length){ this.saving = false; this.gotoEdit(invoiceid); return; }
+          this.addLines(invoiceid, todo);
         },
         (err:any) => {
           this.saving = false;
           const m = err?.error?.message;
           this.errorMessage = (Array.isArray(m) ? m.join(' ') : m) || 'The invoice could not be saved.';
         });
+    }
+
+    /** add the confirmed lines to the saved draft, one after another (each also keeps the invoice total in step) */
+    private addLines(invoiceid:any, todo:any[]){
+      const lastDay = (ym:string) => { const [y, m] = ym.split('-').map(Number); return `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`; };
+      let failed = 0;
+      from(todo).pipe(
+        concatMap((l:any) => {
+          const rate = +l.rate, tax = +l.tax || 0;
+          return new Promise<void>((resolve) => this.service.saveItem({
+            invoiceid, productid: l.productid, batch: String(l.batch).trim().toUpperCase(), expdate: lastDay(l.exp),
+            mrpcost: +l.mrp, qty: +l.qty, freeqty: +l.free || 0, ptrvalue: rate, ptrcost: Math.round(rate * (1 + tax / 100) * 100) / 100,
+            discpcnt: +l.disc || 0, taxpcnt: tax, total: this.amountOf(l)
+          } as any).subscribe(() => resolve(), () => { failed++; resolve(); }));
+        }),
+        toArray()
+      ).subscribe(() => {
+        this.saving = false;
+        if(failed){ this.addProblem = `The invoice is saved, but ${failed} of ${todo.length} lines could not be added. Add them on the next page.`; }
+        this.gotoEdit(invoiceid);
+      });
     }
 
     gotoList() {

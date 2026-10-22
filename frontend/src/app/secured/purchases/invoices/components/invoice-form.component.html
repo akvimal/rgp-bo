@@ -66,6 +66,8 @@
           <input type="file" class="form-control" id="inv-file" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)" [disabled]="uploading" data-testid="inv-f-file">
           <div class="small mt-1" *ngIf="form.value.documentpath" data-testid="inv-f-file-ok"><i class="bi bi-paperclip"></i> Attached
             <a role="button" (click)="viewDocument()">view</a> &middot; <a role="button" class="text-danger" (click)="removeDocument()">remove</a></div>
+          <div class="small text-muted mt-1" *ngIf="extracting" data-testid="inv-x-busy"><span class="spinner-border spinner-border-sm me-1"></span>Reading the invoice&hellip; a photo can take 10 to 20 seconds.</div>
+          <div class="small text-danger mt-1" *ngIf="extractError" data-testid="inv-x-error">{{extractError}}</div>
         </div>
         <div class="col-md-6 d-flex align-items-end">
           <a role="button" class="small" (click)="showMore = !showMore" data-testid="inv-f-more">{{showMore ? 'Hide' : 'More'}} details (reference, notes)</a>
@@ -108,12 +110,82 @@
           </div>
         </ng-container>
 
+        <div class="col-12" *ngIf="extracted" data-testid="inv-x-panel">
+          <div class="border rounded p-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+              <h6 class="inv-title mb-0">Read from the invoice copy
+                <span class="badge bg-light text-dark border ms-1" data-testid="inv-x-method">{{extracted.method === 'pdf' ? 'text of the PDF' : 'photo (OCR)'}}</span></h6>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="applyHeader(true)" data-testid="inv-x-fill">Use all read values</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="showText = !showText" data-testid="inv-x-text-toggle">{{showText ? 'Hide' : 'Show'}} text read</button>
+              </div>
+            </div>
+            <div class="small mb-2" *ngIf="filled.length" data-testid="inv-x-filled"><i class="bi bi-check-circle text-success"></i> Filled in: {{filled.join(', ')}}. Check them against the invoice.</div>
+            <div class="row g-3 mb-2" data-testid="inv-x-header">
+              <div class="col-6 col-md-3"><div class="inv-label">Vendor on the invoice</div>
+                <div class="inv-value" data-testid="inv-x-vendor">{{extracted.vendor ? extracted.vendor.name : (extracted.header.suppliername || '-')}}</div>
+                <div class="inv-label" *ngIf="!extracted.vendor">not matched to a vendor: choose one above</div>
+                <div class="inv-label" *ngIf="extracted.vendor">matched by {{extracted.vendor.matchedBy}}</div></div>
+              <div class="col-6 col-md-2"><div class="inv-label">Invoice no.</div><div class="inv-value">{{extracted.header.invoiceno || '-'}}</div></div>
+              <div class="col-6 col-md-2"><div class="inv-label">Date</div><div class="inv-value">{{extracted.header.invoicedate ? (extracted.header.invoicedate | date:'dd MMM yyyy') : '-'}}</div></div>
+              <div class="col-6 col-md-2"><div class="inv-label">Total</div><div class="inv-value">{{extracted.header.printedtotal ? (extracted.header.printedtotal | number:'1.2-2') : '-'}}</div></div>
+              <div class="col-12 col-md-3"><div class="inv-label">Supplier GSTIN</div><div class="inv-value">{{extracted.header.suppliergstin || '-'}}</div></div>
+            </div>
+            <div *ngFor="let w of extracted.warnings" class="alert alert-warning py-1 px-2 small mb-2" data-testid="inv-x-warning">{{w}}</div>
+            <pre *ngIf="showText" class="small bg-light border rounded p-2 mb-2" style="max-height:14rem;overflow:auto;white-space:pre-wrap" data-testid="inv-x-text">{{extracted.text}}</pre>
+
+            <div *ngIf="lines.length" class="table-responsive" data-testid="inv-x-lines">
+              <table class="table table-sm table-bordered align-middle inv-table mb-2">
+                <thead><tr>
+                  <th style="width:2rem"></th><th style="min-width:8rem">Read as</th><th style="min-width:12rem">Product</th><th>Batch</th><th>Expiry</th><th class="text-end">MRP</th>
+                  <th class="text-end">Qty</th><th class="text-end">Free</th><th class="text-end">Rate</th><th class="text-end">Disc %</th><th class="text-end">Tax %</th><th class="text-end">Total</th>
+                </tr></thead>
+                <tbody>
+                  <tr *ngFor="let l of lines; let i = index" [attr.data-testid]="'inv-x-row-' + i">
+                    <td class="text-center"><input type="checkbox" [(ngModel)]="l.include" [ngModelOptions]="{standalone: true}" [disabled]="!ready(l)" [attr.data-testid]="'inv-x-include-' + i" aria-label="Add this line"></td>
+                    <td class="small" style="max-width:11rem">{{l.description}}
+                      <div class="text-danger" *ngFor="let w of l.warnings">{{w}}</div>
+                      <div class="text-warning" *ngIf="!ready(l)">Needs: {{missingFor(l)}}</div></td>
+                    <td>
+                      <ng-container *ngIf="l.suggestions.length && !l.searching; else searchProduct">
+                        <select class="form-select form-select-sm" [(ngModel)]="l.productid" [ngModelOptions]="{standalone: true}" (change)="pick(l)" [attr.data-testid]="'inv-x-product-' + i">
+                          <option [ngValue]="null">Choose the product</option>
+                          <option *ngFor="let s of l.suggestions" [ngValue]="s.id">{{s.title}} ({{s.score * 100 | number:'1.0-0'}}%)</option>
+                        </select>
+                        <a role="button" class="small" (click)="l.searching = true">other product</a>
+                      </ng-container>
+                      <ng-template #searchProduct>
+                        <div class="small" *ngIf="l.productTitle">{{l.productTitle}}</div>
+                        <app-product-select (selected)="pickProduct(l, $event)"></app-product-select>
+                      </ng-template>
+                    </td>
+                    <td><input class="form-control form-control-sm px-1" style="min-width:5.5rem" [(ngModel)]="l.batch" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-batch-' + i"></td>
+                    <td><input type="month" class="form-control form-control-sm px-1" style="min-width:8.5rem" [(ngModel)]="l.exp" [ngModelOptions]="{standalone: true}" (change)="l.include = ready(l)" [attr.data-testid]="'inv-x-exp-' + i"></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" style="width:4.5rem" [(ngModel)]="l.mrp" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)"></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.8rem" [(ngModel)]="l.qty" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)"></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.5rem" [(ngModel)]="l.free" [ngModelOptions]="{standalone: true}"></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" style="width:4.5rem" [(ngModel)]="l.rate" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)"></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.8rem" [(ngModel)]="l.disc" [ngModelOptions]="{standalone: true}"></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.8rem" [(ngModel)]="l.tax" [ngModelOptions]="{standalone: true}"></td>
+                    <td class="text-end">{{amountOf(l) | number:'1.2-2'}}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="small" data-testid="inv-x-summary">
+                <b>{{readyLines.length}}</b> of {{lines.length}} lines will be added to the draft when you save.
+                Lines with tax come to <b>{{linesNet | number:'1.2-2'}}</b><span *ngIf="form.value.printedtotal"> against the invoice total {{form.value.printedtotal | number:'1.2-2'}}:
+                <span [class.text-success]="linesAgree" [class.text-danger]="!linesAgree" data-testid="inv-x-total-check">{{linesAgree ? 'they agree' : 'they differ, so a line may be missing or misread'}}</span></span>.
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="col-12" *ngIf="errorMessage">
           <div class="alert alert-danger py-2 mb-0" data-testid="inv-f-error">{{errorMessage}}</div>
         </div>
 
         <div class="col-12 d-flex flex-wrap align-items-center gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="missing.length > 0 || saving" data-testid="inv-f-save">{{id ? 'Save changes' : 'Save and add items'}}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="missing.length > 0 || saving" data-testid="inv-f-save">{{id ? 'Save changes' : (readyLines.length ? 'Save and add ' + readyLines.length + ' item' + (readyLines.length === 1 ? '' : 's') : 'Save and add items')}}</button>
           <button type="button" (click)="cancel()" class="btn btn-outline-secondary" data-testid="inv-f-cancel">Cancel</button>
           <span class="small text-muted" *ngIf="missing.length" data-testid="inv-f-hint">Still needed: {{missing.join(', ')}}.</span>
         </div>

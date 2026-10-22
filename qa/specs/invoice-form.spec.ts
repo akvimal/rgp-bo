@@ -1,5 +1,5 @@
 /**
- * The purchase invoice header form — PINVF-1..3
+ * The purchase invoice header form — PINVF-1..4
  * Vendor, invoice number, date and the total printed on the invoice; a double entry is caught; the lines are checked against
  * the printed total on the next page; a received invoice keeps what was received.
  */
@@ -103,5 +103,33 @@ test.describe('Purchase invoice header form @p1', () => {
     await page.getByTestId('inv-f-more').click();
     await expect(page.getByTestId('inv-f-notes')).toBeEnabled();
     await api.request('DELETE', `/purchases/${inv.body.id}`, undefined, MGR);                         // reverses the stock it added
+  });
+
+  test('PINVF-4 a draft shows no payment status or payments panel; a received invoice shows both with the same figures @happy', async ({ app, api }) => {
+    const vendor = await vendorId(api);
+    const stock = (await api.request('POST', '/stock/filter', { available: true, limit: 5 }, MGR)).body;
+    const productid = stock[0]?.id;
+    test.skip(!productid, 'no product to receive');
+    const inv = await api.request('POST', '/purchases', { vendorid: vendor, invoiceno: `QA/T-${Date.now()}`, invoicedate: '2026-09-04', printedtotal: 112 }, MGR);
+    const it = await api.request('POST', '/purchaseitems', {
+      invoiceid: inv.body.id, productid, qty: 5, ptrvalue: 20, ptrcost: 20, mrpcost: 30, taxpcnt: 12, total: 112, batch: `T${Date.now()}`.slice(0, 12), expdate: '2028-06-30', saleprice: 25,
+    }, MGR);
+    expect(it.status).toBeLessThan(300);
+
+    const { page } = await app.open(MGR, `/secure/purchases/invoices/items/${inv.body.id}`);
+    await expect(page.getByTestId('invoice-figures')).toBeVisible();
+    await expect(page.getByTestId('invoice-payments')).toHaveCount(0);                                   // nothing can be paid on a draft
+    await expect(page.getByText('Overdue')).toHaveCount(0);
+    await expect(page.getByText('Balance')).toHaveCount(0);
+
+    await api.request('PUT', '/purchaseitems', { ids: [it.body.id], values: { status: 'VERIFIED' } }, MGR);
+    await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE' } }, MGR);
+    await api.request('POST', '/vendorpayments', { vendorid: vendor, invoiceid: inv.body.id, paydate: '2026-09-10', amount: 40, paymode: 'Transfer' }, MGR);
+    await page.reload();
+    await expect(page.getByTestId('invoice-payments')).toBeVisible();
+    await expect(page.getByTestId('invoice-pay-balance')).toHaveText('72.00');
+    await expect(page.getByTestId('invoice-pay-form')).toBeVisible();
+    await expect(page.getByTestId('invoice-pay-save')).toHaveText('Record payment');
+    await api.request('DELETE', `/purchases/${inv.body.id}`, undefined, MGR);
   });
 });
