@@ -22,6 +22,17 @@ const addMonths = (d: Date, n: number) => {
   return x;
 };
 
+/**
+ * A month's requirement of a medicine, in units: the product's own `monthly_units`, else 30 (one a day) for a chronic
+ * medicine, else none. A line that buys more than this is a long supply. Mirrors the till's frontend sales/supply-rule.ts.
+ */
+export const DEFAULT_MONTHLY_UNITS = 30;
+export function monthlyUnits(moreProps: any): number {
+  const own = Number(moreProps?.monthly_units);
+  if (Number.isFinite(own) && own > 0) return own;
+  return String(moreProps?.chronic) === 'true' ? DEFAULT_MONTHLY_UNITS : 0;
+}
+
 /** months of remaining shelf life a supply must have beyond what the customer is buying (Business setting, default 3) */
 export async function supplyBuffer(manager: EntityManager): Promise<number> {
   const [r] = await manager.query(`select setting_value from app_setting where category = 'sales' and setting_key = 'supply_expiry_buffer_months' and active and not archive limit 1`);
@@ -33,12 +44,14 @@ export async function supplyBuffer(manager: EntityManager): Promise<number> {
  * Checks a completed bill's batches:
  *  - EARLIER_EXPIRY (a warning): a later-dated batch is being sold while an earlier-dated batch of the same product is
  *    still in stock at the store; the older stock should go first.
- *  - SHORT_DATED_FOR_SUPPLY (a stop for counter staff): the customer is buying N months of a medicine, so the batch must
- *    still have N + buffer months of life; a manager can sell through it.
- * The supply check runs for any line that says how many months it is for. Nothing is asked of a bill that has neither problem. Lines are matched by purchase item id (itemid).
+ *  - SHORT_DATED_FOR_SUPPLY (a warning): for a regular medicine the units are months of medicine (30 units a month unless the
+ *    product says otherwise); the batch should still have at least the buffer (3 months) of life left once that supply is
+ *    used up. It speaks only when the batch and the quantity do not fit.
+ * Both run when the billing screen asks (checkbatches). Nothing is said about a bill that has neither problem. Lines are
+ * matched by purchase item id (itemid).
  */
 export async function findBatchWarnings(manager: EntityManager, sale: any, storeId: number | null): Promise<BatchWarning[]> {
-  // The older-batch-first check is the billing screen's: it runs when the screen asks (checkbatches), so scripts and integrations that post bills are not stopped by it.
+  // Both checks are the billing screen's: they run when the screen asks (checkbatches), so scripts and integrations that post bills are not held up by them.
   const fefo = sale?.checkbatches === true;
   if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return [];
   const lines = (Array.isArray(sale?.items) ? sale.items : []).filter((i: any) => Number(i.qty) > 0 && Number(i.itemid) > 0);
@@ -46,7 +59,7 @@ export async function findBatchWarnings(manager: EntityManager, sale: any, store
 
   const itemIds = Array.from(new Set(lines.map((l: any) => Number(l.itemid)))) as number[];
   const own = await manager.query(
-    `select pii.id, pii.product_id, pii.batch, pii.exp_date, p.title from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`, [itemIds]);
+    `select pii.id, pii.product_id, pii.batch, pii.exp_date, p.title, p.more_props from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`, [itemIds]);
   const ownBy = new Map<number, any>(own.map((o: any) => [Number(o.id), o]));
   const productIds = Array.from(new Set(own.map((o: any) => Number(o.product_id)))) as number[];
 
@@ -91,17 +104,21 @@ export async function findBatchWarnings(manager: EntityManager, sale: any, store
       });
     }
 
-    const months = Number(l.supplymonths);
-    if (Number.isFinite(months) && months > 0) {
-      const needed = addMonths(today, months + buffer);
+    const monthly = monthlyUnits(o.more_props);
+    if (fefo && monthly > 0) {
+      const qty = Number(l.qty);
+      const months = qty / monthly;
+      // the supply runs out `months` months from now; the batch should have `buffer` months left after that
+      const needed = new Date(addMonths(today, buffer).getTime() + months * 30 * 86400000);
       if (mine < needed && !seen.has(`S${o.id}`)) {
         seen.add(`S${o.id}`);
         const better = batches
-          .filter((b: any) => Number(b.product_id) === Number(o.product_id) && new Date(b.exp_date) >= needed && Number(b.available) >= Number(l.qty))
+          .filter((b: any) => Number(b.product_id) === Number(o.product_id) && new Date(b.exp_date) >= needed && Number(b.available) >= qty)
           .sort((a: any, b: any) => +new Date(a.exp_date) - +new Date(b.exp_date))[0];
+        const m = Math.round(months * 10) / 10;
         warnings.push({
-          code: 'SHORT_DATED_FOR_SUPPLY', blocking: true, itemid: Number(l.itemid), title: o.title,
-          message: `${o.title}: the customer is buying ${months} month${months === 1 ? '' : 's'} of medicine, so the batch should last at least ${months + buffer} months (to ${monthYear(needed)}); batch ${o.batch} expires ${monthYear(mine)}.`
+          code: 'SHORT_DATED_FOR_SUPPLY', blocking: false, itemid: Number(l.itemid), title: o.title,
+          message: `${o.title}: ${qty} units is about ${m} month${m === 1 ? '' : 's'} of medicine, and batch ${o.batch} expires ${monthYear(mine)}, which leaves less than ${buffer} months once it is used up (it should last to ${monthYear(needed)}).`
             + (better ? ` Batch ${better.batch} (expires ${monthYear(better.exp_date)}) is long enough.` : ' No batch in stock is long enough.'),
           suggest: better?.batch,
         });
@@ -112,8 +129,8 @@ export async function findBatchWarnings(manager: EntityManager, sale: any, store
 }
 
 /**
- * Raises the 409 the billing screen shows as a confirmation. Counter staff can sell through ordinary warnings once they confirm; a
- * blocking one needs a Store Head or Business Head (`canOverride`). Returns the warnings that were overridden, for the audit log.
+ * Raises the 409 the billing screen shows as a confirmation. Counter staff can sell through a warning once they confirm (it is
+ * audited); a blocking one, should there be one, needs a Store Head or Business Head (`canOverride`). Returns the warnings that were overridden, for the audit log.
  */
 export function enforceBatchWarnings(warnings: BatchWarning[], acknowledged: boolean, isManager: boolean): BatchWarning[] {
   if (!warnings.length) return [];

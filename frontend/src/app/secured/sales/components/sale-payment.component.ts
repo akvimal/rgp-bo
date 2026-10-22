@@ -21,6 +21,8 @@ export class SalePaymentComponent {
 
     constructor(private http: HttpClient) {}
     cashbal = 0;
+    /** what the customer handed over, for working out the change; null until typed */
+    tendered:number|null = null;
 
     /** a digital amount with no (or a malformed) reference: the bill cannot be completed and cannot be reconciled later */
     get refMissing(): boolean {
@@ -127,8 +129,20 @@ export class SalePaymentComponent {
         this.payment['valid'] = true;
     }
 
+    /** the Cash / Digital switch */
+    setCashMode(cash:boolean){
+        if(this.payment.staffcredit){
+            this.payment.staffcredit = false;
+            this.payment.staffcredituserid = null;
+        }
+        this.cashonly = cash;
+        this.changeToCash({target:{checked:cash}});
+    }
+
     tenderBal(event:any){
-        this.cashbal = event.target.value - ((this.payment.cashamt||0) > 0 ? (this.payment.cashamt||0) : this.total);
+        const v = event.target.value;
+        this.tendered = v === '' || v === null ? null : +v;
+        this.cashbal = (this.tendered ?? 0) - ((this.payment.cashamt||0) > 0 ? (this.payment.cashamt||0) : this.total);
     }
 
     private clampAmount(value:any){

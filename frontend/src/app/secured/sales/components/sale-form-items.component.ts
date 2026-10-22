@@ -5,6 +5,7 @@ import { Offer } from "../models/offer.model";
 import { OfferService } from "../offer.service";
 import { SaleHelper } from "../sale.helper";
 import { SaleService } from "../sales.service";
+import { monthlyUnits } from "../supply-rule";
 
 @Component({
     selector: 'app-sale-form-items',
@@ -116,18 +117,22 @@ export class SaleFormItemsComponent{
     if(anchor){ this.removeItem(anchor.itemid); }
   }
 
-  /** mark a chronic medicine's line as a longer supply, so the batch check applies to it */
+  /** offer a longer supply: each regular medicine on the bill is set to that many months of units (capped by stock; the cashier can change it); the batch is checked when the bill is completed */
   setSupplyFor(u:any){
-    (this.items || []).filter((i:any) => +(i.product_id || i.productid) === +u.anchorproductid).forEach((i:any) => {
-      i.supplymonths = u.months;
-      this.itemUpdated.emit(i);
+    const months = +u.months || 3;
+    (this.items || []).filter((i:any) => i.edited && +(i.product_id || i.productid) === +u.anchorproductid).forEach((i:any) => {
+      const monthly = monthlyUnits(i);
+      if(!monthly){ return; }
+      const stock = +i.balance || monthly * months;
+      this.setQty(i, Math.min(monthly * months, stock));
     });
   }
 
-  /** months of medicine this line is for; the server checks the batch will outlast it */
-  setSupply(item:any,event:any){
-    const v = parseFloat(event.target.value);
-    item.supplymonths = Number.isFinite(v) && v > 0 ? Math.min(v, 24) : null;
+  /** set a line's units from code (the keyboard path is changeItemQty) */
+  private setQty(item:any, qty:number){
+    item.qty = qty;
+    this.refreshAvailableQty(item);
+    this.calculateTotalWithQtyChange(item);
     this.itemUpdated.emit(item);
   }
 

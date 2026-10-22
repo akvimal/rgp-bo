@@ -10,7 +10,7 @@ const MGR = 'businesshead@local.test';
 const COUNTER = 'sales1@local.test';
 
 test.describe('POS requests @p1', () => {
-  test('POS-REQ-1 a popup below the items captures a request for a product we do not have @happy', async ({ app, api }) => {
+  test('POS-REQ-1 a popup under the product search captures a request for a product we do not have @happy', async ({ app, api }) => {
     const rows = (await api.request('POST', '/stock/filter', { available: true, limit: 5 }, MGR)).body;
     test.skip(!rows.length, 'no products to request');
     const title: string = rows[0].title;
@@ -20,12 +20,14 @@ test.describe('POS requests @p1', () => {
     await expect(page.getByTestId('shift-card')).toHaveCount(0);                       // no shift strip on the POS
     await expect(page.getByTestId('shift-card-link')).toHaveCount(0);
 
-    // the link sits below the items grid, and opens a popup instead of leaving the bill
+    // the link sits right under the product search (above the grid), and opens a popup instead of leaving the bill
     const link = page.getByTestId('pos-request-product');
     await expect(link).toBeVisible();
+    const search = await page.locator('[data-testid=sale-add-item] app-stock-select').boundingBox();
     const grid = await page.locator('app-sale-form-items table').first().boundingBox();
     const at = await link.boundingBox();
-    expect(at!.y).toBeGreaterThan(grid!.y + grid!.height - 4);
+    expect(at!.y).toBeGreaterThanOrEqual(search!.y + search!.height - 2);
+    expect(at!.y + at!.height).toBeLessThanOrEqual(grid!.y + 2);
     const url = page.url();
     await link.click();
     const dlg = page.getByTestId('pos-request-dialog');

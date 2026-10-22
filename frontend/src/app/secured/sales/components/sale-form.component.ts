@@ -9,6 +9,7 @@ import { SaleService } from "../sales.service";
 import { CustomersService } from "../../customers/customers.service";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
+import { monthlyUnits, monthsCovered } from "../supply-rule";
 
 @Component({
     templateUrl: 'sale-form.component.html'
@@ -245,6 +246,8 @@ export class SaleFormComponent {
             break;
       }
       item['productid'] = item['product_id'];
+      // for a regular medicine the units are months of medicine: recorded with the line (the server checks the batch against it)
+      item['supplymonths'] = monthlyUnits(item) > 0 ? Math.min(24, Math.max(0.1, Math.round(monthsCovered(item) * 10) / 10)) : null;
       return item;
     });
 
@@ -427,6 +430,11 @@ export class SaleFormComponent {
 
   isDocumentProvided(){
     return this.isDocumentAvailable(this.documents,this.doctypes)
+  }
+
+  /** each missing document once, however many lines need it */
+  get missingDocsText(): string {
+    return Array.from(new Set(this.getMisingDocs())).join(', ');
   }
 
   getMisingDocs(){

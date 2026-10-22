@@ -1,8 +1,8 @@
 /**
  * Batch checks at the counter — BR-1..2
  *  - an older batch of the same product still in stock should be sold first (a warning the cashier confirms)
- *  - a customer buying N months of medicine needs a batch that stays in date for N + 3 months (counter staff are stopped;
- *    a Store Head or Business Head can sell through it)
+ *  - for a regular medicine the units are months of medicine (30 a month); the batch should still have 3 months left once the
+ *    supply is used up, and the till warns, only when the batch and the quantity do not fit
  */
 import { test, expect, data } from '../fixtures/index.js';
 
@@ -12,6 +12,8 @@ const CASHIER = 'sales1@local.test';
 type Batch = { itemid: number; productid: number; batch: string; exp: Date; price: number; mrpcost: number; taxpcnt: number };
 let OLDER: Batch | null = null;
 let NEWER: Batch | null = null;
+let LONG: Batch | null = null;      // a well-stocked, long-dated line; the test makes its product a chronic medicine
+let LONG_PROPS: any = {};
 
 const addMonths = (d: Date, n: number) => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); x.setUTCMonth(x.getUTCMonth() + Math.ceil(n)); return x; };
 
@@ -32,6 +34,14 @@ test.beforeAll(async () => {
     itemid: x.item_id, productid: x.id, batch: x.batch, exp: new Date(x.exp_date),
     price: Math.max(1, Math.round((Number(x.mrp_cost) || 20) * 0.8)), mrpcost: Number(x.mrp_cost) || 25, taxpcnt: Number(x.tax_pcnt) || 12,
   });
+  // a well-stocked line whose batch can cover a month but not a very long supply: DAYS units fit 3 months-after, DAYS + 5 do not
+  const threeMonths = addMonths(new Date(), 3).getTime();
+  const daysOf = (x: any) => (new Date(x.exp_date).getTime() - threeMonths) / 86400000;
+  // the line that needs the fewest units to prove the point (the test sells about twice that), so it does not drain stock other specs use
+  const stocked = rows
+    .filter((x: any) => x.status === 'VERIFIED' && (x.more_props?.schedule ?? '') !== 'H1' && x.exp_date && daysOf(x) >= 35 && Number(x.balance) >= 2 * daysOf(x) + 60)
+    .sort((a: any, b: any) => daysOf(a) - daysOf(b))[0];
+  if (stocked) { LONG = mk(stocked); LONG_PROPS = stocked.more_props ?? {}; }
   for (const list of by.values()) {
     const sorted = list.map(mk).sort((a, b) => +a.exp - +b.exp);
     if (sorted.length > 1 && +sorted[0].exp < +sorted[sorted.length - 1].exp) { OLDER = sorted[0]; NEWER = sorted[sorted.length - 1]; break; }
@@ -74,40 +84,38 @@ test.describe('Batch checks at the counter @p1', () => {
     expect(JSON.stringify(rows)).toContain('EARLIER_EXPIRY');
   });
 
-  test('BR-2 a long supply needs a batch that outlasts it by the margin; counter staff are stopped, managers decide @edge', async ({ api }) => {
-    test.skip(!OLDER || !NEWER, 'the seed has no product with two live batches');
-    // choose the months so the older batch is too short and the newer one just long enough (3 months margin)
-    const today = new Date();
-    let months = 0;
-    for (let s = 1; s <= 24; s++) {
-      const need = addMonths(today, s + 3);
-      if (need > OLDER!.exp && need <= NEWER!.exp) { months = s; break; }
+  test('BR-2 a regular medicine whose batch and quantity do not leave 3 months after the supply only warns @edge', async ({ api }) => {
+    test.skip(!LONG, 'no well-stocked line with a batch of the right age');
+    // make the product a regular (chronic) medicine for the test: 30 units are a month, and one unit a day
+    await api.request('PUT', `/products/${LONG!.productid}`, { props: { ...LONG_PROPS, chronic: true } }, MGR);
+    try {
+      const fitDays = Math.floor((+LONG!.exp - addMonths(new Date(), 3).getTime()) / 86400000);
+      const withQty = (qty: number, extra: any = {}, status = 'COMPLETE') => {
+        const b = bill(LONG!, { bill: { checkbatches: true, ...(extra.bill || {}) } }, status);
+        const total = LONG!.price * qty;
+        return { ...b, cashamt: total, total, items: [{ ...b.items[0], qty, total }] };
+      };
+      const post = (b: any) => api.request('POST', '/sales', b, CASHIER);
+
+      // more units than the batch can cover with 3 months to spare: a warning, not a stop
+      const warned = await post(withQty(fitDays + 5));
+      expect(warned.status).toBe(409);
+      expect(warned.body.code).toBe('SALE_WARNINGS');
+      expect(warned.body.canOverride).toBe(true);
+      expect(warned.body.needsManager).toBe(false);
+      expect(warned.body.warnings[0]).toMatchObject({ code: 'SHORT_DATED_FOR_SUPPLY', blocking: false });
+      expect(warned.body.warnings[0].message).toContain('months');
+
+      // what the batch can cover is fine; a parked bill is not checked
+      expect((await post(withQty(fitDays - 1))).status).toBeLessThan(300);
+      expect((await post(withQty(fitDays + 5, {}, 'PENDING'))).status).toBeLessThan(300);
+
+      // the cashier can sell through it once they confirm, and it is audited
+      expect((await post(withQty(fitDays + 5, { bill: { ackwarnings: true } }))).status).toBeLessThan(300);
+      const log = (await api.request('GET', '/audit?action=sale.batch_warning_overridden&limit=10', undefined, MGR)).body;
+      expect(JSON.stringify(Array.isArray(log) ? log : (log.rows || log.items || []))).toContain('SHORT_DATED_FOR_SUPPLY');
+    } finally {
+      await api.request('PUT', `/products/${LONG!.productid}`, { props: LONG_PROPS }, MGR);
     }
-    test.skip(!months, 'the two batches are too close in date to separate with a whole number of months');
-
-    const post = (b: any, who = CASHIER) => api.request('POST', '/sales', b, who);
-    const short = { line: { supplymonths: months } };
-
-    const stopped = await post(bill(OLDER!, short));
-    expect(stopped.status).toBe(409);
-    expect(stopped.body.warnings.some((w: any) => w.code === 'SHORT_DATED_FOR_SUPPLY' && w.blocking)).toBe(true);
-    expect(stopped.body.warnings[0].suggest).toBeTruthy();                                        // points at a batch that is long enough
-    expect(stopped.body.warnings[0].suggest).not.toBe(OLDER!.batch);
-    expect(stopped.body.canOverride).toBe(false);
-    expect(stopped.body.needsManager).toBe(true);
-
-    // confirming is not enough for counter staff
-    expect((await post(bill(OLDER!, { ...short, bill: { ackwarnings: true } }))).status).toBe(409);
-    // the long-dated batch passes untouched, and the months are kept on the line
-    const ok = await post(bill(NEWER!, short));
-    expect(ok.status).toBeLessThan(300);
-    const saved = (await api.request('GET', `/sales/${ok.body.id}`, undefined, CASHIER)).body;
-    expect(Number(saved.items[0].supplymonths)).toBe(months);
-
-    // a Business Head can sell through it knowingly; a parked bill is not checked
-    expect((await post(bill(OLDER!, { ...short, bill: { ackwarnings: true } }), MGR)).status).toBeLessThan(300);
-    expect((await post(bill(OLDER!, short, 'PENDING'))).status).toBeLessThan(300);
-    // and a line with no stated supply is never held to it
-    expect((await post(bill(OLDER!))).status).toBeLessThan(300);
   });
 });

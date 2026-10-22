@@ -4,32 +4,50 @@ import { environment } from "src/environments/environment";
 import { StoreContextService } from "src/app/@core/store-context.service";
 
 /**
- * What to say to the customer while the bill is being made: what others bought with these, the same composition earning
- * more, a longer supply for a chronic medicine. Shown, added and dismissed suggestions are logged so the acceptance can be
- * measured. It only suggests; nothing is added until the cashier presses the button.
+ * Ideas to mention to the customer, kept out of the way: a small button under the items ("Suggestions 3") that opens a short
+ * list on demand. Cross-sell (what others bought with these), a same-composition alternative that earns more, and one line
+ * - not one per medicine - offering a longer supply for regular medicines. Shown / added / dismissed are logged when the list is
+ * opened and acted on, so the acceptance can be measured. Nothing is added until the cashier presses a button.
  */
 @Component({
   selector: "app-sale-suggestions",
   template: `
-    <div class="border rounded p-2 mb-2 bg-light" *ngIf="cross.length || upsell.length" data-testid="sale-suggestions">
-      <div class="small fw-semibold mb-1"><i class="bi bi-lightbulb me-1"></i>Suggest to the customer</div>
-      <div class="d-flex flex-wrap gap-2 align-items-center mb-1" *ngIf="cross.length" data-testid="sale-sugg-cross">
-        <span class="small text-muted">Customers also bought:</span>
-        <span *ngFor="let s of cross" class="btn-group btn-group-sm" data-testid="sale-sugg-cross-item" [attr.data-product]="s.productid">
-          <button type="button" class="btn btn-outline-primary" (click)="addCross(s)" [title]="s.together + ' bills had this together'">+ {{s.title}} <span class="text-muted">&#8377;{{s.price | number:'1.0-0'}}</span></button>
-          <button type="button" class="btn btn-outline-secondary" (click)="dismiss(s)" aria-label="Not now">&times;</button>
-        </span>
-      </div>
-      <div *ngFor="let u of upsell" class="small d-flex flex-wrap gap-2 align-items-center mb-1" [attr.data-testid]="'sale-sugg-' + u.kind" [attr.data-product]="u.productid || u.anchorproductid">
-        <ng-container *ngIf="u.kind === 'SAME_COMPOSITION'">
-          <span><strong>{{u.anchortitle}}</strong>: same composition, better value &rarr; <strong>{{u.title}}</strong> (&#8377;{{u.price | number:'1.0-0'}}, {{u.marginGain}} points more margin)</span>
-          <button type="button" class="btn btn-sm btn-outline-primary" (click)="swapTo(u)">Switch to it</button>
+    <div class="position-relative" *ngIf="count" data-testid="sale-suggestions-wrap">
+      <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" (click)="toggle()" [attr.aria-expanded]="open" data-testid="sale-suggestions-toggle">
+        <i class="bi bi-lightbulb"></i> Suggestions <span class="badge rounded-pill bg-light text-dark border">{{count}}</span>
+      </button>
+      <div *ngIf="open" class="card shadow-sm position-absolute end-0 p-2 small" style="z-index:30; width:30rem; max-width:90vw; max-height:18rem; overflow:auto" data-testid="sale-suggestions">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="fw-semibold">Worth mentioning to the customer</span>
+          <button type="button" class="btn-close" style="font-size:.6rem" (click)="open = false" aria-label="Close"></button>
+        </div>
+
+        <ng-container *ngIf="cross.length">
+          <div class="text-muted mt-1">Customers also bought</div>
+          <div *ngFor="let s of cross" class="d-flex align-items-center gap-2 py-1 border-top" data-testid="sale-sugg-cross-item" [attr.data-product]="s.productid">
+            <span class="flex-grow-1">{{s.title}} <span class="text-muted">&#8377;{{s.price | number:'1.0-0'}}</span></span>
+            <button type="button" class="btn btn-sm btn-outline-primary py-0" (click)="addCross(s)">Add</button>
+            <button type="button" class="btn btn-sm btn-link text-muted py-0" (click)="dismiss(s)" aria-label="Not now">&times;</button>
+          </div>
         </ng-container>
-        <ng-container *ngIf="u.kind === 'BULK_SUPPLY'">
-          <span><strong>{{u.anchortitle}}</strong> is a regular medicine: offer a {{u.months}}-month supply.</span>
-          <button type="button" class="btn btn-sm btn-outline-primary" (click)="bulk(u)">Mark as {{u.months}} months</button>
+
+        <ng-container *ngIf="swaps.length">
+          <div class="text-muted mt-2">Same composition, better value</div>
+          <div *ngFor="let u of swaps" class="d-flex align-items-center gap-2 py-1 border-top" data-testid="sale-sugg-SAME_COMPOSITION" [attr.data-product]="u.productid">
+            <span class="flex-grow-1"><span class="text-muted">{{u.anchortitle}} &rarr;</span> {{u.title}} <span class="text-muted">&#8377;{{u.price | number:'1.0-0'}} &middot; +{{u.marginGain}} pts</span></span>
+            <button type="button" class="btn btn-sm btn-outline-primary py-0" (click)="swapTo(u)">Switch</button>
+            <button type="button" class="btn btn-sm btn-link text-muted py-0" (click)="dismiss(u)" aria-label="Not now">&times;</button>
+          </div>
         </ng-container>
-        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="dismiss(u)" aria-label="Not now">&times;</button>
+
+        <ng-container *ngIf="bulk.length">
+          <div class="text-muted mt-2">Longer supply</div>
+          <div class="d-flex align-items-center gap-2 py-1 border-top" data-testid="sale-sugg-BULK_SUPPLY">
+            <span class="flex-grow-1">{{bulk.length}} regular medicine{{bulk.length === 1 ? '' : 's'}} on this bill ({{bulkNames}}). Offer a {{bulk[0].months}}-month supply.</span>
+            <button type="button" class="btn btn-sm btn-outline-primary py-0" (click)="markAll()" data-testid="sale-sugg-bulk-all" title="Sets each one to {{bulk[0].months}} months of units; you can change them">Make it {{bulk[0].months}} months</button>
+            <button type="button" class="btn btn-sm btn-link text-muted py-0" (click)="dismissBulk()" aria-label="Not now">&times;</button>
+          </div>
+        </ng-container>
       </div>
     </div>`,
 })
@@ -40,7 +58,9 @@ export class SaleSuggestionsComponent implements DoCheck, OnDestroy {
   @Output() supply = new EventEmitter<any>();
 
   cross: any[] = [];
-  upsell: any[] = [];
+  swaps: any[] = [];
+  bulk: any[] = [];
+  open = false;
   private key = "";
   private timer: any = null;
   private shown = new Set<string>();
@@ -49,6 +69,13 @@ export class SaleSuggestionsComponent implements DoCheck, OnDestroy {
   constructor(private http: HttpClient, private storeContext: StoreContextService) {}
 
   ngOnDestroy() { clearTimeout(this.timer); }
+
+  get count(): number { return this.cross.length + this.swaps.length + (this.bulk.length ? 1 : 0); }
+
+  get bulkNames(): string {
+    const n = this.bulk.map(b => b.anchortitle);
+    return n.length > 3 ? `${n.slice(0, 3).join(", ")} and ${n.length - 3} more` : n.join(", ");
+  }
 
   /** the lines change in place, so look at them each cycle and ask again (after a pause) when the products or supplies change */
   ngDoCheck() {
@@ -63,20 +90,30 @@ export class SaleSuggestionsComponent implements DoCheck, OnDestroy {
   private id(s: any) { return `${s.kind}:${s.anchorproductid || ""}:${s.productid || ""}`; }
 
   private refresh(lines: any[]) {
-    if (!lines.length) { this.cross = []; this.upsell = []; return; }
+    if (!lines.length) { this.cross = []; this.swaps = []; this.bulk = []; this.open = false; return; }
     this.http.post<any>(`${environment.apiHost}/sale-suggestions`, {
       storeid: this.storeContext.selectedStoreId,
       items: lines.map(i => ({ productid: i.product_id || i.productid, supplymonths: i.supplymonths || null })),
     }).subscribe({
       next: d => {
-        this.cross = (d.crossSell || []).filter((s: any) => !this.dismissed.has(this.id(s)));
-        this.upsell = (d.upsell || []).filter((s: any) => !this.dismissed.has(this.id(s)));
-        const fresh = [...this.cross, ...this.upsell].filter(s => !this.shown.has(this.id(s)));
-        fresh.forEach(s => this.shown.add(this.id(s)));
-        if (fresh.length) this.log(fresh.map(s => this.event(s, "SHOWN")));
+        const live = (x: any) => !this.dismissed.has(this.id(x));
+        this.cross = (d.crossSell || []).filter(live).slice(0, 4);
+        const up = (d.upsell || []).filter(live);
+        this.swaps = up.filter((u: any) => u.kind === "SAME_COMPOSITION");
+        this.bulk = up.filter((u: any) => u.kind === "BULK_SUPPLY");
+        if (!this.count) this.open = false;
       },
-      error: () => { this.cross = []; this.upsell = []; },
+      error: () => { this.cross = []; this.swaps = []; this.bulk = []; },
     });
+  }
+
+  /** a suggestion counts as shown once the list has actually been opened */
+  toggle() {
+    this.open = !this.open;
+    if (!this.open) return;
+    const visible = [...this.cross, ...this.swaps, ...(this.bulk.length ? [this.bulk[0]] : [])].filter(s => !this.shown.has(this.id(s)));
+    visible.forEach(s => this.shown.add(this.id(s)));
+    if (visible.length) this.log(visible.map(s => this.event(s, "SHOWN")));
   }
 
   private event(s: any, action: string) {
@@ -89,12 +126,26 @@ export class SaleSuggestionsComponent implements DoCheck, OnDestroy {
 
   addCross(s: any) { this.log([this.event(s, "ADDED")]); this.add.emit(s); this.drop(s); }
   swapTo(u: any) { this.log([this.event(u, "ADDED")]); this.swap.emit(u); this.drop(u); }
-  bulk(u: any) { this.log([this.event(u, "ADDED")]); this.supply.emit(u); this.drop(u); }
+
+  /** one press marks every regular medicine; it counts as one suggestion taken */
+  markAll() {
+    this.log([this.event(this.bulk[0], "ADDED")]);
+    this.bulk.forEach(b => this.supply.emit(b));
+    this.dismissBulk(false);
+  }
+
   dismiss(s: any) { this.log([this.event(s, "DISMISSED")]); this.drop(s); }
+  dismissBulk(log = true) {
+    if (log && this.bulk.length) this.log([this.event(this.bulk[0], "DISMISSED")]);
+    this.bulk.forEach(b => this.dismissed.add(this.id(b)));
+    this.bulk = [];
+    if (!this.count) this.open = false;
+  }
 
   private drop(s: any) {
     this.dismissed.add(this.id(s));
     this.cross = this.cross.filter(x => this.id(x) !== this.id(s));
-    this.upsell = this.upsell.filter(x => this.id(x) !== this.id(s));
+    this.swaps = this.swaps.filter(x => this.id(x) !== this.id(s));
+    if (!this.count) this.open = false;
   }
 }

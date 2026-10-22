@@ -1,17 +1,32 @@
-<div class="row">
-    <div *ngIf="!cashonly && !payment.staffcredit;else cash" class="col-7 d-flex flex-row">
-        <select class="form-control" [(ngModel)]="payment.digimode" (change)="digimodechange($event)">
-            <option value="UPI">UPI</option>
-            <option value="Card">Card</option>
-            <option value="Wallet">Wallet</option>
-            <option value="Other">Other</option>
-        </select>
-        <input type="text" class="form-control" [(ngModel)]="payment.digiamt" (input)="digiamtchange($event)">
-        <input type="text" class="form-control" [(ngModel)]="payment.digirefno" placeholder="Paytm ref / UTR" data-testid="pos-digi-ref" [class.is-invalid]="refMissing" maxlength="40">
-        <input type="text" class="form-control" [(ngModel)]="payment.cashamt" (input)="cashamtchange($event)">
+<div class="d-flex flex-column gap-2" data-testid="sale-payment">
+    <!-- how it is paid -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="btn-group btn-group-sm" role="group" aria-label="How it is paid">
+            <button type="button" class="btn" [ngClass]="cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(true)" data-testid="pos-pay-cash">Cash</button>
+            <button type="button" class="btn" [ngClass]="!cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(false)" data-testid="pos-pay-digital">Digital / split</button>
+        </div>
+        <ng-container *ngIf="!cashonly && !payment.staffcredit">
+            <select class="form-select form-select-sm w-auto" [(ngModel)]="payment.digimode" (change)="digimodechange($event)" aria-label="Digital method">
+                <option value="UPI">UPI</option>
+                <option value="Card">Card</option>
+                <option value="Wallet">Wallet</option>
+                <option value="Other">Other</option>
+            </select>
+            <div class="input-group input-group-sm w-auto">
+                <span class="input-group-text">Digital &#8377;</span>
+                <input type="text" class="form-control" style="width:6rem" [(ngModel)]="payment.digiamt" (input)="digiamtchange($event)" aria-label="Digital amount">
+            </div>
+            <input type="text" class="form-control form-control-sm w-auto" style="width:13rem !important" [(ngModel)]="payment.digirefno" placeholder="Paytm ref / UTR" data-testid="pos-digi-ref" [class.is-invalid]="refMissing" maxlength="40" aria-label="Payment reference">
+            <div class="input-group input-group-sm w-auto">
+                <span class="input-group-text">Cash &#8377;</span>
+                <input type="text" class="form-control" style="width:6rem" [(ngModel)]="payment.cashamt" (input)="cashamtchange($event)" aria-label="Cash amount">
+            </div>
+        </ng-container>
     </div>
-    <div class="col-12 small text-danger" *ngIf="refMissing" data-testid="pos-digi-ref-msg">Enter the Paytm reference (transaction or UTR number) for the digital amount.</div>
-    <div class="col-12 mt-1 d-flex flex-wrap align-items-center gap-2" *ngIf="staffOptions.length">
+    <div class="small text-danger" *ngIf="refMissing" data-testid="pos-digi-ref-msg">Enter the Paytm reference (transaction or UTR number) for the digital amount.</div>
+
+    <!-- staff credit / store credit -->
+    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="staffOptions.length">
         <div class="form-check mb-0">
             <input class="form-check-input" type="checkbox" id="onStaffCredit" data-testid="pos-staff-credit" [(ngModel)]="payment.staffcredit" (change)="staffCreditChange()">
             <label class="form-check-label" for="onStaffCredit">Put this bill on a staff member's credit</label>
@@ -22,22 +37,22 @@
         </select>
         <span class="small text-danger" *ngIf="staffShort" data-testid="pos-staff-credit-short">This bill is more than what is left of their limit.</span>
     </div>
-    <div class="col-12 mt-1 d-flex flex-wrap align-items-center gap-2" *ngIf="(payment.creditbalance || 0) > 0 && !payment.staffcredit" data-testid="pos-credit-row">
+    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="(payment.creditbalance || 0) > 0 && !payment.staffcredit" data-testid="pos-credit-row">
         <div class="form-check mb-0">
             <input class="form-check-input" type="checkbox" id="useStoreCredit" data-testid="pos-use-credit" [(ngModel)]="payment.usecredit" (change)="creditChange()">
             <label class="form-check-label" for="useStoreCredit">Use store credit (&#8377;{{payment.creditbalance | number:'1.2-2'}} available)</label>
         </div>
         <span class="small text-muted" *ngIf="payment.usecredit" data-testid="pos-credit-use">&#8377;{{creditUse | number:'1.2-2'}} off this bill<span *ngIf="creditUse < total">; the rest by cash or digital</span></span>
     </div>
-    <ng-template #cash>
-        <div class="col-7 d-flex flex-row">&nbsp;</div>
-    </ng-template>
-    <div class="col-2 d-flex flex-row text-end">
-        <input type="checkbox" class="form-control-input checkmark mt-2" [(ngModel)]="cashonly" (change)="changeToCash($event)">
-        <label class="sale-summary">&nbsp;Cash</label>
-    </div>
-    <div class="col-3 d-flex flex-row text-end">
-        <input type="number" class="form-control" (input)="tenderBal($event)">
-        <span class="input-group-text" [ngStyle]="{'font-size': 'larger', 'background-color': cashbal < 0 ? '#faa' : '#aaf'}">{{cashbal}}</span>
+
+    <!-- change to give -->
+    <div class="d-flex align-items-center gap-2" *ngIf="cashonly || (payment.cashamt || 0) > 0">
+        <div class="input-group input-group-sm w-auto">
+            <span class="input-group-text">Cash given &#8377;</span>
+            <input type="number" class="form-control" style="width:7rem" (input)="tenderBal($event)" aria-label="Cash given by the customer" data-testid="pos-tender">
+        </div>
+        <span class="small" *ngIf="tendered !== null" [class.text-danger]="cashbal < 0" [class.text-success]="cashbal >= 0" data-testid="pos-change">
+            {{cashbal >= 0 ? 'Give back' : 'Still to pay'}} <strong>&#8377;{{cashbal < 0 ? -cashbal : cashbal}}</strong>
+        </span>
     </div>
 </div>

@@ -1,70 +1,55 @@
-<table class="table table-bordered">
-    <thead>
-        <tr style="background-color: #ddd;">
-            <th width="2%"></th>
-            <th>Product</th>
-            <th class="text-end">Batch/Use By</th>
-            <th width="10%" class="text-end">MRP</th>
-            <th width="10%" class="text-end">Units</th>
-            <th width="10%" class="text-end">Rate</th>
-            <th width="7%" class="text-end">Tax</th>
-            <th width="10%" class="text-end">Amount</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr *ngFor="let item of items" style="font-size: larger;">
-            <td class="text-center">
-                <h5 *ngIf="item.edited" style="margin-top:.3em">
-                <a (click)="removeItem(item.itemid)">
-                <i class="bi bi-trash text-danger"></i>
-                </a>
-            </h5>
-            </td>
-            <td>
-                <p *ngIf="item.title" style="margin:0;padding:0;"><strong>{{item.title}}</strong>
-                    <span *ngIf="item.more_props?.schedule === 'H1'" class="h1-badge">H1</span><br>
-                    <span style="color:#999;font-style: italic;">{{item.more_props?.composition}}</span></p>
-            </td>
-            <td class="text-end">
-                {{item.batch}}<span class="text-primary">&nbsp;/{{item.expdate | date : 'MMM-yy'}}</span>
-            </td>
-            <td class="text-end">{{item.mrpcost | number : '1.1-2'}}</td>
-            <td class="text-end">
-                <span *ngIf="!item.edited">{{item.qty}}</span>
-                <div *ngIf="item.edited" class="d-flex">
-                    <!-- <input type="number" min="0" name="box" class="form-control"
-                    [value]="item.box == 0 ? '' : item.box" (input)="boxInputValidate($event,item.maxqty,item.pack,item.id)">
-                    <input type="number" min="0" class="form-control" name="boxitem" 
-                    [value]="item.boxbal == 0 ? '' : item.boxbal" (input)="boxitemInputValidate($event,item.maxqty,item.pack,item.id)"> 
-                <div class="input-group-append">
-                        <span class="input-group-text" id="basic-addon2">{{item.balqty}}</span>
+<!-- Find a product first: it is what the cashier does most -->
+<div class="mb-2" data-testid="sale-add-item">
+    <app-stock-select (stockSelected)="selectProduct($event)" [excludeItems]="getItemsInForm()"></app-stock-select>
+    <!-- what to do when the product is not in stock: right under the search, where the cashier has just looked -->
+    <div class="mt-1 small" data-testid="sale-add-item-links"><ng-content></ng-content></div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-1">
+        <thead>
+            <tr class="table-light">
+                <th style="width:2rem"></th>
+                <th>Product</th>
+                <th style="width:9rem">Batch / use by</th>
+                <th class="text-end" style="width:5.5rem">MRP</th>
+                <th class="text-end" style="width:8rem">Units</th>
+                <th class="text-end" style="width:5.5rem">Rate</th>
+                <th class="text-end" style="width:4.5rem">Tax</th>
+                <th class="text-end" style="width:6.5rem">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let item of items" data-testid="sale-line">
+                <td class="text-center">
+                    <a role="button" *ngIf="item.edited" (click)="removeItem(item.itemid)" title="Remove" aria-label="Remove this line"><i class="bi bi-trash text-danger"></i></a>
+                </td>
+                <td>
+                    <div *ngIf="item.title"><strong>{{item.title}}</strong> <span *ngIf="item.more_props?.schedule === 'H1'" class="h1-badge">H1</span></div>
+                    <div class="small text-muted fst-italic">{{item.more_props?.composition}}</div>
+                </td>
+                <td>{{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span></td>
+                <td class="text-end">{{item.mrpcost | number : '1.1-2'}}</td>
+                <td class="text-end">
+                    <span *ngIf="!item.edited">{{item.qty}}</span>
+                    <div *ngIf="item.edited" class="d-flex align-items-center justify-content-end gap-1">
+                        <input [value]="item.qty" [disabled]="item.maxqty == 0" class="form-control form-control-sm text-end" style="width:4.5rem"
+                            [class.is-invalid]="+item.qty > +item.maxqty" (input)="changeItemQty(item.itemid,$event)" aria-label="Units">
+                        <span class="small" [class.text-danger]="item.unitsbal < 0" [class.text-muted]="item.unitsbal >= 0" title="Left in stock after this bill">{{item.unitsbal}} left</span>
                     </div>
-                -->
-                    
-                    <input [value]="item.qty" 
-                        [disabled]="item.maxqty == 0"
-                        [ngStyle]="{'background-color': +item.qty > +item.maxqty ? '#f00' : '#f4f7ff','width':'80px','text-align':'right','padding-right':'.5em','border-color':'#ddd'}"
-                        (input)="changeItemQty(item.itemid,$event)">
-                    
-                    <label [ngStyle]="{'text-align':'right','background':item.unitsbal < 0 ? '#faa' : '#ddd','width':'50px','padding-right':'.25em','border-color':'#ddd','color':'#66a'}">{{item.unitsbal}}</label>
-                </div>
-                <div *ngIf="item.edited" class="mt-1">
-                    <input type="number" min="0" max="24" step="0.5" class="form-control form-control-sm text-end" style="width:130px"
-                        placeholder="months of supply" title="How many months of this medicine the customer is buying; the batch must stay in date for that long plus a margin"
-                        [value]="item.supplymonths ?? ''" (input)="setSupply(item,$event)" data-testid="sale-supply">
-                </div>
-            </td>
-            <td class="text-end">{{item.price}}</td>            
-            <td class="text-end">{{item.taxpcnt}}%</td>
-            <td class="text-end">{{item.total}}</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>
-                <app-stock-select (stockSelected)="selectProduct($event)" [excludeItems]="getItemsInForm()"></app-stock-select>
-            </td>
-            <td colspan="6"></td>
-        </tr>
-    </tbody>
-</table>
-<app-sale-suggestions [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
+                </td>
+                <td class="text-end">{{item.price}}</td>
+                <td class="text-end">{{item.taxpcnt}}%</td>
+                <td class="text-end fw-semibold">{{item.total}}</td>
+            </tr>
+            <tr *ngIf="!items || !items.length">
+                <td colspan="8" class="text-center text-muted py-4"><i class="bi bi-search me-1"></i>Search a product above to start the bill.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- under the grid: ideas for the customer, kept quiet -->
+<div class="d-flex justify-content-end align-items-center mt-1">
+    <app-sale-suggestions [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
+</div>

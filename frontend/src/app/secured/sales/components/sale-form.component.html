@@ -1,201 +1,133 @@
-    <div class="row">
-        <div class="col-12">
-            <table class="table mt-2">    
-                <tr style="font-size:larger">
-                    <!-- Customer Info -->
-                    <td>
-                        <!-- <strong>Customer</strong> -->
-                        <div class="d-flex" *ngIf="!sale.customer.existing" >
-                            <app-customer-select
+<!-- Bill: who it is for, then what is on it, then how it is paid -->
+<div class="card mt-2 mb-2" data-testid="sale-bill-bar">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-center">
+            <!-- Customer -->
+            <div class="col-xl-7">
+                <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="!sale.customer.existing">
+                    <div style="min-width:14rem">
+                        <app-customer-select
                             (customerSelected)="selectCustomer($event,true)"
                             [inputText]="sale.customer.mobile"
                             (onInput)="captureCustomerInfo($event)">
-                            </app-customer-select>
-                            
-                            <!-- <h4 *ngIf="sale.customer.mobile && sale.customer.mobile.length !== 10" 
-                                class="mt-2 icon"><i class="bi bi-shield-exclamation text-danger"></i></h4> -->
-                            <div *ngIf="sale.customer.mobile.length === 10" class="d-flex">
-                                &nbsp;&nbsp;<input type="text" class="form-control" [(ngModel)]="sale.customer.name" placeholder="Name">
-                                &nbsp;&nbsp;<input type="text" class="form-control" [(ngModel)]="sale.customer.email" placeholder="Email">
-                                <!-- <h4 class="icon">
-                                    &nbsp;&nbsp;<a (click)="resetCustomer()">
-                                        <i class="bi bi-x-square text-danger"></i>
-                                    </a>
-                                </h4> -->
-                                <!-- &nbsp;&nbsp;<button class="btn btn-outline-primary" (click)="saveCustomer()">Save</button>
-                                &nbsp;&nbsp;<button class="btn btn-outline-secondary" (click)="resetCustomer()">Cancel</button> -->
-                            </div>
-                        </div>
-                            
-                                <div class="mt-2" *ngIf="sale.customer.existing">
-                                   <strong>{{sale.customer?.name}} ({{sale.customer?.mobile}})</strong>
-                                    &nbsp;&nbsp;<h4 class="icon">
-                                        <a (click)="showPrevSalesCopy()">
-                                            <i class="bi bi-files text-success"></i>
-                                        </a>
-                                        &nbsp;&nbsp;<a (click)="resetCustomer()">
-                                            <i class="bi bi-x-square text-danger"></i>
-                                        </a>
-                                    </h4>
-                                </div>
-                    </td>
-                    <!-- Bill Info-->
-                    <td class="text-end">
-                        <strong>Bill Date:</strong>&nbsp;{{sale.billdate | date: 'dd MMM yyyy'}}
-                        <span class="ms-3"><strong>Staff:</strong>&nbsp;{{activeStaffName || 'Not selected'}}</span>
-                        <span *ngIf="sale.status !== 'NEW' && sale.billno">&nbsp;<strong>Bill No:</strong>&nbsp;{{sale.billno}}</span>
-                    </td>
-                </tr>
-                <!-- Sale Items -->
-                <tr>
-                    <td colspan="2">
-                        <app-sale-form-items [items]="sale.items" 
-                            (itemRemoved)="onItemRemoved($event)"
-                            (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
-                        </app-sale-form-items>
-                    </td>
-                </tr>
-                <tr *isAuth="'purchases.read'">
-                    <td colspan="2">
-                        <button type="button" class="btn btn-link btn-sm p-0" (click)="requestVisible = true" data-testid="pos-request-product">
-                            <i class="bi bi-bag-plus"></i> Request a product we don't have
-                        </button>
-                        <span class="small text-success ms-2" *ngIf="requestMessage" data-testid="pos-request-done">{{requestMessage}}</span>
-                        <app-sale-product-request [(visible)]="requestVisible" [customerName]="sale.customer?.name || ''" [customerPhone]="sale.customer?.mobile || ''"
-                            (saved)="requestSaved($event)"></app-sale-product-request>
-                    </td>
-                </tr>
-                <!-- <tr>
-                    <td colspan="2">
-               
-                <span>Discount</span>
-                
-                <select [(ngModel)]="offer.code" class="form-control" (change)="selectOffer($event)">
-                    <option *ngFor="let o of offers" [value]="o.code">{{o.code}}</option>
-                </select>
-            
-                <input type="number" class="form-control" [(ngModel)]="offer.amount" size="4"
-                (input)="applyDiscount()"
-                [disabled]="!offer.input">
-            
-                    </td>
-                </tr> -->
-                <!-- Total -->
-                <tr *ngIf="sale.items && sale.items.length > 0" style="background:#ccc;">
-                    <td colspan="2" class="pt-1 pb-1">
-                        <!-- <div class="container"> -->
-                            <div class="row m-0 p-0" >
-                                <div class="col-1">
-                                    <label class="sale-summary"><strong>{{sale.items.length}}</strong> items</label>
-                                </div>
-                                <!-- <div class="col-1">
-                                    MRP:<i class="bi bi-currency-rupee" style="padding:0"></i>{{sale.mrptotal}}
-                                </div> -->
-                                <div class="col-2">
-                                    <label class="sale-summary">Save: {{sale.saving}}%</label>
-                                </div>
-                                <div class="col-7">
-                                   <app-sale-payment [total]="sale.total||0" [customerId]="sale.customer?.existing ? sale.customer?.id : null" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
-                                </div>
-                                <div class="col-2 text-end">
-                                    <h4>
-                                    Total: <i class="bi bi-currency-rupee" style="padding:0"></i>&nbsp;<label style="background-color: rgb(65, 236, 60);font-size: xx-large;padding: 0 .3em 0 .3em;">{{sale.total | number : '1.0-0'}}</label>
-                                    </h4>
-                                </div>
-                            </div>
-                        <!-- </div> -->
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
-    
-    <!-- <div class="row" *ngIf="sale.customer && (sale.total||0) > 0 && sale.deliverytype == 'Delivery'">
-        <div class="col-12">
-            <app-sale-delivery-form></app-sale-delivery-form>
-        </div>
-    </div> -->
-    <div class="row" *ngIf="batchWarnings" data-testid="sale-batch-warnings">
-        <div class="col-12">
-            <div class="alert py-2 mb-2" [ngClass]="batchWarnings.needsManager ? 'alert-danger' : 'alert-warning'">
-                <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Check the batches before selling</div>
-                <ul class="mb-2 ps-3">
-                    <li *ngFor="let w of batchWarnings.warnings" [attr.data-warning]="w.code">{{w.message}}</li>
-                </ul>
-                <div class="small mb-2" *ngIf="batchWarnings.needsManager">A Store Head or Business Head has to approve selling this. Change the batch, or ask one of them to complete the bill.</div>
-                <button class="btn btn-sm btn-warning me-2" type="button" *ngIf="batchWarnings.canOverride" (click)="sellAnyway()" data-testid="sale-batch-sell">Sell anyway</button>
-                <button class="btn btn-sm btn-outline-secondary" type="button" (click)="dismissWarnings()" data-testid="sale-batch-change">Change the batch</button>
-            </div>
-        </div>
-    </div>
-    <div class="row" *ngIf="chronicMobileMissing || submitError">
-        <div class="col-12">
-            <div class="alert alert-warning py-2 mb-2" data-testid="sale-chronic-mobile">
-                {{submitError || 'This bill has a chronic medicine: enter the customer mobile number before completing.'}}
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-8 d-flex">
-            <button (click)="submit('PENDING')" 
-                class="btn btn-secondary" [disabled]="total === 0" style="margin-right:1em">Save</button>
-            <button type="button" (click)="discard()" *ngIf="sale.id && sale.status === 'PENDING'"
-            class="btn btn-outline-danger">Discard</button>
-            
-        </div>
-        <div class="col-4 d-flex justify-content-end">
-            <div *ngIf="isDocumentRequiredOnSale() && !isDocumentProvided()" class="mt-3 ml-3">
-                <input type="checkbox" style="width: 20px;height: 20px;" [(ngModel)]="sale.docpending">
-                &nbsp;<span style="font-size: large;color:red;">{{getMisingDocs()}}</span> <span style="font-size: large;">&nbsp;pending</span>
-            </div>
-            <div style="margin-right: 1em;">
-                <select [(ngModel)]="sale.ordertype" class="form-control">
-                    <option value="Walk-in">Walk-in</option>
-                    <option value="Phone">Phone</option>
-                    <option value="Whatsapp">Whatsapp</option>
-                </select>
-            </div>
-            <div style="margin-right: 1em;">
-                <select [(ngModel)]="sale.deliverytype" class="form-control">
-                    <option value="Counter">Counter</option>
-                    <option value="Delivery">Delivery</option>
-                </select>
-            </div>
-            <div>
-            <button (click)="submit('COMPLETE')" class="btn btn-primary" 
-                        [disabled]="!isSaleFormValid() || chronicMobileMissing">Complete</button>    
+                        </app-customer-select>
                     </div>
-            <!-- <a *isAuth="'sales.add'" [routerLink]="['/secure/sales/new']">
-                <button type="button" *ngIf="sale.status === 'PENDING'" (click)="submit('DISCARD')" class="btn btn-primary m-2">New Sale</button></a> -->
-            <!-- <button type="button" (click)="cancel()" class="btn btn-outline-secondary m-2">Cancel</button> -->
+                    <ng-container *ngIf="sale.customer.mobile.length === 10">
+                        <input type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.name" placeholder="Customer name" data-testid="sale-cust-name">
+                        <input type="text" class="form-control form-control-sm w-auto" style="width:14rem !important" [(ngModel)]="sale.customer.email" placeholder="Email (optional)">
+                    </ng-container>
+                    <span class="small text-muted" *ngIf="!sale.customer.mobile">Customer's mobile number (leave empty for a walk-in)</span>
+                </div>
+                <div class="d-flex align-items-center gap-2" *ngIf="sale.customer.existing">
+                    <i class="bi bi-person-check fs-5 text-success"></i>
+                    <strong>{{sale.customer?.name}}</strong> <span class="text-muted">{{sale.customer?.mobile}}</span>
+                    <a role="button" class="ms-1" (click)="showPrevSalesCopy()" title="Earlier bills of this customer"><i class="bi bi-files text-success"></i></a>
+                    <a role="button" (click)="resetCustomer()" title="Choose another customer"><i class="bi bi-x-square text-danger"></i></a>
+                </div>
+            </div>
+            <!-- The bill itself -->
+            <div class="col-xl-5">
+                <div class="d-flex flex-wrap align-items-center justify-content-xl-end gap-2 small">
+                    <span><span class="text-muted me-1">Date</span>{{sale.billdate | date: 'dd MMM yyyy'}}</span>
+                    <span><span class="text-muted me-1">Staff</span><strong>{{activeStaffName || 'Not selected'}}</strong></span>
+                    <span *ngIf="sale.status !== 'NEW' && sale.billno"><span class="text-muted">Bill</span> <strong>{{sale.billno}}</strong></span>
+                    <select [(ngModel)]="sale.ordertype" class="form-select form-select-sm w-auto" aria-label="How the order came" data-testid="sale-ordertype">
+                        <option value="Walk-in">Walk-in</option>
+                        <option value="Phone">Phone</option>
+                        <option value="Whatsapp">Whatsapp</option>
+                    </select>
+                    <select [(ngModel)]="sale.deliverytype" class="form-select form-select-sm w-auto" aria-label="Counter or delivery" data-testid="sale-deliverytype">
+                        <option value="Counter">Counter</option>
+                        <option value="Delivery">Delivery</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 
-    <div class="documents mt-4" *ngIf="documents.length > 0">
-        <h6 style="background: #dea;padding:.5em">Documents</h6>
-        <ul>
-            <li *ngFor="let doc of documents">
-                <h4 class="icon"><a (click)="removeDocument(doc.id)"><i class="bi bi-trash"></i></a></h4>
-                <strong>{{doc.category}}</strong>
-                <app-obj-print [obj]="doc.props" [json]="false"></app-obj-print>
-                {{doc.name}}
-                <h4 class="icon"><a (click)="viewDoc(doc)"><i class="bi bi-eye"></i></a></h4>
-            </li>
-        </ul>
+<!-- Items -->
+<div class="card mb-2">
+    <div class="card-body py-2">
+        <app-sale-form-items [items]="sale.items"
+            (itemRemoved)="onItemRemoved($event)"
+            (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
+            <ng-container *isAuth="'purchases.read'">
+                <button type="button" class="btn btn-link btn-sm p-0" (click)="requestVisible = true" data-testid="pos-request-product">
+                    <i class="bi bi-bag-plus"></i> Request a product we don't have
+                </button>
+                <span class="small text-success ms-2" *ngIf="requestMessage" data-testid="pos-request-done">{{requestMessage}}</span>
+                <app-sale-product-request [(visible)]="requestVisible" [customerName]="sale.customer?.name || ''" [customerPhone]="sale.customer?.mobile || ''"
+                    (saved)="requestSaved($event)"></app-sale-product-request>
+            </ng-container>
+        </app-sale-form-items>
     </div>
-    <div class="row mt-4">
-        <div class="col-12">
-            <ul>
-                <li>Receive prescription dated within last 6 months for H1 drugs</li>
-                <li>Sell least expiry products first</li>
-                <li>Receive customer mobile and name</li>
-                <li>Accept CARD, only if bill amount is above ₹1,000 for generic items</li>
-                <li>Avoid any mistakes in data entry</li>
-            </ul>
+</div>
+
+<!-- Payment and total -->
+<div class="card mb-2" *ngIf="sale.items && sale.items.length > 0" data-testid="sale-pay-card">
+    <div class="card-body py-2">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-8">
+                <app-sale-payment [total]="sale.total||0" [customerId]="sale.customer?.existing ? sale.customer?.id : null" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <div class="small text-muted"><strong>{{sale.items.length}}</strong> item{{sale.items.length === 1 ? '' : 's'}}<span *ngIf="sale.saving"> &middot; saving {{sale.saving}}%</span></div>
+                <div class="d-flex align-items-baseline justify-content-lg-end gap-2">
+                    <span class="text-muted">Total</span>
+                    <span class="fs-2 fw-bold px-2 rounded" style="background:#d9f7d6" data-testid="sale-total"><i class="bi bi-currency-rupee"></i>{{sale.total | number : '1.0-0'}}</span>
+                </div>
+            </div>
         </div>
     </div>
+</div>
+
+<!-- One message for each thing that needs attention -->
+<div class="alert py-2 mb-2 d-flex align-items-start gap-2" *ngIf="batchWarnings" data-testid="sale-batch-warnings"
+     [ngClass]="batchWarnings.needsManager ? 'alert-danger' : 'alert-warning'">
+    <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+    <div class="flex-grow-1">
+        <div class="fw-semibold">Check the batches before selling</div>
+        <ul class="mb-2 ps-3">
+            <li *ngFor="let w of batchWarnings.warnings" [attr.data-warning]="w.code">{{w.message}}</li>
+        </ul>
+        <div class="small mb-2" *ngIf="batchWarnings.needsManager">A Store Head or Business Head has to approve selling this. Change the batch, or ask one of them to complete the bill.</div>
+        <button class="btn btn-sm btn-warning me-2" type="button" *ngIf="batchWarnings.canOverride" (click)="sellAnyway()" data-testid="sale-batch-sell">Sell anyway</button>
+        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="dismissWarnings()" data-testid="sale-batch-change">Change the batch</button>
+    </div>
+</div>
+<div class="alert alert-warning py-2 mb-2 d-flex align-items-center gap-2" *ngIf="isDocumentRequiredOnSale() && !isDocumentProvided()" data-testid="sale-doc-pending">
+    <input type="checkbox" class="form-check-input mt-0" id="docpending" [(ngModel)]="sale.docpending" style="width:1.2rem;height:1.2rem">
+    <label for="docpending" class="mb-0"><strong>{{missingDocsText}}</strong> not received yet. Tick to sell now and collect it later (needs the customer's mobile number).</label>
+</div>
+<div class="alert alert-warning py-2 mb-2" *ngIf="chronicMobileMissing || submitError" data-testid="sale-chronic-mobile">
+    {{submitError || 'This bill has a chronic medicine: enter the customer mobile number before completing.'}}
+</div>
+
+<!-- Actions -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex gap-2">
+        <button (click)="submit('PENDING')" class="btn btn-outline-secondary" [disabled]="total === 0" data-testid="sale-save">Save for later</button>
+        <button type="button" (click)="discard()" *ngIf="sale.id && sale.status === 'PENDING'" class="btn btn-outline-danger">Discard</button>
+    </div>
+    <button (click)="submit('COMPLETE')" class="btn btn-primary btn-lg px-5" [disabled]="!isSaleFormValid() || chronicMobileMissing" data-testid="sale-complete">Complete</button>
+</div>
+
+<div class="documents mt-3" *ngIf="documents.length > 0">
+    <h6 style="background: #dea;padding:.5em">Documents</h6>
+    <ul>
+        <li *ngFor="let doc of documents">
+            <h4 class="icon"><a (click)="removeDocument(doc.id)"><i class="bi bi-trash"></i></a></h4>
+            <strong>{{doc.category}}</strong>
+            <app-obj-print [obj]="doc.props" [json]="false"></app-obj-print>
+            {{doc.name}}
+            <h4 class="icon"><a (click)="viewDoc(doc)"><i class="bi bi-eye"></i></a></h4>
+        </li>
+    </ul>
+</div>
+
 <!-- Customer View -->
-<p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'" 
+<p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'"
         [(visible)]="showCustomerView" [style]="{ width: '75rem', height: '40rem' }" [modal]="true" [maximizable]="true">
     <app-customer-view *ngIf="sale.customer && sale.customer.id" [id]="sale.customer.id" (selected)="onCustomerData($event)"></app-customer-view>
 </p-dialog>
