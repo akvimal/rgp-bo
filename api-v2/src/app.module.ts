@@ -26,6 +26,9 @@ import { NotificationModule } from './modules/app/notifications/notification.mod
 import { AuditModule } from './core/audit/audit.module';
 import { QualityModule } from './modules/app/quality/quality.module';
 import { ExpenseModule } from './modules/app/expenses/expense.module';
+import { InquiryModule } from './modules/app/inquiries/inquiry.module';
+import { VendorIssueModule } from './modules/app/vendor-issues/vendor-issue.module';
+import { StockAuditModule } from './modules/app/stock-audits/stock-audit.module';
 import { HrModule } from './modules/app/hr/hr.module';
 import { StaffCreditModule } from './modules/app/staffcredit/staff-credit.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -68,6 +71,9 @@ import { DbTimingService } from './core/performance/db-timing.service';
     StaffCreditModule,
     HrModule,
     ExpenseModule,
+    InquiryModule,
+    VendorIssueModule,
+    StockAuditModule,
   ],
   controllers: [],
   providers: [

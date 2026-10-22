@@ -20,6 +20,10 @@ export class SecuredComponent {
     user:any;
     stores:any[] = [];
 
+    get singleStore():any {
+      return !this.allStores && this.stores.length === 1 ? this.stores[0] : null;
+    }
+
     get isSiteAdmin(): boolean {
       return this.user?.rolename === 'Site Admin';
     }
@@ -56,7 +60,7 @@ export class SecuredComponent {
         this.state$ = this.appStateService.state;
     }
 
-    /** show the header shift pill for till-capable roles once a specific store is picked */
+    /** show the header shift pill for roles that run a cash drawer once a specific store is picked */
     get shiftPillVisible(): boolean {
       return !this.isSiteAdmin
         && this.selectedStoreId !== null && this.selectedStoreId !== undefined
@@ -75,9 +79,9 @@ export class SecuredComponent {
     }
 
     get shiftLink(): string {
-      return this.authService.isUrlAuthorized('/secure/store/shifts')
-        ? '/secure/store/shifts'
-        : '/secure/sales/pos';
+      return this.authService.isUrlAuthorized('/secure/shift')
+        ? '/secure/shift'
+        : (this.authService.isUrlAuthorized('/secure/store/shifts') ? '/secure/store/shifts' : '/secure/sales/pos');
     }
     
     ngOnInit(){
@@ -96,6 +100,10 @@ export class SecuredComponent {
       this.storeContextService.loadContext().subscribe((context:any) => {
         this.stores = context?.stores || [];
         this.allStores = !!context?.allstores;
+        // A user mapped to one store has nothing to switch: pin the selection to it.
+        if (this.singleStore && this.storeContextService.selectedStoreId !== Number(this.singleStore.id)) {
+          this.storeContextService.setSelectedStoreId(Number(this.singleStore.id), false);
+        }
         this.selectedStoreId = this.storeContextService.selectedStoreId;
       });
       this.storeContextService.selectedStoreId$.subscribe((selected:any) => {

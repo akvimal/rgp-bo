@@ -18,14 +18,13 @@ async function makeCashier(api: any, storeIds: number[]) {
 }
 
 test.describe('Store Context & Multi-Store Switching @p0', () => {
-  test('CTX-1 a single-store user gets that store and no real choice @happy', async ({ app, api }) => {
-    const store = data.storesOf(1)[0].id;
-    const email = await makeCashier(api, [store]);
+  test('CTX-1 a single-store user sees the store as a read-only label, not a switcher @happy', async ({ app, api }) => {
+    const store = data.storesOf(1)[0];
+    const email = await makeCashier(api, [store.id]);
     const { page } = await app.open(email);
     await expectShell(page);
-    const opts = page.getByTestId('store-switcher').locator('option');
-    await expect(opts.first()).toBeAttached();
-    expect(await opts.count()).toBeLessThanOrEqual(2); // "All stores" + the one store
+    await expect(page.getByTestId('store-label')).toContainText(store.location);
+    await expect(page.getByTestId('store-switcher')).toHaveCount(0);
   });
 
   test('CTX-2 a multi-store user sees every assigned store, primary pre-selected @happy', async ({ app, api }) => {

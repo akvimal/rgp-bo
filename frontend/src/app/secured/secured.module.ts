@@ -56,6 +56,26 @@ const routes: Routes = [
       loadChildren: () => import('./quality/quality.module').then(m => m.QualityModule)
     },
     {
+      path: 'vendor-issues', canActivate:[AuthGuard],
+      loadChildren: () => import('./vendor-issues/vendor-issues.module').then(m => m.VendorIssuesModule)
+    },
+    {
+      path: 'stock-audits', canActivate:[AuthGuard],
+      loadChildren: () => import('./stock-audits/stock-audits.module').then(m => m.StockAuditsModule)
+    },
+    {
+      path: 'shift', canActivate:[AuthGuard],
+      loadChildren: () => import('./shift/shift.module').then(m => m.ShiftModule)
+    },
+    {
+      path: 'inquiries', canActivate:[AuthGuard],
+      loadChildren: () => import('./inquiries/inquiries.module').then(m => m.InquiriesModule)
+    },
+    {
+      path: 'kpi', canActivate:[AuthGuard],
+      loadChildren: () => import('./kpi/kpi.module').then(m => m.KpiModule)
+    },
+    {
       path: 'expenses', canActivate:[AuthGuard],
       loadChildren: () => import('./expenses/expenses.module').then(m => m.ExpensesModule)
     },

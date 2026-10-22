@@ -56,7 +56,25 @@ test.describe('Purchasing access and menu @p0', () => {
   test('PACC-3 the menu is grouped into sections and follows the role @happy', async ({ app }) => {
     const bh = await app.open(MGR, '/secure/dashboard');
     await expectShell(bh.page);
-    for (const s of ['sell', 'stock', 'buy', 'oversight', 'admin']) await expect(bh.page.getByTestId(`nav-section-${s}`)).toBeVisible();
+    for (const s of ['sell', 'stock', 'buy', 'people', 'oversight', 'admin']) await expect(bh.page.getByTestId(`nav-section-${s}`)).toBeVisible();
+
+    // every page sits under the heading that describes it
+    const groups = await bh.page.evaluate(() => {
+      const out: Record<string, string[]> = {};
+      let cur = '';
+      document.querySelectorAll('#sidebar-nav > li').forEach((li) => {
+        const sec = li.getAttribute('data-testid') || '';
+        if (sec.startsWith('nav-section-')) { cur = sec.replace('nav-section-', ''); out[cur] = []; return; }
+        const a = li.querySelector('a[data-testid^="nav-"]');
+        if (a && cur) out[cur].push(a.getAttribute('data-testid') as string);
+      });
+      return out;
+    });
+    expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-shift']);
+    expect(groups.stock).toEqual(['nav-store', 'nav-products', 'nav-stock-audits']);
+    expect(groups.buy).toEqual(['nav-purchases', 'nav-vendor-issues', 'nav-expenses']);
+    expect(groups.people).toEqual(['nav-kpi-rate', 'nav-kpi-mine', 'nav-hr']);
+    expect(groups.oversight).toEqual(['nav-reports', 'nav-quality']);
     await expect(bh.page.getByTestId('nav-vendors')).toHaveCount(0);    // Vendors is a tab of Purchase now
     await bh.page.getByTestId('nav-purchases').click();
     await expect(bh.page.getByTestId('nav-vendors')).toBeVisible();
@@ -110,12 +128,13 @@ test.describe('Purchasing access and menu @p0', () => {
     await expect(page.getByRole('columnheader', { name: 'Vendor' })).toHaveCount(0);
     await expect(page.locator('i.bi-pencil-square, i.bi-check2, i.bi-trash')).toHaveCount(0);
 
-    // from the counter: a link that opens the Add form already filled with the bill's customer
+    // from the counter: a link below the items opens a popup to capture the request (POS-REQ-1 covers saving it)
     const pos = await app.open(SALES, '/secure/sales/pos/new', { operatorId: 3, operatorName: 'Sale Staff One' });
     const link = pos.page.getByTestId('pos-request-product');
     await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('target', '_blank');
-    expect(await link.getAttribute('href')).toContain('/secure/purchases/my-requests');
+    await link.click();
+    await expect(pos.page.getByTestId('pos-request-dialog')).toBeVisible();
+    // and the Add form on the requests page still opens pre-filled from a link
     const direct = await app.open(SALES, `/secure/purchases/my-requests?add=1&cname=${encodeURIComponent('QA Counter Customer')}&cphone=9812345678`);
     await expect(direct.page.getByRole('dialog')).toBeVisible();
     await expect(direct.page.locator('input[formcontrolname=customername]')).toHaveValue('QA Counter Customer');

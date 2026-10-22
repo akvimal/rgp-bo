@@ -12,10 +12,12 @@
           <span class="brand-text d-none d-lg-block">RGP</span>
         </a>
         <span *ngIf="businessName && !isSiteAdmin" class="d-none d-lg-block small text-muted ms-2">{{businessName}}</span>
+        <span *ngIf="isSiteAdmin" class="badge bg-warning text-dark ms-2" data-testid="platform-badge">PLATFORM ADMIN</span>
       </div><!-- End Logo -->
 
       <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin" data-testid="store-switcher-wrap">
-        <select class="form-select form-select-sm" data-testid="store-switcher" [ngModel]="selectedStoreId === null ? '' : selectedStoreId" (change)="changeStore($event)" aria-label="Select store">
+        <span *ngIf="singleStore" class="form-control form-control-sm bg-light text-truncate" data-testid="store-label" title="Your store">{{singleStore.business?.name}} - {{singleStore.location}}</span>
+        <select *ngIf="!singleStore" class="form-select form-select-sm" data-testid="store-switcher" [ngModel]="selectedStoreId === null ? '' : selectedStoreId" (change)="changeStore($event)" aria-label="Select store">
           <option value="">All stores</option>
           <option *ngFor="let store of stores" [value]="store.id">{{store.business?.name}} - {{store.location}}</option>
         </select>
@@ -98,7 +100,7 @@
             <span>Dashboard</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('sales','customers.read')" data-testid="nav-section-sell">Sell</li>
+        <li class="nav-heading" *ngIf="has('sales','customers.read','shiftdesk.view','inquiries.view')" data-testid="nav-section-sell">Sell</li>
         <li class="nav-item" *isAuth="'sales'">
           <a class="nav-link collapsed" routerLink="sales" data-testid="nav-sales" title="Sales" aria-label="Sales">
             <i class="bi bi-cash-coin"></i>
@@ -111,13 +113,25 @@
             <span>Customers</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'inquiries.view'">
+          <a class="nav-link collapsed" routerLink="inquiries" data-testid="nav-inquiries" title="Inquiries" aria-label="Customer inquiries">
+            <i class="bi bi-chat-left-text"></i>
+            <span>Inquiries</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'shiftdesk.view'">
+          <a class="nav-link collapsed" routerLink="shift" data-testid="nav-shift" title="My shift" aria-label="My shift">
+            <i class="bi bi-cash-stack"></i>
+            <span>My shift</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('refills.view') && !has('grievances.view')">
           <a class="nav-link collapsed" routerLink="quality/refills" data-testid="nav-refills" title="Refill follow-up" aria-label="Refill follow-up">
             <i class="bi bi-telephone-outbound"></i>
             <span>Refills</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('store.read','products')" data-testid="nav-section-stock">Stock</li>
+        <li class="nav-heading" *ngIf="has('store.read','products','stockaudit.view')" data-testid="nav-section-stock">Stock</li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'store.read'">
           <a class="nav-link collapsed" routerLink="store" data-testid="nav-store" title="Store" aria-label="Store">
             <i class="bi bi-box-seam"></i>
@@ -130,7 +144,13 @@
             <span>Products</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('purchases.add','purchases.request')" data-testid="nav-section-buy">Buy &amp; pay</li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'stockaudit.view'">
+          <a class="nav-link collapsed" routerLink="stock-audits" data-testid="nav-stock-audits" title="Stock audits" aria-label="Stock audits">
+            <i class="bi bi-clipboard-data"></i>
+            <span>Stock audits</span>
+          </a>
+        </li>
+        <li class="nav-heading" *ngIf="has('purchases.add','purchases.request','vendorissues.view','expenses.view')" data-testid="nav-section-buy">Buy &amp; pay</li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('purchases.add')">
           <a class="nav-link collapsed" routerLink="purchases" data-testid="nav-purchases" title="Purchase" aria-label="Purchase">
             <i class="bi bi-bag-check"></i>
@@ -143,10 +163,35 @@
             <span>Purchase requests</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'vendorissues.view'">
+          <a class="nav-link collapsed" routerLink="vendor-issues" data-testid="nav-vendor-issues" title="Vendor issues" aria-label="Vendor issues">
+            <i class="bi bi-arrow-return-left"></i>
+            <span>Vendor issues</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'expenses.view'">
           <a class="nav-link collapsed" routerLink="expenses" data-testid="nav-expenses" title="Expenses" aria-label="Expenses">
             <i class="bi bi-wallet2"></i>
             <span>Expenses</span>
+          </a>
+        </li>
+        <li class="nav-heading" *ngIf="has('hr.view','kpirate.rate','mykpi.view')" data-testid="nav-section-people">People</li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'kpirate.rate'">
+          <a class="nav-link collapsed" routerLink="kpi/rate" data-testid="nav-kpi-rate" title="Rate staff" aria-label="Rate staff KPI">
+            <i class="bi bi-clipboard-check"></i>
+            <span>Rate staff</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'mykpi.view'">
+          <a class="nav-link collapsed" routerLink="kpi/mine" data-testid="nav-kpi-mine" title="My KPI" aria-label="My KPI">
+            <i class="bi bi-graph-up-arrow"></i>
+            <span>My KPI</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'hr.view'">
+          <a class="nav-link collapsed" routerLink="hr" data-testid="nav-hr" title="HR" aria-label="HR">
+            <i class="bi bi-people"></i>
+            <span>HR</span>
           </a>
         </li>
         <li class="nav-heading" *ngIf="has('reports','grievances.view')" data-testid="nav-section-oversight">Oversight</li>
@@ -160,12 +205,6 @@
           <a class="nav-link collapsed" routerLink="quality" data-testid="nav-quality" title="Staff &amp; Quality" aria-label="Staff &amp; Quality">
             <i class="bi bi-shield-check"></i>
             <span>Staff &amp; Quality</span>
-          </a>
-        </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'hr.view'">
-          <a class="nav-link collapsed" routerLink="hr" data-testid="nav-hr" title="HR" aria-label="HR">
-            <i class="bi bi-people"></i>
-            <span>HR</span>
           </a>
         </li>
         <li class="nav-heading" *ngIf="has('settings.read')" data-testid="nav-section-admin">Admin</li>
