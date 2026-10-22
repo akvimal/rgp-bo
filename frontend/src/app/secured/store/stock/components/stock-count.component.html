@@ -25,9 +25,10 @@
           <th></th>
         </tr>
       </ng-template>
+      <ng-template pTemplate="emptymessage"><tr><td colspan="7" class="text-center text-muted py-3">No counts yet.</td></tr></ng-template>
       <ng-template pTemplate="body" let-c>
         <tr>
-          <td>{{c.startedon | date:'dd/MM/yyyy HH:mm'}}</td>
+          <td>{{c.startedon | date:'dd MMM yyyy HH:mm'}}</td>
           <td>{{c.storeid || 'All stores'}}</td>
           <td>{{c.category || 'All'}}</td>
           <td><span class="badge" [ngClass]="{'bg-warning text-dark': c.status === 'IN_PROGRESS', 'bg-success': c.status === 'COMPLETED'}">{{c.status}}</span></td>

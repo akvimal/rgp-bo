@@ -392,7 +392,7 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     label: 'Stock & Cash',
     description: 'Day-to-day stock adjustments and cash handling at a store.',
     group: 'Sales & Store Operations',
-    path: ['/secure/store/stock', '/secure/store/cash', '/secure/store/shifts'],
+    path: ['/secure/store/stock', '/secure/store/cash', '/secure/store/shifts', '/secure/store/transfers'],
     actions: [
       { key: 'read', label: 'View purchase cost (PTR)', fixedProperties: ['ptrcost'] },
       { key: 'adjust', label: 'Adjust stock & cash' },

@@ -98,9 +98,10 @@
         <input type="file" class="form-control" accept="image/*,.pdf" (change)="onReceiptSelected($event)">
       </div>
     </div>
-    <div class="table-responsive mt-3">
-      <table class="table table-sm table-striped align-middle">
-        <thead>
+    <div class="mt-3">
+      <p-table [value]="ledger" [paginator]="true" [rows]="25" [rowsPerPageOptions]="[10,25,50]" [showCurrentPageReport]="true"
+        currentPageReportTemplate="{totalRecords} entries" styleClass="p-datatable-sm">
+        <ng-template pTemplate="header">
           <tr>
             <th>Date</th>
             <th>Category</th>
@@ -110,10 +111,11 @@
             <th>Shift</th>
             <th>Detail</th>
           </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let entry of ledger" data-testid="cash-ledger-row" [attr.data-category]="entry.category">
-            <td>{{entry.transdate}}</td>
+        </ng-template>
+        <ng-template pTemplate="emptymessage"><tr><td colspan="7" class="text-center text-muted py-3" data-testid="cash-ledger-empty">No cash movements yet.</td></tr></ng-template>
+        <ng-template pTemplate="body" let-entry>
+          <tr data-testid="cash-ledger-row" [attr.data-category]="entry.category">
+            <td>{{entry.transdate | date:'dd MMM yyyy'}}</td>
             <td>{{entry.category}}</td>
             <td>{{entry.description}}</td>
             <td class="text-end">{{entry.deposit | number:'1.2-2'}}</td>
@@ -125,11 +127,8 @@
               <i *ngIf="entry.receiptpath" class="bi bi-paperclip ms-1" title="Receipt attached"></i>
             </td>
           </tr>
-          <tr *ngIf="!ledger?.length">
-            <td colspan="7" class="text-center text-muted py-3">No cash movements yet.</td>
-          </tr>
-        </tbody>
-      </table>
+        </ng-template>
+      </p-table>
     </div>
   </div>
 </div>

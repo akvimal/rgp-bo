@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { redactCostFields } from './cost-redaction';
 
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Stock2Service } from "./stock2.service";
@@ -20,28 +21,7 @@ export class Stock2Controller {
       }
     }
 
-    private redactCostFields(data: any) {
-      if (!data) {
-        return data;
-      }
-      const strip = (value: any): any => {
-        if (Array.isArray(value)) {
-          return value.map(strip);
-        }
-        if (value && typeof value === 'object') {
-          const clone: any = {};
-          Object.entries(value).forEach(([key, entry]) => {
-            if (['mrp_cost', 'ptr_cost', 'ptr_value', 'oldprice', 'cost'].includes(key)) {
-              return;
-            }
-            clone[key] = strip(entry);
-          });
-          return clone;
-        }
-        return value;
-      };
-      return strip(data);
-    }
+    private redactCostFields(data: any) { return redactCostFields(data); }
 
     @Post()
     async findAll(@Body() body, @User() currentUser: any) {

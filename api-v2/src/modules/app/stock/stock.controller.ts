@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { redactCostFields } from './cost-redaction';
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
@@ -18,22 +19,7 @@ export class StockController {
 
     constructor(private service: StockService, private invoiceService: PurchaseInvoiceService, private permissions: PermissionService) {}
 
-    private redactCostFields(data: any) {
-      if (!data) return data;
-      const strip = (value: any): any => {
-        if (Array.isArray(value)) return value.map(strip);
-        if (value && typeof value === 'object') {
-          const clone: any = {};
-          Object.entries(value).forEach(([key, entry]) => {
-            if (['mrp_cost', 'ptr_cost', 'ptr_value', 'oldprice', 'cost'].includes(key)) return;
-            clone[key] = strip(entry);
-          });
-          return clone;
-        }
-        return value;
-      };
-      return strip(data);
-    }
+    private redactCostFields(data: any) { return redactCostFields(data); }
 
     @Post('/filter')
     async filterByCriteria(@Body() criteria, @User() currentUser: any) {

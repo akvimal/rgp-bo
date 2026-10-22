@@ -1,12 +1,14 @@
     <div class="row mt-2">
         <div class="col-12">
-            <div class="d-flex">
-                <input class="form-conrol-input checkmark" type="checkbox" [(ngModel)]="criteria.active" 
-                (change)="fetch()"/>
-            <label for="available" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Active</label>
-            <input class="form-conrol-input checkmark" type="checkbox" [(ngModel)]="criteria.available" 
-                (change)="fetch()"/>
-            <label for="expired" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Available</label> 
+            <div class="d-flex gap-4">
+                <div class="form-check">
+                    <input class="form-check-input" id="stk-active" data-testid="stk-active" type="checkbox" [(ngModel)]="criteria.active" (change)="fetch()"/>
+                    <label class="form-check-label" for="stk-active">Active</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" id="stk-available" data-testid="stk-available" type="checkbox" [(ngModel)]="criteria.available" (change)="fetch()"/>
+                    <label class="form-check-label" for="stk-available">Available</label>
+                </div> 
            <!-- <input class="form-conrol-input checkmark" type="checkbox" [(ngModel)]="criteria.expired" 
                 (change)="fetch()"/>
             <label for="expired" style="margin:.3em;padding-bottom:.5em;font-size: larger;">Expired</label> -->
@@ -52,6 +54,7 @@
                         </th>
                     </tr>
                 </ng-template>
+                <ng-template pTemplate="emptymessage"><tr><td colspan="8" class="text-center text-muted py-3">No products match.</td></tr></ng-template>
                 <ng-template pTemplate="body" let-i>
                     <tr class="row-hover" [ngClass]="{'low': i.level < 20}" (click)="openData(i.id)">
                         <td>
