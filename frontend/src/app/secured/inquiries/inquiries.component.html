@@ -1,0 +1,83 @@
+<div class="pagetitle"><h1>Customer inquiries</h1></div>
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="page-toolbar">
+      <div class="page-toolbar-main">
+        <span class="badge bg-primary me-2" data-testid="inq-open">{{summary.open}} open</span>
+        <span class="badge bg-danger me-2" data-testid="inq-overdue">{{summary.overdue}} overdue</span>
+        <span class="badge bg-secondary" data-testid="inq-closed">{{summary.closed_this_month}} closed this month</span>
+      </div>
+      <div class="page-toolbar-actions" *isAuth="'inquiries.add'"><button class="btn btn-primary" type="button" (click)="add()" data-testid="inq-add">Record an inquiry</button></div>
+    </div>
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="inq-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="inq-error">{{error}}</div>
+
+    <!-- record / edit -->
+    <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="inq-form">
+      <h6>{{form.id ? 'Change inquiry' : 'New inquiry'}}</h6>
+      <div class="row g-3">
+        <div class="col-md-3" *ngIf="!form.id"><label class="form-label">Store *</label>
+          <select class="form-select" [(ngModel)]="form.store_id" data-testid="inq-f-store"><option [ngValue]="null">Choose</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
+        <div class="col-md-3"><label class="form-label">Kind</label>
+          <select class="form-select" [(ngModel)]="form.kind" data-testid="inq-f-kind"><option *ngFor="let k of kinds" [value]="k[0]">{{k[1]}}</option></select></div>
+        <div class="col-md-6"><label class="form-label">Product / topic</label><input class="form-control" [(ngModel)]="form.product_text" maxlength="120" data-testid="inq-f-product" placeholder="e.g. Metformin 500 SR"></div>
+        <div class="col-12"><label class="form-label">What did the customer ask? *</label><input class="form-control" [(ngModel)]="form.details" maxlength="500" data-testid="inq-f-details"></div>
+        <div class="col-md-4"><label class="form-label">Customer</label><input class="form-control" [(ngModel)]="form.customer_name" maxlength="80" data-testid="inq-f-name"></div>
+        <div class="col-md-3"><label class="form-label">Mobile</label><input class="form-control" [(ngModel)]="form.mobile" maxlength="20" data-testid="inq-f-mobile"></div>
+        <div class="col-md-2"><label class="form-label">Due by</label><input type="date" class="form-control" [(ngModel)]="form.due_on" data-testid="inq-f-due"></div>
+        <div class="col-md-3" *ngIf="opts.canAssign"><label class="form-label">Assigned to</label>
+          <select class="form-select" [(ngModel)]="form.assigned_to" data-testid="inq-f-assignee"><option *ngFor="let u of opts.staff" [ngValue]="u.id">{{u.name}}</option></select></div>
+      </div>
+      <div class="mt-3"><button class="btn btn-primary" type="button" (click)="save()" data-testid="inq-save">Save</button>
+        <button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
+    </div>
+
+    <!-- close -->
+    <div *ngIf="closing" class="border rounded p-3 mb-3" data-testid="inq-close-form">
+      <h6>Close the inquiry</h6>
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label">How did it end? *</label>
+          <select class="form-select" [(ngModel)]="closing.outcome" data-testid="inq-c-outcome"><option *ngFor="let o of outcomes" [value]="o[0]">{{o[1]}}</option></select></div>
+        <div class="col-md-8"><label class="form-label">Note <span class="text-muted small">(needed for no response or dropped)</span></label><input class="form-control" maxlength="300" [(ngModel)]="closing.note" data-testid="inq-c-note"></div>
+      </div>
+      <div class="mt-3"><button class="btn btn-primary" type="button" (click)="confirmClose()" data-testid="inq-c-save">Close inquiry</button>
+        <button class="btn btn-outline-secondary ms-2" type="button" (click)="closing = null">Cancel</button></div>
+    </div>
+
+    <ul class="nav nav-pills mb-2">
+      <li class="nav-item"><a class="nav-link" [class.active]="tab === 'OPEN'" role="button" (click)="setTab('OPEN')" data-testid="inq-tab-open">Open</a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="tab === 'OVERDUE'" role="button" (click)="setTab('OVERDUE')" data-testid="inq-tab-overdue">Overdue</a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="tab === 'MINE'" role="button" (click)="setTab('MINE')" data-testid="inq-tab-mine">Mine</a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="tab === 'CLOSED'" role="button" (click)="setTab('CLOSED')" data-testid="inq-tab-closed">Closed</a></li>
+      <li class="nav-item ms-auto"><input class="form-control form-control-sm" placeholder="Search" [(ngModel)]="search" (keyup.enter)="load()" data-testid="inq-search"></li>
+    </ul>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="inq-table">
+        <thead><tr><th>Inquiry</th><th>Customer</th><th>Store</th><th>For</th><th>Due</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of rows" data-testid="inq-row" [attr.data-id]="r.id">
+            <td><span class="badge bg-light text-dark border me-1">{{kindLabel(r.kind)}}</span>{{r.product_text}}<div class="small text-muted">{{r.details}}</div></td>
+            <td>{{r.customer_name}}<div class="small text-muted">{{r.mobile}}</div></td>
+            <td>{{r.store}}</td><td>{{r.assigned_name}}<div class="small text-muted">raised by {{r.raised_name}}</div></td>
+            <td [class.text-danger]="r.overdue">{{r.due_on | date:'dd MMM'}}</td>
+            <td>
+              <span class="badge bg-danger" *ngIf="r.overdue">Overdue</span>
+              <span class="badge bg-primary" *ngIf="r.status === 'OPEN' && !r.overdue">Open</span>
+              <span class="badge bg-success" *ngIf="r.status === 'CLOSED'">{{outcomeLabel(r.outcome)}}</span>
+              <div class="small text-muted" *ngIf="r.status === 'CLOSED'">{{r.closed_name}} · {{r.closed_on | date:'dd MMM'}}<span *ngIf="r.closing_note"> · {{r.closing_note}}</span></div>
+            </td>
+            <td class="text-end text-nowrap">
+              <ng-container *ngIf="r.status === 'OPEN'">
+                <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="edit(r)" data-testid="inq-edit">Change</button>
+                <button class="btn btn-outline-success btn-sm" type="button" (click)="startClose(r)" *isAuth="'inquiries.close'" data-testid="inq-close">Close</button>
+              </ng-container>
+              <button *ngIf="r.status === 'CLOSED' && opts.canAssign" class="btn btn-outline-secondary btn-sm" type="button" (click)="reopen(r)" data-testid="inq-reopen">Reopen</button>
+            </td>
+          </tr>
+          <tr *ngIf="!rows.length"><td colspan="7" class="text-center text-muted py-3">Nothing here.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
