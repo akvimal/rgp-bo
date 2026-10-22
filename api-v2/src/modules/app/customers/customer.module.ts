@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CustomerController } from "./customer.controller";
 import { CustomerService } from "./customer.service";
+import { CustomerCreditService } from "./customer-credit.service";
 import { Customer } from "src/entities/customer.entity";
 import { CustomerCreditAccount } from "src/entities/customer-credit-account.entity";
 import { Sale } from "src/entities/sale.entity";
@@ -11,7 +12,7 @@ import { JwtService } from "@nestjs/jwt";
 @Module({
     imports: [TypeOrmModule.forFeature([Customer,CustomerCreditAccount,Sale]),AuthModule],
     controllers: [CustomerController],
-    providers: [CustomerService,JwtService],
+    providers: [CustomerService,CustomerCreditService,JwtService],
     exports: [CustomerService],
   })
   export class CustomerModule {}

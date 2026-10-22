@@ -60,6 +60,8 @@ export class Sale extends BaseEntity {
   staffcreditamt: number;
   @Column("integer", { name: "staff_credit_user_id", nullable: true })
   staffcredituserid: number | null;
+  @Column("real", { name: "credit_amount", default: 0 })
+  creditamt: number;
 
   @Column("double precision", { name: "digi_amount", precision: 53 })
   digiamt: number;

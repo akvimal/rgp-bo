@@ -19,7 +19,7 @@ export async function checkStaffCredit(manager: EntityManager, sale: any, saleId
   if (!(amount > 0)) return none;
 
   const total = money(Number(sale?.total || 0));
-  if (Math.abs(amount - total) > 0.5 || Number(sale?.cashamt || 0) > 0 || Number(sale?.digiamt || 0) > 0) {
+  if (Math.abs(amount - total) > 0.5 || Number(sale?.cashamt || 0) > 0 || Number(sale?.digiamt || 0) > 0 || Number(sale?.creditamt || 0) > 0) {
     throw new BadRequestException('Staff credit pays the whole bill: no cash or digital amount can be mixed with it.');
   }
   const userId = Number(sale?.staffcredituserid || 0);

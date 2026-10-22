@@ -12,6 +12,7 @@ import { CustomerOrdersComponent } from "./components/customer-orders.component"
 import { CustomerDocumentsComponent } from "./components/customer-documents.component";
 import { TabViewModule } from "primeng/tabview";
 import { CustomerViewComponent } from "./components/customer-view.component";
+import { CustomerCreditComponent } from "./components/customer-credit.component";
 import { CustomerDuplicatesComponent } from "./components/customer-duplicates.component";
 import { DocumentsModule } from "src/app/secured/documents/documents.module";
 
@@ -29,6 +30,7 @@ const routes: Routes = [
       CustomerOrdersComponent,
       CustomerDocumentsComponent,
       CustomerViewComponent,
+      CustomerCreditComponent,
       CustomerDuplicatesComponent
     ],
     imports: [
@@ -43,7 +45,7 @@ const routes: Routes = [
         SharedModule
     ],
     exports: [RouterModule,CustomerOrdersComponent,
-      CustomerDocumentsComponent,CustomerViewComponent
+      CustomerDocumentsComponent,CustomerViewComponent,CustomerCreditComponent
     ]
   })
 export class CustomersModule{}

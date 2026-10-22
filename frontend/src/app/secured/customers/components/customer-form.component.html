@@ -84,3 +84,7 @@
     </div>
   </div>
   </form>
+<div class="mt-4" *ngIf="!isNew && form.value.id" data-testid="cust-credit-panel">
+  <h6>Store credit</h6>
+  <app-customer-credit [customerId]="+form.value.id"></app-customer-credit>
+</div>

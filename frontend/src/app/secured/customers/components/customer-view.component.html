@@ -12,6 +12,9 @@
             <p-tabPanel header="Orders">
                 <app-customer-orders [customer]="customer" (selected)="productsSelected($event)"></app-customer-orders>                
             </p-tabPanel>
+            <p-tabPanel header="Store credit">
+                <app-customer-credit [customerId]="id"></app-customer-credit>
+            </p-tabPanel>
             <p-tabPanel header="Documents">
                 <app-customer-documents [customer]="customer" (selected)="documentsSelected($event)"></app-customer-documents>
             </p-tabPanel>

@@ -23,6 +23,21 @@
                 <td colspan="2"><textarea class="form-control" [(ngModel)]="returnItem.reject.reason" placeholder="Reason to Reject"></textarea></td>                
             </tr>
             <tr>
+                <td class="pt-2" scope="col">Refund the customer by</td>
+                <td class="pt-2" scope="col">
+                    <select class="form-control" [(ngModel)]="returnItem.refundmode" data-testid="adj-refund-mode">
+                        <option value="">Select</option>
+                        <option value="CREDIT">Store credit</option>
+                        <option value="TRANSFER">Transfer</option>
+                        <option value="CASH">Cash</option>
+                    </select>
+                </td>
+            </tr>
+            <tr *ngIf="returnItem.refundmode === 'CREDIT'">
+                <td colspan="2" class="small text-muted">The accepted quantity is added to the customer's store credit, usable at any store. Rejected items are not credited.</td>
+            </tr>
+            <tr *ngIf="error"><td colspan="2" class="text-danger" data-testid="adj-error">{{error}}</td></tr>
+            <tr>
                 <td colspan="2" class="text-center pt-2">
                     <button class="btn btn-primary" (click)="onSubmit()">Submit</button>
                 </td>

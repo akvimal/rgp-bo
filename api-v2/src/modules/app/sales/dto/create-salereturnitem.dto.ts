@@ -30,6 +30,18 @@ export class CreateSaleReturnItemDto {
     @MaxLength(500)
     readonly reason: string;
 
+    @ApiProperty({ description: 'how the customer is refunded: CREDIT, CASH or TRANSFER', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(10)
+    readonly refundmode?: string;
+
+    @ApiProperty({ description: 'quantity accepted back into stock (settling a return)', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    readonly acceptedqty?: number;
+
     @ApiProperty({ description: 'comments', example: '' })
     @IsOptional()
     @IsString()

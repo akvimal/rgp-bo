@@ -13,6 +13,7 @@ export class SaleReturnFormComponent {
     @Output() success = new EventEmitter();
     valid = true;
     total = 0;
+    refundmode = '';
     
    
     constructor(private service:SaleService){}
@@ -70,7 +71,8 @@ export class SaleReturnFormComponent {
                 qty: item.qty,
                 status:'NEW',
                 reason:item.reason,
-                comments:item.comments
+                comments:item.comments,
+                refundmode: this.refundmode || undefined
             }
         });
         this.service.saveReturns(input).subscribe(data => {

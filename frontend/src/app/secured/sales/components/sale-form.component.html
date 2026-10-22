@@ -92,7 +92,7 @@
                                     <label class="sale-summary">Save: {{sale.saving}}%</label>
                                 </div>
                                 <div class="col-7">
-                                   <app-sale-payment [total]="sale.total||0" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
+                                   <app-sale-payment [total]="sale.total||0" [customerId]="sale.customer?.existing ? sale.customer?.id : null" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
                                 </div>
                                 <div class="col-2 text-end">
                                     <h4>

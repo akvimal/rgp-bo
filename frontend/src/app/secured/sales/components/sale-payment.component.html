@@ -22,6 +22,13 @@
         </select>
         <span class="small text-danger" *ngIf="staffShort" data-testid="pos-staff-credit-short">This bill is more than what is left of their limit.</span>
     </div>
+    <div class="col-12 mt-1 d-flex flex-wrap align-items-center gap-2" *ngIf="(payment.creditbalance || 0) > 0 && !payment.staffcredit" data-testid="pos-credit-row">
+        <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="useStoreCredit" data-testid="pos-use-credit" [(ngModel)]="payment.usecredit" (change)="creditChange()">
+            <label class="form-check-label" for="useStoreCredit">Use store credit (&#8377;{{payment.creditbalance | number:'1.2-2'}} available)</label>
+        </div>
+        <span class="small text-muted" *ngIf="payment.usecredit" data-testid="pos-credit-use">&#8377;{{creditUse | number:'1.2-2'}} off this bill<span *ngIf="creditUse < total">; the rest by cash or digital</span></span>
+    </div>
     <ng-template #cash>
         <div class="col-7 d-flex flex-row">&nbsp;</div>
     </ng-template>

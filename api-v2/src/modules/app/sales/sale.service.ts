@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { recordStaffCredit } from "./staff-credit-rule";
+import { recordStoreCredit, settleReturn } from "./store-credit-rule";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
@@ -51,6 +52,7 @@ interface SalePayload {
   digiprovider?: string | null;
   staffcreditamt?: number;
   staffcredituserid?: number | null;
+  creditamt?: number;
   digiamt?: number;
   cashamt?: number;
   expreturndays?: number;
@@ -96,7 +98,7 @@ export class SaleService {
                 // be fully tendered (delivery sales collect payment via the delivery flow).
                 if ((sale.status || '').toUpperCase() === 'COMPLETE') {
                     const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
-                    const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0);
+                    const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0) + Number(sale['creditamt'] || 0);
                     const total = Number(sale['total'] || 0);
                     if (isCounter && Math.abs(tendered - total) > 0.5) {
                         throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
@@ -180,6 +182,7 @@ export class SaleService {
                     await transactionManager.save(SaleItem, sale.items);
                 }
                 await recordStaffCredit(transactionManager, savedSale, actingUserid || userid);
+                await recordStoreCredit(transactionManager, savedSale, actingUserid || userid);
 
                 if (shiftid && Number(savedSale['cashamt'] || sale['cashamt'] || 0) > 0) {
                     await transactionManager.save(StoreCashAccount, {
@@ -261,9 +264,14 @@ export class SaleService {
         return await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
                 item['updatedby'] = userid;
+                // settling a return records how the customer is refunded, and issues store credit for a credit refund
+                if (String(item['status'] || '').toUpperCase() === 'ADJUSTED' && item['id']) {
+                    await settleReturn(transactionManager, item, userid);
+                }
                 return await transactionManager.save(SaleReturnItem, item);
             } catch (error) {
                 // Transaction will automatically rollback on error
+                if (error instanceof HttpException) { throw error; }
                 throw new Error(`Failed to update return item: ${error.message}`);
             }
         });
@@ -289,6 +297,7 @@ export class SaleService {
                     await transactionManager.save(SaleItem, sale.items);
                 }
                 await recordStaffCredit(transactionManager, updatedSale, actingUserid || userid);
+                await recordStoreCredit(transactionManager, updatedSale, actingUserid || userid);
 
                 // The client only needs the saved header before loading the detail route.
                 return updatedSale;
@@ -547,7 +556,7 @@ export class SaleService {
         return await this.manager.query(`   
         select sri.id, si.sale_id, s.bill_no, s.bill_date, sri.created_on, sri.created_by, c."name", c.mobile, 
                 si.purchase_item_id, p.title, si.batch, si.exp_date, 
-                sri.qty, si.price, sri.reason, sri."comments", sri.status 
+                sri.qty, si.price, sri.reason, sri."comments", sri.status, sri.refund_mode, sri.refund_amount 
                 from sale_return_item sri inner join sale_item si on si.id = sri.sale_item_id 
                 inner join sale s on s.id = si.sale_id 
                 inner join product p on p.id = si.product_id 
@@ -567,7 +576,7 @@ export class SaleService {
 
     async getReturnItemToAdjust(saleReturnId:any){
         return await this.manager.query(`
-        select sri.id, p.title, si.batch, si.exp_date, si.price, si.purchase_item_id as itemid, sri.qty, sri.reason, sri."comments"
+        select sri.id, p.title, si.batch, si.exp_date, si.price, si.purchase_item_id as itemid, sri.qty, sri.reason, sri."comments", sri.refund_mode
         from sale_return_item sri
         inner join sale_item si on si.id = sri.sale_item_id
         inner join product p on p.id = si.product_id

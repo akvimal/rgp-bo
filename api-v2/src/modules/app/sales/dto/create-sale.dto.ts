@@ -58,6 +58,12 @@ export class CreateSaleDto {
     @MaxLength(200)
     readonly digirefno: string | null;
 
+    @ApiProperty({ description: 'The part of the bill paid with the customer\'s store credit', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    readonly creditamt?: number;
+
     @ApiProperty({ description: 'The whole bill on a staff member\'s credit', required: false })
     @IsOptional()
     @IsNumber()

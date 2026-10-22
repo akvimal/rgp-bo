@@ -34,7 +34,9 @@ export class SaleReturnsComponent {
               total: r['qty'] * r['price'],
               status: r['status'],
               reason: r['reason'],
-              comments: r['comments']
+              comments: r['comments'],
+              refundmode: r['refund_mode'],
+              refundamount: r['refund_amount']
             }
           });
         });

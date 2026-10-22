@@ -85,6 +85,7 @@
                 </a>                
                 <i class="bi bi-check-circle-fill" *ngIf="s.status==='ADJUSTED'"></i>
               </h4>
+              <div class="small text-muted" *ngIf="s.refundmode" data-testid="ret-refund">{{s.refundmode === 'CREDIT' ? 'Store credit' : (s.refundmode | titlecase)}} {{s.refundamount | number:'1.2-2'}}</div>
             </td>
           </tr>  
         </ng-template>

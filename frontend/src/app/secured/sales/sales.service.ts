@@ -22,6 +22,11 @@ export class SaleService {
         return sale.billno ? this.http.put(`${this.apiurl}`,sale) : this.http.post(`${this.apiurl}`,sale);
     }
 
+    /** settles one return (the adjust step): the refund mode and accepted quantity, once */
+    settleReturn(item:any){
+        return this.http.put(`${this.apiurl}/returns`,item);
+    }
+
     saveReturns(returns:any){
         return this.http.post(`${this.apiurl}/returns`,returns);
     }

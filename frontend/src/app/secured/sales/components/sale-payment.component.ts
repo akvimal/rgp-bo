@@ -11,7 +11,10 @@ export class SalePaymentComponent {
     @Input() total = 0;
     
     @Input() payment:{digimode?:string,digiamt?:number,
-        digirefno?:string,cashamt?:number,valid?:boolean,staffcredit?:boolean,staffcredituserid?:number|null}={};
+        digirefno?:string,cashamt?:number,valid?:boolean,staffcredit?:boolean,staffcredituserid?:number|null,usecredit?:boolean,creditbalance?:number}={};
+
+    /** the customer on the bill (a named customer may hold store credit) */
+    @Input() customerId:number|null = null;
 
     /** people with a monthly staff-credit limit, and what is left of it this month */
     staffOptions:any[] = [];
@@ -21,7 +24,7 @@ export class SalePaymentComponent {
 
     /** a digital amount with no (or a malformed) reference: the bill cannot be completed and cannot be reconciled later */
     get refMissing(): boolean {
-        return !this.cashonly && !this.payment.staffcredit && +(this.payment.digiamt || 0) > 0
+        return !this.cashonly && !this.payment.staffcredit && Math.min(+(this.payment.digiamt || 0), this.total - this.creditUse) > 0
             && !/^[A-Za-z0-9][A-Za-z0-9\-_\/]{5,39}$/.test(String(this.payment.digirefno || '').replace(/\s+/g, ''));
     }
     cashonly = false;
@@ -60,6 +63,28 @@ export class SalePaymentComponent {
         if(changes['total']){
             this.normalizePaymentForTotal();
         }
+        if(changes['customerId']){
+            this.payment.usecredit = false;
+            this.payment.creditbalance = 0;
+            if(this.customerId){
+                this.http.get<any>(`${environment.apiHost}/customers/${this.customerId}/credit`).subscribe(c => this.payment.creditbalance = +(c?.balance || 0), () => this.payment.creditbalance = 0);
+            }
+        }
+    }
+
+    /** what the store credit takes off this bill */
+    get creditUse(): number {
+        return this.payment.usecredit ? Math.max(0, Math.min(+(this.payment.creditbalance || 0), this.total)) : 0;
+    }
+
+    creditChange(){
+        if(this.creditUse >= this.total){
+            // the credit pays it all: nothing digital to enter
+            this.payment.digiamt = 0;
+            this.payment.digirefno = '';
+            this.payment.cashamt = 0;
+        }
+        this.payment['valid'] = true;
     }
 
     ngDoCheck(){

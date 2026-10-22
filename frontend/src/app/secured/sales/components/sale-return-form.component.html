@@ -49,11 +49,11 @@
                 </ng-template>
                 <ng-template pTemplate="summary">
                     <div class="col-3">Refund: 
-                        <select class="form-control">
+                        <select class="form-control" [(ngModel)]="refundmode" data-testid="ret-refund-mode">
                             <option value="">Select</option>
-                            <option value="Credit">Credit</option>
-                            <option value="Transfer">Transfer</option>
-                            <option value="Cash">Cash</option>
+                            <option value="CREDIT">Store credit</option>
+                            <option value="TRANSFER">Transfer</option>
+                            <option value="CASH">Cash</option>
                         </select>
                     </div>
                     <div class="col-3 text-end">Total: {{total}}</div>

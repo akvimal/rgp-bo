@@ -7,6 +7,7 @@ import { AuthGuard } from "src/modules/auth/auth.guard";
 import { User } from "src/core/decorator/user.decorator";
 import { checkDigitalPayment } from "./digital-payment";
 import { checkStaffCredit } from "./staff-credit-rule";
+import { checkStoreCredit } from "./store-credit-rule";
 import { CustomerService } from "../customers/customer.service";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
 import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
@@ -78,8 +79,9 @@ export class SaleController {
         await this.assertMobileForChronic(createSaleDto, customer);
         const digital = await checkDigitalPayment(this.manager, createSaleDto);
         const staffCredit = await checkStaffCredit(this.manager, createSaleDto);
+        const storeCredit = await checkStoreCredit(this.manager, createSaleDto, customer);
         const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser);
-        return this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), customer}, currentUser.id, actingUserId);
+        return this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
       }
 
       @Put()
@@ -102,8 +104,9 @@ export class SaleController {
         await this.assertMobileForChronic(updateSaleDto, customer);
         const digital = await checkDigitalPayment(this.manager, updateSaleDto, updateSaleDto.id);
         const staffCredit = await checkStaffCredit(this.manager, updateSaleDto, updateSaleDto.id);
+        const storeCredit = await checkStoreCredit(this.manager, updateSaleDto, customer, updateSaleDto.id);
         const actingUserId = await this.resolveActingUser(updateSaleDto.actinguserid, currentUser, updateSaleDto.id);
-        const saved = await this.saleService.updateSale({...updateSaleDto, ...(digital || {}), ...(staffCredit || {}), customer}, currentUser.id, actingUserId);
+        const saved = await this.saleService.updateSale({...updateSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await this.recordSaleEdit(sale, updateSaleDto, currentUser.id, actingUserId);
         return saved;
       }

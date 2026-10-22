@@ -28,6 +28,12 @@ export class SaleReturnItem extends BaseEntity {
   @Column("character varying", { name: "comments", nullable: true })
   comments: string | null;
 
+  @Column("character varying", { name: "refund_mode", length: 10, nullable: true })
+  refundmode: string | null;
+
+  @Column("numeric", { name: "refund_amount", precision: 10, scale: 2, nullable: true })
+  refundamount: number | null;
+
   @ManyToOne(
     () => SaleItem,
     (saleitem) => saleitem.returns, { onDelete: 'CASCADE' }
