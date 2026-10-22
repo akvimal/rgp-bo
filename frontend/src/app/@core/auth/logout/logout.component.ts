@@ -19,12 +19,13 @@ export class LogoutComponent {
         }
 
         ngOnInit(){
+            const back = this.authService.loginUrl();
             this.tokenRefreshService.cancel();
             this.credService.clearCredentials();
             this.authService.setPermissions([]);
             localStorage.removeItem('selected_store_id');
             localStorage.removeItem('selected_operator_id');
             localStorage.removeItem('selected_operator_name');
-            this.router.navigateByUrl('/login',{replaceUrl:true});
+            this.router.navigateByUrl(back,{replaceUrl:true});
         }
 }

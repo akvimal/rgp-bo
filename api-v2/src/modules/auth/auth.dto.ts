@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Trim } from 'class-sanitizer';
-import { IsEmail, IsString } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ description: 'email', example: '' })
@@ -11,6 +11,11 @@ export class LoginDto {
   @ApiProperty({ description: 'password', example: '' })
   @IsString()
   public readonly password: string;
+
+  @ApiPropertyOptional({ description: 'which sign-in page this came from; platform admins sign in on the platform page only', enum: ['business', 'platform'] })
+  @IsOptional()
+  @IsIn(['business', 'platform'])
+  public readonly scope?: 'business' | 'platform';
 }
 
 export class ChangePasswordDto extends LoginDto {

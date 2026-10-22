@@ -25,7 +25,7 @@ export async function apiLogin(email: string, password = PASS): Promise<{ token:
   if (hit) return hit;
   const lr = await fetch(`${API}/auth/login`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, scope: /^siteadmin@/.test(email) ? 'platform' : 'business' }),
   });
   if (!lr.ok) throw new Error(`login ${email} -> ${lr.status} ${await lr.text()}`);
   const token = (await lr.json()).token as string;

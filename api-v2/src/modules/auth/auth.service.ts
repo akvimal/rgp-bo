@@ -19,6 +19,7 @@ export class AuthService {
 
   public async login(body: LoginDto, ip?: string): Promise<any | never> {
     const { email, password }: LoginDto = body;
+    const scope = body.scope === 'platform' ? 'platform' : 'business';
     const user = await this.userService.findByUsername(email );
     const reject = (reason: string) => {
       this.audit.record({ userId: user?.id ?? null, action: 'auth.login_failed', summary: reason, details: { email }, status: 401, ip });
@@ -31,6 +32,9 @@ export class AuthService {
 
     // A deactivated / archived account must not be able to sign in.
     if (user.isActive === false || user.isArchived === true) return reject('inactive account');
+
+    // Platform admins and business users have separate sign-in pages; the wrong page gets the same answer as a wrong password.
+    if ((user.role?.name === 'Site Admin') !== (scope === 'platform')) return reject(`wrong sign-in page (${scope})`);
 
     this.userService.update(user.id, { lastlogin: new Date() });
     this.audit.record({ userId: user.id, action: 'auth.login', summary: 'signed in', status: 200, ip });

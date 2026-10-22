@@ -249,6 +249,7 @@ export class UserService {
     // since it's marked with @Exclude() in the entity
     return this.userRepository
       .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
       .where('user.email = :email', { email: username })
       .addSelect('user.password')
       .getOne();

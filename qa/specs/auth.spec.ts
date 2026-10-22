@@ -109,6 +109,46 @@ test.describe('Authentication & Session @p0', () => {
     await expect(page).toHaveURL(/\/secure\/dashboard/);
   });
 
+  test('AUTH-13 platform admins and business users have separate sign-in pages @permission', async ({ api, app, browser }) => {
+    const login = (email: string, scope?: string) => api.request('POST', '/auth/login', { email, password: PASS, ...(scope ? { scope } : {}) });
+    // the API: each kind of user is accepted on its own page only, and refused alike on the other
+    expect((await login('siteadmin@local.test', 'platform')).status).toBeLessThan(300);
+    expect((await login('siteadmin@local.test', 'business')).status).toBe(401);
+    expect((await login('siteadmin@local.test')).status).toBe(401);
+    expect((await login(USER, 'business')).status).toBeLessThan(300);
+    expect((await login(USER)).status).toBeLessThan(300);
+    expect((await login(USER, 'platform')).status).toBe(401);
+    expect((await login('siteadmin@local.test', 'nonsense')).status).toBe(401);   // anything but platform counts as the business page
+
+    // the platform page looks different and says what it is
+    const ctx = await browser.newContext();
+    const plat = await ctx.newPage();
+    await plat.goto('/platform/login');
+    await expect(plat.getByTestId('login-platform-banner')).toBeVisible();
+    await plat.getByTestId('login-email').fill(USER);
+    await plat.getByTestId('login-password').fill(PASS);
+    await plat.getByTestId('login-submit').click();
+    await expect(plat.getByTestId('login-error')).toBeVisible();   // a business user is turned away here
+    await expect(plat).toHaveURL(/\/platform\/login/);
+
+    const biz = await ctx.newPage();
+    await biz.goto('/login');
+    await expect(biz.getByTestId('login-platform-banner')).toHaveCount(0);
+    await biz.getByTestId('login-email').fill('siteadmin@local.test');
+    await biz.getByTestId('login-password').fill(PASS);
+    await biz.getByTestId('login-submit').click();
+    await expect(biz.getByTestId('login-error')).toBeVisible();     // and the platform admin here
+    await ctx.close();
+
+    // signed in on the platform page: badge shown, and signing out returns to the platform page
+    const page = await app.loginUI('siteadmin@local.test', PASS);
+    await expect(page).toHaveURL(/\/secure\/dashboard/);
+    await expect(page.getByTestId('platform-badge')).toBeVisible();
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('user-menu-logout').click();
+    await expect(page).toHaveURL(/\/platform\/login/);
+  });
+
   test('AUTH-12 opening the Settings hub does not bounce to /login @permission', async ({ app }) => {
     const { page } = await app.open(USER, '/secure/dashboard');
     await expectShell(page);

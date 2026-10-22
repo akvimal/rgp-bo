@@ -23,7 +23,7 @@ export async function login(email: string, password = process.env.QA_ADMIN_PASS 
   const res = await fetch(`${API}/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, scope: /^siteadmin@/.test(email) ? 'platform' : 'business' }),
   });
   const text = await res.text();
   if (!res.ok) throw new ApiError(res.status, 'POST', '/auth/login', text);

@@ -47,7 +47,7 @@ export const test = base.extend<Fixtures>({
         const page = await context.newPage();
         const fin = attachPerf(page);
         finalizers.push(() => fin(testInfo));
-        await page.goto('/login', { waitUntil: 'domcontentloaded' });
+        await page.goto(/^siteadmin@/.test(email) ? '/platform/login' : '/login', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('login-email').fill(email);
         await page.getByTestId('login-password').fill(password);
         await page.getByTestId('login-submit').click();

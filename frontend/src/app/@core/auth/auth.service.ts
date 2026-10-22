@@ -23,6 +23,15 @@ export class AuthService {
     }
   }
     
+  /** which sign-in page this browser last used, so sign-out and expiry return to the right one */
+  public setLoginScope(platform: boolean) {
+    try { platform ? localStorage.setItem('login_scope', 'platform') : localStorage.removeItem('login_scope'); } catch { /* storage blocked */ }
+  }
+
+  public loginUrl(): string {
+    try { return localStorage.getItem('login_scope') === 'platform' ? '/platform/login' : '/login'; } catch { return '/login'; }
+  }
+
   public login(cred:any):Observable<any>{
     return this.http.post<any>(`${environment.apiHost}/auth/login`,cred);
   }

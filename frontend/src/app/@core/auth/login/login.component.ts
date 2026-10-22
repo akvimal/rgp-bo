@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { UsersService } from "src/app/secured/settings/users/users.service";
 import { AuthService } from "../auth.service";
 import { CredentialsService } from "../credentials.service";
@@ -14,6 +14,8 @@ import { TokenRefreshService } from "../token-refresh.service";
 export class LoginComponent {
 
     error:any;
+    /** the platform-administration page: dark, no business branding, Site Admin only */
+    platform = false;
 
     form = new FormGroup({
         email: new FormControl('',Validators.required),
@@ -22,6 +24,7 @@ export class LoginComponent {
 
     constructor(
         private router: Router,
+        private route: ActivatedRoute,
         private authService: AuthService,
         private userService: UsersService,
         private credService: CredentialsService,
@@ -29,6 +32,7 @@ export class LoginComponent {
         private tokenRefreshService: TokenRefreshService){}
 
     ngOnInit(){
+        this.platform = !!this.route.snapshot.data['platform'];
         this.credService.clearCredentials();
         this.operatorContext.clear();
     }
@@ -49,9 +53,11 @@ export class LoginComponent {
         // console.log(this.form.value);
         this.authService.login({
                 email:this.form.value.email,
-                password:this.form.value.password
+                password:this.form.value.password,
+                scope:this.platform ? 'platform' : 'business'
             }).subscribe({
                     next: data => {
+                        this.authService.setLoginScope(this.platform);
                         this.credService.setCredentials(data['token']);
                         this.tokenRefreshService.schedule(data['token']);
                         this.userService.getCurrentUser().subscribe((data:any) => {

@@ -8,6 +8,7 @@ import { LogoutComponent } from "./logout/logout.component";
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
+  { path: 'platform/login', component: LoginComponent, data: { platform: true } },
   { path: 'logout', component: LogoutComponent },
   { path: 'changepassword', component: ChangePwdComponent }
 ];
