@@ -1,10 +1,9 @@
 <div *ngIf="user; else annonymous"
-  [class.sidebar-collapsed]="sidebarCollapsed"
   [class.sidebar-drawer-open]="sidebarDrawerOpen">
     <header id="header" class="header fixed-top d-flex align-items-center">
       
       <div class="d-flex align-items-center justify-content-between">
-        <button type="button" data-testid="sidebar-toggle" class="btn btn-link p-0 me-2 sidebar-toggle-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
+        <button type="button" data-testid="sidebar-toggle" class="btn btn-link p-0 me-2 sidebar-toggle-btn d-lg-none" (click)="toggleSidebar()" aria-label="Toggle sidebar">
           <i class="bi bi-list"></i>
         </button>
         <img src="assets/img/rgp-logo.png" alt="" width="50px">
@@ -175,7 +174,19 @@
             <span>Expenses</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('hr.view','kpirate.rate','mykpi.view')" data-testid="nav-section-people">People</li>
+        <li class="nav-heading" *ngIf="has('hr.view','kpirate.rate','mykpi.view','myhr.view','leaveapprove.decide')" data-testid="nav-section-people">People</li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'myhr.view'">
+          <a class="nav-link collapsed" routerLink="my-hr" data-testid="nav-my-hr" title="My HR" aria-label="My HR">
+            <i class="bi bi-person-badge"></i>
+            <span>My HR</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'leaveapprove.decide'">
+          <a class="nav-link collapsed" routerLink="leave-approvals" data-testid="nav-leave-approvals" title="Leave requests" aria-label="Leave requests">
+            <i class="bi bi-calendar2-check"></i>
+            <span>Leave requests</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'kpirate.rate'">
           <a class="nav-link collapsed" routerLink="kpi/rate" data-testid="nav-kpi-rate" title="Rate staff" aria-label="Rate staff KPI">
             <i class="bi bi-clipboard-check"></i>

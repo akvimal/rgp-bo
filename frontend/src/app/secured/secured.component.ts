@@ -43,7 +43,6 @@ export class SecuredComponent {
     allStores:boolean = false;
     state$!:Observable<AppState>;
 
-    sidebarCollapsed:boolean = false;
     sidebarDrawerOpen:boolean = false;
     settingsMenuOpen:boolean = false;
     userMenuOpen:boolean = false;
@@ -157,12 +156,11 @@ export class SecuredComponent {
       this.storeContextService.setSelectedStoreId(value === '' ? null : Number(value));
     }
 
+    /** the menu drawer on a phone; on a desktop the menu is always open */
     toggleSidebar(){
       if (this.isMobileViewport()) {
         this.sidebarDrawerOpen = !this.sidebarDrawerOpen;
-        return;
       }
-      this.sidebarCollapsed = !this.sidebarCollapsed;
     }
 
     closeSidebar(){

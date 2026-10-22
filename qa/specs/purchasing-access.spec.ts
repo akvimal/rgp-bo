@@ -73,7 +73,7 @@ test.describe('Purchasing access and menu @p0', () => {
     expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-shift']);
     expect(groups.stock).toEqual(['nav-store', 'nav-products', 'nav-stock-audits']);
     expect(groups.buy).toEqual(['nav-purchases', 'nav-vendor-issues', 'nav-expenses']);
-    expect(groups.people).toEqual(['nav-kpi-rate', 'nav-kpi-mine', 'nav-hr']);
+    expect(groups.people).toEqual(['nav-my-hr', 'nav-leave-approvals', 'nav-kpi-rate', 'nav-kpi-mine', 'nav-hr']);
     expect(groups.oversight).toEqual(['nav-reports', 'nav-quality']);
     await expect(bh.page.getByTestId('nav-vendors')).toHaveCount(0);    // Vendors is a tab of Purchase now
     await bh.page.getByTestId('nav-purchases').click();
@@ -140,5 +140,21 @@ test.describe('Purchasing access and menu @p0', () => {
     await expect(direct.page.locator('input[formcontrolname=customername]')).toHaveValue('QA Counter Customer');
     await expect(direct.page.locator('input[formcontrolname=customerphone]')).toHaveValue('9812345678');
     await expect(direct.page.getByText('Vendor', { exact: true })).toHaveCount(0);
+  });
+
+  test('PACC-6 the menu stays open on a desktop; the toggle is only the phone drawer @happy', async ({ app }) => {
+    const { page } = await app.open(MGR, '/secure/dashboard');
+    await expectShell(page);
+    await expect(page.getByTestId('sidebar-toggle')).toBeHidden();                       // no way to collapse it on a desktop
+    const wide = await page.locator('.sidebar').boundingBox();
+    expect(wide!.width).toBeGreaterThan(200);
+    await expect(page.getByTestId('nav-sales')).toBeVisible();
+
+    await page.setViewportSize({ width: 600, height: 900 });                              // a phone: the menu is a drawer
+    await expect(page.getByTestId('sidebar-toggle')).toBeVisible();
+    expect((await page.locator('.sidebar').boundingBox())!.x).toBeLessThan(0);
+    await page.getByTestId('sidebar-toggle').click();
+    await expect(page.getByTestId('nav-sales')).toBeVisible();
+    await expect.poll(async () => (await page.locator('.sidebar').boundingBox())!.x).toBeGreaterThanOrEqual(0);   // it slides in
   });
 });

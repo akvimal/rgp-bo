@@ -212,6 +212,25 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     actions: [{ key: 'view', label: 'Open the page' }],
   },
   {
+    key: 'myhr',
+    label: 'My HR',
+    description: 'A staff member\'s own details, pay slips (once payroll is approved), leave, attendance and staff credit.',
+    group: 'Staff & Quality',
+    path: '/secure/my-hr',
+    actions: [
+      { key: 'view', label: 'See my own HR information' },
+      { key: 'apply', label: 'Apply for leave and withdraw requests' },
+    ],
+  },
+  {
+    key: 'leaveapprove',
+    label: 'Leave requests',
+    description: 'Decide the leave requests of the staff of their own stores (never their own).',
+    group: 'Staff & Quality',
+    path: '/secure/leave-approvals',
+    actions: [{ key: 'decide', label: 'Approve or decline leave' }],
+  },
+  {
     key: 'inquiries',
     label: 'Customer inquiries',
     description: 'Record what customers ask for, follow it up and close it; counts towards KPI.',

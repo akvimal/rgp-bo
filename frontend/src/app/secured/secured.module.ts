@@ -56,6 +56,14 @@ const routes: Routes = [
       loadChildren: () => import('./quality/quality.module').then(m => m.QualityModule)
     },
     {
+      path: 'my-hr', canActivate:[AuthGuard],
+      loadChildren: () => import('./my-hr/my-hr.module').then(m => m.MyHrModule)
+    },
+    {
+      path: 'leave-approvals', canActivate:[AuthGuard],
+      loadChildren: () => import('./leave-approvals/leave-approvals.module').then(m => m.LeaveApprovalsModule)
+    },
+    {
       path: 'vendor-issues', canActivate:[AuthGuard],
       loadChildren: () => import('./vendor-issues/vendor-issues.module').then(m => m.VendorIssuesModule)
     },
