@@ -1,0 +1,181 @@
+<div class="pagetitle"><h1>Vendor issues</h1></div>
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="page-toolbar">
+      <div class="page-toolbar-main">
+        <span class="badge bg-primary me-2" data-testid="vi-open">{{summary.open}} not sent</span>
+        <span class="badge bg-info text-dark me-2" data-testid="vi-with">{{summary.with_vendor}} with vendors</span>
+        <span class="badge bg-danger me-2" data-testid="vi-overdue">{{summary.overdue}} overdue</span>
+        <span class="small text-muted">claimed open &#8377;{{summary.claimed_open | number:'1.0-0'}} · recovered this month &#8377;{{summary.recovered_this_month | number:'1.0-0'}}</span>
+      </div>
+      <div class="page-toolbar-actions" *isAuth="'vendorissues.add'"><button class="btn btn-primary" type="button" (click)="add()" data-testid="vi-add">Raise an issue</button></div>
+    </div>
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="vi-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="vi-error">{{error}}</div>
+
+    <!-- new issue -->
+    <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="vi-form">
+      <h6>Raise an issue with a vendor</h6>
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label">Vendor *</label>
+          <select class="form-select" [(ngModel)]="form.vendor_id" (ngModelChange)="vendorChanged()" data-testid="vi-f-vendor"><option [ngValue]="null">Choose</option><option *ngFor="let v of opts.vendors" [ngValue]="v.id">{{v.name}}</option></select></div>
+        <div class="col-md-4"><label class="form-label">Invoice</label>
+          <select class="form-select" [(ngModel)]="form.invoice_id" (ngModelChange)="invoiceChanged()" [disabled]="!form.vendor_id" data-testid="vi-f-invoice"><option [ngValue]="null">Not about one invoice</option><option *ngFor="let i of invoices" [ngValue]="i.id">{{i.invoice_no}} · {{i.invoice_date | date:'dd MMM yy'}} · &#8377;{{i.total | number:'1.0-0'}}</option></select></div>
+        <div class="col-md-4"><label class="form-label">Store *</label>
+          <select class="form-select" [(ngModel)]="form.store_id" (ngModelChange)="form.invoice_id && loadInvoiceItems()" data-testid="vi-f-store"><option [ngValue]="null">Choose</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
+        <div class="col-md-4"><label class="form-label">What kind of issue *</label>
+          <select class="form-select" [(ngModel)]="form.kind" (ngModelChange)="kindChanged()" data-testid="vi-f-kind"><option *ngFor="let k of opts.kinds" [value]="k">{{kindLabels[k]}}</option></select></div>
+        <div class="col-md-8"><label class="form-label">Summary *</label><input class="form-control" maxlength="200" [(ngModel)]="form.summary" data-testid="vi-f-summary" placeholder="e.g. 3 strips of Metformin 500 received with crushed tablets"></div>
+        <div class="col-12"><label class="form-label">Details</label><input class="form-control" maxlength="1000" [(ngModel)]="form.details" data-testid="vi-f-details"></div>
+
+        <div class="col-12" *ngIf="invoiceItems.length">
+          <div class="small text-muted mb-1">Pick the batches this is about:</div>
+          <div class="d-flex flex-wrap gap-1">
+            <button *ngFor="let it of invoiceItems" type="button" class="btn btn-outline-secondary btn-sm" (click)="addItemLine(it)" [attr.data-testid]="'vi-pick-' + it.id">{{it.title}} · {{it.batch}} <span class="text-muted">({{it.available}} in stock)</span></button>
+          </div>
+        </div>
+        <div class="col-12">
+          <table class="table table-sm align-middle mb-1" *ngIf="form.lines.length" data-testid="vi-f-lines">
+            <thead><tr><th>Line</th><th *ngIf="form.kind === 'INVOICE_FIX'">Wrong</th><th *ngIf="form.kind === 'INVOICE_FIX'">Billed</th><th *ngIf="form.kind === 'INVOICE_FIX'">Should be</th><th *ngIf="form.kind !== 'INVOICE_FIX'" style="width:6rem">Qty</th><th *ngIf="form.kind !== 'INVOICE_FIX'" style="width:7rem">Cost</th><th style="width:8rem">Claim &#8377;</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let l of form.lines; let i = index" data-testid="vi-f-line">
+                <td><input class="form-control form-control-sm" [(ngModel)]="l.description" maxlength="120" [readonly]="!!l.purchase_item_id" placeholder="Describe the line"></td>
+                <ng-container *ngIf="form.kind === 'INVOICE_FIX'">
+                  <td style="width:8rem"><select class="form-select form-select-sm" [(ngModel)]="l.field"><option *ngFor="let f of opts.fields" [value]="f">{{fieldLabels[f]}}</option></select></td>
+                  <td style="width:8rem"><input class="form-control form-control-sm" [(ngModel)]="l.billed_value" maxlength="40"></td>
+                  <td style="width:8rem"><input class="form-control form-control-sm" [(ngModel)]="l.correct_value" maxlength="40"></td>
+                </ng-container>
+                <ng-container *ngIf="form.kind !== 'INVOICE_FIX'">
+                  <td><input type="number" min="1" class="form-control form-control-sm" [(ngModel)]="l.qty" (ngModelChange)="lineChanged(l)" [attr.data-testid]="'vi-f-qty-' + i"></td>
+                  <td><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="l.unit_cost" (ngModelChange)="lineChanged(l)"></td>
+                </ng-container>
+                <td><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="l.amount" [attr.data-testid]="'vi-f-amount-' + i"></td>
+                <td class="text-end"><button class="btn btn-outline-danger btn-sm" type="button" (click)="removeLine(i)">Remove</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="btn btn-outline-secondary btn-sm" type="button" (click)="addFreeLine()" data-testid="vi-f-addline">Add a line</button>
+          <span class="ms-3 small" *ngIf="form.lines.length">Claiming &#8377;{{formTotal | number:'1.2-2'}}</span>
+          <span class="ms-3 small" *ngIf="!form.lines.length"><input type="number" min="0" class="form-control form-control-sm d-inline-block" style="width:9rem" placeholder="Amount claimed" [(ngModel)]="form.claimed_amount"></span>
+        </div>
+      </div>
+      <div class="mt-3"><button class="btn btn-primary" type="button" (click)="saveForm()" data-testid="vi-f-save">Save</button>
+        <button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
+    </div>
+
+    <!-- one issue -->
+    <div *ngIf="issue" class="border rounded p-3 mb-3" data-testid="vi-detail">
+      <div class="d-flex justify-content-between flex-wrap gap-2">
+        <div>
+          <h6 class="mb-1">{{issue.issue_no}} · {{issue.summary}}</h6>
+          <div class="small text-muted">{{issue.vendor}}<span *ngIf="issue.contact_name"> · {{issue.contact_name}}</span><span *ngIf="issue.contact_phone"> · {{issue.contact_phone}}</span>
+            <span *ngIf="issue.invoice_no"> · invoice {{issue.invoice_no}}</span><span *ngIf="issue.store"> · {{issue.store}}</span> · {{kindLabels[issue.kind]}}</div>
+        </div>
+        <div class="text-end"><span class="badge bg-secondary" data-testid="vi-status">{{statusLabels[issue.status]}}</span>
+          <div class="small">claimed &#8377;{{issue.claimed | number:'1.2-2'}}<span *ngIf="issue.credit_amount"> · given back &#8377;{{issue.credit_amount | number:'1.2-2'}}</span></div></div>
+      </div>
+      <p class="mt-2 mb-2" *ngIf="issue.details">{{issue.details}}</p>
+      <div class="small mb-2" *ngIf="issue.due_on && issue.status === 'WITH_VENDOR'" [class.text-danger]="issue.due_on < api.today()">Reply due {{issue.due_on | date:'dd MMM yyyy'}}<span *ngIf="issue.vendor_ref"> · their reference {{issue.vendor_ref}}</span></div>
+      <div class="small mb-2" *ngIf="issue.resolution">Settled by {{resLabels[issue.resolution]}}<span *ngIf="issue.credit_ref"> {{issue.credit_ref}}</span><span *ngIf="issue.resolution_note"> · {{issue.resolution_note}}</span></div>
+      <div class="small mb-2 text-danger" *ngIf="issue.status === 'REJECTED'">Refused: {{issue.resolution_note}}</div>
+
+      <table class="table table-sm align-middle" *ngIf="issue.lines.length" data-testid="vi-lines">
+        <thead><tr><th>Line</th><th *ngIf="issue.kind === 'INVOICE_FIX'">Wrong</th><th *ngIf="issue.kind === 'INVOICE_FIX'">Billed → should be</th><th *ngIf="issue.kind !== 'INVOICE_FIX'" class="text-end">Qty</th><th class="text-end">Claim</th><th *ngIf="issue.kind !== 'INVOICE_FIX'">Stock</th></tr></thead>
+        <tbody><tr *ngFor="let l of issue.lines" data-testid="vi-line">
+          <td>{{l.description}}</td>
+          <td *ngIf="issue.kind === 'INVOICE_FIX'">{{fieldLabels[l.field] || ''}}</td>
+          <td *ngIf="issue.kind === 'INVOICE_FIX'">{{l.billed_value}} → {{l.correct_value}}</td>
+          <td *ngIf="issue.kind !== 'INVOICE_FIX'" class="text-end">{{l.qty}}</td>
+          <td class="text-end">&#8377;{{l.amount | number:'1.2-2'}}</td>
+          <td *ngIf="issue.kind !== 'INVOICE_FIX'"><span class="badge bg-success" *ngIf="l.returned_qty">Sent back</span><span class="text-muted small" *ngIf="!l.returned_qty && l.purchase_item_id">In stock</span></td>
+        </tr></tbody>
+      </table>
+
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        <button *ngIf="issue.status === 'OPEN'" class="btn btn-primary btn-sm" type="button" (click)="startSend()" data-testid="vi-send">Send to vendor</button>
+        <ng-container *isAuth="'vendorissues.return'"><button *ngIf="goodsToReturn" class="btn btn-outline-primary btn-sm" type="button" (click)="sendBack()" data-testid="vi-return">Send the goods back</button></ng-container>
+        <ng-container *ngIf="opts.canManage && ['OPEN','WITH_VENDOR'].includes(issue.status)">
+          <button class="btn btn-success btn-sm" type="button" (click)="startResolve()" data-testid="vi-resolve">Vendor settled it</button>
+          <button class="btn btn-outline-danger btn-sm" type="button" (click)="startReject()" data-testid="vi-reject">Vendor refused</button>
+        </ng-container>
+        <button *ngIf="issue.status === 'OPEN'" class="btn btn-outline-secondary btn-sm" type="button" (click)="cancel()" data-testid="vi-cancel">Cancel the issue</button>
+        <button *ngIf="opts.canManage && ['RESOLVED','REJECTED'].includes(issue.status)" class="btn btn-outline-secondary btn-sm" type="button" (click)="reopen()" data-testid="vi-reopen">Reopen</button>
+        <button class="btn btn-outline-secondary btn-sm ms-auto" type="button" (click)="close()">Back to the list</button>
+      </div>
+
+      <div *ngIf="sending" class="border rounded p-2 mb-2" data-testid="vi-send-form">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3"><label class="form-label">Sent by</label><select class="form-select form-select-sm" [(ngModel)]="sending.via" data-testid="vi-s-via"><option *ngFor="let v of opts.vias" [value]="v">{{v | titlecase}}</option></select></div>
+          <div class="col-md-3"><label class="form-label">Their reference</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="sending.vendor_ref" data-testid="vi-s-ref"></div>
+          <div class="col-md-3"><label class="form-label">Reply due (default 7 days)</label><input type="date" class="form-control form-control-sm" [(ngModel)]="sending.due_on" data-testid="vi-s-due"></div>
+          <div class="col-md-3"><button class="btn btn-primary btn-sm" type="button" (click)="confirmSend()" data-testid="vi-s-save">Mark as sent</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="sending = null">Cancel</button></div>
+        </div>
+      </div>
+      <div *ngIf="resolving" class="border rounded p-2 mb-2" data-testid="vi-resolve-form">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3"><label class="form-label">How it was settled</label><select class="form-select form-select-sm" [(ngModel)]="resolving.resolution" data-testid="vi-r-kind"><option *ngFor="let r of opts.resolutions" [value]="r">{{resLabels[r]}}</option></select></div>
+          <div class="col-md-2" *ngIf="['CREDIT_NOTE','REFUND'].includes(resolving.resolution)"><label class="form-label">Amount &#8377;</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="resolving.credit_amount" data-testid="vi-r-amount"></div>
+          <div class="col-md-2" *ngIf="resolving.resolution === 'CREDIT_NOTE'"><label class="form-label">Credit note no.</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="resolving.credit_ref" data-testid="vi-r-ref"></div>
+          <div class="col-md-3"><label class="form-label">Note</label><input class="form-control form-control-sm" maxlength="300" [(ngModel)]="resolving.note"></div>
+          <div class="col-md-2"><button class="btn btn-success btn-sm" type="button" (click)="confirmResolve()" data-testid="vi-r-save">Save</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="resolving = null">Cancel</button></div>
+        </div>
+      </div>
+      <div *ngIf="rejecting" class="border rounded p-2 mb-2" data-testid="vi-reject-form">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-8"><label class="form-label">Why the vendor refused *</label><input class="form-control form-control-sm" maxlength="300" [(ngModel)]="rejecting.note" data-testid="vi-x-note"></div>
+          <div class="col-md-4"><button class="btn btn-danger btn-sm" type="button" (click)="confirmReject()" data-testid="vi-x-save">Record</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="rejecting = null">Cancel</button></div>
+        </div>
+      </div>
+
+      <h6 class="mt-3">Conversation</h6>
+      <ul class="list-unstyled small mb-2" data-testid="vi-notes">
+        <li *ngFor="let n of issue.notes" class="mb-1"><span class="text-muted">{{n.created_on | date:'dd MMM, HH:mm'}} · {{n.by_name}}</span> - {{n.note}}</li>
+        <li *ngIf="!issue.notes.length" class="text-muted">Nothing yet.</li>
+      </ul>
+      <div class="d-flex gap-2"><input class="form-control form-control-sm" maxlength="500" placeholder="Add a note (what the vendor said, who you spoke to)" [(ngModel)]="noteText" (keyup.enter)="addNote()" data-testid="vi-note-text"><button class="btn btn-outline-primary btn-sm" type="button" (click)="addNote()" data-testid="vi-note-add">Add</button></div>
+    </div>
+
+    <ng-container *ngIf="!issue && !form">
+      <ul class="nav nav-pills mb-2">
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'ACTIVE'" role="button" (click)="setTab('ACTIVE')" data-testid="vi-tab-active">Active</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'OVERDUE'" role="button" (click)="setTab('OVERDUE')" data-testid="vi-tab-overdue">Overdue</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'SETTLED'" role="button" (click)="setTab('SETTLED')" data-testid="vi-tab-settled">Settled</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'ALL'" role="button" (click)="setTab('ALL')" data-testid="vi-tab-all">All</a></li>
+        <li class="nav-item" *isAuth="'vendorissues.manage'"><a class="nav-link" [class.active]="tab === 'SCORECARD'" role="button" (click)="setTab('SCORECARD')" data-testid="vi-tab-score">Vendor scorecard</a></li>
+        <li class="nav-item ms-auto d-flex gap-2" *ngIf="tab !== 'SCORECARD'">
+          <select class="form-select form-select-sm" [(ngModel)]="vendorFilter" (ngModelChange)="load()" data-testid="vi-vendor-filter"><option [ngValue]="null">All vendors</option><option *ngFor="let v of opts.vendors" [ngValue]="v.id">{{v.name}}</option></select>
+          <input class="form-control form-control-sm" placeholder="Search" [(ngModel)]="search" (keyup.enter)="load()" data-testid="vi-search">
+        </li>
+      </ul>
+
+      <div class="table-responsive" *ngIf="tab !== 'SCORECARD'">
+        <table class="table table-sm align-middle" data-testid="vi-table">
+          <thead><tr><th>Issue</th><th>Vendor</th><th>Kind</th><th class="text-end">Claimed</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of rows" data-testid="vi-row" [attr.data-id]="r.id">
+              <td>{{r.issue_no}}<div class="small text-muted">{{r.summary}}</div></td>
+              <td>{{r.vendor}}<div class="small text-muted"><span *ngIf="r.invoice_no">invoice {{r.invoice_no}} · </span>{{r.store}}</div></td>
+              <td>{{kindLabels[r.kind]}}</td>
+              <td class="text-end">&#8377;{{r.claimed | number:'1.0-0'}}<div class="small text-success" *ngIf="r.credit_amount">back &#8377;{{r.credit_amount | number:'1.0-0'}}</div></td>
+              <td><span class="badge" [ngClass]="r.overdue ? 'bg-danger' : (r.status === 'RESOLVED' ? 'bg-success' : (r.status === 'REJECTED' ? 'bg-dark' : (r.status === 'WITH_VENDOR' ? 'bg-info text-dark' : 'bg-primary')))">{{r.overdue ? 'Overdue' : statusLabels[r.status]}}</span>
+                <div class="small text-muted" *ngIf="r.status === 'WITH_VENDOR' && r.due_on">due {{r.due_on | date:'dd MMM'}}</div></td>
+              <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="open(r.id)" data-testid="vi-open-row">Open</button></td>
+            </tr>
+            <tr *ngIf="!rows.length"><td colspan="6" class="text-center text-muted py-3">Nothing here.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-responsive" *ngIf="tab === 'SCORECARD'">
+        <table class="table table-sm align-middle" data-testid="vi-scorecard">
+          <thead><tr><th>Vendor</th><th class="text-end">Issues</th><th class="text-end">Open</th><th class="text-end">Overdue</th><th class="text-end">Refused</th><th class="text-end">Claimed</th><th class="text-end">Recovered</th><th class="text-end">Days to settle</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let s of scorecard" data-testid="vi-score-row"><td>{{s.vendor}}</td><td class="text-end">{{s.issues}}</td><td class="text-end">{{s.open}}</td><td class="text-end" [class.text-danger]="s.overdue">{{s.overdue}}</td><td class="text-end">{{s.refused}}</td>
+              <td class="text-end">&#8377;{{s.claimed | number:'1.0-0'}}</td><td class="text-end">&#8377;{{s.recovered | number:'1.0-0'}}</td><td class="text-end">{{s.avg_days_to_settle ?? '-'}}</td></tr>
+            <tr *ngIf="!scorecard.length"><td colspan="8" class="text-center text-muted py-3">No issues yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+  </div>
+</div>
