@@ -9,8 +9,9 @@ export const DIGITAL_PROVIDER = process.env.DIGITAL_PROVIDER || 'Paytm';
 const LEGACY: Record<string, string> = { paytm: 'UPI', gpay: 'UPI', phonepe: 'UPI', bhim: 'UPI', upi: 'UPI', card: 'Card', wallet: 'Wallet', other: 'Other' };
 
 /**
- * A completed bill with a digital amount must say how it was paid and carry the provider's reference, so the bill can
- * be matched to the settlement file later. A bill with no digital amount carries neither. Returns the cleaned fields.
+ * A completed bill with a digital amount must say how it was paid. The reference is the last digits of the provider's
+ * transaction id (4 is enough; a longer one may be pasted) and is optional: with the amount and the time it lets the bill
+ * be matched to the statement later. A bill with no digital amount carries neither. Returns the cleaned fields.
  */
 export async function checkDigitalPayment(manager: EntityManager, sale: any, saleId?: number | null) {
   const none = { digimethod: null, digirefno: null, digiprovider: null };
@@ -21,15 +22,8 @@ export async function checkDigitalPayment(manager: EntityManager, sale: any, sal
   if (!method) throw new BadRequestException(`Choose how the digital amount was paid: ${DIGITAL_METHODS.join(', ')}.`);
 
   const ref = String(sale?.digirefno || '').toUpperCase().replace(/\s+/g, '');
-  if (!ref) throw new BadRequestException(`Enter the ${DIGITAL_PROVIDER} reference (transaction or UTR number) for the digital payment.`);
-  if (!/^[A-Z0-9][A-Z0-9\-_/]{5,39}$/.test(ref)) {
-    throw new BadRequestException(`The ${DIGITAL_PROVIDER} reference must be 6 to 40 letters and digits, with no spaces.`);
+  if (ref && !/^[A-Z0-9][A-Z0-9\-_/]{3,39}$/.test(ref)) {
+    throw new BadRequestException(`Enter the last 4 digits of the ${DIGITAL_PROVIDER} transaction id, or leave it blank.`);
   }
-
-  const [dup] = await manager.query(
-    `select id, bill_no from sale where digi_provider = $1 and upper(digi_refno) = $2 and status = 'COMPLETE' and id <> $3 limit 1`,
-    [DIGITAL_PROVIDER, ref, saleId || 0]);
-  if (dup) throw new BadRequestException(`That ${DIGITAL_PROVIDER} reference is already on bill ${dup.bill_no ?? dup.id}. One payment cannot pay two bills.`);
-
-  return { digimethod: method, digirefno: ref, digiprovider: DIGITAL_PROVIDER };
+  return { digimethod: method, digirefno: ref || null, digiprovider: DIGITAL_PROVIDER };
 }

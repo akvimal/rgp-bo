@@ -1,6 +1,6 @@
 /**
  * Digital payments carry the provider's reference — DIGI-1..2
- * A bill paid digitally must say how and carry the Paytm reference, so it can be matched to the settlement file later.
+ * A bill paid digitally must say how; the last digits of the Paytm transaction id are optional and help match it to the statement.
  */
 import { test, expect, data } from '../fixtures/index.js';
 
@@ -38,27 +38,30 @@ function bill(pay: { cash: number; digi: number; method?: string | null; ref?: s
 const refNo = (p = 'PT') => `${p}${Date.now()}${Math.floor(Math.random() * 1e4)}`;
 
 test.describe('Digital payments @p1', () => {
-  test('DIGI-1 a digital amount needs a method and a well-formed Paytm reference, used once @negative', async ({ api }) => {
+  test('DIGI-1 a digital amount needs a method; the reference is the last digits of the Paytm transaction id and optional @negative', async ({ api }) => {
     test.skip(!POOL.length, 'no stock to sell');
     const post = (b: any) => api.request('POST', '/sales', b, CASHIER);
 
-    expect((await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: '' }))).status).toBe(400);            // no reference
-    expect((await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: 'AB1' }))).status).toBe(400);        // too short
+    expect((await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: 'AB1' }))).status).toBe(400);        // too short to be the last digits
     expect((await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: 'bad ref!#' }))).status).toBe(400);  // not letters and digits
-    expect((await post(bill({ cash: 0, digi: 100, method: 'Cheque', ref: refNo() }))).status).toBe(400);   // not a digital method
-    expect((await post(bill({ cash: 0, digi: 100, method: null, ref: refNo() }))).status).toBe(400);       // no method
+    expect((await post(bill({ cash: 0, digi: 100, method: 'Cheque', ref: '4821' }))).status).toBe(400);    // not a digital method
+    expect((await post(bill({ cash: 0, digi: 100, method: null, ref: '4821' }))).status).toBe(400);        // no method
 
-    const ref = refNo('pt ');                                                                               // spaces and lower case are tidied
-    const ok = await post(bill({ cash: 40, digi: 60, method: 'PayTM', ref }));                              // an old client's "PayTM" is a UPI payment
+    const blank = await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: '' }));                         // the reference may be left blank
+    expect(blank.status).toBeLessThan(300);
+    expect(blank.body.digirefno ?? null).toBeNull();
+    expect(blank.body.digiprovider).toBe('Paytm');
+
+    const ok = await post(bill({ cash: 40, digi: 60, method: 'PayTM', ref: ' 48 21 ' }));                   // spaces are tidied; an old client's "PayTM" is a UPI payment
     expect(ok.status).toBeLessThan(300);
     expect(ok.body.digimethod).toBe('UPI');
-    expect(ok.body.digirefno).toBe(ref.toUpperCase().replace(/\s+/g, ''));
-    expect(ok.body.digiprovider).toBe('Paytm');
+    expect(ok.body.digirefno).toBe('4821');
 
-    // the same reference cannot pay a second bill
-    const dup = await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: ok.body.digirefno.toLowerCase() }));
-    expect(dup.status).toBe(400);
-    expect(JSON.stringify(dup.body)).toContain('already on bill');
+    // last digits repeat: the same ones may be on a second bill
+    const again = await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: '4821' }));
+    expect(again.status).toBeLessThan(300);
+    const long = await post(bill({ cash: 0, digi: 100, method: 'UPI', ref: refNo() }));                     // a whole id pasted is still accepted
+    expect(long.status).toBeLessThan(300);
   });
 
   test('DIGI-2 a cash bill carries no digital method or reference @edge', async ({ api }) => {

@@ -16,14 +16,14 @@
                 <span class="input-group-text">Digital &#8377;</span>
                 <input type="text" class="form-control" style="width:6rem" [(ngModel)]="payment.digiamt" (input)="digiamtchange($event)" aria-label="Digital amount">
             </div>
-            <input type="text" class="form-control form-control-sm w-auto" style="width:13rem !important" [(ngModel)]="payment.digirefno" placeholder="Paytm ref / UTR" data-testid="pos-digi-ref" [class.is-invalid]="refMissing" maxlength="40" aria-label="Payment reference">
+            <input type="text" class="form-control form-control-sm w-auto" style="width:13rem !important" [(ngModel)]="payment.digirefno" placeholder="Last 4 of Paytm txn id" data-testid="pos-digi-ref" [class.is-invalid]="refMissing" maxlength="40" aria-label="Last 4 digits of the Paytm transaction id">
             <div class="input-group input-group-sm w-auto">
                 <span class="input-group-text">Cash &#8377;</span>
                 <input type="text" class="form-control" style="width:6rem" [(ngModel)]="payment.cashamt" (input)="cashamtchange($event)" aria-label="Cash amount">
             </div>
         </ng-container>
     </div>
-    <div class="small text-danger" *ngIf="refMissing" data-testid="pos-digi-ref-msg">Enter the Paytm reference (transaction or UTR number) for the digital amount.</div>
+    <div class="small text-danger" *ngIf="refMissing" data-testid="pos-digi-ref-msg">Enter the last 4 digits of the Paytm transaction id, or leave it blank.</div>
 
     <!-- staff credit / store credit -->
     <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="staffOptions.length">

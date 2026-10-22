@@ -24,10 +24,11 @@ export class SalePaymentComponent {
     /** what the customer handed over, for working out the change; null until typed */
     tendered:number|null = null;
 
-    /** a digital amount with no (or a malformed) reference: the bill cannot be completed and cannot be reconciled later */
+    /** the reference is the last 4 digits of the Paytm transaction id and optional; something typed must look like one */
     get refMissing(): boolean {
+        const ref = String(this.payment.digirefno || '').replace(/\s+/g, '');
         return !this.cashonly && !this.payment.staffcredit && Math.min(+(this.payment.digiamt || 0), this.total - this.creditUse) > 0
-            && !/^[A-Za-z0-9][A-Za-z0-9\-_\/]{5,39}$/.test(String(this.payment.digirefno || '').replace(/\s+/g, ''));
+            && !!ref && !/^[A-Za-z0-9][A-Za-z0-9\-_\/]{3,39}$/.test(ref);
     }
     cashonly = false;
 
