@@ -1,4 +1,7 @@
-/** Mirrors api-v2/src/modules/app/store/shift-checklist.ts (WS-7). */
+/**
+ * Mirrors api-v2/src/modules/app/store/shift-checklist.ts (WS-7). The server only insists on the keys it lists there;
+ * the extra items below are for the person closing (expenses and digital totals checked) and are kept with the shift.
+ */
 export interface ChecklistItem { key: string; label: string; checked: boolean; }
 
 export const OPENING_CHECKLIST_ITEMS: { key: string; label: string }[] = [
@@ -8,11 +11,21 @@ export const OPENING_CHECKLIST_ITEMS: { key: string; label: string }[] = [
     { key: 'prior_deposit_secured', label: "Yesterday's cash deposited or securely stored" },
 ];
 
+/** End of day: the store is closing. */
 export const CLOSING_CHECKLIST_ITEMS: { key: string; label: string }[] = [
     { key: 'drawer_counted', label: 'Drawer counted and reconciled' },
+    { key: 'expenses_recorded', label: 'Every payment made from the cash drawer is recorded' },
+    { key: 'digital_checked', label: 'Digital totals checked against the terminal' },
     { key: 'entrance_locked', label: 'Entrance shutter/door locked' },
     { key: 'lights_off', label: 'Lights and AC turned off' },
     { key: 'cash_secured', label: 'Cash secured in the safe/deposit bag' },
+];
+
+/** Handover: the store stays open, so locking up and securing the cash do not apply. */
+export const HANDOVER_CHECKLIST_ITEMS: { key: string; label: string }[] = [
+    { key: 'drawer_counted', label: 'Drawer counted and shown to the person taking over' },
+    { key: 'expenses_recorded', label: 'Every payment made from the cash drawer is recorded' },
+    { key: 'digital_checked', label: 'Digital totals checked against the terminal' },
 ];
 
 export function freshChecklist(items: { key: string; label: string }[]): ChecklistItem[] {

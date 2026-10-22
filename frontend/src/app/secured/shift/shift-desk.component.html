@@ -1,0 +1,131 @@
+<div class="pagetitle"><h1>My shift</h1></div>
+<div class="card">
+  <div class="card-body pt-3">
+    <div class="alert alert-info py-2" *ngIf="storeId === null || storeId === undefined" data-testid="shiftdesk-nostore">Select a store in the header to open or close a shift.</div>
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="shiftdesk-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="shiftdesk-error">{{error}}</div>
+
+    <ng-container *ngIf="storeId !== null && storeId !== undefined">
+      <!-- no open shift -->
+      <div *ngIf="!openShift && mode !== 'open'" class="d-flex justify-content-between align-items-center flex-wrap gap-2" data-testid="shiftdesk-none">
+        <div class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>No open shift</strong> - sales can't be completed until a shift is open.</div>
+        <button class="btn btn-primary" type="button" *isAuth="'store.shift.open'" data-testid="shift-card-open" (click)="startOpen()">Open shift</button>
+      </div>
+
+      <!-- opening -->
+      <div *ngIf="mode === 'open'" data-testid="shiftdesk-open-form">
+        <h6>Open the shift - {{ operatorName || 'select staff in the header' }}</h6>
+        <div class="fw-semibold small mb-2">Count the opening float</div>
+        <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
+        <div class="small mt-3">
+          <div class="fw-semibold mb-1">Opening checklist</div>
+          <div class="form-check" *ngFor="let c of checklist">
+            <input type="checkbox" class="form-check-input" [id]="'open-' + c.key" [(ngModel)]="c.checked" [attr.data-testid]="'shift-checklist-' + c.key">
+            <label class="form-check-label" [for]="'open-' + c.key">{{ c.label }}</label>
+          </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+          <button class="btn btn-primary" type="button" [disabled]="busy || !checklistComplete" data-testid="shift-card-open-confirm" (click)="confirmOpen()">Open shift with &#8377;{{ denomTotal | number:'1.0-0' }}</button>
+          <button class="btn btn-outline-secondary" type="button" (click)="cancel()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- open shift: what the cash drawer has taken so far -->
+      <ng-container *ngIf="openShift">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+          <div>
+            <span class="badge bg-success me-2">OPEN</span><strong>{{ openShift.name }}</strong>
+            <span class="text-muted ms-1">({{ openShift.shiftdate | date:'dd MMM' }})</span>
+            <div class="small text-muted" *ngIf="summary?.shift?.assigned">With {{ summary.shift.assigned }}</div>
+          </div>
+          <button *ngIf="mode !== 'close'" class="btn btn-outline-danger" type="button" data-testid="shift-card-close" (click)="startClose()" [disabled]="!summary"
+                  title="Count the drawer and end your shift">Close shift</button>
+        </div>
+
+        <div class="row g-3 mb-3" *ngIf="summary" data-testid="shiftdesk-summary">
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Opening float</div><div class="fs-5">&#8377;{{ summary.shift.openingcash | number:'1.0-0' }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Cash sales ({{ summary.bills }} bills)</div><div class="fs-5" data-testid="shiftdesk-cash">&#8377;{{ summary.cash | number:'1.0-0' }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Digital</div><div class="fs-5" data-testid="shiftdesk-digital">&#8377;{{ summary.digital | number:'1.0-0' }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Expected cash now</div><div class="fs-5" data-testid="shiftdesk-expected">&#8377;{{ summary.expected | number:'1.0-0' }}</div></div></div>
+          <div class="col-12 small text-muted">
+            Paid out of the cash drawer: expenses &#8377;{{ summary.expensesTotal | number:'1.0-0' }}, refunds &#8377;{{ summary.refunds | number:'1.0-0' }}, deposits &#8377;{{ summary.deposits | number:'1.0-0' }}.
+            <span *ngIf="summary.storeCredit || summary.staffCredit">Also on credit: store credit &#8377;{{ summary.storeCredit | number:'1.0-0' }}, staff credit &#8377;{{ summary.staffCredit | number:'1.0-0' }}.</span>
+          </div>
+        </div>
+
+        <div class="row g-3" *ngIf="summary">
+          <div class="col-lg-6" *ngIf="summary.digitalByProvider.length" data-testid="shiftdesk-providers">
+            <h6>Digital by provider</h6>
+            <table class="table table-sm mb-0"><thead><tr><th>Provider</th><th class="text-end">Bills</th><th class="text-end">Amount</th></tr></thead>
+              <tbody><tr *ngFor="let d of summary.digitalByProvider"><td>{{d.provider}}</td><td class="text-end">{{d.bills}}</td><td class="text-end">&#8377;{{d.amount | number:'1.2-2'}}</td></tr></tbody></table>
+          </div>
+          <div class="col-lg-6" data-testid="shiftdesk-expenses">
+            <div class="d-flex justify-content-between align-items-center"><h6 class="mb-1">Paid from the cash drawer</h6>
+              <button class="btn btn-outline-primary btn-sm" type="button" (click)="addExpense()" data-testid="shiftdesk-exp-add">Record an expense</button></div>
+            <div *ngIf="expenseForm" class="border rounded p-2 mb-2" data-testid="shiftdesk-exp-form">
+              <div class="row g-2">
+                <div class="col-4"><input type="number" min="0" class="form-control form-control-sm" placeholder="Amount" [(ngModel)]="expenseForm.amount" data-testid="shiftdesk-exp-amount"></div>
+                <div class="col-8"><select class="form-select form-select-sm" [(ngModel)]="expenseForm.expensecategory" data-testid="shiftdesk-exp-category"><option *ngFor="let c of categories" [value]="c.value">{{c.label}}</option></select></div>
+                <div class="col-12"><input class="form-control form-control-sm" placeholder="What was it for?" maxlength="200" [(ngModel)]="expenseForm.description" data-testid="shiftdesk-exp-desc"></div>
+                <div class="col-12"><button class="btn btn-primary btn-sm" type="button" (click)="saveExpense()" data-testid="shiftdesk-exp-save">Save</button>
+                  <button class="btn btn-outline-secondary btn-sm ms-2" type="button" (click)="expenseForm = null">Cancel</button></div>
+              </div>
+            </div>
+            <table class="table table-sm mb-0" *ngIf="summary.expenses.length; else noExpenses">
+              <tbody><tr *ngFor="let e of summary.expenses" data-testid="shiftdesk-exp-row"><td>{{e.description}}<div class="small text-muted">{{e.expense_category}}</div></td><td class="text-end">&#8377;{{e.amount | number:'1.2-2'}}</td></tr></tbody>
+            </table>
+            <ng-template #noExpenses><div class="small text-muted">Nothing recorded this shift.</div></ng-template>
+          </div>
+        </div>
+
+        <!-- closing -->
+        <div *ngIf="mode === 'close' && summary" class="border rounded p-3 mt-3" data-testid="shiftdesk-close-form">
+          <h6>Close the shift - {{ operatorName || 'select staff in the header' }}</h6>
+          <div class="mb-3">
+            <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="ct-eod" name="ct" value="END_OF_DAY" [(ngModel)]="closeType" (ngModelChange)="resetChecklist()" data-testid="shiftdesk-type-eod"><label class="form-check-label" for="ct-eod">End of day - the store is closing</label></div>
+            <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="ct-ho" name="ct" value="HANDOVER" [(ngModel)]="closeType" (ngModelChange)="resetChecklist()" data-testid="shiftdesk-type-handover"><label class="form-check-label" for="ct-ho">Hand over - the store stays open</label></div>
+          </div>
+          <div class="mb-3" *ngIf="closeType === 'HANDOVER'" data-testid="shiftdesk-handover">
+            <label class="form-label">Taking over *</label>
+            <select class="form-select w-auto" [(ngModel)]="handoverTo" data-testid="shiftdesk-taker"><option [ngValue]="null">Choose</option><option *ngFor="let u of takers" [ngValue]="u.id">{{u.fullname}}</option></select>
+            <div class="form-text">The counted drawer becomes their opening float and their shift opens straight away.</div>
+          </div>
+
+          <div class="fw-semibold small mb-2">Count the drawer</div>
+          <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
+          <div class="small mt-2" style="max-width:24rem">
+            <div class="d-flex justify-content-between"><span class="text-muted">Expected</span><span>&#8377;{{ expected | number:'1.0-0' }}</span></div>
+            <div class="d-flex justify-content-between"><span class="text-muted">Variance</span>
+              <span class="fw-semibold" [class.text-danger]="variance < 0" [class.text-success]="variance > 0" data-testid="shiftdesk-variance">{{ variance >= 0 ? '+' : '' }}&#8377;{{ variance | number:'1.0-0' }}</span></div>
+          </div>
+
+          <div class="mt-3" *ngIf="summary.digitalByProvider.length" data-testid="shiftdesk-digital-count">
+            <div class="fw-semibold small mb-1">Digital totals - enter what each terminal shows</div>
+            <table class="table table-sm align-middle mb-0" style="max-width:40rem">
+              <thead><tr><th>Provider</th><th class="text-end">System</th><th style="width:9rem">Terminal total</th><th class="text-end">Difference</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let d of summary.digitalByProvider">
+                  <td>{{d.provider}}</td><td class="text-end">&#8377;{{d.amount | number:'1.2-2'}}</td>
+                  <td><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="digitalCounted[d.provider]" [attr.data-testid]="'shiftdesk-dig-' + d.provider"></td>
+                  <td class="text-end" [class.text-danger]="digitalVariance(d) !== null && digitalVariance(d) !== 0">{{ digitalVariance(d) === null ? '' : ((digitalVariance(d)! >= 0 ? '+' : '') + (digitalVariance(d)! | number:'1.2-2')) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="small mt-3">
+            <div class="fw-semibold mb-1">{{ closeType === 'HANDOVER' ? 'Handover checklist' : 'Closing checklist' }}</div>
+            <div class="form-check" *ngFor="let c of checklist">
+              <input type="checkbox" class="form-check-input" [id]="'close-' + c.key" [(ngModel)]="c.checked" [attr.data-testid]="'shift-checklist-' + c.key">
+              <label class="form-check-label" [for]="'close-' + c.key">{{ c.label }}</label>
+            </div>
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-danger" type="button" [disabled]="busy || !denoms.length || !checklistComplete" data-testid="shift-card-close-confirm" (click)="confirmClose()">{{ closeType === 'HANDOVER' ? 'Hand over the shift' : 'Close shift' }}</button>
+            <button class="btn btn-outline-secondary" type="button" (click)="cancel()">Cancel</button>
+          </div>
+        </div>
+      </ng-container>
+    </ng-container>
+  </div>
+</div>

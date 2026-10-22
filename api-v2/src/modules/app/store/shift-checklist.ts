@@ -22,6 +22,12 @@ export const CLOSING_CHECKLIST_KEYS = [
   'cash_secured',
 ] as const;
 
+/**
+ * A handover (the store stays open and the shift passes to someone else) only needs the drawer count: locking up, lights
+ * and securing the cash are the end-of-day closing's.
+ */
+export const HANDOVER_CHECKLIST_KEYS = ['drawer_counted'] as const;
+
 /** Returns an error message if the checklist is missing any required key, else null. */
 export function validateChecklist(keys: readonly string[], submitted: any): string | null {
   if (!Array.isArray(submitted)) {

@@ -35,6 +35,11 @@ export class StoreCashController {
     return this.service.findShifts(query);
   }
 
+  @Get("shifts/:id/summary")
+  getShiftSummary(@Param("id") id: string) {
+    return this.service.getShiftSummary(Number(id));
+  }
+
   @Get("shifts/:id/report")
   getShiftReport(@Param("id") id: string) {
     return this.service.getShiftReport(Number(id));
@@ -70,7 +75,7 @@ export class StoreCashController {
 
   @Post("ledger")
   async createLedger(@Body() body: any, @User() currentUser: any) {
-    // anyone who can run a till can record its cash movements
+    // anyone who can run a cash drawer can record its cash movements
     await this.permissions.assertCanCloseShift(currentUser?.roleid);
     return this.service.saveLedger(body, currentUser?.id);
   }

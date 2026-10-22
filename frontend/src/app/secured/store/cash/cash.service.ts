@@ -76,6 +76,10 @@ export class CashService {
         return this.http.put(`${this.apiurl}/store-cash/shifts/${id}/close`, body);
     }
 
+    getShiftSummary(id:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/shifts/${id}/summary`);
+    }
+
     getShiftReport(id:any): Observable<any> {
         return this.http.get(`${this.apiurl}/store-cash/shifts/${id}/report`);
     }

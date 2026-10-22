@@ -10,7 +10,7 @@ import { UserStore } from "src/entities/user-store.entity";
 import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { denominationTotal, normalizeDenominations } from "./denominations";
-import { CLOSING_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
+import { CLOSING_CHECKLIST_KEYS, HANDOVER_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
 
 @Injectable()
 export class StoreService {
@@ -448,9 +448,10 @@ export class StoreService {
     } else {
       throw new BadRequestException("Enter the drawer count before closing the shift.");
     }
-    // WS-7: only validated when the caller actually sends a checklist (the POS card always does).
+    const closeType = body.closetype === 'HANDOVER' ? 'HANDOVER' : 'END_OF_DAY';
+    // WS-7: only validated when the caller actually sends a checklist (the shift page always does).
     if (body.closingchecklist !== undefined) {
-      const checklistError = validateChecklist(CLOSING_CHECKLIST_KEYS, body.closingchecklist);
+      const checklistError = validateChecklist(closeType === 'HANDOVER' ? HANDOVER_CHECKLIST_KEYS : CLOSING_CHECKLIST_KEYS, body.closingchecklist);
       if (checklistError) {
         throw new BadRequestException(checklistError);
       }
@@ -459,21 +460,113 @@ export class StoreService {
     const closedOperatorId = body.closedoperatorid ? Number(body.closedoperatorid)
       : (body.operatorid ? Number(body.operatorid) : (shift.assigneduserid || null));
 
+    // A handover names who takes the drawer; they must work at this store and be someone other than the person handing over.
+    let handoverTo: number | null = null;
+    if (closeType === 'HANDOVER') {
+      handoverTo = Number(body.handovertoid) || null;
+      if (!handoverTo) throw new BadRequestException('Choose the staff member taking over the shift.');
+      if (handoverTo === closedOperatorId || handoverTo === userid) throw new BadRequestException('Hand the shift over to someone else.');
+      const [taker] = await this.manager.query(
+        `select u.id from app_user u join app_role r on r.id = u.role_id
+          where u.id = $1 and u.active and not u.archive and r.name <> 'Site Admin'
+            and (r.name = 'Business Head' or exists (select 1 from user_stores us where us.user_id = u.id and us.store_id = $2 and us.active and not us.archive))`, [handoverTo, shift.storeid]);
+      if (!taker) throw new BadRequestException('That staff member does not work at this store.');
+    }
+
+    // Digital takings: what the system recorded per provider against what the terminal shows.
+    let closingDigital: any[] | null = null;
+    if (body.closingdigital !== undefined) {
+      const system = await this.manager.query(
+        `select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, coalesce(sum(digi_amount), 0)::float as amount
+           from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0 group by 1`, [id]);
+      const given = new Map<string, number>();
+      for (const g of Array.isArray(body.closingdigital) ? body.closingdigital : []) {
+        const n = Number(g?.counted);
+        if (!g?.provider || !Number.isFinite(n) || n < 0) throw new BadRequestException('Digital totals must be zero or more.');
+        given.set(String(g.provider), Math.round(n * 100) / 100);
+      }
+      for (const s of system) {
+        if (!given.has(s.provider)) throw new BadRequestException(`Enter the ${s.provider} total from the terminal.`);
+      }
+      const providers = Array.from(new Set([...system.map((s: any) => s.provider), ...given.keys()]));
+      closingDigital = providers.map(p => {
+        const sys = Math.round((system.find((s: any) => s.provider === p)?.amount || 0) * 100) / 100;
+        const counted = given.get(p) ?? 0;
+        return { provider: p, system: sys, counted, variance: Math.round((counted - sys) * 100) / 100 };
+      });
+    }
+
     await this.shiftRepository.update(id, {
       status: "CLOSED",
       countedcash,
       counteddenominations: countedDenoms,
       closingchecklist: Array.isArray(body.closingchecklist) ? body.closingchecklist : null,
+      closetype: closeType,
+      handovertouserid: handoverTo,
+      closingdigital: closingDigital,
       closedoperatorid: closedOperatorId,
       closedon: new Date(),
       closedby: userid ? { id: userid } as any : null,
       notes: body.notes || shift.notes,
     } as any);
     await this.syncShiftTotals(id);
-    return this.shiftRepository.findOne({
+
+    // On a handover the counted drawer is the incoming person's float and their shift opens straight away.
+    let nextShiftId: number | null = null;
+    if (closeType === 'HANDOVER') {
+      const next = await this.shiftRepository.save({
+        storeid: shift.storeid,
+        templateid: shift.templateid,
+        assigneduserid: handoverTo,
+        shiftdate: this.today(),
+        name: shift.name,
+        starttime: shift.starttime,
+        endtime: shift.endtime,
+        status: "OPEN",
+        openingcash: countedcash,
+        expectedcash: countedcash,
+        openingdenominations: countedDenoms,
+        openingchecklist: null,
+        depositthreshold: shift.depositthreshold,
+        openedon: new Date(),
+        handoverfromshiftid: id,
+        openedby: userid ? { id: userid } as any : null,
+      } as any);
+      nextShiftId = (next as any).id;
+      await this.syncShiftTotals(nextShiftId as number);
+    }
+    const closed = await this.shiftRepository.findOne({
       where: { id },
       relations: ["store", "template", "openedby", "closedby"],
     });
+    return { ...(closed as any), nextshiftid: nextShiftId };
+  }
+
+  /** What the person closing sees: takings by tender, the digital totals to match, and the cash drawer's expenses. */
+  async getShiftSummary(shiftId: number) {
+    const shift = await this.shiftRepository.findOne({ where: { id: shiftId }, relations: ['store', 'assigneduser'] });
+    if (!shift) throw new NotFoundException('Shift not found.');
+    const stats = await this.getShiftStats(shiftId);
+    const [t] = await this.manager.query(
+      `select count(*)::int as bills, coalesce(sum(cash_amount), 0)::float as cash, coalesce(sum(digi_amount), 0)::float as digital,
+              coalesce(sum(credit_amount), 0)::float as store_credit, coalesce(sum(staff_credit_amount), 0)::float as staff_credit, coalesce(sum(total), 0)::float as total
+         from sale where shift_id = $1 and status = 'COMPLETE' and active = true`, [shiftId]);
+    const digital = await this.manager.query(
+      `select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, count(*)::int as bills, coalesce(sum(digi_amount), 0)::float as amount
+         from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0 group by 1 order by 1`, [shiftId]);
+    const expenses = await this.manager.query(
+      `select id, trans_date, description, expense_category, withdraw::float as amount, (coalesce(trim(receipt_path), '') <> '') as has_receipt
+         from store_cash_accounts where shift_id = $1 and category = 'EXPENSE' order by id`, [shiftId]);
+    const [out] = await this.manager.query(
+      `select coalesce(sum(withdraw) filter (where category = 'REFUND'), 0)::float as refunds, coalesce(sum(withdraw) filter (where category = 'BANK_DEPOSIT'), 0)::float as deposits
+         from store_cash_accounts where shift_id = $1`, [shiftId]);
+    return {
+      shift: { id: shift.id, name: shift.name, status: shift.status, storeid: shift.storeid, store: (shift as any).store?.location, assigneduserid: shift.assigneduserid,
+               assigned: (shift as any).assigneduser?.fullname || null, openingcash: Number(shift.openingcash), expectedcash: stats.expectedcash, openedon: shift.openedon },
+      bills: t.bills, total: t.total, cash: t.cash, digital: t.digital, storeCredit: t.store_credit, staffCredit: t.staff_credit,
+      digitalByProvider: digital, expenses, expensesTotal: expenses.reduce((s: number, e: any) => s + e.amount, 0),
+      refunds: out.refunds, deposits: out.deposits, expected: stats.expectedcash,
+    };
   }
 
   async findLedger(query: any) {

@@ -60,6 +60,18 @@ export class StoreShift {
   @Column("jsonb", { name: "closing_checklist", nullable: true })
   closingchecklist: string[] | null;
 
+  @Column("character varying", { name: "close_type", length: 10, nullable: true })
+  closetype: string | null;
+
+  @Column("integer", { name: "handover_to_user_id", nullable: true })
+  handovertouserid: number | null;
+
+  @Column("integer", { name: "handover_from_shift_id", nullable: true })
+  handoverfromshiftid: number | null;
+
+  @Column("jsonb", { name: "closing_digital", nullable: true })
+  closingdigital: Array<{ provider: string; system: number; counted: number; variance: number }> | null;
+
   @Column("integer", { name: "closed_operator_id", nullable: true })
   closedoperatorid: number | null;
 
