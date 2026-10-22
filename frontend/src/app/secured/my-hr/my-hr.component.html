@@ -1,0 +1,146 @@
+<div class="pagetitle"><h1>My HR</h1></div>
+<div class="card">
+  <div class="card-body pt-3">
+    <div *ngIf="loaded && !summary?.staff" class="text-muted" data-testid="myhr-nostaff">You do not have a staff record yet, so there is nothing to show here. Ask your manager to add you.</div>
+
+    <ng-container *ngIf="summary?.staff">
+      <ul class="nav nav-pills mb-3">
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'home'" role="button" (click)="show('home')" data-testid="myhr-tab-home">Overview</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'profile'" role="button" (click)="show('profile')" data-testid="myhr-tab-profile">My details</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'payslips'" role="button" (click)="show('payslips')" data-testid="myhr-tab-payslips">Pay slips</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'leave'" role="button" (click)="show('leave')" data-testid="myhr-tab-leave">Leave</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'attendance'" role="button" (click)="show('attendance')" data-testid="myhr-tab-attendance">Attendance</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'credit'" role="button" (click)="show('credit')" data-testid="myhr-tab-credit">Staff credit</a></li>
+        <li class="nav-item"><a class="nav-link" routerLink="/secure/kpi/mine" data-testid="myhr-tab-kpi">My KPI</a></li>
+      </ul>
+      <div *ngIf="message" class="alert alert-success py-2" data-testid="myhr-message">{{message}}</div>
+      <div *ngIf="error" class="alert alert-danger py-2" data-testid="myhr-error">{{error}}</div>
+
+      <!-- overview -->
+      <div *ngIf="tab === 'home'" class="row g-3" data-testid="myhr-home">
+        <div class="col-12"><h5 class="mb-0">{{summary.name}}</h5><div class="small text-muted">{{summary.role}}</div></div>
+        <div class="col-md-4"><div class="border rounded p-3 h-100"><div class="small text-muted">Latest pay slip</div>
+          <div *ngIf="summary.latestPayslip; else noSlip"><div class="fs-5">&#8377;{{summary.latestPayslip.net | number:'1.2-2'}}</div><div class="small">{{summary.latestPayslip.period}} <a role="button" (click)="show('payslips')">see it</a></div></div>
+          <ng-template #noSlip><div class="text-muted">None released yet.</div></ng-template></div></div>
+        <div class="col-md-4"><div class="border rounded p-3 h-100"><div class="small text-muted">Leave</div>
+          <div class="fs-5" data-testid="myhr-pending">{{summary.pendingLeave}} waiting for a decision</div>
+          <div class="small" *ngFor="let d of summary.recentDecisions"><span [class.text-success]="d.status === 'APPROVED'" [class.text-danger]="d.status === 'REJECTED'">{{d.type}} {{d.from_date | date:'dd MMM'}} {{statusLabels[d.status] | lowercase}}</span><span *ngIf="d.decision_note" class="text-muted"> - {{d.decision_note}}</span></div>
+          <a role="button" class="small" (click)="show('leave')">Leave</a></div></div>
+        <div class="col-md-4"><div class="border rounded p-3 h-100"><div class="small text-muted">Staff credit</div>
+          <div class="fs-5">&#8377;{{summary.credit.outstanding | number:'1.2-2'}} owed</div><div class="small text-muted" *ngIf="summary.credit.cap">of a &#8377;{{summary.credit.cap | number:'1.0-0'}} monthly limit</div>
+          <div class="small text-muted" *ngIf="summary.nextHoliday">Next holiday: {{summary.nextHoliday.name}}, {{summary.nextHoliday.date | date:'dd MMM'}}</div></div></div>
+      </div>
+
+      <!-- details -->
+      <div *ngIf="tab === 'profile' && profile" data-testid="myhr-profile">
+        <div class="row g-3">
+          <div class="col-md-3"><div class="small text-muted">Name</div>{{profile.name}}</div>
+          <div class="col-md-3"><div class="small text-muted">Staff code</div>{{profile.emp_code}}</div>
+          <div class="col-md-3"><div class="small text-muted">Designation</div>{{profile.designation || '-'}}</div>
+          <div class="col-md-3"><div class="small text-muted">Type</div>{{profile.emp_type === 'FULL_TIME' ? 'Full time' : 'Part time'}}</div>
+          <div class="col-md-3"><div class="small text-muted">Joined</div>{{profile.join_date | date:'dd MMM yyyy'}}</div>
+          <div class="col-md-3"><div class="small text-muted">Days and hours</div><span data-testid="myhr-schedule">{{schedule}}</span></div>
+          <div class="col-md-3"><div class="small text-muted">Stores</div>{{profile.stores?.length ? profile.stores.join(', ') : (profile.base_store || '-')}}</div>
+          <div class="col-md-3"><div class="small text-muted">Login</div>{{profile.email}}</div>
+          <div class="col-md-3"><div class="small text-muted">Bank</div>{{profile.bank_name || '-'}} <span class="text-muted">{{profile.account_no}}</span></div>
+          <div class="col-md-3"><div class="small text-muted">PAN</div>{{profile.pan || '-'}}</div>
+          <div class="col-md-3"><div class="small text-muted">Aadhaar</div>{{profile.aadhaar || '-'}}</div>
+          <div class="col-12 small text-muted">Bank, PAN and Aadhaar are shown in part for your security. To change them, ask the Business Head.</div>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between align-items-center"><h6 class="mb-2">Contact and emergency</h6><button *ngIf="!editing" class="btn btn-outline-primary btn-sm" type="button" (click)="edit()" data-testid="myhr-edit">Change</button></div>
+        <div class="row g-3" *ngIf="!editing"><div class="col-md-6"><div class="small text-muted">Address</div>{{profile.address || '-'}}</div>
+          <div class="col-md-3"><div class="small text-muted">Emergency contact</div>{{profile.emergency_name || '-'}}</div><div class="col-md-3"><div class="small text-muted">Emergency phone</div>{{profile.emergency_phone || '-'}}</div></div>
+        <div class="row g-3" *ngIf="editing" data-testid="myhr-edit-form">
+          <div class="col-md-6"><label class="form-label">Address</label><input class="form-control" maxlength="300" [(ngModel)]="profile.address" data-testid="myhr-f-address"></div>
+          <div class="col-md-3"><label class="form-label">Emergency contact</label><input class="form-control" maxlength="80" [(ngModel)]="profile.emergency_name" data-testid="myhr-f-ename"></div>
+          <div class="col-md-3"><label class="form-label">Emergency phone</label><input class="form-control" maxlength="20" [(ngModel)]="profile.emergency_phone" data-testid="myhr-f-ephone"></div>
+          <div class="col-12"><button class="btn btn-primary btn-sm" type="button" (click)="saveProfile()" data-testid="myhr-save">Save</button> <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="show('profile')">Cancel</button></div>
+        </div>
+      </div>
+
+      <!-- pay slips -->
+      <div *ngIf="tab === 'payslips'" data-testid="myhr-payslips">
+        <div class="small text-muted mb-2">A pay slip appears here as soon as the month's payroll is approved.</div>
+        <table class="table table-sm align-middle" *ngIf="payslips.length; else noSlips">
+          <thead><tr><th>Month</th><th class="text-end">Days paid</th><th class="text-end">Net pay</th><th></th></tr></thead>
+          <tbody><tr *ngFor="let p of payslips" data-testid="myhr-slip-row"><td>{{p.period}}</td><td class="text-end">{{p.payable_days}} of 30</td><td class="text-end">&#8377;{{p.net | number:'1.2-2'}}</td>
+            <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="openSlip(p)" data-testid="myhr-slip-open">View</button></td></tr></tbody>
+        </table>
+        <ng-template #noSlips><div class="text-muted" data-testid="myhr-noslips">No pay slip has been released yet.</div></ng-template>
+        <div *ngIf="slip" class="border rounded p-3 mt-3" data-testid="myhr-slip">
+          <div class="d-flex justify-content-between"><div><h6 class="mb-0">Pay slip {{slip.period}}</h6><div class="small text-muted">{{slip.emp_code}} {{slip.designation}} &middot; {{slip.payable_days}} of 30 days paid</div></div>
+            <div><button class="btn btn-outline-primary btn-sm" type="button" (click)="printSlip()" data-testid="myhr-slip-print">Print / save as PDF</button> <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="slip = null">Close</button></div></div>
+          <table class="table table-sm mt-2 mb-0">
+            <tr *ngFor="let e of slip.earnings"><td>{{e.name}}</td><td class="text-end">{{e.paid | number:'1.2-2'}}</td></tr>
+            <tr *ngIf="slip.kpi_incentive"><td>Incentive</td><td class="text-end">{{slip.kpi_incentive | number:'1.2-2'}}</td></tr>
+            <tr *ngIf="slip.adjustment"><td>{{slip.adjustment_note || 'Adjustment'}}</td><td class="text-end">{{slip.adjustment | number:'1.2-2'}}</td></tr>
+            <tr *ngFor="let d of slip.deductions"><td>{{d.name}}</td><td class="text-end">-{{d.amount | number:'1.2-2'}}</td></tr>
+            <tr *ngIf="slip.extra_deduction"><td>Other deduction</td><td class="text-end">-{{slip.extra_deduction | number:'1.2-2'}}</td></tr>
+            <tr *ngIf="slip.staff_credit_recovery"><td>Staff credit recovered</td><td class="text-end">-{{slip.staff_credit_recovery | number:'1.2-2'}}</td></tr>
+            <tr class="fw-bold"><td>Net pay</td><td class="text-end" data-testid="myhr-slip-net">{{slip.net | number:'1.2-2'}}</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- leave -->
+      <div *ngIf="tab === 'leave' && leave" data-testid="myhr-leave">
+        <div class="d-flex justify-content-between align-items-center mb-2"><h6 class="mb-0">Balance for {{leave.year}}</h6>
+          <button class="btn btn-primary btn-sm" type="button" (click)="startLeave()" *isAuth="'myhr.apply'" data-testid="myhr-leave-apply">Apply for leave</button></div>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <div *ngFor="let b of leave.balances" class="border rounded px-3 py-2" data-testid="myhr-balance"><div class="small text-muted">{{b.type}}{{b.paid ? '' : ' (unpaid)'}}</div>
+            <div *ngIf="b.paid"><strong>{{balanceLeft(b)}}</strong> of {{b.entitled}} left<span class="small text-muted" *ngIf="b.pending"> · {{b.pending}} waiting</span></div><div *ngIf="!b.paid">{{b.used}} taken</div></div>
+          <div *ngIf="!leave.balances.length" class="text-muted">No leave types apply to you yet.</div>
+        </div>
+
+        <div *ngIf="leaveForm" class="border rounded p-3 mb-3" data-testid="myhr-leave-form">
+          <div class="row g-3">
+            <div class="col-md-4"><label class="form-label">Type *</label><select class="form-select" [(ngModel)]="leaveForm.leave_type_id" data-testid="myhr-l-type"><option [ngValue]="null">Choose</option><option *ngFor="let t of leave.types" [ngValue]="t.id">{{t.name}}{{t.paid ? '' : ' (unpaid)'}}</option></select></div>
+            <div class="col-md-3"><label class="form-label">From *</label><input type="date" class="form-control" [(ngModel)]="leaveForm.from_date" data-testid="myhr-l-from"></div>
+            <div class="col-md-3"><label class="form-label">To *</label><input type="date" class="form-control" [(ngModel)]="leaveForm.to_date" data-testid="myhr-l-to"></div>
+            <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="mhalf" [(ngModel)]="leaveForm.half_day"><label class="form-check-label" for="mhalf">Half day</label></div></div>
+            <div class="col-12"><label class="form-label">Reason</label><input class="form-control" maxlength="200" [(ngModel)]="leaveForm.reason" data-testid="myhr-l-reason"></div>
+          </div>
+          <div class="mt-3"><button class="btn btn-primary btn-sm" type="button" (click)="sendLeave()" data-testid="myhr-l-send">Send for approval</button> <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="leaveForm = null">Cancel</button></div>
+        </div>
+
+        <h6>My requests</h6>
+        <table class="table table-sm align-middle" data-testid="myhr-requests">
+          <thead><tr><th>Type</th><th>Dates</th><th class="text-end">Days</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of leave.requests" data-testid="myhr-request" [attr.data-status]="r.status"><td>{{r.type}}</td><td>{{r.from_date | date:'dd MMM'}}<span *ngIf="r.to_date !== r.from_date"> - {{r.to_date | date:'dd MMM yyyy'}}</span></td><td class="text-end">{{r.days}}</td>
+              <td><span class="badge" [ngClass]="r.status === 'APPROVED' ? 'bg-success' : (r.status === 'PENDING' ? 'bg-warning text-dark' : 'bg-secondary')">{{statusLabels[r.status]}}</span><div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div></td>
+              <td class="text-end"><button *ngIf="r.status === 'PENDING'" class="btn btn-outline-secondary btn-sm" type="button" (click)="withdraw(r)" data-testid="myhr-withdraw">Withdraw</button></td></tr>
+            <tr *ngIf="!leave.requests.length"><td colspan="5" class="text-center text-muted py-3">No leave asked for yet.</td></tr>
+          </tbody>
+        </table>
+        <h6 class="mt-3">Holidays {{leave.year}}</h6>
+        <div class="small"><span *ngFor="let h of leave.holidays" class="badge bg-light text-dark border me-1">{{h.date | date:'dd MMM'}} {{h.name}}</span><span *ngIf="!leave.holidays.length" class="text-muted">None set.</span></div>
+      </div>
+
+      <!-- attendance -->
+      <div *ngIf="tab === 'attendance' && attendance" data-testid="myhr-attendance">
+        <div class="d-flex align-items-end gap-3 mb-2"><div><label class="form-label">Month</label><input type="month" class="form-control" style="width:12rem" [(ngModel)]="period" (change)="loadAttendance()" data-testid="myhr-att-period"></div>
+          <div class="small" *ngIf="attendance.me">Present {{attendance.totals.present}} · Absent {{attendance.totals.absent}} · Half days {{attendance.totals.half}} · Leave {{attendance.totals.leave}}</div></div>
+        <div *ngIf="!attendance.me" class="text-muted">You were not employed in that month.</div>
+        <div class="d-flex flex-wrap gap-1" *ngIf="attendance.me">
+          <div *ngFor="let d of dayList()" class="text-center border rounded" style="width:3.2rem" [title]="d.title" data-testid="myhr-day">
+            <div class="small text-muted">{{d.dow}}</div><div>{{d.d}}</div><div class="small rounded-bottom" [ngClass]="d.cls" style="min-height:1.2rem">{{d.text}}</div></div>
+        </div>
+        <div class="small text-muted mt-2">P present · A absent · ½ half day · L leave · H holiday · off weekly off. Attendance is marked by your manager; if something looks wrong, tell them.</div>
+      </div>
+
+      <!-- staff credit -->
+      <div *ngIf="tab === 'credit' && credit" data-testid="myhr-credit">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <div class="border rounded px-3 py-2"><div class="small text-muted">Monthly limit</div><strong>&#8377;{{credit.cap | number:'1.0-0'}}</strong></div>
+          <div class="border rounded px-3 py-2"><div class="small text-muted">Used in {{credit.period}}</div><strong>&#8377;{{credit.used_this_month | number:'1.2-2'}}</strong></div>
+          <div class="border rounded px-3 py-2"><div class="small text-muted">Owed now (recovered from salary)</div><strong data-testid="myhr-owed">&#8377;{{credit.outstanding | number:'1.2-2'}}</strong></div>
+        </div>
+        <table class="table table-sm align-middle"><thead><tr><th>Date</th><th>What</th><th>Salary month</th><th class="text-end">Amount</th></tr></thead>
+          <tbody><tr *ngFor="let r of credit.rows"><td>{{r.entry_date | date:'dd MMM yyyy'}}</td><td>{{r.kind === 'CREDIT' ? 'Bought on credit' : (r.kind === 'RECOVERY' ? 'Recovered from salary' : 'Adjustment')}}<div class="small text-muted" *ngIf="r.note">{{r.note}}</div></td><td>{{r.period}}</td><td class="text-end">{{r.amount | number:'1.2-2'}}</td></tr>
+            <tr *ngIf="!credit.rows.length"><td colspan="4" class="text-center text-muted py-3">No staff credit used.</td></tr></tbody></table>
+      </div>
+    </ng-container>
+  </div>
+</div>
