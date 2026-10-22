@@ -1,7 +1,7 @@
 <div class="card">
   <div class="card-body pt-3">
     <h5 class="card-title mb-0">Cash &amp; shifts</h5>
-    <div class="small text-muted mb-2">Where the till did not balance, spending recorded without a receipt, and shifts nobody closed.</div>
+    <div class="small text-muted mb-2">Where the cash drawer did not balance, spending recorded without a receipt, and shifts nobody closed.</div>
 
     <div class="d-flex flex-wrap gap-2 align-items-end">
       <div class="btn-group" role="group" aria-label="Period">
@@ -24,7 +24,7 @@
     <ng-container *ngIf="data">
       <div class="alert alert-warning mt-3" data-testid="dc-stale-alert" *ngIf="data.stale.length">
         <strong>{{data.stale.length}} shift{{data.stale.length === 1 ? '' : 's'}} never closed.</strong>
-        The till was not counted for these days:
+        The cash drawer was not counted for these days:
         <span *ngFor="let s of data.stale; let last = last">{{s.shift_date | date:'dd MMM'}} {{s.name}} ({{s.store}}, {{s.days_open}}d ago){{last ? '' : '; '}}</span>
       </div>
 
@@ -35,7 +35,7 @@
         <div class="col-6 col-md-3"><div class="small text-muted">Spent without receipt</div><div class="fs-5" data-testid="dc-noreceipt">{{data.totals.no_receipt_amount | currency:'INR':'symbol':'1.0-0'}} <span class="small text-muted">({{data.totals.no_receipt_count}})</span></div></div>
       </div>
 
-      <h6 class="mt-4">By person who closed the till</h6>
+      <h6 class="mt-4">By person who closed the shift</h6>
       <div class="table-responsive">
         <table class="table table-sm align-middle" data-testid="dc-people">
           <thead><tr><th>Person</th><th class="text-end">Shifts closed</th><th class="text-end">Did not balance</th><th class="text-end">Short</th><th class="text-end">Over</th><th class="text-end">Net</th></tr></thead>

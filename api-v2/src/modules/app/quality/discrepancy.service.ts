@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 
-/** Cash and shift controls: where the till did not balance, spending without proof, shifts never closed. */
+/** Cash and shift controls: where the cash drawer did not balance, spending without proof, shifts never closed. */
 @Injectable()
 export class DiscrepancyService {
   constructor(@InjectEntityManager() private readonly manager: EntityManager) {}
@@ -46,7 +46,7 @@ export class DiscrepancyService {
           and c.trans_date >= $1::date and c.trans_date <= $2::date and ($3::int is null or c.store_id = $3::int)
         order by c.trans_date desc, c.id desc limit 200`, args);
 
-    // Shifts still open after their day ended: the till was never counted.
+    // Shifts still open after their day ended: the cash drawer was never counted.
     const stale = await this.manager.query(
       `select sh.id, sh.shift_date, sh.name, st.location as store, sh.opened_on,
               u.full_name as opened_by_name, (current_date - sh.shift_date) as days_open

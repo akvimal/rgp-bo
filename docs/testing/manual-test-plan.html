@@ -453,7 +453,7 @@
     },
     {
       id: "cash", name: "Store Cash & Shifts",
-      blurb: "New in this branch: shift templates, opening/closing a till, cash-in/cash-out ledger entries, and deposit-threshold alerts.",
+      blurb: "New in this branch: shift templates, opening/closing a cash drawer, cash-in/cash-out ledger entries, and deposit-threshold alerts.",
       cases: [
         { id:"CASH-1", feature:"Shift templates", tag:"happy", scenario:"Create a template", steps:"Create a shift template with name, start/end time, deposit threshold, and default assignee.", expected:"Saved and available to pick from when opening a shift." },
         { id:"CASH-2", feature:"Open shift", tag:"happy", scenario:"Open from a template", steps:"Open a shift from a template, entering an opening cash float.", expected:"Shift shows as OPEN; dashboard's “open shift” reflects it; expected cash starts equal to the opening float." },
@@ -462,11 +462,11 @@
         { id:"CASH-5", feature:"Assignment", tag:"happy", scenario:"Assign / reassign a shift", steps:"Assign a shift to a staff member, then reassign it to someone else.", expected:"Assignee updates immediately; an unassigned shift stays visible to every cashier at that store." },
         { id:"CASH-6", feature:"Ledger", tag:"edge", scenario:"Cash entry with no open shift", steps:"Record an EXPENSE ledger entry for a store that currently has no open shift.", expected:"Confirm the expected linkage: entry should still save against the store (shift left blank), not be silently rejected." },
         { id:"CASH-7", feature:"Ledger", tag:"happy", scenario:"Cash entry auto-links to open shift", steps:"With a shift open and no shift explicitly chosen, record a cash entry.", expected:"Entry auto-attaches to that user's currently open shift at the store." },
-        { id:"CASH-8", feature:"Ledger", tag:"edge", scenario:"Bank deposit entry", steps:"Record a BANK_DEPOSIT entry with an amount typed into the “deposit” field.", expected:"System moves the amount to “withdraw” (cash leaving the till to the bank) and detaches the entry from any shift." },
+        { id:"CASH-8", feature:"Ledger", tag:"edge", scenario:"Bank deposit entry", steps:"Record a BANK_DEPOSIT entry with an amount typed into the “deposit” field.", expected:"System moves the amount to “withdraw” (cash leaving the cash drawer to the bank) and detaches the entry from any shift." },
         { id:"CASH-9", feature:"Cash balance", tag:"happy", scenario:"Balance reconciles with ledger", steps:"Sum all deposits and withdrawals for a store manually, compare to the dashboard cash balance.", expected:"Dashboard balance = Σ deposits − Σ withdrawals, exactly." },
         { id:"CASH-10", feature:"Deposit threshold", tag:"happy", scenario:"Deposit-due flag", steps:"Push the cash balance up to (and past) the store's configured deposit threshold.", expected:"“Deposit due” turns on once balance ≥ threshold, with the excess amount shown correctly." },
         { id:"CASH-11", feature:"Close shift", tag:"happy", scenario:"Counted cash matches expected", steps:"Close a shift, entering counted cash exactly equal to expected cash.", expected:"Shift closes with variance = 0." },
-        { id:"CASH-12", feature:"Close shift", tag:"edge", scenario:"Till short or over", steps:"Close a shift with counted cash lower than expected, then separately with counted cash higher than expected.", expected:"Variance = counted − expected in both cases, with the correct sign for short vs. over." },
+        { id:"CASH-12", feature:"Close shift", tag:"edge", scenario:"Cash drawer short or over", steps:"Close a shift with counted cash lower than expected, then separately with counted cash higher than expected.", expected:"Variance = counted − expected in both cases, with the correct sign for short vs. over." },
         { id:"CASH-13", feature:"Close shift", tag:"negative", scenario:"Close without entering counted cash", steps:"Close a shift while leaving the counted-cash field empty.", expected:"Rejected (400) and the shift stays OPEN. The drawer must be counted (by denomination); the count is never silently defaulted to 0." },
         { id:"CASH-14", feature:"Shift report", tag:"integration", scenario:"Report reconciles with sales", steps:"Close a shift with several completed sales split across staff, then open its report.", expected:"Bill count, cash sales, digital sales, net sales, returns, and per-staff breakdown all match the underlying sales for that shift." },
         { id:"CASH-15", feature:"Close shift", tag:"edge", scenario:"Close an already-closed shift", steps:"Attempt to close a shift that is already CLOSED.", expected:"Rejected: a CLOSED shift cannot be closed again, so closedon/closedby are never overwritten." },
@@ -718,7 +718,7 @@
     },
     {
       id: "discrepancies", name: "Staff & Quality — Cash & Shifts",
-      blurb: "Closed shifts whose counted cash differs from expected, a rollup by the person who closed the till, expenses recorded without a receipt, and shifts left open after their day. Business Head only; needs migration 041. DISC-4 and DISC-5 are manual only.",
+      blurb: "Closed shifts whose counted cash differs from expected, a rollup by the person who closed the shift, expenses recorded without a receipt, and shifts left open after their day. Business Head only; needs migration 041. DISC-4 and DISC-5 are manual only.",
       cases: [
         { id:"DISC-1", feature:"Report", tag:"happy", scenario:"Report opens", steps:"Open Staff & Quality > Cash & shifts and pick 90 days.", expected:"Totals above the tables equal the number of rows in the shifts and receipts tables." },
         { id:"DISC-2", feature:"Report", tag:"integration", scenario:"Differences add up", steps:"Compare counted minus expected with the difference shown, and short plus over with the net per person.", expected:"They agree to the paisa; short shifts are negative. A malformed date is refused with 400." },

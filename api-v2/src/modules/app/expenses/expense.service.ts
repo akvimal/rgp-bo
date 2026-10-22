@@ -267,7 +267,7 @@ export class ExpenseService {
          select l.trans_date, s.location,
                 case l.expense_category when 'RENT' then 'Rent' when 'ELECTRICITY' then 'Electricity' when 'CLEANING' then 'Cleaning' when 'MAINTENANCE' then 'Repairs and maintenance'
                      when 'OFFICE' then 'Stationery and printing' when 'LOGISTICS' then 'Transport and courier' else 'Other' end,
-                l.withdraw::numeric, 0, 'Till'
+                l.withdraw::numeric, 0, 'Cash drawer'
            from store_cash_accounts l left join stores s on s.id = l.store_id
           where l.category = 'EXPENSE' and l.trans_date between $1 and $2 ${scopeT}
        ) t order by d`, args);
@@ -279,7 +279,7 @@ export class ExpenseService {
     const [pend] = await this.manager.query(`select count(*)::int as n, coalesce(sum(amount),0)::float as total from expense where status = 'PENDING'`);
     return {
       from, to, total: r2(rows.reduce((t: number, r: any) => t + r.amount, 0)), gst: r2(rows.reduce((t: number, r: any) => t + r.gst, 0)),
-      till: r2(rows.filter((r: any) => r.src === 'Till').reduce((t: number, r: any) => t + r.amount, 0)),
+      drawer: r2(rows.filter((r: any) => r.src === 'Cash drawer').reduce((t: number, r: any) => t + r.amount, 0)),
       byCategory: sum('category'), byStore: sum('store'), byMonth: sum('month').sort((a, b) => a.name.localeCompare(b.name)),
       pending: c.role === 'Business Head' ? pend : null,
     };

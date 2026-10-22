@@ -1,7 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { ExpenseApi } from "./expense.service";
 
-/** Approved expenses by category, store and month, with till expenses (the Cash screen) added in. */
+/** Approved expenses by category, store and month, with the cash drawer expenses (the Cash screen) added in. */
 @Component({
   selector: "app-expense-report",
   template: `
@@ -16,7 +16,7 @@ import { ExpenseApi } from "./expense.service";
       <div *ngIf="error" class="alert alert-danger py-2">{{error}}</div>
       <div *ngIf="data">
         <div class="mb-3">Total <strong data-testid="rep-total">{{data.total | number:'1.2-2'}}</strong>
-          <span class="text-muted"> &middot; GST included {{data.gst | number:'1.2-2'}} &middot; of which till (Cash screen) {{data.till | number:'1.2-2'}}</span>
+          <span class="text-muted"> &middot; GST included {{data.gst | number:'1.2-2'}} &middot; of which paid from the cash drawer (Cash screen) {{data.drawer | number:'1.2-2'}}</span>
           <span class="badge bg-warning text-dark ms-2" *ngIf="data.pending?.n">{{data.pending.n}} pending, {{data.pending.total | number:'1.2-2'}} not counted yet</span></div>
         <div class="row g-4">
           <div class="col-lg-4"><h6>By category</h6><table class="table table-sm" data-testid="rep-cat"><tbody><tr *ngFor="let r of data.byCategory"><td>{{r.name}}</td><td class="text-end">{{r.amount | number:'1.2-2'}}</td></tr></tbody></table></div>
