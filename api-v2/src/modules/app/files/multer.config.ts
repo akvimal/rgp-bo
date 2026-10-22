@@ -13,7 +13,7 @@ export const multerConfig = {
 export const multerOptions = {
     // Enable file size limits
     limits: {
-        fileSize: +(process.env.FILEUPLOAD_SIZE_LIMIT || 1024 * 1024), // Default 1MB if not set
+        fileSize: +(process.env.FILEUPLOAD_SIZE_LIMIT || 10 * 1024 * 1024), // Default 10MB if not set (a phone photo of an invoice is several MB)
     },
     // Check the mimetypes to allow for upload
     fileFilter: (req: any, file: any, cb: any) => {
@@ -29,12 +29,18 @@ export const multerOptions = {
     storage: diskStorage({
         // Destination storage path details
         destination: (req: any, file: any, cb: any) => {
-            const query = req['query']
-            const keys = Object.keys(query);
-            const uploadPath = multerConfig.dest+'/'+keys[0]+'/'+query[keys[0]];
-            // Create folder if doesn't exist
-            if (!existsSync(uploadPath)) {
-                mkdirSync(uploadPath);
+            // the folder is named from the query (?expense=12-1700000000): letters, digits, - and _ only, so it cannot leave the upload folder
+            const query = req['query'] || {};
+            const key = Object.keys(query)[0] || 'misc';
+            const safe = (v: any) => String(v ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60) || 'x';
+            const uploadPath = `${multerConfig.dest}/${safe(key)}/${safe(query[key])}`;
+            try {
+                // Create folder (and its parent) if doesn't exist
+                if (!existsSync(uploadPath)) {
+                    mkdirSync(uploadPath, { recursive: true });
+                }
+            } catch (err) {
+                return cb(new HttpException('The file could not be stored.', HttpStatus.INTERNAL_SERVER_ERROR), '');
             }
             cb(null, uploadPath);
         },
