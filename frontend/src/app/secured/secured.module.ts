@@ -68,6 +68,9 @@ const routes: Routes = [
       loadChildren: () => import('./vendor-issues/vendor-issues.module').then(m => m.VendorIssuesModule)
     },
     {
+      path: 'digital-payments', canActivate:[AuthGuard],
+      loadChildren: () => import('./digital-payments/digital-payments.module').then(m => m.DigitalPaymentsModule)
+    },{
       path: 'stock-audits', canActivate:[AuthGuard],
       loadChildren: () => import('./stock-audits/stock-audits.module').then(m => m.StockAuditsModule)
     },

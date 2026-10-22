@@ -1,0 +1,137 @@
+<div class="pagetitle"><h1>Digital payments</h1></div>
+<div class="card">
+  <div class="card-body pt-3">
+    <p class="small text-muted mb-2">Compare each bill with the Paytm or card machine statement and mark it. A day's total here should equal the statement's total for that day.</p>
+
+    <div class="mb-3" *isAuth="'paymentrecon.import'">
+      <button class="btn btn-outline-primary btn-sm" type="button" (click)="showUpload = !showUpload" data-testid="dp-upload-toggle"><i class="bi bi-upload"></i> Upload Paytm statement</button>
+      <span class="small text-muted ms-2" *ngIf="statements.length">Latest: {{statements[0].file_name}} ({{statements[0].period_from}} to {{statements[0].period_to}})</span>
+      <div *ngIf="showUpload" class="border rounded p-3 mt-2" data-testid="dp-upload">
+        <p class="small text-muted mb-2">Download the transaction report from Paytm as a CSV and choose it here. Bills are suggested a payment by amount, time and the last 4 digits typed at the till. Customer phone numbers and UPI ids in the report are not kept.</p>
+        <input type="file" accept=".csv,text/csv" class="form-control form-control-sm w-auto" (change)="pick($event)" data-testid="dp-file">
+        <div *ngIf="preview" class="mt-2 small" data-testid="dp-preview">
+          <div><b>{{preview.kept}}</b> successful payments, &#8377;{{preview.total | number:'1.2-2'}} &middot; {{preview.from}} to {{preview.to}} &middot; {{preview.qr}} QR / {{preview.card}} card machine</div>
+          <div class="text-muted">{{preview.new}} new, {{preview.already_known}} already saved<span *ngIf="preview.left_out.failed + preview.left_out.other + preview.left_out.unreadable"> &middot; {{preview.left_out.failed + preview.left_out.other + preview.left_out.unreadable}} rows left out (failed, refunds or unreadable)</span></div>
+          <button class="btn btn-primary btn-sm mt-2" type="button" [disabled]="busy || !preview.new" (click)="saveStatement()" data-testid="dp-upload-save">Save and suggest matches</button>
+        </div>
+        <div *ngIf="statements.length" class="mt-3">
+          <div class="small fw-semibold">Saved statements</div>
+          <table class="table table-sm w-auto mb-0" data-testid="dp-statements"><tbody>
+            <tr *ngFor="let s of statements"><td>{{s.file_name}}</td><td>{{s.period_from}} to {{s.period_to}}</td><td class="text-end">{{s.rows_kept}} payments</td><td class="text-end">&#8377;{{s.total_amount | number:'1.0-0'}}</td>
+              <td><a role="button" class="small text-danger" (click)="removeStatement(s)" [attr.data-testid]="'dp-statement-remove-' + s.id">remove</a></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-6 col-md-2"><label class="form-label">From</label><input type="date" class="form-control form-control-sm" [(ngModel)]="from" data-testid="dp-from"></div>
+      <div class="col-6 col-md-2"><label class="form-label">To</label><input type="date" class="form-control form-control-sm" [(ngModel)]="to" data-testid="dp-to"></div>
+      <div class="col-6 col-md-2"><label class="form-label">Paid by</label>
+        <select class="form-select form-select-sm" [(ngModel)]="method" data-testid="dp-method"><option value="">QR and card</option><option value="QR">QR / UPI</option><option value="Card">Card machine</option></select></div>
+      <div class="col-6 col-md-3"><label class="form-label">Bill or reference</label><input class="form-control form-control-sm" [(ngModel)]="text" (keyup.enter)="load()" data-testid="dp-search" placeholder="Bill no. or transaction no."></div>
+      <div class="col-12 col-md-3"><button class="btn btn-primary btn-sm" type="button" (click)="load()" data-testid="dp-load">Show</button></div>
+    </div>
+
+    <div *ngIf="message" class="alert alert-success py-2" data-testid="dp-message">{{message}}</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="dp-error">{{error}}</div>
+
+    <ul class="nav nav-pills mb-2">
+      <li class="nav-item"><a class="nav-link" [class.active]="state === 'PENDING'" role="button" (click)="setState('PENDING')" data-testid="dp-tab-pending">To check <span class="badge bg-light text-dark ms-1" data-testid="dp-count-pending">{{data.summary.pending?.count || 0}}</span></a></li>
+      <li class="nav-item" *ngIf="data.hasStatement"><a class="nav-link" [class.active]="state === 'SUGGESTED'" role="button" (click)="setState('SUGGESTED')" data-testid="dp-tab-suggested">Suggested <span class="badge bg-light text-dark ms-1" data-testid="dp-count-suggested">{{data.summary.suggested?.count || 0}}</span></a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="state === 'VERIFIED'" role="button" (click)="setState('VERIFIED')" data-testid="dp-tab-verified">Verified <span class="badge bg-light text-dark ms-1" data-testid="dp-count-verified">{{data.summary.verified?.count || 0}}</span></a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="state === 'MISMATCH'" role="button" (click)="setState('MISMATCH')" data-testid="dp-tab-mismatch">Amount differs <span class="badge bg-light text-dark ms-1" data-testid="dp-count-mismatch">{{data.summary.mismatch?.count || 0}}</span></a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="state === 'NOT_FOUND'" role="button" (click)="setState('NOT_FOUND')" data-testid="dp-tab-notfound">Not on statement <span class="badge bg-light text-dark ms-1" data-testid="dp-count-notfound">{{data.summary.not_found?.count || 0}}</span></a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="state === 'ALL'" role="button" (click)="setState('ALL')" data-testid="dp-tab-all">All</a></li>
+    </ul>
+
+    <div class="small mb-2" data-testid="dp-summary">
+      Showing {{data.summary.bills}} bill{{data.summary.bills === 1 ? '' : 's'}} · &#8377;{{data.summary.amount | number:'1.2-2'}}
+      <span *ngIf="data.truncated" class="text-danger"> · only the latest 1,500 are shown; narrow the dates</span>
+    </div>
+
+    <div class="table-responsive mb-3" *ngIf="data.days.length > 1">
+      <table class="table table-sm table-bordered w-auto mb-0" data-testid="dp-days">
+        <thead><tr><th>Day</th><th class="text-end">Bills</th><th class="text-end">System total</th><th class="text-end" *ngIf="data.canSeeStatement && data.hasStatement">Statement</th><th class="text-end" *ngIf="data.canSeeStatement && data.hasStatement">Difference</th><th class="text-end">Checked</th><th></th></tr></thead>
+        <tbody><tr *ngFor="let d of data.days" [attr.data-testid]="'dp-day-' + d.date">
+          <td>{{d.date | date:'EEE d MMM'}}</td><td class="text-end">{{d.bills}}</td><td class="text-end">&#8377;{{d.amount | number:'1.2-2'}}</td>
+          <td class="text-end" *ngIf="data.canSeeStatement && data.hasStatement">&#8377;{{d.statement_amount | number:'1.2-2'}} <span class="text-muted small">({{d.statement_count}})</span></td>
+          <td class="text-end" *ngIf="data.canSeeStatement && data.hasStatement" [class.text-danger]="(d.amount - d.statement_amount) > 0.5 || (d.amount - d.statement_amount) < -0.5">{{d.amount - d.statement_amount | number:'1.2-2'}}</td>
+          <td class="text-end">{{d.checked}} / {{d.bills}}</td><td><a role="button" class="small" (click)="showDay(d.date)">open</a></td></tr></tbody>
+      </table>
+    </div>
+
+    <div *ngIf="editing" class="border rounded p-2 mb-2" data-testid="dp-flag-form">
+      <div class="fw-semibold small mb-1">{{editing.status === 'MISMATCH' ? 'The statement shows a different amount' : 'The payment is not on the statement'}}</div>
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3" *ngIf="editing.status === 'MISMATCH'"><label class="form-label">Amount on the statement *</label><input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="editing.amount_seen" data-testid="dp-flag-amount"></div>
+        <div class="col-md-6"><label class="form-label">Note *</label><input class="form-control form-control-sm" maxlength="300" [(ngModel)]="editing.note" data-testid="dp-flag-note" placeholder="What the statement shows, or what you found"></div>
+        <div class="col-md-3"><button class="btn btn-primary btn-sm" type="button" [disabled]="busy" (click)="saveFlag()" data-testid="dp-flag-save">Save</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="editing = null">Cancel</button></div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2" *ngIf="data.summary.suggested?.count" data-testid="dp-accept-bar">
+      <span class="small">{{data.summary.suggested.count}} bill{{data.summary.suggested.count === 1 ? '' : 's'}} have a suggested payment ({{data.summary.sure?.count || 0}} sure)</span>
+      <ng-container *isAuth="'paymentrecon.verify'">
+        <button class="btn btn-success btn-sm" type="button" [disabled]="busy || !data.summary.sure?.count" (click)="acceptAll('SURE')" data-testid="dp-accept-sure">Accept sure matches</button>
+        <button class="btn btn-outline-success btn-sm" type="button" [disabled]="busy" (click)="acceptAll('ALL')" data-testid="dp-accept-all">Accept all suggestions</button>
+      </ng-container>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 mb-2" *ngIf="selected.size" data-testid="dp-bulk">
+      <span class="small">{{selected.size}} selected · &#8377;{{selectedTotal | number:'1.2-2'}}</span>
+      <button class="btn btn-success btn-sm" type="button" [disabled]="busy" (click)="verifySelected()" data-testid="dp-verify-selected">Verify selected</button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="dp-table">
+        <thead><tr>
+          <th style="width:2rem"><input type="checkbox" [checked]="allSelected" (change)="toggleAll()" data-testid="dp-select-all" aria-label="Select all"></th>
+          <th>Bill</th><th>Date</th><th>Store</th><th>Paid by</th><th>Last 4</th><th class="text-end">Amount</th><th>Statement</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody>
+          <tr *ngIf="!data.rows.length"><td colspan="10" class="text-muted text-center py-3" data-testid="dp-empty">No digital payments to show.</td></tr>
+          <tr *ngFor="let r of data.rows" [attr.data-testid]="'dp-row-' + r.id">
+            <td><input *ngIf="!r.check_status" type="checkbox" [checked]="selected.has(r.id)" (change)="toggle(r.id)" [attr.data-testid]="'dp-select-' + r.id" aria-label="Select bill"></td>
+            <td>{{r.bill_no || r.id}}</td>
+            <td>{{r.bill_date | date:'d MMM, h:mm a'}}</td>
+            <td>{{r.store}}</td>
+            <td>{{r.method}}</td>
+            <td>{{r.ref ? tail(r.ref) : ''}}</td>
+            <td class="text-end">&#8377;{{r.amount | number:'1.2-2'}}</td>
+            <td class="small" [attr.data-testid]="'dp-suggestion-' + r.id">
+              <ng-container *ngIf="r.suggestion && !r.check_status">
+                <span class="badge" [ngClass]="r.suggestion.level === 'SURE' ? 'bg-success' : 'bg-info text-dark'">{{r.suggestion.level === 'SURE' ? 'Sure' : 'Likely'}}</span>
+                &hellip;{{tail(r.suggestion.txn_id)}} &middot; {{r.suggestion.mode}} &middot; {{r.suggestion.paid_on | date:'h:mm a'}}
+              </ng-container>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="badge(r.check_status)" [attr.data-testid]="'dp-status-' + r.id">{{label(r.check_status)}}</span>
+              <div class="small text-muted" *ngIf="r.check_status === 'MISMATCH'">statement &#8377;{{r.amount_seen | number:'1.2-2'}}</div>
+              <div class="small text-muted" *ngIf="r.note">{{r.note}}</div>
+              <div class="small text-muted" *ngIf="r.check_status">{{r.checked_by}} · {{r.checked_on | date:'d MMM'}}</div>
+            </td>
+            <td class="text-nowrap" *isAuth="'paymentrecon.verify'">
+              <ng-container *ngIf="!r.check_status">
+                <button *ngIf="r.suggestion" class="btn btn-success btn-sm me-1" type="button" [disabled]="busy" (click)="accept(r)" [attr.data-testid]="'dp-accept-' + r.id">Accept</button>
+                <button class="btn btn-outline-success btn-sm me-1" type="button" [disabled]="busy" (click)="verify(r)" [attr.data-testid]="'dp-verify-' + r.id">Verify</button>
+                <button class="btn btn-outline-warning btn-sm me-1" type="button" (click)="startFlag(r, 'MISMATCH')" [attr.data-testid]="'dp-differs-' + r.id">Differs</button>
+                <button class="btn btn-outline-danger btn-sm" type="button" (click)="startFlag(r, 'NOT_FOUND')" [attr.data-testid]="'dp-missing-' + r.id">Not found</button>
+              </ng-container>
+              <button *ngIf="r.check_status" class="btn btn-link btn-sm" type="button" [disabled]="busy" (click)="undo(r)" [attr.data-testid]="'dp-undo-' + r.id">Undo</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="data.canSeeStatement && data.unbilled.length" class="mt-4" data-testid="dp-unbilled">
+      <h6>On the statement, no bill found ({{data.unbilled.length}} &middot; &#8377;{{data.summary.unbilled?.amount | number:'1.2-2'}})</h6>
+      <p class="small text-muted mb-1">Payments received with no bill that fits their amount and time. Check whether a bill was left out, billed with a different digital amount, or taken as cash.</p>
+      <div class="table-responsive"><table class="table table-sm w-auto">
+        <thead><tr><th>Time</th><th>Type</th><th>Mode</th><th>Transaction id</th><th class="text-end">Amount</th></tr></thead>
+        <tbody><tr *ngFor="let t of data.unbilled"><td>{{t.paid_on | date:'d MMM, h:mm a'}}</td><td>{{t.kind === 'CARD' ? 'Card machine' : 'QR'}}</td><td>{{t.mode}}</td><td class="text-break">{{t.txn_id}}</td><td class="text-end">&#8377;{{t.amount | number:'1.2-2'}}</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>

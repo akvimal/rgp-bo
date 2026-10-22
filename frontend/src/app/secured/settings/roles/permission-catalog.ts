@@ -179,6 +179,17 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'paymentrecon',
+    label: 'Digital payments',
+    description: 'Check QR and card machine payments against the Paytm statement, bill by bill.',
+    group: 'Staff & Quality',
+    path: '/secure/digital-payments',
+    actions: [
+      { key: 'view', label: 'View (all bills, or their store)' },
+      { key: 'verify', label: 'Mark payments verified, different or missing' },
+    ],
+  },
+  {
     key: 'vendorissues',
     label: 'Vendor issues',
     description: 'Invoice corrections and defective goods raised with vendors, tracked to a settlement.',

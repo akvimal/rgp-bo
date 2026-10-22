@@ -205,7 +205,7 @@
             <span>HR</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('reports','grievances.view')" data-testid="nav-section-oversight">Oversight</li>
+        <li class="nav-heading" *ngIf="has('reports','grievances.view','paymentrecon.view')" data-testid="nav-section-oversight">Oversight</li>
         <li class="nav-item" *isAuth="'reports'">
           <a class="nav-link collapsed" routerLink="reports" data-testid="nav-reports" title="Reports" aria-label="Reports">
             <i class="bi bi-graph-up"></i>
@@ -216,6 +216,12 @@
           <a class="nav-link collapsed" routerLink="quality" data-testid="nav-quality" title="Staff &amp; Quality" aria-label="Staff &amp; Quality">
             <i class="bi bi-shield-check"></i>
             <span>Staff &amp; Quality</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'paymentrecon.view'">
+          <a class="nav-link collapsed" routerLink="digital-payments" data-testid="nav-digital-payments" title="Digital payments" aria-label="Digital payments">
+            <i class="bi bi-qr-code-scan"></i>
+            <span>Digital payments</span>
           </a>
         </li>
         <li class="nav-heading" *ngIf="has('settings.read')" data-testid="nav-section-admin">Admin</li>

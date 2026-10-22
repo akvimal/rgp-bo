@@ -74,7 +74,7 @@ test.describe('Purchasing access and menu @p0', () => {
     expect(groups.stock).toEqual(['nav-store', 'nav-products', 'nav-stock-audits']);
     expect(groups.buy).toEqual(['nav-purchases', 'nav-vendor-issues', 'nav-expenses']);
     expect(groups.people).toEqual(['nav-my-hr', 'nav-leave-approvals', 'nav-kpi-rate', 'nav-kpi-mine', 'nav-hr']);
-    expect(groups.oversight).toEqual(['nav-reports', 'nav-quality']);
+    expect(groups.oversight).toEqual(['nav-reports', 'nav-quality', 'nav-digital-payments']);
     await expect(bh.page.getByTestId('nav-vendors')).toHaveCount(0);    // Vendors is a tab of Purchase now
     await bh.page.getByTestId('nav-purchases').click();
     await expect(bh.page.getByTestId('nav-vendors')).toBeVisible();
