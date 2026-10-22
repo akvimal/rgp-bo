@@ -4,7 +4,6 @@ import { SaleService } from "../sales.service";
 @Component({
     template: `
         <app-sale-header></app-sale-header>
-        <app-sale-shift-card></app-sale-shift-card>
         <nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0 mt-2">
             <ul class="nav">
                 <li class="nav-item">

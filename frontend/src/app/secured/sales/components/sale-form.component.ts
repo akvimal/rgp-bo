@@ -199,9 +199,34 @@ export class SaleFormComponent {
     });
   }
 
+  /** the "request a product we don't have" popup */
+  requestVisible = false;
+  requestMessage = '';
+
+  requestSaved(title:string){
+    this.requestMessage = `Requested: ${title}. Purchasing can see it.`;
+    setTimeout(() => this.requestMessage = '', 6000);
+  }
+
+  /** older-batch / short-dated warnings the server raised for this bill, waiting for the cashier's decision */
+  batchWarnings:any = null;
+  private ackWarnings = false;
+
+  /** sell through the warnings (the server decides whether this person may) */
+  sellAnyway(){
+    this.ackWarnings = true;
+    this.submit(this.sale.status);
+  }
+
+  dismissWarnings(){
+    this.batchWarnings = null;
+    this.ackWarnings = false;
+  }
+
   submit(status:any){
 
     this.submitError = '';
+    this.batchWarnings = null;
     if (status === 'COMPLETE' && this.chronicMobileMissing) {
       this.submitError = 'Enter the customer mobile number: this bill has a chronic medicine.';
       return;
@@ -266,10 +291,16 @@ export class SaleFormComponent {
     this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
     this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
 
-    this.service.save({...obj, billdate:new Date(), status}).subscribe((data:any) => {
+    this.service.save({...obj, billdate:new Date(), status, checkbatches:true, ackwarnings:this.ackWarnings} as any).subscribe((data:any) => {
+      this.ackWarnings = false;
       this.redirectAfterSubmit(data.status, data.id);
       this.service.refreshSavedSales();
     }, (err:any) => {
+      this.ackWarnings = false;
+      if(err?.status === 409 && err?.error?.code === 'SALE_WARNINGS'){
+        this.batchWarnings = err.error;
+        return;
+      }
       const m = err?.error?.message;
       this.submitError = Array.isArray(m) ? m.join(' ') : (m || 'Could not save the bill.');
     });

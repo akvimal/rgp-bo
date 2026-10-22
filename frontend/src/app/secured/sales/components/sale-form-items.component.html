@@ -48,6 +48,11 @@
                     
                     <label [ngStyle]="{'text-align':'right','background':item.unitsbal < 0 ? '#faa' : '#ddd','width':'50px','padding-right':'.25em','border-color':'#ddd','color':'#66a'}">{{item.unitsbal}}</label>
                 </div>
+                <div *ngIf="item.edited" class="mt-1">
+                    <input type="number" min="0" max="24" step="0.5" class="form-control form-control-sm text-end" style="width:130px"
+                        placeholder="months of supply" title="How many months of this medicine the customer is buying; the batch must stay in date for that long plus a margin"
+                        [value]="item.supplymonths ?? ''" (input)="setSupply(item,$event)" data-testid="sale-supply">
+                </div>
             </td>
             <td class="text-end">{{item.price}}</td>            
             <td class="text-end">{{item.taxpcnt}}%</td>
@@ -62,3 +67,4 @@
         </tr>
     </tbody>
 </table>
+<app-sale-suggestions [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>

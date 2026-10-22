@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { StockService } from "../../store/stock/stock.service";
+import { StoreContextService } from "src/app/@core/store-context.service";
 import { Offer } from "../models/offer.model";
 import { OfferService } from "../offer.service";
 import { SaleHelper } from "../sale.helper";
@@ -38,7 +39,8 @@ export class SaleFormItemsComponent{
   constructor(private saleService:SaleService, 
     private helper: SaleHelper,
     private offerService:OfferService,
-    private stockService:StockService){}
+    private stockService:StockService,
+    private storeContext:StoreContextService){}
 
   selectProduct(selected:any) {
     const item = this.helper.mapStockToSaleItem(selected, true);
@@ -97,6 +99,36 @@ export class SaleFormItemsComponent{
     let total = qty * (price||0);
     const totalAfterTax = total * (1 + (tax||0)/100);
     return isNaN(totalAfterTax) ? 0 : +totalAfterTax.toFixed(2);
+  }
+
+  /** a cross-sell / up-sell the cashier accepted: add its best batch (the soonest to expire that is still in date) */
+  addSuggested(s:any){
+    this.stockService.filterByCriteria({id:s.productid, available:true, expired:false, storeid:this.storeContext.selectedStoreId, excludeItems:this.getItemsInForm()}).subscribe((rows:any) => {
+      const row = (rows || []).filter((r:any) => +r.balance > 0).sort((a:any,b:any) => String(a.exp_date).localeCompare(String(b.exp_date)))[0];
+      if(row){ this.selectProduct(row); }
+    });
+  }
+
+  /** switch a line to the better-value product of the same composition */
+  swapSuggested(u:any){
+    const anchor = (this.items || []).find((i:any) => +(i.product_id || i.productid) === +u.anchorproductid);
+    this.addSuggested({productid:u.productid});
+    if(anchor){ this.removeItem(anchor.itemid); }
+  }
+
+  /** mark a chronic medicine's line as a longer supply, so the batch check applies to it */
+  setSupplyFor(u:any){
+    (this.items || []).filter((i:any) => +(i.product_id || i.productid) === +u.anchorproductid).forEach((i:any) => {
+      i.supplymonths = u.months;
+      this.itemUpdated.emit(i);
+    });
+  }
+
+  /** months of medicine this line is for; the server checks the batch will outlast it */
+  setSupply(item:any,event:any){
+    const v = parseFloat(event.target.value);
+    item.supplymonths = Number.isFinite(v) && v > 0 ? Math.min(v, 24) : null;
+    this.itemUpdated.emit(item);
   }
 
   changeItemQty(itemid:any,event:any){

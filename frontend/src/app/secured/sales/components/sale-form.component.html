@@ -38,13 +38,6 @@
                                         </a>
                                     </h4>
                                 </div>
-                        <div class="mt-2" *isAuth="'purchases.read'">
-                            <a class="small" target="_blank" rel="noopener" data-testid="pos-request-product"
-                               [routerLink]="['/secure/purchases/my-requests']"
-                               [queryParams]="{add: 1, cname: sale.customer?.name || '', cphone: sale.customer?.mobile || ''}">
-                                <i class="bi bi-bag-plus"></i> Request a product we don't have
-                            </a>
-                        </div>
                     </td>
                     <!-- Bill Info-->
                     <td class="text-end">
@@ -60,6 +53,16 @@
                             (itemRemoved)="onItemRemoved($event)"
                             (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
                         </app-sale-form-items>
+                    </td>
+                </tr>
+                <tr *isAuth="'purchases.read'">
+                    <td colspan="2">
+                        <button type="button" class="btn btn-link btn-sm p-0" (click)="requestVisible = true" data-testid="pos-request-product">
+                            <i class="bi bi-bag-plus"></i> Request a product we don't have
+                        </button>
+                        <span class="small text-success ms-2" *ngIf="requestMessage" data-testid="pos-request-done">{{requestMessage}}</span>
+                        <app-sale-product-request [(visible)]="requestVisible" [customerName]="sale.customer?.name || ''" [customerPhone]="sale.customer?.mobile || ''"
+                            (saved)="requestSaved($event)"></app-sale-product-request>
                     </td>
                 </tr>
                 <!-- <tr>
@@ -112,6 +115,19 @@
             <app-sale-delivery-form></app-sale-delivery-form>
         </div>
     </div> -->
+    <div class="row" *ngIf="batchWarnings" data-testid="sale-batch-warnings">
+        <div class="col-12">
+            <div class="alert py-2 mb-2" [ngClass]="batchWarnings.needsManager ? 'alert-danger' : 'alert-warning'">
+                <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Check the batches before selling</div>
+                <ul class="mb-2 ps-3">
+                    <li *ngFor="let w of batchWarnings.warnings" [attr.data-warning]="w.code">{{w.message}}</li>
+                </ul>
+                <div class="small mb-2" *ngIf="batchWarnings.needsManager">A Store Head or Business Head has to approve selling this. Change the batch, or ask one of them to complete the bill.</div>
+                <button class="btn btn-sm btn-warning me-2" type="button" *ngIf="batchWarnings.canOverride" (click)="sellAnyway()" data-testid="sale-batch-sell">Sell anyway</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" (click)="dismissWarnings()" data-testid="sale-batch-change">Change the batch</button>
+            </div>
+        </div>
+    </div>
     <div class="row" *ngIf="chronicMobileMissing || submitError">
         <div class="col-12">
             <div class="alert alert-warning py-2 mb-2" data-testid="sale-chronic-mobile">

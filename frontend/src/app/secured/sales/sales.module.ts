@@ -9,6 +9,7 @@ import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { SharedModule } from "src/app/shared/shared.module";
 import { SaleFormComponent } from "./components/sale-form.component";
 import { SaleFormItemsComponent } from "./components/sale-form-items.component";
+import { SaleSuggestionsComponent } from "./components/sale-suggestions.component";
 import { SaleViewComponent } from "./components/sale-view.component";
 import { SalesListComponent } from "./components/sales-list.component";
 import { SalesComponent } from "./components/sales.component";
@@ -20,7 +21,7 @@ import { TableModule } from "primeng/table";
 import { SaleDashboardComponent } from "./components/sale-dashboard.component";
 import { SaleHeaderComponent } from "./components/sale-header.component";
 import { SalePosComponent } from "./components/sale-pos.component";
-import { SaleShiftCardComponent } from "./components/sale-shift-card.component";
+import { SaleProductRequestComponent } from "./components/sale-product-request.component";
 import { SaleReturnsComponent } from "./components/sale-returns.component";
 import { SaleDeliveryComponent } from "./components/sale-delivery.component";
 import { SalePaymentComponent } from "./components/sale-payment.component";
@@ -50,7 +51,7 @@ const routes: Routes = [
     declarations: [
       SalesComponent,
       SalePosComponent,
-      SaleShiftCardComponent,
+      SaleProductRequestComponent,
       SaleHeaderComponent,
       SaleDashboardComponent,
       SalesListComponent,
@@ -59,6 +60,7 @@ const routes: Routes = [
       SalePaymentComponent,
       SaleFormComponent,
       SaleFormItemsComponent,
+      SaleSuggestionsComponent,
       SaleHistoryCustomerComponent,
       SaleReturnsComponent,
       SaleReturnAdjustFormComponent,

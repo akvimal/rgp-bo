@@ -8,6 +8,7 @@ import { User } from "src/core/decorator/user.decorator";
 import { checkDigitalPayment } from "./digital-payment";
 import { checkStaffCredit } from "./staff-credit-rule";
 import { checkStoreCredit } from "./store-credit-rule";
+import { enforceBatchWarnings, findBatchWarnings } from "./batch-rules";
 import { CustomerService } from "../customers/customer.service";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
 import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
@@ -68,6 +69,34 @@ export class SaleController {
         return blocked ? currentUser.id : asked;
       }
 
+      /** the store a bill is for: the one it names, else the business's first (same fallback as saving it) */
+      private async billStore(sale: any): Promise<number | null> {
+        const asked = Number(sale?.storeid) || null;
+        if (asked) {
+          const ok = await this.manager.query(`select id from stores where id = $1`, [asked]);
+          if (ok.length) return asked;
+        }
+        const first = await this.manager.query(`select id from stores order by id asc limit 1`);
+        return first?.[0]?.id || null;
+      }
+
+      /**
+       * Older-batch-first and long-enough-expiry checks. Counter staff confirm ordinary warnings; a supply that would
+       * outlive its batch needs a Store Head or Business Head. Anything sold through is written to the audit log.
+       */
+      private async checkBatches(sale: any, currentUser: any): Promise<(saleId: number | null) => Promise<void>> {
+        const warnings = await findBatchWarnings(this.manager, sale, await this.billStore(sale));
+        const [role] = await this.manager.query(`select name from app_role where id = $1`, [currentUser?.roleid || 0]);
+        const isManager = role?.name === 'Store Head' || role?.name === 'Business Head';
+        const overridden = enforceBatchWarnings(warnings, sale?.ackwarnings === true, isManager);
+        return async (saleId: number | null) => {
+          if (!overridden.length) return;
+          await this.audit.record({ userId: currentUser.id, action: 'sale.batch_warning_overridden', entityType: 'sale', entityId: saleId,
+            summary: `Sold through ${overridden.length} batch warning${overridden.length === 1 ? '' : 's'}: ${overridden.map(w => w.code).join(', ')}`,
+            details: { warnings: overridden.map(w => ({ code: w.code, title: w.title, message: w.message })) } });
+        };
+      }
+
       @Post()
       async create(@Body() createSaleDto: CreateSaleDto, @User() currentUser: any) {
 
@@ -77,11 +106,14 @@ export class SaleController {
         }
         
         await this.assertMobileForChronic(createSaleDto, customer);
+        const recordBatchOverride = await this.checkBatches(createSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, createSaleDto);
         const staffCredit = await checkStaffCredit(this.manager, createSaleDto);
         const storeCredit = await checkStoreCredit(this.manager, createSaleDto, customer);
         const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser);
-        return this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
+        const created = await this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
+        await recordBatchOverride((created as any)?.id ?? null);
+        return created;
       }
 
       @Put()
@@ -102,12 +134,14 @@ export class SaleController {
           customer = await this.custService.save(updateSaleDto.customer);
         }
         await this.assertMobileForChronic(updateSaleDto, customer);
+        const recordBatchOverride = await this.checkBatches(updateSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, updateSaleDto, updateSaleDto.id);
         const staffCredit = await checkStaffCredit(this.manager, updateSaleDto, updateSaleDto.id);
         const storeCredit = await checkStoreCredit(this.manager, updateSaleDto, customer, updateSaleDto.id);
         const actingUserId = await this.resolveActingUser(updateSaleDto.actinguserid, currentUser, updateSaleDto.id);
         const saved = await this.saleService.updateSale({...updateSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await this.recordSaleEdit(sale, updateSaleDto, currentUser.id, actingUserId);
+        await recordBatchOverride(updateSaleDto.id ?? null);
         return saved;
       }
 

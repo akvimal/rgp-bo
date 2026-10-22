@@ -45,6 +45,10 @@ export class SaleItem extends BaseEntity {
   @Column("integer", { name: "qty" })
   qty: number;
 
+  /** how many months of medicine the customer is buying on this line; the batch must outlast it */
+  @Column("numeric", { name: "supply_months", precision: 4, scale: 1, nullable: true })
+  supplymonths: number | null;
+
   @Column("double precision", { name: "total", precision: 53 })
   total: number;
 
