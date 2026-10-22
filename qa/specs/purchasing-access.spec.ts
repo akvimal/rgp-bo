@@ -83,7 +83,9 @@ test.describe('Purchasing access and menu @p0', () => {
     await expectShell(sales.page);
     await expect(sales.page.getByTestId('nav-section-sell')).toBeVisible();
     await expect(sales.page.getByTestId('nav-section-admin')).toHaveCount(0);
-    await expect(sales.page.getByTestId('nav-section-oversight')).toHaveCount(0);
+    await expect(sales.page.getByTestId('nav-section-oversight')).toBeVisible();     // digital payments only
+    await expect(sales.page.getByTestId('nav-digital-payments')).toBeVisible();
+    await expect(sales.page.getByTestId('nav-reports')).toHaveCount(0);
     await expect(sales.page.getByTestId('nav-dashboard')).toHaveCount(0);   // not open to this role
     await expect(sales.page.getByTestId('nav-vendors')).toHaveCount(0);
     await expect(sales.page.getByTestId('nav-purchases')).toHaveCount(0);   // no purchasing workspace ...

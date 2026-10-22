@@ -103,9 +103,16 @@ test.describe('Digital payment reconciliation @p1', () => {
     expect((await api.request('POST', '/payment-recon/verify-many', { sale_ids: [] }, MGR)).status).toBe(400);
   });
 
-  test('RECON-3 a cashier cannot see or mark payments @negative', async ({ api }) => {
-    expect((await api.request('GET', '/payment-recon', undefined, CASHIER)).status).toBe(403);
-    expect((await api.request('POST', '/payment-recon/1', { status: 'VERIFIED' }, CASHIER)).status).toBe(403);
+  test('RECON-3 Sales Staff check their store payments but cannot upload statements or see the business-wide view @negative', async ({ api }) => {
+    test.skip(!POOL.length, 'no stock to sell');
+    const sale = await api.request('POST', '/sales', bill(refNo(), 90), CASHIER);
+    const list = await api.request('GET', `/payment-recon?from=${today()}&to=${today()}&state=ALL`, undefined, CASHIER);
+    expect(list.status).toBe(200);
+    expect(list.body.canSeeStatement).toBe(false);
+    expect(list.body.unbilled).toEqual([]);
+    expect(list.body.rows.some((r: any) => r.id === sale.body.id)).toBe(true);
+    expect((await api.request('POST', `/payment-recon/${sale.body.id}`, { status: 'VERIFIED' }, CASHIER)).status).toBeLessThan(300);
+    expect((await api.request('GET', '/payment-recon/statements', undefined, CASHIER)).status).toBe(403);
   });
 
   test('RECON-4 the page: check a bill, flag another, undo @p1', async ({ app, api }) => {
