@@ -43,7 +43,7 @@ export class SaleViewComponent {
               title: i.product.title,
               props: i.product.props,
               batch: i.batch,
-              expdate: this.dateUtilService.getOtherDate(new Date(i.expdate), 1),
+              expdate: i.expdate ? this.dateUtilService.getOtherDate(new Date(i.expdate), 1) : null,
               qty: i.qty,
               mrp: unitmrp,
               price:i.price,

@@ -74,7 +74,12 @@
         </div>
 
         <ng-container *ngIf="showMore">
-          <div class="col-md-4">
+          <div class="col-md-3">
+            <label for="inv-cd" class="form-label">Cash discount</label>
+            <div class="input-group"><span class="input-group-text">&#8377;</span><input type="number" min="0" step="0.01" class="form-control" id="inv-cd" formControlName="cashdiscount" placeholder="As printed, if any" data-testid="inv-f-cd"></div>
+            <div class="form-text">A discount at the foot of the invoice that is not a line.</div>
+          </div>
+          <div class="col-md-3">
             <label for="inv-ref" class="form-label">Reference no.</label>
             <input type="text" class="form-control" id="inv-ref" formControlName="referenceno" maxlength="30" data-testid="inv-f-ref">
           </div>
@@ -111,10 +116,10 @@
         </ng-container>
 
         <div class="col-12" *ngIf="extracted" data-testid="inv-x-panel">
-          <div class="border rounded p-3">
+          <div class="border rounded p-2 p-md-3">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
               <h6 class="inv-title mb-0">Read from the invoice copy
-                <span class="badge bg-light text-dark border ms-1" data-testid="inv-x-method">{{extracted.method === 'pdf' ? 'text of the PDF' : 'photo (OCR)'}}</span></h6>
+                <span class="badge bg-light text-dark border ms-1" data-testid="inv-x-method">{{extracted.method === 'pdf' ? 'text of the PDF' : (extracted.method === 'pdf-ocr' ? 'scanned PDF (OCR)' : 'photo (OCR)')}}</span></h6>
               <div class="d-flex gap-2">
                 <button type="button" class="btn btn-outline-primary btn-sm" (click)="applyHeader(true)" data-testid="inv-x-fill">Use all read values</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm" (click)="showText = !showText" data-testid="inv-x-text-toggle">{{showText ? 'Hide' : 'Show'}} text read</button>
@@ -135,15 +140,19 @@
             <pre *ngIf="showText" class="small bg-light border rounded p-2 mb-2" style="max-height:14rem;overflow:auto;white-space:pre-wrap" data-testid="inv-x-text">{{extracted.text}}</pre>
 
             <div *ngIf="lines.length" class="table-responsive" data-testid="inv-x-lines">
-              <table class="table table-sm table-bordered align-middle inv-table mb-2">
+              <table class="table table-sm table-bordered align-middle inv-table inv-grid mb-2">
+                <colgroup>
+                  <col style="width:1.75rem"><col style="width:4.5rem"><col style="width:11.5rem"><col style="width:5rem"><col style="width:5rem"><col style="width:6.5rem">
+                  <col style="width:4rem"><col style="width:3.5rem"><col style="width:6.5rem"><col style="width:4.25rem"><col style="width:4.75rem"><col style="width:5rem">
+                </colgroup>
                 <thead><tr>
-                  <th style="width:2rem"></th><th style="min-width:8rem">Read as</th><th style="min-width:12rem">Product</th><th>Batch</th><th>Expiry</th><th class="text-end">MRP</th>
+                  <th></th><th>Read as</th><th>Product</th><th>Batch</th><th>Expiry</th><th class="text-end">MRP</th>
                   <th class="text-end">Qty</th><th class="text-end">Free</th><th class="text-end">Rate</th><th class="text-end">Disc %</th><th class="text-end">Tax %</th><th class="text-end">Total</th>
                 </tr></thead>
                 <tbody>
                   <tr *ngFor="let l of lines; let i = index" [attr.data-testid]="'inv-x-row-' + i">
                     <td class="text-center"><input type="checkbox" [(ngModel)]="l.include" [ngModelOptions]="{standalone: true}" [disabled]="!ready(l)" [attr.data-testid]="'inv-x-include-' + i" aria-label="Add this line"></td>
-                    <td class="small" style="max-width:11rem">{{l.description}}
+                    <td class="small">{{l.description}}
                       <div class="text-danger" *ngFor="let w of l.warnings">{{w}}</div>
                       <div class="text-warning" *ngIf="!ready(l)">Needs: {{missingFor(l)}}</div></td>
                     <td>
@@ -152,28 +161,36 @@
                           <option [ngValue]="null">Choose the product</option>
                           <option *ngFor="let s of l.suggestions" [ngValue]="s.id">{{s.title}} ({{s.score * 100 | number:'1.0-0'}}%)</option>
                         </select>
-                        <a role="button" class="small" (click)="l.searching = true">other product</a>
+                        <a role="button" class="small" (click)="l.searching = true" [attr.data-testid]="'inv-x-other-' + i">other product</a>
                       </ng-container>
                       <ng-template #searchProduct>
-                        <div class="small" *ngIf="l.productTitle">{{l.productTitle}}</div>
-                        <app-product-select (selected)="pickProduct(l, $event)"></app-product-select>
+                        <div class="small" *ngIf="l.productTitle" [attr.data-testid]="'inv-x-chosen-' + i">Chosen: <b>{{l.productTitle}}</b></div>
+                        <ng-container *ngFor="let k of [l.searchKey || 0]"><app-product-select [initial]="l.description" [autoSearch]="true" (selected)="pickProduct(l, $event)"></app-product-select></ng-container>
+                        <div class="small mt-1" [attr.data-testid]="'inv-x-searchbar-' + i">
+                          <a role="button" *ngIf="l.suggestions.length" (click)="backToSuggestions(l)" [attr.data-testid]="'inv-x-back-' + i">back to the suggestions</a>
+                          <span *ngIf="l.suggestions.length"> &middot; </span>
+                          <a role="button" (click)="searchAgain(l)" [attr.data-testid]="'inv-x-again-' + i">search again</a> &middot;
+                          <a role="button" *isAuth="'products.add'" (click)="openNewProduct(l)" [attr.data-testid]="'inv-x-new-' + i">not in the system? add it</a>
+                        </div>
                       </ng-template>
                     </td>
-                    <td><input class="form-control form-control-sm px-1" style="min-width:5.5rem" [(ngModel)]="l.batch" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-batch-' + i"></td>
-                    <td><input type="month" class="form-control form-control-sm px-1" style="min-width:8.5rem" [(ngModel)]="l.exp" [ngModelOptions]="{standalone: true}" (change)="l.include = ready(l)" [attr.data-testid]="'inv-x-exp-' + i"></td>
-                    <td><input type="number" class="form-control form-control-sm text-end" style="width:4.5rem" [(ngModel)]="l.mrp" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)"></td>
-                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.8rem" [(ngModel)]="l.qty" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)"></td>
-                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.5rem" [(ngModel)]="l.free" [ngModelOptions]="{standalone: true}"></td>
-                    <td><input type="number" class="form-control form-control-sm text-end" style="width:4.5rem" [(ngModel)]="l.rate" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)"></td>
-                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.8rem" [(ngModel)]="l.disc" [ngModelOptions]="{standalone: true}"></td>
-                    <td><input type="number" class="form-control form-control-sm text-end" style="width:3.8rem" [(ngModel)]="l.tax" [ngModelOptions]="{standalone: true}"></td>
+                    <td><input class="form-control form-control-sm px-1 w-100" [attr.title]="l.batch" [(ngModel)]="l.batch" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-batch-' + i"></td>
+                    <td><input type="text" maxlength="7" placeholder="MM/YY" autocomplete="off" class="form-control form-control-sm px-1 text-center w-100" [(ngModel)]="l.expText" [ngModelOptions]="{standalone: true}" (input)="onExpiry(l)" [class.is-invalid]="l.expText && !l.exp" [disabled]="l.noexpiry" [attr.title]="l.noexpiry ? 'This product has no expiry date' : 'Month and year, like 08/28'" [attr.data-testid]="'inv-x-exp-' + i">
+                      <div class="inv-label" *ngIf="l.noexpiry" [attr.data-testid]="'inv-x-noexp-' + i">no expiry</div></td>
+                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.mrp" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-mrp-' + i"></td>
+                    <td><input type="number" min="0" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.qty" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-qty-' + i"></td>
+                    <td><input type="number" min="0" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.free" [ngModelOptions]="{standalone: true}"></td>
+                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.rate" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-rate-' + i"></td>
+                    <td><input type="number" min="0" max="100" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.disc" [ngModelOptions]="{standalone: true}" (input)="onDiscount(l)" [attr.data-testid]="'inv-x-disc-' + i"></td>
+                    <td><select class="form-select form-select-sm px-1 w-100" [(ngModel)]="l.tax" [ngModelOptions]="{standalone: true}" (change)="l.include = ready(l)" [attr.data-testid]="'inv-x-tax-' + i">
+                      <option [ngValue]="null">GST?</option><option *ngFor="let t of rates" [ngValue]="t">{{t}}%</option></select></td>
                     <td class="text-end">{{amountOf(l) | number:'1.2-2'}}</td>
                   </tr>
                 </tbody>
               </table>
               <div class="small" data-testid="inv-x-summary">
                 <b>{{readyLines.length}}</b> of {{lines.length}} lines will be added to the draft when you save.
-                Lines with tax come to <b>{{linesNet | number:'1.2-2'}}</b><span *ngIf="form.value.printedtotal"> against the invoice total {{form.value.printedtotal | number:'1.2-2'}}:
+                Lines with tax<span *ngIf="cashFactor < 1" data-testid="inv-x-cd"> and the cash discount</span> come to <b>{{linesNet | number:'1.2-2'}}</b><span *ngIf="form.value.printedtotal"> against the invoice total {{form.value.printedtotal | number:'1.2-2'}}:
                 <span [class.text-success]="linesAgree" [class.text-danger]="!linesAgree" data-testid="inv-x-total-check">{{linesAgree ? 'they agree' : 'they differ, so a line may be missing or misread'}}</span></span>.
               </div>
             </div>
@@ -193,3 +210,51 @@
     </form>
   </div>
 </div>
+
+<p-dialog header="Add a product" [visible]="!!newProduct" (visibleChange)="$event || (newProduct = null)" [modal]="true" [style]="{width:'36rem'}">
+  <div *ngIf="newProduct" data-testid="inv-np">
+    <p class="small text-muted">Added to the product master straight away and chosen for this line.</p>
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Name *</label>
+        <input class="form-control" maxlength="200" [(ngModel)]="newProduct.title" data-testid="inv-np-title">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Category</label>
+        <select class="form-select" [(ngModel)]="newProduct.category" data-testid="inv-np-category">
+          <option value="">Not set</option><option value="Medicine">Medicine</option><option value="OTC">OTC</option>
+        </select>
+      </div>
+      <div class="col-3">
+        <label class="form-label">GST % *</label>
+        <input type="number" min="0" max="40" class="form-control" [(ngModel)]="newProduct.taxpcnt" data-testid="inv-np-tax">
+      </div>
+      <div class="col-3">
+        <label class="form-label">Pack</label>
+        <input type="number" min="1" class="form-control" [(ngModel)]="newProduct.pack" data-testid="inv-np-pack">
+      </div>
+      <div class="col-6" *ngIf="newProduct.category === 'Medicine'">
+        <label class="form-label">Schedule *</label>
+        <select class="form-select" [(ngModel)]="newProduct.schedule" data-testid="inv-np-schedule">
+          <option value="">Choose</option><option *ngFor="let s of schedules" [value]="s">{{s}}</option>
+        </select>
+      </div>
+      <div class="col-6" *ngIf="newProduct.category === 'OTC'">
+        <label class="form-label">Sub category</label>
+        <select class="form-select" [(ngModel)]="newProduct.subcategory" data-testid="inv-np-subcategory">
+          <option value="">Choose</option><option *ngFor="let s of subcategories" [value]="s">{{s}}</option>
+        </select>
+      </div>
+      <div class="col-6 d-flex align-items-end" *ngIf="newProduct.category === 'OTC'">
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="np-noexp" [(ngModel)]="newProduct.noexpiry" data-testid="inv-np-noexpiry"><label class="form-check-label" for="np-noexp">No expiry date (like a blade)</label></div>
+      </div>
+      <div class="col-6"><label class="form-label">HSN code</label><input class="form-control" maxlength="8" [(ngModel)]="newProduct.hsn" data-testid="inv-np-hsn"></div>
+      <div class="col-6"><label class="form-label">Manufacturer</label><input class="form-control" maxlength="100" [(ngModel)]="newProduct.mfr" data-testid="inv-np-mfr"></div>
+    </div>
+    <div class="alert alert-danger py-2 small mt-3 mb-0" *ngIf="newProduct.error" data-testid="inv-np-error">{{newProduct.error}}</div>
+    <div class="mt-3 text-end">
+      <button type="button" class="btn btn-outline-secondary btn-sm me-2" (click)="newProduct = null" data-testid="inv-np-cancel">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" [disabled]="newProduct.saving" (click)="saveNewProduct()" data-testid="inv-np-save">Add product</button>
+    </div>
+  </div>
+</p-dialog>

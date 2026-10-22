@@ -112,6 +112,13 @@ export class PurchaseInvoiceService {
     }
 
     async createItem(dto: CreatePurchaseInvoiceItemDto, userid:any) {
+        // a line needs its expiry, except for a product that never expires (a blade, a thermometer): it carries the "No expiry date" property
+        if(!dto.expdate){
+          const [p] = await this.manager.query(`select title, coalesce(more_props->>'noexpiry', '') as noexpiry from product where id = $1`, [+dto.productid]);
+          if(p && p.noexpiry !== 'true'){
+            throw new BadRequestException(`An expiry date is required for ${p.title}. For a product that never expires (like a blade), tick "No expiry date" on the product.`);
+          }
+        }
         const invoice = await this.purchaseInvoiceRepository.findOne({ where: { id: +dto.invoiceid } });
         const gstLine = this.computeLineGst(+(dto.total || 0), (dto as any).taxpcnt, invoice?.supplytype || 'INTRA');
         const saved = await this.purchaseInvoiceItemRepository.save({...dto, ...gstLine, createdby:userid});

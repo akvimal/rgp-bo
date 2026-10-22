@@ -12,7 +12,7 @@ export interface ExtractedLine {
   description: string;
   hsn: string | null;
   batch: string | null;
-  expdate: string | null;       // last day of the month printed, YYYY-MM-DD
+  expdate: string | null;       // the 1st of the month printed, YYYY-MM-DD (as the app stores it)
   mrp: number | null;
   qty: number | null;
   free: number | null;
@@ -31,6 +31,8 @@ export interface ExtractedHeader {
   suppliergstin: string | null;
   suppliername: string | null;
   printedtotal: number | null;
+  goodsvalue: number | null;                                        // the value of the goods before an invoice-level discount, as printed
+  cashdiscount: { pct: number | null; amount: number } | null;      // "Less CD 4.00 %  48.94"
 }
 
 export interface ParsedInvoice { header: ExtractedHeader; lines: ExtractedLine[]; warnings: string[]; tableFound: boolean }
@@ -100,8 +102,19 @@ export function readDate(s: string): string | null {
   return null;
 }
 
-/** an expiry as printed (08/27, 8-2027, Aug-27, AUG 2027): the last day of that month */
+/** an expiry as printed (08/27, 8-2027, Aug-27, AUG 2027): the 1st of that month, which is how the app stores an expiry */
 export function readExpiry(s: string): string | null {
+  const exact = readExpiryExact(s);
+  if (exact) return exact;
+  // OCR slips in a date made of digits and a slash: O for 0, S for 5, l or I for 1
+  const t = String(s ?? '').trim();
+  if (/^[0-9OoSsIl|]{1,2}\s*[\/\-.]\s*[0-9OoSsIl|]{2,4}$/.test(t)) {
+    return readExpiryExact(t.replace(/[Oo]/g, '0').replace(/[Ss]/g, '5').replace(/[Il|]/g, '1'));
+  }
+  return null;
+}
+
+function readExpiryExact(s: string): string | null {
   const t = String(s ?? '').trim();
   let mo = 0, y = 0;
   const slash7 = t.match(/^(0[1-9]|1[0-2])7(\d{2})$/);                                // OCR reads the "/" of 08/27 as a 7
@@ -115,9 +128,8 @@ export function readExpiry(s: string): string | null {
     m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);                       // a whole date: keep its month
     if (m) { mo = +m[2]; y = m[3].length === 2 ? 2000 + +m[3] : +m[3]; }
   }
-  if (!mo || mo < 1 || mo > 12 || y < 2000 || y > 2100) return null;
-  const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
-  return `${y}-${pad(mo)}-${pad(last)}`;
+  if (!mo || mo < 1 || mo > 12 || y < 2015 || y > 2060) return null;
+  return `${y}-${pad(mo)}-01`;
 }
 
 const GSTIN_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -132,21 +144,62 @@ export function isGstin(g: string): boolean {
   return GSTIN_CHARS[(36 - (sum % 36)) % 36] === v[14];
 }
 
+/** a GSTIN misread by OCR (a letter taken for a digit, one wrong character): the one correction that makes the check character agree */
+export function repairGstin(token: string, known: string[] = []): string | null {
+  const v = String(token ?? '').toUpperCase();
+  if (v.length !== 15 || !/^\d{2}/.test(v)) return null;
+  if (isGstin(v)) return v;
+  const toDigit: Record<string, string> = { O: '0', D: '0', Q: '0', I: '1', L: '1', Z: '2', S: '5', B: '8' };
+  const toLetter: Record<string, string> = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B' };
+  // the pattern: 2 digits, 5 letters, 4 digits, a letter, an alphanumeric, Z, a check character
+  const fixed = v.split('').map((c, i) => (i < 2 || (i >= 7 && i <= 10) ? (toDigit[c] ?? c) : (i < 7 || i === 11 ? (toLetter[c] ?? c) : i === 13 && c !== 'Z' ? (c === '2' ? 'Z' : c) : c))).join('');
+  if (isGstin(fixed)) return fixed;
+  // one wrong character: the identifier part first; only when that gives nothing, the check character itself
+  const tryAt = (from: number, to: number) => {
+    const found = new Set<string>();
+    for (let i = from; i <= to; i++) {
+      for (const ch of GSTIN_CHARS) {
+        if (ch === fixed[i]) continue;
+        const cand = fixed.slice(0, i) + ch + fixed.slice(i + 1);
+        if (isGstin(cand)) found.add(cand);
+      }
+    }
+    return found;
+  };
+  const inner = tryAt(2, 13);
+  // several corrections can look valid: a GSTIN the business already knows (a vendor's) settles it
+  const knownHits = Array.from(inner).filter((c) => known.includes(c));
+  if (knownHits.length === 1) return knownHits[0];
+  if (inner.size === 1) return Array.from(inner)[0];
+  if (inner.size > 1) return null;
+  const check = tryAt(14, 14);
+  return check.size === 1 ? Array.from(check)[0] : null;
+}
+
 // ---------------------------------------------------------------------------------------------------------- the header
 const NOT_VALUE = /^(date|dt|no|number|dated|of|the|and|gstin|gst|to|from|bill|invoice)$/i;
 
-function readHeader(lines: TextLine[], ownGstin?: string | null): ExtractedHeader {
-  const h: ExtractedHeader = { invoiceno: null, invoicedate: null, duedate: null, suppliergstin: null, suppliername: null, printedtotal: null };
+function readHeader(lines: TextLine[], ownGstin?: string | null, known: string[] = []): ExtractedHeader {
+  const h: ExtractedHeader = { invoiceno: null, invoicedate: null, duedate: null, suppliergstin: null, suppliername: null, printedtotal: null, goodsvalue: null, cashdiscount: null };
   const own = String(ownGstin || '').toUpperCase();
 
   // supplier: the first GSTIN that is not the buyer's own; its name is the largest-looking line above it
   for (const l of lines) {
-    const hits = (l.text.toUpperCase().match(/\b\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]\b/g) || []).filter((g) => g !== own);
-    const good = hits.find(isGstin) || null;
+    const hits = (l.text.toUpperCase().match(/\b\d{2}[A-Z0-9]{13}\b/g) || []).filter((g) => g !== own);
+    const good = hits.map((g) => (isGstin(g) ? g : repairGstin(g, known))).find((g) => !!g && g !== own) || null;
     if (good) { h.suppliergstin = good; break; }
   }
-  const first = lines.slice(0, 6).find((l) => /[A-Za-z]{3,}/.test(l.text) && !/invoice|gstin|tax|original|duplicate|page|cash|credit/i.test(l.text));
-  if (first) h.suppliername = first.text.replace(/\s+/g, ' ').trim().slice(0, 100);
+  // the supplier's name: the signature line ("For X Pvt. Ltd.") when there is one, else the first readable line at the top
+  let signed: string | null = null;
+  for (const l of lines) {
+    const m = l.text.match(/\bfor\s+([A-Za-z0-9][^\n]{3,80}?\b(?:ltd|limited|llp)\b\.?)/i);
+    if (m) signed = m[1];
+  }
+  if (signed) h.suppliername = signed.replace(/\s+/g, ' ').trim().slice(0, 100);
+  else {
+    const first = lines.slice(0, 6).find((l) => /[A-Za-z]{3,}/.test(l.text) && !/invoice|gstin|tax|original|duplicate|page|cash|credit/i.test(l.text));
+    if (first) h.suppliername = first.text.replace(/\s+/g, ' ').trim().slice(0, 100);
+  }
 
   for (const l of lines) {
     const t = l.text;
@@ -181,7 +234,7 @@ function readHeader(lines: TextLine[], ownGstin?: string | null): ExtractedHeade
 
   // printed total: the most specific label wins; the last one on the page
   const labels: Array<[RegExp, number]> = [
-    [/net\s*(?:amount|payable|value)/i, 6], [/amount\s*payable/i, 6], [/grand\s*total/i, 5], [/invoice\s*(?:value|total|amount)/i, 5],
+    [/net\s*(?:amount|payable|value)/i, 6], [/amount\s*payable/i, 6], [/grand\s*total/i, 5], [/invoice\s*(?:value|total|amount|amt)\b/i, 5],
     [/bill\s*(?:value|amount)/i, 4], [/total\s*amount/i, 3],
   ];
   let best: { score: number; value: number } | null = null;
@@ -196,11 +249,24 @@ function readHeader(lines: TextLine[], ownGstin?: string | null): ExtractedHeade
     }
   });
   if (best) h.printedtotal = round2((best as { score: number; value: number }).value);
+
+  // an invoice-level cash discount ("Less CD 4.00 % 48.94") and the value of the goods it comes off
+  for (const l of lines) {
+    const t = l.text;
+    if (h.goodsvalue === null) {
+      const g = t.match(/goods\s*value\D{0,6}([0-9,]+\.\d{2})/i);
+      if (g) h.goodsvalue = round2(Number(g[1].replace(/,/g, '')));
+    }
+    if (!h.cashdiscount) {
+      const c = t.match(/(?:less\s*:?\s*c\.?\s*d\.?|cash\s*disc\w*)\s*([0-9]+(?:\.[0-9]+)?)?\s*%?\D{0,6}([0-9,]+\.\d{2})/i);
+      if (c) h.cashdiscount = { pct: c[1] ? Number(c[1]) : null, amount: round2(Number(c[2].replace(/,/g, ''))) };
+    }
+  }
   return h;
 }
 
 // ---------------------------------------------------------------------------------------------------------- the table
-type Key = 'desc' | 'pack' | 'hsn' | 'batch' | 'exp' | 'mrp' | 'qty' | 'free' | 'rate' | 'disc' | 'tax' | 'amount' | 'sl';
+type Key = 'desc' | 'pack' | 'hsn' | 'batch' | 'exp' | 'mrp' | 'qty' | 'free' | 'rate' | 'disc' | 'tax' | 'amount' | 'sl' | 'unk';
 const COLS: Array<[Key, RegExp]> = [
   ['sl', /^(sl|sr|s\.?no|sno|#)\.?$/],
   ['desc', /^(product|description|item|items|particulars|particular|goods|medicine|drug)\b/],
@@ -216,9 +282,29 @@ const COLS: Array<[Key, RegExp]> = [
   ['tax', /^(gst|tax|igst|cgst|sgst|vat)/],
   ['amount', /^(amount|amt|value|total|net)\b/],
 ];
+const CANON: Array<[Key, string[]]> = [
+  ['desc', ['product', 'description', 'particulars', 'item']], ['batch', ['batch']], ['exp', ['exp', 'expiry']], ['mrp', ['mrp']],
+  ['qty', ['qty', 'quantity']], ['free', ['free']], ['rate', ['rate', 'ptr', 'pts']], ['disc', ['disc', 'dis', 'discount']],
+  ['tax', ['gst', 'tax']], ['amount', ['amount', 'amt', 'value']], ['hsn', ['hsn']], ['pack', ['pack']],
+];
+const ALIAS: Record<string, Key> = { mr: 'mrp', mp: 'mrp' };
+const NOT_A_COLUMN = new Set(['date', 'dated', 'page', 'name', 'late', 'gate', 'state', 'rep', 'due', 'order', 'place', 'mode', 'terms', 'code', 'bank', 'branch', 'phone', 'email', 'area', 'supply', 'ref']);
+
+function lev(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+
 const keyOf = (t: string): Key | null => {
-  const w = t.toLowerCase().replace(/[%:]+$/g, '').trim();
-  for (const [k, re] of COLS) if (re.test(w)) return k;
+  const w0 = t.toLowerCase().replace(/[%:]+$/g, '').trim();
+  for (const [k, re] of COLS) if (re.test(w0)) return k;
+  // a photo's header is often misread by a letter ("SEXP" for EXP, "REE" for FREE): one slip is allowed
+  const w = w0.replace(/[^a-z]/g, '');
+  if (NOT_A_COLUMN.has(w)) return null;
+  if (ALIAS[w]) return ALIAS[w];
+  if (w.length >= 3) for (const [k, names] of CANON) for (const n of names) if (n.length >= 3 && Math.abs(n.length - w.length) <= 1 && lev(w, n) <= 1) return k;
   return null;
 };
 
@@ -227,9 +313,10 @@ interface Anchor { key: Key; x0: number; x1: number }
 function headerScore(words: Word[]): { anchors: Anchor[]; score: number } {
   const anchors: Anchor[] = [];
   const seen: Record<string, number> = {};
+  const unknown: Word[] = [];
   for (const w of words) {
     const k = keyOf(w.t);
-    if (!k) continue;
+    if (!k) { if (/[A-Za-z]{2,}/.test(w.t)) unknown.push(w); continue; }
     seen[k] = (seen[k] || 0) + 1;
     if (k === 'desc' && seen[k] > 1) continue;
     if (['batch', 'exp', 'mrp', 'qty', 'free', 'rate', 'disc', 'amount', 'hsn', 'pack', 'sl'].includes(k) && seen[k] > 1) continue;
@@ -238,13 +325,48 @@ function headerScore(words: Word[]): { anchors: Anchor[]; score: number } {
   const keys = new Set(anchors.map((a) => a.key));
   const need = ['qty'].every((k) => keys.has(k as Key)) && (keys.has('rate') || keys.has('amount'));
   const score = Array.from(keys).filter((k) => k !== 'sl').length;
+  if (need) {
+    // a header word that is not a column name: the rest of a name ("PRODUCT NAME", "Batch No.", "Exp. Dt") joins the column right
+    // before it; any other (misread by OCR) holds its place so the columns around it keep their edges
+    for (const w of unknown) {
+      const near = anchors
+        .filter((a) => w.x0 > a.x0 && w.x0 - a.x1 < Math.max(14, (a.x1 - a.x0) * 0.6))
+        .sort((a, b) => b.x1 - a.x1)[0];
+      if (near) near.x1 = Math.max(near.x1, w.x1);
+      else anchors.push({ key: 'unk', x0: w.x0, x1: w.x1 });
+    }
+  }
   return { anchors, score: need ? score : 0 };
 }
 
-const STOP = /^(sub\s*total|total\b|grand\s*total|amount\s*in\s*words|rupees|terms|tax\s*summary|gst\s*summary|hsn\s*summary|bank\s*details|declaration|e\.?\s*&\s*o\.?\s*e|for\s+[A-Z])/i;
+/** the header word for MRP is often the one OCR drops; the numbers under it are still there, between the rate column and the next */
+function inferMrpColumn(anchors: Anchor[], lines: TextLine[], from: number) {
+  if (anchors.some((a) => a.key === 'mrp')) return;
+  const rate = anchors.find((a) => a.key === 'rate');
+  if (!rate) return;
+  const next = anchors.filter((a) => a.x0 > rate.x1).sort((a, b) => a.x0 - b.x0)[0];
+  const limit = next ? next.x0 : Infinity;
+  const hits: Word[] = [];
+  let rows = 0;
+  for (let i = from; i < lines.length && rows < 30; i++) {
+    if (STOP.test(lines[i].text.trim())) break;
+    const inGap = lines[i].words.filter((w) => /^\d+\.\d{2}$/.test(w.t) && w.x0 > rate.x1 + 4 && w.x1 < limit);
+    if (inGap.length) { hits.push(...inGap); rows++; }
+  }
+  if (rows >= 2) anchors.push({ key: 'mrp', x0: Math.min(...hits.map((w) => w.x0)), x1: Math.max(...hits.map((w) => w.x1)) });
+}
 
-export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null } = {}): ParsedInvoice {
-  const header = readHeader(lines, opts.ownGstin);
+/** a piece of an expiry written in words or split over words: a month name or a year */
+const expiryPart = (t: string) => !!readExpiry(t) || !!MONTHS[t.slice(0, 4).toLowerCase()] || !!MONTHS[t.slice(0, 3).toLowerCase()] || /^\d{2}(\d{2})?$/.test(t);
+const NUMERIC = new Set<Key>(['qty', 'free', 'rate', 'mrp', 'disc', 'tax', 'amount']);
+/** how many different column names a line has */
+const keyCount = (words: Word[]) => new Set(words.map((w) => keyOf(w.t)).filter((k) => k && k !== 'sl')).size;
+
+const STOP_RE = /^(?:[#\d\s.:|*-]*(?:sub\s*total|grand\s*total|total\b)|amount\s*in\s*words|rupees|terms|tax\s*summary|gst\s*summary|hsn\s*summary|bank\s*details|declaration|e\.?\s*&\s*o\.?\s*e|for\s+[A-Z])|\bgoods\s*value\b|\bless\s*:?\s*c\.?\s*d\b|\badd\s*gst\b|\binvoice\s*(?:amt|amount|value|total)\b/i;
+const STOP = { test: (text: string) => STOP_RE.test(text) };
+
+export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null; knownGstins?: string[] } = {}): ParsedInvoice {
+  const header = readHeader(lines, opts.ownGstin, opts.knownGstins || []);
   const warnings: string[] = [];
 
   // find the header row of the item table (it may be printed over two lines)
@@ -254,7 +376,9 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
     const one = headerScore(lines[i].words);
     if (one.score >= 4 && one.score > bestScore) { hi = i; anchors = one.anchors; headerLines = 1; bestScore = one.score; }
     const nxt = lines[i + 1];
-    if (nxt && nxt.page === lines[i].page && Math.abs(nxt.y - lines[i].y) < lines[i].h * 2.6) {
+    // a header printed over two lines: the first has real column names of its own and the second adds to them (a stray line of
+    // "Date  Page" above a header is not part of it)
+    if (nxt && nxt.page === lines[i].page && Math.abs(nxt.y - lines[i].y) < lines[i].h * 2.6 && keyCount(lines[i].words) >= 3 && keyCount(nxt.words) >= 1) {
       const two = headerScore([...lines[i].words, ...nxt.words]);
       if (two.score >= 4 && two.score > bestScore + 1) { hi = i; anchors = two.anchors; headerLines = 2; bestScore = two.score; }
     }
@@ -264,6 +388,8 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
     return { header, lines: [], warnings, tableFound: false };
   }
 
+  anchors.sort((a, b) => (a.x0 + a.x1) / 2 - (b.x0 + b.x1) / 2);
+  inferMrpColumn(anchors, lines, hi + headerLines);
   anchors.sort((a, b) => (a.x0 + a.x1) / 2 - (b.x0 + b.x1) / 2);
   const bounds = anchors.map((a, i) => (i < anchors.length - 1 ? (a.x1 + anchors[i + 1].x0) / 2 : Infinity));
   const colOf = (w: Word) => {
@@ -283,23 +409,35 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
     const cells: Partial<Record<Key, string[]>> = {};
     const taxCells: string[] = [];
     for (const w of l.words) {
-      const k = colOf(w);
+      let k = colOf(w);
+      // a product name starts left of its (centred) header, so its first words can sit over the expiry column; an expiry looks like
+      // 04/29 wherever it sits; a number column holds numbers, so a word with letters in it (150GM) is part of the name
+      if (headerWords.has('exp') && /[\/\-]/.test(w.t) && readExpiry(w.t)) k = 'exp';
+      else if (k === 'exp' && headerWords.has('desc') && !expiryPart(w.t)) k = 'desc';
+      else if (NUMERIC.has(k) && w.t.length >= 3 && /[A-Za-z]{2,}/.test(w.t) && headerWords.has('desc')) k = 'desc';
       if (k === 'tax') taxCells.push(w.t);
       (cells[k] = cells[k] || []).push(w.t);
     }
     const txt = (k: Key) => (cells[k] || []).join(' ').trim();
     let qty = headerWords.has('qty') ? readNumber(txt('qty')) : null;
+    let qtyWorkedOut = false;
     let free = headerWords.has('free') ? readNumber(txt('free')) : null;
     const qtyRaw = txt('qty');
     const plus = qtyRaw.match(/^(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)$/);               // "10+2": bought + free
     if (plus) { qty = +plus[1]; free = +plus[2]; }
     const rate = headerWords.has('rate') ? readNumber(txt('rate')) : null;
     const amountRead = headerWords.has('amount') ? readNumber(txt('amount')) : null;
+    // OCR often drops the small quantity digit: it is the amount over the rate, when that comes out as a whole number
+    if ((qty === null || !(qty > 0)) && rate !== null && rate > 0 && amountRead !== null && amountRead > 0) {
+      const dd = headerWords.has('disc') ? (readNumber(txt('disc')) ?? 0) : 0;
+      const q = amountRead / (rate * (1 - dd / 100));
+      if (q >= 1 && q <= 100000 && Math.abs(q - Math.round(q)) <= 0.02) { qty = Math.round(q); qtyWorkedOut = true; }
+    }
 
     const isItem = qty !== null && qty > 0 && (rate !== null || amountRead !== null) && /[A-Za-z]/.test(txt('desc') || txt('batch') || '');
     if (!isItem) {
       // a wrapped product name continues the row above
-      if (last && !qtyRaw && !txt('rate') && !txt('amount') && txt('desc') && !/^(batch|exp)/i.test(txt('desc'))) {
+      if (last && !qtyRaw && !txt('rate') && !txt('amount') && /[A-Za-z0-9]{2,}/.test(txt('desc')) && !/^(batch|exp)/i.test(txt('desc'))) {
         last.description = `${last.description} ${txt('desc')}`.replace(/\s+/g, ' ').trim();
       }
       continue;
@@ -308,8 +446,12 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
     const taxNums = allNumbers(taxCells.join(' '));
     const tax = taxNums.length ? round2(taxNums.reduce((a, b) => a + b, 0)) : null;
     const disc = headerWords.has('disc') ? readNumber(txt('disc')) : null;
-    const description = txt('desc').replace(/^\d{1,3}\s+(?=\D)/, '').replace(/\s+/g, ' ').trim();
+    // marks that are not text (a pen mark, a stray "*ok" for "**") are dropped from the ends of the name
+    const nameWords = txt('desc').replace(/^\d{1,3}\s+(?=\D)/, '').replace(/\s+/g, ' ').trim().split(' ');
+    while (nameWords.length > 1 && /^([^A-Za-z0-9]+|[*+][A-Za-z]{1,2})$/.test(nameWords[nameWords.length - 1])) nameWords.pop();
+    const description = nameWords.join(' ');
     const warn: string[] = [];
+    if (qtyWorkedOut) warn.push('Quantity worked out from the amount and the rate: check it.');
     let r = rate;
     const d = disc ?? 0;
     if (r === null && amountRead !== null && qty) { r = round2(amountRead / (qty * (1 - d / 100))); warn.push('Rate worked out from the amount.'); }
@@ -319,7 +461,7 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
       const taxed = round2(base * (1 + (tax ?? 0) / 100));
       if (Math.abs(base - amountRead) > tol && Math.abs(taxed - amountRead) > tol) warn.push(`Amount ${amountRead} does not match quantity x rate (${base}). Check the digits.`);
     }
-    const batch = txt('batch').replace(/\s+/g, '').toUpperCase() || null;
+    const batch = txt('batch').replace(/\s+/g, '').replace(/^[*#.:\-]+|[*#.:]+$/g, '').toUpperCase() || null;
     const expText = txt('exp');
     const expdate = expText ? readExpiry(expText.replace(/\s+/g, expText.match(/[A-Za-z]/) ? ' ' : '')) : null;
     if (!batch) warn.push('No batch read.');
@@ -337,7 +479,17 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
   return { header, lines: rows, warnings, tableFound: true };
 }
 
-/** what the lines add up to with tax, to set beside the printed total */
-export function linesTotalWithTax(lines: ExtractedLine[]): number {
-  return round2(lines.reduce((t, l) => t + (l.amount ?? 0) * (1 + (l.tax ?? 0) / 100), 0));
+/** what the lines add up to with tax, to set beside the printed total (after an invoice-level cash discount, when one is printed) */
+export function linesTotalWithTax(lines: ExtractedLine[], header?: ExtractedHeader | null): number {
+  return round2(lines.reduce((t, l) => t + (l.amount ?? 0) * (1 + (l.tax ?? 0) / 100), 0) * cashFactor(lines, header));
+}
+
+/** 1, or the share left after a cash discount printed under the goods value ("Less CD 4.00 %  48.94") */
+export function cashFactor(lines: ExtractedLine[], header?: ExtractedHeader | null): number {
+  const cd = header?.cashdiscount?.amount;
+  if (!cd) return 1;
+  const goods = lines.reduce((t, l) => t + (l.amount ?? 0), 0);
+  if (!(goods > 0) || cd >= goods) return 1;
+  if (header?.goodsvalue && Math.abs(header.goodsvalue - goods) > Math.max(2, goods * 0.02)) return 1;     // the lines are not the whole invoice: do not guess
+  return (goods - cd) / goods;
 }

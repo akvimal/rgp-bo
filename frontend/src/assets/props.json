@@ -93,6 +93,10 @@
             "value": "Other"
           }
         ]
+      },{
+        "id": "noexpiry",
+        "label": "No expiry date",
+        "type": "CHECK"
       }
     ]
   }]

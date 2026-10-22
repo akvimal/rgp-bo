@@ -29,8 +29,8 @@
                 </p-autoComplete>
             </td>
             <td width="8%">
-                    <p-calendar formControlName="expdate" view="month" dateFormat="M-y" [minDate]="today()" 
-                        [yearNavigator]="true" yearRange="2024:2034"></p-calendar>
+                    <p-calendar formControlName="expdate" view="month" dateFormat="M-y" [minDate]="today()" [disabled]="noExpiry"
+                        [placeholder]="noExpiry ? 'No expiry' : ''" [yearNavigator]="true" yearRange="2024:2034" data-testid="item-exp"></p-calendar>
             </td>
             <td width="8%">
                 <input type="number" id="mrp" class="form-control" formControlName="mrpcost" (input)="calculate()">
@@ -54,7 +54,7 @@
                 {{total | number:'1.2-2'}}
             </td>
             <td width="4%">
-                <button type="submit" [disabled]="total == 0 || total == undefined" class="btn btn-primary w-100">Add</button>
+                <button type="submit" [disabled]="total == 0 || total == undefined || expiryMissing" class="btn btn-primary w-100" [attr.title]="expiryMissing ? 'Enter the expiry date' : null" data-testid="item-add">Add</button>
             </td>
         </tr>
     </table>

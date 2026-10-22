@@ -26,32 +26,32 @@ export class ProductService {
         return qb.getMany();
     }
 
+    /**
+     * Products matching a list of conditions, joined by "any" (or) or "all" (and). Each condition names a column (or, with
+     * props_json, a key inside it), a check (startswith / contains) and a value. Names are checked and values are bound,
+     * never glued into the SQL; % and _ in a value are taken literally.
+     */
     async filterByCriteria(criteria:any) {
+      const list: any[] = Array.isArray(criteria?.criteria) ? criteria.criteria : [];
+      const parts: string[] = [];
+      const params: Record<string, any> = { flag: true };
+      list.forEach((c:any, i:number) => {
+        const name = /^[A-Za-z][A-Za-z0-9_]{0,40}$/;
+        if(!name.test(String(c?.property ?? '')) || (c?.props_json && c.props_json !== 'more_props') || !['startswith', 'contains'].includes(c?.check)){
+          throw new BadRequestException('That product search is not valid.');
+        }
+        const prop = c.props_json ? `p.more_props->>'${c.property}'` : `p.${c.property}`;
+        const text = String(c.value ?? '').replace(/[\\%_]/g, (ch) => '\\' + ch);
+        params[`v${i}`] = c.check === 'startswith' ? `${text}%` : `%${text}%`;
+        parts.push(`${prop} ilike :v${i}`);
+      });
+      if(!parts.length) return [];
 
       const qb = this.productRepository.createQueryBuilder('p')
-          .where('p.active = :flag', { flag: true });
-          let ch = '';
-          for(let index = 0; index < criteria.criteria.length; index++) {
-              const c = criteria.criteria[index];
-              let prop = c.property;
-              if(c['props_json']){
-                prop = `${c['props_json']}->>'${c.property}'`
-              }
-
-              if(c['check'] === 'startswith'){
-                  ch += `${prop} ilike '${c.value}%'`
-              }
-              if(c['check'] === 'contains'){
-                ch += `${prop} ilike '%${c.value}%'`
-            }
-            
-            if(index < (criteria.criteria.length-1))
-                  ch +=  criteria.condition === 'any' ? ' or ' : ' and '
-          }
-  
-          qb.andWhere(ch);
-          if(criteria.limit)
-              qb.limit(criteria.limit);
+          .where('p.active = :flag', params)
+          .andWhere(`(${parts.join(criteria?.condition === 'any' ? ' or ' : ' and ')})`, params);
+      if(Number(criteria?.limit) > 0)
+          qb.limit(Math.min(Number(criteria.limit), 500));
       return qb.getMany();
   }
 
@@ -68,7 +68,7 @@ export class ProductService {
           if(typeof prop['value'] == 'boolean' && prop['value'] == false){
             //ignored
           } else
-          qb.andWhere(`p.more_props->>'${prop['id']}' = :val`, {val:prop['value']});
+          qb.andWhere(`p.more_props->>'${String(prop['id']).replace(/[^A-Za-z0-9_]/g, '')}' = :val`, {val:prop['value']});
         });
         
        

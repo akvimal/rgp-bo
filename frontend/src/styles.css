@@ -411,3 +411,10 @@
 .inv-entry .p-autocomplete, .inv-entry .p-calendar { width: 100%; display: flex; }
 .inv-entry .p-autocomplete .p-autocomplete-input, .inv-entry .p-calendar .p-inputtext { flex: 1 1 auto; min-width: 0; }
 .inv-entry .inv-total { text-align: right; font-weight: 600; font-size: .9375rem; background: #f6f9ff; border-radius: .375rem; padding-right: .75rem; }
+.inv-table.inv-grid th, .inv-table.inv-grid td { padding: .35rem .3rem; }
+.inv-table.inv-grid { table-layout: fixed; width: 100%; min-width: 61rem; }
+.inv-table.inv-grid td .form-control, .inv-table.inv-grid td .form-select { min-width: 0; }
+/* the little up and down arrows of a number box take room the digits need */
+.inv-grid input[type=number]::-webkit-outer-spin-button, .inv-grid input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.inv-grid input[type=number] { -moz-appearance: textfield; }
+

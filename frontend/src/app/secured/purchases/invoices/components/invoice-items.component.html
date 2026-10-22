@@ -26,7 +26,7 @@
             <div class="col-6 col-md-2"><div class="inv-label">GRN</div><div class="inv-value text-success">{{invoice.grno || '-'}}</div></div>
             <div class="col-6 col-md-2"><div class="inv-label">Reference</div><div class="inv-value">{{invoice.referenceno || '-'}}</div></div>
             <div class="col-6 col-md-2"><div class="inv-label">Invoice total</div><div class="inv-value">{{invoice.printedtotal ? (invoice.printedtotal | number:'1.2-2') : '-'}}</div></div>
-            <div class="col-6 col-md-2"><div class="inv-label">Lines total (with tax)</div><div class="inv-value">{{nettotal | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Lines total (with tax){{invoice.cashdiscount ? ', after cash discount' : ''}}</div><div class="inv-value">{{expectedTotal | number:'1.2-2'}}</div></div>
             <div class="col-6 col-md-2" *ngIf="invoice.status !== 'NEW'"><div class="inv-label">Paid</div><div class="inv-value">{{(invoice.paidamount || 0) | number:'1.2-2'}}</div></div>
             <div class="col-6 col-md-2" *ngIf="invoice.status !== 'NEW'"><div class="inv-label">Balance</div><div class="inv-value">{{(invoice.balanceamount || 0) | number:'1.2-2'}}</div></div>
         </div>
@@ -122,7 +122,7 @@
                         </td>
                         <td>{{i.product?.title}}</td>
                         <td>{{i.batch}}</td>
-                        <td class="text-center">{{i.expdate | date:'MMM-yy'}}</td>
+                        <td class="text-center">{{i.expdate ? (i.expdate | date:'MMM-yy') : '-'}}</td>
                         <td class="text-end">{{i.mrpcost | number:'1.2-2'}}</td>
                         <td class="text-end">{{i.qty}}</td>
                         <td class="text-end">{{i.freeqty}}</td>

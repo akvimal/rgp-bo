@@ -172,6 +172,14 @@ export class InvoiceItemFormComponent {
         this.form.controls['productid'].setValue(this.selectedProduct.id);
     }
 
+    /** a product that never expires (a blade, a thermometer) carries the "No expiry date" property: its lines need no expiry */
+    get noExpiry(): boolean {
+        const flag = this.selectedProduct?.props?.noexpiry;
+        return flag === true || flag === 'true';
+    }
+
+    get expiryMissing(): boolean { return !this.noExpiry && !this.form.value.expdate; }
+
     calculateTotal(qty:number,price:number,disc:number,tax:number):number{
         const gross = qty * price;
         const gross_after_disc = gross - (gross*(disc/100));
@@ -222,6 +230,7 @@ export class InvoiceItemFormComponent {
     }
 
     submit(){
+        if(this.expiryMissing) return;
         if(this.itemid){
             this.invService.updateItems([this.form.value.id],{...this.form.value,
                 batch:this.form.value.batch.toUpperCase(),

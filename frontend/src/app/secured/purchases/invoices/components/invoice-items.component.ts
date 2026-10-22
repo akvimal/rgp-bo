@@ -30,9 +30,14 @@ export class InvoiceItemsComponent {
 
     constructor(private route:ActivatedRoute, private router:Router, private invService: InvoiceService, private files: FileUploadService){}
 
-    /** the lines with their tax (the Net total below) against the total printed on the vendor's invoice, which includes the tax */
+    /** the lines with their tax (the Net total below), after a cash discount printed at the foot of the invoice, against the printed total */
+    get expectedTotal(): number {
+        const goods = this.grosstotal - this.disctotal;
+        const cd = +(this.invoice.cashdiscount || 0);
+        return cd > 0 && goods > cd ? this.nettotal * ((goods - cd) / goods) : this.nettotal;
+    }
     get printedDiff(): number | null {
-        return this.invoice.printedtotal ? +(this.nettotal - +this.invoice.printedtotal).toFixed(2) : null;
+        return this.invoice.printedtotal ? +(this.expectedTotal - +this.invoice.printedtotal).toFixed(2) : null;
     }
     get totalsAgree(): boolean { return this.printedDiff === null || Math.abs(this.printedDiff) <= 1; }
 

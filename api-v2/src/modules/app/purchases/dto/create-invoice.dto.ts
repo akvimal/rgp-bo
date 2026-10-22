@@ -60,6 +60,12 @@ export class CreatePurchaseInvoiceDto {
     @Min(0)
     readonly printedtotal?: number;
 
+    @ApiProperty({ description: 'cash discount printed at the foot of the vendor invoice', example: 0, required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    readonly cashdiscount?: number;
+
     @ApiProperty({ description: 'path of the attached invoice copy', example: '', required: false })
     @IsOptional()
     @IsString()

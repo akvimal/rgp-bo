@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { AfterViewInit, Component, EventEmitter, Input, Output, SimpleChanges, ViewChild } from "@angular/core";
 import { FormControl, FormGroup } from "@angular/forms";
 import { ProductsService } from "src/app/secured/products/products.service";
 
@@ -7,7 +7,7 @@ import { ProductsService } from "src/app/secured/products/products.service";
     template: `
     <span class="p-fluid">
     <div [formGroup]="formGroup">
-        <p-autoComplete 
+        <p-autoComplete #ac 
         (onSelect)="doneSelect($event)" 
         formControlName="title"
         field="title"
@@ -29,9 +29,13 @@ import { ProductsService } from "src/app/secured/products/products.service";
     </span>
     `
 })
-export class ProductSelectComponent {
+export class ProductSelectComponent implements AfterViewInit {
 
     @Input() reset = false;
+    /** text to start with (for example the name read from an invoice); with autoSearch the matches are listed straight away */
+    @Input() initial = '';
+    @Input() autoSearch = false;
+    @ViewChild('ac') ac:any;
     filteredProducts:any[] = [];
 
     formGroup = new FormGroup({
@@ -43,20 +47,41 @@ export class ProductSelectComponent {
     constructor(private prodService:ProductsService){}
 
     ngOnChanges(changes:SimpleChanges){
-        if(changes.reset.currentValue == true){
+        if(changes.reset && changes.reset.currentValue == true){
             this.formGroup.reset();
         }
     }
 
-    filterProduct(event:any) {
-        let query = event.query;
-        let criteria = {condition:'any', criteria:[
+    ngAfterViewInit(){
+        if(!this.initial) return;
+        this.formGroup.controls['title'].setValue({ title: this.initial });          // the box shows the title of its value, so a text goes in as one
+        if(this.autoSearch && this.ac){
+            // the box's own search opens the list of matches when they arrive
+            setTimeout(() => { this.ac.focusInput(); this.ac.search({}, this.initial); });
+        }
+    }
+
+    /** more than one word: the products whose title has every word; otherwise (or when none) a title that starts with it, or a composition that has it */
+    private search(query:string){
+        const words = String(query || '').split(/\s+/).map(w => w.replace(/[^A-Za-z0-9.]/g, '')).filter(w => w.length >= 2).slice(0, 3);
+        const byTitle = {condition:'any', criteria:[
             {property:'title',check:'startswith',value:query},
             {property:'composition', props_json:'more_props', check:'contains',value:query}]};
-
-        this.prodService.findByCriteria(criteria).subscribe((data:any) => {
+        const apply = (data:any) => {
             this.filteredProducts = data;
-        });
+        };
+        if(words.length > 1){
+            this.prodService.findByCriteria({condition:'all', criteria: words.map(w => ({property:'title', check:'contains', value:w}))}).subscribe((all:any) => {
+                if(all && all.length) apply(all);
+                else this.prodService.findByCriteria(byTitle).subscribe((d:any) => apply(d));
+            });
+        } else {
+            this.prodService.findByCriteria(byTitle).subscribe((d:any) => apply(d));
+        }
+    }
+
+    filterProduct(event:any) {
+        this.search(event.query);
     }
 
     doneSelect(event:any){

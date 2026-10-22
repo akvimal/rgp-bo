@@ -11,6 +11,7 @@ export interface Invoice {
     paymentstatus?:string,
     total?:number,
     printedtotal?:number,
+    cashdiscount?:number,
     documentpath?:string,
     paidamount?:number,
     balanceamount?:number,

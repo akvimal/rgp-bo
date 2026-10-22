@@ -49,6 +49,10 @@ import { VendorPayment } from "./vendor-payment.entity";
     @Column("double precision", { name: "printed_total", precision: 53, nullable: true })
     printedtotal: number | null;
 
+    /** a discount printed at the foot of the invoice that is not a line (checked against the printed total) */
+    @Column("double precision", { name: "cash_discount", precision: 53, nullable: true })
+    cashdiscount: number | null;
+
     /** path of the attached copy of the invoice (PDF or photo) */
     @Column("character varying", { name: "document_path", length: 300, nullable: true })
     documentpath: string | null;
