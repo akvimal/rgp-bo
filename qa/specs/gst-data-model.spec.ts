@@ -88,4 +88,35 @@ test.describe('GST data model @p1', () => {
     await expect(page.getByTestId('invoice-gst-card')).toBeVisible();
     await expect(page.getByTestId('invoice-gst-check')).toBeVisible();
   });
+
+  test('the GST card is one read-only line; changes are made in the invoice details; a vendor with no GSTIN is flagged @happy', async ({ app, api }) => {
+    const vendors = (await api.request('GET', '/vendors?status=usable', undefined, MGR)).body;
+    const vendor = vendors[0];
+    const made = await api.request('POST', '/purchases', { vendorid: vendor.id, invoiceno: `QA/GST-${Date.now()}`, invoicedate: '2026-09-04', printedtotal: 100 }, MGR);
+    expect(made.status).toBeLessThan(300);
+    const id = made.body.id;
+    const { page } = await app.open(MGR, `/secure/purchases/invoices/items/${id}`);
+    await expect(page.getByTestId('invoice-gst-card')).toBeVisible();
+    await expect(page.getByTestId('invoice-gst-gstin-text')).toBeVisible();
+    await expect(page.getByTestId('invoice-gst-save')).toHaveCount(0);                          // no editable form on this page any more
+
+    await page.getByTestId('invoice-gst-edit').click();                                          // the change is made on the header form, under More details
+    await page.getByTestId('inv-f-more').click();
+    await page.getByTestId('inv-f-gstin').fill('27AAAAA0000A1Z5');
+    await expect(page.getByTestId('inv-f-save')).toBeDisabled();                                  // not a valid GSTIN
+    await expect(page.getByTestId('inv-f-hint')).toContainText('GSTIN');
+    await page.getByTestId('inv-f-gstin').fill('');
+    await page.getByTestId('inv-f-supplytype').selectOption('INTER');
+    await page.getByTestId('inv-f-itc').selectOption('CAPITAL_GOODS');
+    await page.getByTestId('inv-f-rc').check();
+    await page.getByTestId('inv-f-save').click();
+    await expect(page).toHaveURL(/invoices\/items\/\d+/);
+    const got = (await api.request('GET', `/purchases/${id}`, undefined, MGR)).body;
+    expect(got.supplytype).toBe('INTER');
+    expect(got.itceligibility).toBe('CAPITAL_GOODS');
+    expect(got.reversecharge).toBe(true);
+    await expect(page.getByTestId('invoice-gst-card')).toContainText('Inter-state');
+    await expect(page.getByTestId('invoice-gst-card')).toContainText('Reverse charge');
+    await api.request('DELETE', `/purchases/${id}`, undefined, MGR);
+  });
 });

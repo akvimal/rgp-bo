@@ -86,6 +86,7 @@
               <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-history" *ngIf="p.payments > 0" (click)="openHistory(p)" title="Payments recorded">Payments</button>
               <button class="btn btn-outline-warning btn-sm py-0" data-testid="inv-hold" *ngIf="p.status === 'COMPLETE' && p.balance_amount > 0 && !p.on_hold" (click)="openHold(p)" title="Hold: no payment until released">Hold</button>
               <button class="btn btn-warning btn-sm py-0" data-testid="inv-release" *ngIf="p.on_hold" (click)="release(p)">Release</button>
+              <button class="btn btn-outline-danger btn-sm py-0" data-testid="inv-delete" *ngIf="p.status === 'NEW' && !p.payments" (click)="askDelete(p)" title="Delete this draft invoice"><i class="bi bi-trash"></i> Delete</button>
             </div>
             </td>
           </tr>
@@ -169,6 +170,20 @@
         <button class="btn btn-danger" data-testid="inv-reverse-confirm" (click)="confirmReverse()">Reverse</button>
         <button class="btn btn-outline-secondary" (click)="reversing = null">Cancel</button>
       </div>
+    </div>
+  </div>
+</p-dialog>
+
+<!-- delete a draft -->
+<p-dialog [header]="'Delete ' + (deleteInv?.invoice_no || 'invoice')" [visible]="!!deleteInv" (visibleChange)="$event || (deleteInv = null)" [modal]="true" [style]="{width:'30rem'}">
+  <div *ngIf="deleteInv" data-testid="inv-delete-dialog">
+    <p class="mb-1">Delete the draft invoice <b>{{deleteInv.invoice_no}}</b> from {{deleteInv.business_name}}?</p>
+    <div class="small text-muted" *ngIf="deleteInv.items">Its {{deleteInv.items}} line{{deleteInv.items === 1 ? '' : 's'}} will be deleted too.</div>
+    <div class="small text-muted" *ngIf="!deleteInv.items">It has no lines.</div>
+    <div class="text-danger small mt-1" *ngIf="deleteError" data-testid="inv-delete-error">{{deleteError}}</div>
+    <div class="mt-3 text-end">
+      <button class="btn btn-outline-secondary btn-sm me-2" (click)="deleteInv = null">Keep it</button>
+      <button class="btn btn-danger btn-sm" data-testid="inv-delete-confirm" (click)="confirmDelete()">Delete invoice</button>
     </div>
   </div>
 </p-dialog>

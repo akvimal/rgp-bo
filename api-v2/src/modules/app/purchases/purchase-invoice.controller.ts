@@ -97,7 +97,7 @@ export class PurchaseInvoiceController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: any) {
-      return this.purchaseInvoiceService.remove(id);
+    remove(@Param('id', ParseIntPipe) id: number, @User() currentUser: any) {
+      return this.purchaseInvoiceService.remove(id, currentUser.id);
     }
 }

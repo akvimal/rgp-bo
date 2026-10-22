@@ -51,6 +51,8 @@ export class InvoiceListComponent implements OnInit {
 
     // hold dialog
     holdInv: any = null;
+    deleteInv: any = null;
+    deleteError = '';
     holdReason = '';
     holdError = '';
 
@@ -204,6 +206,15 @@ export class InvoiceListComponent implements OnInit {
         this.service.hold(this.holdInv.id, this.holdReason.trim()).subscribe(
             () => { this.message = `${this.holdInv.invoice_no} is on hold: it cannot be paid until released.`; this.holdInv = null; this.reload(); },
             err => { this.holdError = this.msg(err, 'Could not put the invoice on hold.'); });
+    }
+
+    askDelete(inv: any) { this.deleteInv = inv; this.deleteError = ''; }
+
+    confirmDelete() {
+        const inv = this.deleteInv;
+        this.service.remove(inv.id).subscribe(
+            () => { this.message = `Draft invoice ${inv.invoice_no} deleted.`; this.deleteInv = null; this.reload(); },
+            err => { this.deleteError = this.msg(err, 'Could not delete the invoice.'); });
     }
 
     release(inv: any) {

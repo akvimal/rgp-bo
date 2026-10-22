@@ -1,7 +1,9 @@
 import { Component } from "@angular/core";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { Invoice } from "../invoice.model";
 import { InvoiceService } from "../invoices.service";
+import { FileUploadService } from "../../../documents/file-upload.service";
+import { stateName } from "../../vendors/gst-util";
 
 @Component({
     templateUrl: './invoice-items.component.html'
@@ -23,10 +25,37 @@ export class InvoiceItemsComponent {
     outstandingBalance:number = 0;
     importFeedback:string = '';
 
-    editingGst:boolean = false;
-    gstForm:any = {};
+    confirmingDelete:boolean = false;
+    deleteError:string = '';
 
-    constructor(private route:ActivatedRoute, private invService: InvoiceService){}
+    constructor(private route:ActivatedRoute, private router:Router, private invService: InvoiceService, private files: FileUploadService){}
+
+    /** lines total (the sum of the lines, which follows them) against the total printed on the vendor's invoice */
+    get printedDiff(): number | null {
+        return this.invoice.printedtotal ? +((+(this.invoice.total || 0)) - +this.invoice.printedtotal).toFixed(2) : null;
+    }
+    get totalsAgree(): boolean { return this.printedDiff === null || Math.abs(this.printedDiff) <= 1; }
+
+    get allSelected(): boolean {
+        const open = (this.items || []).filter((i:any) => i.status === 'NEW');
+        return open.length > 0 && open.every((i:any) => i.selected);
+    }
+
+    selectAll(event:any){
+        (this.items || []).forEach((i:any) => { if(i.status === 'NEW') i.selected = event.target.checked; });
+        this.itemSelected = (this.items || []).some((i:any) => i.selected);
+    }
+
+    viewDocument(){
+        this.files.view(this.invoice.documentpath).subscribe((b:any) => window.open(URL.createObjectURL(b), '_blank'), () => this.deleteError = 'Could not open the attached invoice copy.');
+    }
+
+    /** a draft (status NEW) can be thrown away with its lines; the server refuses anything else */
+    deleteDraft(){
+        this.invService.remove(this.invoice.id as number).subscribe(
+            () => this.router.navigate(['/secure/purchases/invoices/list']),
+            (err:any) => { this.deleteError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'Could not delete the invoice.'; });
+    }
 
     ngOnInit(){
         this.fetchItems(this.route.snapshot.paramMap.get('id'));
@@ -138,26 +167,13 @@ export class InvoiceItemsComponent {
         return Math.abs(total - summed) < 0.5;
     }
 
-    startEditGst(){
-        const inv:any = this.invoice;
-        this.gstForm = {
-            suppliergstin: inv.suppliergstin || '',
-            placeofsupply: inv.placeofsupply || '',
-            supplytype: inv.supplytype || 'INTRA',
-            itceligibility: inv.itceligibility || 'INPUTS',
-            reversecharge: !!inv.reversecharge
-        };
-        this.editingGst = true;
+    get itcLabel(): string {
+        const v = (this.invoice as any).itceligibility;
+        return v === 'CAPITAL_GOODS' ? 'Capital goods' : v === 'INELIGIBLE' ? 'Ineligible' : 'Inputs';
     }
 
-    cancelEditGst(){
-        this.editingGst = false;
-    }
-
-    saveGst(){
-        this.invService.update([this.invoice.id], this.gstForm).subscribe(() => {
-            this.editingGst = false;
-            this.fetchItems(this.invoice.id);
-        });
+    get placeText(): string {
+        const code = (this.invoice as any).placeofsupply;
+        return code ? `${code}${stateName(code) ? ' ' + stateName(code) : ''}` : '-';
     }
 }

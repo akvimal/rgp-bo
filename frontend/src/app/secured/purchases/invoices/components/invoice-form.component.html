@@ -1,82 +1,123 @@
-
 <div class="card mt-2">
-  <div class="card-body">
-    <h5 class="card-title p-0 m-0">New Invoice</h5>
+  <div class="card-body pt-3">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h5 class="card-title p-0 m-0" data-testid="inv-f-title">{{id ? 'Edit invoice' : 'New purchase invoice'}}</h5>
+      <span class="badge" [ngClass]="locked ? 'bg-success' : 'bg-secondary'" *ngIf="id" data-testid="inv-f-status">{{locked ? 'Received' : 'Draft'}}</span>
+    </div>
+    <p class="small text-muted mb-3" *ngIf="!id">Enter what is printed at the top of the vendor's invoice. You add the items on the next page.</p>
+    <p class="small text-muted mb-3" *ngIf="locked" data-testid="inv-f-locked">This invoice has been received, so only the due date, reference and notes can change.</p>
 
-<form [formGroup]="form" (ngSubmit)="submit()">
-  
-    <div class="row mt-4">
-      <div class="col-md-3">
-        <label for="vendor" class="col-form-label">Vendor</label>
-        <select class="form-select" id="vendor" formControlName="vendorid" (change)="fetchOrders($event)">
-          <option value="">Select</option>
-          <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label for="store" class="col-form-label">Receiving Store</label>
-        <select class="form-select" id="store" formControlName="storeid">
-          <option value="">Select</option>
-          <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label for="poid" class="col-form-label">PO</label>
-        
-        <select class="form-select" id="order" formControlName="purchaseorderid">
-          <option value="">Select</option>
-          <option *ngFor="let o of orders" [value]="o.id">{{o.createdon | date}} ({{o.id}})</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label for="invno" class="col-form-label">Invoice No.</label>
-        <input type="text" class="form-control" formControlName="invoiceno" id="invno" maxlength="12">
-        <div *ngIf="form.controls['invoiceno'].dirty && form.controls['invoiceno'].invalid" style="font-size: large;color:red;">
-          Invoice No can be alphanumeric with hypen only
+    <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="off">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="inv-vendor" class="form-label">Vendor *</label>
+          <select class="form-select" id="inv-vendor" formControlName="vendorid" (change)="vendorChanged()" data-testid="inv-f-vendor">
+            <option value="">Choose a vendor</option>
+            <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="inv-no" class="form-label">Invoice no. *</label>
+          <input type="text" class="form-control" id="inv-no" formControlName="invoiceno" maxlength="40" (blur)="checkDuplicate()" placeholder="As printed, e.g. INV/24-25/0012" data-testid="inv-f-no">
+        </div>
+        <div class="col-md-2">
+          <label for="inv-date" class="form-label">Invoice date *</label>
+          <input type="date" class="form-control" id="inv-date" formControlName="invoicedate" (change)="setDue()" data-testid="inv-f-date">
+        </div>
+        <div class="col-md-2">
+          <label for="inv-total" class="form-label">Invoice total *</label>
+          <div class="input-group">
+            <span class="input-group-text">&#8377;</span>
+            <input type="number" min="0" step="0.01" class="form-control" id="inv-total" formControlName="printedtotal" placeholder="As printed" data-testid="inv-f-total">
+          </div>
+        </div>
+
+        <div class="col-12" *ngIf="duplicate" data-testid="inv-f-dup">
+          <div class="alert alert-warning py-2 mb-0">Invoice <b>{{duplicate.invoice_no}}</b> from this vendor is already entered
+            <span *ngIf="duplicate.gr_no">(GRN {{duplicate.gr_no}})</span>.
+            <a [routerLink]="['/secure/purchases/invoices/items', duplicate.id]">Open it</a> instead of entering it again.</div>
+        </div>
+
+        <div class="col-md-4">
+          <label for="inv-store" class="form-label">Receiving store *</label>
+          <select class="form-select" id="inv-store" formControlName="storeid" *ngIf="stores.length > 1; else oneStore" data-testid="inv-f-store">
+            <option value="">Choose a store</option>
+            <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
+          </select>
+          <ng-template #oneStore><div class="form-control-plaintext" data-testid="inv-f-store-one">{{stores[0]?.location}}</div></ng-template>
+        </div>
+        <div class="col-md-5">
+          <label for="inv-po" class="form-label">Purchase order <span class="text-muted small">(optional)</span></label>
+          <select class="form-select" id="inv-po" formControlName="purchaseorderid" [attr.disabled]="!form.value.vendorid ? '' : null" data-testid="inv-f-po">
+            <option value="">{{orders.length ? 'Not against a purchase order' : (form.value.vendorid ? 'No approved orders for this vendor' : 'Choose a vendor first')}}</option>
+            <option *ngFor="let o of orders" [value]="o.id">{{poLabel(o)}}</option>
+          </select>
+          <div class="form-text" *ngIf="form.value.purchaseorderid">You can bring the order's lines in on the next page.</div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Payment due</label>
+          <div *ngIf="!changingDue" class="form-control-plaintext" data-testid="inv-f-due-text">{{dueText() || '-'}}
+            <a role="button" class="small ms-1" (click)="changingDue = true" data-testid="inv-f-due-change">Change</a></div>
+          <input *ngIf="changingDue" type="date" class="form-control" formControlName="duedate" data-testid="inv-f-due">
+        </div>
+
+        <div class="col-md-6">
+          <label for="inv-file" class="form-label">Invoice copy <span class="text-muted small">(PDF or photo, optional)</span></label>
+          <input type="file" class="form-control" id="inv-file" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)" [disabled]="uploading" data-testid="inv-f-file">
+          <div class="small mt-1" *ngIf="form.value.documentpath" data-testid="inv-f-file-ok"><i class="bi bi-paperclip"></i> Attached
+            <a role="button" (click)="viewDocument()">view</a> &middot; <a role="button" class="text-danger" (click)="removeDocument()">remove</a></div>
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+          <a role="button" class="small" (click)="showMore = !showMore" data-testid="inv-f-more">{{showMore ? 'Hide' : 'More'}} details (reference, notes)</a>
+        </div>
+
+        <ng-container *ngIf="showMore">
+          <div class="col-md-4">
+            <label for="inv-ref" class="form-label">Reference no.</label>
+            <input type="text" class="form-control" id="inv-ref" formControlName="referenceno" maxlength="30" data-testid="inv-f-ref">
+          </div>
+          <div class="col-md-8">
+            <label for="inv-notes" class="form-label">Notes</label>
+            <input type="text" class="form-control" id="inv-notes" formControlName="notes" maxlength="300" data-testid="inv-f-notes">
+          </div>
+          <div class="col-12"><div class="small fw-semibold mt-1">GST <span class="text-muted fw-normal">&mdash; filled in from the vendor; change only if this invoice differs</span></div></div>
+          <div class="col-md-4">
+            <label for="inv-gstin" class="form-label">Supplier GSTIN</label>
+            <input type="text" class="form-control" id="inv-gstin" formControlName="suppliergstin" maxlength="15" [class.is-invalid]="gstinBad" placeholder="{{vendor?.gstn || 'Not recorded on the vendor'}}" data-testid="inv-f-gstin">
+            <div class="invalid-feedback" data-testid="inv-f-gstin-bad">That is not a valid GSTIN.</div>
+            <div class="form-text" *ngIf="!form.value.suppliergstin && vendor && !vendor.gstn">The vendor has no GSTIN: this invoice cannot be matched in GST reconciliation until one is added.</div>
+          </div>
+          <div class="col-md-3">
+            <label for="inv-supply" class="form-label">Supply</label>
+            <select class="form-select" id="inv-supply" formControlName="supplytype" data-testid="inv-f-supplytype">
+              <option value="">{{id ? 'Intra-state' : 'Worked out from the GSTIN'}}</option>
+              <option value="INTRA">Intra-state (CGST + SGST)</option>
+              <option value="INTER">Inter-state (IGST)</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label for="inv-itc" class="form-label">Input tax credit</label>
+            <select class="form-select" id="inv-itc" formControlName="itceligibility" data-testid="inv-f-itc">
+              <option value="">Inputs</option>
+              <option value="CAPITAL_GOODS">Capital goods</option>
+              <option value="INELIGIBLE">Ineligible</option>
+            </select>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="inv-rc" formControlName="reversecharge" data-testid="inv-f-rc"><label class="form-check-label" for="inv-rc">Reverse charge</label></div>
+          </div>
+        </ng-container>
+
+        <div class="col-12" *ngIf="errorMessage">
+          <div class="alert alert-danger py-2 mb-0" data-testid="inv-f-error">{{errorMessage}}</div>
+        </div>
+
+        <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+          <button type="submit" class="btn btn-primary" [disabled]="missing.length > 0 || saving" data-testid="inv-f-save">{{id ? 'Save changes' : 'Save and add items'}}</button>
+          <button type="button" (click)="cancel()" class="btn btn-outline-secondary" data-testid="inv-f-cancel">Cancel</button>
+          <span class="small text-muted" *ngIf="missing.length" data-testid="inv-f-hint">Still needed: {{missing.join(', ')}}.</span>
         </div>
       </div>
-      <div class="col-md-3">
-        <label for="invdate" class="col-form-label">Invoice Date</label><br>
-        <input type="date" class="form-control" formControlName="invoicedate" id="invdate">
-      </div>
-      <div class="col-md-3">
-        <label for="duedate" class="col-form-label">Due Date</label><br>
-        <input type="date" class="form-control" formControlName="duedate" id="duedate">
-      </div>
-      <div class="col-md-3">
-        <label for="referenceno" class="col-form-label">Reference No.</label>
-        <input type="text" class="form-control" formControlName="referenceno" id="referenceno" maxlength="30">
-      </div>
-      <div class="col-md-3">
-        <label for="grno" class="col-form-label">GR No.</label>
-        <input type="text" class="form-control" formControlName="grno" id="grno">
-      </div>
-
-    </div>
-    <div class="row mt-3">
-      <div class="col-md-12">
-        <label for="notes" class="col-form-label">Notes</label>
-        <textarea class="form-control" formControlName="notes" id="notes" rows="2"></textarea>
-      </div>
-    </div>
-    <div class="row" *ngIf="errorMessage !== ''">
-      <div class="col-md-12">{{errorMessage}}</div>
-    </div>
-    <div class="row mt-3">
-      <div class="col-md-12">
-        <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Save</button>
-        <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
-      </div>
-    </div>
-  
-  <!-- <div class="col-md-6">
-    <label for="grn" class="col-sm-2 col-form-label">GRN</label>
-    <input type="text" class="form-control" formControlName="grn" 
-      id="grn">
-  </div> -->
- 
-</form>
-<!-- <a *ngIf="invoice.id" [routerLink]="['../../items',invoice.id]">Items</a> -->
-<router-outlet></router-outlet>
-</div>
+    </form>
+  </div>
 </div>

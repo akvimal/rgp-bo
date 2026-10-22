@@ -45,6 +45,14 @@ import { VendorPayment } from "./vendor-payment.entity";
     @Column("double precision", { name: "total", precision: 53 })
     total: number;
 
+    /** the total printed on the vendor's invoice, to check the lines against */
+    @Column("double precision", { name: "printed_total", precision: 53, nullable: true })
+    printedtotal: number | null;
+
+    /** path of the attached copy of the invoice (PDF or photo) */
+    @Column("character varying", { name: "document_path", length: 300, nullable: true })
+    documentpath: string | null;
+
     @Column("character varying", { name: "comments" })
     comments: string;
 

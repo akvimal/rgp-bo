@@ -54,6 +54,18 @@ export class CreatePurchaseInvoiceDto {
     @Min(0)
     readonly total: number;
 
+    @ApiProperty({ description: 'total printed on the vendor invoice', example: 0, required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    readonly printedtotal?: number;
+
+    @ApiProperty({ description: 'path of the attached invoice copy', example: '', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(300)
+    readonly documentpath?: string;
+
     @ApiProperty({ description: 'notes', example: '' })
     @IsOptional()
     @IsString()

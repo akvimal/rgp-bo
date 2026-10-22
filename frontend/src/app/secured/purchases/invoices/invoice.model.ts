@@ -10,6 +10,8 @@ export interface Invoice {
     status?:string,
     paymentstatus?:string,
     total?:number,
+    printedtotal?:number,
+    documentpath?:string,
     paidamount?:number,
     balanceamount?:number,
     referenceno?:string,

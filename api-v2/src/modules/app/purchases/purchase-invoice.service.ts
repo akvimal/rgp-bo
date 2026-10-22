@@ -1,6 +1,6 @@
 import { assertStoreLicensed } from "../store/store-guard";
 import { assertVendorUsable } from "../vendors/vendor-guard";
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, In, Repository } from "typeorm";
 import { CreatePurchaseInvoiceItemDto } from "./dto/create-invoice-item.dto";
@@ -13,6 +13,7 @@ import { PurchaseRequest } from "src/entities/purchase-request.entity";
 import { Product } from "src/entities/product.entity";
 import { Vendor } from "src/entities/vendor.entity";
 import { Business } from "src/entities/business.entity";
+import { AuditService } from "src/core/audit/audit.service";
 
 @Injectable()
 export class PurchaseInvoiceService {
@@ -25,7 +26,8 @@ export class PurchaseInvoiceService {
     @InjectRepository(Product) private readonly productRepository: Repository<Product>,
     @InjectRepository(Vendor) private readonly vendorRepository: Repository<Vendor>,
     @InjectRepository(Business) private readonly businessRepository: Repository<Business>,
-    @InjectEntityManager() private manager: EntityManager) { }
+    @InjectEntityManager() private manager: EntityManager,
+    private readonly audit: AuditService) { }
 
     private getDerivedPaymentStatus(invoice:any, paidAmount:number){
       const total = +(invoice.total || 0);
@@ -87,6 +89,7 @@ export class PurchaseInvoiceService {
         await assertStoreLicensed(this.vendorRepository.manager, storeid, 'receiving an invoice');
 
         const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
+        await this.assertNotDuplicate(+dto.vendorid, dto.invoiceno, null);
 
         let duedate = dto.duedate;
         if(!duedate && dto.invoicedate){
@@ -114,6 +117,15 @@ export class PurchaseInvoiceService {
         const saved = await this.purchaseInvoiceItemRepository.save({...dto, ...gstLine, createdby:userid});
         await this.recomputeInvoiceGstTotals(+dto.invoiceid);
         return saved;
+    }
+
+    /** the same invoice number from the same vendor twice is almost always a double entry: say which one it is */
+    private async assertNotDuplicate(vendorid: number, invoiceno: string | undefined, exceptId: number | null){
+        const no = String(invoiceno ?? '').trim();
+        if(!no || !vendorid) return;
+        const [dup] = await this.manager.query(
+          `select id, gr_no from purchase_invoice where vendor_id = $1 and upper(invoice_no) = upper($2) and id <> $3 limit 1`, [vendorid, no, exceptId ?? 0]);
+        if(dup) throw new BadRequestException(`Invoice ${no} from this vendor is already entered${dup.gr_no ? ` (GRN ${dup.gr_no})` : ''}. Open it from the invoice list instead of entering it again.`);
     }
 
     /** GSTIN/place-of-supply/supply-type defaults for a new invoice header (decision #1: one GSTIN per business). */
@@ -450,7 +462,29 @@ export class PurchaseInvoiceService {
       return await this.manager.query(`select generate_grn($1)`, [key]);
     }
 
-    async remove(id:number){
+    /**
+     * Delete an invoice and its lines (a draft, or a received one whose stock is thereby reversed). Refused when a payment, a
+     * vendor issue or a GST match is recorded against it. The screens offer it for drafts only.
+     */
+    async remove(id:number, userId?:number){
+      const [inv] = await this.manager.query(
+        `select i.id, i.invoice_no, i.status, i.total, v.business_name as vendor,
+                (select count(*)::int from purchase_invoice_item x where x.invoice_id = i.id) as items,
+                (select count(*)::int from vendor_payment p where p.invoice_id = i.id) as payments,
+                (select count(*)::int from vendor_issue q where q.invoice_id = i.id) as issues,
+                (select count(*)::int from gst_reconciliation g where g.purchase_invoice_id = i.id) + (select count(*)::int from gst_inward_supply s where s.matched_invoice_id = i.id) as gst
+           from purchase_invoice i left join vendor v on v.id = i.vendor_id where i.id = $1`, [id]);
+      if (!inv) throw new NotFoundException('That invoice does not exist.');
+      if (inv.payments > 0) throw new BadRequestException('This invoice has payments recorded against it, so it cannot be deleted.');
+      if (inv.issues > 0) throw new BadRequestException('A vendor issue is raised against this invoice, so it cannot be deleted.');
+      if (inv.gst > 0) throw new BadRequestException('This invoice is matched in GST reconciliation, so it cannot be deleted.');
+      const result = await this.removeRows(id);
+      await this.audit.record({ userId: userId ?? null, action: 'purchase.invoice_deleted', entityType: 'purchase_invoice', entityId: id,
+        summary: `${inv.status === 'NEW' ? 'Draft invoice' : 'Invoice'} ${inv.invoice_no} (${inv.vendor ?? 'vendor'}) deleted with ${inv.items} line${inv.items === 1 ? '' : 's'}`, details: { invoice_no: inv.invoice_no, status: inv.status, total: inv.total, items: inv.items } });
+      return result;
+    }
+
+    private async removeRows(id:number){
       // Wrap multi-step delete in transaction to prevent orphaned data
       return await this.purchaseInvoiceRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
         try {
@@ -513,6 +547,10 @@ export class PurchaseInvoiceService {
       async update(ids:number[], values:any, userid:number){
         if(values?.purchaseorderid){
           await this.assertApprovedPurchaseOrder(+values.purchaseorderid);
+        }
+        if(values?.invoiceno !== undefined && ids.length === 1){
+          const [cur] = await this.manager.query(`select vendor_id from purchase_invoice where id = $1`, [ids[0]]);
+          await this.assertNotDuplicate(+(values.vendorid ?? cur?.vendor_id), values.invoiceno, ids[0]);
         }
         const result = await this.purchaseInvoiceRepository.createQueryBuilder('invoice')
         .update(PurchaseInvoice, {...values, updatedby: userid})

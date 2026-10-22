@@ -8,8 +8,14 @@
                     <span *ngIf="invoice.duedate"> &middot; Due {{invoice.duedate | date:'dd MMM yyyy'}}</span>
                 </div>
             </div>
-            <div class="d-flex gap-2">
-                <span class="badge bg-secondary">{{invoice.status}}</span>
+            <div class="d-flex gap-2 align-items-start">
+                <button *ngIf="invoice.status === 'NEW' && !confirmingDelete" type="button" class="btn btn-outline-danger btn-sm py-0" data-testid="invoice-delete" (click)="confirmingDelete = true; deleteError = ''"><i class="bi bi-trash"></i> Delete draft</button>
+                <span *ngIf="confirmingDelete" class="small" data-testid="invoice-delete-confirm-box">Delete this draft{{items?.length ? ' and its ' + items.length + ' line' + (items.length === 1 ? '' : 's') : ''}}?
+                    <button type="button" class="btn btn-danger btn-sm py-0 ms-1" data-testid="invoice-delete-yes" (click)="deleteDraft()">Delete</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 ms-1" (click)="confirmingDelete = false">Keep</button></span>
+                <a class="btn btn-outline-secondary btn-sm py-0" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-edit">Edit details</a>
+                <a *ngIf="invoice.documentpath" role="button" class="btn btn-outline-secondary btn-sm py-0" (click)="viewDocument()" data-testid="invoice-copy"><i class="bi bi-paperclip"></i> Invoice copy</a>
+                <span class="badge bg-secondary">{{invoice.status === 'NEW' ? 'Draft' : 'Received'}}</span>
                 <span class="badge" [ngClass]="invoice.paymentstatus === 'Paid' ? 'bg-success' : (invoice.paymentstatus === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark')">
                     {{invoice.paymentstatus}}
                 </span>
@@ -23,7 +29,7 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="text-muted">Reference</div>
-                <div class="fw-semibold">{{invoice.referenceno || '-'}} <a [routerLink]="['../../edit',invoice.id]">Edit</a></div>
+                <div class="fw-semibold">{{invoice.referenceno || '-'}}</div>
             </div>
             <div class="col-4 col-md-2">
                 <div class="text-muted">Total</div>
@@ -39,6 +45,15 @@
             </div>
         </div>
 
+        <div class="row g-3 small mt-1" *ngIf="invoice.printedtotal" data-testid="invoice-check">
+            <div class="col-6 col-md-3"><div class="text-muted">Invoice total (printed)</div><div class="fw-semibold">{{invoice.printedtotal | number:'1.2-2'}}</div></div>
+            <div class="col-6 col-md-3"><div class="text-muted">Lines total</div><div class="fw-semibold">{{invoice.total | number:'1.2-2'}}</div></div>
+            <div class="col-12 col-md-6 d-flex align-items-end">
+                <span *ngIf="totalsAgree" class="text-success fw-semibold" data-testid="invoice-check-ok"><i class="bi bi-check-circle"></i> Lines match the invoice total</span>
+                <span *ngIf="!totalsAgree" class="text-danger fw-semibold" data-testid="invoice-check-diff"><i class="bi bi-exclamation-triangle"></i> Lines are {{(printedDiff || 0) > 0 ? 'more' : 'less'}} than the invoice total by &#8377;{{(printedDiff || 0) | number:'1.2-2'}} (a line may be missing or mistyped)</span>
+            </div>
+        </div>
+        <div class="text-danger small mt-2" *ngIf="deleteError" data-testid="invoice-delete-error">{{deleteError}}</div>
         <div class="mt-2 small" *ngIf="invoice.notes">
             <span class="text-muted">Notes:</span> {{invoice.notes}}
         </div>
@@ -46,59 +61,21 @@
 </div>
 
 <div class="card mt-3" data-testid="invoice-gst-card">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-            <div class="fw-semibold">GST Details</div>
-            <button *ngIf="invoice.status === 'NEW' && !editingGst" type="button" class="btn btn-sm btn-outline-secondary" data-testid="invoice-gst-edit" (click)="startEditGst()">Edit</button>
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap align-items-center gap-3 small">
+            <span class="fw-semibold">GST</span>
+            <span>Supplier GSTIN <b data-testid="invoice-gst-gstin-text">{{invoice.suppliergstin || 'not recorded'}}</b></span>
+            <span>Place of supply <b>{{placeText}}</b></span>
+            <span>{{invoice.supplytype === 'INTER' ? 'Inter-state (IGST)' : 'Intra-state (CGST + SGST)'}}</span>
+            <span>ITC: {{itcLabel}}</span>
+            <span class="badge bg-info text-dark" *ngIf="invoice.reversecharge">Reverse charge</span>
+            <a *ngIf="invoice.status === 'NEW'" class="ms-auto" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-gst-edit" title="Change the GST details in the invoice details">Change</a>
         </div>
-
-        <div class="row g-3 small" *ngIf="!editingGst">
-            <div class="col-6 col-md-3"><div class="text-muted">Supplier GSTIN</div><div class="fw-semibold">{{invoice.suppliergstin || '-'}}</div></div>
-            <div class="col-6 col-md-3"><div class="text-muted">Place of Supply</div><div class="fw-semibold">{{invoice.placeofsupply || '-'}}</div></div>
-            <div class="col-6 col-md-2"><div class="text-muted">Supply Type</div><div class="fw-semibold">{{invoice.supplytype || '-'}}</div></div>
-            <div class="col-6 col-md-2"><div class="text-muted">Reverse Charge</div><div class="fw-semibold">{{invoice.reversecharge ? 'Yes' : 'No'}}</div></div>
-            <div class="col-6 col-md-2"><div class="text-muted">ITC Eligibility</div><div class="fw-semibold">{{invoice.itceligibility || '-'}}</div></div>
+        <div *ngIf="!invoice.suppliergstin" class="alert alert-warning py-1 px-2 small mt-2 mb-0" data-testid="invoice-gst-missing">
+            This vendor has no GSTIN recorded, so this invoice cannot be matched in GST reconciliation.
+            <a [routerLink]="['/secure/purchases/vendors/edit', invoice.vendorid]">Add it on the vendor</a>.
         </div>
-
-        <form *ngIf="editingGst" (ngSubmit)="saveGst()">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Supplier GSTIN</label>
-                    <input class="form-control" data-testid="invoice-gst-gstin" [(ngModel)]="gstForm.suppliergstin" name="suppliergstin">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Place of Supply</label>
-                    <input class="form-control" [(ngModel)]="gstForm.placeofsupply" name="placeofsupply" maxlength="2" placeholder="State code">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Supply Type</label>
-                    <select class="form-select" data-testid="invoice-gst-supplytype" [(ngModel)]="gstForm.supplytype" name="supplytype">
-                        <option value="INTRA">Intra-state</option>
-                        <option value="INTER">Inter-state</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">ITC Eligibility</label>
-                    <select class="form-select" [(ngModel)]="gstForm.itceligibility" name="itceligibility">
-                        <option value="INPUTS">Inputs</option>
-                        <option value="CAPITAL_GOODS">Capital Goods</option>
-                        <option value="INELIGIBLE">Ineligible</option>
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="invoice-gst-rc" [(ngModel)]="gstForm.reversecharge" name="reversecharge">
-                        <label class="form-check-label" for="invoice-gst-rc">Reverse Charge</label>
-                    </div>
-                </div>
-                <div class="col-12 text-end">
-                    <button type="button" class="btn btn-outline-secondary btn-sm me-2" (click)="cancelEditGst()">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm" data-testid="invoice-gst-save">Save</button>
-                </div>
-            </div>
-        </form>
-
-        <div class="row g-3 small mt-1 border-top pt-3">
+        <div class="row g-3 small mt-1 border-top pt-2">
             <div class="col-6 col-md-2"><div class="text-muted">Taxable</div><div class="fw-semibold">{{invoice.taxablevalue | number:'1.2-2'}}</div></div>
             <div class="col-6 col-md-2"><div class="text-muted">CGST</div><div class="fw-semibold">{{invoice.cgstamount | number:'1.2-2'}}</div></div>
             <div class="col-6 col-md-2"><div class="text-muted">SGST</div><div class="fw-semibold">{{invoice.sgstamount | number:'1.2-2'}}</div></div>
@@ -112,8 +89,8 @@
     </div>
 </div>
 
-<div *ngIf="invoice.status === 'NEW'">
-    <div class="card mt-3">
+<div>
+    <div class="card mt-3" *ngIf="invoice.status === 'NEW'">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" *ngIf="invoice.purchaseorderid">
                 <div>
@@ -133,7 +110,7 @@
             <p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" styleClass="p-datatable-sm p-datatable-gridlines">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th style="width:2.5em"></th>
+                        <th style="width:2.5em"><input type="checkbox" *ngIf="invoice.status === 'NEW'" [checked]="allSelected" (change)="selectAll($event)" data-testid="invoice-select-all" aria-label="Select all lines"></th>
                         <th style="width:2.5em"></th>
                         <th pSortableColumn="product.title">Product <p-sortIcon field="product.title"></p-sortIcon></th>
                         <th>Batch</th>
@@ -150,7 +127,7 @@
                 <ng-template pTemplate="body" let-i>
                     <tr [class.table-active]="i.selected">
                         <td class="text-center">
-                            <input type="checkbox" *ngIf="i.status === 'NEW'" (change)="selectItem($event,i.id)">
+                            <input type="checkbox" *ngIf="i.status === 'NEW'" [checked]="i.selected" (change)="selectItem($event,i.id)">
                         </td>
                         <td class="text-center">
                             <a *ngIf="i.status === 'NEW'" (click)="showItemEdit(i.id)" title="Edit">
@@ -182,22 +159,22 @@
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage">
-                    <tr><td colspan="12" class="text-center text-muted py-4">No items added yet.</td></tr>
+                    <tr><td colspan="12" class="text-center text-muted py-4" data-testid="invoice-no-items">No items yet.<span *ngIf="invoice.status === 'NEW'"> Add them above, or delete this draft if you do not need it.</span></td></tr>
                 </ng-template>
             </p-table>
 
-            <div class="mt-3" *ngIf="itemSelected">
+            <div class="mt-3" *ngIf="itemSelected && invoice.status === 'NEW'">
                 <button type="button" class="btn btn-primary me-2" (click)="verifyItems()">Verify</button>
                 <button type="button" class="btn btn-outline-danger" (click)="removeItems()">Remove</button>
             </div>
 
-            <div class="row g-3 mt-1 border-top pt-3" *ngIf="allVerified">
+            <div class="row g-3 mt-1 border-top pt-3" *ngIf="allVerified && invoice.status === 'NEW'">
                 <div class="col-md-8">
                     <label for="feedback" class="form-label">Comments</label>
                     <textarea id="feedback" class="form-control" rows="2" [value]="feedback" (change)="updateFeedback($event)"></textarea>
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
-                    <button type="button" class="btn btn-primary" (click)="confirmInvoice()">Complete</button>
+                    <button type="button" class="btn" [ngClass]="totalsAgree ? 'btn-primary' : 'btn-warning'" (click)="confirmInvoice()" data-testid="invoice-complete">{{totalsAgree ? 'Complete' : 'Complete anyway'}}</button>
                 </div>
             </div>
         </div>
