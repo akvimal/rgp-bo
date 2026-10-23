@@ -4,6 +4,8 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { RolesService } from "../../roles/roles.service";
 import { BusinessesService } from "../../businesses/businesses.service";
 import { UsersService } from "../users.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
+import { blankStaffDetails, staffDetailsBody, staffDetailsModel } from "./staff-details-fields.component";
 
 const ADMIN_ROLE_NAMES = ['Site Admin', 'Business Head'];
 
@@ -20,6 +22,20 @@ export class UserEditFormComponent {
   isSiteAdmin = false;
   isBusinessHead = false;
   currentUserBusinessName = '';
+  details:any = blankStaffDetails();
+  detailsError = '';
+
+  /** the registration is for someone who works at a pharmacy store: one of the stores ticked (or, with none ticked, any store of the business) is a pharmacy */
+  get pharmacistApplies():boolean {
+    const chosen = (this.stores || []).filter((s:any) => (this.selectedStoreIds || []).includes(Number(s.id)));
+    const pool = chosen.length ? chosen : (this.stores || []);
+    return !pool.length || pool.some((s:any) => s.storetype !== 'other');
+  }
+
+  get showDetails():boolean {
+    const role = (this.roles || []).find((r:any) => String(r.id) === String(this.form.value.roleid)) || (this.allRoles || []).find((r:any) => String(r.id) === String(this.form.value.roleid));
+    return this.isBusinessHead && !this.auth.moduleOn('hr') && !!role && role.name !== 'Counter' && role.name !== 'Business Head';
+  }
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -36,7 +52,8 @@ export class UserEditFormComponent {
         private roleService:RolesService,
         private businessesService:BusinessesService,
         private router:Router,
-        private route:ActivatedRoute){}
+        private route:ActivatedRoute,
+        private auth:AuthService){}
 
       ngOnInit(){
         const id = this.route.snapshot.paramMap.get('id');
@@ -70,6 +87,12 @@ export class UserEditFormComponent {
             this.service.getStores().subscribe((data:any) => {
               this.stores = (data || []).filter((store:any) => store.business?.id === current?.businessid);
             });
+            if (!this.auth.moduleOn('hr') && id) {
+              this.service.staffDetails().subscribe((r:any) => {
+                const d = (r.people || []).find((p:any) => String(p.user_id) === String(id));
+                if (d) this.details = staffDetailsModel(d);
+              }, () => {});
+            }
           }
         });
       }
@@ -95,7 +118,12 @@ export class UserEditFormComponent {
 
         const id = this.form.value.id;
         this.service.update(id, obj).subscribe(data => {
-          this.gotoList()
+          const body = this.showDetails ? staffDetailsBody(this.details, this.pharmacistApplies) : null;
+          if (!body) { this.gotoList(); return; }
+          this.service.saveStaffDetails(id, body).subscribe(() => this.gotoList(), (err:any) => {
+            const m = err?.error?.message;
+            this.detailsError = 'The user was saved, but the staff details were not: ' + (Array.isArray(m) ? m.join(' ') : (m || 'try again.'));
+          });
         });
 
       }
@@ -130,6 +158,6 @@ export class UserEditFormComponent {
       }
 
       gotoList() {
-        this.router.navigate(['/secure/users/list'],{relativeTo:this.route})
+        this.router.navigate(['/secure/settings/users/list'])
       }
 }

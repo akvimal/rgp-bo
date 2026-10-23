@@ -57,7 +57,7 @@ export class HrStaffComponent implements OnInit {
     this.message = this.error = "";
     this.hr.get(`staff/${r.id}`).subscribe(d => {
       this.detail = d;
-      this.editing = { ...d, work_days: d.work_days || [], work_start: d.work_start || "", work_end: d.work_end || "", join_date: String(d.join_date).slice(0, 10), dob: d.dob ? String(d.dob).slice(0, 10) : "" };
+      this.editing = { ...d, work_days: d.work_days || [], work_start: d.work_start || "", work_end: d.work_end || "", join_date: String(d.join_date).slice(0, 10), pharmacist_valid_to: d.pharmacist_valid_to ? String(d.pharmacist_valid_to).slice(0, 10) : "", dob: d.dob ? String(d.dob).slice(0, 10) : "" };
       this.revising = false;
       this.exitDate = this.hr.today();
       this.loadAccounts();
@@ -103,7 +103,7 @@ export class HrStaffComponent implements OnInit {
     this.message = this.error = "";
     const e = this.editing;
     const body: any = {
-      emp_code: e.emp_code, designation: e.designation, store_id: e.store_id, emp_type: e.emp_type, join_date: e.join_date, weekly_off: e.weekly_off,
+      emp_code: e.emp_code, designation: e.designation, pharmacist_reg_no: e.pharmacist_reg_no || null, pharmacist_council: e.pharmacist_council || null, pharmacist_valid_to: e.pharmacist_valid_to || null, store_id: e.store_id, emp_type: e.emp_type, join_date: e.join_date, weekly_off: e.weekly_off,
       dob: e.dob || null, address: e.address, emergency_name: e.emergency_name, emergency_phone: e.emergency_phone,
       pan: e.pan, aadhaar_last4: e.aadhaar_last4, bank_name: e.bank_name, account_no: e.account_no, ifsc: e.ifsc, notes: e.notes,
     };

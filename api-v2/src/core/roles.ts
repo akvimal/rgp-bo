@@ -24,6 +24,9 @@ export const ASSIGNABLE_BY_BUSINESS_HEAD: string[] = [ROLE.STORE_HEAD, ROLE.SALE
 /** Roles the platform admin may create as a business's first login. */
 export const ASSIGNABLE_BY_SITE_ADMIN: string[] = [ROLE.BUSINESS_HEAD, ROLE.OWNER_OPERATOR];
 
+/** Roles the app itself relies on: they can be edited but not deleted. */
+export const BUILT_IN_ROLES: string[] = [ROLE.BUSINESS_HEAD, ROLE.OWNER_OPERATOR, ROLE.STORE_HEAD, ROLE.SALES_STAFF, ROLE.COUNTER, ROLE.PERSONAL, ROLE.SITE_ADMIN];
+
 export const isOwnerRole = (name: string | null | undefined): boolean => !!name && OWNER_ROLES.includes(name);
 export const isManagerRole = (name: string | null | undefined): boolean => !!name && MANAGER_ROLES.includes(name);
 

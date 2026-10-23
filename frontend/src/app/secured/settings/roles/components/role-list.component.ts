@@ -3,6 +3,7 @@ import { Router } from "@angular/router";
 import { RolesService } from "../roles.service";
 import { PERMISSION_CATALOG } from "../permission-catalog";
 import { ConfirmService } from "src/app/shared/confirm.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
 
 @Component({
     templateUrl: 'role-list.component.html'
@@ -10,8 +11,23 @@ import { ConfirmService } from "src/app/shared/confirm.service";
 export class RoleListComponent {
 
     roles:any;
+    showUnused = false;
+    /** kinds of login that exist for particular ways of running a shop: shown only once someone holds them (or on request) */
+    private readonly situational = ['Owner-operator', 'Counter', 'Personal'];
 
-    constructor(private service:RolesService, private router:Router, private confirm:ConfirmService){}
+    constructor(private service:RolesService, private router:Router, private confirm:ConfirmService, private auth:AuthService){}
+
+    get visibleRoles(): any[] {
+        return (this.roles || []).filter((r:any) => this.showUnused || !this.isUnused(r));
+    }
+
+    get unusedCount(): number {
+        return (this.roles || []).filter((r:any) => this.isUnused(r)).length;
+    }
+
+    private isUnused(r:any): boolean {
+        return this.situational.includes(r.name) && !r.usercount;
+    }
 
     ngOnInit(){
         this.fetchList();
@@ -33,10 +49,11 @@ export class RoleListComponent {
 
     private summarize(permissions:any[]): string[] {
         const skip = new Set(['site', 'settings']);
+        const available = (key:string) => this.auth.resourceAvailable(key);
         const catalogLabels: {[key:string]:string} = {};
         PERMISSION_CATALOG.forEach(r => catalogLabels[r.key] = r.label);
         return (permissions || [])
-            .filter((p:any) => !skip.has(p.resource))
+            .filter((p:any) => !skip.has(p.resource) && available(p.resource))
             .map((p:any) => catalogLabels[p.resource] || p.resource)
             .filter((label:string, i:number, all:string[]) => all.indexOf(label) === i);
     }

@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { Db } from './db';
 import { Entitlements, TenantStatus, documentLimits, effectiveStatus, sign } from './entitlements';
 import { checkGrants, effectiveModules } from './plans';
-import { SLUG, createDemoDatabase, createTenantDatabase, dbNameFor, dropTenantDatabase, randomPassword, randomSecret, resetDemoDatabase } from './provision';
+import { SLUG, createDemoDatabase, createTenantDatabase, dbNameFor, dropTenantDatabase, migrateTenantDatabase, randomPassword, randomSecret, resetDemoDatabase } from './provision';
 import { captureTemplate, templateInfo } from './template';
 
 const FIRST_PORT = Number(process.env.TENANT_FIRST_PORT || 8201);
@@ -224,6 +224,17 @@ export class TenantsService implements OnModuleInit, OnModuleDestroy {
     await dropTenantDatabase(this.adminUrl, slug);
     await this.db.query(`delete from tenant where id = $1`, [t.id]);
     return { deleted: slug, database: dbNameFor(slug) };
+  }
+
+  /** Applies the schema files a customer's database is missing (run before its app is started on a new release). */
+  async migrate(slug: string, baseline?: string) {
+    const t = await this.load(slug);
+    if (t.status === 'closed') throw new ForbiddenException('This tenant is closed.');
+    const u = new URL(this.adminUrl);
+    u.username = t.db_name; u.password = t.db_password; u.pathname = `/${t.db_name}`;
+    const r = await migrateTenantDatabase(u.toString(), this.sqlDir, baseline, (m) => this.log.log(`${slug}: ${m}`));
+    if (r.applied.length) await this.event(t.id, 'schema updated', { applied: r.applied });
+    return r;
   }
 
   // ------------------------------------------------------------------ demos

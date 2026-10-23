@@ -26,6 +26,7 @@ import { NotificationModule } from './modules/app/notifications/notification.mod
 import { AuditModule } from './core/audit/audit.module';
 import { ModulesModule } from './core/modules/modules.service';
 import { PlatformModule } from './core/platform/platform.service';
+import { StaffDetailsModule } from './modules/app/staff-details/staff-details.module';
 import { QualityModule } from './modules/app/quality/quality.module';
 import { ExpenseModule } from './modules/app/expenses/expense.module';
 import { InquiryModule } from './modules/app/inquiries/inquiry.module';
@@ -72,6 +73,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     AuditModule,
     ModulesModule,
     PlatformModule,
+    StaffDetailsModule,
     QualityModule,
     StaffCreditModule,
     HrModule,

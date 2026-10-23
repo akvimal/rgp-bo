@@ -11,11 +11,15 @@ export class AuthService {
   permissions = []
   private readonly permissionsKey = 'permissions';
   private readonly modulesKey = 'modules';
+  private readonly hostedKey = 'hosted';
+  /** this is a customer's copy run by a provider (it has a plan), not a standalone install */
+  hosted = false;
   /** what the business has switched on (hr, purchasing off|simple|full, gst, expenses, ...); everything on until told otherwise */
   modules: any = {};
 
   constructor(private http: HttpClient) {
     try { this.modules = JSON.parse(sessionStorage.getItem(this.modulesKey) || '{}') || {}; } catch { this.modules = {}; }
+    try { this.hosted = sessionStorage.getItem(this.hostedKey) === '1'; } catch { this.hosted = false; }
     const savedPermissions = sessionStorage.getItem(this.permissionsKey);
     if (savedPermissions) {
       try {
@@ -70,6 +74,25 @@ export class AuthService {
   public moduleOn(key:string):boolean{
     const v = this.modules ? this.modules[key] : undefined;
     return v === undefined || v === null ? true : (key === 'purchasing' ? v !== 'off' : !!v);
+  }
+
+  public setHosted(hosted:boolean){
+    this.hosted = !!hosted;
+    try { sessionStorage.setItem(this.hostedKey, this.hosted ? '1' : '0'); } catch { /* storage blocked */ }
+  }
+
+  /** whether a permission group means anything on this account: the plan's modules, and the platform-only ones */
+  public resourceAvailable(key:string):boolean{
+    switch (key) {
+      case 'businesses': return !this.hosted;
+      case 'hr': case 'myhr': case 'leaveapprove': case 'kpirate': case 'mykpi': return this.moduleOn('hr');
+      case 'purchases': case 'vendorissues': return this.moduleOn('purchasing');
+      case 'purchaseorders': return this.purchasingFull;
+      case 'expenses': return this.moduleOn('expenses');
+      case 'paymentrecon': return this.moduleOn('payment_recon');
+      case 'stockaudit': return this.moduleOn('stock_audits');
+      default: return true;
+    }
   }
 
   public get purchasingFull():boolean{

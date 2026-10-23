@@ -25,6 +25,15 @@ export class UsersService {
       return this.http.get(`${this.API_SERVER}/users/${id}`);
   }  
   
+    /** the short staff details (registration, joining date, emergency contact) of the people this user manages */
+    public staffDetails(){
+        return this.http.get<any>(`${this.API_SERVER}/staff-details`);
+    }
+
+    public saveStaffDetails(userId:number, body:any){
+        return this.http.put<any>(`${this.API_SERVER}/staff-details/${userId}`, body);
+    }
+
     public getCurrentUser():Observable <User>{
         return this.http.get<User>(`${this.API_SERVER}/auth/me`);
       }

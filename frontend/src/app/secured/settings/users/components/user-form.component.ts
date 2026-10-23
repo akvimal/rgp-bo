@@ -4,6 +4,8 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { RolesService } from "../../roles/roles.service";
 import { BusinessesService } from "../../businesses/businesses.service";
 import { UsersService } from "../users.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
+import { blankStaffDetails, staffDetailsBody } from "./staff-details-fields.component";
 
 const ADMIN_ROLE_NAMES = ['Site Admin', 'Business Head'];
 
@@ -20,6 +22,23 @@ export class UserFormComponent {
   isSiteAdmin = false;
   isBusinessHead = false;
   currentUserBusinessName = '';
+  /** where HR is off the owner can note a few staff details while adding the person (optional) */
+  details:any = blankStaffDetails();
+  detailsError = '';
+  private createdId:number|null = null;
+
+  /** the registration is for someone who works at a pharmacy store: one of the stores ticked (or, with none ticked, any store of the business) is a pharmacy */
+  get pharmacistApplies():boolean {
+    const chosen = (this.stores || []).filter((s:any) => (this.selectedStoreIds || []).includes(Number(s.id)));
+    const pool = chosen.length ? chosen : (this.stores || []);
+    return !pool.length || pool.some((s:any) => s.storetype !== 'other');
+  }
+
+  get showDetails():boolean {
+    const role = (this.roles || []).find((r:any) => String(r.id) === String(this.form.value.roleid));
+    // shown from the start; only a shared Counter login (not a person) goes without
+    return this.isBusinessHead && !this.auth.moduleOn('hr') && !(role && role.name === 'Counter');
+  }
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -38,7 +57,8 @@ export class UserFormComponent {
         private roleService:RolesService,
         private businessesService:BusinessesService,
         private router:Router,
-        private route:ActivatedRoute){}
+        private route:ActivatedRoute,
+        private auth:AuthService){}
 
       ngOnInit(){
         const id = this.route.snapshot.paramMap.get('id');
@@ -104,12 +124,28 @@ export class UserFormComponent {
         if(id) {
           this.service.update(id, obj).subscribe(data => this.gotoList());
         }
+        else if (this.createdId) {
+          this.saveDetailsThenLeave(this.createdId);
+        }
         else {
-          this.service.save(obj).subscribe(data => this.gotoList());
+          this.service.save(obj).subscribe((data:any) => {
+            this.createdId = data?.id || null;
+            this.saveDetailsThenLeave(this.createdId);
+          });
         }
 
       }
   
+      /** the person exists by now; a problem with the optional details is shown, and Submit tries the details again */
+      private saveDetailsThenLeave(userId:number|null){
+        const body = this.showDetails ? staffDetailsBody(this.details, this.pharmacistApplies) : null;
+        if (!userId || !body) { this.gotoList(); return; }
+        this.service.saveStaffDetails(userId, body).subscribe(() => this.gotoList(), (err:any) => {
+          const m = err?.error?.message;
+          this.detailsError = 'The user was added, but the staff details were not saved: ' + (Array.isArray(m) ? m.join(' ') : (m || 'try again, or add them from the Users list.'));
+        });
+      }
+
       reset(){
         this.form.reset();
         this.selectedStoreIds = [];

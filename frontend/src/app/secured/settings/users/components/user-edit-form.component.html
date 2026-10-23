@@ -54,9 +54,15 @@
           </div>
         </div>
        
+        <div class="col-md-12" *ngIf="showDetails" data-testid="user-e-details">
+          <label class="form-label">Staff details <span class="text-muted small">(kept on the staff record)</span></label>
+          <div class="border rounded p-3"><app-staff-details-fields [model]="details" [pharmacist]="pharmacistApplies"></app-staff-details-fields></div>
+          <div class="alert alert-warning py-2 mt-2 mb-0" *ngIf="detailsError" data-testid="user-e-details-error">{{detailsError}}</div>
+        </div>
+
         <div class="text-center">
-          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
-          <button type="button" (click)="gotoList()" class="btn btn-outline-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
+          <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
         </div>
       </form><!-- End Multi Columns Form -->
 

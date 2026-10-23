@@ -418,3 +418,6 @@
 .inv-grid input[type=number]::-webkit-outer-spin-button, .inv-grid input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .inv-grid input[type=number] { -moz-appearance: textfield; }
 
+
+/* a little room between a tick box and its words (the store lists, the setup wizard, the role editor) */
+.form-check:not(.form-switch) > .form-check-input + .form-check-label { margin-left: .4rem; }

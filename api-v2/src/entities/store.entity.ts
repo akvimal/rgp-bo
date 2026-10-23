@@ -39,6 +39,10 @@ import { UserStore } from "./user-store.entity";
   @Column("character varying", { name: "phone", length: 20, nullable: true })
   phone: string | null;
 
+  /** pharmacy (has a pharmacist; registration is kept for its staff) or other (a warehouse, a general shop) */
+  @Column("character varying", { name: "store_type", length: 10, default: "pharmacy" })
+  storetype: string;
+
   @Column("character varying", { name: "shift_mode", length: 10, default: "time" })
   shiftmode: string;
 

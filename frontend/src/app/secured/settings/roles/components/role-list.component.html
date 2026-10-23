@@ -10,7 +10,7 @@
         </tr>
     </thead>
     <tbody>
-        <tr *ngFor="let p of roles" data-testid="role-row" [attr.data-role-name]="p.name">
+        <tr *ngFor="let p of visibleRoles" data-testid="role-row" [attr.data-role-name]="p.name">
             <td *isAuth="'roles.read$name'">{{p.name}}</td>
             <td *isAuth="'roles.read$permissions'">
                 <span class="badge bg-light text-dark border me-1 mb-1" *ngFor="let label of p.resourceLabels">{{label}}</span>
@@ -19,9 +19,13 @@
             <td>
                 <div class="grid-actions">
                     <a *isAuth="'roles.edit'" [routerLink]="['../edit', p.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
-                    <a *isAuth="'roles.delete'" (click)="delete(p)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
+                    <a *isAuth="'roles.delete'" [hidden]="p.builtin" (click)="delete(p)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
                 </div>
             </td>
         </tr>
     </tbody>
 </table>
+<p class="small text-muted mt-2" *ngIf="unusedCount" data-testid="roles-unused">
+    {{unusedCount}} role{{unusedCount === 1 ? ' is' : 's are'}} for ways of running a shop that nobody uses yet (Owner-operator, Counter, Personal).
+    <a href="javascript:void(0)" (click)="showUnused = !showUnused" data-testid="roles-unused-toggle">{{ showUnused ? 'Hide them' : 'Show them' }}</a>
+</p>

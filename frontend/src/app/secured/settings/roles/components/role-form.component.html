@@ -37,7 +37,7 @@
 
         <hr class="my-4">
 
-        <div *ngFor="let group of groups" class="permission-group mb-4">
+        <div *ngFor="let group of groups" class="permission-group mb-4" [hidden]="!resourcesInGroup(group).length">
           <h6 class="permission-group-title">{{group}}</h6>
 
           <div class="permission-resource" *ngFor="let resource of resourcesInGroup(group)">

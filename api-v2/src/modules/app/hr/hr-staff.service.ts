@@ -79,6 +79,17 @@ export class HrStaffService {
       out.join_date = b.join_date;
     }
     if (b.designation !== undefined) out.designation = clean(b.designation, 60);
+    if (b.pharmacist_reg_no !== undefined) {
+      const n = clean(b.pharmacist_reg_no, 30)?.toUpperCase() ?? null;
+      if (n && !/^[A-Z0-9/.-]{3,30}$/.test(n)) throw new BadRequestException('The registration number can have letters, digits, / . and - only (3 to 30 characters).');
+      out.pharmacist_reg_no = n;
+      if (!n) { out.pharmacist_council = null; out.pharmacist_valid_to = null; }
+    }
+    if (b.pharmacist_council !== undefined && out.pharmacist_reg_no !== null) out.pharmacist_council = clean(b.pharmacist_council, 60);
+    if (b.pharmacist_valid_to !== undefined && out.pharmacist_reg_no !== null) {
+      if (b.pharmacist_valid_to && !DATE.test(b.pharmacist_valid_to)) throw new BadRequestException('The registration end date is not a valid date.');
+      out.pharmacist_valid_to = b.pharmacist_valid_to || null;
+    }
     if (b.store_id !== undefined) out.store_id = b.store_id ? Number(b.store_id) : null;
     if (b.emp_type !== undefined) {
       if (!['FULL_TIME', 'PART_TIME'].includes(b.emp_type)) throw new BadRequestException('Type must be full time or part time.');

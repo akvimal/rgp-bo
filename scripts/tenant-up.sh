@@ -21,6 +21,9 @@ if [[ "$ACTION" == "up" ]]; then
             -d "{\"password\":\"$CONTROL_PLANE_ADMIN_PASSWORD\"}" | sed -E 's/.*"token":"([^"]+)".*/\1/')"
   curl -fsS "$CP/tenants/$NAME/env" -H "authorization: Bearer $TOKEN" > "$ENVFILE"
   chmod 600 "$ENVFILE" 2>/dev/null || true
+  # a new release may need schema changes: apply the files this customer has not had before its app starts
+  MIG="$(curl -sS -X POST "$CP/tenants/$NAME/migrate" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d "${MIGRATE_BASELINE:+{\"baseline\":\"$MIGRATE_BASELINE\"\}}")"
+  case "$MIG" in *'"applied"'*) echo "schema: $(echo "$MIG" | sed -E 's/.*"applied":\[([^]]*)\].*//')" ;; *) echo "schema update failed: $MIG" >&2; exit 1 ;; esac
   docker compose -p "rgp-$NAME" -f "$ROOT/docker-compose.tenant.yml" --env-file "$ENVFILE" up -d --build
   PORT="$(grep '^TENANT_PORT=' "$ENVFILE" | cut -d= -f2)"
   echo "== $NAME is starting: http://localhost:$PORT =="

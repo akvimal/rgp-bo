@@ -3,6 +3,7 @@ import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { RolesService } from "../roles.service";
 import { PERMISSION_CATALOG, PERMISSION_GROUPS, PermissionResource } from "../permission-catalog";
+import { AuthService } from "src/app/@core/auth/auth.service";
 
 interface ResourceSelection {
   enabled: boolean;
@@ -41,7 +42,7 @@ export class RoleFormComponent {
       });
 
       constructor(private service:RolesService, private router:Router,
-        private route:ActivatedRoute){
+        private route:ActivatedRoute, private auth:AuthService){
           this.resetSelection();
         }
 
@@ -76,8 +77,9 @@ export class RoleFormComponent {
         return options;
       }
 
+      /** only what means something on this account (a module the plan leaves out is not offered; a role's saved settings for it are kept as they are) */
       resourcesInGroup(group: string): PermissionResource[] {
-        return this.catalog.filter(r => r.group === group);
+        return this.catalog.filter(r => r.group === group && this.auth.resourceAvailable(r.key));
       }
 
       toggleResource(resource: PermissionResource, checked: boolean){

@@ -58,5 +58,5 @@ Plans live in the `plan` table (edit on the admin screen): stores, logins, price
 - Payments and invoices to customers (flip the status by hand for now).
 - Billing on scans (they are counted and limited now; charging for them is not built).
 - Subdomain routing and TLS.
-- Upgrades: a new app version means rebuilding the images and re-running `tenant-up.sh` for each customer; new migrations must be applied to existing customer databases (the control plane only applies migrations when it creates a database).
+- Upgrades are partly handled: `scripts/tenant-up.sh <name>` first asks the control plane to apply the schema files the customer's database has not had (`POST /tenants/<name>/migrate`; applied files are recorded in the customer's `schema_migration` table), then rebuilds and starts the app. A customer built before that record existed needs one call with its baseline, for example `{"baseline":"081"}` (081 and later are missing). Still manual: rebuilding the shared images once per release and re-running `tenant-up.sh` for each customer, and a rollback path if a migration fails halfway (each file runs in its own transaction, so a failure leaves the customer on the previous schema).
 - Backups per customer database (the existing backup service is for the single-database deployment).

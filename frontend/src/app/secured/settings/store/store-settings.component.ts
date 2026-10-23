@@ -35,6 +35,7 @@ export class StoreSettingsComponent implements OnInit {
     id: null,
     businessid: '',
     location: '',
+    storetype: 'pharmacy',
     depositthreshold: 0,
     isActive: true
   };
@@ -158,13 +159,14 @@ export class StoreSettingsComponent implements OnInit {
     const payload = {
       businessid: this.storeForm.businessid || null,
       location: this.storeForm.location,
+      storetype: this.storeForm.storetype || 'pharmacy',
       depositthreshold: Number(this.storeForm.depositthreshold || 0),
       isActive: this.storeForm.isActive !== false
     };
     const req = this.storeForm.id ? this.cashService.updateStore(this.storeForm.id, payload) : this.cashService.createStore(payload);
     req.subscribe(() => {
       this.savingStore = false;
-      this.storeForm = { id: null, businessid: '', location: '', depositthreshold: 0, isActive: true };
+      this.storeForm = { id: null, businessid: '', location: '', storetype: 'pharmacy', depositthreshold: 0, isActive: true };
       this.refreshStoreList();
     }, err => {
       this.savingStore = false;
@@ -177,6 +179,7 @@ export class StoreSettingsComponent implements OnInit {
       id: row.id,
       businessid: row.business?.id || '',
       location: row.location,
+      storetype: row.storetype || 'pharmacy',
       depositthreshold: row.depositthreshold,
       isActive: row.isActive !== false
     };

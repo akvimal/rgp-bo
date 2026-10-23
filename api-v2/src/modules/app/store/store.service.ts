@@ -11,7 +11,7 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { denominationTotal, normalizeDenominations } from "./denominations";
-import { findAccountableUser, loadStoreProfile, parseProfileInput } from "./store-profile";
+import { findAccountableUser, loadStoreProfile, parseProfileInput, parseStoreType } from "./store-profile";
 import { CLOSING_CHECKLIST_KEYS, HANDOVER_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
 
 import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
@@ -209,6 +209,7 @@ export class StoreService {
     }
     const payload = {
       location: body.location,
+      storetype: parseStoreType(body.storetype) ?? "pharmacy",
       depositthreshold: body.depositthreshold === null || body.depositthreshold === undefined || body.depositthreshold === ""
         ? 0
         : Number(body.depositthreshold),
@@ -228,8 +229,10 @@ export class StoreService {
     if (!current) {
       throw new Error("Store not found");
     }
+    const type = parseStoreType(body.storetype);   // only when sent: the cash-policy screen saves a store without it
     const values = {
       location: body.location,
+      ...(type ? { storetype: type } : {}),
       depositthreshold: body.depositthreshold === null || body.depositthreshold === undefined || body.depositthreshold === ""
         ? 0
         : Number(body.depositthreshold),
@@ -291,6 +294,7 @@ export class StoreService {
     await this.platform.assertRoom("stores");
     const payload = {
       location: body.location,
+      storetype: parseStoreType(body.storetype) ?? "pharmacy",
       depositthreshold: body.depositthreshold === null || body.depositthreshold === undefined || body.depositthreshold === ""
         ? 0
         : Number(body.depositthreshold),

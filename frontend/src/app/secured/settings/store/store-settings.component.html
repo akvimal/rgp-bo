@@ -41,16 +41,23 @@
         <div class="small text-muted">Create, edit, or archive store locations from admin.</div>
       </div>
       <div class="row g-2">
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-4">
           <label class="form-label">Business</label>
           <select class="form-select" data-testid="store-s-business" [(ngModel)]="storeForm.businessid">
             <option value="">Choose business</option>
             <option *ngFor="let business of businesses" [ngValue]="business.id">{{business.name}}</option>
           </select>
         </div>
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-4">
           <label class="form-label">Location</label>
           <input class="form-control" data-testid="store-s-location" [(ngModel)]="storeForm.location" placeholder="e.g. Main Store">
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label">Type</label>
+          <select class="form-select" data-testid="store-s-type" [(ngModel)]="storeForm.storetype">
+            <option value="pharmacy">Pharmacy</option>
+            <option value="other">Other</option>
+          </select>
         </div>
         <div class="col-6 col-md-2">
           <label class="form-label">Deposit Threshold</label>
@@ -75,6 +82,7 @@
             <tr>
               <th>Location</th>
               <th>Business</th>
+              <th>Type</th>
               <th class="text-end">Threshold</th>
               <th>Status</th>
               <th>Licence</th>
@@ -85,6 +93,7 @@
             <tr *ngFor="let store of stores" data-testid="store-s-row" [attr.data-store-id]="store.id">
               <td>{{store.location}}</td>
               <td>{{store.business?.name || '-'}}</td>
+              <td data-testid="store-row-type">{{store.storetype === 'other' ? 'Other' : 'Pharmacy'}}</td>
               <td class="text-end">{{store.depositthreshold | number:'1.2-2'}}</td>
               <td>
                 <span class="badge bg-success" *ngIf="store.isActive && !store.isArchived">Active</span>
@@ -97,7 +106,7 @@
               </td>
             </tr>
             <tr *ngIf="!stores?.length">
-              <td colspan="6" class="text-center text-muted py-3">No stores yet.</td>
+              <td colspan="7" class="text-center text-muted py-3">No stores yet.</td>
             </tr>
           </tbody>
         </table>

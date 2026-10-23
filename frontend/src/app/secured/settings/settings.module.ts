@@ -26,6 +26,7 @@ import { StoreSettingsComponent } from "./store/store-settings.component";
 import { BusinessesComponent } from "./businesses/businesses.component";
 import { BusinessProfileComponent } from "./business-profile/business-profile.component";
 import { ShopSetupComponent } from "./shop-setup/shop-setup.component";
+import { StaffDetailsFieldsComponent } from "./users/components/staff-details-fields.component";
 import { NotificationsComponent } from "./notifications/notifications.component";
 
 const routes: Routes = [
@@ -73,6 +74,7 @@ const routes: Routes = [
       BusinessesComponent,
       BusinessProfileComponent,
       ShopSetupComponent,
+      StaffDetailsFieldsComponent,
       NotificationsComponent
     ],
     imports: [

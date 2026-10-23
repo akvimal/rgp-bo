@@ -40,6 +40,7 @@ export class ApiController {
   @UseGuards(AdminGuard) @Post('tenants') provision(@Body() b: any) { return this.tenants.provision(b); }
   @UseGuards(AdminGuard) @Get('tenants/:slug') get(@Param('slug') slug: string) { return this.tenants.get(slug); }
   @UseGuards(AdminGuard) @Put('tenants/:slug') update(@Param('slug') slug: string, @Body() b: any) { return this.tenants.update(slug, b); }
+  @UseGuards(AdminGuard) @Post('tenants/:slug/migrate') migrate(@Param('slug') slug: string, @Body() b: any) { return this.tenants.migrate(slug, b?.baseline); }
   @UseGuards(AdminGuard) @Post('tenants/:slug/reset') reset(@Param('slug') slug: string) { return this.tenants.resetDemo(slug); }
   @UseGuards(AdminGuard) @Post('tenants/:slug/extend') extend(@Param('slug') slug: string, @Body() b: any) { return this.tenants.extend(slug, b?.days); }
   @UseGuards(AdminGuard) @Get('demo-template') template() { return this.tenants.templateStatus(); }

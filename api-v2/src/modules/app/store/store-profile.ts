@@ -20,6 +20,13 @@ export interface StoreProfile {
   approvalmode: ApprovalMode;
 }
 
+/** a store is a pharmacy or something else; anything else sent is refused, nothing sent means no change */
+export function parseStoreType(v: any): 'pharmacy' | 'other' | null {
+  if (v === undefined || v === null || v === '') return null;
+  if (v !== 'pharmacy' && v !== 'other') throw new BadRequestException('Store type must be pharmacy or other.');
+  return v;
+}
+
 const SHIFT_MODES = ['time', 'staff'];
 const TILLS = ['shared', 'per_person'];
 const ACCOUNTABLE = ['auto', 'store_head', 'business_head'];

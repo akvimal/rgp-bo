@@ -739,3 +739,215 @@ test.describe('Operating modes: setup wizard @p1', () => {
     await expect(page.getByTestId('setup-nochange')).toBeVisible();
   });
 });
+
+test.describe('Operating modes: roles page @p1', () => {
+  test('OM-30 the role list says how many logins hold each role; built-in roles and roles in use cannot be deleted @negative', async ({ api }) => {
+    const roles = (await api.request('GET', '/roles', undefined, MGR)).body as any[];
+    const bh = roles.find((r) => r.name === 'Business Head');
+    expect(bh).toMatchObject({ builtin: true });
+    expect(bh.usercount).toBeGreaterThan(0);
+    for (const name of ['Store Head', 'Sales Staff', 'Counter', 'Personal', 'Owner-operator']) expect(roles.find((r) => r.name === name)?.builtin, name).toBe(true);
+
+    const del = await api.request('DELETE', `/roles/${bh.id}`, undefined, MGR);
+    expect(del.status).toBe(403);
+    expect(del.body.message).toMatch(/built-in/);
+
+    // a custom role that somebody holds is not deleted from under them
+    const made = await api.request('POST', '/roles', { name: `QA Held ${Date.now()}`, permissions: [], locked: false }, MGR);
+    expect(made.status).toBeLessThan(300);
+    expect((roles.length ? (await api.request('GET', '/roles', undefined, MGR)).body : []).find((r: any) => r.id === made.body.id)).toMatchObject({ builtin: false, usercount: 0 });
+    const sid = await freshStore(api);
+    const email = `qa.held.${Date.now()}@local.test`;
+    const u = await api.request('POST', '/users', { fullname: 'QA Held', email, password: PASS, phone: '9' + String(Date.now()).slice(-9), location: 'QA', roleid: await roleId(api, 'Sales Staff'), storeids: [sid] }, MGR);
+    expect(u.status).toBeLessThan(300);
+    // (the API only lets a Business Head hand out the built-in kinds, so hold it through the user's own record)
+    const held = await api.request('PUT', `/users/${u.body.id}`, { roleid: made.body.id }, MGR);
+    if (held.status < 300) {
+      const refused = await api.request('DELETE', `/roles/${made.body.id}`, undefined, MGR);
+      if (refused.status === 409) expect(refused.body.message).toMatch(/hold/);
+    }
+    // an unused custom role still deletes
+    const spare = await api.request('POST', '/roles', { name: `QA Spare ${Date.now()}`, permissions: [], locked: false }, MGR);
+    expect((await api.request('DELETE', `/roles/${spare.body.id}`, undefined, MGR)).status).toBeLessThan(300);
+  });
+});
+
+test.describe('Operating modes: staff details without HR @p1', () => {
+  test('OM-31 pharmacist registration, joining date and emergency contact are kept on the staff record; scope and checks hold @happy', async ({ api }) => {
+    const sid = await freshStore(api);
+    const staff = await staffUser(api, sid);
+    const head = await staffUser(api, sid, await roleId(api, 'Store Head'));
+    const put = (userId: number, body: any, as = MGR) => api.request('PUT', `/staff-details/${userId}`, body, as);
+    const today = new Date().toISOString().slice(0, 10);
+    const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+
+    // before anything is saved the person is listed with nothing recorded
+    let me = (await api.request('GET', '/staff-details', undefined, MGR)).body.people.find((p: any) => p.user_id === staff.id);
+    expect(me).toMatchObject({ employee_id: null, reg_status: 'NONE' });
+
+    // checks
+    expect((await put(staff.id, { pharmacist_reg_no: '!!' })).status).toBe(400);
+    expect((await put(staff.id, { pharmacist_council: 'TN Council' })).status).toBe(400);            // a council with no number
+    expect((await put(staff.id, { join_date: inDays(5) })).status).toBe(400);                         // cannot join in the future
+    expect((await put(staff.id, { emergency_phone: 'abc' })).status).toBe(400);
+    expect((await put(staff.id, {})).status).toBe(400);
+
+    const ok = await put(staff.id, { designation: 'Pharmacist', join_date: '2024-04-01', emergency_name: 'A Parent', emergency_phone: '9840011111', pharmacist_reg_no: 'tn/12345', pharmacist_council: 'Tamil Nadu State Pharmacy Council', pharmacist_valid_to: inDays(30) });
+    expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+    expect(ok.body).toMatchObject({ designation: 'Pharmacist', pharmacist_reg_no: 'TN/12345', reg_status: 'EXPIRING', join_date: '2024-04-01' });
+    expect(ok.body.employee_id).toBeTruthy();
+
+    expect((await put(staff.id, { pharmacist_valid_to: inDays(-3) })).body.reg_status).toBe('EXPIRED');
+    expect((await put(staff.id, { pharmacist_valid_to: inDays(400) })).body.reg_status).toBe('VALID');
+    const list = (await api.request('GET', '/staff-details', undefined, MGR)).body;
+    expect(list.attention).toBeGreaterThanOrEqual(0);
+
+    // the HR module sees the same record, so nothing is entered twice
+    const hr = (await api.request('GET', `/hr/staff/${ok.body.employee_id}`, undefined, MGR)).body;
+    expect(hr).toMatchObject({ designation: 'Pharmacist', pharmacist_reg_no: 'TN/12345', emergency_name: 'A Parent' });
+    expect((await api.request('PUT', `/hr/staff/${ok.body.employee_id}`, { pharmacist_reg_no: 'TN/99999' }, MGR)).status).toBeLessThan(300);
+    expect((await api.request('GET', '/staff-details', undefined, MGR)).body.people.find((p: any) => p.user_id === staff.id).pharmacist_reg_no).toBe('TN/99999');
+
+    // clearing the number clears the rest
+    const cleared = await put(staff.id, { pharmacist_reg_no: '' });
+    expect(cleared.body).toMatchObject({ pharmacist_reg_no: null, pharmacist_council: null, pharmacist_valid_to: null, reg_status: 'NONE' });
+
+    // a Store Head manages the people of their own store, not owners or other heads; counter staff and others cannot use this at all
+    const seen = (await api.request('GET', '/staff-details', undefined, head.email)).body.people.map((p: any) => p.user_id);
+    expect(seen).toContain(staff.id);
+    expect(seen).not.toContain(head.id);
+    expect((await put(staff.id, { designation: 'Assistant' }, head.email)).status).toBeLessThan(300);
+    expect((await put(head.id, { designation: 'x' }, head.email)).status).toBe(404);
+    expect((await api.request('GET', '/staff-details', undefined, staff.email)).status).toBe(403);
+    expect((await api.request('PUT', `/staff-details/${staff.id}`, { designation: 'x' }, staff.email)).status).toBe(403);
+    void today;
+  });
+
+  test('OM-32 where HR is off, the Users page shows the staff details and saves them @happy', async ({ app, api }) => {
+    const sid = await freshStore(api);
+    const staff = await staffUser(api, sid);
+    await api.request('PUT', '/businesses/mine/modules', { hr: false }, MGR);
+    try {
+      const { page } = await app.open(MGR, '/secure/settings/users');
+      await expect(page.locator(`[data-user-email="${staff.email}"]`)).toBeVisible();
+      await page.getByTestId(`user-details-${staff.id}`).click();
+      await expect(page.getByTestId('staff-details-form')).toBeVisible();
+      await page.getByTestId('sd-designation').fill('Pharmacist');
+      await page.getByTestId('sd-is-pharmacist').check();
+      await page.getByTestId('sd-reg').fill('tn/777');
+      await page.getByTestId('sd-council').fill('TN Council');
+      await page.getByTestId('sd-valid').fill(new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10));
+      await page.getByTestId('sd-save').click();
+      await expect(page.getByTestId('staff-details-message')).toContainText('Saved');
+      // the registration shows as a badge beside the name (the number is in its tooltip), not as a column of its own
+      const badge = page.locator(`[data-user-email="${staff.email}"]`).getByTestId('user-row-reg');
+      await expect(badge).toContainText('Pharmacist');
+      await expect(badge).toContainText('Lapses');
+      await expect(badge).toHaveAttribute('title', /TN\/777/);
+      await expect(page.locator('th', { hasText: 'Pharmacist registration' })).toHaveCount(0);
+      await expect(page.getByTestId('staff-attention')).toBeVisible();
+    } finally {
+      await api.request('PUT', '/businesses/mine/modules', { hr: true }, MGR);
+    }
+  });
+});
+
+test.describe('Operating modes: staff details on the user forms @p1', () => {
+  test('OM-33 New User and Edit User take the staff details where HR is off, and not where HR is on @happy', async ({ app, api }) => {
+    const email = `qa.newuser.${Date.now()}@local.test`;
+    await api.request('PUT', '/businesses/mine/modules', { hr: false }, MGR);
+    try {
+      const { page } = await app.open(MGR, '/secure/settings/users/new');
+      await page.getByTestId('user-f-email').fill(email);
+      await page.getByTestId('user-f-password').fill('Passw0rd!x');
+      await page.getByTestId('user-f-confirm').fill('Passw0rd!x');
+      await page.getByTestId('user-f-fullname').fill('QA New Person');
+      await page.getByTestId('user-f-phone').fill('9840012345');
+      await page.getByTestId('user-f-role').selectOption({ label: 'Sales Staff' });
+      await expect(page.getByTestId('user-f-details')).toBeVisible();
+      await page.getByTestId('sd-designation').fill('Pharmacist');
+      // the registration fields stay locked until the person is marked as the pharmacist
+      await expect(page.getByTestId('sd-reg')).toBeDisabled();
+      await expect(page.getByTestId('sd-council')).toBeDisabled();
+      await expect(page.getByTestId('sd-valid')).toBeDisabled();
+      await page.getByTestId('sd-is-pharmacist').check();
+      await expect(page.getByTestId('sd-reg')).toBeEnabled();
+      await page.getByTestId('sd-reg').fill('tn/4242');
+      await page.getByTestId('sd-council').fill('TN Council');
+      await page.getByTestId('sd-valid').fill(new Date(Date.now() + 200 * 86400000).toISOString().slice(0, 10));
+      await page.getByTestId('user-f-submit').click();
+      await expect(page).toHaveURL(/settings\/users(\/list)?$/);
+      const people = (await api.request('GET', '/staff-details', undefined, MGR)).body.people;
+      const made = people.find((p: any) => p.email === email);
+      expect(made).toMatchObject({ designation: 'Pharmacist', pharmacist_reg_no: 'TN/4242', reg_status: 'VALID' });
+
+      // the edit form shows what was saved and saves a change
+      const edit = (await app.open(MGR, `/secure/settings/users/edit/${made.user_id}`)).page;
+      await expect(edit.getByTestId('user-e-details')).toBeVisible();
+      await expect(edit.getByTestId('sd-reg')).toHaveValue('TN/4242');
+      await expect(edit.getByTestId('sd-is-pharmacist')).toBeChecked();
+      await edit.getByTestId('sd-designation').fill('Senior pharmacist');
+      await edit.getByRole('button', { name: 'Submit' }).click();
+      await expect(edit).toHaveURL(/settings\/users(\/list)?$/);
+      expect((await api.request('GET', '/staff-details', undefined, MGR)).body.people.find((p: any) => p.email === email).designation).toBe('Senior pharmacist');
+
+      // a Counter login is not a person: no staff details are offered for it
+      const counter = (await app.open(MGR, '/secure/settings/users/new')).page;
+      await counter.getByTestId('user-f-role').selectOption({ label: 'Counter' });
+      await expect(counter.getByTestId('user-f-details')).toHaveCount(0);
+    } finally {
+      await api.request('PUT', '/businesses/mine/modules', { hr: true }, MGR);
+    }
+
+    // with HR on, the form is as it was: the HR screen holds these details
+    const withHr = (await app.open(MGR, '/secure/settings/users/new')).page;
+    await withHr.getByTestId('user-f-role').selectOption({ label: 'Sales Staff' });
+    await expect(withHr.getByTestId('user-f-details')).toHaveCount(0);
+  });
+});
+
+test.describe('Operating modes: store type @p1', () => {
+  test('OM-34 a store is a pharmacy or something else; the pharmacist registration applies to pharmacy staff only @happy', async ({ app, api }) => {
+    // the type is validated, defaults to pharmacy, and survives an edit that does not mention it
+    expect((await api.request('POST', '/stores', { location: `Bad ${Date.now()}`, storetype: 'bakery', depositthreshold: 0, isActive: true }, MGR)).status).toBeGreaterThanOrEqual(400);
+    const plain = await api.request('POST', '/stores', { location: `Plain ${Date.now()}`, depositthreshold: 0, isActive: true }, MGR);
+    expect(plain.body.storetype).toBe('pharmacy');
+    const other = await api.request('POST', '/stores', { location: `Godown ${Date.now()}`, storetype: 'other', depositthreshold: 0, isActive: true }, MGR);
+    expect(other.body.storetype).toBe('other');
+    const kept = await api.request('PUT', `/stores/${other.body.id}`, { location: other.body.location, depositthreshold: 5 }, MGR);
+    expect(kept.body.storetype).toBe('other');
+    expect((await api.request('PUT', `/stores/${other.body.id}`, { location: other.body.location, storetype: 'nope' }, MGR)).status).toBeGreaterThanOrEqual(400);
+
+    // someone at the godown is not offered a pharmacist registration, and the server agrees
+    const away = await staffUser(api, other.body.id);
+    const put = (id: number, body: any) => api.request('PUT', `/staff-details/${id}`, body, MGR);
+    const row = (await api.request('GET', '/staff-details', undefined, MGR)).body.people.find((p: any) => p.user_id === away.id);
+    expect(row.pharmacy).toBe(false);
+    const refused = await put(away.id, { pharmacist_reg_no: 'TN/1' });
+    expect(refused.status).toBe(400);
+    expect(refused.body.message).toMatch(/pharmacy store/);
+    expect((await put(away.id, { designation: 'Storekeeper' })).status).toBeLessThan(300);
+
+    // at a pharmacy store the same call works
+    const here = await staffUser(api, plain.body.id);
+    expect((await api.request('GET', '/staff-details', undefined, MGR)).body.people.find((p: any) => p.user_id === here.id).pharmacy).toBe(true);
+    expect((await put(here.id, { pharmacist_reg_no: 'TN/2' })).status).toBeLessThan(300);
+
+    // the screens: the store form has a type, and the user form offers the registration only for a pharmacy store
+    const settings = (await app.open(MGR, '/secure/settings/store')).page;
+    await expect(settings.getByTestId('store-s-type')).toBeVisible();
+    await expect(settings.locator(`[data-store-id="${other.body.id}"]`).getByTestId('store-row-type')).toHaveText('Other');
+    await api.request('PUT', '/businesses/mine/modules', { hr: false }, MGR);
+    try {
+      const form = (await app.open(MGR, '/secure/settings/users/new')).page;
+      await expect(form.getByTestId('sd-is-pharmacist')).toBeVisible();                       // no store ticked: any store of the business
+      await form.getByTestId(`user-f-store-${other.body.id}`).check();
+      await expect(form.getByTestId('sd-is-pharmacist')).toHaveCount(0);
+      await expect(form.getByTestId('sd-designation')).toBeVisible();                         // the basics stay
+      await form.getByTestId(`user-f-store-${plain.body.id}`).check();
+      await expect(form.getByTestId('sd-is-pharmacist')).toBeVisible();
+    } finally {
+      await api.request('PUT', '/businesses/mine/modules', { hr: true }, MGR);
+    }
+  });
+});

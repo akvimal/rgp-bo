@@ -26,6 +26,55 @@ export function schemaFiles(sqlDir: string): string[] {
   return [...ddl, ...migrations];
 }
 
+const baseName = (f: string) => f.split(/[\\/]/).slice(-1)[0];
+
+/** A record in the customer's own database of which schema files it has had, so a new release can add only what is missing. */
+async function recordMigrations(t: Client, files: string[]): Promise<void> {
+  await t.query(`create table if not exists schema_migration (file text primary key, applied_on timestamptz not null default now())`);
+  for (const f of files) await t.query(`insert into schema_migration (file) values ($1) on conflict do nothing`, [baseName(f)]);
+}
+
+/**
+ * Brings a customer's database up to the schema files in the repository: applies the ones it has not had, in order, each in its
+ * own transaction, and records them. A customer built before this record existed has none: say which file number it was
+ * built from with `baselineBefore` (for example "081" means 081 and later are missing) and everything before it is recorded as applied.
+ */
+export async function migrateTenantDatabase(roleUrl: string, sqlDir: string, baselineBefore?: string, log: (m: string) => void = () => undefined): Promise<{ applied: string[]; recorded: number }> {
+  const files = schemaFiles(sqlDir);
+  const t = new Client({ connectionString: roleUrl });
+  await t.connect();
+  try {
+    await t.query(`create table if not exists schema_migration (file text primary key, applied_on timestamptz not null default now())`);
+    const [{ n }] = (await t.query(`select count(*)::int as n from schema_migration`)).rows;
+    if (n === 0) {
+      if (!baselineBefore || !/^\d{3}$/.test(baselineBefore)) {
+        throw new BadRequestException('This customer has no record of its schema files. Say which migration number it was built before, for example {"baseline":"081"}.');
+      }
+      for (const f of files) if (baseName(f).slice(0, 3) < baselineBefore) await t.query(`insert into schema_migration (file) values ($1) on conflict do nothing`, [baseName(f)]);
+    }
+    const have = new Set((await t.query(`select file from schema_migration`)).rows.map((r: any) => r.file));
+    const applied: string[] = [];
+    for (const f of files) {
+      const name = baseName(f);
+      if (have.has(name)) continue;
+      log(`applying ${name}`);
+      await t.query('begin');
+      try {
+        await t.query(readFileSync(f, 'utf8'));
+        await t.query(`insert into schema_migration (file) values ($1)`, [name]);
+        await t.query('commit');
+      } catch (e: any) {
+        await t.query('rollback').catch(() => undefined);
+        throw new Error(`${name}: ${e.message}`);
+      }
+      applied.push(name);
+    }
+    return { applied, recorded: have.size };
+  } finally {
+    await t.end();
+  }
+}
+
 const RESYNC = `
 DO $$
 DECLARE r RECORD; mx BIGINT; seq TEXT;
@@ -86,6 +135,7 @@ export async function createTenantDatabase(adminUrl: string, sqlDir: string, p: 
         catch (e: any) { throw new Error(`${f.split(/[\\/]/).slice(-1)[0]}: ${e.message}`); }
       }
       await t.query(RESYNC);
+      await recordMigrations(t, files);
 
       const [biz] = (await t.query(`insert into business (name, active, archive) values ($1, true, false) returning id`, [p.name.slice(0, 40)])).rows;
       await t.query(`insert into stores (location, business_id, deposit_threshold) values ('Main Store', $1, 0)`, [biz.id]);

@@ -3,7 +3,7 @@
       <h5 class="card-title">New User</h5>
       <!-- Multi Columns Form -->
       <form [formGroup]="form" (ngSubmit)="onSave()">
-        <div class="row">
+        <div class="row g-3">
           <div class="col-md-3" *isAuth="'users.add$email'">
             <label for="email" class="form-label">Email</label>
             <input type="text" class="form-control" id="email" data-testid="user-f-email" formControlName="email">
@@ -17,7 +17,7 @@
             <input type="password" class="form-control" id="confirmpassword" data-testid="user-f-confirm" formControlName="confirmpassword">
           </div>
         </div>
-        <div class="row mt-3">
+        <div class="row g-3 mt-0">
           <div class="col-md-3" *isAuth="'users.add$fullname'">
             <label for="fullname" class="form-label">Full Name</label>
             <input type="text" class="form-control" id="fullname" data-testid="user-f-fullname" formControlName="fullname">
@@ -31,10 +31,11 @@
             <input type="text" class="form-control" id="location" data-testid="user-f-location" formControlName="location">
           </div>
           </div>
-          <div class="row mt-3">
+        <div class="row g-3 mt-0">
           <div class="col-md-3" *isAuth="'users.add$role'">
             <label for="role" class="form-label">Role</label>
             <select class="form-control" id="role" data-testid="user-f-role" formControlName="roleid">
+              <option value="" disabled>Choose role</option>
               <option *ngFor="let r of roles" [value]="r.id">{{r.name}}</option>
             </select>
           </div>
@@ -67,6 +68,12 @@
             </div>
           </div>
         
+          <div class="col-12" *ngIf="showDetails" data-testid="user-f-details">
+            <label class="form-label">Staff details <span class="text-muted small">(optional; kept on the staff record)</span></label>
+            <div class="border rounded p-3"><app-staff-details-fields [model]="details" [pharmacist]="pharmacistApplies"></app-staff-details-fields></div>
+            <div class="alert alert-warning py-2 mt-2 mb-0" *ngIf="detailsError" data-testid="user-f-details-error">{{detailsError}}</div>
+          </div>
+
           <div class="text-center">
             <button type="submit" class="btn btn-primary m-2" data-testid="user-f-submit" [disabled]="!form.valid">Submit</button>
             <button type="button" *ngIf="!form.get('id')?.value" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
