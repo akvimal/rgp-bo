@@ -4,7 +4,7 @@ import { filter } from "rxjs/operators";
 import { SettingService } from "../settings.service";
 
 const TITLES: { [segment: string]: string } = {
-    'users': 'Users', 'roles': 'Roles', 'store': 'Store settings', 'notifications': 'Notifications',
+    'users': 'Users', 'alerts': 'Alerts', 'roles': 'Roles', 'store': 'Store settings', 'notifications': 'Notifications',
     'business-profile': 'Business details', 'businesses': 'Businesses', 'delivery-partners': 'Delivery partners',
 };
 

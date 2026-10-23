@@ -33,6 +33,8 @@
       <nav class="header-nav ms-auto">
         <ul class="d-flex align-items-center">
 
+          <li app2-notification-bell class="nav-item dropdown pe-2" data-testid="header-bell"></li>
+
           <li class="nav-item pe-3" *ngIf="platformChip as chip" data-testid="platform-banner">
             <span class="badge rounded-pill" [ngClass]="chip.cls" [attr.title]="chip.title">{{chip.text}}</span>
           </li>
@@ -270,6 +272,11 @@
             <li *isAuth="'notifications.manage'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/notifications" data-testid="nav-settings-notifications">
                 <i class="bi bi-circle"></i><span>Notifications</span>
+              </a>
+            </li>
+            <li *isAuth="'alerts.manage'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/alerts" data-testid="nav-settings-alerts">
+                <i class="bi bi-circle"></i><span>Alerts</span>
               </a>
             </li>
             <li *isAuth="'storesettings'">

@@ -1,0 +1,116 @@
+<div class="card mt-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+      <h5 class="card-title m-0 p-0">Alerts</h5>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="checkNow()" data-testid="al-check-now">Check now</button>
+        <button class="btn btn-sm btn-primary" type="button" (click)="newRule()" [disabled]="!kinds.length" data-testid="al-new">New alert</button>
+      </div>
+    </div>
+    <div class="small text-muted mb-3">What the shop is told about, who is told, and how loudly. Alerts appear under the bell and clear themselves once the cause is fixed.</div>
+
+    <div class="alert alert-success py-2" *ngIf="message" data-testid="al-message">{{message}}</div>
+    <div class="alert alert-danger py-2" *ngIf="error" data-testid="al-error">{{error}}</div>
+
+    <!-- say it in a sentence -->
+    <div class="border rounded p-3 mb-3" *ngIf="assistant" data-testid="al-assistant">
+      <label class="form-label fw-semibold mb-1" for="al-instruction">Describe an alert</label>
+      <div class="input-group">
+        <input class="form-control" id="al-instruction" maxlength="500" [(ngModel)]="instruction" (keyup.enter)="askAssistant()"
+               placeholder="e.g. Tell the store heads when a shift stays open more than 12 hours. / கடைகளில் உரிமம் முடிய 45 நாட்கள் இருக்கும் போது சொல்லுங்கள்" data-testid="al-instruction">
+        <button class="btn btn-outline-primary" type="button" (click)="askAssistant()" [disabled]="drafting || instruction.trim().length < 5" data-testid="al-draft">{{ drafting ? 'Thinking...' : 'Draft it' }}</button>
+      </div>
+      <div class="form-text">The assistant only drafts. Nothing is saved until you look it over and save it.</div>
+      <div class="text-danger small mt-2" *ngIf="draftError" data-testid="al-draft-error">{{draftError}}</div>
+      <div class="mt-3 border-top pt-3" *ngIf="draft" data-testid="al-draft-result">
+        <div class="fw-semibold">{{draft.draft.name}} <span class="badge bg-info text-dark ms-1">draft</span></div>
+        <div class="small">{{draft.draft.explanation}}</div>
+        <div class="small text-muted mt-1">Watches: {{kind(draft.draft.kind)?.label}} &middot; Severity: {{draft.draft.severity}} &middot; Tells: {{who({recipients: draft.draft.recipients})}}</div>
+        <div class="small mt-1">It would raise {{draft.preview.count}} alert{{draft.preview.count === 1 ? '' : 's'}} right now.</div>
+        <div class="mt-2 d-flex gap-2">
+          <button class="btn btn-sm btn-primary" type="button" (click)="useDraft()" data-testid="al-draft-use">Review and save</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="draft = null">Discard</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- the form -->
+    <div class="border rounded p-3 mb-3" *ngIf="form" data-testid="al-form">
+      <h6 class="mb-3">{{ form.id ? 'Change alert' : 'New alert' }} <span class="badge bg-info text-dark ms-1" *ngIf="form.fromassistant">drafted by the assistant</span></h6>
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <label class="form-label">Watch for</label>
+          <select class="form-select" [(ngModel)]="form.kind" (change)="pickKind()" [disabled]="!!form.id" data-testid="al-kind">
+            <option *ngFor="let k of kinds" [value]="k.kind">{{k.label}}</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-5">
+          <label class="form-label">Name</label>
+          <input class="form-control" maxlength="120" [(ngModel)]="form.name" data-testid="al-name">
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">How loud</label>
+          <select class="form-select" [(ngModel)]="form.severity" data-testid="al-severity">
+            <option value="info">Information</option>
+            <option value="warning">Warning</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="col-12 small text-muted" *ngIf="kind(form.kind)">{{kind(form.kind).description}}</div>
+        <div class="col-6 col-md-3" *ngFor="let p of kind(form.kind)?.params">
+          <label class="form-label">{{p.label}}</label>
+          <input type="number" class="form-control" [min]="p.min" [max]="p.max" [(ngModel)]="form.params[p.key]" [attr.data-testid]="'al-param-' + p.key">
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label">Which store</label>
+          <select class="form-select" [(ngModel)]="form.storeid" data-testid="al-store">
+            <option value="">All stores</option>
+            <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-5">
+          <label class="form-label d-block">Who is told</label>
+          <div class="form-check form-check-inline" *ngFor="let r of roleKeys">
+            <input class="form-check-input" type="checkbox" [id]="'al-role-' + r" [(ngModel)]="form.roles[r]" [attr.data-testid]="'al-role-' + r">
+            <label class="form-check-label" [for]="'al-role-' + r">{{roleLabels[r]}}</label>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
+        <button class="btn btn-primary" type="button" (click)="save()" [disabled]="saving || !form.name" data-testid="al-save">{{ saving ? 'Saving...' : 'Save' }}</button>
+        <button class="btn btn-outline-secondary" type="button" (click)="doPreview()" [disabled]="previewing" data-testid="al-preview">See what it would raise now</button>
+        <button class="btn btn-link" type="button" (click)="cancel()">Cancel</button>
+      </div>
+      <div class="mt-3" *ngIf="preview" data-testid="al-preview-result">
+        <div class="small fw-semibold">It would raise {{preview.count}} alert{{preview.count === 1 ? '' : 's'}} right now{{ preview.count > preview.items.length ? ' (showing ' + preview.items.length + ')' : '' }}.</div>
+        <ul class="small mb-0 ps-3"><li *ngFor="let i of preview.items">{{i.title}}</li></ul>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="text-muted">Loading...</div>
+    <div class="table-responsive" *ngIf="!loading">
+      <table class="table table-sm align-middle" data-testid="al-table">
+        <thead><tr><th>Alert</th><th>Watches</th><th>Settings</th><th>Store</th><th>Told</th><th>Open now</th><th>On</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of rules" data-testid="al-row" [attr.data-kind]="r.kind" [class.text-muted]="!r.active">
+            <td>{{r.name}}
+              <span class="badge bg-light text-dark border ms-1" *ngIf="r.source === 'system'">built in</span>
+              <span class="badge bg-info text-dark ms-1" *ngIf="r.source === 'agent'" [attr.title]="r.instruction">assistant</span>
+            </td>
+            <td>{{r.kindlabel}}</td>
+            <td>{{summary(r)}}</td>
+            <td>{{r.store || 'All'}}</td>
+            <td>{{who(r)}}</td>
+            <td>{{r.open}}</td>
+            <td><input class="form-check-input" type="checkbox" [checked]="r.active" (change)="toggle(r)" [attr.aria-label]="'Switch ' + r.name + ' on or off'" data-testid="al-toggle"></td>
+            <td class="text-end text-nowrap">
+              <button class="btn btn-sm btn-outline-secondary" type="button" (click)="edit(r)" data-testid="al-edit">Edit</button>
+              <button class="btn btn-sm btn-outline-danger ms-1" type="button" *ngIf="r.source !== 'system'" (click)="remove(r)" data-testid="al-remove">Remove</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="small text-muted">Alerts show in the app. Telegram delivery for these is planned; the daily digest under Notifications is separate.</div>
+  </div>
+</div>

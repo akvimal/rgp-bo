@@ -144,6 +144,8 @@ export class AuthService {
   }
 
   public isUrlAuthorized(url:string):boolean{
+    // everyone signed in has their own notifications; what shows in them is decided by the server
+    if (url === '/secure/notifications') return true;
     const found = this.permissions.find((p:any) => {
       if(p.path instanceof Array)
         return p.path.some((i:string) => this.matchesPath(url, i));

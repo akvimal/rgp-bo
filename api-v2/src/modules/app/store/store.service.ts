@@ -288,6 +288,19 @@ export class StoreService {
       .andWhere("store.business_id = :b", { b: user?.businessid ?? -1 })
       .orderBy("store.id", "ASC").getMany();
     const mine = isOwnerRole(user?.role?.name) || !assigned.length ? stores : stores.filter((s) => assigned.some((a: any) => a.storeid === s.id));
+    return this.depositStatusOf(mine);
+  }
+
+  /** the deposit position of every active store of a business (the alert engine's view; no person's scope applied) */
+  async depositStatusesForBusiness(businessId: number) {
+    const stores = await this.storeRepository.createQueryBuilder("store")
+      .where("store.active = true and store.archive = false")
+      .andWhere("store.business_id = :b", { b: businessId })
+      .orderBy("store.id", "ASC").getMany();
+    return this.depositStatusOf(stores);
+  }
+
+  private async depositStatusOf(mine: Store[]) {
     const rows = await this.manager.query(
       `select store_id, coalesce(sum(deposit), 0)::float - coalesce(sum(withdraw), 0)::float as balance,
               to_char(max(trans_date) filter (where category = 'BANK_DEPOSIT'), 'YYYY-MM-DD') as last_deposit

@@ -15,6 +15,8 @@ import { DashboardComponent } from "./dashboard.component";
 import { DocumentsModule } from "./documents/documents.module";
 import { ProductsModule } from "./products/products.module";
 import { ProfileComponent } from "./profile.component";
+import { NotificationBellComponent } from "./alerts/notification-bell.component";
+import { NotificationsPageComponent } from "./alerts/notifications-page.component";
 import { PurchasesModule } from "./purchases/purchases.module";
 import { SalesModule } from "./sales/sales.module";
 import { SecuredComponent } from "./secured.component";
@@ -23,6 +25,7 @@ const routes: Routes = [
   { path: '', component: SecuredComponent, children: [
     { path: 'dashboard', canActivate:[AuthGuard], component: DashboardComponent },
     { path: 'profile', canActivate:[AuthGuard], component: ProfileComponent },
+    { path: 'notifications', canActivate:[AuthGuard], component: NotificationsPageComponent },
     {
       path: 'products', canActivate:[AuthGuard],
       loadChildren: () => import('./products/products.module').then(m => m.ProductsModule)
@@ -105,7 +108,9 @@ const routes: Routes = [
     declarations: [
       SecuredComponent,
       DashboardComponent,
-      ProfileComponent
+      ProfileComponent,
+      NotificationBellComponent,
+      NotificationsPageComponent
     ],
     imports: [
         RouterModule.forChild(routes),

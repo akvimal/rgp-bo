@@ -126,6 +126,19 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'alerts',
+    label: 'Alerts',
+    description: 'Set up which alerts the shop gets (deposits, licences, shifts, approvals), who sees them and how loudly.',
+    group: 'Administration',
+    path: '/secure/settings/alerts',
+    settingsPath: true,
+    bundle: true,
+    bundleLabel: 'Can manage alerts',
+    actions: [
+      { key: 'manage', label: 'Manage' },
+    ],
+  },
+  {
     key: 'grievances',
     label: 'Grievances',
     description: 'Log and follow up customer complaints: assign, resolve within the due date, keep a timeline.',
