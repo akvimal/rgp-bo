@@ -45,7 +45,7 @@ export class PurchaseOrderViewComponent {
 
     fetchAvailRequests(){
         this.reqService.findAllByCriteria({status:'Reviewed'}).subscribe((data:any) => {
-            this.availrequests = data;
+            this.availrequests = (data || []).filter((r:any) => !!r.product);        // one still waiting for a product cannot be ordered
         });
     }
 

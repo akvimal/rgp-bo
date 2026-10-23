@@ -66,10 +66,17 @@ export class CreatePurchaseRequestDto {
     @Min(0)
     readonly fulfilledqty: number;
 
-    @ApiProperty({ description: 'product id', example: 0 })
+    @ApiProperty({ description: 'product id (leave out for a product that is not in the list, and give requestedname)', example: 0 })
+    @IsOptional()
     @IsNumber()
     @IsPositive()
     readonly productid: number;
+
+    @ApiProperty({ description: 'the name of a product that is not in the product list', example: 'Revital H capsules' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    readonly requestedname: string;
 
     @ApiProperty({ description: 'order id', example: 0 })
     @IsOptional()

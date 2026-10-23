@@ -31,13 +31,14 @@ import { PurchaseSuggestionComponent } from "./requests/components/purchase-sugg
 import { PurchaseOrdersHomeComponent } from "./requests/components/purchase-orders-home.component";
 import { GstReconciliationComponent } from "./gst/components/gst-reconciliation.component";
 import { PurchaseHomeComponent } from "./purchases-home.component";
+import { PurchaseLandingComponent } from "./purchase-landing.component";
 import { PurchaseSettingsComponent } from "./purchase-settings.component";
 
 const routes: Routes = [
   { path: '', component: PurchaseHomeComponent, canActivate:[AuthGuard],
     children: [
-      { path: '', redirectTo: 'invoices'},
-      { path: 'orders', component: PurchaseOrdersHomeComponent, data: { tab: 'reorder' },
+      { path: '', pathMatch: 'full', component: PurchaseLandingComponent },
+      { path: 'orders', component: PurchaseOrdersHomeComponent, data: { tab: 'requests' },
           children: [
             { path: ':id', component: PurchaseOrderViewComponent }
           ]
@@ -69,6 +70,7 @@ const routes: Routes = [
 @NgModule({
     declarations: [
       PurchaseHomeComponent,
+      PurchaseLandingComponent,
       PurchaseHeaderComponent,
       PurchaseOrdersHomeComponent,
       PurchaseOrderComponent,

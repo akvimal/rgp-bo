@@ -11,6 +11,8 @@ import { Setting } from "src/entities/setting.entity";
 import { Vendor } from "src/entities/vendor.entity";
 import { approvalModeFor } from "src/core/approval-mode";
 
+const UNLISTED_NOT_ORDERABLE = 'This request is for a product that is not in the product list yet. Link it to a product (or create the product) before it is ordered.';
+
 @Injectable()
 export class PurchaseService {
 
@@ -28,7 +30,7 @@ export class PurchaseService {
 
     async findAllRequests(query: { status?: string; source?: string; priority?: string; vendorid?: number | string }, ownerId?: number) {
         const qb = this.requestRepository.createQueryBuilder('req')
-        .innerJoinAndSelect("req.product", "product")
+        .leftJoinAndSelect("req.product", "product")
         .leftJoinAndSelect("req.vendor", "vendor")
         .leftJoinAndSelect("req.po", "po")
         .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
@@ -71,7 +73,7 @@ export class PurchaseService {
             whereclause += ' and req.vendorid = :vendorid'
         }
         const rows = await this.requestRepository.createQueryBuilder('req')
-        .innerJoinAndSelect("req.product", "product")
+        .leftJoinAndSelect("req.product", "product")
         .leftJoinAndSelect("req.vendor", "vendor")
         .leftJoinAndSelect("req.po", "po")
         .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
@@ -176,7 +178,7 @@ export class PurchaseService {
         if (requestOnly) {
             const d: any = dto;
             dto = {
-                productid: d.productid, qty: d.qty, source: d.source, requesttype: d.requesttype, priority: d.priority,
+                productid: d.productid, requestedname: d.requestedname, qty: d.qty, source: d.source, requesttype: d.requesttype, priority: d.priority,
                 neededby: d.neededby, customername: d.customername, customerphone: d.customerphone,
                 sourceref: d.sourceref, comments: d.comments,
             } as any;
@@ -189,8 +191,17 @@ export class PurchaseService {
             const text = `${value}`.trim();
             return text === '' ? undefined : text;
         };
+        // a product from the list, or the name of one that is not in it yet (purchasing links it before it can be ordered)
+        const requestedname = dto.productid ? undefined : normalize(dto.requestedname);
+        if(!dto.productid && !requestedname){
+            throw new BadRequestException('Choose the product, or type its name if it is not in the product list.');
+        }
+        if(!dto.productid && (dto.orderid || ['Ordered', 'Received'].includes(dto.status))){
+            throw new BadRequestException(UNLISTED_NOT_ORDERABLE);
+        }
         const request:any = {
             ...dto,
+            requestedname,
             productid: dto.productid ? +dto.productid : undefined,
             vendorid: dto.vendorid ? +dto.vendorid : undefined,
             qty: dto.qty ? +dto.qty : 0,
@@ -226,7 +237,7 @@ export class PurchaseService {
 
     async findRequestById(id:number, ownerId?: number){
           const qb = this.requestRepository.createQueryBuilder('req')
-          .innerJoinAndSelect("req.product", "product")
+          .leftJoinAndSelect("req.product", "product")
           .leftJoinAndSelect("req.vendor", "vendor")
           .leftJoinAndSelect("req.po", "po")
           .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
@@ -237,6 +248,17 @@ export class PurchaseService {
     }
     
     async updateRequest(id: number | string, values: Partial<PurchaseRequest>, userid: number) {
+        const v: any = values;
+        if(v.orderid || ['Ordered', 'Received'].includes(v.status)){
+            // a request for a product that is not in the list cannot be ordered until it is linked to one
+            const row = await this.requestRepository.findOne({ where: { id: +id } });
+            if(row && !row.productid && !v.productid){
+                throw new BadRequestException(UNLISTED_NOT_ORDERABLE);
+            }
+        }
+        if(v.requestedname !== undefined){
+            v.requestedname = `${v.requestedname || ''}`.trim() || null;
+        }
         return this.requestRepository.update(id, {...values, updatedby:userid});
     }
     async removeOrder(id: number | string, userid: number) {

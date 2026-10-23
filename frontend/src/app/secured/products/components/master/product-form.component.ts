@@ -5,6 +5,7 @@ import { ProductsService } from "../../products.service";
 import { MessageService } from 'primeng/api';
 import { PropsService } from "src/app/shared/props.service";
 import { Observable } from "rxjs";
+import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 
 @Component({
     templateUrl: 'product-form.component.html'
@@ -35,12 +36,14 @@ export class ProductFormComponent {
       pack:string = '';
 
       isNew:boolean = false;
+      fromRequest:number = 0;
       
       constructor(private propsService:PropsService, 
         private service:ProductsService, 
         private messageService: MessageService,
         private router:Router,
-        private route:ActivatedRoute){
+        private route:ActivatedRoute,
+        private requestService:PurchaseIntentService){
           this.productProps$ = this.propsService.productProps$;
         }
 
@@ -50,6 +53,13 @@ export class ProductFormComponent {
         // (this.isNew || this.form.controls['category'].value === '') && this.form.controls['category'].enable()
 
         // this.populateProps(this.form.controls['category'].value,undefined);
+        // made from a purchase request for a product that was not in the list: the name comes over, and saving links the request
+        const q = this.route.snapshot.queryParamMap;
+        if(this.isNew && q.get('title')){
+          this.form.controls['title'].setValue(q.get('title'));
+          this.fromRequest = q.get('request') ? +(q.get('request') as string) : 0;
+        }
+
         const id = this.route.snapshot.paramMap.get('id'); 
 
         id && this.service.findById(id).subscribe((data:any) => {
@@ -167,6 +177,13 @@ export class ProductFormComponent {
               this.messageService.add({ severity: 'error', summary: 'Error', detail: data.message });
             else {            
               this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Saved Suucessfully' });
+              if(this.fromRequest && data?.id){
+                this.requestService.update(this.fromRequest, { productid: +data.id }).subscribe({
+                  next: () => this.router.navigate(['/secure/purchases/requests']),
+                  error: (err) => this.messageService.add({ severity: 'error', summary: 'Product saved, request not linked', detail: err?.error?.message || 'Link it from the requests list.' })
+                });
+                return;
+              }
               this.gotoList();
             }
           });

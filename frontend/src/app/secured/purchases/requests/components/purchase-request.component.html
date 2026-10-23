@@ -20,7 +20,13 @@
       </ng-template>
       <ng-template pTemplate="body" let-request>
         <tr>
-          <td>{{request.product?.title}}</td>
+          <td>
+            <span *ngIf="request.product">{{request.product.title}}</span>
+            <ng-container *ngIf="!request.product">
+              {{request.requestedname}}
+              <span class="badge bg-warning text-dark ms-1" title="Not in the product list yet: link it to a product before it is ordered" data-testid="req-unlisted">Not in product list</span>
+            </ng-container>
+          </td>
           <td *isAuth="'purchases.add'">{{request.vendor?.name || '-'}}</td>
           <td>{{request.source}}</td>
           <td>{{request.requesttype}}</td>
@@ -31,6 +37,7 @@
           <td>{{request.customername || '-'}}</td>
           <td class="text-center" *isAuth="'purchases.add'">
             <div class="grid-actions">
+              <a *ngIf="!request.product" (click)="openLink(request)" title="Link to a product" data-testid="req-link"><i class="bi bi-link-45deg text-warning"></i></a>
               <a (click)="edit(request)" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
               <a *ngIf="request.status === 'Open'" (click)="markReviewed(request)" title="Mark reviewed"><i class="bi bi-check2 text-success"></i></a>
               <a (click)="remove(request)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
@@ -50,11 +57,16 @@
       </div>
       <div class="col-md-12">
         <label class="form-label">Product <span class="text-danger">*</span></label>
-        <div *ngIf="selectedProduct" class="mb-2 text-muted">{{selectedProduct.title}}</div>
-        <app-product-select [reset]="productReset" (selected)="onProductSelect($event)"></app-product-select>
-        <div class="text-danger small mt-1" *ngIf="form.controls['productid'].touched && form.controls['productid'].invalid">
-          Product is required.
-        </div>
+        <ng-container *ngIf="!typed">
+          <div *ngIf="selectedProduct" class="mb-2 fw-semibold" data-testid="req-product-name">{{selectedProduct.title}}</div>
+          <app-product-select [reset]="productReset" (selected)="onProductSelect($event)"></app-product-select>
+          <a role="button" class="small d-inline-block mt-1" *ngIf="!selectedProduct" (click)="useTyped()" data-testid="req-type-name"><i class="bi bi-pencil me-1"></i>Not in the product list? Type its name instead</a>
+        </ng-container>
+        <ng-container *ngIf="typed">
+          <input class="form-control" type="text" maxlength="200" formControlName="requestedname" placeholder="Name, brand and strength" data-testid="req-requestedname">
+          <div class="form-text">Not in the product list yet. It can be linked to a product later; it cannot be ordered until then.</div>
+          <a role="button" class="small d-inline-block mt-1" (click)="useList()" data-testid="req-search-list"><i class="bi bi-search me-1"></i>Search the product list instead</a>
+        </ng-container>
       </div>
       <div class="col-md-4">
         <label class="form-label">Qty <span class="text-danger">*</span></label>
@@ -101,29 +113,42 @@
         <label class="form-label">Needed By</label>
         <input class="form-control" type="date" formControlName="neededby">
       </div>
-      <div class="col-md-6">
-        <label class="form-label">Customer Name</label>
-        <input class="form-control" type="text" formControlName="customername">
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Customer Phone</label>
-        <input class="form-control" type="text" formControlName="customerphone">
-      </div>
+      <ng-container *ngIf="fromCustomer">
+        <div class="col-md-6">
+          <label class="form-label">Customer Name</label>
+          <input class="form-control" type="text" formControlName="customername" data-testid="req-cname">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Customer Phone</label>
+          <input class="form-control" type="text" formControlName="customerphone" data-testid="req-cphone">
+        </div>
+      </ng-container>
       <div class="col-md-12">
         <label class="form-label">Source Reference</label>
         <input class="form-control" type="text" formControlName="sourceref">
       </div>
-      <div class="col-md-6">
-        <label class="form-label">Comments</label>
-        <textarea class="form-control" rows="2" formControlName="comments"></textarea>
-      </div>
-      <div class="col-md-6" *isAuth="'purchases.add'">
+      <div class="col-md-12">
         <label class="form-label">Notes</label>
-        <textarea class="form-control" rows="2" formControlName="notes"></textarea>
+        <textarea class="form-control" rows="2" formControlName="comments" placeholder="Brand, strength, anything the buyer should know" data-testid="req-notes"></textarea>
       </div>
       <div class="col-12 text-center">
         <button class="btn btn-primary" type="submit" [disabled]="!form.valid">Save Request</button>
       </div>
     </div>
   </form>
+</p-dialog>
+
+<p-dialog header="Link to a product" [visible]="!!linking" (visibleChange)="closeLink()" [modal]="true" [style]="{width: '36rem'}" [draggable]="false">
+  <div *ngIf="linking" data-testid="req-link-dialog">
+    <p class="mb-2">Asked for as <strong>{{linking.requestedname}}</strong> ({{linking.qty}}<span *ngIf="linking.customername"> for {{linking.customername}}</span>).</p>
+    <div class="alert alert-danger py-2" *ngIf="linkError">{{linkError}}</div>
+    <label class="form-label">The product in our list</label>
+    <app-product-select [reset]="linkReset" [initial]="linking.requestedname" [autoSearch]="true" (selected)="linkProduct = $event"></app-product-select>
+    <div class="mt-2 fw-semibold" *ngIf="linkProduct" data-testid="req-link-chosen">{{linkProduct.title}}</div>
+  </div>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-outline-secondary" (click)="closeLink()">Cancel</button>
+    <button type="button" class="btn btn-outline-primary ms-2" (click)="createProduct(linking)" data-testid="req-create-product">Not there: create the product</button>
+    <button type="button" class="btn btn-primary ms-2" (click)="saveLink()" data-testid="req-link-save">Link</button>
+  </ng-template>
 </p-dialog>

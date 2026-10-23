@@ -243,6 +243,12 @@ export class PurchaseInvoiceService {
           continue;
         }
 
+        // a request still waiting to be linked to a product has nothing to import
+        if(!request.productid){
+          skipped++;
+          continue;
+        }
+
         const product = request.product;
         const defaults = latestDefaults.get(request.productid) || {};
         const qty = +(request.orderedqty || request.qty || 0);

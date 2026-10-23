@@ -21,8 +21,13 @@ export class PurchaseRequest extends BaseEntity {
   @PrimaryGeneratedColumn({ type: "integer", name: "id" })
   id: number;
   
-  @Column("integer", { name: "product_id" })
-  productid: number;
+  /** empty while the request is for a product that is not in the product list yet (see requestedname) */
+  @Column("integer", { name: "product_id", nullable: true })
+  productid: number | null;
+
+  /** what was typed for a product not in the list; purchasing links it to a product before it can be ordered */
+  @Column("character varying", { name: "requested_name", nullable: true, length: 200 })
+  requestedname: string | null;
 
   @Column("integer", { name: "order_id" })
   orderid: number;
