@@ -67,6 +67,10 @@ const stores = await call('GET', '/stores', undefined, owner);
 const storeId = stores[0].id;
 console.log(`store ${storeId}`);
 
+// ---- a drug licence ending in 25 days and cash due at the bank every day, so a new demo has alerts to show under the bell
+await call('PUT', `/stores/${storeId}/licenses`, { licenses: [{ licensetype: 'RETAIL_20_21', number: 'TN-DEMO-2041', validfrom: day(340), validto: day(-25) }] }, owner);
+await call('PUT', `/stores/${storeId}`, { location: String(stores[0].location).trim(), depositthreshold: 50000, depositschedule: 'daily' }, owner);
+
 // ---- staff
 const roles = await call('GET', '/roles', undefined, owner);
 const roleId = (n) => roles.find((r) => r.name === n)?.id;
