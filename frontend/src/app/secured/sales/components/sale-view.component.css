@@ -1,0 +1,56 @@
+/* The customer's bill. One layout for the screen and for the printed page; sizes are fixed so the print does not depend on the app's. */
+.bill { font-size: 12px; line-height: 1.45; color: #1f2937; max-width: 210mm; margin: 0 auto; }
+.bill strong { font-weight: 700; }
+.bill-sub { font-size: 11px; color: #6b7280; font-style: italic; }
+.bill-label { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7280; margin-right: .35rem; }
+
+/* who it is from, and which bill this is */
+.bill-head { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start; padding-bottom: 10px; border-bottom: 2px solid #012970; }
+.bill-logo { width: 68px; height: 68px; object-fit: contain; }
+.bill-from h1 { font-size: 18px; font-weight: 800; color: #012970; margin: 0 0 2px; }
+.bill-from h1 small { font-size: 12px; font-weight: 600; color: #6b7280; }
+.bill-ident { text-align: right; }
+.bill-kind { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #012970; border: 1.5px solid #012970; border-radius: 3px; padding: 1px 8px; margin-bottom: 6px; }
+.bill-meta { display: grid; grid-template-columns: auto auto; gap: 1px 12px; margin: 0; text-align: left; }
+.bill-meta dt { font-weight: 600; color: #6b7280; }
+.bill-meta dd { margin: 0; text-align: right; font-weight: 700; }
+
+/* who it is for, and how it was paid */
+.bill-party { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid #d1d5db; }
+.bill-paidvia { text-align: right; }
+
+/* the lines: product on the left, every number on the right with the same width in every row */
+.bill-items { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
+.bill-items th { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #374151; background: #f3f4f6; padding: 5px 6px; border-bottom: 1px solid #9ca3af; text-align: left; }
+.bill-items td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+.bill-items .c-no { width: 28px; text-align: right; color: #6b7280; }
+.bill-items .c-batch { width: 112px; white-space: nowrap; }
+.bill-items .c-num { text-align: right; width: 64px; font-variant-numeric: tabular-nums; }
+.bill-items td.c-num:last-child, .bill-items th.c-num:last-child { width: 82px; font-weight: 700; }
+.bill-items th.c-num { text-align: right; }
+.bill-product { font-weight: 600; }
+
+/* the sum: notes on the left, the totals as a small right-aligned table */
+.bill-summary { display: grid; grid-template-columns: 1fr auto; gap: 18px; margin-top: 10px; align-items: start; }
+.bill-notes > div { margin-bottom: 4px; }
+.bill-totals { min-width: 250px; border-collapse: collapse; }
+.bill-totals td { padding: 2px 0; }
+.bill-totals td:last-child { text-align: right; padding-left: 24px; font-variant-numeric: tabular-nums; }
+.bill-totals .bill-net td { font-size: 15px; font-weight: 800; color: #012970; border-top: 1.5px solid #012970; padding-top: 5px; }
+.bill-totals .bill-saved td { text-align: right; color: #166534; font-weight: 700; padding-top: 4px; }
+
+/* the tax, by rate */
+.bill-gst { margin-top: 12px; border-collapse: collapse; width: 60%; font-size: 11px; }
+.bill-gst th { text-align: left; font-weight: 700; color: #374151; padding: 3px 6px; border-bottom: 1px solid #9ca3af; }
+.bill-gst th.c-num, .bill-gst td.c-num { text-align: right; font-variant-numeric: tabular-nums; }
+.bill-gst td { padding: 3px 6px; border-bottom: 1px solid #e5e7eb; }
+
+.bill-foot { margin-top: 16px; padding-top: 8px; border-top: 1px solid #d1d5db; font-size: 11px; color: #4b5563; text-align: center; }
+.bill-thanks { font-weight: 700; color: #012970; margin: 3px 0; }
+
+@media print {
+    .bill-card { border: 0; box-shadow: none; }
+    .bill { font-size: 11px; max-width: none; }
+    .bill-items th, .bill-items td { padding: 3px 5px; }
+    .bill-head, .bill-items tr, .bill-summary, .bill-gst { break-inside: avoid; }
+}

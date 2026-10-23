@@ -67,6 +67,11 @@ export class SaleService {
         return this.http.get(`${this.apiurl}/${id}`);
     }
 
+    /** who the printed bill is from: the business and store details, and the store's licence numbers */
+    billHeader(id:any){
+        return this.http.get(`${this.apiurl}/${id}/bill`);
+    }
+
     refreshSavedSales(){
         this.http.get(`${this.apiurl}/saved`).subscribe((data:any) => {
             this.saved.next(data);
