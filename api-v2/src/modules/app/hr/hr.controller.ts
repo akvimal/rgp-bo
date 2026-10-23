@@ -44,6 +44,8 @@ export class HrController {
   @Put('staff/:id') update(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.update(id, b, u); }
   @Post('staff/:id/exit') exit(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.exit(id, b, u); }
   @Post('staff/:id/login') linkLogin(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.linkLogin(id, b, u); }
+  @Get('staff/:id/accounts') accounts(@Param('id', ParseIntPipe) id: number) { return this.staff.accounts(id); }
+  @Put('staff/:id/accounts') saveAccounts(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.saveAccounts(id, b, u); }
   @Post('staff/:id/rejoin') rejoin(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.rejoin(id, u); }
   @Post('staff/:id/revisions') addRevision(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.addRevision(id, b, u); }
   @Delete('revisions/:id') deleteRevision(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.deleteRevision(id, u); }

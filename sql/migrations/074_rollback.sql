@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS public.uq_store_shifts_open_person;
+ALTER TABLE public.store_shifts DROP COLUMN IF EXISTS accountable_user_id;
+ALTER TABLE public.stores DROP CONSTRAINT IF EXISTS stores_operator_hold_chk;
+ALTER TABLE public.stores DROP CONSTRAINT IF EXISTS stores_accountable_role_chk;
+ALTER TABLE public.stores DROP CONSTRAINT IF EXISTS stores_till_chk;
+ALTER TABLE public.stores DROP CONSTRAINT IF EXISTS stores_shift_mode_chk;
+ALTER TABLE public.stores DROP COLUMN IF EXISTS operator_hold_minutes;
+ALTER TABLE public.stores DROP COLUMN IF EXISTS operator_required;
+ALTER TABLE public.stores DROP COLUMN IF EXISTS accountable_role;
+ALTER TABLE public.stores DROP COLUMN IF EXISTS till;
+ALTER TABLE public.stores DROP COLUMN IF EXISTS shift_mode;

@@ -1,8 +1,10 @@
+import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
+import { isOwnerRole } from 'src/core/roles';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MODES = ['CASH', 'BANK', 'UPI', 'CARD', 'CHEQUE'];
@@ -10,7 +12,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const text = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
 const iso = (d: any) => (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
 
-type Ctx = { id: number; role: string; stores: number[]; limit: number };
+type Ctx = { id: number; role: string; stores: number[]; limit: number; self: (storeId: number | null) => boolean };
 
 /**
  * The expense ledger. Business Head: raises anything, approved on the spot, approves everything. Store Head: raises for
@@ -24,7 +26,12 @@ export class ExpenseService {
   private async ctx(user: any): Promise<Ctx> {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
-    return { id: user.id, role: r?.name || '', stores: s.map((x: any) => x.store_id), limit: await this.limit() };
+    // where approval_mode is 'self' the maker may approve their own expense (a store's own setting wins over the business's)
+    const modes = await this.manager.query(`select s.id, coalesce(s.approval_mode, b.approval_mode) as mode from stores s left join business b on b.id = s.business_id`);
+    const [ub] = await this.manager.query(`select b.approval_mode as mode from app_user u join business b on b.id = ${BUSINESS_OF_USER_SQL} where u.id = $1`, [user.id]);
+    const byStore = new Map<number, string>(modes.map((m: any) => [m.id, m.mode]));
+    const self = (storeId: number | null) => (storeId === null ? ub?.mode : byStore.get(storeId)) === 'self';
+    return { id: user.id, role: r?.name || '', stores: s.map((x: any) => x.store_id), limit: await this.limit(), self };
   }
 
   async limit(): Promise<number> {
@@ -35,8 +42,8 @@ export class ExpenseService {
 
   private canDecide(c: Ctx, e: { store_id: number | null; amount: any; raised_by: number; status: string }): boolean {
     if (e.status !== 'PENDING') return false;
-    if (c.role === 'Business Head') return true;
-    return c.role === 'Store Head' && e.store_id !== null && c.stores.includes(e.store_id) && Number(e.amount) <= c.limit && e.raised_by !== c.id;
+    if (isOwnerRole(c.role)) return true;
+    return c.role === 'Store Head' && e.store_id !== null && c.stores.includes(e.store_id) && Number(e.amount) <= c.limit && (e.raised_by !== c.id || c.self(e.store_id));
   }
 
   // ------------------------------------------------------------------ reference data
@@ -73,7 +80,7 @@ export class ExpenseService {
 
   async policy(user: any) {
     const c = await this.ctx(user);
-    const st = c.role === 'Business Head'
+    const st = isOwnerRole(c.role)
       ? await this.manager.query(`select id, location as name from stores where active order by location`)
       : await this.manager.query(`select id, location as name from stores where id = any($1) order by location`, [c.stores]);
     return { limit: c.limit, role: c.role, stores: st };
@@ -91,7 +98,7 @@ export class ExpenseService {
     const [cat] = await this.manager.query(`select id from expense_category where id = $1 and active`, [Number(b?.category_id)]);
     if (!cat) throw new BadRequestException('Choose the category.');
     let store: number | null = b?.store_id ? Number(b.store_id) : null;
-    if (c.role === 'Business Head') {
+    if (isOwnerRole(c.role)) {
       if (store) {
         const [s] = await this.manager.query(`select 1 from stores where id = $1`, [store]);
         if (!s) throw new BadRequestException('That store was not found.');
@@ -111,7 +118,7 @@ export class ExpenseService {
     const c = await this.ctx(user);
     const f = await this.validate(b, c);
     let status = 'PENDING', note: string | null = null;
-    if (c.role === 'Business Head') { status = 'APPROVED'; note = 'Raised by the Business Head'; }
+    if (isOwnerRole(c.role)) { status = 'APPROVED'; note = 'Raised by the Business Head'; }
     else if (c.role === 'Store Head' && f.amount <= c.limit) { status = 'APPROVED'; note = 'Within the store limit'; }
     const [r] = await this.manager.query(
       `insert into expense (expense_date, store_id, category_id, amount, gst_amount, payee, bill_no, pay_mode, description, receipt_path, status, raised_by, decided_by, decided_on, decision_note)
@@ -128,7 +135,7 @@ export class ExpenseService {
     const where: string[] = [];
     const args: any[] = [];
     const add = (sql: string, v: any) => { args.push(v); where.push(sql.replace('?', `$${args.length}`)); };
-    if (c.role === 'Business Head') { /* everything */ }
+    if (isOwnerRole(c.role)) { /* everything */ }
     else if (c.role === 'Store Head') { args.push(c.stores); args.push(c.id); where.push(`(e.store_id = any($${args.length - 1}) or e.raised_by = $${args.length})`); }
     else add('e.raised_by = ?', c.id);
     if (q.period && PERIOD.test(q.period)) add(`to_char(e.expense_date, 'YYYY-MM') = ?`, q.period);
@@ -143,7 +150,7 @@ export class ExpenseService {
          from expense e join expense_category k on k.id = e.category_id left join stores s on s.id = e.store_id
          left join app_user u on u.id = e.raised_by left join app_user d on d.id = e.decided_by
         ${where.length ? 'where ' + where.join(' and ') : ''} order by (e.status = 'PENDING') desc, e.expense_date desc, e.id desc limit 500`, args);
-    const out = rows.map((r: any) => ({ ...r, can_decide: this.canDecide(c, r), can_edit: r.status === 'PENDING' && (c.role === 'Business Head' || r.raised_by === c.id) }));
+    const out = rows.map((r: any) => ({ ...r, can_decide: this.canDecide(c, r), can_edit: r.status === 'PENDING' && (isOwnerRole(c.role) || r.raised_by === c.id) }));
     return { rows: out, pending_for_me: out.filter((r: any) => r.can_decide).length, limit: c.limit };
   }
 
@@ -157,7 +164,7 @@ export class ExpenseService {
     const c = await this.ctx(user);
     const e = await this.load(id);
     if (e.status !== 'PENDING') throw new BadRequestException('Only a pending expense can be changed.');
-    if (c.role !== 'Business Head' && e.raised_by !== c.id) throw new ForbiddenException('You can change only the expenses you raised.');
+    if (!isOwnerRole(c.role) && e.raised_by !== c.id) throw new ForbiddenException('You can change only the expenses you raised.');
     const f = await this.validate(b, c);
     await this.manager.query(
       `update expense set expense_date=$2, store_id=$3, category_id=$4, amount=$5, gst_amount=$6, payee=$7, bill_no=$8, pay_mode=$9, description=$10, receipt_path=$11 where id=$1`,
@@ -170,7 +177,7 @@ export class ExpenseService {
     const c = await this.ctx(user);
     const e = await this.load(id);
     if (e.status !== 'PENDING') throw new BadRequestException('Only a pending expense can be removed.');
-    if (c.role !== 'Business Head' && e.raised_by !== c.id) throw new ForbiddenException('You can remove only the expenses you raised.');
+    if (!isOwnerRole(c.role) && e.raised_by !== c.id) throw new ForbiddenException('You can remove only the expenses you raised.');
     await this.manager.query(`delete from expense where id = $1`, [id]);
     await this.audit.record({ userId: user.id, action: 'expense.removed', entityType: 'expense', entityId: id, summary: `Pending expense ${id} (${e.amount}) removed`, details: {} });
     return { id };
@@ -184,7 +191,7 @@ export class ExpenseService {
     if (e.status !== 'PENDING') throw new BadRequestException(`This expense is already ${e.status.toLowerCase()}.`);
     if (!this.canDecide(c, e)) {
       const why = c.role === 'Store Head'
-        ? (e.raised_by === c.id ? 'You cannot approve your own expense.' : Number(e.amount) > c.limit || e.store_id === null ? 'This one is above your limit or business-level: the Business Head approves it.' : 'It is not for your store.')
+        ? (e.raised_by === c.id && !c.self(e.store_id) ? 'You cannot approve your own expense.' : Number(e.amount) > c.limit || e.store_id === null ? 'This one is above your limit or business-level: the Business Head approves it.' : 'It is not for your store.')
         : 'You cannot approve this expense.';
       throw new ForbiddenException(why);
     }
@@ -249,7 +256,7 @@ export class ExpenseService {
     const to = DATE.test(q?.to || '') ? q.to : new Date().toISOString().slice(0, 10);
     const args: any[] = [from, to];
     let scopeL = '', scopeT = '';
-    if (c.role !== 'Business Head') {
+    if (!isOwnerRole(c.role)) {
       args.push(c.stores);
       scopeL = ` and ex.store_id = any($3)`;
       scopeT = ` and l.store_id = any($3)`;
@@ -281,7 +288,7 @@ export class ExpenseService {
       from, to, total: r2(rows.reduce((t: number, r: any) => t + r.amount, 0)), gst: r2(rows.reduce((t: number, r: any) => t + r.gst, 0)),
       drawer: r2(rows.filter((r: any) => r.src === 'Cash drawer').reduce((t: number, r: any) => t + r.amount, 0)),
       byCategory: sum('category'), byStore: sum('store'), byMonth: sum('month').sort((a, b) => a.name.localeCompare(b.name)),
-      pending: c.role === 'Business Head' ? pend : null,
+      pending: isOwnerRole(c.role) ? pend : null,
     };
   }
 }

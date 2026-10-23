@@ -57,6 +57,23 @@
                 <button class="btn btn-sm btn-outline-primary" type="button" [disabled]="!linkUserId" (click)="linkLogin()" data-testid="hr-link-save">Link login</button>
               </div>
             </div>
+            <div class="col-12" *ngIf="editing.id && accounts" data-testid="hr-accounts">
+              <div class="border rounded p-2 bg-light">
+                <div class="small fw-semibold mb-1">Other logins this person uses</div>
+                <div class="small text-muted mb-2">A counter or sales login they also bill or close shifts on. Those bills, shifts and ratings then count as theirs.</div>
+                <div class="d-flex gap-2 align-items-center flex-wrap mb-2" *ngFor="let l of accounts.linked" data-testid="hr-account-row">
+                  <span>{{l.name}} <span class="text-muted small">({{l.email}}, {{l.role}})</span></span>
+                  <button class="btn btn-sm btn-outline-danger" type="button" (click)="removeAccount(l.id)">Remove</button>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                  <select class="form-select form-select-sm w-auto" [(ngModel)]="extraLogin" data-testid="hr-account-pick">
+                    <option [ngValue]="null">Choose a login</option>
+                    <option *ngFor="let c of accounts.candidates" [ngValue]="c.id">{{c.name}} ({{c.email}}, {{c.role}})</option>
+                  </select>
+                  <button class="btn btn-sm btn-outline-primary" type="button" [disabled]="!extraLogin" (click)="addAccount()" data-testid="hr-account-add">Tie this login</button>
+                </div>
+              </div>
+            </div>
             <ng-container *ngIf="!editing.has_login">
               <div class="col-md-4"><label class="form-label">Name *</label><input class="form-control" [(ngModel)]="editing.full_name" maxlength="80" data-testid="hr-f-name"></div>
               <div class="col-md-3"><label class="form-label">Phone</label><input class="form-control" [(ngModel)]="editing.phone" maxlength="20" data-testid="hr-f-phone"></div>

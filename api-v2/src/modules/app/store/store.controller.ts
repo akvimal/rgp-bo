@@ -36,6 +36,11 @@ export class StoreController {
     return this.service.getLicenses(Number(id), currentUser?.id);
   }
 
+  @Put(":id/profile")
+  updateProfile(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
+    return this.service.updateProfile(Number(id), body, currentUser?.id);
+  }
+
   @Put(":id/licenses")
   saveLicenses(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
     return this.service.saveLicenses(Number(id), body, currentUser?.id);

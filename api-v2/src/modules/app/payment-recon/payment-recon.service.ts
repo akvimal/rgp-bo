@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
+import { isOwnerRole } from 'src/core/roles';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const STATUSES = ['VERIFIED', 'MISMATCH', 'NOT_FOUND'];
 const WINDOW_MS = 15 * 60 * 1000;          // a payment and its bill are made within minutes of each other
@@ -133,7 +134,7 @@ export class PaymentReconService {
   private async scope(user: any) {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
-    return { id: user.id as number, all: r?.name === 'Business Head', stores: s.map((x: any) => x.store_id) as number[] };
+    return { id: user.id as number, all: isOwnerRole(r?.name), stores: s.map((x: any) => x.store_id) as number[] };
   }
 
   // ------------------------------------------------------------------ the statement

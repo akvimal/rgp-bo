@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
+import { isOwnerRole, isManagerRole } from 'src/core/roles';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PHONE = /^[0-9+\-\s]{7,20}$/;
 const KINDS = ['PRODUCT', 'PRICE', 'MEDICAL', 'ORDER', 'OTHER'];
@@ -25,12 +26,12 @@ export class InquiryService {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
     const role = r?.name || '';
-    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: role === 'Business Head' || role === 'Store Head' };
+    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: isManagerRole(role) };
   }
 
   /** SQL that limits rows (alias q) to what the caller may see */
   private visible(c: Ctx, args: any[]): string {
-    if (c.role === 'Business Head') return 'true';
+    if (isOwnerRole(c.role)) return 'true';
     args.push(c.id);
     const me = `$${args.length}`;
     if (c.role === 'Store Head') {
@@ -41,7 +42,7 @@ export class InquiryService {
   }
 
   private canSee(c: Ctx, q: { store_id: number; assigned_to: number; raised_by: number }) {
-    if (c.role === 'Business Head') return true;
+    if (isOwnerRole(c.role)) return true;
     if (q.assigned_to === c.id || q.raised_by === c.id) return true;
     return c.role === 'Store Head' && c.stores.includes(q.store_id);
   }
@@ -55,7 +56,7 @@ export class InquiryService {
   /** stores the caller can record an inquiry against, and the staff who can be given it */
   async options(user: any) {
     const c = await this.ctx(user);
-    const stores = c.role === 'Business Head'
+    const stores = isOwnerRole(c.role)
       ? await this.manager.query(`select id, location as name from stores where active and not archive order by location`)
       : await this.manager.query(`select id, location as name from stores where id = any($1::int[]) and active order by location`, [c.stores.length ? c.stores : [0]]);
     let staff: any[] = [];
@@ -63,7 +64,7 @@ export class InquiryService {
       staff = await this.manager.query(
         `select u.id, u.full_name as name, array(select store_id from user_stores x where x.user_id = u.id and x.active and not x.archive) as stores
            from app_user u where u.active and not u.archive order by u.full_name`);
-      if (c.role !== 'Business Head') staff = staff.filter((s: any) => s.stores.some((x: number) => c.stores.includes(x)) || s.id === c.id);
+      if (!isOwnerRole(c.role)) staff = staff.filter((s: any) => s.stores.some((x: number) => c.stores.includes(x)) || s.id === c.id);
     } else {
       staff = [{ id: c.id, name: 'Me', stores: c.stores }];
     }
@@ -110,7 +111,7 @@ export class InquiryService {
     if (!u) throw new BadRequestException('Choose who the inquiry is for.');
     if (assignee !== c.id && !c.manage) throw new ForbiddenException('You can assign an inquiry to yourself only.');
     const [r] = await this.manager.query(`select r.name from app_user x join app_role r on r.id = x.role_id where x.id = $1`, [assignee]);
-    if (r?.name !== 'Business Head') {
+    if (!isOwnerRole(r?.name)) {
       const [m] = await this.manager.query(`select 1 from user_stores where user_id = $1 and store_id = $2 and active and not archive`, [assignee, storeId]);
       if (!m) throw new BadRequestException(`${u.full_name} is not mapped to that store.`);
     }
@@ -148,7 +149,7 @@ export class InquiryService {
     if (!storeId) throw new BadRequestException('Choose the store.');
     const [st] = await this.manager.query(`select id from stores where id = $1 and active and not archive`, [storeId]);
     if (!st) throw new BadRequestException('That store was not found.');
-    if (c.role !== 'Business Head' && !c.stores.includes(storeId)) throw new ForbiddenException('You can record inquiries for your own stores only.');
+    if (!isOwnerRole(c.role) && !c.stores.includes(storeId)) throw new ForbiddenException('You can record inquiries for your own stores only.');
     const f = this.fields({ kind: 'PRODUCT', ...b });
     if (!f.details) throw new BadRequestException('Say what the customer asked for.');
     if (!f.due_on) { const d = new Date(); d.setUTCDate(d.getUTCDate() + 1); f.due_on = d.toISOString().slice(0, 10); }

@@ -1,0 +1,49 @@
+# One customer's copy of the pharmacy app. Started by scripts/tenant-up.sh, which writes the env file from the control plane:
+#   docker compose -p rgp-<name> -f docker-compose.tenant.yml --env-file deploy/tenants/<name>.env up -d
+# The images are shared by every customer; each gets its own containers, uploads volume and database.
+services:
+  api:
+    image: rgp-tenant-api
+    build:
+      dockerfile: Dockerfile
+      context: ./api-v2
+    restart: always
+    command: npm run start:prod
+    volumes:
+      - uploads:/usr/src/app/upload
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?missing - use scripts/tenant-up.sh}
+      JWT_KEY: ${JWT_KEY}
+      JWT_EXPIRES: ${JWT_EXPIRES:-24h}
+      PORT: 3000
+      LOG_SQL: "false"
+      FILEUPLOAD_LOCATION: /usr/src/app/upload
+      FILEUPLOAD_SIZE_LIMIT: ${FILEUPLOAD_SIZE_LIMIT:-10485760}
+      GST_RATES: ${GST_RATES:-0,5,12,18}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TENANT_SLUG: ${TENANT_SLUG}
+      TENANT_SECRET: ${TENANT_SECRET}
+      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL:-http://control-plane:4000}
+    networks:
+      - default
+      - platform
+
+  frontend:
+    image: rgp-tenant-frontend
+    build:
+      dockerfile: Dockerfile
+      context: ./frontend
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "${TENANT_PORT}:80"
+
+networks:
+  platform:
+    name: rgp-platform
+    external: true
+
+volumes:
+  uploads:

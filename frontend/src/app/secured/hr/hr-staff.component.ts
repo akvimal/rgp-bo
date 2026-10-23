@@ -60,6 +60,7 @@ export class HrStaffComponent implements OnInit {
       this.editing = { ...d, work_days: d.work_days || [], work_start: d.work_start || "", work_end: d.work_end || "", join_date: String(d.join_date).slice(0, 10), dob: d.dob ? String(d.dob).slice(0, 10) : "" };
       this.revising = false;
       this.exitDate = this.hr.today();
+      this.loadAccounts();
     }, e => this.error = this.hr.msg(e));
   }
 
@@ -120,6 +121,26 @@ export class HrStaffComponent implements OnInit {
   }
 
   linkUserId: number | null = null;
+
+  /** other logins this person also uses (a shared counter login, a sales login): their sales, shifts and ratings count as theirs */
+  accounts: any = null;
+  extraLogin: number | null = null;
+
+  loadAccounts() {
+    this.accounts = null;
+    if (!this.editing?.id || !this.editing.has_login) return;
+    this.hr.get(`staff/${this.editing.id}/accounts`).subscribe(r => this.accounts = r, () => this.accounts = null);
+  }
+
+  saveAccounts(userids: number[]) {
+    this.error = this.message = "";
+    this.hr.put(`staff/${this.editing.id}/accounts`, { userids }).subscribe(r => {
+      this.accounts = r; this.extraLogin = null; this.message = "Logins saved.";
+    }, e => this.error = this.hr.msg(e));
+  }
+
+  addAccount() { if (this.extraLogin) this.saveAccounts([...this.accounts.linked.map((l: any) => l.id), this.extraLogin]); }
+  removeAccount(id: number) { this.saveAccounts(this.accounts.linked.filter((l: any) => l.id !== id).map((l: any) => l.id)); }
 
   linkLogin() {
     this.error = this.message = "";

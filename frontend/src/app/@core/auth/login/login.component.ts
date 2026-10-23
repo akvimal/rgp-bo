@@ -63,6 +63,7 @@ export class LoginComponent {
                         this.userService.getCurrentUser().subscribe((data:any) => {
                                 if(data.rolename && data.permissions){
                                     this.authService.setPermissions(data.permissions);
+                                    this.authService.setModules(data.modules);
                                     this.router.navigate([this.resolveLandingPage(data.permissions)]);
                                 }
                                 else {

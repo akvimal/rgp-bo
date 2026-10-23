@@ -1,6 +1,7 @@
 <div class="card mt-3" style="max-width:46rem">
   <div class="card-body">
-    <h5 class="card-title">Business details</h5>
+    <h5 class="card-title d-flex justify-content-between align-items-center flex-wrap gap-2">Business details
+      <a class="btn btn-sm btn-outline-primary" routerLink="/secure/settings/business-profile/setup" data-testid="biz-open-setup">How does your shop run? Setup</a></h5>
     <p class="small text-muted">These appear on GST returns and reconciliation. The GSTIN is checked, and the state follows from it.</p>
 
     <div *ngIf="message" class="alert alert-success py-2" data-testid="biz-message">{{message}}</div>
@@ -33,8 +34,39 @@
           <label class="form-label">Address</label>
           <textarea class="form-control" name="address" rows="2" [(ngModel)]="form.address" maxlength="200" data-testid="biz-address"></textarea>
         </div>
+        <div class="col-12">
+          <label class="form-label">Approvals</label>
+          <select class="form-select" name="approvalmode" [(ngModel)]="form.approvalmode" data-testid="biz-approval-mode">
+            <option value="separate">Another person approves (stock adjustments, purchase orders, expenses)</option>
+            <option value="self">The person who makes it may approve it too</option>
+          </select>
+          <div class="form-text">Pick the second for a shop run by the owner alone. A store can override this under Settings &gt; Store &gt; Till &amp; shifts.</div>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary mt-3" [disabled]="saving" data-testid="biz-save">Save</button>
     </form>
+  </div>
+</div>
+
+<div class="card mt-3" style="max-width:46rem" *ngIf="modules" data-testid="biz-modules">
+  <div class="card-body">
+    <h5 class="card-title">Modules</h5>
+    <p class="small text-muted">Switch off what this business does not use. Its screens and menu entries disappear and the system refuses its requests. Nothing is deleted: switching it back on restores everything.</p>
+    <div *ngIf="modulesMessage" class="alert alert-success py-2" data-testid="biz-modules-message">{{modulesMessage}}</div>
+    <div *ngIf="modulesError" class="alert alert-danger py-2" data-testid="biz-modules-error">{{modulesError}}</div>
+
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Purchasing</label>
+      <select class="form-select w-auto" [ngModel]="modules.purchasing" (ngModelChange)="setModule('purchasing', $event)" [disabled]="modulesSaving" data-testid="biz-mod-purchasing">
+        <option value="full" [disabled]="isLocked('purchasing')">Full - requests, orders, invoices, vendors, payables{{ isLocked('purchasing') ? ' (not in your plan)' : '' }}</option>
+        <option value="simple">Simple - invoices, vendors and payments only</option>
+        <option value="off">Off - this business does not buy through the system</option>
+      </select>
+    </div>
+    <div class="form-check form-switch mb-2" *ngFor="let m of moduleRows">
+      <input class="form-check-input" type="checkbox" role="switch" [id]="'mod-' + m.key" [checked]="modules[m.key]"
+             [disabled]="modulesSaving || isLocked(m.key) || (m.key === 'gst' && modules.purchasing === 'off')" (change)="setModule(m.key, $any($event.target).checked)" [attr.data-testid]="'biz-mod-' + m.key">
+      <label class="form-check-label" [for]="'mod-' + m.key">{{m.label}}<span class="badge bg-secondary ms-2" *ngIf="isLocked(m.key)" [attr.data-testid]="'biz-mod-locked-' + m.key">Not in your plan</span><span class="d-block small text-muted">{{m.hint}}</span></label>
+    </div>
   </div>
 </div>

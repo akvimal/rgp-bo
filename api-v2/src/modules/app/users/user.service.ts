@@ -8,6 +8,10 @@ import { DeepPartial, In, Repository } from "typeorm";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { AuthHelper } from "src/modules/auth/auth.helper";
+import { ASSIGNABLE_BY_BUSINESS_HEAD, ASSIGNABLE_BY_SITE_ADMIN } from "src/core/roles";
+import { ModulesService } from "src/core/modules/modules.service";
+import { PlatformService } from "src/core/platform/platform.service";
+import { filterPermissions } from "src/core/modules/modules";
 
 @Injectable()
 export class UserService {
@@ -16,7 +20,9 @@ export class UserService {
   @InjectRepository(AppRole) private readonly roleRepository: Repository<AppRole>,
   @InjectRepository(Store) private readonly storeRepository: Repository<Store>,
   @InjectRepository(UserStore) private readonly userStoreRepository: Repository<UserStore>,
-  private helper:AuthHelper) { }
+  private helper:AuthHelper,
+  private readonly modules: ModulesService,
+  private readonly platform: PlatformService) { }
 
   async createAdmin(createUserDto: CreateUserDto, userid:number) {
     if (!createUserDto.password) {
@@ -65,8 +71,8 @@ export class UserService {
     let businessid: number | null = null;
 
     if (caller.role?.name === 'Site Admin') {
-      if (targetRole.name !== 'Business Head') {
-        throw new ForbiddenException('Site Admin can only create Business Head users');
+      if (!ASSIGNABLE_BY_SITE_ADMIN.includes(targetRole.name)) {
+        throw new ForbiddenException('Site Admin can only create Business Head or Owner-operator users');
       }
       if (dto.storeids && dto.storeids.length) {
         throw new ForbiddenException('Site Admin cannot assign stores');
@@ -76,8 +82,8 @@ export class UserService {
         throw new BadRequestException('Business is required');
       }
     } else if (caller.role?.name === 'Business Head') {
-      if (!['Store Head', 'Sales Staff'].includes(targetRole.name)) {
-        throw new ForbiddenException('Business Head can only create Store Head or Sales Staff users');
+      if (!ASSIGNABLE_BY_BUSINESS_HEAD.includes(targetRole.name)) {
+        throw new ForbiddenException('Business Head can only create Store Head, Sales Staff, Counter or Personal users');
       }
       businessid = caller.businessid;
       await this.assertStoresBelongToBusiness(dto.storeids || [], businessid);
@@ -85,6 +91,8 @@ export class UserService {
       throw new ForbiddenException('Not permitted to create users');
     }
 
+    // the shared till and self-service logins are not seats on a hosted plan
+    if (!['Counter', 'Personal'].includes(targetRole.name)) await this.platform.assertRoom('users');
     if (!dto.password) {
       throw new BadRequestException('Password is required');
     }
@@ -113,8 +121,8 @@ export class UserService {
 
     if (caller.role?.name === 'Site Admin') {
       const targetRole = await this.roleRepository.findOne({ where: { id: target.roleid } });
-      if (targetRole?.name !== 'Business Head') {
-        throw new ForbiddenException('Site Admin can only edit Business Head users');
+      if (!ASSIGNABLE_BY_SITE_ADMIN.includes(targetRole?.name ?? "")) {
+        throw new ForbiddenException('Site Admin can only edit Business Head or Owner-operator users');
       }
       if (dto.storeids && dto.storeids.length) {
         throw new ForbiddenException('Site Admin cannot assign stores');
@@ -135,8 +143,8 @@ export class UserService {
       let roleid = target.roleid;
       if (dto.roleid !== undefined && Number(dto.roleid) !== target.roleid) {
         const newRole = await this.roleRepository.findOne({ where: { id: Number(dto.roleid) } });
-        if (!newRole || !['Store Head', 'Sales Staff'].includes(newRole.name)) {
-          throw new ForbiddenException('Business Head can only assign Store Head or Sales Staff roles');
+        if (!newRole || !ASSIGNABLE_BY_BUSINESS_HEAD.includes(newRole.name)) {
+          throw new ForbiddenException('Business Head can only assign Store Head, Sales Staff, Counter or Personal roles');
         }
         roleid = newRole.id;
       }
@@ -182,8 +190,8 @@ export class UserService {
 
     if (caller.role?.name === 'Site Admin') {
       const targetRole = await this.roleRepository.findOne({ where: { id: target.roleid } });
-      if (targetRole?.name !== 'Business Head') {
-        throw new ForbiddenException('Site Admin can only remove Business Head users');
+      if (!ASSIGNABLE_BY_SITE_ADMIN.includes(targetRole?.name ?? "")) {
+        throw new ForbiddenException('Site Admin can only remove Business Head or Owner-operator users');
       }
     } else if (caller.role?.name === 'Business Head') {
       if (target.businessid !== caller.businessid) {
@@ -210,7 +218,7 @@ export class UserService {
       if (caller?.role?.name === 'Business Head') {
         qb.andWhere('COALESCE(ownbusiness.id, storebusiness.id) = :businessid', { businessid: caller.businessid });
       } else if (caller?.role?.name === 'Site Admin') {
-        qb.andWhere('role.name = :rolename', { rolename: 'Business Head' });
+        qb.andWhere('role.name IN (:...rolenames)', { rolenames: ASSIGNABLE_BY_SITE_ADMIN });
       }
     }
 
@@ -267,9 +275,11 @@ export class UserService {
     'business.name as businessname'])
     .getRawOne();
 
+    // the role as stored, narrowed to the modules this business has switched on (menus, buttons and routes follow it)
+    const modules = await this.modules.forUser(Number(id));
     return {id:data.user_id, fullname: data.fullname,
       lastlogin:data.lastlogin,rolename:data.rolename,
-      permissions:data.permissions, businessid:data.businessid,
+      permissions:filterPermissions(data.permissions, modules), modules, platform: this.platform.summary(), businessid:data.businessid,
       businessname:data.businessname};
   }
 

@@ -15,7 +15,11 @@ export class StoreSettingsComponent implements OnInit {
   message:string = '';
   savingPolicy:boolean = false;
   savingStore:boolean = false;
-  activeTab:'master' | 'policy' | 'templates' | 'licences' = 'master';
+  activeTab:'master' | 'policy' | 'templates' | 'licences' | 'profile' = 'master';
+  profile:any = null;
+  profileSaving:boolean = false;
+  profileMessage:string = '';
+  profileError:string = '';
   readonly licenceTypes = [
     { key: 'RETAIL_20_21', label: 'Retail drug licence (Form 20 / 21)' },
     { key: 'WHOLESALE_20B_21B', label: 'Wholesale drug licence (Form 20B / 21B)' },
@@ -53,7 +57,7 @@ export class StoreSettingsComponent implements OnInit {
     this.refreshStoreList();
   }
 
-  selectTab(tab:'master' | 'policy' | 'templates' | 'licences') {
+  selectTab(tab:'master' | 'policy' | 'templates' | 'licences' | 'profile') {
     this.activeTab = tab;
     if (tab !== 'master' && tab !== 'licences') {
       this.refreshSelectedStore();
@@ -76,8 +80,29 @@ export class StoreSettingsComponent implements OnInit {
     });
   }
 
+  loadProfile() {
+    this.profile = null;
+    this.profileMessage = this.profileError = '';
+    if (!this.selectedStoreId) return;
+    this.cashService.getStoreProfile(this.selectedStoreId).subscribe((p:any) => this.profile = p, err => this.profileError = err?.error?.message || 'Unable to load the store profile');
+  }
+
+  saveProfile() {
+    this.profileMessage = this.profileError = '';
+    this.profileSaving = true;
+    const p = this.profile;
+    this.cashService.saveStoreProfile(p.storeid, {
+      shiftmode: p.shiftmode, till: p.tillsetting, accountablerole: p.accountablerole,
+      operatorrequired: !!p.operatorrequired, operatorholdminutes: Number(p.operatorholdminutes), approvalmode: p.approvalmodesetting,
+    }).subscribe((r:any) => { this.profileSaving = false; this.profile = r; this.profileMessage = 'Saved.'; },
+      err => { this.profileSaving = false; this.profileError = err?.error?.message || 'Unable to save'; });
+  }
+
   refreshSelectedStore() {
     this.selectedStore = this.stores.find((store:any) => store.id === Number(this.selectedStoreId)) || { depositthreshold: 0, location: '' };
+    if (this.activeTab === 'profile') {
+      this.loadProfile();
+    }
     if (!this.selectedStore?.id) {
       return;
     }

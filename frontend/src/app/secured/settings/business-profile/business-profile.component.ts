@@ -6,8 +6,20 @@ import { BusinessesService } from "../businesses/businesses.service";
 })
 export class BusinessProfileComponent implements OnInit {
 
-    form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '' };
+    form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '', approvalmode: 'separate' };
     loaded = false;
+    modules: any = null;
+    modulesSaving = false;
+    modulesMessage = '';
+    modulesError = '';
+    readonly moduleRows = [
+        { key: 'hr', label: 'HR and attendance', hint: 'Staff records, attendance, leave, payroll, KPI ratings.' },
+        { key: 'expenses', label: 'Expenses', hint: 'The expense ledger with approval.' },
+        { key: 'payment_recon', label: 'Digital payment reconciliation', hint: 'Matching UPI / card takings to the provider statement.' },
+        { key: 'stock_audits', label: 'Stock audits', hint: 'Planned cycle counts by category and store.' },
+        { key: 'transfers', label: 'Stock transfers', hint: 'Moving stock between your stores.' },
+        { key: 'gst', label: 'GST reconciliation', hint: 'Matching purchase invoices to GSTR-2A/2B. Needs purchasing.' },
+    ];
     saving = false;
     message = '';
     error = '';
@@ -15,13 +27,14 @@ export class BusinessProfileComponent implements OnInit {
     constructor(private service: BusinessesService) {}
 
     ngOnInit() {
+        this.service.getMyModules().subscribe((m: any) => this.modules = m, () => this.modules = null);
         this.service.getMine().subscribe((b: any) => this.fill(b), err => { this.loaded = true; this.error = this.msg(err, 'Could not load the business details.'); });
     }
 
     private fill(b: any) {
         this.form = {
             name: b.name || '', legalname: b.legalname || '', gstin: b.gstin || '',
-            statecode: b.statecode || '', address: b.address || '', pincode: b.pincode || '',
+            statecode: b.statecode || '', address: b.address || '', pincode: b.pincode || '', approvalmode: b.approvalmode || 'separate',
         };
         this.loaded = true;
     }
@@ -42,6 +55,18 @@ export class BusinessProfileComponent implements OnInit {
             (b: any) => { this.saving = false; this.fill(b); this.message = 'Business details saved.'; },
             err => { this.saving = false; this.error = this.msg(err, 'Could not save the business details.'); });
     }
+
+    /** Switching a module saves at once; the menus follow on the next screen change. */
+    setModule(key: string, value: any) {
+        this.modulesMessage = this.modulesError = '';
+        this.modulesSaving = true;
+        this.service.updateMyModules({ [key]: value }).subscribe(
+            (m: any) => { this.modulesSaving = false; this.modules = m; this.modulesMessage = 'Saved. Menus update when you open the next screen.'; },
+            err => { this.modulesSaving = false; this.modulesError = this.msg(err, 'Could not change the module.'); this.service.getMyModules().subscribe((m: any) => this.modules = m); });
+    }
+
+    /** a module the hosted plan leaves out cannot be switched on here */
+    isLocked(key: string): boolean { return !!this.modules?.locked?.includes(key); }
 
     private msg(err: any, fallback: string): string {
         const m = err?.error?.message;

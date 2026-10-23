@@ -1,6 +1,6 @@
 # Operating modes: configuring the app for how a shop actually runs
 
-Status: **approved, build in the order of section 8, one step at a time** (2026-10-22). Builds on `SAAS_PRODUCTISATION.md` (module packaging) and the existing shift desk, shift templates, user-store assignments and the POS operator picker.
+Status: **all five steps of section 8 built** (2026-10-22), live-verified by `qa/specs/operating-modes.spec.ts` (OM-1 to OM-29); uncommitted. See section 10. Builds on `SAAS_PRODUCTISATION.md` (module packaging) and the existing shift desk, shift templates, user-store assignments and the POS operator picker.
 
 ## 1. The shops to cater for
 
@@ -91,3 +91,20 @@ A person may hold a counter or sales account plus a personal one. HR linking (st
 - The counter keeps the last operator for a configurable time, so the cashier is not asked on every bill.
 - A solo owner uses one login for sales, purchase and personal screens.
 - A multi-store owner can set `approval_mode` per store (the business value is the default).
+
+## 10. What was built (2026-10-22)
+
+| Step | Where | Notes |
+|---|---|---|
+| 1 Store profile | migration 074; `store/store-profile.ts`; `PUT /stores/:id/profile`, `GET /store-cash/profile`; shift desk, header pill, POS operator rule; Settings > Store > Till & shifts | Staff-based: one open shift per person (unique index), bills land on the serving person's drawer, a drawer is closed by its owner, no handover. Time-based unchanged. `accountable_user_id` stored on close (store head, else business head). The counter keeps the last operator for `operator_hold_minutes`. A mode change is refused (409) while a shift is open. |
+| 2 Approval mode | migration 075; `core/approval-mode.ts`; Business details and the store profile | `self` lets the maker approve their own stock adjustment (above the value threshold), purchase order (when their role may approve) and expense (Store Head's own, within the limit). There is no payment approval in the app today, so nothing to relax there. |
+| 3 Modules | migration 076; `core/modules/*`; `PUT /businesses/mine/modules`; Business details toggles | One definition drives the 403 interceptor, the permission list sent by `/auth/me` (menus, buttons and routes follow it) and the stock-audit scheduler. Purchasing is off / simple / full; GST needs purchasing. Stored roles are never changed, so switching back restores access at once. |
+| 4 Account kinds | migration 077; `core/roles.ts`; roles Owner-operator, Counter, Personal; `hr_employee_account` | Owner-operator counts as an owner for day-to-day work and business setup but has no user, role or staff-admin screens. A Counter login must name who is serving (checked at the API) and never appears in the operator list. Extra logins can be tied to one HR person (Staff screen); their sales, shifts and ratings, and My HR, follow the person. |
+| 5 Setup wizard | migration 078; `business/business-preset.ts`; Settings > Shop setup (`/secure/settings/business-profile/setup`) | Preview then apply; refused whole while any affected store has a shift open; optional logins created in the same step and reported one by one. |
+
+Decisions taken while building, not in the plan above:
+
+- The Owner-operator role is created by the platform admin (Site Admin) as a business's first login; a Business Head creates Store Head, Sales Staff, Counter and Personal logins.
+- A preset decides only HR, transfers and stock audits among the modules; it leaves every other setting alone. Presets never clear a store's own approval override.
+- Existing businesses and stores migrate as time-based, approvals separate, every module on: nothing changes until someone chooses.
+

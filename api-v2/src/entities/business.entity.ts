@@ -18,6 +18,12 @@ import { Store } from "./store.entity";
     @Column("character varying", { name: "name", unique: true, length: 40 })
     name: string;
 
+    @Column("character varying", { name: "approval_mode", length: 10, default: "separate" })
+    approvalmode: string;
+
+    @Column("character varying", { name: "staffing_preset", length: 20, nullable: true })
+    staffingpreset: string | null;
+
     @Column({ name: "active", type: "boolean", default: true })
     isActive: boolean;
 

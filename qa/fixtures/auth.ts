@@ -22,7 +22,12 @@ const cache = new Map<string, { token: string; me: Me }>();
 
 export async function apiLogin(email: string, password = PASS): Promise<{ token: string; me: Me }> {
   const hit = cache.get(email);
-  if (hit) return hit;
+  if (hit) {
+    // the token is kept, but who the person is can change mid-run (modules switched off, roles edited): ask again
+    const again = await fetch(`${API}/auth/me`, { headers: { authorization: `Bearer ${hit.token}` } });
+    if (again.ok) hit.me = (await again.json()) as Me;
+    return hit;
+  }
   const lr = await fetch(`${API}/auth/login`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email, password, scope: /^siteadmin@/.test(email) ? 'platform' : 'business' }),

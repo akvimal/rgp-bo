@@ -10,6 +10,8 @@ export class SaleHeaderComponent implements OnDestroy {
 
     operators: any[] = [];
     selectedOperatorId: number | null = null;
+    selectedOperatorName = '';
+    selfOnly = false;
     private sub = new Subscription();
 
     constructor(private operatorContext: OperatorContextService) {}
@@ -17,6 +19,8 @@ export class SaleHeaderComponent implements OnDestroy {
     ngOnInit() {
         this.sub.add(this.operatorContext.operators$.subscribe(ops => this.operators = ops || []));
         this.sub.add(this.operatorContext.selectedOperatorId$.subscribe(id => this.selectedOperatorId = id));
+        this.sub.add(this.operatorContext.selectedOperatorName$.subscribe(n => this.selectedOperatorName = n || ''));
+        this.sub.add(this.operatorContext.selfOnly$.subscribe(v => this.selfOnly = v));
     }
 
     ngOnDestroy() { this.sub.unsubscribe(); }

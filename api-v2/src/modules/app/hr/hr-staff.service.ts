@@ -241,6 +241,47 @@ export class HrStaffService {
     return { id };
   }
 
+  // ------------------------------------------------------------------ other logins of the same person
+  /** The person's own login, the extra logins tied to them, and the logins that could still be tied (not anyone's own, not tied yet). */
+  async accounts(id: number) {
+    const [e] = await this.manager.query(`select id, user_id from hr_employee where id = $1`, [id]);
+    if (!e) throw new NotFoundException('Staff member not found.');
+    const linked = await this.manager.query(
+      `select u.id, u.full_name as name, u.email, r.name as role from hr_employee_account a join app_user u on u.id = a.user_id join app_role r on r.id = u.role_id
+        where a.employee_id = $1 order by u.full_name`, [id]);
+    const candidates = await this.manager.query(
+      `select u.id, u.full_name as name, u.email, r.name as role from app_user u join app_role r on r.id = u.role_id
+        where u.active and not u.archive and r.name <> 'Site Admin' and u.id is distinct from $1
+          and not exists (select 1 from hr_employee x where x.user_id = u.id)
+          and not exists (select 1 from hr_employee_account a where a.user_id = u.id)
+        order by u.full_name`, [e.user_id]);
+    return { employee_id: id, primary_user_id: e.user_id, linked, candidates };
+  }
+
+  /** The list sent is the whole list of extra logins. A login belongs to one person only; a person's own login is never an extra. */
+  async saveAccounts(id: number, b: any, by: any) {
+    const [e] = await this.manager.query(`select id, user_id, full_name from hr_employee where id = $1`, [id]);
+    if (!e) throw new NotFoundException('Staff member not found.');
+    if (!Array.isArray(b?.userids)) throw new BadRequestException('Send the logins as a list.');
+    const ids: number[] = Array.from(new Set<number>(b.userids.map((v: any) => Number(v)).filter((n: number) => Number.isInteger(n) && n > 0)));
+    if (ids.includes(e.user_id)) throw new BadRequestException("That is already this person's own login.");
+    for (const uid of ids) {
+      const [u] = await this.manager.query(`select u.full_name, r.name as role from app_user u join app_role r on r.id = u.role_id where u.id = $1 and u.active and not u.archive`, [uid]);
+      if (!u || u.role === 'Site Admin') throw new BadRequestException('One of those logins was not found or is not active.');
+      const [own] = await this.manager.query(`select 1 from hr_employee where user_id = $1`, [uid]);
+      if (own) throw new BadRequestException(`${u.full_name} has a staff record of their own; a login cannot belong to two people.`);
+      const [other] = await this.manager.query(`select 1 from hr_employee_account where user_id = $1 and employee_id <> $2`, [uid, id]);
+      if (other) throw new BadRequestException(`${u.full_name} is already tied to another person.`);
+    }
+    await this.manager.transaction(async (tx) => {
+      await tx.query(`delete from hr_employee_account where employee_id = $1`, [id]);
+      for (const uid of ids) await tx.query(`insert into hr_employee_account (user_id, employee_id, created_by) values ($1, $2, $3)`, [uid, id, by.id]);
+    });
+    await this.audit.record({ userId: by.id, action: 'hr.staff_accounts_linked', entityType: 'hr_employee', entityId: id,
+      summary: `${ids.length} extra login${ids.length === 1 ? '' : 's'} tied to this person`, details: { userids: ids } });
+    return this.accounts(id);
+  }
+
   // ------------------------------------------------------------------ pay components
   components() {
     return this.manager.query(`select id, code, name, kind, display_order, active, applies_roles from hr_pay_component order by kind, display_order, name`);

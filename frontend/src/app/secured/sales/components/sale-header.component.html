@@ -2,7 +2,8 @@
   <h1>Sales</h1>
   <div class="d-flex align-items-center gap-2">
     <label class="small text-muted mb-0">Staff</label>
-    <select class="form-select form-select-sm" style="width:auto"
+    <strong class="small" *ngIf="selfOnly" data-testid="sale-self-operator">{{ selectedOperatorName || 'You' }}</strong>
+    <select class="form-select form-select-sm" style="width:auto" *ngIf="!selfOnly"
       [ngModel]="selectedOperatorId === null ? '' : selectedOperatorId"
       (change)="changeOperator($event)"
       aria-label="Select active staff">

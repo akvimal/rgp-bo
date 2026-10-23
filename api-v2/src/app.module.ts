@@ -24,6 +24,8 @@ import { BusinessModule } from './modules/app/business/business.module';
 import { GstModule } from './modules/app/gst/gst.module';
 import { NotificationModule } from './modules/app/notifications/notification.module';
 import { AuditModule } from './core/audit/audit.module';
+import { ModulesModule } from './core/modules/modules.service';
+import { PlatformModule } from './core/platform/platform.service';
 import { QualityModule } from './modules/app/quality/quality.module';
 import { ExpenseModule } from './modules/app/expenses/expense.module';
 import { InquiryModule } from './modules/app/inquiries/inquiry.module';
@@ -68,6 +70,8 @@ import { DbTimingService } from './core/performance/db-timing.service';
     GstModule,
     NotificationModule,
     AuditModule,
+    ModulesModule,
+    PlatformModule,
     QualityModule,
     StaffCreditModule,
     HrModule,

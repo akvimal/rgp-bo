@@ -16,6 +16,14 @@ export class BusinessesService {
     return this.http.get(`${this.apiurl}/businesses/mine`);
   }
 
+  getMyModules() {
+    return this.http.get(`${this.apiurl}/businesses/mine/modules`);
+  }
+
+  updateMyModules(body: any) {
+    return this.http.put(`${this.apiurl}/businesses/mine/modules`, body);
+  }
+
   updateMine(body: any) {
     return this.http.put(`${this.apiurl}/businesses/mine`, body);
   }

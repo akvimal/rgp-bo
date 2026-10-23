@@ -1,9 +1,11 @@
+import { ModulesService } from "src/core/modules/modules.service";
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
+import { isOwnerRole } from 'src/core/roles';
 const SCOPES = ['ALL', 'CATEGORY', 'ROTATE'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const LEAD_DAYS = 7;
@@ -21,13 +23,13 @@ type Ctx = { id: number; role: string; stores: number[]; manage: boolean };
 export class StockAuditService {
   private readonly log = new Logger(StockAuditService.name);
 
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly modules: ModulesService) {}
 
   private async ctx(user: any): Promise<Ctx> {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
     const role = r?.name || '';
-    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: role === 'Business Head' };
+    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: isOwnerRole(role) };
   }
 
   private visible(c: Ctx, args: any[]): string {
@@ -110,6 +112,7 @@ export class StockAuditService {
         ? await this.manager.query(`select id from stores where id = $1 and active and not archive`, [p.store_id])
         : await this.manager.query(`select id from stores where active and not archive`);
       for (const s of stores) {
+        if (!(await this.modules.onForStore(s.id, 'stock_audits'))) continue;   // a business that switched stock audits off gets none planned
         const [open] = await this.manager.query(`select 1 from stock_audit where plan_id = $1 and store_id = $2 and status in ('PLANNED', 'IN_PROGRESS')`, [p.id, s.id]);
         if (open) continue;
         const [last] = await this.manager.query(

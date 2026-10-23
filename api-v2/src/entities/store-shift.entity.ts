@@ -75,6 +75,9 @@ export class StoreShift {
   @Column("integer", { name: "closed_operator_id", nullable: true })
   closedoperatorid: number | null;
 
+  @Column("integer", { name: "accountable_user_id", nullable: true })
+  accountableuserid: number | null;
+
   @Column("double precision", { name: "variance", precision: 53, nullable: true })
   variance: number | null;
 

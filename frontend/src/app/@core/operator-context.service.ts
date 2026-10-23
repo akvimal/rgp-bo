@@ -10,6 +10,12 @@ import { environment } from "../../environments/environment";
 export class OperatorContextService {
   private readonly selectedOperatorIdKey = "selected_operator_id";
   private readonly selectedOperatorNameKey = "selected_operator_name";
+  private readonly selectedOperatorAtKey = "selected_operator_at";
+  private selfId: number | null = null;
+  private sharedLogin = false;
+  private holdMinutes = 60;
+  private readonly requiredSubject = new BehaviorSubject<boolean>(true);
+  private readonly selfOnlySubject = new BehaviorSubject<boolean>(false);
   private readonly operatorsSubject = new BehaviorSubject<any[]>([]);
   private readonly selectedOperatorIdSubject = new BehaviorSubject<number | null>(this.readStoredSelectedOperatorId());
   private readonly selectedOperatorNameSubject = new BehaviorSubject<string>(localStorage.getItem(this.selectedOperatorNameKey) || "");
@@ -17,10 +23,57 @@ export class OperatorContextService {
   operators$ = this.operatorsSubject.asObservable();
   selectedOperatorId$ = this.selectedOperatorIdSubject.asObservable();
   selectedOperatorName$ = this.selectedOperatorNameSubject.asObservable();
+  /** the store asks who is serving on each bill */
+  required$ = this.requiredSubject.asObservable();
+  /** staff-based store that does not ask: every bill is the signed-in person's own */
+  selfOnly$ = this.selfOnlySubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
+  /** The store's operator rule (OPERATING_MODES section 4): ask on each bill, how long the counter keeps the last operator, or self only. */
+  applyProfile(profile: any): void {
+    const staff = profile?.shiftmode === "staff";
+    const required = profile ? !!profile.operatorrequired : true;
+    this.holdMinutes = profile && profile.operatorholdminutes !== undefined ? Number(profile.operatorholdminutes) : 60;
+    this.requiredSubject.next(required);
+    this.selfOnlySubject.next(staff && !required);
+    this.enforce();
+  }
+
+  /** a bill needs an operator picked now: the store asks, and nobody is chosen or the choice has gone stale */
+  needsOperator(): boolean {
+    return this.requiredSubject.value && (this.selectedOperatorId === null || this.isStale());
+  }
+
+  /** after a bill is saved: keep the operator for the hold time, or ask again straight away when the hold is 0 */
+  afterBill(): void {
+    if (this.selfOnlySubject.value || !this.requiredSubject.value) return;
+    if (this.holdMinutes === 0) { this.setSelectedOperator(null, false); return; }
+    localStorage.setItem(this.selectedOperatorAtKey, String(Date.now()));
+  }
+
+  private isStale(): boolean {
+    if (this.holdMinutes === 0) return false;
+    const at = Number(localStorage.getItem(this.selectedOperatorAtKey) || 0);
+    return !!at && Date.now() - at > this.holdMinutes * 60000;
+  }
+
+  private enforce(): void {
+    if (this.selfOnlySubject.value && this.selfId) {
+      this.setSelectedOperator(this.selfId, false);
+    } else if (this.requiredSubject.value && this.isStale()) {
+      // forget the choice on screen but keep it stored, so a reload still finds it stale and asks again
+      this.setSelectedOperator(null, false);
+    }
+  }
+
+  /** a shared counter login is not somebody who serves: it never picks itself, or the first name on the list, on its own */
+  setSharedLogin(shared: boolean): void {
+    this.sharedLogin = shared;
+  }
+
   loadOperators(storeId?: number | null, defaultOperatorId?: number): Observable<any> {
+    if (defaultOperatorId) this.selfId = Number(defaultOperatorId);
     let params = new HttpParams();
     if (storeId !== null && storeId !== undefined) {
       params = params.set("storeid", String(storeId));
@@ -30,8 +83,9 @@ export class OperatorContextService {
       this.operatorsSubject.next(operators);
       const stored = this.readStoredSelectedOperatorId();
       const fallback = this.isValidSelection(defaultOperatorId, operators) ? Number(defaultOperatorId) : this.getFirstOperatorId(operators);
-      const resolved = this.isValidSelection(stored, operators) ? stored : fallback;
+      const resolved = this.isValidSelection(stored, operators) ? stored : (this.sharedLogin ? null : fallback);
       this.setSelectedOperator(resolved, false, operators);
+      this.enforce();
     }));
   }
 
@@ -50,6 +104,7 @@ export class OperatorContextService {
     this.selectedOperatorNameSubject.next(selected ? (selected.fullname || selected.name || selected.email || "") : "");
     if (persist) {
       if (selected) {
+        localStorage.setItem(this.selectedOperatorAtKey, String(Date.now()));
         localStorage.setItem(this.selectedOperatorIdKey, String(selected.id));
         localStorage.setItem(this.selectedOperatorNameKey, selected.fullname || selected.name || selected.email || "");
       } else {

@@ -42,7 +42,7 @@ export class PurchaseOrderController {
 
   @Post(':id/submit')
   submit(@Param('id') id: string, @User() currentUser: any) {
-    return this.service.submitOrder(+id, currentUser.id);
+    return this.service.submitOrder(+id, currentUser.id, currentUser.roleid);
   }
 
   @Post(':id/approve')

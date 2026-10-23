@@ -232,6 +232,10 @@ export class SaleFormComponent {
       this.submitError = 'Enter the customer mobile number: this bill has a chronic medicine.';
       return;
     }
+    if (status === 'COMPLETE' && this.operatorContext.needsOperator()) {
+      this.submitError = 'Choose who is serving (Staff box at the top) before completing the bill.';
+      return;
+    }
     this.sale.status = status;
     
     this.sale.items = this.sale.items?.map((item:any) => {
@@ -296,6 +300,7 @@ export class SaleFormComponent {
 
     this.service.save({...obj, billdate:new Date(), status, checkbatches:true, ackwarnings:this.ackWarnings} as any).subscribe((data:any) => {
       this.ackWarnings = false;
+      if (data.status === 'COMPLETE') this.operatorContext.afterBill();
       this.redirectAfterSubmit(data.status, data.id);
       this.service.refreshSavedSales();
     }, (err:any) => {

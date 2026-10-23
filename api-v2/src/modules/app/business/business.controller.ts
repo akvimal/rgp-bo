@@ -28,6 +28,31 @@ export class BusinessController {
     return this.service.mine(currentUser);
   }
 
+  @Get("mine/presets")
+  async presets(@User() currentUser: any) {
+    return this.service.presets(currentUser);
+  }
+
+  @Post("mine/preset/preview")
+  async previewPreset(@Body() body: any, @User() currentUser: any) {
+    return this.service.previewPreset(currentUser, body);
+  }
+
+  @Put("mine/preset")
+  async applyPreset(@Body() body: any, @User() currentUser: any) {
+    return this.service.applyPreset(currentUser, body);
+  }
+
+  @Get("mine/modules")
+  async myModules(@User() currentUser: any) {
+    return this.service.myModules(currentUser);
+  }
+
+  @Put("mine/modules")
+  async updateMyModules(@Body() body: any, @User() currentUser: any) {
+    return this.service.updateMyModules(currentUser, body);
+  }
+
   @Put("mine")
   async updateMine(@Body() body: any, @User() currentUser: any) {
     return this.service.updateMine(currentUser, body);

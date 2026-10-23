@@ -7,6 +7,7 @@ import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
 import { PermissionService } from '../roles/permission.service';
 import { PaymentReconService } from './payment-recon.service';
+import { DocumentQuotaGuard, PlatformService, ScanQuotaGuard } from 'src/core/platform/platform.service';
 
 const Needs = (action: string) => SetMetadata('paymentrecon.action', action);
 /** a statement is read in memory and not kept: only the payments parsed from it are */
@@ -28,12 +29,12 @@ export class PaymentReconGuard implements CanActivate {
 @ApiBearerAuth()
 @UseGuards(AuthGuard, PaymentReconGuard)
 export class PaymentReconController {
-  constructor(private readonly service: PaymentReconService) {}
+  constructor(private readonly service: PaymentReconService, private readonly platform: PlatformService) {}
 
   @Get() @Needs('view') list(@Query() q: any, @User() u: any) { return this.service.list(q, u); }
   @Get('statements') @Needs('import') statements() { return this.service.statements(); }
-  @Post('statements/preview') @Needs('import') @UseInterceptors(upload) preview(@UploadedFile() f: any) { return this.service.preview(f); }
-  @Post('statements') @Needs('import') @UseInterceptors(upload) importStatement(@UploadedFile() f: any, @User() u: any) { return this.service.importStatement(f, u); }
+  @Post('statements/preview') @Needs('import') @UseGuards(ScanQuotaGuard) @UseInterceptors(upload) async preview(@UploadedFile() f: any) { await this.platform.bump('scans'); return this.service.preview(f); }
+  @Post('statements') @Needs('import') @UseGuards(DocumentQuotaGuard) @UseInterceptors(upload) async importStatement(@UploadedFile() f: any, @User() u: any) { await this.platform.bump('documents'); return this.service.importStatement(f, u); }
   @Delete('statements/:id') @Needs('import') removeStatement(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.service.removeStatement(id, u); }
   @Post('accept') @Needs('verify') accept(@Body() b: any, @User() u: any) { return this.service.acceptSuggestions(b, u); }
   @Post('verify-many') @Needs('verify') verifyMany(@Body() b: any, @User() u: any) { return this.service.verifyMany(b, u); }

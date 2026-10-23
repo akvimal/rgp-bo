@@ -15,7 +15,9 @@ import { UpdateSaleReturnItemDto } from "./dto/update-salereturnitem.dto";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { AuditService } from "src/core/audit/audit.service";
+import { loadStoreProfile } from "../store/store-profile";
 
+import { isManagerRole, NOT_A_PERSON } from 'src/core/roles';
 @ApiTags('Sales')
 @Controller('sales')
 @ApiBearerAuth()
@@ -56,17 +58,42 @@ export class SaleController {
        * with their own login); Store Head / Business Head may enter a bill on behalf of someone else.
        * Every on-behalf entry, and every blocked attempt, is written to the audit log.
        */
-      private async resolveActingUser(requested: any, currentUser: any, saleId?: number): Promise<number> {
+      private async resolveActingUser(requested: any, currentUser: any, saleId?: number, storeId?: number | null): Promise<number> {
         const asked = requested ? Number(requested) : currentUser.id;
         if (asked === currentUser.id) return asked;
         const row = await this.manager.query(`select name from app_role where id = $1`, [currentUser.roleid || 0]);
-        const blocked = row?.[0]?.name === 'Sales Staff';
+        const role = row?.[0]?.name;
+        // a staff-based store that does not ask for an operator bills as the signed-in person (managers may still enter for others)
+        const profile = storeId ? await loadStoreProfile(this.manager, storeId) : null;
+        const ownBillsOnly = !!profile && profile.shiftmode === 'staff' && !profile.operatorrequired && !isManagerRole(role) && role !== 'Counter';
+        // a Counter login is the shared till, not a person: it is meant to bill as whoever is serving
+        const blocked = role === 'Sales Staff' || ownBillsOnly;
         await this.audit.record({
           userId: currentUser.id, actingUserId: asked, action: blocked ? 'sale.acting_blocked' : 'sale.on_behalf',
           entityType: 'sales', entityId: saleId ?? null,
           summary: blocked ? 'Sales Staff tried to bill as another user; recorded under own login' : 'bill entered on behalf of another user',
         });
         return blocked ? currentUser.id : asked;
+      }
+
+      /**
+       * The shared Counter login is not a person: a completed bill from it must name who is serving, and that person must work
+       * at the store. (Personal and Sales Staff logins bill as themselves.)
+       */
+      private async assertOperatorNamed(sale: any, currentUser: any): Promise<void> {
+        if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return;
+        const [role] = await this.manager.query(`select name from app_role where id = $1`, [currentUser.roleid || 0]);
+        if (role?.name !== 'Counter') return;
+        const storeId = await this.billStore(sale);
+        const profile = storeId ? await loadStoreProfile(this.manager, storeId) : null;
+        if (profile && !profile.operatorrequired) return;
+        const asked = Number(sale?.actinguserid) || 0;
+        if (!asked || asked === currentUser.id) throw new BadRequestException('Choose who is serving before completing the bill.');
+        const [who] = await this.manager.query(
+          `select r.name from app_user u join app_role r on r.id = u.role_id
+            where u.id = $1 and u.active and not u.archive
+              and (r.name in ('Business Head', 'Owner-operator') or exists (select 1 from user_stores us where us.user_id = u.id and us.store_id = $2 and us.active and not us.archive))`, [asked, storeId]);
+        if (!who || NOT_A_PERSON.includes(who.name)) throw new BadRequestException('That person does not work at this store.');
       }
 
       /** the store a bill is for: the one it names, else the business's first (same fallback as saving it) */
@@ -87,7 +114,7 @@ export class SaleController {
       private async checkBatches(sale: any, currentUser: any): Promise<(saleId: number | null) => Promise<void>> {
         const warnings = await findBatchWarnings(this.manager, sale, await this.billStore(sale));
         const [role] = await this.manager.query(`select name from app_role where id = $1`, [currentUser?.roleid || 0]);
-        const isManager = role?.name === 'Store Head' || role?.name === 'Business Head';
+        const isManager = isManagerRole(role?.name);
         const overridden = enforceBatchWarnings(warnings, sale?.ackwarnings === true, isManager);
         return async (saleId: number | null) => {
           if (!overridden.length) return;
@@ -110,7 +137,8 @@ export class SaleController {
         const digital = await checkDigitalPayment(this.manager, createSaleDto);
         const staffCredit = await checkStaffCredit(this.manager, createSaleDto);
         const storeCredit = await checkStoreCredit(this.manager, createSaleDto, customer);
-        const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser);
+        await this.assertOperatorNamed(createSaleDto, currentUser);
+        const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser, undefined, await this.billStore(createSaleDto));
         const created = await this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await recordBatchOverride((created as any)?.id ?? null);
         return created;
@@ -138,7 +166,8 @@ export class SaleController {
         const digital = await checkDigitalPayment(this.manager, updateSaleDto, updateSaleDto.id);
         const staffCredit = await checkStaffCredit(this.manager, updateSaleDto, updateSaleDto.id);
         const storeCredit = await checkStoreCredit(this.manager, updateSaleDto, customer, updateSaleDto.id);
-        const actingUserId = await this.resolveActingUser(updateSaleDto.actinguserid, currentUser, updateSaleDto.id);
+        await this.assertOperatorNamed(updateSaleDto, currentUser);
+        const actingUserId = await this.resolveActingUser(updateSaleDto.actinguserid, currentUser, updateSaleDto.id, await this.billStore(updateSaleDto));
         const saved = await this.saleService.updateSale({...updateSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await this.recordSaleEdit(sale, updateSaleDto, currentUser.id, actingUserId);
         await recordBatchOverride(updateSaleDto.id ?? null);

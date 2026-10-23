@@ -7,8 +7,9 @@ import { User } from "src/core/decorator/user.decorator";
 import { NotificationService } from "./notification.service";
 import { SaveNotificationConfigDto, TestMessageDto } from "./dto/notification-config.dto";
 
+import { OWNER_ROLES } from 'src/core/roles';
 // Business-level setting: only the business owner. Site Admin is a platform role with no business data.
-const ALLOWED_ROLES = ["Business Head"];
+const ALLOWED_ROLES = OWNER_ROLES;
 
 @ApiTags("Notifications")
 @Controller("notifications")

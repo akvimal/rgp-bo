@@ -1,0 +1,87 @@
+<div class="card mt-3" style="max-width:62rem" data-testid="shop-setup">
+  <div class="card-body">
+    <h5 class="card-title">How does your shop run?</h5>
+    <p class="small text-muted">Pick the one that fits. It sets sensible defaults for approvals, which screens show, and how each store closes its tills. Nothing is deleted, and you can change any single setting afterwards or switch to another preset later.</p>
+
+    <div *ngIf="loading" class="text-muted">Loading...</div>
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="setup-error">{{error}}</div>
+
+    <div class="row g-3" *ngIf="!loading">
+      <div class="col-12 col-md-6" *ngFor="let p of presets">
+        <div class="border rounded p-3 h-100 preset-card" [class.border-primary]="preset === p.key" [class.bg-light]="preset === p.key" role="button" (click)="choose(p.key)" [attr.data-testid]="'preset-' + p.key">
+          <div class="d-flex justify-content-between align-items-start">
+            <h6 class="mb-1">{{p.label}}</h6>
+            <span class="badge bg-success" *ngIf="current === p.key" data-testid="preset-current">In use</span>
+          </div>
+          <div class="small mb-2">{{p.summary}}</div>
+          <div class="small text-muted"><strong>Logins:</strong> {{p.accounts.join('; ')}}</div>
+          <div class="small text-muted" *ngIf="p.hidden.length"><strong>Out of sight:</strong> {{p.hidden.join(', ')}}</div>
+        </div>
+      </div>
+    </div>
+
+    <ng-container *ngIf="preset && !loading">
+      <hr>
+      <div class="row g-3" *ngIf="asksShiftMode">
+        <div class="col-12" *ngIf="!perStoreMode">
+          <label class="form-label fw-semibold">How is the till closed?</label>
+          <div class="form-check"><input class="form-check-input" type="radio" id="su-time" name="su-mode" value="time" [(ngModel)]="shiftmode" (ngModelChange)="refresh()" data-testid="setup-mode-time">
+            <label class="form-check-label" for="su-time"><strong>By time</strong> - one shared till, closed at handover (morning / evening). Staff use the counter login in any order and say who is serving on each bill.</label></div>
+          <div class="form-check"><input class="form-check-input" type="radio" id="su-staff" name="su-mode" value="staff" [(ngModel)]="shiftmode" (ngModelChange)="refresh()" data-testid="setup-mode-staff">
+            <label class="form-check-label" for="su-staff"><strong>By person</strong> - each person has a drawer and closes their own.</label></div>
+        </div>
+        <div class="col-12" *ngIf="perStoreMode">
+          <label class="form-label fw-semibold">How does each store close its till?</label>
+          <div class="d-flex align-items-center gap-2 mb-1" *ngFor="let s of stores">
+            <span style="min-width:12rem">{{s.location}}</span>
+            <select class="form-select form-select-sm w-auto" [(ngModel)]="perStore[s.id]" (ngModelChange)="refresh()" [attr.data-testid]="'setup-store-' + s.id">
+              <option value="time">By time (shared till)</option><option value="staff">By person</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-12" *ngIf="preset === 'owner_and_staff'">
+          <div class="form-check"><input class="form-check-input" type="checkbox" id="su-hr" [(ngModel)]="hr" (ngModelChange)="refresh()" data-testid="setup-hr">
+            <label class="form-check-label" for="su-hr">Keep HR and attendance (staff records, leave, payroll)</label></div>
+        </div>
+      </div>
+
+      <div class="mt-3" *ngIf="plan" data-testid="setup-plan">
+        <div class="fw-semibold mb-1">What this changes</div>
+        <ul class="small mb-2">
+          <li *ngFor="let c of plan.changes">{{c}}</li>
+          <ng-container *ngFor="let s of plan.stores"><li *ngFor="let c of s.changes">{{s.location}}: {{c}}</li></ng-container>
+        </ul>
+        <div class="small text-muted" *ngIf="planIsEmpty" data-testid="setup-nochange">Nothing changes: the shop is already set up this way.</div>
+        <div class="alert alert-warning py-2 small" *ngFor="let b of plan.blockers" data-testid="setup-blocker">{{b}}</div>
+      </div>
+
+      <div class="mt-3">
+        <div class="d-flex align-items-center gap-2">
+          <div class="fw-semibold">Logins to add</div>
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="addLogin()" data-testid="setup-add-login">Add a login</button>
+        </div>
+        <div class="small text-muted mb-2">Optional. Only a Business Head can add logins here; you can also do it any time under Settings &gt; Users.</div>
+        <div class="row g-2 align-items-end mb-2" *ngFor="let l of logins; let i = index" data-testid="setup-login-row">
+          <div class="col-6 col-md-2"><select class="form-select form-select-sm" [(ngModel)]="l.role"><option *ngFor="let k of loginKinds" [value]="k">{{k}}</option></select></div>
+          <div class="col-6 col-md-2"><input class="form-control form-control-sm" placeholder="Name" [(ngModel)]="l.fullname"></div>
+          <div class="col-6 col-md-3"><input class="form-control form-control-sm" placeholder="Email" [(ngModel)]="l.email"></div>
+          <div class="col-6 col-md-2"><input class="form-control form-control-sm" type="password" placeholder="Password" [(ngModel)]="l.password"></div>
+          <div class="col-6 col-md-2"><select class="form-select form-select-sm" [(ngModel)]="l.storeid"><option *ngFor="let s of stores" [ngValue]="s.id">{{s.location}}</option></select></div>
+          <div class="col-6 col-md-1"><button class="btn btn-sm btn-outline-danger" type="button" (click)="removeLogin(i)">Remove</button></div>
+        </div>
+      </div>
+
+      <div class="mt-3 d-flex align-items-center gap-3">
+        <button class="btn btn-primary" type="button" [disabled]="busy || !plan || plan.blockers.length" (click)="apply()" data-testid="setup-apply">{{ busy ? 'Applying...' : (current === preset ? 'Apply again' : 'Use this setup') }}</button>
+      </div>
+    </ng-container>
+
+    <div class="alert alert-success mt-3 py-2" *ngIf="result" data-testid="setup-done">
+      <div><strong>{{result.info.label}}</strong> is now in use.</div>
+      <ul class="small mb-0" *ngIf="result.accounts.length">
+        <li *ngFor="let a of result.accounts" [class.text-danger]="!a.ok">{{a.email}}: {{ a.ok ? 'login created' : a.error }}</li>
+      </ul>
+      <div class="small mt-1">The menu follows on your next screen change.</div>
+    </div>
+  </div>
+</div>

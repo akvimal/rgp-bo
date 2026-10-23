@@ -39,6 +39,12 @@ export class SecuredComponent {
       }
       return this.allStores ? 'All Businesses' : 'Multiple Businesses';
     }
+    /** the hosted plan, when this is a customer's copy: shown as a notice for a trial or a stopped account */
+    platform: any = null;
+    get trialDaysLeft(): number {
+      const end = this.platform?.trialEnds ? Date.parse(this.platform.trialEnds + 'T23:59:59') : NaN;
+      return Number.isFinite(end) ? Math.max(0, Math.ceil((end - Date.now()) / 86400000)) : 0;
+    }
     selectedStoreId:number | null = null;
     allStores:boolean = false;
     state$!:Observable<AppState>;
@@ -88,12 +94,15 @@ export class SecuredComponent {
         this.titleService.setTitle(`RGP - ${data['fullname']}`)
         this.user = data;
         // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).
+        this.authService.setModules(data['modules']);
+        this.platform = data['platform'] || null;
         const fresh = data['permissions'];
         if (Array.isArray(fresh) && JSON.stringify(fresh) !== JSON.stringify(this.authService.getPermissions())) {
           this.authService.setPermissions(fresh);
           window.location.reload();
           return;
         }
+        this.operatorContextService.setSharedLogin(data['rolename'] === 'Counter');
         this.operatorContextService.loadOperators(this.selectedStoreId, data['id']).subscribe();
       });
       this.storeContextService.loadContext().subscribe((context:any) => {

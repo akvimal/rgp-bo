@@ -4,6 +4,7 @@ import { EntityManager } from "typeorm";
 import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
 import { PurchaseService } from "../purchases/purchase.service";
 
+import { OWNER_ROLES } from 'src/core/roles';
 /** Customer record used at the counter when no mobile number is given (mobile '0000000000', name NIL). */
 const NO_MOBILE_PLACEHOLDER = '0000000000';
 
@@ -489,7 +490,7 @@ export class DashboardService {
 
   async adminSummary(roleid?: number) {
     // Cross-business rollup - only roles that legitimately see across stores.
-    const allowed = ['Site Admin', 'Business Head'];
+    const allowed = ['Site Admin', ...OWNER_ROLES];
     const roleRow = await this.manager.query(`SELECT name FROM app_role WHERE id = $1`, [roleid || 0]);
     if (!allowed.includes(roleRow?.[0]?.name)) {
       throw new ForbiddenException('Not authorized to view the admin summary.');

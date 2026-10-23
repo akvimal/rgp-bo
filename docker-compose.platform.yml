@@ -1,0 +1,52 @@
+# The control plane: owns customers (tenants), plans, entitlements and provisioning.
+#   docker compose -f docker-compose.platform.yml --env-file .env.platform up -d --build
+# One Postgres server holds the control plane's own database and one database per customer (each with its own login role).
+# A customer's app is started separately with scripts/tenant-up.sh <name>, using docker-compose.tenant.yml.
+name: rgp-platform
+
+services:
+  platform-db:
+    image: postgres:17.4-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${PLATFORM_PG_USER:-rgpplatform}
+      POSTGRES_PASSWORD: ${PLATFORM_PG_PASSWORD:?set PLATFORM_PG_PASSWORD in .env.platform}
+      POSTGRES_DB: controlplane
+    volumes:
+      - platform_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PLATFORM_PG_USER:-rgpplatform} -d controlplane"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [platform]
+
+  control-plane:
+    build: ./control-plane
+    restart: always
+    depends_on:
+      platform-db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://${PLATFORM_PG_USER:-rgpplatform}:${PLATFORM_PG_PASSWORD}@platform-db:5432/controlplane
+      PG_ADMIN_URL: postgresql://${PLATFORM_PG_USER:-rgpplatform}:${PLATFORM_PG_PASSWORD}@platform-db:5432/postgres
+      PLATFORM_DB_HOST: platform-db
+      ADMIN_PASSWORD: ${CONTROL_PLANE_ADMIN_PASSWORD:?set CONTROL_PLANE_ADMIN_PASSWORD in .env.platform}
+      ADMIN_JWT_SECRET: ${CONTROL_PLANE_JWT_SECRET:?set CONTROL_PLANE_JWT_SECRET in .env.platform}
+      SQL_DIR: /sql
+      TENANT_FIRST_PORT: ${TENANT_FIRST_PORT:-8201}
+    volumes:
+      - ./sql:/sql:ro
+      - platform_data:/data
+    ports:
+      - "${CONTROL_PLANE_PORT:-4000}:4000"
+    networks: [platform]
+
+networks:
+  platform:
+    name: rgp-platform
+
+volumes:
+  platform_pgdata:
+  platform_data:

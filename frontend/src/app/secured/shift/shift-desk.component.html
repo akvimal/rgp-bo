@@ -8,8 +8,8 @@
     <ng-container *ngIf="storeId !== null && storeId !== undefined">
       <!-- no open shift -->
       <div *ngIf="!openShift && mode !== 'open'" class="d-flex justify-content-between align-items-center flex-wrap gap-2" data-testid="shiftdesk-none">
-        <div class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>No open shift</strong> - sales can't be completed until a shift is open.</div>
-        <button class="btn btn-primary" type="button" *isAuth="'store.shift.open'" data-testid="shift-card-open" (click)="startOpen()">Open shift</button>
+        <div class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>{{ staffBased ? 'You have no open shift' : 'No open shift' }}</strong> - sales can't be completed until {{ staffBased ? 'you open yours' : 'a shift is open' }}.</div>
+        <button class="btn btn-primary" type="button" *isAuth="'store.shift.open'" data-testid="shift-card-open" (click)="startOpen()">{{ staffBased ? 'Open my shift' : 'Open shift' }}</button>
       </div>
 
       <!-- opening -->
@@ -36,7 +36,8 @@
           <div>
             <span class="badge bg-success me-2">OPEN</span><strong>{{ openShift.name }}</strong>
             <span class="text-muted ms-1">({{ openShift.shiftdate | date:'dd MMM' }})</span>
-            <div class="small text-muted" *ngIf="summary?.shift?.assigned">With {{ summary.shift.assigned }}</div>
+            <div class="small text-muted" *ngIf="summary?.shift?.assigned">{{ staffBased ? 'Your drawer' : 'With ' + summary.shift.assigned }}</div>
+            <div class="small text-muted" *ngIf="summary?.accountable" data-testid="shiftdesk-accountable">A cash difference is answered for by {{ summary.accountable }}.</div>
           </div>
           <button *ngIf="mode !== 'close'" class="btn btn-outline-danger" type="button" data-testid="shift-card-close" (click)="startClose()" [disabled]="!summary"
                   title="Count the drawer and end your shift">Close shift</button>
@@ -81,7 +82,7 @@
         <!-- closing -->
         <div *ngIf="mode === 'close' && summary" class="border rounded p-3 mt-3" data-testid="shiftdesk-close-form">
           <h6>Close the shift - {{ operatorName || 'select staff in the header' }}</h6>
-          <div class="mb-3">
+          <div class="mb-3" *ngIf="!staffBased">
             <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="ct-eod" name="ct" value="END_OF_DAY" [(ngModel)]="closeType" (ngModelChange)="resetChecklist()" data-testid="shiftdesk-type-eod"><label class="form-check-label" for="ct-eod">End of day - the store is closing</label></div>
             <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="ct-ho" name="ct" value="HANDOVER" [(ngModel)]="closeType" (ngModelChange)="resetChecklist()" data-testid="shiftdesk-type-handover"><label class="form-check-label" for="ct-ho">Hand over - the store stays open</label></div>
           </div>

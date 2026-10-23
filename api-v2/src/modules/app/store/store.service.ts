@@ -9,9 +9,12 @@ import { AppUser } from "src/entities/appuser.entity";
 import { UserStore } from "src/entities/user-store.entity";
 import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
+import { PlatformService } from "src/core/platform/platform.service";
 import { denominationTotal, normalizeDenominations } from "./denominations";
+import { findAccountableUser, loadStoreProfile, parseProfileInput } from "./store-profile";
 import { CLOSING_CHECKLIST_KEYS, HANDOVER_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
 
+import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
 @Injectable()
 export class StoreService {
   constructor(
@@ -24,6 +27,7 @@ export class StoreService {
     @InjectRepository(Business) private readonly businessRepository: Repository<Business>,
     @InjectEntityManager() private readonly manager: EntityManager,
     private readonly audit: AuditService,
+    private readonly platform: PlatformService,
   ) {}
 
   async findStores() {
@@ -146,6 +150,58 @@ export class StoreService {
     return after;
   }
 
+  // ---------------------------------------------------------------- store profile (how the till runs)
+  async getProfile(storeid: number) {
+    const profile = await loadStoreProfile(this.manager, storeid);
+    if (!profile) throw new NotFoundException("Store not found.");
+    return profile;
+  }
+
+  /** Business Head only. Changing the shift mode needs every shift of the store closed first; history is never touched. */
+  async updateProfile(id: number, body: any, userid: number) {
+    const store = await this.ownStore(userid, id);
+    const values = parseProfileInput(body || {});
+    if (!Object.keys(values).length) throw new BadRequestException("Nothing to change.");
+    const before = await this.getProfile(id);
+    if (values.shift_mode && values.shift_mode !== before.shiftmode) {
+      const [open] = await this.manager.query(`select count(*)::int as n from store_shifts where store_id = $1 and status = 'OPEN'`, [id]);
+      if (open.n > 0) throw new ConflictException(`${store.location.trim()} has ${open.n} open shift${open.n === 1 ? "" : "s"}. Close ${open.n === 1 ? "it" : "them"} before changing the shift mode.`);
+    }
+    await this.storeRepository.update(id, {
+      ...(values.shift_mode !== undefined ? { shiftmode: values.shift_mode } : {}),
+      ...(values.till !== undefined ? { till: values.till } : {}),
+      ...(values.accountable_role !== undefined ? { accountablerole: values.accountable_role } : {}),
+      ...(values.approval_mode !== undefined ? { approvalmode: values.approval_mode } : {}),
+      ...(values.operator_required !== undefined ? { operatorrequired: values.operator_required } : {}),
+      ...(values.operator_hold_minutes !== undefined ? { operatorholdminutes: values.operator_hold_minutes } : {}),
+    } as any);
+    const after = await this.getProfile(id);
+    await this.audit.record({
+      userId: userid, action: "store.profile_updated", entityType: "stores", entityId: id,
+      summary: `${store.location.trim()}: ${after.shiftmode}-based shifts, ${after.till} till, operator ${after.operatorrequired ? "asked" : "not asked"}`,
+      details: { before, after },
+    });
+    return after;
+  }
+
+  private async isManager(userid: number | null | undefined) {
+    if (!userid) return false;
+    const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+    return isManagerRole(r?.name);
+  }
+
+  /** The open shift this person works in (staff-based store) or the store's one shared shift (time-based). */
+  async findOpenShiftFor(storeid: number, userid: number | null | undefined) {
+    const profile = await loadStoreProfile(this.manager, storeid);
+    const qb = this.shiftRepository.createQueryBuilder("shift")
+      .leftJoinAndSelect("shift.template", "template")
+      .leftJoinAndSelect("shift.assigneduser", "assigneduser")
+      .where("shift.store_id = :storeid", { storeid })
+      .andWhere("shift.status = 'OPEN'");
+    if (profile?.shiftmode === "staff") qb.andWhere("shift.assigned_user_id = :userid", { userid: userid || 0 });
+    return qb.orderBy("shift.shift_date", "DESC").addOrderBy("shift.id", "DESC").getOne();
+  }
+
   async createStore(body: any, userid: any) {
     const businessid = body.businessid ? Number(body.businessid) : await this.getDefaultBusinessId();
     if (!businessid) {
@@ -207,7 +263,7 @@ export class StoreService {
       throw new ForbiddenException("You are not assigned to this store.");
     }
     const caller = await this.userRepository.findOne({ where: { id: userid }, relations: ["role"] });
-    if (caller?.role?.name === "Business Head") {
+    if (isOwnerRole(caller?.role?.name)) {
       return;
     }
     const assignment = await this.userStoreRepository.findOne({ where: { userid, storeid } as any });
@@ -221,7 +277,7 @@ export class StoreService {
     if (!caller) {
       throw new UnauthorizedException();
     }
-    if (caller.role?.name !== "Business Head") {
+    if (!isOwnerRole(caller.role?.name)) {
       throw new ForbiddenException("Only a Business Head can manage stores");
     }
     if (!caller.businessid) {
@@ -232,6 +288,7 @@ export class StoreService {
 
   async createStoreScoped(body: any, userid: number) {
     const caller = await this.getCallerForStoreManagement(userid);
+    await this.platform.assertRoom("stores");
     const payload = {
       location: body.location,
       depositthreshold: body.depositthreshold === null || body.depositthreshold === undefined || body.depositthreshold === ""
@@ -316,7 +373,7 @@ export class StoreService {
     return this.templateRepository.findOne({ where: { id } });
   }
 
-  async findShifts(query: any) {
+  async findShifts(query: any, userid?: number) {
     const storeid = await this.resolveStoreId(query.storeid);
     const qb = this.shiftRepository.createQueryBuilder("shift")
       .leftJoinAndSelect("shift.store", "store")
@@ -341,6 +398,10 @@ export class StoreService {
     if (query.shiftid) {
       qb.andWhere("shift.id = :shiftid", { shiftid: Number(query.shiftid) });
     }
+    // "mine" is a person's own drawer: what a staff-based store shows at the counter and in the header
+    if (query.mine === "true" || query.mine === true) {
+      qb.andWhere("shift.assigned_user_id = :mine", { mine: userid || 0 });
+    }
 
     const shifts = await qb.orderBy("shift.shift_date", "DESC").addOrderBy("shift.id", "DESC").getMany();
     const items: any[] = [];
@@ -357,9 +418,19 @@ export class StoreService {
       throw new Error("Store is required");
     }
     await this.assertUserAssignedToStore(userid, storeid);
-    const existingOpen = await this.shiftRepository.findOne({ where: { storeid, status: "OPEN" } });
-    if (existingOpen) {
-      throw new ConflictException("This store already has an open shift. Close it before opening another.");
+    const profile = await loadStoreProfile(this.manager, storeid);
+    const staffBased = profile?.shiftmode === "staff";
+    // Staff-based: the drawer belongs to the person opening it (a manager may open one for somebody else).
+    let assigneduserid: number | null = body.assigneduserid ? Number(body.assigneduserid) : null;
+    if (staffBased) {
+      if (!assigneduserid || (assigneduserid !== userid && !(await this.isManager(userid)))) assigneduserid = userid || null;
+      const mine = await this.shiftRepository.findOne({ where: { storeid, status: "OPEN", assigneduserid } as any });
+      if (mine) throw new ConflictException("This person already has an open shift here. Close it before opening another.");
+    } else {
+      const existingOpen = await this.shiftRepository.findOne({ where: { storeid, status: "OPEN" } });
+      if (existingOpen) {
+        throw new ConflictException("This store already has an open shift. Close it before opening another.");
+      }
     }
     const template = body.templateid ? await this.templateRepository.findOne({ where: { id: Number(body.templateid) } }) : null;
 
@@ -382,7 +453,7 @@ export class StoreService {
     const shift = await this.shiftRepository.save({
       storeid,
       templateid: template ? template.id : null,
-      assigneduserid: body.assigneduserid ? Number(body.assigneduserid) : (template?.assigneduserid || null),
+      assigneduserid: staffBased ? assigneduserid : (assigneduserid || template?.assigneduserid || null),
       shiftdate: body.shiftdate || this.today(),
       name: body.name || template?.name || "Shift",
       starttime: body.starttime || template?.starttime || "09:00",
@@ -448,6 +519,14 @@ export class StoreService {
     } else {
       throw new BadRequestException("Enter the drawer count before closing the shift.");
     }
+    const profile = await loadStoreProfile(this.manager, shift.storeid);
+    const staffBased = profile?.shiftmode === 'staff';
+    if (staffBased && shift.assigneduserid && shift.assigneduserid !== userid && !(await this.isManager(userid))) {
+      throw new ForbiddenException('Each person closes their own shift.');
+    }
+    if (staffBased && body.closetype === 'HANDOVER') {
+      throw new BadRequestException('A handover is for a shared till. In a staff-based store each person closes their own shift.');
+    }
     const closeType = body.closetype === 'HANDOVER' ? 'HANDOVER' : 'END_OF_DAY';
     // WS-7: only validated when the caller actually sends a checklist (the shift page always does).
     if (body.closingchecklist !== undefined) {
@@ -457,8 +536,11 @@ export class StoreService {
       }
     }
 
-    const closedOperatorId = body.closedoperatorid ? Number(body.closedoperatorid)
-      : (body.operatorid ? Number(body.operatorid) : (shift.assigneduserid || null));
+    // Staff-based: the drawer's owner closed it. Time-based: whoever the counter says was serving.
+    const closedOperatorId = staffBased ? (shift.assigneduserid || userid || null)
+      : (body.closedoperatorid ? Number(body.closedoperatorid)
+        : (body.operatorid ? Number(body.operatorid) : (shift.assigneduserid || null)));
+    const accountableUserId = await findAccountableUser(this.manager, shift.storeid, profile?.accountablerole || 'auto');
 
     // A handover names who takes the drawer; they must work at this store and be someone other than the person handing over.
     let handoverTo: number | null = null;
@@ -468,8 +550,8 @@ export class StoreService {
       if (handoverTo === closedOperatorId || handoverTo === userid) throw new BadRequestException('Hand the shift over to someone else.');
       const [taker] = await this.manager.query(
         `select u.id from app_user u join app_role r on r.id = u.role_id
-          where u.id = $1 and u.active and not u.archive and r.name <> 'Site Admin'
-            and (r.name = 'Business Head' or exists (select 1 from user_stores us where us.user_id = u.id and us.store_id = $2 and us.active and not us.archive))`, [handoverTo, shift.storeid]);
+          where u.id = $1 and u.active and not u.archive and r.name not in ('Site Admin', 'Counter')
+            and (r.name in ('Business Head', 'Owner-operator') or exists (select 1 from user_stores us where us.user_id = u.id and us.store_id = $2 and us.active and not us.archive))`, [handoverTo, shift.storeid]);
       if (!taker) throw new BadRequestException('That staff member does not work at this store.');
     }
 
@@ -505,6 +587,7 @@ export class StoreService {
       handovertouserid: handoverTo,
       closingdigital: closingDigital,
       closedoperatorid: closedOperatorId,
+      accountableuserid: accountableUserId,
       closedon: new Date(),
       closedby: userid ? { id: userid } as any : null,
       notes: body.notes || shift.notes,
@@ -560,7 +643,11 @@ export class StoreService {
     const [out] = await this.manager.query(
       `select coalesce(sum(withdraw) filter (where category = 'REFUND'), 0)::float as refunds, coalesce(sum(withdraw) filter (where category = 'BANK_DEPOSIT'), 0)::float as deposits
          from store_cash_accounts where shift_id = $1`, [shiftId]);
+    const profile = await loadStoreProfile(this.manager, shift.storeid);
+    const accountableId = shift.accountableuserid || await findAccountableUser(this.manager, shift.storeid, profile?.accountablerole || 'auto');
+    const [accountable] = accountableId ? await this.manager.query(`select full_name from app_user where id = $1`, [accountableId]) : [];
     return {
+      profile, accountableuserid: accountableId, accountable: accountable?.full_name || null,
       shift: { id: shift.id, name: shift.name, status: shift.status, storeid: shift.storeid, store: (shift as any).store?.location, assigneduserid: shift.assigneduserid,
                assigned: (shift as any).assigneduser?.fullname || null, openingcash: Number(shift.openingcash), expectedcash: stats.expectedcash, openedon: shift.openedon },
       bills: t.bills, total: t.total, cash: t.cash, digital: t.digital, storeCredit: t.store_credit, staffCredit: t.staff_credit,
@@ -611,13 +698,8 @@ export class StoreService {
     if (category === "BANK_DEPOSIT") {
       shiftid = null;
     } else if (!shiftid && storeid) {
-      // one OPEN shift per store — attach the entry to it regardless of assignee
-      const openShift = await this.shiftRepository.createQueryBuilder("shift")
-        .where("shift.store_id = :storeid", { storeid })
-        .andWhere("shift.status = 'OPEN'")
-        .orderBy("shift.shift_date", "DESC")
-        .addOrderBy("shift.id", "DESC")
-        .getOne();
+      // time-based: the store's one OPEN shift; staff-based: the caller's own drawer
+      const openShift = await this.findOpenShiftFor(storeid, userid);
       shiftid = openShift ? openShift.id : null;
     }
 
@@ -667,17 +749,14 @@ export class StoreService {
       .leftJoinAndSelect("store.business", "business")
       .where("store.id = :storeid", { storeid })
       .getOne() : null;
-    // one OPEN shift per store — return it regardless of who is assigned
-    const openShiftQb = this.shiftRepository.createQueryBuilder("shift")
+    // time-based: the store's one OPEN shift; staff-based: the caller's own
+    const openShift = storeid ? await this.findOpenShiftFor(storeid, userid) : await this.shiftRepository.createQueryBuilder("shift")
       .leftJoinAndSelect("shift.template", "template")
       .leftJoinAndSelect("shift.assigneduser", "assigneduser")
       .where("shift.status = 'OPEN'")
       .orderBy("shift.shift_date", "DESC")
-      .addOrderBy("shift.id", "DESC");
-    if (storeid) {
-      openShiftQb.andWhere("shift.store_id = :storeid", { storeid });
-    }
-    const openShift = await openShiftQb.getOne();
+      .addOrderBy("shift.id", "DESC")
+      .getOne();
 
     const shifts = await this.findShifts({ storeid, fromdate: query.fromdate, todate: query.todate });
     const ledger = await this.findLedger({ storeid, fromdate: query.fromdate, todate: query.todate });
@@ -703,6 +782,7 @@ export class StoreService {
     return {
       storeid,
       store,
+      profile: storeid ? await loadStoreProfile(this.manager, storeid) : null,
       openShift,
       shifts,
       ledger,
@@ -818,8 +898,10 @@ export class StoreService {
       order: { transdate: 'ASC', id: 'ASC' },
     });
 
+    const [owner] = shift.accountableuserid ? await this.manager.query(`select full_name from app_user where id = $1`, [shift.accountableuserid]) : [];
     return {
       shift: { ...shift, ...stats },
+      accountable: owner?.full_name || null,
       sales: salesRow,
       returns: returnsRow,
       staff: staffBreakdown,
@@ -864,7 +946,8 @@ export class StoreService {
       .leftJoinAndSelect("u.role", "role")
       .innerJoin("u.storeassignments", "assignment")
       .innerJoin("assignment.store", "store")
-      .where("u.isActive = true and u.isArchived = false and role.isLocked = false");
+      .where("u.isActive = true and u.isArchived = false and role.isLocked = false")
+      .andWhere("role.name NOT IN (:...notpeople)", { notpeople: NOT_A_PERSON });   // a shared counter login is not somebody who serves
     if (storeid) {
       qb.andWhere("store.id = :storeid", { storeid });
     }

@@ -24,6 +24,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   operatorId: number | null = null;
   operatorName = "";
   openShift: any = null;
+  staffBased = false;
   summary: any = null;
   message = "";
   error = "";
@@ -57,6 +58,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
       this.shiftContext.refresh(id);
       this.loadStaff();
     }));
+    this.subs.add(this.shiftContext.profile$.subscribe((p: any) => { this.staffBased = p?.shiftmode === "staff"; if (this.staffBased) this.closeType = "END_OF_DAY"; }));
     this.subs.add(this.shiftContext.openShift$.subscribe((s: any) => {
       this.openShift = s;
       if (!s && this.mode === "close") { this.mode = ""; }

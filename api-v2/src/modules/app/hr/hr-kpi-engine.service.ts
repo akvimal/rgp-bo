@@ -88,19 +88,20 @@ export class HrKpiEngine {
   private async raw(key: string, e: any, start: string, minActivity: number): Promise<{ raw: number; evidence: string } | { na: string }> {
     const needsLogin = key !== 'ABSENT_DAYS';
     if (needsLogin && !e.user_id) return { na: 'No login, so the system has nothing to measure' };
-    const uid = e.user_id;
+    // every login the person uses (their own, plus a counter or sales login linked to the same record)
+    const uids: number[] = [e.user_id, ...(e.linked_user_ids || [])];
     const window = `>= $2::date and %s < ($2::date + interval '1 month')`;
     if (key === 'SALES_VALUE' || key === 'DISCARDED_BILLS') {
       const [b] = await this.manager.query(
         `select count(*) filter (where s.status = 'COMPLETE')::int as bills,
                 coalesce(sum(s.total) filter (where s.status = 'COMPLETE'), 0)::float as value
-           from sale s where coalesce(s.acting_user_id, s.created_by) = $1 and s.bill_date >= $2::date and s.bill_date < ($2::date + interval '1 month')`, [uid, start]);
+           from sale s where coalesce(s.acting_user_id, s.created_by) = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < ($2::date + interval '1 month')`, [uids, start]);
       if (key === 'SALES_VALUE') {
         if (b.bills < minActivity) return { na: `Only ${b.bills} bills; ${minActivity} needed` };
         return { raw: b.value, evidence: `${b.bills} bills, Rs ${Math.round(b.value).toLocaleString('en-IN')}` };
       }
       const [d] = await this.manager.query(
-        `select count(*)::int as n from sale s where s.status = 'DISCARDED' and s.updated_by = $1 and s.updated_on >= $2::date and s.updated_on < ($2::date + interval '1 month')`, [uid, start]);
+        `select count(*)::int as n from sale s where s.status = 'DISCARDED' and s.updated_by = any($1::int[]) and s.updated_on >= $2::date and s.updated_on < ($2::date + interval '1 month')`, [uids, start]);
       if (b.bills + d.n < minActivity) return { na: `Only ${b.bills + d.n} bills; ${minActivity} needed` };
       return { raw: d.n, evidence: `${d.n} discarded, ${b.bills} completed` };
     }
@@ -110,14 +111,14 @@ export class HrKpiEngine {
                 coalesce(sum(abs(sh.variance)), 0)::float as total
            from store_shifts sh
           where sh.status = 'CLOSED' and not sh.archive and sh.counted_cash is not null
-            and coalesce(sh.closed_operator_id, sh.closed_by, sh.assigned_user_id) = $1
-            and sh.shift_date >= $2::date and sh.shift_date < ($2::date + interval '1 month')`, [uid, start]);
+            and coalesce(sh.closed_operator_id, sh.closed_by, sh.assigned_user_id) = any($1::int[])
+            and sh.shift_date >= $2::date and sh.shift_date < ($2::date + interval '1 month')`, [uids, start]);
       if (c.closed === 0 || c.closed < minActivity) return { na: `${c.closed} shifts closed; ${Math.max(minActivity, 1)} needed` };
       return { raw: r2(c.total), evidence: `${c.off} of ${c.closed} shifts off, Rs ${r2(c.total)} in all` };
     }
     if (key === 'GRIEVANCES') {
       const [g] = await this.manager.query(
-        `select count(*)::int as n from grievance where about_user_id = $1 and created_on >= $2::date and created_on < ($2::date + interval '1 month')`, [uid, start]);
+        `select count(*)::int as n from grievance where about_user_id = any($1::int[]) and created_on >= $2::date and created_on < ($2::date + interval '1 month')`, [uids, start]);
       return { raw: g.n, evidence: `${g.n} grievance${g.n === 1 ? '' : 's'}` };
     }
     if (key === 'INQUIRIES_CLOSED' || key === 'INQUIRIES_LATE') {
@@ -126,7 +127,7 @@ export class HrKpiEngine {
                 count(*) filter (where (status = 'CLOSED' and closed_on::date > due_on and closed_on >= $2::date and closed_on < ($2::date + interval '1 month'))
                                     or (status = 'OPEN' and due_on < current_date and due_on >= $2::date and due_on < ($2::date + interval '1 month')))::int as late,
                 count(*) filter (where raised_on >= $2::date and raised_on < ($2::date + interval '1 month') or (status = 'CLOSED' and closed_on >= $2::date and closed_on < ($2::date + interval '1 month')))::int as touched
-           from customer_inquiry where assigned_to = $1`, [uid, start]);
+           from customer_inquiry where assigned_to = any($1::int[])`, [uids, start]);
       if (q.touched < minActivity) return { na: `Only ${q.touched} inquiries; ${minActivity} needed` };
       return key === 'INQUIRIES_CLOSED'
         ? { raw: q.closed, evidence: `${q.closed} closed` }
@@ -134,18 +135,18 @@ export class HrKpiEngine {
     }
     if (key === 'AUDITS_DONE' || key === 'AUDITS_LATE') {
       const [a] = await this.manager.query(
-        `select count(*) filter (where status = 'DONE' and completed_by = $1 and completed_on >= $2::date and completed_on < ($2::date + interval '1 month'))::int as done,
-                count(*) filter (where assigned_to = $1 and ((status = 'DONE' and completed_on::date > due_on and completed_on >= $2::date and completed_on < ($2::date + interval '1 month'))
+        `select count(*) filter (where status = 'DONE' and completed_by = any($1::int[]) and completed_on >= $2::date and completed_on < ($2::date + interval '1 month'))::int as done,
+                count(*) filter (where assigned_to = any($1::int[]) and ((status = 'DONE' and completed_on::date > due_on and completed_on >= $2::date and completed_on < ($2::date + interval '1 month'))
                                     or (status in ('PLANNED', 'IN_PROGRESS') and due_on < current_date and due_on < ($2::date + interval '1 month'))))::int as late,
-                count(*) filter (where assigned_to = $1 and due_on >= $2::date and due_on < ($2::date + interval '1 month'))::int as due
-           from stock_audit`, [uid, start]);
+                count(*) filter (where assigned_to = any($1::int[]) and due_on >= $2::date and due_on < ($2::date + interval '1 month'))::int as due
+           from stock_audit`, [uids, start]);
       if (a.due + a.done < minActivity) return { na: `Only ${a.due + a.done} audits; ${minActivity} needed` };
       return key === 'AUDITS_DONE' ? { raw: a.done, evidence: `${a.done} completed` } : { raw: a.late, evidence: `${a.late} late or overdue of ${a.due} due` };
     }
     if (key === 'SUGGESTIONS_ADDED') {
       const [g] = await this.manager.query(
         `select count(*) filter (where action = 'ADDED')::int as added, count(*) filter (where action = 'SHOWN')::int as shown
-           from sale_suggestion_event where user_id = $1 and created_on >= $2::date and created_on < ($2::date + interval '1 month')`, [uid, start]);
+           from sale_suggestion_event where user_id = any($1::int[]) and created_on >= $2::date and created_on < ($2::date + interval '1 month')`, [uids, start]);
       if (g.shown < minActivity) return { na: `Only ${g.shown} suggestions shown; ${minActivity} needed` };
       return { raw: g.added, evidence: `${g.added} taken of ${g.shown} shown` };
     }
@@ -178,7 +179,8 @@ export class HrKpiEngine {
     const emps = await this.manager.query(
       `select e.id, e.user_id, e.emp_type, e.designation, e.store_id, coalesce(e.full_name, u.full_name) as name,
               (select r.name from app_user x join app_role r on r.id = x.role_id where x.id = e.user_id) as role_name,
-              array(select us.store_id from user_stores us where us.user_id = e.user_id and us.active and not us.archive) as store_ids
+              array(select us.store_id from user_stores us where us.user_id = e.user_id and us.active and not us.archive) as store_ids,
+              array(select a.user_id from hr_employee_account a where a.employee_id = e.id) as linked_user_ids
          from hr_employee e left join app_user u on u.id = e.user_id
         where e.join_date < ($1::date + interval '1 month') and (e.exit_date is null or e.exit_date >= $1::date)
         order by coalesce(e.full_name, u.full_name)`, [start]);
@@ -335,7 +337,7 @@ export class HrKpiEngine {
 
   // ------------------------------------------------------------------ a person's own finalised scores
   async mine(user: any) {
-    const [emp] = await this.manager.query(`select id from hr_employee where user_id = $1`, [user?.id || 0]);
+    const [emp] = await this.manager.query(`select id from hr_employee where user_id = $1 or id = (select employee_id from hr_employee_account where user_id = $1)`, [user?.id || 0]);
     if (!emp) return { staff: false, months: [] };
     const months = await this.manager.query(
       `select period, percent::float as percent, band_label, incentive_percent::float as incentive_percent, total_points::float as total_points, max_points::float as max_points,

@@ -76,6 +76,14 @@ export class CashService {
         return this.http.put(`${this.apiurl}/store-cash/shifts/${id}/close`, body);
     }
 
+    getStoreProfile(storeid:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/profile`, { params: { storeid: String(storeid) } });
+    }
+
+    saveStoreProfile(id:any, body:any): Observable<any> {
+        return this.http.put(`${this.apiurl}/stores/${id}/profile`, body);
+    }
+
     getShiftSummary(id:any): Observable<any> {
         return this.http.get(`${this.apiurl}/store-cash/shifts/${id}/summary`);
     }

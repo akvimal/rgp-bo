@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AddNoteDto, CreateGrievanceDto, UpdateGrievanceDto } from './dto/grievance.dto';
 
+import { isOwnerRole } from 'src/core/roles';
 /** Who is asking and which stores they may see (null = every store). */
 export interface GrievanceScope { userId: number; role: string; storeIds: number[] | null }
 
@@ -22,7 +23,7 @@ export class GrievanceService {
   async scopeFor(user: any): Promise<GrievanceScope> {
     const r = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const role = r?.[0]?.name;
-    if (role === 'Business Head') return { userId: user.id, role, storeIds: null };
+    if (isOwnerRole(role)) return { userId: user.id, role, storeIds: null };
     if (role === 'Store Head') {
       const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
       return { userId: user.id, role, storeIds: s.map((x: any) => x.store_id) };
@@ -37,7 +38,7 @@ export class GrievanceService {
   async refillScopeFor(user: any): Promise<GrievanceScope> {
     const r = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const role = r?.[0]?.name;
-    if (role === 'Business Head') return { userId: user.id, role, storeIds: null };
+    if (isOwnerRole(role)) return { userId: user.id, role, storeIds: null };
     if (role === 'Store Head' || role === 'Sales Staff') {
       const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
       return { userId: user.id, role, storeIds: s.map((x: any) => x.store_id) };
@@ -156,8 +157,8 @@ export class GrievanceService {
 
     if (dto.status && dto.status !== cur.status) {
       if (!TRANSITIONS[cur.status].includes(dto.status)) throw new BadRequestException(`Cannot move from ${cur.status} to ${dto.status}.`);
-      if (dto.status === 'CLOSED' && sc.role !== 'Business Head') throw new ForbiddenException('Only the Business Head can close a grievance.');
-      if (cur.status === 'CLOSED' && sc.role !== 'Business Head') throw new ForbiddenException('Only the Business Head can reopen a closed grievance.');
+      if (dto.status === 'CLOSED' && !isOwnerRole(sc.role)) throw new ForbiddenException('Only the Business Head can close a grievance.');
+      if (cur.status === 'CLOSED' && !isOwnerRole(sc.role)) throw new ForbiddenException('Only the Business Head can reopen a closed grievance.');
       set('status', dto.status);
       if (dto.status === 'RESOLVED') {
         const resolution = (dto.resolution || '').trim();
@@ -208,7 +209,7 @@ export class GrievanceService {
       `select distinct u.id, u.full_name as name, r.name as role
          from app_user u join app_role r on r.id = u.role_id
          left join user_stores us on us.user_id = u.id and us.active and not us.archive
-        where u.active and not u.archive and r.name in ('Store Head','Sales Staff','Business Head')
+        where u.active and not u.archive and r.name in ('Store Head','Sales Staff','Business Head','Owner-operator')
           and ($1::int[] is null or us.store_id = any($1::int[]))
         order by u.full_name`, [sc.storeIds]);
   }

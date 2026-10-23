@@ -9,6 +9,7 @@ import { PurchaseOrder } from "src/entities/purchase-order.entity";
 import { AppRole } from "src/entities/approle.entity";
 import { Setting } from "src/entities/setting.entity";
 import { Vendor } from "src/entities/vendor.entity";
+import { approvalModeFor } from "src/core/approval-mode";
 
 @Injectable()
 export class PurchaseService {
@@ -246,7 +247,7 @@ export class PurchaseService {
         return this.orderRepository.update(id, {...values, updatedby:userid});
     }
 
-    async submitOrder(id:number, userid:number){
+    async submitOrder(id:number, userid:number, roleid?:number){
         const order = await this.findOrderById(`${id}`);
         if(!order){
             return null;
@@ -258,7 +259,10 @@ export class PurchaseService {
         }
 
         const summary = await this.evaluateOrderApproval(order);
-        const nextState = summary.approvalrequired ? {
+        // approval_mode 'self': a maker who may approve purchase orders approves their own, on the record
+        const selfApproved = summary.approvalrequired && !!roleid && await this.canApproveOrder(roleid)
+            && await approvalModeFor(this.manager, { userId: userid }) === 'self';
+        const nextState = summary.approvalrequired && !selfApproved ? {
             status: 'PENDING_APPROVAL',
             approvalstatus: 'Pending',
             approvalreason: summary.approvalreasons.join(' | '),
@@ -272,7 +276,7 @@ export class PurchaseService {
         } : {
             status: 'SUBMITTED',
             approvalstatus: 'Approved',
-            approvalreason: null,
+            approvalreason: selfApproved ? `Self-approved by the maker: ${summary.approvalreasons.join(' | ')}` : null,
             approvalrequestedby: userid,
             approvalrequestedat: new Date(),
             approvedby: userid,

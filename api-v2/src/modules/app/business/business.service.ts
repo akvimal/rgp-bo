@@ -3,19 +3,26 @@ import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
+import { isValidApprovalMode } from "src/core/approval-mode";
+import { ModulesService } from "src/core/modules/modules.service";
+import { UserService } from "../users/user.service";
+import { PRESETS, PRESET_INFO, Preset, PresetInput, planPreset } from "./business-preset";
 
+import { isOwnerRole } from 'src/core/roles';
 @Injectable()
 export class BusinessService {
   constructor(
     @InjectRepository(Business) private readonly businessRepository: Repository<Business>,
     @InjectEntityManager() private readonly manager: EntityManager,
     private readonly audit: AuditService,
+    private readonly modules: ModulesService,
+    private readonly users: UserService,
   ) {}
 
   /** The business the signed-in Business Head belongs to. Nobody else reaches this, and nobody reaches another business. */
   private async ownBusiness(user: any): Promise<Business> {
     const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    if (role?.name !== "Business Head") throw new ForbiddenException("Only the Business Head can manage the business details.");
+    if (!isOwnerRole(role?.name)) throw new ForbiddenException("Only the Business Head can manage the business details.");
     const [u] = await this.manager.query(`select business_id from app_user where id = $1`, [user?.id || 0]);
     const b = u?.business_id ? await this.businessRepository.findOne({ where: { id: u.business_id } }) : null;
     if (!b) throw new NotFoundException("Your user is not linked to a business.");
@@ -24,6 +31,90 @@ export class BusinessService {
 
   async mine(user: any) {
     return this.ownBusiness(user);
+  }
+
+  // ---------------------------------------------------------------- staffing presets (the setup wizard)
+  /** The presets on offer, the one chosen, and each store as it is set up now. */
+  async presets(user: any) {
+    const b = await this.ownBusiness(user);
+    return { current: b.staffingpreset, presets: PRESETS.map((k) => PRESET_INFO[k]), stores: await this.storesNow(b.id) };
+  }
+
+  private async storesNow(businessId: number) {
+    const rows = await this.manager.query(
+      `select s.id, s.location, s.shift_mode, s.operator_required,
+              (select count(*)::int from store_shifts sh where sh.store_id = s.id and sh.status = 'OPEN') as open
+         from stores s where s.business_id = $1 and s.active and not s.archive order by s.id`, [businessId]);
+    return rows.map((r: any) => ({ id: r.id, location: String(r.location).trim(), shiftmode: r.shift_mode === "staff" ? "staff" : "time", operatorrequired: !!r.operator_required, openshifts: r.open }));
+  }
+
+  private async planFor(business: Business, body: any) {
+    if (!PRESETS.includes(body?.preset)) throw new BadRequestException("Choose one of: " + PRESETS.join(", ") + ".");
+    for (const k of ["shiftmode"]) if (body[k] !== undefined && !["time", "staff"].includes(body[k])) throw new BadRequestException("Shift mode must be time or staff.");
+    for (const [id, v] of Object.entries(body.stores || {})) if ((v as any)?.shiftmode !== undefined && !["time", "staff"].includes((v as any).shiftmode)) throw new BadRequestException(`Shift mode for store ${id} must be time or staff.`);
+    const m = await this.modules.forBusiness(business.id);
+    return planPreset(body as PresetInput, {
+      approvalmode: business.approvalmode === "self" ? "self" : "separate",
+      modules: { hr: m.hr, transfers: m.transfers, stock_audits: m.stock_audits },
+      stores: await this.storesNow(business.id),
+    });
+  }
+
+  /** What a preset would change here, without changing anything. */
+  async previewPreset(user: any, body: any) {
+    const b = await this.ownBusiness(user);
+    return { ...(await this.planFor(b, body)), info: PRESET_INFO[body.preset as Preset] };
+  }
+
+  /**
+   * Applies a preset as defaults: approval mode, the modules it decides, and each store's shift mode and operator rule. Users,
+   * shifts and history are never touched. A store with a shift open keeps its mode until the shift is closed, so the whole
+   * switch waits (nothing is half applied). Logins listed in `accounts` are created afterwards, each reported on its own.
+   */
+  async applyPreset(user: any, body: any) {
+    const b = await this.ownBusiness(user);
+    const plan = await this.planFor(b, body);
+    if (plan.blockers.length) throw new ConflictException(plan.blockers.join(" "));
+    const before = { preset: b.staffingpreset, approvalmode: b.approvalmode };
+    await this.manager.transaction(async (tx) => {
+      await tx.query(`update business set staffing_preset = $2, approval_mode = $3 where id = $1`, [b.id, plan.preset, plan.approvalmode]);
+      for (const s of plan.stores) {
+        await tx.query(`update stores set shift_mode = $2, operator_required = $3 where id = $1`, [s.id, s.shiftmode, s.operatorrequired]);
+      }
+    });
+    if (Object.keys(plan.modules).length) await this.modules.update(b.id, user.id, plan.modules);
+    await this.audit.record({
+      userId: user.id, action: "business.preset_applied", entityType: "businesses", entityId: b.id,
+      summary: `setup preset ${before.preset || "none"} -> ${plan.preset}: ${plan.changes.concat(plan.stores.flatMap((s) => s.changes.map((c) => `${s.location} ${c}`))).join("; ") || "no setting changed"}`,
+      details: { before, plan },
+    });
+    const accounts: Array<{ email: string; ok: boolean; error?: string }> = [];
+    for (const a of Array.isArray(body.accounts) ? body.accounts : []) {
+      try {
+        if (!a?.email || !a?.password || !a?.fullname) throw new BadRequestException("A login needs a name, an email and a password.");
+        const roleRows = await this.manager.query(`select id from app_role where name = $1`, [a.role]);
+        if (!roleRows[0]) throw new BadRequestException("Unknown kind of login.");
+        await this.users.createScoped({ fullname: a.fullname, email: a.email, password: a.password, phone: a.phone || "", location: a.location || "", roleid: roleRows[0].id, storeids: a.storeids || [] } as any, user.id);
+        accounts.push({ email: a.email, ok: true });
+      } catch (e: any) {
+        const m = e?.response?.message ?? e?.message ?? "Could not create the login.";
+        accounts.push({ email: a?.email || "", ok: false, error: Array.isArray(m) ? m.join(" ") : String(m) });
+      }
+    }
+    return { ...plan, info: PRESET_INFO[plan.preset], accounts, current: plan.preset };
+  }
+
+  /** Which modules the Business Head's business has switched on (the whole picture, with defaults filled in). */
+  async myModules(user: any) {
+    const b = await this.ownBusiness(user);
+    const state = await this.modules.forBusiness(b.id);
+    const locked = this.modules.lockedByPlan();
+    return locked.length ? { ...state, locked } : state;
+  }
+
+  async updateMyModules(user: any, body: any) {
+    const b = await this.ownBusiness(user);
+    return this.modules.update(b.id, user.id, body);
   }
 
   /**
@@ -49,6 +140,10 @@ export class BusinessService {
       const p = clean(body.pincode, 10, "The pincode");
       if (p && !/^[0-9]{6}$/.test(p)) throw new BadRequestException("The pincode must be 6 digits.");
       fields.pincode = p;
+    }
+    if (body.approvalmode !== undefined) {
+      if (!isValidApprovalMode(body.approvalmode)) throw new BadRequestException("Approval mode must be self or separate.");
+      fields.approvalmode = body.approvalmode;
     }
     if (body.gstin !== undefined) {
       const g = ((body.gstin || "") as string).trim().toUpperCase();

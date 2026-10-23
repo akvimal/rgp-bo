@@ -39,6 +39,24 @@ import { UserStore } from "./user-store.entity";
   @Column("character varying", { name: "phone", length: 20, nullable: true })
   phone: string | null;
 
+  @Column("character varying", { name: "shift_mode", length: 10, default: "time" })
+  shiftmode: string;
+
+  @Column("character varying", { name: "till", length: 12, nullable: true })
+  till: string | null;
+
+  @Column("character varying", { name: "accountable_role", length: 15, default: "auto" })
+  accountablerole: string;
+
+  @Column({ name: "operator_required", type: "boolean", default: true })
+  operatorrequired: boolean;
+
+  @Column("integer", { name: "operator_hold_minutes", default: 60 })
+  operatorholdminutes: number;
+
+  @Column("character varying", { name: "approval_mode", length: 10, nullable: true })
+  approvalmode: string | null;
+
   @Column({ name: "active", type: "boolean", default: true })
   isActive: boolean;
 

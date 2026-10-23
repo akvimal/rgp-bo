@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
+import { isOwnerRole } from 'src/core/roles';
 /** A customer's store credit: balance and history for anyone who can see the customer; corrections by the Business Head. */
 @Injectable()
 export class CustomerCreditService {
@@ -21,7 +22,7 @@ export class CustomerCreditService {
 
   async adjust(customerId: number, body: { amount: any; note: string }, user: any) {
     const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-    if (role?.name !== 'Business Head') throw new ForbiddenException('Only the Business Head corrects store credit.');
+    if (!isOwnerRole(role?.name)) throw new ForbiddenException('Only the Business Head corrects store credit.');
     const amount = Math.round(Number(body?.amount) * 100) / 100;
     if (!Number.isFinite(amount) || amount === 0) throw new BadRequestException('Enter the amount to add (positive) or take off (negative).');
     const note = String(body?.note || '').trim();

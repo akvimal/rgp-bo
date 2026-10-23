@@ -243,6 +243,11 @@
                 <i class="bi bi-circle"></i><span>Business details</span>
               </a>
             </li>
+            <li *isAuth="'businessprofile'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/business-profile/setup" data-testid="nav-settings-shop-setup">
+                <i class="bi bi-circle"></i><span>Shop setup</span>
+              </a>
+            </li>
             <li *isAuth="'roles'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/roles" data-testid="nav-settings-roles">
                 <i class="bi bi-circle"></i><span>Roles</span>
@@ -287,6 +292,11 @@
           </ol>
         </nav>
       </div> -->
+      <div class="alert py-2 mb-2" *ngIf="platform && (platform.status === 'trial' || platform.status === 'suspended' || platform.status === 'closed')"
+           [class.alert-warning]="platform.status === 'trial'" [class.alert-danger]="platform.status !== 'trial'" data-testid="platform-banner">
+        <ng-container *ngIf="platform.status === 'trial'"><strong *ngIf="platform.demo">Demo account with sample data, which may be reset. </strong>{{ platform.demo ? 'Trial' : 'Free trial' }} of the {{platform.plan}} plan<span *ngIf="platform.trialEnds"> until {{platform.trialEnds | date:'dd MMM yyyy'}} ({{ trialDaysLeft }} day{{ trialDaysLeft === 1 ? '' : 's' }} left)</span>.</ng-container>
+        <ng-container *ngIf="platform.status !== 'trial'">{{ platform.reason === 'trial_ended' ? 'Your trial has ended.' : (platform.status === 'closed' ? 'This account is closed.' : 'This account is suspended.') }} Contact your provider to continue.</ng-container>
+      </div>
       <section class="section">
           <div class="row">
               <div class="col-12">

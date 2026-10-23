@@ -5,6 +5,7 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { HrLeaveService } from './hr-leave.service';
 import { HrPayrollService } from './hr-payroll.service';
 
+import { isOwnerRole } from 'src/core/roles';
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const PHONE = /^[0-9+\-\s]{7,20}$/;
 const text = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
@@ -29,7 +30,8 @@ export class HrSelfService {
   private async mine(user: any) {
     const [e] = await this.manager.query(
       `select e.id, e.status, coalesce(e.full_name, u.full_name) as name, (select r.name from app_role r where r.id = u.role_id) as role_name
-         from hr_employee e join app_user u on u.id = e.user_id where e.user_id = $1`, [user?.id || 0]);
+         from hr_employee e join app_user u on u.id = e.user_id
+        where e.user_id = $1 or e.id = (select a.employee_id from hr_employee_account a where a.user_id = $1)`, [user?.id || 0]);
     return e || null;
   }
 
@@ -171,7 +173,7 @@ export class LeaveApprovalService {
   private async ctx(user: any) {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
-    return { id: user.id, all: r?.name === 'Business Head', stores: s.map((x: any) => x.store_id) as number[] };
+    return { id: user.id, all: isOwnerRole(r?.name), stores: s.map((x: any) => x.store_id) as number[] };
   }
 
   /** SQL that limits requests (alias r, employee e) to people the approver answers for, and never themselves */

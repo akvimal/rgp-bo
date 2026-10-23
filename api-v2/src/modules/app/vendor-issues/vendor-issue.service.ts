@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
+import { isOwnerRole } from 'src/core/roles';
 const KINDS = ['INVOICE_FIX', 'DEFECTIVE', 'SHORT_SUPPLY', 'WRONG_ITEM', 'OTHER'];
 const FIELDS = ['RATE', 'QTY', 'TAX', 'MRP', 'EXPIRY', 'BATCH', 'OTHER'];
 const VIAS = ['PHONE', 'EMAIL', 'WHATSAPP', 'VISIT', 'OTHER'];
@@ -36,7 +37,7 @@ export class VendorIssueService {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
     const role = r?.name || '';
-    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: role === 'Business Head' };
+    return { id: user.id, role, stores: s.map((x: any) => x.store_id), manage: isOwnerRole(role) };
   }
 
   private visible(c: Ctx, args: any[]): string {

@@ -13,7 +13,7 @@ type RolePermission = {
 
 @Injectable()
 export class PermissionService {
-  private readonly privilegedRoles = new Set(['Business Head', 'Store Head']);
+  private readonly privilegedRoles = new Set(['Business Head', 'Owner-operator', 'Store Head']);
 
   constructor(private readonly roleService: RoleService) {}
 

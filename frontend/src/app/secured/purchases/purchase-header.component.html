@@ -3,7 +3,7 @@
       <li class="nav-item" *isAuth="'purchases.request'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/my-requests" data-testid="nav-requests">Purchase requests</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases.add'">
+      <li class="nav-item" *ngIf="auth.purchasingFull && auth.isActionAuthorized('purchases.add')">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/orders">Orders</a>
       </li>
       <li class="nav-item" *isAuth="'purchases.add'">
@@ -12,10 +12,10 @@
       <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/vendors" data-testid="nav-vendors">Vendors</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases.add'">
+      <li class="nav-item" *ngIf="auth.moduleOn('gst') && auth.isActionAuthorized('purchases.add')">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/gst" data-testid="nav-gst">GST</a>
       </li>
-      <li class="nav-item" *isAuth="'purchases.add'">
+      <li class="nav-item" *ngIf="auth.purchasingFull && auth.isActionAuthorized('purchases.add')">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/settings">Settings</a>
       </li>
       <!-- <li class="nav-item" *isNavAuth>

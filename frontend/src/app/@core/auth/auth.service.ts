@@ -10,8 +10,12 @@ export class AuthService {
 
   permissions = []
   private readonly permissionsKey = 'permissions';
+  private readonly modulesKey = 'modules';
+  /** what the business has switched on (hr, purchasing off|simple|full, gst, expenses, ...); everything on until told otherwise */
+  modules: any = {};
 
   constructor(private http: HttpClient) {
+    try { this.modules = JSON.parse(sessionStorage.getItem(this.modulesKey) || '{}') || {}; } catch { this.modules = {}; }
     const savedPermissions = sessionStorage.getItem(this.permissionsKey);
     if (savedPermissions) {
       try {
@@ -55,6 +59,21 @@ export class AuthService {
     } else {
       sessionStorage.removeItem(this.permissionsKey);
     }
+  }
+
+  public setModules(modules:any){
+    this.modules = modules || {};
+    try { sessionStorage.setItem(this.modulesKey, JSON.stringify(this.modules)); } catch { /* storage blocked */ }
+  }
+
+  /** a module is on unless the business switched it off (purchasing counts as on at simple or full) */
+  public moduleOn(key:string):boolean{
+    const v = this.modules ? this.modules[key] : undefined;
+    return v === undefined || v === null ? true : (key === 'purchasing' ? v !== 'off' : !!v);
+  }
+
+  public get purchasingFull():boolean{
+    return !this.modules || !this.modules.purchasing || this.modules.purchasing === 'full';
   }
 
   public isFieldAuthorized(field:string){

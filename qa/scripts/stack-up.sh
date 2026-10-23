@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Bring up the full QA stack at the branch schema, from scratch.
-#   --keep-db : skip the destructive volume reset (schema/data already loaded)
+#   (default)  : keep the database volume (schema/data already loaded). The volume also holds other databases
+#                (rgp_rehearsal and friends), so it is never wiped unless you ask:
+#   --wipe     : destructive volume reset, then rebuild schema + demo data from scratch
 source "$(dirname "${BASH_SOURCE[0]}")/_env.sh"
 
-KEEP_DB=0
-[[ "${1:-}" == "--keep-db" ]] && KEEP_DB=1
+KEEP_DB=1
+[[ "${1:-}" == "--wipe" ]] && KEEP_DB=0
 
 echo "== QA stack up  (frontend :$FRONTEND_PORT  api :$API_PORT  db :$DB_PORT) =="
 

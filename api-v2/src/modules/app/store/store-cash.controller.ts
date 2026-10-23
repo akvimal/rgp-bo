@@ -31,8 +31,14 @@ export class StoreCashController {
   }
 
   @Get("shifts")
-  findShifts(@Query() query: any) {
-    return this.service.findShifts(query);
+  findShifts(@Query() query: any, @User() currentUser: any) {
+    return this.service.findShifts(query, currentUser?.id);
+  }
+
+  /** How this store runs its tills (shift mode, accountable role, operator rule). */
+  @Get("profile")
+  getProfile(@Query("storeid") storeid: string) {
+    return this.service.getProfile(Number(storeid));
   }
 
   @Get("shifts/:id/summary")

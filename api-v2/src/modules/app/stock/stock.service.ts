@@ -8,7 +8,9 @@ import { ProductPriceChange } from "src/entities/product-pricechange.entity";
 import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
+import { approvalModeFor } from "src/core/approval-mode";
 
+import { isManagerRole } from 'src/core/roles';
 @Injectable()
 export class StockService {
 
@@ -348,14 +350,16 @@ export class StockService {
 
     /** Resolves the status for a new/edited adjustment: an explicit status always wins (bulk
      * clearance and the audit workflow rely on this); otherwise gate on estimated value. */
-    private async resolveAdjustmentStatus(explicitStatus: string | undefined, itemId: number, qty: any): Promise<string> {
+    private async resolveAdjustmentStatus(explicitStatus: string | undefined, itemId: number, qty: any, storeId?: number | null, userId?: number | null): Promise<string> {
         if (explicitStatus) {
             return explicitStatus;
         }
         const unitValue = await this.resolveUnitValue(itemId);
         const estimatedValue = Math.abs(Number(qty || 0)) * unitValue;
         const threshold = await this.getStockAdjustmentApprovalValueThreshold();
-        return estimatedValue > threshold ? 'PENDING' : 'APPROVED';
+        if (estimatedValue <= threshold) return 'APPROVED';
+        // approval_mode 'self': the person making the adjustment (who holds the stock-audit permission) approves it
+        return await approvalModeFor(this.manager, { storeId: storeId ?? (await this.resolveHomeStoreId(itemId)), userId }) === 'self' ? 'APPROVED' : 'PENDING';
     }
 
     async createQty(dto: CreateProductQtyChangeDto, userid) {
@@ -367,7 +371,7 @@ export class StockService {
         // `reason` is NOT NULL in the DB; older callers always sent it, but a reasoncode-only
         // caller (any new integration) must still satisfy that constraint.
         const reason = (dto as any).reason || dto.reasoncode;
-        const status = await this.resolveAdjustmentStatus(dto.status, dto.itemid, dto.qty);
+        const status = await this.resolveAdjustmentStatus(dto.status, dto.itemid, dto.qty, storeid, userid);
         return this.qtyRepository.save({...dto, reason, reasoncode, storeid, status, createdby:userid});
     }
 
@@ -377,7 +381,7 @@ export class StockService {
             reason: (item as any).reason || item.reasoncode,
             reasoncode: item.reasoncode || (item as any).reason || null,
             storeid: item.storeid ?? await this.resolveHomeStoreId(item.itemid),
-            status: await this.resolveAdjustmentStatus(item.status, item.itemid, item.qty),
+            status: await this.resolveAdjustmentStatus(item.status, item.itemid, item.qty, item.storeid, userid),
             createdby: userid
         })));
         return this.qtyRepository.save(payload);
@@ -393,7 +397,7 @@ export class StockService {
             throw new BadRequestException('Quantity must be a non-zero number.');
         }
         const reasoncode = dto.reasoncode || dto.reason || existing.reasoncode;
-        const status = await this.resolveAdjustmentStatus(dto.status, existing.itemid, qty);
+        const status = await this.resolveAdjustmentStatus(dto.status, existing.itemid, qty, existing.storeid, userid);
         await this.qtyRepository.update(id, {
             qty,
             reason: dto.reason ?? existing.reason,
@@ -444,7 +448,7 @@ export class StockService {
             if (storeid !== audit.store_id) throw new BadRequestException('Select the store this audit is for in the header before starting the count.');
             if (audit.category && (body.category || null) !== audit.category) throw new BadRequestException(`This audit covers ${audit.category} only.`);
             const [who] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
-            if (audit.assigned_to && audit.assigned_to !== userid && !['Business Head', 'Store Head'].includes(who?.name)) {
+            if (audit.assigned_to && audit.assigned_to !== userid && !isManagerRole(who?.name)) {
                 throw new ForbiddenException('This audit is assigned to someone else.');
             }
         }

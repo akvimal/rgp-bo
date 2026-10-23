@@ -7,6 +7,7 @@ import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuditService } from "src/core/audit/audit.service";
 import { NIL_MOBILE, cleanEmail, cleanText, likelySamePerson, normaliseMobile, tidyName } from "./customer-rules";
 
+import { isOwnerRole, isManagerRole } from 'src/core/roles';
 @Injectable()
 export class CustomerService {
 
@@ -83,7 +84,7 @@ export class CustomerService {
      */
     async remove(id: number, user: any) {
         const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-        if (!['Business Head', 'Store Head'].includes(role?.name)) throw new ForbiddenException('Only a manager can delete a customer.');
+        if (!isManagerRole(role?.name)) throw new ForbiddenException('Only a manager can delete a customer.');
         const c = await this.customerRepository.findOne({ where: { id } });
         if (!c) throw new NotFoundException('Customer not found.');
         if (c.mobile === NIL_MOBILE) throw new BadRequestException('The NIL walk-in customer cannot be deleted.');
@@ -112,7 +113,7 @@ export class CustomerService {
 
     private async assertBusinessHead(user: any) {
         const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
-        if (role?.name !== 'Business Head') throw new ForbiddenException('Only the Business Head can merge customers.');
+        if (!isOwnerRole(role?.name)) throw new ForbiddenException('Only the Business Head can merge customers.');
     }
 
     /** Numbers held by more than one customer, most likely duplicates first. The NIL walk-in and blank numbers are left out. */

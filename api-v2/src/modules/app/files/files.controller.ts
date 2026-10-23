@@ -5,17 +5,20 @@ import { FilesService } from './files.service';
 import { multerOptions } from './multer.config';
 import { Response } from 'express';
 import { AuthGuard } from "src/modules/auth/auth.guard";
+import { DocumentQuotaGuard, PlatformService } from "src/core/platform/platform.service";
 @ApiTags('Files')
 @Controller('files')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class FilesController {
 
-  constructor(private service:FilesService){}
+  constructor(private service:FilesService, private platform: PlatformService){}
 
   @Post('upload')
+  @UseGuards(DocumentQuotaGuard)
   @UseInterceptors(FileInterceptor('file',multerOptions))
-  uploadFile(@UploadedFile() file: any) {
+  async uploadFile(@UploadedFile() file: any) {
+    await this.platform.bump('documents');
     return file;
   }
 

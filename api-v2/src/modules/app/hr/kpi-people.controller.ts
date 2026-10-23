@@ -8,6 +8,7 @@ import { User } from 'src/core/decorator/user.decorator';
 import { PermissionService } from '../roles/permission.service';
 import { HrKpiEngine } from './hr-kpi-engine.service';
 
+import { isOwnerRole } from 'src/core/roles';
 const Needs = (resource: string, action: string) => SetMetadata('kpi.needs', [resource, action]);
 
 @Injectable()
@@ -36,7 +37,7 @@ export class KpiPeopleController {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
     const s = await this.manager.query(`select store_id from user_stores where user_id = $1 and active and not archive`, [user.id]);
     const stores: number[] = s.map((x: any) => x.store_id);
-    const all = r?.name === 'Business Head';
+    const all = isOwnerRole(r?.name);
     return { all, stores, covers: (e: any) => all || (e.store_ids || []).some((x: number) => stores.includes(x)) || (e.store_id && stores.includes(e.store_id)) };
   }
 

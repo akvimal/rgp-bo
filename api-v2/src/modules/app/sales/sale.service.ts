@@ -3,6 +3,7 @@ import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { recordStaffCredit } from "./staff-credit-rule";
 import { recordStoreCredit, settleReturn } from "./store-credit-rule";
 import { EntityManager } from "typeorm";
+import { loadStoreProfile } from "../store/store-profile";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
@@ -151,18 +152,24 @@ export class SaleService {
                 sale['billno'] = nos[0]['bill_no'];
 
                 let shiftid = null;
+                let staffBased = false;
                 if (storeid) {
-                    // one OPEN shift per store (enforced on open); the sale links to it
-                    const shiftRows = await transactionManager.query(
-                        `select id from store_shifts where store_id = $1 and status = 'OPEN' order by shift_date desc, id desc limit 1`,
-                        [storeid],
-                    );
+                    // time-based store: its one OPEN shift (enforced on open); staff-based: the serving person's own drawer
+                    const profile = await loadStoreProfile(transactionManager, storeid);
+                    staffBased = profile?.shiftmode === 'staff';
+                    const shiftRows = staffBased
+                        ? await transactionManager.query(
+                            `select id from store_shifts where store_id = $1 and status = 'OPEN' and assigned_user_id = $2 order by shift_date desc, id desc limit 1`,
+                            [storeid, actingUserid || userid])
+                        : await transactionManager.query(
+                            `select id from store_shifts where store_id = $1 and status = 'OPEN' order by shift_date desc, id desc limit 1`,
+                            [storeid]);
                     shiftid = shiftRows?.[0]?.id || null;
                 }
                 // A completed bill is a cash event — it must belong to an open shift so
                 // it is reconciled at close. Parked (PENDING) bills are exempt.
                 if ((sale.status || '').toUpperCase() === 'COMPLETE' && storeid && !shiftid) {
-                    throw new BadRequestException('Open a shift before completing sales.');
+                    throw new BadRequestException(staffBased ? 'Open your own shift before completing sales.' : 'Open a shift before completing sales.');
                 }
                 sale['shiftid'] = shiftid;
                 sale['storeid'] = storeid;
