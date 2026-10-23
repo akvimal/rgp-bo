@@ -348,16 +348,29 @@ export class PurchaseService {
         });
     }
 
+    /**
+     * What to buy, from what sold and what is on the shelf.
+     *   demand   units sold per day over the last `days` (when nothing sold, over the longer `slowdays`, so slow movers are not lost)
+     *   season   last year and the year before: how that same stretch of the year went compared with the days leading up to it
+     *            (sales in the next `targetdays` against sales in the `days` before today, a year earlier); the ratio, held between 0.5 and 2.5,
+     *            scales the demand. A product that sold nothing lately but sold in this stretch last year is brought back by last year's figure.
+     *   need     demand over `targetdays`, plus the product's minimum stock, less what is on hand; then the open requests on top
+     * With a store the sales, the stock and the minimum are that store's; without one they are all stores together.
+     */
     async findSuggestions(query:any){
-        const days = Math.max(1, +(query.days || 30));
-        const targetDays = Math.max(1, +(query.targetdays || 21));
+        const days = Math.max(1, Math.round(+(query.days || 30)));
+        const targetDays = Math.max(1, Math.round(+(query.targetdays || 21)));
+        const slowDays = Math.max(days, Math.round(+(query.slowdays || 90)));
+        const seasonal = `${query.seasonal ?? 'true'}` !== 'false';
         const vendorFilter = query.vendorid ? +query.vendorid : null;
+        const storeFilter = query.storeid ? +query.storeid : null;
 
         const rows = await this.manager.query(`
             with recent_sales as (
                 select
                     si.product_id,
-                    sum(si.qty) as sales_qty
+                    sum(si.qty) filter (where s.bill_date >= current_date - make_interval(days => $1::int)) as sales_qty,
+                    sum(si.qty) as long_qty
                 from sale_item si
                 inner join sale s on s.id = si.sale_id
                 where s.status = 'COMPLETE'
@@ -365,14 +378,40 @@ export class PurchaseService {
                   and s.archive = false
                   and si.active = true
                   and si.archive = false
-                  and s.bill_date >= current_date - ($1::text || ' days')::interval
+                  and s.bill_date >= current_date - make_interval(days => $5::int)
+                  and ($4::int is null or s.store_id = $4::int)
+                group by si.product_id
+            ),
+            season as (
+                select
+                    si.product_id,
+                    sum(si.qty) filter (where s.bill_date >= current_date - interval '1 year' - make_interval(days => $1::int)
+                                          and s.bill_date < current_date - interval '1 year') as ly1_recent,
+                    sum(si.qty) filter (where s.bill_date >= current_date - interval '1 year'
+                                          and s.bill_date < current_date - interval '1 year' + make_interval(days => $2::int)) as ly1_next,
+                    sum(si.qty) filter (where s.bill_date >= current_date - interval '2 years' - make_interval(days => $1::int)
+                                          and s.bill_date < current_date - interval '2 years') as ly2_recent,
+                    sum(si.qty) filter (where s.bill_date >= current_date - interval '2 years'
+                                          and s.bill_date < current_date - interval '2 years' + make_interval(days => $2::int)) as ly2_next
+                from sale_item si
+                inner join sale s on s.id = si.sale_id
+                where $6::boolean
+                  and s.status = 'COMPLETE'
+                  and s.active = true
+                  and s.archive = false
+                  and si.active = true
+                  and si.archive = false
+                  and s.bill_date >= current_date - interval '2 years' - make_interval(days => $1::int)
+                  and s.bill_date < current_date - interval '1 year' + make_interval(days => $2::int)
+                  and ($4::int is null or s.store_id = $4::int)
                 group by si.product_id
             ),
             stock_by_product as (
                 select
                     pii.product_id,
                     sum(
-                        ((pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1))
+                        (case when $4::int is null or pi.store_id = $4::int
+                              then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
                         - coalesce(sold.sold, 0)
                         + coalesce(adj.adjusted, 0)
                     ) as available_stock
@@ -380,15 +419,19 @@ export class PurchaseService {
                 inner join product p on p.id = pii.product_id
                 inner join purchase_invoice pi on pi.id = pii.invoice_id
                 left join (
-                    select purchase_item_id, sum(qty) as sold
-                    from sale_item
-                    where active = true and archive = false
-                    group by purchase_item_id
+                    select si.purchase_item_id, sum(si.qty) as sold
+                    from sale_item si
+                    inner join sale s on s.id = si.sale_id
+                    where si.active = true and si.archive = false
+                      and ($4::int is null or s.store_id = $4::int)
+                    group by si.purchase_item_id
                 ) sold on sold.purchase_item_id = pii.id
                 left join (
                     select item_id, sum(qty) as adjusted
                     from product_qtychange
                     where active = true and archive = false
+                      and coalesce(status, 'APPROVED') = 'APPROVED'
+                      and ($4::int is null or store_id = $4::int)
                     group by item_id
                 ) adj on adj.item_id = pii.id
                 where pii.active = true
@@ -427,52 +470,88 @@ export class PurchaseService {
                 left join preferred_vendor pv on pv.product_id = pr.product_id
                 where pr.active = true
                   and pr.archive = false
+                  and pr.product_id is not null
                   and pr.status in ('Open', 'Reviewed')
                 group by pr.product_id, coalesce(pr.vendor_id, pv.vendor_id)
             ),
             demand_products as (
-                select distinct product_id from recent_sales
+                select product_id from recent_sales
                 union
-                select distinct product_id from open_manual_requests
+                select product_id from open_manual_requests
+                union
+                select product_id from season where coalesce(ly1_next, 0) + coalesce(ly2_next, 0) > 0
+                union
+                select id from product where coalesce(min_stock, 0) > 0
+            ),
+            calc as (
+                select
+                    p.id as product_id,
+                    p.title,
+                    p.pack,
+                    coalesce(p.min_stock, 0) as min_stock,
+                    coalesce(omr.vendor_id, pv.vendor_id) as vendor_id,
+                    v.business_name as vendor_name,
+                    coalesce(sb.available_stock, 0)::numeric as available_stock,
+                    coalesce(rs.sales_qty, 0)::numeric as sales_qty,
+                    coalesce(rs.long_qty, 0)::numeric as long_qty,
+                    case when coalesce(rs.sales_qty, 0) > 0 then rs.sales_qty::numeric / $1::numeric
+                         else coalesce(rs.long_qty, 0)::numeric / $5::numeric end as base_rate,
+                    case when coalesce(se.ly1_recent, 0) + coalesce(se.ly2_recent, 0) >= 5 and coalesce(rs.sales_qty, 0) > 0
+                         then least(greatest(
+                                ((coalesce(se.ly1_next, 0) + coalesce(se.ly2_next, 0))::numeric / $2::numeric)
+                                / ((coalesce(se.ly1_recent, 0) + coalesce(se.ly2_recent, 0))::numeric / $1::numeric), 0.5), 2.5)
+                         else 1 end as season_factor,
+                    (coalesce(se.ly1_next, 0) + coalesce(se.ly2_next, 0))::numeric
+                        / nullif((case when coalesce(se.ly1_next, 0) > 0 then 1 else 0 end) + (case when coalesce(se.ly2_next, 0) > 0 then 1 else 0 end), 0) as ly_next_avg,
+                    coalesce(omr.adhoc_qty, 0) as adhoc_qty,
+                    coalesce(omr.request_ids, '{}'::int[]) as request_ids,
+                    omr.sources,
+                    coalesce(omr.priority_rank, 0) as priority_rank
+                from demand_products dp
+                inner join product p on p.id = dp.product_id
+                left join recent_sales rs on rs.product_id = p.id
+                left join season se on se.product_id = p.id
+                left join stock_by_product sb on sb.product_id = p.id
+                left join preferred_vendor pv on pv.product_id = p.id
+                left join open_manual_requests omr on omr.product_id = p.id
+                left join vendor v on v.id = coalesce(omr.vendor_id, pv.vendor_id)
+                where p.active = true
+                  and p.archive = false
+                  and ($3::int is null or coalesce(omr.vendor_id, pv.vendor_id) = $3::int)
+            ),
+            forecast as (
+                select c.*,
+                    greatest(
+                        ceil(c.base_rate * c.season_factor * $2::numeric),
+                        case when c.base_rate = 0 then ceil(coalesce(c.ly_next_avg, 0)) else 0 end
+                    )::int as forecast_qty
+                from calc c
             )
             select
-                p.id as product_id,
-                p.title,
-                p.pack,
-                coalesce(omr.vendor_id, pv.vendor_id) as vendor_id,
-                v.business_name as vendor_name,
-                coalesce(sb.available_stock, 0)::numeric as available_stock,
-                coalesce(rs.sales_qty, 0)::numeric as sales_qty,
-                round(coalesce(rs.sales_qty, 0)::numeric / $1::numeric, 2) as avg_daily_sales,
-                case
-                    when coalesce(rs.sales_qty, 0) > 0 then round(coalesce(sb.available_stock, 0)::numeric / (coalesce(rs.sales_qty, 0)::numeric / $1::numeric), 1)
-                    else null
-                end as stock_days_left,
-                greatest(ceil(($2::numeric * (coalesce(rs.sales_qty, 0)::numeric / $1::numeric)) - coalesce(sb.available_stock, 0)::numeric), 0)::int as trend_qty,
-                coalesce(omr.adhoc_qty, 0) as adhoc_qty,
-                greatest(ceil(($2::numeric * (coalesce(rs.sales_qty, 0)::numeric / $1::numeric)) - coalesce(sb.available_stock, 0)::numeric), 0)::int
-                    + coalesce(omr.adhoc_qty, 0) as final_qty,
-                coalesce(omr.request_ids, '{}'::int[]) as request_ids,
-                omr.sources,
-                coalesce(omr.priority_rank, 0) as priority_rank
-            from demand_products dp
-            inner join product p on p.id = dp.product_id
-            left join recent_sales rs on rs.product_id = p.id
-            left join stock_by_product sb on sb.product_id = p.id
-            left join preferred_vendor pv on pv.product_id = p.id
-            left join open_manual_requests omr on omr.product_id = p.id
-            left join vendor v on v.id = coalesce(omr.vendor_id, pv.vendor_id)
-            where p.active = true
-              and p.archive = false
-              and ($3::int is null or coalesce(omr.vendor_id, pv.vendor_id) = $3::int)
-            order by coalesce(omr.priority_rank, 0) desc, final_qty desc, p.title
-        `, [days, targetDays, vendorFilter]);
+                f.product_id, f.title, f.pack, f.min_stock, f.vendor_id, f.vendor_name,
+                f.available_stock, f.sales_qty, f.long_qty,
+                round(f.base_rate, 2) as avg_daily_sales,
+                case when f.base_rate > 0 then round(f.available_stock / f.base_rate, 1) else null end as stock_days_left,
+                round(f.season_factor, 2) as season_factor,
+                f.forecast_qty,
+                greatest(f.forecast_qty + f.min_stock - ceil(f.available_stock), 0)::int as trend_qty,
+                f.adhoc_qty,
+                greatest(f.forecast_qty + f.min_stock - ceil(f.available_stock), 0)::int + f.adhoc_qty as final_qty,
+                f.request_ids, f.sources, f.priority_rank,
+                (f.base_rate = 0 and coalesce(f.ly_next_avg, 0) > 0) as from_last_year
+            from forecast f
+            order by f.priority_rank desc, final_qty desc, f.title
+        `, [days, targetDays, vendorFilter, storeFilter, slowDays, seasonal]);
 
         return rows
             .map((row:any) => {
                 const reasons:string[] = [];
+                const stock = +row.available_stock;
                 if(+row.trend_qty > 0){
                     reasons.push('Low Stock');
+                }
+                if(+row.min_stock > 0 && stock < +row.min_stock){
+                    reasons.push('Below Minimum');
                 }
                 if(+row.adhoc_qty > 0){
                     reasons.push('Customer Request');
@@ -483,13 +562,28 @@ export class PurchaseService {
                 if(+row.sales_qty > 0 && (+row.stock_days_left || 0) <= 7){
                     reasons.push('Fast Moving');
                 }
+                if(+row.sales_qty === 0 && +row.long_qty > 0){
+                    reasons.push('Slow Mover');
+                }
+                if(+row.season_factor >= 1.25){
+                    reasons.push('Season Rising');
+                } else if(+row.season_factor <= 0.8){
+                    reasons.push('Season Easing');
+                }
+                if(row.from_last_year){
+                    reasons.push('Sold Now Last Year');
+                }
 
                 return {
                     ...row,
-                    available_stock: +row.available_stock,
+                    available_stock: stock,
                     sales_qty: +row.sales_qty,
+                    long_qty: +row.long_qty,
+                    min_stock: +row.min_stock,
                     avg_daily_sales: +row.avg_daily_sales,
                     stock_days_left: row.stock_days_left === null ? null : +row.stock_days_left,
+                    season_factor: +row.season_factor,
+                    forecast_qty: +row.forecast_qty,
                     trend_qty: +row.trend_qty,
                     adhoc_qty: +row.adhoc_qty,
                     final_qty: +row.final_qty,

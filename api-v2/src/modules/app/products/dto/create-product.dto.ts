@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsObject, IsOptional } from 'class-validator';
+import { IsInt, IsObject, IsOptional, Min } from 'class-validator';
 
 export class CreateProductDto {
 
@@ -42,4 +42,10 @@ export class CreateProductDto {
     @ApiPropertyOptional({ description: 'shelf/rack/bin label, for picking', example: 'A-12' })
     @IsOptional()
     readonly binlocation: string;
+
+    @ApiPropertyOptional({ description: 'units to keep on hand; the reorder list orders up to it', example: 20 })
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    readonly minstock: number | null;
 }

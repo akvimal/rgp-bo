@@ -1,4 +1,6 @@
-import { Component } from "@angular/core";
+import { Component, OnDestroy } from "@angular/core";
+import { Subscription } from "rxjs";
+import { StoreContextService } from "src/app/@core/store-context.service";
 import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 import { VendorsService } from "../../vendors/vendors.service";
 
@@ -6,23 +8,42 @@ import { VendorsService } from "../../vendors/vendors.service";
     selector: 'app-purchase-suggestion',
     templateUrl: './purchase-suggestion.component.html'
 })
-export class PurchaseSuggestionComponent {
+export class PurchaseSuggestionComponent implements OnDestroy {
     suggestions:any[] = [];
     vendors:any[] = [];
     vendorid:string = '';
     days:number = 30;
     targetdays:number = 21;
+    /** when nothing sold in `days`, this many days back are looked at, so a slow mover is still listed */
+    slowdays:number = 90;
+    /** scale by how the same stretch of the year went in the last two years */
+    seasonal:boolean = true;
+    storeid:number | null = null;
+    private subs = new Subscription();
     expecteddate:string = '';
     comments:string = '';
     feedback:string = '';
 
     constructor(
         private requestService: PurchaseIntentService,
-        private vendorService: VendorsService
+        private vendorService: VendorsService,
+        private storeContext: StoreContextService
     ) {}
+
+    /** the store being looked at is the one chosen at the top of the page */
+    get storeName(): string {
+        const s = this.storeContext.stores.find((x:any) => Number(x.id) === Number(this.storeid));
+        return this.storeid && s ? (s.name || s.location || `Store ${this.storeid}`) : 'All stores';
+    }
+
+    ngOnDestroy(){ this.subs.unsubscribe(); }
 
     ngOnInit(){
         this.vendorService.findUsable().subscribe((data:any) => this.vendors = data || []);
+        this.storeid = this.storeContext.selectedStoreId;
+        this.subs.add(this.storeContext.selectedStoreId$.subscribe((id:any) => {
+            if(id !== this.storeid){ this.storeid = id; this.fetchSuggestions(); }
+        }));
         this.fetchSuggestions();
     }
 
@@ -30,8 +51,13 @@ export class PurchaseSuggestionComponent {
         this.feedback = '';
         const params:any = {
             days: this.days,
-            targetdays: this.targetdays
+            targetdays: this.targetdays,
+            slowdays: this.slowdays,
+            seasonal: this.seasonal
         };
+        if(this.storeid){
+            params.storeid = this.storeid;
+        }
         if(this.vendorid){
             params.vendorid = this.vendorid;
         }

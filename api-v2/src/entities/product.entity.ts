@@ -52,6 +52,10 @@ import { SaleItem } from "./sale-item.entity";
     @Column("character varying", { name: "bin_location", length: 40, nullable: true })
     binlocation: string | null;
 
+    /** units to keep on hand after the cover period; the Reorder list orders up to it (empty: no minimum) */
+    @Column("integer", { name: "min_stock", nullable: true })
+    minstock: number | null;
+
 
     @OneToMany(
       () => ProductPrice2,

@@ -106,6 +106,10 @@
             <label for="binlocation" class="form-label">Bin / Rack</label>
             <input type="text" class="form-control" id="binlocation" formControlName="binlocation" maxlength="40" placeholder="e.g. A-12">
           </div>
+          <div class="col-md-2">
+            <label for="minstock" class="form-label">Minimum stock</label>
+            <input type="number" min="0" step="1" class="form-control" id="minstock" formControlName="minstock" placeholder="units" data-testid="prod-minstock" title="Keep at least this many on hand: the Reorder list orders up to it">
+          </div>
         </div>
       <div class="row mt-2">
         <div class="col-md-12 text-center">
