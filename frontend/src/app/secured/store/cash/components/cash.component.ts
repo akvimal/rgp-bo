@@ -112,6 +112,15 @@ export class CashComponent implements OnInit {
       return !!this.dashboard?.depositdue;
     }
 
+    /** why a deposit is due, or when the next deposit day is */
+    depositNote():string {
+      const d = this.dashboard?.deposit;
+      if (!d) return '';
+      if (d.reason === 'amount') return 'The balance has reached the deposit amount.';
+      if (d.reason === 'schedule') return `Deposit day ${d.since} came and nothing has been banked since.`;
+      return d.nextscheduled ? `Next deposit day: ${d.nextscheduled}.` : '';
+    }
+
     depositExcess() {
       return Number(this.dashboard?.depositexcess || 0);
     }

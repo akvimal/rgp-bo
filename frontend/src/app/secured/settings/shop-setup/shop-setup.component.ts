@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "src/environments/environment";
+import { BusinessesService } from "../businesses/businesses.service";
 
 /**
  * How the shop runs: pick a staffing preset, see exactly what it would change, apply it. A preset only sets defaults (approvals,
@@ -31,7 +32,53 @@ export class ShopSetupComponent implements OnInit {
 
   readonly loginKinds = ["Counter", "Sales Staff", "Store Head", "Personal"];
 
-  constructor(private http: HttpClient) {}
+  // ---- approvals and modules (the adjustments after the preset)
+  approvalMode = 'separate';
+  singlePerson = false;
+  approvalSaving = false;
+  approvalMessage = '';
+  approvalError = '';
+  modules: any = null;
+  modulesSaving = false;
+  modulesMessage = '';
+  modulesError = '';
+  readonly moduleRows = [
+    { key: 'hr', label: 'HR and attendance', hint: 'Staff records, attendance, leave, payroll, KPI ratings.' },
+    { key: 'expenses', label: 'Expenses', hint: 'The expense ledger with approval.' },
+    { key: 'payment_recon', label: 'Digital payment reconciliation', hint: 'Matching UPI / card takings to the provider statement.' },
+    { key: 'stock_audits', label: 'Stock audits', hint: 'Planned cycle counts by category and store.' },
+    { key: 'transfers', label: 'Stock transfers', hint: 'Moving stock between your stores.' },
+    { key: 'gst', label: 'GST reconciliation', hint: 'Matching purchase invoices to GSTR-2A/2B. Needs purchasing.' },
+  ];
+
+  constructor(private http: HttpClient, private business: BusinessesService) {}
+
+  private loadAdjustments() {
+    this.business.getMine().subscribe((b: any) => { this.approvalMode = b.approvalmode || 'separate'; this.singlePerson = !!b.singleperson; }, () => {});
+    this.business.getMyModules().subscribe((m: any) => { this.modules = m; this.hr = !!m.hr; }, () => this.modules = null);
+  }
+
+  saveApprovals() {
+    this.approvalMessage = this.approvalError = '';
+    this.approvalSaving = true;
+    this.business.updateMine({ approvalmode: this.approvalMode }).subscribe(
+      () => { this.approvalSaving = false; this.approvalMessage = 'Saved.'; },
+      err => { this.approvalSaving = false; this.approvalError = this.msg(err, 'Could not save.'); });
+  }
+
+  /** a module the hosted plan leaves out cannot be switched on here */
+  isLocked(key: string): boolean { return !!this.modules?.locked?.includes(key); }
+
+  get lockedLabels(): string { return this.moduleRows.filter(m => this.isLocked(m.key)).map(m => m.label).join(', '); }
+
+  /** Switching a module saves at once; the menus follow on the next screen change. */
+  setModule(key: string, value: any) {
+    this.modulesMessage = this.modulesError = '';
+    this.modulesSaving = true;
+    this.business.updateMyModules({ [key]: value }).subscribe(
+      (m: any) => { this.modulesSaving = false; this.modules = m; this.modulesMessage = 'Saved. Menus update when you open the next screen.'; },
+      err => { this.modulesSaving = false; this.modulesError = this.msg(err, 'Could not change the module.'); this.business.getMyModules().subscribe((m: any) => this.modules = m); });
+  }
 
   ngOnInit(): void {
     this.http.get(`${this.api}/presets`).subscribe((r: any) => {
@@ -41,7 +88,7 @@ export class ShopSetupComponent implements OnInit {
       this.stores.forEach(s => this.perStore[s.id] = s.shiftmode);
       if (this.preset) this.refresh();
     }, err => { this.loading = false; this.error = this.msg(err, "Could not load the setup."); });
-    this.http.get(`${this.api}/modules`).subscribe((m: any) => this.hr = !!m.hr);
+    this.loadAdjustments();
   }
 
   get planIsEmpty(): boolean { return !!this.plan && !this.plan.changes.length && !this.plan.stores.some((s: any) => s.changes.length); }
@@ -77,6 +124,7 @@ export class ShopSetupComponent implements OnInit {
       this.busy = false; this.result = r; this.current = r.current; this.plan = null;
       this.logins = this.logins.filter((l, i) => r.accounts[i] && !r.accounts[i].ok);
       this.http.get(`${this.api}/presets`).subscribe((x: any) => this.stores = x.stores);
+      this.loadAdjustments();
     }, err => { this.busy = false; this.error = this.msg(err, "Could not apply the setup."); });
   }
 

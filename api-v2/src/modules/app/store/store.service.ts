@@ -12,6 +12,7 @@ import { AuditService } from "src/core/audit/audit.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { denominationTotal, normalizeDenominations } from "./denominations";
 import { findAccountableUser, loadStoreProfile, parseProfileInput, parseStoreType } from "./store-profile";
+import { DepositRule, checkDepositRule, describeDepositRule, evaluateDeposit, parseDepositInput } from "./deposit-rule";
 import { CLOSING_CHECKLIST_KEYS, HANDOVER_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
 
 import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
@@ -213,6 +214,7 @@ export class StoreService {
       depositthreshold: body.depositthreshold === null || body.depositthreshold === undefined || body.depositthreshold === ""
         ? 0
         : Number(body.depositthreshold),
+      ...this.depositFields(body),
       business: { id: businessid } as any,
       isActive: body.isActive !== false,
       isArchived: false,
@@ -233,9 +235,9 @@ export class StoreService {
     const values = {
       location: body.location,
       ...(type ? { storetype: type } : {}),
-      depositthreshold: body.depositthreshold === null || body.depositthreshold === undefined || body.depositthreshold === ""
-        ? 0
-        : Number(body.depositthreshold),
+      // the amount and the schedule change only when they are sent (the Store Master form no longer carries them)
+      ...(body.depositthreshold === undefined ? {} : { depositthreshold: body.depositthreshold === null || body.depositthreshold === "" ? 0 : Number(body.depositthreshold) }),
+      ...this.depositFields(body, current),
       isActive: body.isActive === undefined ? current.isActive : !!body.isActive,
       isArchived: body.isArchived === undefined ? current.isArchived : !!body.isArchived,
     };
@@ -243,6 +245,60 @@ export class StoreService {
     return this.storeRepository.findOne({
       where: { id },
       relations: ["business"],
+    });
+  }
+
+  /** the deposit schedule parts of a request, checked as a whole against what the store already has */
+  private depositFields(body: any, current?: Store) {
+    const given = parseDepositInput(body);
+    if (!Object.keys(given).length) return {};
+    const rule: DepositRule = {
+      threshold: 0,
+      schedule: (given.schedule ?? current?.depositschedule ?? "none") as any,
+      weekdays: given.weekdays ?? current?.depositweekdays ?? [],
+      monthdays: given.monthdays ?? current?.depositmonthdays ?? [],
+    };
+    checkDepositRule(rule);
+    return {
+      depositschedule: rule.schedule,
+      // days that do not belong to the chosen schedule are not kept
+      depositweekdays: rule.schedule === "weekly" ? rule.weekdays : [],
+      depositmonthdays: rule.schedule === "monthly" ? rule.monthdays : [],
+    };
+  }
+
+  private ruleOf(store: Store | null | undefined): DepositRule {
+    return {
+      threshold: Number(store?.depositthreshold || 0),
+      schedule: (store?.depositschedule || "none") as any,
+      weekdays: store?.depositweekdays || [],
+      monthdays: store?.depositmonthdays || [],
+    };
+  }
+
+  /**
+   * Where each store stands on its bank deposit: balance, whether a deposit is due, why (the amount or a deposit day), since
+   * when, and the next deposit day. This is what the in-app reminders and notifications read.
+   */
+  async getDepositStatuses(userid: number) {
+    const user = await this.userRepository.findOne({ where: { id: userid }, relations: ["role"] });
+    const assigned = await this.userStoreRepository.find({ where: { userid } as any });
+    const stores = await this.storeRepository.createQueryBuilder("store")
+      .where("store.active = true and store.archive = false")
+      .andWhere("store.business_id = :b", { b: user?.businessid ?? -1 })
+      .orderBy("store.id", "ASC").getMany();
+    const mine = isOwnerRole(user?.role?.name) || !assigned.length ? stores : stores.filter((s) => assigned.some((a: any) => a.storeid === s.id));
+    const rows = await this.manager.query(
+      `select store_id, coalesce(sum(deposit), 0)::float - coalesce(sum(withdraw), 0)::float as balance,
+              to_char(max(trans_date) filter (where category = 'BANK_DEPOSIT'), 'YYYY-MM-DD') as last_deposit
+         from store_cash_accounts group by store_id`);
+    const by = new Map<number, any>(rows.map((r: any) => [r.store_id, r]));
+    const today = this.today();
+    return mine.map((s) => {
+      const r = by.get(s.id);
+      const rule = this.ruleOf(s);
+      const balance = Math.round((r?.balance ?? 0) * 100) / 100;
+      return { storeid: s.id, location: String(s.location).trim(), balance, lastdeposit: r?.last_deposit ?? null, rule: { ...rule }, description: describeDepositRule(rule), ...evaluateDeposit(rule, balance, r?.last_deposit ?? null, today) };
     });
   }
 
@@ -298,6 +354,7 @@ export class StoreService {
       depositthreshold: body.depositthreshold === null || body.depositthreshold === undefined || body.depositthreshold === ""
         ? 0
         : Number(body.depositthreshold),
+      ...this.depositFields(body),
       business: { id: caller.businessid } as any,
       isActive: body.isActive !== false,
       isArchived: false,
@@ -773,8 +830,6 @@ export class StoreService {
     const balanceRaw = await balanceQb.getRawOne();
     const cashbalance = Number(balanceRaw?.deposit || 0) - Number(balanceRaw?.withdraw || 0);
     const depositthreshold = Number(store?.depositthreshold || 0);
-    const depositdue = depositthreshold > 0 ? cashbalance >= depositthreshold : false;
-    const depositexcess = depositdue ? cashbalance - depositthreshold : 0;
     const lastDepositQb = this.cashAccountRepository.createQueryBuilder("ledger")
       .where("ledger.category = 'BANK_DEPOSIT'")
       .orderBy("ledger.trans_date", "DESC")
@@ -783,6 +838,11 @@ export class StoreService {
       lastDepositQb.andWhere("ledger.store_id = :storeid", { storeid });
     }
     const lastDeposit = await lastDepositQb.getOne();
+    // due by the amount or by a deposit day, whichever came first
+    const rule = this.ruleOf(store);
+    const deposit = storeid ? evaluateDeposit(rule, cashbalance, lastDeposit ? (typeof lastDeposit.transdate === "string" ? lastDeposit.transdate : new Date(lastDeposit.transdate as any).toISOString()).slice(0, 10) : null, this.today()) : null;
+    const depositdue = !!deposit?.due;
+    const depositexcess = deposit?.excess ?? 0;
     return {
       storeid,
       store,
@@ -795,6 +855,7 @@ export class StoreService {
       depositthreshold,
       depositdue,
       depositexcess,
+      deposit: deposit ? { ...deposit, rule, description: describeDepositRule(rule) } : null,
       lastDeposit,
     };
   }

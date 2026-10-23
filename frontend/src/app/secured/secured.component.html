@@ -243,7 +243,7 @@
               </a>
             </li>
             <li *isAuth="'businessprofile'">
-              <a [routerLinkActive]="['active']" routerLink="/secure/settings/business-profile" data-testid="nav-settings-business-profile">
+              <a [routerLinkActive]="['active']" [routerLinkActiveOptions]="{exact: true}" routerLink="/secure/settings/business-profile" data-testid="nav-settings-business-profile">
                 <i class="bi bi-circle"></i><span>Business details</span>
               </a>
             </li>

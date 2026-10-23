@@ -71,7 +71,9 @@
             [style.width.%]="cashBalancePct">
           </div>
         </div>
-        <div class="small text-muted">Threshold: ₹{{summary?.kpis?.deposit_threshold | number:'1.0-0'}}</div>
+        <div class="small text-muted" *ngIf="summary?.kpis?.deposit_threshold">Threshold: ₹{{summary?.kpis?.deposit_threshold | number:'1.0-0'}}</div>
+        <div class="small" *ngIf="summary?.kpis?.deposit_due && summary?.kpis?.deposit_reason === 'schedule'" data-testid="dash-deposit-reason">A deposit day has passed without a deposit</div>
+        <div class="small text-muted" *ngIf="!summary?.kpis?.deposit_due && summary?.kpis?.deposit_next" data-testid="dash-deposit-next">Next deposit day: {{summary?.kpis?.deposit_next | date:'EEE d MMM'}}</div>
         <div class="small text-muted">Expenses: ₹{{summary?.kpis?.cash_expenses_month | number:'1.0-0'}} · Deposits: ₹{{summary?.kpis?.bank_deposits_month | number:'1.0-0'}}</div>
       </div>
     </div>

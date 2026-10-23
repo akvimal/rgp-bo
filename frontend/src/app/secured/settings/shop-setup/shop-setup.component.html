@@ -85,5 +85,43 @@
       </ul>
       <div class="small mt-1">The menu follows on your next screen change.</div>
     </div>
+
+    <div class="mt-4 pt-3 border-top" *ngIf="!singlePerson" data-testid="setup-approvals">
+      <h6 class="mb-1">Approvals</h6>
+      <div class="small text-muted mb-2">Who may approve a stock adjustment, a purchase order or an expense. A store can differ from this under Settings &gt; Store &gt; Cash &amp; shifts &gt; Advanced.</div>
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-8">
+          <select class="form-select" [(ngModel)]="approvalMode" data-testid="biz-approval-mode">
+            <option value="separate">Another person approves (stock adjustments, purchase orders, expenses)</option>
+            <option value="self">The person who makes it may approve it too</option>
+          </select>
+        </div>
+        <div class="col-auto"><button class="btn btn-primary" type="button" [disabled]="approvalSaving" (click)="saveApprovals()" data-testid="setup-approvals-save">{{ approvalSaving ? 'Saving...' : 'Save' }}</button></div>
+        <div class="col-12 small text-success" *ngIf="approvalMessage" data-testid="setup-approvals-message">{{approvalMessage}}</div>
+        <div class="col-12 small text-danger" *ngIf="approvalError">{{approvalError}}</div>
+      </div>
+    </div>
+
+    <div class="mt-4 pt-3 border-top" *ngIf="modules" data-testid="biz-modules">
+        <h6 class="mb-1">Modules</h6>
+        <p class="small text-muted">Switch off what this business does not use. Its screens and menu entries disappear and the system refuses its requests. Nothing is deleted: switching it back on restores everything.</p>
+        <div *ngIf="modulesMessage" class="alert alert-success py-2" data-testid="biz-modules-message">{{modulesMessage}}</div>
+        <div *ngIf="modulesError" class="alert alert-danger py-2" data-testid="biz-modules-error">{{modulesError}}</div>
+    
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Purchasing</label>
+          <select class="form-select w-auto" [ngModel]="modules.purchasing" (ngModelChange)="setModule('purchasing', $event)" [disabled]="modulesSaving" data-testid="biz-mod-purchasing">
+            <option value="full" [disabled]="isLocked('purchasing')">Full - requests, orders, invoices, vendors, payables{{ isLocked('purchasing') ? ' (not in your plan)' : '' }}</option>
+            <option value="simple">Simple - invoices, vendors and payments only</option>
+            <option value="off">Off - this business does not buy through the system</option>
+          </select>
+        </div>
+        <div class="form-check form-switch mb-2" *ngFor="let m of moduleRows" [hidden]="isLocked(m.key)">
+          <input class="form-check-input" type="checkbox" role="switch" [id]="'mod-' + m.key" [checked]="modules[m.key]"
+                 [disabled]="modulesSaving || isLocked(m.key) || (m.key === 'gst' && modules.purchasing === 'off')" (change)="setModule(m.key, $any($event.target).checked)" [attr.data-testid]="'biz-mod-' + m.key">
+          <label class="form-check-label" [for]="'mod-' + m.key">{{m.label}}<span class="d-block small text-muted">{{m.hint}}</span></label>
+        </div>
+        <p class="small text-muted mb-0 mt-3" *ngIf="lockedLabels" data-testid="biz-mod-locked">Not in your plan: {{lockedLabels}}.</p>
+    </div>
   </div>
 </div>

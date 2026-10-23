@@ -84,7 +84,7 @@ export const TID = {
 
   // --- settings > store (store-settings.component.html) ---
   storeSelect: 'store-s-select',
-  storeTab: (key: string) => `store-s-tab-${key}`,       // master | policy | templates
+  storeTab: (key: string) => `store-s-tab-${key}`,       // details | cash
   storeFBusiness: 'store-s-business',
   storeFLocation: 'store-s-location',
   storeFThreshold: 'store-s-threshold',

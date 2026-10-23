@@ -5,6 +5,7 @@ import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
 import { PurchaseService } from "../purchases/purchase.service";
 
 import { OWNER_ROLES } from 'src/core/roles';
+import { DepositRule, evaluateDeposit } from '../store/deposit-rule';
 /** Customer record used at the counter when no mobile number is given (mobile '0000000000', name NIL). */
 const NO_MOBILE_PLACEHOLDER = '0000000000';
 
@@ -56,6 +57,8 @@ export class DashboardService {
         cash_balance: cashSnapshot.cashbalance,
         deposit_threshold: cashSnapshot.depositthreshold,
         deposit_due: cashSnapshot.depositdue,
+        deposit_reason: cashSnapshot.depositreason,
+        deposit_next: cashSnapshot.depositnext,
         cash_expenses_month: cashMovement.expenses,
         bank_deposits_month: cashMovement.deposits,
         overdue_invoices: outstandingInvoices.filter((invoice: any) => invoice.is_overdue).length,
@@ -257,25 +260,30 @@ export class DashboardService {
       where ($1::int is null or ledger.store_id = $1::int)
     `, [storeid]);
 
-    let depositthreshold = 0;
+    let rule: DepositRule = { threshold: 0, schedule: 'none', weekdays: [], monthdays: [] };
+    let lastDeposit: string | null = null;
     if (storeid) {
       const store = await this.manager.query(`
-        select deposit_threshold as depositthreshold
+        select deposit_threshold as depositthreshold, deposit_schedule as schedule, deposit_weekdays as weekdays, deposit_month_days as monthdays
         from stores
         where id = $1
         limit 1
       `, [storeid]);
-      depositthreshold = +store?.[0]?.depositthreshold || 0;
+      rule = { threshold: +store?.[0]?.depositthreshold || 0, schedule: store?.[0]?.schedule || 'none', weekdays: store?.[0]?.weekdays || [], monthdays: store?.[0]?.monthdays || [] };
+      const [last] = await this.manager.query(`select to_char(max(trans_date), 'YYYY-MM-DD') as d from store_cash_accounts where store_id = $1 and category = 'BANK_DEPOSIT'`, [storeid]);
+      lastDeposit = last?.d ?? null;
     }
 
     const cashbalance = (+row?.[0]?.deposit || 0) - (+row?.[0]?.withdraw || 0);
-    const depositdue = depositthreshold > 0 ? cashbalance >= depositthreshold : false;
+    const status = storeid ? evaluateDeposit(rule, cashbalance, lastDeposit, new Date().toISOString().slice(0, 10)) : null;
 
     return {
       cashbalance,
-      depositthreshold,
-      depositdue,
-      depositexcess: depositdue ? cashbalance - depositthreshold : 0,
+      depositthreshold: rule.threshold,
+      depositdue: !!status?.due,
+      depositexcess: status?.excess ?? 0,
+      depositreason: status?.reason ?? null,
+      depositnext: status?.nextscheduled ?? null,
     };
   }
 

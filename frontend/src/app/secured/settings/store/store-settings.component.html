@@ -2,7 +2,7 @@
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
       <h5 class="card-title mb-0">Store Settings</h5>
-      <div class="small text-muted">Use the page store selector. This page edits store master, policy, and shift templates.</div>
+      <div class="small text-muted">Choose a store, then change its details and licences, or how its cash and shifts run.</div>
     </div>
 
     <div class="border rounded p-3 mt-3">
@@ -17,31 +17,22 @@
         <div class="col-12 col-md-8">
           <ul class="nav nav-tabs">
             <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'master'" data-testid="store-s-tab-master" href="javascript:void(0)" (click)="selectTab('master')">Stores</a>
+              <a class="nav-link" [class.active]="activeTab === 'details'" data-testid="store-s-tab-details" href="javascript:void(0)" (click)="selectTab('details')">Details &amp; licences</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'policy'" data-testid="store-s-tab-policy" href="javascript:void(0)" (click)="selectTab('policy')">Cash Policy</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'templates'" data-testid="store-s-tab-templates" href="javascript:void(0)" (click)="selectTab('templates')">Shift Templates</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'profile'" data-testid="store-s-tab-profile" href="javascript:void(0)" (click)="selectTab('profile')">Till &amp; shifts</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" [class.active]="activeTab === 'licences'" data-testid="store-s-tab-licences" href="javascript:void(0)" (click)="selectTab('licences'); openLicences(licStoreId || stores[0]?.id)">Licences &amp; address</a>
+              <a class="nav-link" [class.active]="activeTab === 'cash'" data-testid="store-s-tab-cash" href="javascript:void(0)" (click)="selectTab('cash')">Cash &amp; shifts</a>
             </li>
           </ul>
         </div>
       </div>
 
-      <div *ngIf="activeTab === 'master'" class="mt-3">
+      <div *ngIf="activeTab === 'details'" class="mt-3">
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h6 class="mb-0">Store Master</h6>
         <div class="small text-muted">Create, edit, or archive store locations from admin.</div>
       </div>
       <div class="row g-2">
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-4" *ngIf="showBusinessSelect">
           <label class="form-label">Business</label>
           <select class="form-select" data-testid="store-s-business" [(ngModel)]="storeForm.businessid">
             <option value="">Choose business</option>
@@ -58,10 +49,6 @@
             <option value="pharmacy">Pharmacy</option>
             <option value="other">Other</option>
           </select>
-        </div>
-        <div class="col-6 col-md-2">
-          <label class="form-label">Deposit Threshold</label>
-          <input type="number" class="form-control" data-testid="store-s-threshold" [(ngModel)]="storeForm.depositthreshold">
         </div>
         <div class="col-6 col-md-1 d-flex align-items-end">
           <div class="form-check">
@@ -83,7 +70,7 @@
               <th>Location</th>
               <th>Business</th>
               <th>Type</th>
-              <th class="text-end">Threshold</th>
+              <th>Bank deposit</th>
               <th>Status</th>
               <th>Licence</th>
               <th></th>
@@ -94,7 +81,7 @@
               <td>{{store.location}}</td>
               <td>{{store.business?.name || '-'}}</td>
               <td data-testid="store-row-type">{{store.storetype === 'other' ? 'Other' : 'Pharmacy'}}</td>
-              <td class="text-end">{{store.depositthreshold | number:'1.2-2'}}</td>
+              <td class="small" data-testid="store-row-deposit">{{depositSummary(store)}}</td>
               <td>
                 <span class="badge bg-success" *ngIf="store.isActive && !store.isArchived">Active</span>
                 <span class="badge bg-secondary" *ngIf="!store.isActive || store.isArchived">Archived</span>
@@ -113,15 +100,10 @@
       </div>
       </div>
 
-      <div *ngIf="activeTab === 'licences'" class="mt-3" data-testid="store-lic-panel">
+      <div *ngIf="activeTab === 'details' && selectedStore?.id" class="mt-4 border-top pt-3" data-testid="store-lic-panel">
+        <h6 class="mb-1">Address &amp; licences: {{selectedStore.location}}</h6>
         <div class="small text-muted mb-2">A drug licence belongs to the premises, so each store has its own. Vendors ask for the licence number and address of the store they deliver to. The GSTIN is one per business and is kept under Business details.</div>
         <div class="row g-2 align-items-end mb-2">
-          <div class="col-12 col-md-4">
-            <label class="form-label">Store</label>
-            <select class="form-select" data-testid="store-lic-store" [ngModel]="licStoreId" (ngModelChange)="openLicences($event)">
-              <option *ngFor="let s of stores" [ngValue]="s.id">{{s.location}}</option>
-            </select>
-          </div>
           <div class="col-12 col-md-4" *ngIf="lic">
             <span class="badge" [ngClass]="licenceBadge(lic.licensestatus)" data-testid="store-lic-status">{{licenceLabel(lic.licensestatus)}}</span>
             <span class="small text-muted ms-2" *ngIf="lic.licensenextexpiry">next expiry {{lic.licensenextexpiry}}</span>
@@ -132,7 +114,7 @@
         <div *ngIf="lic">
           <div class="row g-2">
             <div class="col-12 col-md-6">
-              <label class="form-label">Address (ship-to)</label>
+              <label class="form-label">Address (ship-to) <a href="javascript:void(0)" class="small ms-1" (click)="useBusinessAddress()" data-testid="store-lic-use-business">use the business address</a></label>
               <input class="form-control" maxlength="200" [(ngModel)]="lic.address" data-testid="store-lic-address">
             </div>
             <div class="col-6 col-md-3">
@@ -164,10 +146,42 @@
         </div>
       </div>
 
-      <div *ngIf="activeTab === 'profile'" class="mt-3" data-testid="store-profile-panel">
+      <div *ngIf="activeTab === 'cash'" class="border rounded p-3 mt-3" data-testid="store-policy-panel">
+          <h6 class="mb-3">Bank deposit</h6>
+          <div class="mb-3">
+            <label class="form-label">Bank deposit threshold</label>
+            <input type="number" min="0" class="form-control" data-testid="store-s-policy-threshold" [(ngModel)]="selectedStore.depositthreshold">
+            <small class="text-muted">A deposit is due when the cash balance reaches this amount. Leave 0 for no amount limit.</small>
+          </div>
+          <div class="mb-3" data-testid="store-s-deposit-schedule">
+            <label class="form-label">Also remind me</label>
+            <select class="form-select" [(ngModel)]="selectedStore.depositschedule" data-testid="store-s-policy-schedule">
+              <option value="none">Only by amount</option>
+              <option value="daily">Every day</option>
+              <option value="weekly">On certain weekdays</option>
+              <option value="monthly">On certain days of the month</option>
+            </select>
+            <div class="mt-2" *ngIf="selectedStore.depositschedule === 'weekly'" data-testid="store-s-policy-weekdays">
+              <div class="form-check form-check-inline" *ngFor="let d of weekdays">
+                <input class="form-check-input" type="checkbox" [id]="'wd-' + d.n" [checked]="weekdayOn(d.n)" (change)="toggleWeekday(d.n, $any($event.target).checked)" [attr.data-testid]="'store-s-policy-wd-' + d.n">
+                <label class="form-check-label" [for]="'wd-' + d.n">{{d.label}}</label>
+              </div>
+            </div>
+            <div class="mt-2" *ngIf="selectedStore.depositschedule === 'monthly'">
+              <input class="form-control" [(ngModel)]="monthDaysText" placeholder="e.g. 1, 15, last" data-testid="store-s-policy-monthdays">
+              <small class="text-muted">Days of the month, separated by commas. A day the month does not have means its last day.</small>
+            </div>
+            <small class="text-muted d-block mt-2" data-testid="store-s-policy-summary">{{policySummary}}</small>
+          </div>
+          <button class="btn btn-primary" type="button" data-testid="store-s-policy-save" [disabled]="savingPolicy || !selectedStore?.id" (click)="savePolicy()">
+            {{savingPolicy ? 'Saving...' : 'Save'}}
+          </button>
+      </div>
+
+      <div *ngIf="activeTab === 'cash'" class="border rounded p-3 mt-3" data-testid="store-profile-panel">
         <div *ngIf="!profile" class="text-muted">Choose a store.</div>
         <ng-container *ngIf="profile">
-          <h6>{{ profile.location }}: how the till runs</h6>
+          <h6 class="mb-3">Till &amp; shifts</h6>
           <div class="row g-3">
             <div class="col-12 col-lg-6">
               <label class="form-label">Shifts are closed</label>
@@ -189,12 +203,6 @@
               </select>
             </div>
             <div class="col-12 col-lg-6">
-              <label class="form-label">Approvals in this store</label>
-              <select class="form-select" [(ngModel)]="profile.approvalmodesetting" data-testid="store-profile-approval">
-                <option [ngValue]="null">Follow the business</option><option value="separate">Another person approves</option><option value="self">The maker may approve their own</option>
-              </select>
-            </div>
-            <div class="col-12 col-lg-6">
               <div class="form-check"><input class="form-check-input" type="checkbox" id="pf-op" [(ngModel)]="profile.operatorrequired" data-testid="store-profile-operator">
                 <label class="form-check-label" for="pf-op">Ask who is serving on each bill</label></div>
               <div class="form-text">Turn off where everyone bills under their own login.</div>
@@ -205,6 +213,17 @@
               <div class="form-text">0 asks on every bill.</div>
             </div>
           </div>
+          <details class="mt-3" data-testid="store-profile-advanced">
+            <summary class="small text-muted">Advanced</summary>
+            <div class="row g-3 mt-1">
+            <div class="col-12 col-lg-6">
+              <label class="form-label">Approvals in this store</label>
+              <select class="form-select" [(ngModel)]="profile.approvalmodesetting" data-testid="store-profile-approval">
+                <option [ngValue]="null">Follow the business</option><option value="separate">Another person approves</option><option value="self">The maker may approve their own</option>
+              </select>
+            </div>
+            </div>
+          </details>
           <div class="mt-3 d-flex align-items-center gap-3">
             <button class="btn btn-primary" type="button" [disabled]="profileSaving" data-testid="store-profile-save" (click)="saveProfile()">{{ profileSaving ? 'Saving...' : 'Save' }}</button>
             <span class="text-success small" *ngIf="profileMessage" data-testid="store-profile-message">{{ profileMessage }}</span>
@@ -214,32 +233,9 @@
         </ng-container>
       </div>
 
-      <div *ngIf="activeTab === 'policy'" class="row g-3 mt-1">
-        <div class="col-12 col-xl-4">
-        <div class="border rounded p-3 h-100">
-          <h6 class="mb-3">Cash Policy</h6>
-          <div class="alert alert-info" *ngIf="!selectedStore?.id">
-            Select a store above to manage policy.
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Bank deposit threshold</label>
-            <input type="number" class="form-control" data-testid="store-s-policy-threshold" [(ngModel)]="selectedStore.depositthreshold">
-            <small class="text-muted">Used by Store - Cash to warn when balance crosses this amount.</small>
-          </div>
-          <button class="btn btn-primary" type="button" data-testid="store-s-policy-save" [disabled]="savingPolicy || !selectedStore?.id" (click)="savePolicy()">
-            {{savingPolicy ? 'Saving...' : 'Save Policy'}}
-          </button>
-        </div>
-      </div>
-      </div>
 
-      <div *ngIf="activeTab === 'templates'" class="row g-3 mt-1">
-      <div class="col-12 col-xl-8">
-        <div class="border rounded p-3 h-100">
+      <div *ngIf="activeTab === 'cash' && profile?.shiftmode === 'time'" class="border rounded p-3 mt-3" data-testid="store-templates-panel">
           <h6 class="mb-3">Shift Templates</h6>
-          <div class="alert alert-info" *ngIf="!selectedStore?.id">
-            Select a store above to manage templates.
-          </div>
           <div class="row g-2">
             <div class="col-12 col-md-4">
               <label class="form-label">Name</label>
@@ -294,8 +290,9 @@
               </tbody>
             </table>
           </div>
-        </div>
       </div>
+      <div *ngIf="activeTab === 'cash' && profile?.shiftmode === 'staff'" class="small text-muted mt-3" data-testid="store-templates-note">
+        Shift templates (a named shift with its hours) apply to a shared till closed at handover. This store closes by person, so none are needed.
       </div>
     </div>
 

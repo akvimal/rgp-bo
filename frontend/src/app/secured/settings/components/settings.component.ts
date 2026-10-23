@@ -24,7 +24,9 @@ export class SettingsComponent {
 
     /** the page says where you are: "Settings · Users" */
     private setTitle(url: string) {
-        const seg = (url || '').split('?')[0].split('/').filter(Boolean)[2];
+        const parts = (url || '').split('?')[0].split('/').filter(Boolean);
+        const seg = parts[2];
+        if (seg === 'business-profile' && parts[3] === 'setup') { this.title = 'Settings · Shop setup'; return; }
         this.title = TITLES[seg] ? `Settings \u00b7 ${TITLES[seg]}` : 'Settings';
     }
 }

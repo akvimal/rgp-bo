@@ -20,6 +20,9 @@
             <span>Excess over threshold</span>
             <strong data-testid="cash-excess">{{depositExcess() | number:'1.2-2'}}</strong>
           </div>
+          <div class="mt-1 small" *ngIf="dashboard?.deposit" data-testid="cash-deposit-note" [ngClass]="depositDue() ? 'text-danger' : 'text-muted'">
+            {{depositNote()}}
+          </div>
           <div class="mt-1 small text-muted">
             Bank deposits are independent of shift closing. Use the manager deposit entry when cash is collected.
           </div>

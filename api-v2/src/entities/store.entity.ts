@@ -24,6 +24,16 @@ import { UserStore } from "./user-store.entity";
   @Column("double precision", { name: "deposit_threshold", precision: 53, default: 0 })
   depositthreshold: number;
 
+  /** when cash is due at the bank besides the amount: none, daily, weekly (deposit_weekdays) or monthly (deposit_month_days); see deposit-rule.ts */
+  @Column("character varying", { name: "deposit_schedule", length: 10, default: "none" })
+  depositschedule: string;
+
+  @Column("smallint", { name: "deposit_weekdays", array: true, default: () => "'{}'" })
+  depositweekdays: number[];
+
+  @Column("smallint", { name: "deposit_month_days", array: true, default: () => "'{}'" })
+  depositmonthdays: number[];
+
   @Column("character varying", { name: "telegram_chat_id", length: 40, nullable: true })
   telegramchatid: string | null;
 

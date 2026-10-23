@@ -19,6 +19,7 @@ import { RoleFormComponent } from "./roles/components/role-form.component";
 import { UserListComponent } from "./users/components/user-list.component";
 import { UserFormComponent } from "./users/components/user-form.component";
 import { UserEditFormComponent } from "./users/components/user-edit-form.component";
+import { UserProfileComponent } from "./users/components/user-profile.component";
 import { DeliveryPartnersComponent } from "./delivery-partners/components/delivery-partners.component";
 import { DeliveryPartnerListComponent } from "./delivery-partners/components/delivery-partner-list.component";
 import { DeliveryPartnerFormComponent } from "./delivery-partners/components/delivery-partner-form.component";
@@ -35,7 +36,8 @@ const routes: Routes = [
       { path: '', redirectTo: 'list'},
       { path: 'list', component: UserListComponent },
       { path: 'new', component: UserFormComponent },
-      { path: 'edit/:id', component: UserEditFormComponent }
+      { path: 'edit/:id', component: UserEditFormComponent },
+      { path: 'profile/:id', component: UserProfileComponent }
     ]},
     { path: 'roles', component: RolesComponent, children: [
       { path: '',  redirectTo: 'list'},
@@ -67,6 +69,7 @@ const routes: Routes = [
       UserListComponent,
       UserFormComponent,
       UserEditFormComponent,
+      UserProfileComponent,
       DeliveryPartnersComponent,
       DeliveryPartnerListComponent,
       DeliveryPartnerFormComponent,

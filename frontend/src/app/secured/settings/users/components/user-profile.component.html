@@ -1,0 +1,70 @@
+<div class="mb-2"><a routerLink="/secure/settings/users/list" class="small" data-testid="profile-back">&larr; Users</a></div>
+
+<div *ngIf="loading" class="text-muted">Loading...</div>
+<div *ngIf="error" class="alert alert-danger py-2">{{error}}</div>
+
+<div class="card" *ngIf="user" data-testid="user-profile">
+  <div class="card-body">
+    <div class="row g-4">
+
+      <!-- who they are -->
+      <div class="col-lg-4 border-end-lg">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="rounded-circle d-inline-flex align-items-center justify-content-center fw-semibold text-white flex-shrink-0" style="width:64px;height:64px;background:#4154f1;font-size:22px" aria-hidden="true">{{initials}}</span>
+          <div>
+            <h5 class="mb-0" data-testid="profile-name">{{user.fullname}}</h5>
+            <div class="text-muted" *ngIf="staff?.designation" data-testid="profile-designation">{{staff.designation}}</div>
+            <span class="badge bg-light text-dark border mt-1" data-testid="profile-role">{{user.role?.name || staff?.role}}</span>
+          </div>
+        </div>
+
+        <div class="profile-block">
+          <div class="profile-title">Works at</div>
+          <div *ngIf="stores.length; else allStores">{{stores.join(', ')}}</div>
+          <ng-template #allStores><span class="text-muted">All stores</span></ng-template>
+        </div>
+        <div class="profile-block">
+          <div class="profile-title">Contact</div>
+          <div class="text-break">{{user.email}}</div>
+          <div *ngIf="user.phone">{{user.phone}}</div>
+          <div *ngIf="user.location" class="text-muted">{{user.location}}</div>
+        </div>
+      </div>
+
+      <!-- the details -->
+      <div class="col-lg-8">
+        <div class="profile-block">
+          <div class="profile-title">Employment</div>
+          <dl class="row mb-0 profile-list">
+            <dt class="col-sm-4">Designation</dt><dd class="col-sm-8">{{staff?.designation || '-'}}</dd>
+            <dt class="col-sm-4">Joined</dt>
+            <dd class="col-sm-8" data-testid="profile-joined"><ng-container *ngIf="staff?.join_date; else noJoin">{{staff.join_date | date:'dd MMM yyyy'}} <span class="text-muted">({{tenure}})</span></ng-container><ng-template #noJoin>-</ng-template></dd>
+          </dl>
+        </div>
+
+        <div class="profile-block">
+          <div class="profile-title">Emergency contact</div>
+          <dl class="row mb-0 profile-list">
+            <dt class="col-sm-4">Name</dt><dd class="col-sm-8">{{staff?.emergency_name || '-'}}</dd>
+            <dt class="col-sm-4">Phone</dt><dd class="col-sm-8">{{staff?.emergency_phone || '-'}}</dd>
+          </dl>
+        </div>
+
+        <div class="profile-block" *ngIf="staff?.pharmacy" data-testid="profile-registration">
+          <div class="profile-title">Pharmacist registration</div>
+          <dl class="row mb-0 profile-list" *ngIf="staff.pharmacist_reg_no; else noReg">
+            <dt class="col-sm-4">Registration no.</dt><dd class="col-sm-8">{{staff.pharmacist_reg_no}} <span class="badge ms-1" [ngClass]="regClass" *ngIf="regLabel">{{regLabel}}</span></dd>
+            <dt class="col-sm-4">Council</dt><dd class="col-sm-8">{{staff.pharmacist_council || '-'}}</dd>
+            <dt class="col-sm-4">Valid to</dt><dd class="col-sm-8">{{staff.pharmacist_valid_to ? (staff.pharmacist_valid_to | date:'dd MMM yyyy') : '-'}}</dd>
+          </dl>
+          <ng-template #noReg><div class="text-muted">Not recorded.</div></ng-template>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+      <a class="btn btn-primary" *isAuth="'users.edit'" [routerLink]="['/secure/settings/users/edit', user.id]" data-testid="profile-edit">Edit</a>
+      <a class="btn btn-outline-secondary" routerLink="/secure/settings/users/list">Back</a>
+    </div>
+  </div>
+</div>

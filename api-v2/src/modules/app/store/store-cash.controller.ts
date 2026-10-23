@@ -91,6 +91,12 @@ export class StoreCashController {
     return this.service.getDashboard(query, currentUser?.id);
   }
 
+  /** every store's bank deposit standing (due or not, why, the next deposit day): the source for deposit reminders */
+  @Get("deposit-status")
+  getDepositStatus(@User() currentUser: any) {
+    return this.service.getDepositStatuses(currentUser?.id);
+  }
+
   @Get("expenses/summary")
   getExpenseSummary(@Query() query: any) {
     return this.service.getExpenseSummary(query);

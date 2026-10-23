@@ -80,10 +80,10 @@ test.describe('Store licences @p1', () => {
     }
   });
 
-  test('STLIC-4 the Licences and address tab saves a licence @happy', async ({ app }) => {
+  test('STLIC-4 the address and licences of the chosen store are saved from the Details tab @happy', async ({ app }) => {
     const { page } = await app.open(MGR, '/secure/settings/store');
     await expectShell(page);
-    await page.getByTestId('store-s-tab-licences').click();
+    await page.getByTestId('store-s-tab-details').click();
     await expect(page.getByTestId('store-lic-panel')).toBeVisible();
     await expect(page.getByTestId('store-lic-status')).toBeVisible();
     const rows = await page.getByTestId('store-lic-row').count();

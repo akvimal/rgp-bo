@@ -29,7 +29,7 @@ test.describe('Settings — Businesses & Stores @p0', () => {
 
     const { page } = await app.open(MGR, '/secure/settings/store');
     await expectShell(page);
-    await page.getByTestId(TID.storeTab('master')).click();
+    await page.getByTestId(TID.storeTab('details')).click();
     await expect(page.getByTestId(TID.storeRow).filter({ hasText: loc })).toBeVisible();
 
     const { page: p2 } = await app.open(MGR, '/secure/store/cash', { storeId: s.body.id });

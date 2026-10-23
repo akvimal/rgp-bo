@@ -205,8 +205,8 @@ test.describe('Operating modes: screens @p1', () => {
     const { page } = await app.open(MGR, '/secure/settings/store');
     const where = (await api.request('GET', `/store-cash/profile?storeid=${sid}`)).body.location;
     await page.getByTestId('store-s-select').selectOption({ label: (await page.locator('[data-testid=store-s-select] option', { hasText: where }).first().textContent())!.trim() });
-    await page.getByTestId('store-s-tab-profile').click();
-    await expect(page.getByTestId('store-profile-panel')).toContainText('how the till runs');
+    await page.getByTestId('store-s-tab-cash').click();
+    await expect(page.getByTestId('store-profile-panel')).toContainText('Till & shifts');
     await page.getByTestId('store-profile-mode-staff').check();
     await page.getByTestId('store-profile-operator').uncheck();
     await page.getByTestId('store-profile-save').click();
@@ -326,11 +326,15 @@ test.describe('Operating modes: approval mode @p1', () => {
     expect((await adjust(sid)).body.status).toBe('PENDING');
   });
 
-  test('OM-13 Business details shows the approval mode and saves it @happy', async ({ app, api }) => {
-    const { page } = await app.open(MGR, '/secure/settings/business-profile');
+  test('OM-13 Shop setup shows the approval mode and saves it; Business details no longer carries it @happy', async ({ app, api }) => {
+    const { page } = await app.open(MGR, '/secure/settings/business-profile/setup');
     await page.getByTestId('biz-approval-mode').selectOption('self');
-    await page.getByTestId('biz-save').click();
-    await expect(page.getByTestId('biz-message')).toBeVisible();
+    await page.getByTestId('setup-approvals-save').click();
+    await expect(page.getByTestId('setup-approvals-message')).toBeVisible();
+    const details = (await app.open(MGR, '/secure/settings/business-profile')).page;
+    await expect(details.getByTestId('biz-save')).toBeVisible();
+    await expect(details.getByTestId('biz-approval-mode')).toHaveCount(0);
+    await expect(details.getByTestId('biz-modules')).toHaveCount(0);
     expect((await api.request('GET', '/businesses/mine', undefined, MGR)).body.approvalmode).toBe('self');
   });
 });
@@ -410,8 +414,8 @@ test.describe('Operating modes: modules @p1', () => {
     expect((await api.request('GET', '/purchaseorders', undefined, MGR)).status).toBe(200);
   });
 
-  test('OM-17 Business details switches modules and the menu follows @happy', async ({ app, api }) => {
-    const { page } = await app.open(MGR, '/secure/settings/business-profile');
+  test('OM-17 Shop setup switches modules and the menu follows @happy', async ({ app, api }) => {
+    const { page } = await app.open(MGR, '/secure/settings/business-profile/setup');
     await expect(page.getByTestId('biz-modules')).toBeVisible();
     await page.getByTestId('biz-mod-expenses').uncheck();
     await expect(page.getByTestId('biz-modules-message')).toBeVisible();
@@ -823,29 +827,37 @@ test.describe('Operating modes: staff details without HR @p1', () => {
     void today;
   });
 
-  test('OM-32 where HR is off, the Users page shows the staff details and saves them @happy', async ({ app, api }) => {
+  test('OM-32 where HR is off, the Users page marks a pharmacist with a badge and the staff-details icon opens a read-only profile @happy', async ({ app, api }) => {
     const sid = await freshStore(api);
     const staff = await staffUser(api, sid);
+    const valid = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
+    const saved = await api.request('PUT', `/staff-details/${staff.id}`, { designation: 'Pharmacist', join_date: '2023-05-01', emergency_name: 'A Parent', emergency_phone: '9840011111', pharmacist_reg_no: 'tn/777', pharmacist_council: 'TN Council', pharmacist_valid_to: valid }, MGR);
+    expect(saved.status).toBeLessThan(300);
     await api.request('PUT', '/businesses/mine/modules', { hr: false }, MGR);
     try {
       const { page } = await app.open(MGR, '/secure/settings/users');
-      await expect(page.locator(`[data-user-email="${staff.email}"]`)).toBeVisible();
-      await page.getByTestId(`user-details-${staff.id}`).click();
-      await expect(page.getByTestId('staff-details-form')).toBeVisible();
-      await page.getByTestId('sd-designation').fill('Pharmacist');
-      await page.getByTestId('sd-is-pharmacist').check();
-      await page.getByTestId('sd-reg').fill('tn/777');
-      await page.getByTestId('sd-council').fill('TN Council');
-      await page.getByTestId('sd-valid').fill(new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10));
-      await page.getByTestId('sd-save').click();
-      await expect(page.getByTestId('staff-details-message')).toContainText('Saved');
+      const row = page.locator(`[data-user-email="${staff.email}"]`);
       // the registration shows as a badge beside the name (the number is in its tooltip), not as a column of its own
-      const badge = page.locator(`[data-user-email="${staff.email}"]`).getByTestId('user-row-reg');
+      const badge = row.getByTestId('user-row-reg');
       await expect(badge).toContainText('Pharmacist');
       await expect(badge).toContainText('Lapses');
       await expect(badge).toHaveAttribute('title', /TN\/777/);
       await expect(page.locator('th', { hasText: 'Pharmacist registration' })).toHaveCount(0);
       await expect(page.getByTestId('staff-attention')).toBeVisible();
+
+      // the icon opens the profile: everything on one read-only page
+      await page.getByTestId(`user-details-${staff.id}`).click();
+      const profile = page.getByTestId('user-profile');
+      await expect(profile).toBeVisible();
+      await expect(profile.getByTestId('profile-name')).toContainText('QA OM Staff');
+      await expect(profile.getByTestId('profile-designation')).toHaveText('Pharmacist');
+      await expect(profile.getByTestId('profile-joined')).toContainText('01 May 2023');
+      await expect(profile.getByTestId('profile-registration')).toContainText('TN/777');
+      await expect(profile.getByTestId('profile-registration')).toContainText('TN Council');
+      await expect(profile).toContainText('A Parent');
+      await expect(profile.locator('input')).toHaveCount(0);                                    // read only
+      await profile.getByTestId('profile-edit').click();
+      await expect(page).toHaveURL(new RegExp(`/users/edit/${staff.id}$`));
     } finally {
       await api.request('PUT', '/businesses/mine/modules', { hr: true }, MGR);
     }
@@ -949,5 +961,95 @@ test.describe('Operating modes: store type @p1', () => {
     } finally {
       await api.request('PUT', '/businesses/mine/modules', { hr: true }, MGR);
     }
+  });
+});
+
+test.describe('Operating modes: bank deposit rule @p1', () => {
+  const put = (api: any, id: number, body: any) => api.request('PUT', `/stores/${id}`, { location: body.location ?? 'x', ...body }, MGR);
+  const cash = (api: any, storeId: number, body: any) => api.request('POST', '/store-cash/ledger', { storeid: storeId, category: 'ADJUSTMENT', description: 'qa', ...body }, MGR);
+  const dash = async (api: any, storeId: number) => (await api.request('GET', `/store-cash/dashboard?storeid=${storeId}`, undefined, MGR)).body;
+
+  test('OM-35 a deposit is due by the amount or by a deposit day, whichever comes first; a deposit settles the day @happy', async ({ api }) => {
+    // by amount alone, as before
+    const a = await api.request('POST', '/stores', { location: `Dep A ${Date.now()}`, depositthreshold: 1000, isActive: true }, MGR);
+    await cash(api, a.body.id, { deposit: 500 });
+    expect((await dash(api, a.body.id)).depositdue).toBe(false);
+    await cash(api, a.body.id, { deposit: 600 });
+    let d = await dash(api, a.body.id);
+    expect(d).toMatchObject({ depositdue: true, depositexcess: 100 });
+    expect(d.deposit).toMatchObject({ reason: 'amount', byamount: true });
+
+    // a daily schedule: due as soon as there is cash that has not been banked today, with no amount set
+    const b = await api.request('POST', '/stores', { location: `Dep B ${Date.now()}`, depositschedule: 'daily', isActive: true }, MGR);
+    expect(b.body.depositschedule).toBe('daily');
+    expect((await dash(api, b.body.id)).depositdue).toBe(false);                      // no cash, nothing to bank
+    await cash(api, b.body.id, { deposit: 500 });
+    d = await dash(api, b.body.id);
+    expect(d.depositdue).toBe(true);
+    expect(d.deposit).toMatchObject({ reason: 'schedule', byschedule: true });
+    expect(d.deposit.nextscheduled).toBeTruthy();
+    // banking some of it settles today even though cash remains
+    await cash(api, b.body.id, { category: 'BANK_DEPOSIT', withdraw: 200, referenceno: 'QA1' });
+    d = await dash(api, b.body.id);
+    expect(d.cashbalance).toBe(300);
+    expect(d.depositdue).toBe(false);
+
+    // the statuses every reminder reads
+    const all = (await api.request('GET', '/store-cash/deposit-status', undefined, MGR)).body as any[];
+    const mineA = all.find((s) => s.storeid === a.body.id);
+    expect(mineA).toMatchObject({ due: true, reason: 'amount', balance: 1100 });
+    expect(mineA.description).toMatch(/whichever comes first/);
+    expect(all.find((s) => s.storeid === b.body.id)).toMatchObject({ due: false, nextscheduled: expect.any(String) });
+  });
+
+  test('OM-36 the schedule is validated; weekly and monthly need their days; days of the other kind are dropped @negative', async ({ api }) => {
+    const s = await api.request('POST', '/stores', { location: `Dep C ${Date.now()}`, isActive: true }, MGR);
+    const id = s.body.id as number;
+    expect((await put(api, id, { depositschedule: 'yearly' })).status).toBe(400);
+    expect((await put(api, id, { depositschedule: 'weekly' })).status).toBe(400);                      // no weekdays
+    expect((await put(api, id, { depositschedule: 'weekly', depositweekdays: [7] })).status).toBe(400);
+    expect((await put(api, id, { depositschedule: 'monthly' })).status).toBe(400);                     // no days
+    expect((await put(api, id, { depositschedule: 'monthly', depositmonthdays: [32] })).status).toBe(400);
+
+    const weekly = await put(api, id, { depositthreshold: 20000, depositschedule: 'weekly', depositweekdays: [4, 1, 4], depositmonthdays: [5] });
+    expect(weekly.status, JSON.stringify(weekly.body)).toBeLessThan(300);
+    expect(weekly.body).toMatchObject({ depositschedule: 'weekly', depositweekdays: [1, 4], depositmonthdays: [], depositthreshold: 20000 });
+    const monthly = await put(api, id, { depositschedule: 'monthly', depositmonthdays: [15, 0, 1] });
+    expect(monthly.body).toMatchObject({ depositschedule: 'monthly', depositweekdays: [], depositmonthdays: [0, 1, 15], depositthreshold: 20000 });
+
+    // saving the store without mentioning the deposit rule leaves it as it was
+    const kept = await put(api, id, { location: monthly.body.location });
+    expect(kept.body).toMatchObject({ depositschedule: 'monthly', depositthreshold: 20000 });
+    expect((await put(api, id, { depositschedule: 'none' })).body).toMatchObject({ depositschedule: 'none', depositmonthdays: [] });
+  });
+
+  test('OM-37 the Cash Policy tab sets the amount and the schedule; the Store Master form no longer asks for the amount @happy', async ({ app, api }) => {
+    const s = await api.request('POST', '/stores', { location: `Dep D ${Date.now()}`, isActive: true }, MGR);
+    const page = (await app.open(MGR, '/secure/settings/store')).page;
+    await expect(page.getByTestId('store-s-threshold')).toHaveCount(0);
+    const label = (await page.locator('[data-testid=store-s-select] option', { hasText: s.body.location }).first().textContent())!.trim();
+    await page.getByTestId('store-s-select').selectOption({ label });
+    await page.getByTestId('store-s-tab-cash').click();
+    await page.getByTestId('store-s-policy-threshold').fill('25000');
+    await page.getByTestId('store-s-policy-schedule').selectOption('weekly');
+    await page.getByTestId('store-s-policy-wd-1').check();
+    await page.getByTestId('store-s-policy-wd-4').check();
+    await expect(page.getByTestId('store-s-policy-summary')).toContainText('25,000');
+    await expect(page.getByTestId('store-s-policy-summary')).toContainText('whichever comes first');
+    await page.getByTestId('store-s-policy-save').click();
+    await expect.poll(async () => (await api.request('GET', '/stores', undefined, MGR)).body.find((x: any) => x.id === s.body.id)?.depositweekdays?.join(',')).toBe('1,4');
+    const saved = (await api.request('GET', '/stores', undefined, MGR)).body.find((x: any) => x.id === s.body.id);
+    expect(saved).toMatchObject({ depositthreshold: 25000, depositschedule: 'weekly' });
+
+    // monthly: typed days, "last" allowed
+    await page.getByTestId('store-s-policy-schedule').selectOption('monthly');
+    await page.getByTestId('store-s-policy-monthdays').fill('1, 15, last');
+    await page.getByTestId('store-s-policy-save').click();
+    await expect.poll(async () => (await api.request('GET', '/stores', undefined, MGR)).body.find((x: any) => x.id === s.body.id)?.depositmonthdays?.join(',')).toBe('0,1,15');
+
+    // the store list shows the rule
+    await page.getByTestId('store-s-tab-details').click();
+    await expect(page.locator(`[data-store-id="${s.body.id}"]`).getByTestId('store-row-deposit')).toContainText('25,000');
+    await expect(page.locator(`[data-store-id="${s.body.id}"]`).getByTestId('store-row-deposit')).toContainText('day 1, 15, last');
   });
 });

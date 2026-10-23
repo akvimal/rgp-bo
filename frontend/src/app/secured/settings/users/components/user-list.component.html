@@ -5,21 +5,6 @@
 <div class="alert alert-warning py-2 mt-3 mb-0" *ngIf="showDetails && attention" data-testid="staff-attention">
     {{attention}} pharmacist registration{{attention === 1 ? ' has' : 's have'}} lapsed or lapse{{attention === 1 ? 's' : ''}} within 60 days.
 </div>
-<div class="alert alert-success py-2 mt-3 mb-0" *ngIf="message" data-testid="staff-details-message">{{message}}</div>
-
-<div class="card mt-3" *ngIf="editing" data-testid="staff-details-form">
-    <div class="card-body">
-        <h6 class="card-title">Staff details: {{editing.name}}</h6>
-        <div class="alert alert-danger py-2" *ngIf="error">{{error}}</div>
-        <app-staff-details-fields [model]="editing" [pharmacist]="editing.pharmacy !== false"></app-staff-details-fields>
-        <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-primary" type="button" [disabled]="saving" (click)="saveDetails()" data-testid="sd-save">Save</button>
-            <button class="btn btn-outline-secondary" type="button" (click)="editing = null">Cancel</button>
-        </div>
-        <div class="form-text mt-2">Kept on the staff record, so it is there if you switch HR on later. Pay, bank and ID numbers are not asked for here.</div>
-    </div>
-</div>
-
 <table *isAuth="'users.read'" class="table table-bordered mt-3">
     <thead>
         <tr>
@@ -52,7 +37,7 @@
             </td>
             <td>
                 <div class="grid-actions">
-                    <a href="javascript:void(0)" *ngIf="showDetails && detailOf(p.id)" (click)="openDetails(p)" title="Staff details" [attr.data-testid]="'user-details-' + p.id"><i class="bi bi-person-vcard text-secondary"></i></a>
+                    <a *ngIf="showDetails && detailOf(p.id)" [routerLink]="['../profile', p.id]" title="Staff details" [attr.data-testid]="'user-details-' + p.id"><i class="bi bi-person-vcard text-secondary"></i></a>
                     <a *isAuth="'users.edit'" [routerLink]="['../edit', p.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
                     <a *isAuth="'users.delete'" (click)="delete(p)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
                 </div>

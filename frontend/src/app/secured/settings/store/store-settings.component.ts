@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { CashService } from "src/app/secured/store/cash/cash.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
+import { BusinessesService } from "../businesses/businesses.service";
 
 @Component({
   templateUrl: './store-settings.component.html'
@@ -12,10 +13,13 @@ export class StoreSettingsComponent implements OnInit {
   templates:any[] = [];
   selectedStoreId:any = '';
   selectedStore:any = { depositthreshold: 0, location: '' };
+  readonly weekdays = [{ n: 1, label: 'Mon' }, { n: 2, label: 'Tue' }, { n: 3, label: 'Wed' }, { n: 4, label: 'Thu' }, { n: 5, label: 'Fri' }, { n: 6, label: 'Sat' }, { n: 0, label: 'Sun' }];
+  /** the days of the month as typed ("1, 15, last") */
+  monthDaysText = '';
   message:string = '';
   savingPolicy:boolean = false;
   savingStore:boolean = false;
-  activeTab:'master' | 'policy' | 'templates' | 'licences' | 'profile' = 'master';
+  activeTab:'details' | 'cash' = 'details';
   profile:any = null;
   profileSaving:boolean = false;
   profileMessage:string = '';
@@ -36,7 +40,6 @@ export class StoreSettingsComponent implements OnInit {
     businessid: '',
     location: '',
     storetype: 'pharmacy',
-    depositthreshold: 0,
     isActive: true
   };
   templateForm:any = {
@@ -50,20 +53,24 @@ export class StoreSettingsComponent implements OnInit {
     active: true
   };
 
-  constructor(private cashService: CashService, private confirm: ConfirmService) {}
+  constructor(private cashService: CashService, private confirm: ConfirmService, private businessService: BusinessesService) {}
 
   ngOnInit(): void {
     this.cashService.getUsers().subscribe((users:any) => this.users = users || []);
-    this.cashService.getBusinesses().subscribe((businesses:any) => this.businesses = businesses || []);
+    this.cashService.getBusinesses().subscribe((businesses:any) => {
+      this.businesses = businesses || [];
+      if (this.businesses.length === 1) this.storeForm.businessid = this.businesses[0].id;
+    });
     this.refreshStoreList();
   }
 
-  selectTab(tab:'master' | 'policy' | 'templates' | 'licences' | 'profile') {
+  selectTab(tab:'details' | 'cash') {
     this.activeTab = tab;
-    if (tab !== 'master' && tab !== 'licences') {
-      this.refreshSelectedStore();
-    }
+    this.refreshSelectedStore();
   }
+
+  /** a business with one business has nothing to choose: the Business box is for the platform admin */
+  get showBusinessSelect():boolean { return this.businesses.length > 1; }
 
   refreshStoreList() {
     this.cashService.getStores().subscribe((stores:any) => {
@@ -101,12 +108,17 @@ export class StoreSettingsComponent implements OnInit {
 
   refreshSelectedStore() {
     this.selectedStore = this.stores.find((store:any) => store.id === Number(this.selectedStoreId)) || { depositthreshold: 0, location: '' };
-    if (this.activeTab === 'profile') {
+    if (this.activeTab === 'cash') {
       this.loadProfile();
     }
     if (!this.selectedStore?.id) {
       return;
     }
+    if (this.activeTab === 'details') {
+      this.openLicences(this.selectedStore.id);
+    }
+    this.selectedStore = { ...this.selectedStore, depositschedule: this.selectedStore.depositschedule || 'none', depositweekdays: [...(this.selectedStore.depositweekdays || [])] };
+    this.monthDaysText = (this.selectedStore.depositmonthdays || []).map((d:number) => d === 0 ? 'last' : String(d)).join(', ');
     this.templateForm.storeid = this.selectedStore.id;
     this.cashService.getTemplates(this.selectedStore.id).subscribe((templates:any) => {
       this.templates = templates || [];
@@ -122,6 +134,15 @@ export class StoreSettingsComponent implements OnInit {
     this.cashService.getStoreLicenses(id).subscribe(
       (r:any) => this.lic = r,
       err => this.licError = err?.error?.message || 'Unable to load the licences');
+  }
+
+  /** one-store shops have the same address as the business: fill it in from there */
+  useBusinessAddress() {
+    this.businessService.getMine().subscribe((b:any) => {
+      if (!this.lic) return;
+      this.lic.address = b?.address || '';
+      this.lic.pincode = b?.pincode || '';
+    }, () => {});
   }
 
   addLicence() {
@@ -160,13 +181,12 @@ export class StoreSettingsComponent implements OnInit {
       businessid: this.storeForm.businessid || null,
       location: this.storeForm.location,
       storetype: this.storeForm.storetype || 'pharmacy',
-      depositthreshold: Number(this.storeForm.depositthreshold || 0),
       isActive: this.storeForm.isActive !== false
     };
     const req = this.storeForm.id ? this.cashService.updateStore(this.storeForm.id, payload) : this.cashService.createStore(payload);
     req.subscribe(() => {
       this.savingStore = false;
-      this.storeForm = { id: null, businessid: '', location: '', storetype: 'pharmacy', depositthreshold: 0, isActive: true };
+      this.storeForm = { id: null, businessid: '', location: '', storetype: 'pharmacy', isActive: true };
       this.refreshStoreList();
     }, err => {
       this.savingStore = false;
@@ -180,7 +200,6 @@ export class StoreSettingsComponent implements OnInit {
       businessid: row.business?.id || '',
       location: row.location,
       storetype: row.storetype || 'pharmacy',
-      depositthreshold: row.depositthreshold,
       isActive: row.isActive !== false
     };
   }
@@ -193,13 +212,56 @@ export class StoreSettingsComponent implements OnInit {
     }, { entity: 'store', verb: 'Archive' });
   }
 
+  weekdayOn(n:number):boolean { return (this.selectedStore.depositweekdays || []).includes(n); }
+
+  toggleWeekday(n:number, on:boolean) {
+    const cur:number[] = this.selectedStore.depositweekdays || [];
+    this.selectedStore.depositweekdays = on ? Array.from(new Set([...cur, n])) : cur.filter(d => d !== n);
+  }
+
+  /** "1, 15, last" -> [1, 15, 0]; anything else is dropped (the server refuses a number out of range) */
+  parseMonthDays(text:string):number[] {
+    return Array.from(new Set(String(text || '').split(/[,\s]+/).filter(Boolean).map(t => /^last$/i.test(t) ? 0 : Number(t)).filter(n => Number.isInteger(n))));
+  }
+
+  private rule(s:any) {
+    return {
+      threshold: Number(s?.depositthreshold || 0), schedule: s?.depositschedule || 'none',
+      weekdays: s?.depositweekdays || [], monthdays: s?.depositmonthdays || [],
+    };
+  }
+
+  private words(r:any):string {
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const parts:string[] = [];
+    if (r.threshold > 0) parts.push('₹' + Number(r.threshold).toLocaleString('en-IN'));
+    if (r.schedule === 'daily') parts.push('every day');
+    if (r.schedule === 'weekly' && r.weekdays.length) parts.push([...r.weekdays].sort((a:number, b:number) => ((a + 6) % 7) - ((b + 6) % 7)).map((d:number) => names[d]).join(', '));
+    if (r.schedule === 'monthly' && r.monthdays.length) parts.push('day ' + [...r.monthdays].sort((x:number, y:number) => (x || 99) - (y || 99)).map((d:number) => d === 0 ? 'last' : d).join(', '));
+    return parts.join(' or ');
+  }
+
+  /** one line for the store list: the amount and/or the schedule */
+  depositSummary(store:any):string { return this.words(this.rule(store)) || '-'; }
+
+  /** the rule as the screen has it now, in a sentence */
+  get policySummary():string {
+    const r:any = this.rule(this.selectedStore);
+    if (r.schedule === 'monthly') r.monthdays = this.parseMonthDays(this.monthDaysText);
+    const w = this.words(r);
+    return w ? `A deposit is due at ${w}, whichever comes first.` : 'No deposit reminder is set.';
+  }
+
   savePolicy() {
     this.message = '';
     this.savingPolicy = true;
     const selected = this.selectedStore;
     this.cashService.updateStore(this.selectedStore.id, {
       location: selected.location || '',
-      depositthreshold: Number(selected.depositthreshold || 0)
+      depositthreshold: Number(selected.depositthreshold || 0),
+      depositschedule: selected.depositschedule || 'none',
+      depositweekdays: selected.depositschedule === 'weekly' ? (selected.depositweekdays || []) : [],
+      depositmonthdays: selected.depositschedule === 'monthly' ? this.parseMonthDays(this.monthDaysText) : []
     }).subscribe((store:any) => {
       this.selectedStore = store || this.selectedStore;
       const index = this.stores.findIndex((row:any) => row.id === store.id);
