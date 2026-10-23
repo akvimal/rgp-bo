@@ -14,6 +14,8 @@ export class ShopSetupComponent implements OnInit {
   presets: any[] = [];
   stores: any[] = [];
   current: string | null = null;
+  /** modules the hosted plan leaves out (so the wizard does not ask about them) */
+  locked: string[] = [];
 
   preset = "";
   shiftmode: "time" | "staff" = "time";
@@ -33,7 +35,7 @@ export class ShopSetupComponent implements OnInit {
 
   ngOnInit(): void {
     this.http.get(`${this.api}/presets`).subscribe((r: any) => {
-      this.presets = r.presets; this.stores = r.stores; this.current = r.current; this.loading = false;
+      this.presets = r.presets; this.stores = r.stores; this.current = r.current; this.locked = r.locked || []; this.loading = false;
       this.preset = r.current || "";
       this.shiftmode = r.stores.length && r.stores.every((s: any) => s.shiftmode === "staff") ? "staff" : "time";
       this.stores.forEach(s => this.perStore[s.id] = s.shiftmode);
@@ -69,7 +71,8 @@ export class ShopSetupComponent implements OnInit {
 
   apply() {
     this.busy = true; this.error = ""; this.result = null;
-    const accounts = this.logins.filter(l => l.email || l.fullname).map(l => ({ role: l.role, fullname: l.fullname, email: l.email, password: l.password, storeids: l.storeid ? [Number(l.storeid)] : [] }));
+    // the one-person setup has one login and no one to add
+    const accounts = this.preset === 'solo' ? [] : this.logins.filter(l => l.email || l.fullname).map(l => ({ role: l.role, fullname: l.fullname, email: l.email, password: l.password, storeids: l.storeid ? [Number(l.storeid)] : [] }));
     this.http.put(`${this.api}/preset`, { ...this.body(), accounts }).subscribe((r: any) => {
       this.busy = false; this.result = r; this.current = r.current; this.plan = null;
       this.logins = this.logins.filter((l, i) => r.accounts[i] && !r.accounts[i].ok);

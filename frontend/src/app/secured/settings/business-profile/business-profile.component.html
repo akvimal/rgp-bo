@@ -34,7 +34,7 @@
           <label class="form-label">Address</label>
           <textarea class="form-control" name="address" rows="2" [(ngModel)]="form.address" maxlength="200" data-testid="biz-address"></textarea>
         </div>
-        <div class="col-12">
+        <div class="col-12" *ngIf="!singlePerson" data-testid="biz-approvals">
           <label class="form-label">Approvals</label>
           <select class="form-select" name="approvalmode" [(ngModel)]="form.approvalmode" data-testid="biz-approval-mode">
             <option value="separate">Another person approves (stock adjustments, purchase orders, expenses)</option>
@@ -63,10 +63,11 @@
         <option value="off">Off - this business does not buy through the system</option>
       </select>
     </div>
-    <div class="form-check form-switch mb-2" *ngFor="let m of moduleRows">
+    <div class="form-check form-switch mb-2" *ngFor="let m of moduleRows" [hidden]="isLocked(m.key)">
       <input class="form-check-input" type="checkbox" role="switch" [id]="'mod-' + m.key" [checked]="modules[m.key]"
              [disabled]="modulesSaving || isLocked(m.key) || (m.key === 'gst' && modules.purchasing === 'off')" (change)="setModule(m.key, $any($event.target).checked)" [attr.data-testid]="'biz-mod-' + m.key">
-      <label class="form-check-label" [for]="'mod-' + m.key">{{m.label}}<span class="badge bg-secondary ms-2" *ngIf="isLocked(m.key)" [attr.data-testid]="'biz-mod-locked-' + m.key">Not in your plan</span><span class="d-block small text-muted">{{m.hint}}</span></label>
+      <label class="form-check-label" [for]="'mod-' + m.key">{{m.label}}<span class="d-block small text-muted">{{m.hint}}</span></label>
     </div>
+    <p class="small text-muted mb-0 mt-3" *ngIf="lockedLabels" data-testid="biz-mod-locked">Not in your plan: {{lockedLabels}}.</p>
   </div>
 </div>

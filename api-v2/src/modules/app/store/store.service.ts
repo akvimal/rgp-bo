@@ -822,9 +822,15 @@ export class StoreService {
       .orderBy("assignment.isprimary", "DESC")
       .addOrderBy("assignment.id", "ASC")
       .getMany();
+    // a business with one store has nothing to switch between, however its people are assigned
+    const [count] = user?.businessid
+      ? await this.manager.query(`select count(*)::int as n from stores where business_id = $1 and active and not archive`, [user.businessid])
+      : [{ n: stores.length }];
+    const totalstores = count?.n ?? stores.length;
     if (assignments.length) {
       const selected = assignments.find((row) => row.isprimary) || assignments[0];
       return {
+        totalstores,
         stores: assignments.map((row) => row.store),
         selectedstoreid: selected?.storeid || null,
         allstores: false,
@@ -832,6 +838,7 @@ export class StoreService {
       };
     }
     return {
+      totalstores,
       stores,
       selectedstoreid: null,
       allstores: true,

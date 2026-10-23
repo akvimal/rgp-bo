@@ -5,6 +5,7 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { isValidApprovalMode } from "src/core/approval-mode";
 import { ModulesService } from "src/core/modules/modules.service";
+import { PlatformService } from "src/core/platform/platform.service";
 import { UserService } from "../users/user.service";
 import { PRESETS, PRESET_INFO, Preset, PresetInput, planPreset } from "./business-preset";
 
@@ -17,6 +18,7 @@ export class BusinessService {
     private readonly audit: AuditService,
     private readonly modules: ModulesService,
     private readonly users: UserService,
+    private readonly platform: PlatformService,
   ) {}
 
   /** The business the signed-in Business Head belongs to. Nobody else reaches this, and nobody reaches another business. */
@@ -30,14 +32,31 @@ export class BusinessService {
   }
 
   async mine(user: any) {
-    return this.ownBusiness(user);
+    const b = await this.ownBusiness(user);
+    return { ...b, singleperson: await this.isSinglePerson(user, b) };
+  }
+
+  /** a shop run by one person (an Owner-operator login, or the "Just me" preset): there is nobody else to approve anything */
+  private async isSinglePerson(user: any, b: Business): Promise<boolean> {
+    const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
+    return role?.name === "Owner-operator" || b.staffingpreset === "solo";
   }
 
   // ---------------------------------------------------------------- staffing presets (the setup wizard)
   /** The presets on offer, the one chosen, and each store as it is set up now. */
   async presets(user: any) {
     const b = await this.ownBusiness(user);
-    return { current: b.staffingpreset, presets: PRESETS.map((k) => PRESET_INFO[k]), stores: await this.storesNow(b.id) };
+    return { current: b.staffingpreset, locked: this.modules.lockedByPlan(), presets: PRESETS.map((k) => ({ ...PRESET_INFO[k], unavailable: this.presetUnavailable(k) })), stores: await this.storesNow(b.id) };
+  }
+
+  /** why a preset does not fit the hosted plan (a one-store plan cannot run "several stores"), or null */
+  private presetUnavailable(key: Preset): string | null {
+    const limits = this.platform.entitlements()?.limits;
+    if (!limits) return null;
+    if (key === "multi_store" && limits.stores < 2) return "Needs a plan with more than one store.";
+    if (key === "manager_and_staff" && limits.users < 3) return "Needs a plan with at least three logins (owner, manager, staff).";
+    if (key === "owner_and_staff" && limits.users < 2) return "Needs a plan with at least two logins.";
+    return null;
   }
 
   private async storesNow(businessId: number) {
@@ -50,6 +69,8 @@ export class BusinessService {
 
   private async planFor(business: Business, body: any) {
     if (!PRESETS.includes(body?.preset)) throw new BadRequestException("Choose one of: " + PRESETS.join(", ") + ".");
+    const unfit = this.presetUnavailable(body.preset);
+    if (unfit) throw new ForbiddenException(`That setup does not fit your plan. ${unfit}`);
     for (const k of ["shiftmode"]) if (body[k] !== undefined && !["time", "staff"].includes(body[k])) throw new BadRequestException("Shift mode must be time or staff.");
     for (const [id, v] of Object.entries(body.stores || {})) if ((v as any)?.shiftmode !== undefined && !["time", "staff"].includes((v as any).shiftmode)) throw new BadRequestException(`Shift mode for store ${id} must be time or staff.`);
     const m = await this.modules.forBusiness(business.id);
@@ -161,7 +182,8 @@ export class BusinessService {
       if (s && !/^(0[1-9]|[12][0-9]|3[0-8])$/.test(s)) throw new BadRequestException("The state code must be a two-digit GST state code (01-38).");
       fields.statecode = s;
     }
-    if (!Object.keys(fields).length) return cur;
+    const single = await this.isSinglePerson(user, cur);
+    if (!Object.keys(fields).length) return { ...cur, singleperson: single };
     try {
       await this.businessRepository.update(cur.id, fields);
     } catch (e: any) {
@@ -174,7 +196,7 @@ export class BusinessService {
     if (Object.keys(diff).length) {
       await this.audit.record({ userId: user.id, action: "business.details_updated", entityType: "businesses", entityId: cur.id, summary: `business details changed: ${Object.keys(diff).join(", ")}`, details: diff });
     }
-    return after;
+    return { ...after, singleperson: single };
   }
 
   findAll() {

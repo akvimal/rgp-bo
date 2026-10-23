@@ -6,15 +6,15 @@
         <button type="button" data-testid="sidebar-toggle" class="btn btn-link p-0 me-2 sidebar-toggle-btn d-lg-none" (click)="toggleSidebar()" aria-label="Toggle sidebar">
           <i class="bi bi-list"></i>
         </button>
-        <img src="assets/img/rgp-logo.png" alt="" width="50px">
+        <img [src]="hosted ? 'assets/img/logo-placeholder.svg' : 'assets/img/rgp-logo.png'" alt="" width="50px" data-testid="brand-logo">
         <a href="index.html" class="logo d-flex align-items-center">
-          <span class="brand-text d-none d-lg-block">RGP</span>
+          <span class="brand-text d-none d-lg-block" data-testid="brand-name">{{brandName}}</span>
         </a>
-        <span *ngIf="businessName && !isSiteAdmin" class="d-none d-lg-block small text-muted ms-2">{{businessName}}</span>
+        <span *ngIf="businessName && !isSiteAdmin && !hosted" class="d-none d-lg-block small text-muted ms-2">{{businessName}}</span>
         <span *ngIf="isSiteAdmin" class="badge bg-warning text-dark ms-2" data-testid="platform-badge">PLATFORM ADMIN</span>
       </div><!-- End Logo -->
 
-      <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin" data-testid="store-switcher-wrap">
+      <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin && !hideStoreSwitcher" data-testid="store-switcher-wrap">
         <span *ngIf="singleStore" class="form-control form-control-sm bg-light text-truncate" data-testid="store-label" title="Your store">{{singleStore.business?.name}} - {{singleStore.location}}</span>
         <select *ngIf="!singleStore" class="form-select form-select-sm" data-testid="store-switcher" [ngModel]="selectedStoreId === null ? '' : selectedStoreId" (change)="changeStore($event)" aria-label="Select store">
           <option value="">All stores</option>
@@ -32,6 +32,10 @@
     
       <nav class="header-nav ms-auto">
         <ul class="d-flex align-items-center">
+
+          <li class="nav-item pe-3" *ngIf="platformChip as chip" data-testid="platform-banner">
+            <span class="badge rounded-pill" [ngClass]="chip.cls" [attr.title]="chip.title">{{chip.text}}</span>
+          </li>
 
           <li class="nav-item pe-3" *ngIf="shiftPillVisible" data-testid="header-shift">
             <a class="shift-pill" [routerLink]="shiftLink"
@@ -54,7 +58,7 @@
 
             <a class="nav-link nav-profile d-flex align-items-center pe-0" href="javascript:void(0)" data-testid="user-menu"
               (click)="toggleUserMenu($event)" [attr.aria-expanded]="userMenuOpen">
-              <img src="assets/img/profile-img.jpg" alt="Profile" class="rounded-circle">
+              <span class="rounded-circle d-inline-flex align-items-center justify-content-center fw-semibold text-white" style="width:36px;height:36px;background:#4154f1;font-size:14px" data-testid="avatar-initials" aria-hidden="true">{{initials}}</span>
               <span class="d-none d-md-block ps-2" data-testid="user-fullname">{{user.fullname}}</span>
               <i class="bi bi-chevron-down ms-1 small"></i>
             </a><!-- End Profile Image Icon -->
@@ -292,11 +296,6 @@
           </ol>
         </nav>
       </div> -->
-      <div class="alert py-2 mb-2" *ngIf="platform && (platform.status === 'trial' || platform.status === 'suspended' || platform.status === 'closed')"
-           [class.alert-warning]="platform.status === 'trial'" [class.alert-danger]="platform.status !== 'trial'" data-testid="platform-banner">
-        <ng-container *ngIf="platform.status === 'trial'"><strong *ngIf="platform.demo">Demo account with sample data, which may be reset. </strong>{{ platform.demo ? 'Trial' : 'Free trial' }} of the {{platform.plan}} plan<span *ngIf="platform.trialEnds"> until {{platform.trialEnds | date:'dd MMM yyyy'}} ({{ trialDaysLeft }} day{{ trialDaysLeft === 1 ? '' : 's' }} left)</span>.</ng-container>
-        <ng-container *ngIf="platform.status !== 'trial'">{{ platform.reason === 'trial_ended' ? 'Your trial has ended.' : (platform.status === 'closed' ? 'This account is closed.' : 'This account is suspended.') }} Contact your provider to continue.</ng-container>
-      </div>
       <section class="section">
           <div class="row">
               <div class="col-12">

@@ -8,6 +8,8 @@ export class BusinessProfileComponent implements OnInit {
 
     form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '', approvalmode: 'separate' };
     loaded = false;
+    /** a one-person shop: nobody else exists to approve, so the approvals choice is not shown */
+    singlePerson = false;
     modules: any = null;
     modulesSaving = false;
     modulesMessage = '';
@@ -36,6 +38,7 @@ export class BusinessProfileComponent implements OnInit {
             name: b.name || '', legalname: b.legalname || '', gstin: b.gstin || '',
             statecode: b.statecode || '', address: b.address || '', pincode: b.pincode || '', approvalmode: b.approvalmode || 'separate',
         };
+        this.singlePerson = !!b.singleperson;
         this.loaded = true;
     }
 
@@ -67,6 +70,13 @@ export class BusinessProfileComponent implements OnInit {
 
     /** a module the hosted plan leaves out cannot be switched on here */
     isLocked(key: string): boolean { return !!this.modules?.locked?.includes(key); }
+
+    /** the modules the plan leaves out, in words (purchasing has its own box above) */
+    get lockedLabels(): string {
+        return this.moduleRows.filter(m => this.isLocked(m.key)).map(m => m.label).join(', ');
+    }
+
+    get hasOpenModules(): boolean { return this.moduleRows.some(m => !this.isLocked(m.key)); }
 
     private msg(err: any, fallback: string): string {
         const m = err?.error?.message;

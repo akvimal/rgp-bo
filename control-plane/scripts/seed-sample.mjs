@@ -176,4 +176,7 @@ if (Array.isArray(cats) && cats.length) {
     await call('POST', '/expenses', { expense_date: day(int(1, 10)), store_id: null, category_id: pick(cats).id, amount, gst_amount: 0, pay_mode: 'BANK', payee: 'Sample', description: desc }, owner, true);
   }
 }
+// ---- how this shop runs: an owner with staff, one shared till per shift (what the demo is meant to show)
+const preset = await call('PUT', '/businesses/mine/preset', { preset: 'owner_and_staff', shiftmode: 'time' }, owner, true);
+console.log(preset ? 'preset owner_and_staff applied' : 'preset could not be applied');
 console.log('SAMPLE DATA DONE');

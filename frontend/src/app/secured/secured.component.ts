@@ -24,6 +24,20 @@ export class SecuredComponent {
       return !this.allStores && this.stores.length === 1 ? this.stores[0] : null;
     }
 
+    /** how many stores the business has; with one there is nothing to choose, so the header shows no store box */
+    totalStores: number | null = null;
+    get hideStoreSwitcher(): boolean {
+      return this.totalStores !== null && this.totalStores <= 1;
+    }
+
+    /** a hosted customer's copy shows neutral branding instead of RGP's */
+    get hosted(): boolean { return !!this.platform; }
+    get brandName(): string { return this.hosted ? (this.user?.businessname || this.businessName || 'Pharmacy') : 'RGP'; }
+    get initials(): string {
+      const parts = String(this.user?.fullname || '?').trim().split(/\s+/).filter(Boolean);
+      return ((parts[0]?.[0] || '?') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+    }
+
     get isSiteAdmin(): boolean {
       return this.user?.rolename === 'Site Admin';
     }
@@ -44,6 +58,24 @@ export class SecuredComponent {
     get trialDaysLeft(): number {
       const end = this.platform?.trialEnds ? Date.parse(this.platform.trialEnds + 'T23:59:59') : NaN;
       return Number.isFinite(end) ? Math.max(0, Math.ceil((end - Date.now()) / 86400000)) : 0;
+    }
+    /** the short notice in the header: a demo or trial with its days left, or why the account has stopped */
+    get platformChip(): { text: string; cls: string; title: string } | null {
+      const p = this.platform;
+      if (!p) return null;
+      if (p.status === 'trial') {
+        const left = this.trialDaysLeft;
+        const days = p.trialEnds ? ` · ${left} day${left === 1 ? '' : 's'} left` : '';
+        return {
+          text: (p.demo ? 'Demo' : 'Trial') + days,
+          cls: left <= 3 ? 'bg-danger' : 'bg-warning text-dark',
+          title: (p.demo ? 'Demo account with sample data that may be reset. ' : '') + `Trial of the ${p.plan} plan` + (p.trialEnds ? ` until ${p.trialEnds}` : '') + '.',
+        };
+      }
+      if (p.status === 'suspended' || p.status === 'closed') {
+        return { text: p.reason === 'trial_ended' ? 'Trial ended' : (p.status === 'closed' ? 'Account closed' : 'Account suspended'), cls: 'bg-danger', title: 'Contact your provider to continue.' };
+      }
+      return null;
     }
     selectedStoreId:number | null = null;
     allStores:boolean = false;
@@ -91,7 +123,7 @@ export class SecuredComponent {
     
     ngOnInit(){
       this.userService.getCurrentUser().subscribe(data => {
-        this.titleService.setTitle(`RGP - ${data['fullname']}`)
+        this.titleService.setTitle(`${data['platform'] ? (data['businessname'] || 'Pharmacy') : 'RGP'} - ${data['fullname']}`)
         this.user = data;
         // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).
         this.authService.setModules(data['modules']);
@@ -108,9 +140,11 @@ export class SecuredComponent {
       this.storeContextService.loadContext().subscribe((context:any) => {
         this.stores = context?.stores || [];
         this.allStores = !!context?.allstores;
+        this.totalStores = Number.isFinite(Number(context?.totalstores)) ? Number(context.totalstores) : null;
         // A user mapped to one store has nothing to switch: pin the selection to it.
-        if (this.singleStore && this.storeContextService.selectedStoreId !== Number(this.singleStore.id)) {
-          this.storeContextService.setSelectedStoreId(Number(this.singleStore.id), false);
+        const only = this.singleStore || (this.hideStoreSwitcher && this.stores.length === 1 ? this.stores[0] : null);
+        if (only && this.storeContextService.selectedStoreId !== Number(only.id)) {
+          this.storeContextService.setSelectedStoreId(Number(only.id), false);
         }
         this.selectedStoreId = this.storeContextService.selectedStoreId;
       });

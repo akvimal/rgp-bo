@@ -8,12 +8,14 @@
 
     <div class="row g-3" *ngIf="!loading">
       <div class="col-12 col-md-6" *ngFor="let p of presets">
-        <div class="border rounded p-3 h-100 preset-card" [class.border-primary]="preset === p.key" [class.bg-light]="preset === p.key" role="button" (click)="choose(p.key)" [attr.data-testid]="'preset-' + p.key">
+        <div class="border rounded p-3 h-100 preset-card" [class.border-primary]="preset === p.key" [class.bg-light]="preset === p.key" [style.opacity]="p.unavailable ? 0.55 : 1"
+             [attr.role]="p.unavailable ? null : 'button'" (click)="p.unavailable || choose(p.key)" [attr.data-testid]="'preset-' + p.key" [attr.aria-disabled]="p.unavailable ? true : null">
           <div class="d-flex justify-content-between align-items-start">
             <h6 class="mb-1">{{p.label}}</h6>
             <span class="badge bg-success" *ngIf="current === p.key" data-testid="preset-current">In use</span>
           </div>
           <div class="small mb-2">{{p.summary}}</div>
+          <div class="small text-danger mb-1" *ngIf="p.unavailable" [attr.data-testid]="'preset-unavailable-' + p.key">{{p.unavailable}}</div>
           <div class="small text-muted"><strong>Logins:</strong> {{p.accounts.join('; ')}}</div>
           <div class="small text-muted" *ngIf="p.hidden.length"><strong>Out of sight:</strong> {{p.hidden.join(', ')}}</div>
         </div>
@@ -39,7 +41,7 @@
             </select>
           </div>
         </div>
-        <div class="col-12" *ngIf="preset === 'owner_and_staff'">
+        <div class="col-12" *ngIf="preset === 'owner_and_staff' && !locked.includes('hr')">
           <div class="form-check"><input class="form-check-input" type="checkbox" id="su-hr" [(ngModel)]="hr" (ngModelChange)="refresh()" data-testid="setup-hr">
             <label class="form-check-label" for="su-hr">Keep HR and attendance (staff records, leave, payroll)</label></div>
         </div>
@@ -55,7 +57,7 @@
         <div class="alert alert-warning py-2 small" *ngFor="let b of plan.blockers" data-testid="setup-blocker">{{b}}</div>
       </div>
 
-      <div class="mt-3">
+      <div class="mt-3" *ngIf="preset !== 'solo'" data-testid="setup-logins">
         <div class="d-flex align-items-center gap-2">
           <div class="fw-semibold">Logins to add</div>
           <button class="btn btn-sm btn-outline-secondary" type="button" (click)="addLogin()" data-testid="setup-add-login">Add a login</button>
