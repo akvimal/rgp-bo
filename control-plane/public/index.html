@@ -170,6 +170,22 @@ async function detail(slug) {
         ${t.status !== 'closed' ? '<button class="danger" id="d-close">Close</button>' : ''}
       </div>
       <p class="mute">The app is told: status <b>${esc(e.status)}</b>${e.reason ? ' (' + esc(e.reason) + ')' : ''}, up to ${e.limits.stores} store(s) and ${e.limits.users} user(s), ${e.limits.documents ?? 'unlimited'} uploaded document(s) and ${e.limits.scans ?? 'unlimited'} invoice or statement read(s) a month. Modules on: ${esc(Object.entries(e.modules).map(([k, v]) => v === true ? k : (v === false ? '' : k + ':' + v)).filter(Boolean).join(', ') || 'none')}.</p>
+      <h2>Assistant</h2>
+      <div class="row">
+        <label>Key<select id="d-ai-mode">
+          <option value="platform" ${t.ai.mode === 'platform' ? 'selected' : ''}>The platform's key</option>
+          <option value="own" ${t.ai.mode === 'own' ? 'selected' : ''}>This customer's own key</option>
+          <option value="off" ${t.ai.mode === 'off' ? 'selected' : ''}>No assistant</option></select></label>
+        <label>Provider<select id="d-ai-provider">
+          <option value="openrouter" ${t.ai.provider !== 'anthropic' ? 'selected' : ''}>OpenRouter</option>
+          <option value="anthropic" ${t.ai.provider === 'anthropic' ? 'selected' : ''}>Anthropic</option></select></label>
+        <label>Their key<input id="d-ai-key" type="password" autocomplete="off" size="30" placeholder="${t.ai.keySet ? 'set (ends ' + esc(t.ai.keyHint || '') + '): blank keeps it' : 'paste a key'}"></label>
+        ${t.ai.keySet ? '<button class="ghost" id="d-ai-clear">Remove key</button>' : ''}
+        <label>Default model<input id="d-ai-model" size="26" value="${esc(t.ai.model)}" placeholder="vendor/model-name"></label>
+        <label>Allowed models<input id="d-ai-allowed" size="26" value="${esc(t.ai.allowed)}" placeholder="vendor/*,vendor/model"></label>
+        <button id="d-ai-save">Save assistant</button>
+      </div>
+      <p class="mute">The key is kept encrypted and never shown again. It reaches their app when it is next started (<code>scripts/tenant-up.sh ${esc(t.slug)}</code>). A customer on "the platform's key" uses the account in <code>.env.platform</code>.</p>
       <div class="row"><label>Module grants for this customer only (JSON, e.g. {"gst":true})<input id="d-grants" size="50" value='${esc(JSON.stringify(t.grants || {}))}'></label></div>
       ${t.is_demo ? `<div class="msg"><b>Demo.</b> Sign in at <code>http://localhost:${t.web_port}</code> as <code>${esc(t.owner_email)}</code>, password <code>${esc(t.demo_password || '')}</code>. All sample logins use that password.
         <div class="row" style="margin-top:6px"><button id="d-reset" class="ghost">Reset to sample data</button><button id="d-extend" class="ghost">Add 14 days</button></div></div>` : ''}
@@ -177,6 +193,8 @@ async function detail(slug) {
       <h2>History</h2><table><tbody>${t.events.map((x) => `<tr><td class="mute">${new Date(x.at).toLocaleString()}</td><td>${esc(x.action)}</td></tr>`).join('')}</tbody></table>`;
     const act = (fn) => async () => { try { await fn(); flash('Done.'); refresh(); detail(slug); } catch (er) { flash(er.message, true); } };
     $('d-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { plan: $('d-plan').value, trial_ends: $('d-trial').value || null, max_stores: $('d-stores').value || null, max_users: $('d-users').value || null, max_documents: $('d-docs').value === '' ? null : $('d-docs').value, max_scans: $('d-scans').value === '' ? null : $('d-scans').value, grants: JSON.parse($('d-grants').value || '{}') }));
+    $('d-ai-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { ai_mode: $('d-ai-mode').value, ai_provider: $('d-ai-provider').value, ai_key: $('d-ai-key').value.trim(), ai_model: $('d-ai-model').value, ai_allowed: $('d-ai-allowed').value }));
+    if ($('d-ai-clear')) $('d-ai-clear').onclick = act(() => { if (!confirm('Remove their key?')) throw new Error('Cancelled.'); return api('PUT', '/tenants/' + slug, { ai_key: null }); });
     if ($('d-reset')) $('d-reset').onclick = act(() => { if (!confirm('Replace everything in this demo with the sample data?')) throw new Error('Cancelled.'); return api('POST', '/tenants/' + slug + '/reset'); });
     if ($('d-extend')) $('d-extend').onclick = act(() => api('POST', '/tenants/' + slug + '/extend', { days: 14 }));
     if ($('d-activate')) $('d-activate').onclick = act(() => api('POST', '/tenants/' + slug + '/activate'));

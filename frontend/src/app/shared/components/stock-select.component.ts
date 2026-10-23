@@ -9,18 +9,20 @@ import { PropsService } from "../props.service";
                     (onSelect)="selected($event)"
                     field="''"
                     placeholder="Name / Composition"
-                    [suggestions]="filteredStock" 
+                    [suggestions]="filteredStock" appendTo="body" scrollHeight="24rem" [autoHighlight]="true"
                     (completeMethod)="filterStock($event)" [minLength]="2"
                     [inputStyle]="{'background-color':'#f4f7ff'}">
                     <ng-template let-stock pTemplate="item">
-                        <div [ngStyle]="{maxWidth:'800px',backgroundColor:stock.balance < 1?'#ffc0c0':'inherit'}">
-                            <h6 style="margin:0;padding:0;font-weight:bold">{{stock.title}} (<i class="bi bi-currency-rupee" style="padding:0"></i>{{stock.sale_price||'None'}})</h6>
-                            <p style="margin:0;padding:0;color:#999;font-style: italic;">
-                            {{stock['more_props'] ? stock['more_props']['composition'] : ''}}
-                            </p>
-                            <span style="margin:0;padding:0;color:blue;">
-                                {{stock.batch}} / {{stock.exp_date|date:'MMM-yy'}} ({{stock.balance}})
-                            </span>
+                        <div [ngStyle]="{backgroundColor:stock.balance < 1?'#ffc0c0':'inherit'}" data-testid="stock-option">
+                            <div class="d-flex justify-content-between align-items-baseline gap-3">
+                                <span class="fw-bold text-truncate">{{stock.title}}</span>
+                                <span class="text-nowrap">&#8377;{{stock.sale_price||'None'}}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-baseline gap-3 small">
+                                <span class="text-muted fst-italic text-truncate">{{stock['more_props'] ? stock['more_props']['composition'] : ''}}</span>
+                                <span class="text-primary text-nowrap">{{stock.batch}} / {{stock.exp_date|date:'MMM-yy'}} &middot; {{stock.balance}} in stock
+                                    <span class="badge bg-success ms-1" *ngIf="stock.sellfirst" title="This batch expires first: sell it first">sell first</span></span>
+                            </div>
                         </div>
                     </ng-template>
                 </p-autoComplete></span>`
@@ -71,6 +73,20 @@ export class StockSelectComponent {
         return match;
     }
 
+    /** where a product has several batches in the list, the one that expires first is the one to sell first */
+    private markSellFirst(rows: any[]): any[] {
+        const earliest = new Map<any, any>();
+        const count = new Map<any, number>();
+        rows.forEach((r: any) => {
+            count.set(r.id, (count.get(r.id) || 0) + 1);
+            if (!r.exp_date) return;
+            const best = earliest.get(r.id);
+            if (!best || String(r.exp_date) < String(best.exp_date)) earliest.set(r.id, r);
+        });
+        rows.forEach((r: any) => r.sellfirst = (count.get(r.id) || 0) > 1 && earliest.get(r.id) === r);
+        return rows;
+    }
+
     filterStock(event:any) {
         let filtered : any[] = [];
         
@@ -80,7 +96,7 @@ export class StockSelectComponent {
             expired:false,
             status:'VERIFIED',
             limit:25}).subscribe((data:any) => {
-            filtered = data;
+            filtered = this.markSellFirst(data || []);
            this.filteredStock = filtered;         
         });        
     }

@@ -14,11 +14,23 @@
 
     <!-- say it in a sentence -->
     <div class="border rounded p-3 mb-3" *ngIf="assistant" data-testid="al-assistant">
+      <div class="d-flex align-items-center flex-wrap gap-2 mb-3" *ngIf="ai" data-testid="al-model">
+        <label class="small text-muted mb-0" for="al-model-input">Model</label>
+        <ng-container *ngIf="ai.provider === 'openrouter'">
+          <input class="form-control form-control-sm w-auto" style="min-width:22rem" id="al-model-input" list="al-models" [(ngModel)]="modelInput" placeholder="Start typing a model name" data-testid="al-model-input">
+          <datalist id="al-models"><option *ngFor="let m of ai.models" [value]="m.id">{{modelLabel(m)}}</option></datalist>
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="saveModel()" [disabled]="!modelChanged" data-testid="al-model-save">Use this model</button>
+          <span class="small text-success" *ngIf="modelMessage" data-testid="al-model-message">{{modelMessage}}</span>
+          <span class="small text-danger" *ngIf="modelError" data-testid="al-model-error">{{modelError}}</span>
+        </ng-container>
+        <span class="small" *ngIf="ai.provider !== 'openrouter'">{{ai.model}}</span>
+        <span class="small text-muted ms-1">through {{ai.provider === 'openrouter' ? 'OpenRouter' : 'Anthropic'}}</span>
+      </div>
       <label class="form-label fw-semibold mb-1" for="al-instruction">Describe an alert</label>
       <div class="input-group">
         <input class="form-control" id="al-instruction" maxlength="500" [(ngModel)]="instruction" (keyup.enter)="askAssistant()"
                placeholder="e.g. Tell the store heads when a shift stays open more than 12 hours. / கடைகளில் உரிமம் முடிய 45 நாட்கள் இருக்கும் போது சொல்லுங்கள்" data-testid="al-instruction">
-        <button class="btn btn-outline-primary" type="button" (click)="askAssistant()" [disabled]="drafting || instruction.trim().length < 5" data-testid="al-draft">{{ drafting ? 'Thinking...' : 'Draft it' }}</button>
+        <button class="btn btn-outline-primary" type="button" (click)="askAssistant()" [disabled]="drafting || instruction.trim().length < 5 || !ai?.model" data-testid="al-draft">{{ drafting ? 'Thinking...' : 'Draft it' }}</button>
       </div>
       <div class="form-text">The assistant only drafts. Nothing is saved until you look it over and save it.</div>
       <div class="text-danger small mt-2" *ngIf="draftError" data-testid="al-draft-error">{{draftError}}</div>

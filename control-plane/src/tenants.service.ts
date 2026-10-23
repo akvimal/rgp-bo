@@ -4,6 +4,7 @@ import { Db } from './db';
 import { Entitlements, TenantStatus, documentLimits, effectiveStatus, sign } from './entitlements';
 import { checkGrants, effectiveModules } from './plans';
 import { SLUG, createDemoDatabase, createTenantDatabase, dbNameFor, dropTenantDatabase, migrateTenantDatabase, randomPassword, randomSecret, resetDemoDatabase } from './provision';
+import { KEY_SHAPE, lock, unlock } from './secrets';
 import { captureTemplate, templateInfo } from './template';
 
 const FIRST_PORT = Number(process.env.TENANT_FIRST_PORT || 8201);
@@ -18,9 +19,13 @@ const safeEqual = (a: string, b: string) => {
 };
 
 /** Never send the secrets of a tenant to the admin screen's list. */
+const AI_MODES = ['platform', 'own', 'off'];
+const AI_PROVIDERS = ['openrouter', 'anthropic'];
+
+/** a customer without its secrets: the assistant's key is never sent out, only whether there is one and its last four characters */
 const publicView = (t: any) => {
-  const { secret, db_password, ...rest } = t;
-  return rest;
+  const { secret, db_password, ai_key_enc, ai_key_hint, ...rest } = t;
+  return { ...rest, ai: { mode: t.ai_mode || 'platform', provider: t.ai_provider, keySet: !!ai_key_enc, keyHint: ai_key_hint || null, model: t.ai_model || '', allowed: t.ai_allowed || '' } };
 };
 
 @Injectable()
@@ -173,9 +178,58 @@ export class TenantsService implements OnModuleInit, OnModuleDestroy {
       `CONTROL_PLANE_URL=${process.env.CONTROL_PLANE_INTERNAL_URL || 'http://control-plane:4000'}`,
       // fixed for the tenant, so restarting its containers does not sign everyone out
       ...(t.is_demo ? ['FILEUPLOAD_SIZE_LIMIT=2097152'] : []),
+      ...this.aiEnv(t),
       `JWT_KEY=${createHmac('sha256', t.secret).update('login-token-key').digest('hex')}`,
       '',
     ].join('\n');
+  }
+
+  /**
+   * The assistant's settings for this customer's app. "platform": nothing here, the platform's own keys are used (scripts/tenant-up.sh
+   * passes them); "own": the customer's key and provider; "off": no assistant. A model and an allow list may be set either way.
+   */
+  private aiEnv(t: any): string[] {
+    const mode = t.ai_mode || 'platform';
+    if (mode === 'off') return ['AI_PROVIDER=off'];
+    const out: string[] = [];
+    if (mode === 'own') {
+      const key = unlock(t.ai_key_enc);
+      if (!key || !AI_PROVIDERS.includes(t.ai_provider)) return ['AI_PROVIDER=off'];   // chosen but not set up: never fall back to the platform's key
+      out.push(`AI_PROVIDER=${t.ai_provider}`, `${t.ai_provider === 'openrouter' ? 'OPENROUTER_API_KEY' : 'ANTHROPIC_API_KEY'}=${key}`);
+    }
+    if (t.ai_model) out.push(`AI_MODEL=${t.ai_model}`);
+    if (t.ai_allowed) out.push(`AI_ALLOWED_MODELS=${t.ai_allowed}`);
+    return out;
+  }
+
+  /** the assistant fields of an update, checked (they end up in an env file, so nothing but plain characters is let through) */
+  private aiChanges(b: any, set: (col: string, v: any) => void) {
+    if (b.ai_mode !== undefined) {
+      if (!AI_MODES.includes(b.ai_mode)) throw new BadRequestException(`Assistant must be one of ${AI_MODES.join(', ')}.`);
+      set('ai_mode', b.ai_mode);
+    }
+    if (b.ai_provider !== undefined) {
+      if (b.ai_provider !== null && !AI_PROVIDERS.includes(b.ai_provider)) throw new BadRequestException('The assistant\'s provider must be openrouter or anthropic.');
+      set('ai_provider', b.ai_provider);
+    }
+    if (b.ai_key !== undefined && b.ai_key !== '') {
+      if (b.ai_key === null) { set('ai_key_enc', null); set('ai_key_hint', null); }
+      else {
+        const key = String(b.ai_key).trim();
+        if (!KEY_SHAPE.test(key)) throw new BadRequestException('That does not look like an API key (letters, digits, dots, dashes and underscores, 16 to 300 characters).');
+        set('ai_key_enc', lock(key)); set('ai_key_hint', key.slice(-4));
+      }
+    }
+    if (b.ai_model !== undefined) {
+      const m = String(b.ai_model ?? '').trim();
+      if (m && !/^[A-Za-z0-9._:\-\/]{1,100}$/.test(m)) throw new BadRequestException('The model is an id such as vendor/model-name.');
+      set('ai_model', m || null);
+    }
+    if (b.ai_allowed !== undefined) {
+      const a = String(b.ai_allowed ?? '').replace(/\s+/g, '');
+      if (a && !/^[A-Za-z0-9._:\-\/*,]{1,400}$/.test(a)) throw new BadRequestException('The allowed models are ids separated by commas; a * may end an id (vendor/*).');
+      set('ai_allowed', a || null);
+    }
   }
 
   async update(slug: string, b: any) {
@@ -208,9 +262,11 @@ export class TenantsService implements OnModuleInit, OnModuleDestroy {
       set('grants', JSON.stringify(g.value));
     }
     if (b.notes !== undefined) set('notes', b.notes ? String(b.notes).slice(0, 500) : null);
+    this.aiChanges(b, set);
     if (!sets.length) throw new BadRequestException('Nothing to change.');
     await this.db.query(`update tenant set ${sets.join(', ')}, updated_on = now() where id = $1`, args);
-    await this.event(t.id, 'updated', b);
+    // the history shows what changed, never a key
+    await this.event(t.id, 'updated', { ...b, ...(b.ai_key ? { ai_key: '(set)' } : {}) });
     return this.get(slug);
   }
 

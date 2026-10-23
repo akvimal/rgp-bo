@@ -4,9 +4,9 @@
             <tr class="table-light">
                 <th style="width:2rem"></th>
                 <th>Product</th>
-                <th style="width:9rem">Batch / use by</th>
+                <th style="width:11rem">Batch / use by</th>
                 <th class="text-end" style="width:5.5rem">MRP</th>
-                <th class="text-end" style="width:8rem">Units</th>
+                <th class="text-end" style="width:10.5rem">Units</th>
                 <th class="text-end" style="width:5.5rem">Rate</th>
                 <th class="text-end" style="width:4.5rem">Tax</th>
                 <th class="text-end" style="width:6.5rem">Amount</th>
@@ -21,19 +21,19 @@
                     <div *ngIf="item.title"><strong>{{item.title}}</strong> <span *ngIf="item.more_props?.schedule === 'H1'" class="h1-badge">H1</span></div>
                     <div class="small text-muted fst-italic">{{item.more_props?.composition}}</div>
                 </td>
-                <td>{{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span></td>
-                <td class="text-end">{{item.mrpcost | number : '1.1-2'}}</td>
+                <td class="text-nowrap">{{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span></td>
+                <td class="text-end">{{item.mrpcost | number : '1.2-2'}}</td>
                 <td class="text-end">
                     <span *ngIf="!item.edited">{{item.qty}}</span>
-                    <div *ngIf="item.edited" class="d-flex align-items-center justify-content-end gap-1">
+                    <div *ngIf="item.edited" class="d-flex align-items-center justify-content-end gap-2 text-nowrap">
                         <input [value]="item.qty" [disabled]="item.maxqty == 0" class="form-control form-control-sm text-end" style="width:4.5rem"
                             [class.is-invalid]="+item.qty > +item.maxqty" (input)="changeItemQty(item.itemid,$event)" aria-label="Units" data-testid="sale-qty" [attr.data-itemid]="item.itemid">
                         <span class="small" [class.text-danger]="item.unitsbal < 0" [class.text-muted]="item.unitsbal >= 0" title="Left in stock after this bill">{{item.unitsbal}} left</span>
                     </div>
                 </td>
-                <td class="text-end">{{item.price}}</td>
+                <td class="text-end">{{item.price | number : '1.2-2'}}</td>
                 <td class="text-end">{{item.taxpcnt}}%</td>
-                <td class="text-end fw-semibold">{{item.total}}</td>
+                <td class="text-end fw-semibold">{{item.total | number : '1.2-2'}}</td>
             </tr>
             <!-- the new row: the product search sits where the next line will be, and choosing a product moves focus to its units -->
             <tr data-testid="sale-add-item" class="table-light">

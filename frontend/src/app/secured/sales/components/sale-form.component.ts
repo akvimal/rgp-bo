@@ -31,7 +31,6 @@ export class SaleFormComponent {
 
     prevCustSales:Sale[] = []
     fetchCustomerPrevSales = true;
-    activeStaffName:string = '';
 
     form:FormGroup = new FormGroup({});
 
@@ -62,9 +61,6 @@ export class SaleFormComponent {
       this.sale['customer'] = this.customer;
       this.sale['ordertype'] = 'Walk-in';
       this.sale['deliverytype'] = 'Counter';
-      this.operatorContext.selectedOperatorName$.subscribe((name:any) => {
-        this.activeStaffName = name || '';
-      });
       //get the id from url query params
       this.route.paramMap.subscribe(params => {  
         const saleId =  params.get("id");
@@ -141,6 +137,17 @@ export class SaleFormComponent {
         element = item;
       });
       this.recalculateTotal();
+    }
+
+    /** what the lines add up to (each line as shown, with its paise) */
+    get linesSum(): number {
+      return (this.sale.items || []).filter((i:any) => i.edited).reduce((sum:number, i:any) => sum + (+i.total || 0), 0);
+    }
+
+    /** the total is whole rupees: the difference from the lines, shown so the bill adds up */
+    get roundOff(): number {
+      const diff = Math.round(((+this.sale.total || 0) - this.linesSum) * 100) / 100;
+      return Math.abs(diff) < 0.005 ? 0 : diff;
     }
 
     recalculateTotal(){

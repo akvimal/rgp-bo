@@ -5,6 +5,7 @@ import { EntityManager } from 'typeorm';
 import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { ROLE, isOwnerRole } from 'src/core/roles';
 import { StoreService } from '../store/store.service';
+import { AiProvider } from './ai-provider';
 import { AlertDrafter, Draft, RECIPIENT_ROLES } from './alert-drafter';
 import { DEFAULT_RULES, Finding, KINDS, SEVERITIES, cleanParams, kindOf } from './alert-kinds';
 import { canSee } from './alert-access';
@@ -25,6 +26,7 @@ export class AlertsService {
     @InjectEntityManager() private readonly manager: EntityManager,
     private readonly stores: StoreService,
     private readonly drafter: AlertDrafter,
+    private readonly ai: AiProvider,
   ) {}
 
   // ------------------------------------------------------------------------------------------------ who is asking
@@ -307,11 +309,38 @@ export class AlertsService {
     };
   }
 
+  // ------------------------------------------------------------------------------------------------ the assistant's model
+  /** which model drafts the rules: the owner's choice if there is one, else the server's default */
+  async aiConfig(user: any) {
+    await this.owner(user);
+    const [row] = await this.manager.query(`select setting_value from app_setting where setting_key = 'ai.model' and active and not archive`);
+    return {
+      provider: this.ai.provider,
+      configured: this.ai.configured,
+      model: row?.setting_value || this.ai.defaultModel,
+      chosen: !!row?.setting_value,
+      models: this.ai.provider === 'openrouter' ? await this.ai.models() : [],
+    };
+  }
+
+  async saveAiModel(user: any, body: any) {
+    await this.owner(user);
+    if (this.ai.provider !== 'openrouter') throw new BadRequestException('Models can be chosen when the assistant runs through OpenRouter.');
+    const model = String(body?.model || '').trim();
+    if (!(await this.ai.isChoosable(model))) throw new BadRequestException('That model is not one of the choices (it must be able to call tools, and be allowed on this server).');
+    await this.manager.query(
+      `insert into app_setting (category, setting_key, setting_value, created_by, updated_by) values ('ai', 'ai.model', $1, $2, $2)
+       on conflict (setting_key) do update set setting_value = excluded.setting_value, active = true, archive = false, updated_on = now(), updated_by = excluded.updated_by`,
+      [model, user.id]);
+    return this.aiConfig(user);
+  }
+
   /** the assistant's draft of a rule from a sentence; nothing is saved until the owner confirms it */
   async draft(user: any, body: any): Promise<{ draft: Draft; preview: any }> {
     const w = await this.owner(user);
     const stores = await this.manager.query(`select id, location from stores where business_id = $1 and active and not archive order by id`, [w.businessId]);
-    const draft = await this.drafter.draft(body?.instruction, stores.map((s: any) => ({ id: s.id, location: String(s.location).trim() })), w.businessId);
+    const { model } = await this.aiConfig(user);
+    const draft = await this.drafter.draft(body?.instruction, stores.map((s: any) => ({ id: s.id, location: String(s.location).trim() })), w.businessId, model);
     return { draft, preview: await this.preview(user, draft) };
   }
 }

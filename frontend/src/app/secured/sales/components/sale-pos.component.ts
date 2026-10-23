@@ -1,10 +1,11 @@
 import { Component } from "@angular/core";
+import { Router } from "@angular/router";
 import { SaleService } from "../sales.service";
 
 @Component({
     template: `
         <app-sale-header></app-sale-header>
-        <nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0 mt-2">
+        <nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0 mt-2" *ngIf="saved.length > 0 || !onNew" data-testid="sale-tabs">
             <ul class="nav">
                 <li class="nav-item">
                     <a class="nav-link" [routerLinkActive]="['is-active']" [routerLink]="['/secure/sales/pos/new']">
@@ -22,7 +23,10 @@ export class SalePosComponent {
     
     saved:{id:number,bill_no:'',name:'',mobile:'',created_on:''}[] = []
 
-    constructor(private service:SaleService){
+    /** the blank bill is the only thing on the page: nothing to switch to, so no tab row */
+    get onNew(): boolean { return this.router.url.split('?')[0].endsWith('/pos/new'); }
+
+    constructor(private service:SaleService, private router:Router){
         this.service.refreshSavedSales();
     }
     

@@ -12,6 +12,8 @@ export class SaleHeaderComponent implements OnDestroy {
     selectedOperatorId: number | null = null;
     selectedOperatorName = '';
     selfOnly = false;
+    /** the store asks who is serving on each bill */
+    required = true;
     private sub = new Subscription();
 
     constructor(private operatorContext: OperatorContextService) {}
@@ -21,6 +23,7 @@ export class SaleHeaderComponent implements OnDestroy {
         this.sub.add(this.operatorContext.selectedOperatorId$.subscribe(id => this.selectedOperatorId = id));
         this.sub.add(this.operatorContext.selectedOperatorName$.subscribe(n => this.selectedOperatorName = n || ''));
         this.sub.add(this.operatorContext.selfOnly$.subscribe(v => this.selfOnly = v));
+        this.sub.add(this.operatorContext.required$.subscribe(v => this.required = v));
     }
 
     ngOnDestroy() { this.sub.unsubscribe(); }

@@ -24,6 +24,17 @@ if [[ "$ACTION" == "up" ]]; then
   # a new release may need schema changes: apply the files this customer has not had before its app starts
   MIG="$(curl -sS -X POST "$CP/tenants/$NAME/migrate" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d "${MIGRATE_BASELINE:+{\"baseline\":\"$MIGRATE_BASELINE\"\}}")"
   case "$MIG" in *'"applied"'*) echo "schema: $MIG" ;; *) echo "schema update failed: $MIG" >&2; exit 1 ;; esac
+  # the platform's own keys for the assistant (one account for every customer), from the git-ignored .env.platform. A customer's own
+  # settings (their key, or the assistant switched off) are already in their env file and win: nothing of the platform's is added then.
+  if [[ -f "$ROOT/.env.platform" ]]; then
+    OWN=0; grep -qE '^(OPENROUTER_API_KEY|ANTHROPIC_API_KEY|AI_PROVIDER)=' "$ENVFILE" && OWN=1
+    while IFS='=' read -r K V; do
+      [[ -z "$V" ]] && continue
+      grep -q "^$K=" "$ENVFILE" && continue
+      [[ "$OWN" == 1 && ( "$K" == *KEY || "$K" == AI_PROVIDER ) ]] && continue
+      export "$K=$V"
+    done < <(grep -E '^(OPENROUTER_API_KEY|ANTHROPIC_API_KEY|AI_PROVIDER|AI_MODEL|AI_ALLOWED_MODELS)=' "$ROOT/.env.platform" || true)
+  fi
   docker compose -p "rgp-$NAME" -f "$ROOT/docker-compose.tenant.yml" --env-file "$ENVFILE" up -d --build
   PORT="$(grep '^TENANT_PORT=' "$ENVFILE" | cut -d= -f2)"
   echo "== $NAME is starting: http://localhost:$PORT =="

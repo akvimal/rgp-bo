@@ -40,6 +40,12 @@ alter table tenant add column if not exists max_documents integer;
 alter table tenant add column if not exists max_scans integer;
 alter table tenant add column if not exists is_demo boolean not null default false;
 alter table tenant add column if not exists demo_password text;
+alter table tenant add column if not exists ai_mode text not null default 'platform';
+alter table tenant add column if not exists ai_provider text;
+alter table tenant add column if not exists ai_key_enc text;
+alter table tenant add column if not exists ai_key_hint text;
+alter table tenant add column if not exists ai_model text;
+alter table tenant add column if not exists ai_allowed text;
 create table if not exists tenant_event (
   id        serial primary key,
   tenant_id integer references tenant(id) on delete cascade,

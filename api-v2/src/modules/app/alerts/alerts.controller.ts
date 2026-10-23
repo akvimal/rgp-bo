@@ -38,6 +38,12 @@ export class AlertsController {
   @Get('kinds')
   kinds() { return this.service.kinds(); }
 
+  @Get('ai')
+  ai(@User() user: any) { return this.service.aiConfig(user); }
+
+  @Put('ai')
+  saveAi(@Body() body: any, @User() user: any) { return this.service.saveAiModel(user, body); }
+
   @Get('rules')
   rules(@User() user: any) { return this.service.rules(user); }
 

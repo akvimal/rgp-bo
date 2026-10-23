@@ -1,4 +1,5 @@
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import { AiProvider } from './ai-provider';
 import { AlertDrafter, toDraft } from './alert-drafter';
 
 const stores = [{ id: 1, location: 'Main Store' }, { id: 2, location: 'Annex' }];
@@ -21,19 +22,20 @@ describe('assistant drafts', () => {
   });
 
   it('needs a key, a real sentence, and a rate limit; and passes the instruction to the model inside tags only in the call', async () => {
-    const d = new AlertDrafter();
+    const d = new AlertDrafter(new AiProvider());
     delete process.env.ANTHROPIC_API_KEY;
-    await expect(d.draft('remind me about deposits', stores, 1)).rejects.toThrow(ServiceUnavailableException);
+    await expect(d.draft('remind me about deposits', stores, 1, 'm')).rejects.toThrow(ServiceUnavailableException);
     process.env.ANTHROPIC_API_KEY = 'test-key';
     let seen = '';
-    d.useCompletion(async (_system, instruction) => { seen = instruction; return { kind: 'deposit_due', name: 'Deposits' }; });
-    await expect(d.draft('hi', stores, 1)).rejects.toThrow(/Say what/);
-    await expect(d.draft('x'.repeat(501), stores, 1)).rejects.toThrow(/500/);
-    expect((await d.draft('remind me about deposits', stores, 1)).kind).toBe('deposit_due');
-    expect(seen).toBe('remind me about deposits');
-    for (let i = 0; i < 19; i++) await d.draft('remind me about deposits', stores, 1);
-    await expect(d.draft('remind me about deposits', stores, 1)).rejects.toThrow(/lot of drafts/);
-    expect((await d.draft('remind me about deposits', stores, 2)).kind).toBe('deposit_due');
+    d.useCompletion(async (_system, instruction, model) => { seen = instruction + '|' + model; return { kind: 'deposit_due', name: 'Deposits' }; });
+    await expect(d.draft('hi', stores, 1, 'm')).rejects.toThrow(/Say what/);
+    await expect(d.draft('x'.repeat(501), stores, 1, 'm')).rejects.toThrow(/500/);
+    expect((await d.draft('remind me about deposits', stores, 1, 'm')).kind).toBe('deposit_due');
+    expect(seen).toBe('remind me about deposits|m');
+    await expect(d.draft('remind me about deposits', stores, 1, '')).rejects.toThrow(/Choose a model/);
+    for (let i = 0; i < 19; i++) await d.draft('remind me about deposits', stores, 1, 'm');
+    await expect(d.draft('remind me about deposits', stores, 1, 'm')).rejects.toThrow(/lot of drafts/);
+    expect((await d.draft('remind me about deposits', stores, 2, 'm')).kind).toBe('deposit_due');
     delete process.env.ANTHROPIC_API_KEY;
   });
 });

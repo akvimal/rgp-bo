@@ -31,4 +31,27 @@ test.describe('Billing keyboard flow @p1', () => {
     await page.keyboard.press('Tab');
     await expect(search).toBeFocused();                                                   // Tab goes to the next product
   });
+
+  test('POSKEY-2 the product list opens over the page: not clipped by the bill, and the bill does not scroll @edge', async ({ app, api }) => {
+    const rows = (await api.request('POST', '/stock/filter', { available: true, limit: 400 }, MGR)).body;
+    const line = rows.find((x: any) => x.status === 'VERIFIED' && Number(x.balance) >= 1 && x.exp_date);
+    test.skip(!line, 'no sellable stock');
+    const { page } = await app.open(COUNTER, '/secure/sales/pos/new', { operatorId: 3, operatorName: 'Sale Staff One' });
+    await page.setViewportSize({ width: 1366, height: 768 });
+    const search = page.locator('[data-testid=sale-add-item] input').first();
+    await search.fill(String(line.title).slice(0, 3));
+    const panel = page.locator('.p-autocomplete-panel');
+    await expect(panel.locator('li').first()).toBeVisible();
+    const m = await page.evaluate(() => {
+      const t = document.querySelector('app-sale-form-items .table-responsive') as HTMLElement;
+      const p = document.querySelector('.p-autocomplete-panel') as HTMLElement;
+      const r = p.getBoundingClientRect();
+      const below = document.elementFromPoint(r.left + r.width / 2, Math.min(r.bottom - 4, window.innerHeight - 2));
+      return { scrolls: t.scrollHeight > t.clientHeight + 1, panelInBill: t.contains(p), tall: r.height, covered: !p.contains(below) };
+    });
+    expect(m.scrolls).toBe(false);          // the bill grows with the list in it instead of scrolling
+    expect(m.panelInBill).toBe(false);      // the list sits above the bill, so the bill cannot clip it
+    expect(m.covered).toBe(false);          // nothing is drawn over the foot of the list
+    expect(m.tall).toBeGreaterThan(150);    // more than the first line shows
+  });
 });

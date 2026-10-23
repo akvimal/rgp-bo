@@ -161,6 +161,20 @@ test.describe('Alerts: the engine @p1', () => {
   });
 });
 
+test.describe('Alerts: choosing the assistant model @p1', () => {
+  test('ALRT-10 the model choice belongs to the owner, and needs OpenRouter @edge', async ({ api }) => {
+    const ai = await api.request('GET', '/alerts/ai', undefined, MGR);
+    expect(ai.status).toBe(200);
+    expect(ai.body).toHaveProperty('configured');
+    if (ai.body.provider === 'openrouter') test.skip(true, 'OpenRouter is configured on this server');
+    expect((await api.request('PUT', '/alerts/ai', { model: 'vendor/model' }, MGR)).status).toBe(400);
+    const s = await freshStore(api);
+    const staff = await user(api, s.id, SALES);
+    expect((await api.request('GET', '/alerts/ai', undefined, staff.email)).status).toBe(403);
+    expect((await api.request('PUT', '/alerts/ai', { model: 'vendor/model' }, staff.email)).status).toBe(403);
+  });
+});
+
 test.describe('Alerts: screens @p1', () => {
   test('ALRT-7 the bell shows what needs attention; the page can snooze, dismiss and change language @happy', async ({ api, app }) => {
     const s = await freshStore(api);
@@ -193,7 +207,8 @@ test.describe('Alerts: screens @p1', () => {
     const { page } = await app.open(MGR, '/secure/settings/alerts');
     await expect(page.getByTestId('al-row').first()).toBeVisible();
     await expect(page.getByTestId('al-row').filter({ hasText: 'Bank deposit due' })).toHaveCount(1);
-    await expect(page.getByTestId('al-assistant')).toHaveCount(0);       // no key on the QA server
+    const assistant = (await api.request('GET', '/alerts/kinds', undefined, MGR)).body.assistant;
+    await expect(page.getByTestId('al-assistant')).toHaveCount(assistant ? 1 : 0);   // the box shows only when a key is set
 
     const name = `QA early ${Date.now()}`;
     await page.getByTestId('al-new').click();

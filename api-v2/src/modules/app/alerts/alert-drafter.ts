@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { AiProvider } from './ai-provider';
 import { KINDS, SEVERITIES, Severity, cleanParams, kindOf } from './alert-kinds';
 
 export const RECIPIENT_ROLES = ['owners', 'managers', 'staff'];
@@ -71,14 +72,16 @@ export function toDraft(input: any, stores: { id: number; location: string }[]):
   };
 }
 
-type Complete = (system: string, instruction: string) => Promise<any>;
+type Complete = (system: string, instruction: string, model: string) => Promise<any>;
 
-/** Asks Claude (the Messages API, one call, tool use) for a draft rule. The key and the address come from the environment. */
+/** Asks a language model (through AiProvider) for a draft rule: one call, the answer forced into the rule's shape. */
 @Injectable()
 export class AlertDrafter {
   private recent = new Map<number, number[]>();
 
-  get configured(): boolean { return !!process.env.ANTHROPIC_API_KEY; }
+  constructor(private readonly ai: AiProvider) {}
+
+  get configured(): boolean { return this.ai.configured; }
 
   /** at most 20 drafts an hour per business, so a loop or a prank cannot run up a bill */
   private allow(businessId: number): boolean {
@@ -90,35 +93,18 @@ export class AlertDrafter {
     return true;
   }
 
-  private complete: Complete = async (system, instruction) => {
-    const base = (process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/$/, '');
-    const res = await fetch(`${base}/v1/messages`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': String(process.env.ANTHROPIC_API_KEY), 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: process.env.ALERT_DRAFT_MODEL || 'claude-haiku-5-5',
-        max_tokens: 800,
-        system,
-        tools: [PROPOSE_TOOL],
-        tool_choice: { type: 'tool', name: PROPOSE_TOOL.name },
-        messages: [{ role: 'user', content: `<instruction>${instruction}</instruction>` }],
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-    if (!res.ok) throw new ServiceUnavailableException('The assistant could not be reached just now. Try again, or use the form.');
-    const body: any = await res.json();
-    return (body.content || []).find((c: any) => c.type === 'tool_use')?.input;
-  };
+  private complete: Complete = (system, instruction, model) => this.ai.call(system, instruction, PROPOSE_TOOL, model);
 
   /** for tests: replace the call to the model */
   useCompletion(fn: Complete) { this.complete = fn; }
 
-  async draft(instruction: string, stores: { id: number; location: string }[], businessId: number): Promise<Draft> {
+  async draft(instruction: string, stores: { id: number; location: string }[], businessId: number, model: string): Promise<Draft> {
     if (!this.configured) throw new ServiceUnavailableException('The assistant is not switched on for this account. Use the form below to set up an alert.');
+    if (!model) throw new BadRequestException('Choose a model for the assistant first (under "Describe an alert").');
     const text = String(instruction || '').trim();
     if (text.length < 5) throw new BadRequestException('Say what you want to be alerted about.');
     if (text.length > 500) throw new BadRequestException('Keep it to a sentence or two (500 characters).');
     if (!this.allow(businessId)) throw new BadRequestException('That is a lot of drafts in an hour. Try again later, or use the form.');
-    return toDraft(await this.complete(systemPrompt(stores), text), stores);
+    return toDraft(await this.complete(systemPrompt(stores), text, model), stores);
   }
 }

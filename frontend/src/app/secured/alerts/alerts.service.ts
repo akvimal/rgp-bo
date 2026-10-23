@@ -28,6 +28,9 @@ export class AlertsService {
   prefs() { return this.http.get<any>(`${this.api}/prefs`); }
   savePrefs(language: string) { return this.http.put<any>(`${this.api}/prefs`, { language }); }
 
+  ai() { return this.http.get<any>(`${this.api}/ai`); }
+  saveAi(model: string) { return this.http.put<any>(`${this.api}/ai`, { model }); }
+
   kinds() { return this.http.get<any>(`${this.api}/kinds`); }
   rules() { return this.http.get<any[]>(`${this.api}/rules`); }
   createRule(body: any) { return this.http.post<any>(`${this.api}/rules`, body); }
