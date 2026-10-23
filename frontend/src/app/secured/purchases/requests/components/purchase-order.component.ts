@@ -1,30 +1,33 @@
-import { Component } from "@angular/core";
+import { Component, OnDestroy } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { NavigationEnd, Router } from "@angular/router";
+import { Subscription } from "rxjs";
 import { filter } from "rxjs/operators";
 import { VendorsService } from "src/app/secured/purchases/vendors/vendors.service";
 import { PurchaseOrderService } from "../purchase-order.service";
+import { PO_STATUS_FILTERS, poStatus } from "../po-status";
 
 @Component({
     selector: 'app-purchase-order',
     templateUrl: './purchase-order.component.html',
     styleUrls: ['./purchase-order.component.scss']
 })
-export class PurchaseOrderComponent {
+export class PurchaseOrderComponent implements OnDestroy {
 
     orders: any[] = [];
+    /** the orders as shown: filtered, with the words and flags the list needs */
+    rows: any[] = [];
     vendors: any = [];
     displayForm: boolean = false;
     searchTerm: string = '';
     statusFilter: string = 'ALL';
-    approvalFilter: string = 'ALL';
+    statusFilters = PO_STATUS_FILTERS;
     hasDetail: boolean = false;
     activeOrderId: number | null = null;
+    private subs = new Subscription();
 
     form: FormGroup = new FormGroup({
-        id: new FormControl(''),
         vendorid: new FormControl('', Validators.required),
-        ponumber: new FormControl(''),
         expecteddate: new FormControl(''),
         comments: new FormControl('')
     });
@@ -34,97 +37,66 @@ export class PurchaseOrderComponent {
         private router: Router) { }
 
     ngOnInit() {
-        this.filter();
+        this.load();
         this.vendorService.findUsable().subscribe(data => this.vendors = data);
         this.updateActiveOrderId();
-        this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.updateActiveOrderId());
+        this.subs.add(this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.updateActiveOrderId()));
+        // an order changed beside this list (submitted, edited, deleted): show it as it is now
+        this.subs.add(this.service.changed$.subscribe(() => this.load()));
     }
+
+    ngOnDestroy() { this.subs.unsubscribe(); }
 
     private updateActiveOrderId() {
         const match = this.router.url.match(/\/purchases\/orders\/(\d+)/);
         this.activeOrderId = match ? +match[1] : null;
     }
 
-    filter() {
+    load() {
         this.service.findAll().subscribe((data: any) => {
-            this.orders = data;
-        })
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            this.orders = (data || []).map((o: any) => {
+                const s = poStatus(o);
+                const expected = o.expecteddate ? new Date(o.expecteddate) : null;
+                return {
+                    ...o,
+                    vendorname: o.vendor?.name || 'Unnamed Vendor',
+                    statuslabel: s.label, statuscls: s.cls, statushint: s.hint,
+                    // expected before today, sent to the vendor, and not all of it has arrived
+                    overdue: o.status === 'SUBMITTED' && !!expected && expected < today && (+o.receivedqty || 0) < (+o.orderedqty || 0)
+                };
+            });
+            this.applyFilters();
+        });
     }
 
-    onProductSelect(event: any) {
-        this.form.controls['productid'].setValue(event.product.id);
+    /** the list is rebuilt when a filter changes, not on every screen refresh */
+    applyFilters() {
+        const search = `${this.searchTerm || ''}`.trim().toLowerCase();
+        this.rows = this.orders.filter((order: any) => {
+            const matchesSearch = !search || [
+                order.vendorname, order.ponumber, order.id, order.statuslabel, order.comments, order.expecteddate
+            ].some((value: any) => `${value || ''}`.toLowerCase().includes(search));
+            const matchesStatus = this.statusFilter === 'ALL' || `${order.status || ''}` === this.statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+    }
+
+    open(order: any) {
+        this.router.navigate(['/secure/purchases/orders', order.id]);
     }
 
     add() {
         this.displayForm = true;
-        this.form.reset();
+        this.form.reset({ vendorid: '', expecteddate: '', comments: '' });
     }
 
-    edit(id: number) {
-        this.service.findById(id).subscribe((data: any) => {
-            console.log(data);
-            this.form.controls['id'].setValue(data.id);
-            this.form.controls['vendorid'].setValue(data.vendorid);
-            this.form.controls['expecteddate'].setValue(data.expecteddate);
-            this.form.controls['comments'].setValue(data.comments);
-            this.displayForm = true;
-        })
-    }
-
+    /** a new order opens straight away, so its items can be added */
     onSave() {
-        if (this.form.controls['id'].value !== null) {
-            this.service.update(this.form.controls['id'].value, {
-                vendorid: this.form.controls['vendorid'].value,
-                expecteddate: this.form.controls['expecteddate'].value,
-                comments: this.form.controls['comments'].value
-            }).subscribe(data => {
-                this.filter();
-                this.displayForm = false;
-            });
-        }
-        else {
-            this.service.save(this.form.value).subscribe(data => {
-                this.filter();
-                this.displayForm = false;
-            });
-        }
-    }
-
-    delete(id: number) {
-        this.service.remove(id).subscribe(data => this.filter());
-    }
-
-    get filteredOrders() {
-        const search = `${this.searchTerm || ''}`.trim().toLowerCase();
-        return (this.orders || []).filter((order: any) => {
-            const matchesSearch = !search || [
-                order?.vendor?.name,
-                order?.ponumber,
-                order?.status,
-                order?.approvalstatus,
-                order?.comments,
-                order?.expecteddate
-            ].some((value: any) => `${value || ''}`.toLowerCase().includes(search));
-            const matchesStatus = this.statusFilter === 'ALL' || `${order?.status || ''}` === this.statusFilter;
-            const matchesApproval = this.approvalFilter === 'ALL' || `${order?.approvalstatus || ''}` === this.approvalFilter;
-            return matchesSearch && matchesStatus && matchesApproval;
+        this.service.save({ ...this.form.value, expecteddate: this.form.value.expecteddate || null } as any).subscribe((data: any) => {
+            this.displayForm = false;
+            this.load();
+            if (data?.id) this.router.navigate(['/secure/purchases/orders', data.id]);
         });
-    }
-
-    statusBadgeClass(order:any){
-        const status = `${order?.status || ''}`.toUpperCase();
-        if(status === 'SUBMITTED') return 'bg-success';
-        if(status === 'PENDING_APPROVAL') return 'bg-warning text-dark';
-        if(status === 'REJECTED') return 'bg-danger';
-        if(status === 'PENDING') return 'bg-secondary';
-        return 'bg-info';
-    }
-
-    approvalBadgeClass(order:any){
-        const status = `${order?.approvalstatus || ''}`.toUpperCase();
-        if(status === 'APPROVED') return 'bg-success';
-        if(status === 'PENDING') return 'bg-warning text-dark';
-        if(status === 'REJECTED') return 'bg-danger';
-        return 'bg-light text-dark border';
     }
 }

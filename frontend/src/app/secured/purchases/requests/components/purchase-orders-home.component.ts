@@ -27,6 +27,8 @@ export class PurchaseOrdersHomeComponent {
     private applyTabFromRoute() {
         const hasOrderDetail = !!this.route.snapshot.firstChild;
         const tab = this.route.snapshot.data?.tab || 'requests';
-        this.activeIndex = hasOrderDetail ? TAB_INDEX['orders'] : (TAB_INDEX[tab] ?? TAB_INDEX['requests']);
+        // closing an open order lands on /orders: stay on the Orders tab you were on, rather than falling back to Requests
+        const closedOrder = !hasOrderDetail && this.activeIndex === TAB_INDEX['orders'] && /\/purchases\/orders\/?$/.test(this.router.url);
+        this.activeIndex = hasOrderDetail || closedOrder ? TAB_INDEX['orders'] : (TAB_INDEX[tab] ?? TAB_INDEX['requests']);
     }
 }

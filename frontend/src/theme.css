@@ -356,3 +356,6 @@ nav.navbar ul.page-menu { border: 0; margin: 0 !important; }
 
 /* every grid heading reads from the left, whatever the column below holds; sort and filter always follow it, filter first */
 .p-datatable .p-datatable-thead > tr > th { text-align: left !important; }
+
+/* the quantity box on a purchase order line */
+.po-qty { width: 5.5rem; margin-left: auto; }

@@ -129,8 +129,18 @@ export class PurchaseService {
             select
                 pr.order_id as order_id,
                 count(*)::int as line_count,
-                coalesce(sum(coalesce(pr.ordered_qty, pr.qty, 0) * coalesce(latest.ptr_cost, 0)), 0) as estimated_total
+                coalesce(sum(coalesce(pr.ordered_qty, pr.qty, 0) * coalesce(latest.ptr_cost, 0)), 0) as estimated_total,
+                coalesce(sum(coalesce(pr.ordered_qty, pr.qty, 0)), 0) as ordered_qty,
+                coalesce(sum(rcv.qty), 0) as received_qty
             from purchase_request pr
+            left join lateral (
+                select coalesce(sum(pii.qty), 0) as qty
+                from purchase_invoice_item pii
+                inner join purchase_invoice pi2 on pi2.id = pii.invoice_id
+                where pii.request_id = pr.id
+                  and pii.active = true and pii.archive = false
+                  and pi2.active = true and pi2.archive = false and pi2.status = 'COMPLETE'
+            ) rcv on true
             left join lateral (
                 select pii.ptr_cost
                 from purchase_invoice_item pii
@@ -145,10 +155,10 @@ export class PurchaseService {
               and pr.active = true and pr.archive = false
             group by pr.order_id
         `, [ids]);
-        const summaries = new Map<number, any>(rows.map((r:any) => [+r.order_id, { linecount: +r.line_count, estimatedtotal: +(+r.estimated_total).toFixed(2) }]));
+        const summaries = new Map<number, any>(rows.map((r:any) => [+r.order_id, { linecount: +r.line_count, estimatedtotal: +(+r.estimated_total).toFixed(2), orderedqty: +r.ordered_qty, receivedqty: +r.received_qty }]));
         return orders.map((order:any) => ({
             ...order,
-            ...(summaries.get(order.id) || { linecount: 0, estimatedtotal: 0 })
+            ...(summaries.get(order.id) || { linecount: 0, estimatedtotal: 0, orderedqty: 0, receivedqty: 0 })
         }));
     }
 
@@ -249,6 +259,16 @@ export class PurchaseService {
     
     async updateRequest(id: number | string, values: Partial<PurchaseRequest>, userid: number) {
         const v: any = values;
+        if(v.orderedqty !== undefined){
+            const own = await this.requestRepository.findOne({ where: { id: +id } });
+            if(own?.orderid){
+                const [po] = await this.manager.query(`select status from purchase_order where id = $1`, [own.orderid]);
+                if(po && !['PENDING', 'REJECTED'].includes(po.status)){
+                    throw new BadRequestException('The quantity cannot be changed once the order has been submitted.');
+                }
+            }
+            if(!(Number(v.orderedqty) > 0)) throw new BadRequestException('The quantity must be at least 1.');
+        }
         if(v.orderid || ['Ordered', 'Received'].includes(v.status)){
             // a request for a product that is not in the list cannot be ordered until it is linked to one
             const row = await this.requestRepository.findOne({ where: { id: +id } });
@@ -690,15 +710,30 @@ export class PurchaseService {
     private async enrichOrder(order:any){
         const summary = await this.evaluateOrderApproval(order);
         const fulfilment = await this.getFulfilmentByRequest((order.requests || []).map((r:any) => r.id));
+        const costs = await this.getLatestUnitCosts(Array.from(new Set<number>((order.requests || []).map((r:any) => +(r.product?.id || r.productid || 0)).filter((i:number) => i > 0))));
+        const peopleIds = [order.createdby, order.approvalrequestedby, order.approvedby, order.rejectedby].filter((i:any) => !!i);
+        const people = new Map<number, string>();
+        if(peopleIds.length){
+            const rows = await this.manager.query(`select id, full_name as fullname from app_user where id = any($1::int[])`, [peopleIds]);
+            rows.forEach((r:any) => people.set(+r.id, r.fullname));
+        }
         return {
             ...order,
             estimatedtotal: summary.estimatedtotal,
             approvalrequired: summary.approvalrequired,
             approvalreasons: summary.approvalreasons,
-            requests: (order.requests || []).map((request:any) => ({
-                ...request,
-                ...(fulfilment.get(request.id) || { invoicedqty: 0, receivedqty: 0 })
-            }))
+            createdbyname: people.get(+order.createdby) || null,
+            approvedbyname: people.get(+order.approvedby) || null,
+            rejectedbyname: people.get(+order.rejectedby) || null,
+            requests: (order.requests || []).map((request:any) => {
+                const unitcost = costs.get(+(request.product?.id || request.productid || 0)) || 0;
+                return {
+                    ...request,
+                    unitcost,
+                    linevalue: +(unitcost * +(request.orderedqty ?? request.qty ?? 0)).toFixed(2),
+                    ...(fulfilment.get(request.id) || { invoicedqty: 0, receivedqty: 0 })
+                };
+            })
         };
     }
 

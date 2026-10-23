@@ -43,6 +43,12 @@
     </div>
     <div class="mt-3 small text-muted" data-testid="reo-store"><ng-container *ngIf="storeid; else allStores">For <strong>{{storeName}}</strong>: sales and stock are this store's only. Change the store at the top of the page.</ng-container>
       <ng-template #allStores>For <strong>All stores</strong>: sales and stock of every store together. Choose a store at the top of the page to see just that store.</ng-template></div>
+    <div class="alert alert-warning py-2 mt-3 mb-0" *ngIf="unlinked.length" data-testid="reo-unlinked">
+      <strong>{{unlinked.length}}</strong> open request{{unlinked.length === 1 ? ' is' : 's are'}} for a product that is not in the product list yet
+      (<span *ngFor="let r of unlinked | slice:0:3; last as isLast">{{r.requestedname}}<span *ngIf="!isLast">, </span></span><span *ngIf="unlinked.length > 3"> and {{unlinked.length - 3}} more</span>).
+      They cannot be ordered from here until each is linked to a product, whatever vendor is set.
+      <a routerLink="/secure/purchases/requests" data-testid="reo-unlinked-go">Link them in Requests</a>
+    </div>
     <div class="mt-3 text-success" *ngIf="feedback">{{feedback}}</div>
   </div>
 </div>

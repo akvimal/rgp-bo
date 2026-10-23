@@ -4,7 +4,7 @@
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/my-requests" data-testid="nav-requests">Purchase requests</a>
       </li>
       <li class="nav-item" *ngIf="auth.purchasingFull && auth.isActionAuthorized('purchases.add')">
-        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/orders">Orders</a>
+        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/orders" data-testid="nav-ordering">Ordering</a>
       </li>
       <li class="nav-item" *isAuth="'purchases.add'">
         <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="/secure/purchases/invoices">Invoices</a>

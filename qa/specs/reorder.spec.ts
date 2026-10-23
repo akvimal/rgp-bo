@@ -129,6 +129,18 @@ test.describe('Reorder suggestions @p1', () => {
     expect(off, 'with seasonal off it is not').toBeUndefined();
   });
 
+  test('RE-6 a request typed for a product not in the list is flagged on the page, since it cannot be ordered until linked @happy', async ({ api, app }) => {
+    const name = `Zzqx Reorder ${Date.now().toString().slice(-6)}`;
+    const vendor = (await api.request('GET', '/vendors', undefined, MGR)).body[0];
+    expect((await api.request('POST', '/purchaserequests', { requestedname: name, qty: 4, source: 'Staff', status: 'Open', vendorid: vendor.id }, MGR)).status).toBeLessThan(300);
+    const { page } = await app.open(MGR, '/secure/purchases/suggestions');
+    await expect(page.getByTestId('reo-unlinked')).toContainText('not in the product list yet');
+    await expect(page.getByTestId('reo-unlinked')).toContainText('Link them in Requests');
+    expect(((await suggest(api)).some((r) => r.title === name))).toBe(false);                    // nothing to list: it has no product
+    await page.getByTestId('reo-unlinked-go').click();
+    await expect(page).toHaveURL(/purchases\/requests/);
+  });
+
   test('RE-5 the Reorder page follows the store chosen at the top and shows season and minimum @happy', async ({ app }) => {
     const { page } = await app.open(MGR, '/secure/purchases/suggestions');
     await expect(page.getByTestId('reo-store')).toContainText('All stores');

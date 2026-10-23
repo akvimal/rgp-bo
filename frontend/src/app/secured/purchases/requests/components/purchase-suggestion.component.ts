@@ -19,6 +19,8 @@ export class PurchaseSuggestionComponent implements OnDestroy {
     /** scale by how the same stretch of the year went in the last two years */
     seasonal:boolean = true;
     storeid:number | null = null;
+    /** open requests typed for a product that is not in the product list: Reorder works from products, so these wait to be linked */
+    unlinked:any[] = [];
     private subs = new Subscription();
     expecteddate:string = '';
     comments:string = '';
@@ -61,6 +63,9 @@ export class PurchaseSuggestionComponent implements OnDestroy {
         if(this.vendorid){
             params.vendorid = this.vendorid;
         }
+        this.requestService.findAll().subscribe((rows:any) => {
+            this.unlinked = (rows || []).filter((r:any) => !r.product && !r.productid && ['Open', 'Reviewed'].includes(r.status));
+        }, () => { this.unlinked = []; });
         this.requestService.findSuggestions(params).subscribe((data:any) => {
             this.suggestions = (data || []).map((item:any) => ({ ...item, selected: false }));
         });

@@ -438,7 +438,7 @@ test.describe('Operating modes: modules @p1', () => {
     const { page } = await app.open(MGR, '/secure/purchases/invoices');
     await expect(page.getByTestId('nav-vendors')).toBeVisible();
     await expect(page.getByTestId('nav-gst')).toHaveCount(1);              // GST stays: it is its own switch
-    await expect(page.locator('app-purchase-header').getByText('Orders', { exact: true })).toHaveCount(0);
+    await expect(page.locator('app-purchase-header').getByText('Ordering', { exact: true })).toHaveCount(0);
     await setModules(api, { gst: false });
     const noGst = (await app.open(MGR, '/secure/purchases/invoices')).page;
     await expect(noGst.getByTestId('nav-vendors')).toBeVisible();

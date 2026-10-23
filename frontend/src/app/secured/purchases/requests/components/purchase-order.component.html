@@ -1,63 +1,56 @@
 <div class="row mt-2 g-3">
   <div class="col-12">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-      <button type="button" class="btn btn-primary" data-testid="po-create" (click)="add()">Create PO</button>
-      <div class="d-flex flex-wrap gap-2">
-        <div class="input-group" style="min-width: 320px;">
-          <span class="input-group-text">Search</span>
-          <input class="form-control" type="text" [(ngModel)]="searchTerm" placeholder="Vendor, PO no, status">
-        </div>
-        <select class="form-select" style="width: 180px;" [(ngModel)]="statusFilter">
-          <option value="ALL">All Status</option>
-          <option value="PENDING">Pending</option>
-          <option value="PENDING_APPROVAL">Pending Approval</option>
-          <option value="SUBMITTED">Submitted</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
-        <select class="form-select" style="width: 180px;" [(ngModel)]="approvalFilter">
-          <option value="ALL">All Approval</option>
-          <option value="Not Required">Not Required</option>
-          <option value="Pending">Pending</option>
-          <option value="Approved">Approved</option>
-          <option value="Rejected">Rejected</option>
-        </select>
-      </div>
-    </div>
-
     <div class="po-master-detail" [class.has-detail]="hasDetail">
       <div class="po-list">
+        <div class="po-toolbar">
+          <button type="button" class="btn btn-primary" data-testid="po-create" (click)="add()"><i class="bi bi-plus-lg me-1"></i>Create PO</button>
+          <div class="input-group po-search">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input class="form-control" type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" placeholder="Vendor, PO no, status" aria-label="Search orders" data-testid="po-search">
+          </div>
+          <select class="form-select po-status-filter" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" aria-label="Status" data-testid="po-status-filter">
+            <option *ngFor="let f of statusFilters" [value]="f.value">{{f.label}}</option>
+          </select>
+        </div>
         <p-table
-          [value]="filteredOrders"
+          [value]="rows"
           [paginator]="true"
           [rows]="10"
           [showCurrentPageReport]="true"
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
           [rowsPerPageOptions]="[10,25,50]"
+          [sortField]="'createdon'" [sortOrder]="-1"
           styleClass="p-datatable-gridlines">
           <ng-template pTemplate="header">
             <tr>
-              <th>Vendor</th>
-              <th>PO No</th>
-              <th>Date</th>
-              <th class="text-end">Lines</th>
-              <th class="text-end">Est. Value</th>
-              <th>Status</th>
-              <th>Approval</th>
+              <th pSortableColumn="id"><div class="th-bar"><span class="th-label">PO No.</span><p-sortIcon field="id"></p-sortIcon></div></th>
+              <th pSortableColumn="vendorname"><div class="th-bar"><span class="th-label">Vendor</span><p-columnFilter type="text" field="vendorname" display="menu"></p-columnFilter><p-sortIcon field="vendorname"></p-sortIcon></div></th>
+              <th pSortableColumn="createdon"><div class="th-bar"><span class="th-label">Date</span><p-sortIcon field="createdon"></p-sortIcon></div></th>
+              <th pSortableColumn="expecteddate" *ngIf="!hasDetail"><div class="th-bar"><span class="th-label">Expected</span><p-sortIcon field="expecteddate"></p-sortIcon></div></th>
+              <th pSortableColumn="linecount" *ngIf="!hasDetail"><div class="th-bar"><span class="th-label">Lines</span><p-sortIcon field="linecount"></p-sortIcon></div></th>
+              <th pSortableColumn="estimatedtotal"><div class="th-bar"><span class="th-label">Value</span><p-sortIcon field="estimatedtotal"></p-sortIcon></div></th>
+              <th pSortableColumn="statuslabel"><div class="th-bar"><span class="th-label">Status</span><p-sortIcon field="statuslabel"></p-sortIcon></div></th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-order>
-            <tr data-testid="po-row" [attr.data-po-id]="order.id" [attr.data-po-status]="order.status" [attr.data-po-approval]="order.approvalstatus || 'Not Required'" [class.table-active]="hasDetail && order.id === activeOrderId">
-              <td>{{order.vendor?.name || 'Unnamed Vendor'}}</td>
-              <td><a [routerLink]="[order.id]" data-testid="po-link">#{{order.ponumber || order.id}}</a></td>
-              <td>{{order.createdon | date:'dd MMM yyyy'}}</td>
-              <td class="text-end">{{order.linecount ?? 0}}</td>
-              <td class="text-end">{{(order.estimatedtotal ?? 0) | number:'1.2-2'}}</td>
-              <td><span class="badge" [ngClass]="statusBadgeClass(order)" data-testid="po-status">{{order.status}}</span></td>
-              <td><span class="badge" [ngClass]="approvalBadgeClass(order)" data-testid="po-approval">{{order.approvalstatus || 'Not Required'}}</span></td>
+            <tr data-testid="po-row" class="po-row" (click)="open(order)" [attr.data-po-id]="order.id" [attr.data-po-status]="order.status" [attr.data-po-approval]="order.approvalstatus || 'Not Required'" [class.table-active]="hasDetail && order.id === activeOrderId">
+              <td><a [routerLink]="['/secure/purchases/orders', order.id]" (click)="$event.stopPropagation()" data-testid="po-link">#{{order.ponumber || order.id}}</a></td>
+              <td>{{order.vendorname}}</td>
+              <td class="text-nowrap">{{order.createdon | date:'dd MMM yyyy'}}</td>
+              <td class="text-nowrap" *ngIf="!hasDetail">
+                {{order.expecteddate ? (order.expecteddate | date:'dd MMM yyyy') : '-'}}
+                <span class="badge bg-danger ms-1" *ngIf="order.overdue" title="Expected before today and not all received" data-testid="po-overdue">Overdue</span>
+              </td>
+              <td class="text-end" *ngIf="!hasDetail">{{order.linecount ?? 0}}</td>
+              <td class="text-end">{{order.linecount ? (order.estimatedtotal | number:'1.2-2') : '-'}}</td>
+              <td>
+                <span class="badge" [ngClass]="order.statuscls" [title]="order.statushint" data-testid="po-status">{{order.statuslabel}}</span>
+                <span class="badge bg-danger ms-1" *ngIf="hasDetail && order.overdue" title="Expected before today and not all received">Overdue</span>
+              </td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
-            <tr><td colspan="7" class="text-center text-muted py-4">No purchase orders yet.</td></tr>
+            <tr><td [attr.colspan]="hasDetail ? 5 : 7" class="text-center text-muted py-4">{{orders.length ? 'No orders match.' : 'No purchase orders yet.'}}</td></tr>
           </ng-template>
         </p-table>
       </div>
@@ -68,14 +61,13 @@
   </div>
 </div>
 
-<p-dialog [header]="form.controls['id'].value !== null ? 'Edit Order' : 'Create PO'" [(visible)]="displayForm"
-  [modal]="true" [style]="{width: '42rem'}">
+<p-dialog header="Create PO" [(visible)]="displayForm" [modal]="true" [style]="{width: '42rem'}">
   <form [formGroup]="form" (ngSubmit)="onSave()">
     <div class="container-fluid px-0">
       <div class="row g-3">
         <div class="col-12">
-          <label for="vendor" class="form-label">Vendor</label>
-          <select class="form-select" id="vendor" data-testid="po-f-vendor" formControlName="vendorid" [disabled]="form.controls['id'].value !== null">
+          <label for="vendor" class="form-label">Vendor <span class="text-danger">*</span></label>
+          <select class="form-select" id="vendor" data-testid="po-f-vendor" formControlName="vendorid">
             <option value="">Select vendor</option>
             <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
           </select>
@@ -89,7 +81,8 @@
           <input class="form-control" id="comments" formControlName="comments" placeholder="Optional notes">
         </div>
         <div class="col-12 text-end">
-          <button type="submit" class="btn btn-primary" data-testid="po-f-save" [disabled]="!form.valid">Save</button>
+          <button type="button" class="btn btn-outline-secondary me-2" (click)="displayForm = false">Cancel</button>
+          <button type="submit" class="btn btn-primary" data-testid="po-f-save" [disabled]="!form.valid">Create and add items</button>
         </div>
       </div>
     </div>

@@ -140,4 +140,17 @@ test.describe('Requests for products not in the list @p1', () => {
     expect((await tabs.allInnerTexts()).map((t) => t.trim()).filter(Boolean)).toEqual(['Requests', 'Reorder', 'Orders']);
     await expect(page.locator('.p-tabview-nav').first().locator('li.p-highlight')).toHaveText(/Requests/);
   });
+
+  test('PUR-LINK a PO number opens the order from whichever Orders page you are on, never the login page @happy', async ({ app, api }) => {
+    const v = (await api.request('GET', '/vendors', undefined, MGR)).body[0];
+    const po = await api.request('POST', '/purchaseorders', { vendorid: v.id }, MGR);
+    expect(po.status).toBeLessThan(300);
+    for (const start of ['/secure/purchases/orders', '/secure/purchases/requests', '/secure/purchases/suggestions']) {
+      const { page } = await app.open(MGR, start);
+      await page.getByRole('tab', { name: 'Orders' }).click();
+      await page.getByTestId('po-link').first().click();
+      await expect(page, `from ${start}`).toHaveURL(/\/secure\/purchases\/orders\/\d+/);
+      await expect(page).not.toHaveURL(/login/);
+    }
+  });
 });

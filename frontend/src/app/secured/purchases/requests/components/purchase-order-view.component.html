@@ -1,96 +1,138 @@
-<div *ngIf="order" class="d-grid gap-3" data-testid="po-detail" [attr.data-po-status]="order?.status" [attr.data-po-approval]="order?.approvalstatus || 'Not Required'">
-  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+<div *ngIf="order" class="po-detail" data-testid="po-detail" [attr.data-po-status]="order?.status" [attr.data-po-approval]="order?.approvalstatus || 'Not Required'">
+
+  <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
     <div>
-      <div class="fw-semibold fs-5">{{order?.vendor?.name}}</div>
-      <div class="text-muted small">PO #{{order?.ponumber || order?.id}} &middot; {{order?.createdon | date:'dd MMM yyyy'}}</div>
+      <div class="fw-semibold fs-5" data-testid="po-vendor">{{order?.vendor?.name}}</div>
+      <div class="text-muted small">PO No. {{order?.ponumber || order?.id}} &middot; {{order?.createdon | date:'dd MMM yyyy'}}<span *ngIf="order?.createdbyname"> &middot; by {{order.createdbyname}}</span></div>
     </div>
-    <div class="d-flex flex-wrap gap-2">
-      <span class="badge bg-secondary">{{order?.status}}</span>
-      <span class="badge" [ngClass]="order?.approvalstatus === 'Approved' ? 'bg-success' : (order?.approvalstatus === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark')">
-        {{order?.approvalstatus || 'Not Required'}}
-      </span>
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge" [ngClass]="status.cls" [title]="status.hint" data-testid="po-detail-status">{{status.label}}</span>
+      <a class="btn btn-sm btn-outline-secondary" routerLink="/secure/purchases/orders" title="Close" aria-label="Close this order" data-testid="po-close"><i class="bi bi-x-lg"></i></a>
     </div>
   </div>
 
-  <div class="row g-3 small">
-    <div class="col-md-4">
-      <div class="text-muted">Expected</div>
-      <div class="fw-semibold">{{order?.expecteddate ? (order?.expecteddate | date:'dd MMM yyyy') : '-'}}</div>
-    </div>
-    <div class="col-md-4">
-      <div class="text-muted">Estimated Value</div>
-      <div class="fw-semibold">{{order?.estimatedtotal !== undefined ? (order?.estimatedtotal | number:'1.2-2') : '-'}}</div>
-    </div>
-    <div class="col-md-4">
-      <div class="text-muted">Lines</div>
-      <div class="fw-semibold">{{order?.requests?.length || 0}}</div>
-    </div>
+  <div class="alert alert-danger py-2" *ngIf="error" data-testid="po-error">{{error}}</div>
+  <div class="alert alert-warning py-2" *ngIf="order?.status === 'PENDING_APPROVAL'" data-testid="po-awaiting">
+    Waiting for approval<span *ngIf="order?.approvalreason">: {{order.approvalreason}}</span>
+  </div>
+  <div class="alert alert-danger py-2" *ngIf="order?.status === 'REJECTED'" data-testid="po-rejected">
+    Rejected<span *ngIf="order?.rejectedbyname"> by {{order.rejectedbyname}}</span><span *ngIf="order?.rejectionreason">: {{order.rejectionreason}}</span>. Change it and submit again.
   </div>
 
-  <div class="d-flex flex-wrap gap-2">
-    <button type="button" class="btn btn-outline-primary" (click)="onDownload()">Download</button>
-    <button *ngIf="canEdit()" type="button" class="btn btn-primary" data-testid="po-add-request" (click)="onAdd()">Add Request</button>
-    <button *ngIf="order?.requests?.length > 0 && canEdit()" type="button" class="btn btn-success" data-testid="po-proceed" (click)="onProceed()">Proceed</button>
-    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-success" data-testid="po-approve" (click)="onApprove()">Approve</button>
-    <button *ngIf="order?.status === 'PENDING_APPROVAL' && authService.isActionAuthorized('purchaseorders.approve')" type="button" class="btn btn-danger" data-testid="po-reject-open" (click)="displayReject = true">Reject</button>
+  <div class="row g-3 small mb-3" data-testid="po-facts">
+    <div class="col-6 col-lg-3"><div class="text-muted">Expected</div><div class="fw-semibold">{{order?.expecteddate ? (order?.expecteddate | date:'dd MMM yyyy') : '-'}}</div></div>
+    <div class="col-6 col-lg-3"><div class="text-muted">Estimated value</div><div class="fw-semibold">{{order?.estimatedtotal !== undefined ? (order?.estimatedtotal | number:'1.2-2') : '-'}}</div></div>
+    <div class="col-6 col-lg-3"><div class="text-muted">Lines</div><div class="fw-semibold">{{order?.requests?.length || 0}}</div></div>
+    <div class="col-6 col-lg-3" *ngIf="order?.approvedbyname"><div class="text-muted">Approved by</div><div class="fw-semibold">{{order.approvedbyname}}<span *ngIf="order?.approvedat" class="text-muted fw-normal"> &middot; {{order.approvedat | date:'dd MMM'}}</span></div></div>
+    <div class="col-6 col-lg-3" *ngIf="order?.vendor?.gstn"><div class="text-muted">Vendor GSTIN</div><div class="fw-semibold">{{order.vendor.gstn}}</div></div>
+    <div class="col-6 col-lg-3" *ngIf="order?.vendor?.contactname || order?.vendor?.contactphone"><div class="text-muted">Vendor contact</div><div class="fw-semibold">{{order.vendor.contactname}}<span *ngIf="order.vendor.contactphone"> &middot; {{order.vendor.contactphone}}</span></div></div>
+    <div class="col-12" *ngIf="order?.comments"><div class="text-muted">Comments</div><div>{{order.comments}}</div></div>
   </div>
 
-  <div class="border rounded-3">
-    <div class="table-responsive">
-      <table class="table table-sm mb-0 align-middle" data-testid="po-fulfilment">
-        <thead class="table-light">
-          <tr>
-            <th>Product</th>
-            <th class="text-end">Ordered</th>
-            <th class="text-end">Invoiced</th>
-            <th class="text-end">Received</th>
-            <th *ngIf="canEdit()">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let req of order?.requests" [attr.data-testid]="'po-fulfilment-row'">
-            <td>{{req.product?.title}}</td>
-            <td class="text-end">{{req.orderedqty ?? req.qty}}</td>
-            <td class="text-end" [class.text-success]="req.invoicedqty >= (req.orderedqty ?? req.qty)" [class.text-muted]="!req.invoicedqty">{{req.invoicedqty ?? 0}}</td>
-            <td class="text-end" [class.text-success]="req.receivedqty >= (req.orderedqty ?? req.qty)" [class.text-muted]="!req.receivedqty">{{req.receivedqty ?? 0}}</td>
-            <td *ngIf="canEdit()">
-              <button type="button" class="btn btn-link text-danger p-0" (click)="delete(req.id)">Remove</button>
-            </td>
-          </tr>
-          <tr *ngIf="!order?.requests?.length">
-            <td colspan="5" class="text-center text-muted py-4">No items linked to this PO.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-3" data-testid="po-actions">
+    <button *ngIf="canEdit()" type="button" class="btn btn-primary" data-testid="po-add-request" (click)="onAdd()"><i class="bi bi-plus-lg me-1"></i>Add items</button>
+    <button *ngIf="order?.requests?.length > 0 && canEdit()" type="button" class="btn btn-success" data-testid="po-proceed" (click)="onProceed()">{{order?.approvalrequired ? 'Submit for approval' : 'Submit'}}</button>
+    <button *ngIf="canApprove" type="button" class="btn btn-success" data-testid="po-approve" (click)="onApprove()">Approve</button>
+    <button *ngIf="canApprove" type="button" class="btn btn-danger" data-testid="po-reject-open" (click)="displayReject = true">Reject</button>
+    <span class="ms-auto d-flex flex-wrap gap-2">
+      <button *ngIf="canEdit()" type="button" class="btn btn-outline-secondary" (click)="openEdit()" data-testid="po-edit"><i class="bi bi-pencil me-1"></i>Edit</button>
+      <button type="button" class="btn btn-outline-primary" (click)="onDownload()" data-testid="po-download"><i class="bi bi-download me-1"></i>Download PDF</button>
+      <button *ngIf="order?.status === 'PENDING'" type="button" class="btn btn-outline-danger" (click)="deleteOrder()" data-testid="po-delete" title="Delete this draft"><i class="bi bi-trash me-1"></i>Delete</button>
+    </span>
   </div>
+
+  <p-table [value]="order?.requests || []" styleClass="p-datatable-gridlines" data-testid="po-fulfilment">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Product</th>
+        <th>Pack</th>
+        <th>Rate</th>
+        <th>Ordered</th>
+        <th>Value</th>
+        <th>Invoiced</th>
+        <th>Received</th>
+        <th *ngIf="canEdit()"></th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-req>
+      <tr data-testid="po-fulfilment-row">
+        <td>{{req.product?.title}}</td>
+        <td class="text-end">{{req.product?.pack || '-'}}</td>
+        <td class="text-end">{{req.unitcost ? (req.unitcost | number:'1.2-2') : '-'}}</td>
+        <td class="text-end">
+          <input *ngIf="canEdit(); else fixedQty" class="form-control form-control-sm text-end po-qty" type="number" min="1" step="1" [value]="req.orderedqty ?? req.qty" (change)="setQty(req, $event)" [attr.aria-label]="'Quantity of ' + req.product?.title" data-testid="po-qty">
+          <ng-template #fixedQty>{{req.orderedqty ?? req.qty}}</ng-template>
+        </td>
+        <td class="text-end">{{req.linevalue ? (req.linevalue | number:'1.2-2') : '-'}}</td>
+        <td class="text-end" [class.text-success]="req.invoicedqty >= (req.orderedqty ?? req.qty)" [class.text-muted]="!req.invoicedqty">{{req.invoicedqty ?? 0}}</td>
+        <td class="text-end" [class.text-success]="req.receivedqty >= (req.orderedqty ?? req.qty)" [class.text-muted]="!req.receivedqty">{{req.receivedqty ?? 0}}</td>
+        <td *ngIf="canEdit()" class="text-center">
+          <a role="button" (click)="delete(req.id)" title="Take off this order" aria-label="Take this item off the order" data-testid="po-remove"><i class="bi bi-trash text-danger"></i></a>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <tr *ngIf="order?.requests?.length" data-testid="po-totals">
+        <td colspan="3" class="text-end">Total</td>
+        <td class="text-end fw-semibold">{{totalUnits}}</td>
+        <td class="text-end fw-semibold">{{totalValue | number:'1.2-2'}}</td>
+        <td colspan="2"></td>
+        <td *ngIf="canEdit()"></td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr><td [attr.colspan]="canEdit() ? 8 : 7" class="text-center text-muted py-4">No items on this order yet.<span *ngIf="canEdit()"> Use "Add items" to bring in the requests you have reviewed.</span></td></tr>
+    </ng-template>
+  </p-table>
 </div>
 
-<p-dialog [header]="'Add Request'" [(visible)]="displayForm" [modal]="true">
+<p-dialog header="Add items" [(visible)]="displayForm" [modal]="true" [style]="{width: '34rem'}">
   <form [formGroup]="form" (ngSubmit)="onSave()">
     <div class="container px-0">
       <div class="row g-3">
         <div class="col-12">
           <label for="req" class="form-label">Request</label>
-          <select class="form-select" id="req" formControlName="requestid">
+          <select class="form-select" id="req" formControlName="requestid" data-testid="po-request-select">
             <option value="">Select</option>
             <option *ngFor="let ar of availrequests" [value]="ar?.id">{{ar?.product?.title}} | {{ar?.qty}}</option>
           </select>
+          <div class="form-text" *ngIf="!availrequests.length" data-testid="po-no-requests">Nothing waiting. Mark a request as reviewed in Requests, and it can be added here.</div>
         </div>
         <div class="col-12 text-end">
-          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Submit</button>
+          <button type="button" class="btn btn-outline-secondary me-2" (click)="displayForm = false">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Add</button>
         </div>
       </div>
     </div>
   </form>
 </p-dialog>
 
-<p-dialog [header]="'Reject Purchase Order'" [(visible)]="displayReject" [modal]="true">
+<p-dialog header="Edit order" [(visible)]="displayEdit" [modal]="true" [style]="{width: '34rem'}">
+  <form [formGroup]="editForm" (ngSubmit)="saveEdit()">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="po-e-date">Expected date</label>
+        <input id="po-e-date" class="form-control" type="date" formControlName="expecteddate" data-testid="po-e-date">
+      </div>
+      <div class="col-12">
+        <label class="form-label" for="po-e-comments">Comments</label>
+        <input id="po-e-comments" class="form-control" formControlName="comments" placeholder="Optional notes" data-testid="po-e-comments">
+      </div>
+      <div class="col-12 text-end">
+        <button type="button" class="btn btn-outline-secondary me-2" (click)="displayEdit = false">Cancel</button>
+        <button type="submit" class="btn btn-primary" data-testid="po-e-save">Save</button>
+      </div>
+    </div>
+  </form>
+</p-dialog>
+
+<p-dialog header="Reject purchase order" [(visible)]="displayReject" [modal]="true" [style]="{width: '34rem'}">
   <div class="mb-3">
     <label class="form-label" for="rejectReason">Reason</label>
     <textarea id="rejectReason" data-testid="po-reject-reason" class="form-control" [(ngModel)]="rejectReason" style="height: 120px;"></textarea>
   </div>
   <div class="text-end">
+    <button class="btn btn-outline-secondary me-2" (click)="displayReject = false">Cancel</button>
     <button class="btn btn-danger" data-testid="po-reject-confirm" (click)="onReject()">Reject</button>
   </div>
 </p-dialog>
