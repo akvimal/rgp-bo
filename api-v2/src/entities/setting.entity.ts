@@ -19,7 +19,7 @@ export class Setting extends BaseEntity {
   @Column("character varying", { name: "setting_key", unique: true, length: 120 })
   key: string;
 
-  @Column("character varying", { name: "setting_value", nullable: true, length: 400 })
+  @Column("character varying", { name: "setting_value", nullable: true, length: 2000 })
   value: string | null;
 
   @Column("character varying", { name: "description", nullable: true, length: 400 })
