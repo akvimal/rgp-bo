@@ -45,18 +45,16 @@ export class DocumentUploadComponent {
 
     // OnClick of button Upload
     onUpload() {
-        this.loading = !this.loading;
+        this.loading = true;
       
         this.service.upload(this.file,this.type+'='+this.entityId).pipe(
             catchError(error => {
-              this.error = error['error']['message'];
+              this.error = error?.error?.message || 'The file could not be uploaded. Try again.';
               this.loading = false;
-              return throwError(() => new Error(error['error']['message']));
+              return throwError(() => new Error(this.error));
             })
           ).subscribe(
             (event: any) => {
-                console.log('....',event);
-                
                 if (typeof (event) === 'object') {
                     this.error = '';
                     this.file = null;
@@ -70,7 +68,7 @@ export class DocumentUploadComponent {
 
     saveDocInfoToTable(event:any){
         if(event){
-            const extn = event.filename.substring(event.filename.indexOf('.')+1).toLowerCase();
+            const extn = event.filename.substring(event.filename.lastIndexOf('.')+1).toLowerCase();
             this.docService.save({name:event.originalname, path: event.path, extn, category: this.props['category'], 
                 alias: this.alias , 
                 docprops: JSON.stringify(this.props['props']), uploadprops: JSON.stringify(event) 
@@ -90,8 +88,6 @@ export class DocumentUploadComponent {
     }
     
     propsUpdate(event:any){
-        console.log(event);
-        
         this.valid = event.valid;
         this.props = event.values;
     }

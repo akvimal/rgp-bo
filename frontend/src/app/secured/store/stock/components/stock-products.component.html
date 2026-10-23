@@ -29,29 +29,14 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="title">Product
-                            <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
-                            <p-sortIcon field="title"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="bin_location">Location
-                            <p-columnFilter type="text" field="bin_location" display="menu"></p-columnFilter>
-                            <p-sortIcon field="bin_location"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="last_sale_date">Last
-                            <p-sortIcon field="last_sale_date"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="highest_customers" class="right">Cust.
-                            <!-- <p-columnFilter type="number" field="highest_customers" display="menu"></p-columnFilter> -->
-                            <p-sortIcon field="highest_customers"></p-sortIcon>
-                        </th>
+                        <th pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
+                        <th pSortableColumn="bin_location"><div class="th-bar"><span class="th-label">Location</span><p-columnFilter type="text" field="bin_location" display="menu"></p-columnFilter><p-sortIcon field="bin_location"></p-sortIcon></div></th>
+                        <th pSortableColumn="last_sale_date"><div class="th-bar"><span class="th-label">Last</span><p-sortIcon field="last_sale_date"></p-sortIcon></div></th>
+                        <th pSortableColumn="highest_customers" class="right"><div class="th-bar"><span class="th-label">Cust.</span><p-sortIcon field="highest_customers"></p-sortIcon></div></th>
                         <th class="right">Avg.<br>Sales</th>
                         <th class="right">High<br>Sales</th>
-                        <th pSortableColumn="balance" class="right">Avail
-                            <p-sortIcon field="balance"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="level" class="right">Level
-                            <p-sortIcon field="level"></p-sortIcon>
-                        </th>
+                        <th pSortableColumn="balance" class="right"><div class="th-bar"><span class="th-label">Avail</span><p-sortIcon field="balance"></p-sortIcon></div></th>
+                        <th pSortableColumn="level" class="right"><div class="th-bar"><span class="th-label">Level</span><p-sortIcon field="level"></p-sortIcon></div></th>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage"><tr><td colspan="8" class="text-center text-muted py-3">No products match.</td></tr></ng-template>

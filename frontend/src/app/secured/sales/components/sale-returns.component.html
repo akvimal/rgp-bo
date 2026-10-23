@@ -12,51 +12,18 @@
       <ng-template pTemplate="header">
         <tr>
           <!-- <th>Order #</th> -->
-          <th pSortableColumn="billno">Bill #
-            <p-columnFilter type="text" field="billno" display="menu"></p-columnFilter>
-            <p-sortIcon field="billno"></p-sortIcon>
-          </th>
-          <th pSortableColumn="returndate">Date
-            <p-columnFilter type="date" field="returndate" display="menu"></p-columnFilter>
-            <p-sortIcon field="returndate"></p-sortIcon>
-          </th> 
-          <th pSortableColumn="customer">Customer
-            <p-columnFilter type="text" field="customer" display="menu"></p-columnFilter>
-            <p-sortIcon field="customer"></p-sortIcon>
-          </th> 
-          <th pSortableColumn="product">Product
-            <p-columnFilter type="text" field="product" display="menu"></p-columnFilter>
-            <p-sortIcon field="product"></p-sortIcon>
-          </th>
-          <!-- <th pSortableColumn="batch">Batch
-            <p-columnFilter type="text" field="batch" display="menu"></p-columnFilter>
-            <p-sortIcon field="batch"></p-sortIcon>
-          </th>
-          <th pSortableColumn="expdate">Expiry
-            <p-columnFilter type="date" field="expdate" display="menu"></p-columnFilter>
-            <p-sortIcon field="expdate"></p-sortIcon>
-          </th> -->
-          <th pSortableColumn="qty">Qty
-            <p-columnFilter type="numeric" field="qty" display="menu"></p-columnFilter>
-            <p-sortIcon field="qty"></p-sortIcon>
-          </th> 
-          <!-- <th pSortableColumn="price">Price
-            <p-columnFilter type="numeric" field="price" display="menu"></p-columnFilter>
-            <p-sortIcon field="price"></p-sortIcon>
-          </th>  -->
-          <!-- <th pSortableColumn="total">Amount
-            <p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter>
-            <p-sortIcon field="total"></p-sortIcon>
-          </th>  -->
-          <!-- <th pSortableColumn="reason">Reason
-            <p-columnFilter type="text" field="reason" display="menu"></p-columnFilter>
-            <p-sortIcon field="reason"></p-sortIcon>
-          </th> -->
+          <th pSortableColumn="billno"><div class="th-bar"><span class="th-label">Bill No.</span><p-columnFilter type="text" field="billno" display="menu"></p-columnFilter><p-sortIcon field="billno"></p-sortIcon></div></th>
+          <th pSortableColumn="returndate"><div class="th-bar"><span class="th-label">Date</span><p-columnFilter type="date" field="returndate" display="menu"></p-columnFilter><p-sortIcon field="returndate"></p-sortIcon></div></th> 
+          <th pSortableColumn="customer"><div class="th-bar"><span class="th-label">Customer</span><p-columnFilter type="text" field="customer" display="menu"></p-columnFilter><p-sortIcon field="customer"></p-sortIcon></div></th> 
+          <th pSortableColumn="product"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="product" display="menu"></p-columnFilter><p-sortIcon field="product"></p-sortIcon></div></th>
+          <!-- <th pSortableColumn="batch"><div class="th-bar"><span class="th-label">Batch</span><p-columnFilter type="text" field="batch" display="menu"></p-columnFilter><p-sortIcon field="batch"></p-sortIcon></div></th>
+          <th pSortableColumn="expdate"><div class="th-bar"><span class="th-label">Expiry</span><p-columnFilter type="date" field="expdate" display="menu"></p-columnFilter><p-sortIcon field="expdate"></p-sortIcon></div></th> -->
+          <th pSortableColumn="qty"><div class="th-bar"><span class="th-label">Qty</span><p-columnFilter type="numeric" field="qty" display="menu"></p-columnFilter><p-sortIcon field="qty"></p-sortIcon></div></th> 
+          <!-- <th pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-columnFilter type="numeric" field="price" display="menu"></p-columnFilter><p-sortIcon field="price"></p-sortIcon></div></th>  -->
+          <!-- <th pSortableColumn="total"><div class="th-bar"><span class="th-label">Amount</span><p-columnFilter type="numeric" field="total" display="menu"></p-columnFilter><p-sortIcon field="total"></p-sortIcon></div></th>  -->
+          <!-- <th pSortableColumn="reason"><div class="th-bar"><span class="th-label">Reason</span><p-columnFilter type="text" field="reason" display="menu"></p-columnFilter><p-sortIcon field="reason"></p-sortIcon></div></th> -->
           <th>Reason</th>
-          <!-- <th pSortableColumn="status">Status
-            <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
-            <p-sortIcon field="status"></p-sortIcon>
-          </th> -->
+          <!-- <th pSortableColumn="status"><div class="th-bar"><span class="th-label">Status</span><p-columnFilter type="text" field="status" display="menu"></p-columnFilter><p-sortIcon field="status"></p-sortIcon></div></th> -->
           <th>Actions</th>
         </tr>
       </ng-template>

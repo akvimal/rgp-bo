@@ -57,10 +57,7 @@
       <ng-template pTemplate="header">
         <tr>
           <th *ngFor="let col of cols" [pSortableColumn]="col.field"
-            [class.text-end]="col.align === 'end'">
-            {{ col.header }}
-            <p-sortIcon [field]="col.field"></p-sortIcon>
-          </th>
+            [class.text-end]="col.align === 'end'"><div class="th-bar"><span class="th-label">{{ col.header }}</span><p-sortIcon [field]="col.field"></p-sortIcon></div></th>
         </tr>
       </ng-template>
 

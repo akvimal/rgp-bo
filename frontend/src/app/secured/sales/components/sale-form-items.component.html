@@ -23,12 +23,12 @@
                 </td>
                 <td class="text-nowrap">{{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span></td>
                 <td class="text-end">{{item.mrpcost | number : '1.2-2'}}</td>
-                <td class="text-end">
+                <td>
                     <span *ngIf="!item.edited">{{item.qty}}</span>
-                    <div *ngIf="item.edited" class="d-flex align-items-center justify-content-end gap-2 text-nowrap">
+                    <div *ngIf="item.edited" class="d-flex align-items-center gap-2 text-nowrap">
                         <input [value]="item.qty" [disabled]="item.maxqty == 0" class="form-control form-control-sm text-end" style="width:4.5rem"
                             [class.is-invalid]="+item.qty > +item.maxqty" (input)="changeItemQty(item.itemid,$event)" aria-label="Units" data-testid="sale-qty" [attr.data-itemid]="item.itemid">
-                        <span class="small" [class.text-danger]="item.unitsbal < 0" [class.text-muted]="item.unitsbal >= 0" title="Left in stock after this bill">{{item.unitsbal}} left</span>
+                        <span class="small flex-grow-1 text-end" style="min-width:3.5rem" [class.text-danger]="item.unitsbal < 0" [class.text-muted]="item.unitsbal >= 0" title="Left in stock after this bill">{{item.unitsbal}} left</span>
                     </div>
                 </td>
                 <td class="text-end">{{item.price | number : '1.2-2'}}</td>
@@ -38,20 +38,21 @@
             <!-- the new row: the product search sits where the next line will be, and choosing a product moves focus to its units -->
             <tr data-testid="sale-add-item" class="table-light">
                 <td class="text-center text-muted"><i class="bi bi-plus-lg"></i></td>
-                <td colspan="7">
+                <td>
                     <app-stock-select (stockSelected)="selectProduct($event)" [excludeItems]="getItemsInForm()"></app-stock-select>
                 </td>
+                <td colspan="6"></td>
             </tr>
             <!-- what to do when the product is not in stock: the last line of the grid, after the search -->
             <tr data-testid="sale-add-item-links-row">
                 <td></td>
-                <td colspan="7" class="small" data-testid="sale-add-item-links"><ng-content></ng-content></td>
+                <td colspan="7" class="small">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <span data-testid="sale-add-item-links"><ng-content></ng-content></span>
+                        <app-sale-suggestions [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
+                    </div>
+                </td>
             </tr>
         </tbody>
     </table>
-</div>
-
-<!-- under the grid: ideas for the customer, kept quiet -->
-<div class="d-flex justify-content-end align-items-center mt-1">
-    <app-sale-suggestions [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
 </div>

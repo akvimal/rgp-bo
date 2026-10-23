@@ -57,7 +57,7 @@ test.describe('New sale form @p1', () => {
     const mine = page.getByTestId('stock-option').filter({ hasText: title });
     await expect(mine.first()).toBeVisible();
     expect(await mine.count()).toBeGreaterThan(1);
-    await expect(mine.first()).toContainText('in stock');
+    await expect(mine.first()).not.toContainText('in stock');                                       // stock is not spelled out; only an icon marks none
     await expect(mine.first()).toContainText('₹');
     await expect(mine.locator('.badge', { hasText: 'sell first' })).toHaveCount(1);                 // one batch, the earliest to expire
     const first = (multi as any[]).map((r) => String(r.exp_date).slice(0, 10)).sort()[0];
@@ -86,6 +86,8 @@ test.describe('New sale form @p1', () => {
     }
     const heights = await page.getByTestId('sale-line').evaluateAll((trs) => trs.map((tr) => tr.getBoundingClientRect().height));
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(2);                               // no row taller than the others
+    const boxes = await page.getByTestId('sale-line').locator('input[aria-label="Units"]').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+    expect(new Set(boxes).size).toBe(1);                                                              // every Units box starts at the same place, whatever its "left" says
     const left = page.getByTestId('sale-line').first().locator('span', { hasText: 'left' }).first();
     expect((await left.boundingBox())!.height).toBeLessThan(24);                                       // "951 left" is one line
 
@@ -124,6 +126,22 @@ test.describe('New sale form @p1', () => {
     const { page } = await app.open(email, '/secure/sales/pos/new');
     await expect(page.getByTestId('sale-bill-bar')).toBeVisible();
     await expect(page.getByTestId('sale-tabs')).toHaveCount(saved.length > 0 ? 1 : 0);   // nothing saved: the blank bill is all there is
+  });
+
+  test('POSF-8 the product box is as wide as the Product column, and its list opens wide enough to read @happy', async ({ app, api }) => {
+    const line = (await sellable(api))[0];
+    test.skip(!line, 'no sellable stock');
+    const { page } = await app.open(COUNTER, '/secure/sales/pos/new', { operatorId: 3, operatorName: 'Sale Staff One' });
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await expect(page.locator('[data-testid=sale-add-item] input').first()).toBeVisible();
+    const box = (await page.locator('[data-testid=sale-add-item] input').first().boundingBox())!;
+    const head = (await page.locator('table:has([data-testid=sale-add-item]) thead th').nth(1).boundingBox())!;
+    expect(Math.abs(box.width - head.width)).toBeLessThan(40);                                      // the Product column, not the whole row
+    expect(box.width).toBeLessThan(700);
+    await page.locator('[data-testid=sale-add-item] input').first().fill(String(line.title).slice(0, 4));
+    const panel = page.locator('.stock-select-panel');
+    await expect(panel).toBeVisible();
+    expect((await panel.boundingBox())!.width).toBeGreaterThan(520);
   });
 
   test('POSF-7 the empty mobile box asks for the number and says why @happy', async ({ app }) => {

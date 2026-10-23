@@ -39,102 +39,70 @@
       <thead> -->
       <div class="row">
       <div class="col-12">
-      <p-table #dt1 [value]="sales" 
+      <p-table #dt1 [value]="sales" data-testid="invoice-table"
       [multiSortMeta]="[{field: 'billdate', order: -1}, {field: 'billno', order: -1}]"
-      [resizableColumns]="true" columnResizeMode="expand" 
+     
         [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
         [rowsPerPageOptions]="[10,25,50]">
         <ng-template pTemplate="header">
             <tr>
-              <th width="5%"></th>
-              <!-- <th>Order #</th> -->
-              <th pSortableColumn="billno">Bill No.
-                <p-columnFilter type="text" field="billno" display="menu"></p-columnFilter>
-                <p-sortIcon field="billno"></p-sortIcon>
-              </th>
-              <th pSortableColumn="billdate">Bill Date
-                <p-columnFilter type="date" field="billdate" display="menu"></p-columnFilter>
-                <p-sortIcon field="billdate"></p-sortIcon>
-              </th>
-              
-              <th pSortableColumn="custinfo">Customer
-                <p-columnFilter type="text" field="custinfo" display="menu"></p-columnFilter>
-                <p-sortIcon field="custinfo"></p-sortIcon>
-              </th>
-              <!-- <th pSortableColumn="status">Status
-                <p-columnFilter type="text" field="status" display="menu"></p-columnFilter>
-                <p-sortIcon field="status"></p-sortIcon>
-              </th> -->
-              <th>Digital</th>
-              <th>Cash</th>
-              <th>Total</th>
-              
-              <th>Sale Staff</th>
+              <th style="width:6rem"></th>
+              <th pSortableColumn="billno"><div class="th-bar"><span class="th-label">Bill No.</span><p-columnFilter type="text" field="billno" display="menu"></p-columnFilter><p-sortIcon field="billno"></p-sortIcon></div></th>
+              <th pSortableColumn="billdate"><div class="th-bar"><span class="th-label">Bill Date</span><p-columnFilter type="date" field="billdate" display="menu"></p-columnFilter><p-sortIcon field="billdate"></p-sortIcon></div></th>
+              <th pSortableColumn="custinfo"><div class="th-bar"><span class="th-label">Customer</span><p-columnFilter type="text" field="custinfo" display="menu"></p-columnFilter><p-sortIcon field="custinfo"></p-sortIcon></div></th>
+              <th pSortableColumn="digiamt"><div class="th-bar"><span class="th-label">Digital</span><p-sortIcon field="digiamt"></p-sortIcon></div></th>
+              <th pSortableColumn="cashamt"><div class="th-bar"><span class="th-label">Cash</span><p-sortIcon field="cashamt"></p-sortIcon></div></th>
+              <th pSortableColumn="total"><div class="th-bar"><span class="th-label">Total</span><p-sortIcon field="total"></p-sortIcon></div></th>
+              <th pSortableColumn="staffname"><div class="th-bar"><span class="th-label">Sale Staff</span><p-columnFilter type="text" field="staffname" display="menu"></p-columnFilter><p-sortIcon field="staffname"></p-sortIcon></div></th>
               <th>Actions</th>
             </tr>
-          <!-- </thead>
-            <tbody> -->
-            </ng-template>
-            <ng-template pTemplate="body" let-s>
-              <tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-s>
+              <tr data-testid="invoice-row">
                 <td>
-                  <h4 class="icon" *ngIf="s.ordertype=='Walk-in'"><i class="bi bi-shop"></i></h4>
-                  <h4 class="icon" *ngIf="s.ordertype=='Phone'"><i class="bi bi-telephone-inbound-fill"></i></h4>
-                  <h4 class="icon" *ngIf="s.ordertype=='Whatsapp'"><i class="bi bi-whatsapp"></i></h4>
-                  <h4 class="icon" *ngIf="s.deliverytype=='Counter'"><i class="bi bi-bag-check-fill"></i></h4>
-                  <h4 class="icon" *ngIf="s.deliverytype=='Delivery'"><i class="bi bi-truck"></i></h4>
-                  <h4 class="icon text-danger" *ngIf="s.docpending == true"><i class="bi bi-exclamation-triangle"></i></h4>
+                  <h4 class="icon" *ngIf="s.ordertype=='Walk-in'" title="Walk-in"><i class="bi bi-shop"></i></h4>
+                  <h4 class="icon" *ngIf="s.ordertype=='Phone'" title="Phone order"><i class="bi bi-telephone-inbound-fill"></i></h4>
+                  <h4 class="icon" *ngIf="s.ordertype=='Whatsapp'" title="WhatsApp order"><i class="bi bi-whatsapp"></i></h4>
+                  <h4 class="icon" *ngIf="s.deliverytype=='Counter'" title="Taken at the counter"><i class="bi bi-bag-check-fill"></i></h4>
+                  <h4 class="icon" *ngIf="s.deliverytype=='Delivery'" title="Delivered"><i class="bi bi-truck"></i></h4>
+                  <h4 class="icon text-danger" *ngIf="s.docpending == true" title="A document is still to come"><i class="bi bi-exclamation-triangle"></i></h4>
                 </td>
-                <!-- <td>{{s.orderno}}</td> -->
-                <!-- <td>
-                  <a>{{s.orderno}}</a>
-                </td> -->
-                <td>
-                  <a>{{s.billno}}</a>
-                </td>
-                <td>{{s.billdate | date: 'dd MMM yyyy, h:mm a'}}</td>
+                <td><a [routerLink]="['../pos/view',s.id]" data-testid="bill-link">{{s.billno}}</a></td>
+                <td class="text-nowrap">{{s.billdate | date: 'dd MMM yyyy, h:mm a'}}</td>
                 <td>{{s.custinfo}}</td>
-                <!-- <td>{{s.customer ? s.customer.name : ''}}</td> -->
-                <!-- <td>{{s.customer ? s.customer.mobile : ''}}</td> -->
-                <!-- <td>{{s.status}}</td> -->
-                <td style="text-align: right;">{{s.digiamt}}</td>
-                <td style="text-align: right;">{{s.cashamt}}</td>
-                <td style="text-align: right;">{{s.total}}</td>
-                
-                <td>{{s.actinguser ? s.actinguser.fullname : (s.created ? s.created.fullname : '')}}</td>
+                <td class="text-end">{{s.digiamt | number:'1.2-2'}}</td>
+                <td class="text-end">{{s.cashamt | number:'1.2-2'}}</td>
+                <td class="text-end fw-semibold">{{s.total | number:'1.2-2'}}</td>
+                <td>{{s.staffname}}</td>
                 <td>
-                  <h4 class="icon"*ngIf="isActionAllowed('Print',s)">
-                    <a [routerLink]="['../pos/view',s.id]"><i class="bi bi-eye"></i></a>
+                  <h4 class="icon" *ngIf="isActionAllowed('Print',s)">
+                    <a [routerLink]="['../pos/view',s.id]" title="View"><i class="bi bi-eye"></i></a>
                   </h4>
-                  <h4 class="icon"*ngIf="isActionAllowed('Edit',s)">
-                    <a [routerLink]="['../pos/edit',s.id]"><i class="bi bi-pencil"></i></a>
+                  <h4 class="icon" *ngIf="isActionAllowed('Edit',s)">
+                    <a [routerLink]="['../pos/edit',s.id]" title="Edit"><i class="bi bi-pencil"></i></a>
                   </h4>
                   <h4 class="icon" *ngIf="isActionAllowed('Return',s)">
-                  <i class="bi bi-arrow-return-left" (click)="showReturn(s.id)"></i>
-                </h4>
-                <h4 class="icon" *ngIf="s.props && s.props['documents'] && s.props['documents'].length > 0">
-                  <i class="bi bi-files"></i>
-                </h4>
-                <!-- <h5  *ngIf="isActionAllowed('Delivery',s)"style="float:left; margin-right: 0.3em;">
-                  <i class="bi bi-envelope" (click)="showDelivery(s.id)"></i>
-                </h5> -->
-                
-                  <!-- <a *ngIf="isActionAllowed('Cancel',s)" [routerLink]="['../edit',s.id]">Cancel</a> -->
+                    <i class="bi bi-arrow-return-left" title="Return" (click)="showReturn(s.id)"></i>
+                  </h4>
+                  <h4 class="icon" *ngIf="s.props && s.props['documents'] && s.props['documents'].length > 0" title="Has documents">
+                    <i class="bi bi-files"></i>
+                  </h4>
                 </td>
-              </tr>  
-            <!-- </tbody>
-          </table> -->
+              </tr>
         </ng-template>
         <ng-template pTemplate="footer">
           <tr>
               <td colspan="4" class="text-end">Total</td>
-              <td style="text-align: right;">{{totals['digital']}}</td>
-              <td style="text-align: right;">{{totals['cash']}}</td>
-              <td style="text-align: right;">{{totals['net']}}</td>
-              <td colspan="4"></td>
+              <td class="text-end fw-semibold" data-testid="total-digital">{{totals['digital'] | number:'1.2-2'}}</td>
+              <td class="text-end fw-semibold" data-testid="total-cash">{{totals['cash'] | number:'1.2-2'}}</td>
+              <td class="text-end fw-semibold" data-testid="total-net">{{totals['net'] | number:'1.2-2'}}</td>
+              <td colspan="2"></td>
           </tr>
-      </ng-template>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="9" class="text-center text-muted py-3">No bills for this date.</td></tr>
+        </ng-template>
       </p-table>
 </div>
 <!-- <div class="col-7">
@@ -169,45 +137,44 @@
           </ng-container>
         </div>
 
-        <!-- Summary table -->
-        <div class="table-responsive">
-          <table class="table table-sm table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>Staff</th>
-                <th class="text-end">Bills</th>
-                <th class="text-end">Cash</th>
-                <th class="text-end">Digital</th>
-                <th class="text-end">Net Sales</th>
-                <th class="text-end">Returns</th>
-                <th class="text-end">Returns Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let row of staffSummary">
-                <td>{{row.staff_name || 'Unassigned'}}</td>
-                <td class="text-end">{{row.sales_count}}</td>
-                <td class="text-end">₹{{row.cash_total | number:'1.0-0'}}</td>
-                <td class="text-end">₹{{row.digi_total | number:'1.0-0'}}</td>
-                <td class="text-end fw-semibold">₹{{row.net_total | number:'1.0-0'}}</td>
-                <td class="text-end text-muted">{{row.return_count}}</td>
-                <td class="text-end text-danger">{{row.return_count > 0 ? ('₹' + (row.return_value | number:'1.0-0')) : '—'}}</td>
-              </tr>
-              <tr *ngIf="staffSummary.length > 1" class="table-secondary fw-semibold">
-                <td>Total</td>
-                <td class="text-end">{{staffTotals.bills}}</td>
-                <td class="text-end">₹{{staffTotals.cash | number:'1.0-0'}}</td>
-                <td class="text-end">₹{{staffTotals.digi | number:'1.0-0'}}</td>
-                <td class="text-end">₹{{staffTotals.net | number:'1.0-0'}}</td>
-                <td class="text-end">{{staffTotals.returns}}</td>
-                <td class="text-end text-danger">₹{{staffTotals.returnValue | number:'1.0-0'}}</td>
-              </tr>
-              <tr *ngIf="!staffSummary.length">
-                <td colspan="7" class="text-center text-muted py-3">No sales data for this period.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <p-table [value]="staffSummary" styleClass="p-datatable-gridlines" data-testid="staff-table">
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="staff_name"><div class="th-bar"><span class="th-label">Staff</span><p-sortIcon field="staff_name"></p-sortIcon></div></th>
+              <th pSortableColumn="sales_count"><div class="th-bar"><span class="th-label">Bills</span><p-sortIcon field="sales_count"></p-sortIcon></div></th>
+              <th pSortableColumn="cash_total"><div class="th-bar"><span class="th-label">Cash</span><p-sortIcon field="cash_total"></p-sortIcon></div></th>
+              <th pSortableColumn="digi_total"><div class="th-bar"><span class="th-label">Digital</span><p-sortIcon field="digi_total"></p-sortIcon></div></th>
+              <th pSortableColumn="net_total"><div class="th-bar"><span class="th-label">Net Sales</span><p-sortIcon field="net_total"></p-sortIcon></div></th>
+              <th pSortableColumn="return_count"><div class="th-bar"><span class="th-label">Returns</span><p-sortIcon field="return_count"></p-sortIcon></div></th>
+              <th pSortableColumn="return_value"><div class="th-bar"><span class="th-label">Returns Value</span><p-sortIcon field="return_value"></p-sortIcon></div></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-row>
+            <tr data-testid="staff-row">
+              <td>{{row.staff_name || 'Unassigned'}}</td>
+              <td class="text-end">{{row.sales_count}}</td>
+              <td class="text-end">{{row.cash_total | number:'1.2-2'}}</td>
+              <td class="text-end">{{row.digi_total | number:'1.2-2'}}</td>
+              <td class="text-end fw-semibold">{{row.net_total | number:'1.2-2'}}</td>
+              <td class="text-end">{{row.return_count}}</td>
+              <td class="text-end">{{row.return_value | number:'1.2-2'}}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="footer">
+            <tr *ngIf="staffSummary.length > 1">
+              <td class="text-end">Total</td>
+              <td class="text-end fw-semibold">{{staffTotals.bills}}</td>
+              <td class="text-end fw-semibold">{{staffTotals.cash | number:'1.2-2'}}</td>
+              <td class="text-end fw-semibold">{{staffTotals.digi | number:'1.2-2'}}</td>
+              <td class="text-end fw-semibold">{{staffTotals.net | number:'1.2-2'}}</td>
+              <td class="text-end fw-semibold">{{staffTotals.returns}}</td>
+              <td class="text-end fw-semibold">{{staffTotals.returnValue | number:'1.2-2'}}</td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr><td colspan="7" class="text-center text-muted py-3">No sales for this period.</td></tr>
+          </ng-template>
+        </p-table>
       </div>
     </p-tabPanel>
   </p-tabView>

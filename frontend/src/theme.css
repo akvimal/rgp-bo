@@ -307,3 +307,52 @@ nav.navbar ul.page-menu { border: 0; margin: 0 !important; }
 
 /* ------------------------------------------------------------------ counter lookup fields keep a quiet tint, not cyan */
 .p-autocomplete .p-inputtext { border-color: #b9c4f7; }
+
+/* ------------------------------------------------------------------ customer history popup: orders, store credit, documents
+   One set of parts so the three tabs and the document viewer look like one screen. */
+.hist-strip { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; align-items: center; background: var(--rgp-head-bg); border: 1px solid var(--rgp-line); border-radius: var(--rgp-radius); padding: .45rem .75rem; margin-bottom: .75rem; font-size: .85rem; color: var(--rgp-text); }
+.hist-strip i { color: var(--rgp-brand); margin-right: .35rem; }
+.hist-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
+.hist-hint { font-size: .8rem; color: var(--rgp-muted); }
+.hist-label { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--rgp-muted); }
+.hist-empty { text-align: center; color: var(--rgp-muted); padding: 2rem 1rem; }
+.hist-empty i { display: block; font-size: 1.8rem; color: #b7c0d6; margin-bottom: .35rem; }
+.hist-card { border: 1px solid var(--rgp-line); border-radius: var(--rgp-radius); background: #fff; overflow: hidden; }
+.hist-card-head { background: var(--rgp-head-bg); border-bottom: 1px solid var(--rgp-line); padding: .5rem .75rem; font-weight: 700; font-size: .85rem; color: #3b4a6b; }
+.hist-card-body { padding: .75rem; }
+.hist-bill { border: 1px solid var(--rgp-line); border-radius: var(--rgp-radius); margin-bottom: .6rem; overflow: hidden; background: #fff; }
+.hist-bill-head { display: flex; align-items: center; gap: .75rem; background: var(--rgp-head-bg); border-bottom: 1px solid var(--rgp-line); padding: .45rem .75rem; }
+.hist-bill-head label { display: flex; align-items: center; gap: .5rem; margin: 0; color: var(--rgp-navy); }
+.hist-bill .table { margin-bottom: 0; }
+.hist-bill .table th { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--rgp-muted); border-bottom-color: var(--rgp-line); }
+.hist-bill .table td, .hist-bill .table th { padding: .35rem .75rem; vertical-align: middle; }
+.hist-bill .table .hist-pick { width: 2.25rem; }
+.hist-balance { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; border: 1px solid var(--rgp-line); border-radius: var(--rgp-radius); background: var(--rgp-head-bg); padding: .6rem .9rem; margin-bottom: .75rem; }
+.hist-amount { font-size: 1.4rem; font-weight: 700; color: var(--rgp-navy); line-height: 1.2; }
+.hist-docs { display: grid; grid-template-columns: minmax(15rem, 20rem) 1fr; gap: 1rem; align-items: start; }
+.hist-doc { display: flex; align-items: flex-start; gap: .6rem; border: 1px solid var(--rgp-line); border-radius: var(--rgp-radius); padding: .5rem .6rem; margin-bottom: .5rem; background: #fff; }
+.hist-doc:hover { background: var(--rgp-hover-bg); }
+.hist-doc.active { border-color: var(--rgp-brand); background: var(--rgp-brand-soft); }
+.hist-doc > i { font-size: 1.3rem; color: var(--rgp-brand); line-height: 1.4; }
+.hist-doc-body { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; }
+.hist-doc-title { font-weight: 700; color: var(--rgp-navy); overflow-wrap: anywhere; }
+.hist-doc-meta { font-size: .78rem; color: var(--rgp-muted); display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: center; }
+.hist-props { display: flex; flex-wrap: wrap; gap: .1rem .75rem; font-size: .78rem; color: var(--rgp-text); margin-top: .15rem; }
+.hist-props .hist-label { margin-right: .25rem; }
+.hist-preview { border: 1px solid var(--rgp-line); border-radius: var(--rgp-radius); background: #fff; overflow: hidden; min-height: 20rem; display: flex; flex-direction: column; }
+.hist-preview-bar { display: flex; align-items: center; gap: .5rem; padding: .45rem .75rem; background: var(--rgp-head-bg); border-bottom: 1px solid var(--rgp-line); }
+.hist-preview-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: .5rem; background: #f3f5fa; min-height: 18rem; }
+.hist-preview-body img { max-width: 100%; max-height: 28rem; object-fit: contain; }
+.hist-preview-body embed { width: 100%; height: 28rem; }
+@media (max-width: 900px) { .hist-docs { grid-template-columns: 1fr; } }
+
+/* the product list on the sale form opens wide enough to read, whatever the width of the box it opens from */
+.stock-select-panel { min-width: 34rem !important; }
+
+/* a list column header: the name on the left (against the numbers for a number column), sort and filter together at the right edge */
+.th-bar { display: flex; align-items: center; gap: .35rem; }
+.th-bar .th-label { flex: 1 1 auto; white-space: nowrap; }
+.th-bar .p-column-filter, .th-bar .p-sortable-column-icon { flex: 0 0 auto; }
+
+/* every grid heading reads from the left, whatever the column below holds; sort and filter always follow it, filter first */
+.p-datatable .p-datatable-thead > tr > th { text-align: left !important; }

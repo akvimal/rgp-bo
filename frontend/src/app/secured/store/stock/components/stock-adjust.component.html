@@ -6,32 +6,14 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                      <!-- <th pSortableColumn="itemid">ID
-                          <p-columnFilter type="text" field="itemid" display="menu"></p-columnFilter>
-                          <p-sortIcon field="itemid"></p-sortIcon>
-                      </th> -->
-                      <th pSortableColumn="title">Product
-                          <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
-                          <p-sortIcon field="title"></p-sortIcon>
-                      </th>
-                      <th pSortableColumn="qty">Qty
-                        <p-sortIcon field="qty"></p-sortIcon>
-                    </th>
-                    <!-- <th pSortableColumn="price">Price
-                      <p-sortIcon field="price"></p-sortIcon>
-                  </th> -->
-                    <th pSortableColumn="date">Date
-                        <p-columnFilter type="date" field="date" display="menu"></p-columnFilter>
-                        <p-sortIcon field="date"></p-sortIcon>
-                    </th>
+                      <!-- <th pSortableColumn="itemid"><div class="th-bar"><span class="th-label">ID</span><p-columnFilter type="text" field="itemid" display="menu"></p-columnFilter><p-sortIcon field="itemid"></p-sortIcon></div></th> -->
+                      <th pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
+                      <th pSortableColumn="qty"><div class="th-bar"><span class="th-label">Qty</span><p-sortIcon field="qty"></p-sortIcon></div></th>
+                    <!-- <th pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th> -->
+                    <th pSortableColumn="date"><div class="th-bar"><span class="th-label">Date</span><p-columnFilter type="date" field="date" display="menu"></p-columnFilter><p-sortIcon field="date"></p-sortIcon></div></th>
   
-                      <th>Reason
-                        <p-columnFilter type="text" field="reason" display="menu"></p-columnFilter>
-                          <!-- <p-sortIcon field="reason"></p-sortIcon> -->
-                      </th>
-                      <th pSortableColumn="status">Status
-                        <p-sortIcon field="status"></p-sortIcon>
-                      </th>
+                      <th><div class="th-bar"><span class="th-label">Reason</span><p-columnFilter type="text" field="reason" display="menu"></p-columnFilter></div></th>
+                      <th pSortableColumn="status"><div class="th-bar"><span class="th-label">Status</span><p-sortIcon field="status"></p-sortIcon></div></th>
                       <th>Actions</th>
                     </tr>
                 </ng-template>

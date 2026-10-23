@@ -12,12 +12,13 @@ export class CustomerDocumentsComponent {
     @Output() selected:EventEmitter<any> = new EventEmitter();
 
     ids = [];
+    loading = true;
     copyProps:any;
 
     constructor(private service:CustomersService){}
 
     ngOnChanges(changes:SimpleChanges){
-        if(changes.customer.currentValue){
+        if(changes.customer && changes.customer.currentValue){
             const customer = changes.customer.currentValue;
             this.fetchDocuments(customer.id);
             this.copyProps = {ptntname:customer['name'],ptntmobile:customer['mobile']}
@@ -25,9 +26,11 @@ export class CustomerDocumentsComponent {
     }
 
     fetchDocuments(customerId:number){
+        this.loading = true;
         this.service.findAllDocuments(customerId).subscribe((data:any) => {
             this.ids = data.map((d:any) => d.id);
-        });
+            this.loading = false;
+        }, () => { this.loading = false; });
     }
 
     onUpload(event:any){
@@ -38,9 +41,7 @@ export class CustomerDocumentsComponent {
     }
 
     removedSelectedItem(event:any){
-        this.service.removeDocuments(this.customer.id, event).subscribe(result => {
-           console.log('removed');           
-        });
+        this.service.removeDocuments(this.customer.id, event).subscribe(() => this.fetchDocuments(this.customer.id));
     }
 
     copySelectedItem(event:any){       

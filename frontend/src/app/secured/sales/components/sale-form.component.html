@@ -28,7 +28,7 @@
             <!-- The bill itself -->
             <div class="ms-xl-auto">
                 <div class="d-flex flex-wrap flex-xl-nowrap align-items-center justify-content-xl-end gap-3 small">
-                    <span class="text-nowrap" *ngIf="sale.status !== 'NEW' && sale.billno"><span class="text-muted">Bill</span> <strong>{{sale.billno}}</strong></span>
+                    <span class="text-nowrap d-inline-flex align-items-baseline gap-2 me-2" *ngIf="sale.status !== 'NEW' && sale.billno" data-testid="sale-billno"><span class="text-muted">Bill no.</span> <strong class="fs-5">{{sale.billno}}</strong></span>
                     <label class="d-flex align-items-center gap-1 mb-0 text-nowrap">
                         <span class="text-muted">Order came by</span>
                         <select [(ngModel)]="sale.ordertype" class="form-select form-select-sm w-auto" data-testid="sale-ordertype">
@@ -76,7 +76,7 @@
                 <app-sale-payment [total]="sale.total||0" [customerId]="sale.customer?.existing ? sale.customer?.id : null" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
             </div>
             <div class="col-lg-4 text-lg-end">
-                <div class="small text-muted"><strong>{{sale.items.length}}</strong> item{{sale.items.length === 1 ? '' : 's'}}<span *ngIf="sale.saving"> &middot; saving {{sale.saving}}%</span></div>
+                <div class="fs-5 text-muted" data-testid="sale-itemcount"><strong class="text-body">{{sale.items.length}}</strong> item{{sale.items.length === 1 ? '' : 's'}}<span class="fs-6" *ngIf="sale.saving"> &middot; saving {{sale.saving}}%</span></div>
                 <div class="small text-muted" *ngIf="roundOff !== 0" data-testid="sale-roundoff">Lines {{linesSum | number : '1.2-2'}} &middot; round off {{roundOff | number : '1.2-2'}}</div>
                 <div class="d-flex align-items-baseline justify-content-lg-end gap-2">
                     <span class="text-muted">Total</span>
@@ -118,17 +118,20 @@
     <button (click)="submit('COMPLETE')" class="btn btn-primary btn-lg px-5" [disabled]="!isSaleFormValid() || chronicMobileMissing" data-testid="sale-complete">Complete</button>
 </div>
 
-<div class="documents mt-3" *ngIf="documents.length > 0">
-    <h6 style="background: #dea;padding:.5em">Documents</h6>
-    <ul>
-        <li *ngFor="let doc of documents">
-            <h4 class="icon"><a (click)="removeDocument(doc.id)"><i class="bi bi-trash"></i></a></h4>
-            <strong>{{doc.category}}</strong>
-            <app-obj-print [obj]="doc.props" [json]="false"></app-obj-print>
-            {{doc.name}}
-            <h4 class="icon"><a (click)="viewDoc(doc)"><i class="bi bi-eye"></i></a></h4>
-        </li>
-    </ul>
+<div class="hist-card mt-3" *ngIf="documents.length > 0" data-testid="sale-documents">
+    <div class="hist-card-head">Documents on this bill</div>
+    <div class="hist-card-body">
+        <div class="hist-doc" *ngFor="let doc of documents" data-testid="sale-document">
+            <i class="bi bi-file-earmark-text"></i>
+            <div class="hist-doc-body">
+                <div class="hist-doc-title">{{doc.alias || doc.name || doc.category}}</div>
+                <div class="hist-doc-meta"><span class="badge bg-light text-dark border" *ngIf="doc.category">{{doc.category}}</span></div>
+                <app-obj-print [obj]="doc.props" [json]="false"></app-obj-print>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="viewDoc(doc)" title="View"><i class="bi bi-eye"></i> View</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" (click)="removeDocument(doc.id)" title="Remove from this bill"><i class="bi bi-trash"></i></button>
+        </div>
+    </div>
 </div>
 
 <!-- Customer View -->
@@ -136,6 +139,6 @@
         [(visible)]="showCustomerView" [style]="{ width: '75rem', height: '40rem' }" [modal]="true" [maximizable]="true">
     <app-customer-view *ngIf="sale.customer && sale.customer.id" [id]="sale.customer.id" (selected)="onCustomerData($event)"></app-customer-view>
 </p-dialog>
-<p-dialog [(visible)]="showDocument" >
-    <app-document-viewer [path]="docpath"></app-document-viewer>
+<p-dialog [header]="docname || 'Document'" [(visible)]="showDocument" [modal]="true" [style]="{ width: '60rem' }" [dismissableMask]="true">
+    <app-document-viewer *ngIf="showDocument" [path]="docpath" [name]="docname"></app-document-viewer>
 </p-dialog>

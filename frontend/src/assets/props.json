@@ -121,6 +121,7 @@
         {
           "id": "doctorphone",
           "label": "Doctor Phone",
+          "type": "phone",
           "required":true
         },
         {
@@ -131,6 +132,7 @@
         {
           "id": "ptntmobile",
           "label": "Patient Phone",
+          "type": "phone",
           "required": true
         }
       ]

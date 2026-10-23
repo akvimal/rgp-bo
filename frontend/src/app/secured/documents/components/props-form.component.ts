@@ -32,6 +32,19 @@ export class PropsFormComponent{
       });
     }
 
+    /** a phone number takes digits only, ten at most */
+    phoneInput(key:any,event:any){
+      const digits = String(event.target.value || '').replace(/\D/g,'').slice(0,10);
+      if(digits !== event.target.value) event.target.value = digits;
+      this.form.get(['props',key])?.setValue(digits);
+      this.dataInput('phone',key,event);
+    }
+
+    phoneBad(key:any): boolean {
+      const c = this.form.get(['props',key]);
+      return !!c && !!c.value && c.invalid;
+    }
+
     dataInput(type:any,key:any,event:any){
       if(this.validate)
       this.updated.emit({valid:this.form.valid, values:{category: this.form.controls['category'].value, props:this.mapToLabelValues(this.form.value)}});
@@ -68,9 +81,10 @@ export class PropsFormComponent{
           const pname = this.props[i].id;
           const value = values ? values[pname] : (this.default ? this.props[i].default : '');
           const fc = new FormControl(value);
-          if(this.validate && this.props[i].required) {
-            fc.setValidators(Validators.required);
-          }
+          const rules = [];
+          if(this.validate && this.props[i].required) rules.push(Validators.required);
+          if(this.validate && this.props[i].type === 'phone') rules.push(Validators.pattern(/^\d{10}$/));
+          if(rules.length) fc.setValidators(rules);
           pps = {...pps, [pname]:fc}
         }
       }
@@ -79,5 +93,6 @@ export class PropsFormComponent{
 
     copyData(event:any){
         this.populateProps(this.form.controls['category'].value, event.target.checked && this.copyProps);
+        this.dataInput(undefined,undefined,undefined);       // tell the form what was copied in
     }
 }

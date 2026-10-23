@@ -36,23 +36,12 @@
 
         <ng-template pTemplate="header">
             <tr>
-                <th style="width:42%" pSortableColumn="title">Product
-                    <p-columnFilter type="text" field="title" display="menu"></p-columnFilter>
-                    <p-sortIcon field="title"></p-sortIcon>
-                </th>
-                <th style="width:8%" pSortableColumn="last_updated">Updated
-                    <p-sortIcon field="last_updated"></p-sortIcon></th>
+                <th style="width:42%" pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
+                <th style="width:8%" pSortableColumn="last_updated"><div class="th-bar"><span class="th-label">Updated</span><p-sortIcon field="last_updated"></p-sortIcon></div></th>
                 <th style="width:8%" class="text-end">PTR</th>
-                <th style="width:8%" class="text-end" pSortableColumn="price">Price
-                    <p-sortIcon field="price"></p-sortIcon></th>
-                <th style="width:8%" class="text-end" pSortableColumn="margin">Margin
-                    <p-columnFilter type="number" field="margin" display="menu"></p-columnFilter>
-                    <p-sortIcon field="margin"></p-sortIcon>
-                </th>
-                <th style="width:8%" class="text-end" pSortableColumn="discount">Discount
-                    <p-columnFilter type="number" field="discount" display="menu"></p-columnFilter>
-                    <p-sortIcon field="margin"></p-sortIcon>
-                </th>
+                <th style="width:8%" class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th>
+                <th style="width:8%" class="text-end" pSortableColumn="margin"><div class="th-bar"><span class="th-label">Margin</span><p-columnFilter type="number" field="margin" display="menu"></p-columnFilter><p-sortIcon field="margin"></p-sortIcon></div></th>
+                <th style="width:8%" class="text-end" pSortableColumn="discount"><div class="th-bar"><span class="th-label">Discount</span><p-columnFilter type="number" field="discount" display="menu"></p-columnFilter><p-sortIcon field="margin"></p-sortIcon></div></th>
                 <th style="width:8%" class="text-end">MRP</th>
                 <th style="width:8%" class="text-center">Actions</th>
             </tr>

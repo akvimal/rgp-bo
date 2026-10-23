@@ -18,6 +18,12 @@ export class CustomerViewComponent {
         this.service.find(this.id).subscribe(data => this.customer = data);
     }
 
+    /** the strip under the title shows only when there is something in it */
+    get hasFacts(): boolean {
+        const c = this.customer;
+        return !!c && !!(c.altmobile || c.email || c.locality || c.address || c.srctype);
+    }
+
     productsSelected(event:any){
         this.selected.emit({action:'productsSelected', event})
     }

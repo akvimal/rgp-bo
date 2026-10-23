@@ -21,6 +21,7 @@ export class SaleFormComponent {
     
     showDocument = false;
     docpath = '';
+    docname = '';
     documents:any[] = [];
     doctypes:any[] =[];
 
@@ -381,7 +382,7 @@ export class SaleFormComponent {
       docs.forEach((d:any) => {
         const found = this.documents.find((td:any) => td.id === d.id);
         if(!found)
-          this.documents.push({id:d.id, category:d.category, name:d.name , alias:d.alias, path: d.path, props: JSON.parse(d.docprops)});
+          this.documents.push({id:d.id, category:d.category, name:d.name , alias:d.alias, path: d.path, props: d.docprops ? JSON.parse(d.docprops) : []});
       })
       this.sale.docpending = false;
     }
@@ -438,6 +439,7 @@ export class SaleFormComponent {
 
   viewDoc(doc:any){
     this.docpath = doc.path;
+    this.docname = doc.alias || doc.name || doc.category || '';
     this.showDocument = true;
   }
 

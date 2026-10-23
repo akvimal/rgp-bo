@@ -42,27 +42,13 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="name">Name
-                            <p-sortIcon field="name"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="gstn">GSTIN
-                            <p-sortIcon field="gstn"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="contactname">Contact
-                            <p-sortIcon field="contactname"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="licensestatus">Licence
-                            <p-sortIcon field="licensestatus"></p-sortIcon>
-                        </th>
-                        <th pSortableColumn="stats.lastpurchase">Last purchase
-                            <p-sortIcon field="stats.lastpurchase"></p-sortIcon>
-                        </th>
-                        <th class="text-end" pSortableColumn="stats.last12" title="Completed invoices only">Purchases
-                            <p-sortIcon field="stats.last12"></p-sortIcon>
-                        </th>
-                        <th class="text-end" pSortableColumn="stats.outstanding" title="Still unpaid on completed invoices. Draft invoices are not counted here, but the Outstanding page does list them.">Owed
-                            <p-sortIcon field="stats.outstanding"></p-sortIcon>
-                        </th>
+                        <th pSortableColumn="name"><div class="th-bar"><span class="th-label">Name</span><p-sortIcon field="name"></p-sortIcon></div></th>
+                        <th pSortableColumn="gstn"><div class="th-bar"><span class="th-label">GSTIN</span><p-sortIcon field="gstn"></p-sortIcon></div></th>
+                        <th pSortableColumn="contactname"><div class="th-bar"><span class="th-label">Contact</span><p-sortIcon field="contactname"></p-sortIcon></div></th>
+                        <th pSortableColumn="licensestatus"><div class="th-bar"><span class="th-label">Licence</span><p-sortIcon field="licensestatus"></p-sortIcon></div></th>
+                        <th pSortableColumn="stats.lastpurchase"><div class="th-bar"><span class="th-label">Last purchase</span><p-sortIcon field="stats.lastpurchase"></p-sortIcon></div></th>
+                        <th class="text-end" pSortableColumn="stats.last12" title="Completed invoices only"><div class="th-bar"><span class="th-label">Purchases</span><p-sortIcon field="stats.last12"></p-sortIcon></div></th>
+                        <th class="text-end" pSortableColumn="stats.outstanding" title="Still unpaid on completed invoices. Draft invoices are not counted here, but the Outstanding page does list them."><div class="th-bar"><span class="th-label">Owed</span><p-sortIcon field="stats.outstanding"></p-sortIcon></div></th>
                         <th>Actions</th>
                     </tr>
                 </ng-template>

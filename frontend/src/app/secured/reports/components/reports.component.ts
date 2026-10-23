@@ -22,7 +22,7 @@ export class ReportsComponent {
 
     cols: Column[] = [
         { field: 'bill_date', header: 'Date', type: 'date' },
-        { field: 'bill_no', header: 'Bill No' },
+        { field: 'bill_no', header: 'Bill No.' },
         { field: 'customer', header: 'Customer' },
         { field: 'product', header: 'Product' },
         { field: 'batch', header: 'Batch' },

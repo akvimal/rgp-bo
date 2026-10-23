@@ -59,72 +59,34 @@
   </div> -->
 </div>
 
-<p-table [value]="items" [resizableColumns]="true" columnResizeMode="expand" 
-      [paginator]="true" [rows]="10" [showCurrentPageReport]="true" 
-      styleClass="p-datatable-gridlines mt-4"
-      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
+<p-table [value]="items"
+      [paginator]="true" [rows]="10" [showCurrentPageReport]="true"
+      styleClass="p-datatable-gridlines mt-4" data-testid="product-table"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       [rowsPerPageOptions]="[10,25,50]">
-    <!-- <table class="table table-bordered mt-4 sale-items"> -->
-        <!-- <thead> -->
-          <ng-template pTemplate="header">
-          <tr>
-            <th pSortableColumn="sale.billno" class="billno">Bill No.
-              <p-columnFilter type="text" field="sale.billno" display="menu"></p-columnFilter>
-              <p-sortIcon field="sale.billno"></p-sortIcon>
-            </th>
-            <th pSortableColumn="sale.billdate" class="billdt">Bill Date</th>
-            <th class="customer">Customer</th>
-            <!-- <th class="document">Document</th> -->
-            <!-- <th>Category</th> -->
-            <!-- <th class="address" *ngIf="isH1DrugFilter()">Address</th> -->
-            <th pSortableColumn="purchaseitem.product.title" class="product">Product
-              <p-columnFilter type="text" field="purchaseitem.product.title" display="menu"></p-columnFilter>
-              <p-sortIcon field="purchaseitem.product.title"></p-sortIcon>
-            </th>
-            <th class="batch">Batch
-              <p-columnFilter type="text" field="batch" display="menu"></p-columnFilter>
-            </th>
-            <th class="expiry">Expiry</th>
-            <th class="qty">Qty</th>
-            <!-- <th class="rate">Rate</th> -->
-            <!-- <th class="total">Amount</th> --> 
-            
-          </tr>
-        <!-- </thead>
-          <tbody> -->
-          </ng-template>
-          <ng-template pTemplate="body" let-item>
-            <!-- <tr *ngFor="let item of items"> -->
-              <tr>
-                <td>
-                  <a [routerLink]="['../view',item.sale.id]">{{item.sale.billno}}</a>
-                </td>
-                <td>{{item.sale.billdate | date: 'dd MMM yyyy, h:mm a'}}</td>
-                <td>{{item.sale.customer?.name}}</td>
-                <!-- <td>
-                  <div *ngIf="item.sale.props && item.sale.props.documents" class="documents">
-                    <div *ngFor="let d of item.sale.props.documents" class="document">
-                      <span class="category">{{d.category}}</span><br>
-                      <ul><li *ngFor="let p of d.props"><label>{{p.label}}</label><span>{{p.value}}</span> </li></ul>
-                    </div>
-                  </div>
-                </td>
-               <td>{{item.purchaseitem.product.category}}</td> -->
-                <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntmobile'] : item.sale.customer?.mobile}}</td> -->
-                <!-- <td>{{ isH1DrugFilter() ? item.sale.props && item.sale.props['ptntaddr'] : item.sale.customer?.address}}</td> -->
-                <td>{{item.purchaseitem.product.title}}
-                  <!-- <br>
-                  <span style="font-size:smaller"> / {{item.expdate | date : 'MMM-yy'}}</span> -->
-                </td>
-                <td>{{item.batch}}</td>
-                <td>{{item.expdate | date : 'MMM-yy'}}</td>
-                <td style="text-align:right">{{item.qty}}</td>
-                <!-- <td style="text-align:right">{{item.price}}</td> -->
-                
-                <!-- <td style="text-align:right">{{item.total}}</td> -->
-            </tr>  
-          <!-- </tbody>
-        </table> -->
-
-      </ng-template>
-    </p-table>
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="sale.billno"><div class="th-bar"><span class="th-label">Bill No.</span><p-columnFilter type="text" field="sale.billno" display="menu"></p-columnFilter><p-sortIcon field="sale.billno"></p-sortIcon></div></th>
+        <th pSortableColumn="sale.billdate"><div class="th-bar"><span class="th-label">Bill Date</span><p-sortIcon field="sale.billdate"></p-sortIcon></div></th>
+        <th pSortableColumn="sale.customer.name"><div class="th-bar"><span class="th-label">Customer</span><p-columnFilter type="text" field="sale.customer.name" display="menu"></p-columnFilter><p-sortIcon field="sale.customer.name"></p-sortIcon></div></th>
+        <th pSortableColumn="purchaseitem.product.title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="purchaseitem.product.title" display="menu"></p-columnFilter><p-sortIcon field="purchaseitem.product.title"></p-sortIcon></div></th>
+        <th pSortableColumn="batch"><div class="th-bar"><span class="th-label">Batch</span><p-columnFilter type="text" field="batch" display="menu"></p-columnFilter><p-sortIcon field="batch"></p-sortIcon></div></th>
+        <th pSortableColumn="expdate"><div class="th-bar"><span class="th-label">Expiry</span><p-sortIcon field="expdate"></p-sortIcon></div></th>
+        <th pSortableColumn="qty"><div class="th-bar"><span class="th-label">Qty</span><p-sortIcon field="qty"></p-sortIcon></div></th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-item>
+      <tr data-testid="product-row">
+        <td><a [routerLink]="['../pos/view',item.sale.id]" data-testid="bill-link">{{item.sale.billno}}</a></td>
+        <td class="text-nowrap">{{item.sale.billdate | date: 'dd MMM yyyy, h:mm a'}}</td>
+        <td>{{item.sale.customer ? item.sale.customer.name + ' (' + item.sale.customer.mobile + ')' : ''}}</td>
+        <td>{{item.purchaseitem.product.title}}</td>
+        <td>{{item.batch}}</td>
+        <td>{{item.expdate | date : 'MMM-yy'}}</td>
+        <td class="text-end">{{item.qty}}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr><td colspan="7" class="text-center text-muted py-3">No items sold for these filters.</td></tr>
+    </ng-template>
+</p-table>

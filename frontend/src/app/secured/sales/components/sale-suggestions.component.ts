@@ -1,4 +1,4 @@
-import { Component, DoCheck, EventEmitter, Input, OnDestroy, Output } from "@angular/core";
+import { Component, DoCheck, EventEmitter, HostListener, Input, OnDestroy, Output } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "src/environments/environment";
 import { StoreContextService } from "src/app/@core/store-context.service";
@@ -13,10 +13,10 @@ import { StoreContextService } from "src/app/@core/store-context.service";
   selector: "app-sale-suggestions",
   template: `
     <div class="position-relative" *ngIf="count" data-testid="sale-suggestions-wrap">
-      <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" (click)="toggle()" [attr.aria-expanded]="open" data-testid="sale-suggestions-toggle">
+      <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" (click)="toggle($event)" [attr.aria-expanded]="open" data-testid="sale-suggestions-toggle">
         <i class="bi bi-lightbulb"></i> Suggestions <span class="badge rounded-pill bg-light text-dark border">{{count}}</span>
       </button>
-      <div *ngIf="open" class="card shadow-sm position-absolute end-0 p-2 small" style="z-index:30; width:30rem; max-width:90vw; max-height:18rem; overflow:auto" data-testid="sale-suggestions">
+      <div *ngIf="open" class="card shadow-sm position-fixed p-2 small" [ngStyle]="panelPos" style="z-index:1100; width:30rem; max-width:90vw; max-height:18rem; overflow:auto" data-testid="sale-suggestions">
         <div class="d-flex justify-content-between align-items-center mb-1">
           <span class="fw-semibold">Worth mentioning to the customer</span>
           <button type="button" class="btn-close" style="font-size:.6rem" (click)="open = false" aria-label="Close"></button>
@@ -108,9 +108,19 @@ export class SaleSuggestionsComponent implements DoCheck, OnDestroy {
   }
 
   /** a suggestion counts as shown once the list has actually been opened */
-  toggle() {
+  /** the panel is fixed to the screen, beside its button, so the grid's own scrolling cannot cut it off */
+  panelPos: any = {};
+
+  @HostListener('window:resize') closeOnResize() { this.open = false; }
+
+  toggle(ev?: any) {
     this.open = !this.open;
     if (!this.open) return;
+    const r = ev?.currentTarget?.getBoundingClientRect?.();
+    if (r) {
+      const room = window.innerHeight - r.bottom;
+      this.panelPos = { right: (window.innerWidth - r.right) + 'px', ...(room > 300 ? { top: (r.bottom + 4) + 'px' } : { bottom: (window.innerHeight - r.top + 4) + 'px' }) };
+    }
     const visible = [...this.cross, ...this.swaps, ...(this.bulk.length ? [this.bulk[0]] : [])].filter(s => !this.shown.has(this.id(s)));
     visible.forEach(s => this.shown.add(this.id(s)));
     if (visible.length) this.log(visible.map(s => this.event(s, "SHOWN")));

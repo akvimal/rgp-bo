@@ -9,7 +9,7 @@ import { PropsService } from "../props.service";
                     (onSelect)="selected($event)"
                     field="''"
                     placeholder="Name / Composition"
-                    [suggestions]="filteredStock" appendTo="body" scrollHeight="24rem" [autoHighlight]="true"
+                    [suggestions]="filteredStock" appendTo="body" scrollHeight="24rem" panelStyleClass="stock-select-panel" [autoHighlight]="true"
                     (completeMethod)="filterStock($event)" [minLength]="2"
                     [inputStyle]="{'background-color':'#f4f7ff'}">
                     <ng-template let-stock pTemplate="item">
@@ -20,8 +20,9 @@ import { PropsService } from "../props.service";
                             </div>
                             <div class="d-flex justify-content-between align-items-baseline gap-3 small">
                                 <span class="text-muted fst-italic text-truncate">{{stock['more_props'] ? stock['more_props']['composition'] : ''}}</span>
-                                <span class="text-primary text-nowrap">{{stock.batch}} / {{stock.exp_date|date:'MMM-yy'}} &middot; {{stock.balance}} in stock
-                                    <span class="badge bg-success ms-1" *ngIf="stock.sellfirst" title="This batch expires first: sell it first">sell first</span></span>
+                                <span class="text-primary text-nowrap">{{stock.batch}} / {{stock.exp_date|date:'MMM-yy'}}
+                                    <span class="badge bg-success ms-1" *ngIf="stock.sellfirst" title="This batch expires first: sell it first">sell first</span>
+                                    <i class="bi bi-exclamation-octagon-fill text-danger ms-1" *ngIf="stock.balance < 1" title="Out of stock" aria-label="Out of stock" data-testid="stock-out"></i></span>
                             </div>
                         </div>
                     </ng-template>

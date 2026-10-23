@@ -132,10 +132,13 @@ export class SalesListComponent implements OnDestroy {
             }
             //round the decimals of total
             sale['total'] = Math.round(sale['total']);
-            this.totals['digital'] += sale['digiamt'];
-            this.totals['cash'] += sale['cashamt'];
-            this.totals['net'] += +sale['total'];
+            sale['staffname'] = sale['actinguser'] ? sale['actinguser'].fullname : (sale['created'] ? sale['created'].fullname : '');
+            this.totals['digital'] += +sale['digiamt'] || 0;
+            this.totals['cash'] += +sale['cashamt'] || 0;
+            this.totals['net'] += +sale['total'] || 0;
           });
+          // sums of paise carry a floating-point tail (5111.219999999999 is 5111.22): round it off
+          (Object.keys(this.totals) as ('digital'|'cash'|'net')[]).forEach(k => this.totals[k] = Math.round(this.totals[k] * 100) / 100);
           this.sales = data;
         });
     }

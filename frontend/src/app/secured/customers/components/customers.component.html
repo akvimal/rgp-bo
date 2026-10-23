@@ -33,27 +33,18 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
 
     <tr>
       <!-- <th scope="col">ID</th> -->
-      <th pSortableColumn="name" scope="col">Name
-        <p-sortIcon field="name"></p-sortIcon>
-        <p-columnFilter type="text" field="name" display="menu"></p-columnFilter>
-      </th>
-      <th pSortableColumn="mobile" scope="col">Mobile
-        <p-sortIcon field="mobile"></p-sortIcon>
-        <p-columnFilter type="text" field="mobile" display="menu"></p-columnFilter>
-      </th>
-      <!-- <th  pSortableColumn="email" scope="col">Email
-        <p-sortIcon field="email"></p-sortIcon>
-        <p-columnFilter type="text" field="email" display="menu"></p-columnFilter>
-      </th> -->
+      <th pSortableColumn="name" scope="col"><div class="th-bar"><span class="th-label">Name</span><p-columnFilter type="text" field="name" display="menu"></p-columnFilter><p-sortIcon field="name"></p-sortIcon></div></th>
+      <th pSortableColumn="mobile" scope="col"><div class="th-bar"><span class="th-label">Mobile</span><p-columnFilter type="text" field="mobile" display="menu"></p-columnFilter><p-sortIcon field="mobile"></p-sortIcon></div></th>
+      <!-- <th  pSortableColumn="email" scope="col"><div class="th-bar"><span class="th-label">Email</span><p-columnFilter type="text" field="email" display="menu"></p-columnFilter><p-sortIcon field="email"></p-sortIcon></div></th> -->
       <!-- <th>Address</th> -->
       <!-- <th>History</th>
       <th>Recent Visit</th> -->
       <!-- <th scope="col">Area</th> -->
       <!-- <th scope="col">Address</th> -->
-      <th pSortableColumn="locality" scope="col">Location <p-sortIcon field="locality"></p-sortIcon></th>
-      <th pSortableColumn="segment" scope="col">Buying pattern <p-sortIcon field="segment"></p-sortIcon></th>
-      <th pSortableColumn="bills" scope="col" class="text-end">Bills <p-sortIcon field="bills"></p-sortIcon></th>
-      <th pSortableColumn="lastvisit" scope="col">Last visit <p-sortIcon field="lastvisit"></p-sortIcon></th>
+      <th pSortableColumn="locality" scope="col"><div class="th-bar"><span class="th-label">Location</span><p-sortIcon field="locality"></p-sortIcon></div></th>
+      <th pSortableColumn="segment" scope="col"><div class="th-bar"><span class="th-label">Buying pattern</span><p-sortIcon field="segment"></p-sortIcon></div></th>
+      <th pSortableColumn="bills" scope="col" class="text-end"><div class="th-bar"><span class="th-label">Bills</span><p-sortIcon field="bills"></p-sortIcon></div></th>
+      <th pSortableColumn="lastvisit" scope="col"><div class="th-bar"><span class="th-label">Last visit</span><p-sortIcon field="lastvisit"></p-sortIcon></div></th>
       <!-- <th scope="col">Source Type</th> -->
       <!-- <th scope="col">Source Info</th> -->
       <!-- <th scope="col">Date</th> -->

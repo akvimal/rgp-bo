@@ -1,44 +1,40 @@
-<div class="row">
-    <div class="col-12 text-center text-danger" *ngIf="periods.length == 0">
-        No Sale Data Found!!!
-    </div>
-    <div class="col-12" *ngIf="periods.length > 0">
-        <p-tabView [(activeIndex)]="activeIndex" [scrollable]="true" (onChange)="viewPeriod($event)">
-            <p-tabPanel *ngFor="let p of periods" [header]="p.period">
-                <div class="col-12">
-                    <button type="button" class="btn btn-outline-primary mt-2 text-center"
-                        (click)="copySelectedItem()">Copy</button>
-                </div>
-                <div class="col-12">
-                    <div *ngFor="let s of saleOrders; index as i">
-                        <ul class="list-group mt-2">
-                            <li class="list-group-item" style="background-color: rgb(184, 219, 254);">
-                                
-                                <div class="d-flex justify-content-between">
-                                    <div class="text-primary fs-6 pl-2"><input type="checkbox" style="width:15px;height:15px;" (change)="toggleAll(i,$event)">
-                                        &nbsp;<strong>{{s.billdate | date : 'dd MMM yyyy'}}</strong>
-                                    </div>
-                                    <div># {{s.billno}}</div>
-                                </div>
-                            </li>
-                            <li class="list-group-item sale-history-item" *ngFor="let i of s.items">
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <input type="checkbox" style="width:15px;height:15px;" (change)="selectItem(i.productid,$event)" [checked]="i.selected">
-                                        &nbsp;{{i.title}} ({{i.qty}})</div>
-                                    <div><i class="bi bi-currency-rupee" style="padding:0"></i>{{i.price}}</div>
-                                </div>
-                            </li>
-
-                        </ul>   
-                    </div>
-                </div>
-                <div class="col-12 mt-1">
-                    <button type="button" class="btn btn-outline-primary mt-2 text-center"
-                        (click)="copySelectedItem()">Copy</button>
-                </div>
-            </p-tabPanel>
-        </p-tabView>
-    </div>
-    
+<div class="hist-empty" *ngIf="loading && periods.length == 0" data-testid="cust-orders-loading">Loading earlier bills...</div>
+<div class="hist-empty text-danger" *ngIf="loadFailed" data-testid="cust-orders-failed"><i class="bi bi-exclamation-triangle"></i>The earlier bills could not be loaded. Close this and try again.</div>
+<div class="hist-empty" *ngIf="!loading && !loadFailed && periods.length == 0" data-testid="cust-orders-none">
+    <i class="bi bi-receipt"></i>No earlier bills for this customer in the last 3 years.
 </div>
+<ng-container *ngIf="periods.length > 0">
+    <div class="hist-toolbar">
+        <span class="hist-hint">Tick what the customer wants again, then add it to this bill.</span>
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="chosenCount === 0" (click)="copySelectedItem()" data-testid="cust-copy">
+            <i class="bi bi-cart-plus me-1"></i>Add to this bill ({{chosenCount}})
+        </button>
+    </div>
+    <p-tabView [(activeIndex)]="activeIndex" [scrollable]="true" (onChange)="viewPeriod($event)">
+        <p-tabPanel *ngFor="let p of periods" [header]="p.period">
+            <div class="hist-empty" *ngIf="loading">Loading...</div>
+            <div class="hist-empty" *ngIf="!loading && saleOrders.length == 0 && !loadFailed" data-testid="cust-orders-empty">No bills with items in this month.</div>
+            <div class="hist-bill" *ngFor="let s of saleOrders; index as i" data-testid="cust-order">
+                <div class="hist-bill-head">
+                    <label>
+                        <input type="checkbox" class="form-check-input mt-0" [checked]="allChosen(s)" (change)="toggleAll(i,$event)" aria-label="Tick every medicine on this bill">
+                        <strong>{{s.billdate | date : 'dd MMM yyyy'}}</strong>
+                    </label>
+                    <span class="text-muted">Bill No. {{s.billno}}</span>
+                    <strong class="ms-auto">&#8377;{{s.total | number:'1.2-2'}}</strong>
+                </div>
+                <table class="table table-sm">
+                    <thead><tr><th class="hist-pick"></th><th>Medicine</th><th class="text-end">Qty</th><th class="text-end">Rate</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let it of s.items" data-testid="cust-order-item">
+                            <td class="hist-pick"><input type="checkbox" class="form-check-input mt-0" (change)="selectItem(it.productid,$event)" [checked]="isChosen(it.productid)" [attr.aria-label]="'Tick ' + it.title"></td>
+                            <td>{{it.title}}</td>
+                            <td class="text-end">{{it.qty}}</td>
+                            <td class="text-end">&#8377;{{it.price | number:'1.2-2'}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </p-tabPanel>
+    </p-tabView>
+</ng-container>

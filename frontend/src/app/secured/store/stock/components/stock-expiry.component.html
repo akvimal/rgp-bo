@@ -12,9 +12,7 @@
                 [rowsPerPageOptions]="[10,25,50]">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th pSortableColumn="exp_date">Month
-                            <p-sortIcon field="exp_date"></p-sortIcon>
-                        </th>
+                        <th pSortableColumn="exp_date"><div class="th-bar"><span class="th-label">Month</span><p-sortIcon field="exp_date"></p-sortIcon></div></th>
                         <th class="right">Products</th>
                         <th class="right">Qty</th>
                     </tr>

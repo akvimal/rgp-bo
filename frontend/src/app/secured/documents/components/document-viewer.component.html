@@ -1,6 +1,18 @@
-<div *ngIf="content">
-    <img *ngIf="content.type !== 'pdf'; else pdf" [src]="content.blob">
-    <ng-template #pdf>
-        <embed [attr.src]="content.blob" type="application/pdf" width="800" height="600">
-    </ng-template>
+<div class="hist-preview" data-testid="doc-preview">
+    <div class="hist-preview-bar">
+        <strong class="text-truncate">{{name || 'Document'}}</strong>
+        <span class="ms-auto d-flex gap-2" *ngIf="content">
+            <a class="btn btn-outline-secondary btn-sm" [href]="content.blob" target="_blank" rel="noopener" data-testid="doc-open"><i class="bi bi-box-arrow-up-right me-1"></i>Open</a>
+            <a class="btn btn-outline-secondary btn-sm" [href]="content.blob" [attr.download]="downloadName" data-testid="doc-download"><i class="bi bi-download me-1"></i>Download</a>
+        </span>
+    </div>
+    <div class="hist-preview-body">
+        <span class="text-muted" *ngIf="loading">Loading...</span>
+        <span class="text-danger" *ngIf="failed" data-testid="doc-failed">This file could not be opened.</span>
+        <ng-container *ngIf="content">
+            <img *ngIf="content.kind === 'image'" [src]="content.blob" [alt]="name">
+            <embed *ngIf="content.kind === 'pdf'" [attr.src]="content.blob" type="application/pdf">
+            <span class="text-muted" *ngIf="content.kind === 'other'">No preview for this kind of file. Use Download.</span>
+        </ng-container>
+    </div>
 </div>

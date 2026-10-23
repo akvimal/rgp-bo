@@ -1,23 +1,26 @@
-<div class="row mt-4">
-    <div class="col-3">
-        <div *ngIf="documentsSelected()" class="mb-2">
-            <button class="btn btn-outline-primary btn-sm mt-2 text-center"
-            (click)="copySelectedItem()">Copy</button>&nbsp;&nbsp;
-            <button class="btn btn-outline-danger btn-sm mt-2 text-center"
-            (click)="deleteSelectedItem()">Delete</button>
+<div class="hist-empty" *ngIf="loading && documents.length == 0">Loading documents...</div>
+<div class="hist-empty" *ngIf="!loading && documents.length == 0" data-testid="doc-none">
+    <i class="bi bi-folder2-open"></i>No documents yet. Upload a prescription, ID proof or other paper to keep it with this customer.
+</div>
+<div class="hist-docs" *ngIf="documents.length > 0">
+    <div>
+        <div class="hist-toolbar">
+            <button type="button" class="btn btn-primary btn-sm" [disabled]="selectedCount === 0" (click)="copySelectedItem()" data-testid="doc-copy">
+                <i class="bi bi-plus-circle me-1"></i>{{copyLabel}} ({{selectedCount}})
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm" [disabled]="selectedCount === 0" (click)="deleteSelectedItem()" data-testid="doc-delete">
+                <i class="bi bi-trash me-1"></i>Delete
+            </button>
         </div>
-        <div *ngFor="let d of documents">
-            <div class="d-flex">
-                <input type="checkbox" style="width:20px;height:20px;" (change)="selectDocument(d.id,$event)" [checked]="d.selected">
-                <div class="document-nav" (click)="viewDoc(d.id)" style="margin-left:.5em;">
-                    <span style="color: blue;">{{d.createdon | date : 'dd MMM yyyy'}}</span> {{d.alias}} <br>
-                    <strong>{{d.category}}</strong><br>
-                    <app-obj-print [obj]="d.docprops" [json]="true"></app-obj-print>
-                </div>
-            </div> 
+        <div class="hist-doc" *ngFor="let d of documents" [class.active]="document?.id === d.id" data-testid="doc-item">
+            <input type="checkbox" class="form-check-input mt-1" (change)="selectDocument(d.id,$event)" [checked]="d.selected" [attr.aria-label]="'Tick ' + title(d)">
+            <i class="bi" [ngClass]="icon(d)"></i>
+            <button type="button" class="hist-doc-body" (click)="viewDoc(d.id)">
+                <div class="hist-doc-title">{{title(d)}}</div>
+                <div class="hist-doc-meta"><span class="badge bg-light text-dark border" *ngIf="d.category">{{d.category}}</span><span>{{d.createdon | date : 'dd MMM yyyy'}}</span></div>
+                <app-obj-print [obj]="d.docprops" [json]="true"></app-obj-print>
+            </button>
         </div>
     </div>
-    <div class="col-9">
-        <app-document-viewer *ngIf="document" [path]="document.path"></app-document-viewer>
-    </div>
+    <app-document-viewer *ngIf="document" [path]="document.path" [name]="title(document)"></app-document-viewer>
 </div>

@@ -1,4 +1,4 @@
-<app-document-upload [entity]="customer" [type]="'customer'" [property]="'id'" 
+<app-document-upload [entity]="customer" [type]="'customer'" [property]="'id'"
 [copyProps]="copyProps"
 (uploaded)="onUpload($event)"></app-document-upload>
-<app-document-list [ids]="ids" (selected)="copySelectedItem($event)" (removed)="removedSelectedItem($event)"></app-document-list>
+<app-document-list [ids]="ids" [loading]="loading" copyLabel="Add to this bill" (selected)="copySelectedItem($event)" (removed)="removedSelectedItem($event)"></app-document-list>

@@ -1,22 +1,25 @@
-<div class="row mt-2 p-2" style="background:#dea;">
-    <div class="col-12">
-        <button class="btn btn-outline-secondary" (click)="openNewForm()" *ngIf="!newForm">Upload New Document</button>
-        <div *ngIf="newForm">
-            <h4>Upload New Document</h4>
-            <div class="d-flex">
-                <input class="form-control" type="file" (change)="onChange($event)">&nbsp;&nbsp;
-                <input type="text" class="form-control" [(ngModel)]="alias" placeholder="Document Name">
+<div class="mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm" (click)="openNewForm()" *ngIf="!newForm" data-testid="doc-upload-open"><i class="bi bi-upload me-1"></i>Upload document</button>
+    <div class="hist-card" *ngIf="newForm" data-testid="doc-upload-form">
+        <div class="hist-card-head">Upload document</div>
+        <div class="hist-card-body">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">File</label>
+                    <input class="form-control" type="file" (change)="onChange($event)" accept=".pdf,image/*">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" [(ngModel)]="alias" placeholder="e.g. Dr Rao prescription, March">
+                </div>
             </div>
             <div class="mt-2">
-            <app-props-form [entity]="'document'" [copyProps]="copyProps" (updated)="propsUpdate($event)"></app-props-form>
+                <app-props-form [entity]="'document'" [copyProps]="copyProps" (updated)="propsUpdate($event)"></app-props-form>
             </div>
-            <div class="row mt-2">
-                <div class="col-12 text-end">
-                    <span *ngIf="loading">Loading...</span>      
-                    <span *ngIf="error && error.length > 0">{{error}}</span>
-                    <button class="btn btn-outline-secondary" (click)="cancelNewForm()">Cancel</button>
-                    &nbsp;&nbsp;<button (click)="onUpload()" [disabled]="!isFormValid()" class="btn btn-success">Upload</button>
-                </div>
+            <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+                <span class="text-danger small me-auto" *ngIf="error">{{error}}</span>
+                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cancelNewForm()">Cancel</button>
+                <button type="button" (click)="onUpload()" [disabled]="!isFormValid() || loading" class="btn btn-primary btn-sm" data-testid="doc-upload-save">{{loading ? 'Uploading...' : 'Upload'}}</button>
             </div>
         </div>
     </div>

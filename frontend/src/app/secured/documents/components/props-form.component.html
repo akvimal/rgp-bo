@@ -1,5 +1,5 @@
 <form [formGroup]="form">
-      <div class="d-flex props">
+      <div class="d-flex flex-wrap gap-2 props">
         <div>
         <label class="form-label">Category</label>
         <select formControlName="category" class="form-control" id="category" 
@@ -14,7 +14,7 @@
           </div>
       <!-- </div>
       <div class="col-10"> -->
-        <div class="d-flex" formGroupName="props">
+        <div class="d-flex flex-wrap gap-2" formGroupName="props">
           <div *ngFor="let pp of props">
           <label class="form-label"  *ngIf="pp.type !== 'MULTI-SELECT'">{{pp.label}}<span class="text-danger" *ngIf="validate && pp.required"> *</span></label> 
           <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
@@ -24,6 +24,11 @@
           </select>
           <input *ngIf="pp.type === 'date'" type="date" (change)="dataInput(pp.type, pp.id, $event)" 
                     class="form-control" formControlName={{pp.id}}>
+          <ng-container *ngIf="pp.type === 'phone'">
+            <input type="tel" inputmode="numeric" maxlength="10" class="form-control" [class.is-invalid]="phoneBad(pp.id)"
+                   formControlName={{pp.id}} (input)="phoneInput(pp.id, $event)" placeholder="10 digits" [attr.data-testid]="'doc-prop-' + pp.id">
+            <div class="invalid-feedback" *ngIf="phoneBad(pp.id)">Enter a 10 digit number</div>
+          </ng-container>
           <input *ngIf="!pp.type" type="text" (change)="dataInput(pp.type, pp.id, $event)" 
                     class="form-control" formControlName={{pp.id}}>
                     <!-- <span class="p-fluid">
