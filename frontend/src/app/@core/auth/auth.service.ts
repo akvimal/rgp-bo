@@ -14,12 +14,16 @@ export class AuthService {
   private readonly hostedKey = 'hosted';
   /** this is a customer's copy run by a provider (it has a plan), not a standalone install */
   hosted = false;
+  private readonly platformKey = 'platform';
+  /** the hosted plan (its name and limits) when this is a customer's copy; null for a standalone install */
+  platform: any = null;
   /** what the business has switched on (hr, purchasing off|simple|full, gst, expenses, ...); everything on until told otherwise */
   modules: any = {};
 
   constructor(private http: HttpClient) {
     try { this.modules = JSON.parse(sessionStorage.getItem(this.modulesKey) || '{}') || {}; } catch { this.modules = {}; }
     try { this.hosted = sessionStorage.getItem(this.hostedKey) === '1'; } catch { this.hosted = false; }
+    try { this.platform = JSON.parse(sessionStorage.getItem(this.platformKey) || 'null'); } catch { this.platform = null; }
     const savedPermissions = sessionStorage.getItem(this.permissionsKey);
     if (savedPermissions) {
       try {
@@ -74,6 +78,12 @@ export class AuthService {
   public moduleOn(key:string):boolean{
     const v = this.modules ? this.modules[key] : undefined;
     return v === undefined || v === null ? true : (key === 'purchasing' ? v !== 'off' : !!v);
+  }
+
+  public setPlatform(platform:any){
+    this.platform = platform || null;
+    try { sessionStorage.setItem(this.platformKey, JSON.stringify(this.platform)); } catch { /* storage blocked */ }
+    this.setHosted(!!platform);
   }
 
   public setHosted(hosted:boolean){

@@ -1053,3 +1053,40 @@ test.describe('Operating modes: bank deposit rule @p1', () => {
     await expect(page.locator(`[data-store-id="${s.body.id}"]`).getByTestId('store-row-deposit')).toContainText('day 1, 15, last');
   });
 });
+
+test.describe('Operating modes: shift templates @p1', () => {
+  test('OM-38 a template is the store\'s; its default opener must work at the store, is marked when they go, and the shift carries the store\'s deposit amount @happy', async ({ api }) => {
+    const sid = await freshStore(api);
+    await api.request('PUT', `/stores/${sid}`, { location: (await api.request('GET', `/store-cash/profile?storeid=${sid}`)).body.location, depositthreshold: 7000 }, MGR);
+    const here = await staffUser(api, sid);
+    const elsewhere = await staffUser(api, await freshStore(api));
+    const counter = await userOf(api, sid, 'Counter');
+    const make = (assigneduserid: any) => api.request('POST', '/store-cash/templates', { storeid: sid, name: `Morning ${Date.now()}`, starttime: '09:00', endtime: '17:00', assigneduserid, depositthreshold: 99 }, MGR);
+
+    expect((await make(elsewhere.id)).status).toBe(400);                      // does not work at this store
+    expect((await make(counter.id)).status).toBe(400);                        // the shared till is not a person
+    const ok = await make(here.id);
+    expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+    const list = async () => (await api.request('GET', `/store-cash/templates?storeid=${sid}`, undefined, MGR)).body as any[];
+    expect((await list()).find((t) => t.id === ok.body.id)).toMatchObject({ assigneduserid: here.id, assigneestatus: 'ok' });
+    expect((await make(null)).status).toBeLessThan(300);                      // no default opener is fine
+
+    // a shift opened from it takes the opener and the store's amount, not the template's own figure
+    const shift = await openShift(api, sid, MGR, { templateid: ok.body.id });
+    expect(shift.status).toBeLessThan(300);
+    expect(shift.body.assigneduserid).toBe(here.id);
+    expect(shift.body.depositthreshold).toBe(7000);
+    await closeShift(api, shift.body.id, MGR);
+
+    // the person leaves: the template says so, and a shift no longer takes them
+    await api.request('DELETE', `/users/${here.id}`, undefined, MGR);
+    expect((await list()).find((t) => t.id === ok.body.id)).toMatchObject({ assigneestatus: 'gone' });
+    const later = await openShift(api, sid, MGR, { templateid: ok.body.id });
+    expect(later.status).toBeLessThan(300);
+    expect(later.body.assigneduserid).toBeNull();
+    await closeShift(api, later.body.id, MGR);
+    // changing the template to someone valid works; keeping the stale one unchanged is not refused
+    const rename = await api.request('PUT', `/store-cash/templates/${ok.body.id}`, { name: 'Renamed', starttime: '09:00', endtime: '17:00', assigneduserid: here.id }, MGR);
+    expect(rename.status).toBeLessThan(300);
+  });
+});

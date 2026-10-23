@@ -64,7 +64,7 @@ export class LoginComponent {
                                 if(data.rolename && data.permissions){
                                     this.authService.setPermissions(data.permissions);
                                     this.authService.setModules(data.modules);
-                                    this.authService.setHosted(!!data.platform);
+                                    this.authService.setPlatform(data.platform);
                                     this.router.navigate([this.resolveLandingPage(data.permissions)]);
                                 }
                                 else {

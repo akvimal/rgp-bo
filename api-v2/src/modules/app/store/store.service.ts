@@ -401,7 +401,30 @@ export class StoreService {
     }
     qb.orderBy("template.active", "DESC")
       .addOrderBy("template.id", "DESC");
-    return qb.getMany();
+    const templates = await qb.getMany();
+    // a default opener who has left, or who no longer works at the store, is marked rather than silently used
+    return Promise.all(templates.map(async (t) => ({
+      ...t,
+      assigneestatus: !t.assigneduserid ? null : ((await this.canOpenFor(t.storeid, t.assigneduserid)) ? "ok" : "gone"),
+    })));
+  }
+
+  /** a template's default opener (or a shift's): an active person who works at the store, an owner (who works at all of them), never the shared counter login */
+  private async canOpenFor(storeid: number, userid: number | null | undefined): Promise<boolean> {
+    if (!userid) return false;
+    const [u] = await this.manager.query(
+      `select u.id from app_user u join app_role r on r.id = u.role_id
+        where u.id = $1 and u.active and not u.archive and r.name <> all($3::text[])
+          and (r.name in ('Business Head', 'Owner-operator')
+               or exists (select 1 from user_stores us where us.user_id = u.id and us.store_id = $2 and us.active and not us.archive))`,
+      [userid, storeid, NOT_A_PERSON]);
+    return !!u;
+  }
+
+  private async assertDefaultOpener(storeid: number, userid: number | null) {
+    if (userid && !(await this.canOpenFor(storeid, userid))) {
+      throw new BadRequestException("Choose someone who works at this store (not the shared counter login).");
+    }
   }
 
   async saveTemplate(body: any, userid: any) {
@@ -409,26 +432,32 @@ export class StoreService {
     if (!storeid) {
       throw new Error("Store is required");
     }
+    const assigneduserid = body.assigneduserid ? Number(body.assigneduserid) : null;
+    await this.assertDefaultOpener(storeid, assigneduserid);
+    // the bank deposit rule belongs to the store, not to a shift template
     const payload = {
       storeid,
       name: body.name,
       starttime: body.starttime,
       endtime: body.endtime,
-      depositthreshold: Number(body.depositthreshold || 0),
       active: body.active !== false,
-      assigneduserid: body.assigneduserid ? Number(body.assigneduserid) : null,
+      assigneduserid,
     };
     return this.templateRepository.save(payload);
   }
 
   async updateTemplate(id: number, body: any, userid: any) {
+    const current = await this.templateRepository.findOne({ where: { id } });
+    if (!current) throw new NotFoundException("Template not found.");
+    const assigneduserid = body.assigneduserid ? Number(body.assigneduserid) : null;
+    // an unchanged default that has since gone stays as it was (it is marked on the list); a new choice must be valid
+    if (assigneduserid !== current.assigneduserid) await this.assertDefaultOpener(current.storeid, assigneduserid);
     const values = {
       name: body.name,
       starttime: body.starttime,
       endtime: body.endtime,
-      depositthreshold: Number(body.depositthreshold || 0),
       active: body.active !== false,
-      assigneduserid: body.assigneduserid ? Number(body.assigneduserid) : null,
+      assigneduserid,
     };
     await this.templateRepository.update(id, values);
     return this.templateRepository.findOne({ where: { id } });
@@ -514,7 +543,7 @@ export class StoreService {
     const shift = await this.shiftRepository.save({
       storeid,
       templateid: template ? template.id : null,
-      assigneduserid: staffBased ? assigneduserid : (assigneduserid || template?.assigneduserid || null),
+      assigneduserid: staffBased ? assigneduserid : (assigneduserid || ((await this.canOpenFor(storeid, template?.assigneduserid)) ? template!.assigneduserid : null)),
       shiftdate: body.shiftdate || this.today(),
       name: body.name || template?.name || "Shift",
       starttime: body.starttime || template?.starttime || "09:00",
@@ -527,7 +556,8 @@ export class StoreService {
       counteddenominations: null,
       countedcash: null,
       variance: null,
-      depositthreshold: Number(body.depositthreshold || template?.depositthreshold || 0),
+      // the shift carries the store's amount (the deposit rule is the store's)
+      depositthreshold: Number(body.depositthreshold ?? (await this.storeRepository.findOne({ where: { id: storeid } }))?.depositthreshold ?? 0),
       openedon: new Date(),
       closedon: null,
       notes: body.notes || null,

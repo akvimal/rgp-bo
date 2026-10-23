@@ -40,8 +40,8 @@ export class CashService {
         return this.http.delete(`${this.apiurl}/stores/${id}`);
     }
 
-    getUsers(): Observable<any> {
-        return this.http.get(`${this.apiurl}/store-cash/users`);
+    getUsers(storeid?:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/users`, storeid ? { params: { storeid: String(storeid) } } : {});
     }
 
     getDashboard(storeid:any): Observable<any> {

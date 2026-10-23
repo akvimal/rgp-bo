@@ -2,6 +2,7 @@ import { Component, OnInit } from "@angular/core";
 import { CashService } from "src/app/secured/store/cash/cash.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
 import { BusinessesService } from "../businesses/businesses.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
 
 @Component({
   templateUrl: './store-settings.component.html'
@@ -48,15 +49,13 @@ export class StoreSettingsComponent implements OnInit {
     name: 'Morning',
     starttime: '09:00',
     endtime: '17:00',
-    depositthreshold: 10000,
     assigneduserid: '',
     active: true
   };
 
-  constructor(private cashService: CashService, private confirm: ConfirmService, private businessService: BusinessesService) {}
+  constructor(private cashService: CashService, private confirm: ConfirmService, private businessService: BusinessesService, private auth: AuthService) {}
 
   ngOnInit(): void {
-    this.cashService.getUsers().subscribe((users:any) => this.users = users || []);
     this.cashService.getBusinesses().subscribe((businesses:any) => {
       this.businesses = businesses || [];
       if (this.businesses.length === 1) this.storeForm.businessid = this.businesses[0].id;
@@ -67,6 +66,22 @@ export class StoreSettingsComponent implements OnInit {
   selectTab(tab:'details' | 'cash') {
     this.activeTab = tab;
     this.refreshSelectedStore();
+  }
+
+  /** how many stores the hosted plan allows (null: no limit, as on a standalone install) */
+  get storeLimit():number|null {
+    const n = Number(this.auth.platform?.limits?.stores);
+    return this.auth.platform && Number.isFinite(n) ? n : null;
+  }
+
+  /** a new store would go past the plan's limit */
+  get atStoreLimit():boolean {
+    return this.storeLimit !== null && this.stores.filter((s:any) => s.isActive !== false && !s.isArchived).length >= this.storeLimit;
+  }
+
+  get limitNote():string {
+    const n = this.storeLimit || 0;
+    return `Your ${this.auth.platform?.plan || 'current'} plan allows ${n} ${n === 1 ? 'store' : 'stores'}, and ${n === 1 ? 'it is' : 'they are'} in use. Ask your provider to change the plan to add another.`;
   }
 
   /** a business with one business has nothing to choose: the Business box is for the platform admin */
@@ -120,6 +135,7 @@ export class StoreSettingsComponent implements OnInit {
     this.selectedStore = { ...this.selectedStore, depositschedule: this.selectedStore.depositschedule || 'none', depositweekdays: [...(this.selectedStore.depositweekdays || [])] };
     this.monthDaysText = (this.selectedStore.depositmonthdays || []).map((d:number) => d === 0 ? 'last' : String(d)).join(', ');
     this.templateForm.storeid = this.selectedStore.id;
+    this.cashService.getUsers(this.selectedStore.id).subscribe((users:any) => this.users = users || [], () => this.users = []);
     this.cashService.getTemplates(this.selectedStore.id).subscribe((templates:any) => {
       this.templates = templates || [];
     });
@@ -280,7 +296,6 @@ export class StoreSettingsComponent implements OnInit {
     this.message = '';
     const payload = {
       ...this.templateForm,
-      depositthreshold: Number(this.templateForm.depositthreshold || 0),
       assigneduserid: this.templateForm.assigneduserid || null
     };
     const req = payload.id ? this.cashService.updateTemplate(payload.id, payload) : this.cashService.saveTemplate(payload);
@@ -301,7 +316,6 @@ export class StoreSettingsComponent implements OnInit {
       name: row.name,
       starttime: row.starttime,
       endtime: row.endtime,
-      depositthreshold: row.depositthreshold,
       assigneduserid: row.assigneduser?.id || row.assigneduserid || '',
       active: row.active
     };

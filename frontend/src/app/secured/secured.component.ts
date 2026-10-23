@@ -128,7 +128,7 @@ export class SecuredComponent {
         // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).
         this.authService.setModules(data['modules']);
         this.platform = data['platform'] || null;
-        this.authService.setHosted(!!data['platform']);
+        this.authService.setPlatform(data['platform']);
         const fresh = data['permissions'];
         if (Array.isArray(fresh) && JSON.stringify(fresh) !== JSON.stringify(this.authService.getPermissions())) {
           this.authService.setPermissions(fresh);

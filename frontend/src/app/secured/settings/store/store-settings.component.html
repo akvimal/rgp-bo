@@ -57,10 +57,11 @@
           </div>
         </div>
         <div class="col-12 col-md-2 d-flex align-items-end">
-          <button class="btn btn-primary w-100" type="button" data-testid="store-s-save" [disabled]="savingStore || !storeForm.location" (click)="saveStore()">
+          <button class="btn btn-primary w-100" type="button" data-testid="store-s-save" [disabled]="savingStore || !storeForm.location || (!storeForm.id && atStoreLimit)" (click)="saveStore()">
             {{savingStore ? 'Saving...' : (storeForm.id ? 'Update Store' : 'Add Store')}}
           </button>
         </div>
+        <div class="col-12" *ngIf="!storeForm.id && atStoreLimit"><div class="alert alert-warning py-2 mb-0" data-testid="store-s-limit">{{limitNote}}</div></div>
       </div>
 
       <div class="table-responsive mt-3">
@@ -249,16 +250,13 @@
               <label class="form-label">End</label>
               <input class="form-control" data-testid="store-s-tpl-end" [(ngModel)]="templateForm.endtime">
             </div>
-            <div class="col-6 col-md-2">
-              <label class="form-label">Threshold</label>
-              <input type="number" class="form-control" data-testid="store-s-tpl-threshold" [(ngModel)]="templateForm.depositthreshold">
-            </div>
-            <div class="col-6 col-md-2">
-              <label class="form-label">Default staff</label>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Default opener <span class="text-muted small">(optional)</span></label>
               <select class="form-select" data-testid="store-s-tpl-assignee" [(ngModel)]="templateForm.assigneduserid">
-                <option value="">Any</option>
+                <option value="">Whoever opens the shift</option>
                 <option *ngFor="let user of users" [value]="user.id">{{user.fullname}}</option>
               </select>
+              <div class="form-text">Filled in when the shift is opened from this template. Only people who work at this store.</div>
             </div>
             <div class="col-12">
               <button class="btn btn-primary" type="button" data-testid="store-s-tpl-save" (click)="saveTemplate()">Save Template</button>
@@ -271,7 +269,7 @@
                 <tr>
                   <th>Name</th>
                   <th>Time</th>
-                  <th>Staff</th>
+                  <th>Default opener</th>
                   <th></th>
                 </tr>
               </thead>
@@ -279,7 +277,9 @@
                 <tr *ngFor="let template of templates">
                   <td>{{template.name}}</td>
                   <td>{{template.starttime}} - {{template.endtime}}</td>
-                  <td>{{template.assigneduser?.fullname || '-'}}</td>
+                  <td>{{template.assigneduser?.fullname || '-'}}
+                    <span class="badge bg-warning text-dark ms-1" *ngIf="template.assigneestatus === 'gone'" data-testid="store-tpl-gone" title="They have left, or no longer work at this store. Choose someone else.">no longer here</span>
+                  </td>
                   <td class="text-end">
                     <button class="btn btn-sm btn-outline-secondary" type="button" (click)="editTemplate(template)">Edit</button>
                   </td>
