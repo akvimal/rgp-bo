@@ -6,7 +6,7 @@ import { isOwnerRole } from 'src/core/roles';
 import { LineIn, PricingItem, PricingReader, today } from './pricing-reader';
 import { cleanRuleValue, ruleOf, RULES } from './pricing-rules';
 import {
-  Abc, checkChange, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, PolicySettings, rank, Subject, tradeBand, Violation, VIOLATION_TEXT,
+  Abc, addDays, boundsOf, checkChange, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, PolicySettings, rank, stepLimit, Subject, suggestPrice, tradeBand, Violation, VIOLATION_TEXT,
 } from './price-policy';
 
 export { PricingItem };
@@ -174,6 +174,36 @@ export class PricingService extends PricingReader {
     if (u.packsuspect) throw new BadRequestException('The pack size of this product looks wrong: check it under Pack check before pricing it.');
     if (!u.suggestion) throw new BadRequestException('The cost of this product is above what its MRP allows: check the cost and the pack size first.');
     return u;
+  }
+
+  /**
+   * What the Set the price dialog needs: the product's class, the lowest price its class allows and the legal ceiling, the largest raise now and
+   * when the next one is allowed, a suggested price, and (given a price) whether that price breaks the policy and whether the actor may approve it.
+   */
+  async productCheck(productid: number, price: number | null, userid: number) {
+    const ctx = await this.productContext(productid);
+    if (!ctx) return { known: false };
+    const { subject: s, policy, st } = ctx;
+    const b = boundsOf(s, policy);
+    const held = s.lastChange ? addDays(s.lastChange, st.stepDays) : null;
+    const out: any = {
+      known: true, title: ctx.title, pack: ctx.pack, classkey: ctx.classkey, abc: ctx.abc,
+      curprice: s.price, lasteff: s.lastChange, cost: s.cost, mrp: s.mrp, saletax: ctx.saletax,
+      ceiling: b.ceiling, lower: b.conflict ? null : b.lower, conflict: b.conflict,
+      stepmax: s.price ? stepLimit(s.price, b.ceiling, st) : null,
+      raiseon: s.price && held && held > today() ? held : null,
+      suggestion: suggestPrice({ ...s, price: null, lastChange: null }, policy),
+    };
+    if (price !== null && price > 0) {
+      const capped = Math.min(price, b.ceiling);       // addPrice caps at the ceiling before it checks the policy
+      const v = checkChange(s, policy, st, capped);
+      const level = await this.actorLevel(userid);
+      out.check = {
+        price: capped, violations: v.violations, texts: v.violations.map((x) => VIOLATION_TEXT[x]), level: v.level, changepct: v.changePct,
+        canapprove: v.level ? rank(level) >= rank(v.level) : true,
+      };
+    }
+    return out;
   }
 
   /** What each line of a purchase invoice means for the product's current price (the receiving screen's "Sale price" column). */

@@ -1,7 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { PRICING_SUBJECTS_SQL } from './pricing-subjects.sql';
 import { PRICING_UNPRICED_SQL } from './pricing-unpriced.sql';
-import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
+import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Subject, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
 
 export interface PricingItem {
   productid: number; title: string; pack: number; classkey: string; abc: Abc;
@@ -115,6 +115,16 @@ export class PricingReader {
    */
   async lineImpacts(lines: LineIn[]): Promise<LineOut[]> {
     if (!lines.length) return [];
+    const c = await this.contextFor(lines);
+    return lines.map((l) => {
+      const k = this.subjectOf(l, c);
+      const impact = lineImpact(k.subject, k.policy, c.st);
+      return { itemid: l.itemid, curprice: k.subject.price, classkey: k.classkey, status: impact.status, markuppct: impact.markupPct, discountpct: impact.discountPct, ceiling: impact.ceiling, lower: impact.lower, suggestion: impact.suggestion };
+    });
+  }
+
+  /** what is needed to judge purchase lines: current prices, class limits, the settings, each product's profit rank, and the GST billed */
+  private async contextFor(lines: LineIn[]) {
     const ids = [...new Set(lines.map((l) => l.productid))];
     const taxes = [...new Set(lines.map((l) => l.taxbatch))];
     const [prices, policies, st, all, gst] = await Promise.all([
@@ -124,20 +134,45 @@ export class PricingReader {
       this.policyMap(), this.settings(), this.itemsCached(),
       this.manager.query(`select t::float8 as t, public.sale_gst(t)::float8 as s from unnest($1::double precision[]) t`, [taxes]),
     ]);
-    const price = new Map<number, any>(prices.map((p: any) => [+p.product_id, p]));
-    const abcOf = new Map<number, Abc>(all.map((i) => [i.productid, i.abc]));
-    const saleTax = new Map<number, number>(gst.map((g: any) => [Number(g.t), Number(g.s)]));
-    return lines.map((l) => {
-      const paid = l.qty + l.free;
-      const cost = paid > 0 ? (l.ptrvalue * (1 - l.disc / 100) * l.qty) / paid : l.ptrvalue;
-      const incl = l.ptrcost && l.ptrcost > 0 ? l.ptrcost : l.ptrvalue * (1 + l.taxbatch / 100);
-      const abc = abcOf.get(l.productid) ?? 'C';
-      const key = classKey(tradeBand(l.mrp > 0 ? 1 - incl / l.mrp : null), abc);
-      const policy = policies.get(key) ?? { floorMarkupPct: 8, maxDiscountPct: 20, usualDiscountPct: 5 };
-      const p = price.get(l.productid);
-      const impact = lineImpact({ price: p ? p.price : null, cost, mrp: l.mrp, tax: saleTax.get(l.taxbatch) ?? l.taxbatch, abc, lastChange: p ? p.eff : null, today: today() }, policy, st);
-      return { itemid: l.itemid, curprice: p ? p.price : null, classkey: key, status: impact.status, markuppct: impact.markupPct, discountpct: impact.discountPct, ceiling: impact.ceiling, lower: impact.lower, suggestion: impact.suggestion };
-    });
+    return {
+      price: new Map<number, any>(prices.map((p: any) => [+p.product_id, p])),
+      policies, st,
+      abcOf: new Map<number, Abc>(all.map((i) => [i.productid, i.abc])),
+      saleTax: new Map<number, number>(gst.map((g: any) => [Number(g.t), Number(g.s)])),
+    };
+  }
+
+  private subjectOf(l: LineIn, c: { price: Map<number, any>; policies: Map<string, ClassPolicy>; st: PolicySettings; abcOf: Map<number, Abc>; saleTax: Map<number, number> }) {
+    const paid = l.qty + l.free;
+    const cost = paid > 0 ? (l.ptrvalue * (1 - l.disc / 100) * l.qty) / paid : l.ptrvalue;
+    const incl = l.ptrcost && l.ptrcost > 0 ? l.ptrcost : l.ptrvalue * (1 + l.taxbatch / 100);
+    const abc = c.abcOf.get(l.productid) ?? 'C';
+    const classkey = classKey(tradeBand(l.mrp > 0 ? 1 - incl / l.mrp : null), abc);
+    const policy = c.policies.get(classkey) ?? { floorMarkupPct: 8, maxDiscountPct: 20, usualDiscountPct: 5 };
+    const p = c.price.get(l.productid);
+    const saletax = c.saleTax.get(l.taxbatch) ?? l.taxbatch;
+    const subject: Subject = { price: p ? p.price : null, cost, mrp: l.mrp, tax: saletax, abc, lastChange: p ? p.eff : null, today: today() };
+    return { subject, policy, classkey, abc, saletax };
+  }
+
+  /**
+   * One product as the price policy sees it, from its latest completed purchase: its class and limits, current price and when it took effect.
+   * Null when the product has never been purchased (there is no cost or MRP to judge a price against).
+   */
+  async productContext(productid: number) {
+    const rows = await this.manager.query(
+      `select pii.id, pii.product_id, pii.mrp_cost::float8 as mrp, pii.ptr_value::float8 as ptrvalue, pii.ptr_cost::float8 as ptrcost, coalesce(pii.disc_pcnt, 0)::float8 as disc,
+              pii.qty, coalesce(pii.free_qty, 0) as free, coalesce(pii.tax_pcnt, 0)::float8 as taxbatch, p.title, p.pack
+         from purchase_invoice_item pii
+         join purchase_invoice pi on pi.id = pii.invoice_id and pi.status = 'COMPLETE' and pi.active and not pi.archive
+         join product p on p.id = pii.product_id
+        where pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
+        order by pi.invoice_date desc, pii.id desc limit 1`, [productid]);
+    if (!rows.length) return null;
+    const r = rows[0];
+    const line: LineIn = { itemid: +r.id, productid: +r.product_id, mrp: r.mrp, ptrvalue: r.ptrvalue, ptrcost: r.ptrcost, disc: r.disc, qty: +r.qty, free: +r.free, taxbatch: r.taxbatch };
+    const c = await this.contextFor([line]);
+    return { ...this.subjectOf(line, c), st: c.st, title: r.title as string, pack: +r.pack };
   }
 
   /** How many prices are out of policy, for the alert (no actor): above the legal ceiling, below floor or over cap, held, and to check. */

@@ -177,7 +177,7 @@ export class ProductService {
   async findPriceById(productid:number){
     // Fixed SQL injection vulnerability - now using parameterized query
     return await this.manager.query(
-      `SELECT * FROM price_view WHERE id = $1`,
+      `SELECT v.*, p.pack FROM price_view v JOIN product p ON p.id = v.id WHERE v.id = $1`,
       [productid]);
   }
 
@@ -191,7 +191,8 @@ export class ProductService {
   async findPriceHistoryById(productid:number){
     // Fixed SQL injection vulnerability - now using parameterized query
     return await this.manager.query(
-      `SELECT * FROM product_price2 WHERE product_id = $1 ORDER BY eff_date DESC`,
+      `SELECT h.id, h.product_id, h.eff_date, h.end_date, round(h.sale_price::numeric, 2)::float8 AS sale_price, h.reason, h.comments, h.created_by, u.full_name AS by_name, h.created_on
+         FROM product_price2 h LEFT JOIN app_user u ON u.id = h.created_by WHERE h.product_id = $1 ORDER BY h.eff_date DESC, h.id DESC`,
       [productid]);
   }
 

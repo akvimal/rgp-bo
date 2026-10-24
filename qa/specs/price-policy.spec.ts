@@ -173,6 +173,37 @@ test.describe('Price policy @p1', () => {
     expect(priced.lines[0].markuppct).toBeCloseTo(52.38, 1);
   });
 
+  test('POLICY-10 the Set the price dialog reads the class limits and checks a typed price @happy', async ({ api }) => {
+    const id = await boughtProduct(api);                                             // MID_C: cost 100, MRP 200, GST billed 5%
+    const get = (path: string, who = MGR) => api.request('GET', path, undefined, who);
+    const r = (await get(`/pricing/product/${id}/check`)).body;
+    expect(r.known).toBe(true);
+    expect(r.classkey).toBe('MID_C');
+    expect(r.lower).toBe(125);
+    expect(r.ceiling).toBe(190.47);
+    expect(r.suggestion.price).toBe(152.38);
+    expect(r.curprice).toBeNull();
+
+    const low = (await get(`/pricing/product/${id}/check?price=110`)).body.check;
+    expect(low.violations).toContain('BELOW_FLOOR');
+    expect(low.level).toBe('BUSINESS');
+    expect(low.canapprove).toBe(true);                                               // the Business Head may approve it
+    const fine = (await get(`/pricing/product/${id}/check?price=150`)).body.check;
+    expect(fine.violations).toEqual([]);
+    expect((await get(`/pricing/product/${id}/check?price=250`)).body.check.price).toBe(190.47);   // capped at the legal ceiling
+
+    // a product never purchased has nothing to judge a price against; counter staff are not shown cost
+    const lone = await api.request('POST', '/products', { title: `QA POLICY LONE ${Date.now()}`, taxpcnt: 5, category: 'Analgesic', code: `PL${Date.now()}` }, MGR);
+    expect((await get(`/pricing/product/${lone.body.id}/check`)).body.known).toBe(false);
+    expect((await get(`/pricing/product/${id}/check`, SALES)).status).toBe(403);
+
+    // the history is clean: two decimals and who set it
+    expect((await setPrice(api, id, 150, { overridereason: 'qa' })).status).toBeLessThan(300);
+    const hist = (await get(`/products/prices/${id}`)).body.history;
+    expect(hist[0].sale_price).toBe(150);
+    expect(hist[0].by_name).toBeTruthy();
+  });
+
   test('POLICY-4 the review queue reports totals and the class counts @happy', async ({ api }) => {
     const r = await api.request('GET', '/pricing/review', undefined, MGR);
     expect(r.status).toBe(200);

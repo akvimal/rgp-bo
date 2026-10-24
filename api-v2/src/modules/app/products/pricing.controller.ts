@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
@@ -110,6 +110,14 @@ export class PricingController {
     await this.pricing.audited(userid, 'price.first_price', productid, `${u.title}: first price ${saved.saleprice} (class ${u.classkey}, ${u.suggestion!.discountPct}% off MRP, markup ${u.suggestion!.markupPct}%)`,
       { price: saved.saleprice, class: u.classkey, cost: u.cost, mrp: u.mrp, discountPct: u.suggestion!.discountPct, markupPct: u.suggestion!.markupPct });
     return { productid, title: u.title, price: Number(saved.saleprice), discountpct: u.suggestion!.discountPct, markuppct: u.suggestion!.markupPct };
+  }
+
+  /** What the Set the price dialog needs for one product, and (with ?price=) whether that price breaks the policy and whether the user may approve it. */
+  @Get('/product/:id/check')
+  async productCheck(@Param('id', ParseIntPipe) id: number, @Query('price') price: string, @User() user: any) {
+    await this.assertCost(user);
+    const n = price === undefined || price === '' ? null : Number(price);
+    return this.pricing.productCheck(id, n !== null && Number.isFinite(n) ? n : null, user.id);
   }
 
   /** What each line of a purchase invoice means for the product's current price. */

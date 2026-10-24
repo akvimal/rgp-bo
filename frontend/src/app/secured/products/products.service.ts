@@ -20,6 +20,7 @@ export class ProductsService {
     pricingSaveRules(values:any){ return this.http.put<any>(`${environment.apiHost}/pricing/rules`, { values }); }
     pricingPriceNew(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/price-new`, { productid }); }
     pricingPriceNewAll(){ return this.http.post<any>(`${environment.apiHost}/pricing/price-new-all`, {}); }
+    pricingProductCheck(productid:number, price?:number){ return this.http.get<any>(`${environment.apiHost}/pricing/product/${productid}/check`, { params: price !== undefined ? { price: String(price) } : {} }); }
     pricingApply(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/apply`, { productid }); }
     pricingApplyCuts(){ return this.http.post<any>(`${environment.apiHost}/pricing/apply-cuts`, {}); }
     pricingPolicy(){ return this.http.get<any>(`${environment.apiHost}/pricing/policy`); }

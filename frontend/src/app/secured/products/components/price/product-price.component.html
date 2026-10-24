@@ -82,7 +82,6 @@
     </div>
 </div>
 
-<p-dialog [header]="'Set the price'"
-        [(visible)]="showPriceChange" [modal]="true">
-    <app-product-price-change [productid]="productid" (added)="changed($event)"></app-product-price-change>
+<p-dialog [header]="'Set the price'" [(visible)]="showPriceChange" [modal]="true" [style]="{width:'64rem', maxWidth:'95vw'}">
+    <app-product-price-change [productid]="productid" (added)="changed($event)" (cancelled)="showPriceChange = false"></app-product-price-change>
 </p-dialog>

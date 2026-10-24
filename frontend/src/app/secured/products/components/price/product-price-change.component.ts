@@ -1,42 +1,91 @@
-import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { Component, EventEmitter, Input, OnDestroy, Output, SimpleChanges } from "@angular/core";
 import { DateUtilService } from "src/app/secured/date-util.service";
 import { ProductsService } from "../../products.service";
 
 const MARGIN_WARN = 300;     // above this the price is saved with a warning
 const MARGIN_LIMIT = 1000;   // above this it is refused as a typing mistake
 
+/** why a price changed, as shown to people; the stored values are the keys */
+export const PRICE_REASONS: { value: string; label: string; needsComment?: boolean }[] = [
+    { value: 'Initial', label: 'Initial price' },
+    { value: 'Higher PTR', label: 'Cost rise' },
+    { value: 'MRP change', label: 'MRP change' },
+    { value: 'Market', label: 'Market', needsComment: true },
+    { value: 'Correction', label: 'Correction', needsComment: true },
+    { value: 'Other', label: 'Other', needsComment: true },
+];
+const REASON_LABELS: { [k: string]: string } = PRICE_REASONS.reduce((m: { [k: string]: string }, r) => { m[r.value] = r.label; return m; }, { Purchase: 'At purchase', Policy: 'Pricing policy' });
+
+/**
+ * The Set the price dialog: a product's current price and cost, the limits its class allows (the lowest price and the legal ceiling), a price
+ * to type with live feedback on the pricing policy (does it need an approver, how big may a raise be), and the history of its prices.
+ */
 @Component({
     selector: 'app-product-price-change',
     templateUrl: 'product-price-change.component.html'
 })
-export class ProductPriceChangeComponent {
+export class ProductPriceChangeComponent implements OnDestroy {
 
     @Input() productid;
     @Output() added = new EventEmitter();
+    @Output() cancelled = new EventEmitter();
 
+    readonly reasons = PRICE_REASONS;
     price:any = { sale: '', date: '', reason: '', comments: '' };
     current:any = {};
+    /** the class, the limits and a suggested price for this product (from the pricing policy); null until it arrives or when never purchased */
+    policy:any = null;
+    /** what the policy says about the price typed: what it breaks, who must approve, whether this user may */
+    check:any = null;
     saving = false;
     error = '';
-    /** the price breaks the pricing policy: a Store Head or Business Head may set it anyway, with a reason */
+    /** the price breaks the pricing policy and this user may approve it: a reason is asked for */
     needsOverride = false;
+    private timer:any = null;
 
     constructor(private service:ProductsService, private dateService:DateUtilService){}
 
     ngOnChanges(changes:SimpleChanges){
         if(changes.productid && changes.productid.currentValue > 0){
             this.error = '';
-            this.service.findPricesById(changes.productid.currentValue).subscribe((data:any) => {
+            this.policy = null;
+            this.check = null;
+            this.needsOverride = false;
+            const id = changes.productid.currentValue;
+            this.service.findPricesById(id).subscribe((data:any) => {
                 this.current = data || {};
-                this.price = { sale: data?.price?.price ?? '', date: this.dateService.getFormatDate(new Date()), reason: '', comments: '' };
+                this.price = { sale: data?.price?.price ?? '', date: this.defaultDate(), reason: '', comments: '' };
             });
+            this.service.pricingProductCheck(id).subscribe((p:any) => this.policy = p?.known ? p : null, () => this.policy = null);
         }
     }
 
     ngOnInit(){
-        this.price.date = this.dateService.getFormatDate(new Date());
+        this.price.date = this.defaultDate();
     }
 
+    ngOnDestroy(){ clearTimeout(this.timer); }
+
+    // ------------------------------------------------------------------ dates: a new price starts after the day of the last change
+    /** the date of the latest price row, which a new price cannot start on or before */
+    get lastEffective(): string | null {
+        const d = this.current?.history?.[0]?.eff_date;
+        return d ? String(d).slice(0, 10) : null;
+    }
+    get minDate(): string | null {
+        const last = this.lastEffective;
+        if(!last) return null;
+        const d = new Date(last + 'T00:00:00Z');
+        d.setUTCDate(d.getUTCDate() + 1);
+        return d.toISOString().slice(0, 10);
+    }
+    private defaultDate(): string {
+        const today = this.dateService.getFormatDate(new Date());
+        const min = this.minDate;
+        return min && min > today ? min : today;
+    }
+
+    // ------------------------------------------------------------------ the figures
     /** the purchase cost and MRP the price is checked against (none until the product has been bought) */
     get ptr(): number { return +(this.current?.price?.ptr || 0); }
     get mrp(): number { return +(this.current?.price?.mrp || 0); }
@@ -48,7 +97,7 @@ export class ProductPriceChangeComponent {
     get typed(): number { return +this.price.sale || 0; }
     get cappedAt(): number | null { return this.ceiling && this.typed > this.ceiling ? this.ceiling : null; }
     get effective(): number { return this.cappedAt ?? this.typed; }
-    /** margin and discount compare like with like: the price with GST against the cost and the MRP, both with GST */
+    /** markup and discount compare like with like: the price with GST against the cost and the MRP, both with GST */
     get withGst(): number { return this.effective * (1 + this.saleTax / 100); }
     get margin(): number | null { return this.ptr && this.typed > 0 ? Math.round((this.effective * (1 + this.batchTax / 100) - this.ptr) / this.ptr * 100) : null; }
     get discount(): number | null { return this.mrp && this.typed > 0 ? Math.round((this.mrp - this.withGst) / this.mrp * 100) : null; }
@@ -56,8 +105,45 @@ export class ProductPriceChangeComponent {
     get high(): boolean { return this.margin !== null && this.margin > MARGIN_WARN && !this.tooHigh; }
     get belowCost(): boolean { return this.ptr > 0 && this.typed > 0 && this.effective * (1 + this.batchTax / 100) < this.ptr; }
 
+    // ------------------------------------------------------------------ the pricing policy, live
+    onPriceInput(value:any){
+        this.price.sale = value;
+        this.check = null;
+        this.needsOverride = false;
+        clearTimeout(this.timer);
+        if(!(this.typed > 0) || !this.policy) return;
+        this.timer = setTimeout(() => {
+            this.service.pricingProductCheck(this.productid, this.typed).subscribe((r:any) => {
+                this.check = r?.check || null;
+                this.needsOverride = !!(this.check?.violations?.length && this.check.canapprove);
+            }, () => this.check = null);
+        }, 400);
+    }
+
+    useSuggestion(){
+        if(this.policy?.suggestion) this.onPriceInput(this.policy.suggestion.price);
+    }
+
+    /** the typed price breaks the policy and this user may not approve it */
+    get blocked(): boolean { return !!(this.check?.violations?.length && !this.check.canapprove); }
+    get approver(): string { return this.check?.level === 'BUSINESS' ? 'a Business Head' : 'a Store Head or Business Head'; }
+
+    // ------------------------------------------------------------------ reasons and what is missing
+    reasonLabel(code:string): string { return REASON_LABELS[code] || code || ''; }
+    get commentRequired(): boolean { return !!PRICE_REASONS.find(r => r.value === this.price.reason)?.needsComment; }
+
+    get missing(): string[] {
+        const out: string[] = [];
+        if(!(this.typed > 0)) out.push('sale price');
+        if(!this.price.date) out.push('effective date');
+        if(!this.price.reason) out.push('reason');
+        if(this.commentRequired && !String(this.price.comments || '').trim()) out.push('a comment (needed for this reason)');
+        if(this.needsOverride && String(this.price.overridereason || '').trim().length < 5) out.push('the reason for setting this price anyway');
+        return out;
+    }
+
     isValid(){
-        return this.typed > 0 && !!this.price.date && !!this.price.reason && !this.tooHigh && !this.saving;
+        return this.missing.length === 0 && !this.tooHigh && !this.blocked && !this.saving;
     }
 
     onSave(){
