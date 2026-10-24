@@ -12,9 +12,14 @@ export interface PoBuyer {
   deliverTo?: string;
 }
 
+/** One place to sign: a caption under the line, a small note under that, and a line of text above the line. */
+export interface SignatureBlock { caption: string; note?: string; above?: string; }
+
 export interface PoPdfOptions {
   buyer: PoBuyer | null;          // null: the buyer's details are switched off in the settings
   terms: string[];
+  /** the blocks across the foot of the last page (1 to 3); the standard two when none are given */
+  signatures?: SignatureBlock[];
   preparedBy?: string;
   generatedAt?: Date;
 }
@@ -35,6 +40,30 @@ export function poStatusMark(status: string): string {
     case 'REJECTED': return 'REJECTED';
     default: return '';
   }
+}
+
+/** how the signature setting is written: one block per line, "Caption | note under it | text above the line" */
+export const DEFAULT_PO_SIGNATURES = [
+  'Authorised signatory | Prepared by {preparedBy} | For {business}',
+  'Vendor acceptance | Signature, seal and date',
+];
+
+/** the blocks written in the settings (up to three), with {business}, {preparedBy} and {vendor} filled in; empty parts are dropped */
+export function parseSignatureBlocks(lines: string[], ctx: { business?: string; preparedBy?: string; vendor?: string }): SignatureBlock[] {
+  const fill = (t: string) => {
+    const filled = t
+      .replace(/\{business\}/gi, ctx.business || '')
+      .replace(/\{preparedBy\}/gi, ctx.preparedBy || '')
+      .replace(/\{vendor\}/gi, ctx.vendor || '')
+      .replace(/\s+/g, ' ').trim();
+    // a placeholder that came out empty leaves no dangling word ("For" with no business after it); text written without one is kept as written
+    return /\{(business|preparedBy|vendor)\}/i.test(t) && /^(for|by|prepared by)$/i.test(filled) ? '' : filled;
+  };
+  const source = lines.map((l) => l.trim()).filter(Boolean).slice(0, 3);
+  return (source.length ? source : DEFAULT_PO_SIGNATURES).map((l) => {
+    const [caption, note, above] = l.split('|').map((p) => fill(p));
+    return { caption: caption || '', note: note || undefined, above: above || undefined };
+  }).filter((b) => b.caption);
 }
 
 export const DEFAULT_PO_TERMS = [
@@ -225,13 +254,16 @@ export function buildPoPdf(order: any, opts: PoPdfOptions): Promise<Buffer> {
     // ---------------------------------------------------------------- signatures
     if (y + 80 > BOTTOM) { doc.addPage(); y = 40; }
     y += 24;
-    const sx1 = L, sx2 = L + 280, sw = 215;
-    put(`For ${opts.buyer?.name || ''}`.trim(), sx1, y - 14, { w: sw, size: 8.5, color: GREY });
-    doc.moveTo(sx1, y + 24).lineTo(sx1 + sw, y + 24).lineWidth(0.7).stroke('#111827');
-    put('Authorised signatory' + (opts.preparedBy ? ` (prepared by ${opts.preparedBy})` : ''), sx1, y + 28, { w: sw, size: 8.5, bold: true });
-    doc.moveTo(sx2, y + 24).lineTo(sx2 + sw, y + 24).lineWidth(0.7).stroke('#111827');
-    put('Vendor acceptance', sx2, y + 28, { w: sw, size: 8.5, bold: true });
-    put('Signature, seal and date', sx2, y + 40, { w: sw, size: 8, color: GREY });
+    const blocks = (opts.signatures && opts.signatures.length ? opts.signatures : parseSignatureBlocks([], { business: opts.buyer?.name, preparedBy: opts.preparedBy })).slice(0, 3);
+    const gap = 30;
+    const sw = (W - gap * (blocks.length - 1)) / blocks.length;
+    blocks.forEach((b, i) => {
+      const sx = L + i * (sw + gap);
+      if (b.above) put(b.above, sx, y - 14, { w: sw, size: 8.5, color: GREY });
+      doc.moveTo(sx, y + 24).lineTo(sx + sw, y + 24).lineWidth(0.7).stroke('#111827');
+      put(b.caption, sx, y + 28, { w: sw, size: 8.5, bold: true });
+      if (b.note) put(b.note, sx, y + 40, { w: sw, size: 8, color: GREY });
+    });
 
     // ---------------------------------------------------------------- every page: status mark, page numbers
     const mark = poStatusMark(order.status);

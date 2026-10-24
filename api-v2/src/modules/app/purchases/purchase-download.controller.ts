@@ -8,7 +8,7 @@ import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { PurchasingGuard } from "../roles/purchasing.guard";
 import { Setting } from 'src/entities/setting.entity';
 import { PurchaseService } from './purchase.service';
-import { buildPoPdf, DEFAULT_PO_TERMS, PoBuyer } from './po-pdf';
+import { buildPoPdf, DEFAULT_PO_TERMS, parseSignatureBlocks, PoBuyer } from './po-pdf';
 
 const LICENCE_LABELS: { [type: string]: string } = {
   RETAIL_20_21: 'DL No.', WHOLESALE_20B_21B: 'Wholesale DL No.', FSSAI: 'FSSAI', OTHER: 'Licence',
@@ -36,7 +36,11 @@ export class PurchaseDownloadController {
     const terms = await this.getTerms();
     const buyer = showBuyerDetails ? await this.buyerFor(order) : null;
 
-    const buffer = await buildPoPdf(order, { buyer, terms, preparedBy: order.createdbyname || undefined });
+    const signatures = parseSignatureBlocks(await this.getLines('purchase_order_signatures'), {
+      business: buyer?.name, preparedBy: order.createdbyname || undefined, vendor: order.vendor?.name,
+    });
+
+    const buffer = await buildPoPdf(order, { buyer, terms, signatures, preparedBy: order.createdbyname || undefined });
     const filename = `PO-${order.ponumber || order.id}.pdf`;
     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
     res.type('application/pdf');
@@ -51,10 +55,15 @@ export class PurchaseDownloadController {
     return ['1', 'true', 'yes', 'y', 'on'].includes(`${setting.value}`.trim().toLowerCase());
   }
 
+  /** the lines of a text setting, blanks dropped */
+  private async getLines(key: string): Promise<string[]> {
+    const setting = await this.settingRepository.findOne({ where: { key, isActive: true, isArchived: false } });
+    return `${setting?.value ?? ''}`.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  }
+
   /** the terms the business has written (one per line), or the standard three */
   private async getTerms(): Promise<string[]> {
-    const setting = await this.settingRepository.findOne({ where: { key: 'purchase_order_terms', isActive: true, isArchived: false } });
-    const lines = `${setting?.value ?? ''}`.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const lines = await this.getLines('purchase_order_terms');
     return lines.length ? lines : DEFAULT_PO_TERMS;
   }
 

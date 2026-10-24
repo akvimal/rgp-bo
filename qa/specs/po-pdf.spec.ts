@@ -30,6 +30,13 @@ async function order(api: any, items: number, qty = 7) {
   return { id: po.body.id as number, vendor, picks };
 }
 
+const setSetting = async (api: any, key: string, value: string) => {
+  const all = (await api.request('GET', '/settings?category=purchases', undefined, MGR)).body as any[];
+  const cur = all.find((x) => x.key === key);
+  const body = { category: 'purchases', key, value, description: key };
+  return cur ? api.request('PUT', `/settings/${cur.id}`, body, MGR) : api.request('POST', '/settings', body, MGR);
+};
+
 const setTerms = async (api: any, value: string) => {
   const all = (await api.request('GET', '/settings?category=purchases', undefined, MGR)).body as any[];
   const cur = all.find((s) => s.key === 'purchase_order_terms');
@@ -115,6 +122,45 @@ test.describe('Purchase order PDF @p1', () => {
       expect(p1).toContain('Second term.');
     } finally {
       await setTerms(api, '');
+    }
+  });
+
+  test('POPDF-6 the signature blocks at the foot are the business own when written (up to three), the standard two when not @happy', async ({ api }) => {
+    const o = await order(api, 1);
+    const biz = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
+    try {
+      expect((await setSetting(api, 'purchase_order_signatures', 'Prepared by | Purchase clerk\nChecked by | Store manager\nApproved by | Director | For {business}')).status).toBeLessThan(300);
+      const [p1] = await pdfPages((await pdfOf(api, o.id)).buf);
+      expect(p1).toContain('Prepared by');
+      expect(p1).toContain('Purchase clerk');
+      expect(p1).toContain('Checked by');
+      expect(p1).toContain('Approved by');
+      expect(p1).toContain(`For ${biz.legalname || biz.name}`);                                   // {business} filled in
+      expect(p1).not.toContain('Vendor acceptance');                                             // only what was written
+    } finally {
+      await setSetting(api, 'purchase_order_signatures', '');
+    }
+    const [std] = await pdfPages((await pdfOf(api, o.id)).buf);
+    expect(std).toContain('Authorised signatory');
+    expect(std).toContain('Vendor acceptance');
+    expect(std).toContain('Signature, seal and date');
+  });
+
+  test('POPDF-7 the settings page edits the signature blocks and refuses more than three @edge', async ({ app, api }) => {
+    const o = await order(api, 1);
+    const { page } = await app.open(MGR, '/secure/purchases/settings');
+    try {
+      await page.getByTestId('po-signatures').fill('A\nB\nC\nD');
+      await expect(page.getByTestId('po-settings-save')).toBeDisabled();
+      await page.getByTestId('po-signatures').fill('Buyer sign\nSeller sign | Stamp here');
+      await page.getByTestId('po-settings-save').click();
+      await expect(page.getByTestId('po-settings-saved')).toBeVisible();
+      const [p1] = await pdfPages((await pdfOf(api, o.id)).buf);
+      expect(p1).toContain('Buyer sign');
+      expect(p1).toContain('Seller sign');
+      expect(p1).toContain('Stamp here');
+    } finally {
+      await setSetting(api, 'purchase_order_signatures', '');
     }
   });
 });

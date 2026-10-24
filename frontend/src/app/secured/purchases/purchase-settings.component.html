@@ -32,6 +32,17 @@
           <div class="text-danger small" *ngIf="form.controls['purchaseOrderTerms'].errors?.maxlength">Too long: keep it under 2000 characters.</div>
         </div>
       </div>
+      <div class="row mt-3">
+        <div class="col-md-8">
+          <label class="form-label" for="po-signatures">Signature blocks at the foot of the purchase order</label>
+          <textarea id="po-signatures" class="form-control" rows="3" formControlName="purchaseOrderSignatures" data-testid="po-signatures"
+            placeholder="One block per line, up to 3. Leave empty for the standard two."></textarea>
+          <small class="text-muted d-block mt-1">One block per line, up to 3, written as <code>Caption | note under it | text above the line</code>. The note and the text above are optional.
+            You can use <code>{{ '{business}' }}</code>, <code>{{ '{preparedBy}' }}</code> and <code>{{ '{vendor}' }}</code>. Leave empty for the standard two:</small>
+          <ol class="small text-muted mb-0"><li *ngFor="let t of standardSignatures">{{t}}</li></ol>
+          <div class="text-danger small" *ngIf="form.controls['purchaseOrderSignatures'].errors?.tooMany">At most 3 blocks.</div>
+        </div>
+      </div>
       <div class="mt-3 d-flex align-items-center gap-3">
         <button class="btn btn-primary" type="submit" [disabled]="!form.valid" data-testid="po-settings-save">Save</button>
         <span class="text-success" *ngIf="saved" data-testid="po-settings-saved">Saved</span>
