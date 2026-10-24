@@ -5,13 +5,29 @@ import { SaleService } from "../sales.service";
 import { Subscription } from "rxjs";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
 
 @Component({
     templateUrl: './sales-list.component.html'
 })
 export class SalesListComponent implements OnDestroy {
 
-    sales:Sale[] = [];
+    /** the bills of the day, and the ones left after the staff and payment filters */
+    sales:any[] = [];
+    rows:any[] = [];
+    staffFilter = '';
+    payFilter = 'ALL';
+    staffOptions:string[] = [];
+    payOptions:{value:string,label:string}[] = [];
+
+    /** the Digital payments check of each bill (the same record that page reads), and who may see and make it */
+    checks:{[saleId:number]:any} = {};
+    canViewDigital = false;
+    canVerifyDigital = false;
+    checkSale:any = null;
+    checkForm:any = { status: 'VERIFIED', amount_seen: null, note: '' };
+    checkError = '';
+    checkSaving = false;
     date:string = '';
     returnSaleId = '';
     selectedOperatorId: number | null = null;
@@ -34,8 +50,12 @@ export class SalesListComponent implements OnDestroy {
       private service:SaleService,
       private dateService:DateUtilService,
       private operatorContext: OperatorContextService,
-      private storeContext: StoreContextService
-    ){}
+      private storeContext: StoreContextService,
+      private auth: AuthService
+    ){
+      this.canViewDigital = this.auth.isActionAuthorized('paymentrecon.view');
+      this.canVerifyDigital = this.auth.isActionAuthorized('paymentrecon.verify');
+    }
 
     ngOnInit(){
       this.date = this.dateService.getFormatDate(new Date());
@@ -120,10 +140,6 @@ export class SalesListComponent implements OnDestroy {
     }
 
     fetchSales(filter:any = {}){
-      this.totals['digital'] = 0;
-      this.totals['cash'] = 0;
-      this.totals['net'] = 0;
-
         this.service.findAll({...this.buildCriteria(filter),status:'COMPLETE'}).subscribe((result:any) => {
           const data: any[] = result?.data ?? (Array.isArray(result) ? result : []);
           data.forEach((sale:any) => {
@@ -133,14 +149,101 @@ export class SalesListComponent implements OnDestroy {
             //round the decimals of total
             sale['total'] = Math.round(sale['total']);
             sale['staffname'] = sale['actinguser'] ? sale['actinguser'].fullname : (sale['created'] ? sale['created'].fullname : '');
-            this.totals['digital'] += +sale['digiamt'] || 0;
-            this.totals['cash'] += +sale['cashamt'] || 0;
-            this.totals['net'] += +sale['total'] || 0;
           });
-          // sums of paise carry a floating-point tail (5111.219999999999 is 5111.22): round it off
-          (Object.keys(this.totals) as ('digital'|'cash'|'net')[]).forEach(k => this.totals[k] = Math.round(this.totals[k] * 100) / 100);
           this.sales = data;
+          this.staffOptions = Array.from(new Set(data.map((s:any) => s.staffname).filter(Boolean))).sort() as string[];
+          const methods = Array.from(new Set(data.filter((s:any) => +s.digiamt > 0).map((s:any) => s.digimethod || 'UPI'))).sort() as string[];
+          this.payOptions = [
+            { value: 'ALL', label: 'All payments' },
+            { value: 'CASH', label: 'Cash only' },
+            { value: 'DIGITAL', label: 'Digital (any)' },
+            { value: 'SPLIT', label: 'Cash and digital' },
+            ...methods.map(m => ({ value: 'M:' + m, label: m })),
+            { value: 'UNVERIFIED', label: 'Digital, not verified' },
+          ];
+          if (this.staffFilter && !this.staffOptions.includes(this.staffFilter)) this.staffFilter = '';
+          if (!this.payOptions.some(o => o.value === this.payFilter)) this.payFilter = 'ALL';
+          this.applyFilters();
+          this.loadChecks();
         });
+    }
+
+    /** the staff and payment filters, over the bills of the day; the totals follow what is shown */
+    applyFilters(){
+      const digital = (s:any) => +s.digiamt > 0;
+      this.rows = this.sales.filter((s:any) => {
+        if (this.staffFilter && s.staffname !== this.staffFilter) return false;
+        const f = this.payFilter;
+        if (f === 'CASH') return !digital(s) && +s.cashamt > 0;
+        if (f === 'DIGITAL') return digital(s);
+        if (f === 'SPLIT') return digital(s) && +s.cashamt > 0;
+        if (f === 'UNVERIFIED') return digital(s) && this.checkOf(s)?.status !== 'VERIFIED';
+        if (f.startsWith('M:')) return digital(s) && (s.digimethod || 'UPI') === f.slice(2);
+        return true;
+      });
+      const sum = (key:string) => Math.round(this.rows.reduce((t:number, s:any) => t + (+s[key] || 0), 0) * 100) / 100;
+      this.totals = { digital: sum('digiamt'), cash: sum('cashamt'), net: sum('total') };
+    }
+
+    // ------------------------------------------------------------ the digital payment check
+    private loadChecks(){
+      const ids = this.sales.filter((s:any) => +s.digiamt > 0).map((s:any) => s.id);
+      if (!this.canViewDigital || !ids.length) { this.checks = {}; return; }
+      this.service.digitalStatus(ids).subscribe((rows:any[]) => {
+        this.checks = {};
+        (rows || []).forEach((r:any) => this.checks[+r.sale_id] = r);
+        this.applyFilters();
+      }, () => this.checks = {});
+    }
+
+    checkOf(s:any){ return this.checks[s.id] || null; }
+
+    checkLabel(s:any){
+      const c = this.checkOf(s);
+      return !c ? 'To verify' : c.status === 'VERIFIED' ? 'Verified' : c.status === 'MISMATCH' ? 'Amount differs' : 'Not received';
+    }
+
+    checkClass(s:any){
+      const c = this.checkOf(s);
+      return !c ? 'bg-light text-dark border' : c.status === 'VERIFIED' ? 'bg-success' : 'bg-danger';
+    }
+
+    openCheck(s:any){
+      this.checkSale = s;
+      const c = this.checkOf(s);
+      this.checkForm = { status: c?.status || 'VERIFIED', amount_seen: c?.amount_seen ?? null, note: c?.note || '' };
+      this.checkError = '';
+    }
+
+    closeCheck(){ this.checkSale = null; }
+
+    saveCheck(){
+      const s = this.checkSale, f = this.checkForm;
+      if (!s) return;
+      this.checkError = '';
+      if (f.status !== 'VERIFIED' && !String(f.note || '').trim()) { this.checkError = 'Add a note saying what you found.'; return; }
+      if (f.status === 'MISMATCH' && (f.amount_seen === null || f.amount_seen === '')) { this.checkError = 'Enter the amount that was actually received.'; return; }
+      this.checkSaving = true;
+      this.service.recordDigital(s.id, { status: f.status, note: f.status === 'VERIFIED' ? '' : f.note, amount_seen: f.status === 'MISMATCH' ? f.amount_seen : undefined }).subscribe({
+        next: () => {
+          this.checkSaving = false;
+          this.checks[s.id] = { sale_id: s.id, status: f.status, amount_seen: f.status === 'VERIFIED' ? +s.digiamt : f.amount_seen, note: f.note };
+          this.checkSale = null;
+          this.applyFilters();
+        },
+        error: (e:any) => { this.checkSaving = false; const m = e?.error?.message; this.checkError = Array.isArray(m) ? m.join(' ') : (m || 'The check could not be saved.'); }
+      });
+    }
+
+    /** take the check back: the bill goes back to "to verify" here and on the Digital payments page */
+    undoCheck(){
+      const s = this.checkSale;
+      if (!s) return;
+      this.checkSaving = true;
+      this.service.clearDigital(s.id).subscribe({
+        next: () => { this.checkSaving = false; delete this.checks[s.id]; this.checkSale = null; this.applyFilters(); },
+        error: (e:any) => { this.checkSaving = false; this.checkError = e?.error?.message || 'The check could not be removed.'; }
+      });
     }
 
     showReturn(saleid:any){

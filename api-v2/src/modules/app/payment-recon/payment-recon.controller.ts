@@ -32,6 +32,7 @@ export class PaymentReconController {
   constructor(private readonly service: PaymentReconService, private readonly platform: PlatformService) {}
 
   @Get() @Needs('view') list(@Query() q: any, @User() u: any) { return this.service.list(q, u); }
+  @Get('status') @Needs('view') statusOf(@Query('ids') ids: string, @User() u: any) { return this.service.statusOf(ids, u); }
   @Get('statements') @Needs('import') statements() { return this.service.statements(); }
   @Post('statements/preview') @Needs('import') @UseGuards(ScanQuotaGuard) @UseInterceptors(upload) async preview(@UploadedFile() f: any) { await this.platform.bump('scans'); return this.service.preview(f); }
   @Post('statements') @Needs('import') @UseGuards(DocumentQuotaGuard) @UseInterceptors(upload) async importStatement(@UploadedFile() f: any, @User() u: any) { await this.platform.bump('documents'); return this.service.importStatement(f, u); }

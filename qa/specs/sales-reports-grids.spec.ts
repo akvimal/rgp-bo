@@ -22,23 +22,28 @@ async function sellToday(api: any, digi: number, cash: number) {
   return r;
 }
 
+/** the list opens on the browser's today; the bills these tests make carry their own (UTC) day, which is the day to look at */
+const listOn = async (page: any) => page.locator('#fromdate').fill(new Date().toISOString().slice(0, 10));
+
 test.describe('Sales report grids @p1', () => {
   test('RPTG-1 money shows two decimals and the totals carry no long tail @happy', async ({ api, app }) => {
     await sellToday(api, 33.33, 11.11);
     await sellToday(api, 0.1, 0.2);                                   // 0.1 + 0.2 is 0.30000000000000004 in floating point
     const { page } = await app.open(MGR, '/secure/sales/list');
+    await listOn(page);
     await expect(page.getByTestId('invoice-row').first()).toBeVisible();
     for (const id of ['total-digital', 'total-cash', 'total-net']) {
       await expect(page.getByTestId(id)).toHaveText(/^[\d,]+\.\d\d$/);
     }
     const cells = await page.getByTestId('invoice-row').first().locator('td.text-end').allInnerTexts();
     expect(cells).toHaveLength(3);
-    for (const c of cells) expect(c.trim()).toMatch(/^[\d,]+\.\d\d$/);
+    for (const c of cells) expect(c.trim().split('\n')[0].trim()).toMatch(/^[\d,]+\.\d\d$/);        // the Digital cell also names the method and the check
   });
 
   test('RPTG-2 the bill number opens the bill, in the invoice list and in the product list @happy', async ({ api, app }) => {
     await sellToday(api, 0, 25);
     const { page } = await app.open(MGR, '/secure/sales/list');
+    await listOn(page);
     await expect(page.getByTestId('invoice-row').first()).toBeVisible();
     await page.getByTestId('invoice-row').first().getByTestId('bill-link').click();
     await expect(page).toHaveURL(/\/secure\/sales\/pos\/view\/\d+/);
@@ -53,6 +58,7 @@ test.describe('Sales report grids @p1', () => {
   test('RPTG-3 the staff report uses the same grid and number format, and the headers put sort and filter at the right edge @happy', async ({ api, app }) => {
     await sellToday(api, 5, 20);
     const { page } = await app.open(MGR, '/secure/sales/list');
+    await listOn(page);
     await expect(page.getByTestId('invoice-row').first()).toBeVisible();
     const bars = page.getByTestId('invoice-table').locator('th .th-bar');
     expect(await bars.count()).toBeGreaterThan(5);
@@ -64,6 +70,11 @@ test.describe('Sales report grids @p1', () => {
     const th = (await head.boundingBox())!;
     expect(th.x + th.width - (filter.x + filter.width) - 40).toBeLessThan(60);          // within reach of the right edge, not hugging the name
     await page.getByRole('tab', { name: 'Staff Report' }).click();
+    await page.getByRole('button', { name: 'Custom' }).click();                                   // the bills made here carry their own (UTC) day
+    const day = new Date().toISOString().slice(0, 10);
+    const dates = page.getByRole('tabpanel', { name: 'Staff Report' }).locator('input[type=date]');
+    await dates.nth(0).fill(day);
+    await dates.nth(1).fill(day);
     await expect(page.getByTestId('staff-row').first()).toBeVisible();
     const money = await page.getByTestId('staff-row').first().locator('td.text-end').allInnerTexts();
     for (const m of money.slice(1, 4)) expect(m.trim()).toMatch(/^[\d,]+\.\d\d$/);

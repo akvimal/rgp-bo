@@ -258,6 +258,17 @@ export class PaymentReconService {
     };
   }
 
+  /** where each of these bills stands (the list of bills elsewhere in the app shows it and offers the check); only bills in stores the user can see */
+  async statusOf(idsParam: any, user: any) {
+    const ids = Array.from(new Set(String(idsParam || '').split(',').map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0))).slice(0, 500);
+    if (!ids.length) return [];
+    const c = await this.scope(user);
+    return this.manager.query(
+      `select k.sale_id, k.status, k.amount_seen::float as amount_seen, k.note, k.checked_on, u.full_name as checked_by
+         from payment_check k join sale s on s.id = k.sale_id left join app_user u on u.id = k.checked_by
+        where k.sale_id = any($1::int[]) and ($2::boolean or s.store_id = any($3::int[]))`, [ids, c.all, c.stores.length ? c.stores : [0]]);
+  }
+
   /** a bill the user may check: a completed bill with a digital amount, in a store they can see */
   private async billFor(saleId: number, user: any) {
     const c = await this.scope(user);

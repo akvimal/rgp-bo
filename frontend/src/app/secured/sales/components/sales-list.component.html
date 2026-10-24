@@ -19,7 +19,20 @@
       <div class="col-md-2">
         <label for="sustomer">Customer</label><br>
         <app-customer-select id="customer" (customerSelected)="filterCustomerSales($event)"></app-customer-select>
-      </div>  
+      </div>
+      <div class="col-md-2">
+        <label for="staff-filter">Sale Staff</label>
+        <select id="staff-filter" class="form-select" [(ngModel)]="staffFilter" (ngModelChange)="applyFilters()" data-testid="inv-staff-filter">
+          <option value="">All staff</option>
+          <option *ngFor="let n of staffOptions" [value]="n">{{n}}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="pay-filter">Payment</label>
+        <select id="pay-filter" class="form-select" [(ngModel)]="payFilter" (ngModelChange)="applyFilters()" data-testid="inv-pay-filter">
+          <option *ngFor="let o of payOptions" [value]="o.value">{{o.label}}</option>
+        </select>
+      </div>
       <!-- <div class="col-md-2">
         <label for="status">Status</label>
         <select name="filterbystatus" id="status" class="form-control" [(ngModel)]="criteria.status" (change)="fetchSales()">
@@ -39,7 +52,7 @@
       <thead> -->
       <div class="row">
       <div class="col-12">
-      <p-table #dt1 [value]="sales" data-testid="invoice-table"
+      <p-table #dt1 [value]="rows" data-testid="invoice-table"
       [multiSortMeta]="[{field: 'billdate', order: -1}, {field: 'billno', order: -1}]"
      
         [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-4"
@@ -71,7 +84,11 @@
                 <td><a [routerLink]="['../pos/view',s.id]" data-testid="bill-link">{{s.billno}}</a></td>
                 <td class="text-nowrap">{{s.billdate | date: 'dd MMM yyyy, h:mm a'}}</td>
                 <td>{{s.custinfo}}</td>
-                <td class="text-end">{{s.digiamt | number:'1.2-2'}}</td>
+                <td class="text-end">
+                  {{s.digiamt | number:'1.2-2'}}
+                  <div class="small text-muted" *ngIf="s.digiamt > 0">{{s.digimethod || 'UPI'}}</div>
+                  <span class="badge" *ngIf="s.digiamt > 0 && canViewDigital" [ngClass]="checkClass(s)" [title]="checkOf(s)?.note || ''" data-testid="digi-check">{{checkLabel(s)}}</span>
+                </td>
                 <td class="text-end">{{s.cashamt | number:'1.2-2'}}</td>
                 <td class="text-end fw-semibold">{{s.total | number:'1.2-2'}}</td>
                 <td>{{s.staffname}}</td>
@@ -84,6 +101,9 @@
                   </h4>
                   <h4 class="icon" *ngIf="isActionAllowed('Return',s)">
                     <i class="bi bi-arrow-return-left" title="Return" (click)="showReturn(s.id)"></i>
+                  </h4>
+                  <h4 class="icon" *ngIf="s.digiamt > 0 && canVerifyDigital" title="Verify the digital payment was received">
+                    <i class="bi bi-patch-check" (click)="openCheck(s)" data-testid="digi-verify"></i>
                   </h4>
                   <h4 class="icon" *ngIf="s.props && s.props['documents'] && s.props['documents'].length > 0" title="Has documents">
                     <i class="bi bi-files"></i>
@@ -182,6 +202,30 @@
 
 </div>
 </div>
+
+<p-dialog header="Digital payment" [visible]="!!checkSale" (visibleChange)="closeCheck()" [modal]="true" [style]="{width: '32rem'}" [draggable]="false">
+  <div *ngIf="checkSale" data-testid="digi-dialog">
+    <p class="mb-2">Bill <strong>{{checkSale.billno}}</strong> &middot; <strong>&#8377;{{checkSale.digiamt | number:'1.2-2'}}</strong> by {{checkSale.digimethod || 'UPI'}}<span *ngIf="checkSale.digirefno"> &middot; ref {{checkSale.digirefno}}</span></p>
+    <div class="alert alert-danger py-2" *ngIf="checkError" data-testid="digi-error">{{checkError}}</div>
+    <div class="form-check"><input class="form-check-input" type="radio" name="digi-status" id="ds-ok" value="VERIFIED" [(ngModel)]="checkForm.status" data-testid="digi-ok"><label class="form-check-label" for="ds-ok">Received in full</label></div>
+    <div class="form-check"><input class="form-check-input" type="radio" name="digi-status" id="ds-diff" value="MISMATCH" [(ngModel)]="checkForm.status" data-testid="digi-diff"><label class="form-check-label" for="ds-diff">Amount differs</label></div>
+    <div class="form-check"><input class="form-check-input" type="radio" name="digi-status" id="ds-no" value="NOT_FOUND" [(ngModel)]="checkForm.status" data-testid="digi-no"><label class="form-check-label" for="ds-no">Not received</label></div>
+    <div class="mt-2" *ngIf="checkForm.status === 'MISMATCH'">
+      <label class="form-label" for="ds-amt">Amount actually received</label>
+      <input id="ds-amt" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="checkForm.amount_seen" data-testid="digi-amount">
+    </div>
+    <div class="mt-2" *ngIf="checkForm.status !== 'VERIFIED'">
+      <label class="form-label" for="ds-note">What you found</label>
+      <input id="ds-note" class="form-control" maxlength="300" [(ngModel)]="checkForm.note" data-testid="digi-note">
+    </div>
+    <p class="small text-muted mt-3 mb-0">This is the same check as on the Digital payments page, so it shows there too.</p>
+  </div>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-outline-danger me-auto" *ngIf="checkOf(checkSale || {})" (click)="undoCheck()" [disabled]="checkSaving" data-testid="digi-undo">Remove the check</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="closeCheck()">Cancel</button>
+    <button type="button" class="btn btn-primary ms-2" (click)="saveCheck()" [disabled]="checkSaving" data-testid="digi-save">Save</button>
+  </ng-template>
+</p-dialog>
 
 <p-dialog [header]="'Return'" [(visible)]="showReturnForm" [modal]="true">
     <sale-return-form [id]="returnSaleId" (success)="onReturnSubmitSuccess($event)"></sale-return-form>

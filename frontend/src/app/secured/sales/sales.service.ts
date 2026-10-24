@@ -67,6 +67,20 @@ export class SaleService {
         return this.http.get(`${this.apiurl}/${id}`);
     }
 
+    /** where the digital payments of these bills stand on the Digital payments page (Verified, Amount differs, Not on the statement) */
+    digitalStatus(ids:number[]){
+        return this.http.get<any[]>(`${environment.apiHost}/payment-recon/status`, { params: { ids: ids.join(',') } });
+    }
+
+    /** records the check of one bill's digital payment: the same record the Digital payments page reads and writes */
+    recordDigital(saleId:number, body:any){
+        return this.http.post<any>(`${environment.apiHost}/payment-recon/${saleId}`, body);
+    }
+
+    clearDigital(saleId:number){
+        return this.http.delete<any>(`${environment.apiHost}/payment-recon/${saleId}`);
+    }
+
     /** who the printed bill is from: the business and store details, and the store's licence numbers */
     billHeader(id:any){
         return this.http.get(`${this.apiurl}/${id}/bill`);
