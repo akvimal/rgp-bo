@@ -23,8 +23,6 @@ import { ProductHeaderComponent } from "./components/product-header.component";
 import { ConfirmDialogModule } from "primeng/confirmdialog";
 import { DocumentsModule } from "../documents/documents.module";
 import { ProductPriceChangeComponent } from "./components/price/product-price-change.component";
-import { PriceAdjustorComponent } from "./components/price/price-adjustor.component";
-import { PriceEstimatorComponent } from "./components/price/price-estimator.component";
 import { PackCheckComponent } from "./components/pack-check.component";
 import { PricingPolicyComponent } from "./components/pricing-policy.component";
 import { PricingRulesComponent } from "./components/pricing-rules.component";
@@ -55,8 +53,6 @@ const routes: Routes = [
         ProductFormComponent,
         ProductPriceComponent,
         ProductPriceChangeComponent,
-        PriceAdjustorComponent,
-        PriceEstimatorComponent,
         PackCheckComponent,
         PricingPolicyComponent,
         PricingRulesComponent
@@ -80,6 +76,6 @@ const routes: Routes = [
         SharedModule,
         DocumentsModule
     ],
-    exports: [RouterModule,PriceEstimatorComponent]
+    exports: [RouterModule]
   })
 export class ProductsModule{}

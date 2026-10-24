@@ -121,31 +121,18 @@ test.describe('Product prices @p1', () => {
     await expect(page.getByTestId('price-message')).toContainText('Price saved at 170');
   });
 
-  test('PRICE-7 the price calculator is a panel on the Price page, not a menu popup @happy', async ({ app }) => {
+  test('PRICE-7 the Price page is the price list: no calculator, no Pricing menu entry, loads without errors @happy', async ({ app }) => {
     const { page } = await app.open(MGR, '/secure/products/price');
     await expectShell(page);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    await expect(page.locator('#sidebar-nav').getByText('Pricing', { exact: true })).toHaveCount(0);   // no longer in the left menu
-    const panel = page.getByTestId('price-calc-panel');
-    await expect(panel).toBeVisible();
-    await expect(panel.locator('input[type=number]')).toHaveCount(2);
-
-    // typing a cost before a category is picked must not break anything
-    await panel.locator('input[type=number]').nth(0).fill('100');
-    await panel.locator('input[type=number]').nth(1).fill('300');
-    // Generic: at least 50% on cost, at most 80% off MRP -> 150
-    await panel.locator('select').selectOption('Generic');
-    await expect(panel).toContainText('150');
+    await expect(page.locator('#sidebar-nav').getByText('Pricing', { exact: true })).toHaveCount(0);   // not in the left menu
+    await expect(page.getByTestId('price-calc-panel')).toHaveCount(0);                                // the calculator is gone
+    await expect(page.getByText('Price calculator')).toHaveCount(0);
+    await expect(page.getByTestId('price-intro')).toBeVisible();
+    await expect(page.getByTestId('price-flag-filter')).toBeVisible();
+    await expect(page.locator('tbody tr').first()).toBeVisible();
     expect(errors).toEqual([]);
-
-    // hide and show; the choice is remembered
-    await page.getByTestId('price-calc-toggle').click();
-    await expect(panel.locator('input[type=number]')).toHaveCount(0);
-    await page.reload();
-    await expect(page.getByTestId('price-calc-panel').locator('input[type=number]')).toHaveCount(0);
-    await page.getByTestId('price-calc-toggle').click();
-    await expect(page.getByTestId('price-calc-panel').locator('input[type=number]')).toHaveCount(2);
   });
 });

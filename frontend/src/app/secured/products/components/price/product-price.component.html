@@ -1,13 +1,4 @@
-<div class="card mt-2" data-testid="price-calc-panel">
-    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="cursor:pointer" (click)="toggleCalc()" data-testid="price-calc-toggle">
-        <span class="fw-semibold"><i class="bi bi-calculator me-2"></i>Price calculator</span>
-        <span class="small text-muted">{{calcOpen ? 'Hide' : 'Show'}}</span>
-    </div>
-    <div class="card-body py-2" *ngIf="calcOpen">
-        <p class="small text-muted mb-2">Enter the purchase cost (PTR) and the MRP, pick a category, and it suggests a price within that category's margin and discount limits. To set a product's price, use the edit icon in the list below.</p>
-        <app-price-estimator></app-price-estimator>
-    </div>
-</div>
+<p class="small text-muted mt-2 mb-0" data-testid="price-intro">Every product that has been purchased, with its current price. Use the pencil to set a price. Prices that break the pricing rules, and products with no price, are listed under <a routerLink="/secure/products/policy">Pricing policy</a>.</p>
 
 <div class="row mt-2">
     <div class="col-12 p-2 d-flex">
