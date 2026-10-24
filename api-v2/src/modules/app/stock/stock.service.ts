@@ -138,7 +138,9 @@ export class StockService {
                     adjusted.adjusted,
                     (${purchasedExpr} - sold.sold + adjusted.adjusted) as balance,
                     p.more_props,
-                    pp.sale_price
+                    pp.sale_price,
+                    -- the most a unit may be priced before GST so that price + GST does not exceed the MRP; sent to the till, which may not see the MRP itself
+                    floor(((pii.mrp_cost::numeric / nullif(p.pack, 0)) / (1 + public.sale_gst(pii.tax_pcnt::double precision)::numeric / 100)) * 100) / 100 as price_ceiling
                 from product p
                 inner join purchase_invoice_item pii
                     on pii.product_id = p.id

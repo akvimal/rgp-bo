@@ -5,6 +5,7 @@ import { recordStoreCredit, settleReturn } from "./store-credit-rule";
 import { EntityManager } from "typeorm";
 import { loadStoreProfile } from "../store/store-profile";
 import { returnRules } from "./return-rule";
+import { BatchMrp, overMrp, overMrpMessage } from "./mrp-guard";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
@@ -106,6 +107,19 @@ export class SaleService {
                         throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
                     }
 
+                    // never charge more than the MRP: price + GST per unit against the batch's MRP per unit (kill switch: pricing/sale_mrp_guard = off)
+                    const pricedLines = items.filter((i: any) => Number(i.qty || 0) > 0 && Number(i.price || 0) > 0 && i.itemid);
+                    if (pricedLines.length) {
+                        const [g] = await transactionManager.query(`select setting_value from app_setting where setting_key = 'sale_mrp_guard' and active and not archive limit 1`);
+                        if (String(g?.setting_value ?? 'on').toLowerCase() !== 'off') {
+                            const mrpRows = await transactionManager.query(
+                                `select pii.id, pii.mrp_cost::float8 / nullif(p.pack, 0) as unit_mrp, p.title from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`,
+                                [pricedLines.map((i: any) => Number(i.itemid))]);
+                            const batches = new Map<number, BatchMrp>(mrpRows.map((r: any) => [Number(r.id), { unitMrp: Number(r.unit_mrp), title: r.title }]));
+                            const over = overMrp(pricedLines.map((i: any) => ({ itemid: Number(i.itemid), price: Number(i.price), taxpcnt: Number(i.taxpcnt || 0), qty: Number(i.qty) })), batches);
+                            if (over.length) throw new BadRequestException(overMrpMessage(over));
+                        }
+                    }
                     const positiveLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
                     if (positiveLines.length) {
                         // available at this store = batch qty (only where it was received into this

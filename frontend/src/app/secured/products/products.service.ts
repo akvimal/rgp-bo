@@ -13,6 +13,21 @@ export class ProductsService {
 
     constructor(private http:HttpClient){}
 
+    pricingReview(){ return this.http.get<any>(`${environment.apiHost}/pricing/review`); }
+    pricingPerformance(){ return this.http.get<any>(`${environment.apiHost}/pricing/performance`); }
+    pricingImpact(){ return this.http.get<any>(`${environment.apiHost}/pricing/impact`); }
+    pricingRules(){ return this.http.get<any>(`${environment.apiHost}/pricing/rules`); }
+    pricingSaveRules(values:any){ return this.http.put<any>(`${environment.apiHost}/pricing/rules`, { values }); }
+    pricingApply(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/apply`, { productid }); }
+    pricingApplyCuts(){ return this.http.post<any>(`${environment.apiHost}/pricing/apply-cuts`, {}); }
+    pricingPolicy(){ return this.http.get<any>(`${environment.apiHost}/pricing/policy`); }
+    pricingSavePolicy(key:string, floor:number, cap:number){ return this.http.put<any>(`${environment.apiHost}/pricing/policy/${key}`, { floor, cap }); }
+    pricingAddException(productid:number, reason:string, until:string){ return this.http.post<any>(`${environment.apiHost}/pricing/exceptions`, { productid, reason, until }); }
+
+    packCheck(){
+        return this.http.get<any[]>(`${this.apiurl}/pack-check`);
+    }
+
     findAll(criteria:any){
         return this.http.post(this.apiurl,{criteria});
     }
@@ -56,7 +71,8 @@ export class ProductsService {
         effdate:data['date'],
         saleprice:data['sale'],
         reason:data['reason'],
-        comments:data['comments']});
+        comments:data['comments'],
+        overridereason:data['overridereason'] || undefined});
     }    
     updatePrice(data:any){
         return this.http.put(`${this.apiurl}/prices/${data['price_id']}`,{productid:data['id'],

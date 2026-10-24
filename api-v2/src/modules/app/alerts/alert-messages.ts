@@ -37,6 +37,18 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'A shift is still open: {store}', body: '{name} has been open for {hours} hours. Close it to count the cash.' },
     ta: { title: 'ஒரு ஷிப்ட் இன்னும் திறந்திருக்கிறது: {store}', body: '{name} {hours} மணி நேரமாகத் திறந்துள்ளது. பணத்தை எண்ண அதை மூடவும்.' },
   },
+  pricing_cuts: {
+    en: { title: 'Prices above the legal limit: {count}', body: '{count} products are priced so that a bill would charge more than the MRP. Bring them down in Products > Pricing policy.' },
+    ta: { title: 'சட்ட வரம்பை மீறிய விலைகள்: {count}', body: '{count} பொருட்களின் விலை, பில் MRP ஐ விட அதிகமாக வசூலிக்கும்படி உள்ளது. பொருட்கள் > விலைக் கொள்கையில் குறைக்கவும்.' },
+  },
+  pricing_raises: {
+    en: { title: 'Prices out of policy: {count}', body: '{count} products are below their floor markup or deeper than their discount cap ({held} held for the next step). Review them in Products > Pricing policy.' },
+    ta: { title: 'விலைக் கொள்கையை மீறிய விலைகள்: {count}', body: '{count} பொருட்கள் குறைந்தபட்ச லாப வரம்புக்குக் கீழே அல்லது அனுமதித்த தள்ளுபடியை விட அதிகமாக உள்ளன ({held} அடுத்த படிக்காகக் காத்திருக்கின்றன). பொருட்கள் > விலைக் கொள்கையில் பார்க்கவும்.' },
+  },
+  pricing_check: {
+    en: { title: 'Products to check: {count}', body: '{count} products have a pack size or cost that looks wrong, so their prices cannot be judged. Check them in Products > Data check.' },
+    ta: { title: 'சரிபார்க்க வேண்டிய பொருட்கள்: {count}', body: '{count} பொருட்களின் பேக் அளவு அல்லது விலை தவறாகத் தெரிகிறது, அதனால் அவற்றின் விலையை மதிப்பிட முடியவில்லை. பொருட்கள் > தரவு சரிபார்ப்பில் பார்க்கவும்.' },
+  },
   approvals_pending: {
     en: { title: '{count} stock adjustments waiting for approval: {store}', body: 'The oldest has waited {hours} hours.' },
     ta: { title: '{count} இருப்பு மாற்றங்கள் ஒப்புதலுக்குக் காத்திருக்கின்றன: {store}', body: 'பழமையானது {hours} மணி நேரமாகக் காத்திருக்கிறது.' },

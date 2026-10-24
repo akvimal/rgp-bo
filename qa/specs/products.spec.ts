@@ -28,7 +28,7 @@ test.describe('Products & Pricing @p1', () => {
 
       // now bump the sale price
       await api.request('POST', '/products/prices/add', {
-        productid: prod.id, saleprice: price * 1.5, effdate: '2026-09-04', reason: 'Market Pressure', comments: 'qa PROD-5',
+        productid: prod.id, saleprice: price * 1.5, effdate: '2026-09-04', reason: 'Market Pressure', comments: 'qa PROD-5', overridereason: 'qa spec',
       }, MGR);
 
       // the already-completed sale's total did not move
@@ -49,8 +49,8 @@ test.describe('Products & Pricing @p1', () => {
       title: `QA PROD8 ${Date.now()}`, taxpcnt: 12, category: 'Analgesic', code: `P8${Date.now()}`,
     }, MGR);
     const id = created.body.id;
-    const a = await api.request('POST', '/products/prices/add', { productid: id, saleprice: 40, effdate: '2026-09-01', reason: 'Initial', comments: 'qa PROD-8 a' }, MGR);
-    const b = await api.request('POST', '/products/prices/add', { productid: id, saleprice: 48, effdate: '2026-09-03', reason: 'Higher PTR', comments: 'qa PROD-8 b' }, MGR);
+    const a = await api.request('POST', '/products/prices/add', { productid: id, saleprice: 40, effdate: '2026-09-01', reason: 'Initial', comments: 'qa PROD-8 a', overridereason: 'qa spec' }, MGR);
+    const b = await api.request('POST', '/products/prices/add', { productid: id, saleprice: 48, effdate: '2026-09-03', reason: 'Higher PTR', comments: 'qa PROD-8 b', overridereason: 'qa spec' }, MGR);
     expect([200, 201]).toContain(a.status);
     expect([200, 201]).toContain(b.status);
 

@@ -41,6 +41,13 @@ export class ProductController {
         return this.productService.create(createDto, currentUser.id);
     }
 
+    /** Products whose pack size or unit looks wrong (a wrong pack makes every unit cost and margin wrong). */
+    @Get('/pack-check')
+    async packCheck(@User() currentUser: any) {
+      await this.assertCostAccess(currentUser);
+      return this.productService.packCheck();
+    }
+
     @Post('/filter')
     async filterByCriteria(@Body() criteria: any) {
       return this.productService.filterByCriteria(criteria);

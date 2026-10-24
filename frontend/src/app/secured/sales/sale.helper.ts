@@ -9,7 +9,16 @@ export class SaleHelper {
     mapStockToSaleItem(source:any,editable:boolean){
         const output = source;
         if(source){
-            const price = (source.sale_price/source.pack).toFixed(2)
+            const taxpcnt = source.tax_pcnt > 5 ? 5 : source.tax_pcnt; //max tax 5%, due to GST 2.0 effect from 22-09-2025
+            // the bill adds GST to the price, and a customer is never charged more than the MRP: cap the price at MRP less that GST
+            // the server sends the ceiling itself (price_ceiling): a counter user is not shown the MRP
+            const mrpUnit = source.mrp_cost / source.pack;
+            const ceiling = source.price_ceiling != null && +source.price_ceiling > 0 ? +source.price_ceiling
+                : (mrpUnit > 0 ? Math.floor(mrpUnit / (1 + (taxpcnt || 0) / 100) * 100 + 1e-6) / 100 : null);
+            let listPrice = source.sale_price / source.pack;
+            const capped = ceiling !== null && listPrice > ceiling;
+            if (capped) { listPrice = ceiling as number; }
+            const price = listPrice.toFixed(2);
             // const total = ((+price * (1 + (source.tax_pcnt/100))) * source.pack).toFixed(2);
             const total = (+price * source.pack).toFixed(2);
             output.itemid = source.item_id;
@@ -22,7 +31,8 @@ export class SaleHelper {
             output.pack = source.pack;
             output.mrpcost = (source.mrp_cost/source.pack).toFixed(2);
             output.price = price;
-            output.taxpcnt = source.tax_pcnt > 5 ? 5 : source.tax_pcnt; //max tax 5%, due to GST 2.0 effect from 22-09-2025
+            output.taxpcnt = taxpcnt;
+            output.mrpcapped = capped;
               // more_props = event.more_props;
             output.unitsbal = source.balance - source.pack,
             output.total = total;

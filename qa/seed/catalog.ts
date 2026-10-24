@@ -161,7 +161,7 @@ export async function buildCatalog(m: Manifest) {
       // overlapping/inverted date ranges (see PROD-8 finding)
       await POST('/products/prices/add', {
         productid: id, saleprice: price, effdate: daysAgo(20),
-        reason: 'Initial', comments: 'qa-seed',
+        reason: 'Initial', comments: 'qa-seed', overridereason: 'qa seed',
       }, { token: bhSeed }).catch(() => {});
       priced = true;
     }

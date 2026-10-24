@@ -1,0 +1,60 @@
+<div class="card mt-2">
+  <div class="card-body pt-3">
+    <h5 class="card-title p-0 m-0 mb-1" data-testid="rules-title">Pricing rules</h5>
+    <p class="small text-muted mb-3">
+      The limits that decide which prices are out of policy, and the rules for changing them. The prices that break them are listed under
+      <a routerLink="/secure/products/policy">Pricing policy</a>.
+      <span *ngIf="!canedit && !loading"> You can read these; only the Business Head can change them.</span>
+    </p>
+    <div class="text-danger small mb-2" *ngIf="error" data-testid="rules-error">{{error}}</div>
+    <div class="text-success small mb-2" *ngIf="message" data-testid="rules-message">{{message}}</div>
+    <div class="text-muted small" *ngIf="loading">Loading&hellip;</div>
+
+    <ng-container *ngIf="!loading">
+      <h6 class="mt-3">Class limits</h6>
+      <p class="small text-muted mb-2">
+        Each product belongs to a class from two things: how far its cost is below the MRP (its trade margin) and how much of the profit it earns (A, B or C).
+        <b>Lowest markup</b> is the least a price may be over the cost (before GST). <b>Deepest discount</b> is the most a price may be below the MRP.
+        A price must be at or above whichever of the two gives the higher price.
+      </p>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle w-auto" data-testid="rules-classes">
+          <thead><tr><th>Class</th><th class="text-end">Lowest markup (%)</th><th class="text-end">Deepest discount (%)</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let c of classes">
+              <td class="small">{{classLabel(c.class_key)}}</td>
+              <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="1000" [(ngModel)]="c.floor" [disabled]="!canedit" [attr.data-testid]="'rules-floor-' + c.class_key"></td>
+              <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="95" [(ngModel)]="c.cap" [disabled]="!canedit" [attr.data-testid]="'rules-cap-' + c.class_key"></td>
+              <td><button type="button" class="btn btn-outline-primary btn-sm py-0" *ngIf="canedit" [disabled]="!classChanged(c)" (click)="saveClass(c)" [attr.data-testid]="'rules-save-' + c.class_key">Save</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngFor="let g of groups" class="mt-4">
+        <h6>{{g.title}}</h6>
+        <p class="small text-muted mb-2">{{g.intro}}</p>
+        <div *ngFor="let r of inGroup(g.key)" class="row g-2 align-items-start mb-3" [attr.data-testid]="'rule-' + r.key">
+          <div class="col-md-5">
+            <label class="form-label mb-0 fw-semibold small">{{r.label}}</label>
+            <div class="form-text mt-0">{{r.help}}</div>
+          </div>
+          <div class="col-md-3">
+            <div class="input-group input-group-sm" *ngIf="r.type === 'number'">
+              <input type="number" class="form-control text-end" [min]="r.min" [max]="r.max" step="any" [(ngModel)]="form[r.key]" [disabled]="!canedit || !r.editable" [attr.data-testid]="'rule-input-' + r.key">
+              <span class="input-group-text">{{r.unit}}</span>
+            </div>
+            <select class="form-select form-select-sm" *ngIf="r.type === 'switch'" [(ngModel)]="form[r.key]" [disabled]="!canedit || !r.editable" [attr.data-testid]="'rule-input-' + r.key">
+              <option value="on">On</option><option value="off">Off</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 align-items-center mt-3" *ngIf="canedit">
+        <button type="button" class="btn btn-primary" [disabled]="!changedRules.length || saving" (click)="saveRules()" data-testid="rules-save">Save rules</button>
+        <span class="small text-muted" *ngIf="changedRules.length">{{changedRules.length}} change{{changedRules.length === 1 ? '' : 's'}} not saved</span>
+      </div>
+    </ng-container>
+  </div>
+</div>

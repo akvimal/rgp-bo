@@ -65,7 +65,7 @@ export class ProductPriceComponent {
     changed(event:any){
         this.showPriceChange = false;
         const notes: string[] = [];
-        if (event?.capped) notes.push(`capped at the MRP ${event.mrp}`);
+        if (event?.capped) notes.push(`capped at ${event.ceiling} (the MRP ${event.mrp} less GST)`);
         for (const w of event?.warnings || []) notes.push(w);
         this.message = `Price saved at ${event?.saleprice ?? ''}${notes.length ? ': ' + notes.join(' ') : '.'}`;
         this.filter();
@@ -75,9 +75,10 @@ export class ProductPriceComponent {
     flagsOf(p:any): string[] {
         const f: string[] = [];
         const price = +p.price || 0, mrp = +p.mrp || 0, ptr = +p.ptr || 0;
+        const billed = price * (1 + (+(p.sale_tax ?? p.tax) || 0) / 100), atCost = price * (1 + (+p.tax || 0) / 100);
         if (!price) f.push('none');
-        if (price && mrp && Math.round(price * 100) > Math.round(mrp * 100)) f.push('above');
-        if (price && ptr && Math.round(price * 100) < Math.round(ptr * 100)) f.push('below');
+        if (price && mrp && Math.round(billed * 100) > Math.round(mrp * 100) + 1) f.push('above');
+        if (price && ptr && Math.round(atCost * 100) < Math.round(ptr * 100)) f.push('below');
         if (ptr && (+p.margin || 0) > 300) f.push('high');
         return f;
     }

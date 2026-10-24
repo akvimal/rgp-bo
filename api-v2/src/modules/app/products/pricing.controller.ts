@@ -1,0 +1,117 @@
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from 'src/modules/auth/auth.guard';
+import { User } from 'src/core/decorator/user.decorator';
+import { PermissionService } from '../roles/permission.service';
+import { ProductService } from './product.service';
+import { PricingService } from './pricing.service';
+
+/**
+ * The price policy: the review queue of prices that are out of policy, applying the next step, the class table, and exceptions.
+ * Anyone who may see cost can read the queue; applying needs pricing access and the right level (see PricingService.prepareStep);
+ * changing the class table and accepting exceptions is for the Business Head only.
+ */
+@ApiTags('Pricing')
+@Controller('pricing')
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
+export class PricingController {
+  constructor(private readonly pricing: PricingService, private readonly products: ProductService, private readonly permissions: PermissionService) {}
+
+  private async assertCost(user: any) {
+    if (!(await this.permissions.canViewCost(user.roleid))) throw new ForbiddenException('Cost access denied');
+  }
+  private async assertPricing(user: any) {
+    if (!(await this.permissions.canManagePricing(user.roleid))) throw new ForbiddenException('Pricing access denied');
+  }
+  private async assertBusinessHead(user: any) {
+    if ((await this.pricing.actorLevel(user.id)) !== 'BUSINESS') throw new ForbiddenException('Only the Business Head can do this.');
+  }
+
+  @Get('/review')
+  async review(@User() user: any) {
+    await this.assertCost(user);
+    return this.pricing.queue(user.id);
+  }
+
+  @Get('/performance')
+  async performance(@User() user: any) {
+    await this.assertCost(user);
+    return this.pricing.performance();
+  }
+
+  @Get('/impact')
+  async impact(@User() user: any) {
+    await this.assertCost(user);
+    return this.pricing.impact();
+  }
+
+  @Post('/apply')
+  async apply(@Body() body: any, @User() user: any) {
+    await this.assertPricing(user);
+    const productid = Number(body?.productid);
+    if (!Number.isInteger(productid) || productid <= 0) throw new BadRequestException('Say which product.');
+    return this.applyOne(productid, user.id);
+  }
+
+  /** Every price above the legal ceiling goes down to it at once (customers only gain). */
+  @Post('/apply-cuts')
+  async applyCuts(@User() user: any) {
+    await this.assertPricing(user);
+    const { items } = await this.pricing.queue(user.id);
+    const cuts = items.filter((i: any) => i.action === 'CUT' && i.canapply);
+    let applied = 0;
+    const failed: any[] = [];
+    for (const c of cuts) {
+      try { await this.applyOne(c.productid, user.id); applied++; }
+      catch (e: any) { failed.push({ productid: c.productid, title: c.title, message: e?.message }); }
+    }
+    return { applied, failed };
+  }
+
+  private async applyOne(productid: number, userid: number) {
+    const it = await this.pricing.prepareStep(productid, userid);
+    const saved = await this.products.addPrice(
+      { productid, saleprice: it.next as number, reason: 'Policy', comments: `Policy step to ${it.target} (${it.violations.join(', ')})` } as any,
+      userid, { policyApproved: true });
+    await this.pricing.audited(userid, 'price.policy_step', productid, `${it.title}: price ${it.price} -> ${it.next} (target ${it.target}; ${it.violations.join(', ')})`,
+      { from: it.price, to: it.next, target: it.target, violations: it.violations, class: it.classkey });
+    return { productid, title: it.title, from: it.price, to: saved.saleprice, target: it.target, done: Number(saved.saleprice) === Number(it.target) };
+  }
+
+  @Get('/policy')
+  async policy(@User() user: any) {
+    await this.assertCost(user);
+    return { classes: await this.pricing.policyTable(), settings: await this.pricing.settings() };
+  }
+
+  @Get('/rules')
+  async rules(@User() user: any) {
+    await this.assertCost(user);
+    return { rules: await this.pricing.rules(), canedit: (await this.pricing.actorLevel(user.id)) === 'BUSINESS' };
+  }
+
+  @Put('/rules')
+  async updateRules(@Body() body: any, @User() user: any) {
+    await this.assertBusinessHead(user);
+    return this.pricing.updateRules(body?.values, user.id);
+  }
+
+  @Put('/policy/:key')
+  async updatePolicy(@Param('key') key: string, @Body() body: any, @User() user: any) {
+    await this.assertBusinessHead(user);
+    return this.pricing.updatePolicy(key, Number(body?.floor), Number(body?.cap), user.id);
+  }
+
+  @Post('/exceptions')
+  async addException(@Body() body: any, @User() user: any) {
+    await this.assertBusinessHead(user);
+    return this.pricing.addException(Number(body?.productid), String(body?.reason ?? ''), String(body?.until ?? ''), user.id);
+  }
+
+  @Delete('/exceptions/:productid')
+  async removeException(@Param('productid', ParseIntPipe) productid: number, @User() user: any) {
+    await this.assertBusinessHead(user);
+    return this.pricing.removeException(productid, user.id);
+  }
+}

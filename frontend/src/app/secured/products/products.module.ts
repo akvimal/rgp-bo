@@ -25,6 +25,9 @@ import { DocumentsModule } from "../documents/documents.module";
 import { ProductPriceChangeComponent } from "./components/price/product-price-change.component";
 import { PriceAdjustorComponent } from "./components/price/price-adjustor.component";
 import { PriceEstimatorComponent } from "./components/price/price-estimator.component";
+import { PackCheckComponent } from "./components/pack-check.component";
+import { PricingPolicyComponent } from "./components/pricing-policy.component";
+import { PricingRulesComponent } from "./components/pricing-rules.component";
 
 const routes: Routes = [
   { path: '', component: ProductsComponent, 
@@ -36,7 +39,10 @@ const routes: Routes = [
         { path: 'new', component: ProductFormComponent, canActivate:[AuthGuard]},
         { path: 'edit/:id', component: ProductFormComponent, canActivate:[AuthGuard]}
       ]},
-      { path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]}      
+      { path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]},
+      { path: 'datacheck', component: PackCheckComponent, canActivate:[AuthGuard]},
+      { path: 'policy', component: PricingPolicyComponent, canActivate:[AuthGuard]},
+      { path: 'rules', component: PricingRulesComponent, canActivate:[AuthGuard]}
   ]},
   
 ];
@@ -50,7 +56,10 @@ const routes: Routes = [
         ProductPriceComponent,
         ProductPriceChangeComponent,
         PriceAdjustorComponent,
-        PriceEstimatorComponent
+        PriceEstimatorComponent,
+        PackCheckComponent,
+        PricingPolicyComponent,
+        PricingRulesComponent
     ],
     imports: [
         CommonModule,

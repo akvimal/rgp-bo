@@ -1,0 +1,100 @@
+<div class="card mt-2">
+  <div class="card-body pt-3">
+    <h5 class="card-title p-0 m-0 mb-1" data-testid="policy-title">Pricing policy</h5>
+    <p class="small text-muted mb-3">Prices that are out of policy. A raise is made in steps (at most {{data?.settings?.stepPricePct}}% of the price or {{data?.settings?.stepMrpPct}}% of the MRP, once every {{data?.settings?.stepDays}} days; change these on the Pricing rules page) so customers never see a sudden rise;
+      a price above the legal ceiling goes down at once. A Store Head can apply a step on class B and C products; class A needs the Business Head.</p>
+    <div class="text-danger small mb-2" *ngIf="error" data-testid="policy-error">{{error}}</div>
+    <div class="text-success small mb-2" *ngIf="message" data-testid="policy-message">{{message}}</div>
+    <div class="text-muted small" *ngIf="loading">Checking prices&hellip;</div>
+
+    <ng-container *ngIf="data">
+      <div class="row g-2 mb-3" data-testid="policy-summary">
+        <div class="col-6 col-md-3"><button type="button" class="btn w-100 text-start" [ngClass]="filter === 'cuts' ? 'btn-danger' : 'btn-outline-danger'" (click)="filter = filter === 'cuts' ? 'all' : 'cuts'" data-testid="policy-chip-cuts">
+          <div class="small">Above the legal ceiling</div><div class="fs-5 fw-bold">{{data.summary.cuts}}</div></button></div>
+        <div class="col-6 col-md-3"><button type="button" class="btn w-100 text-start" [ngClass]="filter === 'raises' ? 'btn-warning' : 'btn-outline-warning'" (click)="filter = filter === 'raises' ? 'all' : 'raises'" data-testid="policy-chip-raises">
+          <div class="small">Below floor or over the cap</div><div class="fs-5 fw-bold">{{data.summary.raises}}</div><div class="small">{{data.summary.waiting}} held for the next step</div></button></div>
+        <div class="col-6 col-md-3"><a class="btn btn-outline-secondary w-100 text-start" routerLink="/secure/products/datacheck" data-testid="policy-chip-check">
+          <div class="small">Pack or cost to check</div><div class="fs-5 fw-bold">{{data.summary.check}}</div></a></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="small text-muted">Products checked</div><div class="fs-5 fw-bold">{{data.summary.products}}</div>
+          <div class="small text-muted" *ngIf="data.summary.excepted">{{data.summary.excepted}} with an exception</div></div></div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+        <select class="form-select form-select-sm w-auto" [(ngModel)]="filter" data-testid="policy-filter">
+          <option value="all">All out of policy</option><option value="cuts">Above the legal ceiling</option><option value="raises">Below floor / over cap</option><option value="ready">I can apply now</option>
+        </select>
+        <button type="button" class="btn btn-danger btn-sm" *ngIf="readyCuts" [disabled]="busy" (click)="applyCuts()" data-testid="policy-apply-cuts">Bring {{readyCuts}} price{{readyCuts === 1 ? '' : 's'}} down to the legal ceiling</button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" data-testid="policy-table">
+          <thead><tr><th>Product</th><th>Class</th><th class="text-end">Price</th><th class="text-end">Cost</th><th class="text-end">Markup</th><th class="text-end">Disc.</th><th>Out of policy</th><th class="text-end">This step</th><th class="text-end">Target</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let i of items" data-testid="policy-row">
+              <td><a [routerLink]="['/secure/products/master/edit', i.productid]">{{i.title}}</a></td>
+              <td class="small" [title]="classLabel(i.classkey)">{{i.classkey}}</td>
+              <td class="text-end">{{i.price | number:'1.2-2'}}</td>
+              <td class="text-end">{{i.cost | number:'1.2-2'}}</td>
+              <td class="text-end">{{i.markuppct | number:'1.0-0'}}%</td>
+              <td class="text-end">{{i.discountpct | number:'1.0-0'}}%</td>
+              <td class="small">{{problems(i)}}</td>
+              <td class="text-end fw-semibold">{{i.next | number:'1.2-2'}}</td>
+              <td class="text-end">{{i.target | number:'1.2-2'}}</td>
+              <td class="text-end text-nowrap">
+                <button type="button" class="btn btn-primary btn-sm py-0" *ngIf="i.canapply" [disabled]="busy" (click)="apply(i)" data-testid="policy-apply">{{i.action === 'CUT' ? 'Cut now' : 'Apply step'}}</button>
+                <span class="small text-muted" *ngIf="!i.canapply && i.waituntil">next step {{i.waituntil | date:'dd MMM'}}</span>
+                <span class="small text-muted" *ngIf="!i.canapply && !i.waituntil">Business Head</span>
+                <a role="button" class="small ms-2" *ngIf="isBusinessHead && i.action !== 'CUT'" (click)="askException(i)" data-testid="policy-exception">Accept</a>
+              </td>
+            </tr>
+            <tr *ngIf="!items.length"><td colspan="10" class="text-center text-muted py-3" data-testid="policy-empty">Nothing out of policy here.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h6 class="mt-4">Profit and stock turn by class</h6>
+      <p class="small text-muted mb-2">Gross profit of the last 12 months against the stock held now at cost (GMROI: rupees of profit for each rupee of stock). A class with a low figure is tying up stock that earns little.</p>
+      <div class="table-responsive" *ngIf="performance">
+        <table class="table table-sm align-middle w-auto" data-testid="policy-performance">
+          <thead><tr><th>Class</th><th class="text-end">Products</th><th class="text-end">Revenue</th><th class="text-end">Gross profit</th><th class="text-end">Margin</th><th class="text-end">Stock at cost</th><th class="text-end">GMROI</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let c of performance.classes">
+              <td class="small">{{classLabel(c.key)}}</td><td class="text-end">{{c.products}}</td><td class="text-end">{{c.revenue | number:'1.0-0'}}</td><td class="text-end">{{c.gp | number:'1.0-0'}}</td>
+              <td class="text-end">{{c.gmpct !== null ? c.gmpct + '%' : '-'}}</td><td class="text-end">{{c.stock | number:'1.0-0'}}</td><td class="text-end fw-semibold" [class.text-danger]="c.gmroi !== null && c.gmroi < 1.5">{{c.gmroi !== null ? (c.gmroi | number:'1.1-1') : '-'}}</td>
+            </tr>
+            <tr class="fw-semibold border-top"><td>All</td><td class="text-end">{{performance.total.products}}</td><td class="text-end">{{performance.total.revenue | number:'1.0-0'}}</td><td class="text-end">{{performance.total.gp | number:'1.0-0'}}</td>
+              <td class="text-end">{{performance.total.gmpct}}%</td><td class="text-end">{{performance.total.stock | number:'1.0-0'}}</td><td class="text-end">{{performance.total.gmroi | number:'1.1-1'}}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h6 class="mt-4">What recent price changes did to volume</h6>
+      <p class="small text-muted mb-2">Units sold in the 28 days after a price change against the 28 days before, for changes at least 28 days old. Seasons, stock-outs and offers also move volume, so read the middle value across many changes, not one product.</p>
+      <div *ngIf="impact" data-testid="policy-impact">
+        <div class="row g-2 mb-2">
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Raises</div><div class="fw-bold">{{ratio(impact.summary.raises.medianratio)}}</div><div class="small text-muted">{{impact.summary.raises.events}} changes</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Raises of 10% or more</div><div class="fw-bold">{{ratio(impact.summary.bigraises.medianratio)}}</div><div class="small text-muted">{{impact.summary.bigraises.events}} changes</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Cuts</div><div class="fw-bold">{{ratio(impact.summary.cuts.medianratio)}}</div><div class="small text-muted">{{impact.summary.cuts.events}} changes</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Policy steps</div><div class="fw-bold">{{ratio(impact.summary.policysteps.medianratio)}}</div><div class="small text-muted">{{impact.summary.policysteps.events}} changes</div></div></div>
+        </div>
+        <div class="small text-muted">{{impact.summary.changes}} price changes in the window, {{impact.summary.withvolume}} with enough sales to compare.</div>
+      </div>
+
+      <p class="small text-muted mt-4 mb-0">The class limits and the rules for raising prices are on the <a routerLink="/secure/products/rules" data-testid="policy-to-rules">Pricing rules</a> page.</p>
+    </ng-container>
+  </div>
+</div>
+
+<p-dialog [header]="'Accept ' + (exceptionFor?.title || '')" [visible]="!!exceptionFor" (visibleChange)="$event || (exceptionFor = null)" [modal]="true" [style]="{width:'30rem'}">
+  <div *ngIf="exceptionFor">
+    <p class="small">Keep this price as it is, out of policy, and take it off the queue until the date below.</p>
+    <label class="form-label small">Reason</label>
+    <input type="text" class="form-control mb-2" [(ngModel)]="exception.reason" maxlength="200" data-testid="policy-ex-reason">
+    <label class="form-label small">Until</label>
+    <input type="date" class="form-control mb-3" [(ngModel)]="exception.until" data-testid="policy-ex-until">
+    <div class="d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="exceptionFor = null">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" [disabled]="!exception.reason || !exception.until" (click)="saveException()" data-testid="policy-ex-save">Accept</button>
+    </div>
+  </div>
+</p-dialog>

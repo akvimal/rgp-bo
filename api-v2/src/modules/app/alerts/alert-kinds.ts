@@ -1,5 +1,6 @@
 import { EntityManager } from 'typeorm';
 import { StoreService } from '../store/store.service';
+import { PricingReader } from '../products/pricing-reader';
 
 export type Severity = 'info' | 'warning' | 'critical';
 export const SEVERITIES: Severity[] = ['info', 'warning', 'critical'];
@@ -157,6 +158,22 @@ export const KINDS: AlertKind[] = [
       }));
     },
   },
+  {
+    kind: 'price_policy',
+    label: 'Prices out of policy',
+    description: 'Products priced so that a bill would charge more than the MRP, or below the class floor markup or deeper than the class discount cap, and products whose pack or cost looks wrong. Fix them in Products > Pricing policy.',
+    params: [{ key: 'min', label: 'Raise it when at least this many products', min: 1, max: 1000, default: 1, unit: 'products' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      // the read side of the pricing policy needs only the database
+      const c = await new PricingReader(ctx.manager).counts();
+      const out: Finding[] = [];
+      if (c.cuts >= p.min) out.push({ key: 'pricing:cuts', storeid: null, code: 'pricing_cuts', severity: 'critical', params: { count: c.cuts }, link: '/secure/products/policy' });
+      if (c.raises >= p.min) out.push({ key: 'pricing:raises', storeid: null, code: 'pricing_raises', params: { count: c.raises, held: c.held }, link: '/secure/products/policy' });
+      if (c.check >= p.min) out.push({ key: 'pricing:check', storeid: null, code: 'pricing_check', severity: 'info', params: { count: c.check }, link: '/secure/products/datacheck' });
+      return out;
+    },
+  },
 ];
 
 export const kindOf = (kind: string): AlertKind | undefined => KINDS.find((k) => k.kind === kind);
@@ -180,4 +197,5 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity }[]
   { kind: 'registration_expiring', name: 'Pharmacist registration ending', severity: 'warning' },
   { kind: 'shift_open_long', name: 'Shift left open', severity: 'warning' },
   { kind: 'approvals_pending', name: 'Stock adjustments waiting', severity: 'warning' },
+  { kind: 'price_policy', name: 'Prices out of policy', severity: 'warning' },
 ];

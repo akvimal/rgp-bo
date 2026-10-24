@@ -1,0 +1,28 @@
+<div class="card mt-2">
+  <div class="card-body pt-3">
+    <h5 class="card-title p-0 m-0 mb-1" data-testid="pack-title">Data check: pack size and units</h5>
+    <p class="small text-muted mb-3">Products whose pack size or unit looks wrong from how they were bought and priced. A wrong pack makes every cost per unit,
+      margin and rate check wrong. Open the product, correct the pack, and the next purchase and price review will use the right unit.</p>
+    <div class="text-danger small" *ngIf="error" data-testid="pack-error">{{error}}</div>
+    <div class="text-muted small" *ngIf="loading">Checking&hellip;</div>
+    <div class="small mb-2" *ngIf="!loading && !error" data-testid="pack-count">{{rows.length}} product{{rows.length === 1 ? '' : 's'}} to check</div>
+    <div class="table-responsive" *ngIf="rows.length">
+      <table class="table table-sm align-middle" data-testid="pack-table">
+        <thead><tr><th>Product</th><th class="text-end">Pack</th><th class="text-end">MRP (pack)</th><th class="text-end">Rate (pack)</th><th class="text-end">Sale price (pack)</th><th>Why flagged</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of rows" data-testid="pack-row">
+            <td><a [routerLink]="['/secure/products/master/edit', r.id]">{{r.title}}</a></td>
+            <td class="text-end">{{r.pack}}</td>
+            <td class="text-end">{{r.mrp | number:'1.2-2'}}</td>
+            <td class="text-end">{{r.rate | number:'1.2-2'}}</td>
+            <td class="text-end">{{r.price !== null ? (r.price | number:'1.2-2') : '-'}}</td>
+            <td>
+              <div *ngFor="let c of r.reasons" class="small">{{why[c] || c}}<span *ngIf="c === 'UNIT_JUMP' && r.jump_ratio"> ({{r.jump_ratio}}&times; on {{r.jump_date | date:'dd MMM yyyy'}})</span></div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="text-success small" *ngIf="!loading && !error && !rows.length" data-testid="pack-clear"><i class="bi bi-check-circle"></i> Nothing looks wrong.</div>
+  </div>
+</div>

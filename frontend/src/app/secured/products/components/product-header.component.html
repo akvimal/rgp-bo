@@ -9,5 +9,14 @@
     <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products.price'">
       <a class="nav-link" routerLink="/secure/products/price">Price</a>
     </li>
+    <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products.price'">
+      <a class="nav-link" routerLink="/secure/products/datacheck" data-testid="nav-datacheck">Data check</a>
+    </li>
+    <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products.price'">
+      <a class="nav-link" routerLink="/secure/products/policy" data-testid="nav-policy">Pricing policy</a>
+    </li>
+    <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'products.price'">
+      <a class="nav-link" routerLink="/secure/products/rules" data-testid="nav-rules">Pricing rules</a>
+    </li>
   </ul>
 </nav>

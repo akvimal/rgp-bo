@@ -20,4 +20,7 @@ export class CreateProductPrice2Dto {
     @ApiProperty({ description: 'comments', example: '', required: false })
     readonly comments?: string;
 
+    @ApiProperty({ description: 'why a price that breaks the pricing policy is being set (needs a Store Head or Business Head)', example: '', required: false })
+    readonly overridereason?: string;
+
 }

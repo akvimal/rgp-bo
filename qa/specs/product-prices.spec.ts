@@ -25,7 +25,7 @@ async function boughtProduct(api: any, ptr: number, mrp: number) {
 }
 
 const addPrice = (api: any, productid: number, saleprice: number, who = MGR) =>
-  api.request('POST', '/products/prices/add', { productid, saleprice, effdate: '2026-09-02', reason: 'Initial', comments: 'qa price' }, who);
+  api.request('POST', '/products/prices/add', { productid, saleprice, effdate: '2026-09-02', reason: 'Initial', comments: 'qa price', overridereason: 'qa spec' }, who);
 
 test.describe('Product prices @p1', () => {
   test('PRICE-1 a price above the MRP is capped at the MRP @edge', async ({ api }) => {
@@ -33,15 +33,15 @@ test.describe('Product prices @p1', () => {
     const r = await addPrice(api, p.id, 250);
     expect(r.status).toBeLessThan(300);
     expect(r.body.capped).toBe(true);
-    expect(Number(r.body.saleprice)).toBe(200);
+    expect(Number(r.body.saleprice)).toBe(190.47);                // MRP 200 less the 5% GST the till bills (GST 2.0): the customer pays at most the MRP
     expect(r.body.mrp).toBe(200);
     // an ordinary price is untouched
-    const ok = await api.request('POST', '/products/prices/add', { productid: p.id, saleprice: 150, effdate: '2026-09-05', reason: 'Market' }, MGR);
+    const ok = await api.request('POST', '/products/prices/add', { productid: p.id, saleprice: 150, effdate: '2026-09-05', reason: 'Market', overridereason: 'qa spec' }, MGR);
     expect(ok.body.capped).toBe(false);
     expect(Number(ok.body.saleprice)).toBe(150);
     expect(ok.body.warnings).toEqual([]);
     // a price edit goes through the same rule
-    const upd = await api.request('PUT', `/products/prices/${ok.body.id}`, { saleprice: 999 }, MGR);
+    const upd = await api.request('PUT', `/products/prices/${ok.body.id}`, { saleprice: 999, overridereason: 'qa spec' }, MGR);
     expect(upd.status).toBeLessThan(300);
     const hist = (await api.request('GET', `/products/prices/${p.id}`, undefined, MGR)).body.history;
     expect(hist.every((h: any) => Number(h.sale_price) <= 200)).toBe(true);
@@ -57,7 +57,7 @@ test.describe('Product prices @p1', () => {
     expect(JSON.stringify(refused.body)).toContain('typing mistake');
 
     const q = await boughtProduct(api, 100, 200);
-    const below = await api.request('POST', '/products/prices/add', { productid: q.id, saleprice: 90, effdate: '2026-09-09', reason: 'Market' }, MGR);
+    const below = await api.request('POST', '/products/prices/add', { productid: q.id, saleprice: 90, effdate: '2026-09-09', reason: 'Market', overridereason: 'qa spec' }, MGR);
     expect(below.status).toBeLessThan(300);
     expect(below.body.warnings.join(' ')).toContain('below the purchase cost');
 
@@ -111,14 +111,14 @@ test.describe('Product prices @p1', () => {
     await expect(page.getByTestId('price-note-below')).toBeVisible();
     await page.getByTestId('price-dialog-price').fill('1500');                       // capped to 200: 100% margin, fine
     await expect(page.getByTestId('price-note-cap')).toBeVisible();
-    await page.getByTestId('price-dialog-price').fill('180');
+    await page.getByTestId('price-dialog-price').fill('170');
     await expect(page.getByTestId('price-note-cap')).toHaveCount(0);
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/products/prices/add')),
       page.getByTestId('price-save').click(),
     ]);
     expect(resp.status()).toBeLessThan(300);
-    await expect(page.getByTestId('price-message')).toContainText('Price saved at 180');
+    await expect(page.getByTestId('price-message')).toContainText('Price saved at 170');
   });
 
   test('PRICE-7 the price calculator is a panel on the Price page, not a menu popup @happy', async ({ app }) => {
