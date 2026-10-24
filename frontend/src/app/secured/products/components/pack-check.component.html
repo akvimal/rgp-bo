@@ -1,28 +1,36 @@
-<div class="card mt-2">
-  <div class="card-body pt-3">
-    <h5 class="card-title p-0 m-0 mb-1" data-testid="pack-title">Data check: pack size and units</h5>
-    <p class="small text-muted mb-3">Products whose pack size or unit looks wrong from how they were bought and priced. A wrong pack makes every cost per unit,
-      margin and rate check wrong. Open the product, correct the pack, and the next purchase and price review will use the right unit.</p>
-    <div class="text-danger small" *ngIf="error" data-testid="pack-error">{{error}}</div>
-    <div class="text-muted small" *ngIf="loading">Checking&hellip;</div>
-    <div class="small mb-2" *ngIf="!loading && !error" data-testid="pack-count">{{rows.length}} product{{rows.length === 1 ? '' : 's'}} to check</div>
-    <div class="table-responsive" *ngIf="rows.length">
-      <table class="table table-sm align-middle" data-testid="pack-table">
-        <thead><tr><th>Product</th><th class="text-end">Pack</th><th class="text-end">MRP (pack)</th><th class="text-end">Rate (pack)</th><th class="text-end">Sale price (pack)</th><th>Why flagged</th></tr></thead>
-        <tbody>
-          <tr *ngFor="let r of rows" data-testid="pack-row">
+<p class="small text-muted mt-2 mb-1" data-testid="pack-title">Products whose pack size or unit looks wrong from how they were bought and priced. A wrong pack makes every cost per unit, markup and rate check wrong.
+    Open the product, correct the pack, and the next purchase and price review will use the right unit.</p>
+<app-price-units></app-price-units>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="pack-error">{{error}}</div>
+<div class="small mb-1" *ngIf="!loading && !error" data-testid="pack-count">{{rows.length}} product{{rows.length === 1 ? '' : 's'}} to check</div>
+
+<p-table [value]="rows" dataKey="id" styleClass="p-datatable-sm p-datatable-gridlines mt-2" [loading]="loading" data-testid="pack-table"
+        [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" [rowsPerPageOptions]="[25,50,100]">
+    <ng-template pTemplate="header">
+        <tr>
+            <th pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
+            <th class="text-end" pSortableColumn="pack"><div class="th-bar"><span class="th-label">Pack</span><p-sortIcon field="pack"></p-sortIcon></div></th>
+            <th class="text-end" pSortableColumn="mrp"><div class="th-bar"><span class="th-label">MRP</span><p-sortIcon field="mrp"></p-sortIcon></div></th>
+            <th class="text-end" pSortableColumn="rate"><div class="th-bar"><span class="th-label">Cost</span><p-sortIcon field="rate"></p-sortIcon></div></th>
+            <th class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th>
+            <th>Why flagged</th>
+        </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-r>
+        <tr data-testid="pack-row">
             <td><a [routerLink]="['/secure/products/master/edit', r.id]">{{r.title}}</a></td>
             <td class="text-end">{{r.pack}}</td>
             <td class="text-end">{{r.mrp | number:'1.2-2'}}</td>
             <td class="text-end">{{r.rate | number:'1.2-2'}}</td>
             <td class="text-end">{{r.price !== null ? (r.price | number:'1.2-2') : '-'}}</td>
             <td>
-              <div *ngFor="let c of r.reasons" class="small">{{why[c] || c}}<span *ngIf="c === 'UNIT_JUMP' && r.jump_ratio"> ({{r.jump_ratio}}&times; on {{r.jump_date | date:'dd MMM yyyy'}})</span></div>
+                <div *ngFor="let c of r.reasons" class="small">{{why[c] || c}}<span *ngIf="c === 'UNIT_JUMP' && r.jump_ratio"> ({{r.jump_ratio}}&times; on {{r.jump_date | date:'dd MMM yyyy'}})</span></div>
             </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="text-success small" *ngIf="!loading && !error && !rows.length" data-testid="pack-clear"><i class="bi bi-check-circle"></i> Nothing looks wrong.</div>
-  </div>
-</div>
+        </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+        <tr><td colspan="6" class="text-center text-muted py-4" data-testid="pack-clear">{{loading ? 'Loading...' : 'Nothing looks wrong.'}}</td></tr>
+    </ng-template>
+</p-table>

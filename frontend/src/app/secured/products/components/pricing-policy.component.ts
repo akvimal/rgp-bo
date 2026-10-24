@@ -38,7 +38,7 @@ export class PricingPolicyComponent implements OnInit {
     load() {
         this.loading = true;
         this.service.pricingReview().subscribe((d: any) => {
-            this.data = d; this.loading = false;
+            this.data = d; this.loading = false; this.refilter();
             this.service.pricingPerformance().subscribe((p: any) => this.performance = p, () => this.performance = null);
             this.service.pricingImpact().subscribe((p: any) => this.impact = p, () => this.impact = null);
         }, (err: any) => { this.loading = false; this.error = this.msg(err, 'Could not load the pricing policy.'); });
@@ -49,12 +49,21 @@ export class PricingPolicyComponent implements OnInit {
         return (Array.isArray(m) ? m.join(' ') : m) || fallback;
     }
 
-    get items(): any[] {
+    /** the table is given a list that changes only when the filter or the data does, so its sorting and page survive a refresh */
+    shown: any[] = [];
+
+    /** a chip toggles its filter; the drop-down sets it directly */
+    setFilter(value: string, direct = false) {
+        this.filter = direct ? value : (this.filter === value ? 'all' : value);
+        this.refilter();
+    }
+
+    private refilter() {
         const all = this.data?.items || [];
-        if (this.filter === 'cuts') return all.filter((i: any) => i.action === 'CUT');
-        if (this.filter === 'raises') return all.filter((i: any) => i.action === 'RAISE');
-        if (this.filter === 'ready') return all.filter((i: any) => i.canapply);
-        return all;
+        if (this.filter === 'cuts') this.shown = all.filter((i: any) => i.action === 'CUT');
+        else if (this.filter === 'raises') this.shown = all.filter((i: any) => i.action === 'RAISE');
+        else if (this.filter === 'ready') this.shown = all.filter((i: any) => i.canapply);
+        else this.shown = all;
     }
 
     get isBusinessHead(): boolean { return this.data?.level === 'BUSINESS'; }

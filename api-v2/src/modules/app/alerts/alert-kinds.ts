@@ -168,10 +168,10 @@ export const KINDS: AlertKind[] = [
       // the read side of the pricing policy needs only the database
       const c = await new PricingReader(ctx.manager).counts();
       const out: Finding[] = [];
-      if (c.cuts >= p.min) out.push({ key: 'pricing:cuts', storeid: null, code: 'pricing_cuts', severity: 'critical', params: { count: c.cuts }, link: '/secure/products/policy' });
-      if (c.raises >= p.min) out.push({ key: 'pricing:raises', storeid: null, code: 'pricing_raises', params: { count: c.raises, held: c.held }, link: '/secure/products/policy' });
-      if (c.unpriced >= p.min) out.push({ key: 'pricing:unpriced', storeid: null, code: 'pricing_unpriced', params: { count: c.unpriced }, link: '/secure/products/policy' });
-      if (c.check >= p.min) out.push({ key: 'pricing:check', storeid: null, code: 'pricing_check', severity: 'info', params: { count: c.check }, link: '/secure/products/datacheck' });
+      if (c.cuts >= p.min) out.push({ key: 'pricing:cuts', storeid: null, code: 'pricing_cuts', severity: 'critical', params: { count: c.cuts }, link: '/secure/products/pricing-policy' });
+      if (c.raises >= p.min) out.push({ key: 'pricing:raises', storeid: null, code: 'pricing_raises', params: { count: c.raises, held: c.held }, link: '/secure/products/pricing-policy' });
+      if (c.unpriced >= p.min) out.push({ key: 'pricing:unpriced', storeid: null, code: 'pricing_unpriced', params: { count: c.unpriced }, link: '/secure/products/pricing-policy' });
+      if (c.check >= p.min) out.push({ key: 'pricing:check', storeid: null, code: 'pricing_check', severity: 'info', params: { count: c.check }, link: '/secure/products/pack-check' });
       return out;
     },
   },

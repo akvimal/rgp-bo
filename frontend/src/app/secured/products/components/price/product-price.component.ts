@@ -1,53 +1,75 @@
-import { Component } from "@angular/core";
-import { ProductPrice } from "../../product-price.model";
+import { Component, OnInit } from "@angular/core";
 import { ProductsService } from "../../products.service";
 
+/**
+ * The price list: every purchased product with its current price, markup and discount, and where it stands against the pricing policy
+ * (the same statuses as Pricing policy, taken from it, so the two pages never disagree). The pencil sets a price.
+ */
 @Component({
     templateUrl: 'product-price.component.html'
 })
-export class ProductPriceComponent {
+export class ProductPriceComponent implements OnInit {
 
     criteria = {active:true,title:''}
     productid=0;
 
     products:any[] = [];
-    flagFilter = '';
+    shown:any[] = [];
+    statusFilter = '';
     message = '';
+    error = '';
+    loading = false;
     showPriceChange:boolean = false;
+
+    // product id -> ceiling | floor | cap | check | none, from the pricing policy
+    private statuses = new Map<number, string>();
 
     constructor(private service:ProductsService){}
 
     ngOnInit(){
-       this.filter();
+        this.filter();
+        this.loadStatuses();
     }
 
     filter(){
-        this.service.findAllPrices(this.criteria).subscribe((data:any)=> this.products = data);
+        this.loading = true;
+        this.error = '';
+        this.service.findAllPrices(this.criteria).subscribe((data:any) => {
+            this.products = data || [];
+            this.loading = false;
+            this.refilter();
+        }, () => { this.loading = false; this.error = 'Could not load the prices.'; });
     }
 
-    onRowEditInit(product: ProductPrice) {
-    //  console.log('onRowEditInit',product);
+    /** where each product stands against the pricing policy; without cost access the column is simply empty */
+    loadStatuses(){
+        this.service.pricingReview().subscribe((r:any) => {
+            const m = new Map<number, string>();
+            (r.check || []).forEach((i:any) => m.set(+i.productid, 'check'));
+            (r.items || []).forEach((i:any) => m.set(+i.productid, i.action === 'CUT' ? 'ceiling' : ((i.violations || []).includes('BELOW_FLOOR') ? 'floor' : 'cap')));
+            (r.unpriced || []).forEach((u:any) => m.set(+u.productid, 'none'));
+            this.statuses = m;
+            this.refilter();
+        }, () => { this.statuses = new Map(); this.refilter(); });
     }
 
-    onRowEditSave(product: ProductPrice) {
-        console.log('onRowEditSave',product);
-        if(product['price_id']){ //update price
-            console.log('update price');
-            this.service.updatePrice(product).subscribe(data => {
-                console.log(data);
-            })
-        }
-        else { //add new price to the rpduct
-            console.log('add price');
-            this.service.addPrice(product).subscribe(data => {
-                console.log(data);
-            })
-        }
+    statusOf(p:any): string {
+        if(!(+p.price > 0)) return 'none';
+        return this.statuses.get(+p.id) || '';
     }
 
-    onRowEditCancel(product: ProductPrice, index: number) {
-        // console.log('onRowEditCancel',product);
-        // console.log('index: ',index); 
+    setStatusFilter(value:string){
+        this.statusFilter = value;
+        this.refilter();
+    }
+
+    /** the table is given a list that only changes when the filter or the data does, so its sorting and page survive a refresh */
+    private refilter(){
+        const f = this.statusFilter;
+        this.shown = !f ? this.products : this.products.filter(p => {
+            const s = this.statusOf(p);
+            return f === 'policy' ? (s === 'floor' || s === 'cap') : s === f;
+        });
     }
 
     changePrice(productid:number){
@@ -62,21 +84,6 @@ export class ProductPriceComponent {
         for (const w of event?.warnings || []) notes.push(w);
         this.message = `Price saved at ${event?.saleprice ?? ''}${notes.length ? ': ' + notes.join(' ') : '.'}`;
         this.filter();
-    }
-
-    /** what is wrong with a row, if anything: the same limits the API enforces */
-    flagsOf(p:any): string[] {
-        const f: string[] = [];
-        const price = +p.price || 0, mrp = +p.mrp || 0, ptr = +p.ptr || 0;
-        const billed = price * (1 + (+(p.sale_tax ?? p.tax) || 0) / 100), atCost = price * (1 + (+p.tax || 0) / 100);
-        if (!price) f.push('none');
-        if (price && mrp && Math.round(billed * 100) > Math.round(mrp * 100) + 1) f.push('above');
-        if (price && ptr && Math.round(atCost * 100) < Math.round(ptr * 100)) f.push('below');
-        if (ptr && (+p.margin || 0) > 300) f.push('high');
-        return f;
-    }
-
-    get visible(): any[] {
-        return this.flagFilter ? this.products.filter(p => this.flagsOf(p).includes(this.flagFilter)) : this.products;
+        this.loadStatuses();
     }
 }

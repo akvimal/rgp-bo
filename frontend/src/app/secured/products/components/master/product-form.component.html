@@ -1,134 +1,118 @@
-<div class="card mt-4">
+<div class="card mt-2">
     <div class="card-body">
-      <h5 class="card-title m-0 p-0">{{isNew ? 'New' : 'Edit'}} Product</h5>
-      
-      <!-- Multi Columns Form -->
-      <form class="pt-2" [formGroup]="form" (ngSubmit)="onSave()">
-        <div class="row mt-2">
-          <div class="col-md-2" *ngIf="(productProps$ | async).length > 0">
-            <label for="category" class="form-label">Category</label>
-            <select formControlName="category" class="form-control" id="category" 
-            (change)="selectProps($event,undefined)" required>
-            <option value="">Select</option>
-            <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
-            </select>
+      <h5 class="card-title m-0 p-0" data-testid="prod-f-heading">{{isNew ? 'New' : 'Edit'}} product</h5>
+      <p class="small text-muted mt-1 mb-0">The title, category and pack identify the product everywhere: in sales, purchases, stock and prices.</p>
+
+      <div class="alert alert-danger py-2 small mt-2 mb-0" *ngIf="error" data-testid="prod-f-error">{{error}}</div>
+
+      <form class="pt-1" [formGroup]="form" (ngSubmit)="onSave()" autocomplete="off">
+
+        <h6 class="mt-3 text-primary">Identity</h6>
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label for="title" class="form-label">Title <span class="required">*</span></label>
+            <app-lookup [default]="form.value.title" [entity]="'product'" [property]="'title'" (update)="onLookupInput($event, 'title')"></app-lookup>
+            <div class="form-text">Shown in sales, purchases and stock. Make it unique and easy to recognise: include the strength and form, for example the tablet count.</div>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-4" *ngIf="(productProps$ | async).length > 0">
+            <label for="category" class="form-label">Category <span class="required">*</span></label>
+            <select formControlName="category" class="form-select" id="category" (change)="selectProps($event,undefined)" required>
+              <option value="">Select</option>
+              <option *ngFor="let pp of (productProps$ | async)" [value]="pp.category">{{pp.category}}</option>
+            </select>
+            <div class="form-text">Choosing a category shows the properties for it below.</div>
+          </div>
+          <div class="col-md-3">
             <label for="brand" class="form-label">Brand</label>
-            <!-- <input id="brand" class="form-control" type="text" formControlName="brand"> -->
             <app-lookup [default]="form.value.brand" [entity]="'product'" [property]="'brand'" (update)="onLookupInput($event, 'brand')"></app-lookup>
           </div>
           <div class="col-md-3">
             <label for="mfr" class="form-label">Manufacturer</label>
-            <!-- <input id="mfr" class="form-control" type="text" formControlName="mfr"> -->
             <app-lookup [default]="form.value.mfr" [entity]="'product'" [property]="'mfr'" (update)="onLookupInput($event, 'mfr')"></app-lookup>
           </div>
-          <div class="col-md-1">
+          <div class="col-md-2">
             <label for="pack" class="form-label">Pack <span class="required">*</span></label>
-            <input type="number" class="form-control" id="pack" formControlName="pack">
-          </div>
-        </div>
-  
-        <!-- <div class="row g-3 mt-2">
-          <div class="col-md-12" *isAuth="'products.add$description'">
-            <label for="description" class="form-label">Description</label>
-            <textarea class="form-control" id="description" formControlName="description" 
-              style="height: 100px;"></textarea>
-          </div>
-        </div> -->
-        <div class="row mt-2">
-          <div class="col-md-3">
-            <label class="form-label">Purchase Approval Required</label>
-            <div>
-              <input type="checkbox" class="form-check-input" formControlName="purchaseApprovalRequired">
-            </div>
-          </div>
-          <div class="col-md-3">
-            <label for="purchaseApprovalQtyThreshold" class="form-label">Approval Qty Threshold</label>
-            <input
-              id="purchaseApprovalQtyThreshold"
-              class="form-control"
-              type="number"
-              min="0"
-              formControlName="purchaseApprovalQtyThreshold">
-          </div>
-         
-          <!-- <div class="col-md-3">
-            <label for="brand" class="form-label">Brand <span class="required">*</span></label>
-            <input id="brand" class="form-control" type="text" formControlName="brand" (input)="dataInput(undefined, 'brand', $event)">
-          </div>       -->
-        </div>
-        <div class="row g-2 bg-light pb-3 mt-2" formGroupName="props">
-          <div class="col-12 d-flex">
-            <div style="padding-right:1.5em" *ngFor="let pp of props">
-            <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label> 
-            <select class="form-control" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
-            (change)="dataInput(pp.type, pp.id, $event)">
-              <option value="">Select</option>
-              <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
-            </select> 
-            <!-- <span class="p-fluid">
-            <p-multiSelect [options]="pp.choices" formControlName={{pp.id}} optionLabel="label" *ngIf="pp.type === 'MULTI-SELECT'"></p-multiSelect>
-            </span> -->
-            <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)" 
-                      class="form-control" formControlName={{pp.id}}>
-            <textarea *ngIf="pp.type === 'TEXT'" cols="40" (input)="dataInput(pp.type, pp.id, $event)" class="form-control" formControlName={{pp.id}}></textarea>
-            <div *ngIf="pp.type === 'CHECK'">
-              <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)" [checked]="pp.default"
-              class="form-check-input" style="width:25px;height:25px" formControlName={{pp.id}}>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="row mt-2">
-          <div class="col-8">
-            <!-- {{form.controls['title'].value}} -->
-            <label for="title" class="form-label">Title <span class="required">*</span></label>
-            <!-- <input type="text" class="form-control" id="title" formControlName="title"> -->
-            
-            <app-lookup [default]="form.value.title" [entity]="'product'" [property]="'title'" (update)="onLookupInput($event, 'title')"></app-lookup>
-            <br>
-            <p>Title is shown in Sale, Purchase and other places. Title should be unique and easily recognized.
-              Each title should be linked to one product code. Include the properties of product to make the title unique.
-            </p>    
+            <input type="number" min="1" step="1" class="form-control" id="pack" formControlName="pack" data-testid="prod-pack" [class.is-invalid]="form.controls['pack'].invalid && form.controls['pack'].touched">
+            <div class="form-text">Units in one pack, for example tablets in a strip. Costs and prices are per pack.</div>
           </div>
           <div class="col-md-2">
-            <label for="prcode" class="form-label">Product Code</label>
-            <!-- <input type="text" class="form-control" id="prcode" formControlName="code"> -->
+            <label for="prcode" class="form-label">Product code</label>
             <app-lookup [default]="form.value.code" [entity]="'product'" [property]="'product_code'" (update)="onLookupInput($event, 'code')"></app-lookup>
           </div>
           <div class="col-md-2">
-            <label for="hsncode" class="form-label">HSN Code</label>
-            <!-- <input type="text" class="form-control" id="hsncode" formControlName="hsn" maxlength="8"> -->
+            <label for="hsncode" class="form-label">HSN code</label>
             <app-lookup [default]="form.value.hsn" [entity]="'product'" [property]="'hsn_code'" (update)="onLookupInput($event, 'hsn')"></app-lookup>
           </div>
-          <div class="col-md-2">
-            <label for="binlocation" class="form-label">Bin / Rack</label>
+        </div>
+
+        <h6 class="mt-4 text-primary" *ngIf="props && props.length">Properties of {{form.value.category}}</h6>
+        <div class="row g-3" formGroupName="props">
+          <div class="col-md-3" *ngFor="let pp of props">
+            <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label>
+            <select class="form-select" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
+              (change)="dataInput(pp.type, pp.id, $event)">
+              <option value="">Select</option>
+              <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
+            </select>
+            <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)"
+                      class="form-control" formControlName={{pp.id}}>
+            <textarea *ngIf="pp.type === 'TEXT'" rows="2" (input)="dataInput(pp.type, pp.id, $event)" class="form-control" formControlName={{pp.id}}></textarea>
+            <div *ngIf="pp.type === 'CHECK'">
+              <input type="checkbox" (change)="dataInput(pp.type, pp.id, $event)" [checked]="pp.default"
+                class="form-check-input" style="width:25px;height:25px" formControlName={{pp.id}}>
+            </div>
+          </div>
+        </div>
+
+        <h6 class="mt-4 text-primary">Stock and returns</h6>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="binlocation" class="form-label">Bin or rack</label>
             <input type="text" class="form-control" id="binlocation" formControlName="binlocation" maxlength="40" placeholder="e.g. A-12">
           </div>
-          <div class="col-md-2">
+          <div class="col-md-3">
             <label for="minstock" class="form-label">Minimum stock</label>
-            <input type="number" min="0" step="1" class="form-control" id="minstock" formControlName="minstock" placeholder="units" data-testid="prod-minstock" title="Keep at least this many on hand: the Reorder list orders up to it">
+            <input type="number" min="0" step="1" class="form-control" id="minstock" formControlName="minstock" placeholder="units" data-testid="prod-minstock">
+            <div class="form-text">Keep at least this many on hand: the Reorder list orders up to it.</div>
           </div>
           <div class="col-md-3">
             <label for="returnrule" class="form-label">If a customer returns it</label>
-            <select class="form-select" id="returnrule" formControlName="returnrule" data-testid="prod-returnrule" title="Refrigerated and similar lines are usually not taken back">
+            <select class="form-select" id="returnrule" formControlName="returnrule" data-testid="prod-returnrule">
               <option value="">Follow its category</option>
               <option value="FREE">Take back</option>
               <option value="INSPECT">Inspect first</option>
               <option value="NONE">Do not take back</option>
             </select>
+            <div class="form-text">Refrigerated and similar lines are usually not taken back.</div>
           </div>
         </div>
-      <div class="row mt-2">
-        <div class="col-md-12 text-center">
-          <button type="submit" class="btn btn-primary m-2" [disabled]="!form.valid">Submit</button>
-          <button type="reset" *ngIf="isNew" (click)="reset()" class="btn btn-outline-secondary m-2">Reset</button>
-          <button type="button" (click)="gotoList()" class="btn btn-outline-secondary m-2">Cancel</button>
-        </div>
-      </div>
-      </form><!-- End Multi Columns Form -->
 
+        <h6 class="mt-4 text-primary">Ordering</h6>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <div class="form-check mt-4">
+              <input type="checkbox" class="form-check-input" id="purchaseApprovalRequired" formControlName="purchaseApprovalRequired">
+              <label class="form-check-label" for="purchaseApprovalRequired">Purchase needs approval</label>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <label for="purchaseApprovalQtyThreshold" class="form-label">Approval needed above (units)</label>
+            <input id="purchaseApprovalQtyThreshold" class="form-control" type="number" min="0" formControlName="purchaseApprovalQtyThreshold" placeholder="any quantity">
+            <div class="form-text">Leave empty to ask for approval at any quantity.</div>
+          </div>
+        </div>
+
+        <div class="alert alert-info py-2 small mt-4 mb-0" *ngIf="isNew" data-testid="prod-f-price-note">
+          A new product has no sale price yet. When its first purchase is received it is listed under <b>Pricing policy &gt; Needs a price</b> with a suggested price.
+          You can also set it on the <a routerLink="/secure/products/price">Price</a> page.
+        </div>
+        <div class="small text-muted mt-3 mb-0" *ngIf="!isNew">Prices are set on the <a routerLink="/secure/products/price">Price</a> page.</div>
+
+        <div class="d-flex gap-2 align-items-center mt-4">
+          <button type="submit" class="btn btn-primary" [disabled]="!form.valid || saving" data-testid="prod-f-save">Save</button>
+          <button type="button" (click)="gotoList()" class="btn btn-outline-secondary" data-testid="prod-f-cancel">Cancel</button>
+          <span class="small text-muted" *ngIf="missing.length" data-testid="prod-f-missing">To save, fill in: {{missing.join(', ')}}.</span>
+        </div>
+      </form>
     </div>
   </div>
-  

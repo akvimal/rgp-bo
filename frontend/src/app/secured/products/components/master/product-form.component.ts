@@ -19,7 +19,7 @@ export class ProductFormComponent {
         title: new FormControl('', Validators.required),
         hsn: new FormControl(''),
         code: new FormControl(''),
-        pack: new FormControl('1'),
+        pack: new FormControl('1', [Validators.required, Validators.min(1)]),
         category: new FormControl(''),
         mfr: new FormControl(''),
         brand: new FormControl(''),
@@ -38,6 +38,10 @@ export class ProductFormComponent {
       pack:string = '';
 
       isNew:boolean = false;
+      error = '';
+      saving = false;
+      /** whether the category list has anything to choose from: a category is required only when it does */
+      hasCategories = false;
       fromRequest:number = 0;
       
       constructor(private propsService:PropsService, 
@@ -47,6 +51,7 @@ export class ProductFormComponent {
         private route:ActivatedRoute,
         private requestService:PurchaseIntentService){
           this.productProps$ = this.propsService.productProps$;
+          this.productProps$.subscribe((d:any) => this.hasCategories = (d || []).length > 0);
         }
 
       ngOnInit(){
@@ -85,17 +90,23 @@ export class ProductFormComponent {
         })
       }
 
+      /** what still has to be filled in, so a disabled Save button is never a mystery */
+      get missing(): string[] {
+        const v = this.form.value;
+        const out: string[] = [];
+        if(!String(v.title || '').trim()) out.push('title');
+        if(this.hasCategories && !v.category) out.push('category');
+        if(!(+v.pack >= 1)) out.push('pack (at least 1)');
+        return out;
+      }
+
       populateProps(category:any,values:any){
-        console.log('category: ',category);
-        console.log('this.form.controls: ',this.form.controls);
-        console.log(this.form.contains('props'));
         if(category == '' && this.form.contains('props'))
             this.form.removeControl('props')
         
         this.propsService.productProps$.subscribe((data:any) => {
           this.props = [];
           const catProps = data.find((d:any) => d.category === category);
-          console.log('catProps: ',catProps);
           
           if(catProps){
             this.props = catProps.props;
@@ -111,11 +122,9 @@ export class ProductFormComponent {
               // }
               pps = {...pps, [pname]:fc}
             }
-            console.log('setting prps form roup');
             
             this.form.setControl('props', new FormGroup(pps));
           } else {
-            console.log('this.form.controls: ',this.form.controls);
             if(this.form.contains('props'))
             this.form.removeControl('props')
           }
@@ -123,7 +132,6 @@ export class ProductFormComponent {
       }
 
       selectProps(event:any,values:any){
-        console.log('populating props..');
         
           this.populateProps(event.target.value,undefined);
       }
@@ -173,39 +181,47 @@ export class ProductFormComponent {
           // console.log(this.form.value.props);
           
   
+        this.error = '';
+        this.saving = true;
         const id = this.form.value.id;
         if(id) {
-          this.service.update(id, obj).subscribe(data => this.gotoList());
+          this.service.update(id, obj).subscribe(() => {
+            this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Product saved' });
+            this.gotoList();
+          }, (err:any) => this.fail(err));
         }
         else {
           this.service.save(obj).subscribe((data:any) => {
-            if(data.status == 'ERROR')
-              this.messageService.add({ severity: 'error', summary: 'Error', detail: data.message });
-            else {            
-              this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Saved Suucessfully' });
-              if(this.fromRequest && data?.id){
-                this.requestService.update(this.fromRequest, { productid: +data.id }).subscribe({
-                  next: () => this.router.navigate(['/secure/purchases/requests']),
-                  error: (err) => this.messageService.add({ severity: 'error', summary: 'Product saved, request not linked', detail: err?.error?.message || 'Link it from the requests list.' })
-                });
-                return;
-              }
-              this.gotoList();
+            if(data.status == 'ERROR') {
+              this.saving = false;
+              this.error = data.message;
+              return;
             }
-          });
+            this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Product saved' });
+            if(this.fromRequest && data?.id){
+              this.requestService.update(this.fromRequest, { productid: +data.id }).subscribe({
+                next: () => this.router.navigate(['/secure/purchases/requests']),
+                error: (err) => this.messageService.add({ severity: 'error', summary: 'Product saved, request not linked', detail: err?.error?.message || 'Link it from the requests list.' })
+              });
+              return;
+            }
+            this.gotoList();
+          }, (err:any) => this.fail(err));
         }
       }
-  
+
+      private fail(err:any){
+        this.saving = false;
+        const m = err?.error?.message;
+        this.error = (Array.isArray(m) ? m.join(' ') : m) || 'The product could not be saved.';
+      }
+
       getTrimmedProps(props:any){
         return {
           ...(props || {}),
           purchaseApprovalRequired: !!this.form.value.purchaseApprovalRequired,
           purchaseApprovalQtyThreshold: this.form.value.purchaseApprovalQtyThreshold === '' ? null : +this.form.value.purchaseApprovalQtyThreshold
         };
-      }
-
-      reset(){
-        this.form.reset();
       }
 
       gotoList() {

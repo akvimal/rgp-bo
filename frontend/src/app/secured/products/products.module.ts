@@ -26,6 +26,7 @@ import { ProductPriceChangeComponent } from "./components/price/product-price-ch
 import { PackCheckComponent } from "./components/pack-check.component";
 import { PricingPolicyComponent } from "./components/pricing-policy.component";
 import { PricingRulesComponent } from "./components/pricing-rules.component";
+import { PriceUnitsComponent } from "./components/price-units.component";
 
 const routes: Routes = [
   { path: '', component: ProductsComponent, 
@@ -38,9 +39,13 @@ const routes: Routes = [
         { path: 'edit/:id', component: ProductFormComponent, canActivate:[AuthGuard]}
       ]},
       { path: 'price', component: ProductPriceComponent, canActivate:[AuthGuard]},
-      { path: 'datacheck', component: PackCheckComponent, canActivate:[AuthGuard]},
-      { path: 'policy', component: PricingPolicyComponent, canActivate:[AuthGuard]},
-      { path: 'rules', component: PricingRulesComponent, canActivate:[AuthGuard]}
+      { path: 'pack-check', component: PackCheckComponent, canActivate:[AuthGuard]},
+      { path: 'pricing-policy', component: PricingPolicyComponent, canActivate:[AuthGuard]},
+      { path: 'pricing-rules', component: PricingRulesComponent, canActivate:[AuthGuard]},
+      // the first names of these pages, kept so links already sent (alerts) still work
+      { path: 'datacheck', redirectTo: 'pack-check', pathMatch: 'full' },
+      { path: 'policy', redirectTo: 'pricing-policy', pathMatch: 'full' },
+      { path: 'rules', redirectTo: 'pricing-rules', pathMatch: 'full' }
   ]},
   
 ];
@@ -55,7 +60,8 @@ const routes: Routes = [
         ProductPriceChangeComponent,
         PackCheckComponent,
         PricingPolicyComponent,
-        PricingRulesComponent
+        PricingRulesComponent,
+        PriceUnitsComponent
     ],
     imports: [
         CommonModule,

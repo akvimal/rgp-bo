@@ -1,93 +1,88 @@
-<p class="small text-muted mt-2 mb-0" data-testid="price-intro">Every product that has been purchased, with its current price. Use the pencil to set a price. Prices that break the pricing rules, and products with no price, are listed under <a routerLink="/secure/products/policy">Pricing policy</a>.</p>
+<p class="small text-muted mt-2 mb-1" data-testid="price-intro">Every product that has been purchased (a product never purchased is not listed), with its current price. Use the pencil to set a price.
+    Prices that break the pricing rules, and products with no price, are also listed under <a routerLink="/secure/products/pricing-policy">Pricing policy</a>.</p>
+<app-price-units></app-price-units>
 
-<div class="row mt-2">
-    <div class="col-12 p-2 d-flex">
-       <div style="padding-right:.5em"><input type="text" class="form-control" [(ngModel)]="criteria.title" (input)="filter()" placeholder="Product"></div>
-       <div style="padding-right:.5em;padding-top: .5em;font-size: larger;"><input type="checkbox" style="width:25px;height:25px;" [(ngModel)]="criteria.active" (change)="filter()"> Active</div>
-       <div style="padding-left:1em">
-         <select class="form-select" [(ngModel)]="flagFilter" data-testid="price-flag-filter">
-           <option value="">All prices</option>
-           <option value="above">Above MRP</option>
-           <option value="below">Below cost</option>
-           <option value="high">Margin over 300%</option>
-           <option value="none">No price</option>
-         </select>
-       </div>
+<div class="page-toolbar mt-2">
+    <div class="page-toolbar-main">
+        <div style="padding-right:.7em;">
+            <label class="form-label">Active</label>
+            <br>
+            <input type="checkbox" style="width:25px;height:25px;margin-top:.4em" [(ngModel)]="criteria.active" (change)="filter()">
+        </div>
+        <div style="padding-right:.5em">
+            <label class="form-label">Product</label>
+            <input type="text" class="form-control" [(ngModel)]="criteria.title" (input)="filter()" placeholder="Product">
+        </div>
+        <div>
+            <label class="form-label">Show</label>
+            <select class="form-select" [ngModel]="statusFilter" (ngModelChange)="setStatusFilter($event)" data-testid="price-flag-filter">
+                <option value="">All prices</option>
+                <option value="ceiling">Above the legal ceiling</option>
+                <option value="policy">Below floor or over cap</option>
+                <option value="none">No price</option>
+                <option value="check">Pack or cost to check</option>
+            </select>
+        </div>
     </div>
 </div>
 
-<div class="row mt-2">
+<div class="alert alert-success py-2" *ngIf="message" data-testid="price-message">{{message}}</div>
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="price-error-list">{{error}}</div>
+
+<div class="row">
     <div class="col-12">
-        <p>Products not purchased are not shown below</p>
-        <div class="alert alert-success py-2" *ngIf="message" data-testid="price-message">{{message}}</div>
-    <p-table [value]="visible" dataKey="id" editMode="row" styleClass="p-datatable-sm p-datatable-striped"
-            [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
-            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-            [rowsPerPageOptions]="[25,50,100]">
-
-        <ng-template pTemplate="header">
-            <tr>
-                <th style="width:42%" pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
-                <th style="width:8%" pSortableColumn="last_updated"><div class="th-bar"><span class="th-label">Updated</span><p-sortIcon field="last_updated"></p-sortIcon></div></th>
-                <th style="width:8%" class="text-end">PTR</th>
-                <th style="width:8%" class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th>
-                <th style="width:8%" class="text-end" pSortableColumn="margin"><div class="th-bar"><span class="th-label">Margin</span><p-columnFilter type="number" field="margin" display="menu"></p-columnFilter><p-sortIcon field="margin"></p-sortIcon></div></th>
-                <th style="width:8%" class="text-end" pSortableColumn="discount"><div class="th-bar"><span class="th-label">Discount</span><p-columnFilter type="number" field="discount" display="menu"></p-columnFilter><p-sortIcon field="margin"></p-sortIcon></div></th>
-                <th style="width:8%" class="text-end">MRP</th>
-                <th style="width:8%" class="text-center">Actions</th>
-            </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-product let-editing="editing" let-ri="rowIndex">
-            <tr [pEditableRow]="product">
-                <td>{{product.title}}
-                <span class="badge bg-danger ms-1" *ngIf="flagsOf(product).includes('above')" title="Above the MRP: a new price is capped at it">above MRP</span>
-                <span class="badge bg-warning text-dark ms-1" *ngIf="flagsOf(product).includes('below')">below cost</span>
-                <span class="badge bg-warning text-dark ms-1" *ngIf="flagsOf(product).includes('high')">margin over 300%</span>
-                <span class="badge bg-secondary ms-1" *ngIf="flagsOf(product).includes('none')">no price</span>
-            </td>
-                <td>{{product.last_updated | date : 'dd MMM yyyy'}}</td>
-                <!-- <td class="text-center" pEditableColumn>
-                    <p-cellEditor>
-                        <ng-template pTemplate="input">
-                            <input pInputText type="text" [(ngModel)]="product.market_price">
-                        </ng-template>
-                        <ng-template pTemplate="output">
-                            {{product.market_price}}
-                        </ng-template>
-                    </p-cellEditor>
-                </td> -->
-                <td class="text-end">{{product.ptr | number : '1.2-2'}}</td>
-                <!-- <td class="text-center" pEditableColumn>
-                    <p-cellEditor>
-                        <ng-template pTemplate="input">
-                            <input pInputText type="text" [(ngModel)]="product.our_sale_price">
-                        </ng-template>
-                        <ng-template pTemplate="output">
-                            {{product.our_sale_price}}
-                        </ng-template>
-                    </p-cellEditor>
-                </td> -->
-                <td class="text-end">{{product.price | number : '1.2-2'}}</td>
-                <td class="text-end">{{product.margin}}%</td>
-                <td class="text-end">{{product.discount}}%</td>
-                <td class="text-end">{{product.mrp | number : '1.2-2'}}</td>
-                <td style="text-align:center">
-                    <h4 class="icon">
-                        <a (click)="changePrice(product.id)">
-                            <i class="bi bi-pencil-square text-primary"></i>
-                        </a>
-                    </h4>
-                    <!-- <button *ngIf="!editing" pButton pRipple type="button" pInitEditableRow icon="pi pi-pencil" (click)="onRowEditInit(product)" class="p-button-rounded p-button-text"></button>
-                    <button *ngIf="editing" pButton pRipple type="button" pSaveEditableRow icon="pi pi-check" (click)="onRowEditSave(product)" class="p-button-rounded p-button-text p-button-success p-mr-2"></button>
-                    <button *ngIf="editing" pButton pRipple type="button" pCancelEditableRow icon="pi pi-times" (click)="onRowEditCancel(product, ri)" class="p-button-rounded p-button-text p-button-danger"></button> -->
-                </td>
-            </tr>
-        </ng-template>
-    </p-table>
-</div>
+        <p-table [value]="shown" dataKey="id" styleClass="p-datatable-sm p-datatable-gridlines mt-2" [loading]="loading"
+                [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
+                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+                [rowsPerPageOptions]="[25,50,100]">
+            <ng-template pTemplate="header">
+                <tr>
+                    <th style="width:34%" pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
+                    <th style="width:9%" pSortableColumn="last_updated"><div class="th-bar"><span class="th-label">Updated</span><p-sortIcon field="last_updated"></p-sortIcon></div></th>
+                    <th style="width:9%" class="text-end" pSortableColumn="ptr"><div class="th-bar"><span class="th-label">Cost with GST</span><p-sortIcon field="ptr"></p-sortIcon></div></th>
+                    <th style="width:8%" class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th>
+                    <th style="width:8%" class="text-end" pSortableColumn="margin"><div class="th-bar"><span class="th-label">Markup</span><p-columnFilter type="numeric" field="margin" display="menu"></p-columnFilter><p-sortIcon field="margin"></p-sortIcon></div></th>
+                    <th style="width:8%" class="text-end" pSortableColumn="discount"><div class="th-bar"><span class="th-label">Discount</span><p-columnFilter type="numeric" field="discount" display="menu"></p-columnFilter><p-sortIcon field="discount"></p-sortIcon></div></th>
+                    <th style="width:8%" class="text-end" pSortableColumn="mrp"><div class="th-bar"><span class="th-label">MRP</span><p-sortIcon field="mrp"></p-sortIcon></div></th>
+                    <th style="width:12%">Status</th>
+                    <th style="width:4%" class="text-center">Actions</th>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-product>
+                <tr>
+                    <td>{{product.title}} ({{product.pack}})</td>
+                    <td>{{product.last_updated | date : 'dd MMM yyyy'}}</td>
+                    <td class="text-end">{{product.ptr | number : '1.2-2'}}</td>
+                    <td class="text-end">{{product.price | number : '1.2-2'}}</td>
+                    <td class="text-end">{{product.margin}}%</td>
+                    <td class="text-end">{{product.discount}}%</td>
+                    <td class="text-end">{{product.mrp | number : '1.2-2'}}</td>
+                    <td>
+                        <ng-container [ngSwitch]="statusOf(product)">
+                            <span *ngSwitchCase="'ceiling'" class="badge bg-danger" title="The bill would charge more than the MRP">Above the legal ceiling</span>
+                            <span *ngSwitchCase="'floor'" class="badge bg-warning text-dark">Below the floor markup</span>
+                            <span *ngSwitchCase="'cap'" class="badge bg-warning text-dark">Discount too deep</span>
+                            <span *ngSwitchCase="'check'" class="badge bg-secondary">Check pack or cost</span>
+                            <span *ngSwitchCase="'none'" class="badge bg-secondary">No price</span>
+                        </ng-container>
+                    </td>
+                    <td class="text-center">
+                        <div class="grid-actions">
+                            <a (click)="changePrice(product.id)" title="Set the price" data-testid="price-edit">
+                                <i class="bi bi-pencil-square text-primary"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+                <tr><td colspan="9" class="text-center text-muted py-4" data-testid="price-empty">{{loading ? 'Loading...' : 'No products match.'}}</td></tr>
+            </ng-template>
+        </p-table>
+    </div>
 </div>
 
-<p-dialog [header]="'Price Change'" 
+<p-dialog [header]="'Set the price'"
         [(visible)]="showPriceChange" [modal]="true">
     <app-product-price-change [productid]="productid" (added)="changed($event)"></app-product-price-change>
 </p-dialog>

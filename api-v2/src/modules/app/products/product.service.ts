@@ -91,7 +91,7 @@ export class ProductService {
     const active = !(criteria?.active === false || criteria?.active === 'false');
     const title = String(criteria?.title ?? '').replace(/[\\%_]/g, (c) => '\\' + c) + '%';
     return await this.manager.query(
-      `select * from price_view where active = $1 and title ilike $2`, [active, title]);
+      `select v.*, p.pack from price_view v join product p on p.id = v.id where v.active = $1 and v.title ilike $2`, [active, title]);
   }
 
   /**

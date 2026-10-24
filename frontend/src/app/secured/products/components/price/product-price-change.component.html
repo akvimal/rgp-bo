@@ -3,18 +3,18 @@
   <div class="col-6">
     <div class="row">
       <div class="col-12 d-flex flex-wrap gap-3 mb-2">
-        <div class="price-comp"><label>PTR</label><h6 data-testid="price-ptr">{{ptr ? (ptr | number:'1.2-2') : '-'}}</h6></div>
+        <div class="price-comp"><label>Cost with GST</label><h6 data-testid="price-ptr">{{ptr ? (ptr | number:'1.2-2') : '-'}}</h6></div>
         <div class="price-comp"><label>MRP</label><h6 data-testid="price-mrp">{{mrp ? (mrp | number:'1.2-2') : '-'}}</h6></div>
-        <div class="price-comp"><label>Margin</label><h6 style="color:blueviolet">{{margin !== null ? margin + '%' : '-'}}</h6></div>
+        <div class="price-comp"><label>Markup</label><h6 style="color:blueviolet">{{margin !== null ? margin + '%' : '-'}}</h6></div>
         <div class="price-comp"><label>Discount</label><h6 style="color:blue">{{discount !== null ? discount + '%' : '-'}}</h6></div>
       </div>
       <div class="col-12">
-        <label>Sale price</label>
+        <label>Sale price <span class="small text-muted fw-normal">(per pack, before GST)</span></label>
         <input type="number" min="0" step="0.01" class="form-control" style="max-width:12rem;text-align:right" [(ngModel)]="price.sale" data-testid="price-dialog-price">
         <div class="small text-muted mt-1" *ngIf="!ptr">No purchase on record yet, so there is no MRP or cost to check this price against.</div>
         <div class="alert alert-info py-1 mt-2 mb-0" *ngIf="cappedAt" data-testid="price-note-cap">The bill adds GST to this price, so it cannot be above the MRP less GST: it will be saved as {{cappedAt | number:'1.2-2'}}.</div>
-        <div class="alert alert-danger py-1 mt-2 mb-0" *ngIf="tooHigh" data-testid="price-note-error">A margin of {{margin}}% looks like a typing mistake (the limit is 1,000%). Check the price and the purchase cost.</div>
-        <div class="alert alert-warning py-1 mt-2 mb-0" *ngIf="high" data-testid="price-note-warn">High margin: {{margin}}% on the purchase cost. Is this price right?</div>
+        <div class="alert alert-danger py-1 mt-2 mb-0" *ngIf="tooHigh" data-testid="price-note-error">A markup of {{margin}}% looks like a typing mistake (the limit is 1,000%). Check the price and the purchase cost.</div>
+        <div class="alert alert-warning py-1 mt-2 mb-0" *ngIf="high" data-testid="price-note-warn">High markup: {{margin}}% on the cost. Is this price right?</div>
         <div class="alert alert-warning py-1 mt-2 mb-0" *ngIf="belowCost" data-testid="price-note-below">This price is below the purchase cost ({{ptr | number:'1.2-2'}}).</div>
       </div>
       <div class="col-12 mt-2 d-flex">
@@ -27,7 +27,7 @@
           <select class="form-control" [(ngModel)]="price.reason" data-testid="price-reason">
             <option value="">Select</option>
             <option value="Initial">Initial</option>
-            <option value="Higher PTR">Higher PTR</option>
+            <option value="Higher PTR">Higher cost (PTR)</option>
             <option value="Market">Market Pressure</option>
             <option value="Other">Other</option>
           </select>

@@ -8,6 +8,7 @@ import { ConfirmService } from "src/app/shared/confirm.service";
 export class ProductListComponent {
 
     products:any;
+    loading = false;
     criteria:any = {active:true, title: ''};
 
     constructor(
@@ -39,7 +40,8 @@ export class ProductListComponent {
     }
 
     fetchList(){
-        this.service.findByCriteria2(this.criteria).subscribe(data => this.products = data);
+        this.loading = true;
+        this.service.findByCriteria2(this.criteria).subscribe(data => { this.products = data; this.loading = false; }, () => this.loading = false);
     }
 
     propsUpdate(event:any){
@@ -47,11 +49,9 @@ export class ProductListComponent {
         const props = event.props.filter((p:any) => p.value !== '')
         this.criteria = {...this.criteria, category:event.category, props};
         this.fetchList();
-        console.log(this.criteria);
     }
 
     filter(){
-        console.log('filter called',this.criteria);
         
         this.fetchList();
     }

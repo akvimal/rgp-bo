@@ -1,3 +1,4 @@
+    <p class="small text-muted mt-2 mb-0" data-testid="prod-intro">Every product the shop sells or has sold. Prices are set on the <a routerLink="/secure/products/price">Price</a> page.</p>
     <div class="page-toolbar mt-2">
         <div class="page-toolbar-main">
             <div class="d-flex">
@@ -20,9 +21,9 @@
     <div class="row">
             <div class="col-12">
             <p-table [value]="products" [resizableColumns]="true" columnResizeMode="expand" 
-                [paginator]="true" [rows]="10" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines p-datatable-sm mt-4"
+                [paginator]="true" [rows]="25" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines p-datatable-sm mt-4" [loading]="loading"
                 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
-                [rowsPerPageOptions]="[10,25,50]">
+                [rowsPerPageOptions]="[25,50,100]">
                
                 <ng-template pTemplate="header">
                     <tr>
@@ -70,6 +71,9 @@
                             </div>
                         </td>
                     </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="5" class="text-center text-muted py-4" data-testid="prod-empty">{{loading ? 'Loading...' : 'No products match.'}}</td></tr>
                 </ng-template>
             </p-table>
         </div>

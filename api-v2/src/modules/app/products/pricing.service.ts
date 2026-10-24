@@ -171,7 +171,7 @@ export class PricingService extends PricingReader {
     if (rank(level) < rank('STORE')) throw new ForbiddenException('A Store Head or Business Head must set the first price.');
     const [u] = await this.unpriced(productid);
     if (!u) throw new BadRequestException('This product already has a price, or has no stock.');
-    if (u.packsuspect) throw new BadRequestException('The pack size of this product looks wrong: check it under Data check before pricing it.');
+    if (u.packsuspect) throw new BadRequestException('The pack size of this product looks wrong: check it under Pack check before pricing it.');
     if (!u.suggestion) throw new BadRequestException('The cost of this product is above what its MRP allows: check the cost and the pack size first.');
     return u;
   }

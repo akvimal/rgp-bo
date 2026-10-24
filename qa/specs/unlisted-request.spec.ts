@@ -101,7 +101,7 @@ test.describe('Requests for products not in the list @p1', () => {
     await expect(page).toHaveURL(/products\/master\/new\?.*title=/);
     expect(await page.locator('form app-lookup input').evaluateAll((els) => els.map((e: any) => e.value))).toContainEqual(expect.stringMatching(new RegExp(nameB, 'i')));      // the name came over
     await page.locator('form select').first().selectOption('Medicine');
-    await page.getByRole('button', { name: 'Submit' }).click();
+    await page.getByRole('button', { name: 'Save' }).click();
     await expect(page).toHaveURL(/purchases\/requests/);
     await expect.poll(async () => ((await api.request('GET', '/purchaserequests', undefined, MGR)).body as any[]).find((r) => r.requestedname === nameB)?.productid ?? null).not.toBeNull();
   });

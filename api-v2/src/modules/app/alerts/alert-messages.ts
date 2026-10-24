@@ -50,8 +50,8 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     ta: { title: 'இருப்பு உள்ள ஆனால் விலை இல்லாத பொருட்கள்: {count}', body: '{count} பொருட்கள் இருப்பில் உள்ளன ஆனால் விற்பனை விலை இல்லை, அதனால் சரியாக விற்க முடியாது. பொருட்கள் > விலைக் கொள்கையில் பரிந்துரைத்த விலையை வழங்கவும்.' },
   },
   pricing_check: {
-    en: { title: 'Products to check: {count}', body: '{count} products have a pack size or cost that looks wrong, so their prices cannot be judged. Check them in Products > Data check.' },
-    ta: { title: 'சரிபார்க்க வேண்டிய பொருட்கள்: {count}', body: '{count} பொருட்களின் பேக் அளவு அல்லது விலை தவறாகத் தெரிகிறது, அதனால் அவற்றின் விலையை மதிப்பிட முடியவில்லை. பொருட்கள் > தரவு சரிபார்ப்பில் பார்க்கவும்.' },
+    en: { title: 'Products to check: {count}', body: '{count} products have a pack size or cost that looks wrong, so their prices cannot be judged. Check them in Products > Pack check.' },
+    ta: { title: 'சரிபார்க்க வேண்டிய பொருட்கள்: {count}', body: '{count} பொருட்களின் பேக் அளவு அல்லது விலை தவறாகத் தெரிகிறது, அதனால் அவற்றின் விலையை மதிப்பிட முடியவில்லை. பொருட்கள் > பேக் சரிபார்ப்பில் பார்க்கவும்.' },
   },
   approvals_pending: {
     en: { title: '{count} stock adjustments waiting for approval: {store}', body: 'The oldest has waited {hours} hours.' },
