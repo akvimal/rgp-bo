@@ -10,6 +10,7 @@ import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
 import { approvalModeFor } from "src/core/approval-mode";
 import { isDiscard } from "./reason-codes";
+import { DEFAULT_ESCALATION_VALUE, escalatedProducts, maySettleEscalated } from "./count-rules";
 
 import { isManagerRole } from 'src/core/roles';
 @Injectable()
@@ -425,17 +426,37 @@ export class StockService {
             status: 'PENDING',
             storeid: item.storeid ?? await this.resolveHomeStoreId(item.itemid),
             countid: item.countid ?? null,
+            escalated: !!item.escalated,
             createdby: userid
         })));
         return this.qtyRepository.save(payload);
     }
 
+    /** a count line marked as a large difference is settled by the Business Head or Owner-operator, not the Store Head who ran the count */
+    private async assertMaySettle(id: any, userid: any) {
+        const [row] = await this.manager.query(`select escalated from product_qtychange where id = $1`, [id]);
+        if (!row?.escalated) return;
+        const [who] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+        if (!maySettleEscalated(who?.name)) {
+            throw new ForbiddenException('This count difference is above the limit, so only the Business Head can approve or reject it.');
+        }
+    }
+
     async approveQtyAudit(id:any, userid:any) {
+        await this.assertMaySettle(id, userid);
         return this.qtyRepository.update(id, {status:'APPROVED', updatedby:userid});
     }
 
     async rejectQtyAudit(id:any, userid:any) {
+        await this.assertMaySettle(id, userid);
         return this.qtyRepository.update(id, {status:'REJECTED', updatedby:userid});
+    }
+
+    /** a count difference valued at cost above this, for one product, goes to the Business Head */
+    private async getCountEscalationValue(): Promise<number> {
+        const setting = await this.settingRepository.findOne({ where: { key: 'stock_count_escalation_value', isActive: true, isArchived: false } });
+        const parsed = Number(setting?.value);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_ESCALATION_VALUE;
     }
 
     /** WS-5: cycle count / physical stock take. A count is a header grouping a batch of
@@ -517,8 +538,20 @@ export class StockService {
         // (falls back to the batch's home store via createStockAudit when the count itself
         // wasn't scoped to a store).
         const changed = (items || []).filter((i: any) => Number(i.countedqty) !== Number(i.bookqty));
+        // products out by more than the limit at cost go to the Business Head
+        const ids = changed.map((i: any) => Number(i.itemid)).filter(Boolean);
+        const priced = ids.length ? await this.manager.query(
+            `select pii.id, pii.product_id, (pii.ptr_cost / greatest(coalesce(p.pack, 1), 1))::float as unit from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`, [ids]) : [];
+        const info = new Map<number, any>(priced.map((c: any) => [Number(c.id), c]));
+        const big = escalatedProducts(changed.map((i: any) => ({
+            itemid: Number(i.itemid), productid: Number(info.get(Number(i.itemid))?.product_id ?? i.itemid),
+            diff: Number(i.countedqty) - Number(i.bookqty), unitcost: Number(info.get(Number(i.itemid))?.unit ?? 0),
+        })), await this.getCountEscalationValue());
         const adjustments = changed.length
-            ? await this.createStockAudit(changed.map((i: any) => ({ ...i, countid: id, storeid: i.storeid ?? count.storeid })), userid)
+            ? await this.createStockAudit(changed.map((i: any) => ({
+                ...i, countid: id, storeid: i.storeid ?? count.storeid,
+                escalated: big.has(Number(info.get(Number(i.itemid))?.product_id ?? i.itemid)),
+            })), userid)
             : [];
 
         await this.countRepository.update(id, {

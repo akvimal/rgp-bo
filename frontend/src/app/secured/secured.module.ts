@@ -82,6 +82,14 @@ const routes: Routes = [
       loadChildren: () => import('./shift/shift.module').then(m => m.ShiftModule)
     },
     {
+      path: 'outage', canActivate:[AuthGuard],
+      loadChildren: () => import('./outage/outage.module').then(m => m.OutageModule)
+    },
+    {
+      path: 'review', canActivate:[AuthGuard],
+      loadChildren: () => import('./review/review.module').then(m => m.ReviewModule)
+    },
+    {
       path: 'inquiries', canActivate:[AuthGuard],
       loadChildren: () => import('./inquiries/inquiries.module').then(m => m.InquiriesModule)
     },

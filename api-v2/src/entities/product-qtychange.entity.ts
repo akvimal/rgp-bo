@@ -50,6 +50,9 @@ export class ProductQtyChange extends BaseEntity {
   @Column("integer", { name: "count_id", nullable: true })
   countid: number | null;
 
+  @Column("boolean", { name: "escalated", default: false })
+  escalated: boolean;
+
   @ManyToOne(
     () => PurchaseInvoiceItem,
     (purchase) => purchase.saleitems

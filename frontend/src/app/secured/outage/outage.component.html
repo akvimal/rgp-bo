@@ -1,0 +1,135 @@
+<div class="pagetitle">
+  <h1>Outage kit</h1>
+</div>
+
+<p class="small text-muted mb-2" data-testid="outage-intro">
+  If the power or the system goes, the counter keeps selling by hand from a printed price list and a numbered bill book, and the bills are entered afterwards.
+  Check the kit once a week, print a fresh price list, and keep the procedure in the bill book.
+</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="outage-error">{{error}}</div>
+<div class="alert alert-success py-2" *ngIf="message" data-testid="outage-message">{{message}}</div>
+<div class="text-muted small" *ngIf="loading">Loading&hellip;</div>
+
+<ng-container *ngIf="status">
+  <div class="d-flex flex-wrap align-items-center gap-3 mb-2" *ngIf="status.stores?.length > 1">
+    <label class="form-label mb-0">Store</label>
+    <select class="form-select w-auto" [ngModel]="storeid" (ngModelChange)="changeStore($event)" data-testid="outage-store">
+      <option *ngFor="let s of status.stores" [ngValue]="s.id">{{s.location}}</option>
+    </select>
+  </div>
+
+  <div class="alert py-2" [ngClass]="status.ready ? 'alert-success' : 'alert-warning'" data-testid="outage-status">
+    <b>{{status.ready ? 'Ready' : 'Not ready'}}.</b>
+    <span *ngIf="status.lastcomplete">Last full check {{status.lastcomplete.checked_on | date:'dd MMM yyyy'}} by {{status.lastcomplete.by_name}}
+      ({{status.dayssince === 0 ? 'today' : status.dayssince + ' day' + (status.dayssince === 1 ? '' : 's') + ' ago'}}).</span>
+    <span *ngIf="!status.lastcomplete">The kit has not been fully checked yet.</span>
+    <span *ngIf="!status.ready"> Do the weekly check below and print a fresh price list.</span>
+  </div>
+
+  <h6 class="mt-4 text-primary">Weekly check</h6>
+  <p class="small text-muted mb-2">Tick each item once you have looked at it yourself. If something is not ready, leave it unticked and fix it: the kit counts as ready only when every item is ticked.</p>
+  <div class="mb-2" data-testid="outage-checklist">
+    <div class="form-check" *ngFor="let i of status.checklist">
+      <input class="form-check-input" type="checkbox" [id]="'kit-' + i.key" [(ngModel)]="ticks[i.key]" [attr.data-testid]="'kit-' + i.key">
+      <label class="form-check-label" [for]="'kit-' + i.key">{{i.label}}</label>
+    </div>
+  </div>
+  <div class="row g-3 mb-2">
+    <div class="col-md-3">
+      <label class="form-label" for="kit-last">Last number used in the bill book</label>
+      <input type="text" class="form-control" id="kit-last" maxlength="40" [(ngModel)]="billBookLast" placeholder="e.g. M-0123" data-testid="kit-billbook">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="kit-note">Note</label>
+      <input type="text" class="form-control" id="kit-note" maxlength="300" [(ngModel)]="note" placeholder="Anything that needs fixing" data-testid="kit-note">
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <button type="button" class="btn btn-primary" [disabled]="saving || !ticked" (click)="saveCheck()" data-testid="kit-save">Save the check</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="tickAll(!allTicked)">{{allTicked ? 'Untick all' : 'Tick all'}}</button>
+    <span class="small text-muted">{{ticked}} of {{total}} ticked</span>
+    <span class="small text-muted" *ngIf="status.last && !status.last.complete">The last check on {{status.last.checked_on | date:'dd MMM yyyy'}} was not complete.</span>
+  </div>
+
+  <h6 class="mt-4 text-primary">Price list</h6>
+  <p class="small text-muted mb-2">The products in stock with the price a customer pays, with GST: per pack and per unit (one tablet), with the MRP. Print it every week and keep it at the counter.
+    It carries the date and time on every page; a newer list replaces an older one.</p>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <button type="button" class="btn btn-primary" [disabled]="!!printing" (click)="printPriceList('pdf')" data-testid="kit-print-list">{{printing === 'pdf' ? 'Making the list...' : 'Print the price list (PDF)'}}</button>
+    <button type="button" class="btn btn-outline-secondary" [disabled]="!!printing" (click)="printPriceList('xlsx')" data-testid="kit-list-xlsx">{{printing === 'xlsx' ? 'Making the file...' : 'Download as Excel'}}</button>
+    <span class="small" [class.text-danger]="printStale" [class.text-muted]="!printStale" data-testid="kit-lastprint">
+      <ng-container *ngIf="status.lastprint">Last printed {{status.lastprint.on | date:'dd MMM yyyy, HH:mm'}} by {{status.lastprint.by}} ({{status.lastprint.count}} products){{printStale ? ': print a fresh one' : ''}}.</ng-container>
+      <ng-container *ngIf="!status.lastprint">Not printed yet.</ng-container>
+    </span>
+  </div>
+
+  <h6 class="mt-4 text-primary">What to do when the power goes</h6>
+  <div class="mb-2" data-testid="outage-procedure">
+    <div *ngFor="let s of status.procedure" class="mb-2">
+      <div class="fw-semibold">{{s.heading}}</div>
+      <ul class="mb-0 small"><li *ngFor="let t of s.steps">{{t}}</li></ul>
+    </div>
+  </div>
+  <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!!printing" (click)="printProcedure()" data-testid="kit-print-procedure">{{printing === 'procedure' ? 'Making the page...' : 'Print the procedure (one page, for the bill book)'}}</button>
+
+  <h6 class="mt-4 text-primary">Outages</h6>
+  <p class="small text-muted mb-2">Write down each outage, with the first and last manual bill number used, so every bill written by hand is accounted for and the pattern is visible.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="outage-events">
+      <thead><tr><th>Started</th><th>Lasted</th><th>Cause</th><th>Manual bills</th><th>Note</th><th>Entered by</th><th></th></tr></thead>
+      <tbody>
+        <tr *ngFor="let e of status.events" data-testid="outage-event-row">
+          <td class="text-nowrap">{{e.started_on | date:'dd MMM yyyy, HH:mm'}}</td>
+          <td class="text-nowrap">{{duration(e)}}</td>
+          <td>{{causeLabel(e.cause)}}</td>
+          <td class="text-nowrap">{{e.manual_count !== null ? e.manual_count : '-'}}<span class="small text-muted" *ngIf="e.manual_from"> ({{e.manual_from}}<span *ngIf="e.manual_to"> to {{e.manual_to}}</span>)</span></td>
+          <td class="small">{{e.note}}</td>
+          <td class="small">{{e.by_name}}</td>
+          <td class="text-end"><a role="button" class="small" (click)="editEvent(e)" data-testid="outage-event-edit">Edit</a></td>
+        </tr>
+        <tr *ngIf="!status.events.length"><td colspan="7" class="text-center text-muted py-3" data-testid="outage-events-empty">No outages recorded.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="border rounded p-3 mb-4" data-testid="outage-form">
+    <div class="fw-semibold mb-2">{{editingId ? 'Correct this outage' : 'Record an outage'}}</div>
+    <div class="alert alert-danger py-2 small" *ngIf="eventError" data-testid="outage-event-error">{{eventError}}</div>
+    <div class="row g-3">
+      <div class="col-md-2">
+        <label class="form-label">Cause <span class="required">*</span></label>
+        <select class="form-select" [(ngModel)]="event.cause" data-testid="outage-cause"><option *ngFor="let c of causes" [value]="c.value">{{c.label}}</option></select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Started <span class="required">*</span></label>
+        <input type="datetime-local" class="form-control" [(ngModel)]="event.startedon" data-testid="outage-started">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Ended</label>
+        <input type="datetime-local" class="form-control" [(ngModel)]="event.endedon" data-testid="outage-ended">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">First manual bill</label>
+        <input type="text" class="form-control" maxlength="40" [(ngModel)]="event.manualfrom" data-testid="outage-from">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Last manual bill</label>
+        <input type="text" class="form-control" maxlength="40" [(ngModel)]="event.manualto" data-testid="outage-to">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Bills written</label>
+        <input type="number" min="0" class="form-control" [(ngModel)]="event.manualcount" data-testid="outage-count">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Note</label>
+        <input type="text" class="form-control" maxlength="300" [(ngModel)]="event.note" data-testid="outage-note">
+      </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center mt-3">
+      <button type="button" class="btn btn-primary" [disabled]="!event.startedon" (click)="saveEvent()" data-testid="outage-save">Save</button>
+      <button type="button" class="btn btn-outline-secondary" *ngIf="editingId" (click)="cancelEvent()">Cancel</button>
+      <span class="small text-muted" *ngIf="!event.startedon">To save, fill in: when it started.</span>
+    </div>
+  </div>
+</ng-container>

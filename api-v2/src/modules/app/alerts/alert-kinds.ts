@@ -1,6 +1,8 @@
 import { EntityManager } from 'typeorm';
 import { StoreService } from '../store/store.service';
 import { PricingReader } from '../products/pricing-reader';
+import { BATCH_BALANCE_SQL } from './stock-audit-alerts';
+import { lastFullWeek, reviewLate } from '../review/review-rules';
 
 export type Severity = 'info' | 'warning' | 'critical';
 export const SEVERITIES: Severity[] = ['info', 'warning', 'critical'];
@@ -175,6 +177,118 @@ export const KINDS: AlertKind[] = [
       return out;
     },
   },
+  {
+    kind: 'outage_kit',
+    label: 'Outage kit not checked',
+    description: "A store that has traded in the last 60 days has not ticked off its outage kit (UPS, price list, bill book, light) as ready for this many days. The Outage kit page has the weekly checklist.",
+    params: [{ key: 'days', label: 'Warn when it has not been checked for', min: 1, max: 60, default: 7, unit: 'days' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const rows = await ctx.manager.query(
+        `select s.id as store_id, s.location,
+                (select to_char(max(l.checked_on at time zone 'Asia/Kolkata'), 'YYYY-MM-DD') from outage_readiness_log l where l.store_id = s.id and l.complete) as last
+           from stores s where s.business_id = $1 and s.active and not s.archive
+            and exists (select 1 from sale x where x.store_id = s.id and x.created_on >= current_date - 60)`, [ctx.businessId]);
+      const out: Finding[] = [];
+      for (const r of rows) {
+        const days = r.last ? daysBetween(r.last, ctx.today) : null;
+        if (days !== null && days < p.days) continue;
+        out.push({
+          key: `outage:${r.store_id}`, storeid: r.store_id, code: days === null ? 'outage_kit_never' : 'outage_kit_overdue',
+          params: { store: String(r.location).trim(), days: days ?? 0, date: r.last ?? '' }, link: '/secure/outage',
+        });
+      }
+      return out;
+    },
+  },
+  {
+    kind: 'stock_count_overdue',
+    label: 'Stock count overdue',
+    description: "A store that has traded in the last 60 days has not completed a stock count for this many days. Weekly category counts keep the book stock honest; start one under Store > Stock.",
+    params: [{ key: 'days', label: 'Warn when no count has been completed for', min: 1, max: 90, default: 10, unit: 'days' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const rows = await ctx.manager.query(
+        `select s.id as store_id, s.location,
+                (select to_char(max(c.completed_on at time zone 'Asia/Kolkata'), 'YYYY-MM-DD') from stock_count c where c.store_id = s.id and c.status = 'COMPLETED') as last
+           from stores s where s.business_id = $1 and s.active and not s.archive
+            and exists (select 1 from sale x where x.store_id = s.id and x.created_on >= current_date - 60)`, [ctx.businessId]);
+      const out: Finding[] = [];
+      for (const r of rows) {
+        const days = r.last ? daysBetween(r.last, ctx.today) : null;
+        if (days !== null && days < p.days) continue;
+        out.push({
+          key: `count:${r.store_id}`, storeid: r.store_id, code: days === null ? 'stock_count_never' : 'stock_count_overdue',
+          params: { store: String(r.location).trim(), days: days ?? 0, date: r.last ?? '' }, link: '/secure/stock-audits',
+        });
+      }
+      return out;
+    },
+  },
+  {
+    kind: 'negative_stock',
+    label: 'Negative stock',
+    description: 'Products whose book stock is below zero: more was sold or written off than was bought. It means a purchase was not entered or a count is overdue.',
+    params: [{ key: 'min', label: 'Warn when this many products are negative', min: 1, max: 1000, default: 5, unit: 'products' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const [r] = await ctx.manager.query(
+        `select count(*)::int as n, coalesce(sum(-net), 0)::float as units from (
+           select product_id, sum(bal) as net from (${BATCH_BALANCE_SQL}) b
+            group by 1 having sum(bal) < 0) x`, []);
+      return r.n >= p.min ? [{ key: 'negative_stock', storeid: null, code: 'negative_stock', params: { count: r.n, units: Math.round(r.units) }, link: '/secure/stock-audits' }] : [];
+    },
+  },
+  {
+    kind: 'expired_stock',
+    label: 'Expired stock on the shelf',
+    description: 'Batches past their expiry date that still show as stock, valued at cost. Pull them, return them to the vendor or write them off.',
+    params: [{ key: 'value', label: 'Warn when expired stock at cost is above', min: 0, max: 10000000, default: 1000, unit: 'rupees' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const [r] = await ctx.manager.query(
+        `select count(*)::int as batches, coalesce(sum(bal * unit_cost), 0)::float as value
+           from (${BATCH_BALANCE_SQL}) b where bal > 0 and exp_date < current_date`, []);
+      return r.value > p.value ? [{ key: 'expired_stock', storeid: null, code: 'expired_stock', params: { batches: r.batches, value: Math.round(r.value) }, link: '/secure/store/stock' }] : [];
+    },
+  },
+  {
+    kind: 'adjustment_other',
+    label: 'Unexplained write-offs',
+    description: 'Stock adjustments in the last 30 days given the reason "Other" (or none), valued at cost. Each should carry a proper reason: damaged, expired, missing or returned.',
+    params: [{ key: 'value', label: 'Warn when they add up to more than', min: 0, max: 10000000, default: 2000, unit: 'rupees' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const [r] = await ctx.manager.query(
+        `select count(*)::int as n, coalesce(sum(abs(q.qty) * (pii.ptr_cost / nullif(pr.pack, 0))), 0)::float as value
+           from product_qtychange q
+           join purchase_invoice_item pii on pii.id = q.item_id
+           join product pr on pr.id = pii.product_id
+          where q.active and not q.archive and coalesce(q.status, 'APPROVED') = 'APPROVED' and q.count_id is null
+            and coalesce(nullif(q.reason_code, ''), 'Other') = 'Other' and q.created_on >= current_date - 30`, []);
+      return r.value > p.value ? [{ key: 'adjustment_other', storeid: null, code: 'adjustment_other', params: { count: r.n, value: Math.round(r.value) }, link: '/secure/store/stock' }] : [];
+    },
+  },
+  {
+    kind: 'weekly_review',
+    label: 'Weekly review not signed',
+    description: "A store that has traded in the last 60 days has not signed the weekly exceptions review (discounts, cancelled bills, returns) for the week just ended, this many days after the week closed.",
+    params: [{ key: 'days', label: 'Warn when it is still unsigned this many days after the week ends', min: 0, max: 14, default: 3, unit: 'days' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const week = lastFullWeek(ctx.today);
+      if (!reviewLate(week, ctx.today, p.days)) return [];
+      const rows = await ctx.manager.query(
+        `select s.id as store_id, s.location from stores s
+          where s.business_id = $1 and s.active and not s.archive
+            and exists (select 1 from sale x where x.store_id = s.id and x.created_on >= current_date - 60)
+            and not exists (select 1 from weekly_review w where w.store_id = s.id and w.week_start = $2::date)`, [ctx.businessId, week]);
+      return rows.map((r: any) => ({
+        key: `review:${r.store_id}:${week}`, storeid: r.store_id, code: 'weekly_review_unsigned',
+        params: { store: String(r.location).trim(), date: week }, link: '/secure/review',
+      }));
+    },
+  },
 ];
 
 export const kindOf = (kind: string): AlertKind | undefined => KINDS.find((k) => k.kind === kind);
@@ -199,4 +313,10 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity }[]
   { kind: 'shift_open_long', name: 'Shift left open', severity: 'warning' },
   { kind: 'approvals_pending', name: 'Stock adjustments waiting', severity: 'warning' },
   { kind: 'price_policy', name: 'Prices out of policy', severity: 'warning' },
+  { kind: 'outage_kit', name: 'Outage kit not checked', severity: 'warning' },
+  { kind: 'stock_count_overdue', name: 'Stock count overdue', severity: 'warning' },
+  { kind: 'negative_stock', name: 'Negative stock', severity: 'warning' },
+  { kind: 'expired_stock', name: 'Expired stock on the shelf', severity: 'warning' },
+  { kind: 'adjustment_other', name: 'Unexplained write-offs', severity: 'warning' },
+  { kind: 'weekly_review', name: 'Weekly review not signed', severity: 'warning' },
 ];

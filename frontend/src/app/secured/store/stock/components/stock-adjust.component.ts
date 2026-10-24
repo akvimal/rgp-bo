@@ -52,11 +52,13 @@ export class StockAdjustComponent {
     }
 
     approve(item:any){
-        this.stockService.approveAdjustment(item.id).subscribe(() => this.fetchAdjustments());
+        this.message = '';
+        this.stockService.approveAdjustment(item.id).subscribe(() => this.fetchAdjustments(), (err:any) => this.message = err?.error?.message || 'Unable to approve this adjustment.');
     }
 
     reject(item:any){
-        this.stockService.rejectAdjustment(item.id).subscribe(() => this.fetchAdjustments());
+        this.message = '';
+        this.stockService.rejectAdjustment(item.id).subscribe(() => this.fetchAdjustments(), (err:any) => this.message = err?.error?.message || 'Unable to reject this adjustment.');
     }
 
     delete(item:any){

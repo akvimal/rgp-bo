@@ -37,6 +37,38 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'A shift is still open: {store}', body: '{name} has been open for {hours} hours. Close it to count the cash.' },
     ta: { title: 'ஒரு ஷிப்ட் இன்னும் திறந்திருக்கிறது: {store}', body: '{name} {hours} மணி நேரமாகத் திறந்துள்ளது. பணத்தை எண்ண அதை மூடவும்.' },
   },
+  weekly_review_unsigned: {
+    en: { title: 'Weekly review not signed: {store}', body: 'The week starting {date} has not been reviewed. Check its discounts, cancelled bills and returns, then sign it on the Weekly review page.' },
+    ta: { title: 'வாராந்திர மதிப்பாய்வு கையொப்பமிடப்படவில்லை: {store}', body: '{date} அன்று தொடங்கிய வாரம் மதிப்பாய்வு செய்யப்படவில்லை. அதன் தள்ளுபடிகள், ரத்து செய்த பில்கள் மற்றும் திருப்பங்களைச் சரிபார்த்து, வாராந்திர மதிப்பாய்வுப் பக்கத்தில் கையொப்பமிடவும்.' },
+  },
+  stock_count_overdue: {
+    en: { title: 'No stock count for {days} days: {store}', body: 'The last completed count was on {date}. Start the next category count.' },
+    ta: { title: '{days} நாட்களாக இருப்பு எண்ணிக்கை இல்லை: {store}', body: 'கடைசியாக முடிந்த எண்ணிக்கை {date}. அடுத்த வகை எண்ணிக்கையைத் தொடங்கவும்.' },
+  },
+  stock_count_never: {
+    en: { title: 'No stock count has ever been completed: {store}', body: 'Book stock has never been checked against the shelf. Start a count.' },
+    ta: { title: 'இதுவரை இருப்பு எண்ணிக்கை முடிக்கப்படவில்லை: {store}', body: 'புத்தக இருப்பு அலமாரியுடன் ஒருபோதும் சரிபார்க்கப்படவில்லை. எண்ணிக்கையைத் தொடங்கவும்.' },
+  },
+  negative_stock: {
+    en: { title: 'Products with negative stock: {count}', body: 'More was sold or written off than was bought for {count} products ({units} units short). Enter the missing purchases or count them.' },
+    ta: { title: 'எதிர்மறை இருப்பு உள்ள பொருட்கள்: {count}', body: '{count} பொருட்களுக்கு வாங்கியதை விட அதிகம் விற்கப்பட்டது அல்லது கழிக்கப்பட்டது ({units} அலகுகள் குறைவு). விடுபட்ட கொள்முதலை உள்ளிடவும் அல்லது எண்ணவும்.' },
+  },
+  expired_stock: {
+    en: { title: 'Expired stock on the shelf: {value}', body: '{batches} batches are past their expiry date and still count as stock. Pull them and return or write them off.' },
+    ta: { title: 'அலமாரியில் காலாவதியான இருப்பு: {value}', body: '{batches} தொகுதிகள் காலாவதி தேதியைத் தாண்டியும் இருப்பில் உள்ளன. அவற்றை எடுத்து திருப்பி அனுப்பவும் அல்லது கழிக்கவும்.' },
+  },
+  adjustment_other: {
+    en: { title: 'Unexplained write-offs: {value} in 30 days', body: '{count} adjustments were given the reason "Other". Ask for the proper reason on each.' },
+    ta: { title: 'விளக்கமில்லாத கழிவுகள்: 30 நாட்களில் {value}', body: '{count} மாற்றங்களுக்கு "Other" என்ற காரணம் கொடுக்கப்பட்டுள்ளது. ஒவ்வொன்றிற்கும் சரியான காரணத்தைக் கேட்கவும்.' },
+  },
+  outage_kit_overdue: {
+    en: { title: 'Outage kit not checked for {days} days: {store}', body: 'Last checked on {date}. Tick off the weekly checklist on the Outage kit page and print a fresh price list.' },
+    ta: { title: 'மின்தடை தயார்நிலை {days} நாட்களாகச் சரிபார்க்கப்படவில்லை: {store}', body: 'கடைசியாகச் சரிபார்த்தது {date}. மின்தடை தயார்நிலைப் பக்கத்தில் வாராந்திரப் பட்டியலைச் சரிபார்த்து புதிய விலைப் பட்டியலை அச்சிடவும்.' },
+  },
+  outage_kit_never: {
+    en: { title: 'Outage kit has never been checked: {store}', body: 'If the power goes, billing stops. Open the Outage kit page, tick off the checklist and print the price list.' },
+    ta: { title: 'மின்தடை தயார்நிலை இதுவரை சரிபார்க்கப்படவில்லை: {store}', body: 'மின்சாரம் போனால் பில்லிங் நின்றுவிடும். மின்தடை தயார்நிலைப் பக்கத்தைத் திறந்து பட்டியலைச் சரிபார்த்து விலைப் பட்டியலை அச்சிடவும்.' },
+  },
   pricing_cuts: {
     en: { title: 'Prices above the legal limit: {count}', body: '{count} products are priced so that a bill would charge more than the MRP. Bring them down in Products > Pricing policy.' },
     ta: { title: 'சட்ட வரம்பை மீறிய விலைகள்: {count}', body: '{count} பொருட்களின் விலை, பில் MRP ஐ விட அதிகமாக வசூலிக்கும்படி உள்ளது. பொருட்கள் > விலைக் கொள்கையில் குறைக்கவும்.' },

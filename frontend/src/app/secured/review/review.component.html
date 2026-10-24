@@ -1,0 +1,147 @@
+<div class="pagetitle">
+  <h1>Weekly review</h1>
+</div>
+
+<p class="small text-muted mb-2" data-testid="review-intro">
+  Once a week, look at what left the normal path: bills with a discount, items billed below the list price, bills discarded or edited after billing, and returns.
+  Ask about anything that does not look right, then sign the week.
+</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="review-error">{{error}}</div>
+<div class="alert alert-success py-2" *ngIf="message" data-testid="review-message">{{message}}</div>
+<div class="text-muted small" *ngIf="loading && !data">Loading&hellip;</div>
+
+<ng-container *ngIf="data">
+  <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+    <div class="btn-group" role="group" aria-label="Week">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="shift(-1)" data-testid="review-prev">&laquo; Earlier</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="thisWeek" (click)="shift(1)" data-testid="review-next">Later &raquo;</button>
+    </div>
+    <div class="fw-semibold" data-testid="review-week">{{data.week.start | date:'EEE d MMM'}} to {{data.week.end | date:'EEE d MMM yyyy'}}</div>
+    <span class="badge bg-warning text-dark" *ngIf="!data.over" data-testid="review-open">Week not over yet</span>
+    <div class="d-flex align-items-center gap-2 ms-auto" *ngIf="data.stores.length > 1">
+      <label class="form-label mb-0">Store</label>
+      <select class="form-select w-auto" [ngModel]="data.store" (ngModelChange)="changeStore($event)" data-testid="review-store">
+        <option [ngValue]="null">All stores</option>
+        <option *ngFor="let s of data.stores" [ngValue]="s.id">{{s.location}}</option>
+      </select>
+    </div>
+  </div>
+
+  <h6 class="text-primary">This week and the week before</h6>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-summary">
+      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Week before</th><th class="text-end">Change</th></tr></thead>
+      <tbody>
+        <tr><td>Bills</td><td class="text-end">{{data.summary.bills}}</td><td class="text-end text-muted">{{data.before.bills}}</td><td class="text-end small text-muted">{{delta(data.summary.bills, data.before.bills)}}</td></tr>
+        <tr><td>Sales</td><td class="text-end">{{data.summary.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.before.sales | number:'1.0-0'}}</td><td class="text-end small text-muted">{{delta(data.summary.sales, data.before.sales) | number:'1.0-0'}}</td></tr>
+        <tr data-testid="review-row-discounts"><td>Bills with a discount</td><td class="text-end">{{data.summary.discountBills}} <span class="small text-muted" *ngIf="data.summary.discountBills">({{data.summary.discountValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.discountBills}}</td><td class="text-end small text-muted">{{delta(data.summary.discountBills, data.before.discountBills)}}</td></tr>
+        <tr data-testid="review-row-below"><td>Items billed below the list price</td><td class="text-end">{{data.summary.belowList}} <span class="small text-muted" *ngIf="data.summary.belowList">({{data.summary.belowListValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.belowList}}</td><td class="text-end small text-muted">{{delta(data.summary.belowList, data.before.belowList)}}</td></tr>
+        <tr data-testid="review-row-voids"><td>Held bills discarded</td><td class="text-end">{{data.summary.voids}} <span class="small text-muted" *ngIf="data.summary.voids">({{data.summary.voidValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.voids}}</td><td class="text-end small text-muted">{{delta(data.summary.voids, data.before.voids)}}</td></tr>
+        <tr data-testid="review-row-edits"><td>Bills edited after billing</td><td class="text-end">{{data.summary.edits}} <span class="small text-muted" *ngIf="data.summary.editReduced">(total lowered by {{data.summary.editReduced | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.edits}}</td><td class="text-end small text-muted">{{delta(data.summary.edits, data.before.edits)}}</td></tr>
+        <tr data-testid="review-row-returns"><td>Returns</td><td class="text-end">{{data.summary.returns}} <span class="small text-muted" *ngIf="data.summary.returns">({{data.summary.returnValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.returns}}</td><td class="text-end small text-muted">{{delta(data.summary.returns, data.before.returns)}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-muted" *ngIf="data.marked.bigDiscounts || data.marked.lateVoids || data.marked.flaggedEdits || data.marked.lateReturns" data-testid="review-marked">
+    To look at closely:
+    <span *ngIf="data.marked.bigDiscounts">{{data.marked.bigDiscounts}} bill discount{{data.marked.bigDiscounts > 1 ? 's' : ''}} of {{data.limits.bigDiscount}}% or more. </span>
+    <span *ngIf="data.marked.lateVoids">{{data.marked.lateVoids}} held bill{{data.marked.lateVoids > 1 ? 's' : ''}} discarded {{data.limits.lateVoidHours}} hours or more after it was made. </span>
+    <span *ngIf="data.marked.flaggedEdits">{{data.marked.flaggedEdits}} bill{{data.marked.flaggedEdits > 1 ? 's' : ''}} edited to a lower total, more discount or fewer items. </span>
+    <span *ngIf="data.marked.lateReturns">{{data.marked.lateReturns}} return{{data.marked.lateReturns > 1 ? 's' : ''}} {{data.limits.lateReturnDays}} days or more after the bill.</span>
+  </p>
+
+  <h6 class="mt-4 text-primary">Bills with a discount</h6>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-discounts">
+      <thead><tr><th>Bill</th><th>Date</th><th>Billed by</th><th class="text-end">Discount</th><th class="text-end">% of bill</th><th class="text-end">Bill total</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.discounts" [class.table-warning]="r.pct >= data.limits.bigDiscount" data-testid="review-discount-row">
+          <td>{{r.bill_no || r.id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM, HH:mm'}}</td><td>{{r.by_name}}</td>
+          <td class="text-end">{{r.disc | number:'1.2-2'}}</td><td class="text-end">{{r.pct}}%</td><td class="text-end">{{r.total | number:'1.2-2'}}</td>
+        </tr>
+        <tr *ngIf="!data.discounts.length"><td colspan="6" class="text-center text-muted py-2">No bill had a discount.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="mt-4 text-primary">Items billed below the list price</h6>
+  <p class="small text-muted mb-1">Price per pack before GST against the price list on the day, {{data.limits.belowList}}% or more below.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-below">
+      <thead><tr><th>Bill</th><th>Date</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">List</th><th class="text-end">Billed</th><th class="text-end">% below</th><th class="text-end">Given away</th><th>Billed by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.below" data-testid="review-below-row">
+          <td>{{r.bill_no || r.sale_id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM'}}</td><td>{{r.title}}</td><td class="text-end">{{r.qty}}</td>
+          <td class="text-end">{{r.list | number:'1.2-2'}}</td><td class="text-end">{{r.billed | number:'1.2-2'}}</td><td class="text-end">{{r.pct}}%</td><td class="text-end">{{r.value | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
+        </tr>
+        <tr *ngIf="!data.below.length"><td colspan="9" class="text-center text-muted py-2">Everything was billed at the list price.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="mt-4 text-primary">Held bills discarded</h6>
+  <p class="small text-muted mb-1">A bill that was started, put on hold and thrown away. A finished bill cannot be discarded; it can only be edited, below.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-voids">
+      <thead><tr><th>Bill</th><th>Started</th><th>Discarded</th><th class="text-end">After</th><th class="text-end">Total</th><th>Made by</th><th>Discarded by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.voids" [class.table-warning]="r.hours >= data.limits.lateVoidHours" data-testid="review-void-row">
+          <td>{{r.bill_no || r.id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM, HH:mm'}}</td><td class="text-nowrap">{{r.updated_on | date:'EEE d MMM, HH:mm'}}</td>
+          <td class="text-end">{{r.hours}} h</td><td class="text-end">{{r.total | number:'1.2-2'}}</td><td>{{r.created_name}}</td><td>{{r.voided_name}}</td>
+        </tr>
+        <tr *ngIf="!data.voids.length"><td colspan="7" class="text-center text-muted py-2">No held bill was discarded.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="mt-4 text-primary">Bills edited after billing</h6>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-edits">
+      <thead><tr><th>Edited</th><th>Bill</th><th>Billed</th><th>What changed</th><th class="text-end">Total now</th><th>Edited by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.edits" [class.table-warning]="r.flagged" data-testid="review-edit-row">
+          <td class="text-nowrap">{{r.on | date:'EEE d MMM, HH:mm'}}</td><td>{{r.bill_no || r.sale_id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM'}}</td>
+          <td>{{describe(r.changes)}}</td><td class="text-end">{{r.total | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
+        </tr>
+        <tr *ngIf="!data.edits.length"><td colspan="6" class="text-center text-muted py-2">No bill was edited.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="mt-4 text-primary">Returns</h6>
+  <div class="small text-muted mb-1" *ngIf="data.returns.length" data-testid="review-return-groups">
+    By reason: <span *ngFor="let g of data.returnsByReason; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
+    By person: <span *ngFor="let g of data.returnsByPerson; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-returns">
+      <thead><tr><th>Returned</th><th>Bill</th><th class="text-end">Days after</th><th>Product</th><th class="text-end">Qty</th><th>Reason</th><th class="text-end">Value</th><th>Entered by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.returns" [class.table-warning]="r.daysafter >= data.limits.lateReturnDays" data-testid="review-return-row">
+          <td class="text-nowrap">{{r.created_on | date:'EEE d MMM'}}</td><td>{{r.bill_no}}</td><td class="text-end">{{r.daysafter}}</td><td>{{r.title}}</td><td class="text-end">{{r.qty}}</td>
+          <td>{{r.reason}}</td><td class="text-end">{{r.value | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
+        </tr>
+        <tr *ngIf="!data.returns.length"><td colspan="8" class="text-center text-muted py-2">No returns.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-muted" *ngIf="data.discounts.length >= data.limits.listLimit || data.below.length >= data.limits.listLimit || data.voids.length >= data.limits.listLimit || data.edits.length >= data.limits.listLimit || data.returns.length >= data.limits.listLimit">
+    A list is cut at {{data.limits.listLimit}} rows.
+  </p>
+
+  <h6 class="mt-4 text-primary">Sign-off</h6>
+  <div class="mb-2" data-testid="review-signoffs">
+    <div *ngFor="let s of data.signoffs" class="alert alert-success py-2 mb-2" data-testid="review-signed">
+      <b>{{s.store}}:</b> signed by {{s.by}} on {{s.on | date:'d MMM yyyy, HH:mm'}}<span *ngIf="s.note">. {{s.note}}</span>
+    </div>
+    <div *ngIf="data.pending.length && data.over" class="small text-muted" data-testid="review-pending">Not signed yet: {{data.pending.join(', ')}}.</div>
+  </div>
+  <div class="border rounded p-3 mb-4" *ngIf="data.canSign" data-testid="review-sign-form">
+    <label class="form-label" for="review-note">Note (what you asked about, or "nothing to report")</label>
+    <input type="text" class="form-control mb-2" id="review-note" maxlength="300" [(ngModel)]="note" data-testid="review-note">
+    <button type="button" class="btn btn-primary" [disabled]="saving" (click)="sign()" data-testid="review-sign">I have reviewed this week</button>
+  </div>
+  <p class="small text-muted" *ngIf="!data.canSign && data.over && !data.store && data.pending.length && data.stores.length > 1">Choose one store to sign for it.</p>
+  <p class="small text-muted" *ngIf="!data.over">This week can be signed from {{data.week.next | date:'EEE d MMM'}}.</p>
+</ng-container>

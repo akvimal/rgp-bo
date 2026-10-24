@@ -6,6 +6,8 @@ import { RoleModule } from './modules/app/roles/role.module';
 import { UserModule } from './modules/app/users/user.module';
 import { VendorModule } from './modules/app/vendors/vendor.module';
 import { ProductModule } from './modules/app/products/product.module';
+import { OutageModule } from './modules/app/outage/outage.module';
+import { ReviewModule } from './modules/app/review/review.module';
 import { PurchaseModule } from './modules/app/purchases/purchase.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { StockModule } from './modules/app/stock/stock.module';
@@ -54,6 +56,8 @@ import { DbTimingService } from './core/performance/db-timing.service';
     RoleModule,
     UserModule,
     ProductModule,
+    OutageModule,
+    ReviewModule,
     VendorModule,
     PurchaseModule,
     StockModule,

@@ -130,6 +130,12 @@
             <span>My shift</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'outage.view'">
+          <a class="nav-link collapsed" routerLink="outage" data-testid="nav-outage" title="Outage kit" aria-label="Outage kit">
+            <i class="bi bi-lightning-charge"></i>
+            <span>Outage kit</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('refills.view') && !has('grievances.view')">
           <a class="nav-link collapsed" routerLink="quality/refills" data-testid="nav-refills" title="Refill follow-up" aria-label="Refill follow-up">
             <i class="bi bi-telephone-outbound"></i>
@@ -153,6 +159,12 @@
           <a class="nav-link collapsed" routerLink="stock-audits" data-testid="nav-stock-audits" title="Stock audits" aria-label="Stock audits">
             <i class="bi bi-clipboard-data"></i>
             <span>Stock audits</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'review.view'">
+          <a class="nav-link collapsed" routerLink="review" data-testid="nav-review" title="Weekly review" aria-label="Weekly review">
+            <i class="bi bi-journal-check"></i>
+            <span>Weekly review</span>
           </a>
         </li>
         <li class="nav-heading" *ngIf="has('purchases.add','purchases.request','vendorissues.view','expenses.view')" data-testid="nav-section-buy">Buy &amp; pay</li>
