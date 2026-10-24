@@ -79,6 +79,46 @@ export class PricingController {
     return { productid, title: it.title, from: it.price, to: saved.saleprice, target: it.target, done: Number(saved.saleprice) === Number(it.target) };
   }
 
+  /** Gives a product that has stock and no price the policy's suggested first price. */
+  @Post('/price-new')
+  async priceNew(@Body() body: any, @User() user: any) {
+    await this.assertPricing(user);
+    const productid = Number(body?.productid);
+    if (!Number.isInteger(productid) || productid <= 0) throw new BadRequestException('Say which product.');
+    return this.priceOne(productid, user.id);
+  }
+
+  /** Gives every product that has stock and no price its suggested first price (those with a suggestion only). */
+  @Post('/price-new-all')
+  async priceNewAll(@User() user: any) {
+    await this.assertPricing(user);
+    const { unpriced } = await this.pricing.queue(user.id);
+    let applied = 0;
+    const failed: any[] = [];
+    for (const u of unpriced.filter((x: any) => x.canapply)) {
+      try { await this.priceOne(u.productid, user.id); applied++; }
+      catch (e: any) { failed.push({ productid: u.productid, title: u.title, message: e?.message }); }
+    }
+    return { applied, failed };
+  }
+
+  private async priceOne(productid: number, userid: number) {
+    const u = await this.pricing.prepareNew(productid, userid);
+    const saved = await this.products.addPrice(
+      { productid, saleprice: u.suggestion!.price, reason: 'Initial', comments: `First price from the pricing policy (class ${u.classkey}, ${u.suggestion!.discountPct}% off MRP)` } as any,
+      userid, { policyApproved: true });
+    await this.pricing.audited(userid, 'price.first_price', productid, `${u.title}: first price ${saved.saleprice} (class ${u.classkey}, ${u.suggestion!.discountPct}% off MRP, markup ${u.suggestion!.markupPct}%)`,
+      { price: saved.saleprice, class: u.classkey, cost: u.cost, mrp: u.mrp, discountPct: u.suggestion!.discountPct, markupPct: u.suggestion!.markupPct });
+    return { productid, title: u.title, price: Number(saved.saleprice), discountpct: u.suggestion!.discountPct, markuppct: u.suggestion!.markupPct };
+  }
+
+  /** What each line of a purchase invoice means for the product's current price. */
+  @Get('/invoice/:id/impact')
+  async invoiceImpact(@Param('id', ParseIntPipe) id: number, @User() user: any) {
+    await this.assertCost(user);
+    return this.pricing.invoiceImpact(id);
+  }
+
   @Get('/policy')
   async policy(@User() user: any) {
     await this.assertCost(user);
@@ -100,7 +140,7 @@ export class PricingController {
   @Put('/policy/:key')
   async updatePolicy(@Param('key') key: string, @Body() body: any, @User() user: any) {
     await this.assertBusinessHead(user);
-    return this.pricing.updatePolicy(key, Number(body?.floor), Number(body?.cap), user.id);
+    return this.pricing.updatePolicy(key, Number(body?.floor), Number(body?.cap), user.id, body?.usual === undefined || body?.usual === null || body?.usual === '' ? undefined : Number(body.usual));
   }
 
   @Post('/exceptions')

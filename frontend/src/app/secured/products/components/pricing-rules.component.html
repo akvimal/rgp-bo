@@ -15,16 +15,17 @@
       <p class="small text-muted mb-2">
         Each product belongs to a class from two things: how far its cost is below the MRP (its trade margin) and how much of the profit it earns (A, B or C).
         <b>Lowest markup</b> is the least a price may be over the cost (before GST). <b>Deepest discount</b> is the most a price may be below the MRP.
-        A price must be at or above whichever of the two gives the higher price.
+        A price must be at or above whichever of the two gives the higher price. <b>Usual discount</b> is only a starting point: it is used to suggest a first price for a product that has none (always kept between the lowest price and the legal ceiling).
       </p>
       <div class="table-responsive">
         <table class="table table-sm align-middle w-auto" data-testid="rules-classes">
-          <thead><tr><th>Class</th><th class="text-end">Lowest markup (%)</th><th class="text-end">Deepest discount (%)</th><th></th></tr></thead>
+          <thead><tr><th>Class</th><th class="text-end">Lowest markup (%)</th><th class="text-end">Deepest discount (%)</th><th class="text-end">Usual discount (%)</th><th></th></tr></thead>
           <tbody>
             <tr *ngFor="let c of classes">
               <td class="small">{{classLabel(c.class_key)}}</td>
               <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="1000" [(ngModel)]="c.floor" [disabled]="!canedit" [attr.data-testid]="'rules-floor-' + c.class_key"></td>
               <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="95" [(ngModel)]="c.cap" [disabled]="!canedit" [attr.data-testid]="'rules-cap-' + c.class_key"></td>
+              <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="95" [(ngModel)]="c.usual" [disabled]="!canedit" [attr.data-testid]="'rules-usual-' + c.class_key"></td>
               <td><button type="button" class="btn btn-outline-primary btn-sm py-0" *ngIf="canedit" [disabled]="!classChanged(c)" (click)="saveClass(c)" [attr.data-testid]="'rules-save-' + c.class_key">Save</button></td>
             </tr>
           </tbody>

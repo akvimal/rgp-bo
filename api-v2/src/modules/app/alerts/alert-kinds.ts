@@ -161,7 +161,7 @@ export const KINDS: AlertKind[] = [
   {
     kind: 'price_policy',
     label: 'Prices out of policy',
-    description: 'Products priced so that a bill would charge more than the MRP, or below the class floor markup or deeper than the class discount cap, and products whose pack or cost looks wrong. Fix them in Products > Pricing policy.',
+    description: 'Products priced so that a bill would charge more than the MRP, or below the class floor markup or deeper than the class discount cap, products with stock and no price, and products whose pack or cost looks wrong. Fix them in Products > Pricing policy.',
     params: [{ key: 'min', label: 'Raise it when at least this many products', min: 1, max: 1000, default: 1, unit: 'products' }],
     defaultSeverity: 'warning',
     async evaluate(ctx, p) {
@@ -170,6 +170,7 @@ export const KINDS: AlertKind[] = [
       const out: Finding[] = [];
       if (c.cuts >= p.min) out.push({ key: 'pricing:cuts', storeid: null, code: 'pricing_cuts', severity: 'critical', params: { count: c.cuts }, link: '/secure/products/policy' });
       if (c.raises >= p.min) out.push({ key: 'pricing:raises', storeid: null, code: 'pricing_raises', params: { count: c.raises, held: c.held }, link: '/secure/products/policy' });
+      if (c.unpriced >= p.min) out.push({ key: 'pricing:unpriced', storeid: null, code: 'pricing_unpriced', params: { count: c.unpriced }, link: '/secure/products/policy' });
       if (c.check >= p.min) out.push({ key: 'pricing:check', storeid: null, code: 'pricing_check', severity: 'info', params: { count: c.check }, link: '/secure/products/datacheck' });
       return out;
     },

@@ -36,7 +36,7 @@ describe('alert messages', () => {
     const codes: Record<string, string[]> = {
       deposit_due: ['deposit_due_amount', 'deposit_due_schedule'], licence_expiring: ['licence_expiring', 'licence_expired'],
       registration_expiring: ['registration_expiring', 'registration_expired'], shift_open_long: ['shift_open_long'], approvals_pending: ['approvals_pending', 'approvals_pending_one'],
-      price_policy: ['pricing_cuts', 'pricing_raises', 'pricing_check'],
+      price_policy: ['pricing_cuts', 'pricing_raises', 'pricing_check', 'pricing_unpriced'],
     };
     expect(KINDS.map((k) => k.kind).sort()).toEqual(Object.keys(codes).sort());
     for (const list of Object.values(codes)) for (const c of list) expect(MESSAGE_CODES).toContain(c);

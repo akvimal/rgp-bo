@@ -111,6 +111,7 @@
                         <th class="text-end">Free</th>
                         <th class="text-end">Rate</th>
                         <th class="text-end">Vs last</th>
+                        <th class="text-end" title="The product's current sale price and what this batch's cost and MRP do to it">Sale price</th>
                         <th class="text-end">Disc</th>
                         <th class="text-end">Tax</th>
                         <th class="text-end">Total</th>
@@ -152,6 +153,21 @@
                                 <div *ngIf="pc.level === 'APPROVAL'" class="small text-danger">Above {{priceApproval}}%: Store Head to complete</div>
                             </ng-container>
                         </td>
+                        <td class="text-end" style="min-width:11rem" [attr.data-testid]="'price-impact-' + i.id">
+                            <ng-container *ngIf="impactByItem[i.id] as im">
+                                <div *ngIf="im.curprice !== null" class="small">{{im.curprice | number:'1.2-2'}}
+                                    <span class="text-muted">&middot; {{im.markuppct | number:'1.0-0'}}% over cost &middot; {{im.discountpct | number:'1.0-0'}}% off MRP</span></div>
+                                <span *ngIf="im.status === 'NO_PRICE'" class="badge bg-warning text-dark">No price yet</span>
+                                <div *ngIf="im.status === 'NO_PRICE' && im.suggestion" class="small text-muted">suggested {{im.suggestion.price | number:'1.2-2'}}</div>
+                                <span *ngIf="im.status === 'ABOVE_CEILING'" class="badge bg-danger">Price above this batch's MRP</span>
+                                <div *ngIf="im.status === 'ABOVE_CEILING'" class="small text-danger">at most {{im.ceiling | number:'1.2-2'}}</div>
+                                <span *ngIf="im.status === 'BELOW_FLOOR'" class="badge bg-warning text-dark">Markup below the floor</span>
+                                <div *ngIf="im.status === 'BELOW_FLOOR'" class="small text-muted">lowest {{im.lower | number:'1.2-2'}}</div>
+                                <span *ngIf="im.status === 'OVER_CAP'" class="badge bg-warning text-dark">Discount too deep</span>
+                                <div *ngIf="im.status === 'OVER_CAP'" class="small text-muted">lowest {{im.lower | number:'1.2-2'}}</div>
+                                <span *ngIf="im.status === 'CHECK_COST'" class="badge bg-secondary">Check cost or pack</span>
+                            </ng-container>
+                        </td>
                         <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
                         <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
                         <td class="text-end">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
@@ -159,18 +175,18 @@
                 </ng-template>
                 <ng-template pTemplate="footer">
                     <tr>
-                        <td colspan="10" class="text-end text-muted">Discount / Tax</td>
+                        <td colspan="11" class="text-end text-muted">Discount / Tax</td>
                         <td class="text-end">{{disctotal | number:'1.2-2'}}</td>
                         <td class="text-end">{{taxtotal | number:'1.2-2'}}</td>
                         <td></td>
                     </tr>
                     <tr class="fw-semibold">
-                        <td colspan="12" class="text-end">Net total</td>
+                        <td colspan="13" class="text-end">Net total</td>
                         <td class="text-end inv-value text-primary">{{nettotal | number:'1.2-2'}}</td>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage">
-                    <tr><td colspan="13" class="text-center text-muted py-4" data-testid="invoice-no-items">No items yet.<span *ngIf="invoice.status === 'NEW'"> Add them above, or delete this draft if you do not need it.</span></td></tr>
+                    <tr><td colspan="14" class="text-center text-muted py-4" data-testid="invoice-no-items">No items yet.<span *ngIf="invoice.status === 'NEW'"> Add them above, or delete this draft if you do not need it.</span></td></tr>
                 </ng-template>
             </p-table>
 
@@ -179,6 +195,11 @@
                 <button type="button" class="btn btn-outline-danger" (click)="removeItems()">Remove</button>
             </div>
 
+            <div class="alert alert-info py-2 small mt-3 mb-0" *ngIf="invoice.status === 'NEW' && impactSummary && (impactSummary.needsprice || impactSummary.attention)" data-testid="price-impact-note">
+                When this invoice is completed:
+                <span *ngIf="impactSummary.needsprice"><b>{{impactSummary.needsprice}}</b> product{{impactSummary.needsprice === 1 ? ' has' : 's have'}} no sale price and will be listed under Products &gt; Pricing policy &gt; Needs a price, with a suggested price.</span>
+                <span *ngIf="impactSummary.attention"><b>{{impactSummary.attention}}</b> current price{{impactSummary.attention === 1 ? ' is' : 's are'}} outside the pricing rules for this batch and will need a review there.</span>
+            </div>
             <div class="alert alert-warning py-2 small mt-3 mb-0" *ngIf="invoice.status === 'NEW' && priceLinesNeedingReason > 0" data-testid="price-needs-reason">
                 {{priceLinesNeedingReason}} line{{priceLinesNeedingReason === 1 ? '' : 's'}} changed against the last purchase (rate up over {{priceTolerance}}%, or a different pack/unit). Choose a reason on each before completing.
             </div>

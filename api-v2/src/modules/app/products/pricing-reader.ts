@@ -1,6 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { PRICING_SUBJECTS_SQL } from './pricing-subjects.sql';
-import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, PolicySettings, tradeBand, Violation } from './price-policy';
+import { PRICING_UNPRICED_SQL } from './pricing-unpriced.sql';
+import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
 
 export interface PricingItem {
   productid: number; title: string; pack: number; classkey: string; abc: Abc;
@@ -17,6 +18,17 @@ export const today = () => new Date().toISOString().slice(0, 10);
  * The price policy at work: which prices are out of policy now (the review queue), what the next step is, who may apply it, and the
  * check every price change goes through. See price-policy.ts for the rules.
  */
+
+export interface UnpricedItem {
+  productid: number; title: string; pack: number; classkey: string; abc: Abc;
+  cost: number; mrp: number; tax: number; units: number; packsuspect: boolean; suggestion: Suggestion | null;
+}
+
+export interface LineIn { itemid: number; productid: number; mrp: number; ptrvalue: number; ptrcost: number | null; disc: number; qty: number; free: number; taxbatch: number }
+export interface LineOut {
+  itemid: number; curprice: number | null; status: LineStatus; markuppct: number | null; discountpct: number | null;
+  ceiling: number; lower: number; suggestion: Suggestion | null; classkey: string;
+}
 
 /**
  * The read side of the price policy: settings, class limits and the evaluated price of every product. It needs only the database, so the
@@ -42,12 +54,12 @@ export class PricingReader {
 
   async policyTable() {
     return this.manager.query(
-      `select class_key, floor_markup_pct::float8 as floor_markup_pct, max_discount_pct::float8 as max_discount_pct from price_policy order by class_key`);
+      `select class_key, floor_markup_pct::float8 as floor_markup_pct, max_discount_pct::float8 as max_discount_pct, usual_discount_pct::float8 as usual_discount_pct from price_policy order by class_key`);
   }
 
   protected async policyMap(): Promise<Map<string, ClassPolicy>> {
     const rows = await this.policyTable();
-    return new Map(rows.map((r: any) => [r.class_key, { floorMarkupPct: Number(r.floor_markup_pct), maxDiscountPct: Number(r.max_discount_pct) }]));
+    return new Map(rows.map((r: any) => [r.class_key, { floorMarkupPct: Number(r.floor_markup_pct), maxDiscountPct: Number(r.max_discount_pct), usualDiscountPct: Number(r.usual_discount_pct) }]));
   }
 
   protected toItem(r: any, policies: Map<string, ClassPolicy>, st: PolicySettings, exception: any): PricingItem {
@@ -74,6 +86,60 @@ export class PricingReader {
     return rows.map((r: any) => this.toItem(r, policies, st, ex.get(+r.product_id) ?? null));
   }
 
+  /** Products with stock and no price, each with the class and a suggested first price (none when the pack or cost looks wrong). */
+  async unpriced(productid: number | null = null): Promise<UnpricedItem[]> {
+    const [rows, policies, st] = await Promise.all([this.manager.query(PRICING_UNPRICED_SQL, [productid]), this.policyMap(), this.settings()]);
+    const today0 = today();
+    return rows.map((r: any) => {
+      const key = classKey(tradeBand(r.trade_margin), r.abc as Abc);
+      const policy = policies.get(key) ?? { floorMarkupPct: 8, maxDiscountPct: 20, usualDiscountPct: 5 };
+      const suggestion = r.pack_suspect ? null : suggestPrice({ price: null, cost: r.cost, mrp: r.mrp, tax: r.tax, abc: r.abc, lastChange: null, today: today0 }, policy);
+      void st;
+      return { productid: +r.product_id, title: r.title, pack: +r.pack, classkey: key, abc: r.abc, cost: r.cost, mrp: r.mrp, tax: r.tax, units: Number(r.units), packsuspect: !!r.pack_suspect, suggestion };
+    });
+  }
+
+  private cache: { at: number; items: PricingItem[] } | null = null;
+
+  /** every product's evaluated price, kept for a minute: a screen that asks for many lines should not repeat the 12-month profit sums */
+  protected async itemsCached(): Promise<PricingItem[]> {
+    if (this.cache && Date.now() - this.cache.at < 60_000) return this.cache.items;
+    const items = await this.items(null);
+    this.cache = { at: Date.now(), items };
+    return items;
+  }
+
+  /**
+   * What each purchase line's cost and MRP mean for the product's current sale price: no price yet, a price that would charge above this
+   * batch's MRP, below the class floor markup, deeper than the discount cap, or fine. Nothing is saved.
+   */
+  async lineImpacts(lines: LineIn[]): Promise<LineOut[]> {
+    if (!lines.length) return [];
+    const ids = [...new Set(lines.map((l) => l.productid))];
+    const taxes = [...new Set(lines.map((l) => l.taxbatch))];
+    const [prices, policies, st, all, gst] = await Promise.all([
+      this.manager.query(
+        `select distinct on (product_id) product_id, round(sale_price::numeric, 2)::float8 as price, to_char(eff_date, 'YYYY-MM-DD') as eff
+           from product_price2 where end_date > current_date and sale_price > 0 and product_id = any($1::int[]) order by product_id, eff_date desc, id desc`, [ids]),
+      this.policyMap(), this.settings(), this.itemsCached(),
+      this.manager.query(`select t::float8 as t, public.sale_gst(t)::float8 as s from unnest($1::double precision[]) t`, [taxes]),
+    ]);
+    const price = new Map<number, any>(prices.map((p: any) => [+p.product_id, p]));
+    const abcOf = new Map<number, Abc>(all.map((i) => [i.productid, i.abc]));
+    const saleTax = new Map<number, number>(gst.map((g: any) => [Number(g.t), Number(g.s)]));
+    return lines.map((l) => {
+      const paid = l.qty + l.free;
+      const cost = paid > 0 ? (l.ptrvalue * (1 - l.disc / 100) * l.qty) / paid : l.ptrvalue;
+      const incl = l.ptrcost && l.ptrcost > 0 ? l.ptrcost : l.ptrvalue * (1 + l.taxbatch / 100);
+      const abc = abcOf.get(l.productid) ?? 'C';
+      const key = classKey(tradeBand(l.mrp > 0 ? 1 - incl / l.mrp : null), abc);
+      const policy = policies.get(key) ?? { floorMarkupPct: 8, maxDiscountPct: 20, usualDiscountPct: 5 };
+      const p = price.get(l.productid);
+      const impact = lineImpact({ price: p ? p.price : null, cost, mrp: l.mrp, tax: saleTax.get(l.taxbatch) ?? l.taxbatch, abc, lastChange: p ? p.eff : null, today: today() }, policy, st);
+      return { itemid: l.itemid, curprice: p ? p.price : null, classkey: key, status: impact.status, markuppct: impact.markupPct, discountpct: impact.discountPct, ceiling: impact.ceiling, lower: impact.lower, suggestion: impact.suggestion };
+    });
+  }
+
   /** How many prices are out of policy, for the alert (no actor): above the legal ceiling, below floor or over cap, held, and to check. */
   async counts() {
     const all = await this.items(null);
@@ -83,6 +149,7 @@ export class PricingReader {
       raises: open.filter((i) => i.action === 'RAISE').length,
       held: open.filter((i) => i.waituntil).length,
       check: all.filter((i) => (i.action === 'CHECK_COST' || i.packsuspect) && !i.exception).length,
+      unpriced: (await this.unpriced()).filter((u) => u.suggestion).length,
     };
   }
 

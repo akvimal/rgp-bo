@@ -48,7 +48,7 @@ export class PricingRulesComponent implements OnInit {
             this.form = {}; this.original = {};
             this.rules.forEach((x: any) => { this.form[x.key] = x.value; this.original[x.key] = x.value; });
             this.service.pricingPolicy().subscribe((p: any) => {
-                this.classes = (p.classes || []).map((c: any) => ({ ...c, floor: c.floor_markup_pct, cap: c.max_discount_pct, f0: c.floor_markup_pct, c0: c.max_discount_pct }));
+                this.classes = (p.classes || []).map((c: any) => ({ ...c, floor: c.floor_markup_pct, cap: c.max_discount_pct, usual: c.usual_discount_pct, f0: c.floor_markup_pct, c0: c.max_discount_pct, u0: c.usual_discount_pct }));
                 this.loading = false;
             }, (err: any) => { this.loading = false; this.error = this.msg(err, 'Could not load the class limits.'); });
         }, (err: any) => { this.loading = false; this.error = this.msg(err, 'Could not load the pricing rules.'); });
@@ -62,7 +62,7 @@ export class PricingRulesComponent implements OnInit {
     }
 
     get changedRules(): string[] { return Object.keys(this.form).filter((k) => String(this.form[k]) !== String(this.original[k])); }
-    classChanged(c: any): boolean { return +c.floor !== +c.f0 || +c.cap !== +c.c0; }
+    classChanged(c: any): boolean { return +c.floor !== +c.f0 || +c.cap !== +c.c0 || +c.usual !== +c.u0; }
 
     saveRules() {
         this.error = ''; this.message = ''; this.saving = true;
@@ -78,8 +78,8 @@ export class PricingRulesComponent implements OnInit {
 
     saveClass(c: any) {
         this.error = ''; this.message = '';
-        this.service.pricingSavePolicy(c.class_key, +c.floor, +c.cap).subscribe(() => {
-            c.f0 = +c.floor; c.c0 = +c.cap;
+        this.service.pricingSavePolicy(c.class_key, +c.floor, +c.cap, +c.usual).subscribe(() => {
+            c.f0 = +c.floor; c.c0 = +c.cap; c.u0 = +c.usual;
             this.message = `Saved the limits for ${c.class_key}.`;
         }, (err: any) => this.error = this.msg(err, 'Could not save the class.'));
     }

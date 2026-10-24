@@ -132,3 +132,22 @@ First read on the production copy (12 months, stock at cost now, negative balanc
 **Seen while doing this, for your accountant:** the till bills 5% on every line, including the roughly 245 lines since Nov 2025 from batches tagged 18%. If any of those products (for example cosmetics or non-medicine items) stayed at 18% after GST 2.0, GST is being under-collected. Not changed here.
 
 **QA:** `qa/scripts/bootstrap-db.sh` now lists migrations 091 to 097 and switches the guard off (the suite's sample bills use prices far above the sample MRPs); POLICY-5 turns it on for its own check and back off. API specs POLICY-1..5 and PRICE-1..4 pass against a local API on the dev database. The full suite was not completed (the UI specs cannot run against a local API with other tokens).
+
+## Price at receiving and first prices (2026-10-24, uncommitted, after the pricing commit)
+
+**Finding:** a new product got no sale price when its first invoice line was entered. The code meant to add one checked `price_view`, which already
+has a row for the product the moment the line exists, so the check always found "a price" and never added one (confirmed live on the production
+copy). On the production copy 46 products with stock had no price (188 active products with a completed purchase and no current price in all).
+That code and its approximate formula are removed.
+
+**Needs a price** (Products > Pricing policy, top section; migration 098): products with stock and no price, each with its class and a suggested
+first price = the class's *usual discount* off the MRP, kept between the class's lowest price and the legal ceiling. Usual discount is a new
+column per class on Pricing rules (seeded from the study: high trade margin 50%, medium 20%, low 5%). A product with a pack-size or cost problem
+is listed with "check" and no suggestion. "Set this price" / "Give all N the suggested price": Store Head or Business Head; the price is inside
+the class limits by construction; written with reason "Initial", a comment naming the class and discount, and audited as `price.first_price`.
+The "Prices out of policy" alert gains a "products with stock and no price" notification.
+
+**Sale price column on invoice lines** (`GET /pricing/invoice/:id/impact`): for each line, the product's current sale price, the markup and the
+discount it gives, and what this batch's cost and MRP do to it: no price yet (with the suggestion), price above this batch's MRP ceiling, markup
+below the class floor, discount deeper than the cap, check cost/pack, or fine. A note above Complete says how many products will need a price or a
+review afterwards. It is information, not a block. On a real invoice from the production copy: 7 lines, 4 fine, 2 below the floor, 1 above the ceiling.

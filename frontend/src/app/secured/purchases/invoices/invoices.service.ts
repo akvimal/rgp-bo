@@ -19,6 +19,10 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchases/${id}`);
     }
 
+    priceImpact(id:any){
+        return this.http.get<any>(`${this.apiurl}/pricing/invoice/${id}/impact`);
+    }
+
     priceCheck(id:any){
         return this.http.get<any>(`${this.apiurl}/purchases/${id}/price-check`);
     }

@@ -18,10 +18,12 @@ export class ProductsService {
     pricingImpact(){ return this.http.get<any>(`${environment.apiHost}/pricing/impact`); }
     pricingRules(){ return this.http.get<any>(`${environment.apiHost}/pricing/rules`); }
     pricingSaveRules(values:any){ return this.http.put<any>(`${environment.apiHost}/pricing/rules`, { values }); }
+    pricingPriceNew(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/price-new`, { productid }); }
+    pricingPriceNewAll(){ return this.http.post<any>(`${environment.apiHost}/pricing/price-new-all`, {}); }
     pricingApply(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/apply`, { productid }); }
     pricingApplyCuts(){ return this.http.post<any>(`${environment.apiHost}/pricing/apply-cuts`, {}); }
     pricingPolicy(){ return this.http.get<any>(`${environment.apiHost}/pricing/policy`); }
-    pricingSavePolicy(key:string, floor:number, cap:number){ return this.http.put<any>(`${environment.apiHost}/pricing/policy/${key}`, { floor, cap }); }
+    pricingSavePolicy(key:string, floor:number, cap:number, usual?:number){ return this.http.put<any>(`${environment.apiHost}/pricing/policy/${key}`, { floor, cap, usual }); }
     pricingAddException(productid:number, reason:string, until:string){ return this.http.post<any>(`${environment.apiHost}/pricing/exceptions`, { productid, reason, until }); }
 
     packCheck(){

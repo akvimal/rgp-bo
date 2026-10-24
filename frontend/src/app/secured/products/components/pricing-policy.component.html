@@ -19,6 +19,35 @@
           <div class="small text-muted" *ngIf="data.summary.excepted">{{data.summary.excepted}} with an exception</div></div></div>
       </div>
 
+      <div class="mb-4" *ngIf="data.unpriced?.length" data-testid="policy-unpriced">
+        <h6 class="mb-1">Needs a price <span class="badge bg-warning text-dark">{{data.unpriced.length}}</span></h6>
+        <p class="small text-muted mb-2">Products in stock with no sale price. The suggested price is the class's usual discount off the MRP, kept between the class's lowest price and the legal ceiling.
+          A product marked "check" has a pack size or cost that looks wrong and cannot be priced until that is fixed (<a routerLink="/secure/products/datacheck">Data check</a>).</p>
+        <button type="button" class="btn btn-primary btn-sm mb-2" *ngIf="readyNew" [disabled]="busy" (click)="priceAll()" data-testid="policy-price-all">Give all {{readyNew}} the suggested price</button>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle" data-testid="policy-unpriced-table">
+            <thead><tr><th>Product</th><th>Class</th><th class="text-end">In stock</th><th class="text-end">Cost</th><th class="text-end">MRP</th><th class="text-end">Suggested price</th><th class="text-end">Markup</th><th class="text-end">Discount</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let u of data.unpriced" data-testid="policy-unpriced-row">
+                <td><a [routerLink]="['/secure/products/master/edit', u.productid]">{{u.title}}</a></td>
+                <td class="small">{{u.classkey}}</td>
+                <td class="text-end">{{u.units | number:'1.0-0'}}</td>
+                <td class="text-end">{{u.cost | number:'1.2-2'}}</td>
+                <td class="text-end">{{u.mrp | number:'1.2-2'}}</td>
+                <td class="text-end fw-semibold">{{u.suggestion ? (u.suggestion.price | number:'1.2-2') : '-'}}</td>
+                <td class="text-end">{{u.suggestion ? (u.suggestion.markupPct | number:'1.0-0') + '%' : '-'}}</td>
+                <td class="text-end">{{u.suggestion ? (u.suggestion.discountPct | number:'1.0-0') + '%' : '-'}}</td>
+                <td class="text-end text-nowrap">
+                  <button type="button" class="btn btn-primary btn-sm py-0" *ngIf="u.canapply" [disabled]="busy" (click)="priceNew(u)" data-testid="policy-price-new">Set this price</button>
+                  <span class="small text-muted" *ngIf="!u.suggestion">check pack or cost</span>
+                  <span class="small text-muted" *ngIf="u.suggestion && !u.canapply">Store Head or Business Head</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
         <select class="form-select form-select-sm w-auto" [(ngModel)]="filter" data-testid="policy-filter">
           <option value="all">All out of policy</option><option value="cuts">Above the legal ceiling</option><option value="raises">Below floor / over cap</option><option value="ready">I can apply now</option>

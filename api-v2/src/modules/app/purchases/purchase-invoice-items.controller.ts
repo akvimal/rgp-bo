@@ -6,7 +6,6 @@ import { AuthGuard } from "src/modules/auth/auth.guard";
 import { PurchasingGuard } from "../roles/purchasing.guard";
 import { UpdateInvoiceItemsDto } from "./dto/update-invoice-items.dto";
 import { User } from "src/core/decorator/user.decorator";
-import { ProductService } from "../products/product.service";
 
 @ApiTags('PurchaseItems')
 @Controller('purchaseitems')
@@ -14,7 +13,7 @@ import { ProductService } from "../products/product.service";
 @UseGuards(AuthGuard, PurchasingGuard)
 export class PurchaseItemController {
 
-    constructor(private purchaseInvoiceService:PurchaseInvoiceService, private productService: ProductService){}
+    constructor(private purchaseInvoiceService:PurchaseInvoiceService){}
 
     @Get()
     async findAllItems(@Query('status') status) { //accept query params
@@ -46,26 +45,12 @@ export class PurchaseItemController {
     //   return this.purchaseInvoiceService.findAllItemsByInvoice(id);
     // }
 
-      getSalePrice(priceBeforeTax,tax): number {
-        const price = priceBeforeTax * (1-tax/100)
-      return price + (priceBeforeTax - (price * (1 + tax/100)));
-      }
-
     @Post()
     async createItem(@Body() createPurchaseInvoiceItemDto: CreatePurchaseInvoiceItemDto, @User() currentUser: any) {
         const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);
 
-        // Only add a new price if the product doesn't already have an active price
-        const existingPrice = await this.productService.findPriceById(item.productid);
-        if (!existingPrice || existingPrice.length === 0) {
-          // No existing price found, calculate and add a new one
-          this.productService.addPrice({
-            productid: item.productid,
-            saleprice: this.getSalePrice(item.mrpcost, item.taxpcnt),
-            reason: 'Purchase'
-          }, currentUser.id);
-        }
-        // If existing price found, preserve it (don't overwrite)
+        // A product with no price is not priced here: it appears under Products > Pricing policy > Needs a price once the invoice is completed,
+        // with a suggested price from its class. (A price added here used to be skipped whenever the line itself had just made the product visible.)
 
         await this.purchaseInvoiceService.findAllItemsByInvoice(item.invoiceid).then(async (items:any) => {
           let total = 0;

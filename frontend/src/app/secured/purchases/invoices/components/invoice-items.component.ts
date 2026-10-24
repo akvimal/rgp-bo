@@ -26,6 +26,8 @@ export class InvoiceItemsComponent {
     importFeedback:string = '';
     completeError:string = '';
     priceByItem:{[itemid:number]:any} = {};
+    impactByItem:{[itemid:number]:any} = {};
+    impactSummary:any = null;
     priceTolerance:number = 0.5;
     priceApproval:number = 5;
     readonly priceReasons = [
@@ -102,6 +104,7 @@ export class InvoiceItemsComponent {
             this.nettotal = this.grosstotal - this.disctotal + this.taxtotal;
             this.outstandingBalance = +(inv.balanceamount || 0);
             this.loadPriceCheck();
+            this.loadImpact();
 
             if(this.items) {
                 this.itemSelected =  this.items.filter((i:any) => i.selected).length > 0;
@@ -163,6 +166,15 @@ export class InvoiceItemsComponent {
             this.priceTolerance = r.tolerance;
             this.priceApproval = r.approval;
         }, () => this.priceByItem = {});
+    }
+
+    /** what each line's cost and MRP mean for the product's current sale price: no price yet, above this batch's MRP, below the floor markup */
+    loadImpact(){
+        this.invService.priceImpact(this.invoice.id).subscribe((r:any) => {
+            this.impactByItem = {};
+            (r.lines || []).forEach((l:any) => this.impactByItem[l.itemid] = l);
+            this.impactSummary = r;
+        }, () => { this.impactByItem = {}; this.impactSummary = null; });
     }
 
     setPriceReason(itemid:any, reason:string){

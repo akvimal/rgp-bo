@@ -19,7 +19,7 @@ export interface PolicySettings {
 }
 export const DEFAULT_SETTINGS: PolicySettings = { stepPricePct: 10, stepMrpPct: 5, stepDays: 14, storeHeadLimitPct: 15 };
 
-export interface ClassPolicy { floorMarkupPct: number; maxDiscountPct: number }
+export interface ClassPolicy { floorMarkupPct: number; maxDiscountPct: number; usualDiscountPct?: number }
 
 export const classKey = (band: Band, abc: Abc) => `${band}_${abc}`;
 
@@ -136,3 +136,39 @@ export const VIOLATION_TEXT: Record<Violation, string> = {
   RAISE_TOO_BIG: 'the raise is bigger than one step',
   RAISE_TOO_SOON: 'the price was changed too recently for another raise',
 };
+
+export interface Suggestion { price: number; discountPct: number; markupPct: number }
+
+/**
+ * A first price for a product that has none: the class's usual discount off the MRP, kept between the class's lowest price and the legal
+ * ceiling. Null when the cost is above what the MRP allows (the cost or pack size needs checking first).
+ */
+export function suggestPrice(s: Subject, p: ClassPolicy): Suggestion | null {
+  if (!(s.cost > 0) || !(s.mrp > 0)) return null;
+  const b = boundsOf(s, p);
+  if (b.conflict) return null;
+  const usual = p.usualDiscountPct ?? 0;
+  const wanted = (s.mrp * (1 - usual / 100)) / (1 + s.tax / 100);
+  const price = r2(Math.min(b.ceiling, Math.max(b.lower, wanted)));
+  return {
+    price,
+    discountPct: r2((1 - (price * (1 + s.tax / 100)) / s.mrp) * 100),
+    markupPct: r2((price / s.cost - 1) * 100),
+  };
+}
+
+export type LineStatus = 'NO_PRICE' | 'ABOVE_CEILING' | 'BELOW_FLOOR' | 'OVER_CAP' | 'CHECK_COST' | 'OK';
+
+/**
+ * What a purchase line's cost and MRP mean for the product's current sale price, as the receiver sees it: no price yet, a price that would
+ * charge above the MRP of this batch, one below the class floor markup, one deeper than the discount cap, or fine.
+ */
+export function lineImpact(s: Subject, p: ClassPolicy, st: PolicySettings): { status: LineStatus; markupPct: number | null; discountPct: number | null; ceiling: number; lower: number; suggestion: Suggestion | null } {
+  const e = evaluate(s, p, st);
+  const base = { ceiling: e.bounds.ceiling, lower: e.bounds.lower, markupPct: e.markupPct, discountPct: e.discountPct };
+  if (e.action === 'NO_PRICE') return { ...base, status: e.bounds.conflict ? 'CHECK_COST' : 'NO_PRICE', suggestion: suggestPrice(s, p) };
+  if (e.action === 'CHECK_COST') return { ...base, status: 'CHECK_COST', suggestion: null };
+  if (e.action === 'CUT') return { ...base, status: 'ABOVE_CEILING', suggestion: null };
+  if (e.action === 'RAISE') return { ...base, status: e.violations.includes('BELOW_FLOOR') ? 'BELOW_FLOOR' : 'OVER_CAP', suggestion: null };
+  return { ...base, status: 'OK', suggestion: null };
+}

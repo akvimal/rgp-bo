@@ -88,6 +88,26 @@ export class PricingPolicyComponent implements OnInit {
         }, (err: any) => { this.busy = false; this.error = this.msg(err, 'Could not apply the cuts.'); });
     }
 
+    get readyNew(): number { return (this.data?.unpriced || []).filter((u: any) => u.canapply).length; }
+
+    priceNew(u: any) {
+        this.busy = true; this.message = ''; this.error = '';
+        this.service.pricingPriceNew(u.productid).subscribe((r: any) => {
+            this.busy = false;
+            this.message = `${r.title}: first price ${r.price} (${r.discountpct}% off MRP, markup ${r.markuppct}%).`;
+            this.load();
+        }, (err: any) => { this.busy = false; this.error = this.msg(err, 'Could not set the price.'); });
+    }
+
+    priceAll() {
+        this.busy = true; this.message = ''; this.error = '';
+        this.service.pricingPriceNewAll().subscribe((r: any) => {
+            this.busy = false;
+            this.message = `${r.applied} product${r.applied === 1 ? '' : 's'} given the suggested price${r.failed?.length ? '; ' + r.failed.length + ' could not be priced' : ''}.`;
+            this.load();
+        }, (err: any) => { this.busy = false; this.error = this.msg(err, 'Could not set the prices.'); });
+    }
+
     askException(i: any) { this.exceptionFor = i; this.exception = { reason: '', until: '' }; }
 
     saveException() {

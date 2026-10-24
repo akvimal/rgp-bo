@@ -1,4 +1,4 @@
-import { addDays, boundsOf, checkChange, classKey, DEFAULT_SETTINGS as ST, evaluate, stepLimit, Subject, tradeBand } from './price-policy';
+import { addDays, boundsOf, checkChange, classKey, DEFAULT_SETTINGS as ST, evaluate, lineImpact, stepLimit, Subject, suggestPrice, tradeBand } from './price-policy';
 
 // MRP 200 with 12% GST: legal ceiling 178.57. Cost 40 per pack.
 const base: Subject = { price: 100, cost: 40, mrp: 200, tax: 12, abc: 'B', lastChange: '2026-09-01', today: '2026-10-24' };
@@ -112,5 +112,50 @@ describe('price policy', () => {
 
   it('addDays crosses month ends', () => {
     expect(addDays('2026-10-25', 14)).toBe('2026-11-08');
+  });
+
+  describe('a first price and what a purchase line means for the price', () => {
+    // MRP 200, GST billed 5%: ceiling 190.47. Cost 100 with floor 25%: lowest price 125.00.
+    const none: Subject = { ...base, price: null, cost: 100, tax: 5, lastChange: null };
+    const usual = { floorMarkupPct: 25, maxDiscountPct: 60, usualDiscountPct: 20 };
+
+    it('suggests the usual discount off the MRP, before GST', () => {
+      const r = suggestPrice(none, usual)!;
+      expect(r.price).toBe(152.38);                 // 200 x 0.8 / 1.05
+      expect(r.discountPct).toBe(20);
+      expect(r.markupPct).toBe(52.38);
+    });
+
+    it('never goes below the class lowest price', () => {
+      expect(suggestPrice(none, { ...usual, usualDiscountPct: 50 })!.price).toBe(125);   // 50% off would be 95.24, but the floor is 125
+    });
+
+    it('never goes above the legal ceiling', () => {
+      expect(suggestPrice(none, { ...usual, usualDiscountPct: 0 })!.price).toBe(190.47);
+    });
+
+    it('no suggestion when the cost is above what the MRP allows', () => {
+      expect(suggestPrice({ ...none, cost: 195 }, usual)).toBeNull();
+    });
+
+    it('a line for a product with no price says so, and suggests one', () => {
+      const r = lineImpact(none, usual, ST);
+      expect(r.status).toBe('NO_PRICE');
+      expect(r.suggestion!.price).toBe(152.38);
+    });
+
+    it('a current price above this batch MRP ceiling is flagged', () => {
+      expect(lineImpact({ ...none, price: 195 }, usual, ST).status).toBe('ABOVE_CEILING');
+    });
+
+    it('a current price below the floor for this cost is flagged, with the markup it now gives', () => {
+      const r = lineImpact({ ...none, price: 110 }, usual, ST);
+      expect(r.status).toBe('BELOW_FLOOR');
+      expect(r.markupPct).toBe(10);
+    });
+
+    it('a price inside the limits is fine', () => {
+      expect(lineImpact({ ...none, price: 150 }, usual, ST).status).toBe('OK');
+    });
   });
 });

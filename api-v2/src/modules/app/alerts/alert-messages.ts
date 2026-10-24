@@ -45,6 +45,10 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'Prices out of policy: {count}', body: '{count} products are below their floor markup or deeper than their discount cap ({held} held for the next step). Review them in Products > Pricing policy.' },
     ta: { title: 'விலைக் கொள்கையை மீறிய விலைகள்: {count}', body: '{count} பொருட்கள் குறைந்தபட்ச லாப வரம்புக்குக் கீழே அல்லது அனுமதித்த தள்ளுபடியை விட அதிகமாக உள்ளன ({held} அடுத்த படிக்காகக் காத்திருக்கின்றன). பொருட்கள் > விலைக் கொள்கையில் பார்க்கவும்.' },
   },
+  pricing_unpriced: {
+    en: { title: 'Products with stock and no price: {count}', body: '{count} products are in stock but have no sale price, so they cannot be sold properly. Give them the suggested price in Products > Pricing policy.' },
+    ta: { title: 'இருப்பு உள்ள ஆனால் விலை இல்லாத பொருட்கள்: {count}', body: '{count} பொருட்கள் இருப்பில் உள்ளன ஆனால் விற்பனை விலை இல்லை, அதனால் சரியாக விற்க முடியாது. பொருட்கள் > விலைக் கொள்கையில் பரிந்துரைத்த விலையை வழங்கவும்.' },
+  },
   pricing_check: {
     en: { title: 'Products to check: {count}', body: '{count} products have a pack size or cost that looks wrong, so their prices cannot be judged. Check them in Products > Data check.' },
     ta: { title: 'சரிபார்க்க வேண்டிய பொருட்கள்: {count}', body: '{count} பொருட்களின் பேக் அளவு அல்லது விலை தவறாகத் தெரிகிறது, அதனால் அவற்றின் விலையை மதிப்பிட முடியவில்லை. பொருட்கள் > தரவு சரிபார்ப்பில் பார்க்கவும்.' },

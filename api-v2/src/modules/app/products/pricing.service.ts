@@ -3,7 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { isOwnerRole } from 'src/core/roles';
-import { PricingItem, PricingReader, today } from './pricing-reader';
+import { LineIn, PricingItem, PricingReader, today } from './pricing-reader';
 import { cleanRuleValue, ruleOf, RULES } from './pricing-rules';
 import {
   Abc, checkChange, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, PolicySettings, rank, Subject, tradeBand, Violation, VIOLATION_TEXT,
@@ -94,7 +94,7 @@ export class PricingService extends PricingReader {
 
   /** Products out of policy now, with this step's price and whether the actor may apply it. */
   async queue(userid: number) {
-    const [all, level, st] = await Promise.all([this.items(null), this.actorLevel(userid), this.settings()]);
+    const [all, level, st, unpriced] = await Promise.all([this.items(null), this.actorLevel(userid), this.settings(), this.unpriced()]);
     const open = all.filter((i) => (i.action === 'CUT' || i.action === 'RAISE') && !i.exception);
     const check = all.filter((i) => (i.action === 'CHECK_COST' || i.packsuspect) && !i.exception);
     const decorate = (i: PricingItem) => ({ ...i, canapply: !i.waituntil && rank(level) >= rank(i.level) });
@@ -105,11 +105,13 @@ export class PricingService extends PricingReader {
       check: check.length,
       excepted: all.filter((i) => i.exception).length,
       products: all.length,
+      unpriced: unpriced.filter((u) => u.suggestion).length,
+      unpricedcheck: unpriced.filter((u) => !u.suggestion).length,
     };
     const by = new Map<string, number>();
     for (const i of all) by.set(i.classkey, (by.get(i.classkey) ?? 0) + 1);
     const classes = [...by.entries()].map(([key, n]) => ({ key, products: n })).sort((a, b) => a.key.localeCompare(b.key));
-    return { level, settings: st, summary, classes, items: open.map(decorate), check };
+    return { level, settings: st, summary, classes, items: open.map(decorate), check, unpriced: unpriced.map((u) => ({ ...u, canapply: !!u.suggestion && rank(level) >= rank('STORE') })) };
   }
 
   /**
@@ -160,6 +162,31 @@ export class PricingService extends PricingReader {
     await this.audit.record({ userId: userid, action, entityType: 'product', entityId: productid, summary, details });
   }
 
+  /**
+   * A product with stock and no price gets the policy's suggested first price. Anyone who may set prices and is a Store Head or above may
+   * apply it; the price is inside the class limits by construction, so it needs no further approval.
+   */
+  async prepareNew(productid: number, userid: number) {
+    const level = await this.actorLevel(userid);
+    if (rank(level) < rank('STORE')) throw new ForbiddenException('A Store Head or Business Head must set the first price.');
+    const [u] = await this.unpriced(productid);
+    if (!u) throw new BadRequestException('This product already has a price, or has no stock.');
+    if (u.packsuspect) throw new BadRequestException('The pack size of this product looks wrong: check it under Data check before pricing it.');
+    if (!u.suggestion) throw new BadRequestException('The cost of this product is above what its MRP allows: check the cost and the pack size first.');
+    return u;
+  }
+
+  /** What each line of a purchase invoice means for the product's current price (the receiving screen's "Sale price" column). */
+  async invoiceImpact(invoiceid: number) {
+    const rows = await this.manager.query(
+      `select id, product_id, mrp_cost::float8 as mrp, ptr_value::float8 as ptrvalue, ptr_cost::float8 as ptrcost, coalesce(disc_pcnt, 0)::float8 as disc,
+              qty, coalesce(free_qty, 0) as free, coalesce(tax_pcnt, 0)::float8 as taxbatch
+         from purchase_invoice_item where invoice_id = $1 and active and not archive and mrp_cost > 0 and ptr_value > 0 order by id`, [invoiceid]);
+    const lines: LineIn[] = rows.map((r: any) => ({ itemid: +r.id, productid: +r.product_id, mrp: r.mrp, ptrvalue: r.ptrvalue, ptrcost: r.ptrcost, disc: r.disc, qty: +r.qty, free: +r.free, taxbatch: r.taxbatch }));
+    const lineImpacts = await this.lineImpacts(lines);
+    return { lines: lineImpacts, needsprice: lineImpacts.filter((l) => l.status === 'NO_PRICE').length, attention: lineImpacts.filter((l) => !['OK', 'NO_PRICE'].includes(l.status)).length };
+  }
+
   /** The pricing rules with their current values, for the Pricing rules page. */
   async rules() {
     const rows = await this.manager.query(
@@ -201,15 +228,17 @@ export class PricingService extends PricingReader {
     return { changed, rules: await this.rules() };
   }
 
-  async updatePolicy(classkey: string, floor: number, cap: number, userid: number) {
+  async updatePolicy(classkey: string, floor: number, cap: number, userid: number, usual?: number) {
     if (!/^(LOW|MID|HIGH)_[ABC]$/.test(classkey)) throw new BadRequestException('Unknown class.');
     if (!(floor >= 0 && floor <= 1000)) throw new BadRequestException('The floor markup must be between 0 and 1000%.');
     if (!(cap >= 0 && cap <= 95)) throw new BadRequestException('The discount cap must be between 0 and 95%.');
-    const [before] = await this.manager.query(`select floor_markup_pct::float8 as f, max_discount_pct::float8 as c from price_policy where class_key = $1`, [classkey]);
+    if (usual !== undefined && !(usual >= 0 && usual <= 95)) throw new BadRequestException('The usual discount must be between 0 and 95%.');
+    if (usual !== undefined && usual > cap) throw new BadRequestException('The usual discount cannot be deeper than the discount cap.');
+    const [before] = await this.manager.query(`select floor_markup_pct::float8 as f, max_discount_pct::float8 as c, usual_discount_pct::float8 as u from price_policy where class_key = $1`, [classkey]);
     if (!before) throw new NotFoundException('Unknown class.');
     await this.manager.query(
-      `update price_policy set floor_markup_pct = $2, max_discount_pct = $3, updated_by = $4, updated_on = now() where class_key = $1`, [classkey, floor, cap, userid]);
-    await this.audited(userid, 'price.policy_changed', 0, `Pricing policy ${classkey}: floor ${before.f}% -> ${floor}%, cap ${before.c}% -> ${cap}%`, { classkey, before, after: { floor, cap } });
+      `update price_policy set floor_markup_pct = $2, max_discount_pct = $3, usual_discount_pct = coalesce($5::numeric, usual_discount_pct), updated_by = $4, updated_on = now() where class_key = $1`, [classkey, floor, cap, userid, usual ?? null]);
+    await this.audited(userid, 'price.policy_changed', 0, `Pricing policy ${classkey}: floor ${before.f}% -> ${floor}%, cap ${before.c}% -> ${cap}%${usual !== undefined ? `, usual discount ${before.u}% -> ${usual}%` : ''}`, { classkey, before, after: { floor, cap, usual } });
     return { classkey, floor, cap };
   }
 

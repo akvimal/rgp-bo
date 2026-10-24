@@ -9,7 +9,8 @@ import { test, expect } from '../fixtures/index.js';
 const MGR = 'businesshead@local.test';
 const SALES = 'sales1@local.test';
 
-async function boughtProduct(api: any) {
+let lastInvoice = 0;
+async function boughtProduct(api: any, complete = true) {
   const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const prod = await api.request('POST', '/products', { title: `QA POLICY ${stamp}`, taxpcnt: 12, category: 'Analgesic', code: `PO${stamp}` }, MGR);
   expect(prod.status).toBeLessThan(300);
@@ -21,9 +22,12 @@ async function boughtProduct(api: any) {
     taxpcnt: 12, total: 560, batch: `PO-${stamp}`, expdate: '2028-06-30', saleprice: 200,
   }, MGR);
   expect(it.status).toBeLessThan(300);
+  lastInvoice = inv.body.id;
   // the policy takes cost from completed purchases only
-  const done = await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE', total: 560 } }, MGR);
-  expect(done.status).toBeLessThan(300);
+  if (complete) {
+    const done = await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE', total: 560 } }, MGR);
+    expect(done.status).toBeLessThan(300);
+  }
   return prod.body.id as number;
 }
 
@@ -134,6 +138,39 @@ test.describe('Price policy @p1', () => {
     } finally {
       await api.request('PUT', '/pricing/rules', { values: { price_step_pct: Number(original) } }, MGR);
     }
+  });
+
+  test('POLICY-8 a product with stock and no price is offered a suggested first price @happy', async ({ api }) => {
+    const id = await boughtProduct(api);                                             // cost 100, MRP 200: MID_C, usual discount 20%
+    const row = ((await api.request('GET', '/pricing/review', undefined, MGR)).body.unpriced || []).find((u: any) => u.productid === id);
+    expect(row).toBeTruthy();
+    expect(row.suggestion.price).toBe(152.38);                                       // 200 x 0.8 / 1.05, between the lowest price 125 and the ceiling 190.47
+    expect(row.canapply).toBe(true);
+    expect((await api.request('POST', '/pricing/price-new', { productid: id }, SALES)).status).toBe(403);
+    const ok = await api.request('POST', '/pricing/price-new', { productid: id }, MGR);
+    expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+    expect(ok.body.price).toBe(152.38);
+    const after = ((await api.request('GET', '/pricing/review', undefined, MGR)).body.unpriced || []).find((u: any) => u.productid === id);
+    expect(after).toBeUndefined();
+    expect((await api.request('POST', '/pricing/price-new', { productid: id }, MGR)).status).toBe(400);   // already priced
+    const hist = (await api.request('GET', `/products/prices/${id}`, undefined, MGR)).body.history;
+    expect(hist[0].reason).toBe('Initial');
+    expect(String(hist[0].comments)).toContain('pricing policy');
+  });
+
+  test('POLICY-9 an invoice line shows what its cost and MRP mean for the product price @happy', async ({ api }) => {
+    const id = await boughtProduct(api, false);                                      // the invoice is still a draft
+    const first = (await api.request('GET', `/pricing/invoice/${lastInvoice}/impact`, undefined, MGR)).body;
+    expect(first.lines).toHaveLength(1);
+    expect(first.lines[0].status).toBe('NO_PRICE');
+    expect(first.lines[0].suggestion.price).toBe(152.38);
+    expect(first.needsprice).toBe(1);
+    await api.request('PUT', '/purchases/confirm', { ids: [lastInvoice], values: { status: 'COMPLETE', total: 560 } }, MGR);
+    expect((await api.request('POST', '/pricing/price-new', { productid: id }, MGR)).status).toBeLessThan(300);
+    const priced = (await api.request('GET', `/pricing/invoice/${lastInvoice}/impact`, undefined, MGR)).body;
+    expect(priced.lines[0].status).toBe('OK');
+    expect(priced.lines[0].curprice).toBe(152.38);
+    expect(priced.lines[0].markuppct).toBeCloseTo(52.38, 1);
   });
 
   test('POLICY-4 the review queue reports totals and the class counts @happy', async ({ api }) => {
