@@ -14,6 +14,9 @@ import { Product } from "src/entities/product.entity";
 import { Vendor } from "src/entities/vendor.entity";
 import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
+import { isManagerRole } from "src/core/roles";
+import { cleanRef, gstPeriodFor } from "./receipt-rules";
+import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
 
 @Injectable()
 export class PurchaseInvoiceService {
@@ -89,22 +92,33 @@ export class PurchaseInvoiceService {
         await assertStoreLicensed(this.vendorRepository.manager, storeid, 'receiving an invoice');
 
         const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
-        await this.assertNotDuplicate(+dto.vendorid, dto.invoiceno, null);
+        // goods can arrive on a delivery challan before the invoice: then only the challan number is known
+        const invoiceno = cleanRef(dto.invoiceno);
+        const challanno = cleanRef(dto.challanno);
+        if(!invoiceno && !challanno){
+          throw new BadRequestException(`Enter the invoice number, or the delivery challan number if the invoice has not come yet.`);
+        }
+        await this.assertNotDuplicate(+dto.vendorid, invoiceno ?? undefined, null);
+        await this.assertNotDuplicateChallan(+dto.vendorid, challanno, null);
+        const invoicedate = dto.invoicedate || dto.challandate || new Date().toISOString().slice(0, 10);
 
         let duedate = dto.duedate;
-        if(!duedate && dto.invoicedate){
+        if(!duedate){
           const termsDays = Number(vendor?.paymenttermsdays || 0);
-          const base = new Date(dto.invoicedate);
+          const base = new Date(invoicedate);
           base.setDate(base.getDate() + termsDays);
           duedate = base.toISOString().slice(0, 10);
         }
 
-        const gst = await this.deriveInvoiceGstContext(vendor, dto);
+        const gst = await this.deriveInvoiceGstContext(vendor, { ...dto, invoiceno, invoicedate });
 
         return this.purchaseInvoiceRepository.save({
           ...dto,
+          invoiceno,
+          challanno,
+          invoicedate,
           storeid,
-          duedate: duedate || dto.invoicedate,
+          duedate: duedate || invoicedate,
           paymentstatus: dto.paymentstatus || 'Unpaid',
           ...gst,
           createdby:userid
@@ -135,6 +149,13 @@ export class PurchaseInvoiceService {
         if(dup) throw new BadRequestException(`Invoice ${no} from this vendor is already entered${dup.gr_no ? ` (GRN ${dup.gr_no})` : ''}. Open it from the invoice list instead of entering it again.`);
     }
 
+    private async assertNotDuplicateChallan(vendorid: number, challanno: string | null, exceptId: number | null){
+        if(!challanno || !vendorid) return;
+        const [dup] = await this.manager.query(
+          `select id, gr_no from purchase_invoice where vendor_id = $1 and upper(challan_no) = upper($2) and id <> $3 and active and not archive limit 1`, [vendorid, challanno, exceptId ?? 0]);
+        if(dup) throw new BadRequestException(`Challan ${challanno} from this vendor is already entered${dup.gr_no ? ` (GRN ${dup.gr_no})` : ''}. Open it from the invoice list and add the invoice number there.`);
+    }
+
     /** GSTIN/place-of-supply/supply-type defaults for a new invoice header (decision #1: one GSTIN per business). */
     private async deriveInvoiceGstContext(vendor: Vendor | null, dto: any){
         const business = await this.businessRepository.findOne({ where: { isActive: true } as any, order: { id: 'ASC' } as any });
@@ -150,7 +171,7 @@ export class PurchaseInvoiceService {
           reversecharge: dto.reversecharge ?? false,
           itceligibility: dto.itceligibility || 'INPUTS',
           gstreconstatus: 'UNRECONCILED',
-          gstperiod: dto.invoicedate ? `${dto.invoicedate}`.slice(0, 7) : null
+          gstperiod: gstPeriodFor(dto.invoiceno, dto.invoicedate)
         };
     }
 
@@ -343,6 +364,8 @@ export class PurchaseInvoiceService {
       .where('invoice.isActive = :flag', { flag: true })
       // a draft invoice has not been received, so nothing is owed on it yet (and a payment against it is refused)
       .andWhere("invoice.status = 'COMPLETE'")
+      // goods received on a challan are not owed until the vendor's invoice number is entered
+      .andWhere('invoice.invoiceno is not null')
       .orderBy('invoice.invoicedate', 'DESC');
 
     if (query.vendorid) {
@@ -557,13 +580,131 @@ export class PurchaseInvoiceService {
       .where('i.productid = :id', { id }).orderBy('i.createdon','DESC')
       .getMany();
     }
+      /**
+       * Each line's net rate against the vendor's previous net rate for that product (their latest completed invoice),
+       * with what the line still needs: nothing, a reason, or a reason and an approver. Backs the rate-change column on the receiving screen.
+       */
+      async priceCheck(invoiceid:number){
+        const [inv] = await this.manager.query(`select id, vendor_id from purchase_invoice where id = $1`, [invoiceid]);
+        if(!inv) throw new NotFoundException('That invoice does not exist.');
+        const settings = await this.manager.query(
+          `select setting_key, setting_value from app_setting where category = 'purchases' and setting_key in ('price_tolerance_pct', 'price_approval_pct') and active and not archive`);
+        const pick = (k:string) => settings.find((s:any) => s.setting_key === k)?.setting_value;
+        const tolerance = percentSetting(pick('price_tolerance_pct'), DEFAULT_PRICE_TOLERANCE_PCT);
+        const approval = percentSetting(pick('price_approval_pct'), DEFAULT_PRICE_APPROVAL_PCT);
+
+        const lines = await this.manager.query(
+          `select i.id, i.product_id, p.title, p.pack, i.batch, i.ptr_value, i.mrp_cost, i.disc_pcnt, i.price_reason, i.price_approved_by
+             from purchase_invoice_item i join product p on p.id = i.product_id
+            where i.invoice_id = $1 and i.active and not i.archive order by i.id`, [invoiceid]);
+        const previous = lines.length === 0 ? [] : await this.manager.query(
+          `select distinct on (pii.product_id) pii.product_id, pii.ptr_value, pii.disc_pcnt, to_char(pi.invoice_date, 'YYYY-MM-DD') as invoice_date
+             from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
+            where pi.vendor_id = $1 and pi.id <> $2 and pi.status = 'COMPLETE' and pi.active and not pi.archive
+              and pii.active and not pii.archive and pii.product_id = any($3::int[])
+            order by pii.product_id, pi.invoice_date desc, pii.created_on desc`,
+          [inv.vendor_id, invoiceid, [...new Set<number>(lines.map((l:any) => +l.product_id))]]);
+        const prevOf = new Map<number, any>(previous.map((r:any) => [+r.product_id, r]));
+        // the MRP of the product's last purchase from anyone: a jump is a different pack or unit
+        const lastMrp = lines.length === 0 ? [] : await this.manager.query(
+          `select distinct on (pii.product_id) pii.product_id, pii.mrp_cost
+             from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
+            where pi.id <> $1 and pi.status = 'COMPLETE' and pi.active and not pi.archive and pii.active and not pii.archive
+              and pii.mrp_cost > 0 and pii.product_id = any($2::int[])
+            order by pii.product_id, pi.invoice_date desc, pii.created_on desc`,
+          [invoiceid, [...new Set<number>(lines.map((l:any) => +l.product_id))]]);
+        const mrpOf = new Map<number, number>(lastMrp.map((r:any) => [+r.product_id, +r.mrp_cost]));
+
+        const rows = lines.map((l:any) => {
+          const p = prevOf.get(+l.product_id);
+          const now = netRate(l.ptr_value, l.disc_pcnt);
+          const prev = p ? netRate(p.ptr_value, p.disc_pcnt) : null;
+          const changed = classifyChange(prev, now, tolerance, approval);
+          const unit = unitJump(mrpOf.get(+l.product_id) ?? null, +l.mrp_cost);
+          // a unit change needs the receiver's word (and the product's pack checked) even when the rate fell
+          const level = unit !== null && changed.level === 'NONE' ? 'REASON' : changed.level;
+          const pcnt = changed.pcnt;
+          return {
+            itemid: +l.id, productid: +l.product_id, title: l.title, batch: l.batch, pack: +l.pack,
+            unitjump: unit, rate: now, prevrate: prev, prevdate: p?.invoice_date ?? null, pcnt, level,
+            reason: l.price_reason ?? null, approvedby: l.price_approved_by ?? null,
+          };
+        });
+        return { tolerance, approval, lines: rows, needs: rows.filter((r:any) => r.level !== 'NONE').length };
+      }
+
+      /**
+       * Completing an invoice: every line whose rate rose past the tolerance needs a reason, and one that rose past the approval
+       * percent needs a Store Head or Business Head to be the one completing it. What each line was compared with is kept on the line.
+       */
+      private async assertPriceRules(invoiceid:number, userid:number){
+        const check = await this.priceCheck(invoiceid);
+        const missing = check.lines.filter((l:any) => l.level !== 'NONE' && !l.reason);
+        if(missing.length){
+          throw new BadRequestException(`Give a reason for the rate change on: ${missing.map((l:any) => l.unitjump !== null
+            ? `${l.title} (MRP is ${l.unitjump}x its last purchase: is the pack size right?)`
+            : `${l.title} (${l.pcnt > 0 ? '+' : ''}${l.pcnt}% vs last ${l.prevrate})`).join('; ')}.`);
+        }
+        const [who] = await this.manager.query(`select r.name as role from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+        const manager = isManagerRole(who?.role);
+        const large = check.lines.filter((l:any) => l.level === 'APPROVAL');
+        if(large.length && !manager){
+          throw new BadRequestException(`A Store Head or Business Head must complete this invoice: the rate rose by more than ${check.approval}% on ${large.map((l:any) => `${l.title} (+${l.pcnt}%)`).join('; ')}.`);
+        }
+        for(const l of check.lines){
+          await this.manager.query(
+            `update purchase_invoice_item set prev_rate = $2, prev_rate_date = $3, rate_change_pcnt = $4,
+                    price_approved_by = case when $5::boolean then $6 else price_approved_by end,
+                    price_approved_on = case when $5::boolean then now() else price_approved_on end
+              where id = $1`,
+            [l.itemid, l.prevrate, l.prevdate, l.pcnt, l.level === 'APPROVAL', userid]);
+        }
+        if(check.needs > 0){
+          await this.audit.record({ userId: userid, action: 'purchase.price_rise_accepted', entityType: 'purchase_invoice', entityId: invoiceid,
+            summary: `${check.needs} line${check.needs === 1 ? '' : 's'} with a vendor rate rise accepted on completion${large.length ? `, ${large.length} above ${check.approval}%` : ''}`,
+            details: { lines: check.lines.filter((l:any) => l.level !== 'NONE').map((l:any) => ({ item: l.itemid, title: l.title, prev: l.prevrate, now: l.rate, pcnt: l.pcnt, reason: l.reason })) } });
+        }
+      }
+
+      /**
+       * An invoice number or challan number is being set or changed on one receipt. One of the two must remain, neither may repeat
+       * for the vendor, an invoice number cannot be taken away once money or GST depends on it, and the GST month follows the
+       * invoice number and date (none while the invoice is still to come).
+       */
+      private async checkReferences(id:number, values:any){
+        const [cur] = await this.manager.query(
+          `select i.vendor_id, i.invoice_no, i.challan_no, to_char(i.invoice_date, 'YYYY-MM-DD') as invoice_date,
+                  (select count(*)::int from vendor_payment p where p.invoice_id = i.id) as payments,
+                  (select count(*)::int from gst_reconciliation g where g.purchase_invoice_id = i.id) as gst
+             from purchase_invoice i where i.id = $1`, [id]);
+        if(!cur) throw new NotFoundException('That invoice does not exist.');
+        const invoiceno = 'invoiceno' in values ? cleanRef(values.invoiceno) : cleanRef(cur.invoice_no);
+        const challanno = 'challanno' in values ? cleanRef(values.challanno) : cleanRef(cur.challan_no);
+        if(!invoiceno && !challanno){
+          throw new BadRequestException(`Keep the invoice number, or the delivery challan number if the invoice has not come yet.`);
+        }
+        if(cur.invoice_no && !invoiceno && (cur.payments > 0 || cur.gst > 0)){
+          throw new BadRequestException(`The invoice number cannot be removed: a payment or a GST match is recorded against this invoice.`);
+        }
+        const vendorid = +(values.vendorid ?? cur.vendor_id);
+        await this.assertNotDuplicate(vendorid, invoiceno ?? undefined, id);
+        await this.assertNotDuplicateChallan(vendorid, challanno, id);
+        const out:any = { ...values };
+        if('invoiceno' in values) out.invoiceno = invoiceno;
+        if('challanno' in values) out.challanno = challanno;
+        if('invoiceno' in values || 'invoicedate' in values) out.gstperiod = gstPeriodFor(invoiceno, values.invoicedate ?? cur.invoice_date);
+        return out;
+      }
+
       async update(ids:number[], values:any, userid:number){
         if(values?.purchaseorderid){
           await this.assertApprovedPurchaseOrder(+values.purchaseorderid);
         }
-        if(values?.invoiceno !== undefined && ids.length === 1){
-          const [cur] = await this.manager.query(`select vendor_id from purchase_invoice where id = $1`, [ids[0]]);
-          await this.assertNotDuplicate(+(values.vendorid ?? cur?.vendor_id), values.invoiceno, ids[0]);
+        if(values?.status === 'COMPLETE'){
+          for(const id of ids) await this.assertPriceRules(id, userid);
+        }
+        if(ids.length === 1 && values && ('invoiceno' in values || 'challanno' in values || 'invoicedate' in values)){
+          values = await this.checkReferences(ids[0], values);
         }
         const result = await this.purchaseInvoiceRepository.createQueryBuilder('invoice')
         .update(PurchaseInvoice, {...values, updatedby: userid})

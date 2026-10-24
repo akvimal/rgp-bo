@@ -21,8 +21,18 @@ import { VendorPayment } from "./vendor-payment.entity";
     @PrimaryGeneratedColumn({ type: "integer", name: "id" })
     id: number;
   
-    @Column("character varying", { name: "invoice_no", unique: true })
-    invoiceno: string;
+    /** empty while the goods are received on a delivery challan and the vendor's invoice is still to come */
+    @Column("character varying", { name: "invoice_no", nullable: true })
+    invoiceno: string | null;
+
+    @Column("character varying", { name: "challan_no", length: 60, nullable: true })
+    challanno: string | null;
+
+    @Column("date", { name: "challan_date", nullable: true })
+    challandate: string | null;
+
+    @Column("character varying", { name: "challan_path", length: 300, nullable: true })
+    challanpath: string | null;
   
     @Column("date", { name: "invoice_date" })
     invoicedate: string;

@@ -19,6 +19,10 @@ export class InvoiceService {
         return this.http.get(`${this.apiurl}/purchases/${id}`);
     }
 
+    priceCheck(id:any){
+        return this.http.get<any>(`${this.apiurl}/purchases/${id}/price-check`);
+    }
+
     findAll(page = 1, limit = 50, vendorId?: number | null){
         const params: any = { page: String(page), limit: String(limit) };
         if (vendorId) params.vendor = String(vendorId);

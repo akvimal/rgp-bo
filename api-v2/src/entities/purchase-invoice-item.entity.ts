@@ -97,6 +97,24 @@ import { PurchaseRequest } from "./purchase-request.entity";
     @Column("double precision", { name: "cess_amount", precision: 53 })
     cessamount: number;
 
+    @Column("numeric", { name: "prev_rate", precision: 12, scale: 2, nullable: true, transformer: { to: (v: any) => v, from: (v: any) => v === null ? null : +v } })
+    prevrate: number | null;
+
+    @Column("date", { name: "prev_rate_date", nullable: true })
+    prevratedate: string | null;
+
+    @Column("numeric", { name: "rate_change_pcnt", precision: 7, scale: 2, nullable: true, transformer: { to: (v: any) => v, from: (v: any) => v === null ? null : +v } })
+    ratechangepcnt: number | null;
+
+    @Column("character varying", { name: "price_reason", length: 20, nullable: true })
+    pricereason: string | null;
+
+    @Column("integer", { name: "price_approved_by", nullable: true })
+    priceapprovedby: number | null;
+
+    @Column("timestamptz", { name: "price_approved_on", nullable: true })
+    priceapprovedon: Date | null;
+
     @ManyToOne(
       () => PurchaseInvoice,
       (purchaseInvoice) => purchaseInvoice.items

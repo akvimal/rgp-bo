@@ -1,6 +1,9 @@
 export interface Invoice {
     id?:number,
-    invoiceno?:string,
+    invoiceno?:string | null,
+    challanno?:string | null,
+    challandate?:string | null,
+    challanpath?:string | null,
     grno?:string,
     invoicedate?:string,
     duedate?:string,

@@ -68,7 +68,7 @@ export class VendorIssueService {
 
   async invoices(vendorId: number) {
     return this.manager.query(
-      `select id, invoice_no, to_char(invoice_date, 'YYYY-MM-DD') as invoice_date, coalesce(total, 0)::float as total
+      `select id, coalesce(invoice_no, 'Challan ' || challan_no) as invoice_no, to_char(invoice_date, 'YYYY-MM-DD') as invoice_date, coalesce(total, 0)::float as total
          from purchase_invoice where vendor_id = $1 and active and not archive order by invoice_date desc, id desc limit 60`, [vendorId]);
   }
 

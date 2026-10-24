@@ -51,7 +51,10 @@ export class InvoiceFormComponent implements OnInit {
         id: new FormControl(''),
         vendorid: new FormControl('',Validators.required),
         storeid: new FormControl('',Validators.required),
-        invoiceno: new FormControl('',[Validators.required, Validators.maxLength(40)]),
+        invoiceno: new FormControl('',[Validators.maxLength(40)]),
+        challanno: new FormControl('',[Validators.maxLength(60)]),
+        challandate: new FormControl(''),
+        challanpath: new FormControl(''),
         invoicedate: new FormControl(this.today(),Validators.required),
         printedtotal: new FormControl(null),
         duedate: new FormControl(''),
@@ -78,6 +81,11 @@ export class InvoiceFormComponent implements OnInit {
 
     get id(): any { return this.route.snapshot.paramMap.get('id'); }
     /** a received invoice keeps what was received: only the due date, reference and notes change */
+    /** received on a delivery challan; the vendor's invoice number is still to be entered */
+    get awaiting(): boolean { return this.locked && !String(this.invoice.invoiceno || '').trim(); }
+    get hasInvoiceNo(): boolean { return !!String(this.form.value.invoiceno || '').trim(); }
+    uploadingChallan = false;
+
     get locked(): boolean { return !!this.id && !!this.invoice.status && this.invoice.status !== 'NEW'; }
     get vendor(): any { return this.vendors.find(v => +v.id === +this.form.value.vendorid) || null; }
     get terms(): number { return +(this.vendor?.paymenttermsdays || 0); }
@@ -100,14 +108,20 @@ export class InvoiceFormComponent implements OnInit {
         this.invoice = data;
         const day = (d:any) => d ? String(d).slice(0, 10) : '';
         this.form.patchValue({
-          id: data.id, vendorid: data.vendorid, storeid: data.storeid, invoiceno: data.invoiceno,
+          id: data.id, vendorid: data.vendorid, storeid: data.storeid, invoiceno: data.invoiceno || '',
+          challanno: data.challanno || '', challandate: day(data.challandate), challanpath: data.challanpath || '',
           invoicedate: day(data.invoicedate), duedate: day(data.duedate || data.invoicedate), printedtotal: data.printedtotal ?? null,
           referenceno: data.referenceno || '', notes: data.notes || '', purchaseorderid: data.purchaseorderid || '', documentpath: data.documentpath || '',
           cashdiscount: data.cashdiscount ?? null, suppliergstin: data.suppliergstin || '', supplytype: data.supplytype || '', itceligibility: data.itceligibility || '', reversecharge: !!data.reversecharge
         });
         this.showMore = !!(data.referenceno || data.notes || data.cashdiscount);
         this.form.controls['vendorid'].disable();
-        if(this.locked) ['storeid','invoiceno','invoicedate','printedtotal','purchaseorderid','suppliergstin','supplytype','itceligibility','reversecharge'].forEach(k => this.form.controls[k].disable());
+        // a received invoice is fixed, except that a receipt still awaiting its invoice can take the invoice's number, date, total and GST details
+        if(this.locked){
+          const fixed = ['storeid','purchaseorderid'];
+          if(!this.awaiting) fixed.push('invoiceno','invoicedate','printedtotal','suppliergstin','supplytype','itceligibility','reversecharge','challanno','challandate');
+          fixed.forEach(k => this.form.controls[k].disable());
+        }
         this.loadOrders(data.vendorid);
       });
     }
@@ -119,7 +133,7 @@ export class InvoiceFormComponent implements OnInit {
 
     /** the due date follows the invoice date and the vendor's terms until the person sets one */
     setDue(){
-      if(this.id || this.changingDue || !this.form.value.invoicedate) return;
+      if((this.id && !this.awaiting) || this.changingDue || !this.form.value.invoicedate) return;
       const d = new Date(this.form.value.invoicedate + 'T00:00:00');
       d.setDate(d.getDate() + this.terms);
       this.form.controls['duedate'].setValue(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10));
@@ -178,6 +192,26 @@ export class InvoiceFormComponent implements OnInit {
             : err?.status === 401 ? 'Your session has ended. Sign in again.'
             : `Could not attach the file${err?.status ? ' (error ' + err.status + ')' : ''}. Use a PDF or photo under 10 MB.`;
         });
+    }
+
+    uploadChallan(event:any){
+      const file = event?.target?.files?.[0];
+      if(!file) return;
+      this.uploadingChallan = true;
+      this.files.upload(file, `challan=${this.form.value.vendorid || 'new'}-${Date.now()}`).subscribe(
+        (res:any) => { this.form.controls['challanpath'].setValue(res?.path || ''); this.uploadingChallan = false; },
+        (err:any) => {
+          this.uploadingChallan = false;
+          this.errorMessage = err?.status === 413 ? 'That file is too large. Use a PDF or photo under 10 MB.' : 'Could not attach the challan. Use a PDF or photo under 10 MB.';
+        });
+    }
+
+    viewChallan(){
+      this.files.view(this.form.value.challanpath).subscribe((b:any) => window.open(URL.createObjectURL(b), '_blank'), () => this.errorMessage = 'Could not open the attached challan.');
+    }
+
+    removeChallan(){
+      this.form.controls['challanpath'].setValue('');
     }
 
     /** read the attached copy: show what was found and fill the empty fields of the form */
@@ -401,9 +435,12 @@ export class InvoiceFormComponent implements OnInit {
       const v = this.form.getRawValue();
       const out: string[] = [];
       if(!v.vendorid) out.push('vendor');
-      if(!String(v.invoiceno || '').trim()) out.push('invoice number');
-      if(!v.invoicedate) out.push('invoice date');
-      if(!this.id && !(+v.printedtotal > 0)) out.push('invoice total');
+      const hasInv = !!String(v.invoiceno || '').trim();
+      const hasChallan = !!String(v.challanno || '').trim();
+      if(!hasInv && !hasChallan) out.push('invoice number, or challan number if the invoice has not come');
+      if(hasInv && !v.invoicedate) out.push('invoice date');
+      if(!hasInv && hasChallan && !(v.challandate || v.invoicedate)) out.push('challan date');
+      if(!this.id && hasInv && !(+v.printedtotal > 0)) out.push('invoice total');
       if(!v.storeid) out.push('receiving store');
       if(this.gstinBad) out.push('a valid supplier GSTIN');
       return out;
@@ -414,9 +451,13 @@ export class InvoiceFormComponent implements OnInit {
       this.errorMessage = '';
       const v = this.form.getRawValue();
       const obj:any = {
-        invoiceno: String(v.invoiceno).trim().toUpperCase(),
-        invoicedate: v.invoicedate,
-        duedate: v.duedate || v.invoicedate,
+        invoiceno: String(v.invoiceno || '').trim().toUpperCase(),
+        challanno: String(v.challanno || '').trim().toUpperCase() || null,
+        challandate: v.challandate || null,
+        challanpath: v.challanpath || null,
+        // with no invoice yet the receipt is dated by its challan
+        invoicedate: String(v.invoiceno || '').trim() ? v.invoicedate : (v.challandate || v.invoicedate),
+        duedate: v.duedate || (String(v.invoiceno || '').trim() ? v.invoicedate : (v.challandate || v.invoicedate)),
         referenceno: v.referenceno,
         notes: v.notes,
         vendorid: +v.vendorid,

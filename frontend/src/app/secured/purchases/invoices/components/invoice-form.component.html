@@ -3,9 +3,11 @@
     <div class="d-flex align-items-center gap-2 mb-1">
       <h5 class="card-title p-0 m-0" data-testid="inv-f-title">{{id ? 'Edit invoice' : 'New purchase invoice'}}</h5>
       <span class="badge" [ngClass]="locked ? 'bg-success' : 'bg-secondary'" *ngIf="id" data-testid="inv-f-status">{{locked ? 'Received' : 'Draft'}}</span>
+      <span class="badge bg-warning text-dark" *ngIf="awaiting" data-testid="inv-f-awaiting">Awaiting invoice</span>
     </div>
     <p class="small text-muted mb-3" *ngIf="!id">Enter what is printed at the top of the vendor's invoice. You add the items on the next page.</p>
-    <p class="small text-muted mb-3" *ngIf="locked" data-testid="inv-f-locked">This invoice has been received, so only the due date, reference and notes can change.</p>
+    <p class="small text-muted mb-3" *ngIf="awaiting" data-testid="inv-f-awaiting-note">Received on challan <b>{{invoice.challanno}}</b>. When the vendor's invoice comes, enter its number, date and total here: it then becomes payable and counts in GST. The stock and cost are already in.</p>
+    <p class="small text-muted mb-3" *ngIf="locked && !awaiting" data-testid="inv-f-locked">This invoice has been received, so only the due date, reference and notes can change.</p>
 
     <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="off">
       <div class="row g-3">
@@ -17,7 +19,7 @@
           </select>
         </div>
         <div class="col-md-4">
-          <label for="inv-no" class="form-label">Invoice no. *</label>
+          <label for="inv-no" class="form-label">Invoice no. <span class="text-muted small">(leave empty if only the challan has come)</span></label>
           <input type="text" class="form-control" id="inv-no" formControlName="invoiceno" maxlength="40" (blur)="checkDuplicate()" placeholder="As printed, e.g. INV/24-25/0012" data-testid="inv-f-no">
         </div>
         <div class="col-md-2">
@@ -25,7 +27,7 @@
           <input type="date" class="form-control" id="inv-date" formControlName="invoicedate" (change)="setDue()" data-testid="inv-f-date">
         </div>
         <div class="col-md-2">
-          <label for="inv-total" class="form-label">Invoice total *</label>
+          <label for="inv-total" class="form-label">Invoice total <span *ngIf="!id && hasInvoiceNo">*</span><span class="text-muted small" *ngIf="!hasInvoiceNo">(or challan total)</span></label>
           <div class="input-group">
             <span class="input-group-text">&#8377;</span>
             <input type="number" min="0" step="0.01" class="form-control" id="inv-total" formControlName="printedtotal" placeholder="As printed" data-testid="inv-f-total">
@@ -59,6 +61,28 @@
           <div *ngIf="!changingDue" class="form-control-plaintext" data-testid="inv-f-due-text">{{dueText() || '-'}}
             <a role="button" class="small ms-1" (click)="changingDue = true" data-testid="inv-f-due-change">Change</a></div>
           <input *ngIf="changingDue" type="date" class="form-control" formControlName="duedate" data-testid="inv-f-due">
+        </div>
+
+        <div class="col-12" *ngIf="!locked || awaiting" data-testid="inv-f-challan">
+          <div class="border rounded p-2">
+            <div class="small fw-semibold mb-2">Delivery challan <span class="text-muted fw-normal">&mdash; when the goods come before the invoice. The challan rates are the cost until the invoice arrives.</span></div>
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label for="inv-challan-no" class="form-label small mb-1">Challan no.</label>
+                <input type="text" class="form-control" id="inv-challan-no" formControlName="challanno" maxlength="60" data-testid="inv-f-challan-no">
+              </div>
+              <div class="col-md-3">
+                <label for="inv-challan-date" class="form-label small mb-1">Challan date</label>
+                <input type="date" class="form-control" id="inv-challan-date" formControlName="challandate" data-testid="inv-f-challan-date">
+              </div>
+              <div class="col-md-5">
+                <label for="inv-challan-file" class="form-label small mb-1">Challan photo <span class="text-muted">(optional)</span></label>
+                <input type="file" class="form-control" id="inv-challan-file" accept=".pdf,.jpg,.jpeg,.png" (change)="uploadChallan($event)" [disabled]="uploadingChallan" data-testid="inv-f-challan-file">
+                <div class="small mt-1" *ngIf="form.value.challanpath" data-testid="inv-f-challan-ok"><i class="bi bi-paperclip"></i> Attached
+                  <a role="button" (click)="viewChallan()">view</a> &middot; <a role="button" class="text-danger" (click)="removeChallan()">remove</a></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="col-md-6">

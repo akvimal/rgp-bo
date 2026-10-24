@@ -37,6 +37,12 @@ export class PurchaseInvoiceController {
       return this.view.payments(id);
     }
 
+    /** Each line's rate against the vendor's previous rate, and what it still needs before the invoice can be completed. */
+    @Get('/:id/price-check')
+    async priceCheck(@Param('id', ParseIntPipe) id:number) {
+      return this.purchaseInvoiceService.priceCheck(id);
+    }
+
     @Post('/:id/hold')
     async hold(@Param('id', ParseIntPipe) id:number, @Body() body:any, @User() currentUser:any) {
       if(typeof body?.reason !== 'string') throw new BadRequestException('Give a reason.');

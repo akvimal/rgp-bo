@@ -24,6 +24,17 @@ export class InvoiceItemsComponent {
     nettotal:number = 0;
     outstandingBalance:number = 0;
     importFeedback:string = '';
+    completeError:string = '';
+    priceByItem:{[itemid:number]:any} = {};
+    priceTolerance:number = 0.5;
+    priceApproval:number = 5;
+    readonly priceReasons = [
+        { value: 'PRICE_REVISED', label: 'Price revised' },
+        { value: 'NEW_BATCH', label: 'New batch' },
+        { value: 'SCHEME_ENDED', label: 'Scheme ended' },
+        { value: 'VENDOR_ERROR', label: 'Vendor error' },
+        { value: 'UNIT_CHANGED', label: 'Unit / pack changed' },
+    ];
 
     confirmingDelete:boolean = false;
     deleteError:string = '';
@@ -49,6 +60,10 @@ export class InvoiceItemsComponent {
     selectAll(event:any){
         (this.items || []).forEach((i:any) => { if(i.status === 'NEW') i.selected = event.target.checked; });
         this.itemSelected = (this.items || []).some((i:any) => i.selected);
+    }
+
+    viewChallan(){
+        this.files.view(this.invoice.challanpath).subscribe((b:any) => window.open(URL.createObjectURL(b), '_blank'), () => this.deleteError = 'Could not open the attached challan.');
     }
 
     viewDocument(){
@@ -86,7 +101,8 @@ export class InvoiceItemsComponent {
             });
             this.nettotal = this.grosstotal - this.disctotal + this.taxtotal;
             this.outstandingBalance = +(inv.balanceamount || 0);
-            
+            this.loadPriceCheck();
+
             if(this.items) {
                 this.itemSelected =  this.items.filter((i:any) => i.selected).length > 0;
                 const verifiedItems = this.items.filter((i:any) => i.status === 'VERIFIED');
@@ -131,9 +147,30 @@ export class InvoiceItemsComponent {
     }
     
     confirmInvoice(){
+        this.completeError = '';
         this.invService.confirm([this.invoice.id],{status:'COMPLETE',comments:this.feedback}).subscribe(data => {
             this.fetchItems(this.invoice.id);
+        }, (err:any) => {
+            this.completeError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'Could not complete the invoice.';
         });
+    }
+
+    /** the vendor's previous rate for each line, so a rise is seen (and explained) before the invoice is completed */
+    loadPriceCheck(){
+        this.invService.priceCheck(this.invoice.id).subscribe((r:any) => {
+            this.priceByItem = {};
+            (r.lines || []).forEach((l:any) => this.priceByItem[l.itemid] = l);
+            this.priceTolerance = r.tolerance;
+            this.priceApproval = r.approval;
+        }, () => this.priceByItem = {});
+    }
+
+    setPriceReason(itemid:any, reason:string){
+        this.invService.updateItems([itemid], { pricereason: reason || null }).subscribe(() => this.loadPriceCheck(), () => this.loadPriceCheck());
+    }
+
+    get priceLinesNeedingReason(): number {
+        return Object.values(this.priceByItem).filter((l:any) => l.level !== 'NONE' && !l.reason).length;
     }
 
     importOrderItems(){

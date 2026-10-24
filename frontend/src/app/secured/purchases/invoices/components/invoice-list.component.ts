@@ -4,7 +4,7 @@ import { combineLatest } from "rxjs";
 import { InvoiceService } from "../invoices.service";
 import { VendorsService } from "../../vendors/vendors.service";
 
-const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft"];
+const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft", "awaiting"];
 const MODES = ["Cash", "Transfer", "Cheque", "UPI", "Card"];
 
 @Component({
@@ -226,7 +226,7 @@ export class InvoiceListComponent implements OnInit {
     // ---------------------------------------------------------------- presentation
     payClass(s: string): string {
         return s === 'Paid' ? 'bg-success' : s === 'Part Paid' ? 'bg-info text-dark' : s === 'Overdue' ? 'bg-danger'
-            : s === 'On Hold' ? 'bg-warning text-dark' : s === 'Draft' ? 'bg-light text-dark border' : 'bg-secondary';
+            : s === 'On Hold' ? 'bg-warning text-dark' : s === 'Awaiting invoice' ? 'bg-dark' : s === 'Draft' ? 'bg-light text-dark border' : 'bg-secondary';
     }
 
     gstLabel(s: string | null): string {

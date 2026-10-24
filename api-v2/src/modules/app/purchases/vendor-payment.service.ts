@@ -172,6 +172,9 @@ export class VendorPaymentService {
         if (invoice.status !== 'COMPLETE') {
             throw new BadRequestException(`${invoice.invoiceno}: payments can only be recorded against a completed invoice.`);
         }
+        if (!invoice.invoiceno) {
+            throw new BadRequestException(`Challan ${invoice.challanno}: enter the vendor's invoice number before recording a payment.`);
+        }
         if (invoice.paymentstatus === 'On Hold') {
             throw new BadRequestException(`${invoice.invoiceno} is on hold - clear the hold before paying it.`);
         }

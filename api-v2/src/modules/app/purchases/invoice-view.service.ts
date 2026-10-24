@@ -3,7 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
-export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft'] as const;
+export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting'] as const;
 export type InvoiceView = typeof INVOICE_VIEWS[number];
 
 export interface InvoiceFilter { vendor?: number; from?: string; to?: string; q?: string }
@@ -12,7 +12,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // sortable columns -> SQL (all from the wrapped query below)
 const SORTS: Record<string, string> = {
   invoice_date: 'invoice_date', due_date: 'due_date', total: 'total', paid_amount: 'paid', balance_amount: 'balance',
-  business_name: 'lower(business_name)', invoice_no: 'invoice_no', payment_status: 'payment_status', items: 'items',
+  business_name: 'lower(business_name)', invoice_no: 'coalesce(invoice_no, challan_no)', payment_status: 'payment_status', items: 'items',
 };
 
 /**
@@ -31,30 +31,33 @@ export class InvoiceViewService {
   private base(f: InvoiceFilter) {
     const where: string[] = ['i.active and not i.archive'];
     const args: any[] = [];
-    const add = (sql: string, v: any) => { args.push(v); where.push(sql.replace('?', `$${args.length}`)); };
+    const add = (sql: string, v: any) => { args.push(v); where.push(sql.split('?').join(`$${args.length}`)); };
     if (f.vendor) add('i.vendor_id = ?', f.vendor);
     if (f.from && DATE.test(f.from)) add('i.invoice_date >= ?::date', f.from);
     if (f.to && DATE.test(f.to)) add('i.invoice_date <= ?::date', f.to);
-    if (f.q && f.q.trim()) add(`i.invoice_no ilike ?`, `%${f.q.trim()}%`);
+    if (f.q && f.q.trim()) add(`(i.invoice_no ilike ? or i.challan_no ilike ?)`, `%${f.q.trim()}%`);
     const sql = `
       select w.*,
              greatest(w.total - w.paid, 0) as balance,
-             (w.status = 'COMPLETE' and w.total - w.paid > 0.005) as pending,
-             (w.status = 'COMPLETE' and w.total - w.paid > 0.005 and w.stored_status = 'On Hold') as on_hold,
-             (w.status = 'COMPLETE' and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.due_date < current_date) as overdue,
-             (w.status = 'COMPLETE' and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.due_date >= current_date and w.due_date <= current_date + 7) as due7,
-             (w.status = 'COMPLETE' and w.total - w.paid <= 0.005) as is_paid,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005) as pending,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status = 'On Hold') as on_hold,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.due_date < current_date) as overdue,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.due_date >= current_date and w.due_date <= current_date + 7) as due7,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid <= 0.005) as is_paid,
              (w.status <> 'COMPLETE') as draft,
+             (w.status = 'COMPLETE' and w.invoice_no is null) as awaiting,
              case when w.status <> 'COMPLETE' then 'Draft'
+                  when w.invoice_no is null then 'Awaiting invoice'
                   when w.total - w.paid <= 0.005 then 'Paid'
                   when w.stored_status = 'On Hold' then 'On Hold'
                   when w.due_date < current_date then 'Overdue'
                   when w.paid > 0.005 then 'Part Paid'
                   else 'Unpaid' end as payment_status,
-             case when w.status = 'COMPLETE' and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.due_date < current_date
-                  then (current_date - w.due_date) else 0 end as days_overdue
+             case when w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.due_date < current_date
+                  then (current_date - w.due_date) else 0 end as days_overdue,
+             case when w.status = 'COMPLETE' and w.invoice_no is null then (current_date - coalesce(w.challan_date, w.invoice_date)) else 0 end as days_waiting
         from (
-          select i.id, i.vendor_id, btrim(v.business_name) as business_name, i.invoice_no, i.invoice_date,
+          select i.id, i.vendor_id, btrim(v.business_name) as business_name, i.invoice_no, i.challan_no, i.challan_date, i.invoice_date,
                  coalesce(i.due_date, i.invoice_date) as due_date, i.status, i.total::numeric as total,
                  coalesce(i.payment_status, 'Unpaid') as stored_status, i.gst_recon_status, i.gst_period,
                  i.hold_reason, p.paid, p.last_payment, p.payments,
@@ -77,6 +80,7 @@ export class InvoiceViewService {
       case 'hold': return 'on_hold';
       case 'paid': return 'is_paid';
       case 'draft': return 'draft';
+      case 'awaiting': return 'awaiting';
       default: return 'true';
     }
   }
@@ -85,7 +89,7 @@ export class InvoiceViewService {
     const { sql, args } = this.base(f);
     const v = (INVOICE_VIEWS as readonly string[]).includes(view) ? view : 'all';
     // unpaid views read best oldest-due first; the rest newest first
-    const defaultSort = ['pending', 'overdue', 'due7', 'hold'].includes(v) ? 'due_date asc' : 'invoice_date desc';
+    const defaultSort = ['pending', 'overdue', 'due7', 'hold'].includes(v) ? 'due_date asc' : v === 'awaiting' ? 'invoice_date asc' : 'invoice_date desc';
     const col = sort && SORTS[sort] ? `${SORTS[sort]} ${dir === 'asc' ? 'asc' : 'desc'}, id desc` : `${defaultSort}, id desc`;
     const safeLimit = Math.min(100, Math.max(1, limit || 25));
     const safePage = Math.max(1, page || 1);
@@ -93,7 +97,8 @@ export class InvoiceViewService {
       `select *, count(*) over ()::int as total_rows from (${sql}) x where ${this.viewClause(v)}
         order by ${col} limit ${safeLimit} offset ${(safePage - 1) * safeLimit}`, args);
     const data = rows.map((r: any) => ({
-      id: r.id, vendor_id: r.vendor_id, business_name: r.business_name, invoice_no: r.invoice_no,
+      id: r.id, vendor_id: r.vendor_id, business_name: r.business_name, invoice_no: r.invoice_no, challan_no: r.challan_no, challan_date: r.challan_date,
+      awaiting: r.awaiting, days_waiting: +r.days_waiting,
       invoice_date: r.invoice_date, due_date: r.due_date, status: r.status, payment_status: r.payment_status,
       items: r.items, total: +r.total, paid_amount: +r.paid, balance_amount: +r.balance, days_overdue: +r.days_overdue,
       last_payment: r.last_payment, payments: r.payments, on_hold: r.on_hold, hold_reason: r.hold_reason,
@@ -112,7 +117,9 @@ export class InvoiceViewService {
               count(*) filter (where due7)::int as due7_n, coalesce(round(sum(balance) filter (where due7), 2), 0) as due7_amt,
               count(*) filter (where on_hold)::int as hold_n, coalesce(round(sum(balance) filter (where on_hold), 2), 0) as hold_amt,
               count(*) filter (where is_paid)::int as paid_n, coalesce(round(sum(total) filter (where is_paid), 2), 0) as paid_amt,
-              count(*) filter (where draft)::int as draft_n, coalesce(round(sum(total) filter (where draft), 2), 0) as draft_amt
+              count(*) filter (where draft)::int as draft_n, coalesce(round(sum(total) filter (where draft), 2), 0) as draft_amt,
+              count(*) filter (where awaiting)::int as awaiting_n, coalesce(round(sum(total) filter (where awaiting), 2), 0) as awaiting_amt,
+              coalesce(max(days_waiting) filter (where awaiting), 0)::int as awaiting_oldest
          from (${sql}) x`, args);
     const n = (k: string) => +r[k];
     return {
@@ -123,6 +130,7 @@ export class InvoiceViewService {
       hold: { count: n('hold_n'), amount: n('hold_amt') },
       paid: { count: n('paid_n'), amount: n('paid_amt') },
       draft: { count: n('draft_n'), amount: n('draft_amt') },
+      awaiting: { count: n('awaiting_n'), amount: n('awaiting_amt'), oldest_days: n('awaiting_oldest') },
     };
   }
 

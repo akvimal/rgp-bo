@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreatePurchaseInvoiceItemDto {
 
@@ -91,6 +91,11 @@ export class CreatePurchaseInvoiceItemDto {
     @IsString()
     @MaxLength(500)
     readonly comments: string;
+
+    @ApiProperty({ description: 'why the vendor rate rose', example: 'PRICE_REVISED', required: false })
+    @IsOptional()
+    @IsIn(['PRICE_REVISED', 'NEW_BATCH', 'SCHEME_ENDED', 'VENDOR_ERROR', 'UNIT_CHANGED'])
+    readonly pricereason: string;
 
     @ApiProperty({ description: 'status', example: '' })
     @IsOptional()

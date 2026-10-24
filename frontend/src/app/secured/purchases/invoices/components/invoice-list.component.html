@@ -27,6 +27,8 @@
         <div class="small">Paid</div><div class="fs-6 fw-bold">&#8377;{{summary.paid.amount | number:'1.0-0'}}</div><div class="small">{{summary.paid.count}} invoice{{summary.paid.count === 1 ? '' : 's'}}</div></button></div>
       <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'draft' ? 'btn-secondary' : 'btn-outline-secondary'" data-testid="inv-chip-draft" (click)="setView('draft')" title="Entered but not received: nothing is owed on these yet">
         <div class="small">Drafts</div><div class="fs-6 fw-bold">&#8377;{{summary.draft.amount | number:'1.0-0'}}</div><div class="small">{{summary.draft.count}} not received</div></button></div>
+      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'awaiting' ? 'btn-dark' : 'btn-outline-dark'" data-testid="inv-chip-awaiting" (click)="setView('awaiting')" title="Goods received on a challan, the vendor's invoice not yet entered: in stock, not yet payable">
+        <div class="small">Awaiting invoice</div><div class="fs-6 fw-bold">&#8377;{{summary.awaiting?.amount | number:'1.0-0'}}</div><div class="small">{{summary.awaiting?.count}} received<span *ngIf="summary.awaiting?.oldest_days"> &middot; oldest {{summary.awaiting.oldest_days}}d</span></div></button></div>
     </div>
   </div>
 
@@ -70,7 +72,9 @@
         </thead>
         <tbody>
           <tr *ngFor="let p of invoices" data-testid="inv-row" [attr.data-vendor]="p.business_name" [attr.data-balance]="p.balance_amount">
-            <td class="text-nowrap"><a [routerLink]="['../items', p.id]">{{p.invoice_no}}</a><div class="small text-muted" *ngIf="p.items === 0">no items</div></td>
+            <td class="text-nowrap"><a [routerLink]="['../items', p.id]">{{p.invoice_no || ('Challan ' + p.challan_no)}}</a>
+              <div class="small text-muted" *ngIf="p.awaiting" data-testid="inv-awaiting-note">challan, invoice not yet entered &middot; {{p.days_waiting}}d</div>
+              <div class="small text-muted" *ngIf="p.items === 0">no items</div></td>
             <td class="text-nowrap">{{p.invoice_date | date:'dd MMM yyyy'}}</td>
             <td class="text-nowrap">{{p.due_date | date:'dd MMM yyyy'}}<div class="small text-danger" *ngIf="p.days_overdue > 0" data-testid="inv-late">{{p.days_overdue}} day{{p.days_overdue === 1 ? '' : 's'}} late</div></td>
             <td>{{p.business_name}}</td>
@@ -82,6 +86,7 @@
             <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
             <td class="text-end text-nowrap">
               <div class="d-flex flex-wrap gap-1 justify-content-end" style="min-width:8rem">
+              <a class="btn btn-primary btn-sm py-0" data-testid="inv-add-invoice" *ngIf="p.awaiting" [routerLink]="['../edit', p.id]" title="The vendor's invoice has come: enter its number, date and total">Add invoice no.</a>
               <button class="btn btn-primary btn-sm py-0" data-testid="inv-pay" *ngIf="canPay(p)" (click)="openPay(p)" title="Record a payment">Pay</button>
               <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-history" *ngIf="p.payments > 0" (click)="openHistory(p)" title="Payments recorded">Payments</button>
               <button class="btn btn-outline-warning btn-sm py-0" data-testid="inv-hold" *ngIf="p.status === 'COMPLETE' && p.balance_amount > 0 && !p.on_hold" (click)="openHold(p)" title="Hold: no payment until released">Hold</button>

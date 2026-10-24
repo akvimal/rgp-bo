@@ -4,7 +4,11 @@
             <div>
                 <div class="fw-semibold fs-5">{{invoice.vendor?.name}}</div>
                 <div class="inv-label">
-                    Invoice #{{invoice.invoiceno}} &middot; {{invoice.invoicedate | date:'dd MMM yyyy'}}
+                    <ng-container *ngIf="invoice.invoiceno; else onChallan">Invoice #{{invoice.invoiceno}} &middot; {{invoice.invoicedate | date:'dd MMM yyyy'}}</ng-container>
+                    <ng-template #onChallan>Challan #{{invoice.challanno}} &middot; {{(invoice.challandate || invoice.invoicedate) | date:'dd MMM yyyy'}}
+                        <span class="badge bg-warning text-dark ms-1" data-testid="invoice-awaiting">Awaiting invoice</span></ng-template>
+                    <ng-container *ngIf="invoice.invoiceno && invoice.challanno"> &middot; Challan {{invoice.challanno}}</ng-container>
+                    <a *ngIf="invoice.challanpath" role="button" class="ms-2" (click)="viewChallan()" data-testid="invoice-challan-copy"><i class="bi bi-paperclip"></i> Challan copy</a>
                     <span *ngIf="invoice.duedate"> &middot; Due {{invoice.duedate | date:'dd MMM yyyy'}}</span>
                 </div>
             </div>
@@ -15,6 +19,7 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm py-0 ms-1" (click)="confirmingDelete = false">Keep</button></span>
                 <a class="btn btn-outline-secondary btn-sm py-0" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-edit">Edit details</a>
                 <a *ngIf="invoice.documentpath" role="button" class="btn btn-outline-secondary btn-sm py-0" (click)="viewDocument()" data-testid="invoice-copy"><i class="bi bi-paperclip"></i> Invoice copy</a>
+                <a *ngIf="invoice.status !== 'NEW' && !invoice.invoiceno" class="btn btn-primary btn-sm py-0" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-add-number">Add invoice no.</a>
                 <span class="badge bg-secondary">{{invoice.status === 'NEW' ? 'Draft' : 'Received'}}</span>
                 <span class="badge" *ngIf="invoice.status !== 'NEW'" [ngClass]="invoice.paymentstatus === 'Paid' ? 'bg-success' : (invoice.paymentstatus === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark')">
                     {{invoice.paymentstatus}}
@@ -105,6 +110,7 @@
                         <th class="text-end">Qty</th>
                         <th class="text-end">Free</th>
                         <th class="text-end">Rate</th>
+                        <th class="text-end">Vs last</th>
                         <th class="text-end">Disc</th>
                         <th class="text-end">Tax</th>
                         <th class="text-end">Total</th>
@@ -127,6 +133,25 @@
                         <td class="text-end">{{i.qty}}</td>
                         <td class="text-end">{{i.freeqty}}</td>
                         <td class="text-end">{{i.ptrvalue | number:'1.2-2'}}</td>
+                        <td class="text-end" style="min-width:9em" [attr.data-testid]="'price-change-' + i.id">
+                            <ng-container *ngIf="priceByItem[i.id] as pc">
+                                <span *ngIf="pc.pcnt === null" class="text-muted small">first purchase</span>
+                                <span *ngIf="pc.pcnt !== null" class="small fw-semibold"
+                                      [class.text-danger]="pc.level !== 'NONE'" [class.text-success]="pc.pcnt < 0" [class.text-muted]="pc.level === 'NONE' && pc.pcnt >= 0"
+                                      [title]="'Last paid ' + (pc.prevrate | number:'1.2-2') + ' on ' + (pc.prevdate | date:'dd MMM yyyy')">
+                                    {{pc.pcnt > 0 ? '+' : ''}}{{pc.pcnt | number:'1.1-2'}}%
+                                    <span class="fw-normal">(was {{pc.prevrate | number:'1.2-2'}})</span>
+                                </span>
+                                <select *ngIf="pc.level !== 'NONE' && i.status === 'NEW'" class="form-select form-select-sm mt-1" [attr.data-testid]="'price-reason-' + i.id"
+                                        [ngModel]="pc.reason || ''" (ngModelChange)="setPriceReason(i.id, $event)" aria-label="Reason for the rate change">
+                                    <option value="">Reason...</option>
+                                    <option *ngFor="let r of priceReasons" [value]="r.value">{{r.label}}</option>
+                                </select>
+                                <div *ngIf="pc.unitjump !== null" class="small text-danger" [attr.data-testid]="'unit-jump-' + i.id">MRP is {{pc.unitjump}}&times; the last purchase. Pack is {{pc.pack}}:
+                                    <a [routerLink]="['/secure/products/master/edit', i.productid]">check it</a></div>
+                                <div *ngIf="pc.level === 'APPROVAL'" class="small text-danger">Above {{priceApproval}}%: Store Head to complete</div>
+                            </ng-container>
+                        </td>
                         <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
                         <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
                         <td class="text-end">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
@@ -134,18 +159,18 @@
                 </ng-template>
                 <ng-template pTemplate="footer">
                     <tr>
-                        <td colspan="9" class="text-end text-muted">Discount / Tax</td>
+                        <td colspan="10" class="text-end text-muted">Discount / Tax</td>
                         <td class="text-end">{{disctotal | number:'1.2-2'}}</td>
                         <td class="text-end">{{taxtotal | number:'1.2-2'}}</td>
                         <td></td>
                     </tr>
                     <tr class="fw-semibold">
-                        <td colspan="11" class="text-end">Net total</td>
+                        <td colspan="12" class="text-end">Net total</td>
                         <td class="text-end inv-value text-primary">{{nettotal | number:'1.2-2'}}</td>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage">
-                    <tr><td colspan="12" class="text-center text-muted py-4" data-testid="invoice-no-items">No items yet.<span *ngIf="invoice.status === 'NEW'"> Add them above, or delete this draft if you do not need it.</span></td></tr>
+                    <tr><td colspan="13" class="text-center text-muted py-4" data-testid="invoice-no-items">No items yet.<span *ngIf="invoice.status === 'NEW'"> Add them above, or delete this draft if you do not need it.</span></td></tr>
                 </ng-template>
             </p-table>
 
@@ -153,6 +178,11 @@
                 <button type="button" class="btn btn-primary me-2" (click)="verifyItems()">Verify</button>
                 <button type="button" class="btn btn-outline-danger" (click)="removeItems()">Remove</button>
             </div>
+
+            <div class="alert alert-warning py-2 small mt-3 mb-0" *ngIf="invoice.status === 'NEW' && priceLinesNeedingReason > 0" data-testid="price-needs-reason">
+                {{priceLinesNeedingReason}} line{{priceLinesNeedingReason === 1 ? '' : 's'}} changed against the last purchase (rate up over {{priceTolerance}}%, or a different pack/unit). Choose a reason on each before completing.
+            </div>
+            <div class="text-danger small mt-2" *ngIf="completeError" data-testid="invoice-complete-error">{{completeError}}</div>
 
             <div class="row g-3 mt-1 border-top pt-3" *ngIf="allVerified && invoice.status === 'NEW'">
                 <div class="col-md-8">
@@ -167,7 +197,12 @@
     </div>
 </div>
 
-<app-invoice-payment *ngIf="invoice.status !== 'NEW'"
+<div class="alert alert-warning small mt-3 mb-0" *ngIf="invoice.status !== 'NEW' && !invoice.invoiceno" data-testid="invoice-awaiting-note">
+    Received on challan {{invoice.challanno}} at the challan rates. Payment opens once the vendor's invoice number is entered
+    (<a [routerLink]="['../../edit',invoice.id]">Add invoice no.</a>). If the invoice rates differ from the challan, raise a
+    <a routerLink="/secure/vendor-issues">vendor issue</a> to correct the invoice.
+</div>
+<app-invoice-payment *ngIf="invoice.status !== 'NEW' && invoice.invoiceno"
     class="d-block"
     [invoiceid]="invoice.id"
     [vendorid]="invoice.vendorid"

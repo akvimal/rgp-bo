@@ -14,6 +14,23 @@ export class CreatePurchaseInvoiceDto {
     @MaxLength(100)
     readonly invoiceno: string;
 
+    @ApiProperty({ description: 'delivery challan no, when the goods come before the invoice', example: '', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(60)
+    readonly challanno: string;
+
+    @ApiProperty({ description: 'delivery challan date', example: '', required: false })
+    @IsOptional()
+    @IsDateString()
+    readonly challandate: string;
+
+    @ApiProperty({ description: 'photo of the delivery challan', example: '', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(300)
+    readonly challanpath: string;
+
     @ApiProperty({ description: 'invoice date', example: '' })
     @IsOptional()
     @IsDateString()
