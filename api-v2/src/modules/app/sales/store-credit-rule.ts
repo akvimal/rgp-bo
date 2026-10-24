@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
+import { checkCashRefund } from './return-rule';
 
 const money = (n: number) => Math.round(n * 100) / 100;
 
@@ -61,7 +62,8 @@ export const REFUND_MODES = ['CREDIT', 'CASH', 'TRANSFER'];
  */
 export async function settleReturn(tm: EntityManager, item: any, byUserId: number) {
   const [r] = await tm.query(
-    `select sri.id, sri.qty, sri.status, sri.refund_mode, si.total::float as line_total, si.qty as sold_qty, s.id as sale_id, s.bill_no, s.store_id, s.customer_id
+    `select sri.id, sri.qty, sri.status, sri.refund_mode, sri.needs_inspection, si.total::float as line_total, si.qty as sold_qty, si.price::float as unit_price,
+            si.purchase_item_id, si.reason as sale_reason, s.id as sale_id, s.bill_no, s.store_id, s.customer_id
        from sale_return_item sri join sale_item si on si.id = sri.sale_item_id join sale s on s.id = si.sale_id
       where sri.id = $1 for update of sri`, [item.id]);
   if (!r) throw new NotFoundException('Return not found.');
@@ -71,6 +73,10 @@ export async function settleReturn(tm: EntityManager, item: any, byUserId: numbe
   const accepted = item.acceptedqty === undefined || item.acceptedqty === null ? Number(r.qty) : Number(item.acceptedqty);
   if (!Number.isFinite(accepted) || accepted < 0 || accepted > Number(r.qty)) throw new BadRequestException('The accepted quantity must be between 0 and the quantity returned.');
   const amount = money((Number(r.line_total) / Math.max(1, Number(r.sold_qty))) * accepted);
+  // a product that has to be inspected is taken back only after someone says they looked at it
+  const note = String(item.inspectionnote || '').trim();
+  if (r.needs_inspection && !note) throw new BadRequestException('This item must be inspected before it is taken back. Say what you found.');
+  if (mode === 'CASH' && amount > 0) await checkCashRefund(tm, r.store_id, amount);
 
   if (mode === 'CREDIT' && amount > 0) {
     const c = await namedCustomer(tm, r.customer_id);
@@ -79,7 +85,26 @@ export async function settleReturn(tm: EntityManager, item: any, byUserId: numbe
       `insert into customer_credit_entry (customer_id, kind, amount, return_item_id, sale_id, store_id, note, created_by) values ($1, 'ISSUED', $2, $3, $4, $5, $6, $7)`,
       [c.id, amount, r.id, r.sale_id, r.store_id, `Return on bill ${r.bill_no ?? r.sale_id}`, byUserId]);
   }
+  // stock moves with the refund, in the same transaction: everything returned comes in, what is not fit to sell goes out again, flagged as discarded
+  const discarded = Number(r.qty) - accepted;
+  if (r.purchase_item_id) {
+    await tm.query(
+      `insert into product_qtychange (item_id, qty, sale_price, reason, reason_code, status, comments, store_id, discarded, created_by)
+       values ($1, $2, $3, 'Returned', 'RETURNED', 'APPROVED', $4, $5, false, $6)`,
+      [r.purchase_item_id, Number(r.qty), r.unit_price, `Return on bill ${r.bill_no ?? r.sale_id}`, r.store_id, byUserId]);
+    if (discarded > 0) {
+      await tm.query(
+        `insert into product_qtychange (item_id, qty, sale_price, reason, reason_code, status, comments, store_id, discarded, created_by)
+         values ($1, $2, $3, 'Discarded on return', 'RETURN_DISCARD', 'APPROVED', $4, $5, true, $6)`,
+        [r.purchase_item_id, -discarded, r.unit_price, note || `Not fit to sell, return on bill ${r.bill_no ?? r.sale_id}`, r.store_id, byUserId]);
+    }
+  }
+  await tm.query(
+    `update sale_return_item set accepted_qty = $2, discarded_qty = $3, inspection_note = $4, settled_by = $5::int, settled_on = now(),
+            inspected_by = case when needs_inspection then $5::int end, inspected_on = case when needs_inspection then now() end where id = $1`,
+    [r.id, accepted, discarded, note || null, byUserId]);
   item.refundmode = mode;
   item.refundamount = amount;
   delete item.acceptedqty;
+  delete item.inspectionnote;
 }

@@ -34,6 +34,9 @@ export class SaleReturnItem extends BaseEntity {
   @Column("numeric", { name: "refund_amount", precision: 10, scale: 2, nullable: true })
   refundamount: number | null;
 
+  @Column("boolean", { name: "needs_inspection", default: false })
+  needsinspection: boolean;
+
   @ManyToOne(
     () => SaleItem,
     (saleitem) => saleitem.returns, { onDelete: 'CASCADE' }

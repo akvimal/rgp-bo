@@ -1,5 +1,4 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
-import { StockService } from "src/app/secured/store/stock/stock.service";
 import { SaleService } from "../sales.service";
 
 @Component({
@@ -8,40 +7,47 @@ import { SaleService } from "../sales.service";
 })
 export class SaleReturnAdjustFormComponent {
 
-    returnItem:any = {itemid:0, price:0, accept: 0, reject: {reason: '', qty: 0}, refundmode: ''};
-    
+    returnItem:any = {itemid:0, price:0, qty: 0, accept: 0, reject: {reason: '', qty: 0}, refundmode: '', note: ''};
+
     @Input() id:any;
     @Output() success = new EventEmitter();
-    valid = true;
-   
-    constructor(private service:SaleService, private stockService:StockService){}
+    error = '';
+    busy = false;
+
+    constructor(private service:SaleService){}
 
     ngOnChanges(changes: SimpleChanges) {
         if(changes.id.currentValue !== ''){
+            this.error = '';
             this.service.findReturnItemToAdjust(this.id).subscribe((data:any) => {
                 if(data && data.length == 1){
-                    this.returnItem['reject']['reason'] = data[0]['comments'];
-                    this.returnItem = {...this.returnItem, ...data[0], refundmode: String(data[0]['refund_mode'] || data[0]['refundmode'] || '').toUpperCase()};
+                    const d = data[0];
+                    this.returnItem = {...this.returnItem, ...d, accept: +d.qty, reject: {reason: '', qty: 0}, note: '',
+                        refundmode: String(d['refund_mode'] || d['refundmode'] || '').toUpperCase()};
                 }
             });
         }
     }
 
-    validate(part:any, event:any){
-        
-        if(part == 'ACCEPT'){
-            this.returnItem.reject.qty = this.returnItem.qty - event.target.value;
-        }
-        if(part == 'REJECT'){
-            this.returnItem.accept = this.returnItem.qty - event.target.value;
-        }
-        
-        if(event.target.value > +this.returnItem.qty){
-            event.target.value = 0
-        }
+    private clamp(v:any): number {
+        const n = Math.floor(+v || 0);
+        return Math.min(Math.max(0, n), +this.returnItem.qty);
     }
-    
-    error = '';
+
+    /** the two quantities always add up to what came back */
+    setAccepted(v:any) {
+        this.returnItem.accept = this.clamp(v);
+        this.returnItem.reject.qty = +this.returnItem.qty - this.returnItem.accept;
+    }
+
+    setDiscarded(v:any) {
+        this.returnItem.reject.qty = this.clamp(v);
+        this.returnItem.accept = +this.returnItem.qty - this.returnItem.reject.qty;
+    }
+
+    get refundEstimate(): number {
+        return (+this.returnItem.accept || 0) * (+this.returnItem.price || 0);
+    }
 
     onSubmit(): void {
         this.error = '';
@@ -49,24 +55,19 @@ export class SaleReturnAdjustFormComponent {
             this.error = 'Choose how the customer is refunded.';
             return;
         }
-        const input = [];
-
-        // if(this.returnItem['accept'] > 0)
-        // settle first: its checks (a named customer for credit, once only) fail before any stock is touched
-        const accepted = Math.max(0, +this.returnItem.qty - (+this.returnItem.reject.qty || 0));
-        input.push({itemid:this.returnItem['itemid'],qty:this.returnItem['qty'],
-            price:this.returnItem['price'],reason:'Returned',status:'APPROVED'});
-        if(this.returnItem['reject']['qty'] > 0)
-        input.push({itemid:this.returnItem['itemid'],qty:-1*this.returnItem['reject']['qty'],
-            price:this.returnItem['price'],reason:'Damaged',comments:this.returnItem['comments'],status:'APPROVED'});
-    
-        this.service.settleReturn({id:this.returnItem.id,status:'ADJUSTED',refundmode:this.returnItem.refundmode,acceptedqty:accepted}).subscribe(() => {
-            this.stockService.adjustReturnQuantities(input).subscribe(data => {
-                this.success.emit(data);
-            }, () => {
-                this.error = 'The refund is recorded but the stock adjustment failed. Adjust the stock by hand.';
-            });
+        const note = String(this.returnItem.note || '').trim();
+        if(this.returnItem.needs_inspection && !note){
+            this.error = 'Say what the inspection found.';
+            return;
+        }
+        this.busy = true;
+        // stock moves with the refund on the server, in one step
+        this.service.settleReturn({id:this.returnItem.id,status:'ADJUSTED',refundmode:this.returnItem.refundmode,
+            acceptedqty:+this.returnItem.accept,inspectionnote:note || undefined}).subscribe((data:any) => {
+            this.busy = false;
+            this.success.emit(data);
         }, (err:any) => {
+            this.busy = false;
             const m = err?.error?.message;
             this.error = Array.isArray(m) ? m.join(' ') : (m || 'Could not settle the return.');
         });

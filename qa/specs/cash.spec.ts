@@ -304,7 +304,7 @@ test.describe('Store Cash & Shifts @p0', () => {
 
     // incomplete opening checklist: rejected
     const badOpen = await api.request('POST', '/store-cash/shifts', {
-      storeid: sid, name: 'checklist-bad', openingcash: 500, openingchecklist: OPEN_KEYS.slice(0, 2),
+      storeid: sid, name: 'checklist-bad', openingcash: 500, openingchecklist: OPEN_KEYS.slice(1),          // the float count is missing
     }, MGR);
     expect(badOpen.status).toBe(400);
 

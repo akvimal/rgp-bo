@@ -22,23 +22,29 @@
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
-                    <tr [style]="i.valid ? 'background: #ddd;' : 'none'">
-                        <td>{{i.title}}</td>
+                    <tr [style]="i.valid ? 'background: #ddd;' : 'none'" [class.text-muted]="i.return_rule === 'NONE'" [attr.data-testid]="'ret-row-' + i.id">
+                        <td>{{i.title}}
+                            <div class="small text-danger" *ngIf="i.return_rule === 'NONE'" data-testid="ret-not-accepted">Not taken back</div>
+                            <div class="small text-info" *ngIf="i.return_rule === 'INSPECT'" data-testid="ret-inspect">Inspected before it is taken back</div>
+                        </td>
                         <td width="15%">{{i.batch}} / {{i.exp_date | date : 'MMM-yy'}}</td>
                         <td width="13%">
                             <div class="input-group mb-3">
-                                <input class="form-control" type="number" [value]="i.qty" (change)="changeItem('QTY',$event,i.id)"/>
+                                <input class="form-control" type="number" min="0" [max]="i.elig" [value]="i.qty" [disabled]="i.return_rule === 'NONE' || +i.elig <= 0" (change)="changeItem('QTY',$event,i.id)"/>
                                 <div class="input-group-append">
                                   <span class="input-group-text">{{i.elig}}</span>
                                 </div>
                               </div>
                         </td>
-                        <td>{{+i.qty * +i.price}}</td>
+                        <td class="text-end">{{ (+i.qty || 0) * +i.price | number:'1.2-2' }}</td>
                         <td width="20%">
-                            <select class="form-control" (change)="changeItem('REASON',$event,i.id)"> 
+                            <select class="form-control" [disabled]="i.return_rule === 'NONE'" (change)="changeItem('REASON',$event,i.id)"> 
                                 <option value="">Select</option> 
                                 <option value="Not Effective">Not Effective</option> 
-                                <option value="Defective">Defective</option> 
+                                <option value="Defective">Defective</option>
+                                <option value="Wrong Item">Wrong item given</option>
+                                <option value="Damaged">Damaged in transit</option>
+                                <option value="Changed Mind">Customer changed mind</option> 
                                 <option value="Prescription Change">Prescription Change</option> 
                             </select> 
                         </td>
@@ -56,13 +62,14 @@
                             <option value="CASH">Cash</option>
                         </select>
                     </div>
-                    <div class="col-3 text-end">Total: {{total}}</div>
+                    <div class="col-3 text-end">Total: {{total | number:'1.2-2'}}</div>
                 </ng-template>
             </p-table>
         </div>
         <div class="col-12 text-center mt-4">
             <button class="btn btn-primary" (click)="onSubmit()" [disabled]="!valid">Submit</button>
-            <span *ngIf="!valid">Invalid input !!!</span>
+            <div class="text-danger small mt-2" *ngIf="!valid" data-testid="ret-invalid">Enter a quantity and choose a reason for at least one item.</div>
+            <div class="text-danger small mt-2" *ngIf="error" data-testid="ret-error">{{error}}</div>
         </div>
     </div>
 </div>

@@ -9,6 +9,7 @@ import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
 import { approvalModeFor } from "src/core/approval-mode";
+import { isDiscard } from "./reason-codes";
 
 import { isManagerRole } from 'src/core/roles';
 @Injectable()
@@ -372,7 +373,7 @@ export class StockService {
         // caller (any new integration) must still satisfy that constraint.
         const reason = (dto as any).reason || dto.reasoncode;
         const status = await this.resolveAdjustmentStatus(dto.status, dto.itemid, dto.qty, storeid, userid);
-        return this.qtyRepository.save({...dto, reason, reasoncode, storeid, status, createdby:userid});
+        return this.qtyRepository.save({...dto, reason, reasoncode, storeid, status, createdby:userid, discarded: isDiscard(reasoncode, dto.qty)} as any);
     }
 
     async createStockAdjustments(items: CreateProductQtyChangeDto[], userid) {
@@ -384,6 +385,7 @@ export class StockService {
             status: await this.resolveAdjustmentStatus(item.status, item.itemid, item.qty, item.storeid, userid),
             createdby: userid
         })));
+        payload.forEach((p: any) => { p.discarded = isDiscard(p.reasoncode, p.qty); });
         return this.qtyRepository.save(payload);
     }
 
@@ -404,6 +406,7 @@ export class StockService {
             reasoncode,
             comments: dto.comments ?? existing.comments,
             status,
+            discarded: isDiscard(reasoncode, qty),
             updatedby: userid,
         } as any);
         return this.qtyRepository.findOne({ where: { id } });

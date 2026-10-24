@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { User } from "src/core/decorator/user.decorator";
@@ -28,6 +28,46 @@ export class StoreCashController {
   @Put("templates/:id")
   updateTemplate(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
     return this.service.updateTemplate(Number(id), body, currentUser?.id);
+  }
+
+  /** whether the store is already open today (another shift is open, or one ran earlier today): the opening checklist differs */
+  @Get("opening-context")
+  openingContext(@Query() query: any, @User() currentUser: any) {
+    return this.service.openingContext(query, currentUser?.id);
+  }
+
+  /** the checklists in force for a store: what a person ticks when opening, handing over or closing */
+  @Get("checklists")
+  checklists(@Query() query: any) {
+    return this.service.checklistsFor(query);
+  }
+
+  /** for the editor (a Business Head): the lists at the business's level or one store's */
+  @Get("checklists/config")
+  checklistConfig(@Query() query: any, @User() currentUser: any) {
+    return this.service.checklistConfig(query, currentUser?.id);
+  }
+
+  /** suggestions from the last 30 days (?ai=false for the plain, rule-based ones only) */
+  @Get("checklists/suggestions")
+  checklistSuggestions(@Query() query: any, @User() currentUser: any) {
+    return this.service.checklistSuggestions(query, currentUser?.id);
+  }
+
+  /** items for a situation the owner describes in a sentence or two */
+  @Post("checklists/draft")
+  checklistDraft(@Body() body: any, @User() currentUser: any) {
+    return this.service.checklistDraft(body, currentUser?.id);
+  }
+
+  @Put("checklists")
+  saveChecklist(@Body() body: any, @User() currentUser: any) {
+    return this.service.saveChecklist(body, currentUser?.id);
+  }
+
+  @Delete("checklists")
+  resetChecklist(@Query() query: any, @User() currentUser: any) {
+    return this.service.resetChecklist(query, currentUser?.id);
   }
 
   @Get("shifts")

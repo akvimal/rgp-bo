@@ -4,6 +4,7 @@ import { recordStaffCredit } from "./staff-credit-rule";
 import { recordStoreCredit, settleReturn } from "./store-credit-rule";
 import { EntityManager } from "typeorm";
 import { loadStoreProfile } from "../store/store-profile";
+import { returnRules } from "./return-rule";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
@@ -251,8 +252,15 @@ export class SaleService {
                     }
                 }
 
+                // a refrigerated or otherwise barred product is not taken back; some must be inspected first
+                const rules = await returnRules(transactionManager, Array.from(wanted.keys()));
+                for (const [saleItemId] of wanted) {
+                    const r = rules.get(saleItemId);
+                    if (r?.rule === 'NONE') throw new BadRequestException(`${r.title} cannot be returned: this store does not take it back.`);
+                }
                 items.forEach(item => {
                     item['createdby'] = userid;
+                    item['needsinspection'] = rules.get(Number(item.saleitemid))?.rule === 'INSPECT';
                 });
                 return await transactionManager.save(SaleReturnItem, items);
             } catch (error) {
@@ -563,27 +571,32 @@ export class SaleService {
         return await this.manager.query(`   
         select sri.id, si.sale_id, s.bill_no, s.bill_date, sri.created_on, sri.created_by, c."name", c.mobile, 
                 si.purchase_item_id, p.title, si.batch, si.exp_date, 
-                sri.qty, si.price, sri.reason, sri."comments", sri.status, sri.refund_mode, sri.refund_amount 
+                sri.qty, si.price, sri.reason, sri."comments", sri.status, sri.refund_mode, sri.refund_amount, sri.needs_inspection, sri.accepted_qty, sri.discarded_qty, sri.inspection_note, sri.settled_on, u.full_name as raised_by, su.full_name as settled_by_name, st.location as store 
                 from sale_return_item sri inner join sale_item si on si.id = sri.sale_item_id 
                 inner join sale s on s.id = si.sale_id 
                 inner join product p on p.id = si.product_id 
                 left join customer c on c.id = s.customer_id 
+                left join app_user u on u.id = sri.created_by left join app_user su on su.id = sri.settled_by left join stores st on st.id = s.store_id
                 order by sri.created_on desc`);
     }
 
     async getEligibleReturns(saleid:any){
         return await this.manager.query(`
-            select si.id, p.title, si.batch, si.exp_date, si.price, coalesce(si.qty - returned.total,si.qty - returned.total,si.qty) as eligible
+            select si.id, p.title, si.batch, si.exp_date, si.price, coalesce(si.qty - returned.total,si.qty - returned.total,si.qty) as eligible,
+                   coalesce(p.return_rule, crr.rule, 'FREE') as return_rule
             from sale_item si left join
             (SELECT sale_item_id, sum(sri.qty) as total FROM sale_return_item sri
             inner join sale_item si on si.id = sri.sale_item_id WHERE si.sale_id = $1 GROUP BY sale_item_id) returned ON returned.sale_item_id = si.id
             inner join sale s on s.id = si.sale_id and s.id = $1
-            inner join product p on p.id = si.product_id order by p.title`, [saleid]);
+            inner join product p on p.id = si.product_id
+            left join stores st on st.id = s.store_id
+            left join return_category_rule crr on crr.business_id = st.business_id and lower(crr.category) = lower(p.category)
+            order by p.title`, [saleid]);
     }
 
     async getReturnItemToAdjust(saleReturnId:any){
         return await this.manager.query(`
-        select sri.id, p.title, si.batch, si.exp_date, si.price, si.purchase_item_id as itemid, sri.qty, sri.reason, sri."comments", sri.refund_mode
+        select sri.id, p.title, si.batch, si.exp_date, si.price, si.purchase_item_id as itemid, sri.qty, sri.reason, sri."comments", sri.refund_mode, sri.needs_inspection
         from sale_return_item sri
         inner join sale_item si on si.id = sri.sale_item_id
         inner join product p on p.id = si.product_id

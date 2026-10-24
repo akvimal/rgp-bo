@@ -9,7 +9,7 @@ import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../store/cash/cash.service";
 import { EXPENSE_CATEGORIES } from "../store/cash/expense-categories";
 import { DenominationRow } from "src/app/shared/denominations";
-import { CLOSING_CHECKLIST_ITEMS, ChecklistItem, HANDOVER_CHECKLIST_ITEMS, OPENING_CHECKLIST_ITEMS, freshChecklist } from "src/app/shared/shift-checklist";
+import { CLOSING_CHECKLIST_ITEMS, ChecklistItem, HANDOVER_CHECKLIST_ITEMS, OPENING_CHECKLIST_ITEMS, OPENING_OPEN_STORE_CHECKLIST_ITEMS, freshChecklist } from "src/app/shared/shift-checklist";
 
 /**
  * Where staff open and close their shift (it used to sit on top of the POS). Opening counts the float; closing shows
@@ -37,6 +37,10 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   denoms: DenominationRow[] = [];
   denomTotal = 0;
   checklist: ChecklistItem[] = [];
+  /** how the store stands as a shift is opened: already open (a handover, a later shift) or being opened for the day */
+  openingContext: any = null;
+  /** the checklists in force for this store (its own, the business's or the standard); the built-in ones when they cannot be fetched */
+  lists: any = null;
 
   closeType: "END_OF_DAY" | "HANDOVER" = "END_OF_DAY";
   handoverTo: number | null = null;
@@ -95,8 +99,26 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   startOpen() {
     this.message = this.error = "";
     if (!this.requireOperator()) return;
-    this.mode = "open"; this.denoms = []; this.denomTotal = 0;
-    this.checklist = freshChecklist(OPENING_CHECKLIST_ITEMS);
+    this.openingContext = null;
+    const begin = (ctx: any) => {
+      this.openingContext = ctx;
+      this.mode = "open"; this.denoms = []; this.denomTotal = 0;
+      this.checklist = ctx?.storealreadyopen
+        ? freshChecklist(this.itemsFor("OPENING_OPEN_STORE", OPENING_OPEN_STORE_CHECKLIST_ITEMS))
+        : freshChecklist(this.itemsFor("OPENING", OPENING_CHECKLIST_ITEMS));
+    };
+    // if the store cannot say, the full list is the safe one
+    this.fetchLists(() => this.http.get(`${environment.apiHost}/store-cash/opening-context`, { params: { storeid: String(this.storeId) } }).subscribe((c: any) => begin(c), () => begin(null)));
+  }
+
+  private fetchLists(then: () => void) {
+    this.http.get(`${environment.apiHost}/store-cash/checklists`, { params: { storeid: String(this.storeId) } }).subscribe((l: any) => { this.lists = l; then(); }, () => { this.lists = null; then(); });
+  }
+
+  /** a list the business or the store has written, else the built-in one */
+  private itemsFor(kind: string, fallback: { key: string; label: string }[]) {
+    const items = this.lists?.[kind]?.items;
+    return Array.isArray(items) ? items : fallback;
   }
 
   confirmOpen() {
@@ -116,7 +138,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     this.busy = true; this.error = "";
     this.cash.createShift({
       storeid: this.storeId, assigneduserid: this.operatorId, openingdenominations: this.denoms,
-      openingchecklist: this.checklist.map(c => c.key), allowZero,
+      openingchecklist: this.checklist.map(c => c.key), openingchecklistat: this.tickTimes(), allowZero,
     }).subscribe({
       next: () => { this.busy = false; this.mode = ""; this.message = "Shift opened."; this.shiftContext.reload(); },
       error: err => { this.busy = false; this.error = err?.error?.message || "Unable to open the shift"; },
@@ -127,20 +149,38 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   startClose() {
     this.message = this.error = "";
     if (!this.requireOperator()) return;
-    this.mode = "close"; this.denoms = []; this.denomTotal = 0;
-    this.closeType = "END_OF_DAY"; this.handoverTo = null;
-    this.digitalCounted = {};
-    for (const d of this.summary?.digitalByProvider || []) this.digitalCounted[d.provider] = null;
-    this.resetChecklist();
-    this.loadSummary();
+    this.fetchLists(() => {
+      this.mode = "close"; this.denoms = []; this.denomTotal = 0;
+      this.closeType = "END_OF_DAY"; this.handoverTo = null;
+      this.digitalCounted = {};
+      for (const d of this.summary?.digitalByProvider || []) this.digitalCounted[d.provider] = null;
+      this.resetChecklist();
+      this.loadSummary();
+    });
   }
 
   resetChecklist() {
-    this.checklist = freshChecklist(this.closeType === "HANDOVER" ? HANDOVER_CHECKLIST_ITEMS : CLOSING_CHECKLIST_ITEMS);
+    this.checklist = this.closeType === "HANDOVER"
+      ? freshChecklist(this.itemsFor("HANDOVER", HANDOVER_CHECKLIST_ITEMS))
+      : freshChecklist(this.itemsFor("CLOSING", CLOSING_CHECKLIST_ITEMS));
   }
 
   get takers(): any[] { return this.staff.filter(u => u.id !== this.operatorId); }
-  get checklistComplete(): boolean { return this.checklist.length > 0 && this.checklist.every(c => c.checked); }
+  /** an item is ticked or unticked: the moment is kept with the shift */
+  tick(c: ChecklistItem, value: boolean) {
+    c.checked = !!value;
+    c.at = c.checked ? new Date().toISOString() : undefined;
+  }
+
+  /** when each ticked item was ticked, by key */
+  private tickTimes(): { [key: string]: string } {
+    const out: { [key: string]: string } = {};
+    this.checklist.forEach(c => { if (c.checked && c.at) out[c.key] = c.at; });
+    return out;
+  }
+
+  /** every item on the list in force is ticked (a business may keep a list empty) */
+  get checklistComplete(): boolean { return this.checklist.every(c => c.checked); }
   get expected(): number { return Number(this.summary?.expected ?? this.openShift?.expectedcash ?? 0); }
   get variance(): number { return this.denomTotal - this.expected; }
   digitalVariance(d: any): number | null {
@@ -158,7 +198,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     this.busy = true; this.error = "";
     const taker = this.staff.find(u => u.id === this.handoverTo)?.fullname;
     this.cash.closeShift(this.openShift.id, {
-      counteddenominations: this.denoms, closedoperatorid: this.operatorId, closingchecklist: this.checklist.map(c => c.key),
+      counteddenominations: this.denoms, closedoperatorid: this.operatorId, closingchecklist: this.checklist.map(c => c.key), closingchecklistat: this.tickTimes(),
       closetype: this.closeType, handovertoid: this.closeType === "HANDOVER" ? this.handoverTo : undefined,
       closingdigital: (this.summary?.digitalByProvider || []).map((d: any) => ({ provider: d.provider, counted: Number(this.digitalCounted[d.provider]) })),
     }).subscribe({
@@ -188,6 +228,11 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
         next: () => { this.expenseForm = null; this.message = "Expense recorded."; this.shiftContext.reload(); this.loadSummary(); },
         error: err => this.error = err?.error?.message || "Unable to record the expense",
       });
+  }
+
+  /** what a recorded checklist is called on screen */
+  checklistTitle(kind: string): string {
+    return ({ OPENING: 'Opening the store', OPENING_OPEN_STORE: 'Taking up the shift (store already open)', CLOSING: 'Closing the store', HANDOVER: 'Handing over the shift' } as any)[kind] || kind;
   }
 
   private requireOperator(): boolean {

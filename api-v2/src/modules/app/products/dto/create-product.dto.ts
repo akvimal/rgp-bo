@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsObject, IsOptional, Min } from 'class-validator';
+import { IsIn, IsInt, IsObject, IsOptional, Min } from 'class-validator';
 
 export class CreateProductDto {
 
@@ -48,4 +48,9 @@ export class CreateProductDto {
     @IsInt()
     @Min(0)
     readonly minstock: number | null;
+
+    @ApiPropertyOptional({ description: 'what this product does on return: FREE, INSPECT or NONE; blank follows its category', example: 'NONE' })
+    @IsOptional()
+    @IsIn(['FREE', 'INSPECT', 'NONE'])
+    readonly returnrule: string | null;
 }

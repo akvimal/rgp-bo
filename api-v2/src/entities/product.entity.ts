@@ -53,6 +53,9 @@ import { SaleItem } from "./sale-item.entity";
     binlocation: string | null;
 
     /** units to keep on hand after the cover period; the Reorder list orders up to it (empty: no minimum) */
+    @Column("character varying", { name: "return_rule", length: 8, nullable: true })
+    returnrule: string | null;
+
     @Column("integer", { name: "min_stock", nullable: true })
     minstock: number | null;
 

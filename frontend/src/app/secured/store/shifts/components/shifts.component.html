@@ -181,6 +181,18 @@
       </table>
     </div>
 
+    <!-- what was ticked, by whom and when -->
+    <div *ngIf="shiftReport.checklists?.length" class="mb-3" data-testid="shift-report-checklists">
+      <div class="small fw-semibold text-muted mb-1">Checklists</div>
+      <div class="border rounded p-2 mb-2" *ngFor="let c of shiftReport.checklists" [attr.data-testid]="'shift-report-checklist-' + c.phase">
+        <div class="small fw-semibold">{{ checklistTitle(c.kind) }}</div>
+        <div class="small text-muted mb-1">by {{ c.operator || c.doneby || 'unknown' }}<span *ngIf="c.doneby && c.operator && c.doneby !== c.operator"> (signed in as {{ c.doneby }})</span> &middot; {{ c.doneon | date:'dd MMM yyyy, h:mm a' }}</div>
+        <ul class="list-unstyled small mb-0">
+          <li *ngFor="let i of c.items"><i class="bi" [ngClass]="i.ticked ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i> {{ i.label }} <span class="text-muted" *ngIf="i.at">{{ i.at | date:'h:mm a' }}</span><span class="text-danger" *ngIf="!i.ticked"> not ticked</span></li>
+        </ul>
+      </div>
+    </div>
+
     <!-- Closed shift: show final reconciliation -->
     <div *ngIf="!closing && shiftReport.shift.status === 'CLOSED'" class="border-top pt-2">
       <div class="d-flex justify-content-between mb-1">

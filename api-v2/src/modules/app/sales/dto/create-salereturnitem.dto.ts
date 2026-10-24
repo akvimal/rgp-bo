@@ -42,6 +42,12 @@ export class CreateSaleReturnItemDto {
     @Min(0)
     readonly acceptedqty?: number;
 
+    @ApiProperty({ description: 'what the inspection found (settling a return that must be inspected)', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    readonly inspectionnote?: string;
+
     @ApiProperty({ description: 'comments', example: '' })
     @IsOptional()
     @IsString()

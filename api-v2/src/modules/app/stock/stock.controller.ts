@@ -82,7 +82,8 @@ export class StockController {
         reason: data.reason,
         reasoncode: data.reasoncode,
         status: data.status,
-        comments: data.comments
+        comments: data.comments,
+        discarded: !!data.discarded
       }));
     }
 

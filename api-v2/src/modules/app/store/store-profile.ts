@@ -18,6 +18,8 @@ export interface StoreProfile {
   approvalmodesetting: ApprovalMode | null;
   /** what applies: the override, else the business value */
   approvalmode: ApprovalMode;
+  /** the most refunded in cash on one return; null: no limit, 0: never cash */
+  cashrefundlimit: number | null;
 }
 
 /** a store is a pharmacy or something else; anything else sent is refused, nothing sent means no change */
@@ -34,7 +36,7 @@ const ACCOUNTABLE = ['auto', 'store_head', 'business_head'];
 /** What a store's till rules are (OPERATING_MODES section 4). A store that does not exist reads as the time-based default. */
 export async function loadStoreProfile(manager: EntityManager, storeId: number | string): Promise<StoreProfile | null> {
   const [r] = await manager.query(
-    `select s.id, s.location, s.shift_mode, s.till, s.accountable_role, s.operator_required, s.operator_hold_minutes, s.approval_mode as store_mode, b.approval_mode as business_mode
+    `select s.id, s.location, s.shift_mode, s.till, s.accountable_role, s.operator_required, s.operator_hold_minutes, s.approval_mode as store_mode, b.approval_mode as business_mode, s.cash_refund_limit::float as cash_limit
        from stores s left join business b on b.id = s.business_id where s.id = $1`, [+storeId]);
   if (!r) return null;
   const mode: ShiftMode = r.shift_mode === 'staff' ? 'staff' : 'time';
@@ -43,6 +45,7 @@ export async function loadStoreProfile(manager: EntityManager, storeId: number |
     tillsetting: r.till, till: r.till || (mode === 'staff' ? 'per_person' : 'shared'),
     accountablerole: r.accountable_role, operatorrequired: !!r.operator_required, operatorholdminutes: Number(r.operator_hold_minutes),
     approvalmodesetting: r.store_mode || null, approvalmode: (r.store_mode || r.business_mode) === 'self' ? 'self' : 'separate',
+    cashrefundlimit: r.cash_limit === null || r.cash_limit === undefined ? null : Number(r.cash_limit),
   };
 }
 
@@ -64,6 +67,14 @@ export function parseProfileInput(body: any): Record<string, any> {
   if (body.approvalmode !== undefined) {
     if (body.approvalmode !== null && body.approvalmode !== '' && !isValidApprovalMode(body.approvalmode)) throw new BadRequestException('Approval mode must be self or separate.');
     out.approval_mode = body.approvalmode || null;
+  }
+  if (body.cashrefundlimit !== undefined) {
+    if (body.cashrefundlimit === null || body.cashrefundlimit === '') out.cash_refund_limit = null;
+    else {
+      const n = Number(body.cashrefundlimit);
+      if (!Number.isFinite(n) || n < 0 || n > 10000000) throw new BadRequestException('The cash refund limit must be zero or more, or blank for no limit.');
+      out.cash_refund_limit = Math.round(n * 100) / 100;
+    }
   }
   if (body.operatorrequired !== undefined) out.operator_required = !!body.operatorrequired;
   if (body.operatorholdminutes !== undefined) {

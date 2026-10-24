@@ -7,7 +7,7 @@ import { SaleService } from "../sales.service";
 })
 export class SaleReturnsComponent {
     
-    returns:SaleReturn[] = [];
+    returns:any[] = [];
     adjustReturnItemId = 0;
     showReturnAdjustForm = false;
    
@@ -36,7 +36,12 @@ export class SaleReturnsComponent {
               reason: r['reason'],
               comments: r['comments'],
               refundmode: r['refund_mode'],
-              refundamount: r['refund_amount']
+              refundamount: r['refund_amount'],
+              needsinspection: r['needs_inspection'],
+              acceptedqty: r['accepted_qty'],
+              discardedqty: r['discarded_qty'],
+              settledby: r['settled_by_name'],
+              settledon: r['settled_on']
             }
           });
         });

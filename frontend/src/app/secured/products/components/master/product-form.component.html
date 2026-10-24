@@ -110,6 +110,15 @@
             <label for="minstock" class="form-label">Minimum stock</label>
             <input type="number" min="0" step="1" class="form-control" id="minstock" formControlName="minstock" placeholder="units" data-testid="prod-minstock" title="Keep at least this many on hand: the Reorder list orders up to it">
           </div>
+          <div class="col-md-3">
+            <label for="returnrule" class="form-label">If a customer returns it</label>
+            <select class="form-select" id="returnrule" formControlName="returnrule" data-testid="prod-returnrule" title="Refrigerated and similar lines are usually not taken back">
+              <option value="">Follow its category</option>
+              <option value="FREE">Take back</option>
+              <option value="INSPECT">Inspect first</option>
+              <option value="NONE">Do not take back</option>
+            </select>
+          </div>
         </div>
       <div class="row mt-2">
         <div class="col-md-12 text-center">

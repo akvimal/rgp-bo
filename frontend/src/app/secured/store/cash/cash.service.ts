@@ -60,6 +60,34 @@ export class CashService {
         return this.http.put(`${this.apiurl}/store-cash/templates/${id}`, body);
     }
 
+    /** the checklists in force for a store (its own, the business's, or the standard) */
+    getChecklists(storeid:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/checklists`, { params: { storeid: storeid || '' } });
+    }
+
+    /** the editor's view: each list at the business's level, or one store's */
+    getChecklistConfig(scope:string, storeid:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/checklists/config`, { params: { scope, storeid: storeid || '' } });
+    }
+
+    /** what the last 30 days suggest for the checklists (the assistant words them when it is on) */
+    getChecklistSuggestions(scope:string, storeid:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/checklists/suggestions`, { params: { scope, storeid: storeid || '' } });
+    }
+
+    /** items for a situation the owner describes */
+    draftChecklist(body:any): Observable<any> {
+        return this.http.post(`${this.apiurl}/store-cash/checklists/draft`, body);
+    }
+
+    saveChecklist(body:any): Observable<any> {
+        return this.http.put(`${this.apiurl}/store-cash/checklists`, body);
+    }
+
+    resetChecklist(scope:string, storeid:any, kind:string): Observable<any> {
+        return this.http.delete(`${this.apiurl}/store-cash/checklists`, { params: { scope, storeid: storeid || '', kind } });
+    }
+
     getShifts(storeid:any): Observable<any> {
         return this.http.get(`${this.apiurl}/store-cash/shifts`, { params: { storeid: storeid || '' } });
     }
@@ -74,6 +102,14 @@ export class CashService {
 
     closeShift(id:any, body:any): Observable<any> {
         return this.http.put(`${this.apiurl}/store-cash/shifts/${id}/close`, body);
+    }
+
+    getReturnRules(): Observable<any> {
+        return this.http.get(`${this.apiurl}/sales/return-rules`);
+    }
+
+    saveReturnRule(category:string, rule:string|null): Observable<any> {
+        return this.http.put(`${this.apiurl}/sales/return-rules`, { category, rule });
     }
 
     getStoreProfile(storeid:any): Observable<any> {

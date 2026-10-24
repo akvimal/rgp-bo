@@ -14,6 +14,7 @@ export class SaleReturnFormComponent {
     valid = true;
     total = 0;
     refundmode = '';
+    error = '';
     
    
     constructor(private service:SaleService){}
@@ -60,7 +61,8 @@ export class SaleReturnFormComponent {
     }
  
     onSubmit(): void {
-        const returns = this.items.filter((item:any) => item.valid);
+        this.error = '';
+        const returns = this.items.filter((item:any) => item.valid && item.return_rule !== 'NONE');
         if(returns.length == 0){
             this.valid = false;
             return;
@@ -77,6 +79,9 @@ export class SaleReturnFormComponent {
         });
         this.service.saveReturns(input).subscribe(data => {
             this.success.emit(data);
+        }, (err:any) => {
+            const m = err?.error?.message;
+            this.error = Array.isArray(m) ? m.join(' ') : (m || 'Could not record the return.');
         });
     }
 }

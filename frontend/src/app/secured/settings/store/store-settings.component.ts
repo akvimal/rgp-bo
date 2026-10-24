@@ -20,7 +20,30 @@ export class StoreSettingsComponent implements OnInit {
   message:string = '';
   savingPolicy:boolean = false;
   savingStore:boolean = false;
-  activeTab:'details' | 'cash' = 'details';
+  activeTab:'details' | 'cash' | 'checklists' | 'returns' = 'details';
+
+  // the checklists a person ticks when a shift is opened, handed over or closed
+  readonly checklistKinds = [
+    { kind: 'OPENING', title: 'Opening the store', hint: 'The first shift of the day' },
+    { kind: 'OPENING_OPEN_STORE', title: 'Taking up a shift while the store is open', hint: 'A handover, a later shift, or a second person' },
+    { kind: 'CLOSING', title: 'Closing the store', hint: 'The end of the day' },
+    { kind: 'HANDOVER', title: 'Handing over to the next person', hint: 'The store stays open' },
+  ];
+  ckScope:'store' | 'business' = 'store';
+  ck:any = null;
+  ckDraft:{[kind:string]:any[]} = {};
+  ckMessage = '';
+  ckError = '';
+  ckBusy = false;
+
+  // suggestions for the lists: from the last 30 days, or from a situation described
+  ckFacts:any[] = [];
+  ckSuggestions:any[] = [];
+  ckAssistNote = '';
+  ckAssistError = '';
+  ckAssistBusy = false;
+  ckAsked = false;
+  ckSituation = '';
   profile:any = null;
   profileSaving:boolean = false;
   profileMessage:string = '';
@@ -63,8 +86,24 @@ export class StoreSettingsComponent implements OnInit {
     this.refreshStoreList();
   }
 
-  selectTab(tab:'details' | 'cash') {
+  rrRows:any[] = [];
+  rrError = '';
+
+  loadRules() {
+    this.rrError = '';
+    this.cashService.getReturnRules().subscribe((rows:any) => this.rrRows = rows, err => this.rrError = err?.error?.message || 'Unable to load the return rules');
+  }
+
+  saveRule(row:any, rule:string|null) {
+    this.rrError = '';
+    const before = row.rule;
+    row.rule = rule;
+    this.cashService.saveReturnRule(row.category, rule).subscribe(() => {}, err => { row.rule = before; this.rrError = err?.error?.message || 'Unable to save'; });
+  }
+
+  selectTab(tab:'details' | 'cash' | 'checklists' | 'returns') {
     this.activeTab = tab;
+    if (tab === 'returns') this.loadRules();
     this.refreshSelectedStore();
   }
 
@@ -117,12 +156,113 @@ export class StoreSettingsComponent implements OnInit {
     this.cashService.saveStoreProfile(p.storeid, {
       shiftmode: p.shiftmode, till: p.tillsetting, accountablerole: p.accountablerole,
       operatorrequired: !!p.operatorrequired, operatorholdminutes: Number(p.operatorholdminutes), approvalmode: p.approvalmodesetting,
+      cashrefundlimit: p.cashrefundlimit === null || p.cashrefundlimit === '' || p.cashrefundlimit === undefined ? null : Number(p.cashrefundlimit),
     }).subscribe((r:any) => { this.profileSaving = false; this.profile = r; this.profileMessage = 'Saved.'; },
       err => { this.profileSaving = false; this.profileError = err?.error?.message || 'Unable to save'; });
   }
 
+  // ------------------------------------------------------------ checklists
+  loadChecklists(keepMessage = false) {
+    if (!keepMessage) { this.ckFacts = []; this.ckSuggestions = []; this.ckAssistNote = this.ckAssistError = ''; this.ckAsked = false; }
+    this.ck = null;
+    if (!keepMessage) this.ckMessage = this.ckError = '';
+    if (this.ckScope === 'store' && !this.selectedStoreId) return;
+    this.cashService.getChecklistConfig(this.ckScope, this.selectedStoreId).subscribe((c:any) => {
+      this.ck = c;
+      this.ckDraft = {};
+      this.checklistKinds.forEach(k => this.ckDraft[k.kind] = (c.lists[k.kind].items || []).map((i:any) => ({ ...i })));
+    }, err => this.ckError = err?.error?.message || 'Unable to load the checklists');
+  }
+
+  kindTitle(kind:string):string { return this.checklistKinds.find(k => k.kind === kind)?.title || kind; }
+
+  private ckAssistFail(err:any, fallback:string) {
+    this.ckAssistBusy = false;
+    const m = err?.error?.message;
+    this.ckAssistError = Array.isArray(m) ? m.join(' ') : (m || fallback);
+  }
+
+  /** what the last 30 days show, as suggested items; the assistant words them when it is on */
+  ckSuggest() {
+    this.ckAssistError = this.ckAssistNote = '';
+    this.ckAssistBusy = true;
+    this.cashService.getChecklistSuggestions(this.ckScope, this.selectedStoreId).subscribe({
+      next: (r:any) => {
+        this.ckAssistBusy = false; this.ckAsked = true;
+        this.ckFacts = r.facts || [];
+        this.ckSuggestions = (r.suggestions || []).map((s:any) => ({ ...s, added: false }));
+        this.ckAssistNote = r.note || '';
+      },
+      error: (err:any) => this.ckAssistFail(err, 'Unable to look at the last 30 days'),
+    });
+  }
+
+  /** items for a situation described in a sentence or two */
+  ckDescribe() {
+    this.ckAssistError = this.ckAssistNote = '';
+    this.ckAssistBusy = true;
+    this.cashService.draftChecklist({ scope: this.ckScope, storeid: this.selectedStoreId || undefined, instruction: this.ckSituation }).subscribe({
+      next: (r:any) => {
+        this.ckAssistBusy = false; this.ckAsked = true;
+        this.ckFacts = [];
+        this.ckSuggestions = (r.suggestions || []).map((s:any) => ({ ...s, added: false }));
+      },
+      error: (err:any) => this.ckAssistFail(err, 'The assistant could not suggest items'),
+    });
+  }
+
+  /** puts a suggestion into the draft of its list; it is saved with that list's Save */
+  ckAddSuggestion(s:any) {
+    const draft = this.ckDraft[s.list];
+    if (!draft) return;
+    const norm = (t:string) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!draft.some((i:any) => norm(i.label) === norm(s.label))) draft.push({ key: '', label: s.label });
+    s.added = true;
+    this.ckError = '';
+    this.ckMessage = `Added to "${this.kindTitle(s.list)}". Press Save on that list to keep it.`;
+  }
+
+  ckSource(kind:string):string {
+    const l = this.ck?.lists?.[kind];
+    if (!l) return '';
+    if (l.own) return this.ckScope === 'store' ? "This store's own list" : "The business's list";
+    return this.ckScope === 'store' && l.inheritedfrom === 'business' ? "The business's list" : 'Standard list';
+  }
+
+  ckMove(kind:string, i:number, d:number) {
+    const a = this.ckDraft[kind], j = i + d;
+    if (j < 0 || j >= a.length) return;
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+
+  ckRemove(kind:string, i:number) { this.ckDraft[kind].splice(i, 1); }
+
+  ckAdd(kind:string) { this.ckDraft[kind].push({ key: '', label: '' }); }
+
+  ckSave(kind:string) {
+    this.ckMessage = this.ckError = '';
+    const items = this.ckDraft[kind].filter((i:any) => String(i.label || '').trim());
+    this.ckBusy = true;
+    this.cashService.saveChecklist({ scope: this.ckScope, storeid: this.selectedStoreId || undefined, kind, items }).subscribe({
+      next: () => { this.ckBusy = false; this.ckMessage = 'Saved.'; this.loadChecklists(true); },
+      error: (err:any) => { this.ckBusy = false; const m = err?.error?.message; this.ckError = Array.isArray(m) ? m.join(' ') : (m || 'Unable to save the checklist'); },
+    });
+  }
+
+  ckReset(kind:string) {
+    this.ckMessage = this.ckError = '';
+    this.cashService.resetChecklist(this.ckScope, this.selectedStoreId, kind).subscribe({
+      next: () => { this.ckMessage = this.ckScope === 'store' ? "This store now uses the business's list." : 'The standard list is back.'; this.loadChecklists(true); },
+      error: (err:any) => this.ckError = err?.error?.message || 'Unable to change the checklist',
+    });
+  }
+
   refreshSelectedStore() {
     this.selectedStore = this.stores.find((store:any) => store.id === Number(this.selectedStoreId)) || { depositthreshold: 0, location: '' };
+    if (this.activeTab === 'checklists') {
+      this.loadChecklists();
+      return;
+    }
     if (this.activeTab === 'cash') {
       this.loadProfile();
     }

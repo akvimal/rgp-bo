@@ -13,11 +13,13 @@ import { Business } from "src/entities/business.entity";
 import { StoreController } from "./store.controller";
 import { StoreCashController } from "./store-cash.controller";
 import { StoreService } from "./store.service";
+import { ChecklistAssistant } from "./checklist-assistant";
+import { AiProvider } from "../alerts/ai-provider";
 
 @Module({
   imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule, RoleModule],
   controllers: [StoreController, StoreCashController],
-  providers: [StoreService, JwtService],
+  providers: [StoreService, JwtService, ChecklistAssistant, AiProvider],
   exports: [StoreService],
 })
 export class StoreModule {}

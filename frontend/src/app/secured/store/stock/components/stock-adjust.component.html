@@ -29,6 +29,7 @@
                         <!-- <td style="text-align: right;">{{i.price}}</td> -->
                         <td>{{i.date | date : 'dd MMM yyyy'}}</td>
                         <td>{{i.reasoncode || i.reason}}
+                          <span class="badge bg-danger ms-1" *ngIf="i.discarded" data-testid="adj-discarded" title="Left the shelf as waste">Discarded</span>
                           <h5 *ngIf="i.comments" style="float:left; margin-right: 0.3em;"><i class="bi bi-chat text-danger"></i>
                           </h5>
                         </td>

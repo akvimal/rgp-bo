@@ -23,12 +23,19 @@
       <!-- opening -->
       <div *ngIf="mode === 'open'" data-testid="shiftdesk-open-form">
         <h6>Open the shift - {{ operatorName || 'choose staff above' }}</h6>
-        <div class="fw-semibold small mb-2">Count the opening float</div>
+        <div class="small text-muted mb-2" *ngIf="openingContext?.storealreadyopen" data-testid="shiftdesk-open-continuing">
+          The store is already open
+          <span *ngIf="openingContext.reason === 'HANDOVER'">: the last shift was handed over<span *ngIf="openingContext.previous?.handoverto"> to {{openingContext.previous.handoverto}}</span></span>
+          <span *ngIf="openingContext.reason === 'OPEN_SHIFT'">: {{openingContext.previous?.assigned || 'someone'}} has a shift open</span>
+          <span *ngIf="openingContext.reason === 'EARLIER_TODAY'">: a shift ran earlier today ({{openingContext.previous?.name}})</span>.
+          The checklist is for taking up a shift, not for opening the store.
+        </div>
+        <div class="fw-semibold small mb-2">Count the {{ openingContext?.storealreadyopen ? 'drawer you are taking over' : 'opening float' }}</div>
         <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
         <div class="small mt-3">
           <div class="fw-semibold mb-1">Opening checklist</div>
           <div class="form-check" *ngFor="let c of checklist">
-            <input type="checkbox" class="form-check-input" [id]="'open-' + c.key" [(ngModel)]="c.checked" [attr.data-testid]="'shift-checklist-' + c.key">
+            <input type="checkbox" class="form-check-input" [id]="'open-' + c.key" [ngModel]="c.checked" (ngModelChange)="tick(c, $event)" [attr.data-testid]="'shift-checklist-' + c.key">
             <label class="form-check-label" [for]="'open-' + c.key">{{ c.label }}</label>
           </div>
         </div>
@@ -46,6 +53,16 @@
             <span class="text-muted ms-1">({{ openShift.shiftdate | date:'dd MMM' }})</span>
             <div class="small text-muted" *ngIf="summary?.shift?.assigned">{{ staffBased ? 'Your drawer' : 'With ' + summary.shift.assigned }}</div>
             <div class="small text-muted" *ngIf="summary?.accountable" data-testid="shiftdesk-accountable">A cash difference is answered for by {{ summary.accountable }}.</div>
+            <details class="small mt-1" *ngIf="summary?.checklists?.length" data-testid="shiftdesk-checklists">
+              <summary class="text-muted">Checklists ticked on this shift</summary>
+              <div class="mt-1" *ngFor="let c of summary.checklists" [attr.data-testid]="'shiftdesk-checklist-' + c.phase">
+                <div class="fw-semibold">{{ checklistTitle(c.kind) }}</div>
+                <div class="text-muted">by {{ c.operator || c.doneby || 'unknown' }} &middot; {{ c.doneon | date:'dd MMM, h:mm a' }}</div>
+                <ul class="list-unstyled mb-1">
+                  <li *ngFor="let i of c.items"><i class="bi" [ngClass]="i.ticked ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i> {{ i.label }} <span class="text-muted" *ngIf="i.at">{{ i.at | date:'h:mm a' }}</span><span class="text-danger" *ngIf="!i.ticked"> not ticked</span></li>
+                </ul>
+              </div>
+            </details>
           </div>
           <button *ngIf="mode !== 'close'" class="btn btn-outline-danger" type="button" data-testid="shift-card-close" (click)="startClose()" [disabled]="!summary"
                   title="Count the drawer and end your shift">Close shift</button>

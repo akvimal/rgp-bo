@@ -22,6 +22,12 @@
             <li class="nav-item">
               <a class="nav-link" [class.active]="activeTab === 'cash'" data-testid="store-s-tab-cash" href="javascript:void(0)" (click)="selectTab('cash')">Cash &amp; shifts</a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'checklists'" data-testid="store-s-tab-checklists" href="javascript:void(0)" (click)="selectTab('checklists')">Checklists</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="activeTab === 'returns'" data-testid="store-s-tab-returns" href="javascript:void(0)" (click)="selectTab('returns')">Returns</a>
+            </li>
           </ul>
         </div>
       </div>
@@ -208,6 +214,11 @@
                 <label class="form-check-label" for="pf-op">Ask who is serving on each bill</label></div>
               <div class="form-text">Turn off where everyone bills under their own login.</div>
             </div>
+            <div class="col-12 col-lg-6">
+              <label class="form-label">Largest cash refund on one return</label>
+              <input type="number" min="0" step="1" class="form-control" [(ngModel)]="profile.cashrefundlimit" placeholder="No limit" data-testid="store-profile-cashrefund">
+              <div class="form-text">Leave blank for no limit. 0 means never cash: the customer gets store credit. A bigger refund than this is also given as store credit.</div>
+            </div>
             <div class="col-6 col-lg-3" *ngIf="profile.operatorrequired">
               <label class="form-label">Keep the last person for (minutes)</label>
               <input type="number" min="0" max="1440" class="form-control" [(ngModel)]="profile.operatorholdminutes" data-testid="store-profile-hold">
@@ -295,6 +306,100 @@
         Shift templates (a named shift with its hours) apply to a shared till closed at handover. This store closes by person, so none are needed.
       </div>
     </div>
+
+      <div *ngIf="activeTab === 'returns'" class="mt-3" data-testid="store-rr-panel">
+        <p class="small text-muted mb-2">What each product category does when a customer returns it. A single product can differ: set it on the product (Returns). Anything not listed is taken back freely.</p>
+        <div class="text-danger small" *ngIf="rrError" data-testid="store-rr-error">{{ rrError }}</div>
+        <table class="table table-sm align-middle" *ngIf="rrRows.length">
+          <thead><tr><th>Category</th><th class="text-end">Products</th><th style="width:16rem">On return</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of rrRows; let i = index" [attr.data-testid]="'store-rr-row-' + i">
+              <td>{{ r.category }}</td>
+              <td class="text-end">{{ r.products }}</td>
+              <td>
+                <select class="form-select form-select-sm" [ngModel]="r.rule" (ngModelChange)="saveRule(r, $event)" [attr.data-testid]="'store-rr-rule-' + i">
+                  <option [ngValue]="null">Taken back</option>
+                  <option value="INSPECT">Inspected first</option>
+                  <option value="NONE">Not taken back</option>
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="text-muted small" *ngIf="!rrRows.length && !rrError">No product categories yet.</div>
+      </div>
+
+      <div *ngIf="activeTab === 'checklists'" class="mt-3" data-testid="store-ck-panel">
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-12 col-md-5">
+            <label class="form-label">Which checklists</label>
+            <select class="form-select" [(ngModel)]="ckScope" (ngModelChange)="loadChecklists()" data-testid="store-ck-scope">
+              <option value="store">This store only</option>
+              <option value="business">The business: every store that has none of its own</option>
+            </select>
+          </div>
+          <div class="col small text-muted">A store's own list replaces the business's. A store with none of its own uses the business's, and the business uses the standard list until it writes one.</div>
+        </div>
+        <div class="alert alert-info py-2" *ngIf="ckScope === 'store' && !selectedStoreId" data-testid="store-ck-choose">Choose a store above.</div>
+
+        <div class="border rounded p-3 mb-3" *ngIf="ck" data-testid="store-ck-assist">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <strong>Suggestions</strong>
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="ckSuggest()" [disabled]="ckAssistBusy" data-testid="store-ck-suggest"><i class="bi bi-lightbulb me-1"></i>Suggest from the last 30 days</button>
+          </div>
+          <div class="small text-muted mt-1">Looks at cash that did not add up, digital payments not received and bills left waiting. Nothing changes until you add an item to a list and press Save.</div>
+          <div class="mt-3" *ngIf="ck.assistant?.configured" data-testid="store-ck-describe-box">
+            <label class="form-label small mb-1" for="ck-situation">Or describe a situation to guard against</label>
+            <div class="d-flex gap-2">
+              <input id="ck-situation" class="form-control" maxlength="500" [(ngModel)]="ckSituation" placeholder="e.g. the safe was left unlocked twice last month" data-testid="store-ck-situation">
+              <button type="button" class="btn btn-outline-primary text-nowrap" (click)="ckDescribe()" [disabled]="ckAssistBusy || ckSituation.trim().length < 5" data-testid="store-ck-describe">Suggest items</button>
+            </div>
+          </div>
+          <div class="small text-muted mt-3" *ngIf="!ck.assistant?.configured" data-testid="store-ck-assist-off">The assistant is not switched on for this account, so the suggestions come from the numbers alone and a situation cannot be described.</div>
+          <div class="alert alert-danger py-2 mt-3 mb-0" *ngIf="ckAssistError" data-testid="store-ck-assist-error">{{ckAssistError}}</div>
+          <div class="small text-muted mt-3" *ngIf="ckAssistNote" data-testid="store-ck-assist-note">{{ckAssistNote}}</div>
+          <ng-container *ngIf="ckAsked">
+            <div class="mt-3" *ngIf="ckFacts.length" data-testid="store-ck-facts">
+              <div class="small fw-semibold mb-1">What the last 30 days show</div>
+              <ul class="small mb-0"><li *ngFor="let f of ckFacts">{{f.text}}</li></ul>
+            </div>
+            <div class="mt-3" *ngIf="ckSuggestions.length; else nothing">
+              <div class="small fw-semibold mb-1">Suggested items</div>
+              <div class="d-flex align-items-start gap-2 border-top py-2" *ngFor="let s of ckSuggestions; index as n" [attr.data-testid]="'store-ck-sug-' + n">
+                <div class="flex-grow-1">
+                  <span class="badge bg-light text-dark border me-2">{{kindTitle(s.list)}}</span><strong>{{s.label}}</strong>
+                  <div class="small text-muted">{{s.reason}}</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-success text-nowrap" [disabled]="s.added" (click)="ckAddSuggestion(s)" [attr.data-testid]="'store-ck-sug-add-' + n">{{ s.added ? 'Added' : 'Add to the list' }}</button>
+              </div>
+            </div>
+            <ng-template #nothing><div class="small text-muted mt-3" data-testid="store-ck-nothing">Nothing new to suggest{{ ckFacts.length ? '' : ': the last 30 days show nothing a checklist would help with' }}.</div></ng-template>
+          </ng-container>
+        </div>
+        <div class="alert alert-danger py-2" *ngIf="ckError" data-testid="store-ck-error">{{ckError}}</div>
+        <div class="alert alert-success py-2" *ngIf="ckMessage" data-testid="store-ck-message">{{ckMessage}}</div>
+        <ng-container *ngIf="ck">
+          <div class="border rounded p-3 mb-3" *ngFor="let k of checklistKinds" [attr.data-testid]="'store-ck-' + k.kind">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div><strong>{{k.title}}</strong><div class="small text-muted">{{k.hint}}</div></div>
+              <span class="badge" [ngClass]="ck.lists[k.kind].own ? 'bg-primary' : 'bg-light text-dark border'" [attr.data-testid]="'store-ck-source-' + k.kind">{{ckSource(k.kind)}}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2" *ngFor="let it of ckDraft[k.kind]; index as i">
+              <span class="text-muted small" style="width:1.5rem">{{i + 1}}.</span>
+              <input class="form-control form-control-sm" maxlength="120" [(ngModel)]="it.label" [attr.aria-label]="'Item ' + (i + 1)" [attr.data-testid]="'store-ck-item-' + k.kind + '-' + i">
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="ckMove(k.kind, i, -1)" [disabled]="i === 0" title="Move up" aria-label="Move up"><i class="bi bi-arrow-up"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="ckMove(k.kind, i, 1)" [disabled]="i === ckDraft[k.kind].length - 1" title="Move down" aria-label="Move down"><i class="bi bi-arrow-down"></i></button>
+              <button type="button" class="btn btn-sm btn-outline-danger" (click)="ckRemove(k.kind, i)" title="Remove" aria-label="Remove this item" [attr.data-testid]="'store-ck-remove-' + k.kind + '-' + i"><i class="bi bi-trash"></i></button>
+            </div>
+            <div class="small text-muted mt-2" *ngIf="!ckDraft[k.kind].length">Nothing to tick: this list is empty.</div>
+            <div class="mt-3 d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-sm btn-outline-primary" (click)="ckAdd(k.kind)" [attr.data-testid]="'store-ck-add-' + k.kind"><i class="bi bi-plus-lg me-1"></i>Add an item</button>
+              <button type="button" class="btn btn-sm btn-primary" [disabled]="ckBusy" (click)="ckSave(k.kind)" [attr.data-testid]="'store-ck-save-' + k.kind">Save</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" *ngIf="ck.lists[k.kind].own" (click)="ckReset(k.kind)" [attr.data-testid]="'store-ck-reset-' + k.kind">{{ ckScope === 'store' ? "Use the business's list" : 'Back to the standard list' }}</button>
+            </div>
+          </div>
+        </ng-container>
+      </div>
 
     <div *ngIf="message" class="alert alert-danger mt-3" data-testid="store-s-message">{{message}}</div>
   </div>

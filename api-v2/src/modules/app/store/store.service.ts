@@ -13,7 +13,8 @@ import { PlatformService } from "src/core/platform/platform.service";
 import { denominationTotal, normalizeDenominations } from "./denominations";
 import { findAccountableUser, loadStoreProfile, parseProfileInput, parseStoreType } from "./store-profile";
 import { DepositRule, checkDepositRule, describeDepositRule, evaluateDeposit, parseDepositInput } from "./deposit-rule";
-import { CLOSING_CHECKLIST_KEYS, HANDOVER_CHECKLIST_KEYS, OPENING_CHECKLIST_KEYS, validateChecklist } from "./shift-checklist";
+import { ChecklistAssistant } from "./checklist-assistant";
+import { ChecklistKind, CHECKLIST_KINDS, DEFAULT_CHECKLISTS, effectiveChecklist, isChecklistKind, normalizeChecklistItems, requiredChecklistKeys, validateChecklist } from "./shift-checklist";
 
 import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
 @Injectable()
@@ -29,6 +30,7 @@ export class StoreService {
     @InjectEntityManager() private readonly manager: EntityManager,
     private readonly audit: AuditService,
     private readonly platform: PlatformService,
+    private readonly assistant: ChecklistAssistant,
   ) {}
 
   async findStores() {
@@ -174,6 +176,7 @@ export class StoreService {
       ...(values.accountable_role !== undefined ? { accountablerole: values.accountable_role } : {}),
       ...(values.approval_mode !== undefined ? { approvalmode: values.approval_mode } : {}),
       ...(values.operator_required !== undefined ? { operatorrequired: values.operator_required } : {}),
+      ...(values.cash_refund_limit !== undefined ? { cashrefundlimit: values.cash_refund_limit } : {}),
       ...(values.operator_hold_minutes !== undefined ? { operatorholdminutes: values.operator_hold_minutes } : {}),
     } as any);
     const after = await this.getProfile(id);
@@ -476,6 +479,104 @@ export class StoreService {
     return this.templateRepository.findOne({ where: { id } });
   }
 
+  /**
+   * Is the store already open? True when a shift is open in it, or one has been opened earlier today (a handover, a later shift, a second
+   * person's drawer): the door, the terminals and yesterday's deposit are then somebody's done. The page picks the checklist from this.
+   */
+  async openingContext(query: any, userid?: number) {
+    const storeid = await this.resolveStoreId(query.storeid);
+    if (!storeid) return { storealreadyopen: false, reason: null, previous: null };
+    const rows = await this.manager.query(
+      `select s.id, s.name, s.status, s.close_type, u.full_name as assigned, tu.full_name as handover_to
+         from store_shifts s
+         left join app_user u on u.id = s.assigned_user_id
+         left join app_user tu on tu.id = s.handover_to_user_id
+        where s.store_id = $1 and s.archive = false and (s.status = 'OPEN' or s.shift_date = $2::date)
+        order by (s.status = 'OPEN') desc, s.opened_on desc nulls last, s.id desc limit 5`, [storeid, this.today()]);
+    const first = rows[0];
+    if (!first) return { storealreadyopen: false, reason: null, previous: null };
+    const reason = first.status === 'OPEN' ? 'OPEN_SHIFT' : first.close_type === 'HANDOVER' ? 'HANDOVER' : 'EARLIER_TODAY';
+    return {
+      storealreadyopen: true, reason,
+      previous: { name: first.name, status: first.status, assigned: first.assigned || null, closetype: first.close_type || null, handoverto: first.handover_to || null },
+    };
+  }
+
+  // ------------------------------------------------------------------ the checklists
+  /** the lists in force for a store (its own, its business's, or the standard): what the page asks a person to tick */
+  async checklistsFor(query: any) {
+    const storeid = await this.resolveStoreId(query.storeid);
+    const out: any = {};
+    for (const kind of CHECKLIST_KINDS) {
+      out[kind] = storeid ? await effectiveChecklist(this.manager, storeid, kind) : { items: DEFAULT_CHECKLISTS[kind], source: 'default' };
+    }
+    return out;
+  }
+
+  /** for the editor: each list at one scope (the business's, or one store's), with what it falls back to */
+  async checklistConfig(query: any, userid: number) {
+    const caller = await this.getCallerForStoreManagement(userid);
+    const storeScope = query.scope !== 'business';
+    const store = storeScope ? await this.ownStore(userid, Number(query.storeid)) : null;
+    const rows = await this.manager.query(
+      `select store_id, kind, items from shift_checklist where business_id = $1 and (store_id is null or store_id = $2)`, [caller.businessid, store?.id ?? 0]);
+    const lists: any = {};
+    for (const kind of CHECKLIST_KINDS) {
+      const own = rows.find((r: any) => r.kind === kind && (storeScope ? r.store_id !== null : r.store_id === null));
+      const biz = rows.find((r: any) => r.kind === kind && r.store_id === null);
+      lists[kind] = {
+        own: !!own,
+        items: own ? own.items : (storeScope && biz ? biz.items : DEFAULT_CHECKLISTS[kind]),
+        inheritedfrom: storeScope && biz ? 'business' : 'default',
+        standard: DEFAULT_CHECKLISTS[kind],
+      };
+    }
+    return { scope: storeScope ? 'store' : 'business', storeid: store?.id ?? null, lists, assistant: { configured: this.assistant.configured, model: (await this.assistant.model()) || null } };
+  }
+
+  /** the items now on each list, for the scope being edited: the assistant avoids repeating them */
+  private async currentChecklistLabels(query: any, userid: number) {
+    const cfg = await this.checklistConfig(query, userid);
+    const existing: any = {};
+    for (const kind of CHECKLIST_KINDS) existing[kind] = (cfg.lists[kind].items || []).map((i: any) => i.label);
+    return { existing, storeId: cfg.storeid as number | null };
+  }
+
+  /** what the last 30 days suggest for the checklists (worded by the assistant if it is on and ai is not 'false') */
+  async checklistSuggestions(query: any, userid: number) {
+    const caller = await this.getCallerForStoreManagement(userid);
+    const { existing, storeId } = await this.currentChecklistLabels(query, userid);
+    return this.assistant.fromData({ businessId: Number(caller.businessid), storeId, existing, useAi: String(query.ai) !== 'false' });
+  }
+
+  /** checklist items for a situation the owner describes */
+  async checklistDraft(body: any, userid: number) {
+    const caller = await this.getCallerForStoreManagement(userid);
+    const { existing } = await this.currentChecklistLabels(body || {}, userid);
+    return this.assistant.fromSituation({ businessId: Number(caller.businessid), existing, instruction: body?.instruction });
+  }
+
+  async saveChecklist(body: any, userid: number) {
+    const caller = await this.getCallerForStoreManagement(userid);
+    if (!isChecklistKind(body?.kind)) throw new BadRequestException('Choose which checklist this is.');
+    const items = normalizeChecklistItems(body?.items);
+    const storeId = body?.scope === 'business' ? null : (await this.ownStore(userid, Number(body?.storeid))).id;
+    await this.manager.query(
+      `insert into shift_checklist (business_id, store_id, kind, items, updated_by) values ($1, $2, $3, $4::jsonb, $5)
+       on conflict (business_id, coalesce(store_id, 0), kind) do update set items = excluded.items, updated_on = now(), updated_by = excluded.updated_by`,
+      [caller.businessid, storeId, body.kind, JSON.stringify(items), userid]);
+    return { kind: body.kind, items };
+  }
+
+  /** take a store's list back to the business's (or the business's back to the standard one) */
+  async resetChecklist(query: any, userid: number) {
+    const caller = await this.getCallerForStoreManagement(userid);
+    if (!isChecklistKind(query?.kind)) throw new BadRequestException('Choose which checklist this is.');
+    const storeId = query?.scope === 'business' ? null : (await this.ownStore(userid, Number(query?.storeid))).id;
+    await this.manager.query(`delete from shift_checklist where business_id = $1 and coalesce(store_id, 0) = coalesce($2::int, 0) and kind = $3`, [caller.businessid, storeId, query.kind]);
+    return { kind: query.kind, reset: true };
+  }
+
   async findShifts(query: any, userid?: number) {
     const storeid = await this.resolveStoreId(query.storeid);
     const qb = this.shiftRepository.createQueryBuilder("shift")
@@ -546,8 +647,10 @@ export class StoreService {
       throw new BadRequestException("Enter the opening float before opening the shift.");
     }
     // WS-7: only validated when the caller actually sends a checklist (the POS card always does).
+    // the opening list depends on whether the store is already open; found before this shift exists
+    const openingKind: ChecklistKind = (await this.openingContext({ storeid }, userid)).storealreadyopen ? 'OPENING_OPEN_STORE' : 'OPENING';
     if (body.openingchecklist !== undefined) {
-      const checklistError = validateChecklist(OPENING_CHECKLIST_KEYS, body.openingchecklist);
+      const checklistError = validateChecklist(await requiredChecklistKeys(this.manager, storeid, openingKind), body.openingchecklist);
       if (checklistError) {
         throw new BadRequestException(checklistError);
       }
@@ -577,11 +680,40 @@ export class StoreService {
       openedby: userid ? { id: userid } as any : null,
     });
 
+    if (Array.isArray(body.openingchecklist)) {
+      await this.recordChecklist(shift.id, storeid, 'OPEN', openingKind, body.openingchecklist, body.openingchecklistat, userid, shift.assigneduserid ?? null);
+    }
     await this.syncShiftTotals(shift.id);
     return this.shiftRepository.findOne({
       where: { id: shift.id },
       relations: ["store", "template", "assigneduser", "openedby", "closedby"],
     });
+  }
+
+  /**
+   * What was ticked: the list in force at that moment (each item with its wording), which of its items were ticked and when, and who did it
+   * (the person at the counter, and the login they were signed in as). Kept as it was, so a checklist changed later does not rewrite the past.
+   */
+  private async recordChecklist(shiftId: number, storeId: number, phase: 'OPEN' | 'CLOSE', kind: ChecklistKind, submitted: any, ticks: any, userid: number | null | undefined, operatorId: number | null) {
+    const list = (await effectiveChecklist(this.manager, storeId, kind)).items;
+    const now = new Date();
+    const when = (v: any) => { const d = new Date(v); return isNaN(d.getTime()) || Math.abs(d.getTime() - now.getTime()) > 86400000 ? now : d; };
+    const ticked: string[] = Array.isArray(submitted) ? submitted.map(String) : [];
+    const items = list.map((i) => ticked.includes(i.key)
+      ? { key: i.key, label: i.label, ticked: true, at: (ticks && typeof ticks === 'object' && ticks[i.key] ? when(ticks[i.key]) : now).toISOString() }
+      : { key: i.key, label: i.label, ticked: false, at: null });
+    await this.manager.query(
+      `insert into shift_checklist_log (shift_id, phase, kind, items, done_by, operator_id, done_on) values ($1, $2, $3, $4::jsonb, $5, $6, now())
+       on conflict (shift_id, phase) do update set kind = excluded.kind, items = excluded.items, done_by = excluded.done_by, operator_id = excluded.operator_id, done_on = now()`,
+      [shiftId, phase, kind, JSON.stringify(items), userid ?? null, operatorId ?? null]);
+  }
+
+  /** the checklists of a shift as they were ticked, with who and when */
+  async shiftChecklists(shiftId: number) {
+    return this.manager.query(
+      `select l.phase, l.kind, l.items, l.done_on as doneon, u.full_name as doneby, o.full_name as operator
+         from shift_checklist_log l left join app_user u on u.id = l.done_by left join app_user o on o.id = l.operator_id
+        where l.shift_id = $1 order by case l.phase when 'OPEN' then 0 else 1 end`, [shiftId]);
   }
 
   async assignShift(id: number, body: any, userid?: number) {
@@ -634,7 +766,7 @@ export class StoreService {
     const closeType = body.closetype === 'HANDOVER' ? 'HANDOVER' : 'END_OF_DAY';
     // WS-7: only validated when the caller actually sends a checklist (the shift page always does).
     if (body.closingchecklist !== undefined) {
-      const checklistError = validateChecklist(closeType === 'HANDOVER' ? HANDOVER_CHECKLIST_KEYS : CLOSING_CHECKLIST_KEYS, body.closingchecklist);
+      const checklistError = validateChecklist(await requiredChecklistKeys(this.manager, shift.storeid, closeType === 'HANDOVER' ? 'HANDOVER' : 'CLOSING'), body.closingchecklist);
       if (checklistError) {
         throw new BadRequestException(checklistError);
       }
@@ -722,6 +854,9 @@ export class StoreService {
       nextShiftId = (next as any).id;
       await this.syncShiftTotals(nextShiftId as number);
     }
+    if (Array.isArray(body.closingchecklist)) {
+      await this.recordChecklist(id, shift.storeid, 'CLOSE', closeType === 'HANDOVER' ? 'HANDOVER' : 'CLOSING', body.closingchecklist, body.closingchecklistat, userid, closedOperatorId);
+    }
     const closed = await this.shiftRepository.findOne({
       where: { id },
       relations: ["store", "template", "openedby", "closedby"],
@@ -757,6 +892,7 @@ export class StoreService {
       bills: t.bills, total: t.total, cash: t.cash, digital: t.digital, storeCredit: t.store_credit, staffCredit: t.staff_credit,
       digitalByProvider: digital, expenses, expensesTotal: expenses.reduce((s: number, e: any) => s + e.amount, 0),
       refunds: out.refunds, deposits: out.deposits, expected: stats.expectedcash,
+      checklists: await this.shiftChecklists(shiftId),
     };
   }
 
@@ -1021,6 +1157,7 @@ export class StoreService {
       returns: returnsRow,
       staff: staffBreakdown,
       ledger,
+      checklists: await this.shiftChecklists(shiftId),
     };
   }
 

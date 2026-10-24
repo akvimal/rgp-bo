@@ -38,6 +38,9 @@ export class ProductQtyChange extends BaseEntity {
   @Column("character varying", { name: "reason_code", length: 20, nullable: true })
   reasoncode: string | null;
 
+  @Column("boolean", { name: "discarded", default: false })
+  discarded: boolean;
+
   @Column("integer", { name: "store_id", nullable: true })
   storeid: number | null;
 

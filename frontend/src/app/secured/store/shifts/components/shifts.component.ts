@@ -139,6 +139,11 @@ export class ShiftsComponent implements OnInit {
 
   reportDenoms = [2000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 
+  /** what a recorded checklist is called on the report */
+  checklistTitle(kind:string): string {
+    return ({ OPENING: 'Opening the store', OPENING_OPEN_STORE: 'Taking up the shift (store already open)', CLOSING: 'Closing the store', HANDOVER: 'Handing over the shift' } as any)[kind] || kind;
+  }
+
   denomCount(rows:any[], d:number): number {
     const row = (rows || []).find((r:any) => Number(r?.d) === d);
     return row ? Number(row.n) || 0 : 0;

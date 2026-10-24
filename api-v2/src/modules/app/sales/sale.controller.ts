@@ -1,6 +1,6 @@
 import { SaleService } from "./sale.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards, NotFoundException } from "@nestjs/common";
 import { CreateSaleDto } from "./dto/create-sale.dto";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { AuthGuard } from "src/modules/auth/auth.guard";
@@ -16,6 +16,7 @@ import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { AuditService } from "src/core/audit/audit.service";
 import { loadStoreProfile } from "../store/store-profile";
+import { RETURN_RULES } from "./return-rule";
 
 import { isManagerRole, NOT_A_PERSON } from 'src/core/roles';
 @ApiTags('Sales')
@@ -220,6 +221,40 @@ export class SaleController {
     @Get('/raw')
     async findAllSales() {
       return this.saleService.getSales();
+    }
+
+    /** the product categories and what each does on return; the business's own list, never another's */
+    @Get('/return-rules')
+    async returnRules(@User() currentUser: any) {
+      const [u] = await this.manager.query(`select business_id from app_user where id = $1`, [currentUser.id]);
+      const rows = await this.manager.query(
+        `select c.category, crr.rule, c.products::int as products
+           from (select category, count(*) as products from product where active and not archive and coalesce(btrim(category), '') <> '' group by category) c
+           left join return_category_rule crr on crr.business_id = $1 and lower(crr.category) = lower(c.category)
+          order by c.category`, [u?.business_id ?? 0]);
+      return rows.map((r: any) => ({ category: r.category, rule: r.rule || null, products: r.products }));
+    }
+
+    /** Business Head or Owner-operator: set what a category does on return (rule null: free, like any other) */
+    @Put('/return-rules')
+    async saveReturnRule(@Body() body: any, @User() currentUser: any) {
+      const [u] = await this.manager.query(
+        `select u.business_id, r.name as role from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [currentUser.id]);
+      if (!u || !['Business Head', 'Owner-operator'].includes(u.role)) throw new ForbiddenException('Only the business owner sets what may be returned.');
+      const category = String(body?.category || '').trim();
+      if (!category) throw new BadRequestException('Choose a category.');
+      const rule = body?.rule === null || body?.rule === '' || body?.rule === undefined ? null : String(body.rule).toUpperCase();
+      if (rule !== null && !RETURN_RULES.includes(rule as any)) throw new BadRequestException('A category is free to return, inspected first, or not accepted.');
+      if (rule === null || rule === 'FREE') {
+        await this.manager.query(`delete from return_category_rule where business_id = $1 and lower(category) = lower($2)`, [u.business_id, category]);
+      } else {
+        await this.manager.query(
+          `insert into return_category_rule (business_id, category, rule) values ($1, $2, $3)
+           on conflict (business_id, category) do update set rule = excluded.rule`, [u.business_id, category, rule]);
+      }
+      await this.audit.record({ userId: currentUser.id, action: 'returns.rule_changed', entityType: 'return_category_rule', entityId: null,
+        summary: `${category}: ${rule === null || rule === 'FREE' ? 'free to return' : rule === 'INSPECT' ? 'inspected before taken back' : 'not taken back'}`, details: { category, rule } });
+      return { category, rule: rule === 'FREE' ? null : rule };
     }
 
     @Get('/returns/:id/eligible')
