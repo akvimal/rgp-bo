@@ -129,6 +129,10 @@ const pool = ((await call('POST', '/stock/filter', { available: true, limit: 400
 });
 console.log(`sellable batches ${pool.length}`);
 
+// ---- the shop's shift templates, so opening a shift offers Morning and Evening and the sample shifts belong to them
+const tplMorning = await call('POST', '/store-cash/templates', { storeid: storeId, name: 'Morning', starttime: '09:00', endtime: '14:00' }, owner, true);
+const tplEvening = await call('POST', '/store-cash/templates', { storeid: storeId, name: 'Evening', starttime: '14:00', endtime: '22:00' }, owner, true);
+
 // ---- two weeks of shifts and sales; the last shift is left open so the till works straight away
 const tokens = {};
 for (const c of cashiers) tokens[c.email] = await login(c.email, STAFF_PASSWORD);
@@ -140,6 +144,7 @@ for (let s = 0; s < SHIFTS; s++) {
   const shift = await call('POST', '/store-cash/shifts', {
     storeid: storeId, shiftdate: day(back), name: evening ? 'Evening' : 'Morning', starttime: evening ? '14:00' : '09:00', endtime: evening ? '22:00' : '14:00',
     openingdenominations: denoms(int(10, 25) * 100), assigneduserid: cashier.id, openingchecklist: undefined,
+    templateid: (evening ? tplEvening : tplMorning)?.id,
   }, owner, true);
   if (!shift?.id) continue;
   const n = int(6, 11);

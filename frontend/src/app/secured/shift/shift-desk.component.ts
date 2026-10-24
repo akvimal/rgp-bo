@@ -25,6 +25,9 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   operatorName = "";
   openShift: any = null;
   staffBased = false;
+  /** who can be at the counter, and whether this store asks (a staff-based store that does not ask uses the signed-in person) */
+  operators: any[] = [];
+  selfOnly = false;
   summary: any = null;
   message = "";
   error = "";
@@ -66,9 +69,17 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     }));
     this.subs.add(this.operatorContext.selectedOperatorId$.subscribe((id: any) => (this.operatorId = id)));
     this.subs.add(this.operatorContext.selectedOperatorName$.subscribe((n: any) => (this.operatorName = n || "")));
+    this.subs.add(this.operatorContext.operators$.subscribe((o: any) => (this.operators = o || [])));
+    this.subs.add(this.operatorContext.selfOnly$.subscribe((v: any) => (this.selfOnly = !!v)));
   }
 
   ngOnDestroy(): void { this.subs.unsubscribe(); }
+
+  /** the counter keeps its choice for a while and then asks again; this is where it is asked on this page */
+  pickOperator(id: any) {
+    this.operatorContext.setSelectedOperator(id === null || id === "" ? null : Number(id));
+    if (this.operatorId) this.error = "";
+  }
 
   private loadStaff() {
     if (!this.storeId) { this.staff = []; return; }
@@ -180,7 +191,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   }
 
   private requireOperator(): boolean {
-    if (!this.operatorId) { this.error = "Select the staff member at the counter first (Staff dropdown in the header)."; return false; }
+    if (!this.operatorId) { this.error = "Choose who is at the counter first (the \"At the counter\" box above)."; return false; }
     return true;
   }
 }

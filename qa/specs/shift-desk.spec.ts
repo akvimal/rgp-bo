@@ -1,5 +1,5 @@
 /**
- * The My shift page — SD-1..2
+ * The My shift page — SD-1..3
  * Opening and closing a shift live on their own page; closing shows the takings by tender, takes the digital totals, and
  * either ends the day or hands the drawer to the next person while the store stays open.
  */
@@ -9,7 +9,7 @@ import { expectShell } from '../support/assert.js';
 const MGR = 'businesshead@local.test';
 const CASHIER = 'sales1@local.test';
 
-const CLOSE_KEYS = ['drawer_counted', 'entrance_locked', 'lights_off', 'cash_secured'];
+const CLOSE_KEYS = ['drawer_counted', 'cash_secured'];
 const OPEN_KEYS = ['float_counted', 'terminal_working', 'entrance_unlocked', 'prior_deposit_secured'];
 
 let POOL: any[] = [];
@@ -96,7 +96,7 @@ test.describe('My shift page @p1', () => {
     // the day ends later with the full checklist; then a shift is opened again for the other specs
     const nextId = done.body.nextshiftid as number;
     const eod = (keys: string[]) => api.request('PUT', `/store-cash/shifts/${nextId}/close`, { countedcash: 1000, closedoperatorid: cashier, closetype: 'END_OF_DAY', closingchecklist: keys }, CASHIER);
-    expect((await eod(CLOSE_KEYS.slice(0, 2))).status).toBe(400);
+    expect((await eod(CLOSE_KEYS.slice(0, 1))).status).toBe(400);
     const ended = await eod(CLOSE_KEYS);
     expect(ended.status).toBeLessThan(300);
     expect(ended.body.closetype).toBe('END_OF_DAY');
@@ -119,12 +119,36 @@ test.describe('My shift page @p1', () => {
     await page.getByTestId('shift-card-close').click();
     const form = page.getByTestId('shiftdesk-close-form');
     await expect(form).toBeVisible();
-    await expect(form.getByTestId('shift-checklist-entrance_locked')).toBeVisible();      // end of day: the whole list
-    await expect(form.locator('input[type=checkbox]')).toHaveCount(6);
+    await expect(form.getByTestId('shift-checklist-cash_secured')).toBeVisible();          // end of day: the whole list
+    await expect(form.getByTestId('shift-checklist-entrance_locked')).toHaveCount(0);       // no door or lights items any more
+    await expect(form.getByTestId('shift-checklist-digital_received')).toBeVisible();         // every digital payment confirmed as received
+    await expect(form.getByTestId('shift-checklist-digital_received')).toHaveCount(1);
+    await expect(form.getByText('Digital totals checked against the terminal')).toHaveCount(0);
+    await expect(form.getByTestId('shift-checklist-lights_off')).toHaveCount(0);
+    await expect(form.locator('input[type=checkbox]')).toHaveCount(4);
     await form.getByTestId('shiftdesk-type-handover').check();
     await expect(form.getByTestId('shiftdesk-handover')).toBeVisible();
-    await expect(form.getByTestId('shift-checklist-entrance_locked')).toHaveCount(0);      // a handover: lock-up items do not apply
-    await expect(form.getByTestId('shift-checklist-lights_off')).toHaveCount(0);
+    await expect(form.getByTestId('shift-checklist-cash_secured')).toHaveCount(0);          // a handover: securing the cash does not apply
     await expect(form.locator('input[type=checkbox]')).toHaveCount(3);
+  });
+
+  test('SD-3 when the counter has forgotten who is serving, the page asks for it right there, and then closing goes on @edge', async ({ api, app }) => {
+    expect((await api.request('POST', '/sales', digitalBill(10, 0), CASHIER)).status).toBeLessThan(300);        // makes sure a shift is open
+    const { page } = await app.open(CASHIER, '/secure/sales/pos');
+    await page.getByTestId('nav-shift').click();
+    await page.waitForURL(/\/secure\/shift/);
+    // the choice kept from earlier has gone stale (older than the hold time): the counter forgets it on the next load
+    await page.evaluate(() => localStorage.setItem('selected_operator_at', String(Date.now() - 3 * 3600 * 1000)));
+    await page.reload();
+    const box = page.getByTestId('shiftdesk-operator');
+    await expect(box).toBeVisible();
+    await expect(box).toHaveClass(/is-invalid/);                                            // nobody chosen
+    await page.getByTestId('shift-card-close').click();
+    await expect(page.getByTestId('shiftdesk-error')).toContainText('At the counter');       // says where to choose, and it is on this page
+    await expect(page.getByTestId('shiftdesk-close-form')).toHaveCount(0);
+    await box.selectOption({ index: 1 });
+    await expect(page.getByTestId('shiftdesk-error')).toHaveCount(0);
+    await page.getByTestId('shift-card-close').click();
+    await expect(page.getByTestId('shiftdesk-close-form')).toBeVisible();
   });
 });

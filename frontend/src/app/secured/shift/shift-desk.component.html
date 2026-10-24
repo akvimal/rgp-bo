@@ -6,6 +6,14 @@
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="shiftdesk-error">{{error}}</div>
 
     <ng-container *ngIf="storeId !== null && storeId !== undefined">
+      <div class="d-flex align-items-center flex-wrap gap-2 mb-3" *ngIf="operators.length && !selfOnly" data-testid="shiftdesk-operator-box">
+        <label class="form-label mb-0 fw-semibold small" for="shift-operator">At the counter</label>
+        <select id="shift-operator" class="form-select form-select-sm w-auto" [ngModel]="operatorId" (ngModelChange)="pickOperator($event)" data-testid="shiftdesk-operator" [class.is-invalid]="!operatorId">
+          <option [ngValue]="null">Choose staff</option>
+          <option *ngFor="let o of operators" [ngValue]="o.id">{{o.fullname}}</option>
+        </select>
+        <span class="small text-muted">Who is opening or closing the shift.</span>
+      </div>
       <!-- no open shift -->
       <div *ngIf="!openShift && mode !== 'open'" class="d-flex justify-content-between align-items-center flex-wrap gap-2" data-testid="shiftdesk-none">
         <div class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>{{ staffBased ? 'You have no open shift' : 'No open shift' }}</strong> - sales can't be completed until {{ staffBased ? 'you open yours' : 'a shift is open' }}.</div>
@@ -14,7 +22,7 @@
 
       <!-- opening -->
       <div *ngIf="mode === 'open'" data-testid="shiftdesk-open-form">
-        <h6>Open the shift - {{ operatorName || 'select staff in the header' }}</h6>
+        <h6>Open the shift - {{ operatorName || 'choose staff above' }}</h6>
         <div class="fw-semibold small mb-2">Count the opening float</div>
         <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
         <div class="small mt-3">
@@ -81,7 +89,7 @@
 
         <!-- closing -->
         <div *ngIf="mode === 'close' && summary" class="border rounded p-3 mt-3" data-testid="shiftdesk-close-form">
-          <h6>Close the shift - {{ operatorName || 'select staff in the header' }}</h6>
+          <h6>Close the shift - {{ operatorName || 'choose staff above' }}</h6>
           <div class="mb-3" *ngIf="!staffBased">
             <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="ct-eod" name="ct" value="END_OF_DAY" [(ngModel)]="closeType" (ngModelChange)="resetChecklist()" data-testid="shiftdesk-type-eod"><label class="form-check-label" for="ct-eod">End of day - the store is closing</label></div>
             <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="ct-ho" name="ct" value="HANDOVER" [(ngModel)]="closeType" (ngModelChange)="resetChecklist()" data-testid="shiftdesk-type-handover"><label class="form-check-label" for="ct-ho">Hand over - the store stays open</label></div>

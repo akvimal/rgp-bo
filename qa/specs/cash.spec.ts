@@ -300,7 +300,7 @@ test.describe('Store Cash & Shifts @p0', () => {
   test('WS7-CHECKLIST a shift with a complete checklist opens and closes; an incomplete one is rejected @happy', async ({ api }) => {
     const sid = await freshStore(api);
     const OPEN_KEYS = ['float_counted', 'terminal_working', 'entrance_unlocked', 'prior_deposit_secured'];
-    const CLOSE_KEYS = ['drawer_counted', 'entrance_locked', 'lights_off', 'cash_secured'];
+    const CLOSE_KEYS = ['drawer_counted', 'cash_secured'];
 
     // incomplete opening checklist: rejected
     const badOpen = await api.request('POST', '/store-cash/shifts', {

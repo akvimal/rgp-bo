@@ -15,17 +15,15 @@ export const OPENING_CHECKLIST_ITEMS: { key: string; label: string }[] = [
 export const CLOSING_CHECKLIST_ITEMS: { key: string; label: string }[] = [
     { key: 'drawer_counted', label: 'Drawer counted and reconciled' },
     { key: 'expenses_recorded', label: 'Every payment made from the cash drawer is recorded' },
-    { key: 'digital_checked', label: 'Digital totals checked against the terminal' },
-    { key: 'entrance_locked', label: 'Entrance shutter/door locked' },
-    { key: 'lights_off', label: 'Lights and AC turned off' },
+    { key: 'digital_received', label: 'Every digital payment (UPI, card, wallet) confirmed as received' },
     { key: 'cash_secured', label: 'Cash secured in the safe/deposit bag' },
 ];
 
-/** Handover: the store stays open, so locking up and securing the cash do not apply. */
+/** Handover: the store stays open, so securing the cash does not apply. */
 export const HANDOVER_CHECKLIST_ITEMS: { key: string; label: string }[] = [
     { key: 'drawer_counted', label: 'Drawer counted and shown to the person taking over' },
     { key: 'expenses_recorded', label: 'Every payment made from the cash drawer is recorded' },
-    { key: 'digital_checked', label: 'Digital totals checked against the terminal' },
+    { key: 'digital_received', label: 'Every digital payment (UPI, card, wallet) confirmed as received' },
 ];
 
 export function freshChecklist(items: { key: string; label: string }[]): ChecklistItem[] {

@@ -17,14 +17,12 @@ export const OPENING_CHECKLIST_KEYS = [
 
 export const CLOSING_CHECKLIST_KEYS = [
   'drawer_counted',
-  'entrance_locked',
-  'lights_off',
   'cash_secured',
 ] as const;
 
 /**
- * A handover (the store stays open and the shift passes to someone else) only needs the drawer count: locking up, lights
- * and securing the cash are the end-of-day closing's.
+ * A handover (the store stays open and the shift passes to someone else) only needs the drawer count: securing the cash is
+ * the end-of-day closing's.
  */
 export const HANDOVER_CHECKLIST_KEYS = ['drawer_counted'] as const;
 
