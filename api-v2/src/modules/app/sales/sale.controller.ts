@@ -17,6 +17,7 @@ import { EntityManager } from "typeorm";
 import { AuditService } from "src/core/audit/audit.service";
 import { loadStoreProfile } from "../store/store-profile";
 import { RETURN_RULES } from "./return-rule";
+import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
 
 import { isManagerRole, NOT_A_PERSON } from 'src/core/roles';
 @ApiTags('Sales')
@@ -28,31 +29,8 @@ export class SaleController {
     constructor(private saleService:SaleService, 
       private custService:CustomerService,
       private audit:AuditService,
+      private hooks:SaleHooks,
       @InjectEntityManager() private manager:EntityManager){}
-
-      /**
-       * A completed bill that includes a chronic medicine must carry a real customer mobile number: those
-       * customers are the ones refill reminders and follow-ups depend on. "NIL" (mobile 0000000000) or no
-       * customer does not qualify.
-       */
-      private async assertMobileForChronic(sale: any, customer: any) {
-        if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return;
-        const productIds = (Array.isArray(sale.items) ? sale.items : [])
-          .map((i: any) => Number(i.productid ?? i.product_id)).filter((n: number) => Number.isFinite(n) && n > 0);
-        if (!productIds.length) return;
-        let mobile: string = String(customer?.mobile ?? '').trim();
-        const customerId = customer?.id ?? sale.customerid;
-        if (!mobile && customerId) {
-          const row = await this.manager.query(`select mobile from customer where id = $1`, [customerId]);
-          mobile = String(row?.[0]?.mobile ?? '').trim();
-        }
-        if (mobile && mobile !== '0000000000') return;
-        const chronic = await this.manager.query(
-          `select title from product where id = any($1::int[]) and more_props->>'chronic' = 'true' order by title limit 5`, [productIds]);
-        if (chronic.length) {
-          throw new BadRequestException(`A customer mobile number is required for bills with chronic medicines (${chronic.map((c: any) => c.title).join(', ')}).`);
-        }
-      }
 
       /**
        * Who the bill is recorded against. Sales Staff always act as themselves (each person signs in
@@ -133,7 +111,7 @@ export class SaleController {
           customer = await this.custService.save(createSaleDto.customer);
         }
         
-        await this.assertMobileForChronic(createSaleDto, customer);
+        await this.hooks.check({ manager: this.manager, sale: createSaleDto, customer, storeId: await this.billStore(createSaleDto), userId: currentUser.id });
         const recordBatchOverride = await this.checkBatches(createSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, createSaleDto);
         const staffCredit = await checkStaffCredit(this.manager, createSaleDto);
@@ -162,7 +140,7 @@ export class SaleController {
         if(customer){ //if customer not present before
           customer = await this.custService.save(updateSaleDto.customer);
         }
-        await this.assertMobileForChronic(updateSaleDto, customer);
+        await this.hooks.check({ manager: this.manager, sale: updateSaleDto, customer, storeId: await this.billStore(updateSaleDto), userId: currentUser.id });
         const recordBatchOverride = await this.checkBatches(updateSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, updateSaleDto, updateSaleDto.id);
         const staffCredit = await checkStaffCredit(this.manager, updateSaleDto, updateSaleDto.id);

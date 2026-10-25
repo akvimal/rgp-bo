@@ -68,6 +68,9 @@
     </div>
 </div>
 
+<!-- Pharmacy pack: the patient and the prescriber for scheduled drugs -->
+<app-schedule-detail *ngIf="scheduledItems.length" [detail]="scheduleDetail" [drugs]="scheduledItems" [customer]="sale.customer"></app-schedule-detail>
+
 <!-- Payment and total -->
 <div class="card mb-2" *ngIf="sale.items && sale.items.length > 0" data-testid="sale-pay-card">
     <div class="card-body py-2">
@@ -115,7 +118,7 @@
         <button (click)="submit('PENDING')" class="btn btn-outline-secondary" [disabled]="total === 0" data-testid="sale-save">Save for later</button>
         <button type="button" (click)="discard()" *ngIf="sale.id && sale.status === 'PENDING'" class="btn btn-outline-danger">Discard</button>
     </div>
-    <button (click)="submit('COMPLETE')" class="btn btn-primary btn-lg px-5" [disabled]="!isSaleFormValid() || chronicMobileMissing" data-testid="sale-complete">Complete</button>
+    <button (click)="submit('COMPLETE')" class="btn btn-primary btn-lg px-5" [disabled]="!isSaleFormValid() || chronicMobileMissing || scheduleMissing" data-testid="sale-complete">Complete</button>
 </div>
 
 <div class="hist-card mt-3" *ngIf="documents.length > 0" data-testid="sale-documents">

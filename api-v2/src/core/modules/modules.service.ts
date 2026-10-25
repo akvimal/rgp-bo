@@ -7,7 +7,7 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser } from 'src/core/business-of-user';
 import { PlatformService } from 'src/core/platform/platform.service';
 import { clampModules, lockedModules } from 'src/core/platform/entitlements';
-import { ALL_ON, MODULE_KEYS, MODULE_LABELS, ModuleState, blockedBy, gatedPath, parseModulesInput, resolveModules } from './modules';
+import { ALL_ON, MODULE_KEYS, MODULE_LABELS, ModuleState, blockedBy, gatedPath, packsOf, parseModulesInput, resolveModules } from './modules';
 
 const TTL_MS = 15000;
 
@@ -35,9 +35,9 @@ export class ModulesService {
     if (!businessId) return { at: Date.now(), state: ALL_ON, raw: {} };
     const hit = this.byBusiness.get(businessId);
     if (hit && Date.now() - hit.at < TTL_MS) return hit;
-    const [b] = await this.manager.query(`select modules from business where id = $1`, [businessId]);
+    const [b] = await this.manager.query(`select modules, business_type from business where id = $1`, [businessId]);
     // a hosted customer's plan caps what the owner can switch on
-    const owned = resolveModules(b?.modules);
+    const owned = resolveModules(b?.modules, b?.business_type);
     const plan = this.platform.entitlements();
     const fresh = { at: Date.now(), state: plan ? clampModules(owned, plan.modules) : owned, raw: b?.modules || {} };
     this.byBusiness.set(businessId, fresh);
@@ -60,6 +60,18 @@ export class ModulesService {
     const [s] = await this.manager.query(`select business_id from stores where id = $1`, [storeId]);
     const m = await this.forBusiness(s?.business_id ?? null);
     return key === 'purchasing' ? m.purchasing !== 'off' : !!m[key];
+  }
+
+  /** the business has this pack (its business type says so) */
+  async packOnForBusiness(businessId: number, pack: string): Promise<boolean> {
+    const [b] = await this.manager.query(`select business_type from business where id = $1`, [businessId]);
+    return packsOf(b?.business_type ?? 'pharmacy').includes(pack);
+  }
+
+  /** the business that owns this store has this pack (its business type says so) */
+  async packOnForStore(storeId: number, pack: string): Promise<boolean> {
+    const [s] = await this.manager.query(`select b.business_type from stores s join business b on b.id = s.business_id where s.id = $1`, [storeId]);
+    return packsOf(s?.business_type ?? 'pharmacy').includes(pack);
   }
 
   /** The Business Head's switches, merged over what is stored; audited with before and after. */

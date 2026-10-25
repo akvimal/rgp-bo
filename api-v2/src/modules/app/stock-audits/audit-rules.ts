@@ -32,13 +32,13 @@ export const EXPIRING_DAYS = 90;
 export interface PlanSeed { name: string; scope: string; categories: string[] | null; frequency_days: number; first_due: string; }
 
 /** the plans a store should run: weekly fast movers and category rotation, monthly scheduled drugs and expiry sweep, a full count at year end */
-export const standardPlans = (categories: string[], today: string): PlanSeed[] => {
+export const standardPlans = (categories: string[], today: string, opts: { pharmacy?: boolean } = {}): PlanSeed[] => {
   const plans: PlanSeed[] = [
     { name: 'Fast movers (weekly)', scope: 'FAST', categories: null, frequency_days: 7, first_due: today },
   ];
   if (categories.length >= 2) plans.push({ name: 'Category rotation (weekly)', scope: 'ROTATE', categories, frequency_days: 7, first_due: today });
+  if (opts.pharmacy !== false) plans.push({ name: 'Scheduled drugs H, H1, X (monthly)', scope: 'SCHEDULE', categories: null, frequency_days: 30, first_due: today });
   plans.push(
-    { name: 'Scheduled drugs H, H1, X (monthly)', scope: 'SCHEDULE', categories: null, frequency_days: 30, first_due: today },
     { name: 'Expiry sweep (monthly)', scope: 'EXPIRY', categories: null, frequency_days: 30, first_due: today },
     { name: 'Full count (yearly)', scope: 'ALL', categories: null, frequency_days: 365, first_due: nextYearEnd(today) },
   );

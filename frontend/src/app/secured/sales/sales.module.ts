@@ -32,6 +32,7 @@ import { SaleHistoryCustomerComponent } from "./components/sale-history-customer
 import { CustomersModule } from "../customers/customers.module";
 import { DocumentsModule } from "../documents/documents.module";
 import { MultiSelectModule } from "primeng/multiselect";
+import { PharmacyUiModule } from "src/app/packs/pharmacy/pharmacy-ui.module";
 
 const routes: Routes = [
   {path: '', redirectTo: 'pos'},
@@ -68,7 +69,7 @@ const routes: Routes = [
       SaleDeliveryComponent,
       SaleDeliveryFormComponent
     ],
-    imports: [
+    imports: [PharmacyUiModule, 
         CommonModule,
         ReactiveFormsModule,
         FormsModule,

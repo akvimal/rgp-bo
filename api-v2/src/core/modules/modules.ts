@@ -5,6 +5,23 @@
  */
 export type PurchasingLevel = 'off' | 'simple' | 'full';
 
+/**
+ * What kind of business this is, and the PACKS it has. Core (sales, stock, purchasing, finance...) is for every kind of business; a pack adds what one
+ * kind of business needs and no other does. A pack's modules are on for the business types it is made for and off for the rest, and any business can
+ * switch one on or off. Adding a kind of business means adding its pack here and its code under a packs folder; nothing in core changes.
+ */
+export const BUSINESS_TYPES = ['pharmacy', 'general'] as const;
+export type BusinessType = typeof BUSINESS_TYPES[number];
+export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = { pharmacy: 'Pharmacy', general: 'General retail or services' };
+
+export interface Pack { label: string; types: BusinessType[]; modules: string[]; }
+export const PACKS: Record<string, Pack> = {
+  pharmacy: { label: 'Pharmacy pack', types: ['pharmacy'], modules: ['drug_register'] },
+};
+
+/** the packs a business type has by default */
+export const packsOf = (type: string | null | undefined): string[] => Object.keys(PACKS).filter((k) => (PACKS[k].types as string[]).includes(String(type || 'pharmacy')));
+
 export interface ModuleState {
   hr: boolean;
   purchasing: PurchasingLevel;
@@ -13,9 +30,11 @@ export interface ModuleState {
   payment_recon: boolean;
   stock_audits: boolean;
   transfers: boolean;
+  /** pharmacy pack: the online register of Schedule H, H1 and X drugs */
+  drug_register: boolean;
 }
 
-export const MODULE_KEYS = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers'] as const;
+export const MODULE_KEYS = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register'] as const;
 export type ModuleKey = typeof MODULE_KEYS[number];
 
 export const MODULE_LABELS: Record<ModuleKey, string> = {
@@ -26,15 +45,20 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   payment_recon: 'Digital payment reconciliation',
   stock_audits: 'Stock audits',
   transfers: 'Stock transfers',
+  drug_register: 'Drug register (Schedule H, H1, X)',
 };
 
 /** Everything on: what a business that never chose gets. */
-export const ALL_ON: ModuleState = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true };
+export const ALL_ON: ModuleState = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true, drug_register: true };
 
 const asBool = (v: any, dflt: boolean) => (v === undefined || v === null ? dflt : v === true || v === 'true');
 
-/** The stored settings made whole: missing keys are on, and GST reconciliation cannot outlive purchasing. */
-export function resolveModules(raw: any): ModuleState {
+/**
+ * The stored settings made whole: missing keys are on (a pack's modules only when the business type has the pack), and GST reconciliation cannot
+ * outlive purchasing. A choice the business made always wins over the default.
+ */
+export function resolveModules(raw: any, businessType: string | null | undefined = 'pharmacy'): ModuleState {
+  const packModules = new Set(packsOf(businessType).flatMap((k) => PACKS[k].modules));
   const r = raw && typeof raw === 'object' ? raw : {};
   const purchasing: PurchasingLevel = r.purchasing === 'off' || r.purchasing === false ? 'off' : r.purchasing === 'simple' ? 'simple' : 'full';
   return {
@@ -45,6 +69,7 @@ export function resolveModules(raw: any): ModuleState {
     payment_recon: asBool(r.payment_recon, true),
     stock_audits: asBool(r.stock_audits, true),
     transfers: asBool(r.transfers, true),
+    drug_register: asBool(r.drug_register, packModules.has('drug_register')),
   };
 }
 
@@ -80,6 +105,7 @@ const ROUTES: Array<[RegExp, Gate]> = [
   [/^\/payment-recon(\/|$)/, { key: 'payment_recon' }],
   [/^\/(stock-audits|stock\/counts)(\/|$)/, { key: 'stock_audits' }],
   [/^\/store-stock-transfers(\/|$)/, { key: 'transfers' }],
+  [/^\/schedule(\/|$)/, { key: 'drug_register' }],
 ];
 
 /** Whether a path belongs to a switchable module at all (so most requests skip the lookup). */
@@ -114,6 +140,7 @@ const RESOURCES: Record<string, (m: ModuleState) => boolean> = {
   expenses: (m) => m.expenses,
   paymentrecon: (m) => m.payment_recon,
   stockaudit: (m) => m.stock_audits,
+  scheduleregister: (m) => m.drug_register,
 };
 
 /** Single screens inside a shared resource. */

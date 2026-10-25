@@ -10,6 +10,9 @@ import { CustomersService } from "../../customers/customers.service";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { monthlyUnits, monthsCovered } from "../supply-rule";
+import { AuthService } from "src/app/@core/auth/auth.service";
+import { DrugRegisterService } from "src/app/packs/pharmacy/drug-register.service";
+import { detailProblems } from "src/app/packs/pharmacy/drug-register-rules";
 
 @Component({
     templateUrl: 'sale-form.component.html'
@@ -54,10 +57,14 @@ export class SaleFormComponent {
       private stockService: StockService,
       private prodUtilService: ProductUtilService,
       private operatorContext: OperatorContextService,
-      private storeContext: StoreContextService){}
+      private storeContext: StoreContextService,
+      private auth: AuthService,
+      private drugRegister: DrugRegisterService){}
 
     ngOnInit(){
-      
+      // pharmacy pack: which schedules need the patient and the prescriber on a bill (nothing is asked when the business has not got the drug register)
+      if (this.auth.moduleOn('drug_register')) this.drugRegister.config().subscribe((c) => this.scheduleRequired = c.required || [], () => this.scheduleRequired = []);
+
       this.sale.billdate = new Date();
       this.sale['customer'] = this.customer;
       this.sale['ordertype'] = 'Walk-in';
@@ -82,6 +89,7 @@ export class SaleFormComponent {
         
             if(result['props'])
               this.documents = result['props']['documents'];
+            this.scheduleDetail = (result['props'] && result['props']['scheduledetail']) || {};
 
             this.sale = result;
 
@@ -178,6 +186,21 @@ export class SaleFormComponent {
       this.sale.items = [...this.sale.items].filter((i:any) => i.itemid !== id)
     }
     this.recalculateTotal();
+  }
+
+  // ------------------------------------------------------------------ pharmacy pack: the drug register
+  scheduleDetail: any = {};
+  scheduleRequired: string[] = [];
+
+  /** the drugs on the bill whose schedule needs the patient and the prescriber */
+  get scheduledItems(): any[] {
+    if (!this.scheduleRequired.length) return [];
+    return (this.sale.items || []).filter((i:any) => i.edited && this.scheduleRequired.includes(String(i.more_props?.schedule ?? '').toUpperCase()));
+  }
+
+  /** the bill cannot be completed until the register has what it needs */
+  get scheduleMissing(): boolean {
+    return this.scheduledItems.length > 0 && detailProblems(this.scheduleDetail).length > 0;
   }
 
   /** chronic medicines on the bill (more_props.chronic is stored as true or "true") */
@@ -302,7 +325,7 @@ export class SaleFormComponent {
         this.sale.customer['name'] = this.sale.customer['name'].toUpperCase();
     }
     
-    this.sale.props = {documents: this.documents};
+    this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {})};
     this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
     this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
 

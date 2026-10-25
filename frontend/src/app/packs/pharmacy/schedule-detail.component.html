@@ -1,0 +1,32 @@
+<div class="card mb-2 border-warning" data-testid="sd-panel">
+    <div class="card-body py-2">
+        <div class="fw-semibold mb-1"><i class="bi bi-prescription2 me-1"></i>Scheduled drugs on this bill</div>
+        <div class="small text-muted mb-2" data-testid="sd-drugs">{{names}}. The drug register needs the patient and the prescriber before the bill is completed.</div>
+        <div class="row g-2">
+            <div class="col-lg-6">
+                <div class="small fw-semibold text-muted mb-1">Patient</div>
+                <div class="row g-2">
+                    <div class="col-8"><input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Patient name *" [(ngModel)]="detail.patient_name" data-testid="sd-patient-name"></div>
+                    <div class="col-4"><input type="text" class="form-control form-control-sm" maxlength="10" placeholder="Age" [(ngModel)]="detail.patient_age" data-testid="sd-patient-age"></div>
+                    <div class="col-12"><input type="text" class="form-control form-control-sm" maxlength="250" placeholder="Patient address *" [(ngModel)]="detail.patient_address" data-testid="sd-patient-address"></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="small fw-semibold text-muted mb-1">Prescriber</div>
+                <div class="row g-2">
+                    <div class="col-7 position-relative">
+                        <input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Doctor's name *" [(ngModel)]="detail.prescriber_name" (input)="search()" autocomplete="off" data-testid="sd-prescriber-name">
+                        <div class="list-group position-absolute w-100 shadow-sm" style="z-index:20" *ngIf="suggestions.length" data-testid="sd-suggestions">
+                            <button type="button" class="list-group-item list-group-item-action py-1 small" *ngFor="let p of suggestions" (click)="pick(p)">{{p.name}}<span class="text-muted" *ngIf="p.reg_no"> &middot; {{p.reg_no}}</span></button>
+                        </div>
+                    </div>
+                    <div class="col-5"><input type="text" class="form-control form-control-sm" maxlength="40" placeholder="Registration no" [(ngModel)]="detail.prescriber_reg_no" data-testid="sd-prescriber-reg"></div>
+                    <div class="col-8"><input type="text" class="form-control form-control-sm" maxlength="200" placeholder="Clinic or address" [(ngModel)]="detail.prescriber_address" data-testid="sd-prescriber-address"></div>
+                    <div class="col-4"><input type="date" class="form-control form-control-sm" [max]="today" title="Date on the prescription" [(ngModel)]="detail.rx_date" data-testid="sd-rx-date"></div>
+                </div>
+            </div>
+        </div>
+        <div class="small text-danger mt-2" *ngIf="problems.length" data-testid="sd-problems">To complete this bill, give {{problems.join(', ')}}.</div>
+        <div class="small text-success mt-2" *ngIf="!problems.length" data-testid="sd-ok"><i class="bi bi-check-circle"></i> The register entry is ready.</div>
+    </div>
+</div>

@@ -1,0 +1,357 @@
+<div class="pagetitle"><h1>Finance</h1></div>
+
+<p class="small text-muted mb-2" data-testid="fin-intro">
+  Income and expenses from the books and from the bank, side by side. Import a bank statement, say what each line is, and compare the books with the bank month by month.
+  A difference up to &#8377;{{tolerance}} is accepted; a larger one needs a reason before the month is signed.
+</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="fin-error">{{error}}</div>
+<div class="alert alert-success py-2" *ngIf="message" data-testid="fin-message">{{message}}</div>
+
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link" [class.active]="tab === 'overview'" role="button" (click)="setTab('overview')" data-testid="fin-tab-overview">Overview</a></li>
+  <li class="nav-item"><a class="nav-link" [class.active]="tab === 'lines'" role="button" (click)="setTab('lines')" data-testid="fin-tab-lines">Bank lines</a></li>
+  <li class="nav-item"><a class="nav-link" [class.active]="tab === 'reconcile'" role="button" (click)="setTab('reconcile')" data-testid="fin-tab-reconcile">Reconcile</a></li>
+  <li class="nav-item"><a class="nav-link" [class.active]="tab === 'accounts'" role="button" (click)="setTab('accounts')" data-testid="fin-tab-accounts">Accounts &amp; import</a></li>
+  <li class="nav-item"><a class="nav-link" [class.active]="tab === 'records'" role="button" (click)="setTab('records')" data-testid="fin-tab-records">Records</a></li>
+</ul>
+
+<!-- ============================================================ OVERVIEW -->
+<ng-container *ngIf="tab === 'overview'">
+  <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+    <div class="btn-group btn-group-sm" role="group">
+      <button type="button" class="btn btn-outline-secondary" (click)="setPeriod('month'); loadOverview()">This month</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="setPeriod('last'); loadOverview()">Last month</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="setPeriod('fy'); loadOverview()">This year</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="setPeriod('lastfy'); loadOverview()">Last year</button>
+    </div>
+    <div><label class="form-label mb-0 small">From</label><input type="date" class="form-control form-control-sm" [(ngModel)]="from" (change)="loadOverview()" data-testid="fin-from"></div>
+    <div><label class="form-label mb-0 small">To</label><input type="date" class="form-control form-control-sm" [(ngModel)]="to" (change)="loadOverview()" data-testid="fin-to"></div>
+    <div *ngIf="stores.length > 1"><label class="form-label mb-0 small">Store</label>
+      <select class="form-select form-select-sm" [(ngModel)]="ovStore" (change)="loadOverview()"><option [ngValue]="null">All stores</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.location}}</option></select></div>
+    <div *ngIf="accounts.length"><label class="form-label mb-0 small">Bank account</label>
+      <select class="form-select form-select-sm" [(ngModel)]="ovAccount" (change)="loadOverview()"><option [ngValue]="null">All accounts</option><option *ngFor="let a of accounts" [ngValue]="a.id">{{a.name}}</option></select></div>
+  </div>
+
+  <div class="row g-4" *ngIf="ov" data-testid="fin-overview">
+    <div class="col-lg-6">
+      <h6 class="text-primary">In the books</h6>
+      <table class="table table-sm" data-testid="fin-books">
+        <tbody>
+          <tr class="fw-semibold"><td>Sales ({{ov.books.sales.bills}} bills)</td><td class="text-end">{{ov.books.sales.total | number:'1.0-0'}}</td></tr>
+          <tr><td class="ps-4 small text-muted">Cash</td><td class="text-end small text-muted">{{ov.books.sales.cash | number:'1.0-0'}}</td></tr>
+          <tr><td class="ps-4 small text-muted">Card / UPI</td><td class="text-end small text-muted">{{ov.books.sales.digital | number:'1.0-0'}}</td></tr>
+          <tr *ngIf="ov.books.sales.credit || ov.books.sales.staff_credit"><td class="ps-4 small text-muted">On credit</td><td class="text-end small text-muted">{{(ov.books.sales.credit + ov.books.sales.staff_credit) | number:'1.0-0'}}</td></tr>
+          <tr><td>Purchases received ({{ov.books.purchases.invoices}} invoices)</td><td class="text-end">{{ov.books.purchases.total | number:'1.0-0'}}</td></tr>
+          <tr><td>Vendor payments recorded<div class="small text-warning" *ngIf="bankVendorPaid > ov.books.vendorPayments + ov.tolerance" data-testid="fin-vendor-hint">The bank shows {{bankVendorPaid | number:'1.0-0'}} paid to vendors in this period: some payments are not recorded.</div></td><td class="text-end">{{ov.books.vendorPayments | number:'1.0-0'}}</td></tr>
+          <tr class="fw-semibold"><td>Expenses</td><td class="text-end">{{ov.books.expensesTotal | number:'1.0-0'}}</td></tr>
+          <tr *ngFor="let e of ov.books.expenses"><td class="ps-4 small text-muted">{{e.category}}</td><td class="text-end small text-muted">{{e.total | number:'1.0-0'}}</td></tr>
+          <tr class="table-light fw-semibold"><td>Sales less purchases and expenses<div class="small fw-normal text-muted">Not profit: the change in stock is not in it.</div></td><td class="text-end">{{ov.books.net | number:'1.0-0'}}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col-lg-6">
+      <h6 class="text-primary">In the bank</h6>
+      <div class="small text-muted mb-1" *ngIf="!ov.bank.lines">No bank lines in this period. Import a statement under Accounts &amp; import.</div>
+      <table class="table table-sm" *ngIf="ov.bank.lines" data-testid="fin-bank">
+        <tbody>
+          <tr class="fw-semibold"><td>Money in</td><td class="text-end">{{ov.bank.credits | number:'1.0-0'}}</td></tr>
+          <ng-container *ngFor="let t of ov.bank.byTag"><tr *ngIf="t.credit > 0"><td class="ps-4 small text-muted">{{t.label}}</td><td class="text-end small text-muted">{{t.credit | number:'1.0-0'}}</td></tr></ng-container>
+          <tr class="fw-semibold"><td>Money out</td><td class="text-end">{{ov.bank.debits | number:'1.0-0'}}</td></tr>
+          <ng-container *ngFor="let t of ov.bank.byTag">
+            <tr *ngIf="t.debit > 0"><td class="ps-4 small text-muted">{{t.label}}</td><td class="text-end small text-muted">{{t.debit | number:'1.0-0'}}</td></tr>
+            <ng-container *ngIf="t.tag === 'EXPENSE'"><tr *ngFor="let c of ov.bank.byCategory"><td class="ps-5 small text-muted">&middot; {{c.category}}</td><td class="text-end small text-muted">{{c.total | number:'1.0-0'}}</td></tr></ng-container>
+          </ng-container>
+          <tr class="table-light fw-semibold"><td>Income less expenses in the bank<div class="small fw-normal text-muted">Owner money, transfers and loans are left out.</div></td><td class="text-end">{{(ov.bank.income - ov.bank.expense) | number:'1.0-0'}}</td></tr>
+        </tbody>
+      </table>
+      <div class="small text-warning" *ngIf="ov.bank.unexplained">{{ov.bank.unexplained}} bank line{{ov.bank.unexplained === 1 ? '' : 's'}} not yet explained. <a role="button" (click)="setTab('lines')">Open them</a></div>
+    </div>
+
+    <div class="col-12" *ngIf="ov.trend.length > 1">
+      <h6 class="text-primary">Month by month</h6>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" data-testid="fin-trend">
+          <thead><tr><th>Month</th><th>Sales</th><th>Purchases</th><th>Expenses</th><th>Bank in</th><th>Bank out</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let t of ov.trend">
+              <td>{{t.month}}</td>
+              <td><div class="d-flex align-items-center gap-2"><div style="height:8px;background:#3b82f6" [style.width.px]="barWidth(t.sales, trendMax) * 1.2"></div><span class="small">{{t.sales | number:'1.0-0'}}</span></div></td>
+              <td><div class="d-flex align-items-center gap-2"><div style="height:8px;background:#f59e0b" [style.width.px]="barWidth(t.purchases, trendMax) * 1.2"></div><span class="small">{{t.purchases | number:'1.0-0'}}</span></div></td>
+              <td><div class="d-flex align-items-center gap-2"><div style="height:8px;background:#ef4444" [style.width.px]="barWidth(t.expenses, trendMax) * 1.2"></div><span class="small">{{t.expenses | number:'1.0-0'}}</span></div></td>
+              <td><div class="d-flex align-items-center gap-2"><div style="height:8px;background:#22c55e" [style.width.px]="barWidth(t.bank_in, trendMax) * 1.2"></div><span class="small">{{t.bank_in | number:'1.0-0'}}</span></div></td>
+              <td><div class="d-flex align-items-center gap-2"><div style="height:8px;background:#64748b" [style.width.px]="barWidth(t.bank_out, trendMax) * 1.2"></div><span class="small">{{t.bank_out | number:'1.0-0'}}</span></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<!-- ============================================================ BANK LINES -->
+<ng-container *ngIf="tab === 'lines'">
+  <div class="d-flex flex-wrap align-items-end gap-2 mb-2">
+    <div><label class="form-label mb-0 small">Account</label>
+      <select class="form-select form-select-sm" [(ngModel)]="lf.account" (change)="loadLines()" data-testid="fin-l-account"><option [ngValue]="null">All</option><option *ngFor="let a of accounts" [ngValue]="a.id">{{a.name}}</option></select></div>
+    <div><label class="form-label mb-0 small">From</label><input type="date" class="form-control form-control-sm" [(ngModel)]="lf.from" (change)="loadLines()"></div>
+    <div><label class="form-label mb-0 small">To</label><input type="date" class="form-control form-control-sm" [(ngModel)]="lf.to" (change)="loadLines()"></div>
+    <div><label class="form-label mb-0 small">Show</label>
+      <select class="form-select form-select-sm" [(ngModel)]="lf.status" (change)="loadLines()" data-testid="fin-l-status"><option value="">All lines</option><option value="UNEXPLAINED">Not yet explained</option><option value="TAGGED">Tagged</option><option value="MATCHED">Matched to the books</option></select></div>
+    <div><label class="form-label mb-0 small">Direction</label>
+      <select class="form-select form-select-sm" [(ngModel)]="lf.direction" (change)="loadLines()"><option value="">In and out</option><option value="CREDIT">Money in</option><option value="DEBIT">Money out</option></select></div>
+    <div><label class="form-label mb-0 small">Search</label><input class="form-control form-control-sm" [(ngModel)]="lf.q" (keyup.enter)="loadLines()" placeholder="narration or reference" data-testid="fin-l-search"></div>
+    <button type="button" class="btn btn-sm btn-outline-primary" (click)="loadLines()">Show</button>
+  </div>
+  <div class="small text-muted mb-2" *ngIf="ln" data-testid="fin-l-summary">{{ln.total.n}} line{{ln.total.n === 1 ? '' : 's'}} &middot; in {{ln.total.credit | number:'1.2-2'}} &middot; out {{ln.total.debit | number:'1.2-2'}} &middot; {{ln.total.unexplained}} not yet explained</div>
+
+  <div class="border rounded p-3 mb-3" *ngIf="editing" data-testid="fin-edit">
+    <div class="small text-muted mb-2">{{editing.narration}}</div>
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3"><label class="form-label">What is it?</label>
+        <select class="form-select form-select-sm" [(ngModel)]="editing.tag" data-testid="fin-e-tag"><option value="">(not explained)</option><option *ngFor="let t of editTags" [value]="t.tag">{{t.label}}</option></select></div>
+      <div class="col-md-3" *ngIf="editing.tag === 'VENDOR_PAYMENT'"><label class="form-label">Vendor</label>
+        <select class="form-select form-select-sm" [(ngModel)]="editing.vendor_id" data-testid="fin-e-vendor"><option [ngValue]="null">Choose</option><option *ngFor="let v of ln.vendors" [ngValue]="v.id">{{v.name}}</option></select></div>
+      <div class="col-md-3" *ngIf="editing.tag === 'EXPENSE'"><label class="form-label">Expense category</label>
+        <select class="form-select form-select-sm" [(ngModel)]="editing.category" data-testid="fin-e-category"><option value="">Choose</option><option *ngFor="let c of ln.categories" [value]="c">{{c}}</option></select></div>
+      <div class="col-md-3"><label class="form-label">Note</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="editing.note"></div>
+      <div class="col-md-6" *ngIf="editing.tag">
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="fin-remember" [(ngModel)]="editing.remember" data-testid="fin-e-remember"><label class="form-check-label small" for="fin-remember">Do the same for every line like this, now and in future statements</label></div>
+        <input class="form-control form-control-sm mt-1" *ngIf="editing.remember" [(ngModel)]="editing.pattern" placeholder="text the narration contains" data-testid="fin-e-pattern">
+      </div>
+      <div class="col-md-3"><button type="button" class="btn btn-primary btn-sm" (click)="saveTag()" data-testid="fin-e-save">Save</button> <button type="button" class="btn btn-outline-secondary btn-sm" (click)="editing = null">Cancel</button></div>
+    </div>
+  </div>
+
+  <div class="table-responsive" *ngIf="ln">
+    <table class="table table-sm align-middle" data-testid="fin-lines">
+      <thead><tr><th>Date</th><th>Narration</th><th class="text-end">Out</th><th class="text-end">In</th><th class="text-end">Balance</th><th>What it is</th><th></th></tr></thead>
+      <tbody>
+        <tr *ngFor="let l of ln.rows" data-testid="fin-line" [class.table-warning]="l.status === 'UNEXPLAINED'">
+          <td class="text-nowrap">{{l.txn_date | date:'dd MMM yy'}}</td>
+          <td class="small" style="max-width:26rem"><div class="text-truncate" [title]="l.narration">{{l.narration}}</div><div class="text-muted" *ngIf="l.ref && l.ref.length > 3">{{l.ref}}</div></td>
+          <td class="text-end">{{l.debit ? (l.debit | number:'1.2-2') : ''}}</td>
+          <td class="text-end">{{l.credit ? (l.credit | number:'1.2-2') : ''}}</td>
+          <td class="text-end small text-muted">{{l.balance !== null ? (l.balance | number:'1.2-2') : ''}}</td>
+          <td class="small">
+            <span class="badge" [ngClass]="l.status === 'MATCHED' ? 'bg-success' : l.status === 'TAGGED' ? 'bg-primary' : 'bg-warning text-dark'">{{l.status === 'MATCHED' ? 'Matched' : l.status === 'TAGGED' ? (tagLabel(l.tag)) : 'Not explained'}}</span>
+            <div *ngIf="l.vendor || l.expense_category" class="text-muted">{{l.vendor || l.expense_category}}</div>
+            <div class="text-muted" *ngIf="l.status === 'MATCHED'">{{tagLabel(l.tag)}}: {{l.reason}}</div>
+          </td>
+          <td class="text-end"><a role="button" class="small" (click)="edit(l)" data-testid="fin-line-edit">{{l.status === 'UNEXPLAINED' ? 'Explain' : 'Change'}}</a></td>
+        </tr>
+        <tr *ngIf="!ln.rows.length"><td colspan="7" class="text-center text-muted py-3">No lines. Import a statement under Accounts &amp; import.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</ng-container>
+
+<!-- ============================================================ RECONCILE -->
+<ng-container *ngIf="tab === 'reconcile'">
+  <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+    <div><label class="form-label mb-0 small">Account</label>
+      <select class="form-select form-select-sm" [(ngModel)]="rcAccount" (change)="loadMonth()" data-testid="fin-r-account"><option *ngFor="let a of accounts" [ngValue]="a.id">{{a.name}}</option></select></div>
+    <div><label class="form-label mb-0 small">Month</label><input type="month" class="form-control form-control-sm" [(ngModel)]="rcMonth" (change)="loadMonth()" data-testid="fin-r-month"></div>
+  </div>
+  <div class="text-muted small" *ngIf="!accounts.length">Add a bank account and import a statement first.</div>
+
+  <ng-container *ngIf="rc">
+    <div class="alert alert-success py-2" *ngIf="rc.signoff" data-testid="fin-r-signed">
+      Signed by {{rc.signoff.by_name}} on {{rc.signoff.signed_on | date:'dd MMM yyyy, HH:mm'}}<span *ngIf="rc.signoff.note">. {{rc.signoff.note}}</span>
+      <div class="d-flex gap-2 mt-2"><input class="form-control form-control-sm w-auto" style="min-width:18rem" placeholder="Why open it again?" [(ngModel)]="reopenReason"><button type="button" class="btn btn-sm btn-outline-danger" [disabled]="!reopenReason" (click)="reopen()">Open the month again</button></div>
+    </div>
+
+    <h6 class="text-primary">The bank balance</h6>
+    <div class="small text-muted" *ngIf="!rc.bridge">There are no bank lines with a balance for this month.</div>
+    <table class="table table-sm w-auto" *ngIf="rc.bridge" data-testid="fin-bridge">
+      <tbody>
+        <tr><td>Opening balance</td><td class="text-end">{{rc.bridge.opening | number:'1.2-2'}}</td></tr>
+        <tr><td>+ Money in</td><td class="text-end">{{rc.bridge.credits | number:'1.2-2'}}</td></tr>
+        <tr><td>&minus; Money out</td><td class="text-end">{{rc.bridge.debits | number:'1.2-2'}}</td></tr>
+        <tr><td>= Should close at</td><td class="text-end">{{rc.bridge.expected | number:'1.2-2'}}</td></tr>
+        <tr class="fw-semibold"><td>Statement closing balance</td><td class="text-end">{{rc.bridge.closing | number:'1.2-2'}}</td></tr>
+        <tr><td>Difference</td><td class="text-end"><span class="badge" [ngClass]="rc.bridge.within ? 'bg-success' : 'bg-danger'">{{rc.bridge.difference | number:'1.2-2'}}</span></td></tr>
+      </tbody>
+    </table>
+    <div class="small text-danger" *ngIf="rc.bridge && !rc.bridge.carryWithin">This month opens {{rc.bridge.carry | number:'1.2-2'}} away from where the previous statement ended: lines may be missing between them.</div>
+
+    <h6 class="text-primary mt-3">The books against the bank</h6>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="fin-channels">
+        <thead><tr><th>What</th><th class="text-end">Books</th><th class="text-end">Bank</th><th class="text-end">Difference</th><th>Result</th></tr></thead>
+        <tbody>
+          <ng-container *ngFor="let c of rc.channels">
+            <tr data-testid="fin-channel">
+              <td>{{c.label}}<div class="small text-muted">{{c.hint}}</div></td>
+              <td class="text-end">{{c.books | number:'1.2-2'}}</td><td class="text-end">{{c.bank | number:'1.2-2'}}</td>
+              <td class="text-end">{{c.difference | number:'1.2-2'}}</td>
+              <td><span class="badge" [ngClass]="c.within ? 'bg-success' : 'bg-warning text-dark'">{{c.within ? 'Tallies' : 'Needs a reason'}}</span></td>
+            </tr>
+            <tr *ngIf="!c.within && !rc.signoff">
+              <td colspan="5" class="bg-light">
+                <div class="row g-2">
+                  <div class="col-md-5"><select class="form-select form-select-sm" [(ngModel)]="rcReasons[c.key].code" [attr.data-testid]="'fin-reason-' + c.key"><option value="">Why do they differ?</option><option *ngFor="let k of reasonCodes" [value]="k">{{reasons[k]}}</option></select></div>
+                  <div class="col-md-7"><input class="form-control form-control-sm" maxlength="200" placeholder="Note: what you know about it" [(ngModel)]="rcReasons[c.key].note" [attr.data-testid]="'fin-note-' + c.key"></div>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mb-3" data-testid="fin-r-counts">
+      <span class="badge bg-primary me-1">{{rc.counts.tagged}} tagged</span><span class="badge bg-success me-1">{{rc.counts.matched}} matched</span>
+      <span class="badge" [ngClass]="rc.counts.unexplained ? 'bg-warning text-dark' : 'bg-secondary'">{{rc.counts.unexplained}} not explained ({{rc.counts.unexplainedAmount | number:'1.2-2'}})</span>
+      <a role="button" class="small ms-2" *ngIf="rc.counts.unexplained" (click)="showUnexplained()" data-testid="fin-r-show">Open them to explain</a>
+    </div>
+
+    <div class="border rounded p-3 mb-3" *ngIf="!rc.signoff" data-testid="fin-r-sign">
+      <div class="form-check mb-2" *ngIf="unexplainedOver"><input class="form-check-input" type="checkbox" id="fin-accept" [(ngModel)]="rcAccept" data-testid="fin-r-accept"><label class="form-check-label small" for="fin-accept">Accept the lines I have not explained (a note is needed)</label></div>
+      <label class="form-label" for="fin-r-note">Note</label>
+      <input class="form-control mb-2" id="fin-r-note" maxlength="300" [(ngModel)]="rcNote" data-testid="fin-r-note">
+      <button type="button" class="btn btn-primary" [disabled]="!rc.over" (click)="sign()" data-testid="fin-r-signbtn">Sign this month</button>
+      <span class="small text-muted ms-2" *ngIf="!rc.over">The month is not over yet.</span>
+    </div>
+  </ng-container>
+
+  <div *ngIf="signed.length" class="mt-3"><h6 class="text-primary">Signed months</h6>
+    <table class="table table-sm w-auto" data-testid="fin-signed"><tbody><tr *ngFor="let s of signed"><td>{{s.month}}</td><td>{{s.by_name}}</td><td class="small text-muted">{{s.signed_on | date:'dd MMM yyyy'}}</td><td class="small">{{s.note}}</td></tr></tbody></table></div>
+</ng-container>
+
+<!-- ============================================================ ACCOUNTS AND IMPORT -->
+<ng-container *ngIf="tab === 'accounts'">
+  <h6 class="text-primary">Bank accounts</h6>
+  <p class="small text-muted mb-2">An account belongs to the business, or to one store. Only the last four digits of the number are kept.</p>
+  <div class="border rounded p-3 mb-3" *ngIf="acc" data-testid="fin-acc-form">
+    <div class="row g-2">
+      <div class="col-md-3"><label class="form-label">Name *</label><input class="form-control form-control-sm" maxlength="80" [(ngModel)]="acc.name" data-testid="fin-a-name"></div>
+      <div class="col-md-3"><label class="form-label">Bank</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="acc.bank_name" data-testid="fin-a-bank"></div>
+      <div class="col-md-2"><label class="form-label">Last 4 digits</label><input class="form-control form-control-sm" maxlength="4" [(ngModel)]="acc.last4" data-testid="fin-a-last4"></div>
+      <div class="col-md-4"><label class="form-label">Belongs to</label>
+        <select class="form-select form-select-sm" [(ngModel)]="acc.store_id" data-testid="fin-a-store"><option [ngValue]="null">The whole business</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.location}} only</option></select></div>
+      <div class="col-md-3"><label class="form-label">Opening balance (optional)</label><input type="number" class="form-control form-control-sm" [(ngModel)]="acc.opening_balance"></div>
+      <div class="col-md-3"><label class="form-label">As on</label><input type="date" class="form-control form-control-sm" [(ngModel)]="acc.opening_date"></div>
+      <div class="col-md-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="fin-a-active" [(ngModel)]="acc.active"><label class="form-check-label" for="fin-a-active">In use</label></div></div>
+    </div>
+    <div class="mt-2"><button type="button" class="btn btn-primary btn-sm" [disabled]="!acc.name" (click)="saveAccount()" data-testid="fin-a-save">Save account</button> <button type="button" class="btn btn-outline-secondary btn-sm" (click)="acc = null">Cancel</button></div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="fin-accounts">
+      <thead><tr><th>Account</th><th>Belongs to</th><th>Lines</th><th>Covers</th><th>Not explained</th><th></th></tr></thead>
+      <tbody>
+        <tr *ngFor="let a of accounts" data-testid="fin-account">
+          <td>{{a.name}}<div class="small text-muted">{{a.bank_name}}<span *ngIf="a.last4"> &middot; &hellip;{{a.last4}}</span></div></td>
+          <td>{{a.store ? a.store + ' only' : 'The whole business'}}</td><td>{{a.lines}}</td>
+          <td class="small">{{a.first_line ? ((a.first_line | date:'dd MMM yy') + ' to ' + (a.last_line | date:'dd MMM yy')) : 'Nothing imported'}}</td>
+          <td>{{a.unexplained}}</td><td class="text-end"><a role="button" class="small" (click)="editAccount(a)">Edit</a></td>
+        </tr>
+        <tr *ngIf="!accounts.length"><td colspan="6" class="text-center text-muted py-3">No bank accounts yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <button type="button" class="btn btn-outline-primary btn-sm mb-4" (click)="addAccount()" data-testid="fin-a-add">Add a bank account</button>
+
+  <h6 class="text-primary">Import a statement</h6>
+  <p class="small text-muted mb-2">Any bank: a text, CSV or Excel statement. The columns are recognised from their headings; if a bank's file is not, you choose what each column is, and that is remembered for the account. The file itself is not kept. Importing the same lines twice is safe.</p>
+  <div class="d-flex flex-wrap align-items-end gap-2 mb-2">
+    <div><label class="form-label mb-0 small">Account</label>
+      <select class="form-select form-select-sm" [(ngModel)]="impAccount" (change)="loadImports(); pv = null" data-testid="fin-i-account"><option *ngFor="let a of accounts" [ngValue]="a.id">{{a.name}}</option></select></div>
+    <div><label class="form-label mb-0 small">Statement file</label><input type="file" class="form-control form-control-sm" accept=".txt,.csv,.xlsx" (change)="pick($event)" data-testid="fin-i-file"></div>
+    <button type="button" class="btn btn-sm btn-primary" [disabled]="!impFile || !impAccount" (click)="readFile()" data-testid="fin-i-read">Read the file</button>
+  </div>
+
+  <div *ngIf="pv" class="border rounded p-3 mb-3" data-testid="fin-preview">
+    <div class="alert py-2 mb-2" [ngClass]="pv.recognised ? 'alert-success' : 'alert-warning'" data-testid="fin-pv-status">
+      <ng-container *ngIf="pv.recognised">Read {{pv.rows}} lines from {{pv.meta.from | date:'dd MMM yyyy'}} to {{pv.meta.to | date:'dd MMM yyyy'}}: <b>{{pv.fresh}} new</b>, {{pv.duplicates}} already imported.</ng-container>
+      <ng-container *ngIf="!pv.recognised">I could not tell what the columns are. Choose what each one holds below, then read the file again.</ng-container>
+    </div>
+    <ul class="small mb-2"><li *ngFor="let w of pv.warnings" class="text-danger">{{w}}</li><li *ngIf="pv.gap" class="text-danger" data-testid="fin-pv-gap">{{pv.gap}}</li>
+      <li *ngIf="pv.recognised && pv.meta.hasBalance && !pv.meta.breaks.length" class="text-success">The running balance follows from the amounts: no lines are missing.</li>
+      <li *ngIf="pv.recognised && pv.meta.opening !== null">Opens at {{pv.meta.opening | number:'1.2-2'}}, closes at {{pv.meta.closing | number:'1.2-2'}}; in {{pv.meta.credits | number:'1.2-2'}}, out {{pv.meta.debits | number:'1.2-2'}}.</li></ul>
+
+    <div class="table-responsive" *ngIf="mapping">
+      <table class="table table-sm" data-testid="fin-mapping">
+        <thead><tr><th *ngFor="let h of pv.header; let i = index" class="small">{{h || '(blank)'}}</th></tr>
+          <tr><th *ngFor="let h of pv.header; let i = index">
+            <select class="form-select form-select-sm" [ngModel]="mapping.columns[i]" (ngModelChange)="setRole(i, $event)"><option *ngFor="let r of pv.roles" [value]="r">{{r === 'ignore' ? 'Not needed' : r}}</option></select></th></tr></thead>
+        <tbody><tr *ngFor="let r of pv.sample.slice(mapping.headerRow + 1, mapping.headerRow + 5)"><td *ngFor="let c of r" class="small text-truncate" style="max-width:12rem">{{c}}</td></tr></tbody>
+      </table>
+      <div class="d-flex align-items-center gap-2 small mb-2">Date format <input class="form-control form-control-sm w-auto" [(ngModel)]="mapping.dateFormat" placeholder="dd/mm/yyyy"> <button type="button" class="btn btn-sm btn-outline-secondary" (click)="readFile()">Read again</button></div>
+    </div>
+    <button type="button" class="btn btn-primary" *ngIf="pv.recognised" [disabled]="importing || !pv.fresh" (click)="doImport()" data-testid="fin-i-import">Import {{pv.fresh}} new line{{pv.fresh === 1 ? '' : 's'}}</button>
+    <span class="small text-muted ms-2" *ngIf="pv.recognised && !pv.fresh">Everything in this file is already imported.</span>
+  </div>
+
+  <div *ngIf="result" class="alert alert-success" data-testid="fin-i-result">
+    Imported {{result.fresh}} new line{{result.fresh === 1 ? '' : 's'}} ({{result.duplicates}} were already there): {{result.matched}} matched to the books, {{result.tagged}} tagged automatically, <b>{{result.unexplained}} for you to explain</b>.
+    <a role="button" class="ms-1" (click)="setTab('lines')">Open the bank lines</a>
+  </div>
+
+  <h6 class="text-primary mt-4" *ngIf="imports.length">Statements imported</h6>
+  <table class="table table-sm" *ngIf="imports.length" data-testid="fin-imports">
+    <thead><tr><th>File</th><th>Period</th><th>New</th><th>Already there</th><th>Balance check</th><th>When</th></tr></thead>
+    <tbody><tr *ngFor="let i of imports"><td class="small">{{i.file_name}}</td><td class="small">{{i.period_from | date:'dd MMM yy'}} to {{i.period_to | date:'dd MMM yy'}}</td><td>{{i.rows_new}}</td><td>{{i.rows_duplicate}}</td>
+      <td class="small"><span class="text-success" *ngIf="!i.continuity_breaks && !i.gap_note">OK</span><span class="text-danger" *ngIf="i.continuity_breaks || i.gap_note">{{i.continuity_breaks ? i.continuity_breaks + ' break(s). ' : ''}}{{i.gap_note}}</span></td><td class="small">{{i.uploaded_on | date:'dd MMM yy HH:mm'}}</td></tr></tbody>
+  </table>
+
+  <h6 class="text-primary mt-4">Rules you made</h6>
+  <p class="small text-muted mb-1">When you explain a line and ask for the same next time, it is kept here.</p>
+  <table class="table table-sm w-auto" data-testid="fin-rules">
+    <thead><tr><th>A line containing</th><th>Direction</th><th>Is</th><th></th></tr></thead>
+    <tbody>
+      <tr *ngFor="let r of rules"><td>{{r.pattern}}</td><td>{{r.direction === 'ANY' ? 'In or out' : r.direction === 'DEBIT' ? 'Out' : 'In'}}</td><td>{{tagLabel(r.tag)}}<span *ngIf="r.vendor"> &middot; {{r.vendor}}</span><span *ngIf="r.expense_category"> &middot; {{r.expense_category}}</span></td><td><a role="button" class="small text-danger" (click)="removeRule(r.id)">Remove</a></td></tr>
+      <tr *ngIf="!rules.length"><td colspan="4" class="text-muted small">No rules yet.</td></tr>
+    </tbody>
+  </table>
+</ng-container>
+
+<!-- ============================================================ RECORDS -->
+<ng-container *ngIf="tab === 'records' && rec">
+  <div class="alert alert-info py-2" data-testid="fin-retention">
+    Keep accounting and drug records for at least <b>{{rec.retentionYears}} years</b> (this financial year and the {{rec.retentionYears}} before it, from {{rec.keepFrom | date:'dd MMM yyyy'}}).
+    The Schedule H1 register, sale and purchase records are asked for on inspection, and GST records for six years or more. Confirm the exact periods with your accountant and the state Drugs Control Department.
+  </div>
+  <h6 class="text-primary">Are the records complete?</h6>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="fin-records">
+      <thead><tr><th>Financial year</th><th>Sales</th><th>Purchases</th><th>Bank statements</th><th>Stock audits certified</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let y of rec.years" data-testid="fin-record-row">
+          <td>{{y.fy}}<div class="small text-muted" *ngIf="y.before">Before the system was used</div></td>
+          <td>{{y.sales.bills}} bills<div class="small" [class.text-success]="!y.sales.missing.length" [class.text-danger]="y.sales.missing.length">{{y.sales.months}} of {{y.months}} months<span *ngIf="y.sales.missing.length">: none in {{y.sales.missing.join(', ')}}</span></div></td>
+          <td>{{y.purchases.invoices}} invoices<div class="small" [class.text-success]="!y.purchases.missing.length" [class.text-danger]="y.purchases.missing.length">{{y.purchases.months}} of {{y.months}} months<span *ngIf="y.purchases.missing.length">: none in {{y.purchases.missing.join(', ')}}</span></div></td>
+          <td><div class="small" *ngFor="let b of y.bank">{{b.account}}: {{b.months}} of {{y.months}} months</div><span class="small text-muted" *ngIf="!y.bank.length">No account</span></td>
+          <td>{{y.audits}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-muted">Months before the first sale or purchase in the system are not counted as missing.</p>
+
+  <ng-container *ngIf="rec.pharmacy">
+    <ng-container *ngIf="drugRegisterOn">
+      <h6 class="text-primary mt-4">The drug register (Schedule H, H1, X)</h6>
+      <div data-testid="fin-drugreg" *ngIf="drugRegister">
+        <p class="small mb-1">The online register began on {{drugRegister.since | date:'dd MMM yyyy'}}; before that, the paper register. Since then:
+          <b [class.text-success]="!drugRegister.missing" [class.text-danger]="drugRegister.missing">{{drugRegister.missing}} scheduled sale{{drugRegister.missing === 1 ? '' : 's'}} without a register line</b>.</p>
+        <table class="table table-sm w-auto" *ngIf="drugRegister.months.length"><thead><tr><th>Month</th><th>Schedule</th><th>Register lines</th></tr></thead>
+          <tbody><tr *ngFor="let m of drugRegister.months.slice(0, 12)"><td>{{m.month}}</td><td>{{m.schedule}}</td><td>{{m.lines}}</td></tr></tbody></table>
+        <a routerLink="/secure/schedule-register" class="small">Open the drug register</a>
+      </div>
+    </ng-container>
+    <ng-container *ngIf="!drugRegisterOn">
+      <h6 class="text-primary mt-4">The paper Schedule H1 register</h6>
+  <p class="small text-muted mb-2">The H1 register is kept on paper. Each month, check that it is complete and up to date (every H1 sale has its prescriber, patient, drug and quantity), then mark the month here.</p>
+  <table class="table table-sm w-auto" data-testid="fin-h1">
+    <tbody>
+      <tr *ngFor="let m of rec.h1">
+        <td>{{m.month}}</td>
+        <td><span class="text-success small" *ngIf="m.checked.length">Checked by {{m.checked[0].by}} on {{m.checked[0].day | date:'dd MMM yyyy'}}</span>
+          <button type="button" class="btn btn-sm btn-outline-primary" *ngIf="!m.checked.length" (click)="attest(m.month)" data-testid="fin-h1-mark">Mark as checked</button></td>
+      </tr>
+    </tbody>
+  </table>
+    </ng-container>
+  </ng-container>
+</ng-container>

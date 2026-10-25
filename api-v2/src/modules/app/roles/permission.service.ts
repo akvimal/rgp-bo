@@ -102,6 +102,24 @@ export class PermissionService {
     return this.privilegedRoles.has(role.name) || this.hasPermission(role, 'products', 'edit') || this.hasPermission(role, 'products', 'add');
   }
 
+  /** The drug register (pharmacy pack): read and printed by the people who run the shop. */
+  async canViewDrugRegister(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return this.privilegedRoles.has(role.name) || this.normalizePermissions(role).some((p) => p.resource === 'scheduleregister');
+  }
+
+  /** Finance (bank accounts, statements, the books against the bank): the Business Head and the Owner-operator only, not the Store Head. */
+  async canUseFinance(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return role.name === 'Business Head' || role.name === 'Owner-operator' || this.normalizePermissions(role).some((p) => p.resource === 'finance');
+  }
+
   /** The weekly exceptions review: the people who run the shop. */
   async canReview(roleid: number | string): Promise<boolean> {
     const role = await this.findRole(roleid);

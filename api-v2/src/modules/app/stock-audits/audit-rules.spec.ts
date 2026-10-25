@@ -20,9 +20,15 @@ describe('stock audit rules', () => {
 
   it('seeds weekly fast movers and rotation, monthly scheduled drugs and expiry, and a yearly full count', () => {
     const plans = standardPlans(['A', 'B', 'C'], '2026-10-24');
-    expect(plans.map((p) => [p.scope, p.frequency_days])).toEqual([['FAST', 7], ['ROTATE', 7], ['SCHEDULE', 30], ['EXPIRY', 30], ['ALL', 365]]);
+    expect(plans.map((p) => [p.scope, p.frequency_days]).sort()).toEqual([['ALL', 365], ['EXPIRY', 30], ['FAST', 7], ['ROTATE', 7], ['SCHEDULE', 30]]);
     expect(plans.find((p) => p.scope === 'ROTATE')!.categories).toEqual(['A', 'B', 'C']);
     expect(plans.find((p) => p.scope === 'ALL')!.first_due).toBe('2027-03-31');
+  });
+
+  it('leaves out the scheduled-drugs plan for a business that is not a pharmacy', () => {
+    expect(standardPlans(['A', 'B'], '2026-10-24', { pharmacy: false }).some((p) => p.scope === 'SCHEDULE')).toBe(false);
+    expect(standardPlans(['A', 'B'], '2026-10-24', { pharmacy: true }).some((p) => p.scope === 'SCHEDULE')).toBe(true);
+    expect(standardPlans(['A', 'B'], '2026-10-24').some((p) => p.scope === 'SCHEDULE')).toBe(true);
   });
 
   it('skips the rotation when there are fewer than two categories', () => {

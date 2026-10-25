@@ -343,7 +343,7 @@ test.describe('Operating modes: approval mode @p1', () => {
 const SALES = 'sales1@local.test';
 const modulesOf = async (api: any) => (await api.request('GET', '/businesses/mine/modules', undefined, MGR)).body;
 const setModules = (api: any, body: any, as = MGR) => api.request('PUT', '/businesses/mine/modules', body, as);
-const ALL_ON = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true };
+const ALL_ON = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true, drug_register: true };
 const resources = async (api: any, as = MGR) => ((await api.request('GET', '/auth/me', undefined, as)).body.permissions as any[]).map((p) => p.resource);
 
 test.describe('Operating modes: modules @p1', () => {

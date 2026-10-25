@@ -1,0 +1,59 @@
+<div class="pagetitle"><h1>Drug register</h1></div>
+
+<p class="small text-muted mb-2" data-testid="dr-intro">
+  Every Schedule H, H1 and X drug supplied, with the patient and the prescriber, numbered in the register's own order. The counter writes it through the bill: a bill with a scheduled drug
+  cannot be completed without them. Print it for an inspector, or download it to Excel.
+</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="dr-error">{{error}}</div>
+
+<div class="alert alert-warning py-2" *ngIf="data && data.coverage.missing" data-testid="dr-missing">
+  <b>{{data.coverage.missing}} scheduled sale{{data.coverage.missing === 1 ? '' : 's'}} since {{data.since | date:'dd MMM yyyy'}} {{data.coverage.missing === 1 ? 'has' : 'have'}} no register line.</b>
+  The bill was made some other way, or before the details were asked for. The most recent:
+  <ul class="mb-0 small">
+    <li *ngFor="let m of data.coverage.items.slice(0, 5)">Bill {{m.bill_no}}, {{m.day | date:'dd MMM'}}: {{m.title}} (Schedule {{m.schedule}}), {{m.qty}} unit{{m.qty === 1 ? '' : 's'}}</li>
+  </ul>
+</div>
+<div class="small text-muted mb-2" *ngIf="data">The online register began on {{data.since | date:'dd MMM yyyy'}}; earlier supplies are in the paper register.</div>
+
+<div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+  <div class="btn-group btn-group-sm" role="group">
+    <button type="button" class="btn btn-outline-secondary" (click)="month(0)">This month</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="month(-1)">Last month</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="year()">This year</button>
+  </div>
+  <div><label class="form-label mb-0 small">From</label><input type="date" class="form-control form-control-sm" [(ngModel)]="f.from" (change)="load()" data-testid="dr-from"></div>
+  <div><label class="form-label mb-0 small">To</label><input type="date" class="form-control form-control-sm" [(ngModel)]="f.to" (change)="load()" data-testid="dr-to"></div>
+  <div><label class="form-label mb-0 small">Schedule</label>
+    <select class="form-select form-select-sm" [(ngModel)]="f.schedule" (change)="load()" data-testid="dr-schedule"><option value="">H, H1 and X</option><option value="H1">H1</option><option value="H">H</option><option value="X">X</option></select></div>
+  <div *ngIf="data && data.stores.length > 1"><label class="form-label mb-0 small">Store</label>
+    <select class="form-select form-select-sm" [(ngModel)]="f.storeid" (change)="load()"><option [ngValue]="null">All stores</option><option *ngFor="let s of data.stores" [ngValue]="s.id">{{s.location}}</option></select></div>
+  <div><label class="form-label mb-0 small">Search</label><input class="form-control form-control-sm" [(ngModel)]="f.q" (keyup.enter)="load()" placeholder="patient, doctor, drug, batch, bill" data-testid="dr-search"></div>
+  <div class="form-check mb-1"><input class="form-check-input" type="checkbox" id="dr-sup" [(ngModel)]="f.superseded" (change)="load()"><label class="form-check-label small" for="dr-sup">Include lines of bills that were changed</label></div>
+  <button type="button" class="btn btn-sm btn-primary" (click)="print()" data-testid="dr-print">Print the register (PDF)</button>
+  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="download()" data-testid="dr-xlsx">Download as Excel</button>
+</div>
+
+<div class="small text-muted mb-2" *ngIf="data" data-testid="dr-totals">
+  <span *ngFor="let s of ['H1','H','X']" class="me-3">Schedule {{s}}: <b>{{data.totals[s].lines}}</b> line{{data.totals[s].lines === 1 ? '' : 's'}}, {{data.totals[s].units}} unit{{data.totals[s].units === 1 ? '' : 's'}}</span>
+</div>
+
+<div class="table-responsive" *ngIf="data">
+  <table class="table table-sm align-middle" data-testid="dr-table">
+    <thead><tr><th>Register no</th><th>Date and time</th><th>Bill</th><th>Patient</th><th>Prescriber</th><th>Drug</th><th>Batch</th><th class="text-end">Units</th><th>Supplied by</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let r of data.rows" data-testid="dr-row" [class.table-danger]="r.superseded">
+        <td class="text-nowrap fw-semibold">{{r.label}}<span class="badge bg-secondary ms-1" *ngIf="r.superseded">changed</span></td>
+        <td class="text-nowrap small">{{r.entry_on}}</td>
+        <td>{{r.bill_no}}</td>
+        <td><div>{{r.patient_name}}<span class="text-muted small" *ngIf="r.patient_age">, {{r.patient_age}}</span></div><div class="small text-muted">{{r.patient_address}}</div></td>
+        <td><div>{{r.prescriber_name}}<span class="text-muted small" *ngIf="r.prescriber_reg_no"> (Reg. {{r.prescriber_reg_no}})</span></div><div class="small text-muted">{{r.prescriber_address}}</div></td>
+        <td>{{r.drug_name}} <span class="badge bg-light text-dark border">{{r.schedule}}</span></td>
+        <td class="small">{{r.batch}}<div class="text-muted" *ngIf="r.exp_date">{{r.exp_date | date:'MMM yy'}}</div></td>
+        <td class="text-end fw-semibold">{{r.qty}}</td>
+        <td class="small">{{r.supplied_by}}</td>
+      </tr>
+      <tr *ngIf="!data.rows.length"><td colspan="9" class="text-center text-muted py-3" data-testid="dr-empty">No scheduled drug was supplied in this period.</td></tr>
+    </tbody>
+  </table>
+</div>

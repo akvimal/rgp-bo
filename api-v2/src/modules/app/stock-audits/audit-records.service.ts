@@ -5,6 +5,7 @@ import * as ExcelJS from 'exceljs';
 import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser } from 'src/core/business-of-user';
 import { StockAuditService } from './stock-audit.service';
+import { ModulesService } from 'src/core/modules/modules.service';
 import { auditNo, financialYear, matchRate, mayCertify, SCOPE_LABEL, standardPlans, variance } from './audit-rules';
 import { AuditHead, buildCertificatePdf, buildCountSheetPdf, buildVariancePdf, SheetLine, Totals } from './audit-pdf';
 
@@ -17,7 +18,7 @@ const text = (v: any, max: number): string | null => { const s = String(v ?? '')
  */
 @Injectable()
 export class AuditRecordsService {
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly audits: StockAuditService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly audits: StockAuditService, private readonly modules: ModulesService) {}
 
   private async head(a: any): Promise<AuditHead> {
     const [b] = await this.manager.query(`select name, address, gstin from business where id = $1`, [a.business_id]);
@@ -198,7 +199,10 @@ export class AuditRecordsService {
     if (!(await this.audits.canManage(user))) throw new ForbiddenException('Only the Business Head sets up audit plans.');
     const cats = (await this.manager.query(`select distinct btrim(category) as name from product where category is not null and btrim(category) <> '' and active and not archive order by 1`)).map((r: any) => r.name);
     let created = 0;
-    for (const p of standardPlans(cats, istDay())) {
+    // the scheduled-drugs plan is the pharmacy pack's: another kind of business is not given it
+    const [biz] = await this.manager.query(`select business_id from stores where id = (select min(id) from stores)`);
+    const pharmacy = biz ? await this.modules.packOnForBusiness(+biz.business_id, 'pharmacy') : true;
+    for (const p of standardPlans(cats, istDay(), { pharmacy })) {
       const r = await this.manager.query(
         `insert into stock_audit_plan (name, scope, categories, frequency_days, first_due, created_by)
          select $1::varchar, $2::varchar, $3::text[], $4::int, $5::date, $6::int where not exists (select 1 from stock_audit_plan where name = $1::varchar) returning id`,

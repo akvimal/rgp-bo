@@ -1,3 +1,4 @@
+import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { recordStaffCredit } from "./staff-credit-rule";
@@ -74,7 +75,8 @@ export class SaleService {
     constructor(@InjectRepository(Sale) private readonly saleRepository: Repository<Sale>,
     @InjectRepository(SaleItem) private readonly saleItemRepository: Repository<SaleItem>,
     @InjectRepository(SaleReturnItem) private readonly saleReturnItemRepository: Repository<SaleReturnItem>,
-    @InjectEntityManager() private manager: EntityManager) { }
+    @InjectEntityManager() private manager: EntityManager,
+    private readonly hooks: SaleHooks) { }
 
     async create(sale: SalePayload, userid: number, actingUserid?: number) {
         // Wrap entire sale creation in transaction to prevent orphaned data
@@ -205,6 +207,8 @@ export class SaleService {
                 }
                 await recordStaffCredit(transactionManager, savedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, savedSale, actingUserid || userid);
+                // a business pack may write its own records for this bill (they stand or fall with it)
+                await this.hooks.saved({ manager: transactionManager, sale, saved: savedSale, items: sale.items || [], storeId: storeid, userId: userid, actingUserId: actingUserid });
 
                 if (shiftid && Number(savedSale['cashamt'] || sale['cashamt'] || 0) > 0) {
                     await transactionManager.save(StoreCashAccount, {
@@ -327,6 +331,7 @@ export class SaleService {
                 }
                 await recordStaffCredit(transactionManager, updatedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, updatedSale, actingUserid || userid);
+                await this.hooks.saved({ manager: transactionManager, sale, saved: updatedSale, items: sale.items || [], storeId: (updatedSale as any).storeid ?? null, userId: userid, actingUserId: actingUserid });
 
                 // The client only needs the saved header before loading the detail route.
                 return updatedSale;

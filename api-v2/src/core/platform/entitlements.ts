@@ -53,13 +53,14 @@ export function clampModules(chosen: ModuleState, allowed: ModuleState): ModuleS
     payment_recon: chosen.payment_recon && allowed.payment_recon,
     stock_audits: chosen.stock_audits && allowed.stock_audits,
     transfers: chosen.transfers && allowed.transfers,
+    drug_register: chosen.drug_register && allowed.drug_register,
   };
 }
 
 /** The modules the plan does not include, by key. */
 export function lockedModules(allowed: ModuleState): string[] {
   const out: string[] = [];
-  for (const k of ['hr', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers'] as const) if (!allowed[k]) out.push(k);
+  for (const k of ['hr', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register'] as const) if (!allowed[k]) out.push(k);
   if (allowed.purchasing !== 'full') out.push('purchasing');
   return out;
 }

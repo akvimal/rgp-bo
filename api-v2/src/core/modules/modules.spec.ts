@@ -1,9 +1,28 @@
-import { ALL_ON, blockedBy, filterPermissions, gatedPath, parseModulesInput, resolveModules } from './modules';
+import { ALL_ON, blockedBy, filterPermissions, gatedPath, packsOf, parseModulesInput, resolveModules } from './modules';
 
 describe('modules', () => {
   it('treats an empty setting as everything on', () => {
     expect(resolveModules({})).toEqual(ALL_ON);
     expect(resolveModules(null)).toEqual(ALL_ON);
+  });
+
+  it('switches a pack on for the business types it is made for, and off for the rest, unless the business chose', () => {
+    expect(resolveModules({}, 'pharmacy').drug_register).toBe(true);
+    expect(resolveModules({}, 'general').drug_register).toBe(false);
+    expect(resolveModules({ drug_register: true }, 'general').drug_register).toBe(true);        // a choice wins over the default
+    expect(resolveModules({ drug_register: false }, 'pharmacy').drug_register).toBe(false);
+    expect(resolveModules({}).drug_register).toBe(true);                                         // no type: the businesses that were here first are pharmacies
+    expect(packsOf('pharmacy')).toEqual(['pharmacy']);
+    expect(packsOf('general')).toEqual([]);
+  });
+
+  it('gates the drug register path, and drops its permission when the module is off', () => {
+    const off = resolveModules({}, 'general');
+    expect(gatedPath('/schedule/register')).toBe(true);
+    expect(blockedBy('/schedule/register', off)).toMatch(/Drug register/);
+    expect(blockedBy('/schedule/register', resolveModules({}, 'pharmacy'))).toBeNull();
+    const perms = [{ resource: 'scheduleregister', path: '/secure/schedule-register', policies: [{ action: 'view' }] }, { resource: 'sales', path: ['/secure/sales'], policies: [{ action: 'read' }] }];
+    expect(filterPermissions(perms, off).map((p) => p.resource)).toEqual(['sales']);
   });
 
   it('keeps GST reconciliation off while purchasing is off, and remembers the choice', () => {

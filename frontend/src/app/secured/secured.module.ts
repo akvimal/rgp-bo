@@ -90,6 +90,14 @@ const routes: Routes = [
       loadChildren: () => import('./review/review.module').then(m => m.ReviewModule)
     },
     {
+      path: 'schedule-register', canActivate:[AuthGuard],
+      loadChildren: () => import('../packs/pharmacy/pharmacy.module').then(m => m.PharmacyModule)
+    },
+    {
+      path: 'finance', canActivate:[AuthGuard],
+      loadChildren: () => import('./finance/finance.module').then(m => m.FinanceModule)
+    },
+    {
       path: 'inquiries', canActivate:[AuthGuard],
       loadChildren: () => import('./inquiries/inquiries.module').then(m => m.InquiriesModule)
     },
