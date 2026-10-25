@@ -42,6 +42,9 @@ test.describe('Stock count escalation @p1', () => {
     const no = await api.request('PUT', `/stock/audit/${adj.id}/approve`, undefined, STORE_HEAD);
     expect(no.status).toBe(403);
     expect((await api.request('PUT', `/stock/audit/${adj.id}/reject`, undefined, STORE_HEAD)).status).toBe(403);
+    expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, undefined, MGR)).status).toBe(400);   // a large difference is counted again first
+    expect((await api.request('PUT', `/stock/audit/${adj.id}/recount`, { qty: 47 }, MGR)).status).toBe(403);  // not by the person who counted
+    expect((await api.request('PUT', `/stock/audit/${adj.id}/recount`, { qty: 47 }, STORE_HEAD)).status).toBeLessThan(300);
     expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, undefined, MGR)).status).toBeLessThan(300);
   });
 

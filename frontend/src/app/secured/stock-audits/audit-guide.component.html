@@ -1,0 +1,277 @@
+<div class="audit-guide">
+  <div class="pagetitle d-flex flex-wrap align-items-center gap-2">
+    <h1 class="mb-0">Audit guide</h1>
+    <span class="ms-auto no-print">
+      <a class="btn btn-outline-secondary btn-sm me-2" routerLink="/secure/stock-audits">&laquo; Stock audits</a>
+      <button type="button" class="btn btn-outline-primary btn-sm" (click)="print()" data-testid="guide-print">Print this guide</button>
+    </span>
+  </div>
+
+  <p class="text-muted" data-testid="guide-intro">
+    How this store checks itself: the stock on the shelf against the books, and the activities that could lose money if nobody looked.
+    Keep a printed copy at the store.
+  </p>
+
+  <div class="card no-print mb-3"><div class="card-body py-2 toc" data-testid="guide-toc">
+    <span class="fw-semibold me-2">Contents</span>
+    <a class="me-3" *ngFor="let s of sections; let i = index" (click)="go(s[0])">{{i + 1}}. {{s[1]}}</a>
+  </div></div>
+
+  <h2 id="guide-glance">1. The process at a glance</h2>
+  <p>Ten steps, from the plan to the register. The blue boxes are done at the shelf; the green boxes at the desk. Each step is explained below.</p>
+  <div class="g-figure">
+    <svg viewBox="0 0 900 300" class="g-svg" role="img" aria-label="The audit process in ten steps" data-testid="guide-flow">
+    <defs><marker id="g-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker></defs>
+    <g><rect x="8" y="10" width="160" height="92" rx="9" fill="#eff6ff" stroke="#94a3b8"/><circle cx="26" cy="28" r="11" fill="#1d4ed8"/><text x="26" y="32" text-anchor="middle" class="g-n">1</text><text x="44" y="32" class="g-t">Plan</text><text x="20" y="50" class="g-s">A numbered audit</text><text x="20" y="63" class="g-s">(SA-0012) with a</text><text x="20" y="76" class="g-s">due date</text><text x="20" y="96" class="g-w">System</text></g>
+    <g><rect x="188" y="10" width="160" height="92" rx="9" fill="#eff6ff" stroke="#94a3b8"/><circle cx="206" cy="28" r="11" fill="#1d4ed8"/><text x="206" y="32" text-anchor="middle" class="g-n">2</text><text x="224" y="32" class="g-t">Start count</text><text x="200" y="50" class="g-s">The book quantity</text><text x="200" y="63" class="g-s">is fixed at this</text><text x="200" y="76" class="g-s">moment</text><text x="200" y="96" class="g-w">Counter</text></g>
+    <g><rect x="368" y="10" width="160" height="92" rx="9" fill="#eff6ff" stroke="#94a3b8"/><circle cx="386" cy="28" r="11" fill="#1d4ed8"/><text x="386" y="32" text-anchor="middle" class="g-n">3</text><text x="404" y="32" class="g-t">Print the sheet</text><text x="380" y="50" class="g-s">Every batch, its book</text><text x="380" y="63" class="g-s">quantity, blank boxes</text><text x="380" y="76" class="g-s">to write in</text><text x="380" y="96" class="g-w">Counter</text></g>
+    <g><rect x="548" y="10" width="160" height="92" rx="9" fill="#eff6ff" stroke="#94a3b8"/><circle cx="566" cy="28" r="11" fill="#1d4ed8"/><text x="566" y="32" text-anchor="middle" class="g-n">4</text><text x="584" y="32" class="g-t">Count on paper</text><text x="560" y="50" class="g-s">Count the shelf, write</text><text x="560" y="63" class="g-s">in the box, mark</text><text x="560" y="76" class="g-s">damage, sign</text><text x="560" y="96" class="g-w">Counter</text></g>
+    <g><rect x="728" y="10" width="160" height="92" rx="9" fill="#eff6ff" stroke="#94a3b8"/><circle cx="746" cy="28" r="11" fill="#1d4ed8"/><text x="746" y="32" text-anchor="middle" class="g-n">5</text><text x="764" y="32" class="g-t">Enter the counts</text><text x="740" y="50" class="g-s">Type them in, set</text><text x="740" y="63" class="g-s">"counting finished at"</text><text x="740" y="76" class="g-s">and submit</text><text x="740" y="96" class="g-w">Counter</text></g>
+    <g><rect x="728" y="190" width="160" height="92" rx="9" fill="#f0fdf4" stroke="#94a3b8"/><circle cx="746" cy="208" r="11" fill="#1d4ed8"/><text x="746" y="212" text-anchor="middle" class="g-n">6</text><text x="764" y="212" class="g-t">System compares</text><text x="740" y="230" class="g-s">Count against what</text><text x="740" y="243" class="g-s">was expected when</text><text x="740" y="256" class="g-s">you finished</text><text x="740" y="276" class="g-w">System</text></g>
+    <g><rect x="548" y="190" width="160" height="92" rx="9" fill="#f0fdf4" stroke="#94a3b8"/><circle cx="566" cy="208" r="11" fill="#1d4ed8"/><text x="566" y="212" text-anchor="middle" class="g-n">7</text><text x="584" y="212" class="g-t">Settle differences</text><text x="560" y="230" class="g-s">Small: Store Head.</text><text x="560" y="243" class="g-s">Large or scheduled:</text><text x="560" y="256" class="g-s">recount, Business Head</text><text x="560" y="276" class="g-w">Store Head / Business Head</text></g>
+    <g><rect x="368" y="190" width="160" height="92" rx="9" fill="#f0fdf4" stroke="#94a3b8"/><circle cx="386" cy="208" r="11" fill="#1d4ed8"/><text x="386" y="212" text-anchor="middle" class="g-n">8</text><text x="404" y="212" class="g-t">Sign off</text><text x="380" y="230" class="g-s">A different person</text><text x="380" y="243" class="g-s">verifies and</text><text x="380" y="256" class="g-s">approves the audit</text><text x="380" y="276" class="g-w">Store Head / Business Head</text></g>
+    <g><rect x="188" y="190" width="160" height="92" rx="9" fill="#f0fdf4" stroke="#94a3b8"/><circle cx="206" cy="208" r="11" fill="#1d4ed8"/><text x="206" y="212" text-anchor="middle" class="g-n">9</text><text x="224" y="212" class="g-t">Certificate</text><text x="200" y="230" class="g-s">Printed, both sign,</text><text x="200" y="243" class="g-s">filed with the sheet</text><text x="200" y="256" class="g-s">and variance report</text><text x="200" y="276" class="g-w">Both signers</text></g>
+    <g><rect x="8" y="190" width="160" height="92" rx="9" fill="#f0fdf4" stroke="#94a3b8"/><circle cx="26" cy="208" r="11" fill="#1d4ed8"/><text x="26" y="212" text-anchor="middle" class="g-n">10</text><text x="44" y="212" class="g-t">Register</text><text x="20" y="230" class="g-s">Listed for the year;</text><text x="20" y="243" class="g-s">Excel for the</text><text x="20" y="256" class="g-s">accountant</text><text x="20" y="276" class="g-w">Business Head</text></g>
+    <line x1="170" y1="56" x2="185" y2="56" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="350" y1="56" x2="365" y2="56" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="530" y1="56" x2="545" y2="56" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="710" y1="56" x2="725" y2="56" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="808" y1="104" x2="808" y2="186" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="725" y1="236" x2="711" y2="236" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="545" y1="236" x2="531" y2="236" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="365" y1="236" x2="351" y2="236" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    <line x1="185" y1="236" x2="171" y2="236" stroke="#475569" stroke-width="2" marker-end="url(#g-arr)"/>
+    </svg>
+  </div>
+
+  <h2 id="guide-why">2. What auditing is for</h2>
+  <p>The books say what should be on the shelf. A count says what is. The difference is the first sign of a billing mistake, a purchase not entered, damage, expiry or theft. Regular, small, written checks find these while they are still small and easy to trace. They also show the owner, an accountant or an inspector that the store looks after its stock.</p>
+  <p>A good audit has four parts: <b>a plan</b> (what, when, who), <b>a count</b> (on a sheet, by a person), <b>a decision</b> on every difference (who approved, and why), and <b>a record</b> (a signed certificate, filed).</p>
+
+  <h2 id="guide-who">3. Who does what</h2>
+  <table class="table table-sm">
+    <thead><tr><th>Person</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td>Sales staff / the person counting</td><td>Counts on the printed sheet and enters the counts. Signs the certificate as <b>Counted by</b>.</td></tr>
+      <tr><td>Store Head</td><td>Starts and checks audits, settles small differences, makes the second count of a large difference when they did not do the first, and <b>verifies and approves</b> the audit (signs the certificate).</td></tr>
+      <tr><td>Business Head</td><td>Sets the audit plans, settles every large difference and every difference in scheduled drugs, and reviews the register. Can verify and approve an audit.</td></tr>
+      <tr><td>Owner-operator (one-person shop)</td><td>Does all of it. The certificate says it was counted and verified by one person.</td></tr>
+    </tbody>
+  </table>
+  <div class="alert alert-info py-2 box"><b>Two signers.</b> The person who counted and the person who verifies must be two different logins. The system will not let one person do both (except in a one-person shop). A large difference also needs a second count by someone other than the first counter.</div>
+
+  <h2 id="guide-calendar">4. The audit calendar</h2>
+  <p>Set these up once with <a routerLink="/secure/stock-audits">Stock audits</a> &rsaquo; Plans &rsaquo; <b>Add the standard plans</b>. The system then plans each audit, with a due date, and warns when one is overdue.</p>
+  <table class="table table-sm" data-testid="guide-calendar">
+    <thead><tr><th>Audit</th><th>What is counted</th><th>How often</th><th>Counted by</th><th>What it catches</th></tr></thead>
+    <tbody>
+      <tr><td><b>Fast movers</b></td><td>The 30 products with the highest sales in the last 90 days</td><td>Weekly</td><td>Sales staff, checked by Store Head</td><td>Billing mistakes and theft where the money is</td></tr>
+      <tr><td><b>Category rotation</b></td><td>One category at a time, in turn</td><td>Weekly: every category is covered about every 6 to 8 weeks</td><td>Sales staff, checked by Store Head</td><td>Slow drift in the books</td></tr>
+      <tr><td><b>Scheduled drugs</b></td><td>Every Schedule H, H1 and X product, with the register</td><td>Monthly</td><td>Pharmacist, checked by Store Head</td><td>Missing or unrecorded scheduled drugs</td></tr>
+      <tr><td><b>Expiry sweep</b></td><td>Batches expired or expiring within 90 days</td><td>Monthly</td><td>Store Head</td><td>Dead stock, returns to vendor in time</td></tr>
+      <tr><td><b>Full count</b></td><td>Everything</td><td>Yearly, at 31 March, and when staff or owner change</td><td>Everyone, owner present</td><td>The true value of stock for the accounts</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="guide-before">5. Before you count</h2>
+  <ul>
+    <li><b>Two people if you can:</b> one counts, one writes. A single person counting alone is the weakest case.</li>
+    <li><b>Tidy the shelf first:</b> put returned and mixed batches where they belong. Take expired and damaged stock off the shelf and keep it in one marked box. Count it separately.</li>
+    <li><b>Billing carries on.</b> The system fixes the book quantity at the moment you start the count. Sales and other changes made while you count are taken into account (see section 8), so they are not mistaken for shortages. Do not stop billing.</li>
+    <li><b>Start the count in the system first.</b> The count sheet is printed from the quantities fixed at the start, so the paper and the system always agree.</li>
+    <li><b>Use the right store.</b> Choose the audit's store at the top of the screen before you start; a count is done at one location.</li>
+  </ul>
+
+  <h2 id="guide-count">6. Counting, step by step</h2>
+  <ol>
+    <li>Open <a routerLink="/secure/stock-audits">Stock audits</a>. Find the audit (each has a number such as <b>SA-0012</b>) and press <b>Do the audit</b>.</li>
+    <li>On the count screen press <b>Start Count</b>. The list of batches and their book quantities appears.</li>
+    <li>Press <b>Print the count sheet</b>. It lists every batch with the book quantity, a box for your count and a box for remarks.</li>
+    <li>Count each batch on the shelf. Count the packs and loose strips in the unit the sheet shows (the sheet says the pack size). Write the number in the <b>Counted</b> box. Write damaged, near-expiry or &ldquo;not found&rdquo; in <b>Remarks</b>.</li>
+    <li>If a batch is not on the shelf, count it as 0. If you find a batch that is not on the sheet, write it at the bottom and tell the Store Head after the count: it means a purchase was not entered.</li>
+    <li>Sign the sheet (<b>Counted by</b>, date and time) and give it to the Store Head.</li>
+    <li>Enter the counts on the count screen. Leave a line as it is when the count matched. Check your entries against the paper before you submit. If you counted earlier than you are typing, set <b>Counting finished at</b> to the time you finished (never later than now); leave it blank if you are entering the counts right away.</li>
+    <li>Press submit. Every line with a difference becomes an adjustment waiting for approval (see the next section). The audit is marked done.</li>
+    <li>Open <b>Variance</b> on the audit row, read it with the Store Head, and handle each difference.</li>
+    <li>When every adjustment is settled, the Store Head presses <b>Sign off</b>, prints the <b>Certificate</b>, and both people sign it.</li>
+  </ol>
+
+  <h2 id="guide-differences">7. When the count differs from the book</h2>
+  <table class="table table-sm" data-testid="guide-rules">
+    <thead><tr><th>The difference is</th><th>What happens</th><th>Who settles it</th></tr></thead>
+    <tbody>
+      <tr><td>Nothing: the count matched</td><td>Nothing to do. The line is on the record as matched.</td><td>&ndash;</td></tr>
+      <tr><td>Small: a product out by ₹500 or less at cost</td><td>An adjustment waits in Store &rsaquo; Stock &rsaquo; Adjustments.</td><td>Store Head</td></tr>
+      <tr><td>Large: a product out by more than ₹500 at cost</td><td>Marked <b>Business Head</b>. A different person counts it again first. The second count replaces the first.</td><td>Business Head</td></tr>
+      <tr><td>Any difference in a scheduled-drug audit (H, H1, X)</td><td>Always marked <b>Business Head</b>, whatever it is worth. Same second count.</td><td>Business Head</td></tr>
+    </tbody>
+  </table>
+  <div class="g-figure">
+    <svg viewBox="0 0 760 250" class="g-svg" role="img" aria-label="How a difference is settled" data-testid="guide-decide">
+      <defs><marker id="g-arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker></defs>
+      <rect x="8" y="88" width="190" height="74" rx="9" fill="#eff6ff" stroke="#94a3b8"/>
+      <text x="20" y="116" class="g-t">A line is counted</text>
+      <text x="20" y="134" class="g-s">Is the count different from</text><text x="20" y="147" class="g-s">what was expected?</text>
+      <line x1="200" y1="110" x2="268" y2="40" stroke="#475569" stroke-width="2" marker-end="url(#g-arr2)"/>
+      <line x1="200" y1="125" x2="268" y2="125" stroke="#475569" stroke-width="2" marker-end="url(#g-arr2)"/>
+      <line x1="200" y1="140" x2="268" y2="212" stroke="#475569" stroke-width="2" marker-end="url(#g-arr2)"/>
+      <text x="206" y="62" class="g-w">no</text><text x="206" y="120" class="g-w">small</text><text x="206" y="196" class="g-w">large</text>
+      <rect x="270" y="8" width="480" height="60" rx="9" fill="#f0fdf4" stroke="#86efac"/>
+      <text x="284" y="34" class="g-t">Matched</text><text x="284" y="52" class="g-s">Nothing to do. It is on the record as matched.</text>
+      <rect x="270" y="86" width="480" height="78" rx="9" fill="#fffbeb" stroke="#fcd34d"/>
+      <text x="284" y="110" class="g-t">Small: up to &#8377;500 at cost for the product</text>
+      <text x="284" y="128" class="g-s">An adjustment waits in Stock &#8250; Adjustments.</text><text x="284" y="143" class="g-s">The Store Head looks for the reason, then approves or rejects.</text>
+      <rect x="270" y="178" width="480" height="68" rx="9" fill="#fef2f2" stroke="#fca5a5"/>
+      <text x="284" y="200" class="g-t">Large: over &#8377;500, or any difference in scheduled drugs (H, H1, X)</text>
+      <text x="284" y="218" class="g-s">Another person counts it again; the second count replaces the first.</text><text x="284" y="233" class="g-s">Then only the Business Head approves or rejects it.</text>
+    </svg>
+  </div>
+  <h3>Handling a difference properly</h3>
+  <ul>
+    <li><b>Look for the reason before you approve.</b> Check recent purchases not entered, a return not entered, a bill made for the wrong batch, stock moved to another store, sales during the count (the Sold column).</li>
+    <li><b>Give it a real reason:</b> Damaged, Expired, Missing, Returned. &ldquo;Other&rdquo; is for the rare case that fits none, and a note must say why. Too many &ldquo;Other&rdquo; write-offs raise an alert.</li>
+    <li><b>Never approve just to make the numbers clean.</b> An approved adjustment changes the stock and cannot be quietly undone; it stays on the record with your name.</li>
+    <li><b>Reject</b> an adjustment when the cause turns out to be a mistake in the count or an entry that should be corrected another way (enter the missing purchase instead).</li>
+    <li><b>Repeated shortages</b> in the same product, shelf or shift are a pattern. Tell the Business Head and look at the weekly review.</li>
+  </ul>
+
+  <h2 id="guide-during">8. Sales and changes while you count</h2>
+  <p>A pharmacy cannot stop selling for a count, so the shelf changes while you are counting it. The system allows for this. A count is not measured against the book at the start but against <b>what should be on the shelf when counting finished</b>:</p>
+  <div class="alert alert-info py-2 box" data-testid="guide-expected"><b>Expected</b> = book at the start &#8722; sold since the start &#177; other movements since the start</div>
+  <div class="g-figure">
+    <svg viewBox="0 0 660 246" class="g-svg" role="img" aria-label="A busy count: two units sold while counting" data-testid="guide-example">
+      <text x="8" y="18" class="g-t">Example: 50 on the book, 2 sold while you counted, 47 on the shelf at the end</text>
+      <text x="8" y="38" class="g-w">The bars show units; the scale starts at 40 so the small differences can be seen.</text>
+      <text x="8" y="78" class="g-s">Book at the start</text>
+      <rect x="150" y="62" width="250" height="24" fill="#3b82f6"/><text x="408" y="79" class="g-s">50</text>
+      <text x="8" y="118" class="g-s">Expected at the end</text>
+      <rect x="150" y="102" width="200" height="24" fill="#22c55e"/>
+      <rect x="350" y="102" width="50" height="24" fill="#e2e8f0" stroke="#94a3b8" stroke-dasharray="4 3"/>
+      <text x="358" y="119" class="g-w">2 sold</text><text x="408" y="119" class="g-s">48 = 50 &#8722; 2</text>
+      <text x="8" y="158" class="g-s">Counted on the shelf</text>
+      <rect x="150" y="142" width="175" height="24" fill="#3b82f6"/>
+      <rect x="325" y="142" width="25" height="24" fill="#ef4444"/>
+      <text x="408" y="159" class="g-s">47</text>
+      <text x="326" y="182" class="g-r">1 really missing</text>
+      <rect x="8" y="198" width="644" height="40" rx="6" fill="#fef9c3" stroke="#facc15"/>
+      <text x="18" y="214" class="g-s">Against the book at the start it would look like 3 missing (47 &#8722; 50).</text>
+      <text x="18" y="230" class="g-s">Against what was expected it is 1 missing (47 &#8722; 48). That is the real shortage.</text>
+    </svg>
+  </div>
+  <table class="table table-sm" data-testid="guide-movements">
+    <thead><tr><th>What happens during the count</th><th>How it is handled</th></tr></thead>
+    <tbody>
+      <tr><td>A sale</td><td>Taken off the expected quantity (the <b>Sold</b> column on the variance report).</td></tr>
+      <tr><td>A customer return, a transfer to or from another store, or an approved adjustment such as an expiry write-off</td><td>Added to or taken off the expected quantity (the <b>Other</b> column).</td></tr>
+      <tr><td>A delivery entered during the count</td><td>The new batch is not on the sheet, so it is not counted. It is listed on the variance report under <b>Received during the count</b> for the next audit.</td></tr>
+      <tr><td>Hand-written bills (a power cut) not yet entered</td><td>The system cannot know about them. <b>Enter them before you settle the audit</b>, or the shortage disappears by itself once they are keyed in.</td></tr>
+    </tbody>
+  </table>
+  <h3>Rules that make it work</h3>
+  <ul>
+    <li><b>Count and enter in the same session.</b> The system does not know when you stood at each shelf, only the time you give as <b>Counting finished at</b>. If you counted at 10 and typed at 3, set it to 10.</li>
+    <li><b>Do not approve other adjustments for a batch while it is being counted.</b> A batch in an open count shows <b>Counting now</b> in Adjustments, and asks you to press Approve a second time. It is allowed, and taken into account, but check first.</li>
+    <li><b>Hold purchase entry</b> for the category being counted until the count is submitted. Write any delivery that arrives on the sheet.</li>
+    <li><b>Count quickly.</b> The shorter the count, the smaller the corrections. Fast movers before opening; a full count after closing.</li>
+    <li><b>The limit:</b> if you counted a line before a sale but typed it in after, the correction goes one way too far. This is why the finish time and the same-session rule matter.</li>
+  </ul>
+
+  <h2 id="guide-each">9. Each audit in detail</h2>
+  <h3>Fast movers (weekly)</h3>
+  <p>The list is the 30 products with the highest sales value in the last 90 days at this store. Count all batches of these products. It takes about 15 to 20 minutes. Differences here are the most important: these products move the most money.</p>
+  <h3>Category rotation (weekly)</h3>
+  <p>The system picks the next category in turn. Count every batch of every product in that category. When a category is finished the next audit moves to the next category, so the whole shop is covered over the cycle.</p>
+  <h3>Scheduled drugs H, H1 and X (monthly)</h3>
+  <ol>
+    <li>Run the audit as usual. The sheet lists only scheduled products and marks the schedule beside the name.</li>
+    <li>Before the count, find the closing balance of each Schedule H1 and X item in the <b>register</b>. After the count, check: <i>register opening + received &minus; dispensed = register closing</i>, and that the closing equals the shelf count.</li>
+    <li>Any difference between the shelf, the system and the register goes to the pharmacist-in-charge and the Business Head on the same day. Do not adjust until it has been counted again.</li>
+    <li>Keep the register, the sheet and the certificate together.</li>
+  </ol>
+  <p class="small text-muted">This guide describes the store's own routine. The rules that apply to your licence and registers are set by the drug authorities; ask your pharmacist-in-charge or accountant if you are unsure.</p>
+  <h3>Expiry sweep (monthly)</h3>
+  <ol>
+    <li>Run the audit: it lists every batch that has expired or will within 90 days.</li>
+    <li>Take expired batches off the shelf into the marked box. Check near-expiry batches and mark them for quick sale or return.</li>
+    <li>Return what the vendor takes back (record the return with the vendor). Write off the rest with the reason <b>Expired</b>.</li>
+    <li>The Expired stock alert shows the value still sitting on the shelf; the goal is zero.</li>
+  </ol>
+  <h3>Full count (yearly, 31 March)</h3>
+  <p>Everything is counted, with the owner present, over one day or a closed morning if possible. Split the shop into sections, give each section to two people, and keep the sheets in order. Large differences are expected on the first full count; the Business Head settles them all. Print the stock valuation as at 31 March from <a routerLink="/secure/stock-audits">Stock audits</a> &rsaquo; Register for the accountant.</p>
+
+  <h2 id="guide-paper">10. The paperwork to keep</h2>
+  <table class="table table-sm">
+    <thead><tr><th>Document</th><th>When</th><th>What it shows</th></tr></thead>
+    <tbody>
+      <tr><td><b>Count sheet</b></td><td>Printed after you start the count</td><td>Every batch, with the book quantity at the start and your count in handwriting.</td></tr>
+      <tr><td><b>Variance report</b></td><td>After the count is submitted</td><td>Totals and each line that differed with Book, Sold, Other, Expected and Counted, the second count, stock received during the count, and what was decided.</td></tr>
+      <tr><td><b>Certificate</b></td><td>After every adjustment is settled and the audit is signed off</td><td>What was covered, what was found, how it was settled, and two signatures.</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li><b>Numbered:</b> every audit has a number, SA-0001, SA-0002 and so on, that runs on for the whole business. The same number is on all three documents.</li>
+    <li><b>The certificate is kept exactly as printed.</b> A reprint is the same file, so an old copy can always be matched to the original. If something was wrong, do not edit; raise an adjustment and write a note.</li>
+    <li><b>File them together</b> in this order: certificate on top, variance report, count sheet, scheduled-drug register page. Keep them in a folder for each financial year.</li>
+    <li><b>How long:</b> keep the paper for at least six years. Your accountant will tell you if your books need longer.</li>
+    <li><b>The register</b> (Stock audits &rsaquo; Register) lists every audit of a financial year with its number, result and certificate, and downloads to Excel for the accountant or an inspector.</li>
+  </ul>
+
+  <h2 id="guide-others">11. The other regular checks</h2>
+  <table class="table table-sm" data-testid="guide-others">
+    <thead><tr><th>Check</th><th>How often</th><th>Who</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td><b>Shift close and cash:</b> cash counted by denomination against the system, any shortage explained, deposits made on time</td><td>Every shift</td><td>Cashier, checked by Store Head</td><td><a routerLink="/secure/store/cash">Store &rsaquo; Cash</a></td></tr>
+      <tr><td><b>Weekly review:</b> discounts, items billed below list price, held bills discarded, bills edited after billing, returns; signed for the week</td><td>Weekly, from Monday for the week before</td><td>Store Head or Business Head</td><td><a routerLink="/secure/review">Weekly review</a></td></tr>
+      <tr><td><b>Price review:</b> price changes and rules, prices out of policy</td><td>Weekly</td><td>Business Head</td><td>Products &rsaquo; Pricing</td></tr>
+      <tr><td><b>Outage kit:</b> UPS, torch, bill book, a fresh printed price list</td><td>Weekly</td><td>Store Head</td><td><a routerLink="/secure/outage">Outage kit</a></td></tr>
+      <tr><td><b>Stock adjustments:</b> everything waiting for approval, and the reasons given</td><td>Daily glance, weekly review</td><td>Store Head, Business Head</td><td><a routerLink="/secure/store/stock/adjust">Store &rsaquo; Stock &rsaquo; Adjustments</a></td></tr>
+      <tr><td><b>Alerts:</b> the bell lists what needs attention (overdue counts, negative or expired stock, unsigned reviews)</td><td>Daily</td><td>Store Head, Business Head</td><td>The bell at the top</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="guide-wrong">12. When something goes wrong</h2>
+  <dl>
+    <dt>The sheet is missing a batch I can see on the shelf</dt>
+    <dd>A purchase was not entered. Enter the purchase invoice, then it appears in the next count. Write it on the sheet and tell the Store Head.</dd>
+    <dt>A product shows negative stock</dt>
+    <dd>More was sold or written off than was bought: usually a purchase not entered or a bill against the wrong batch. Find the purchase, enter it, then count the product.</dd>
+    <dt>I started a count by mistake or could not finish it</dt>
+    <dd>Leave it. A count that is not submitted changes nothing. Start again later; if the audit has to be dropped, the Business Head can skip it with a reason.</dd>
+    <dt>The Sign off button is missing</dt>
+    <dd>Either some adjustments are still waiting for approval (the row says how many), or the audit has not been submitted.</dd>
+    <dt>It says a different person must sign</dt>
+    <dd>The person who counted cannot also verify. Ask the Store Head or Business Head to sign off.</dd>
+    <dt>A big shortage in scheduled drugs</dt>
+    <dd>Count again with a second person, check the register, and tell the pharmacist-in-charge and Business Head the same day before approving anything.</dd>
+    <dt>I found a mistake after the certificate was signed</dt>
+    <dd>Do not change the certificate. Raise a new adjustment with the reason and a note, and file it with the certificate.</dd>
+    <dt>The shop was busy and counts changed while I counted</dt>
+    <dd>The variance report already allows for it: look at the Sold and Other columns, and the Expected quantity. If you counted before you typed the counts in, set <b>Counting finished at</b> to when you counted. See section 8.</dd>
+  </dl>
+
+  <h2 id="guide-yearend">13. Year-end checklist (31 March)</h2>
+  <ol>
+    <li>Every planned audit of the year is done or skipped with a reason (<a routerLink="/secure/stock-audits">Stock audits</a> &rsaquo; Register).</li>
+    <li>No audit is left &ldquo;Not certified&rdquo;.</li>
+    <li>The full count is done and all its large differences are settled.</li>
+    <li>Expired stock is off the shelf and written off or returned.</li>
+    <li>The stock valuation as at 31 March is downloaded from the Register and given to the accountant.</li>
+    <li>The scheduled-drug registers are balanced and filed.</li>
+    <li>The certificates, variance reports and count sheets are in the year&rsquo;s folder.</li>
+    <li>The Weekly review is signed for every week of the year.</li>
+    <li>No hand-written bills are waiting to be entered.</li>
+  </ol>
+
+  <h2 id="guide-words">14. Words used</h2>
+  <dl>
+    <dt>Book quantity</dt><dd>What the system says should be on the shelf for a batch: bought, less sold, plus approved adjustments.</dd>
+    <dt>Count sheet</dt><dd>The printed list you count on, with the book quantity fixed at the moment the count started.</dd>
+    <dt>Expected quantity</dt><dd>What should be on the shelf when counting finished: the book at the start, less sold, plus or minus other movements since.</dd>
+    <dt>Variance</dt><dd>The difference between the count and the expected quantity. Short means less on the shelf; excess means more.</dd>
+    <dt>Large difference</dt><dd>A product out by more than ₹500 at cost (or any difference in a scheduled-drug audit). It needs a second count and the Business Head.</dd>
+    <dt>Recount</dt><dd>The second count of a large difference, by another person. It replaces the first.</dd>
+    <dt>Certificate</dt><dd>The one-page record, signed by the person who counted and the person who verified, kept exactly as printed.</dd>
+    <dt>Audit number</dt><dd>SA-0012: the number of the audit within the business, on every document.</dd>
+    <dt>At cost</dt><dd>Valued at what the store paid for it (purchase cost per unit), not at the selling price.</dd>
+  </dl>
+</div>

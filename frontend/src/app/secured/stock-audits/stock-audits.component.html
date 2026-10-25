@@ -7,7 +7,10 @@
         <span class="badge bg-danger me-2" data-testid="sa-overdue">{{summary.overdue}} overdue</span>
         <span class="small text-muted">{{summary.done_this_month}} done this month · net difference &#8377;{{summary.variance_value_this_month | number:'1.0-0'}}</span>
       </div>
-      <div class="page-toolbar-actions" *isAuth="'stockaudit.manage'"><button class="btn btn-outline-primary" type="button" (click)="generate()" data-testid="sa-generate">Plan the next audits</button></div>
+      <div class="page-toolbar-actions">
+        <a class="btn btn-outline-secondary me-2" routerLink="guide" data-testid="sa-guide-link">Audit guide</a>
+        <ng-container *isAuth="'stockaudit.manage'"><button class="btn btn-outline-primary" type="button" (click)="generate()" data-testid="sa-generate">Plan the next audits</button></ng-container>
+      </div>
     </div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="sa-message">{{message}}</div>
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="sa-error">{{error}}</div>
@@ -18,11 +21,18 @@
       <li class="nav-item"><a class="nav-link" [class.active]="tab === 'MINE'" role="button" (click)="setTab('MINE')" data-testid="sa-tab-mine">Mine</a></li>
       <li class="nav-item"><a class="nav-link" [class.active]="tab === 'DONE'" role="button" (click)="setTab('DONE')" data-testid="sa-tab-done">Done</a></li>
       <li class="nav-item" *isAuth="'stockaudit.manage'"><a class="nav-link" [class.active]="tab === 'PLANS'" role="button" (click)="setTab('PLANS')" data-testid="sa-tab-plans">Plans</a></li>
+      <li class="nav-item"><a class="nav-link" [class.active]="tab === 'REGISTER'" role="button" (click)="setTab('REGISTER')" data-testid="sa-tab-register">Register</a></li>
     </ul>
 
     <div *ngIf="skipping" class="border rounded p-2 mb-2" data-testid="sa-skip-form">
       <div class="row g-2 align-items-end"><div class="col-md-8"><label class="form-label">Why is it being skipped? *</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="skipping.reason" data-testid="sa-skip-reason"></div>
         <div class="col-md-4"><button class="btn btn-danger btn-sm" type="button" (click)="confirmSkip()" data-testid="sa-skip-save">Skip it</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="skipping = null">Cancel</button></div></div>
+    </div>
+    <div *ngIf="certifying" class="border rounded p-3 mb-2" data-testid="sa-certify-form">
+      <div class="fw-semibold mb-1">Verify and approve this audit</div>
+      <p class="small text-muted mb-2">You are confirming that the count was done as recorded and its differences were dealt with. A certificate is made and kept as printed; print it and sign it with the person who counted.</p>
+      <div class="row g-2 align-items-end"><div class="col-md-8"><label class="form-label">Note (optional)</label><input class="form-control form-control-sm" maxlength="300" [(ngModel)]="certifying.note" data-testid="sa-certify-note"></div>
+        <div class="col-md-4"><button class="btn btn-primary btn-sm" type="button" (click)="confirmCertify()" data-testid="sa-certify-save">Certify</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="certifying = null">Cancel</button></div></div>
     </div>
     <div *ngIf="assigning" class="border rounded p-2 mb-2" data-testid="sa-assign-form">
       <div class="row g-2 align-items-end"><div class="col-md-6"><label class="form-label">Who does it</label>
@@ -30,13 +40,13 @@
         <div class="col-md-6"><button class="btn btn-primary btn-sm" type="button" (click)="confirmAssign()" data-testid="sa-assign-save">Assign</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="assigning = null">Cancel</button></div></div>
     </div>
 
-    <div class="table-responsive" *ngIf="tab !== 'PLANS'">
+    <div class="table-responsive" *ngIf="tab !== 'PLANS' && tab !== 'REGISTER'">
       <table class="table table-sm align-middle" data-testid="sa-table">
         <thead><tr><th>Store</th><th>Covers</th><th>Due</th><th>Who</th><th>Status / result</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let a of rows" data-testid="sa-row" [attr.data-id]="a.id">
-            <td>{{a.store}}<div class="small text-muted">{{a.plan}}</div></td>
-            <td>{{a.category || 'Everything'}}</td>
+            <td><span class="badge bg-light text-dark border me-1" data-testid="sa-no">{{no(a.audit_no)}}</span>{{a.store}}<div class="small text-muted">{{a.plan}}</div></td>
+            <td>{{a.category || scopeLabels[a.scope] || 'Everything'}}</td>
             <td [class.text-danger]="a.overdue">{{a.due_on | date:'dd MMM yyyy'}}</td>
             <td>{{a.assigned_name || 'Anyone'}}</td>
             <td>
@@ -47,8 +57,19 @@
               <span class="badge bg-secondary" *ngIf="a.status === 'SKIPPED'">Skipped</span>
               <div class="small text-muted" *ngIf="a.status === 'DONE'">{{a.completed_name}} · {{a.lines_counted}} lines, {{a.lines_changed}} differed · {{a.variance_units}} units · &#8377;{{a.variance_value | number:'1.0-0'}}</div>
               <div class="small text-muted" *ngIf="a.status === 'SKIPPED'">{{a.note}}</div>
+              <div class="small text-success" *ngIf="a.certified_on" data-testid="sa-certified">Certified by {{a.certified_name}} on {{a.certified_on | date:'dd MMM yyyy'}}</div>
+              <div class="small text-warning" *ngIf="a.status === 'DONE' && !a.certified_on && a.pending_lines" data-testid="sa-waiting">{{a.pending_lines}} adjustment{{a.pending_lines === 1 ? '' : 's'}} waiting for approval</div>
             </td>
             <td class="text-end text-nowrap">
+              <ng-container *ngIf="a.status === 'IN_PROGRESS' && a.count_id">
+                <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openDoc(a.id + '/sheet')" data-testid="sa-sheet">Count sheet</button>
+              </ng-container>
+              <ng-container *ngIf="a.status === 'DONE' && a.count_id">
+                <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openDoc(a.id + '/sheet')" data-testid="sa-sheet">Count sheet</button>
+                <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openDoc(a.id + '/variance')" data-testid="sa-variance">Variance</button>
+                <button *ngIf="a.certified_on" class="btn btn-outline-success btn-sm" type="button" (click)="openDoc(a.id + '/certificate')" data-testid="sa-certificate">Certificate</button>
+                <ng-container *ngIf="!a.certified_on && !a.pending_lines"><button *isAuth="'stockaudit.perform'" class="btn btn-primary btn-sm" type="button" (click)="certifying = { id: a.id, note: '' }" data-testid="sa-certify">Sign off</button></ng-container>
+              </ng-container>
               <ng-container *ngIf="a.status === 'PLANNED' || a.status === 'IN_PROGRESS'">
                 <button class="btn btn-primary btn-sm" type="button" (click)="doAudit(a)" *isAuth="'stockaudit.perform'" data-testid="sa-do">{{a.status === 'IN_PROGRESS' ? 'Continue' : 'Do the audit'}}</button>
                 <ng-container *isAuth="'stockaudit.manage'">
@@ -65,17 +86,17 @@
 
     <ng-container *ngIf="tab === 'PLANS'">
       <div class="d-flex justify-content-between align-items-center mb-2"><div class="small text-muted">A plan makes an audit come round every so many days for a store (or for all stores). Rotating through categories covers the whole stock over the cycle.</div>
-        <button class="btn btn-primary btn-sm" type="button" (click)="addPlan()" data-testid="sa-plan-add">Add a plan</button></div>
+        <span><button class="btn btn-outline-primary btn-sm me-2" type="button" (click)="standardPlans()" data-testid="sa-plan-standard">Add the standard plans</button><button class="btn btn-primary btn-sm" type="button" (click)="addPlan()" data-testid="sa-plan-add">Add a plan</button></span></div>
       <div *ngIf="plan" class="border rounded p-3 mb-3" data-testid="sa-plan-form">
         <div class="row g-3">
           <div class="col-md-4"><label class="form-label">Name *</label><input class="form-control" maxlength="60" [(ngModel)]="plan.name" data-testid="sa-p-name"></div>
           <div class="col-md-3"><label class="form-label">Store</label><select class="form-select" [(ngModel)]="plan.store_id" data-testid="sa-p-store"><option [ngValue]="null">Every store</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
-          <div class="col-md-3"><label class="form-label">Covers</label><select class="form-select" [(ngModel)]="plan.scope" data-testid="sa-p-scope"><option value="ALL">Everything</option><option value="CATEGORY">One category</option><option value="ROTATE">Rotate through categories</option></select></div>
+          <div class="col-md-3"><label class="form-label">Covers</label><select class="form-select" [(ngModel)]="plan.scope" data-testid="sa-p-scope"><option value="ALL">Everything</option><option value="CATEGORY">One category</option><option value="ROTATE">Rotate through categories</option><option value="FAST">Fast movers (top 30 by sales)</option><option value="SCHEDULE">Scheduled drugs (H, H1, X)</option><option value="EXPIRY">Expired and expiring batches</option></select></div>
           <div class="col-md-2"><label class="form-label">Every (days)</label><input type="number" min="1" max="366" class="form-control" [(ngModel)]="plan.frequency_days" data-testid="sa-p-days"></div>
           <div class="col-md-3"><label class="form-label">First due</label><input type="date" class="form-control" [(ngModel)]="plan.first_due" data-testid="sa-p-first"></div>
           <div class="col-md-4"><label class="form-label">Usually done by</label><select class="form-select" [(ngModel)]="plan.assigned_to" data-testid="sa-p-assignee"><option [ngValue]="null">Anyone</option><option *ngFor="let u of opts.staff" [ngValue]="u.id">{{u.name}}</option></select></div>
           <div class="col-md-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="spa" [(ngModel)]="plan.active"><label class="form-check-label" for="spa">Active</label></div></div>
-          <div class="col-12" *ngIf="plan.scope !== 'ALL'" data-testid="sa-p-cats">
+          <div class="col-12" *ngIf="plan.scope === 'CATEGORY' || plan.scope === 'ROTATE'" data-testid="sa-p-cats">
             <label class="form-label">{{plan.scope === 'CATEGORY' ? 'Category' : 'Categories, in the order to go through them'}}</label>
             <div class="d-flex flex-wrap gap-1"><button *ngFor="let c of opts.categories" type="button" class="btn btn-sm" [ngClass]="plan.categories.includes(c) ? 'btn-primary' : 'btn-outline-secondary'" (click)="toggleCategory(c)">{{c}}</button></div>
           </div>
@@ -90,6 +111,49 @@
           <tr *ngIf="!plans.length"><td colspan="7" class="text-center text-muted py-3">No plans yet.</td></tr>
         </tbody>
       </table>
+    </ng-container>
+
+    <ng-container *ngIf="tab === 'REGISTER' && reg">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <label class="form-label mb-0">Financial year</label>
+        <select class="form-select form-select-sm w-auto" [(ngModel)]="fy" (ngModelChange)="loadRegister()" data-testid="sa-fy">
+          <option *ngFor="let y of reg.years" [ngValue]="y">{{y}}-{{(y + 1) % 100 | number:'2.0-0'}}</option>
+        </select>
+        <button class="btn btn-outline-secondary btn-sm" type="button" (click)="openDoc('register?format=xlsx&year=' + fy, 'stock-audit-register-' + reg.fy.label + '.xlsx')" data-testid="sa-reg-xlsx">Download Excel</button>
+        <span class="small text-muted ms-2" data-testid="sa-reg-summary">{{reg.summary.audits}} audit{{reg.summary.audits === 1 ? '' : 's'}} done, {{reg.summary.certified}} certified, {{reg.summary.uncertified}} not yet certified<span *ngIf="reg.summary.skipped">, {{reg.summary.skipped}} skipped</span>. Net difference {{reg.summary.variance_value | number:'1.0-0'}}.</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" data-testid="sa-register">
+          <thead><tr><th>No</th><th>Store</th><th>Covers</th><th>Completed</th><th class="text-end">Lines</th><th class="text-end">Differed</th><th class="text-end">Net value</th><th>Counted by</th><th>Certified</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of reg.rows" data-testid="sa-reg-row">
+              <td>{{r.no}}</td><td>{{r.store}}</td><td>{{r.scope_label}}<span class="small text-muted" *ngIf="r.category">: {{r.category}}</span></td>
+              <td class="text-nowrap">{{r.completed_on | date:'dd MMM yyyy'}}<span class="badge bg-secondary ms-1" *ngIf="r.status === 'SKIPPED'">Skipped</span></td>
+              <td class="text-end">{{r.lines_counted}}</td><td class="text-end">{{r.lines_changed}}</td><td class="text-end">{{r.variance_value | number:'1.0-0'}}</td>
+              <td>{{r.counted_by}}</td>
+              <td><span *ngIf="r.certified_on">{{r.certified_by}}, {{r.certified_on | date:'dd MMM yyyy'}}</span><span class="text-warning" *ngIf="!r.certified_on && r.status === 'DONE'">Not certified</span></td>
+            </tr>
+            <tr *ngIf="!reg.rows.length"><td colspan="9" class="text-center text-muted py-3">No audits in this year.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h6 class="mt-4 text-primary">Stock at cost for the year-end statement</h6>
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <label class="form-label mb-0">As at</label>
+        <input type="date" class="form-control form-control-sm w-auto" [(ngModel)]="asof" (change)="loadValuation()" data-testid="sa-asof">
+        <button class="btn btn-outline-secondary btn-sm" type="button" (click)="openDoc('valuation?format=xlsx&asof=' + asof, 'stock-valuation-' + asof + '.xlsx')" data-testid="sa-val-xlsx">Download Excel</button>
+        <span class="small text-muted">Book stock: bought, less sold, plus approved adjustments, at purchase cost. It matches the shelf only once the audits are done.</span>
+      </div>
+      <div class="table-responsive" *ngIf="valuation">
+        <table class="table table-sm align-middle" data-testid="sa-valuation">
+          <thead><tr><th>Category</th><th class="text-end">Products</th><th class="text-end">Units</th><th class="text-end">Value at cost</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of valuation.rows"><td>{{r.category}}</td><td class="text-end">{{r.products}}</td><td class="text-end">{{r.units}}</td><td class="text-end">{{r.value | number:'1.2-2'}}</td></tr>
+            <tr class="fw-semibold" data-testid="sa-val-total"><td>Total</td><td class="text-end">{{valuation.total.products}}</td><td class="text-end">{{valuation.total.units}}</td><td class="text-end">{{valuation.total.value | number:'1.2-2'}}</td></tr>
+          </tbody>
+        </table>
+      </div>
     </ng-container>
   </div>
 </div>

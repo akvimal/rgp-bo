@@ -84,7 +84,10 @@ export class StockController {
         status: data.status,
         comments: data.comments,
         discarded: !!data.discarded,
-        escalated: !!data.escalated
+        escalated: !!data.escalated,
+        bookqty: data.bookqty,
+        countedqty: data.countedqty,
+        recountqty: data.recountqty
       }));
     }
 
@@ -153,6 +156,13 @@ export class StockController {
       return this.service.approveQtyAudit(id, currentUser.id);
     }
 
+    @Put('/audit/:id/recount')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async recountAudit(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      return this.service.recountQtyAudit(id, body?.qty, currentUser.id);
+    }
+
     @Put('/audit/:id/reject')
     @UseGuards(PermissionGuard)
     @Permission('auditStock')
@@ -174,6 +184,13 @@ export class StockController {
       return this.service.findCounts();
     }
 
+    @Get('/counts/open-items')
+    @UseGuards(PermissionGuard)
+    @Permission('auditStock')
+    async openCountItems(@Query('storeid') storeid: string) {
+      return this.service.openCountItems(/^\d+$/.test(storeid ?? '') ? +storeid : null);
+    }
+
     @Get('/counts/:id')
     @UseGuards(PermissionGuard)
     @Permission('auditStock')
@@ -185,7 +202,7 @@ export class StockController {
     @UseGuards(PermissionGuard)
     @Permission('auditStock')
     async submitCount(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
-      return this.service.submitCount(+id, body.items, currentUser.id);
+      return this.service.submitCount(+id, body.items, currentUser.id, body.finishedat);
     }
 
     @Delete('/adjust/qty/:id')

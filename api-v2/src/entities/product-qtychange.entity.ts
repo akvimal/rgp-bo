@@ -53,6 +53,21 @@ export class ProductQtyChange extends BaseEntity {
   @Column("boolean", { name: "escalated", default: false })
   escalated: boolean;
 
+  @Column("integer", { name: "book_qty", nullable: true })
+  bookqty: number | null;
+
+  @Column("integer", { name: "counted_qty", nullable: true })
+  countedqty: number | null;
+
+  @Column("integer", { name: "recount_qty", nullable: true })
+  recountqty: number | null;
+
+  @Column("integer", { name: "recount_by", nullable: true })
+  recountby: number | null;
+
+  @Column("timestamp with time zone", { name: "recount_on", nullable: true })
+  recounton: Date | null;
+
   @ManyToOne(
     () => PurchaseInvoiceItem,
     (purchase) => purchase.saleitems

@@ -30,6 +30,7 @@
                         <td>{{i.date | date : 'dd MMM yyyy'}}</td>
                         <td>{{i.reasoncode || i.reason}}
                           <span class="badge bg-danger ms-1" *ngIf="i.discarded" data-testid="adj-discarded" title="Left the shelf as waste">Discarded</span>
+                          <span class="badge bg-secondary ms-1" *ngIf="isCounting(i)" data-testid="adj-counting" title="This batch is in a count that is open now">Counting now</span>
                           <span class="badge bg-info text-dark ms-1" *ngIf="i.escalated && i.status === 'PENDING'" data-testid="adj-escalated" title="A large count difference: only the Business Head can approve or reject it">Business Head</span>
                           <h5 *ngIf="i.comments" style="float:left; margin-right: 0.3em;"><i class="bi bi-chat text-danger"></i>
                           </h5>
@@ -39,7 +40,14 @@
                         </td>
                         <td>
                           <div class="grid-actions">
-                            <button *ngIf="i.status === 'PENDING'" type="button" class="btn btn-sm btn-outline-success" (click)="approve(i)">Approve</button>
+                            <ng-container *ngIf="i.status === 'PENDING' && i.escalated">
+                              <span class="small text-muted" *ngIf="i.recountqty !== null && i.recountqty !== undefined">Recount {{i.recountqty}}</span>
+                              <ng-container *ngIf="i.recountqty === null || i.recountqty === undefined">
+                                <input type="number" min="0" class="form-control form-control-sm d-inline-block" style="width:5rem" placeholder="Recount" [(ngModel)]="i._recount" data-testid="adj-recount-qty">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="i._recount === null || i._recount === undefined || i._recount === ''" (click)="recount(i)" data-testid="adj-recount">Save</button>
+                              </ng-container>
+                            </ng-container>
+                            <button *ngIf="i.status === 'PENDING' && (!i.escalated || (i.recountqty !== null && i.recountqty !== undefined))" type="button" class="btn btn-sm btn-outline-success" (click)="approve(i)">Approve</button>
                             <button *ngIf="i.status === 'PENDING'" type="button" class="btn btn-sm btn-outline-danger" (click)="reject(i)">Reject</button>
                             <a (click)="edit(i)" title="Edit"><i class="bi bi-pencil text-primary"></i></a>
                             <a (click)="delete(i)" title="Delete"><i class="bi bi-trash text-danger"></i></a>

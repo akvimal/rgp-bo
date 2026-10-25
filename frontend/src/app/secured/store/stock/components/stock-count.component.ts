@@ -2,6 +2,8 @@ import { Component, OnInit } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { StockService } from "../stock.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
+import { HttpClient } from "@angular/common/http";
+import { environment } from "src/environments/environment";
 
 @Component({
     templateUrl: './stock-count.component.html'
@@ -15,12 +17,14 @@ export class StockCountComponent implements OnInit {
     categoryFilter = '';
     active:any = null; // { count, items }
     submitting = false;
+    /** when counting finished (leave blank for now): sales and other movements up to then are taken into account */
+    finishedAt = '';
     result:any = null;
 
     /** set when this count was opened from a routine stock audit */
     auditId:number|null = null;
 
-    constructor(private service: StockService, private storeContext: StoreContextService, private route: ActivatedRoute) {}
+    constructor(private service: StockService, private storeContext: StoreContextService, private route: ActivatedRoute, private http: HttpClient) {}
 
     ngOnInit(): void {
         const q = this.route.snapshot.queryParamMap;
@@ -65,7 +69,9 @@ export class StockCountComponent implements OnInit {
         const items = this.active.items.map((i:any) => ({
             itemid: i.item_id, bookqty: i.balance, countedqty: i.countedqty
         }));
-        this.service.submitCount(this.active.count.id, items).subscribe((res:any) => {
+        const finished = this.finishedAt ? new Date(this.finishedAt).toISOString() : undefined;
+        this.service.submitCount(this.active.count.id, items, finished).subscribe((res:any) => {
+            this.finishedAt = '';
             this.submitting = false;
             this.result = res;
             this.active = null;
@@ -76,6 +82,16 @@ export class StockCountComponent implements OnInit {
             this.submitting = false;
             this.message = err?.error?.message || 'Unable to submit the count.';
         });
+    }
+
+    /** the count sheet of the audit being counted: the book quantities as fixed when the count started */
+    printSheet() {
+        if (!this.auditId) return;
+        this.http.get(`${environment.apiHost}/stock-audits/${this.auditId}/sheet`, { responseType: 'blob' }).subscribe((b:Blob) => {
+            const url = URL.createObjectURL(b);
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }, () => this.message = 'Could not make the count sheet.');
     }
 
     cancelCount() {

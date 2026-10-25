@@ -11,6 +11,7 @@ import { StockCount } from "src/entities/stock-count.entity";
 import { approvalModeFor } from "src/core/approval-mode";
 import { isDiscard } from "./reason-codes";
 import { DEFAULT_ESCALATION_VALUE, escalatedProducts, maySettleEscalated } from "./count-rules";
+import { EXPIRING_DAYS, FAST_MOVERS, escalateAll, recountProblem } from "../stock-audits/audit-rules";
 
 import { isManagerRole } from 'src/core/roles';
 @Injectable()
@@ -427,29 +428,54 @@ export class StockService {
             storeid: item.storeid ?? await this.resolveHomeStoreId(item.itemid),
             countid: item.countid ?? null,
             escalated: !!item.escalated,
+            bookqty: item.bookqty ?? null,
+            countedqty: item.countedqty ?? null,
             createdby: userid
         })));
         return this.qtyRepository.save(payload);
     }
 
     /** a count line marked as a large difference is settled by the Business Head or Owner-operator, not the Store Head who ran the count */
-    private async assertMaySettle(id: any, userid: any) {
-        const [row] = await this.manager.query(`select escalated from product_qtychange where id = $1`, [id]);
+    private async assertMaySettle(id: any, userid: any, approving = false) {
+        const [row] = await this.manager.query(`select escalated, recount_qty from product_qtychange where id = $1`, [id]);
         if (!row?.escalated) return;
         const [who] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
         if (!maySettleEscalated(who?.name)) {
             throw new ForbiddenException('This count difference is above the limit, so only the Business Head can approve or reject it.');
         }
+        const problem = approving ? recountProblem({ escalated: true, recount_qty: row.recount_qty }) : null;
+        if (problem) throw new BadRequestException(problem);
     }
 
     async approveQtyAudit(id:any, userid:any) {
-        await this.assertMaySettle(id, userid);
+        await this.assertMaySettle(id, userid, true);
         return this.qtyRepository.update(id, {status:'APPROVED', updatedby:userid});
     }
 
     async rejectQtyAudit(id:any, userid:any) {
         await this.assertMaySettle(id, userid);
         return this.qtyRepository.update(id, {status:'REJECTED', updatedby:userid});
+    }
+
+    /** the second count of a large difference, by someone other than the first counter. It replaces the first count: the line is re-valued from the book quantity. */
+    async recountQtyAudit(id: any, qty: any, userid: any) {
+        const n = Number(qty);
+        if (!Number.isInteger(n) || n < 0) throw new BadRequestException('Give the quantity you counted, as a whole number.');
+        const [row] = await this.manager.query(`select id, escalated, status, count_id, book_qty, created_by, comments from product_qtychange where id = $1`, [id]);
+        if (!row) throw new NotFoundException('Adjustment not found.');
+        if (!row.escalated || !row.count_id) throw new BadRequestException('Only a large difference from a count is counted again.');
+        if (row.status !== 'PENDING') throw new BadRequestException('This difference is already settled.');
+        if (+row.created_by === +userid) throw new ForbiddenException('Another person must do the second count.');
+        const book = row.book_qty ?? Number(/book:(-?\d+)/.exec(row.comments || '')?.[1] ?? NaN);
+        if (!Number.isFinite(book)) throw new BadRequestException('The book quantity of this line is not recorded.');
+        const diff = n - book;
+        await this.manager.query(
+            `update product_qtychange set recount_qty = $2, recount_by = $3, recount_on = now(), qty = $4, updated_by = $3,
+                    status = case when $4 = 0 then 'APPROVED' else status end,
+                    comments = coalesce(comments, '') || $5 where id = $1`,
+            [id, n, userid, diff, `; recount:${n}`]);
+        await this.manager.query(`update stock_count_line set recount_qty = $3 where count_id = $1 and item_id = (select item_id from product_qtychange where id = $2)`, [row.count_id, id, n]);
+        return { id, recountqty: n, qty: diff, settled: diff === 0 };
     }
 
     /** a count difference valued at cost above this, for one product, goes to the Business Head */
@@ -488,20 +514,32 @@ export class StockService {
         if (audit) {
             await this.manager.query(`update stock_audit set count_id = $2, status = 'IN_PROGRESS', started_on = now() where id = $1`, [audit.id, (count as any).id]);
         }
-        const items = await this.getCountSnapshot(body.category, storeid);
+        const items = await this.getCountSnapshot(body.category, storeid, audit?.scope ?? null);
+        if (items.length) {
+            await this.manager.query(
+                `insert into stock_count_line (count_id, item_id, product_id, title, batch, exp_date, pack, schedule, book_qty, unit_cost)
+                 select $1, x.item_id, x.product_id, x.title, x.batch, x.exp_date, x.pack, x.schedule, x.balance, x.unit_cost
+                   from json_to_recordset($2::json) as x(item_id int, product_id int, title text, batch text, exp_date date, pack int, schedule text, balance int, unit_cost numeric)
+                 on conflict do nothing`, [(count as any).id, JSON.stringify(items)]);
+        }
         return { count, items };
     }
 
     /** Store-scoped snapshot, same formula as findByCriteria's storeid path: a batch only
      * counts where it was received, at the store the count is actually being done. With no
      * storeid (a global count) this falls back to the pre-WS-6 business-wide balance. */
-    private async getCountSnapshot(category?: string, storeid?: number | null) {
+    private async getCountSnapshot(category?: string, storeid?: number | null, scope?: string | null) {
         return this.manager.query(`
             select * from (
                 select
                     pii.id as item_id,
+                    p.id as product_id,
                     p.title,
                     pii.batch,
+                    pii.exp_date,
+                    p.pack,
+                    upper(p.more_props->>'schedule') as schedule,
+                    (pii.ptr_cost / greatest(coalesce(p.pack, 1), 1))::float as unit_cost,
                     p.category,
                     (case when $2::int is null or pi.store_id = $2 then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
                     - coalesce((select sum(si.qty) from sale_item si
@@ -520,12 +558,37 @@ export class StockService {
                   and pi.active = true and pi.archive = false
                   and p.active = true and p.archive = false
                   and ($1::text is null or p.category = $1)
+                  and ($3::text is distinct from 'SCHEDULE' or upper(coalesce(p.more_props->>'schedule', '')) in ('H', 'H1', 'X'))
+                  and ($3::text is distinct from 'EXPIRY' or pii.exp_date < current_date + ${EXPIRING_DAYS})
+                  and ($3::text is distinct from 'FAST' or p.id in (
+                        select si2.product_id from sale_item si2 inner join sale s2 on s2.id = si2.sale_id
+                         where s2.status = 'COMPLETE' and si2.status = 'Complete' and s2.bill_date >= current_date - 90 and ($2::int is null or s2.store_id = $2)
+                         group by si2.product_id order by sum(si2.price * si2.qty) desc limit ${FAST_MOVERS}))
             ) x
             where x.balance > 0
-            order by x.title, x.batch`, [category || null, storeid ?? null]);
+            order by x.title, x.batch`, [category || null, storeid ?? null, scope || null]);
     }
 
-    async submitCount(id: number, items: any[], userid: number) {
+    /** when counting finished: the one the counter gives, or now; never before the count started or in the future */
+    private resolveFinish(given: any, started: Date): Date {
+        if (given === undefined || given === null || given === '') return new Date();
+        const d = new Date(given);
+        if (isNaN(d.getTime())) throw new BadRequestException('Give the time counting finished as a date and time.');
+        if (d.getTime() < new Date(started).getTime()) throw new BadRequestException('Counting cannot have finished before the count started.');
+        if (d.getTime() > Date.now() + 60000) throw new BadRequestException('Counting cannot finish in the future.');
+        return d;
+    }
+
+    /** the batches in counts that are in progress, so a screen can warn before stock is changed under a count */
+    async openCountItems(storeid?: number | null) {
+        const rows = await this.manager.query(
+            `select l.item_id, c.id as count_id, a.audit_no
+               from stock_count c join stock_count_line l on l.count_id = c.id left join stock_audit a on a.count_id = c.id
+              where c.status = 'IN_PROGRESS' and ($1::int is null or c.store_id is null or c.store_id = $1)`, [storeid ?? null]);
+        return { itemids: [...new Set(rows.map((r: any) => Number(r.item_id)))], counts: [...new Map(rows.map((r: any) => [r.count_id, { id: r.count_id, audit_no: r.audit_no }])).values()] };
+    }
+
+    async submitCount(id: number, items: any[], userid: number, finishedAt?: any) {
         const count = await this.countRepository.findOne({ where: { id } });
         if (!count) {
             throw new NotFoundException('Count not found.');
@@ -537,6 +600,43 @@ export class StockService {
         // attribute every resulting adjustment to the store the count was actually done at
         // (falls back to the batch's home store via createStockAudit when the count itself
         // wasn't scoped to a store).
+        // sales and other movements up to the moment counting finished are taken into account
+        const finish = this.resolveFinish(finishedAt, count.startedon);
+        await this.manager.query(`update stock_count set finished_at = $2 where id = $1`, [id, finish]);
+        // the book quantity is the one taken when the count started; what was sold since is shown beside it on the record
+        const stored = await this.manager.query(`select item_id, book_qty from stock_count_line where count_id = $1`, [id]);
+        const book = new Map<number, number>(stored.map((r: any) => [Number(r.item_id), Number(r.book_qty)]));
+        items = (items || []).map((i: any) => ({ ...i, bookqty: book.has(Number(i.itemid)) ? book.get(Number(i.itemid)) : i.bookqty }));
+        const itemIds = items.map((i: any) => Number(i.itemid)).filter(Boolean);
+        if (itemIds.length) {
+            await this.manager.query(
+                `insert into stock_count_line (count_id, item_id, product_id, title, batch, exp_date, pack, schedule, book_qty, unit_cost)
+                 select $1, pii.id, pii.product_id, p.title, pii.batch, pii.exp_date, p.pack, upper(p.more_props->>'schedule'), 0, (pii.ptr_cost / greatest(coalesce(p.pack, 1), 1))
+                   from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($2::int[])
+                 on conflict do nothing`, [id, itemIds]);
+            for (const i of items) {
+                await this.manager.query(`update stock_count_line set counted_qty = $3, book_qty = case when book_qty = 0 and $4::int is not null then $4 else book_qty end where count_id = $1 and item_id = $2`,
+                    [id, Number(i.itemid), Number(i.countedqty), i.bookqty ?? null]);
+            }
+            await this.manager.query(
+                `update stock_count_line l set
+                    sold_since = coalesce((
+                      select sum(si.qty) from sale_item si join sale s on s.id = si.sale_id
+                       where si.purchase_item_id = l.item_id and si.status = 'Complete' and si.active and not si.archive and si.created_on > $2 and si.created_on <= $4
+                         and ($3::int is null or s.store_id = $3)), 0),
+                    moved_other = coalesce((
+                      select sum(q.qty) from product_qtychange q
+                       where q.item_id = l.item_id and coalesce(q.status, 'APPROVED') = 'APPROVED' and q.active and not q.archive
+                         and q.count_id is distinct from l.count_id and coalesce(q.updated_on, q.created_on) > $2 and coalesce(q.updated_on, q.created_on) <= $4
+                         and ($3::int is null or q.store_id is null or q.store_id = $3)), 0)
+                  where l.count_id = $1`, [id, count.startedon, count.storeid ?? null, finish]);
+            await this.manager.query(`update stock_count_line set expected_qty = book_qty - sold_since + moved_other where count_id = $1`, [id]);
+        }
+        // the difference is against what should be on the shelf when counting finished, not against the book at the start
+        const exp = await this.manager.query(`select item_id, expected_qty from stock_count_line where count_id = $1`, [id]);
+        const expected = new Map<number, number>(exp.map((r: any) => [Number(r.item_id), Number(r.expected_qty)]));
+        items = items.map((i: any) => ({ ...i, startqty: i.bookqty, bookqty: expected.has(Number(i.itemid)) ? expected.get(Number(i.itemid)) : i.bookqty }));
+        const [scoped] = await this.manager.query(`select scope from stock_audit where count_id = $1`, [id]);
         const changed = (items || []).filter((i: any) => Number(i.countedqty) !== Number(i.bookqty));
         // products out by more than the limit at cost go to the Business Head
         const ids = changed.map((i: any) => Number(i.itemid)).filter(Boolean);
@@ -550,7 +650,7 @@ export class StockService {
         const adjustments = changed.length
             ? await this.createStockAudit(changed.map((i: any) => ({
                 ...i, countid: id, storeid: i.storeid ?? count.storeid,
-                escalated: big.has(Number(info.get(Number(i.itemid))?.product_id ?? i.itemid)),
+                escalated: escalateAll(scoped?.scope) || big.has(Number(info.get(Number(i.itemid))?.product_id ?? i.itemid)),
             })), userid)
             : [];
 
@@ -578,7 +678,7 @@ export class StockService {
                 [audit.id, userid, (items || []).length, changed.length, units, Math.round(value * 100) / 100]);
         }
 
-        return { linesCounted: (items || []).length, linesChanged: changed.length, adjustments };
+        return { linesCounted: (items || []).length, linesChanged: changed.length, linesAdjusted: items.filter((i: any) => Number(i.startqty) !== Number(i.bookqty)).length, finishedAt: finish, adjustments };
     }
 
     async findCounts() {

@@ -110,6 +110,14 @@ export class StockService {
         return this.http.put(`${this.apiurl}/stock/audit/${id}/approve`, {});
     }
 
+    openCountItems(storeid?:number|null){
+        return this.http.get<any>(`${this.apiurl}/stock/counts/open-items`, { params: storeid ? { storeid: String(storeid) } : {} });
+    }
+
+    recountAdjustment(id:number, qty:number){
+        return this.http.put(`${this.apiurl}/stock/audit/${id}/recount`, { qty });
+    }
+
     rejectAdjustment(id:number){
         return this.http.put(`${this.apiurl}/stock/audit/${id}/reject`, {});
     }
@@ -126,8 +134,8 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock/counts/${id}`);
     }
 
-    submitCount(id:number, items:any[]){
-        return this.http.post(`${this.apiurl}/stock/counts/${id}/submit`, { items });
+    submitCount(id:number, items:any[], finishedat?:string){
+        return this.http.post(`${this.apiurl}/stock/counts/${id}/submit`, { items, finishedat });
     }
 
     updateQtyToZero(obj:any){

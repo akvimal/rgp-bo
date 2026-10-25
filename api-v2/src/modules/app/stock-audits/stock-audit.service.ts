@@ -6,7 +6,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
 import { isOwnerRole } from 'src/core/roles';
-const SCOPES = ['ALL', 'CATEGORY', 'ROTATE'];
+import { SCOPES, WIDE_SCOPES } from './audit-rules';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const LEAD_DAYS = 7;
 const text = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
@@ -79,7 +79,7 @@ export class StockAuditService {
       const [u] = await this.manager.query(`select id from app_user where id = $1 and active and not archive`, [assignee]);
       if (!u) throw new BadRequestException('That staff member was not found.');
     }
-    return { name, scope, cats: scope === 'ALL' ? null : cats, freq, first: b.first_due, storeId, assignee, active: b?.active !== false };
+    return { name, scope, cats: scope === 'ALL' || (WIDE_SCOPES as readonly string[]).includes(scope) ? null : cats, freq, first: b.first_due, storeId, assignee, active: b?.active !== false };
   }
 
   async savePlan(id: number | null, b: any, user: any) {
@@ -130,7 +130,10 @@ export class StockAuditService {
           category = cats[n.n % cats.length];
         }
         const res = await this.manager.query(
-          `insert into stock_audit (plan_id, store_id, category, due_on, assigned_to) values ($1,$2,$3,$4,$5) on conflict do nothing returning id`, [p.id, s.id, category, due, p.assigned_to]);
+          `insert into stock_audit (plan_id, store_id, category, due_on, assigned_to, scope, business_id, audit_no)
+           select $1, $2, $3, $4, $5, $6, st.business_id, (select coalesce(max(x.audit_no), 0) + 1 from stock_audit x where x.business_id = st.business_id)
+             from stores st where st.id = $2
+           on conflict do nothing returning id`, [p.id, s.id, category, due, p.assigned_to, p.scope]);
         if (res.length) created++;
       }
     }
@@ -156,10 +159,10 @@ export class StockAuditService {
     if (q?.overdue === 'true') where.push(`a.status in ('PLANNED', 'IN_PROGRESS') and a.due_on < current_date`);
     if (+q?.store_id) { args.push(+q.store_id); where.push(`a.store_id = $${args.length}`); }
     return this.manager.query(
-      `select a.id, a.plan_id, p.name as plan, a.store_id, st.location as store, a.category, to_char(a.due_on, 'YYYY-MM-DD') as due_on, a.status, a.assigned_to, u.full_name as assigned_name,
+      `select a.id, a.audit_no, a.scope, a.certified_on, ce.full_name as certified_name, (select count(*) from product_qtychange q where q.count_id = a.count_id and coalesce(q.status, 'PENDING') = 'PENDING')::int as pending_lines, a.plan_id, p.name as plan, a.store_id, st.location as store, a.category, to_char(a.due_on, 'YYYY-MM-DD') as due_on, a.status, a.assigned_to, u.full_name as assigned_name,
               a.count_id, a.started_on, a.completed_on, cb.full_name as completed_name, a.lines_counted, a.lines_changed, a.variance_units, a.variance_value::float as variance_value, a.note,
               (a.status in ('PLANNED', 'IN_PROGRESS') and a.due_on < current_date) as overdue, (a.status = 'DONE' and a.completed_on::date > a.due_on) as late
-         from stock_audit a join stores st on st.id = a.store_id left join stock_audit_plan p on p.id = a.plan_id left join app_user u on u.id = a.assigned_to left join app_user cb on cb.id = a.completed_by
+         from stock_audit a join stores st on st.id = a.store_id left join stock_audit_plan p on p.id = a.plan_id left join app_user u on u.id = a.assigned_to left join app_user cb on cb.id = a.completed_by left join app_user ce on ce.id = a.certified_by
         where ${where.join(' and ')} order by (a.status in ('PLANNED', 'IN_PROGRESS')) desc, a.due_on asc, a.id desc limit 300`, args);
   }
 
@@ -175,6 +178,18 @@ export class StockAuditService {
          from stock_audit a where ${vis}`, args);
     return s;
   }
+
+  /** an audit the reader may see (their stores, or assigned to them; every audit for the owners) */
+  async access(id: number, user: any) {
+    const c = await this.ctx(user);
+    const args: any[] = [id];
+    const vis = this.visible(c, args);
+    const [a] = await this.manager.query(`select a.* from stock_audit a where a.id = $1 and ${vis}`, args);
+    if (!a) throw new NotFoundException('Audit not found.');
+    return { a, c };
+  }
+
+  async canManage(user: any) { return (await this.ctx(user)).manage; }
 
   private async load(id: number) {
     const [a] = await this.manager.query(`select * from stock_audit where id = $1`, [id]);

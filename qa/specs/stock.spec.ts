@@ -199,7 +199,7 @@ test.describe('Stock — adjustments & audit @p1', () => {
   });
 
   test('WS5-COUNT-LIFECYCLE a cycle count records a variance as a pending adjustment tied to the count @happy', async ({ api }) => {
-    const b = await ownBatch(api, `count-${Date.now()}`);
+    const b = await ownBatch(api, `count-${Date.now()}`, 50, 100);   // a small difference at cost: a large one needs a recount first
 
     const started = await api.request('POST', '/stock/counts', { category: null }, MGR);
     expect(started.status).toBeLessThan(300);
@@ -232,7 +232,7 @@ test.describe('Stock — adjustments & audit @p1', () => {
   });
 
   test('WS5-COUNT-STORE-SCOPED a count scoped to a store reflects that store\'s balance after a transfer, not the business-wide total @happy', async ({ api }) => {
-    const b = await ownBatch(api, `count-store-${Date.now()}`); // lands at store 1 (home), balance 50
+    const b = await ownBatch(api, `count-store-${Date.now()}`, 50, 100); // lands at store 1 (home), balance 50
     const store1 = 1;
     const otherStore = (await api.request('POST', '/stores', { location: `QA-COUNT-${Date.now()}` }, MGR)).body.id;
 
