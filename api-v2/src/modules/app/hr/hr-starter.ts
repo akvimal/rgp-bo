@@ -50,6 +50,20 @@ export const SUGGESTIONS: StarterItem[] = [
   { code: 'ML', name: 'Maternity leave', kind: 'LEAVE', paid: true, annual_days: 182, note: 'Check the entitlement that applies to you before relying on the days.' },
 ];
 
+/** job roles offered with no pay structure: the owner enters the amounts, as with PF and ESI. The login role is the usual one, a hint and no more. */
+export interface StarterRole { name: string; login_role: string | null; businessType?: string }
+export const STARTER_ROLES: StarterRole[] = [
+  { name: 'Store manager', login_role: 'Store Head' },
+  { name: 'Sales staff', login_role: 'Sales Staff' },
+  { name: 'Pharmacist', login_role: null, businessType: 'pharmacy' },
+];
+
+/** the job roles on offer for a kind of business that the business does not have yet (by name, any case) */
+export function rolesToAdd(businessType: string, haveNames: string[]): StarterRole[] {
+  const have = new Set(haveNames.map((n) => n.trim().toLowerCase()));
+  return STARTER_ROLES.filter((r) => (!r.businessType || r.businessType === businessType) && !have.has(r.name.toLowerCase()));
+}
+
 export interface StarterRow extends StarterItem { have: boolean }
 export interface StarterView { starter: StarterRow[]; suggestions: StarterRow[] }
 

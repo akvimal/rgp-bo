@@ -16,12 +16,12 @@ export class HrSetupComponent implements OnInit {
   error = "";
 
   newComp: any = { name: "", kind: "EARNING", applies_roles: null };
-  newType: any = { name: "", paid: true, annual_days: 0, applies_roles: null };
+  newType: any = { name: "", paid: true, annual_days: 0, applies_roles: null, position_names: null };
   newHoliday: any = { date: "", name: "" };
 
   /** job roles, each with the standard amount of every pay component; amounts are held by component id while editing */
   positions: any[] = [];
-  newPos: any = { id: 0, name: "", active: true, amounts: {} };
+  newPos: any = { id: 0, name: "", active: true, login_role: null, amounts: {} };
 
   /** the measure being added or edited */
   mf: any = null;
@@ -56,34 +56,52 @@ export class HrSetupComponent implements OnInit {
 
   load() {
     this.hr.get("components").subscribe(r => { this.components = r; this.loadPositions(); });
-    this.hr.get("leave/types").subscribe(r => this.leaveTypes = r);
+    this.hr.get("leave/types").subscribe(r => { this.leaveTypes = r; this.syncLeaveNames(); });
     this.hr.get("holidays", { year: this.year }).subscribe(r => this.holidays = r);
     this.hr.get("kpi/metrics").subscribe(r => this.metrics = r);
     this.hr.get("kpi/bands").subscribe(r => { this.allBands = r; this.showBands(); });
+  }
+
+  /** job role names for the chips, and back to ids for saving */
+  get positionNames(): string[] { return this.positions.filter(p => p.active).map(p => p.name); }
+  private namesToIds(names: string[] | null): number[] { return (names || []).map(n => this.positions.find(p => p.name === n)?.id).filter((x: any) => !!x); }
+  private idsToNames(ids: number[] | null): string[] | null { const n = (ids || []).map(i => this.positions.find(p => p.id === i)?.name).filter((x: any) => !!x); return n.length ? n : null; }
+  positionSummary(ids: number[] | null) { return ids?.length ? (this.idsToNames(ids) || []).join(", ") : "All job roles"; }
+
+  /** the job role chips on a leave type use names; the server keeps ids */
+  private syncLeaveNames() { for (const t of this.leaveTypes) t.position_names = this.idsToNames(t.applies_positions); }
+
+  /** designations typed on staff records that could become job roles */
+  designations: any[] = [];
+  get pickedDesignations(): string[] { return this.designations.filter(g => g.pick).map(g => g.designation); }
+  adoptDesignations() {
+    this.hr.post("positions/designations", { designations: this.pickedDesignations }).subscribe(
+      (r: any) => this.done(`${r.created.length} job role${r.created.length === 1 ? "" : "s"} created, ${r.assigned} staff given their job role. Add the pay structure to each below.`)(), this.fail());
   }
 
   /** the active pay components a structure can hold */
   get payComponents(): any[] { return this.components.filter(c => c.active); }
 
   loadPositions() {
-    this.hr.get("positions").subscribe(r => this.positions = r.map((p: any) => this.editable(p)));
+    this.hr.get("positions").subscribe(r => { this.positions = r.map((p: any) => this.editable(p)); this.syncLeaveNames(); });
+    this.hr.get("positions/designations").subscribe(r => this.designations = r.map((g: any) => ({ ...g, pick: false })), () => {});
   }
 
   private editable(p: any) {
     const amounts: any = {};
     for (const l of p.lines || []) amounts[l.component_id] = l.amount;
-    return { id: p.id, name: p.name, active: p.active, staff: p.staff || 0, amounts };
+    return { id: p.id, name: p.name, active: p.active, staff: p.staff || 0, login_role: p.login_role || null, amounts };
   }
 
   private posBody(p: any) {
-    return { name: p.name, active: p.active, lines: this.payComponents.map(c => ({ component_id: c.id, amount: p.amounts[c.id] })).filter(l => +l.amount > 0) };
+    return { name: p.name, active: p.active, login_role: p.login_role || null, lines: this.payComponents.map(c => ({ component_id: c.id, amount: p.amounts[c.id] })).filter(l => +l.amount > 0) };
   }
 
   /** earnings of a structure, for the one-line summary */
   posEarnings(p: any): number { return this.payComponents.filter(c => c.kind === "EARNING").reduce((t, c) => t + (+p.amounts[c.id] || 0), 0); }
 
   addPosition() {
-    this.hr.post("positions", this.posBody(this.newPos)).subscribe(() => { this.newPos = { id: 0, name: "", active: true, amounts: {} }; this.done("Job role added.")(); }, this.fail());
+    this.hr.post("positions", this.posBody(this.newPos)).subscribe(() => { this.newPos = { id: 0, name: "", active: true, login_role: null, amounts: {} }; this.done("Job role added.")(); }, this.fail());
   }
   savePosition(p: any) { this.hr.put(`positions/${p.id}`, this.posBody(p)).subscribe(this.done("Job role saved. Salaries already given are not changed."), this.fail()); }
   removePosition(p: any) {
@@ -99,8 +117,8 @@ export class HrSetupComponent implements OnInit {
     this.hr.delete(`components/${c.id}`).subscribe(r => this.done(r.removed ? `${c.name} removed.` : `${c.name} is in the salary history, so it was made inactive instead.`)(), this.fail());
   }
 
-  addType() { this.hr.post("leave/types", this.newType).subscribe(() => { this.newType = { name: "", paid: true, annual_days: 0, applies_roles: null }; this.done("Leave type added.")(); }, this.fail()); }
-  saveType(t: any) { this.hr.put(`leave/types/${t.id}`, t).subscribe(this.done("Leave type saved."), this.fail()); }
+  addType() { this.hr.post("leave/types", { ...this.newType, applies_positions: this.namesToIds(this.newType.position_names) }).subscribe(() => { this.newType = { name: "", paid: true, annual_days: 0, applies_roles: null, position_names: null }; this.done("Leave type added.")(); }, this.fail()); }
+  saveType(t: any) { this.hr.put(`leave/types/${t.id}`, { ...t, applies_positions: this.namesToIds(t.position_names) }).subscribe(this.done("Leave type saved."), this.fail()); }
   removeType(t: any) {
     this.hr.delete(`leave/types/${t.id}`).subscribe(r => this.done(r.removed ? `${t.name} removed.` : `${t.name} has leave recorded against it, so it was made inactive instead.`)(), this.fail());
   }
@@ -111,7 +129,7 @@ export class HrSetupComponent implements OnInit {
   // ------------------------------------------------------------ KPI measures
   private blankMeasure() {
     return { id: 0, name: "", description: "", max_points: 10, source: "MANUAL", system_key: "", rule_kind: "steps", steps: [{ upto: 0, pct: 100 }, { upto: 2, pct: 60 }], otherwise: 0,
-             target: null, floor: null, min_activity: 0, rating_scale: 5, applies_types: [], designations: "", applies_roles: null, active: true };
+             target: null, floor: null, min_activity: 0, rating_scale: 5, applies_types: [], designations: "", applies_roles: null, position_names: null, active: true };
   }
 
   newMeasure() { this.mf = this.blankMeasure(); this.open = { ...this.open, kpi: true }; }
@@ -121,7 +139,7 @@ export class HrSetupComponent implements OnInit {
     Object.assign(f, {
       id: m.id, name: m.name, description: m.description || "", max_points: m.max_points, source: m.source, system_key: m.system_key || "",
       min_activity: m.min_activity || 0, rating_scale: m.rating_scale || 5, applies_types: m.applies_types || [],
-      designations: (m.applies_designations || []).join(", "), applies_roles: m.applies_roles?.length ? m.applies_roles : null, active: m.active,
+      designations: (m.applies_designations || []).join(", "), applies_roles: m.applies_roles?.length ? m.applies_roles : null, position_names: this.idsToNames(m.applies_positions), active: m.active,
     });
     if (m.rule?.kind === "steps") Object.assign(f, { rule_kind: "steps", steps: m.rule.steps.map((s: any) => ({ ...s })), otherwise: m.rule.otherwise ?? 0 });
     if (m.rule?.kind === "linear") Object.assign(f, { rule_kind: "linear", target: m.rule.target, floor: m.rule.floor });
@@ -142,7 +160,7 @@ export class HrSetupComponent implements OnInit {
     const f = this.mf;
     const body: any = {
       name: f.name, description: f.description, max_points: f.max_points, source: f.source, min_activity: f.min_activity, rating_scale: f.rating_scale,
-      applies_types: f.applies_types, applies_roles: f.applies_roles || [], active: f.active,
+      applies_types: f.applies_types, applies_roles: f.applies_roles || [], applies_positions: this.namesToIds(f.position_names), active: f.active,
       applies_designations: String(f.designations || "").split(",").map((x: string) => x.trim()).filter(Boolean),
     };
     if (f.source === "SYSTEM") {
@@ -158,13 +176,21 @@ export class HrSetupComponent implements OnInit {
   roleSummary(r: string[] | null) { return r?.length ? r.join(", ") : "All roles"; }
 
   // ------------------------------------------------------------ bands, one set per role
-  showBands() { this.bands = this.allBands.filter(b => (b.role_name || "") === this.bandRole).map(b => ({ ...b })); }
-  get hasOwnBands(): boolean { return !this.bandRole || this.allBands.some(b => b.role_name === this.bandRole); }
+  /** the band set on screen: "" the default, a login role's name, or "job:<id>" for a job role */
+  private get bandJob(): number | null { return this.bandRole.startsWith("job:") ? Number(this.bandRole.slice(4)) : null; }
+  private bandsOf(): any[] {
+    const job = this.bandJob;
+    return this.allBands.filter(b => job ? b.position_id === job : (!b.position_id && (b.role_name || "") === this.bandRole));
+  }
+  showBands() { this.bands = this.bandsOf().map(b => ({ ...b })); }
+  get hasOwnBands(): boolean { return !this.bandRole || this.bandsOf().length > 0; }
+  get bandLabel(): string { return this.bandJob ? (this.positions.find(p => p.id === this.bandJob)?.name || "this job role") : this.bandRole; }
   addBand() { this.bands = [...this.bands, { min_percent: 0, label: "", incentive_percent: 0 }]; }
   removeBand(i: number) { this.bands = this.bands.filter((_, k) => k !== i); }
   saveBands() {
-    this.hr.put("kpi/bands", { role_name: this.bandRole || null, bands: this.bands })
-      .subscribe(this.done(this.bandRole ? `Bands saved for ${this.bandRole}.` : "Default bands saved."), this.fail());
+    const job = this.bandJob;
+    this.hr.put("kpi/bands", { role_name: job ? null : (this.bandRole || null), position_id: job, bands: this.bands })
+      .subscribe(this.done(this.bandRole ? `Bands saved for ${this.bandLabel}.` : "Default bands saved."), this.fail());
   }
-  startOwnBands() { this.bands = this.allBands.filter(b => !b.role_name).map(b => ({ min_percent: b.min_percent, label: b.label, incentive_percent: b.incentive_percent })); }
+  startOwnBands() { this.bands = this.allBands.filter(b => !b.role_name && !b.position_id).map(b => ({ min_percent: b.min_percent, label: b.label, incentive_percent: b.incentive_percent })); }
 }

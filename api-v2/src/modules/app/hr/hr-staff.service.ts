@@ -2,8 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
-import { itemsToAdd, starterView } from './hr-starter';
+import { itemsToAdd, rolesToAdd, starterView } from './hr-starter';
 import { hasEarning, normaliseLines } from './hr-position';
+import { groupDesignations } from './hr-link';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
@@ -37,7 +38,11 @@ export class HrStaffService {
   /** active logins that have no staff record yet */
   async candidates() {
     return this.manager.query(
-      `select u.id, u.full_name as name, u.email, (select coalesce(json_agg(json_build_object('id', st.id, 'name', st.location) order by st.location), '[]'::json) from user_stores us join stores st on st.id = us.store_id where us.user_id = u.id and us.active and not us.archive) as stores from app_user u
+      `select u.id, u.full_name as name, u.email, (select coalesce(json_agg(json_build_object('id', st.id, 'name', st.location) order by st.location), '[]'::json) from user_stores us join stores st on st.id = us.store_id where us.user_id = u.id and us.active and not us.archive) as stores,
+              (select r.name from app_role r where r.id = u.role_id) as role_name,
+              (select p.id from hr_position p where p.active and p.login_role = (select r.name from app_role r where r.id = u.role_id)
+                  and (select count(*) from hr_position q where q.active and q.login_role = p.login_role) = 1) as suggested_position_id
+         from app_user u
         where u.active and not exists (select 1 from hr_employee e where e.user_id = u.id) order by u.full_name`);
   }
 
@@ -370,7 +375,7 @@ export class HrStaffService {
   /** every job role with its standard amounts and how many staff hold it */
   async positions() {
     return this.manager.query(
-      `select p.id, p.name, p.active,
+      `select p.id, p.name, p.active, p.login_role,
               (select count(*)::int from hr_employee e where e.position_id = p.id and e.status = 'ACTIVE') as staff,
               (select coalesce(json_agg(json_build_object('component_id', c.id, 'code', c.code, 'name', c.name, 'kind', c.kind, 'amount', l.amount::float) order by c.display_order, c.name), '[]'::json)
                  from hr_position_line l join hr_pay_component c on c.id = l.component_id where l.position_id = p.id) as lines
@@ -383,7 +388,9 @@ export class HrStaffService {
     const lines = normaliseLines(b?.lines);
     const comps = lines.length ? await this.manager.query(`select id, kind from hr_pay_component where id = any($1) and active`, [lines.map(l => l.component_id)]) : [];
     if (comps.length !== lines.length) throw new BadRequestException('A pay component in the list is not valid.');
-    if (!hasEarning(lines, Object.fromEntries(comps.map((c: any) => [c.id, c.kind])))) throw new BadRequestException('A pay structure needs at least one earning.');
+    if (lines.length && !hasEarning(lines, Object.fromEntries(comps.map((c: any) => [c.id, c.kind])))) throw new BadRequestException('A pay structure with amounts needs at least one earning.');
+    const loginRole = clean(b?.login_role, 60);
+    await this.checkRoles(loginRole ? [loginRole] : null);
     const [dup] = await this.manager.query(`select id from hr_position where lower(name) = lower($1) and id is distinct from $2`, [name, id]);
     if (dup) throw new BadRequestException(`There is already a job role called ${name}.`);
     const saved = await this.manager.transaction(async tx => {
@@ -391,10 +398,10 @@ export class HrStaffService {
       if (pid) {
         const [cur] = await tx.query(`select id from hr_position where id = $1`, [pid]);
         if (!cur) throw new NotFoundException('Job role not found.');
-        await tx.query(`update hr_position set name = $2, active = $3 where id = $1`, [pid, name, b.active !== false]);
+        await tx.query(`update hr_position set name = $2, active = $3, login_role = $4 where id = $1`, [pid, name, b.active !== false, loginRole]);
         await tx.query(`delete from hr_position_line where position_id = $1`, [pid]);
       } else {
-        const [r] = await tx.query(`insert into hr_position (name, created_by) values ($1, $2) returning id`, [name, by.id]);
+        const [r] = await tx.query(`insert into hr_position (name, created_by, login_role) values ($1, $2, $3) returning id`, [name, by.id, loginRole]);
         pid = r.id as number;
       }
       for (const l of lines) await tx.query(`insert into hr_position_line (position_id, component_id, amount) values ($1,$2,$3)`, [pid, l.component_id, l.amount]);
@@ -402,6 +409,41 @@ export class HrStaffService {
     });
     await this.audit.record({ userId: by.id, action: 'hr.position_saved', entityType: 'hr_position', entityId: saved, summary: `Job role ${name} saved with ${lines.length} pay components`, details: { lines } });
     return { id: saved };
+  }
+
+  /** the designations typed on staff records that have no job role yet, grouped, for turning into job roles */
+  async designationGroups() {
+    const people = await this.manager.query(`select designation, position_id from hr_employee where status = 'ACTIVE'`);
+    const positions = await this.manager.query(`select id, name from hr_position`);
+    return groupDesignations(people, positions);
+  }
+
+  /**
+   * Turn chosen designations into job roles (with no pay structure yet) and give each person with that designation and no job role that role.
+   * A job role of the same name is used when there is one. Nothing else changes: designations stay as typed, salaries and KPI rules are untouched.
+   */
+  async adoptDesignations(b: any, by: any) {
+    const chosen = new Set((Array.isArray(b?.designations) ? b.designations : []).map((d: any) => String(d).trim().toLowerCase()).filter(Boolean));
+    if (!chosen.size) throw new BadRequestException('Choose at least one designation.');
+    const groups = (await this.designationGroups()).filter((g) => chosen.has(g.designation.trim().toLowerCase()));
+    const created: string[] = [];
+    let assigned = 0;
+    for (const g of groups) {
+      let pid = g.position_id;
+      if (!pid) {
+        const [r] = await this.manager.query(`insert into hr_position (name, created_by) values ($1, $2) on conflict (name) do nothing returning id`, [g.designation.slice(0, 60), by.id]);
+        if (r) created.push(g.designation);
+        pid = r?.id ?? (await this.manager.query(`select id from hr_position where lower(name) = lower($1)`, [g.designation.slice(0, 60)]))[0]?.id;
+      }
+      if (!pid) continue;
+      // counted inside the statement: an UPDATE ... RETURNING comes back from the driver as [rows, count], not as the rows
+      const [done] = await this.manager.query(
+        `with u as (update hr_employee set position_id = $1, updated_on = now() where status = 'ACTIVE' and position_id is null and lower(trim(designation)) = lower($2) returning id) select count(*)::int as n from u`,
+        [pid, g.designation.trim()]);
+      assigned += done.n;
+    }
+    await this.audit.record({ userId: by.id, action: 'hr.positions_from_designations', entityType: 'hr_position', entityId: null, summary: `${created.length} job roles created from designations, ${assigned} staff assigned`, details: { created } });
+    return { created, assigned };
   }
 
   /** a job role nobody holds is deleted; one that staff hold is made inactive so their record still names it */
@@ -439,7 +481,9 @@ export class HrStaffService {
               (select count(*) from hr_holiday where extract(year from holiday_date) = extract(year from current_date))::int as holidays,
               (select count(distinct r.employee_id) from hr_salary_revision r join hr_employee e on e.id = r.employee_id where e.status = 'ACTIVE')::int as paid_staff,
               (select count(*) from hr_employee where status = 'ACTIVE')::int as staff`);
-    return { ...starterView(await this.businessTypeOf(by.id), have.comps, have.leave), progress: n };
+    const type = await this.businessTypeOf(by.id);
+    const names = (await this.manager.query(`select name from hr_position`)).map((r: any) => r.name as string);
+    return { ...starterView(type, have.comps, have.leave), roles: rolesToAdd(type, names), progress: { ...n, positions: names.length } };
   }
 
   /** add the starter set and/or the chosen suggestions; what already exists is left exactly as it is */
@@ -450,7 +494,19 @@ export class HrStaffService {
       if (i.kind === 'LEAVE') await this.saveLeaveType({ code: i.code, name: i.name, paid: i.paid, annual_days: i.annual_days }, by);
       else await this.saveComponent(null, { code: i.code, name: i.name, kind: i.kind, display_order: i.kind === 'EARNING' ? 10 : 90 }, by);
     }
-    return { added: items.map((i) => i.code) };
+    let roles: string[] = [];
+    if (b?.roles) {
+      const type = await this.businessTypeOf(by.id);
+      const names = (await this.manager.query(`select name from hr_position`)).map((r: any) => r.name as string);
+      for (const r of rolesToAdd(type, names)) {
+        const [row] = await this.manager.query(`insert into hr_position (name, created_by, login_role) values ($1, $2, $3) on conflict (name) do nothing returning id`, [r.name, by.id, r.login_role]);
+        if (row) {
+          roles.push(r.name);
+          await this.audit.record({ userId: by.id, action: 'hr.position_saved', entityType: 'hr_position', entityId: row.id, summary: `Job role ${r.name} added from the starter set`, details: {} });
+        }
+      }
+    }
+    return { added: items.map((i) => i.code), roles };
   }
 
   /** inserted here rather than through the leave service, so the staff service has no dependency on it; the rules are the same */

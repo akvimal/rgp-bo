@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
+import { appliesToPosition, bandFor, BandRow, pickBands } from './hr-link';
 
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -160,6 +161,7 @@ export class HrKpiEngine {
   }
 
   private applies(m: any, e: any) {
+    if (!appliesToPosition(m.applies_positions, e.position_id)) return false;
     if (m.applies_roles?.length && !m.applies_roles.some((x: string) => x === e.role_name)) return false;
     if (m.applies_types?.length && !m.applies_types.includes(e.emp_type)) return false;
     if (m.applies_designations?.length) {
@@ -177,7 +179,7 @@ export class HrKpiEngine {
     if (!PERIOD.test(period || '')) throw new BadRequestException('A month (YYYY-MM) is required.');
     const start = period + '-01';
     const emps = await this.manager.query(
-      `select e.id, e.user_id, e.emp_type, e.designation, e.store_id, coalesce(e.full_name, u.full_name) as name,
+      `select e.id, e.user_id, e.emp_type, e.designation, e.position_id, e.store_id, coalesce(e.full_name, u.full_name) as name,
               (select r.name from app_user x join app_role r on r.id = x.role_id where x.id = e.user_id) as role_name,
               array(select us.store_id from user_stores us where us.user_id = e.user_id and us.active and not us.archive) as store_ids,
               array(select a.user_id from hr_employee_account a where a.employee_id = e.id) as linked_user_ids
@@ -185,17 +187,14 @@ export class HrKpiEngine {
         where e.join_date < ($1::date + interval '1 month') and (e.exit_date is null or e.exit_date >= $1::date)
         order by coalesce(e.full_name, u.full_name)`, [start]);
     const metrics = await this.manager.query(
-      `select id, name, description, max_points::float as max, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles
+      `select id, name, description, max_points::float as max, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions
          from hr_kpi_metric where active order by display_order, name`);
     const ratings = await this.manager.query(
       `select employee_id, metric_id, rating::float as rating, override_points::float as override_points, override_reason, note from hr_kpi_rating where period = $1`, [period]);
     const reviews = await this.manager.query(`select * from hr_kpi_review where period = $1`, [period]);
-    const allBands = await this.manager.query(`select role_name, label, min_percent::float as min, incentive_percent::float as pct from hr_kpi_band order by min_percent desc`);
-    /** a role's own band set if it has one, otherwise the default set */
-    const bandsFor = (role: string | null) => {
-      const own = role ? allBands.filter((b: any) => b.role_name === role) : [];
-      return own.length ? own : allBands.filter((b: any) => !b.role_name);
-    };
+    const allBands = await this.manager.query(`select role_name, position_id, label, min_percent::float as min, incentive_percent::float as pct from hr_kpi_band order by min_percent desc`);
+    /** the job role's own band set if it has one, else the login role's, else the default set */
+    const bandsFor = (positionId: number | null, role: string | null) => pickBands<BandRow>(allBands, positionId, role);
     const locked = await this.payrollLocked(period);
 
     const out: any[] = [];
@@ -229,9 +228,9 @@ export class HrKpiEngine {
       const total = r1(scored.reduce((t, i) => t + i.final_points, 0));
       const max = r1(scored.reduce((t, i) => t + i.max, 0));
       const percent = r1(max > 0 ? total * 100 / max : 0);
-      const band = bandsFor(e.role_name).find((b: any) => b.min <= percent);
+      const band = bandFor(bandsFor(e.position_id, e.role_name), percent);
       out.push({
-        employee_id: e.id, user_id: e.user_id, role_name: e.role_name, name: e.name, designation: e.designation, emp_type: e.emp_type, store_id: e.store_id, store_ids: e.store_ids,
+        employee_id: e.id, user_id: e.user_id, role_name: e.role_name, position_id: e.position_id, name: e.name, designation: e.designation, emp_type: e.emp_type, store_id: e.store_id, store_ids: e.store_ids,
         items, pending: items.filter(i => i.state === 'PENDING').map(i => i.name),
         draft: { total, max, percent, band_label: band?.label ?? null, incentive_percent: band?.pct ?? 0 },
         finalised: !!review, review: review && {

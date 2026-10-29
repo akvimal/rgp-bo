@@ -1,3 +1,4 @@
+import { appliesToPosition } from './hr-link';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -29,7 +30,7 @@ export class HrSelfService {
 
   private async mine(user: any) {
     const [e] = await this.manager.query(
-      `select e.id, e.status, coalesce(e.full_name, u.full_name) as name, (select r.name from app_role r where r.id = u.role_id) as role_name
+      `select e.id, e.status, e.position_id, coalesce(e.full_name, u.full_name) as name, (select r.name from app_role r where r.id = u.role_id) as role_name
          from hr_employee e join app_user u on u.id = e.user_id
         where e.user_id = $1 or e.id = (select a.employee_id from hr_employee_account a where a.user_id = $1)`, [user?.id || 0]);
     return e || null;
@@ -112,7 +113,7 @@ export class HrSelfService {
     const e = await this.mine(user);
     if (!e) return { staff: false };
     const y = Number.isInteger(year) && year > 2000 && year < 2100 ? year : new Date().getFullYear();
-    const types = (await this.leave.types()).filter((t: any) => t.active && (!t.applies_roles?.length || t.applies_roles.includes(e.role_name)));
+    const types = (await this.leave.types()).filter((t: any) => t.active && (!t.applies_roles?.length || t.applies_roles.includes(e.role_name)) && appliesToPosition(t.applies_positions, e.position_id));
     const balances = (await this.leave.balances(y)).filter((b: any) => b.employee_id === e.id);
     const requests = await this.leave.requests({ employee: e.id });
     const holidays = await this.leave.holidays(y);

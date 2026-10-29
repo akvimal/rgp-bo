@@ -95,13 +95,18 @@ export class ShopSetupComponent implements OnInit {
     if (!this.hrOn) return;
     this.hrApi.get('starter').subscribe(r => this.hrOffer = r, () => this.hrOffer = null);
     this.hrApi.get('holidays', { year: new Date().getFullYear() }).subscribe(r => this.hrHolidays = r, () => {});
-    this.hrApi.get('staff/candidates').subscribe(r => this.hrPeople = r.map((p: any) => ({ ...p, designation: '', join_date: this.hrApi.today() })), () => {});
+    this.hrApi.get('staff/candidates').subscribe(r => this.hrPeople = r.map((p: any) => ({ ...p, designation: '', position_id: p.suggested_position_id || null, join_date: this.hrApi.today() })), () => {});
+    this.hrApi.get('positions').subscribe(r => this.hrPositions = (r || []).filter((p: any) => p.active), () => {});
   }
 
-  hrAdd(starter: boolean, codes: string[]) {
+  /** the job roles on offer that the business does not have yet, and the ones it has */
+  hrPositions: any[] = [];
+  get hrRolesMissing(): any[] { return this.hrOffer?.roles || []; }
+
+  hrAdd(starter: boolean, codes: string[], roles = false) {
     this.hrMessage = this.hrError = ''; this.hrBusy = true;
-    this.hrApi.post('starter', { starter, codes }).subscribe(
-      (r: any) => { this.hrBusy = false; this.hrPicked = {}; this.hrMessage = r.added.length ? `Added: ${r.added.join(', ')}.` : 'Nothing to add: you already have these.'; this.loadHr(); },
+    this.hrApi.post('starter', { starter, codes, roles }).subscribe(
+      (r: any) => { this.hrBusy = false; this.hrPicked = {}; const all = [...r.added, ...(r.roles || [])]; this.hrMessage = all.length ? `Added: ${all.join(', ')}.` : 'Nothing to add: you already have these.'; this.loadHr(); },
       err => { this.hrBusy = false; this.hrError = this.hrApi.msg(err); });
   }
 
@@ -116,7 +121,7 @@ export class ShopSetupComponent implements OnInit {
 
   hrCreateStaff(p: any) {
     this.hrMessage = this.hrError = '';
-    this.hrApi.post('staff', { user_id: p.id, designation: p.designation, join_date: p.join_date }).subscribe(
+    this.hrApi.post('staff', { user_id: p.id, designation: p.designation, position_id: p.position_id || null, join_date: p.join_date }).subscribe(
       () => { this.hrMessage = `${p.name} now has a staff record. Add the salary under HR > Staff.`; this.loadHr(); },
       err => this.hrError = this.hrApi.msg(err));
   }

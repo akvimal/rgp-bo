@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { HrKpiEngine, checkRule, roleList } from './hr-kpi-engine.service';
+import { bandFor, BandRow, pickBands } from './hr-link';
 
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -15,7 +16,7 @@ export class HrKpiService {
   metrics() {
     return this.manager.query(
       `select id, name, description, max_points::float as max_points, display_order, active, source, system_key, rule, min_activity, rating_scale,
-              applies_types, applies_designations, applies_roles from hr_kpi_metric order by display_order, name`);
+              applies_types, applies_designations, applies_roles, applies_positions from hr_kpi_metric order by display_order, name`);
   }
 
   async saveMetric(id: number | null, b: any, by: any) {
@@ -42,17 +43,18 @@ export class HrKpiService {
     const roles = roleList(b?.applies_roles);
     await this.checkRoles(roles);
     const designations = list(b?.applies_designations);
-    const cols = [name, desc, max, Number(b.display_order) || 10, source, systemKey, rule ? JSON.stringify(rule) : null, minActivity, scale, types, designations, roles];
+    const positions = await this.checkPositions(b?.applies_positions);
+    const cols = [name, desc, max, Number(b.display_order) || 10, source, systemKey, rule ? JSON.stringify(rule) : null, minActivity, scale, types, designations, roles, positions];
     if (id) {
       const [cur] = await this.manager.query(`select 1 from hr_kpi_metric where id = $1`, [id]);
       if (!cur) throw new NotFoundException('Measure not found.');
       await this.manager.query(
         `update hr_kpi_metric set name = $2, description = $3, max_points = $4, display_order = $5, source = $6, system_key = $7, rule = $8::jsonb, min_activity = $9, rating_scale = $10,
-                applies_types = $11, applies_designations = $12, applies_roles = $13, active = $14 where id = $1`, [id, ...cols, b.active !== false]);
+                applies_types = $11, applies_designations = $12, applies_roles = $13, applies_positions = $14, active = $15 where id = $1`, [id, ...cols, b.active !== false]);
     } else {
       const [r] = await this.manager.query(
-        `insert into hr_kpi_metric (name, description, max_points, display_order, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles)
-         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12) returning id`, cols);
+        `insert into hr_kpi_metric (name, description, max_points, display_order, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions)
+         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13) returning id`, cols);
       id = r.id;
     }
     await this.audit.record({ userId: by.id, action: 'hr.kpi_metric_saved', entityType: 'hr_kpi_metric', entityId: id, summary: `KPI measure ${name} (${max} points, ${source.toLowerCase()})`, details: {} });
@@ -64,6 +66,15 @@ export class HrKpiService {
     return this.manager.query(`select name from app_role where name <> 'Site Admin' order by name`);
   }
 
+  /** the job roles a measure is limited to: ids of job roles that exist; none given means every job role */
+  async checkPositions(v: any): Promise<number[] | null> {
+    const ids = Array.from(new Set((Array.isArray(v) ? v : []).map((x: any) => Number(x)).filter((n: number) => Number.isInteger(n) && n > 0))) as number[];
+    if (!ids.length) return null;
+    const known = await this.manager.query(`select id from hr_position where id = any($1)`, [ids]);
+    if (known.length !== ids.length) throw new BadRequestException('One of the job roles was not found.');
+    return ids;
+  }
+
   async checkRoles(roles: string[] | null) {
     if (!roles) return;
     const known = await this.manager.query(`select name from app_role where name = any($1::text[]) and name <> 'Site Admin'`, [roles]);
@@ -71,13 +82,16 @@ export class HrKpiService {
   }
 
   bands() {
-    return this.manager.query(`select id, role_name, min_percent::float as min_percent, label, incentive_percent::float as incentive_percent from hr_kpi_band order by role_name nulls first, min_percent desc`);
+    return this.manager.query(`select id, role_name, position_id, min_percent::float as min_percent, label, incentive_percent::float as incentive_percent from hr_kpi_band order by position_id nulls first, role_name nulls first, min_percent desc`);
   }
 
   /** one role's band set (or the default set when role_name is empty) is replaced in one go; an empty set removes a role's own bands */
   async saveBands(b: any, by: any) {
     const role = String(b?.role_name || '').trim() || null;
+    const positionId = Number(b?.position_id) || null;
+    if (role && positionId) throw new BadRequestException('A band set is for a job role or a login role, not both.');
     await this.checkRoles(role ? [role] : null);
+    if (positionId) await this.checkPositions([positionId]);
     const rows: any[] = Array.isArray(b?.bands) ? b.bands : [];
     const seen = new Set<number>();
     for (const x of rows) {
@@ -89,10 +103,10 @@ export class HrKpiService {
       seen.add(m);
     }
     await this.manager.transaction(async tm => {
-      await tm.query(`delete from hr_kpi_band where role_name is not distinct from $1`, [role]);
-      for (const x of rows) await tm.query(`insert into hr_kpi_band (role_name, min_percent, label, incentive_percent) values ($1,$2,$3,$4)`, [role, Number(x.min_percent), String(x.label).trim().slice(0, 30), Number(x.incentive_percent)]);
+      await tm.query(`delete from hr_kpi_band where role_name is not distinct from $1 and position_id is not distinct from $2`, [role, positionId]);
+      for (const x of rows) await tm.query(`insert into hr_kpi_band (role_name, position_id, min_percent, label, incentive_percent) values ($1,$2,$3,$4,$5)`, [role, positionId, Number(x.min_percent), String(x.label).trim().slice(0, 30), Number(x.incentive_percent)]);
     });
-    await this.audit.record({ userId: by.id, action: 'hr.kpi_bands_saved', entityType: 'hr_kpi_band', entityId: null, summary: `KPI bands saved for ${role ?? 'the default set'} (${rows.length})`, details: { role, rows } });
+    await this.audit.record({ userId: by.id, action: 'hr.kpi_bands_saved', entityType: 'hr_kpi_band', entityId: null, summary: `KPI bands saved for ${positionId ? 'job role #' + positionId : (role ?? 'the default set')} (${rows.length})`, details: { role, positionId, rows } });
     return { count: rows.length };
   }
 
@@ -117,7 +131,7 @@ export class HrKpiService {
   async score(b: any, by: any) {
     if (!PERIOD.test(b?.period || '')) throw new BadRequestException('A month (YYYY-MM) is required.');
     const [emp] = await this.manager.query(
-      `select e.id, coalesce(e.full_name, u.full_name) as full_name, (select r.name from app_role r where r.id = u.role_id) as role_name
+      `select e.id, e.position_id, coalesce(e.full_name, u.full_name) as full_name, (select r.name from app_role r where r.id = u.role_id) as role_name
          from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [Number(b?.employee_id)]);
     if (!emp) throw new BadRequestException('Choose the staff member.');
     const [paid] = await this.manager.query(`select 1 from hr_payroll_run where period = $1 and status = 'APPROVED'`, [b.period]);
@@ -133,10 +147,8 @@ export class HrKpiService {
     const total = r1(scores.reduce((t: number, s: any) => t + s.points, 0));
     const max = r1(scores.reduce((t: number, s: any) => t + s.max, 0));
     const percent = r1(max > 0 ? total * 100 / max : 0);
-    const [band] = await this.manager.query(
-      `select label, incentive_percent::float as pct from hr_kpi_band
-        where min_percent <= $1 and role_name is not distinct from (case when exists (select 1 from hr_kpi_band where role_name = $2) then $2 else null end)
-        order by min_percent desc limit 1`, [percent, emp.role_name]);
+    const allBands = await this.manager.query(`select role_name, position_id, label, min_percent::float as min, incentive_percent::float as pct from hr_kpi_band`);
+    const band = bandFor(pickBands<BandRow>(allBands, emp.position_id, emp.role_name), percent);
     await this.manager.query(
       `insert into hr_kpi_review (employee_id, period, scores, total_points, max_points, percent, band_label, incentive_percent, note, scored_by)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)

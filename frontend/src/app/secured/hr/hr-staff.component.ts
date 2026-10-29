@@ -53,7 +53,7 @@ export class HrStaffComponent implements OnInit {
   add() {
     this.message = this.error = "";
     this.detail = null;
-    this.editing = { id: 0, work_days: [], work_start: "", work_end: "", has_login: true, full_name: "", phone: "", user_id: null, emp_code: "", designation: "", store_id: null, emp_type: "FULL_TIME", join_date: this.hr.today(), weekly_off: "SUNDAY" };
+    this.editing = { id: 0, work_days: [], work_start: "", work_end: "", has_login: true, full_name: "", phone: "", user_id: null, emp_code: "", designation: "", position_id: null, store_id: null, emp_type: "FULL_TIME", join_date: this.hr.today(), weekly_off: "SUNDAY" };
   }
 
   open(r: any) {
@@ -80,6 +80,9 @@ export class HrStaffComponent implements OnInit {
   loginChanged() {
     const st = this.loginStores;
     this.editing.store_id = st.length === 1 && this.editing.has_login ? st[0].id : null;
+    // the job role usually held with this login role, when exactly one fits; only a hint, and the owner can change it
+    const suggested = this.candidates.find(c => c.id === this.editing.user_id)?.suggested_position_id;
+    if (suggested && !this.editing.position_id) { this.editing.position_id = suggested; this.positionChanged(); }
   }
 
   toggleDay(code: string) {

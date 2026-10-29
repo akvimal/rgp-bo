@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
+import { appliesToPosition } from './hr-link';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -28,7 +29,7 @@ export class HrLeaveService {
 
   // ------------------------------------------------------------------ leave types and holidays
   types() {
-    return this.manager.query(`select id, code, name, paid, annual_days::float as annual_days, active, applies_roles from hr_leave_type order by paid desc, name`);
+    return this.manager.query(`select id, code, name, paid, annual_days::float as annual_days, active, applies_roles, applies_positions from hr_leave_type order by paid desc, name`);
   }
 
   /** deleted when no leave was ever asked for under it; otherwise made inactive, since the leave history refers to it */
@@ -51,6 +52,15 @@ export class HrLeaveService {
     return a.length ? a : null;
   }
 
+  /** the job roles a leave type is limited to; none given means every job role */
+  async checkPositions(v: any): Promise<number[] | null> {
+    const ids = Array.from(new Set((Array.isArray(v) ? v : []).map((x: any) => Number(x)).filter((n: number) => Number.isInteger(n) && n > 0))) as number[];
+    if (!ids.length) return null;
+    const known = await this.manager.query(`select id from hr_position where id = any($1)`, [ids]);
+    if (known.length !== ids.length) throw new BadRequestException('One of the job roles was not found.');
+    return ids;
+  }
+
   async checkRoles(roles: string[] | null) {
     if (!roles) return;
     const known = await this.manager.query(`select name from app_role where name = any($1::text[]) and name <> 'Site Admin'`, [roles]);
@@ -65,17 +75,18 @@ export class HrLeaveService {
     if (!Number.isFinite(days) || days < 0 || days > 366) throw new BadRequestException('Days a year must be between 0 and 366.');
     const roles = this.roleList(b?.applies_roles);
     await this.checkRoles(roles);
+    const positions = await this.checkPositions(b?.applies_positions);
     if (id) {
       const [cur] = await this.manager.query(`select paid from hr_leave_type where id = $1`, [id]);
       if (!cur) throw new NotFoundException('Leave type not found.');
       if (cur.paid !== paid) throw new BadRequestException('A leave type cannot change between paid and unpaid; add a new one.');
-      await this.manager.query(`update hr_leave_type set name = $2, annual_days = $3, active = $4, applies_roles = $5 where id = $1`, [id, name, days, b.active !== false, roles]);
+      await this.manager.query(`update hr_leave_type set name = $2, annual_days = $3, active = $4, applies_roles = $5, applies_positions = $6 where id = $1`, [id, name, days, b.active !== false, roles, positions]);
     } else {
       const code = String(b?.code || name).toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 10);
       if (!code) throw new BadRequestException('Give the leave type a code.');
       const [ex] = await this.manager.query(`select 1 from hr_leave_type where code = $1`, [code]);
       if (ex) throw new BadRequestException(`A leave type with code ${code} exists.`);
-      const [r] = await this.manager.query(`insert into hr_leave_type (code, name, paid, annual_days, applies_roles) values ($1,$2,$3,$4,$5) returning id`, [code, name, paid, days, roles]);
+      const [r] = await this.manager.query(`insert into hr_leave_type (code, name, paid, annual_days, applies_roles, applies_positions) values ($1,$2,$3,$4,$5,$6) returning id`, [code, name, paid, days, roles, positions]);
       id = r.id;
     }
     await this.audit.record({ userId: by.id, action: 'hr.leave_type_saved', entityType: 'hr_leave_type', entityId: id, summary: `Leave type ${name} saved`, details: {} });
@@ -126,12 +137,13 @@ export class HrLeaveService {
 
   async create(b: any, by: any) {
     const [emp] = await this.manager.query(
-      `select e.id, e.weekly_off, e.work_days, e.join_date, e.exit_date, coalesce(e.full_name, u.full_name) as full_name, (select r.name from app_role r where r.id = u.role_id) as role_name
+      `select e.id, e.weekly_off, e.work_days, e.join_date, e.exit_date, e.position_id, coalesce(e.full_name, u.full_name) as full_name, (select r.name from app_role r where r.id = u.role_id) as role_name
          from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [Number(b?.employee_id)]);
     if (!emp) throw new BadRequestException('Choose the staff member.');
-    const [type] = await this.manager.query(`select id, name, paid, applies_roles from hr_leave_type where id = $1 and active`, [Number(b?.leave_type_id)]);
+    const [type] = await this.manager.query(`select id, name, paid, applies_roles, applies_positions from hr_leave_type where id = $1 and active`, [Number(b?.leave_type_id)]);
     if (!type) throw new BadRequestException('Choose the leave type.');
     if (type.applies_roles?.length && !type.applies_roles.includes(emp.role_name)) throw new BadRequestException(`${type.name} does not apply to ${emp.role_name ? 'the ' + emp.role_name + ' role' : 'staff without a login'}.`);
+    if (!appliesToPosition(type.applies_positions, emp.position_id)) throw new BadRequestException(`${type.name} does not apply to ${emp.position_id ? 'this job role' : 'staff with no job role'}.`);
     if (!DATE.test(b?.from_date || '') || !DATE.test(b?.to_date || '')) throw new BadRequestException('Give the from and to dates.');
     if (b.to_date < b.from_date) throw new BadRequestException('The to date is before the from date.');
     if (iso(emp.join_date) > b.from_date) throw new BadRequestException('The leave starts before the joining date.');
@@ -204,6 +216,7 @@ export class HrLeaveService {
          cross join hr_leave_type t
          left join hr_leave_request r on r.employee_id = e.id and r.leave_type_id = t.id and extract(year from r.from_date) = $1
         where e.status = 'ACTIVE' and t.active and (t.applies_roles is null or cardinality(t.applies_roles) = 0 or ro.name = any(t.applies_roles))
+          and (t.applies_positions is null or cardinality(t.applies_positions) = 0 or e.position_id = any(t.applies_positions))
         group by e.id, coalesce(e.full_name, u.full_name), t.id, t.code, t.name, t.paid, t.annual_days
         order by coalesce(e.full_name, u.full_name), t.paid desc, t.name`, [year]);
   }

@@ -50,6 +50,8 @@ export class HrController {
   @Post('staff/:id/revisions') addRevision(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.addRevision(id, b, u); }
   @Delete('revisions/:id') deleteRevision(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.deleteRevision(id, u); }
 
+  @Get('positions/designations') designations() { return this.staff.designationGroups(); }
+  @Post('positions/designations') adopt(@Body() b: any, @User() u: any) { return this.staff.adoptDesignations(b, u); }
   @Get('positions') positions() { return this.staff.positions(); }
   @Post('positions') addPosition(@Body() b: any, @User() u: any) { return this.staff.savePosition(null, b, u); }
   @Put('positions/:id') savePosition(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.savePosition(id, b, u); }

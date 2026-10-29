@@ -41,13 +41,24 @@
         <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-position-count">{{positions.length}} roles</span><i class="bi" [ngClass]="isOpen('position') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
       </button>
       <div class="p-3" *ngIf="isOpen('position')" data-testid="hr-sec-position-body">
-        <div class="small text-muted mb-3">A job role (Pharmacist, Cashier, Delivery) is separate from a login role. Its pay structure is the standard amount for each pay component: when you give someone in that role a salary, the amounts start from it and you can change any of them. Changing a structure later does not change salaries already given. Add the pay components first (above).</div>
+        <div class="small text-muted mb-3">A job role (Pharmacist, Cashier, Delivery) is what a person does; a login role is what they may do on screen. A job role carries the pay structure (the standard amount for each pay component, which a salary starts from), the KPI measures that apply to it, and its own incentive bands (under KPI). The usual login role is only a hint when you add a login or a staff record. Changing a structure later does not change salaries already given. Add the pay components first (above).</div>
+        <div class="border rounded p-3 mb-3 bg-light" *ngIf="designations.length" data-testid="hr-pos-designations">
+          <div class="fw-semibold small mb-1">Designations already typed on staff records</div>
+          <div class="small text-muted mb-2">Tick the ones to turn into job roles. Each person with that designation and no job role is given it. Designations stay as typed, and no salary or KPI rule changes.</div>
+          <div class="form-check form-check-inline" *ngFor="let g of designations">
+            <input class="form-check-input" type="checkbox" [(ngModel)]="g.pick" [id]="'des-' + g.designation" [attr.data-testid]="'hr-pos-des-' + g.designation">
+            <label class="form-check-label small" [for]="'des-' + g.designation">{{g.designation}} ({{g.staff}}){{g.position_id ? ' - job role exists' : ''}}</label>
+          </div>
+          <div class="mt-2"><button class="btn btn-sm btn-outline-primary" type="button" [disabled]="!pickedDesignations.length" (click)="adoptDesignations()" data-testid="hr-pos-des-apply">Make job roles of the ticked ones</button></div>
+        </div>
         <div class="border rounded p-3 mb-3" *ngFor="let p of positions" data-testid="hr-pos-row" [attr.data-pos]="p.name">
           <div class="row g-2 align-items-end">
-            <div class="col-md-4"><label class="form-label small mb-0">Job role</label><input class="form-control form-control-sm" [(ngModel)]="p.name" maxlength="60" data-testid="hr-pos-name"></div>
+            <div class="col-md-3"><label class="form-label small mb-0">Job role</label><input class="form-control form-control-sm" [(ngModel)]="p.name" maxlength="60" data-testid="hr-pos-name"></div>
+            <div class="col-md-3"><label class="form-label small mb-0">Usual login role</label>
+              <select class="form-select form-select-sm" [(ngModel)]="p.login_role" data-testid="hr-pos-login-role"><option [ngValue]="null">None</option><option *ngFor="let r of roles" [ngValue]="r">{{r}}</option></select></div>
             <div class="col-md-2"><div class="form-check mt-3"><input class="form-check-input" type="checkbox" [(ngModel)]="p.active" [id]="'pos-a-' + p.id"><label class="form-check-label small" [for]="'pos-a-' + p.id">In use</label></div></div>
-            <div class="col-md-3 small text-muted">{{p.staff}} staff &middot; earnings {{posEarnings(p) | number}}</div>
-            <div class="col-md-3 text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="savePosition(p)" data-testid="hr-pos-save">Save</button>
+            <div class="col-md-2 small text-muted">{{p.staff}} staff &middot; earnings {{posEarnings(p) | number}}</div>
+            <div class="col-md-2 text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="savePosition(p)" data-testid="hr-pos-save">Save</button>
               <button class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="removePosition(p)" data-testid="hr-pos-remove">Remove</button></div>
           </div>
           <div class="row g-2 mt-1">
@@ -88,14 +99,16 @@
                 <tbody>
                   <tr *ngFor="let t of leaveTypes" data-testid="hr-set-type-row" [attr.data-type]="t.code"><td><input class="form-control form-control-sm" [(ngModel)]="t.name" maxlength="40"></td><td>{{t.paid ? 'Paid' : 'Unpaid'}}</td>
                     <td><input type="number" min="0" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="t.annual_days" [disabled]="!t.paid"></td>
-                    <td><app-hr-roles [roles]="roles" [(value)]="t.applies_roles"></app-hr-roles></td>
+                    <td><app-hr-roles [roles]="roles" [(value)]="t.applies_roles"></app-hr-roles>
+                      <div class="small text-muted mt-1">Job roles</div><app-hr-roles [roles]="positionNames" [(value)]="t.position_names"></app-hr-roles></td>
                     <td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="t.active"></td>
                     <td class="text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="saveType(t)">Save</button>
                       <button class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="removeType(t)" data-testid="hr-set-type-remove">Remove</button></td></tr>
                   <tr><td><input class="form-control form-control-sm" placeholder="New leave type" [(ngModel)]="newType.name" maxlength="40" data-testid="hr-set-type-name"></td>
                     <td><select class="form-select form-select-sm" [(ngModel)]="newType.paid"><option [ngValue]="true">Paid</option><option [ngValue]="false">Unpaid</option></select></td>
                     <td><input type="number" min="0" class="form-control form-control-sm" style="width:5rem" [(ngModel)]="newType.annual_days"></td>
-                    <td><app-hr-roles [roles]="roles" [(value)]="newType.applies_roles"></app-hr-roles></td><td></td>
+                    <td><app-hr-roles [roles]="roles" [(value)]="newType.applies_roles"></app-hr-roles>
+                      <div class="small text-muted mt-1">Job roles</div><app-hr-roles [roles]="positionNames" [(value)]="newType.position_names"></app-hr-roles></td><td></td>
                     <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addType()" data-testid="hr-set-type-add">Add</button></td></tr>
                 </tbody>
               </table>
@@ -136,7 +149,7 @@
                 <td>{{m.name}}<div class="small text-muted" *ngIf="m.description">{{m.description}}</div></td>
                 <td>{{m.source === 'SYSTEM' ? 'System: ' + (m.system_key | titlecase) : 'Rated by a manager (1-' + m.rating_scale + ')'}}</td>
                 <td class="text-end">{{m.max_points}}</td>
-                <td>{{roleSummary(m.applies_roles)}}<span class="small text-muted d-block" *ngIf="m.applies_types?.length || m.applies_designations?.length">{{(m.applies_types || []).join(', ')}} {{(m.applies_designations || []).join(', ')}}</span></td>
+                <td>{{m.applies_positions?.length ? positionSummary(m.applies_positions) : roleSummary(m.applies_roles)}}<span class="small text-muted d-block" *ngIf="m.applies_types?.length || m.applies_designations?.length">{{(m.applies_types || []).join(', ')}} {{(m.applies_designations || []).join(', ')}}</span></td>
                 <td class="text-center">{{m.active ? 'Yes' : 'No'}}</td>
                 <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="editMeasure(m)" data-testid="hr-set-metric-edit">Edit</button></td></tr>
               <tr *ngIf="!metrics.length"><td colspan="6" class="text-center text-muted py-3">No measures yet.</td></tr>
@@ -185,7 +198,9 @@
                 </div>
               </ng-container>
 
-              <div class="col-12"><label class="form-label">Applies to roles</label><app-hr-roles [roles]="roles" [(value)]="mf.applies_roles"></app-hr-roles></div>
+              <div class="col-12"><label class="form-label">Applies to job roles</label><app-hr-roles [roles]="positionNames" [(value)]="mf.position_names"></app-hr-roles>
+                <div class="small text-muted">Pick the job roles this measure is for. None picked means every job role.</div></div>
+              <div class="col-12"><label class="form-label">Applies to login roles</label><app-hr-roles [roles]="roles" [(value)]="mf.applies_roles"></app-hr-roles></div>
               <div class="col-md-4"><label class="form-label">Staff types</label>
                 <div>
                   <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="mft1" [checked]="mf.applies_types.includes('FULL_TIME')" (change)="toggleType('FULL_TIME')"><label class="form-check-label" for="mft1">Full time</label></div>
@@ -205,9 +220,10 @@
           <div class="d-flex gap-2 align-items-center mb-2">
             <select class="form-select form-select-sm w-auto" [(ngModel)]="bandRole" (ngModelChange)="showBands()" data-testid="hr-set-band-role">
               <option value="">Default set</option>
-              <option *ngFor="let r of roles" [value]="r">{{r}}</option>
+              <optgroup label="Job roles"><option *ngFor="let p of positions" [value]="'job:' + p.id">{{p.name}}</option></optgroup>
+              <optgroup label="Login roles"><option *ngFor="let r of roles" [value]="r">{{r}}</option></optgroup>
             </select>
-            <span class="small text-muted" *ngIf="bandRole && !hasOwnBands">No set of its own yet; this role uses the default.</span>
+            <span class="small text-muted" *ngIf="bandRole && !hasOwnBands">No set of its own yet; this role uses its login role's set, or the default.</span>
             <button *ngIf="bandRole && !hasOwnBands && !bands.length" class="btn btn-outline-secondary btn-sm" type="button" (click)="startOwnBands()" data-testid="hr-set-band-copy">Start from the default</button>
           </div>
           <table class="table table-sm align-middle" data-testid="hr-set-bands">

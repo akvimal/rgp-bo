@@ -1,4 +1,4 @@
-import { itemsToAdd, STARTER, starterView, SUGGESTIONS } from './hr-starter';
+import { itemsToAdd, rolesToAdd, STARTER, starterView, SUGGESTIONS } from './hr-starter';
 
 describe('starter pay structure', () => {
   it('the starter set is the same for every kind of business and holds no statutory deduction', () => {
@@ -41,5 +41,18 @@ describe('what to add', () => {
   });
   it('a suggestion sharing a code with a starter item is added once', () => {
     expect(itemsToAdd('general', { starter: true, codes: ['DA'] }, [], []).filter((i) => i.code === 'DA')).toHaveLength(1);
+  });
+});
+
+describe('starter job roles', () => {
+  it('offers the shop roles to every business and the pharmacist to a pharmacy only', () => {
+    expect(rolesToAdd('general', []).map((r) => r.name)).toEqual(['Store manager', 'Sales staff']);
+    expect(rolesToAdd('pharmacy', []).map((r) => r.name)).toEqual(['Store manager', 'Sales staff', 'Pharmacist']);
+  });
+  it('leaves out the ones that exist already, by name in any case, so a second press adds nothing', () => {
+    expect(rolesToAdd('pharmacy', ['store MANAGER', ' Sales staff ', 'Pharmacist'])).toEqual([]);
+  });
+  it('carries the usual login role as a hint only', () => {
+    expect(rolesToAdd('general', []).map((r) => r.login_role)).toEqual(['Store Head', 'Sales Staff']);
   });
 });

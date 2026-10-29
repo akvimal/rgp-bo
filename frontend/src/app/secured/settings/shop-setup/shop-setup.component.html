@@ -121,6 +121,13 @@
       </div>
       <button class="btn btn-sm btn-primary mb-3" type="button" [disabled]="hrBusy || !hrStarterMissing" (click)="hrAdd(true, [])" data-testid="hr-add-starter">{{ hrStarterMissing ? 'Add the starter set' : 'Starter set is in place' }}</button>
 
+      <div class="fw-semibold">Job roles <span class="small text-muted fw-normal">what each person does; the pay structure and KPI follow the job role. Amounts are yours to enter in HR &gt; Setup</span></div>
+      <div class="small mb-2" data-testid="hr-roles-offer">
+        <span class="me-2" *ngFor="let p of hrPositions">{{p.name}} (have);</span>
+        <span class="me-2 text-muted" *ngFor="let r of hrRolesMissing">{{r.name}}{{r.login_role ? ' (usually ' + r.login_role + ')' : ''}};</span>
+      </div>
+      <button class="btn btn-sm btn-outline-primary mb-3" type="button" [disabled]="hrBusy || !hrRolesMissing.length" (click)="hrAdd(false, [], true)" data-testid="hr-add-roles">{{ hrRolesMissing.length ? 'Add the starter job roles' : 'Job roles are in place' }}</button>
+
       <div class="fw-semibold">2. Suggestions <span class="small text-muted fw-normal">tick any that apply; you enter the amount for each person</span></div>
       <div class="row small mb-2">
         <div class="col-12 col-md-4" *ngFor="let k of [['DEDUCTION','Deductions'],['EARNING','Earnings'],['LEAVE','Leave']]">
@@ -148,7 +155,8 @@
       <div class="small text-muted" *ngIf="!hrPeople.length" data-testid="hr-people-none">Every login has a staff record.</div>
       <div class="row g-2 align-items-end mb-1" *ngFor="let p of hrPeople" data-testid="hr-person">
         <div class="col-12 col-md-3">{{p.name}}</div>
-        <div class="col-6 col-md-3"><input class="form-control form-control-sm" placeholder="Designation" [(ngModel)]="p.designation"></div>
+        <div class="col-6 col-md-2"><select class="form-select form-select-sm" [(ngModel)]="p.position_id" [attr.data-testid]="'hr-person-role-' + p.id"><option [ngValue]="null">Job role</option><option *ngFor="let r of hrPositions" [ngValue]="r.id">{{r.name}}</option></select></div>
+        <div class="col-6 col-md-2"><input class="form-control form-control-sm" placeholder="Designation" [(ngModel)]="p.designation"></div>
         <div class="col-6 col-md-2"><input class="form-control form-control-sm" type="date" [(ngModel)]="p.join_date"></div>
         <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" type="button" (click)="hrCreateStaff(p)" [attr.data-testid]="'hr-person-add-' + p.id">Create staff record</button></div>
       </div>

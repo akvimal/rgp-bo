@@ -25,13 +25,12 @@ async function comp(api: any, code: string) {
   return c.id as number;
 }
 
-test('HRP-1 a job role holds a pay structure; it needs a name and an earning, and only the Business Head defines it', async ({ api }) => {
+test('HRP-1 a job role holds a pay structure; it needs a name, a structure with amounts needs an earning, and only the Business Head defines it', async ({ api }) => {
   await cleanup(api);
   const basic = await comp(api, 'BASIC');
   const fixed = await comp(api, 'FIXED_DED');
   expect((await api.request('GET', '/hr/positions', undefined, HEAD)).status).toBe(403);
   expect((await api.request('POST', '/hr/positions', { name: '', lines: [{ component_id: basic, amount: 100 }] }, MGR)).status).toBe(400);
-  expect((await api.request('POST', '/hr/positions', { name: NAME, lines: [] }, MGR)).status).toBe(400);
   expect((await api.request('POST', '/hr/positions', { name: NAME, lines: [{ component_id: fixed, amount: 100 }] }, MGR)).status).toBe(400);
   expect((await api.request('POST', '/hr/positions', { name: NAME, lines: [{ component_id: 999999, amount: 100 }] }, MGR)).status).toBe(400);
   const ok = await api.request('POST', '/hr/positions', { name: NAME, lines: [{ component_id: basic, amount: 12000 }, { component_id: fixed, amount: 500 }, { component_id: basic, amount: 12500 }] }, MGR);
