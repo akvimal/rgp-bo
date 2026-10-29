@@ -46,7 +46,7 @@ with latest as (
   select distinct product_id from pur
    where prev_mrp > 0 and (mrp_cost / prev_mrp >= 2.5 or mrp_cost / prev_mrp <= 0.4) and invoice_date >= current_date - 730
 )
-select p.id as product_id, p.title, p.pack, public.sale_gst(l.tax::double precision)::float8 as tax, l.mrp_cost::float8 as mrp, l.cost::float8 as cost,
+select p.id as product_id, p.title, p.pack, public.gst_sale_rate(p.id, l.tax::double precision)::float8 as tax, l.mrp_cost::float8 as mrp, l.cost::float8 as cost,
        (1 - coalesce(l.ptr_cost, l.cost * (1 + l.tax / 100.0)) / l.mrp_cost)::float8 as trade_margin,
        case when r.cum is null then 'C' when r.cum <= 0.70 then 'A' when r.cum <= 0.90 then 'B' else 'C' end as abc,
        (sp.product_id is not null) as pack_suspect, st.units

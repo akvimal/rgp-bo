@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { ComplianceService } from '../compliance/compliance.service';
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { Store } from "src/entities/store.entity";
@@ -31,6 +32,7 @@ export class StoreService {
     private readonly audit: AuditService,
     private readonly platform: PlatformService,
     private readonly assistant: ChecklistAssistant,
+    private readonly compliance: ComplianceService,
   ) {}
 
   async findStores() {
@@ -91,7 +93,7 @@ export class StoreService {
   /** Replaces the store's ship-to details and licences (the list sent is the whole list), checked and audited. */
   async saveLicenses(id: number, body: any, userid: number) {
     const store = await this.ownStore(userid, id);
-    const TYPES = ["RETAIL_20_21", "WHOLESALE_20B_21B", "FSSAI", "OTHER"];
+    const TYPES = ["RETAIL_20_21", "WHOLESALE_20B_21B", "FSSAI", "SHOP_EST", "TRADE", "OTHER"];
     const text = (v: any, max: number, label: string) => {
       const t = typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
       if (t.length > max) throw new BadRequestException(`${label} can be at most ${max} characters.`);
@@ -177,12 +179,13 @@ export class StoreService {
       ...(values.approval_mode !== undefined ? { approvalmode: values.approval_mode } : {}),
       ...(values.operator_required !== undefined ? { operatorrequired: values.operator_required } : {}),
       ...(values.cash_refund_limit !== undefined ? { cashrefundlimit: values.cash_refund_limit } : {}),
+      ...(values.returns_allowed !== undefined ? { returnsallowed: values.returns_allowed } : {}),
       ...(values.operator_hold_minutes !== undefined ? { operatorholdminutes: values.operator_hold_minutes } : {}),
     } as any);
     const after = await this.getProfile(id);
     await this.audit.record({
       userId: userid, action: "store.profile_updated", entityType: "stores", entityId: id,
-      summary: `${store.location.trim()}: ${after.shiftmode}-based shifts, ${after.till} till, operator ${after.operatorrequired ? "asked" : "not asked"}`,
+      summary: `${store.location.trim()}: ${after.shiftmode}-based shifts, ${after.till} till, operator ${after.operatorrequired ? "asked" : "not asked"}, returns ${after.returnsallowed ? "taken" : "not taken"}`,
       details: { before, after },
     });
     return after;
@@ -622,6 +625,8 @@ export class StoreService {
       throw new Error("Store is required");
     }
     await this.assertUserAssignedToStore(userid, storeid);
+    // "do this to continue": an unclosed shift of an earlier day is closed first, or a reason is given
+    await this.compliance.enforce({ id: userid }, storeid, 'open', body.compliancereasons);
     const profile = await loadStoreProfile(this.manager, storeid);
     const staffBased = profile?.shiftmode === "staff";
     // Staff-based: the drawer belongs to the person opening it (a manager may open one for somebody else).
@@ -741,6 +746,8 @@ export class StoreService {
     if (shift.status === "CLOSED") {
       throw new BadRequestException("This shift is already closed.");
     }
+    // "do this to continue": a stock count far enough overdue is done first, or a reason is given
+    await this.compliance.enforce({ id: userid }, shift.storeid, 'close', body.compliancereasons);
 
     // Drawer count: prefer the denomination breakdown; fall back to a plain
     // number; reject an empty count unless the caller explicitly allows zero.

@@ -49,7 +49,7 @@
           <label class="form-label">Location</label>
           <input class="form-control" data-testid="store-s-location" [(ngModel)]="storeForm.location" placeholder="e.g. Main Store">
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-2" *ngIf="auth.packOn('pharmacy')">
           <label class="form-label">Type</label>
           <select class="form-select" data-testid="store-s-type" [(ngModel)]="storeForm.storetype">
             <option value="pharmacy">Pharmacy</option>
@@ -87,7 +87,7 @@
             <tr *ngFor="let store of stores" data-testid="store-s-row" [attr.data-store-id]="store.id">
               <td>{{store.location}}</td>
               <td>{{store.business?.name || '-'}}</td>
-              <td data-testid="store-row-type">{{store.storetype === 'other' ? 'Other' : 'Pharmacy'}}</td>
+              <td data-testid="store-row-type">{{auth.packOn('pharmacy') ? (store.storetype === 'other' ? 'Other' : 'Pharmacy') : '-'}}</td>
               <td class="small" data-testid="store-row-deposit">{{depositSummary(store)}}</td>
               <td>
                 <span class="badge bg-success" *ngIf="store.isActive && !store.isArchived">Active</span>
@@ -109,7 +109,7 @@
 
       <div *ngIf="activeTab === 'details' && selectedStore?.id" class="mt-4 border-top pt-3" data-testid="store-lic-panel">
         <h6 class="mb-1">Address &amp; licences: {{selectedStore.location}}</h6>
-        <div class="small text-muted mb-2">A drug licence belongs to the premises, so each store has its own. Vendors ask for the licence number and address of the store they deliver to. The GSTIN is one per business and is kept under Business details.</div>
+        <div class="small text-muted mb-2">A licence belongs to the premises, so each store has its own. Vendors ask for the licence number and address of the store they deliver to. The GSTIN is one per business and is kept under Business details.</div>
         <div class="row g-2 align-items-end mb-2">
           <div class="col-12 col-md-4" *ngIf="lic">
             <span class="badge" [ngClass]="licenceBadge(lic.licensestatus)" data-testid="store-lic-status">{{licenceLabel(lic.licensestatus)}}</span>
@@ -213,6 +213,12 @@
               <div class="form-check"><input class="form-check-input" type="checkbox" id="pf-op" [(ngModel)]="profile.operatorrequired" data-testid="store-profile-operator">
                 <label class="form-check-label" for="pf-op">Ask who is serving on each bill</label></div>
               <div class="form-text">Turn off where everyone bills under their own login.</div>
+            </div>
+            <div class="col-12 col-lg-6">
+              <div class="form-check"><input class="form-check-input" type="checkbox" id="pf-returns" [(ngModel)]="profile.returnsallowed" [disabled]="!auth.moduleOn('returns')" data-testid="store-profile-returns">
+                <label class="form-check-label" for="pf-returns">This store takes returns</label></div>
+              <div class="form-text" *ngIf="auth.moduleOn('returns')">Turn off where goods are never taken back. Returns already recorded stay and can still be settled.</div>
+              <div class="form-text text-warning" *ngIf="!auth.moduleOn('returns')" data-testid="store-profile-returns-off">Returns are switched off for the whole business (Settings > Shop setup).</div>
             </div>
             <div class="col-12 col-lg-6">
               <label class="form-label">Largest cash refund on one return</label>

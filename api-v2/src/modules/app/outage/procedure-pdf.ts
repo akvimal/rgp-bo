@@ -1,6 +1,6 @@
 import { join } from 'path';
 import PDFDocument = require('pdfkit');
-import { PROCEDURE } from './outage-kit';
+import { procedureFor } from './outage-kit';
 import { stamp } from './price-list-pdf';
 
 const FONT_DIR = join(__dirname, '..', '..', '..', 'assets', 'fonts');
@@ -9,7 +9,7 @@ const FONT_DIR = join(__dirname, '..', '..', '..', 'assets', 'fonts');
  * The one page kept in the bill book: what the counter does when the power goes, in large plain steps, with blanks to write the numbers that
  * matter on the day (who to call, where the bill book starts). Printed from the Outage kit page.
  */
-export function buildProcedurePdf(business: string, generatedAt: Date): Promise<Buffer> {
+export function buildProcedurePdf(business: string, generatedAt: Date, pharmacy = true): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margins: { top: 36, left: 44, right: 44, bottom: 30 }, info: { Title: 'Outage procedure', Author: business } });
     const chunks: Buffer[] = [];
@@ -25,7 +25,7 @@ export function buildProcedurePdf(business: string, generatedAt: Date): Promise<
     doc.moveDown(0.8);
 
     let n = 1;
-    for (const section of PROCEDURE) {
+    for (const section of procedureFor(pharmacy)) {
       doc.font('B').fontSize(13).fillColor('#1d4ed8').text(section.heading, { width: W });
       doc.moveDown(0.25);
       for (const step of section.steps) {

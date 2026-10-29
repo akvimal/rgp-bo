@@ -4,6 +4,18 @@
     <div class="alert alert-info py-2" *ngIf="storeId === null || storeId === undefined" data-testid="shiftdesk-nostore">Select a store in the header to open or close a shift.</div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="shiftdesk-message">{{message}}</div>
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="shiftdesk-error">{{error}}</div>
+    <div *ngIf="gateItems.length" class="card border-warning mb-3" data-testid="shiftdesk-gate">
+      <div class="card-body">
+        <h2 class="h6">Do this to continue</h2>
+        <div class="small text-muted mb-2">Each one is done first, or you say why it cannot be. Your store head sees the reasons.</div>
+        <div class="border rounded p-2 mb-2" *ngFor="let i of gateItems">
+          <strong>{{i.label}}</strong> <span class="small text-muted">due {{i.due_on | date:'d MMM'}}</span>
+          <input class="form-control form-control-sm mt-1" [(ngModel)]="gateReasons[i.id]" maxlength="300" placeholder="Why can it not be done now?" [attr.aria-label]="'Reason for ' + i.label" [attr.data-testid]="'shiftdesk-gate-reason-' + i.id">
+        </div>
+        <button class="btn btn-warning btn-sm me-2" [disabled]="!gateReady || busy" (click)="goAhead()" data-testid="shiftdesk-gate-go">Go ahead with these reasons</button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="stayHere()">Not yet</button>
+      </div>
+    </div>
 
     <ng-container *ngIf="storeId !== null && storeId !== undefined">
       <div class="d-flex align-items-center flex-wrap gap-2 mb-3" *ngIf="operators.length && !selfOnly" data-testid="shiftdesk-operator-box">

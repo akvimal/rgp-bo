@@ -135,7 +135,14 @@ export class PurchaseInvoiceService {
         }
         const invoice = await this.purchaseInvoiceRepository.findOne({ where: { id: +dto.invoiceid } });
         const gstLine = this.computeLineGst(+(dto.total || 0), (dto as any).taxpcnt, invoice?.supplytype || 'INTRA');
-        const saved = await this.purchaseInvoiceItemRepository.save({...dto, ...gstLine, createdby:userid});
+        // the HSN the vendor printed on the line, else the product's own; it feeds the product's HSN when that is not known (GST > HSN codes)
+        const printed = String((dto as any).hsn ?? '').replace(/\s+/g, '');
+        let hsn: string | null = /^\d{4}(\d{2}){0,2}$/.test(printed) ? printed : null;
+        if(!hsn){
+          const [own] = await this.manager.query(`select nullif(btrim(hsn_code), '') as hsn from product where id = $1`, [+dto.productid]);
+          hsn = own?.hsn ?? null;
+        }
+        const saved = await this.purchaseInvoiceItemRepository.save({...dto, hsn, ...gstLine, createdby:userid});
         await this.recomputeInvoiceGstTotals(+dto.invoiceid);
         return saved;
     }

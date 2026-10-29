@@ -43,6 +43,9 @@ describe('alert messages', () => {
       expired_stock: ['expired_stock'],
       adjustment_other: ['adjustment_other'],
       weekly_review: ['weekly_review_unsigned'],
+      gst_rate_change: ['gst_rate_change_soon'],
+      gst_filing_due: ['gst_filing_due', 'gst_filing_late'],
+      compliance_late: ['compliance_escalated', 'compliance_parked'],
     };
     expect(KINDS.map((k) => k.kind).sort()).toEqual(Object.keys(codes).sort());
     for (const list of Object.values(codes)) for (const c of list) expect(MESSAGE_CODES).toContain(c);

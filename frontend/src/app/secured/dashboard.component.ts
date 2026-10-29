@@ -4,6 +4,8 @@ import { Subscription } from "rxjs";
 import { DateUtilService } from "./date-util.service";
 import { DashboardService } from "./dashboard.service";
 import { StoreContextService } from "../@core/store-context.service";
+import { NeedsItem } from "../shared/components/needs-strip.component";
+import { ComplianceService } from "./compliance/compliance.service";
 
 @Component({
     templateUrl: './dashboard.component.html'
@@ -36,6 +38,29 @@ export class DashboardComponent implements OnDestroy {
       if (!threshold) return 0;
       return Math.min(Math.round((bal / threshold) * 100), 100);
     }
+    /** the view this role opens and its widgets in order (the server decides); the page renders the cards the role's list holds */
+    view = '';
+    widgets: string[] = [];
+    viewTitles: any = { owner: 'Owner view', manager: 'Manager view', staff: 'Staff view', counter: 'Counter view', personal: 'My page', platform: 'Platform' };
+    updated = '';
+    complianceNeeds = 0;
+
+    /** owner, manager and platform keep the long-standing cards; staff, counter and personal have their own views */
+    get legacy(): boolean { return ['owner', 'manager', 'platform'].includes(this.view); }
+    get viewTitle(): string { return this.viewTitles[this.view] || 'Dashboard'; }
+    showWidget(key: string): boolean { return !this.widgets.length || this.widgets.includes(key); }
+
+    /** what is waiting, from figures the server has already scoped to this person */
+    get needs(): NeedsItem[] {
+      const k = this.summary?.kpis || {};
+      return [
+        { key: 'compliance', label: 'compliance items due or late', count: this.complianceNeeds, tone: 'bad', link: ['/secure/compliance'] },
+        { key: 'approvals', label: 'purchase approvals', count: +k.pending_purchase_approvals || 0, tone: 'bad', link: ['/secure/purchases/orders'] },
+        { key: 'deposit', label: k.deposit_due ? 'cash deposit due' : '', count: k.deposit_due ? 1 : 0, tone: 'bad', link: ['/secure/store/cash'] },
+        { key: 'overdue', label: 'overdue purchase invoices', count: +k.overdue_invoices || 0, tone: 'warn', link: ['/secure/purchases'] },
+        { key: 'lowstock', label: 'low stock items', count: +k.low_stock_items || 0, tone: 'info', link: ['/secure/store/stock'] },
+      ];
+    }
     selectedStoreId:number | null = null;
     selectedStoreLabel = 'All stores';
     loading = false;
@@ -46,13 +71,16 @@ export class DashboardComponent implements OnDestroy {
     constructor(
       private dashboardService: DashboardService,
       private dateService: DateUtilService,
-      private storeContext: StoreContextService
+      private storeContext: StoreContextService,
+      private compliance: ComplianceService
     ){}
     
     ngOnInit(){
+        this.dashboardService.getView().subscribe({ next: (v:any) => { this.view = v?.view || 'owner'; this.widgets = v?.widgets || []; }, error: () => { this.view = 'owner'; } });
         this.selectedStoreId = this.storeContext.selectedStoreId;
         this.refresh();
         this.loadAdminSummary();
+        this.compliance.summary().subscribe({ next: (c) => (this.complianceNeeds = c.needs), error: () => {} });
         this.loadTrends();
         this.subscriptions.add(
           this.storeContext.selectedStoreId$.subscribe((selected:any) => {
@@ -80,6 +108,7 @@ export class DashboardComponent implements OnDestroy {
           this.purchaseApprovalBreakdown = data?.approvalbreakdown || [];
           this.selectedStoreLabel = this.resolveStoreLabel();
           this.loading = false;
+          this.updated = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         },
         error: (err) => {
           this.loading = false;

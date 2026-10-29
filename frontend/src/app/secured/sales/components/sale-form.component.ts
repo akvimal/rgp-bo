@@ -1,3 +1,4 @@
+import { GST_STATES, isValidGstin } from "../../purchases/vendors/gst-util";
 import { Component } from "@angular/core";
 import { FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -20,6 +21,8 @@ import { detailProblems } from "src/app/packs/pharmacy/drug-register-rules";
 export class SaleFormComponent {
 
     customer = {existing:false,mobile:'',name:''}
+    /** the states of GST, for a delivery to another state */
+    gstStates = GST_STATES;
     sale:Sale = {status:'NEW',items:[],digimethod:'UPI'}
     
     showDocument = false;
@@ -58,7 +61,7 @@ export class SaleFormComponent {
       private prodUtilService: ProductUtilService,
       private operatorContext: OperatorContextService,
       private storeContext: StoreContextService,
-      private auth: AuthService,
+      public auth: AuthService,
       private drugRegister: DrugRegisterService){}
 
     ngOnInit(){
@@ -205,6 +208,7 @@ export class SaleFormComponent {
 
   /** chronic medicines on the bill (more_props.chronic is stored as true or "true") */
   get chronicItems(): any[] {
+    if (!this.auth.moduleOn('refills')) return [];      // refill follow-up is a pharmacy module: without it a chronic medicine is nothing special
     return (this.sale.items || []).filter((i:any) => i.edited && String(i.more_props?.chronic) === 'true');
   }
 
@@ -263,6 +267,12 @@ export class SaleFormComponent {
       this.submitError = 'Enter the customer mobile number: this bill has a chronic medicine.';
       return;
     }
+    const buyer = String(this.sale.buyergstin || '').trim();
+    if (buyer && !isValidGstin(buyer)) {
+      this.submitError = "The buyer's GSTIN is not valid. Check the 15 characters, the state code and the check digit.";
+      return;
+    }
+    if (buyer) this.sale.buyergstin = buyer.toUpperCase();
     if (status === 'COMPLETE' && this.operatorContext.needsOperator()) {
       this.submitError = 'Choose who is serving (Staff box at the top) before completing the bill.';
       return;

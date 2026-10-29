@@ -125,7 +125,7 @@ export class ProductService {
            from pur where prev_mrp > 0 and (mrp_cost / prev_mrp >= 2.5 or mrp_cost / prev_mrp <= 0.4) and invoice_date >= current_date - 730
           order by product_id, invoice_date desc
        ), latest as (
-         select distinct on (product_id) product_id, mrp_cost, ptr_value, tax, public.sale_gst(tax::double precision) as stax from pur order by product_id, invoice_date desc, id desc
+         select distinct on (product_id) product_id, mrp_cost, ptr_value, tax, public.gst_sale_rate(product_id, tax::double precision) as stax from pur order by product_id, invoice_date desc, id desc
        ), cur as (select product_id, sale_price from product_price2 where end_date > current_date and sale_price > 0)
        select p.id, p.title, p.pack, l.mrp_cost::numeric as mrp, round(l.ptr_value::numeric, 2) as rate, round(c.sale_price::numeric, 2) as price,
               round(j.ratio::numeric, 2) as jump_ratio, to_char(j.jump_date, 'YYYY-MM-DD') as jump_date,
@@ -146,7 +146,7 @@ export class ProductService {
       throw new BadRequestException('Enter a sale price above 0.');
     }
     const [lim] = await manager.query(
-      `select min(pii.mrp_cost) as mrp, max(pii.ptr_cost) as ptr, max(pii.ptr_value) as ptrex, public.sale_gst(max(coalesce(pii.tax_pcnt, 0))::double precision) as tax
+      `select min(pii.mrp_cost) as mrp, max(pii.ptr_cost) as ptr, max(pii.ptr_value) as ptrex, public.gst_sale_rate($1::int4, max(coalesce(pii.tax_pcnt, 0))::double precision) as tax
          from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
         where pii.product_id = $1 and pii.mrp_cost > 0 and pii.ptr_cost > 0
           and pi.invoice_date = (select max(pi2.invoice_date) from purchase_invoice_item pii2

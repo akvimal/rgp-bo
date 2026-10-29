@@ -62,10 +62,22 @@ Each is a pack plus, for some, one change in core (below).
 | Phase | What | State |
 |---|---|---|
 | 1 | Business type, pack and module mechanism, sale hooks; the drug register as the first pack; the chronic rule moved out of the sale controller | **Built** |
-| 2 | Move the rest of section 2 behind the pharmacy pack; terminology lookup; choose the business type at setup; a `general` business shows no pharmacy menu, field or word | Next |
-| 3 | Inventory tracking modes (batch+expiry optional, then serial, then variants); attribute sets | After 2 |
+| 2 | Move the rest of section 2 behind the pharmacy pack; terminology lookup; choose the business type at setup; a `general` business shows no pharmacy menu, field or word | **Built** (see below) |
+| 3 | Inventory tracking modes (batch+expiry optional, then serial, then variants); attribute sets | After 2; scoped in `CATALOGUE_KINDS_AND_CATEGORIES.md` (also services and plans) |
 | 4 | A first non-pharmacy pack as the proof (apparel variants or electronics serials are the nearest to what core has) | After 3 |
 | 5 | Fitness and auto repair: they are different in kind (no stock, or parts plus labour), so they come last | Later |
+
+### Phase 2: what was done
+
+- **Configuration from the server.** `GET /packs/config` returns the words (`labels`), product attributes by category, document types and licence types for the business: a base for every business plus what each of its packs brings (`api-v2/src/packs/pack-config.ts`, `packs/pharmacy/pharmacy-config.ts`). The static `props.json` is gone; `PropsService` reads the endpoint after sign-in.
+- **Words.** `LabelService` and the `term` pipe (`item`, `items`, `Item`, `Goods`, `shop`, `Professional`...). A pharmacy says medicine; another business says item.
+- **Refills** is a second pharmacy-pack module (`refills`): the refills screen and API, sale suggestions, the chronic-mobile rule and the refill line on the bill go with it.
+- **Alerts** carry an optional `pack`; the pharmacy's (registration expiring) are not created for another kind of business.
+- **Screens** gated by `AuthService.packOn('pharmacy')` / `moduleOn('refills')`: H1 badge, customers' buying pattern, invoice quick-add product, pharmacist fields in staff and users, store type, the scheduled-drugs audit scope. Licence types come from the configuration (the drug licences are the pack's; shop establishment, trade, FSSAI are the base's).
+- **Outage kit** leaves out the Rx column and the pharmacy steps for a business that is not a pharmacy.
+- **Choosing the type**: Shop setup > Kind of business (Business Head), and `businesstype` on the Businesses admin create/update. Changing it never deletes anything; the pack's modules default on or off by type, and an explicit module choice still wins.
+- **Tests**: `business-types.spec.ts` (BT-1..4) flips the QA business to `general` and back; unit tests for `buildConfig`, `refills`, `isBusinessType`, `procedureFor`.
+- **Still pharmacy in wording** (to find as other types arrive): the audit guide and finance help text, a few report titles.
 
 ## 6. Rules to keep it pluggable
 

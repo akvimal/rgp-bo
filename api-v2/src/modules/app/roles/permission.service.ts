@@ -120,6 +120,15 @@ export class PermissionService {
     return role.name === 'Business Head' || role.name === 'Owner-operator' || this.normalizePermissions(role).some((p) => p.resource === 'finance');
   }
 
+  /** GST rate changes, HSN, registers and the monthly summary: the people who run the business. */
+  async canUseGstFiling(roleid: number | string): Promise<boolean> {
+    const role = await this.findRole(roleid);
+    if (!role) {
+      return false;
+    }
+    return role.name === 'Business Head' || role.name === 'Owner-operator' || this.normalizePermissions(role).some((p) => p.resource === 'gstfiling');
+  }
+
   /** The weekly exceptions review: the people who run the shop. */
   async canReview(roleid: number | string): Promise<boolean> {
     const role = await this.findRole(roleid);

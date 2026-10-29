@@ -1,4 +1,4 @@
-import { ALL_ON, blockedBy, filterPermissions, gatedPath, packsOf, parseModulesInput, resolveModules } from './modules';
+import { ALL_ON, blockedBy, filterPermissions, gatedPath, isBusinessType, packsOf, parseModulesInput, resolveModules } from './modules';
 
 describe('modules', () => {
   it('treats an empty setting as everything on', () => {
@@ -14,6 +14,50 @@ describe('modules', () => {
     expect(resolveModules({}).drug_register).toBe(true);                                         // no type: the businesses that were here first are pharmacies
     expect(packsOf('pharmacy')).toEqual(['pharmacy']);
     expect(packsOf('general')).toEqual([]);
+  });
+
+  it('treats the refill follow-up as a pharmacy module too, gated by its own paths and permission', () => {
+    expect(resolveModules({}, 'general').refills).toBe(false);
+    expect(resolveModules({}, 'pharmacy').refills).toBe(true);
+    expect(gatedPath('/refills')).toBe(true);
+    expect(gatedPath('/sale-suggestions/x')).toBe(true);
+    const off = resolveModules({}, 'general');
+    expect(blockedBy('/refills', off)).toMatch(/Refill follow-up/);
+    expect(blockedBy('/refills', resolveModules({}, 'pharmacy'))).toBeNull();
+    const perms = [{ resource: 'refills', path: '/secure/quality/refills', policies: [{ action: 'view' }] }, { resource: 'sales', path: ['/secure/sales'], policies: [{ action: 'read' }] }];
+    expect(filterPermissions(perms, off).map((p) => p.resource)).toEqual(['sales']);
+    expect(filterPermissions(perms, resolveModules({ refills: true }, 'general')).map((p) => p.resource)).toEqual(['refills', 'sales']);   // a choice wins
+  });
+
+  it('lets a saved choice be forgotten, so the business type decides again', () => {
+    expect(parseModulesInput({ drug_register: null, refills: null })).toEqual({ value: { drug_register: null, refills: null } });
+    expect(parseModulesInput({ hr: 'yes' }).error).toBeTruthy();
+    expect(resolveModules({ drug_register: true }, 'general').drug_register).toBe(true);
+    expect(resolveModules({}, 'general').drug_register).toBe(false);
+  });
+
+  it('returns are on unless the business switches them off, and the switch takes the returns paths and menu with it', () => {
+    expect(resolveModules({}, 'pharmacy').returns).toBe(true);
+    expect(resolveModules({}, 'general').returns).toBe(true);
+    const off = resolveModules({ returns: false }, 'general');
+    expect(off.returns).toBe(false);
+    expect(gatedPath('/salereturns')).toBe(true);
+    expect(gatedPath('/sales/returns')).toBe(true);
+    expect(gatedPath('/sales/123')).toBe(false);                                   // an ordinary bill is not a return
+    expect(blockedBy('/salereturns', off)).toMatch(/Sale returns/);
+    expect(blockedBy('/sales/returns', off)).toMatch(/Sale returns/);
+    expect(blockedBy('/salereturns', resolveModules({}, 'pharmacy'))).toBeNull();
+    const perms = [{ resource: 'returns', path: '/secure/sales/returns', policies: [{ action: 'view' }] }, { resource: 'sales', path: ['/secure/sales'], policies: [{ action: 'read' }] }];
+    expect(filterPermissions(perms, off).map((p) => p.resource)).toEqual(['sales']);
+    expect(parseModulesInput({ returns: false }).value).toEqual({ returns: false });
+    expect(parseModulesInput({ returns: 'no' }).error).toBeTruthy();
+  });
+
+  it('knows the business types', () => {
+    expect(isBusinessType('pharmacy')).toBe(true);
+    expect(isBusinessType('general')).toBe(true);
+    expect(isBusinessType('rockets')).toBe(false);
+    expect(isBusinessType(undefined)).toBe(false);
   });
 
   it('gates the drug register path, and drops its permission when the module is off', () => {

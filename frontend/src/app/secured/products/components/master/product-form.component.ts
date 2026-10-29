@@ -1,3 +1,4 @@
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -44,7 +45,7 @@ export class ProductFormComponent {
       hasCategories = false;
       fromRequest:number = 0;
       
-      constructor(private propsService:PropsService, 
+      constructor(public auth: AuthService, private propsService:PropsService, 
         private service:ProductsService, 
         private messageService: MessageService,
         private router:Router,

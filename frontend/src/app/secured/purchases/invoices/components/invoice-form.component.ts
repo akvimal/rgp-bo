@@ -1,3 +1,4 @@
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component, OnInit } from "@angular/core";
 import { from } from "rxjs";
 import { concatMap, toArray } from "rxjs/operators";
@@ -70,6 +71,7 @@ export class InvoiceFormComponent implements OnInit {
       });
 
     constructor(
+      public auth: AuthService,
       private route: ActivatedRoute,
       private router: Router,
       private service:InvoiceService,
@@ -502,7 +504,8 @@ export class InvoiceFormComponent implements OnInit {
           return new Promise<void>((resolve) => this.service.saveItem({
             invoiceid, productid: l.productid, batch: String(l.batch).trim().toUpperCase(), ...(l.exp && !l.noexpiry ? { expdate: firstDay(l.exp) } : {}),
             mrpcost: +l.mrp, qty: +l.qty, freeqty: +l.free || 0, ptrvalue: rate, ptrcost: Math.round(rate * (1 + tax / 100) * 100) / 100,
-            discpcnt: +l.disc || 0, taxpcnt: tax, total: this.amountOf(l)
+            discpcnt: +l.disc || 0, taxpcnt: tax, total: this.amountOf(l),
+            ...(String(l.hsn || '').replace(/\s+/g, '') ? { hsn: String(l.hsn).replace(/\s+/g, '') } : {})        // the code the vendor printed, kept for the product's HSN
           } as any).subscribe(() => resolve(), () => { failed++; resolve(); }));
         }),
         toArray()

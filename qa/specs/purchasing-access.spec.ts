@@ -70,11 +70,11 @@ test.describe('Purchasing access and menu @p0', () => {
       });
       return out;
     });
-    expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-shift']);
-    expect(groups.stock).toEqual(['nav-store', 'nav-products', 'nav-stock-audits']);
-    expect(groups.buy).toEqual(['nav-purchases', 'nav-vendor-issues', 'nav-expenses']);
+    expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-shift', 'nav-outage']);
+    expect(groups.stock).toEqual(['nav-store', 'nav-products', 'nav-stock-audits', 'nav-schedule-register', 'nav-review']);
+    expect(groups.buy).toEqual(['nav-purchases', 'nav-vendor-issues', 'nav-expenses', 'nav-gst-filing', 'nav-finance']);
     expect(groups.people).toEqual(['nav-my-hr', 'nav-leave-approvals', 'nav-kpi-rate', 'nav-kpi-mine', 'nav-hr']);
-    expect(groups.oversight).toEqual(['nav-reports', 'nav-quality', 'nav-digital-payments']);
+    expect(groups.oversight).toEqual(['nav-reports', 'nav-compliance', 'nav-quality', 'nav-digital-payments']);
     await expect(bh.page.getByTestId('nav-vendors')).toHaveCount(0);    // Vendors is a tab of Purchase now
     await bh.page.getByTestId('nav-purchases').click();
     await expect(bh.page.getByTestId('nav-vendors')).toBeVisible();
@@ -86,7 +86,7 @@ test.describe('Purchasing access and menu @p0', () => {
     await expect(sales.page.getByTestId('nav-section-oversight')).toBeVisible();     // digital payments only
     await expect(sales.page.getByTestId('nav-digital-payments')).toBeVisible();
     await expect(sales.page.getByTestId('nav-reports')).toHaveCount(0);
-    await expect(sales.page.getByTestId('nav-dashboard')).toHaveCount(0);   // not open to this role
+    await expect(sales.page.getByTestId('nav-dashboard')).toBeVisible();   // every role has its own view of the dashboard
     await expect(sales.page.getByTestId('nav-vendors')).toHaveCount(0);
     await expect(sales.page.getByTestId('nav-purchases')).toHaveCount(0);   // no purchasing workspace ...
     await expect(sales.page.getByTestId('nav-purchase-requests')).toBeVisible();   // ... only the requests page

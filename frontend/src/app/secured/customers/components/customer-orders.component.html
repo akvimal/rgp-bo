@@ -17,14 +17,14 @@
             <div class="hist-bill" *ngFor="let s of saleOrders; index as i" data-testid="cust-order">
                 <div class="hist-bill-head">
                     <label>
-                        <input type="checkbox" class="form-check-input mt-0" [checked]="allChosen(s)" (change)="toggleAll(i,$event)" aria-label="Tick every medicine on this bill">
+                        <input type="checkbox" class="form-check-input mt-0" [checked]="allChosen(s)" (change)="toggleAll(i,$event)" [attr.aria-label]="'Tick every ' + ('item' | term) + ' on this bill'">
                         <strong>{{s.billdate | date : 'dd MMM yyyy'}}</strong>
                     </label>
                     <span class="text-muted">Bill No. {{s.billno}}</span>
                     <strong class="ms-auto">&#8377;{{s.total | number:'1.2-2'}}</strong>
                 </div>
                 <table class="table table-sm">
-                    <thead><tr><th class="hist-pick"></th><th>Medicine</th><th class="text-end">Qty</th><th class="text-end">Rate</th></tr></thead>
+                    <thead><tr><th class="hist-pick"></th><th>{{ 'Item' | term }}</th><th class="text-end">Qty</th><th class="text-end">Rate</th></tr></thead>
                     <tbody>
                         <tr *ngFor="let it of s.items" data-testid="cust-order-item">
                             <td class="hist-pick"><input type="checkbox" class="form-check-input mt-0" (change)="selectItem(it.productid,$event)" [checked]="isChosen(it.productid)" [attr.aria-label]="'Tick ' + it.title"></td>

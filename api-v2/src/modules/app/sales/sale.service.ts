@@ -1,5 +1,6 @@
 import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
-import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
+import { ModulesService } from "src/core/modules/modules.service";
+import { BadRequestException, ForbiddenException, HttpException, Injectable } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { recordStaffCredit } from "./staff-credit-rule";
 import { recordStoreCredit, settleReturn } from "./store-credit-rule";
@@ -16,6 +17,7 @@ import { SaleReturnItem } from "src/entities/salereturn-item.entity";
 import { Sale } from "src/entities/sale.entity";
 import { SaleDelivery } from "src/entities/sale-delivery.entity";
 import { StoreCashAccount } from "src/entities/store-cash-account.entity";
+import { assertIssuedBillUnchanged, assignGstInvoice, issueCreditNote } from "../gst/gst-invoice";
 
 export interface SaleListQuery {
   date?: string;
@@ -66,6 +68,8 @@ interface SalePayload {
   actinguserid?: number | null;
   shiftid?: number | null;
   storeid?: number | null;
+  buyergstin?: string | null;
+  placeofsupply?: string | null;
   items?: any[];
 }
 
@@ -76,7 +80,8 @@ export class SaleService {
     @InjectRepository(SaleItem) private readonly saleItemRepository: Repository<SaleItem>,
     @InjectRepository(SaleReturnItem) private readonly saleReturnItemRepository: Repository<SaleReturnItem>,
     @InjectEntityManager() private manager: EntityManager,
-    private readonly hooks: SaleHooks) { }
+    private readonly hooks: SaleHooks,
+    private readonly modules: ModulesService) { }
 
     async create(sale: SalePayload, userid: number, actingUserid?: number) {
         // Wrap entire sale creation in transaction to prevent orphaned data
@@ -191,6 +196,10 @@ export class SaleService {
                 sale['shiftid'] = shiftid;
                 sale['storeid'] = storeid;
 
+                // the buyer's GSTIN and the place of supply (GST); the invoice number is never taken from the client
+                await this.normaliseBuyer(transactionManager, sale);
+                delete (sale as any).gstinvoiceno; delete (sale as any).gstbusinessid;
+
                 // Step 2: Save sale header
                 const savedSale = await transactionManager.save(Sale, {...sale, createdby:userid, actinguserid: actingUserid || userid});
 
@@ -205,6 +214,9 @@ export class SaleService {
                     });
                     await transactionManager.save(SaleItem, sale.items);
                 }
+                // a completed bill of a registered business is a tax invoice with the next number of its series
+                const invoiceNo = await assignGstInvoice(transactionManager, savedSale.id);
+                if (invoiceNo) { savedSale.gstinvoiceno = invoiceNo; }
                 await recordStaffCredit(transactionManager, savedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, savedSale, actingUserid || userid);
                 // a business pack may write its own records for this bill (they stand or fall with it)
@@ -233,11 +245,41 @@ export class SaleService {
         });
     }
 
+    /** the buyer's GSTIN (checked) decides the place of supply; with none, a delivery state may be given; otherwise it is the seller's state when the invoice is numbered */
+    private async normaliseBuyer(tm: EntityManager, sale: any) {
+        if (sale.buyergstin === undefined && sale.placeofsupply === undefined) return;
+        const g = String(sale.buyergstin ?? '').trim().toUpperCase();
+        if (g) {
+            const [ok] = await tm.query(`select public.is_valid_gstin($1) as ok`, [g]);
+            if (!ok?.ok) throw new BadRequestException("The buyer's GSTIN is not valid. Check the 15 characters, the state code and the check digit.");
+            sale.buyergstin = g;
+            sale.placeofsupply = g.slice(0, 2);
+            return;
+        }
+        sale.buyergstin = null;
+        const p = String(sale.placeofsupply ?? '').trim();
+        if (p && !/^(0[1-9]|[12][0-9]|3[0-8]|97|99)$/.test(p)) throw new BadRequestException('The place of supply must be a GST state code.');
+        sale.placeofsupply = p || null;
+    }
+
+    /** a business or a store that takes no returns refuses them, whatever the screen allowed */
+    private async assertReturnsOpen(saleItemIds: number[]) {
+        const ids = saleItemIds.filter((n) => Number.isFinite(n));
+        if (!ids.length) return;
+        const rows = await this.manager.query(
+            `select distinct s.store_id from sale_item si join sale s on s.id = si.sale_id where si.id = any($1::int[])`, [ids]);
+        for (const r of rows) {
+            const why = await this.modules.returnsBlocked(r.store_id);
+            if (why) throw new ForbiddenException(why);
+        }
+    }
+
     /**
      * Create return items with transaction protection
      * Fixed: Batch insert now atomic, preventing orphaned return items
      */
     async createReturnItems(items: CreateSaleReturnItemDto[], userid: number) {
+        await this.assertReturnsOpen(items.map((i) => Number(i.saleitemid)));
         return await this.saleReturnItemRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
                 // Never let the returned quantity for a sale line exceed what
@@ -301,7 +343,12 @@ export class SaleService {
                 if (String(item['status'] || '').toUpperCase() === 'ADJUSTED' && item['id']) {
                     await settleReturn(transactionManager, item, userid);
                 }
-                return await transactionManager.save(SaleReturnItem, item);
+                const saved = await transactionManager.save(SaleReturnItem, item);
+                // a settled return of a tax invoice gets a credit note at the invoice's own rate
+                if (String(item['status'] || '').toUpperCase() === 'ADJUSTED' && item['id']) {
+                    await issueCreditNote(transactionManager, Number(item['id']), userid);
+                }
+                return saved;
             } catch (error) {
                 // Transaction will automatically rollback on error
                 if (error instanceof HttpException) { throw error; }
@@ -315,6 +362,12 @@ export class SaleService {
         // Wrap entire sale update in transaction to maintain data consistency
         return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
             try {
+                // an issued tax invoice keeps its lines and total; its number is never taken from the client
+                await assertIssuedBillUnchanged(transactionManager, sale);
+                delete (sale as any).gstinvoiceno; delete (sale as any).gstbusinessid;
+                if (!(sale as any).buyergstin && !(sale as any).placeofsupply) { delete (sale as any).buyergstin; delete (sale as any).placeofsupply; }
+                else await this.normaliseBuyer(transactionManager, sale);
+
                 // Step 1: Update sale header
                 const updatedSale = await transactionManager.save(Sale, {...sale, updatedby:userid, actinguserid: actingUserid || sale.actinguserid || userid});
 
@@ -329,6 +382,8 @@ export class SaleService {
                     });
                     await transactionManager.save(SaleItem, sale.items);
                 }
+                const invoiceNo = await assignGstInvoice(transactionManager, updatedSale.id);       // a parked bill that is completed now
+                if (invoiceNo) { updatedSale.gstinvoiceno = invoiceNo; }
                 await recordStaffCredit(transactionManager, updatedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, updatedSale, actingUserid || userid);
                 await this.hooks.saved({ manager: transactionManager, sale, saved: updatedSale, items: sale.items || [], storeId: (updatedSale as any).storeid ?? null, userId: userid, actingUserId: actingUserid });
@@ -336,7 +391,8 @@ export class SaleService {
                 // The client only needs the saved header before loading the detail route.
                 return updatedSale;
             } catch (error) {
-                // Transaction will automatically rollback on error
+                // Transaction will automatically rollback on error; a refusal (400) is passed on as it is
+                if (error instanceof HttpException) { throw error; }
                 throw new Error(`Failed to update sale: ${error.message}`);
             }
         });

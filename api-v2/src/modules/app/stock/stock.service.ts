@@ -142,7 +142,9 @@ export class StockService {
                     p.more_props,
                     pp.sale_price,
                     -- the most a unit may be priced before GST so that price + GST does not exceed the MRP; sent to the till, which may not see the MRP itself
-                    floor(((pii.mrp_cost::numeric / nullif(p.pack, 0)) / (1 + public.sale_gst(pii.tax_pcnt::double precision)::numeric / 100)) * 100) / 100 as price_ceiling
+                    floor(((pii.mrp_cost::numeric / nullif(p.pack, 0)) / (1 + public.gst_sale_rate(p.id, pii.tax_pcnt::double precision, current_date)::numeric / 100)) * 100) / 100 as price_ceiling,
+                    -- the GST the till bills for this product today (a change of rate by date, GST > Rate changes), the batch's own GST when none applies
+                    public.gst_sale_rate(p.id, pii.tax_pcnt::double precision, current_date) as sale_tax
                 from product p
                 inner join purchase_invoice_item pii
                     on pii.product_id = p.id
@@ -191,7 +193,7 @@ export class StockService {
             if (!ids || ids.length === 0) return [];
             const placeholders = ids.map((_, index) => `$${index + 1}`).join(',');
             return await this.manager.query(`
-            select piv.*, p.more_props, pp.sale_price from product_items_view piv
+            select piv.*, public.gst_sale_rate(piv.id, piv.tax_pcnt::double precision, current_date) as sale_tax, p.more_props, pp.sale_price from product_items_view piv
             inner join product p on p.id = piv.id and p.id in (${placeholders})
             left join product_price2 pp on pp.product_id = piv.id where piv.expired = false and piv.balance > 0
             order by piv.exp_date asc`, ids);

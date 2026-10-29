@@ -9,6 +9,7 @@ import { DrugRegisterService } from './drug-register.service';
 export const chronicMobileHook: SaleHook = {
   name: 'pharmacy.chronic_mobile',
   pack: 'pharmacy',
+  module: 'refills',
   async check(ctx: SaleContext) {
     const { sale, customer, manager } = ctx;
     if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return;

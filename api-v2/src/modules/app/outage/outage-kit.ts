@@ -42,6 +42,12 @@ export const OUTAGE_CAUSES = ['POWER', 'INTERNET', 'SERVER', 'OTHER'] as const;
 export type OutageCause = typeof OUTAGE_CAUSES[number];
 
 /** the procedure printed for the counter: short steps in plain words */
+/** the steps that are a pharmacy's: left out for a business that is not */
+const PHARMACY_STEPS = [
+  "For a medicine the customer takes regularly, write the customer's mobile number.",
+  'A prescription medicine (marked Rx) goes in the prescription register as usual.',
+];
+
 export const PROCEDURE: { heading: string; steps: string[] }[] = [
   { heading: 'When the power goes', steps: [
     'Make sure the PC, router and printer are on the UPS or inverter. Switch on the torch or emergency light.',
@@ -66,3 +72,5 @@ export const PROCEDURE: { heading: string; steps: string[] }[] = [
     'Enter every bill in the system, then record the outage on the Outage kit page with the first and last bill number used.',
   ] },
 ];
+
+export const procedureFor = (pharmacy: boolean) => (pharmacy ? PROCEDURE : PROCEDURE.map((p) => ({ ...p, steps: p.steps.filter((t) => !PHARMACY_STEPS.includes(t)) })));

@@ -7,7 +7,7 @@ import {
 
 export const VENDOR_TYPES = ['DISTRIBUTOR', 'MANUFACTURER', 'LOCAL', 'OTHER'];
 export const REGISTRATION_TYPES = ['REGULAR', 'COMPOSITION', 'UNREGISTERED', 'UNKNOWN'];
-export const LICENSE_TYPES = ['WHOLESALE_20B_21B', 'RETAIL_20_21', 'MANUFACTURING', 'FSSAI', 'OTHER'];
+export const LICENSE_TYPES = ['WHOLESALE_20B_21B', 'RETAIL_20_21', 'MANUFACTURING', 'FSSAI', 'SHOP_EST', 'TRADE', 'OTHER'];
 
 /** A form sends '' for an empty box: store nothing instead. */
 const Blank = () => Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? null : typeof value === 'string' ? value.trim() : value));

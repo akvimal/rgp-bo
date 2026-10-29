@@ -102,6 +102,22 @@
       </div>
     </div>
 
+    <div class="mt-4 pt-3 border-top" data-testid="biz-type">
+        <h6 class="mb-1">Kind of business</h6>
+        <p class="small text-muted">This decides which extras the system brings. A pharmacy gets the drug register, refill follow-up and medicine fields; another business gets none of them. Nothing is deleted when you change it.</p>
+        <div *ngIf="typeMessage" class="alert alert-success py-2" data-testid="biz-type-message">{{typeMessage}}</div>
+        <div *ngIf="typeError" class="alert alert-danger py-2" data-testid="biz-type-error">{{typeError}}</div>
+        <div class="row g-2 align-items-end">
+          <div class="col-auto">
+            <select class="form-select" [(ngModel)]="businessType" data-testid="biz-type-select">
+              <option *ngFor="let t of businessTypes" [value]="t.key">{{t.label}}</option>
+            </select>
+          </div>
+          <div class="col-auto"><button class="btn btn-primary" type="button" [disabled]="typeSaving" (click)="saveBusinessType()" data-testid="biz-type-save">{{ typeSaving ? 'Saving...' : 'Save' }}</button></div>
+        </div>
+        <div class="small text-muted mt-1">{{ (businessTypes[businessType === 'general' ? 1 : 0]).hint }}</div>
+    </div>
+
     <div class="mt-4 pt-3 border-top" *ngIf="modules" data-testid="biz-modules">
         <h6 class="mb-1">Modules</h6>
         <p class="small text-muted">Switch off what this business does not use. Its screens and menu entries disappear and the system refuses its requests. Nothing is deleted: switching it back on restores everything.</p>

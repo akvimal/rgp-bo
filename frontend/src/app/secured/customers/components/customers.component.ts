@@ -1,3 +1,4 @@
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component } from "@angular/core";
 import { Customer } from "../customer.model";
 import { CustomersService } from "../customers.service";
@@ -15,7 +16,7 @@ export class CustomersComponent {
     message = '';
     error = '';
 
-    constructor(private service:CustomersService, private confirm:ConfirmService){}
+    constructor(private service:CustomersService, private confirm:ConfirmService, public auth: AuthService){}
 
     ngOnInit(){
         this.fetchCustomers();

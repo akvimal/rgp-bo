@@ -1,3 +1,4 @@
+import { PropsService } from "src/app/shared/props.service";
 import { Component } from "@angular/core";
 import { FormArray, FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -23,13 +24,8 @@ export class VendorFormComponent{
         { value: 'COMPOSITION', label: 'Registered (composition)' },
         { value: 'UNREGISTERED', label: 'Not registered' },
     ];
-    readonly licenseTypes = [
-        { value: 'WHOLESALE_20B_21B', label: 'Drug licence - wholesale (20B / 21B)' },
-        { value: 'RETAIL_20_21', label: 'Drug licence - retail (20 / 21)' },
-        { value: 'MANUFACTURING', label: 'Drug licence - manufacturing' },
-        { value: 'FSSAI', label: 'FSSAI' },
-        { value: 'OTHER', label: 'Other' },
-    ];
+    /** the licence types of this kind of business (the drug licences come with the pharmacy pack) */
+    licenseTypes: { value: string; label: string }[] = [];
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -67,7 +63,9 @@ export class VendorFormComponent{
       private originalGstn = '';
 
       constructor(private service:VendorsService, private router:Router,
-        private route:ActivatedRoute){}
+        private route:ActivatedRoute, private props: PropsService){
+        this.props.licenceTypes$.subscribe((l: any[]) => this.licenseTypes = (l || []).filter((t) => t.for.includes('vendor')).map((t) => ({ value: t.code, label: t.label })));
+      }
 
       get licenses(): FormArray { return this.form.get('licenses') as FormArray; }
       get isEdit(): boolean { return !!this.form.get('id')?.value; }

@@ -1,3 +1,4 @@
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component, OnDestroy } from "@angular/core";
 import { Subscription } from "rxjs";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
@@ -16,7 +17,7 @@ export class SaleHeaderComponent implements OnDestroy {
     required = true;
     private sub = new Subscription();
 
-    constructor(private operatorContext: OperatorContextService) {}
+    constructor(private operatorContext: OperatorContextService, public auth: AuthService) {}
 
     ngOnInit() {
         this.sub.add(this.operatorContext.operators$.subscribe(ops => this.operators = ops || []));

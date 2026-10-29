@@ -12,8 +12,9 @@
                     <div *ngFor="let l of from.licences" data-testid="bill-licence">{{l.label}}: {{l.numbers}}</div>
                 </div>
                 <div class="bill-ident">
-                    <div class="bill-kind" data-testid="bill-kind">{{from.gstin ? 'Tax Invoice' : 'Cash Bill'}}</div>
+                    <div class="bill-kind" data-testid="bill-kind">{{sale.gstinvoiceno ? 'Tax Invoice' : 'Cash Bill'}}</div>
                     <dl class="bill-meta">
+                        <dt *ngIf="sale.gstinvoiceno">Invoice No.</dt><dd *ngIf="sale.gstinvoiceno" data-testid="bill-invoice-no">{{sale.gstinvoiceno}}</dd>
                         <dt>Bill No.</dt><dd data-testid="bill-no">{{sale.billno}}</dd>
                         <dt>Date</dt><dd>{{sale.billdate | date: 'dd MMM yyyy, h:mm a'}}</dd>
                         <dt *ngIf="saleStaff">Served by</dt><dd *ngIf="saleStaff">{{saleStaff}}</dd>
@@ -27,6 +28,8 @@
                     <strong data-testid="bill-customer">{{sale.customer?.name || 'Walk-in customer'}}</strong>
                     <span *ngIf="sale.customer?.mobile"> &middot; {{sale.customer.mobile}}</span>
                     <div *ngIf="sale.customer?.address" class="bill-sub">{{sale.customer.address}}</div>
+                    <div *ngIf="sale.buyergstin" class="bill-sub" data-testid="bill-buyer-gstin">GSTIN: <strong>{{sale.buyergstin}}</strong></div>
+                    <div *ngIf="sale.gstinvoiceno && placeName" class="bill-sub" data-testid="bill-place">Place of supply: {{placeName}}</div>
                 </div>
                 <div class="bill-paidvia" *ngIf="payments.length" data-testid="bill-payments">
                     <span class="bill-label">Paid by</span>
@@ -68,7 +71,7 @@
                 <div class="bill-notes">
                     <div><span class="bill-label">Items</span> <strong>{{itemsCount}}</strong> &middot; <span class="bill-label">Units</span> <strong>{{unitsCount}}</strong></div>
                     <div class="bill-words" data-testid="bill-words"><span class="bill-label">Amount in words</span> Rupees {{words}} only</div>
-                    <div class="bill-refill" *ngIf="refills.length" data-testid="bill-refill">
+                    <div class="bill-refill" *ngIf="refills.length && auth.moduleOn('refills')" data-testid="bill-refill">
                         <span class="bill-label">Refill reminder</span>
                         <div *ngFor="let r of refills">{{r.title}}: about <strong>{{r.due | date:'dd MMM yyyy'}}</strong></div>
                     </div>
@@ -83,21 +86,23 @@
                 </table>
             </section>
 
-            <table class="bill-gst" *ngIf="gstRows.length && from.gstin" data-testid="bill-gst">
-                <thead><tr><th>GST</th><th class="c-num">Taxable value</th><th class="c-num">CGST</th><th class="c-num">SGST</th><th class="c-num">Tax</th></tr></thead>
+            <table class="bill-gst" *ngIf="gstRows.length && sale.gstinvoiceno" data-testid="bill-gst">
+                <thead><tr><th>GST</th><th class="c-num">Taxable value</th><th class="c-num" *ngIf="!interState">CGST</th><th class="c-num" *ngIf="!interState">SGST</th><th class="c-num" *ngIf="interState">IGST</th><th class="c-num">Tax</th></tr></thead>
                 <tbody>
                     <tr *ngFor="let g of gstRows">
                         <td>{{g.rate}}%</td>
                         <td class="c-num">{{g.taxable | number:'1.2-2'}}</td>
-                        <td class="c-num">{{g.cgst | number:'1.2-2'}}</td>
-                        <td class="c-num">{{g.sgst | number:'1.2-2'}}</td>
-                        <td class="c-num">{{g.cgst + g.sgst | number:'1.2-2'}}</td>
+                        <td class="c-num" *ngIf="!interState">{{g.cgst | number:'1.2-2'}}</td>
+                        <td class="c-num" *ngIf="!interState">{{g.sgst | number:'1.2-2'}}</td>
+                        <td class="c-num" *ngIf="interState">{{g.igst | number:'1.2-2'}}</td>
+                        <td class="c-num">{{g.cgst + g.sgst + g.igst | number:'1.2-2'}}</td>
                     </tr>
                 </tbody>
             </table>
 
             <footer class="bill-foot">
-                <div>Please keep this bill for any return or exchange. Medicines once sold are taken back only as the law and our policy allow.</div>
+                <div *ngIf="auth.moduleOn('returns') && shiftContext.returnsAllowed">Please keep this bill for any return or exchange. {{ 'Goods' | term }} once sold are taken back only as the law and our policy allow.</div>
+                <div *ngIf="!(auth.moduleOn('returns') && shiftContext.returnsAllowed)" data-testid="bill-no-returns">{{ 'Goods' | term }} once sold are not taken back or exchanged.</div>
                 <div class="bill-thanks">Thank you for choosing us. Wishing you good health.</div>
                 <div class="bill-sub" *ngIf="from.phone">Questions about this bill? Call {{from.phone}}.</div>
             </footer>

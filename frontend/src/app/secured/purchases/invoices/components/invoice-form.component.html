@@ -245,9 +245,10 @@
       </div>
       <div class="col-6">
         <label class="form-label">Category</label>
-        <select class="form-select" [(ngModel)]="newProduct.category" data-testid="inv-np-category">
+        <select class="form-select" *ngIf="auth.packOn('pharmacy')" [(ngModel)]="newProduct.category" data-testid="inv-np-category">
           <option value="">Not set</option><option value="Medicine">Medicine</option><option value="OTC">OTC</option>
         </select>
+        <input class="form-control" *ngIf="!auth.packOn('pharmacy')" maxlength="40" [(ngModel)]="newProduct.category" placeholder="e.g. Accessories" data-testid="inv-np-category-text">
       </div>
       <div class="col-3">
         <label class="form-label">GST % *</label>
@@ -257,13 +258,13 @@
         <label class="form-label">Pack</label>
         <input type="number" min="1" class="form-control" [(ngModel)]="newProduct.pack" data-testid="inv-np-pack">
       </div>
-      <div class="col-6" *ngIf="newProduct.category === 'Medicine'">
+      <div class="col-6" *ngIf="auth.packOn('pharmacy') && newProduct.category === 'Medicine'">
         <label class="form-label">Schedule *</label>
         <select class="form-select" [(ngModel)]="newProduct.schedule" data-testid="inv-np-schedule">
           <option value="">Choose</option><option *ngFor="let s of schedules" [value]="s">{{s}}</option>
         </select>
       </div>
-      <div class="col-6" *ngIf="newProduct.category === 'OTC'">
+      <div class="col-6" *ngIf="auth.packOn('pharmacy') && newProduct.category === 'OTC'">
         <label class="form-label">Sub category</label>
         <select class="form-select" [(ngModel)]="newProduct.subcategory" data-testid="inv-np-subcategory">
           <option value="">Choose</option><option *ngFor="let s of subcategories" [value]="s">{{s}}</option>

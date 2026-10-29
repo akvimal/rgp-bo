@@ -6,6 +6,8 @@ import { RoleModule } from 'src/modules/app/roles/role.module';
 import { DrugRegisterController } from './drug-register.controller';
 import { DrugRegisterService } from './drug-register.service';
 import { chronicMobileHook, drugRegisterHook } from './pharmacy-hooks';
+import { licenceBlockHook } from './licence-block';
+import { ConfigService } from 'src/core/config/config.service';
 
 /**
  * The PHARMACY PACK: what a pharmacy needs and other businesses do not. It joins core through the sale hooks, the module switches (drug_register) and
@@ -21,10 +23,11 @@ import { chronicMobileHook, drugRegisterHook } from './pharmacy-hooks';
   exports: [DrugRegisterService],
 })
 export class PharmacyPackModule implements OnModuleInit {
-  constructor(private readonly hooks: SaleHooks, private readonly register: DrugRegisterService) {}
+  constructor(private readonly hooks: SaleHooks, private readonly register: DrugRegisterService, private readonly config: ConfigService) {}
 
   onModuleInit() {
     this.hooks.register(chronicMobileHook);
     this.hooks.register(drugRegisterHook(this.register));
+    this.hooks.register(licenceBlockHook(this.config));
   }
 }

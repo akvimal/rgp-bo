@@ -1,0 +1,599 @@
+<title>Multi-Store Release Test Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#f5f6f3;
+    --surface:#ffffff;
+    --surface-sunk:#ecefe9;
+    --ink:#1b241f;
+    --ink-soft:#5c6862;
+    --rule:#d9ddd5;
+    --pine:#0e6e62;
+    --pine-soft:#dcebe7;
+    --rust:#b23a2e;      --rust-soft:#f4e2df;
+    --amber:#9a6a12;     --amber-soft:#f2e9d6;
+    --slate:#586661;     --slate-soft:#e5e9e4;
+    --ok:#2e7d5b;        --ok-soft:#dcece2;
+    --shadow:0 1px 2px rgba(24,34,30,.05), 0 8px 24px -14px rgba(24,34,30,.22);
+    --serif:"Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+    --sans:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#14181a;
+      --surface:#1b2225;
+      --surface-sunk:#232b2d;
+      --ink:#e7ece7;
+      --ink-soft:#9fada6;
+      --rule:#2f393b;
+      --pine:#54b7a8;
+      --pine-soft:#173430;
+      --rust:#e28a7f;     --rust-soft:#3a221e;
+      --amber:#d6a24e;    --amber-soft:#372c17;
+      --slate:#9fada6;    --slate-soft:#28312f;
+      --ok:#5fbc8e;       --ok-soft:#183028;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 32px -16px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#14181a;
+    --surface:#1b2225;
+    --surface-sunk:#232b2d;
+    --ink:#e7ece7;
+    --ink-soft:#9fada6;
+    --rule:#2f393b;
+    --pine:#54b7a8;
+    --pine-soft:#173430;
+    --rust:#e28a7f;     --rust-soft:#3a221e;
+    --amber:#d6a24e;    --amber-soft:#372c17;
+    --slate:#9fada6;    --slate-soft:#28312f;
+    --ok:#5fbc8e;       --ok-soft:#183028;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 32px -16px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:15px; line-height:1.55;
+  }
+  ::selection{ background:var(--pine-soft); }
+  a{ color:var(--pine); text-underline-offset:2px; }
+
+  .wrap{ max-width:1120px; margin:0 auto; padding:56px 28px 100px; }
+
+  /* ---------- header ---------- */
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--pine); margin:0 0 14px;
+  }
+  h1{
+    font-family:var(--serif); font-weight:600; font-size:clamp(1.9rem,4.6vw,2.6rem);
+    line-height:1.12; letter-spacing:-.01em; text-wrap:balance; margin:0 0 14px;
+  }
+  .dek{ color:var(--ink-soft); font-size:1.02rem; max-width:64ch; margin:0; }
+
+  .stats{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+    gap:1px; background:var(--rule); border:1px solid var(--rule); border-radius:12px;
+    overflow:hidden; margin:34px 0 0;
+  }
+  .stat{ background:var(--surface); padding:16px 16px 14px; }
+  .stat b{
+    display:block; font-family:var(--serif); font-size:1.7rem; font-weight:600;
+    font-variant-numeric:tabular-nums; line-height:1;
+  }
+  .stat span{
+    display:block; margin-top:6px; font-size:11px; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--ink-soft);
+  }
+
+  /* ---------- shared blocks ---------- */
+  .note{
+    margin:34px 0 0; padding:18px 20px; background:var(--surface);
+    border:1px solid var(--rule); border-left:3px solid var(--pine);
+    border-radius:8px; font-size:14px; color:var(--ink-soft);
+  }
+  .note strong{ color:var(--ink); }
+  .note p{ margin:0; }
+  .note p + p{ margin-top:9px; }
+
+  h2.band{
+    font-family:var(--serif); font-weight:600; font-size:1.5rem;
+    margin:64px 0 6px; display:flex; align-items:baseline; gap:12px; text-wrap:balance;
+  }
+  h2.band .tick{
+    flex:none; width:10px; height:10px; border-radius:3px; transform:translateY(-1px);
+  }
+  .band-note{ color:var(--ink-soft); font-size:14px; margin:0 0 22px; max-width:70ch; }
+
+  /* ---------- legend ---------- */
+  .legend{
+    display:flex; flex-wrap:wrap; gap:10px 26px; margin:26px 0 0;
+    padding:16px 18px; background:var(--surface-sunk); border-radius:10px; font-size:13px;
+  }
+  .legend div{ display:flex; align-items:center; gap:7px; }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600;
+    font-family:var(--mono); letter-spacing:.03em; text-transform:uppercase;
+    padding:3px 8px; border-radius:999px; white-space:nowrap;
+  }
+  .pill.p0{ color:var(--rust); background:var(--rust-soft); }
+  .pill.p1{ color:var(--amber); background:var(--amber-soft); }
+  .pill.p2{ color:var(--slate); background:var(--slate-soft); }
+  .pill.done{ color:var(--ok); background:var(--ok-soft); }
+  .pill.partial{ color:var(--amber); background:var(--amber-soft); }
+  .pill.gap{ color:var(--rust); background:var(--rust-soft); }
+  .pill.reg{ color:var(--pine); background:var(--pine-soft); }
+  .dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+
+  /* ---------- matrix ---------- */
+  .table-scroll{ overflow-x:auto; margin:22px 0 0; border:1px solid var(--rule); border-radius:12px; box-shadow:var(--shadow); }
+  table.matrix{ width:100%; border-collapse:collapse; font-size:13.5px; min-width:640px; background:var(--surface); }
+  table.matrix th{
+    text-align:left; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-soft); font-weight:600; padding:12px 14px; background:var(--surface-sunk);
+    border-bottom:1px solid var(--rule); position:sticky; top:0;
+  }
+  table.matrix td{ padding:12px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  table.matrix tr:last-child td{ border-bottom:none; }
+  table.matrix td.feat a{ font-weight:600; color:var(--ink); text-decoration:none; }
+  table.matrix td.feat a:hover{ color:var(--pine); text-decoration:underline; }
+  table.matrix td.area{ color:var(--ink-soft); }
+  td.count{ font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+
+  /* ---------- feature cards ---------- */
+  .feature{
+    margin:18px 0 0; padding:22px 22px 8px; background:var(--surface);
+    border:1px solid var(--rule); border-radius:12px; box-shadow:var(--shadow);
+    scroll-margin-top:20px;
+  }
+  .feature-head{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:4px; }
+  .feature-head h3{
+    font-family:var(--serif); font-weight:600; font-size:1.2rem; margin:0; flex:1 1 auto;
+  }
+  .built{ color:var(--ink-soft); font-size:13.5px; margin:8px 0 0; }
+  .built b{ color:var(--ink); font-weight:600; }
+  .commit{ font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); }
+
+  .cases{ width:100%; border-collapse:collapse; margin:16px 0 4px; font-size:13px; }
+  .cases th{
+    text-align:left; font-size:10px; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--ink-soft); font-weight:600; padding:7px 10px; border-bottom:1px solid var(--rule);
+  }
+  .cases td{ padding:8px 10px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  .cases tr:last-child td{ border-bottom:none; }
+  .cases .ref{ font-family:var(--mono); font-size:11.5px; color:var(--pine); white-space:nowrap; }
+  .cases .type{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .cases .exp{ color:var(--ink-soft); }
+
+  .watch{
+    margin:12px 0 14px; padding:12px 15px; border-radius:8px; font-size:13px;
+    background:var(--rust-soft); color:var(--ink);
+  }
+  .watch.soft{ background:var(--amber-soft); }
+  .watch b{ display:block; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:4px; }
+  .watch ul{ margin:0; padding-left:18px; }
+  .watch li + li{ margin-top:4px; }
+
+  footer{
+    margin:70px 0 0; padding:24px; background:var(--surface-sunk); border-radius:12px;
+    font-size:13.5px; color:var(--ink-soft);
+  }
+  footer h4{ font-family:var(--serif); font-weight:600; font-size:1.05rem; color:var(--ink); margin:0 0 10px; }
+  footer ul{ margin:0; padding-left:18px; }
+  footer li + li{ margin-top:6px; }
+  footer code{ font-family:var(--mono); font-size:12px; background:var(--surface); padding:1px 5px; border-radius:4px; }
+
+  @media (max-width:640px){
+    .wrap{ padding:40px 18px 72px; }
+    .cases thead{ display:none; }
+    .cases td{ display:block; border:none; padding:3px 0; }
+    .cases tr{ display:block; padding:10px 0; border-bottom:1px solid var(--rule); }
+    .cases tr:last-child{ border-bottom:none; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">QA plan &middot; branch feature/shift-cash-phase1</p>
+  <h1>What to test, in what order</h1>
+  <p class="dek">The branch is one large unmerged release &mdash; a single-store back office becoming multi-business and multi-store, plus a new shift &amp; cash workflow. This is the tester's triage sheet: every feature it adds, how finished it looks in the code, how hard it should be hit, and the checks that matter. Case IDs map to the interactive checklist at <code>docs/testing/manual-test-plan.html</code>.</p>
+
+  <div class="stats">
+    <div class="stat"><b>16</b><span>Features to cover</span></div>
+    <div class="stat"><b>7</b><span>P0 &mdash; test first</span></div>
+    <div class="stat"><b>5</b><span>Known gaps flagged</span></div>
+    <div class="stat"><b>0</b><span>Automated unit tests</span></div>
+    <div class="stat"><b>15</b><span>DB migrations (008&ndash;022)</span></div>
+  </div>
+
+  <div class="note">
+    <p><strong>Before you start.</strong> Run against a freshly seeded database with migrations <code>008</code>&ndash;<code>022</code> applied <em>in order</em>. There are no unit or component tests in this repo and only three back-end concurrency e2e tests &mdash; manual testing is the safety net for this release, so treat the P0 band as release-blocking.</p>
+    <p><strong>How completeness is judged.</strong> Ratings come from reading the code (controllers, routes, entities, migrations), not a full functional pass &mdash; that's your job. "Built" means the endpoints and screens exist and are wired; "known gaps" are things the code already shows are missing or unguarded.</p>
+  </div>
+
+  <div class="legend">
+    <div><span class="pill p0">P0</span> Test first &mdash; foundation, corrupts data downstream if wrong</div>
+    <div><span class="pill p1">P1</span> Core feature &mdash; test once P0 is green</div>
+    <div><span class="pill p2">P2</span> Secondary &mdash; smaller blast radius</div>
+    <div><span class="pill done">Built</span> Wired end to end in code</div>
+    <div><span class="pill partial">Partial</span> Gaps or unverified areas</div>
+    <div><span class="pill gap">Watch</span> Known bug / missing guard</div>
+  </div>
+
+  <div class="table-scroll">
+    <table class="matrix">
+      <thead>
+        <tr><th>Feature</th><th>Area</th><th>Completeness</th><th>Priority</th><th>Cases</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="feat"><a href="#f-business">Business master &amp; multi-business scoping</a></td><td class="area">Settings / Auth</td><td><span class="pill partial">Partial</span></td><td><span class="pill p0">P0</span></td><td class="count">BIZ&nbsp;1&ndash;2, AUTH&nbsp;9</td></tr>
+        <tr><td class="feat"><a href="#f-rbac">Permission-based access control</a></td><td class="area">Settings / cross-cutting</td><td><span class="pill partial">Partial</span></td><td><span class="pill p0">P0</span></td><td class="count">ROLE&nbsp;1&ndash;4, XCUT&nbsp;1&ndash;2</td></tr>
+        <tr><td class="feat"><a href="#f-context">Store context &amp; multi-store switcher</a></td><td class="area">Shell</td><td><span class="pill done">Built</span></td><td><span class="pill p0">P0</span></td><td class="count">CTX&nbsp;1&ndash;5</td></tr>
+        <tr><td class="feat"><a href="#f-userstore">User&ndash;store assignments</a></td><td class="area">Settings / Users</td><td><span class="pill done">Built</span></td><td><span class="pill p0">P0</span></td><td class="count">USR&nbsp;1,3,4</td></tr>
+        <tr><td class="feat"><a href="#f-shift">Store shift management</a></td><td class="area">Store / Cash</td><td><span class="pill gap">Watch</span></td><td><span class="pill p0">P0</span></td><td class="count">CASH&nbsp;1&ndash;5,11&ndash;15</td></tr>
+        <tr><td class="feat"><a href="#f-cash">Cash ledger &amp; deposit threshold</a></td><td class="area">Store / Cash</td><td><span class="pill done">Built</span></td><td><span class="pill p0">P0</span></td><td class="count">CASH&nbsp;6&ndash;10,16</td></tr>
+        <tr><td class="feat"><a href="#f-regression">Regression &mdash; auth, sales, stock, invoices</a></td><td class="area">Existing modules</td><td><span class="pill reg">Regression</span></td><td><span class="pill p0">P0</span></td><td class="count">AUTH, SALE, STK, INV</td></tr>
+        <tr><td class="feat"><a href="#f-acting">Sales &mdash; acting-user tracking</a></td><td class="area">Sales / POS</td><td><span class="pill partial">Partial</span></td><td><span class="pill p1">P1</span></td><td class="count">SALE&nbsp;1,11, CASH&nbsp;14</td></tr>
+        <tr><td class="feat"><a href="#f-dashboard">Dashboard analytics</a></td><td class="area">Dashboard</td><td><span class="pill done">Built</span></td><td><span class="pill p1">P1</span></td><td class="count">DASH&nbsp;1&ndash;3</td></tr>
+        <tr><td class="feat"><a href="#f-poapproval">Purchase-order approval &amp; settings</a></td><td class="area">Purchases</td><td><span class="pill done">Built</span></td><td><span class="pill p1">P1</span></td><td class="count">PO&nbsp;1&ndash;9</td></tr>
+        <tr><td class="feat"><a href="#f-payments">Vendor payments &amp; outstanding invoices</a></td><td class="area">Purchases / Vendors</td><td><span class="pill partial">Partial</span></td><td><span class="pill p1">P1</span></td><td class="count">VEND&nbsp;4, INV&nbsp;6</td></tr>
+        <tr><td class="feat"><a href="#f-stockaudit">Stock audit &amp; adjustment approval</a></td><td class="area">Store / Stock</td><td><span class="pill done">Built</span></td><td><span class="pill p1">P1</span></td><td class="count">STK&nbsp;3&ndash;5,8</td></tr>
+        <tr><td class="feat"><a href="#f-shiftreport">Shift report reconciliation</a></td><td class="area">Store / Cash</td><td><span class="pill partial">Partial</span></td><td><span class="pill p1">P1</span></td><td class="count">CASH&nbsp;14, SALE&nbsp;11</td></tr>
+        <tr><td class="feat"><a href="#f-planning">Purchase planning, requests &amp; suggestions</a></td><td class="area">Store / Intent</td><td><span class="pill done">Built</span></td><td><span class="pill p2">P2</span></td><td class="count">PREQ&nbsp;1&ndash;4</td></tr>
+        <tr><td class="feat"><a href="#f-delivery">Delivery partners &amp; sale delivery</a></td><td class="area">Settings / Sales</td><td><span class="pill gap">Watch</span></td><td><span class="pill p2">P2</span></td><td class="count">DLVP&nbsp;1&ndash;3, SALE&nbsp;6&ndash;8</td></tr>
+        <tr><td class="feat"><a href="#f-storecrud">Store CRUD &amp; per-store settings</a></td><td class="area">Settings / Stores</td><td><span class="pill done">Built</span></td><td><span class="pill p2">P2</span></td><td class="count">BIZ&nbsp;1&ndash;4</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ============ P0 ============ -->
+  <h2 class="band"><span class="tick" style="background:var(--rust)"></span>P0 &mdash; Foundation, test first</h2>
+  <p class="band-note">These decide who sees which business, which store is in scope, and whether the till reconciles. A defect here mis-scopes data or mis-counts cash for every module built on top, so none of the P1 work is trustworthy until this band is green.</p>
+
+  <section class="feature" id="f-business">
+    <div class="feature-head">
+      <h3>Business master &amp; multi-business scoping</h3>
+      <span class="pill p0">P0</span><span class="pill partial">Partial</span>
+      <span class="commit">3ada8f8d &middot; mig 020, 022</span>
+    </div>
+    <p class="built"><b>Built:</b> Business is now a first-class entity with CRUD API (<code>/business</code>) and a Settings &rsaquo; Businesses screen. Users and their store assignments are scoped to a business. JWT refresh applies scope changes without a full re-login. Public self-registration (<code>POST /auth/register</code>) has been removed &mdash; accounts are provisioned by Site Admin / Business Head only.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">BIZ-1/2</td><td>Create a business, then create a store under it</td><td class="exp">Business is selectable as a store parent; store appears in the switcher</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Log in as Business Head and open Settings &rsaquo; Users and &rsaquo; Stores</td><td class="exp">Only users and stores in that Business Head's own business are listed</td><td class="type">Permission</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Log in as Site Admin and open Settings &rsaquo; Users</td><td class="exp">Only Business Head users are listed &mdash; no store staff</td><td class="type">Permission</td></tr>
+        <tr><td class="ref">&mdash;</td><td>A user whose business comes only from a store assignment (no own business record)</td><td class="exp">Still scoped to the right business in every list &mdash; not dropped or shown everywhere</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Change a user's business, have that user keep working without logging out</td><td class="exp">New scope takes effect after silent token refresh; no forced re-login mid-task</td><td class="type">Integration</td></tr>
+        <tr><td class="ref">AUTH-9</td><td>Call <code>POST /auth/register</code> directly (Swagger, no token)</td><td class="exp">404 &mdash; endpoint removed (was an unauthenticated privilege-escalation hole)</td><td class="type">Permission</td></tr>
+      </tbody>
+    </table>
+    <div class="watch">
+      <b>Watch for</b>
+      <ul>
+        <li>The business-scoping filter on the user list is being actively corrected right now (uncommitted change in <code>user.service.ts</code>, <code>findAll</code>: column filter &rarr; <code>COALESCE(ownbusiness.id, storebusiness.id)</code>). Re-test user visibility for every role after the latest build.</li>
+        <li>No automated coverage &mdash; exercise cross-business isolation deliberately with at least two businesses seeded.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="feature" id="f-rbac">
+    <div class="feature-head">
+      <h3>Permission-based access control</h3>
+      <span class="pill p0">P0</span><span class="pill partial">Partial</span>
+      <span class="commit">e52d3bed &middot; mig 019</span>
+    </div>
+    <p class="built"><b>Built:</b> A permission catalogue plus a guard/decorator that gate actions by policy &mdash; pricing, cost visibility, stock audit, purchase-order approval. The nav is driven by <code>isAuth</code> / <code>isNavAuth</code>, and the shell is now a collapsible sidebar keyed to store/operator context.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">ROLE-1/2</td><td>Grant a role only <code>purchaseorders:approve</code>, then revoke it</td><td class="exp">User gains exactly PO approval and nothing else; on revoke the UI action <em>and</em> the API call both stop working</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">ROLE-4 / PO-4</td><td>With a token from a role lacking the approve policy, call the approve-PO endpoint directly</td><td class="exp">Server rejects it &mdash; the check is not only the hidden button</td><td class="type">Permission</td></tr>
+        <tr><td class="ref">XCUT-1/2</td><td>Low-privilege role: scan the nav, then browse straight to a restricted module URL</td><td class="exp">Restricted items are hidden (not just disabled); direct URL is blocked or its API calls are rejected server-side</td><td class="type">Permission</td></tr>
+        <tr><td class="ref">AUTH-11/12</td><td>Log in as Site Admin; click Settings and other hub/tab pages</td><td class="exp">Lands on Dashboard, not Settings; clicking a hub page does not bounce to /login (both were fixed &mdash; confirm)</td><td class="type">Permission</td></tr>
+      </tbody>
+    </table>
+    <div class="watch">
+      <b>Watch for</b>
+      <ul>
+        <li><b>Known bug (DLVP-3, not yet fixed):</b> the Settings &rsaquo; Delivery Partners nav path is shown to any role with the purchases permission, but no role's stored permissions include <code>/secure/settings/delivery-partners</code> itself &mdash; clicking it bounces to /login. Same class of bug as AUTH-12. Check every new nav link resolves rather than logging the user out.</li>
+        <li>For each gated action, verify enforcement on the API, not just the button visibility.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="feature" id="f-context">
+    <div class="feature-head">
+      <h3>Store context &amp; multi-store switcher</h3>
+      <span class="pill p0">P0</span><span class="pill done">Built</span>
+      <span class="commit">e52d3bed &middot; mig 016</span>
+    </div>
+    <p class="built"><b>Built:</b> A store-context service and header switcher (<code>/store/context</code>) that every other module scopes to &mdash; stock, cash, sales, dashboard.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">CTX-1/2</td><td>Log in as a single-store user, then as a multi-store user</td><td class="exp">Single store auto-selected (switcher hidden/locked); multi-store lists all assigned, primary auto-selected</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">CTX-3</td><td>Log in as an admin/unassigned user</td><td class="exp">All active, non-archived stores are selectable</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">CTX-5 / CASH-16</td><td>Pick a store on Cash, navigate to Stock, then switch stores</td><td class="exp">Every screen and widget follows the selected store; nothing keeps showing the previous store's numbers</td><td class="type">Integration</td></tr>
+        <tr><td class="ref">CTX-4</td><td>Archive the store currently in view from another session, refresh the switcher</td><td class="exp">Store drops out of the switcher; current screen doesn't crash</td><td class="type">Edge</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-userstore">
+    <div class="feature-head">
+      <h3>User&ndash;store assignments</h3>
+      <span class="pill p0">P0</span><span class="pill done">Built</span>
+      <span class="commit">e52d3bed &middot; mig 016</span>
+    </div>
+    <p class="built"><b>Built:</b> A user&ndash;store link table with a primary-store flag, plus assign / reassign endpoints guarded so a Business Head can only touch users and stores inside their own business.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">USR-1</td><td>Create a user, assign a role and one or more stores incl. a primary</td><td class="exp">User logs in, sees only permitted menu items, primary store auto-selected</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">&mdash;</td><td>As Business Head, try to assign a store belonging to another business</td><td class="exp">Rejected &mdash; "stores must belong to your business"</td><td class="type">Permission</td></tr>
+        <tr><td class="ref">USR-3/4</td><td>Change a user's role; deactivate a user</td><td class="exp">Permission change applies per the documented timing; deactivated user can't log in but still shows as creator/updater on old records</td><td class="type">Happy</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-shift">
+    <div class="feature-head">
+      <h3>Store shift management</h3>
+      <span class="pill p0">P0</span><span class="pill gap">Watch</span>
+      <span class="commit">a4013dcb &middot; mig 014, 017</span>
+    </div>
+    <p class="built"><b>Built:</b> Shift templates (name, times, deposit threshold, default assignee), open-from-template with an opening float, close with counted cash and computed variance, assign / reassign, and a per-shift report. Endpoints under <code>/store-cash/shifts*</code> with a Shifts screen.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">CASH-1/2</td><td>Create a template, open a shift from it with a float</td><td class="exp">Shift is OPEN; dashboard reflects it; expected cash starts equal to the float</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">CASH-3</td><td>Open a shift with no store selected in the header</td><td class="exp">Blocked with "Select a store in the header to open a shift."</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">CASH-5</td><td>Assign a shift to a cashier, then reassign to another</td><td class="exp">Assignee updates immediately; an unassigned shift stays visible to every cashier at that store</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">CASH-11/12</td><td>Close with counted = expected, then close others short and over</td><td class="exp">Variance = counted &minus; expected, correct sign for short vs. over</td><td class="type">Happy</td></tr>
+      </tbody>
+    </table>
+    <div class="watch">
+      <b>Watch for &mdash; unguarded edges the code already shows</b>
+      <ul>
+        <li><b>CASH-4:</b> opening a second shift on a store that already has one OPEN is <em>not</em> blocked. Two concurrent open shifts split cash totals unpredictably &mdash; confirm intended behaviour before relying on it.</li>
+        <li><b>CASH-13:</b> closing with the counted-cash field left empty defaults it to 0 on the backend, producing a large negative variance rather than refusing an untallied drawer.</li>
+        <li><b>CASH-15:</b> closing a shift that is already CLOSED &mdash; verify the transition is guarded, not silently re-stamping <code>closedon</code>/<code>closedby</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="feature" id="f-cash">
+    <div class="feature-head">
+      <h3>Cash ledger &amp; deposit threshold</h3>
+      <span class="pill p0">P0</span><span class="pill done">Built</span>
+      <span class="commit">a4013dcb &middot; mig 014, 015</span>
+    </div>
+    <p class="built"><b>Built:</b> Cash-in / cash-out ledger entries that auto-attach to the operator's open shift; a BANK_DEPOSIT entry moves the amount to "withdraw" and detaches from any shift; store cash balance = &Sigma; deposits &minus; &Sigma; withdrawals; a "deposit due" flag once the balance reaches the store's configured threshold.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">CASH-7</td><td>With a shift open and none explicitly chosen, record a cash entry</td><td class="exp">Entry auto-attaches to that user's open shift at the store</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">CASH-6</td><td>Record an EXPENSE entry for a store with no open shift</td><td class="exp">Still saves against the store (shift left blank), not silently rejected &mdash; confirm this is intended</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">CASH-8</td><td>Record a BANK_DEPOSIT with an amount in the "deposit" field</td><td class="exp">Amount moves to "withdraw" (cash leaving the till); entry detached from any shift</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">CASH-9</td><td>Sum all deposits and withdrawals by hand, compare to the dashboard balance</td><td class="exp">Dashboard balance = &Sigma; deposits &minus; &Sigma; withdrawals, exactly</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">CASH-10 / BIZ-3</td><td>Push the balance past the threshold; then change the threshold in Store settings and reload</td><td class="exp">"Deposit due" turns on at balance &ge; threshold with the excess shown; new threshold governs the flag on next load</td><td class="type">Integration</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-regression">
+    <div class="feature-head">
+      <h3>Regression &mdash; auth, sales, stock, invoices</h3>
+      <span class="pill p0">P0</span><span class="pill reg">Regression</span>
+      <span class="commit">mig 018, 021 &amp; product fixes</span>
+    </div>
+    <p class="built"><b>Why P0:</b> this branch adds JWT refresh, makes every sale capture an acting user, changes FK indexes and unique constraints (mig 021), and carries product-price fixes. The existing billing, stock and goods-receipt paths need a full pass to prove nothing regressed.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">AUTH-1&hellip;12</td><td>Full login / token / route-guard / logout suite</td><td class="exp">Sessions, silent refresh (AUTH-6) and guard behaviour all correct</td><td class="type">Mixed</td></tr>
+        <tr><td class="ref">SALE-1&hellip;11</td><td>Multi-item split-payment sale, oversell attempt, void, returns</td><td class="exp">Totals/tax/tenders correct; stock decrements from the right batch; sale links to the cashier's open shift; over-return blocked</td><td class="type">Mixed</td></tr>
+        <tr><td class="ref">STK-1&hellip;8</td><td>Stock list, batch drill-down, manual adjustment, expiry list, oversell guard</td><td class="exp">Quantities reconcile; stock never goes negative silently</td><td class="type">Mixed</td></tr>
+        <tr><td class="ref">INV-1&hellip;8</td><td>Create invoice from an approved PO, edit lines, confirm, delete confirmed</td><td class="exp">Confirm raises stock in the right store/batch; delete reverses stock in the same transaction or is blocked &mdash; never half-applied</td><td class="type">Mixed</td></tr>
+        <tr><td class="ref">PROD-1&hellip;8</td><td>Create/edit product, bulk price change, price history</td><td class="exp">New prices apply forward only; already-issued invoices/sales untouched; negative price/tax rejected</td><td class="type">Mixed</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ P1 ============ -->
+  <h2 class="band"><span class="tick" style="background:var(--amber)"></span>P1 &mdash; Core features</h2>
+  <p class="band-note">The headline additions of the release. Start these once the P0 band passes &mdash; several depend on shift/cash and store context being correct.</p>
+
+  <section class="feature" id="f-acting">
+    <div class="feature-head">
+      <h3>Sales &mdash; acting-user tracking</h3>
+      <span class="pill p1">P1</span><span class="pill partial">Partial</span>
+      <span class="commit">7b117077 &middot; mig 018</span>
+    </div>
+    <p class="built"><b>Built:</b> A sale records the staff member actually operating it, separate from the account owner. Sale, sale-item and return DTO validation has been hardened. <b>Verify:</b> that the POS / sale screen actually captures the operator, and that shift reports attribute per-staff correctly.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">SALE-1</td><td>Ring up a sale as staff member B while logged in as A (or via shift assignment)</td><td class="exp">Sale's acting user = B; sale links to B's open shift</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">CASH-14</td><td>Close a shift with sales split across several staff, open its report</td><td class="exp">Per-staff breakdown, bill count, cash vs digital, returns all match the underlying sales</td><td class="type">Integration</td></tr>
+        <tr><td class="ref">SALE-2</td><td>Enter cash + digital amounts that don't sum to the bill total</td><td class="exp">Blocked or clearly flagged, not silently accepted</td><td class="type">Negative</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-dashboard">
+    <div class="feature-head">
+      <h3>Dashboard analytics</h3>
+      <span class="pill p1">P1</span><span class="pill done">Built</span>
+      <span class="commit">70e01075</span>
+    </div>
+    <p class="built"><b>Built:</b> <code>/dashboard/summary</code>, <code>/trends</code> and <code>/admin-summary</code> feeding KPIs, sales/purchase/cash trends, payment split, PO-approval breakdown, users-by-role, stores-by-business, top customers and products, and a cash-vs-threshold gauge. Store filter plus an admin-only rollup.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">DASH-1</td><td>Land on the dashboard for a store with regular activity</td><td class="exp">KPIs and charts render with no console errors and match the store's data</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">DASH-2</td><td>Select a store with zero sales / stock history</td><td class="exp">Clean empty state &mdash; no NaN, no broken axes, gauge reads 0</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">DASH-3</td><td>Switch the store in the header while on the dashboard</td><td class="exp">Every widget reloads for the new store</td><td class="type">Integration</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Open the admin rollup as a non-admin</td><td class="exp"><code>/dashboard/admin-summary</code> is not reachable / returns no data for non-admin roles</td><td class="type">Permission</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-poapproval">
+    <div class="feature-head">
+      <h3>Purchase-order approval &amp; settings</h3>
+      <span class="pill p1">P1</span><span class="pill done">Built</span>
+      <span class="commit">9b2a247c &middot; mig 013</span>
+    </div>
+    <p class="built"><b>Built:</b> Draft &rarr; submit &rarr; approve / reject. A configurable approval-value threshold auto-approves POs below it and routes the rest to PENDING_APPROVAL. Approval is gated by a <code>purchaseorders:approve</code> policy. The threshold lives on a Purchases &rsaquo; Settings tab (moved from the mislabelled Settings &rsaquo; Application tab).</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">PO-2/3</td><td>Submit a PO just under the threshold, then one just over</td><td class="exp">Under &rarr; auto-approved immediately; over &rarr; PENDING_APPROVAL with a reason, not yet usable for an invoice/GRN</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">PO-5/6</td><td>Approve, then reject (with a reason) a pending order</td><td class="exp">Approver + timestamp recorded on approve; status REJECTED and reason stored on reject</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">PO-7</td><td>Submit a PO with no line items or a zero-quantity line</td><td class="exp">Blocked with a clear message</td><td class="type">Negative</td></tr>
+        <tr><td class="ref">PO-9</td><td>Change the threshold in Purchases &rsaquo; Settings and re-run PO-2/PO-3</td><td class="exp">New value persists and immediately governs the auto-approve boundary; tab hidden from Site Admin (no purchases access)</td><td class="type">Integration</td></tr>
+        <tr><td class="ref">PO-8</td><td>Delete a Draft order, then attempt to delete a Submitted/Approved one</td><td class="exp">Draft deletes cleanly; confirm whether a submitted/approved order can or correctly cannot be deleted</td><td class="type">Edge</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-payments">
+    <div class="feature-head">
+      <h3>Vendor payments &amp; outstanding invoices</h3>
+      <span class="pill p1">P1</span><span class="pill partial">Partial</span>
+      <span class="commit">0d0c91a8 &middot; mig 010, 011</span>
+    </div>
+    <p class="built"><b>Built:</b> A vendor-payment entity with record / update endpoints (incl. by-invoice), an <code>/purchase-invoice/outstanding</code> view, and audit columns on payments. <b>Verify:</b> the front-end screens for recording a payment and viewing outstanding-by-vendor, and the balance arithmetic.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">VEND-4</td><td>Record a payment against one or more outstanding vendor invoices</td><td class="exp">Outstanding balance drops by exactly the payment amount</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">INV-6</td><td>Open Outstanding Invoices filtered to one vendor</td><td class="exp">Total matches the sum of that vendor's unpaid invoice balances</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Record a partial payment, then a second payment clearing the rest</td><td class="exp">Running balance is correct at each step; invoice flips to paid only when fully settled</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Edit / correct a recorded payment</td><td class="exp">Outstanding recomputes; audit columns capture who changed it and when</td><td class="type">Edge</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-stockaudit">
+    <div class="feature-head">
+      <h3>Stock audit &amp; adjustment approval</h3>
+      <span class="pill p1">P1</span><span class="pill done">Built</span>
+      <span class="commit">e52d3bed &middot; mig 019</span>
+    </div>
+    <p class="built"><b>Built:</b> <code>/stock/audit</code> and <code>/stock/audit/:id/approve</code>. A quantity adjustment that needs audit approval leaves stock untouched until approved. Price-adjust and qty-adjust lists are kept separate, each attributed to the acting user and date.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">STK-3/4</td><td>Record an adjustment needing approval, then approve it</td><td class="exp">Stock unchanged while pending; applies only on approval</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">STK-5</td><td>Delete a qty adjustment that hasn't been approved</td><td class="exp">Removed cleanly, no partial effect on available stock</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">STK-8</td><td>Make one price adjustment and one qty adjustment, compare the two lists</td><td class="exp">Each list shows only its own type, correct user and date</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Approve an audit adjustment as a role without the audit policy</td><td class="exp">Rejected on the API, not just hidden</td><td class="type">Permission</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-shiftreport">
+    <div class="feature-head">
+      <h3>Shift report reconciliation</h3>
+      <span class="pill p1">P1</span><span class="pill partial">Partial</span>
+      <span class="commit">a4013dcb</span>
+    </div>
+    <p class="built"><b>Built:</b> <code>/store-cash/shifts/:id/report</code> &mdash; bill count, cash sales, digital sales, net sales, returns, and a per-staff breakdown. <b>Why partial:</b> this is the highest-value manual check in the new cash feature &mdash; the numbers must tie out against the raw sales, and that has not been verified.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">CASH-14</td><td>Close a shift after several completed sales split across staff</td><td class="exp">Every figure in the report matches the underlying sales for that shift</td><td class="type">Integration</td></tr>
+        <tr><td class="ref">SALE-11</td><td>Check the split-payment sale from SALE-1 in the shift report</td><td class="exp">Cash and digital portions both appear, correctly attributed</td><td class="type">Integration</td></tr>
+        <tr><td class="ref">&mdash;</td><td>Add a return within the shift window, re-open the report</td><td class="exp">Returns line and net sales adjust by the returned amount</td><td class="type">Edge</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ P2 ============ -->
+  <h2 class="band"><span class="tick" style="background:var(--slate)"></span>P2 &mdash; Secondary</h2>
+  <p class="band-note">Smaller blast radius or upstream of the money paths. Cover these last &mdash; but the Delivery Partners nav bug is a quick fix that blocks its whole screen, so flag it early.</p>
+
+  <section class="feature" id="f-planning">
+    <div class="feature-head">
+      <h3>Purchase planning, requests &amp; suggestions</h3>
+      <span class="pill p2">P2</span><span class="pill done">Built</span>
+      <span class="commit">d3edf911 &middot; mig 012</span>
+    </div>
+    <p class="built"><b>Built:</b> <code>/purchase-suggestion</code> (with create-orders) and <code>/purchase-request</code> (filter, CRUD, remove), surfaced on a Store &rsaquo; Intent screen &mdash; demand-driven suggestions and manually raised requests, upstream of Purchase Orders.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">PREQ-1</td><td>Open Purchase Suggestions for a store with recent sales velocity</td><td class="exp">Suggested products/quantities line up with genuinely low-stock, fast-moving items</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">PREQ-2</td><td>Select suggestions across two vendors and convert to orders</td><td class="exp">One PO per vendor, each with the right products and quantities</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">PREQ-3/4</td><td>Raise a manual request with status/source/priority/vendor, then cancel it</td><td class="exp">Saved and filterable by each field; cancel drops it from the active pipeline</td><td class="type">Happy</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-delivery">
+    <div class="feature-head">
+      <h3>Delivery partners &amp; sale delivery</h3>
+      <span class="pill p2">P2</span><span class="pill gap">Watch</span>
+      <span class="commit">283ced81 &middot; mig 008, 009</span>
+    </div>
+    <p class="built"><b>Built:</b> <code>/delivery-partners</code> CRUD with a Settings screen, a sale-delivery entity that links a partner, and delivery booking with delivered / confirmed / failed states plus COD collection tracking on the sale.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">DLVP-3</td><td>As Business Head, click Settings &rsaquo; Delivery Partners</td><td class="exp"><b>Known bug &mdash; currently bounces to /login.</b> The route path isn't in any role's permission block. Needs adding before the screen is testable</td><td class="type">Permission</td></tr>
+        <tr><td class="ref">DLVP-1/2</td><td>Create a partner; deactivate one used on past deliveries</td><td class="exp">Selectable on the Sale Delivery form; deactivated one hidden for new deliveries but still shown on history</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">SALE-6/7/8</td><td>Book a delivery, mark delivered &amp; confirmed (incl. COD), mark another failed</td><td class="exp">Record created Pending; statuses/timestamps update; COD shows collected; failure reason visible</td><td class="type">Mixed</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="feature" id="f-storecrud">
+    <div class="feature-head">
+      <h3>Store CRUD &amp; per-store settings</h3>
+      <span class="pill p2">P2</span><span class="pill done">Built</span>
+      <span class="commit">a4013dcb &middot; mig 017</span>
+    </div>
+    <p class="built"><b>Built:</b> <code>/store</code> create / update / delete with a Settings screen, a per-store cash deposit threshold, and archive.</p>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">BIZ-2</td><td>Create a store under a business with a location and deposit threshold</td><td class="exp">Appears in the store switcher and in Store Settings</td><td class="type">Happy</td></tr>
+        <tr><td class="ref">BIZ-4</td><td>Archive a store that has historical sales and invoices</td><td class="exp">Drops out of active switchers; historical records tied to it stay viewable</td><td class="type">Edge</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ cross-cutting ============ -->
+  <h2 class="band"><span class="tick" style="background:var(--pine)"></span>Cross-cutting checks</h2>
+  <p class="band-note">Run these against whichever modules you're already in &mdash; they span features rather than belonging to one.</p>
+  <section class="feature" id="f-xcut">
+    <div class="feature-head"><h3>Permissions, concurrency &amp; failure handling</h3></div>
+    <table class="cases">
+      <thead><tr><th>Ref</th><th>Scenario</th><th>Expected</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">XCUT-3</td><td>Two cashiers work cash/stock on the same store simultaneously in two sessions</td><td class="exp">No lost updates &mdash; ledger totals and stock stay consistent across both</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">XCUT-4</td><td>Drop the network mid-confirm on an invoice or sale, reconnect, retry</td><td class="exp">Error surfaced rather than a half-completed transaction; retry doesn't create a duplicate GRN or sale</td><td class="type">Edge</td></tr>
+        <tr><td class="ref">XCUT-1/2</td><td>Every restricted module, from a role that lacks it: nav + direct URL</td><td class="exp">Hidden in nav; blocked at the route or rejected server-side</td><td class="type">Permission</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    <h4>Release context</h4>
+    <ul>
+      <li><strong>Unmerged branch.</strong> <code>feature/shift-cash-phase1</code> is ~471 files ahead of <code>main</code>. Test it as a single release, not incremental changes.</li>
+      <li><strong>Seed &amp; migrate first.</strong> Start from a clean seeded database and apply <code>sql/migrations/008</code> through <code>022</code> in order; several depend on earlier ones. Rollback scripts ship alongside each.</li>
+      <li><strong>No automated safety net.</strong> The repo has zero unit / component tests and only three back-end concurrency e2e tests &mdash; every case in the P0 band should be treated as release-blocking.</li>
+      <li><strong>Companion checklist.</strong> <code>docs/testing/manual-test-plan.html</code> is the interactive run sheet &mdash; open it in a browser to record pass/fail, log issues, and export a Markdown findings report. The <code>AUTH&nbsp;/ CASH&nbsp;/ PO&nbsp;/ BIZ&nbsp;&hellip;</code> IDs above are its case IDs.</li>
+    </ul>
+  </footer>
+</div>

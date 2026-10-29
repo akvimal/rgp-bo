@@ -8,6 +8,14 @@ import { environment } from "../../environments/environment";
 export class DashboardService {
   constructor(private http: HttpClient) {}
 
+  getMine() {
+    return this.http.get(`${environment.apiHost}/dashboard/mine`);
+  }
+
+  getView() {
+    return this.http.get(`${environment.apiHost}/dashboard/view`);
+  }
+
   getSummary(storeid?: number | null) {
     const params: any = {};
     if (storeid !== null && storeid !== undefined) {

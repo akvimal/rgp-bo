@@ -13,6 +13,7 @@ export class BusinessesComponent implements OnInit {
   form:any = {
     id: null,
     name: '',
+    businesstype: 'pharmacy',
     isActive: true
   };
 
@@ -42,12 +43,13 @@ export class BusinessesComponent implements OnInit {
     this.form = {
       id: row.id,
       name: row.name,
+      businesstype: row.businesstype || 'pharmacy',
       isActive: row.isActive !== false
     };
   }
 
   reset() {
-    this.form = { id: null, name: '', isActive: true };
+    this.form = { id: null, name: '', businesstype: 'pharmacy', isActive: true };
   }
 
   save() {
@@ -55,6 +57,7 @@ export class BusinessesComponent implements OnInit {
     this.saving = true;
     const payload = {
       name: this.form.name,
+      businesstype: this.form.businesstype || 'pharmacy',
       isActive: this.form.isActive !== false
     };
     const req = this.form.id ? this.service.updateBusiness(this.form.id, payload) : this.service.createBusiness(payload);

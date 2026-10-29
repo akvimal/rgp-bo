@@ -43,6 +43,7 @@ test.describe('Customer bill @p1', () => {
     }, MGR);
     expect(set.status, JSON.stringify(set.body)).toBeLessThan(300);
     const biz = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
+    const issued = !!(await api.request('GET', `/sales/${bill.id}`, undefined, MGR)).body.gstinvoiceno;       // a tax invoice has its number; any other bill is a cash bill
 
     const { page } = await app.open(MGR, `/secure/sales/pos/view/${bill.id}`);
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -53,7 +54,7 @@ test.describe('Customer bill @p1', () => {
     await expect(page.getByTestId('bill-from-address')).toContainText('12 QA Main Road, Testville, 600001');
     await expect(page.getByTestId('bill-licence')).toContainText('DL No.: QA-20-0001 | QA-21-0001');
     await expect(page.getByTestId('bill')).not.toContainText('Ramesh');
-    await expect(page.getByTestId('bill-kind')).toHaveText(biz.gstin ? 'Tax Invoice' : 'Cash Bill');
+    await expect(page.getByTestId('bill-kind')).toHaveText(issued ? 'Tax Invoice' : 'Cash Bill');
 
     // the bill, who it is for, how it was paid
     await expect(page.getByTestId('bill-no')).not.toBeEmpty();
@@ -69,7 +70,7 @@ test.describe('Customer bill @p1', () => {
     await expect(page.getByTestId('bill-words')).toContainText('Rupees One Hundred Ninety only');
     await expect(page.getByTestId('bill-refill')).toContainText(bill.titles[0]);
     await expect(page.getByTestId('bill-refill')).not.toContainText(bill.titles[1]);
-    if (biz.gstin) await expect(page.getByTestId('bill-gst')).toBeVisible();
+    if (issued) await expect(page.getByTestId('bill-gst')).toBeVisible();
     else await expect(page.getByTestId('bill-gst')).toHaveCount(0);
 
     // every number column lines up: all rows end at the same place

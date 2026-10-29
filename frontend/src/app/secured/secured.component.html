@@ -99,6 +99,7 @@
   <aside id="sidebar" class="sidebar">
   
       <ul class="sidebar-nav" id="sidebar-nav">
+        <ng-container *ngIf="!newMenu">
         <li class="nav-item" *ngIf="canOpen('/secure/dashboard')">
           <a class="nav-link" routerLink="dashboard" data-testid="nav-dashboard" title="Dashboard" aria-label="Dashboard">
             <i class="bi bi-speedometer2"></i>
@@ -173,7 +174,7 @@
             <span>Weekly review</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('purchases.add','purchases.request','vendorissues.view','expenses.view','finance.view')" data-testid="nav-section-buy">Buy &amp; pay</li>
+        <li class="nav-heading" *ngIf="has('purchases.add','purchases.request','vendorissues.view','expenses.view','finance.view','gstfiling.view')" data-testid="nav-section-buy">Buy &amp; pay</li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('purchases.add')">
           <a class="nav-link collapsed" routerLink="purchases" data-testid="nav-purchases" title="Purchase" aria-label="Purchase">
             <i class="bi bi-bag-check"></i>
@@ -196,6 +197,12 @@
           <a class="nav-link collapsed" routerLink="expenses" data-testid="nav-expenses" title="Expenses" aria-label="Expenses">
             <i class="bi bi-wallet2"></i>
             <span>Expenses</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'gstfiling.view'">
+          <a class="nav-link collapsed" routerLink="gst-filing" data-testid="nav-gst-filing" title="GST" aria-label="GST">
+            <i class="bi bi-receipt"></i>
+            <span>GST</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'finance.view'">
@@ -235,11 +242,17 @@
             <span>HR</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('reports','grievances.view','paymentrecon.view')" data-testid="nav-section-oversight">Oversight</li>
+        <li class="nav-heading" *ngIf="has('reports','grievances.view','paymentrecon.view','compliance.view')" data-testid="nav-section-oversight">Oversight</li>
         <li class="nav-item" *isAuth="'reports'">
           <a class="nav-link collapsed" routerLink="reports" data-testid="nav-reports" title="Reports" aria-label="Reports">
             <i class="bi bi-graph-up"></i>
             <span>Reports</span>
+          </a>
+        </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'compliance.view'">
+          <a class="nav-link collapsed" routerLink="compliance" data-testid="nav-compliance" title="Compliance" aria-label="Compliance">
+            <i class="bi bi-check2-square"></i>
+            <span>Compliance</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'grievances.view'">
@@ -254,7 +267,24 @@
             <span>Digital payments</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('settings.read')" data-testid="nav-section-admin">Admin</li>
+        </ng-container>
+        <!-- the grouped menu (DASHBOARD_AND_MENU_DESIGN 7), on when the business turns it on in its dashboard settings -->
+        <ng-container *ngIf="newMenu">
+          <ng-container *ngFor="let g of menuGroups">
+            <ng-container *ngIf="groupVisible(g)">
+              <li class="nav-heading" [attr.data-testid]="'nav-section-' + g.key">{{g.label}}</li>
+              <ng-container *ngFor="let m of g.items">
+                <li class="nav-item" *ngIf="m.show()" [routerLinkActive]="['is-active']">
+                  <a class="nav-link collapsed" [routerLink]="m.route" [attr.data-testid]="m.id" [attr.title]="m.label" [attr.aria-label]="m.label">
+                    <i class="bi" [ngClass]="m.icon"></i>
+                    <span>{{m.label}}</span>
+                  </a>
+                </li>
+              </ng-container>
+            </ng-container>
+          </ng-container>
+        </ng-container>
+        <li class="nav-heading" *ngIf="has('settings.read')" data-testid="nav-section-admin">{{newMenu ? 'Setup' : 'Admin'}}</li>
         <li class="nav-item" *isAuth="'settings.read'">
           <a class="nav-link" [class.collapsed]="!settingsMenuOpen" data-testid="nav-settings"
             (click)="toggleSettingsMenu()" title="Settings" aria-label="Settings">

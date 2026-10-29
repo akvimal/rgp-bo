@@ -1,3 +1,4 @@
+import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { Component, OnDestroy } from "@angular/core";
 import { DateUtilService } from "../../date-util.service";
 import { Sale } from "../models/sale.model";
@@ -51,7 +52,8 @@ export class SalesListComponent implements OnDestroy {
       private dateService:DateUtilService,
       private operatorContext: OperatorContextService,
       private storeContext: StoreContextService,
-      private auth: AuthService
+      private auth: AuthService,
+      private shiftContext: ShiftContextService
     ){
       this.canViewDigital = this.auth.isActionAuthorized('paymentrecon.view');
       this.canVerifyDigital = this.auth.isActionAuthorized('paymentrecon.verify');
@@ -279,10 +281,11 @@ export class SalesListComponent implements OnDestroy {
         if(action === 'Print' && sale.status === 'COMPLETE'){
           allowed = true;
         }
-        else if(action === 'Edit' && (sale.status === 'PENDING' || this.dateService.isSameDay(sale.billdate))){
+        else if(action === 'Edit' && !sale.gstinvoiceno && (sale.status === 'PENDING' || this.dateService.isSameDay(sale.billdate))){
           allowed = true;
         }
         else if(action === 'Return' 
+        && this.auth.moduleOn('returns') && this.shiftContext.returnsAllowed
         && (sale.status === 'COMPLETE' && !this.dateService.isSameDay(sale.billdate))
         ){ // return allowed for sale completed within specified period
           allowed = true;

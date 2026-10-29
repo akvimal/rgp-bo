@@ -1,3 +1,4 @@
+import { procedureFor, PROCEDURE } from './outage-kit';
 import { daysSince, isReady, KIT_CHECKLIST, recordItems } from './outage-kit';
 
 describe('outage kit', () => {
@@ -31,5 +32,14 @@ describe('outage kit', () => {
     expect(isReady('2026-10-20', '2026-10-24')).toBe(true);
     expect(isReady('2026-10-17', '2026-10-24')).toBe(false);     // 7 days ago
     expect(isReady(null, '2026-10-24')).toBe(false);
+  });
+
+  it('leaves the pharmacy steps out of the outage procedure for a business that is not a pharmacy', () => {
+    const all = procedureFor(true).flatMap((p) => p.steps);
+    const other = procedureFor(false).flatMap((p) => p.steps);
+    expect(all.length).toBe(PROCEDURE.flatMap((p) => p.steps).length);
+    expect(other.length).toBe(all.length - 2);
+    expect(other.join(' ')).not.toMatch(/medicine|prescription|Rx/i);
+    expect(other.join(' ')).toMatch(/bill book/);
   });
 });

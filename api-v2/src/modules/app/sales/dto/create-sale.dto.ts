@@ -28,6 +28,18 @@ export class CreateSaleDto {
     @IsNumber()
     readonly orderno: number;
 
+    @ApiProperty({ description: 'GSTIN of the buyer, for a business sale on a tax invoice', example: '' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(15)
+    readonly buyergstin: string;
+
+    @ApiProperty({ description: 'state code of the supply when the buyer has no GSTIN (a delivery to another state)', example: '' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(2)
+    readonly placeofsupply: string;
+
     @ApiProperty({ description: 'status', example: '' })
     @IsOptional()
     @IsString()

@@ -3,6 +3,8 @@
 </div> -->
 <app-sale-header></app-sale-header>
 
+<div class="alert alert-warning py-2 mt-3 mb-0" *ngIf="!shiftContext.returnsAllowed" data-testid="ret-store-off">This store does not take new returns. Returns already recorded can still be settled here.</div>
+
 <details class="mt-3 border rounded p-2 bg-light" data-testid="ret-help">
   <summary class="fw-semibold">How returns work</summary>
   <div class="small text-muted mt-1 mb-2">A return starts from the bill, not from this page. This page is where returns are settled and followed up.</div>

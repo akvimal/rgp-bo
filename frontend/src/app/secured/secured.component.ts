@@ -1,3 +1,4 @@
+import { PropsService } from "../shared/props.service";
 import { Component, HostListener } from "@angular/core";
 import { NavigationEnd, Router } from "@angular/router";
 import { Title } from "@angular/platform-browser";
@@ -11,6 +12,8 @@ import { StoreContextService } from "../@core/store-context.service";
 import { OperatorContextService } from "../@core/operator-context.service";
 import { ShiftContextService } from "../@core/shift-context.service";
 import { AuthService } from "../@core/auth/auth.service";
+import { ConfigService } from "../shared/config.service";
+import { MenuGroup, buildMenu } from "./menu";
 
 @Component({
     templateUrl: 'secured.component.html'
@@ -32,7 +35,7 @@ export class SecuredComponent {
 
     /** a hosted customer's copy shows neutral branding instead of RGP's */
     get hosted(): boolean { return !!this.platform; }
-    get brandName(): string { return this.hosted ? (this.user?.businessname || this.businessName || 'Pharmacy') : 'RGP'; }
+    get brandName(): string { return this.hosted ? (this.user?.businessname || this.businessName || 'Back office') : 'RGP'; }
     get initials(): string {
       const parts = String(this.user?.fullname || '?').trim().split(/\s+/).filter(Boolean);
       return ((parts[0]?.[0] || '?') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
@@ -93,7 +96,9 @@ export class SecuredComponent {
       private storeContextService: StoreContextService,
       private operatorContextService: OperatorContextService,
       public shiftContext: ShiftContextService,
-      private authService: AuthService){
+      private authService: AuthService,
+      private propsService: PropsService,
+      private config: ConfigService){
         this.state$ = this.appStateService.state;
     }
 
@@ -104,6 +109,21 @@ export class SecuredComponent {
         && (this.authService.isActionAuthorized('store.shift.open')
             || this.authService.isActionAuthorized('store.shift.close')
             || this.authService.isUrlAuthorized('/secure/store/shifts'));
+    }
+
+    /** the grouped menu is a per-business choice (dashboard settings, "The grouped menu"); off keeps the long-standing menu */
+    newMenu = false;
+    menuGroups: MenuGroup[] = buildMenu({ has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u) });
+
+    groupVisible(g: MenuGroup): boolean {
+      return g.items.some((m) => m.show());
+    }
+
+    private loadMenuChoice() {
+      this.config.effective('views').subscribe({
+        next: (r) => { this.newMenu = r.items.find((i) => i.key === 'new_menu')?.value === true; },
+        error: () => { this.newMenu = false; },
+      });
     }
 
     /** menu entries and section headings follow what the role may open */
@@ -122,11 +142,15 @@ export class SecuredComponent {
     }
     
     ngOnInit(){
+        this.loadMenuChoice();
       this.userService.getCurrentUser().subscribe(data => {
-        this.titleService.setTitle(`${data['platform'] ? (data['businessname'] || 'Pharmacy') : 'RGP'} - ${data['fullname']}`)
+        this.titleService.setTitle(`${data['platform'] ? (data['businessname'] || 'Back office') : 'RGP'} - ${data['fullname']}`)
         this.user = data;
         // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).
         this.authService.setModules(data['modules']);
+        this.authService.setBusiness(data['businesstype'], data['packs']);
+        this.authService.setGst(data['gst']);
+        this.propsService.refresh();
         this.platform = data['platform'] || null;
         this.authService.setPlatform(data['platform']);
         const fresh = data['permissions'];

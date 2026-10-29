@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ModulesService } from "src/core/modules/modules.service";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { Repository } from "typeorm";
@@ -17,7 +18,8 @@ export class SaleItemService {
         @InjectRepository(SaleItem) private readonly saleItemRepo: Repository<SaleItem>,
         @InjectRepository(PurchaseInvoiceItem) private readonly purchaseItemRepo: Repository<PurchaseInvoiceItem>,
         @InjectRepository(ProductClearance) private readonly clearanceRepo: Repository<ProductClearance>,
-        @InjectEntityManager() private manager: EntityManager) { }
+        @InjectEntityManager() private manager: EntityManager,
+        private readonly modules: ModulesService) { }
 
         async saveReturn(dto: CreateSaleReturnDto, userid: any) {
 
@@ -25,6 +27,10 @@ export class SaleItemService {
             if(!purchaseItem){
                 throw new NotFoundException('Sale item not found');
             }
+
+            const [sale] = await this.manager.query(`select store_id from sale where id = $1`, [purchaseItem.saleid]);
+            const why = await this.modules.returnsBlocked(sale?.store_id);
+            if (why) throw new ForbiddenException(why);
 
             const qty = Number(dto.qty);
             if (!Number.isFinite(qty) || qty <= 0) {

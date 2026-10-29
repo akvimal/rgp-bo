@@ -1,0 +1,11 @@
+﻿title,tax_pcnt,category,pack,mfr,brand,hsn_code,product_code,description,bin_location,schedule,composition,chronic,generic,document,subcategory,sale_price
+Paracetamol 500mg Tablet,12,Medicine,15,Sample Pharma Ltd,Pyrex,30049099,8901234500011,Fever and pain relief,A-01,Other,Paracetamol (500mg),N,Y,,,18.50
+Amoxicillin 500mg Capsule,12,Medicine,10,Sample Pharma Ltd,,30042019,,Antibiotic,A-02,H,Amoxicillin (500mg),N,Y,Prescription,,95.00
+Metformin 500mg Tablet,12,Medicine,20,Example Labs,Gluco,30049099,,,B-03,H,Metformin (500mg),Y,Y,Prescription,,32.40
+Alprazolam 0.25mg Tablet,12,Medicine,10,Example Labs,,30049099,,,SAFE-1,H1,Alprazolam (0.25mg),N,N,Prescription,,41.00
+Vitamin C 500mg Chewable,18,OTC,30,Sample Wellness,Celin,21069099,,Supplement,C-10,,,,,,Supplement,62.00
+Crepe Bandage 6cm,12,OTC,1,Sample Surgical,,30059090,,,C-11,,,,,,Surgical,45.00
+Digital Thermometer,18,OTC,1,Sample Devices,Thermo,90251990,,,C-12,,,,,,Device,210.00
+Cough Syrup 100ml,12,Medicine,1,Sample Pharma Ltd,Coffex,30049099,,,A-05,Other,Dextromethorphan (10mg),N,N,,,78.00
+Baby Soap 75g,18,OTC,1,Sample Care,,34011190,,,D-01,,,,,,Personal Care,55.00
+Sample Minimal Product,0

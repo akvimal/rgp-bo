@@ -4,6 +4,7 @@ import { EntityManager, Repository } from "typeorm";
 import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { isValidApprovalMode } from "src/core/approval-mode";
+import { isBusinessType, BUSINESS_TYPES } from "src/core/modules/modules";
 import { ModulesService } from "src/core/modules/modules.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { UserService } from "../users/user.service";
@@ -162,6 +163,10 @@ export class BusinessService {
       if (p && !/^[0-9]{6}$/.test(p)) throw new BadRequestException("The pincode must be 6 digits.");
       fields.pincode = p;
     }
+    if (body.businesstype !== undefined) {
+      if (!isBusinessType(body.businesstype)) throw new BadRequestException(`Choose the kind of business: ${BUSINESS_TYPES.join(", ")}.`);
+      fields.businesstype = body.businesstype;
+    }
     if (body.approvalmode !== undefined) {
       if (!isValidApprovalMode(body.approvalmode)) throw new BadRequestException("Approval mode must be self or separate.");
       fields.approvalmode = body.approvalmode;
@@ -190,6 +195,7 @@ export class BusinessService {
       if (String(e?.code) === "23505") throw new ConflictException("Another business already has that name.");
       throw e;
     }
+    if (fields.businesstype !== undefined) this.modules.refresh(cur.id);
     const after = await this.businessRepository.findOne({ where: { id: cur.id } });
     const diff: any = {};
     for (const k of Object.keys(fields)) if ((cur as any)[k] !== (after as any)[k]) diff[k] = { from: (cur as any)[k] ?? null, to: (after as any)[k] ?? null };
@@ -212,6 +218,7 @@ export class BusinessService {
       name: body.name,
       isActive: body.isActive !== false,
       isArchived: false,
+      businesstype: isBusinessType(body.businesstype) ? body.businesstype : "pharmacy",
       ...this.gstFields(body),
     };
     return this.businessRepository.save(payload);
@@ -226,8 +233,10 @@ export class BusinessService {
       name: body.name,
       isActive: body.isActive === undefined ? current.isActive : !!body.isActive,
       isArchived: body.isArchived === undefined ? current.isArchived : !!body.isArchived,
+      ...(isBusinessType(body.businesstype) ? { businesstype: body.businesstype } : {}),
       ...this.gstFields(body),
     });
+    if (isBusinessType(body.businesstype)) this.modules.refresh(id);
     return this.businessRepository.findOne({ where: { id } });
   }
 

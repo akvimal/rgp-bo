@@ -19,6 +19,12 @@ export class CreatePurchaseInvoiceItemDto {
     @MaxLength(100)
     readonly batch: string;
 
+    @ApiProperty({ description: 'HSN printed on the vendor invoice line (4, 6 or 8 digits); the products own HSN is used when none is given', example: '' })
+    @IsOptional()
+    @IsString()
+    @MaxLength(12)
+    readonly hsn: string;
+
     @ApiProperty({ description: 'exp date', example: '' })
     @IsOptional()
     @IsString()

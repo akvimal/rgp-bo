@@ -126,23 +126,23 @@ export class PricingReader {
   /** what is needed to judge purchase lines: current prices, class limits, the settings, each product's profit rank, and the GST billed */
   private async contextFor(lines: LineIn[]) {
     const ids = [...new Set(lines.map((l) => l.productid))];
-    const taxes = [...new Set(lines.map((l) => l.taxbatch))];
+    const pairs = [...new Map(lines.map((l) => [`${l.productid}|${l.taxbatch}`, l])).values()];
     const [prices, policies, st, all, gst] = await Promise.all([
       this.manager.query(
         `select distinct on (product_id) product_id, round(sale_price::numeric, 2)::float8 as price, to_char(eff_date, 'YYYY-MM-DD') as eff
            from product_price2 where end_date > current_date and sale_price > 0 and product_id = any($1::int[]) order by product_id, eff_date desc, id desc`, [ids]),
       this.policyMap(), this.settings(), this.itemsCached(),
-      this.manager.query(`select t::float8 as t, public.sale_gst(t)::float8 as s from unnest($1::double precision[]) t`, [taxes]),
+      this.manager.query(`select x.pid, x.t::float8 as t, public.gst_sale_rate(x.pid, x.t)::float8 as s from unnest($1::int[], $2::double precision[]) as x(pid, t)`, [pairs.map((l) => l.productid), pairs.map((l) => l.taxbatch)]),
     ]);
     return {
       price: new Map<number, any>(prices.map((p: any) => [+p.product_id, p])),
       policies, st,
       abcOf: new Map<number, Abc>(all.map((i) => [i.productid, i.abc])),
-      saleTax: new Map<number, number>(gst.map((g: any) => [Number(g.t), Number(g.s)])),
+      saleTax: new Map<string, number>(gst.map((g: any) => [`${g.pid}|${Number(g.t)}`, Number(g.s)])),
     };
   }
 
-  private subjectOf(l: LineIn, c: { price: Map<number, any>; policies: Map<string, ClassPolicy>; st: PolicySettings; abcOf: Map<number, Abc>; saleTax: Map<number, number> }) {
+  private subjectOf(l: LineIn, c: { price: Map<number, any>; policies: Map<string, ClassPolicy>; st: PolicySettings; abcOf: Map<number, Abc>; saleTax: Map<string, number> }) {
     const paid = l.qty + l.free;
     const cost = paid > 0 ? (l.ptrvalue * (1 - l.disc / 100) * l.qty) / paid : l.ptrvalue;
     const incl = l.ptrcost && l.ptrcost > 0 ? l.ptrcost : l.ptrvalue * (1 + l.taxbatch / 100);
@@ -150,7 +150,7 @@ export class PricingReader {
     const classkey = classKey(tradeBand(l.mrp > 0 ? 1 - incl / l.mrp : null), abc);
     const policy = c.policies.get(classkey) ?? { floorMarkupPct: 8, maxDiscountPct: 20, usualDiscountPct: 5 };
     const p = c.price.get(l.productid);
-    const saletax = c.saleTax.get(l.taxbatch) ?? l.taxbatch;
+    const saletax = c.saleTax.get(`${l.productid}|${l.taxbatch}`) ?? l.taxbatch;
     const subject: Subject = { price: p ? p.price : null, cost, mrp: l.mrp, tax: saletax, abc, lastChange: p ? p.eff : null, today: today() };
     return { subject, policy, classkey, abc, saletax };
   }

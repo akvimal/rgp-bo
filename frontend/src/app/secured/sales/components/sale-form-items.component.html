@@ -18,7 +18,7 @@
                     <a role="button" *ngIf="item.edited" (click)="removeItem(item.itemid)" title="Remove" aria-label="Remove this line"><i class="bi bi-trash text-danger"></i></a>
                 </td>
                 <td>
-                    <div *ngIf="item.title"><strong>{{item.title}}</strong> <span *ngIf="item.more_props?.schedule === 'H1'" class="h1-badge">H1</span></div>
+                    <div *ngIf="item.title"><strong>{{item.title}}</strong> <span *ngIf="auth.packOn('pharmacy') && item.more_props?.schedule === 'H1'" class="h1-badge">H1</span></div>
                     <div class="small text-muted fst-italic">{{item.more_props?.composition}}</div>
                 </td>
                 <td class="text-nowrap">{{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span></td>
@@ -49,7 +49,7 @@
                 <td colspan="7" class="small">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <span data-testid="sale-add-item-links"><ng-content></ng-content></span>
-                        <app-sale-suggestions [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
+                        <app-sale-suggestions *ngIf="auth.moduleOn('refills')" [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
                     </div>
                 </td>
             </tr>

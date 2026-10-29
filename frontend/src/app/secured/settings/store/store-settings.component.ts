@@ -1,3 +1,4 @@
+import { PropsService } from "src/app/shared/props.service";
 import { Component, OnInit } from "@angular/core";
 import { CashService } from "src/app/secured/store/cash/cash.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
@@ -48,12 +49,8 @@ export class StoreSettingsComponent implements OnInit {
   profileSaving:boolean = false;
   profileMessage:string = '';
   profileError:string = '';
-  readonly licenceTypes = [
-    { key: 'RETAIL_20_21', label: 'Retail drug licence (Form 20 / 21)' },
-    { key: 'WHOLESALE_20B_21B', label: 'Wholesale drug licence (Form 20B / 21B)' },
-    { key: 'FSSAI', label: 'FSSAI' },
-    { key: 'OTHER', label: 'Other' },
-  ];
+  /** the licence types of this kind of business (a pharmacy's drug licences come with the pharmacy pack) */
+  licenceTypes: { key: string; label: string }[] = [];
   licStoreId:any = '';
   lic:any = null;
   licMessage:string = '';
@@ -76,7 +73,9 @@ export class StoreSettingsComponent implements OnInit {
     active: true
   };
 
-  constructor(private cashService: CashService, private confirm: ConfirmService, private businessService: BusinessesService, private auth: AuthService) {}
+  constructor(private cashService: CashService, private confirm: ConfirmService, private businessService: BusinessesService, public auth: AuthService, private props: PropsService) {
+    this.props.licenceTypes$.subscribe((l: any[]) => this.licenceTypes = (l || []).filter((t) => t.for.includes('store')).map((t) => ({ key: t.code, label: t.label })));
+  }
 
   ngOnInit(): void {
     this.cashService.getBusinesses().subscribe((businesses:any) => {
@@ -157,6 +156,7 @@ export class StoreSettingsComponent implements OnInit {
       shiftmode: p.shiftmode, till: p.tillsetting, accountablerole: p.accountablerole,
       operatorrequired: !!p.operatorrequired, operatorholdminutes: Number(p.operatorholdminutes), approvalmode: p.approvalmodesetting,
       cashrefundlimit: p.cashrefundlimit === null || p.cashrefundlimit === '' || p.cashrefundlimit === undefined ? null : Number(p.cashrefundlimit),
+      returnsallowed: p.returnsallowed !== false,
     }).subscribe((r:any) => { this.profileSaving = false; this.profile = r; this.profileMessage = 'Saved.'; },
       err => { this.profileSaving = false; this.profileError = err?.error?.message || 'Unable to save'; });
   }
@@ -301,8 +301,11 @@ export class StoreSettingsComponent implements OnInit {
     }, () => {});
   }
 
+  /** a pharmacy's stores are pharmacies; another business's are not */
+  get defaultStoreType(): string { return this.auth.packOn('pharmacy') ? 'pharmacy' : 'other'; }
+
   addLicence() {
-    this.lic.licenses.push({ licensetype: 'RETAIL_20_21', number: '', validfrom: '', validto: '', notes: '' });
+    this.lic.licenses.push({ licensetype: this.licenceTypes[0]?.key || 'OTHER', number: '', validfrom: '', validto: '', notes: '' });
   }
 
   removeLicence(i:number) {
@@ -336,13 +339,13 @@ export class StoreSettingsComponent implements OnInit {
     const payload = {
       businessid: this.storeForm.businessid || null,
       location: this.storeForm.location,
-      storetype: this.storeForm.storetype || 'pharmacy',
+      storetype: this.storeForm.storetype || this.defaultStoreType,
       isActive: this.storeForm.isActive !== false
     };
     const req = this.storeForm.id ? this.cashService.updateStore(this.storeForm.id, payload) : this.cashService.createStore(payload);
     req.subscribe(() => {
       this.savingStore = false;
-      this.storeForm = { id: null, businessid: '', location: '', storetype: 'pharmacy', isActive: true };
+      this.storeForm = { id: null, businessid: '', location: '', storetype: this.defaultStoreType, isActive: true };
       this.refreshStoreList();
     }, err => {
       this.savingStore = false;
@@ -355,7 +358,7 @@ export class StoreSettingsComponent implements OnInit {
       id: row.id,
       businessid: row.business?.id || '',
       location: row.location,
-      storetype: row.storetype || 'pharmacy',
+      storetype: row.storetype || this.defaultStoreType,
       isActive: row.isActive !== false
     };
   }

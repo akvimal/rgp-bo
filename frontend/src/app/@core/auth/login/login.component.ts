@@ -1,3 +1,4 @@
+import { PropsService } from 'src/app/shared/props.service';
 import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -29,7 +30,8 @@ export class LoginComponent {
         private userService: UsersService,
         private credService: CredentialsService,
         private operatorContext: OperatorContextService,
-        private tokenRefreshService: TokenRefreshService){}
+        private tokenRefreshService: TokenRefreshService,
+        private propsService: PropsService){}
 
     ngOnInit(){
         this.platform = !!this.route.snapshot.data['platform'];
@@ -64,6 +66,9 @@ export class LoginComponent {
                                 if(data.rolename && data.permissions){
                                     this.authService.setPermissions(data.permissions);
                                     this.authService.setModules(data.modules);
+                                    this.authService.setBusiness(data.businesstype, data.packs);
+                                    this.authService.setGst(data.gst);
+                                    this.propsService.refresh();
                                     this.authService.setPlatform(data.platform);
                                     this.router.navigate([this.resolveLandingPage(data.permissions)]);
                                 }

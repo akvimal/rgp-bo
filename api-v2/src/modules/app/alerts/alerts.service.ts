@@ -9,6 +9,7 @@ import { AiProvider } from './ai-provider';
 import { AlertDrafter, Draft, RECIPIENT_ROLES } from './alert-drafter';
 import { DEFAULT_RULES, Finding, KINDS, SEVERITIES, cleanParams, kindOf } from './alert-kinds';
 import { canSee } from './alert-access';
+import { ModulesService } from 'src/core/modules/modules.service';
 import { LANGUAGES, Lang, render } from './alert-messages';
 
 const TZ = 'Asia/Kolkata';
@@ -27,6 +28,7 @@ export class AlertsService {
     private readonly stores: StoreService,
     private readonly drafter: AlertDrafter,
     private readonly ai: AiProvider,
+    private readonly modules: ModulesService,
   ) {}
 
   // ------------------------------------------------------------------------------------------------ who is asking
@@ -71,6 +73,7 @@ export class AlertsService {
   async ensureDefaults(businessId: number) {
     for (const d of DEFAULT_RULES) {
       const kind = kindOf(d.kind)!;
+      if (kind.pack && !(await this.modules.packOnForBusiness(businessId, kind.pack))) continue;     // a pack's alert is not set up for a business without the pack
       await this.manager.query(
         `insert into alert_rule (business_id, kind, name, params, severity, source)
          select $1::int4, $2::varchar, $3::varchar, $4::jsonb, $5::varchar, 'system'
@@ -83,10 +86,12 @@ export class AlertsService {
     await this.ensureDefaults(businessId);
     const rules = await this.manager.query(`select * from alert_rule where business_id = $1 and not archive`, [businessId]);
     const ctx = { manager: this.manager, stores: this.stores, businessId, today: this.today() };
+    const packOn = new Map<string, boolean>();
     for (const rule of rules) {
       const kind = kindOf(rule.kind);
+      if (kind?.pack && !packOn.has(kind.pack)) packOn.set(kind.pack, await this.modules.packOnForBusiness(businessId, kind.pack));
       try {
-        const found: Finding[] = rule.active && kind ? (await kind.evaluate(ctx, rule.params)).filter((f) => !rule.store_id || f.storeid === rule.store_id) : [];
+        const found: Finding[] = rule.active && kind && (!kind.pack || packOn.get(kind.pack)) ? (await kind.evaluate(ctx, rule.params)).filter((f) => !rule.store_id || f.storeid === rule.store_id) : [];
         await this.reconcile(rule, found);
       } catch (e: any) {
         this.logger.error(`Alert rule ${rule.id} (${rule.kind}) failed: ${e?.message}`);
@@ -213,7 +218,7 @@ export class AlertsService {
   kinds() {
     return {
       assistant: this.drafter.configured,
-      kinds: KINDS.map((k) => ({ kind: k.kind, label: k.label, description: k.description, params: k.params, defaultSeverity: k.defaultSeverity })),
+      kinds: KINDS.map((k) => ({ kind: k.kind, label: k.label, description: k.description, params: k.params, defaultSeverity: k.defaultSeverity, pack: k.pack ?? null })),
     };
   }
 
@@ -232,7 +237,14 @@ export class AlertsService {
     const rows = await this.manager.query(
       `select r.*, s.location, (select count(*) from notification n where n.rule_id = r.id and n.resolved_on is null) as open
          from alert_rule r left join stores s on s.id = r.store_id where r.business_id = $1 and not r.archive order by r.source = 'system' desc, r.id`, [w.businessId]);
-    return rows.map((r: any) => this.shape(r));
+    const packOn = new Map<string, boolean>();
+    const shown: any[] = [];
+    for (const r of rows) {      // a rule of a pack the business does not have is kept but not shown (it is not run either)
+      const pack = kindOf(r.kind)?.pack;
+      if (pack && !packOn.has(pack)) packOn.set(pack, await this.modules.packOnForBusiness(w.businessId, pack));
+      if (!pack || packOn.get(pack)) shown.push(r);
+    }
+    return shown.map((r: any) => this.shape(r));
   }
 
   private async validated(w: { businessId: number }, body: any, existing?: any) {

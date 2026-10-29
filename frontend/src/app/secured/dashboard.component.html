@@ -1,7 +1,9 @@
-<div class="pagetitle dashboard" data-testid="dash-root">
-  <h1>Dashboard</h1>
-  <div class="small text-muted">Business snapshot for {{selectedStoreLabel}}</div>
-</div>
+<app-dash-header [title]="viewTitle" [subtitle]="'Business snapshot for ' + selectedStoreLabel" [scope]="selectedStoreLabel" [updated]="updated"></app-dash-header>
+<app-staff-view *ngIf="view === 'staff' || view === 'counter'" [shared]="view === 'counter'"></app-staff-view>
+<app-personal-view *ngIf="view === 'personal'"></app-personal-view>
+<ng-container *ngIf="legacy">
+<app-needs-strip *ngIf="showWidget('needs')" [items]="needs"></app-needs-strip>
+<app-team-recognition *ngIf="view === 'owner' || view === 'manager'"></app-team-recognition>
 <div class="dashboard">
 
 
@@ -519,3 +521,4 @@
   </div>
 </div>
 </div><!-- /.dashboard -->
+</ng-container>

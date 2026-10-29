@@ -11,7 +11,7 @@ import { PurchaseService } from './purchase.service';
 import { buildPoPdf, DEFAULT_PO_TERMS, parseSignatureBlocks, PoBuyer } from './po-pdf';
 
 const LICENCE_LABELS: { [type: string]: string } = {
-  RETAIL_20_21: 'DL No.', WHOLESALE_20B_21B: 'Wholesale DL No.', FSSAI: 'FSSAI', OTHER: 'Licence',
+  RETAIL_20_21: 'DL No.', WHOLESALE_20B_21B: 'Wholesale DL No.', FSSAI: 'FSSAI', SHOP_EST: 'Shop licence no.', TRADE: 'Trade licence no.', OTHER: 'Licence',
 };
 
 @ApiTags('PurchaseDownload')

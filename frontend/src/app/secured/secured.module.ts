@@ -12,6 +12,9 @@ import { SharedModule } from "../shared/shared.module";
 import { ConfirmService } from "../shared/confirm.service";
 import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
+import { StaffViewComponent } from "./dashboard-views/staff-view.component";
+import { PersonalViewComponent } from "./dashboard-views/personal-view.component";
+import { TeamRecognitionComponent } from "./recognition/team-recognition.component";
 import { DocumentsModule } from "./documents/documents.module";
 import { ProductsModule } from "./products/products.module";
 import { ProfileComponent } from "./profile.component";
@@ -86,12 +89,20 @@ const routes: Routes = [
       loadChildren: () => import('./outage/outage.module').then(m => m.OutageModule)
     },
     {
+      path: 'compliance', canActivate:[AuthGuard],
+      loadChildren: () => import('./compliance/compliance.module').then(m => m.ComplianceModule)
+    },
+    {
       path: 'review', canActivate:[AuthGuard],
       loadChildren: () => import('./review/review.module').then(m => m.ReviewModule)
     },
     {
       path: 'schedule-register', canActivate:[AuthGuard],
       loadChildren: () => import('../packs/pharmacy/pharmacy.module').then(m => m.PharmacyModule)
+    },
+    {
+      path: 'gst-filing', canActivate:[AuthGuard],
+      loadChildren: () => import('./gst/gst.module').then(m => m.GstModule)
     },
     {
       path: 'finance', canActivate:[AuthGuard],
@@ -124,6 +135,9 @@ const routes: Routes = [
     declarations: [
       SecuredComponent,
       DashboardComponent,
+      StaffViewComponent,
+      PersonalViewComponent,
+      TeamRecognitionComponent,
       ProfileComponent,
       NotificationBellComponent,
       NotificationsPageComponent

@@ -30,6 +30,17 @@ export class Sale extends BaseEntity {
   @Column("integer", { name: "order_no", nullable: true })
   orderno: number | null;
 
+  /** the tax invoice number (a financial-year series), set when a completed bill of a registered business is saved */
+  @Column("character varying", { name: "gst_invoice_no", length: 20, nullable: true })
+  gstinvoiceno: string | null;
+  @Column("integer", { name: "gst_business_id", nullable: true })
+  gstbusinessid: number | null;
+  @Column("character varying", { name: "buyer_gstin", length: 15, nullable: true })
+  buyergstin: string | null;
+  /** the state code of the supply: the buyer's state, or the delivery state; CGST+SGST within the seller's state, IGST outside it */
+  @Column("character varying", { name: "place_of_supply", length: 2, nullable: true })
+  placeofsupply: string | null;
+
   @Column("timestamp without time zone", { name: "bill_date" })
   billdate: Date;
   @Column("timestamp without time zone", { name: "order_date" })

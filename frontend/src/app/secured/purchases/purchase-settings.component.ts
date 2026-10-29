@@ -57,7 +57,7 @@ export class PurchaseSettingsComponent {
             {
                 key: 'purchase_order_pdf_show_buyer_details',
                 value: `${!!this.form.value.purchaseOrderPdfShowBuyerDetails}`,
-                description: 'Show buyer/pharmacy details on vendor purchase order PDF'
+                description: 'Show buyer details on vendor purchase order PDF'
             },
             {
                 key: 'purchase_order_signatures',

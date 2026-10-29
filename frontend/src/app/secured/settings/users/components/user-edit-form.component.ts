@@ -29,6 +29,7 @@ export class UserEditFormComponent {
   get pharmacistApplies():boolean {
     const chosen = (this.stores || []).filter((s:any) => (this.selectedStoreIds || []).includes(Number(s.id)));
     const pool = chosen.length ? chosen : (this.stores || []);
+    if (!this.auth.packOn('pharmacy')) return false;      // the registration is a pharmacy's: another kind of business has no pharmacist
     return !pool.length || pool.some((s:any) => s.storetype !== 'other');
   }
 

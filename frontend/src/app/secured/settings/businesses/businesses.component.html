@@ -8,7 +8,14 @@
     <div class="row g-2 mt-3">
       <div class="col-12 col-md-6">
         <label class="form-label">Business Name</label>
-        <input class="form-control" data-testid="biz-f-name" [(ngModel)]="form.name" placeholder="e.g. RGP Pharmacy">
+        <input class="form-control" data-testid="biz-f-name" [(ngModel)]="form.name" placeholder="e.g. My Shop">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label">Kind of business</label>
+        <select class="form-select" data-testid="biz-f-type" [(ngModel)]="form.businesstype">
+          <option value="pharmacy">Pharmacy</option>
+          <option value="general">Other business</option>
+        </select>
       </div>
       <div class="col-6 col-md-3 d-flex align-items-end">
         <div class="form-check">

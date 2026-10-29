@@ -11,18 +11,28 @@ import { DashboardService } from "./dashboard.service";
 export class DashboardController {
   constructor(private readonly service: DashboardService) {}
 
+  @Get("/view")
+  view(@User() currentUser: any) {
+    return this.service.view(currentUser);
+  }
+
+  @Get("/mine")
+  mine(@User() currentUser: any) {
+    return this.service.mine(currentUser);
+  }
+
   @Get("/summary")
-  summary(@Query() query: any, @User() _currentUser: any) {
-    return this.service.summary(query);
+  summary(@Query() query: any, @User() currentUser: any) {
+    return this.service.summary(query, currentUser);
   }
 
   @Get("/trends")
-  trends(@Query() query: any) {
-    return this.service.trends(query);
+  trends(@Query() query: any, @User() currentUser: any) {
+    return this.service.trends(query, currentUser);
   }
 
   @Get("/admin-summary")
   adminSummary(@User() currentUser: any) {
-    return this.service.adminSummary(currentUser?.roleid);
+    return this.service.adminSummary(currentUser?.roleid, currentUser?.id);
   }
 }

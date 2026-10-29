@@ -11,6 +11,8 @@ export class AuthService {
   permissions = []
   private readonly permissionsKey = 'permissions';
   private readonly modulesKey = 'modules';
+  private readonly businessKey = 'business';
+  private readonly gstKey = 'gstreg';
   private readonly hostedKey = 'hosted';
   /** this is a customer's copy run by a provider (it has a plan), not a standalone install */
   hosted = false;
@@ -19,9 +21,15 @@ export class AuthService {
   platform: any = null;
   /** what the business has switched on (hr, purchasing off|simple|full, gst, expenses, ...); everything on until told otherwise */
   modules: any = {};
+  /** GST: whether the business issues tax invoices, and from when */
+  gst: { registered: boolean; go_live: string | null; state_code: string | null } = { registered: false, go_live: null, state_code: null };
+  /** the kind of business and the packs it has; until told otherwise the businesses that were here first are pharmacies */
+  business: { type: string; packs: string[] } = { type: 'pharmacy', packs: ['pharmacy'] };
 
   constructor(private http: HttpClient) {
     try { this.modules = JSON.parse(sessionStorage.getItem(this.modulesKey) || '{}') || {}; } catch { this.modules = {}; }
+    try { const g = JSON.parse(sessionStorage.getItem(this.gstKey) || 'null'); if (g) this.gst = g; } catch { /* keep the default */ }
+    try { const b = JSON.parse(sessionStorage.getItem(this.businessKey) || 'null'); if (b && b.type) this.business = b; } catch { /* keep the default */ }
     try { this.hosted = sessionStorage.getItem(this.hostedKey) === '1'; } catch { this.hosted = false; }
     try { this.platform = JSON.parse(sessionStorage.getItem(this.platformKey) || 'null'); } catch { this.platform = null; }
     const savedPermissions = sessionStorage.getItem(this.permissionsKey);
@@ -74,6 +82,28 @@ export class AuthService {
     try { sessionStorage.setItem(this.modulesKey, JSON.stringify(this.modules)); } catch { /* storage blocked */ }
   }
 
+  public setBusiness(type:any, packs:any){
+    this.business = { type: type || 'pharmacy', packs: Array.isArray(packs) ? packs : [] };
+    try { sessionStorage.setItem(this.businessKey, JSON.stringify(this.business)); } catch { /* storage blocked */ }
+  }
+
+  public setGst(g:any){
+    this.gst = { registered: !!g?.registered, go_live: g?.go_live || null, state_code: g?.state_code || null };
+    try { sessionStorage.setItem(this.gstKey, JSON.stringify(this.gst)); } catch { /* storage blocked */ }
+  }
+
+  /** tax invoices are being issued now: the business is registered and its go-live date has come */
+  public get gstLive():boolean{
+    if (!this.gst.registered || !this.gst.go_live) return false;
+    const d = new Date(); const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return this.gst.go_live <= today;
+  }
+
+  /** the business has this pack: a pack's screens, fields and words are for the businesses that have it */
+  public packOn(name:string):boolean{
+    return (this.business.packs || []).includes(name);
+  }
+
   /** a module is on unless the business switched it off (purchasing counts as on at simple or full) */
   public moduleOn(key:string):boolean{
     const v = this.modules ? this.modules[key] : undefined;
@@ -101,6 +131,9 @@ export class AuthService {
       case 'expenses': return this.moduleOn('expenses');
       case 'paymentrecon': return this.moduleOn('payment_recon');
       case 'stockaudit': return this.moduleOn('stock_audits');
+      case 'refills': return this.moduleOn('refills');
+      case 'returns': return this.moduleOn('returns');
+      case 'scheduleregister': return this.moduleOn('drug_register');
       default: return true;
     }
   }

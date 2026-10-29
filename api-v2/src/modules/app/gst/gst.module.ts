@@ -11,6 +11,12 @@ import { Business } from "src/entities/business.entity";
 import { Vendor } from "src/entities/vendor.entity";
 import { GstController } from "./gst.controller";
 import { GstService } from "./gst.service";
+import { GstRatesController } from "./gst-rates.controller";
+import { GstRatesService } from "./gst-rates.service";
+import { GstRegistrationController } from "./gst-registration.controller";
+import { GstRegisterController } from "./gst-register.controller";
+import { GstRegisterService } from "./gst-register.service";
+import { GstRegistrationService } from "./gst-registration.service";
 
 @Module({
     imports: [
@@ -18,8 +24,8 @@ import { GstService } from "./gst.service";
         AuthModule,
         RoleModule,
     ],
-    controllers: [GstController],
-    providers: [GstService, JwtService],
-    exports: [GstService],
+    controllers: [GstController, GstRatesController, GstRegistrationController, GstRegisterController],
+    providers: [GstService, GstRatesService, GstRegistrationService, GstRegisterService, JwtService],
+    exports: [GstService, GstRatesService, GstRegistrationService],
 })
 export class GstModule {}

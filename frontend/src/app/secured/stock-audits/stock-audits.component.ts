@@ -1,3 +1,4 @@
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Router } from "@angular/router";
@@ -33,7 +34,7 @@ export class StockAuditsComponent implements OnInit {
   asof = new Date().toISOString().slice(0, 10);
   valuation: any = null;
 
-  constructor(private http: HttpClient, private router: Router, private storeContext: StoreContextService) {}
+  constructor(private http: HttpClient, private router: Router, private storeContext: StoreContextService, public auth: AuthService) {}
 
   ngOnInit() {
     this.http.get(`${this.api}/options`).subscribe(o => this.opts = o);

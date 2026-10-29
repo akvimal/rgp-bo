@@ -153,7 +153,7 @@
                   <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="mft1" [checked]="mf.applies_types.includes('FULL_TIME')" (change)="toggleType('FULL_TIME')"><label class="form-check-label" for="mft1">Full time</label></div>
                   <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="mft2" [checked]="mf.applies_types.includes('PART_TIME')" (change)="toggleType('PART_TIME')"><label class="form-check-label" for="mft2">Part time</label></div>
                 </div><div class="form-text">none ticked = both</div></div>
-              <div class="col-md-8"><label class="form-label">Designations</label><input class="form-control" [(ngModel)]="mf.designations" placeholder="e.g. Cashier, Pharmacist (blank = all)"></div>
+              <div class="col-md-8"><label class="form-label">Designations</label><input class="form-control" [(ngModel)]="mf.designations" placeholder="e.g. Cashier, Manmacist (blank = all)"></div>
             </div>
             <div class="mt-3">
               <button class="btn btn-primary" type="button" (click)="saveMeasure()" [disabled]="!mf.name" data-testid="hr-set-metric-save">Save measure</button>

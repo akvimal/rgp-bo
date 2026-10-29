@@ -1,3 +1,6 @@
+import { stateName } from "../../purchases/vendors/gst-util";
+import { ShiftContextService } from "src/app/@core/shift-context.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { DateUtilService } from "../../date-util.service";
@@ -60,14 +63,19 @@ export class SaleViewComponent {
     /** who the bill is from: the store's own details, with the business's as the fallback */
     from:any = { name: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
     payments:{label:string, amount:number}[] = [];
-    gstRows:{rate:number, taxable:number, cgst:number, sgst:number}[] = [];
+    gstRows:{rate:number, taxable:number, cgst:number, sgst:number, igst:number}[] = [];
+    /** the supply crosses a state border: the tax is IGST, not CGST and SGST */
+    interState = false;
+    placeName = '';
     gstTotal = 0;
     refills:{title:string, due:Date}[] = [];
 
     constructor(private route: ActivatedRoute,
       private service:SaleService,
       private dateUtilService: DateUtilService,
-      private prodUtilService: ProductUtilService){}
+      private prodUtilService: ProductUtilService,
+      public auth: AuthService,
+      public shiftContext: ShiftContextService){}
 
     ngOnInit(){
       const saleId = this.route.snapshot.paramMap.get('id');
@@ -89,6 +97,7 @@ export class SaleViewComponent {
         address,
         phone: s.phone || '',
         gstin: b.gstin || '',
+        statecode: b.statecode || '',
         licences: Object.keys(byType).map(t => ({ label: LICENCE_LABELS[t] || 'Licence', numbers: byType[t].join(' | ') }))
       };
     }
@@ -138,14 +147,16 @@ export class SaleViewComponent {
       ].filter(Boolean) as any;
 
       // the amounts include GST: the tax inside each rate is what is shown, half each as CGST and SGST
+      this.interState = !!data.placeofsupply && !!this.from.statecode && data.placeofsupply !== this.from.statecode;
+      this.placeName = data.placeofsupply ? `${stateName(data.placeofsupply)} (${data.placeofsupply})` : '';
       const byRate = new Map<number, number>();
       items.forEach((i:any) => byRate.set(i.taxpcnt, (byRate.get(i.taxpcnt) || 0) + (+i.total || 0)));
       this.gstRows = Array.from(byRate.entries()).sort((a, b) => a[0] - b[0]).map(([rate, gross]) => {
         const taxable = gross / (1 + rate / 100);
         const tax = gross - taxable;
-        return { rate, taxable, cgst: tax / 2, sgst: tax / 2 };
+        return this.interState ? { rate, taxable, cgst: 0, sgst: 0, igst: tax } : { rate, taxable, cgst: tax / 2, sgst: tax / 2, igst: 0 };
       });
-      this.gstTotal = this.gstRows.reduce((t, g) => t + g.cgst + g.sgst, 0);
+      this.gstTotal = this.gstRows.reduce((t, g) => t + g.cgst + g.sgst + g.igst, 0);
 
       // a medicine supplied for months: when it is likely to run out
       const bill = new Date(data.billdate);

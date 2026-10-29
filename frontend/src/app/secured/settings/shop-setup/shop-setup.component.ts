@@ -2,6 +2,8 @@ import { Component, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "src/environments/environment";
 import { BusinessesService } from "../businesses/businesses.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
+import { PropsService } from "src/app/shared/props.service";
 
 /**
  * How the shop runs: pick a staffing preset, see exactly what it would change, apply it. A preset only sets defaults (approvals,
@@ -39,6 +41,15 @@ export class ShopSetupComponent implements OnInit {
   approvalMessage = '';
   approvalError = '';
   modules: any = null;
+  /** what kind of business this is: it decides which packs (a pharmacy's drug register, refills, words) the business has */
+  businessType = 'pharmacy';
+  typeSaving = false;
+  typeMessage = '';
+  typeError = '';
+  readonly businessTypes = [
+    { key: 'pharmacy', label: 'Pharmacy', hint: 'Medicines with schedules, prescriptions, the drug register and refill follow-up.' },
+    { key: 'general', label: 'Other business', hint: 'Any other shop or service: no medicine fields, no drug register, no pharmacy words.' },
+  ];
   modulesSaving = false;
   modulesMessage = '';
   modulesError = '';
@@ -48,13 +59,14 @@ export class ShopSetupComponent implements OnInit {
     { key: 'payment_recon', label: 'Digital payment reconciliation', hint: 'Matching UPI / card takings to the provider statement.' },
     { key: 'stock_audits', label: 'Stock audits', hint: 'Planned cycle counts by category and store.' },
     { key: 'transfers', label: 'Stock transfers', hint: 'Moving stock between your stores.' },
+    { key: 'returns', label: 'Sale returns', hint: 'Taking goods back from customers. Switch off if this business takes no returns; a store can also turn it off for itself under Settings > Store.' },
     { key: 'gst', label: 'GST reconciliation', hint: 'Matching purchase invoices to GSTR-2A/2B. Needs purchasing.' },
   ];
 
-  constructor(private http: HttpClient, private business: BusinessesService) {}
+  constructor(private http: HttpClient, private business: BusinessesService, private auth: AuthService, private props: PropsService) {}
 
   private loadAdjustments() {
-    this.business.getMine().subscribe((b: any) => { this.approvalMode = b.approvalmode || 'separate'; this.singlePerson = !!b.singleperson; }, () => {});
+    this.business.getMine().subscribe((b: any) => { this.approvalMode = b.approvalmode || 'separate'; this.singlePerson = !!b.singleperson; this.businessType = b.businesstype || 'pharmacy'; }, () => {});
     this.business.getMyModules().subscribe((m: any) => { this.modules = m; this.hr = !!m.hr; }, () => this.modules = null);
   }
 
@@ -64,6 +76,22 @@ export class ShopSetupComponent implements OnInit {
     this.business.updateMine({ approvalmode: this.approvalMode }).subscribe(
       () => { this.approvalSaving = false; this.approvalMessage = 'Saved.'; },
       err => { this.approvalSaving = false; this.approvalError = this.msg(err, 'Could not save.'); });
+  }
+
+  saveBusinessType() {
+    this.typeMessage = this.typeError = '';
+    this.typeSaving = true;
+    this.business.updateMine({ businesstype: this.businessType }).subscribe(
+      () => {
+        this.props.refresh(() => {
+          const c: any = this.props.config$.value || {};
+          this.auth.setBusiness(c.businessType || this.businessType, c.packs || []);
+          this.business.getMyModules().subscribe((m: any) => { this.modules = m; this.hr = !!m.hr; this.auth.setModules(m); }, () => {});
+          this.typeSaving = false;
+          this.typeMessage = 'Saved. Menus and words update when you open the next screen.';
+        });
+      },
+      err => { this.typeSaving = false; this.typeError = this.msg(err, 'Could not change the business type.'); });
   }
 
   /** a module the hosted plan leaves out cannot be switched on here */

@@ -65,6 +65,9 @@ import { UserStore } from "./user-store.entity";
   @Column("numeric", { name: "cash_refund_limit", precision: 12, scale: 2, nullable: true, transformer: { to: (v: any) => v, from: (v: any) => (v === null || v === undefined ? null : Number(v)) } })
   cashrefundlimit: number | null;
 
+  @Column({ name: "returns_allowed", type: "boolean", default: true })
+  returnsallowed: boolean;
+
   @Column({ name: "operator_required", type: "boolean", default: true })
   operatorrequired: boolean;
 

@@ -16,8 +16,10 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = { pharmacy: 'P
 
 export interface Pack { label: string; types: BusinessType[]; modules: string[]; }
 export const PACKS: Record<string, Pack> = {
-  pharmacy: { label: 'Pharmacy pack', types: ['pharmacy'], modules: ['drug_register'] },
+  pharmacy: { label: 'Pharmacy pack', types: ['pharmacy'], modules: ['drug_register', 'refills'] },
 };
+
+export const isBusinessType = (v: any): v is BusinessType => (BUSINESS_TYPES as readonly string[]).includes(v);
 
 /** the packs a business type has by default */
 export const packsOf = (type: string | null | undefined): string[] => Object.keys(PACKS).filter((k) => (PACKS[k].types as string[]).includes(String(type || 'pharmacy')));
@@ -32,9 +34,13 @@ export interface ModuleState {
   transfers: boolean;
   /** pharmacy pack: the online register of Schedule H, H1 and X drugs */
   drug_register: boolean;
+  /** pharmacy pack: refill follow-up of chronic medicines, and the offer of a longer supply */
+  refills: boolean;
+  /** the business takes sale returns (a store can still turn them off for itself) */
+  returns: boolean;
 }
 
-export const MODULE_KEYS = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register'] as const;
+export const MODULE_KEYS = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register', 'refills', 'returns'] as const;
 export type ModuleKey = typeof MODULE_KEYS[number];
 
 export const MODULE_LABELS: Record<ModuleKey, string> = {
@@ -46,10 +52,12 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   stock_audits: 'Stock audits',
   transfers: 'Stock transfers',
   drug_register: 'Drug register (Schedule H, H1, X)',
+  refills: 'Refill follow-up (chronic medicines)',
+  returns: 'Sale returns',
 };
 
 /** Everything on: what a business that never chose gets. */
-export const ALL_ON: ModuleState = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true, drug_register: true };
+export const ALL_ON: ModuleState = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true, drug_register: true, refills: true, returns: true };
 
 const asBool = (v: any, dflt: boolean) => (v === undefined || v === null ? dflt : v === true || v === 'true');
 
@@ -70,6 +78,8 @@ export function resolveModules(raw: any, businessType: string | null | undefined
     stock_audits: asBool(r.stock_audits, true),
     transfers: asBool(r.transfers, true),
     drug_register: asBool(r.drug_register, packModules.has('drug_register')),
+    refills: asBool(r.refills, packModules.has('refills')),
+    returns: asBool(r.returns, true),
   };
 }
 
@@ -79,6 +89,7 @@ export function parseModulesInput(body: any): { value: Partial<Record<ModuleKey,
   if (!body || typeof body !== 'object' || Array.isArray(body)) return { value: out, error: 'Send the modules as an object.' };
   for (const k of Object.keys(body)) {
     if (!(MODULE_KEYS as readonly string[]).includes(k)) return { value: out, error: `Unknown module "${k}".` };
+    if (body[k] === null) { out[k as ModuleKey] = null; continue; }      // null: forget the choice, the business type's default applies again
     if (k === 'purchasing') {
       if (!['off', 'simple', 'full'].includes(body[k])) return { value: out, error: 'Purchasing must be off, simple or full.' };
     } else if (typeof body[k] !== 'boolean') {
@@ -106,6 +117,8 @@ const ROUTES: Array<[RegExp, Gate]> = [
   [/^\/(stock-audits|stock\/counts)(\/|$)/, { key: 'stock_audits' }],
   [/^\/store-stock-transfers(\/|$)/, { key: 'transfers' }],
   [/^\/schedule(\/|$)/, { key: 'drug_register' }],
+  [/^\/(refills|sale-suggestions)(\/|$)/, { key: 'refills' }],
+  [/^\/(salereturns|sales\/returns)(\/|$)/, { key: 'returns' }],
 ];
 
 /** Whether a path belongs to a switchable module at all (so most requests skip the lookup). */
@@ -141,6 +154,8 @@ const RESOURCES: Record<string, (m: ModuleState) => boolean> = {
   paymentrecon: (m) => m.payment_recon,
   stockaudit: (m) => m.stock_audits,
   scheduleregister: (m) => m.drug_register,
+  refills: (m) => m.refills,
+  returns: (m) => m.returns,
 };
 
 /** Single screens inside a shared resource. */

@@ -6,7 +6,7 @@ const CATEGORIES = [
   { value: "PRODUCT_QUALITY", label: "Product quality / expiry" },
   { value: "WRONG_ITEM", label: "Wrong item given" },
   { value: "PRICING", label: "Pricing / billing" },
-  { value: "STOCK", label: "Medicine not available" },
+  { value: "STOCK", label: "Product not available" },
   { value: "DELIVERY", label: "Delivery" },
   { value: "OTHER", label: "Other" },
 ];

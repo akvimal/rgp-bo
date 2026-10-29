@@ -5,6 +5,8 @@ import { PriceListEntry } from './price-list';
 const FONT_DIR = join(__dirname, '..', '..', '..', 'assets', 'fonts');
 
 export interface PriceListHeader {
+  /** a pharmacy's list marks prescription-only drugs (Rx) and counts tablets; another business's does not */
+  pharmacy?: boolean;
   business: string;
   address?: string;
   gstin?: string;
@@ -17,7 +19,7 @@ const money = (n: number) => (+n || 0).toLocaleString('en-IN', { minimumFraction
 
 // A4 portrait: 595 x 842 points
 const L = 28, W = 539;
-const COLS = [
+const ALL_COLS = [
   { key: 'title', label: 'Product', w: 285, align: 'left' as const },
   { key: 'pack', label: 'Pack', w: 34, align: 'right' as const },
   { key: 'packIncl', label: 'Per pack', w: 66, align: 'right' as const },
@@ -25,6 +27,7 @@ const COLS = [
   { key: 'mrp', label: 'MRP (pack)', w: 62, align: 'right' as const },
   { key: 'rx', label: 'Rx', w: 32, align: 'center' as const },
 ];
+const columns = (rx: boolean) => (rx ? ALL_COLS : ALL_COLS.filter((c) => c.key !== 'rx').map((c) => (c.key === 'title' ? { ...c, w: c.w + 32 } : c)));
 const TOP = 28, FIRST_ROW_Y = 112, ROW_H = 13, FOOT_Y = 818;
 export const ROWS_PER_PAGE = Math.floor((FOOT_Y - 8 - FIRST_ROW_Y) / ROW_H);
 
@@ -34,6 +37,7 @@ export const ROWS_PER_PAGE = Math.floor((FOOT_Y - 8 - FIRST_ROW_Y) / ROW_H);
  */
 export function buildPriceListPdf(entries: PriceListEntry[], h: PriceListHeader): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    const COLS = columns(h.pharmacy !== false);
     const doc = new PDFDocument({
       size: 'A4', margins: { top: TOP, left: L, right: L, bottom: 20 }, bufferPages: true,
       info: { Title: `Price list ${stamp(h.generatedAt)}`, Author: h.business, Subject: 'Counter price list for use when the system is down' },
@@ -58,7 +62,7 @@ export function buildPriceListPdf(entries: PriceListEntry[], h: PriceListHeader)
         .text([h.business, h.address, h.gstin ? `GSTIN ${h.gstin}` : ''].filter(Boolean).join('  ·  '), L, TOP + 17, { width: W, lineBreak: false });
       doc.font('B').fontSize(8).fillColor('#b91c1c').text(`Valid as of ${printed}`, L, TOP + 29, { width: W, lineBreak: false, continued: false });
       doc.font('R').fontSize(7.5).fillColor('#374151')
-        .text('Prices include GST. Per unit is one tablet, capsule or piece. Only products in stock when this was printed are listed: for anything else ask the Store Head.', L, TOP + 40, { width: W, lineBreak: false });
+        .text(`Prices include GST. Per unit is one ${h.pharmacy === false ? 'piece' : 'tablet, capsule or piece'}. Only products in stock when this was printed are listed: for anything else ask the Store Head.`, L, TOP + 40, { width: W, lineBreak: false });
       const range = rows.length ? `${rows[0].title.slice(0, 22)}  to  ${rows[rows.length - 1].title.slice(0, 22)}` : '';
       doc.font('R').fontSize(7.5).fillColor('#6b7280').text(range, L, TOP + 51, { width: W, lineBreak: false });
 

@@ -20,7 +20,7 @@ with sold as (
 ), agg as (
   select product_id,
          min(mrp_cost) filter (where units > 0) as min_mrp,
-         max(public.sale_gst(tax::double precision)) filter (where units > 0) as tmax
+         max(public.gst_sale_rate(product_id, tax::double precision)) filter (where units > 0) as tmax
     from batches group by product_id having sum(units) > 0
 )
 select p.id, p.title, p.pack, p.more_props->>'schedule' as sched,

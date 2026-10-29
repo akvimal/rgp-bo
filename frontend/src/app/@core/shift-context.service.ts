@@ -25,6 +25,11 @@ export class ShiftContextService {
     return this.profileSubject.value;
   }
 
+  /** the selected store takes returns (the business's own switch is on AuthService, and the server checks both) */
+  get returnsAllowed(): boolean {
+    return this.profileSubject.value?.returnsallowed !== false;
+  }
+
   get staffBased(): boolean {
     return this.profileSubject.value?.shiftmode === "staff";
   }

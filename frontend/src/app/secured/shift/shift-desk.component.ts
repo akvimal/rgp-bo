@@ -134,14 +134,32 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     this.submitOpen(false);
   }
 
+  // "do this to continue": the server lists what is outstanding (an unclosed earlier shift, a stock count far overdue); each is done, or a reason is given
+  gateItems: any[] = [];
+  gateReasons: { [id: number]: string } = {};
+  private gatePhase: "open" | "close" = "open";
+  private lastAllowZero = false;
+
+  private gateFrom(err: any, phase: "open" | "close"): boolean {
+    const items = err?.status === 409 && Array.isArray(err?.error?.required) ? err.error.required : null;
+    if (!items) return false;
+    this.gateItems = items; this.gatePhase = phase; this.error = err.error.message || "";
+    return true;
+  }
+  get gateReady(): boolean { return this.gateItems.every(i => String(this.gateReasons[i.id] || "").trim().length >= 3); }
+  private reasonsBody() { return this.gateItems.length ? { compliancereasons: this.gateReasons } : {}; }
+  goAhead() { if (this.gatePhase === "open") this.submitOpen(this.lastAllowZero); else this.confirmClose(); }
+  stayHere() { this.gateItems = []; this.gateReasons = {}; this.error = ""; }
+
   private submitOpen(allowZero: boolean) {
+    this.lastAllowZero = allowZero;
     this.busy = true; this.error = "";
     this.cash.createShift({
       storeid: this.storeId, assigneduserid: this.operatorId, openingdenominations: this.denoms,
-      openingchecklist: this.checklist.map(c => c.key), openingchecklistat: this.tickTimes(), allowZero,
+      openingchecklist: this.checklist.map(c => c.key), openingchecklistat: this.tickTimes(), allowZero, ...this.reasonsBody(),
     }).subscribe({
-      next: () => { this.busy = false; this.mode = ""; this.message = "Shift opened."; this.shiftContext.reload(); },
-      error: err => { this.busy = false; this.error = err?.error?.message || "Unable to open the shift"; },
+      next: () => { this.busy = false; this.mode = ""; this.gateItems = []; this.gateReasons = {}; this.message = "Shift opened."; this.shiftContext.reload(); },
+      error: err => { this.busy = false; if (!this.gateFrom(err, "open")) this.error = err?.error?.message || "Unable to open the shift"; },
     });
   }
 
@@ -201,15 +219,16 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
       counteddenominations: this.denoms, closedoperatorid: this.operatorId, closingchecklist: this.checklist.map(c => c.key), closingchecklistat: this.tickTimes(),
       closetype: this.closeType, handovertoid: this.closeType === "HANDOVER" ? this.handoverTo : undefined,
       closingdigital: (this.summary?.digitalByProvider || []).map((d: any) => ({ provider: d.provider, counted: Number(this.digitalCounted[d.provider]) })),
+      ...this.reasonsBody(),
     }).subscribe({
       next: () => {
-        this.busy = false; this.mode = "";
+        this.busy = false; this.mode = ""; this.gateItems = []; this.gateReasons = {};
         this.message = this.closeType === "HANDOVER"
           ? `Handed over to ${taker}. Their shift is open with Rs ${Math.round(this.denomTotal).toLocaleString("en-IN")} in the drawer.`
           : "Shift closed.";
         this.shiftContext.reload();
       },
-      error: err => { this.busy = false; this.error = err?.error?.message || "Unable to close the shift"; },
+      error: err => { this.busy = false; if (!this.gateFrom(err, "close")) this.error = err?.error?.message || "Unable to close the shift"; },
     });
   }
 

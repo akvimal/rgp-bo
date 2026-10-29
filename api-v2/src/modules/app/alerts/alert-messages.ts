@@ -33,9 +33,29 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'Pharmacist registration ended on {date}: {person}', body: 'It ended {days} days ago. Update the registration under Users once it is renewed.' },
     ta: { title: 'மருந்தாளர் பதிவு {date} அன்று முடிந்துவிட்டது: {person}', body: '{days} நாட்களுக்கு முன் முடிந்தது. புதுப்பித்த பின் பயனர்கள் பகுதியில் பதிவைப் புதுப்பிக்கவும்.' },
   },
+  gst_rate_change_soon: {
+    en: { title: 'GST changes on {date}: {what}', body: 'GST becomes {rate}% in {days} days. Review the stock and prices it affects under GST > Rate changes, and decide whether to pass the saving on to customers.' },
+    ta: { title: 'ஜிஎஸ்டி {date} அன்று மாறுகிறது: {what}', body: 'ஜிஎஸ்டி {days} நாட்களில் {rate}% ஆக மாறுகிறது. பாதிக்கப்படும் இருப்பு மற்றும் விலைகளை ஜிஎஸ்டி > விகித மாற்றங்களில் பார்த்து, சேமிப்பை வாடிக்கையாளர்களுக்கு வழங்குவதா என்பதை முடிவு செய்யவும்.' },
+  },
+  gst_filing_due: {
+    en: { title: 'GST for {month} is not closed', body: 'The usual date to file {month} is the 11th, in {days} days. Close the month under GST once the return is filed.' },
+    ta: { title: '{month} க்கான ஜிஎஸ்டி மூடப்படவில்லை', body: '{month} தாக்கல் செய்ய வழக்கமான தேதி 11, {days} நாட்களில். வருமானம் தாக்கல் செய்த பின் ஜிஎஸ்டி பக்கத்தில் மாதத்தை மூடவும்.' },
+  },
+  gst_filing_late: {
+    en: { title: 'GST for {month} is past the usual date', body: 'The usual date to file {month} was the 11th, {days} days ago, and the month is not closed. File it and close the month under GST.' },
+    ta: { title: '{month} க்கான ஜிஎஸ்டி வழக்கமான தேதியைக் கடந்துவிட்டது', body: '{month} தாக்கல் செய்ய வழக்கமான தேதி 11, {days} நாட்களுக்கு முன், மாதம் மூடப்படவில்லை. தாக்கல் செய்து ஜிஎஸ்டி பக்கத்தில் மாதத்தை மூடவும்.' },
+  },
   shift_open_long: {
     en: { title: 'A shift is still open: {store}', body: '{name} has been open for {hours} hours. Close it to count the cash.' },
     ta: { title: 'ஒரு ஷிப்ட் இன்னும் திறந்திருக்கிறது: {store}', body: '{name} {hours} மணி நேரமாகத் திறந்துள்ளது. பணத்தை எண்ண அதை மூடவும்.' },
+  },
+  compliance_escalated: {
+    en: { title: '{item} has gone {days} days without being done: {store}', body: 'It was due on {date}. Open Compliance to see who owns it, and either get it done or decide on a waiver.' },
+    ta: { title: '{item} {days} நாட்களாக செய்யப்படவில்லை: {store}', body: '{date} அன்று செய்ய வேண்டியது. இணக்கம் பக்கத்தில் யாருடையது என்று பார்த்து, செய்து முடிக்கவும் அல்லது விலக்கு குறித்து முடிவு செய்யவும்.' },
+  },
+  compliance_parked: {
+    en: { title: 'A parked bill is still waiting: {store}', body: 'A bill parked on {date} has not been finished or discarded. Ask whoever parked it to complete it or discard it.' },
+    ta: { title: 'நிறுத்தி வைத்த பில் இன்னும் காத்திருக்கிறது: {store}', body: '{date} அன்று நிறுத்தி வைத்த பில் முடிக்கப்படவில்லை அல்லது நீக்கப்படவில்லை. நிறுத்தியவரிடம் அதை முடிக்க அல்லது நீக்கச் சொல்லுங்கள்.' },
   },
   weekly_review_unsigned: {
     en: { title: 'Weekly review not signed: {store}', body: 'The week starting {date} has not been reviewed. Check its discounts, cancelled bills and returns, then sign it on the Weekly review page.' },
@@ -102,6 +122,8 @@ const money = (n: any) => `₹${Number(n || 0).toLocaleString('en-IN', { maximum
 /** the kinds of store licence, named for a person */
 const LICENCE_TYPES: Record<string, Record<Lang, string>> = {
   RETAIL_20_21: { en: 'Retail drug', ta: 'சில்லறை மருந்து' },
+  SHOP_EST: { en: 'Shop and establishment', ta: 'கடை மற்றும் நிறுவனம்' },
+  TRADE: { en: 'Trade', ta: 'வர்த்தக' },
   WHOLESALE_20B_21B: { en: 'Wholesale drug', ta: 'மொத்த மருந்து' },
   FSSAI: { en: 'FSSAI', ta: 'FSSAI' },
   OTHER: { en: 'Other', ta: 'பிற' },

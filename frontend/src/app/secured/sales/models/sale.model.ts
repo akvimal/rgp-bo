@@ -30,5 +30,8 @@ export interface Sale {
     ordertype?:string,
     deliverytype?:string,
     actinguserid?:number,
-    actinguser?:any
+    actinguser?:any,
+    gstinvoiceno?:string|null,
+    buyergstin?:string|null,
+    placeofsupply?:string|null
 }

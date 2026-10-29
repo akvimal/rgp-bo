@@ -1,3 +1,4 @@
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component, OnInit } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { HrService } from "./hr.service";
@@ -21,7 +22,7 @@ export class HrStaffComponent implements OnInit {
   revising = false;
   rev: any = { effective_from: "", reason: "", amounts: {} };
 
-  constructor(private hr: HrService, private route: ActivatedRoute) {}
+  constructor(private hr: HrService, private route: ActivatedRoute, public auth: AuthService) {}
 
   ngOnInit() { this.load(); }
 

@@ -62,6 +62,22 @@ export class ModulesService {
     return key === 'purchasing' ? m.purchasing !== 'off' : !!m[key];
   }
 
+  /**
+   * Why this store takes no returns, or null when it does. The business's switch comes first; a store can only narrow it.
+   * An unknown store is not blocked here (the callers fail on it for their own reasons).
+   */
+  async returnsBlocked(storeId: number | null | undefined): Promise<string | null> {
+    if (!storeId) return null;
+    const [s] = await this.manager.query(`select business_id, returns_allowed from stores where id = $1`, [storeId]);
+    if (!s) return null;
+    if (!(await this.forBusiness(s.business_id ?? null)).returns) return `${MODULE_LABELS.returns} are switched off for this business.`;
+    if (s.returns_allowed === false) return 'This store does not take returns.';
+    return null;
+  }
+
+  /** forget what is cached for a business (its modules or its type changed) */
+  refresh(businessId: number) { this.byBusiness.delete(businessId); }
+
   /** the business has this pack (its business type says so) */
   async packOnForBusiness(businessId: number, pack: string): Promise<boolean> {
     const [b] = await this.manager.query(`select business_type from business where id = $1`, [businessId]);
@@ -81,7 +97,8 @@ export class ModulesService {
     if (!Object.keys(value).length) throw new BadRequestException('Nothing to change.');
     const cur = await this.entry(businessId);
     const before = cur.state;
-    const next = { ...cur.raw, ...value };
+    const next: any = { ...cur.raw, ...value };
+    for (const k of Object.keys(next)) if (next[k] === null) delete next[k];
     if (value.gst === true && resolveModules(next).purchasing === 'off') throw new BadRequestException('GST reconciliation needs purchasing: switch purchasing on first.');
     await this.manager.query(`update business set modules = $2::jsonb where id = $1`, [businessId, JSON.stringify(next)]);
     this.byBusiness.delete(businessId);

@@ -1,3 +1,4 @@
+import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { Component } from "@angular/core";
 import { SaleReturn } from "../models/salereturn.model";
 import { SaleService } from "../sales.service";
@@ -11,7 +12,7 @@ export class SaleReturnsComponent {
     adjustReturnItemId = 0;
     showReturnAdjustForm = false;
    
-    constructor(private service:SaleService){}
+    constructor(private service:SaleService, public shiftContext: ShiftContextService){}
 
     ngOnInit(){
       this.fetchReturns({});

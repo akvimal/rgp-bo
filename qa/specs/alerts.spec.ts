@@ -33,7 +33,7 @@ test.describe('Alerts: the engine @p1', () => {
   test('ALRT-1 a business starts with the built-in alerts; setting them up is the owner\'s @happy', async ({ api }) => {
     const rules = (await api.request('GET', '/alerts/rules', undefined, MGR)).body as any[];
     expect(rules.filter((r) => r.source === 'system').map((r) => r.kind).sort()).toEqual(
-      ['adjustment_other', 'approvals_pending', 'deposit_due', 'expired_stock', 'licence_expiring', 'negative_stock', 'outage_kit', 'price_policy', 'registration_expiring', 'shift_open_long', 'stock_count_overdue', 'weekly_review']);
+      ['adjustment_other', 'approvals_pending', 'compliance_late', 'deposit_due', 'expired_stock', 'gst_filing_due', 'gst_rate_change', 'licence_expiring', 'negative_stock', 'outage_kit', 'price_policy', 'registration_expiring', 'shift_open_long', 'stock_count_overdue', 'weekly_review']);
     const s = await freshStore(api);
     const staff = await user(api, s.id, SALES);
     expect((await api.request('GET', '/alerts/rules', undefined, staff.email)).status).toBe(403);

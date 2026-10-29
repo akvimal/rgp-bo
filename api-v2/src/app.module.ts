@@ -12,6 +12,7 @@ import { FinanceModule } from './modules/app/finance/finance.module';
 import { SaleHooksModule } from './core/sale-hooks/sale-hooks';
 import { PharmacyPackModule } from './packs/pharmacy/pharmacy-pack.module';
 import { packEnabled } from './packs/packs';
+import { PackConfigModule } from './packs/pack-config.module';
 import { PurchaseModule } from './modules/app/purchases/purchase.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { StockModule } from './modules/app/stock/stock.module';
@@ -32,6 +33,9 @@ import { NotificationModule } from './modules/app/notifications/notification.mod
 import { AlertsModule } from './modules/app/alerts/alerts.module';
 import { AuditModule } from './core/audit/audit.module';
 import { ModulesModule } from './core/modules/modules.service';
+import { BusinessConfigModule } from './core/config/config.service';
+import { ComplianceModule } from './modules/app/compliance/compliance.controller';
+import { RecognitionModule } from './modules/app/recognition/recognition.controller';
 import { PlatformModule } from './core/platform/platform.service';
 import { StaffDetailsModule } from './modules/app/staff-details/staff-details.module';
 import { QualityModule } from './modules/app/quality/quality.module';
@@ -64,6 +68,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     ReviewModule,
     FinanceModule,
     SaleHooksModule,
+    PackConfigModule,
     // business packs: loaded when PACKS says so (all of them when it is not set)
     ...(packEnabled('pharmacy') ? [PharmacyPackModule] : []),
     VendorModule,
@@ -86,6 +91,9 @@ import { DbTimingService } from './core/performance/db-timing.service';
     AlertsModule,
     AuditModule,
     ModulesModule,
+    BusinessConfigModule,
+    ComplianceModule,
+    RecognitionModule,
     PlatformModule,
     StaffDetailsModule,
     QualityModule,

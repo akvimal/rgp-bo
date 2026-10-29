@@ -32,6 +32,8 @@ export interface AlertKind {
   description: string;
   params: ParamDef[];
   defaultSeverity: Severity;
+  /** a kind of a business pack: watched only for a business that has the pack */
+  pack?: string;
   evaluate(ctx: Ctx, params: Record<string, number>): Promise<Finding[]>;
 }
 
@@ -85,6 +87,7 @@ export const KINDS: AlertKind[] = [
   },
   {
     kind: 'registration_expiring',
+    pack: 'pharmacy',
     label: 'Pharmacist registration ending',
     description: "A pharmacist's registration (on the staff record, under Settings > Users) ends soon or has ended. Only people at a pharmacy store are watched.",
     params: [{ key: 'days', label: 'Warn this many days before', min: 1, max: 365, default: 30, unit: 'days' }],
@@ -113,6 +116,56 @@ export const KINDS: AlertKind[] = [
           link: '/secure/settings/users',
         };
       });
+    },
+  },
+  {
+    kind: 'gst_rate_change',
+    label: 'GST rate change coming',
+    description: 'A change of GST rate (Settings > GST > Rate changes) takes effect soon. Check the stock it covers and decide the prices.',
+    params: [{ key: 'days', label: 'Warn this many days before', min: 1, max: 60, default: 7, unit: 'days' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const rows = await ctx.manager.query(
+        `select id, scope_type, scope_value, mode, rate::float8 as rate, to_char(effective_from, 'YYYY-MM-DD') as effective_from
+           from gst_rate_change where cancelled_on is null and effective_from >= $1::date and effective_from <= $2::date order by effective_from`, [ctx.today, addDays(ctx.today, p.days)]);
+      return rows.map((r: any) => {
+        const what = r.scope_type === 'all' ? 'All products' : r.scope_type === 'category' ? `Category ${r.scope_value}` : r.scope_type === 'hsn_prefix' ? `HSN ${r.scope_value}` : `Product ${r.scope_value}`;
+        return {
+          key: `gstchange:${r.id}`,
+          storeid: null,
+          code: 'gst_rate_change_soon',
+          params: { what, rate: r.rate, date: r.effective_from, days: daysBetween(ctx.today, r.effective_from) },
+          link: '/secure/gst-filing',
+        };
+      });
+    },
+  },
+  {
+    kind: 'gst_filing_due',
+    label: 'GST month not closed',
+    description: 'A registered business has not closed last month under GST (the return is filed and the ARN is entered on the GST page). Warns from a few days before the usual filing date.',
+    params: [{ key: 'days', label: 'Warn this many days before the 11th', min: 0, max: 10, default: 3, unit: 'days' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const [reg] = await ctx.manager.query(`select reg_type, to_char(go_live, 'YYYY-MM-DD') as go_live from gst_registration where business_id = $1`, [ctx.businessId]);
+      if (!reg || reg.reg_type !== 'registered' || !reg.go_live) return [];
+      const day = +ctx.today.slice(8, 10);
+      if (day < 11 - p.days) return [];
+      const y = +ctx.today.slice(0, 4), m = +ctx.today.slice(5, 7);
+      const pm = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
+      const month = `${pm.y}-${String(pm.m).padStart(2, '0')}`;
+      if (month < reg.go_live.slice(0, 7)) return [];
+      const [shut] = await ctx.manager.query(`select 1 from gst_filing_month where business_id = $1 and month = $2 and status = 'CLOSED'`, [ctx.businessId, month]);
+      if (shut) return [];
+      const dueDays = 11 - day;
+      return [{
+        key: `gstfiling:${month}`,
+        storeid: null,
+        code: dueDays >= 0 ? 'gst_filing_due' : 'gst_filing_late',
+        severity: dueDays >= 0 ? undefined : 'critical' as Severity,
+        params: { month, days: Math.abs(dueDays) },
+        link: '/secure/gst-filing',
+      }];
     },
   },
   {
@@ -289,6 +342,25 @@ export const KINDS: AlertKind[] = [
       }));
     },
   },
+  {
+    kind: 'compliance_late',
+    label: 'Compliance item gone unattended',
+    description: 'An item in the compliance register has passed the business escalation days without being done or waived, or a parked bill has been left more than a day. Stock counts, licences and the weekly review also have their own alerts; this one is the escalation to the people who run the business.',
+    params: [],
+    defaultSeverity: 'critical',
+    async evaluate(ctx) {
+      const rows = await ctx.manager.query(
+        `select i.id, i.item_key, i.step, i.store_id, s.location, to_char(i.due_on, 'YYYY-MM-DD') as due_on
+           from compliance_instance i left join stores s on s.id = i.store_id
+          where i.business_id = $1 and i.state = 'OPEN' and not i.not_mine and (i.step = 'escalated' or (i.item_key = 'parked_bill' and i.step = 'late'))`, [ctx.businessId]);
+      const labels: Record<string, string> = { stock_count: 'The stock count', outage_check: 'The outage kit check', weekly_review: 'The weekly review', shift_close: 'Closing the shift', licence: 'The licence renewal', parked_bill: 'A parked bill' };
+      return rows.map((r: any) => ({
+        key: `compliance:${r.id}`, storeid: r.store_id, code: r.item_key === 'parked_bill' && r.step === 'late' ? 'compliance_parked' : 'compliance_escalated',
+        params: { store: String(r.location ?? '').trim(), item: labels[r.item_key] || r.item_key, date: r.due_on, days: Math.max(0, daysBetween(r.due_on, ctx.today)) },
+        link: '/secure/compliance', severity: r.step === 'escalated' ? 'critical' as Severity : 'warning' as Severity,
+      }));
+    },
+  },
 ];
 
 export const kindOf = (kind: string): AlertKind | undefined => KINDS.find((k) => k.kind === kind);
@@ -310,6 +382,8 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity }[]
   { kind: 'deposit_due', name: 'Bank deposit due', severity: 'warning' },
   { kind: 'licence_expiring', name: 'Store licence ending', severity: 'warning' },
   { kind: 'registration_expiring', name: 'Pharmacist registration ending', severity: 'warning' },
+  { kind: 'gst_rate_change', name: 'GST rate change coming', severity: 'warning' },
+  { kind: 'gst_filing_due', name: 'GST month not closed', severity: 'warning' },
   { kind: 'shift_open_long', name: 'Shift left open', severity: 'warning' },
   { kind: 'approvals_pending', name: 'Stock adjustments waiting', severity: 'warning' },
   { kind: 'price_policy', name: 'Prices out of policy', severity: 'warning' },
@@ -319,4 +393,5 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity }[]
   { kind: 'expired_stock', name: 'Expired stock on the shelf', severity: 'warning' },
   { kind: 'adjustment_other', name: 'Unexplained write-offs', severity: 'warning' },
   { kind: 'weekly_review', name: 'Weekly review not signed', severity: 'warning' },
+  { kind: 'compliance_late', name: 'Compliance item gone unattended', severity: 'critical' },
 ];

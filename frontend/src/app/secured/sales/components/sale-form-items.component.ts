@@ -1,3 +1,4 @@
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component, ElementRef, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { StockService } from "../../store/stock/stock.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
@@ -37,7 +38,7 @@ export class SaleFormItemsComponent{
   // boxitem:string = '';
   // balqty:string = '';
 
-  constructor(private saleService:SaleService, 
+  constructor(public auth: AuthService, private saleService:SaleService, 
     private helper: SaleHelper,
     private offerService:OfferService,
     private stockService:StockService,
