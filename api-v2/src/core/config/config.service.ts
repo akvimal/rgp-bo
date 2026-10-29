@@ -7,7 +7,7 @@ import { AuthModule } from 'src/modules/auth/auth.module';
 import { User } from 'src/core/decorator/user.decorator';
 import { AuditService } from 'src/core/audit/audit.service';
 import { PlatformService } from 'src/core/platform/platform.service';
-import { businessOfUser } from '../business-of-user';
+import { BUSINESS_OF_USER_SQL, businessOfUser } from '../business-of-user';
 import { isOwnerRole } from '../roles';
 import { packsOf } from '../modules/modules';
 import { asValues, checkScope, checkValue, CONFIG_SCOPES, ConfigItem, ConfigRow, ConfigScope, defOf, resolveConfig } from './config-schema';
@@ -106,6 +106,20 @@ export class ConfigService {
     return { ok: true, effectiveFrom: from, changed: changed.length };
   }
 
+  /** Who changed what in this business, newest first: settings saved and reset, and sales targets. A group can be asked for on its own. */
+  async history(user: any, scope?: string) {
+    if (scope && !CONFIG_SCOPES.includes(scope as ConfigScope)) throw new BadRequestException('Unknown settings group.');
+    const c = await this.context(user);
+    const rows = await this.manager.query(
+      `select a.id, to_char(a.occurred_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') as at, u.full_name as who, a.action, a.entity_id, a.summary, a.details
+         from audit_event a join app_user u on u.id = a.user_id
+        where (a.action like 'config.%' or a.action = 'dashboard.target') and ${BUSINESS_OF_USER_SQL} = $1
+          and ($2::text is null or a.action = 'dashboard.target' and $2 = 'health' or a.entity_id = $2 or a.entity_id like $2 || '.%')
+        order by a.occurred_on desc, a.id desc limit 50`,
+      [c.businessId, scope || null]);
+    return rows;
+  }
+
   /** Back to the default for one setting or a whole group (the business's own rows are removed). */
   async reset(user: any, scope: string, key?: string) {
     if (!CONFIG_SCOPES.includes(scope as ConfigScope)) throw new BadRequestException('Unknown settings group.');
@@ -133,6 +147,7 @@ export class ConfigService {
 export class ConfigController {
   constructor(private readonly service: ConfigService) {}
 
+  @Get('history') history(@Query('scope') scope: string, @User() u: any) { return this.service.history(u, scope); }
   @Get() effective(@Query('scope') scope: string, @User() u: any) { return this.service.effective(u, scope); }
   @Put(':scope') save(@Param('scope') scope: string, @Body() body: any, @User() u: any) { return this.service.save(u, scope, body); }
   @Delete(':scope') resetScope(@Param('scope') scope: string, @User() u: any) { return this.service.reset(u, scope); }

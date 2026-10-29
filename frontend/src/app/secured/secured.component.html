@@ -333,6 +333,11 @@
                 <i class="bi bi-circle"></i><span>Alerts</span>
               </a>
             </li>
+            <li *isAuth="'dashsetup.view'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/dashboards" data-testid="nav-settings-dashboards">
+                <i class="bi bi-circle"></i><span>Dashboards and compliance</span>
+              </a>
+            </li>
             <li *isAuth="'storesettings'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/store" data-testid="nav-settings-store">
                 <i class="bi bi-circle"></i><span>Store</span>

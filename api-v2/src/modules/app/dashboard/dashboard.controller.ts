@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { User } from "src/core/decorator/user.decorator";
@@ -48,6 +48,11 @@ export class DashboardController {
   @Get("/view")
   view(@User() currentUser: any) {
     return this.service.view(currentUser);
+  }
+
+  @Post("/preview")
+  preview(@Body() body: any, @User() currentUser: any) {
+    return this.service.preview(currentUser, body);
   }
 
   @Get("/mine")

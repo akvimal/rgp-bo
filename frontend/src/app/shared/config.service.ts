@@ -21,6 +21,7 @@ export interface ConfigItem {
     unit?: string;
     locked?: boolean;
     planLocked: boolean;
+    pending: { value: number | string | boolean; from: string } | null;
 }
 
 /** The business's own settings for dashboards, compliance and recognition. Anyone signed in reads; the Business Head saves (the server decides). */

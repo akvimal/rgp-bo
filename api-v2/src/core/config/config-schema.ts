@@ -85,7 +85,15 @@ export const CONFIG_DEFS: ConfigDef[] = [
 
 export type ConfigValue = number | string | boolean;
 export interface ConfigRow { scope: string; key: string; value: ConfigValue; effective_from: string }
-export interface ConfigItem extends ConfigDef { value: ConfigValue; defaultValue: ConfigValue; source: 'default' | 'business'; since: string | null; planLocked: boolean }
+export interface ConfigItem extends ConfigDef {
+  value: ConfigValue;
+  defaultValue: ConfigValue;
+  source: 'default' | 'business';
+  since: string | null;
+  planLocked: boolean;
+  /** the next saved change that has not begun yet, so a change dated ahead is never invisible */
+  pending: { value: ConfigValue; from: string } | null;
+}
 
 const find = (scope: string, key: string) => CONFIG_DEFS.find((d) => d.scope === scope && d.key === key);
 export const defOf = find;
@@ -141,7 +149,10 @@ export function resolveConfig(opts: { scope?: ConfigScope; rows: ConfigRow[]; to
         .sort((a, c) => (a.effective_from < c.effective_from ? 1 : -1))[0];
       if (mine && checkValue(d, mine.value) === null) { value = mine.value; source = 'business'; since = mine.effective_from; }
     }
-    out.push({ ...d, value, defaultValue: def, source, since, planLocked: locked });
+    const next = d.locked ? undefined : opts.rows
+      .filter((r) => r.scope === d.scope && r.key === d.key && r.effective_from > opts.today && checkValue(d, r.value) === null)
+      .sort((a, c) => (a.effective_from < c.effective_from ? -1 : 1))[0];
+    out.push({ ...d, value, defaultValue: def, source, since, planLocked: locked, pending: next ? { value: next.value, from: next.effective_from } : null });
   }
   return out;
 }

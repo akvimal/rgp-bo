@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { PurchaseInvoiceService } from "../purchases/purchase-invoice.service";
@@ -8,7 +8,8 @@ import { OWNER_ROLES } from 'src/core/roles';
 import { businessOfUser } from 'src/core/business-of-user';
 import { DepositRule, evaluateDeposit } from '../store/deposit-rule';
 import { ConfigService } from 'src/core/config/config.service';
-import { viewForRole, widgetsFor } from './dashboard-view';
+import { viewForRole, widgetsFor, VIEW_OF_ROLE } from './dashboard-view';
+import { checkValue, defOf } from 'src/core/config/config-schema';
 import { aimFromUsual, againstUsual, capturePct, goalProgress, ringPct, usualOf } from './dashboard-mine';
 /** Customer record used at the counter when no mobile number is given (mobile '0000000000', name NIL). */
 const NO_MOBILE_PLACEHOLDER = '0000000000';
@@ -29,6 +30,28 @@ export class DashboardService {
     const businessId = await businessOfUser(this.manager, currentUser?.id || 0);
     const settings = businessId ? await this.config.valuesFor(businessId, 'views') : {};
     return { view, widgets: widgetsFor(view), settings };
+  }
+
+  /**
+   * "Preview as": the view a role would open and the dashboard settings that would apply, with the Business Head's unsaved choices laid over today's
+   * (checked the same way as a save). Nothing is written. Business Head and Owner-operator only.
+   */
+  async preview(currentUser: any, body: { role?: string; values?: Record<string, any> }) {
+    const sc = await this.scope(currentUser, null);
+    if (!sc.owner || !sc.businessId) throw new ForbiddenException('Only the Business Head can preview other views.');
+    const role = String(body?.role || '');
+    const known = Object.keys(VIEW_OF_ROLE);
+    if (!role || !known.includes(role)) throw new BadRequestException(`Choose one of: ${known.join(', ')}.`);
+    const settings: Record<string, any> = { ...(await this.config.valuesFor(sc.businessId, 'views')) };
+    for (const [key, v] of Object.entries(body?.values || {})) {
+      const d = defOf('views', key);
+      if (!d) throw new BadRequestException(`Unknown setting "${key}".`);
+      const err = checkValue(d, v);
+      if (err) throw new BadRequestException(err);
+      settings[key] = v;
+    }
+    const view = viewForRole(role);
+    return { role, view, widgets: widgetsFor(view), settings };
   }
 
   /**

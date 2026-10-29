@@ -81,3 +81,12 @@ describe('checkScope', () => {
     expect(checkScope('health', { ...ok, hold_below: 80, healthy_min: 70 })).toMatch(/safeguard/);
   });
 });
+
+describe('pending changes', () => {
+  it('shows the next change that has not begun yet, and nothing when there is none', () => {
+    const r = resolveConfig({ ...base, rows: [row('stock_count_late_days', 5, '2026-10-26'), row('stock_count_late_days', 6, '2026-11-01')] });
+    expect(get(r, 'stock_count_late_days')).toMatchObject({ value: 3, source: 'default', pending: { value: 5, from: '2026-10-26' } });
+    expect(get(resolveConfig({ ...base, rows: [] }), 'stock_count_late_days').pending).toBeNull();
+    expect(get(resolveConfig({ ...base, rows: [row('stock_count_late_days', 5, '2026-10-25')] }), 'stock_count_late_days').pending).toBeNull();
+  });
+});

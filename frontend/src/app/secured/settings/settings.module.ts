@@ -30,6 +30,7 @@ import { ShopSetupComponent } from "./shop-setup/shop-setup.component";
 import { StaffDetailsFieldsComponent } from "./users/components/staff-details-fields.component";
 import { NotificationsComponent } from "./notifications/notifications.component";
 import { AlertRulesComponent } from "./alerts/alert-rules.component";
+import { DashboardSetupComponent } from "./dashboard-setup/dashboard-setup.component";
 
 const routes: Routes = [
   { path: '', component: SettingsComponent, canActivate:[AuthGuard], children: [
@@ -57,7 +58,8 @@ const routes: Routes = [
     { path: 'business-profile', component: BusinessProfileComponent },
     { path: 'store', component: StoreSettingsComponent },
     { path: 'notifications', component: NotificationsComponent },
-    { path: 'alerts', component: AlertRulesComponent }
+    { path: 'alerts', component: AlertRulesComponent },
+    { path: 'dashboards', component: DashboardSetupComponent }
   ]},
 ];
 
@@ -81,7 +83,8 @@ const routes: Routes = [
       ShopSetupComponent,
       StaffDetailsFieldsComponent,
       NotificationsComponent,
-      AlertRulesComponent
+      AlertRulesComponent,
+      DashboardSetupComponent
     ],
     imports: [
         RouterModule.forChild(routes),
