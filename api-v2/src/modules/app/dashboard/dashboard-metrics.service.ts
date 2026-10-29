@@ -5,6 +5,7 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { ConfigService } from 'src/core/config/config.service';
 import { MANAGER_ROLES } from 'src/core/roles';
 import { DashboardService } from './dashboard.service';
+import { compareOf, deltaOf, marginOf, periodsFor } from './dashboard-tiles';
 import { CHECKS, cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
 
 /** the placeholder customer used at the counter when no mobile number is given */
@@ -155,6 +156,101 @@ export class DashboardMetricsService {
       service: `${service[0]?.delivered || 0} delivered, ${service[0]?.failed || 0} failed in 30 days`,
     };
     return { ...result, checks: result.checks.map((c) => ({ ...c, fact: facts[c.key] })), asOf: new Date().toISOString(), target };
+  }
+
+  // ------------------------------------------------------------------ tiles
+
+  private async salesFigures(stores: number[] | null, from: string, to: string, withMargin: boolean) {
+    const [a] = await this.manager.query(
+      `select coalesce(sum(s.total), 0)::float8 as sales, count(*)::int as bills, coalesce(sum(s.disc_amount), 0)::float8 as disc
+         from sale s where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= $2::date and s.bill_date < $3::date
+          and ($1::int[] is null or s.store_id = any($1::int[]))`, [stores, from, to]);
+    const [r] = await this.manager.query(
+      `select coalesce(sum(sri.qty * si.total / nullif(si.qty, 0)), 0)::float8 as value
+         from sale_return_item sri join sale_item si on si.id = sri.sale_item_id join sale s on s.id = si.sale_id
+        where sri.active and not sri.archive and sri.created_on >= $2::date and sri.created_on < $3::date
+          and ($1::int[] is null or s.store_id = any($1::int[]))`, [stores, from, to]);
+    let margin: { pct: number | null; coverage: number } | null = null;
+    if (withMargin) {
+      // net of GST sale value over the lines, and the cost of the batch sold (after the vendor discount and the free quantity, per unit of the pack)
+      const [m] = await this.manager.query(
+        `select coalesce(sum(net), 0)::float8 as net_all,
+                coalesce(sum(net) filter (where covered), 0)::float8 as net_covered,
+                coalesce(sum(cogs) filter (where covered), 0)::float8 as cogs_covered
+           from (select si.total / (1 + coalesce(si.tax_pcnt, 0) / 100.0) as net,
+                        (pii.ptr_value * (1 - coalesce(pii.disc_pcnt, 0) / 100.0) * pii.qty / nullif(pii.qty + coalesce(pii.free_qty, 0), 0) / nullif(p.pack, 0)) * si.qty as cogs,
+                        (pii.id is not null and p.pack > 0 and pii.ptr_value > 0) as covered
+                   from sale_item si join sale s on s.id = si.sale_id
+                        left join purchase_invoice_item pii on pii.id = si.purchase_item_id left join product p on p.id = si.product_id
+                  where s.status = 'COMPLETE' and s.active and not s.archive and si.active and not si.archive
+                    and s.bill_date >= $2::date and s.bill_date < $3::date and ($1::int[] is null or s.store_id = any($1::int[]))) x`, [stores, from, to]);
+      margin = marginOf(m.net_covered, m.cogs_covered, m.net_all);
+    }
+    const gross = a.sales + a.disc;
+    return {
+      sales: a.sales, bills: a.bills, avgBill: a.bills ? a.sales / a.bills : 0,
+      discountPct: gross > 0 ? Math.round((a.disc / gross) * 1000) / 10 : 0,
+      returnsPct: a.sales > 0 ? Math.round((r.value / a.sales) * 1000) / 10 : 0,
+      margin,
+    };
+  }
+
+  /**
+   * The tiles: this month to date against the previous month (or the same month last year), each with its change and whether it is good, a spark line of
+   * the last 14 days of sales, and (owner only) gross margin with how much of the sales its cost covers.
+   */
+  async tiles(user: any, storeid?: any, compare?: any) {
+    const sc = await this.managed(user, storeid);
+    const cmp = compareOf(compare);
+    const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+    const p = periodsFor(today, cmp);
+    const [now, before] = await Promise.all([this.salesFigures(sc.stores, p.from, p.to, sc.owner), this.salesFigures(sc.stores, p.cmpFrom, p.cmpTo, sc.owner)]);
+    const spark = await this.manager.query(
+      `select to_char(d.day, 'YYYY-MM-DD') as day, coalesce(sum(s.total), 0)::float8 as value
+         from generate_series(current_date - 13, current_date, interval '1 day') d(day)
+         left join sale s on date(s.bill_date) = d.day::date and s.status = 'COMPLETE' and s.active and not s.archive and ($1::int[] is null or s.store_id = any($1::int[]))
+        group by 1 order by 1`, [sc.stores]);
+    const tile = (key: string, label: string, value: number, prev: number, goodWhen: 'up' | 'down', unit: 'money' | 'count' | 'pct', link?: string) =>
+      ({ key, label, value: Math.round(value * 100) / 100, prev: Math.round(prev * 100) / 100, unit, ...deltaOf(value, prev, goodWhen), link: link || null });
+    const tiles: any[] = [
+      { ...tile('sales', 'Sales', now.sales, before.sales, 'up', 'money', '/secure/sales'), spark },
+      tile('bills', 'Bills', now.bills, before.bills, 'up', 'count', '/secure/sales'),
+      tile('avgbill', 'Average bill', now.avgBill, before.avgBill, 'up', 'money'),
+      tile('discount', 'Discount given', now.discountPct, before.discountPct, 'down', 'pct'),
+      tile('returns', 'Returns', now.returnsPct, before.returnsPct, 'down', 'pct', '/secure/returns'),
+    ];
+    if (sc.owner && now.margin) {
+      tiles.push({ ...tile('margin', 'Gross margin', now.margin.pct ?? 0, before.margin?.pct ?? 0, 'up', 'pct'), withheld: now.margin.pct === null, coverage: now.margin.coverage });
+    }
+    return { compare: cmp, period: `${p.from} to ${today}`, against: `${p.cmpFrom} to ${p.cmpTo}`, tiles, asOf: new Date().toISOString() };
+  }
+
+  // ------------------------------------------------------------------ deliveries and money
+
+  /** Deliveries by week for the last 8 weeks: delivered, failed and still pending. */
+  async deliveries(user: any, storeid?: any) {
+    const sc = await this.managed(user, storeid);
+    const rows = await this.manager.query(
+      `select to_char(date_trunc('week', d.booked_date), 'YYYY-MM-DD') as week,
+              count(*) filter (where d.status = 'Delivered')::int as delivered, count(*) filter (where d.status = 'Failed')::int as failed,
+              count(*) filter (where d.status not in ('Delivered', 'Failed'))::int as pending
+         from sale_deliveries d join sale s on s.id = d."saleId"
+        where d.active and not d.archive and d.booked_date >= date_trunc('week', current_date) - interval '7 weeks'
+          and ($1::int[] is null or s.store_id = any($1::int[])) group by 1 order by 1`, [sc.stores]);
+    const total = rows.reduce((a: number, r: any) => a + r.delivered + r.failed, 0);
+    const ok = rows.reduce((a: number, r: any) => a + r.delivered, 0);
+    return { weeks: rows, deliveredPct: total ? Math.round((ok / total) * 1000) / 10 : null };
+  }
+
+  /** Approved expenses of the month by category, largest first. */
+  async expenses(user: any, storeid?: any) {
+    const sc = await this.managed(user, storeid);
+    const rows = await this.manager.query(
+      `select c.name as category, coalesce(sum(e.amount), 0)::float8 as total, count(*)::int as count
+         from expense e join expense_category c on c.id = e.category_id
+        where e.status = 'APPROVED' and e.expense_date >= date_trunc('month', current_date) and e.expense_date < date_trunc('month', current_date) + interval '1 month'
+          and ($1::int[] is null or e.store_id = any($1::int[])) group by 1 order by 2 desc`, [sc.stores]);
+    return { categories: rows, total: Math.round(rows.reduce((a: number, r: any) => a + r.total, 0) * 100) / 100 };
   }
 
   // ------------------------------------------------------------------ charts

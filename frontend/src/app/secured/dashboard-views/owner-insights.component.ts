@@ -43,6 +43,36 @@ import { DashboardService } from "../dashboard.service";
       </div>
     </section>
 
+    <section class="mb-3" aria-label="Month so far" data-testid="tiles">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+        <div class="small text-muted" *ngIf="tiles">This month so far ({{tiles.period}}) against {{tiles.against}}</div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Compare with">
+          <button type="button" class="btn" [ngClass]="compare === 'prev' ? 'btn-primary' : 'btn-outline-primary'" (click)="setCompare('prev')" data-testid="compare-prev">Last month</button>
+          <button type="button" class="btn" [ngClass]="compare === 'lastyear' ? 'btn-primary' : 'btn-outline-primary'" (click)="setCompare('lastyear')" data-testid="compare-year">Last year</button>
+        </div>
+      </div>
+      <div class="row g-2">
+        <div class="col-6 col-lg-4 col-xl-2" *ngFor="let t of tiles?.tiles">
+          <div class="card h-100"><div class="card-body py-2">
+            <div class="small text-muted">{{t.label}}</div>
+            <div class="fs-5 fw-bold" [attr.data-testid]="'tile-' + t.key">
+              <ng-container *ngIf="t.withheld; else shown"><span class="text-muted fs-6">withheld</span></ng-container>
+              <ng-template #shown>{{t.unit === 'money' ? '₹' : ''}}{{t.value | number:(t.unit === 'pct' ? '1.0-1' : '1.0-0')}}{{t.unit === 'pct' ? '%' : ''}}</ng-template>
+            </div>
+            <div class="small" *ngIf="t.pct !== null" [ngClass]="t.tone === 'good' ? 'text-success' : t.tone === 'bad' ? 'text-danger' : 'text-muted'" [attr.data-testid]="'tile-delta-' + t.key">
+              <span aria-hidden="true">{{t.dir === 'up' ? '▲' : t.dir === 'down' ? '▼' : '■'}}</span> {{t.pct | number:'1.0-1'}}%
+              <span class="visually-hidden">{{t.tone === 'good' ? 'better' : t.tone === 'bad' ? 'worse' : 'about the same'}} than the comparison</span>
+            </div>
+            <div class="small text-muted" *ngIf="t.pct === null">nothing to compare</div>
+            <div class="small text-muted" *ngIf="t.key === 'margin'" data-testid="tile-margin-coverage">costed on {{t.coverage}}% of sales</div>
+            <svg *ngIf="t.spark" viewBox="0 0 100 24" preserveAspectRatio="none" class="w-100" style="height: 24px" role="img" aria-label="Sales of the last 14 days"><polyline fill="none" stroke="#1c7ed6" stroke-width="1.5" [attr.points]="sparkPoints(t.spark)"></polyline></svg>
+            <a *ngIf="t.link" class="small" [routerLink]="t.link">open</a>
+          </div></div>
+        </div>
+      </div>
+      <div class="small text-danger" *ngIf="err.tiles">{{err.tiles}}</div>
+    </section>
+
     <div class="row g-3 mb-3">
       <div class="col-xl-8">
         <section class="card h-100" aria-label="Sales by month" data-testid="chart-sales-months">
@@ -98,6 +128,36 @@ import { DashboardService } from "../dashboard.service";
       </div>
     </div>
 
+    <div class="row g-3 mb-3">
+      <div class="col-xl-6">
+        <section class="card h-100" aria-label="Deliveries" data-testid="chart-deliveries">
+          <div class="card-body">
+            <div class="d-flex justify-content-between"><h2 class="h6">Deliveries by week <span class="text-muted fw-normal small" *ngIf="deliveries?.deliveredPct !== null">{{deliveries?.deliveredPct}}% delivered</span></h2>
+              <button class="btn btn-sm btn-link" (click)="tables.del = !tables.del">{{tables.del ? 'Show chart' : 'Show numbers'}}</button></div>
+            <ngx-charts-bar-vertical-stacked *ngIf="!tables.del && delSeries.length" [view]="[0, 240]" [results]="delSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [scheme]="delScheme"></ngx-charts-bar-vertical-stacked>
+            <div class="text-muted small" *ngIf="!tables.del && !delSeries.length">No deliveries in the last 8 weeks.</div>
+            <div class="table-responsive" *ngIf="tables.del"><table class="table table-sm"><thead><tr><th>Week of</th><th class="text-end">Delivered</th><th class="text-end">Failed</th><th class="text-end">Pending</th></tr></thead>
+              <tbody><tr *ngFor="let w of deliveries?.weeks"><td>{{w.week}}</td><td class="text-end">{{w.delivered}}</td><td class="text-end">{{w.failed}}</td><td class="text-end">{{w.pending}}</td></tr></tbody></table></div>
+            <div class="small text-muted" *ngIf="err.del">{{err.del}}</div>
+          </div>
+        </section>
+      </div>
+      <div class="col-xl-6">
+        <section class="card h-100" aria-label="Expenses" data-testid="chart-expenses">
+          <div class="card-body">
+            <div class="d-flex justify-content-between"><h2 class="h6">Expenses this month <span class="text-muted fw-normal small">approved, by category</span></h2>
+              <button class="btn btn-sm btn-link" (click)="tables.exp = !tables.exp">{{tables.exp ? 'Show chart' : 'Show numbers'}}</button></div>
+            <ngx-charts-bar-horizontal *ngIf="!tables.exp && expBars.length" [view]="[0, 240]" [results]="expBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-horizontal>
+            <div class="text-muted small" *ngIf="!tables.exp && !expBars.length">No approved expenses this month.</div>
+            <div class="table-responsive" *ngIf="tables.exp"><table class="table table-sm"><thead><tr><th>Category</th><th class="text-end">Entries</th><th class="text-end">Amount</th></tr></thead>
+              <tbody><tr *ngFor="let c of expenses?.categories"><td>{{c.category}}</td><td class="text-end">{{c.count}}</td><td class="text-end">{{c.total | number:'1.0-0'}}</td></tr></tbody></table></div>
+            <div class="small text-muted">Total ₹{{(expenses?.total || 0) | number:'1.0-0'}} &middot; <a routerLink="/secure/expenses">open expenses</a></div>
+            <div class="small text-muted" *ngIf="err.exp">{{err.exp}}</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
     <section class="card mb-3" aria-label="Busy hours" data-testid="chart-hours">
       <div class="card-body">
         <div class="d-flex justify-content-between"><h2 class="h6">When are we busy <span class="text-muted fw-normal small">bills by weekday and hour, last 90 days</span></h2>
@@ -127,7 +187,14 @@ export class OwnerInsightsComponent implements OnChanges {
     payBars: any[] = [];
     heat: any[] = [];
     busiest: any[] = [];
-    tables: any = { sales: false, cat: false, cust: false, pay: false, hours: false };
+    tables: any = { sales: false, cat: false, cust: false, pay: false, hours: false, del: false, exp: false };
+    tiles: any = null;
+    compare: 'prev' | 'lastyear' = 'prev';
+    deliveries: any = null;
+    delSeries: any[] = [];
+    expenses: any = null;
+    expBars: any[] = [];
+    delScheme: any = { domain: ['#2f9e44', '#e03131', '#adb5bd'] };
     err: any = {};
 
     lineScheme: any = { domain: ['#1c7ed6', '#868e96', '#ced4da'] };
@@ -158,6 +225,15 @@ export class OwnerInsightsComponent implements OnChanges {
         this.dashboard.getTargets(this.month).subscribe({
             next: (t: any) => { this.targetInput = (this.storeid ? t.stores.find((s: any) => s.id === this.storeid)?.value : t.business) ?? null; },
             error: () => {}
+        });
+        this.loadTiles();
+        this.dashboard.getMetric('deliveries', this.storeid).subscribe({
+            next: (r: any) => { this.deliveries = r; this.delSeries = r.weeks.map((w: any) => ({ name: w.week.slice(5), series: [{ name: 'Delivered', value: w.delivered }, { name: 'Failed', value: w.failed }, { name: 'Pending', value: w.pending }] })); },
+            error: (e) => this.fail('del', e)
+        });
+        this.dashboard.getMetric('expenses', this.storeid).subscribe({
+            next: (r: any) => { this.expenses = r; this.expBars = r.categories.slice(0, 8).map((c: any) => ({ name: c.category, value: Math.round(c.total) })); },
+            error: (e) => this.fail('exp', e)
         });
         this.dashboard.getMetric('sales-by-month', this.storeid).subscribe({
             next: (r: any) => {
@@ -192,6 +268,17 @@ export class OwnerInsightsComponent implements OnChanges {
                 }));
             }, error: (e) => this.fail('hours', e)
         });
+    }
+
+    setCompare(c: 'prev' | 'lastyear') { this.compare = c; this.loadTiles(); }
+
+    sparkPoints(spark: any[]): string {
+        const max = Math.max(1, ...spark.map((p) => p.value));
+        return spark.map((p, i) => `${Math.round((i / Math.max(1, spark.length - 1)) * 100)},${(22 - (p.value / max) * 20).toFixed(1)}`).join(' ');
+    }
+
+    private loadTiles() {
+        this.dashboard.getTiles(this.storeid, this.compare).subscribe({ next: (t: any) => { this.tiles = t; this.err.tiles = ''; }, error: (e) => this.fail('tiles', e) });
     }
 
     pickMonth(_e: any) { /* the month list behind a point is the sales report; drill-through comes with the filtered list pages */ }

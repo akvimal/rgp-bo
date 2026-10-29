@@ -26,6 +26,17 @@ test('HM-UI-1 the owner sees health and the charts, shows one as numbers, and sa
   await api.request('PUT', '/dashboard/targets', { month: new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 7), value: null }, MGR);
 });
 
+test('HM-UI-3 the tiles show the month so far with a change, and the comparison can be switched', async ({ app }) => {
+  const { page } = await app.open(MGR, '/secure/dashboard');
+  await expect(page.getByTestId('tiles')).toBeVisible();
+  for (const k of ['sales', 'bills', 'avgbill', 'discount', 'returns']) await expect(page.getByTestId(`tile-${k}`)).toBeVisible();
+  const before = await page.getByTestId('tiles').locator('.small.text-muted').first().innerText();
+  await page.getByTestId('compare-year').click();
+  await expect(page.getByTestId('tiles').locator('.small.text-muted').first()).not.toHaveText(before);
+  await expect(page.getByTestId('chart-deliveries')).toBeVisible();
+  await expect(page.getByTestId('chart-expenses')).toBeVisible();
+});
+
 test('HM-UI-2 the store head sees health and charts without the target box or the vendor payables', async ({ app }) => {
   const { page } = await app.open(HEAD, '/secure/dashboard');
   await expect(page.getByTestId('health-card')).toBeVisible();

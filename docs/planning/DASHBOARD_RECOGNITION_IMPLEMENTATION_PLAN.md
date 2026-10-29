@@ -204,3 +204,13 @@ Stage 4 closed 2026-10-29: verified; Tamil wording, handover badge, Inbox card a
 - Frontend `app-owner-insights` on the Owner and Manager views: health card with the fact behind each check, target box (owner), five ngx-charts charts each with a "Show numbers" table; payables and the target box are owner only.
 - Tests: 8 unit, QA HM-1..6 (API), HM-UI-1..2; the heaviest chart queries run in 3 to 130 ms on the 61k-bill copy.
 - Not built yet: margin and cost (needs the cost coverage guard), tiles with spark lines and comparison arrows, finance snapshot, deliveries chart, tree map and cross-filter chips, drill-through to filtered list pages, the `metric_daily` roll-up (not needed at this volume), compliance weights read from per-store settings, brush/zoom. The Stock check shows "no data" until products carry a minimum.
+
+## 2I. Stage 6 remainder built (2026-10-29)
+
+- `dashboard-tiles.ts` (pure, 10 unit tests): `periodsFor` (month to date against the same days of last month, clamped to its length, or of the same month a year earlier), `deltaOf` (change and whether it is good: up is good for sales, bills, average bill and margin; down is good for discounts and returns), `marginOf`.
+- `GET /dashboard/tiles?storeid=&compare=prev|lastyear`: sales, bills, average bill, discount given %, returns %, each with its change and tone, a 14-day spark line on sales, and for the owner only gross margin. Margin is net of GST sales less the cost of the batch sold (vendor discount and free quantity taken off, per unit of the pack), over the lines whose cost is known; it is withheld below 80% coverage and always shows the coverage.
+- `GET /dashboard/metrics/deliveries` (8 weeks, delivered, failed, pending) and `/metrics/expenses` (approved, by category, this month). Same scope and manager-only rule as the other charts.
+- Screen: tile row with a Last month / Last year switch under the health card (▲ ▼ with a text alternative, spark line, "open" links to sales and returns), and the deliveries and expenses charts, each with "Show numbers".
+- Tests: QA HM-7..9 and HM-UI-3 added (HM-1..9, HM-UI-1..3 pass); 307 unit tests pass.
+- Margin caution: it is only as good as the purchase batch data (`ptr_value`, pack, discount, free quantity). On the QA and prod-copy data it reads very high (55 to 75%), so check a few batches against vendor invoices before the owner relies on it.
+- Still not built: tree map, cross-filter chips, brush and zoom (these need a charting change or a heavier library; held back by the design), drill-through to list pages that accept filters, finance snapshot beyond expenses (cash gauge, digital unmatched), margin by category or product and below-cost lines, the `metric_daily` roll-up (not needed at this volume).

@@ -21,6 +21,15 @@ export class DashboardController {
   @Put("/targets")
   setTarget(@Body() body: any, @User() currentUser: any) { return this.metrics.setTarget(currentUser, body); }
 
+    @Get("/tiles")
+  tiles(@Query("storeid") storeid: string, @Query("compare") compare: string, @User() currentUser: any) { return this.metrics.tiles(currentUser, storeid, compare); }
+
+  @Get("/metrics/deliveries")
+  deliveries(@Query("storeid") storeid: string, @User() currentUser: any) { return this.metrics.deliveries(currentUser, storeid); }
+
+  @Get("/metrics/expenses")
+  expenses(@Query("storeid") storeid: string, @User() currentUser: any) { return this.metrics.expenses(currentUser, storeid); }
+
   @Get("/metrics/sales-by-month")
   salesByMonth(@Query("storeid") storeid: string, @User() currentUser: any) { return this.metrics.salesByMonth(currentUser, storeid); }
 

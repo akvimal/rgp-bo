@@ -52,6 +52,10 @@ export class DashboardService {
     return this.http.put(`${environment.apiHost}/dashboard/targets`, body);
   }
 
+  getTiles(storeid?: number | null, compare: string = 'prev') {
+    return this.http.get(`${environment.apiHost}/dashboard/tiles`, { params: { ...this.scoped(storeid), compare } as any });
+  }
+
   getMetric(name: string, storeid?: number | null) {
     return this.http.get(`${environment.apiHost}/dashboard/metrics/${name}`, { params: this.scoped(storeid) as any });
   }

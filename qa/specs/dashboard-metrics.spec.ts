@@ -66,6 +66,48 @@ test.describe('Dashboard metrics @p1', () => {
     expect(pay.body.buckets.map((b: any) => b.key)).toEqual(['notdue', 'd0_30', 'd31_60', 'd61_90', 'd90_plus']);
   });
 
+  test('HM-7 tiles carry a value, a change and whether it is good, with a spark line on sales @happy', async ({ api }) => {
+    const r = await api.request('GET', '/dashboard/tiles', undefined, MGR);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.compare).toBe('prev');
+    const keys = r.body.tiles.map((t: any) => t.key);
+    expect(keys).toEqual(expect.arrayContaining(['sales', 'bills', 'avgbill', 'discount', 'returns']));
+    const sales = r.body.tiles.find((t: any) => t.key === 'sales');
+    expect(sales.spark).toHaveLength(14);
+    for (const t of r.body.tiles) expect(['good', 'bad', 'flat', null]).toContain(t.tone);
+    // up is good for sales and down is good for discounts
+    const d = r.body.tiles.find((t: any) => t.key === 'discount');
+    if (d.dir === 'up') expect(d.tone).toBe('bad');
+    if (d.dir === 'down') expect(d.tone).toBe('good');
+    const year = await api.request('GET', '/dashboard/tiles?compare=lastyear', undefined, MGR);
+    expect(year.body.compare).toBe('lastyear');
+    expect(year.body.against).not.toBe(r.body.against);
+  });
+
+  test('HM-8 margin is for the owner only and always says how much of the sales it covers @negative', async ({ api }) => {
+    const owner = await api.request('GET', '/dashboard/tiles', undefined, MGR);
+    const margin = owner.body.tiles.find((t: any) => t.key === 'margin');
+    if (margin) {
+      expect(typeof margin.coverage).toBe('number');
+      if (margin.withheld) expect(margin.coverage).toBeLessThan(80);
+    }
+    const head = await api.request('GET', '/dashboard/tiles', undefined, HEAD);
+    expect(head.status).toBe(200);
+    expect(head.body.tiles.map((t: any) => t.key)).not.toContain('margin');
+    expect(JSON.stringify(head.body)).not.toMatch(/cogs|cost/i);
+  });
+
+  test('HM-9 deliveries and expenses charts return their shape and are not for the counter @happy', async ({ api }) => {
+    const del = await api.request('GET', '/dashboard/metrics/deliveries', undefined, MGR);
+    expect(del.status, JSON.stringify(del.body)).toBe(200);
+    for (const w of del.body.weeks) expect(Object.keys(w)).toEqual(expect.arrayContaining(['week', 'delivered', 'failed', 'pending']));
+    const exp = await api.request('GET', '/dashboard/metrics/expenses', undefined, MGR);
+    expect(exp.status).toBe(200);
+    expect(typeof exp.body.total).toBe('number');
+    for (const p of ['tiles', 'metrics/deliveries', 'metrics/expenses']) expect((await api.request('GET', `/dashboard/${p}`, undefined, SALES)).status, p).toBe(403);
+    expect((await api.request('GET', '/dashboard/tiles?storeid=999999', undefined, MGR)).status).toBe(403);
+  });
+
   test('HM-5 the figures are for the people who run the business or a store, not the counter @negative', async ({ api }) => {
     for (const path of ['health', 'targets', 'metrics/sales-by-month', 'metrics/categories', 'metrics/customers', 'metrics/busy-hours', 'metrics/payables']) {
       const r = await api.request('GET', `/dashboard/${path}`, undefined, SALES);
