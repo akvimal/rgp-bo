@@ -258,3 +258,16 @@ Stage 4 closed 2026-10-29: verified; Tamil wording, handover badge, Inbox card a
 - An optional check that is not on is not queried and not listed; one that is on but has weight 0 is shown with "weight 0: not counted". Pure rules `deadStockScore`, `repeatScore`, `ceilingScore`, `backlogScore`, `callsScore` (+7 unit tests). All parameters are Setup settings with limits, grouped under a heading per check.
 - Not built: margin as a check (it is owner-only, so the score would differ by viewer), attendance, drug-register coverage (the till already blocks a scheduled drug without its register line), and checks written by the business itself (free-form formulas are deliberately not offered).
 - Tests: unit 329; QA HM-14 and DSU-UI-5 added (HM-1..14, DSU-UI-1..5 pass).
+
+## 2N. Owner and Manager dashboard reorganised by data (2026-10-29)
+
+Review of what the page showed twice, and how it is now laid out. Section order answers one question each: health, sales, customers and service, products and stock, purchasing and payables, cash and shifts, team (with a "Jump to" row).
+
+Duplicates removed:
+- The old KPI row repeated figures the page already had: Sales (today and month) and Returns are now one "Today / This month / Returns" line over the sales tiles; Pending approvals, Outstanding invoices, Low stock items and Open shifts counts repeated the Needs-you-now chips and the tables below them, so the cards are gone (the chips, charts and tables stay).
+- "Customers served per day" (daily new and returning) is replaced by the monthly new and returning chart; the two top-products charts are one card with a revenue / quantity switch.
+- The approvals donut counted "Approved" and "APPROVED" as two slices; it now has one slice per status.
+
+Representation fixes: single colour for series of days and for ranked bars (colours now mean categories only), no future-dated invoices in the 14-day purchase trend, dates as "19 Oct" and "d MMM" instead of ISO text, thousands separators in the health facts, short payables labels, no-wrap "Show numbers" links, small figure cards no longer stretched beside charts.
+
+Layout: `app-owner-insights` is now one card per instance (`part`), so the page decides where each goes.

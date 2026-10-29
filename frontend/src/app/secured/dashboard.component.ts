@@ -25,12 +25,18 @@ export class DashboardComponent implements OnDestroy {
     purchaseApprovalBreakdown:any[] = [];
     usersByRole:any[] = [];
     storesByBusiness:any[] = [];
-    customersPerDay:any[] = [];
-    customerScheme:any = { domain: ['#2f9e44', '#1c7ed6'] };  // New, Returning
     topCustomers:any[] = [];
     walkin:any = null;
     topProductsByQty:any[] = [];
     topProductsByRevenue:any[] = [];
+    /** one products card, ranked by what the shop earned from a product or by how many units went */
+    productBy: 'revenue' | 'qty' = 'revenue';
+    /** days and ranked things are one measure, so one colour (the colours of a pie or a stack mean categories) */
+    oneColour:any = { domain: ['#1c7ed6'] };
+    get topProducts(): any[] { return this.productBy === 'revenue' ? this.topProductsByRevenue : this.topProductsByQty; }
+
+    /** the page is long: a link per section scrolls to it */
+    jump(id: string) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
     get cashBalancePct(): number {
       const bal = +this.summary?.kpis?.cash_balance || 0;
@@ -103,7 +109,7 @@ export class DashboardComponent implements OnDestroy {
           this.summary = data || { kpis: {} };
           this.salesTrend = this.mapSalesTrend(data?.salestrend || []);
           this.purchaseTrend = this.mapSimpleTrend(data?.purchasetrend || []);
-          this.cashTrend = data?.cashtrend || [];
+          this.cashTrend = (data?.cashtrend || []).map((r:any) => ({ ...r, name: this.formatPeriod(r.name) }));
           this.paymentSplit = data?.paymentsplit || [];
           this.purchaseApprovalBreakdown = data?.approvalbreakdown || [];
           this.selectedStoreLabel = this.resolveStoreLabel();
@@ -131,7 +137,6 @@ export class DashboardComponent implements OnDestroy {
     private loadTrends(){
       this.dashboardService.getTrends(this.selectedStoreId).subscribe({
         next: (data:any) => {
-          this.customersPerDay = data?.customersPerDay || [];
           this.topCustomers = data?.topCustomers || [];
           this.walkin = data?.walkin || null;
           this.topProductsByQty = data?.topProductsByQty || [];

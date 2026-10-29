@@ -257,21 +257,22 @@ export class DashboardMetricsService {
     const off = CHECKS.map((c) => c.key).filter((k) => !on(k));
     const result = combine(scores, { weights, healthyMin: Number(cfg.healthy_min) || 80, holdBelow: Number(cfg.hold_below) || 60, off });
     // the figures behind each check, so a score can be explained and traced; a check with nothing to judge says what is needed
+    const n0 = (v: number) => Math.round(v).toLocaleString('en-IN');
     const facts: Record<string, string> = {
       sales: exp.expected
-        ? `${Math.round(sales.total)} so far, against ${Math.round(exp.expected)} expected by now (${exp.source === 'target' ? 'from the monthly target' : exp.source === 'recent average' ? 'from the recent monthly average' : exp.source === 'last month' ? 'the same days of last month' : 'the same days a year ago'})`
+        ? `${n0(sales.total)} so far, against ${n0(exp.expected)} expected by now (${exp.source === 'target' ? 'from the monthly target' : exp.source === 'recent average' ? 'from the recent monthly average' : exp.source === 'last month' ? 'the same days of last month' : 'the same days a year ago'})`
         : basis === 'off' ? 'Not measured: switched off in Setup' : 'Nothing to measure against yet: set a target, or choose another basis in Setup (Health and targets)',
       stock: stockBasis === 'products out of stock but selling'
         ? (s0.selling ? `${s0.out || 0} of ${s0.selling} products sold in the last ${sellDays} days are out of stock` : `No sales in the last ${sellDays} days to judge by`)
         : stockBasis === 'stock close to expiry'
-          ? (s0.total ? `${Math.round(s0.expiring || 0)} of ${Math.round(s0.total)} of stock (at cost) expires within ${expiryDays} days` : 'No stock on hand to judge')
+          ? (s0.total ? `${n0(s0.expiring || 0)} of ${n0(s0.total)} of stock (at cost) expires within ${expiryDays} days` : 'No stock on hand to judge')
           : (s0.withmin ? `${s0.ok || 0} of ${s0.withmin} products with a minimum are at or above it` : 'No product has a minimum stock yet: set one on the products, or choose another stock basis in Setup'),
       cash: `${shifts[0]?.n || 0} shift(s) left open from an earlier day${num('cash_variance_points', 0) > 0 ? `, ${varShifts[0]?.n || 0} closed in 30 days with a drawer difference over ${tol}` : ''}`,
-      purchasing: `${Math.round(overdueTotal)} overdue of ${Math.round(owedTotal)} owed to vendors${num('payables_grace_days', 0) ? ` (${num('payables_grace_days', 0)} days of grace)` : ''}`,
+      purchasing: `${n0(overdueTotal)} overdue of ${n0(owedTotal)} owed to vendors${num('payables_grace_days', 0) ? ` (${num('payables_grace_days', 0)} days of grace)` : ''}`,
       customers: customers[0]?.bills ? `${customers[0]?.withmobile || 0} of ${customers[0]?.bills || 0} bills in ${custDays} days carry a mobile number (aim ${aim}%)` : `No bills in the last ${custDays} days to judge by`,
       compliance: `${late[0]?.late || 0} late and ${late[0]?.escalated || 0} escalated item(s) in the register`,
       service: (service[0]?.delivered || 0) + (service[0]?.failed || 0) ? `${service[0]?.delivered || 0} delivered, ${service[0]?.failed || 0} failed in ${svcDays} days` : `No finished deliveries in the last ${svcDays} days to judge by`,
-      dead_stock: deadRow[0]?.total ? `${Math.round(deadRow[0].dead || 0)} of ${Math.round(deadRow[0].total)} of stock (at cost) has not sold in ${deadDays} days` : 'No stock on hand to judge',
+      dead_stock: deadRow[0]?.total ? `${n0(deadRow[0].dead || 0)} of ${n0(deadRow[0].total)} of stock (at cost) has not sold in ${deadDays} days` : 'No stock on hand to judge',
       repeat: repeatRow[0]?.known ? `${repeatRow[0].repeaters || 0} of ${repeatRow[0].known} known customers of the last 90 days came back (aim ${num('repeat_aim_pct', 40)}%)` : 'No known customers in the last 90 days to judge by',
       returns: rates && rates.sales > 0 ? `${rates.returnsPct}% of the last 30 days' sales were returned (fine up to ${num('returns_max_pct', 3)}%)` : 'No sales in the last 30 days to judge by',
       discount: rates && rates.sales > 0 ? `${rates.discountPct}% of the last 30 days' sales was given as discount (fine up to ${num('discount_max_pct', 5)}%)` : 'No sales in the last 30 days to judge by',
@@ -456,11 +457,11 @@ export class DashboardMetricsService {
     const open = await this.dash.getOutstandingInvoices(sc.stores);
     const today = Date.parse(new Date().toISOString().slice(0, 10));
     const buckets = [
-      { key: 'notdue', label: 'Not yet due', total: 0, count: 0 },
-      { key: 'd0_30', label: '1 to 30 days late', total: 0, count: 0 },
-      { key: 'd31_60', label: '31 to 60 days', total: 0, count: 0 },
-      { key: 'd61_90', label: '61 to 90 days', total: 0, count: 0 },
-      { key: 'd90_plus', label: 'Over 90 days', total: 0, count: 0 },
+      { key: 'notdue', label: 'Not yet due', short: 'Not due', total: 0, count: 0 },
+      { key: 'd0_30', label: '1 to 30 days late', short: '1-30 late', total: 0, count: 0 },
+      { key: 'd31_60', label: '31 to 60 days', short: '31-60', total: 0, count: 0 },
+      { key: 'd61_90', label: '61 to 90 days', short: '61-90', total: 0, count: 0 },
+      { key: 'd90_plus', label: 'Over 90 days', short: '90+', total: 0, count: 0 },
     ];
     for (const i of open) {
       const due = i.due_date ? Date.parse(String(i.due_date).slice(0, 10)) : Date.parse(String(i.invoice_date).slice(0, 10));

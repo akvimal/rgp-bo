@@ -8,13 +8,13 @@ import { DashboardService } from "../dashboard.service";
  */
 @Component({
     selector: 'app-owner-insights',
-    styles: ['.chart-box { position: relative; width: 100%; min-width: 0; overflow: hidden; } .chart-box > * { display: block; }'],
+    styles: [':host { display: block; height: 100%; } .chart-box { position: relative; width: 100%; min-width: 0; overflow: hidden; } .chart-box > * { display: block; }'],
     template: `
-    <section class="card mb-3" aria-label="Store health" data-testid="health-card">
+    <section *ngIf="show('health')" class="card mb-3" aria-label="Store health" data-testid="health-card">
       <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
           <div>
-            <h2 class="h6 mb-1">Store health <span class="text-muted fw-normal small">seven checks, weighted by your settings</span></h2>
+            <h2 class="h6 mb-1">Store health <span class="text-muted fw-normal small">weighted by your settings</span></h2>
             <div *ngIf="health && health.score !== null" class="d-flex align-items-baseline gap-2">
               <span class="display-6 fw-bold" data-testid="health-score">{{health.score}}</span>
               <span class="badge" [ngClass]="statusClass" data-testid="health-status">{{statusText}}</span>
@@ -44,7 +44,7 @@ import { DashboardService } from "../dashboard.service";
       </div>
     </section>
 
-    <section class="mb-3" aria-label="Month so far" data-testid="tiles">
+    <section *ngIf="show('tiles')" class="mb-3" aria-label="Month so far" data-testid="tiles">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
         <div class="small text-muted" *ngIf="tiles">This month so far ({{tiles.period}}) against {{tiles.against}}</div>
         <div class="btn-group btn-group-sm" role="group" aria-label="Compare with">
@@ -74,51 +74,43 @@ import { DashboardService } from "../dashboard.service";
       <div class="small text-danger" *ngIf="err.tiles">{{err.tiles}}</div>
     </section>
 
-    <div class="row g-3 mb-3">
-      <div class="col-xl-8">
-        <section class="card h-100" aria-label="Sales by month" data-testid="chart-sales-months">
+    <section *ngIf="show('sales-month')" class="card h-100" aria-label="Sales by month" data-testid="chart-sales-months">
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Sales by month <span class="text-muted fw-normal small">against the same months of the last two years</span></h2>
-              <button class="btn btn-sm btn-link" (click)="tables.sales = !tables.sales">{{tables.sales ? 'Show chart' : 'Show numbers'}}</button></div>
+              <button class="btn btn-sm btn-link text-nowrap" (click)="tables.sales = !tables.sales">{{tables.sales ? 'Show chart' : 'Show numbers'}}</button></div>
             <div *ngIf="!tables.sales && salesSeries.length" class="chart-box" style="height: 280px"><ngx-charts-line-chart [results]="salesSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [showXAxisLabel]="false" [showYAxisLabel]="false" [autoScale]="true" [scheme]="lineScheme" (select)="pickMonth($event)"></ngx-charts-line-chart></div>
             <div class="table-responsive" *ngIf="tables.sales"><table class="table table-sm"><thead><tr><th>Month</th><th class="text-end">Sales</th><th class="text-end">Last year</th><th class="text-end">Two years ago</th></tr></thead>
               <tbody><tr *ngFor="let m of salesMonths"><td>{{m.month}}</td><td class="text-end">{{m.sales | number:'1.0-0'}}</td><td class="text-end">{{m.lastYear | number:'1.0-0'}}</td><td class="text-end">{{m.twoYearsAgo | number:'1.0-0'}}</td></tr></tbody></table></div>
             <div class="small text-muted" *ngIf="err.sales">{{err.sales}}</div>
           </div>
         </section>
-      </div>
-      <div class="col-xl-4">
-        <section class="card h-100" aria-label="Sales by category" data-testid="chart-categories">
+
+    <section *ngIf="show('categories')" class="card h-100" aria-label="Sales by category" data-testid="chart-categories">
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Sales by category <span class="text-muted fw-normal small">{{categories?.month}}</span></h2>
-              <button class="btn btn-sm btn-link" (click)="tables.cat = !tables.cat">{{tables.cat ? 'Show chart' : 'Show numbers'}}</button></div>
+              <button class="btn btn-sm btn-link text-nowrap" (click)="tables.cat = !tables.cat">{{tables.cat ? 'Show chart' : 'Show numbers'}}</button></div>
             <div *ngIf="!tables.cat && catBars.length" class="chart-box" style="height: 280px"><ngx-charts-bar-horizontal [results]="catBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-horizontal></div>
             <div class="table-responsive" *ngIf="tables.cat"><table class="table table-sm"><thead><tr><th>Category</th><th class="text-end">Sales</th><th class="text-end">Share</th></tr></thead>
               <tbody><tr *ngFor="let c of categories?.categories"><td>{{c.category}}</td><td class="text-end">{{c.total | number:'1.0-0'}}</td><td class="text-end">{{c.share}}%</td></tr></tbody></table></div>
             <div class="small text-muted" *ngIf="err.cat">{{err.cat}}</div>
           </div>
         </section>
-      </div>
-    </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-xl-6">
-        <section class="card h-100" aria-label="Customers" data-testid="chart-customers">
+    <section *ngIf="show('customers')" class="card h-100" aria-label="Customers" data-testid="chart-customers">
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">New and returning customers <span class="text-muted fw-normal small">counts only, by month</span></h2>
-              <button class="btn btn-sm btn-link" (click)="tables.cust = !tables.cust">{{tables.cust ? 'Show chart' : 'Show numbers'}}</button></div>
+              <button class="btn btn-sm btn-link text-nowrap" (click)="tables.cust = !tables.cust">{{tables.cust ? 'Show chart' : 'Show numbers'}}</button></div>
             <div *ngIf="!tables.cust && custSeries.length" class="chart-box" style="height: 260px"><ngx-charts-bar-vertical-stacked [results]="custSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [scheme]="custScheme"></ngx-charts-bar-vertical-stacked></div>
             <div class="table-responsive" *ngIf="tables.cust"><table class="table table-sm"><thead><tr><th>Month</th><th class="text-end">New</th><th class="text-end">Returning</th><th class="text-end">Repeat rate</th></tr></thead>
               <tbody><tr *ngFor="let m of customers"><td>{{m.month}}</td><td class="text-end">{{m.new}}</td><td class="text-end">{{m.returning}}</td><td class="text-end">{{m.repeatRate}}%</td></tr></tbody></table></div>
             <div class="small text-muted" *ngIf="err.cust">{{err.cust}}</div>
           </div>
         </section>
-      </div>
-      <div class="col-xl-6" *ngIf="canSeePayables">
-        <section class="card h-100" aria-label="What we owe" data-testid="chart-payables">
+
+    <section *ngIf="show('payables') && canSeePayables" class="card h-100" aria-label="What we owe" data-testid="chart-payables">
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">What we owe vendors <span class="text-muted fw-normal small">by how late it is</span></h2>
-              <button class="btn btn-sm btn-link" (click)="tables.pay = !tables.pay">{{tables.pay ? 'Show chart' : 'Show numbers'}}</button></div>
+              <button class="btn btn-sm btn-link text-nowrap" (click)="tables.pay = !tables.pay">{{tables.pay ? 'Show chart' : 'Show numbers'}}</button></div>
             <div *ngIf="!tables.pay && payBars.length" class="chart-box" style="height: 260px"><ngx-charts-bar-vertical [results]="payBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-vertical></div>
             <div class="table-responsive" *ngIf="tables.pay"><table class="table table-sm"><thead><tr><th>When</th><th class="text-end">Invoices</th><th class="text-end">Amount</th></tr></thead>
               <tbody><tr *ngFor="let b of payables?.buckets"><td>{{b.label}}</td><td class="text-end">{{b.count}}</td><td class="text-end">{{b.total | number:'1.0-0'}}</td></tr></tbody></table></div>
@@ -126,15 +118,11 @@ import { DashboardService } from "../dashboard.service";
             <div class="small text-muted" *ngIf="err.pay">{{err.pay}}</div>
           </div>
         </section>
-      </div>
-    </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-xl-6">
-        <section class="card h-100" aria-label="Deliveries" data-testid="chart-deliveries">
+    <section *ngIf="show('deliveries')" class="card h-100" aria-label="Deliveries" data-testid="chart-deliveries">
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Deliveries by week <span class="text-muted fw-normal small" *ngIf="deliveries?.deliveredPct !== null">{{deliveries?.deliveredPct}}% delivered</span></h2>
-              <button class="btn btn-sm btn-link" (click)="tables.del = !tables.del">{{tables.del ? 'Show chart' : 'Show numbers'}}</button></div>
+              <button class="btn btn-sm btn-link text-nowrap" (click)="tables.del = !tables.del">{{tables.del ? 'Show chart' : 'Show numbers'}}</button></div>
             <div *ngIf="!tables.del && delSeries.length" class="chart-box" style="height: 240px"><ngx-charts-bar-vertical-stacked [results]="delSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [scheme]="delScheme"></ngx-charts-bar-vertical-stacked></div>
             <div class="text-muted small" *ngIf="!tables.del && !delSeries.length">No deliveries in the last 8 weeks.</div>
             <div class="table-responsive" *ngIf="tables.del"><table class="table table-sm"><thead><tr><th>Week of</th><th class="text-end">Delivered</th><th class="text-end">Failed</th><th class="text-end">Pending</th></tr></thead>
@@ -142,12 +130,11 @@ import { DashboardService } from "../dashboard.service";
             <div class="small text-muted" *ngIf="err.del">{{err.del}}</div>
           </div>
         </section>
-      </div>
-      <div class="col-xl-6">
-        <section class="card h-100" aria-label="Expenses" data-testid="chart-expenses">
+
+    <section *ngIf="show('expenses')" class="card h-100" aria-label="Expenses" data-testid="chart-expenses">
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Expenses this month <span class="text-muted fw-normal small">approved, by category</span></h2>
-              <button class="btn btn-sm btn-link" (click)="tables.exp = !tables.exp">{{tables.exp ? 'Show chart' : 'Show numbers'}}</button></div>
+              <button class="btn btn-sm btn-link text-nowrap" (click)="tables.exp = !tables.exp">{{tables.exp ? 'Show chart' : 'Show numbers'}}</button></div>
             <div *ngIf="!tables.exp && expBars.length" class="chart-box" style="height: 240px"><ngx-charts-bar-horizontal [results]="expBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-horizontal></div>
             <div class="text-muted small" *ngIf="!tables.exp && !expBars.length">No approved expenses this month.</div>
             <div class="table-responsive" *ngIf="tables.exp"><table class="table table-sm"><thead><tr><th>Category</th><th class="text-end">Entries</th><th class="text-end">Amount</th></tr></thead>
@@ -156,13 +143,11 @@ import { DashboardService } from "../dashboard.service";
             <div class="small text-muted" *ngIf="err.exp">{{err.exp}}</div>
           </div>
         </section>
-      </div>
-    </div>
 
-    <section class="card mb-3" aria-label="Busy hours" data-testid="chart-hours">
+    <section *ngIf="show('hours')" class="card mb-3" aria-label="Busy hours" data-testid="chart-hours">
       <div class="card-body">
         <div class="d-flex justify-content-between"><h2 class="h6">When are we busy <span class="text-muted fw-normal small">bills by weekday and hour, last 90 days</span></h2>
-          <button class="btn btn-sm btn-link" (click)="tables.hours = !tables.hours">{{tables.hours ? 'Show chart' : 'Show numbers'}}</button></div>
+          <button class="btn btn-sm btn-link text-nowrap" (click)="tables.hours = !tables.hours">{{tables.hours ? 'Show chart' : 'Show numbers'}}</button></div>
         <div *ngIf="!tables.hours && heat.length" class="chart-box" style="height: 260px"><ngx-charts-heat-map [results]="heat" [xAxis]="true" [yAxis]="true" [legend]="false" [scheme]="heatScheme" [min]="0" [max]="heatMax" [innerPadding]="2"></ngx-charts-heat-map></div>
         <div class="table-responsive" *ngIf="tables.hours"><table class="table table-sm"><thead><tr><th>Day</th><th>Busiest hours (bills)</th></tr></thead>
           <tbody><tr *ngFor="let d of busiest"><td>{{d.day}}</td><td>{{d.text}}</td></tr></tbody></table></div>
@@ -171,6 +156,8 @@ import { DashboardService } from "../dashboard.service";
     </section>`
 })
 export class OwnerInsightsComponent implements OnChanges {
+    /** which card this instance draws: health, tiles, sales-month, categories, customers, payables, deliveries, expenses or hours (the page decides where it goes) */
+    @Input() part = 'health';
     @Input() storeid: number | null = null;
     @Input() canSetTargets = false;
     @Input() canSeePayables = true;
@@ -213,32 +200,35 @@ export class OwnerInsightsComponent implements OnChanges {
 
     constructor(private dashboard: DashboardService) {}
 
+    show(p: string): boolean { return this.part === p; }
+
     get monthLabel(): string { return this.month; }
     get statusText(): string { return this.health?.status === 'healthy' ? 'Healthy' : this.health?.status === 'watch' ? 'Watch' : this.health?.status === 'act' ? 'Act now' : ''; }
     get statusClass(): string { return this.health?.status === 'healthy' ? 'bg-success' : this.health?.status === 'watch' ? 'bg-warning text-dark' : 'bg-danger'; }
     barClass(score: number): string { return score >= 80 ? 'bg-success' : score >= 60 ? 'bg-warning' : 'bg-danger'; }
 
-    ngOnChanges(changes: SimpleChanges) { if (changes.storeid || !this.health) this.load(); }
+    ngOnChanges(changes: SimpleChanges) { if (changes.storeid || changes.part || !this.loadedOnce) { this.loadedOnce = true; this.load(); } }
+    private loadedOnce = false;
 
     private fail(key: string, e: any) { this.err[key] = e?.error?.message || 'This chart could not be loaded.'; }
 
     load() {
         this.err = {};
-        this.dashboard.getHealth(this.storeid).subscribe({ next: (h: any) => { this.health = h; this.healthError = ''; }, error: (e) => (this.healthError = e?.error?.message || 'Health could not be loaded.') });
-        this.dashboard.getTargets(this.month).subscribe({
+        if (this.show('health')) this.dashboard.getHealth(this.storeid).subscribe({ next: (h: any) => { this.health = h; this.healthError = ''; }, error: (e) => (this.healthError = e?.error?.message || 'Health could not be loaded.') });
+        if (this.show('health')) this.dashboard.getTargets(this.month).subscribe({
             next: (t: any) => { this.targetInput = (this.storeid ? t.stores.find((s: any) => s.id === this.storeid)?.value : t.business) ?? null; },
             error: () => {}
         });
-        this.loadTiles();
-        this.dashboard.getMetric('deliveries', this.storeid).subscribe({
-            next: (r: any) => { this.deliveries = r; this.delSeries = r.weeks.map((w: any) => ({ name: w.week.slice(5), series: [{ name: 'Delivered', value: w.delivered }, { name: 'Failed', value: w.failed }, { name: 'Pending', value: w.pending }] })); },
+        if (this.show('tiles')) this.loadTiles();
+        if (this.show('deliveries')) this.dashboard.getMetric('deliveries', this.storeid).subscribe({
+            next: (r: any) => { this.deliveries = r; this.delSeries = r.weeks.map((w: any) => ({ name: this.weekLabel(w.week), series: [{ name: 'Delivered', value: w.delivered }, { name: 'Failed', value: w.failed }, { name: 'Pending', value: w.pending }] })); },
             error: (e) => this.fail('del', e)
         });
-        this.dashboard.getMetric('expenses', this.storeid).subscribe({
+        if (this.show('expenses')) this.dashboard.getMetric('expenses', this.storeid).subscribe({
             next: (r: any) => { this.expenses = r; this.expBars = r.categories.slice(0, 8).map((c: any) => ({ name: c.category, value: Math.round(c.total) })); },
             error: (e) => this.fail('exp', e)
         });
-        this.dashboard.getMetric('sales-by-month', this.storeid).subscribe({
+        if (this.show('sales-month')) this.dashboard.getMetric('sales-by-month', this.storeid).subscribe({
             next: (r: any) => {
                 this.salesMonths = r.months;
                 this.salesSeries = [
@@ -248,19 +238,19 @@ export class OwnerInsightsComponent implements OnChanges {
                 ];
             }, error: (e) => this.fail('sales', e)
         });
-        this.dashboard.getMetric('categories', this.storeid).subscribe({
+        if (this.show('categories')) this.dashboard.getMetric('categories', this.storeid).subscribe({
             next: (r: any) => { this.categories = r; this.catBars = r.categories.slice(0, 8).map((c: any) => ({ name: c.category, value: Math.round(c.total) })); },
             error: (e) => this.fail('cat', e)
         });
-        this.dashboard.getMetric('customers', this.storeid).subscribe({
+        if (this.show('customers')) this.dashboard.getMetric('customers', this.storeid).subscribe({
             next: (r: any) => { this.customers = r.months; this.custSeries = r.months.map((m: any) => ({ name: m.month, series: [{ name: 'New', value: m.new }, { name: 'Returning', value: m.returning }] })); },
             error: (e) => this.fail('cust', e)
         });
-        if (this.canSeePayables) this.dashboard.getMetric('payables', this.storeid).subscribe({
-            next: (r: any) => { this.payables = r; this.payBars = r.buckets.map((b: any) => ({ name: b.label, value: Math.round(b.total) })); },
+        if (this.show('payables') && this.canSeePayables) this.dashboard.getMetric('payables', this.storeid).subscribe({
+            next: (r: any) => { this.payables = r; this.payBars = r.buckets.map((b: any) => ({ name: b.short || b.label, value: Math.round(b.total) })); },
             error: (e) => this.fail('pay', e)
         });
-        this.dashboard.getMetric('busy-hours', this.storeid).subscribe({
+        if (this.show('hours')) this.dashboard.getMetric('busy-hours', this.storeid).subscribe({
             next: (r: any) => {
                 const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                 const hours = Array.from({ length: 24 }, (_, h) => h).filter((h) => r.cells.some((c: any) => c.hour === h));
@@ -274,6 +264,11 @@ export class OwnerInsightsComponent implements OnChanges {
                 }));
             }, error: (e) => this.fail('hours', e)
         });
+    }
+
+    /** the Monday of a week as "19 Oct" */
+    weekLabel(day: string): string {
+        return new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
     }
 
     setCompare(c: 'prev' | 'lastyear') { this.compare = c; this.loadTiles(); }

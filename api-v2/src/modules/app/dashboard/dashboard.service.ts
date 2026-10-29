@@ -259,15 +259,16 @@ export class DashboardService {
   private async getPurchaseApprovalBreakdown() {
     const rows = await this.manager.query(`
       select
-        coalesce(approval_status, 'Pending') as status,
+        initcap(lower(replace(coalesce(approval_status, 'Pending'), '_', ' '))) as status,
         count(*)::int as count
       from purchase_order
       where active = true and archive = false
         and created_on >= date_trunc('month', current_date)
-      group by approval_status
+      group by 1
     `);
+    // "Approved" and "APPROVED" are one status: the donut has one slice for each
     const map: Record<string, number> = { Pending: 0, Approved: 0, Rejected: 0 };
-    rows.forEach((r: any) => { map[r.status] = +r.count || 0; });
+    rows.forEach((r: any) => { map[r.status] = (map[r.status] || 0) + (+r.count || 0); });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }
 
@@ -350,6 +351,7 @@ export class DashboardService {
       where pi.active = true
         and pi.archive = false
         and pi.invoice_date >= current_date - interval '13 days'
+        and pi.invoice_date <= current_date
         and ($1::int[] is null or pi.store_id = any($1::int[]))
       group by 1
       order by 1

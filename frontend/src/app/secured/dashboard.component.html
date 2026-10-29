@@ -3,129 +3,23 @@
 <app-personal-view *ngIf="view === 'personal'"></app-personal-view>
 <ng-container *ngIf="legacy">
 <app-needs-strip *ngIf="showWidget('needs')" [items]="needs"></app-needs-strip>
-<app-owner-insights *ngIf="view === 'owner' || view === 'manager'" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights>
-<app-team-recognition *ngIf="view === 'owner' || view === 'manager'"></app-team-recognition>
-<div class="dashboard">
 
+<!-- where to look: one stop per question, in the order the page answers them -->
+<nav class="d-flex flex-wrap gap-2 small mb-3" aria-label="Jump to" *ngIf="view === 'owner' || view === 'manager'" data-testid="dash-nav">
+  <span class="text-muted">Jump to</span>
+  <a href="javascript:void(0)" (click)="jump('sec-health')">Health</a>
+  <a href="javascript:void(0)" *isAuth="'sales'" (click)="jump('sec-sales')">Sales</a>
+  <a href="javascript:void(0)" *isAuth="'customers'" (click)="jump('sec-customers')">Customers and service</a>
+  <a href="javascript:void(0)" *isAuth="'products'" (click)="jump('sec-products')">Products and stock</a>
+  <a href="javascript:void(0)" *isAuth="'purchaseorders'" (click)="jump('sec-purchasing')">Purchasing and payables</a>
+  <a href="javascript:void(0)" *isAuth="'store'" (click)="jump('sec-cash')">Cash and shifts</a>
+  <a href="javascript:void(0)" (click)="jump('sec-team')">Team</a>
+</nav>
+
+<div class="dashboard">
 
 <div *ngIf="error" class="alert alert-danger" data-testid="dash-error">{{error}}</div>
 <div *ngIf="loading" class="alert alert-light" data-testid="dash-loading">Loading dashboard...</div>
-
-<!-- ── KPI cards ─────────────────────────────────────────────────────── -->
-<div class="row g-3 mb-3" data-testid="dash-kpis">
-
-  <!-- Sales: combined today + month (freed one card slot) -->
-  <div class="col-6 col-xl-3" *isAuth="'sales'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="small text-muted fw-semibold mb-1">Sales</div>
-        <div class="d-flex justify-content-between align-items-end">
-          <div>
-            <div class="small text-muted">Today</div>
-            <div class="fs-5 fw-bold" data-testid="dash-sales-today">₹{{summary?.kpis?.sales_today | number:'1.0-0'}}</div>
-            <div class="small text-muted">{{summary?.kpis?.sales_today_orders || 0}} orders</div>
-          </div>
-          <div class="text-end">
-            <div class="small text-muted">This month</div>
-            <div class="fs-5 fw-bold">₹{{summary?.kpis?.sales_month | number:'1.0-0'}}</div>
-            <div class="small text-muted">{{summary?.kpis?.sales_month_orders || 0}} orders</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Returns this month (extracted from buried Open Shifts card) -->
-  <div class="col-6 col-xl-3" *isAuth="'sales'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="small text-muted">Returns this month</div>
-        <div class="fs-4 fw-bold" data-testid="dash-returns-invoices">{{summary?.kpis?.sales_returns_invoices_month || 0}} <span class="fs-6 fw-normal text-muted">invoices</span></div>
-        <div class="small text-muted" data-testid="dash-returns-value">₹{{(summary?.kpis?.sales_returns_value_month || 0) | number:'1.0-0'}} &middot; {{summary?.kpis?.sales_returns_month || 0}} units</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Purchase month — restricted to purchaseorders (Business Head / Store Head; hidden from Sales Staff) -->
-  <div class="col-6 col-xl-3" *isAuth="'purchaseorders'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="small text-muted">Purchase month</div>
-        <div class="fs-4 fw-bold">₹{{summary?.kpis?.purchase_month | number:'1.0-0'}}</div>
-        <div class="small text-muted">{{summary?.kpis?.purchase_month_invoices || 0}} invoices</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cash balance with progress bar showing balance vs deposit threshold -->
-  <div class="col-6 col-xl-3" *isAuth="'store'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-1">
-          <div class="small text-muted">Cash balance</div>
-          <span *ngIf="summary?.kpis?.deposit_due" class="badge bg-warning text-dark" style="font-size:0.65rem">Deposit due</span>
-        </div>
-        <div class="fs-4 fw-bold mb-1">₹{{summary?.kpis?.cash_balance | number:'1.0-0'}}</div>
-        <div class="progress mb-1" style="height:6px" *ngIf="summary?.kpis?.deposit_threshold">
-          <div class="progress-bar"
-            [class.bg-success]="cashBalancePct < 75"
-            [class.bg-warning]="cashBalancePct >= 75 && cashBalancePct < 100"
-            [class.bg-danger]="cashBalancePct >= 100"
-            [style.width.%]="cashBalancePct">
-          </div>
-        </div>
-        <div class="small text-muted" *ngIf="summary?.kpis?.deposit_threshold">Threshold: ₹{{summary?.kpis?.deposit_threshold | number:'1.0-0'}}</div>
-        <div class="small" *ngIf="summary?.kpis?.deposit_due && summary?.kpis?.deposit_reason === 'schedule'" data-testid="dash-deposit-reason">A deposit day has passed without a deposit</div>
-        <div class="small text-muted" *ngIf="!summary?.kpis?.deposit_due && summary?.kpis?.deposit_next" data-testid="dash-deposit-next">Next deposit day: {{summary?.kpis?.deposit_next | date:'EEE d MMM'}}</div>
-        <div class="small text-muted">Expenses: ₹{{summary?.kpis?.cash_expenses_month | number:'1.0-0'}} · Deposits: ₹{{summary?.kpis?.bank_deposits_month | number:'1.0-0'}}</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Pending approvals -->
-  <div class="col-6 col-xl-3" *isAuth="'purchaseorders'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="small text-muted">Pending approvals</div>
-        <div class="fs-4 fw-bold">{{summary?.kpis?.pending_purchase_approvals || 0}}</div>
-        <div class="small text-muted">POs awaiting review</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Outstanding invoices — purchaseorders guard (not relevant to Sales Staff) -->
-  <div class="col-6 col-xl-3" *isAuth="'purchaseorders'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="small text-muted">Outstanding invoices</div>
-        <div class="fs-4 fw-bold">{{summary?.kpis?.outstanding_invoices || 0}}</div>
-        <div class="small text-muted">{{summary?.kpis?.overdue_invoices || 0}} overdue</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Low stock -->
-  <div class="col-6 col-xl-3" *isAuth="'products'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="small text-muted">Low stock items</div>
-        <div class="fs-4 fw-bold">{{summary?.kpis?.low_stock_items || 0}}</div>
-        <div class="small text-muted">Reorder suggestions</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Open shifts -->
-  <div class="col-6 col-xl-3" *isAuth="'store'">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="small text-muted">Open shifts</div>
-        <div class="fs-4 fw-bold">{{summary?.kpis?.open_shifts || 0}}</div>
-        <div class="small text-muted">currently active</div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ── Admin KPI cards (Site Admin only) ─────────────────────────────── -->
 <div class="row g-3 mb-3" *isAuth="'businesses'">
@@ -162,104 +56,6 @@
         <div class="small text-muted">Roles</div>
         <div class="fs-4 fw-bold">{{adminSummary?.roles || 0}}</div>
         <div class="small text-muted">Configured</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Primary chart row: Sales trend (wide) + Payment split ─────────── -->
-<div class="row g-3 mb-3">
-  <div class="col-12 col-lg-8" *isAuth="'sales'">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Sales trend <span class="small text-muted fw-normal">(last 14 days)</span></h5>
-        <div class="chart-box">
-          <ngx-charts-bar-vertical
-            [results]="salesTrend"
-            [xAxis]="true"
-            [yAxis]="true"
-            [legend]="false"
-            [roundEdges]="false"
-            [showXAxisLabel]="false"
-            [showYAxisLabel]="true"
-            [yAxisLabel]="'Sales (₹)'">
-          </ngx-charts-bar-vertical>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-lg-4" *isAuth="'sales'">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Payment split <span class="small text-muted fw-normal">(this month)</span></h5>
-        <div class="chart-box">
-          <ngx-charts-pie-chart
-            [results]="paymentSplit"
-            [labels]="true"
-            [legend]="true"
-            [legendPosition]="legendBelow"
-            [doughnut]="true">
-          </ngx-charts-pie-chart>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Secondary chart row: Purchase trend + Cash movement + Approval breakdown ── -->
-<div class="row g-3 mb-3">
-  <div class="col-12 col-lg-4" *isAuth="'purchases'">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Purchase trend <span class="small text-muted fw-normal">(14 days)</span></h5>
-        <div class="chart-box chart-box-sm">
-          <ngx-charts-bar-vertical
-            [results]="purchaseTrend"
-            [xAxis]="true"
-            [yAxis]="true"
-            [legend]="false"
-            [roundEdges]="false"
-            [showXAxisLabel]="false"
-            [showYAxisLabel]="true"
-            [yAxisLabel]="'Amount (₹)'">
-          </ngx-charts-bar-vertical>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-lg-4" *isAuth="'store'">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Cash movement <span class="small text-muted fw-normal">(14 days)</span></h5>
-        <div class="chart-box chart-box-sm">
-          <ngx-charts-bar-vertical-2d
-            [results]="cashTrend"
-            [xAxis]="true"
-            [yAxis]="true"
-            [legend]="true"
-            [legendPosition]="legendBelow"
-            [roundEdges]="false"
-            [showXAxisLabel]="false"
-            [showYAxisLabel]="true"
-            [yAxisLabel]="'Amount (₹)'">
-          </ngx-charts-bar-vertical-2d>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-lg-4" *isAuth="'purchaseorders'">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">PO approvals <span class="small text-muted fw-normal">(this month)</span></h5>
-        <div class="chart-box chart-box-sm">
-          <ngx-charts-pie-chart
-            [results]="purchaseApprovalBreakdown"
-            [doughnut]="true"
-            [legend]="true"
-            [legendPosition]="legendBelow"
-            [labels]="false">
-          </ngx-charts-pie-chart>
-        </div>
       </div>
     </div>
   </div>
@@ -307,38 +103,84 @@
   </div>
 </div>
 
-<!-- ── Customer trends ────────────────────────────────────────────────── -->
-<div class="row g-3 mb-3" *isAuth="'customers'">
-  <div class="col-12">
-    <div class="small fw-semibold text-muted text-uppercase mb-1" style="letter-spacing:.05em">Customer trends</div>
+<ng-container *ngIf="view === 'owner' || view === 'manager'">
+
+<!-- 1. How is the business doing overall? -->
+<section id="sec-health" class="mb-2">
+  <app-owner-insights part="health" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights>
+</section>
+
+<!-- 2. Sales: the month so far, the days, the months, what sells, and when -->
+<section id="sec-sales" *isAuth="'sales'">
+  <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Sales</h2>
+  <div data-testid="dash-kpis">
+    <div class="d-flex flex-wrap gap-3 align-items-baseline small text-muted mb-2" data-testid="dash-today">
+      <span>Today <strong class="fs-5 text-body" data-testid="dash-sales-today">₹{{summary?.kpis?.sales_today | number:'1.0-0'}}</strong> &middot; {{summary?.kpis?.sales_today_orders || 0}} orders</span>
+      <span>This month <strong class="text-body">₹{{summary?.kpis?.sales_month | number:'1.0-0'}}</strong> &middot; {{summary?.kpis?.sales_month_orders || 0}} orders</span>
+      <span>Returns this month <strong class="text-body" data-testid="dash-returns-invoices">{{summary?.kpis?.sales_returns_invoices_month || 0}}</strong> invoices &middot; <span data-testid="dash-returns-value">₹{{(summary?.kpis?.sales_returns_value_month || 0) | number:'1.0-0'}}</span></span>
+    </div>
+    <app-owner-insights part="tiles" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights>
   </div>
-  <div class="col-12 col-lg-6">
+  <div class="row g-3 mb-3">
+  <div class="col-12 col-xl-8" *isAuth="'sales'">
     <div class="card h-100">
       <div class="card-body">
-        <h5 class="card-title">Customers served per day <span class="small text-muted fw-normal">(last 14 days, new vs returning)</span></h5>
+        <h5 class="card-title">Sales trend <span class="small text-muted fw-normal">(last 14 days)</span></h5>
         <div class="chart-box">
-          <ngx-charts-bar-vertical-stacked
-            [results]="customersPerDay"
-            [scheme]="customerScheme"
+          <ngx-charts-bar-vertical
+            [results]="salesTrend"
+            [scheme]="oneColour"
             [xAxis]="true"
             [yAxis]="true"
-            [legend]="true"
-            [legendTitle]="''"
+            [legend]="false"
+            [roundEdges]="false"
             [showXAxisLabel]="false"
             [showYAxisLabel]="true"
-            [yAxisLabel]="'Customers'">
-          </ngx-charts-bar-vertical-stacked>
+            [yAxisLabel]="'Sales (₹)'">
+          </ngx-charts-bar-vertical>
         </div>
       </div>
     </div>
   </div>
-  <div class="col-12 col-lg-6">
+  <div class="col-12 col-xl-4" *isAuth="'sales'">
     <div class="card h-100">
       <div class="card-body">
-        <h5 class="card-title">Top customers <span class="small text-muted fw-normal">(this month by revenue)</span></h5>
+        <h5 class="card-title">Payment split <span class="small text-muted fw-normal">(this month)</span></h5>
+        <div class="chart-box">
+          <ngx-charts-pie-chart
+            [results]="paymentSplit"
+            [labels]="true"
+            [legend]="true"
+            [legendPosition]="legendBelow"
+            [doughnut]="true">
+          </ngx-charts-pie-chart>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-xl-8"><app-owner-insights part="sales-month" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
+    <div class="col-12 col-xl-4"><app-owner-insights part="categories" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-12"><app-owner-insights part="hours" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
+  </div>
+</section>
+
+<!-- 3. Customers and the service they get -->
+<section id="sec-customers" *isAuth="'customers'">
+  <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Customers and service</h2>
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-xl-4"><app-owner-insights part="customers" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Top customers <span class="small text-muted fw-normal">(this month, by sales)</span></h5>
         <div class="chart-box">
           <ngx-charts-bar-horizontal
             [results]="topCustomers"
+            [scheme]="oneColour"
             [xAxis]="true"
             [yAxis]="true"
             [legend]="false"
@@ -354,20 +196,22 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- ── Product trends ─────────────────────────────────────────────────── -->
-<div class="row g-3 mb-3" *isAuth="'products'">
-  <div class="col-12">
-    <div class="small fw-semibold text-muted text-uppercase mb-1" style="letter-spacing:.05em">Product trends</div>
+    <div class="col-12 col-xl-4"><app-owner-insights part="deliveries" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
   </div>
-  <div class="col-12 col-lg-6">
+</section>
+
+<!-- 4. Products and stock -->
+<section id="sec-products" *isAuth="'products'">
+  <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Products and stock</h2>
+  <div class="row g-3 mb-3">
+  <div class="col-12 col-xl-6">
     <div class="card h-100">
       <div class="card-body">
-        <h5 class="card-title">Top products by quantity <span class="small text-muted fw-normal">(this month)</span></h5>
+        <div class="d-flex justify-content-between align-items-center mb-2"><h5 class="card-title mb-0">Top products <span class="small text-muted fw-normal">(this month)</span></h5><div class="btn-group btn-group-sm" role="group" aria-label="Rank by"><button type="button" class="btn" [ngClass]="productBy === 'revenue' ? 'btn-primary' : 'btn-outline-primary'" (click)="productBy = 'revenue'" data-testid="products-by-revenue">By revenue</button><button type="button" class="btn" [ngClass]="productBy === 'qty' ? 'btn-primary' : 'btn-outline-primary'" (click)="productBy = 'qty'" data-testid="products-by-qty">By quantity</button></div></div>
         <div class="chart-box">
           <ngx-charts-bar-horizontal
-            [results]="topProductsByQty"
+            [results]="topProducts"
+            [scheme]="oneColour"
             [xAxis]="true"
             [yAxis]="true"
             [legend]="false"
@@ -379,85 +223,7 @@
       </div>
     </div>
   </div>
-  <div class="col-12 col-lg-6">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Top products by revenue <span class="small text-muted fw-normal">(this month)</span></h5>
-        <div class="chart-box">
-          <ngx-charts-bar-horizontal
-            [results]="topProductsByRevenue"
-            [xAxis]="true"
-            [yAxis]="true"
-            [legend]="false"
-            [roundEdges]="false"
-            [showXAxisLabel]="false"
-            [showYAxisLabel]="false">
-          </ngx-charts-bar-horizontal>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Action tables ──────────────────────────────────────────────────── -->
-<div class="row g-3 mb-3">
-  <div class="col-12 col-xl-4" *isAuth="'purchaseorders'">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Pending approvals</h5>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead>
-              <tr>
-                <th>PO</th>
-                <th>Vendor</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let item of summary?.pendingapprovals">
-                <td>{{item.id}}</td>
-                <td>{{item.vendorname || '-'}}</td>
-                <td><span class="badge bg-warning text-dark">{{item.approvalstatus || item.status}}</span></td>
-              </tr>
-              <tr *ngIf="!summary?.pendingapprovals?.length">
-                <td colspan="3" class="text-center text-muted py-3">No pending approvals.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-xl-4" *isAuth="'purchaseorders'">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Overdue payables</h5>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Invoice</th>
-                <th>Vendor</th>
-                <th class="text-end">Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let item of summary?.outstandinginvoices">
-                <td>{{item.invoice_no}}</td>
-                <td>{{item.business_name || '-'}}</td>
-                <td class="text-end">{{item.balance_amount | number:'1.2-2'}}</td>
-              </tr>
-              <tr *ngIf="!summary?.outstandinginvoices?.length">
-                <td colspan="3" class="text-center text-muted py-3">No overdue invoices.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-xl-4" *isAuth="'products'">
+  <div class="col-12 col-xl-6" *isAuth="'products'">
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Low stock</h5>
@@ -486,40 +252,212 @@
       </div>
     </div>
   </div>
-</div>
+  </div>
+</section>
 
-<!-- ── Open shifts table ──────────────────────────────────────────────── -->
-<div class="card" *isAuth="'store'">
-  <div class="card-body">
-    <h5 class="card-title">Open shifts</h5>
-    <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
-        <thead>
-          <tr>
-            <th>Store</th>
-            <th>Shift</th>
-            <th>Staff</th>
-            <th class="text-end">Expected cash</th>
-            <th class="text-end">Variance</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let shift of summary?.openShifts">
-            <td>{{shift.store_location || '-'}}</td>
-            <td>{{shift.name}} <span class="small text-muted">({{shift.shiftdate}})</span></td>
-            <td>{{shift.assigned_user || '-'}}</td>
-            <td class="text-end">{{shift.expectedcash | number:'1.2-2'}}</td>
-            <td class="text-end" [class.text-danger]="shift.variance < 0" [class.text-success]="shift.variance > 0">
-              {{shift.variance | number:'1.2-2'}}
-            </td>
-          </tr>
-          <tr *ngIf="!summary?.openShifts?.length">
-            <td colspan="5" class="text-center text-muted py-3">No open shifts.</td>
-          </tr>
-        </tbody>
-      </table>
+<!-- 5. What we buy and what we owe -->
+<section id="sec-purchasing" *isAuth="'purchaseorders'">
+  <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Purchasing and payables</h2>
+  <div class="row g-3 mb-3">
+  <div class="col-12 col-md-4 col-xl-2" *isAuth="'purchaseorders'">
+    <div class="card">
+      <div class="card-body">
+        <div class="small text-muted">Purchase month</div>
+        <div class="fs-4 fw-bold">₹{{summary?.kpis?.purchase_month | number:'1.0-0'}}</div>
+        <div class="small text-muted">{{summary?.kpis?.purchase_month_invoices || 0}} invoices</div>
+      </div>
     </div>
   </div>
-</div>
+  <div class="col-12 col-md-8 col-xl-6" *isAuth="'purchases'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Purchase trend <span class="small text-muted fw-normal">(14 days)</span></h5>
+        <div class="chart-box chart-box-sm">
+          <ngx-charts-bar-vertical
+            [results]="purchaseTrend"
+            [scheme]="oneColour"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Amount (₹)'">
+          </ngx-charts-bar-vertical>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">PO approvals <span class="small text-muted fw-normal">(this month)</span></h5>
+        <div class="chart-box chart-box-sm">
+          <ngx-charts-pie-chart
+            [results]="purchaseApprovalBreakdown"
+            [doughnut]="true"
+            [legend]="true"
+            [legendPosition]="legendBelow"
+            [labels]="false">
+          </ngx-charts-pie-chart>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-xl-6" *ngIf="view === 'owner'"><app-owner-insights part="payables" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
+  <div class="col-12 col-xl-6" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Overdue payables</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Vendor</th>
+                <th class="text-end">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of summary?.outstandinginvoices">
+                <td>{{item.invoice_no}}</td>
+                <td>{{item.business_name || '-'}}</td>
+                <td class="text-end">{{item.balance_amount | number:'1.2-2'}}</td>
+              </tr>
+              <tr *ngIf="!summary?.outstandinginvoices?.length">
+                <td colspan="3" class="text-center text-muted py-3">No overdue invoices.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div class="row g-3 mb-3">
+  <div class="col-12" *isAuth="'purchaseorders'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Pending approvals</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>PO</th>
+                <th>Vendor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of summary?.pendingapprovals">
+                <td>{{item.id}}</td>
+                <td>{{item.vendorname || '-'}}</td>
+                <td><span class="badge bg-warning text-dark">{{item.approvalstatus || item.status}}</span></td>
+              </tr>
+              <tr *ngIf="!summary?.pendingapprovals?.length">
+                <td colspan="3" class="text-center text-muted py-3">No pending approvals.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- 6. Cash, expenses and the shifts that hold them -->
+<section id="sec-cash" *isAuth="'store'">
+  <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Cash and shifts</h2>
+  <div class="row g-3 mb-3">
+  <div class="col-12 col-md-4 col-xl-3" *isAuth="'store'">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div class="small text-muted">Cash balance</div>
+          <span *ngIf="summary?.kpis?.deposit_due" class="badge bg-warning text-dark" style="font-size:0.65rem">Deposit due</span>
+        </div>
+        <div class="fs-4 fw-bold mb-1">₹{{summary?.kpis?.cash_balance | number:'1.0-0'}}</div>
+        <div class="progress mb-1" style="height:6px" *ngIf="summary?.kpis?.deposit_threshold">
+          <div class="progress-bar"
+            [class.bg-success]="cashBalancePct < 75"
+            [class.bg-warning]="cashBalancePct >= 75 && cashBalancePct < 100"
+            [class.bg-danger]="cashBalancePct >= 100"
+            [style.width.%]="cashBalancePct">
+          </div>
+        </div>
+        <div class="small text-muted" *ngIf="summary?.kpis?.deposit_threshold">Threshold: ₹{{summary?.kpis?.deposit_threshold | number:'1.0-0'}}</div>
+        <div class="small" *ngIf="summary?.kpis?.deposit_due && summary?.kpis?.deposit_reason === 'schedule'" data-testid="dash-deposit-reason">A deposit day has passed without a deposit</div>
+        <div class="small text-muted" *ngIf="!summary?.kpis?.deposit_due && summary?.kpis?.deposit_next" data-testid="dash-deposit-next">Next deposit day: {{summary?.kpis?.deposit_next | date:'EEE d MMM'}}</div>
+        <div class="small text-muted">Expenses: ₹{{summary?.kpis?.cash_expenses_month | number:'1.0-0'}} · Deposits: ₹{{summary?.kpis?.bank_deposits_month | number:'1.0-0'}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-8 col-xl-5" *isAuth="'store'">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">Cash movement <span class="small text-muted fw-normal">(14 days)</span></h5>
+        <div class="chart-box chart-box-sm">
+          <ngx-charts-bar-vertical-2d
+            [results]="cashTrend"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="true"
+            [legendPosition]="legendBelow"
+            [roundEdges]="false"
+            [showXAxisLabel]="false"
+            [showYAxisLabel]="true"
+            [yAxisLabel]="'Amount (₹)'">
+          </ngx-charts-bar-vertical-2d>
+        </div>
+      </div>
+    </div>
+  </div>
+    <div class="col-12 col-xl-4"><app-owner-insights part="expenses" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
+  </div>
+  <!-- ── Open shifts table ──────────────────────────────────────────────── -->
+  <div class="card" *isAuth="'store'">
+    <div class="card-body">
+      <h5 class="card-title">Open shifts</h5>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Store</th>
+              <th>Shift</th>
+              <th>Staff</th>
+              <th class="text-end">Expected cash</th>
+              <th class="text-end">Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let shift of summary?.openShifts">
+              <td>{{shift.store_location || '-'}}</td>
+              <td>{{shift.name}} <span class="small text-muted">({{shift.shiftdate | date:'d MMM'}})</span></td>
+              <td>{{shift.assigned_user || '-'}}</td>
+              <td class="text-end">{{shift.expectedcash | number:'1.2-2'}}</td>
+              <td class="text-end" [class.text-danger]="shift.variance < 0" [class.text-success]="shift.variance > 0">
+                {{shift.variance | number:'1.2-2'}}
+              </td>
+            </tr>
+            <tr *ngIf="!summary?.openShifts?.length">
+              <td colspan="5" class="text-center text-muted py-3">No open shifts.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. The people -->
+<section id="sec-team">
+  <h2 class="h5 mt-3 mb-2 pb-1 border-bottom">Team</h2>
+  <app-team-recognition></app-team-recognition>
+</section>
+
+</ng-container>
 </div><!-- /.dashboard -->
 </ng-container>
