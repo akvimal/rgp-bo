@@ -23,6 +23,7 @@
   .msg { padding:8px 10px; border-radius:6px; margin:8px 0; background:var(--bg); border:1px solid var(--line); } .msg.err { border-color:var(--bad); color:var(--bad); }
   .mute { color:var(--mute); } code, pre { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:1px 4px; } pre { padding:8px; overflow:auto; }
   .hide { display:none; }
+.mods{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px}.chk{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -100,6 +101,35 @@ $('signin').onclick = async () => {
 };
 $('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('signin').click(); });
 
+
+const MODS = [['hr', 'HR and payroll'], ['expenses', 'Expenses'], ['payment_recon', 'Payment reconciliation'], ['stock_audits', 'Stock audits'], ['transfers', 'Stock transfers'], ['gst', 'GST reconciliation']];
+const LEVELS = ['off', 'simple', 'full'];
+/** a plan's modules as ticks and a purchasing choice */
+function planModules(m) {
+  return `<div class="mods">${MODS.map(([k, l]) => `<label class="chk"><input type="checkbox" data-mod="${k}" ${m[k] ? 'checked' : ''}> ${l}</label>`).join('')}
+    <label class="chk">Purchasing <select data-mod="purchasing">${LEVELS.map((v) => `<option value="${v}" ${m.purchasing === v ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>`;
+}
+function readPlanModules(root) {
+  const out = {};
+  root.querySelectorAll('input[data-mod]').forEach((i) => { out[i.dataset.mod] = i.checked; });
+  out.purchasing = root.querySelector('select[data-mod]').value;
+  return out;
+}
+/** one customer's own choices over the plan: each module follows the plan unless set here */
+function grantSelects(plan, g) {
+  const opt = (cur, vals) => `<option value="">follow plan</option>${vals.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('')}`;
+  return `<div class="mods">${MODS.map(([k, l]) => `<label class="chk">${l} <select data-grant="${k}">${opt(g[k] === true ? 'true' : (g[k] === false ? 'false' : ''), [['true', 'on'], ['false', 'off']])}</select></label>`).join('')}
+    <label class="chk">Purchasing <select data-grant="purchasing">${opt(g.purchasing || '', LEVELS.map((v) => [v, v]))}</select></label></div>`;
+}
+function readGrants() {
+  const out = {};
+  document.querySelectorAll('select[data-grant]').forEach((s) => {
+    if (s.value === '') return;
+    out[s.dataset.grant] = s.dataset.grant === 'purchasing' ? s.value : s.value === 'true';
+  });
+  return out;
+}
+
 async function refresh() {
   try {
     plans = await api('GET', '/plans');
@@ -111,11 +141,11 @@ async function refresh() {
       <td><input class="p-docs" type="number" min="0" value="${p.max_documents ?? ''}" placeholder="unlimited" style="width:90px"></td>
       <td><input class="p-scans" type="number" min="0" value="${p.max_scans ?? ''}" placeholder="unlimited" style="width:90px"></td>
       <td><input class="p-price" type="number" min="0" value="${p.price_month ?? ''}" placeholder="not set" style="width:100px"></td>
-      <td class="mute">${Object.entries(p.modules).map(([k, v]) => v === true ? k : (v === false ? '' : k + ':' + v)).filter(Boolean).join(', ')}</td>
+      <td class="p-mods">${planModules(p.modules)}</td>
       <td><button class="ghost p-save">Save</button></td></tr>`).join('');
     document.querySelectorAll('.p-save').forEach((b) => b.onclick = async () => {
       const tr = b.closest('tr');
-      try { await api('PUT', '/plans/' + tr.dataset.plan, { max_stores: tr.querySelector('.p-stores').value, max_users: tr.querySelector('.p-users').value, max_documents: tr.querySelector('.p-docs').value === '' ? null : tr.querySelector('.p-docs').value, max_scans: tr.querySelector('.p-scans').value === '' ? null : tr.querySelector('.p-scans').value, price_month: tr.querySelector('.p-price').value === '' ? null : tr.querySelector('.p-price').value }); flash('Plan saved.'); refresh(); }
+      try { await api('PUT', '/plans/' + tr.dataset.plan, { max_stores: tr.querySelector('.p-stores').value, max_users: tr.querySelector('.p-users').value, max_documents: tr.querySelector('.p-docs').value === '' ? null : tr.querySelector('.p-docs').value, max_scans: tr.querySelector('.p-scans').value === '' ? null : tr.querySelector('.p-scans').value, price_month: tr.querySelector('.p-price').value === '' ? null : tr.querySelector('.p-price').value, modules: readPlanModules(tr.querySelector('.p-mods')) }); flash('Plan saved.'); refresh(); }
       catch (e) { flash(e.message, true); }
     });
     const tm = await api('GET', '/demo-template');
@@ -186,13 +216,15 @@ async function detail(slug) {
         <button id="d-ai-save">Save assistant</button>
       </div>
       <p class="mute">The key is kept encrypted and never shown again. It reaches their app when it is next started (<code>scripts/tenant-up.sh ${esc(t.slug)}</code>). A customer on "the platform's key" uses the account in <code>.env.platform</code>.</p>
-      <div class="row"><label>Module grants for this customer only (JSON, e.g. {"gst":true})<input id="d-grants" size="50" value='${esc(JSON.stringify(t.grants || {}))}'></label></div>
+      <h2>Modules for this customer</h2>
+      <p class="mute">Each one follows the plan unless you set it here. Setting a module on or off here affects this customer only; save with the first Save button, then restart their app.</p>
+      ${grantSelects(t.plan, t.grants || {})}
       ${t.is_demo ? `<div class="msg"><b>Demo.</b> Sign in at <code>http://localhost:${t.web_port}</code> as <code>${esc(t.owner_email)}</code>, password <code>${esc(t.demo_password || '')}</code>. All sample logins use that password.
         <div class="row" style="margin-top:6px"><button id="d-reset" class="ghost">Reset to sample data</button><button id="d-extend" class="ghost">Add 14 days</button></div></div>` : ''}
       <p class="mute">Start or restart their app on the server: <code>scripts/tenant-up.sh ${esc(t.slug)}</code> (port ${t.web_port}).</p>
       <h2>History</h2><table><tbody>${t.events.map((x) => `<tr><td class="mute">${new Date(x.at).toLocaleString()}</td><td>${esc(x.action)}</td></tr>`).join('')}</tbody></table>`;
     const act = (fn) => async () => { try { await fn(); flash('Done.'); refresh(); detail(slug); } catch (er) { flash(er.message, true); } };
-    $('d-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { plan: $('d-plan').value, trial_ends: $('d-trial').value || null, max_stores: $('d-stores').value || null, max_users: $('d-users').value || null, max_documents: $('d-docs').value === '' ? null : $('d-docs').value, max_scans: $('d-scans').value === '' ? null : $('d-scans').value, grants: JSON.parse($('d-grants').value || '{}') }));
+    $('d-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { plan: $('d-plan').value, trial_ends: $('d-trial').value || null, max_stores: $('d-stores').value || null, max_users: $('d-users').value || null, max_documents: $('d-docs').value === '' ? null : $('d-docs').value, max_scans: $('d-scans').value === '' ? null : $('d-scans').value, grants: readGrants() }));
     $('d-ai-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { ai_mode: $('d-ai-mode').value, ai_provider: $('d-ai-provider').value, ai_key: $('d-ai-key').value.trim(), ai_model: $('d-ai-model').value, ai_allowed: $('d-ai-allowed').value }));
     if ($('d-ai-clear')) $('d-ai-clear').onclick = act(() => { if (!confirm('Remove their key?')) throw new Error('Cancelled.'); return api('PUT', '/tenants/' + slug, { ai_key: null }); });
     if ($('d-reset')) $('d-reset').onclick = act(() => { if (!confirm('Replace everything in this demo with the sample data?')) throw new Error('Cancelled.'); return api('POST', '/tenants/' + slug + '/reset'); });

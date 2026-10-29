@@ -19,6 +19,10 @@ export class HrSetupComponent implements OnInit {
   newType: any = { name: "", paid: true, annual_days: 0, applies_roles: null };
   newHoliday: any = { date: "", name: "" };
 
+  /** job roles, each with the standard amount of every pay component; amounts are held by component id while editing */
+  positions: any[] = [];
+  newPos: any = { id: 0, name: "", active: true, amounts: {} };
+
   /** the measure being added or edited */
   mf: any = null;
   /** which role's band set is on screen ("" = the default set) */
@@ -39,7 +43,7 @@ export class HrSetupComponent implements OnInit {
 
   toggle(key: string) { this.open = { ...this.open, [key]: !this.open[key] }; this.remember(); }
 
-  setAll(on: boolean) { this.open = { pay: on, leave: on, kpi: on }; this.remember(); }
+  setAll(on: boolean) { this.open = { pay: on, position: on, leave: on, kpi: on }; this.remember(); }
 
   private remember() { try { localStorage.setItem("hr_setup_open", JSON.stringify(this.open)); } catch { /* ignore */ } }
 
@@ -51,11 +55,39 @@ export class HrSetupComponent implements OnInit {
   }
 
   load() {
-    this.hr.get("components").subscribe(r => this.components = r);
+    this.hr.get("components").subscribe(r => { this.components = r; this.loadPositions(); });
     this.hr.get("leave/types").subscribe(r => this.leaveTypes = r);
     this.hr.get("holidays", { year: this.year }).subscribe(r => this.holidays = r);
     this.hr.get("kpi/metrics").subscribe(r => this.metrics = r);
     this.hr.get("kpi/bands").subscribe(r => { this.allBands = r; this.showBands(); });
+  }
+
+  /** the active pay components a structure can hold */
+  get payComponents(): any[] { return this.components.filter(c => c.active); }
+
+  loadPositions() {
+    this.hr.get("positions").subscribe(r => this.positions = r.map((p: any) => this.editable(p)));
+  }
+
+  private editable(p: any) {
+    const amounts: any = {};
+    for (const l of p.lines || []) amounts[l.component_id] = l.amount;
+    return { id: p.id, name: p.name, active: p.active, staff: p.staff || 0, amounts };
+  }
+
+  private posBody(p: any) {
+    return { name: p.name, active: p.active, lines: this.payComponents.map(c => ({ component_id: c.id, amount: p.amounts[c.id] })).filter(l => +l.amount > 0) };
+  }
+
+  /** earnings of a structure, for the one-line summary */
+  posEarnings(p: any): number { return this.payComponents.filter(c => c.kind === "EARNING").reduce((t, c) => t + (+p.amounts[c.id] || 0), 0); }
+
+  addPosition() {
+    this.hr.post("positions", this.posBody(this.newPos)).subscribe(() => { this.newPos = { id: 0, name: "", active: true, amounts: {} }; this.done("Job role added.")(); }, this.fail());
+  }
+  savePosition(p: any) { this.hr.put(`positions/${p.id}`, this.posBody(p)).subscribe(this.done("Job role saved. Salaries already given are not changed."), this.fail()); }
+  removePosition(p: any) {
+    this.hr.delete(`positions/${p.id}`).subscribe(r => this.done(r.removed ? `${p.name} removed.` : `${p.name} is held by staff, so it was made inactive instead.`)(), this.fail());
   }
 
   private done(text: string) { return () => { this.message = text; this.error = ""; this.load(); }; }

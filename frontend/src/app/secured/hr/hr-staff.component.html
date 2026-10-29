@@ -79,6 +79,11 @@
               <div class="col-md-3"><label class="form-label">Phone</label><input class="form-control" [(ngModel)]="editing.phone" maxlength="20" data-testid="hr-f-phone"></div>
             </ng-container>
             <div class="col-md-2"><label class="form-label">Staff code</label><input class="form-control" [(ngModel)]="editing.emp_code" placeholder="auto" data-testid="hr-f-code"></div>
+            <div class="col-md-3"><label class="form-label">Job role</label>
+              <select class="form-select" [(ngModel)]="editing.position_id" (ngModelChange)="positionChanged()" data-testid="hr-f-position">
+                <option [ngValue]="null">None</option>
+                <option *ngFor="let p of positions" [ngValue]="p.id" [disabled]="!p.active && p.id !== editing.position_id">{{p.name}}{{p.active ? '' : ' (not in use)'}}</option>
+              </select></div>
             <div class="col-md-3"><label class="form-label">Designation</label><input class="form-control" [(ngModel)]="editing.designation" data-testid="hr-f-designation"></div>
             <div class="col-md-3" *ngIf="auth.packOn('pharmacy')"><label class="form-label">Pharmacist registration no.</label><input class="form-control text-uppercase" maxlength="30" [(ngModel)]="editing.pharmacist_reg_no" data-testid="hr-f-pharmreg"></div>
             <div class="col-md-3" *ngIf="auth.packOn('pharmacy')"><label class="form-label">Pharmacy council</label><input class="form-control" maxlength="60" [(ngModel)]="editing.pharmacist_council" data-testid="hr-f-pharmcouncil"></div>
@@ -172,6 +177,8 @@
         </div>
 
         <div *ngIf="revising" class="border rounded p-3 mb-3" data-testid="hr-rev-form">
+          <div class="small mb-2" *ngIf="myPosition" data-testid="hr-rev-structure">Job role: <strong>{{myPosition.name}}</strong>
+            <button class="btn btn-sm btn-outline-secondary ms-2" type="button" (click)="useStructure()" data-testid="hr-rev-use-structure">Fill from this job role's pay structure</button></div>
           <div class="row g-3">
             <div class="col-md-3"><label class="form-label">Effective from *</label><input type="date" class="form-control" [(ngModel)]="rev.effective_from" data-testid="hr-rev-date"></div>
             <div class="col-md-9"><label class="form-label">Reason</label><input class="form-control" [(ngModel)]="rev.reason" maxlength="200" placeholder="Annual increment, promotion, joining..."></div>

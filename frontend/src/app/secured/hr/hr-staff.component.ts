@@ -10,6 +10,7 @@ export class HrStaffComponent implements OnInit {
   candidates: any[] = [];
   stores: any[] = [];
   components: any[] = [];
+  positions: any[] = [];
   message = "";
   error = "";
 
@@ -34,6 +35,7 @@ export class HrStaffComponent implements OnInit {
     });
     this.hr.get("stores").subscribe(r => this.stores = r);
     this.hr.get("components").subscribe(r => this.components = (r || []).filter((c: any) => c.active));
+    this.hr.get("positions").subscribe(r => this.positions = r || [], () => {});
   }
 
   /** arriving from Settings > Users: ?user=<login> starts a record for it, ?staff=<id> opens the existing one */
@@ -104,7 +106,7 @@ export class HrStaffComponent implements OnInit {
     this.message = this.error = "";
     const e = this.editing;
     const body: any = {
-      emp_code: e.emp_code, designation: e.designation, pharmacist_reg_no: e.pharmacist_reg_no || null, pharmacist_council: e.pharmacist_council || null, pharmacist_valid_to: e.pharmacist_valid_to || null, store_id: e.store_id, emp_type: e.emp_type, join_date: e.join_date, weekly_off: e.weekly_off,
+      emp_code: e.emp_code, designation: e.designation, position_id: e.position_id || null, pharmacist_reg_no: e.pharmacist_reg_no || null, pharmacist_council: e.pharmacist_council || null, pharmacist_valid_to: e.pharmacist_valid_to || null, store_id: e.store_id, emp_type: e.emp_type, join_date: e.join_date, weekly_off: e.weekly_off,
       dob: e.dob || null, address: e.address, emergency_name: e.emergency_name, emergency_phone: e.emergency_phone,
       pan: e.pan, aadhaar_last4: e.aadhaar_last4, bank_name: e.bank_name, account_no: e.account_no, ifsc: e.ifsc, notes: e.notes,
     };
@@ -174,7 +176,25 @@ export class HrStaffComponent implements OnInit {
     const amounts: any = {};
     for (const c of this.revisionComponents) amounts[c.id] = last?.lines?.find((l: any) => l.component_id === c.id)?.amount ?? null;
     this.rev = { effective_from: this.hr.today().slice(0, 8) + "01", reason: "", amounts };
+    // a first salary starts from the job role's structure, when there is one
+    if (!last && this.detail?.position_id) this.useStructure();
     this.revising = true;
+  }
+
+  /** the job role this person holds */
+  get myPosition(): any { return this.positions.find(p => p.id === this.detail?.position_id) || null; }
+
+  /** fill the amounts from the job role's pay structure; every amount can still be changed before saving */
+  useStructure() {
+    const p = this.myPosition;
+    if (!p) return;
+    for (const l of p.lines || []) if (this.revisionComponents.some(c => c.id === l.component_id)) this.rev.amounts[l.component_id] = l.amount;
+  }
+
+  /** choosing a job role fills the designation when it is still blank */
+  positionChanged() {
+    const p = this.positions.find(x => x.id === this.editing.position_id);
+    if (p && !String(this.editing.designation || "").trim()) this.editing.designation = p.name;
   }
 
   saveRevision() {

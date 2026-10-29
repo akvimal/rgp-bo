@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
+import { itemsToAdd, starterView } from './hr-starter';
+import { hasEarning, normaliseLines } from './hr-position';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
@@ -21,7 +23,7 @@ export class HrStaffService {
   async list() {
     return this.manager.query(
       `select e.id, e.emp_code, e.designation, e.emp_type, e.status, e.join_date, e.exit_date, e.weekly_off, e.user_id,
-              coalesce(e.full_name, u.full_name) as name, coalesce(u.email, '') as email, (select r.name from app_role r where r.id = u.role_id) as role_name, e.work_days, to_char(e.work_start, 'HH24:MI') as work_start, to_char(e.work_end, 'HH24:MI') as work_end, s.location as store, (e.user_id is not null) as has_login,
+              coalesce(e.full_name, u.full_name) as name, e.position_id, (select p.name from hr_position p where p.id = e.position_id) as position, coalesce(u.email, '') as email, (select r.name from app_role r where r.id = u.role_id) as role_name, e.work_days, to_char(e.work_start, 'HH24:MI') as work_start, to_char(e.work_end, 'HH24:MI') as work_end, s.location as store, (e.user_id is not null) as has_login,
               (select coalesce(json_agg(json_build_object('id', st.id, 'name', st.location) order by st.location), '[]'::json) from user_stores us join stores st on st.id = us.store_id where us.user_id = e.user_id and us.active and not us.archive) as stores,
               (select coalesce(sum(l.amount) filter (where c.kind = 'EARNING'), 0)::float
                  from hr_salary_revision r join hr_salary_revision_line l on l.revision_id = r.id join hr_pay_component c on c.id = l.component_id
@@ -45,7 +47,7 @@ export class HrStaffService {
 
   async get(id: number) {
     const [e] = await this.manager.query(
-      `select e.*, (select r.name from app_role r where r.id = u.role_id) as role_name, to_char(e.work_start, 'HH24:MI') as work_start, to_char(e.work_end, 'HH24:MI') as work_end, coalesce(e.full_name, u.full_name) as name, u.email, coalesce(e.phone, u.phone) as phone, (e.user_id is not null) as has_login, s.location as store,
+      `select e.*, (select r.name from app_role r where r.id = u.role_id) as role_name, to_char(e.work_start, 'HH24:MI') as work_start, to_char(e.work_end, 'HH24:MI') as work_end, coalesce(e.full_name, u.full_name) as name, (select p.name from hr_position p where p.id = e.position_id) as position, u.email, coalesce(e.phone, u.phone) as phone, (e.user_id is not null) as has_login, s.location as store,
               (select coalesce(json_agg(json_build_object('id', st.id, 'name', st.location) order by st.location), '[]'::json) from user_stores us join stores st on st.id = us.store_id where us.user_id = e.user_id and us.active and not us.archive) as stores
          from hr_employee e left join app_user u on u.id = e.user_id left join stores s on s.id = e.store_id where e.id = $1`, [id]);
     if (!e) throw new NotFoundException('Staff member not found.');
@@ -65,6 +67,13 @@ export class HrStaffService {
     if (mine.length && !mine.some((m: any) => Number(m.store_id) === Number(storeId))) {
       throw new BadRequestException('The base store must be one of the stores this login is mapped to.');
     }
+  }
+
+  /** a job role must exist and be in use (a staff member may keep one that has since been made inactive) */
+  private async checkPosition(positionId: number | null | undefined, current?: number | null) {
+    if (!positionId || positionId === current) return;
+    const [p] = await this.manager.query(`select active from hr_position where id = $1`, [positionId]);
+    if (!p || !p.active) throw new BadRequestException('That job role was not found or is no longer in use.');
   }
 
   /** working days and hours are a part-timer's; full-time staff follow the weekly off */
@@ -90,6 +99,7 @@ export class HrStaffService {
       if (b.pharmacist_valid_to && !DATE.test(b.pharmacist_valid_to)) throw new BadRequestException('The registration end date is not a valid date.');
       out.pharmacist_valid_to = b.pharmacist_valid_to || null;
     }
+    if (b.position_id !== undefined) out.position_id = b.position_id ? Number(b.position_id) : null;
     if (b.store_id !== undefined) out.store_id = b.store_id ? Number(b.store_id) : null;
     if (b.emp_type !== undefined) {
       if (!['FULL_TIME', 'PART_TIME'].includes(b.emp_type)) throw new BadRequestException('Type must be full time or part time.');
@@ -167,6 +177,7 @@ export class HrStaffService {
     const f = this.validate(b, true);
     this.partTimeOnly(f, f.emp_type || 'FULL_TIME');
     if (userId) await this.checkBaseStore(userId, f.store_id);
+    await this.checkPosition(f.position_id);
     let code = clean(b.emp_code, 20);
     if (!code) {
       const [n] = await this.manager.query(`select coalesce(max(substring(emp_code from '[0-9]+$')::int), 0) + 1 as n from hr_employee where emp_code ~ '^E[0-9]+$'`);
@@ -194,6 +205,10 @@ export class HrStaffService {
       const nm = clean(b.full_name, 80);
       if (!nm) throw new BadRequestException('The name cannot be empty.');
       f.full_name = nm;
+    }
+    if (f.position_id !== undefined) {
+      const [e] = await this.manager.query(`select position_id from hr_employee where id = $1`, [id]);
+      await this.checkPosition(f.position_id, e?.position_id);
     }
     if (f.store_id) {
       const [e] = await this.manager.query(`select user_id from hr_employee where id = $1`, [id]);
@@ -349,6 +364,99 @@ export class HrStaffService {
     if (!roles) return;
     const known = await this.manager.query(`select name from app_role where name = any($1::text[]) and name <> 'Site Admin'`, [roles]);
     if (known.length !== roles.length) throw new BadRequestException('One of the roles is not a role in this system.');
+  }
+
+  // ------------------------------------------------------------------ job roles and their pay structure
+  /** every job role with its standard amounts and how many staff hold it */
+  async positions() {
+    return this.manager.query(
+      `select p.id, p.name, p.active,
+              (select count(*)::int from hr_employee e where e.position_id = p.id and e.status = 'ACTIVE') as staff,
+              (select coalesce(json_agg(json_build_object('component_id', c.id, 'code', c.code, 'name', c.name, 'kind', c.kind, 'amount', l.amount::float) order by c.display_order, c.name), '[]'::json)
+                 from hr_position_line l join hr_pay_component c on c.id = l.component_id where l.position_id = p.id) as lines
+         from hr_position p order by p.active desc, p.name`);
+  }
+
+  async savePosition(id: number | null, b: any, by: any) {
+    const name = clean(b?.name, 60);
+    if (!name) throw new BadRequestException('Give the job role a name.');
+    const lines = normaliseLines(b?.lines);
+    const comps = lines.length ? await this.manager.query(`select id, kind from hr_pay_component where id = any($1) and active`, [lines.map(l => l.component_id)]) : [];
+    if (comps.length !== lines.length) throw new BadRequestException('A pay component in the list is not valid.');
+    if (!hasEarning(lines, Object.fromEntries(comps.map((c: any) => [c.id, c.kind])))) throw new BadRequestException('A pay structure needs at least one earning.');
+    const [dup] = await this.manager.query(`select id from hr_position where lower(name) = lower($1) and id is distinct from $2`, [name, id]);
+    if (dup) throw new BadRequestException(`There is already a job role called ${name}.`);
+    const saved = await this.manager.transaction(async tx => {
+      let pid = id;
+      if (pid) {
+        const [cur] = await tx.query(`select id from hr_position where id = $1`, [pid]);
+        if (!cur) throw new NotFoundException('Job role not found.');
+        await tx.query(`update hr_position set name = $2, active = $3 where id = $1`, [pid, name, b.active !== false]);
+        await tx.query(`delete from hr_position_line where position_id = $1`, [pid]);
+      } else {
+        const [r] = await tx.query(`insert into hr_position (name, created_by) values ($1, $2) returning id`, [name, by.id]);
+        pid = r.id as number;
+      }
+      for (const l of lines) await tx.query(`insert into hr_position_line (position_id, component_id, amount) values ($1,$2,$3)`, [pid, l.component_id, l.amount]);
+      return pid as number;
+    });
+    await this.audit.record({ userId: by.id, action: 'hr.position_saved', entityType: 'hr_position', entityId: saved, summary: `Job role ${name} saved with ${lines.length} pay components`, details: { lines } });
+    return { id: saved };
+  }
+
+  /** a job role nobody holds is deleted; one that staff hold is made inactive so their record still names it */
+  async removePosition(id: number, by: any) {
+    const [p] = await this.manager.query(`select id, name from hr_position where id = $1`, [id]);
+    if (!p) throw new NotFoundException('Job role not found.');
+    const [u] = await this.manager.query(`select count(*)::int as n from hr_employee where position_id = $1`, [id]);
+    if (u.n > 0) {
+      await this.manager.query(`update hr_position set active = false where id = $1`, [id]);
+      await this.audit.record({ userId: by.id, action: 'hr.position_deactivated', entityType: 'hr_position', entityId: id, summary: `Job role ${p.name} made inactive (${u.n} staff)`, details: {} });
+      return { removed: false, deactivated: true, uses: u.n };
+    }
+    await this.manager.query(`delete from hr_position where id = $1`, [id]);
+    await this.audit.record({ userId: by.id, action: 'hr.position_removed', entityType: 'hr_position', entityId: id, summary: `Job role ${p.name} removed`, details: {} });
+    return { removed: true, deactivated: false, uses: 0 };
+  }
+
+  // ------------------------------------------------------------------ starter pay structure (Setup screen)
+  private async businessTypeOf(userId: number): Promise<string> {
+    const [r] = await this.manager.query(`select b.business_type from app_user u join business b on b.id = u.business_id where u.id = $1`, [userId]);
+    return r?.business_type || 'pharmacy';
+  }
+
+  private async haveCodes() {
+    const comps = await this.manager.query(`select code from hr_pay_component`);
+    const leave = await this.manager.query(`select code from hr_leave_type`);
+    return { comps: comps.map((c: any) => c.code as string), leave: leave.map((c: any) => c.code as string) };
+  }
+
+  /** what the Setup screen offers, with what exists already and how far the set-up has got */
+  async starter(by: any) {
+    const have = await this.haveCodes();
+    const [n] = await this.manager.query(
+      `select (select count(*) from hr_pay_component where active)::int as components, (select count(*) from hr_leave_type where active)::int as leave_types,
+              (select count(*) from hr_holiday where extract(year from holiday_date) = extract(year from current_date))::int as holidays,
+              (select count(distinct r.employee_id) from hr_salary_revision r join hr_employee e on e.id = r.employee_id where e.status = 'ACTIVE')::int as paid_staff,
+              (select count(*) from hr_employee where status = 'ACTIVE')::int as staff`);
+    return { ...starterView(await this.businessTypeOf(by.id), have.comps, have.leave), progress: n };
+  }
+
+  /** add the starter set and/or the chosen suggestions; what already exists is left exactly as it is */
+  async applyStarter(b: any, by: any) {
+    const have = await this.haveCodes();
+    const items = itemsToAdd(await this.businessTypeOf(by.id), { starter: !!b?.starter, codes: Array.isArray(b?.codes) ? b.codes : [] }, have.comps, have.leave);
+    for (const i of items) {
+      if (i.kind === 'LEAVE') await this.saveLeaveType({ code: i.code, name: i.name, paid: i.paid, annual_days: i.annual_days }, by);
+      else await this.saveComponent(null, { code: i.code, name: i.name, kind: i.kind, display_order: i.kind === 'EARNING' ? 10 : 90 }, by);
+    }
+    return { added: items.map((i) => i.code) };
+  }
+
+  /** inserted here rather than through the leave service, so the staff service has no dependency on it; the rules are the same */
+  private async saveLeaveType(b: any, by: any) {
+    const [r] = await this.manager.query(`insert into hr_leave_type (code, name, paid, annual_days) values ($1,$2,$3,$4) on conflict (code) do nothing returning id`, [b.code, b.name, b.paid !== false, b.annual_days || 0]);
+    if (r) await this.audit.record({ userId: by.id, action: 'hr.leave_type_saved', entityType: 'hr_leave_type', entityId: r.id, summary: `Leave type ${b.name} saved`, details: {} });
   }
 
   // ------------------------------------------------------------------ salary revisions

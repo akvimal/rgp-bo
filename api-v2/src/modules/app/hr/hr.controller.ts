@@ -50,6 +50,12 @@ export class HrController {
   @Post('staff/:id/revisions') addRevision(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.addRevision(id, b, u); }
   @Delete('revisions/:id') deleteRevision(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.deleteRevision(id, u); }
 
+  @Get('positions') positions() { return this.staff.positions(); }
+  @Post('positions') addPosition(@Body() b: any, @User() u: any) { return this.staff.savePosition(null, b, u); }
+  @Put('positions/:id') savePosition(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.savePosition(id, b, u); }
+  @Delete('positions/:id') removePosition(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.removePosition(id, u); }
+  @Get('starter') starter(@User() u: any) { return this.staff.starter(u); }
+  @Post('starter') applyStarter(@Body() b: any, @User() u: any) { return this.staff.applyStarter(b, u); }
   @Get('components') components() { return this.staff.components(); }
   @Post('components') addComponent(@Body() b: any, @User() u: any) { return this.staff.saveComponent(null, b, u); }
   @Delete('components/:id') removeComponent(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.removeComponent(id, u); }

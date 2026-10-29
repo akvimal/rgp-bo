@@ -34,6 +34,44 @@
       </div>
     </section>
 
+    <section class="border rounded mb-3" data-testid="hr-sec-position">
+      <button type="button" class="w-100 d-flex justify-content-between align-items-center btn btn-light text-start px-3 py-2 rounded-0 rounded-top"
+              (click)="toggle('position')" [attr.aria-expanded]="isOpen('position')" data-testid="hr-sec-position-toggle">
+        <span><strong>Job roles</strong> <span class="text-muted small ms-2">the standard pay for each kind of job</span></span>
+        <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-position-count">{{positions.length}} roles</span><i class="bi" [ngClass]="isOpen('position') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
+      </button>
+      <div class="p-3" *ngIf="isOpen('position')" data-testid="hr-sec-position-body">
+        <div class="small text-muted mb-3">A job role (Pharmacist, Cashier, Delivery) is separate from a login role. Its pay structure is the standard amount for each pay component: when you give someone in that role a salary, the amounts start from it and you can change any of them. Changing a structure later does not change salaries already given. Add the pay components first (above).</div>
+        <div class="border rounded p-3 mb-3" *ngFor="let p of positions" data-testid="hr-pos-row" [attr.data-pos]="p.name">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4"><label class="form-label small mb-0">Job role</label><input class="form-control form-control-sm" [(ngModel)]="p.name" maxlength="60" data-testid="hr-pos-name"></div>
+            <div class="col-md-2"><div class="form-check mt-3"><input class="form-check-input" type="checkbox" [(ngModel)]="p.active" [id]="'pos-a-' + p.id"><label class="form-check-label small" [for]="'pos-a-' + p.id">In use</label></div></div>
+            <div class="col-md-3 small text-muted">{{p.staff}} staff &middot; earnings {{posEarnings(p) | number}}</div>
+            <div class="col-md-3 text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="savePosition(p)" data-testid="hr-pos-save">Save</button>
+              <button class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="removePosition(p)" data-testid="hr-pos-remove">Remove</button></div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6 col-md-3" *ngFor="let c of payComponents">
+              <label class="form-label small mb-0">{{c.name}} <span class="text-muted">({{c.kind === 'EARNING' ? 'earning' : 'deduction'}})</span></label>
+              <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="p.amounts[c.id]" [attr.data-testid]="'hr-pos-amt-' + c.code">
+            </div>
+          </div>
+        </div>
+        <div class="border rounded p-3 bg-light" data-testid="hr-pos-new">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4"><label class="form-label small mb-0">New job role</label><input class="form-control form-control-sm" [(ngModel)]="newPos.name" maxlength="60" placeholder="e.g. Pharmacist" data-testid="hr-pos-new-name"></div>
+            <div class="col-md-8 text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addPosition()" data-testid="hr-pos-add">Add job role</button></div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6 col-md-3" *ngFor="let c of payComponents">
+              <label class="form-label small mb-0">{{c.name}} <span class="text-muted">({{c.kind === 'EARNING' ? 'earning' : 'deduction'}})</span></label>
+              <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="newPos.amounts[c.id]" [attr.data-testid]="'hr-pos-new-amt-' + c.code">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="border rounded mb-3" data-testid="hr-sec-leave">
       <button type="button" class="w-100 d-flex justify-content-between align-items-center btn btn-light text-start px-3 py-2 rounded-0 rounded-top"
               (click)="toggle('leave')" [attr.aria-expanded]="isOpen('leave')" data-testid="hr-sec-leave-toggle">
