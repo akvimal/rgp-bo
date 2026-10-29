@@ -123,7 +123,7 @@ export class DashboardService {
    * else (or the business's stores when none are assigned), and everything only for a platform user with no business. A store they ask for must be one
    * of them. `stores` null means no limit; an empty list means nothing.
    */
-  private async scope(currentUser: any, requested: number | null) {
+  async scope(currentUser: any, requested: number | null) {
     const userId = Number(currentUser?.id) || 0;
     const [role] = await this.manager.query(`select r.name, r.permissions from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userId]);
     const resources = new Set<string>((Array.isArray(role?.permissions) ? role.permissions : []).map((p: any) => String(p?.resource)));
@@ -248,7 +248,7 @@ export class DashboardService {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }
 
-  private async getSalesAggregate(stores: number[] | null, bucket: "today" | "month") {
+  async getSalesAggregate(stores: number[] | null, bucket: "today" | "month") {
     const periodClause = bucket === "today"
       ? "s.bill_date >= current_date and s.bill_date < current_date + interval '1 day'"
       : "s.bill_date >= date_trunc('month', current_date)";
@@ -433,7 +433,7 @@ export class DashboardService {
     }));
   }
 
-  private async getOutstandingInvoices(stores: number[] | null) {
+  async getOutstandingInvoices(stores: number[] | null) {
     let invoices = await this.purchaseInvoiceService.findOutstanding({});
     if (stores !== null) {
       const ids = invoices.map((i: any) => Number(i.id)).filter((n: number) => Number.isFinite(n));

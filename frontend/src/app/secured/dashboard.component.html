@@ -3,6 +3,7 @@
 <app-personal-view *ngIf="view === 'personal'"></app-personal-view>
 <ng-container *ngIf="legacy">
 <app-needs-strip *ngIf="showWidget('needs')" [items]="needs"></app-needs-strip>
+<app-owner-insights *ngIf="view === 'owner' || view === 'manager'" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights>
 <app-team-recognition *ngIf="view === 'owner' || view === 'manager'"></app-team-recognition>
 <div class="dashboard">
 

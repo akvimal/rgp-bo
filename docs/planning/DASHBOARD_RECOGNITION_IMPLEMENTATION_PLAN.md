@@ -195,3 +195,12 @@ Stage 4 closed 2026-10-29: verified; Tamil wording, handover badge, Inbox card a
 - Frontend: shift desk shows the gate card (`shiftdesk-gate`) with a reason box per item and "go ahead" / "stay here".
 - Tests: QA GATE-1..4 (4/4 pass), CR-1..5, CR-UI pass. GATE spec now closes stale open shifts left by other specs first.
 - Not done: dialog at login (the dashboard "To finish" list covers it), a screen-level test of the gate card, one shared reason for many items (a person with many unclosed shifts is asked per item).
+
+## 2H. Stage 6 built in part: health, targets and charts (2026-10-29)
+
+- Migration `113_metric_target.sql` (+ rollback; applied to rgpdb and rgp_prodview; in the bootstrap list): monthly sales target for the business or one store.
+- `dashboard-health.ts` (pure, 8 unit tests): seven check scores and `combine` (business weights from the stage 1 `health` settings; a check with no data is left out and the rest scaled up; one check under `hold_below` holds the whole at Watch; below it, Act now).
+- `dashboard-metrics.service.ts`: `GET /dashboard/health?storeid=`, `GET/PUT /dashboard/targets` (set by Business Head and Owner-operator only, audited, null clears), `GET /dashboard/metrics/` sales-by-month (12 months against the two years before), categories, customers (new and returning, counts only), busy-hours (weekday by hour, 90 days), payables (ageing buckets). All scoped by `DashboardService.scope`, for Business Head, Owner-operator and Store Head only (the counter and staff have `/dashboard/mine`).
+- Frontend `app-owner-insights` on the Owner and Manager views: health card with the fact behind each check, target box (owner), five ngx-charts charts each with a "Show numbers" table; payables and the target box are owner only.
+- Tests: 8 unit, QA HM-1..6 (API), HM-UI-1..2; the heaviest chart queries run in 3 to 130 ms on the 61k-bill copy.
+- Not built yet: margin and cost (needs the cost coverage guard), tiles with spark lines and comparison arrows, finance snapshot, deliveries chart, tree map and cross-filter chips, drill-through to filtered list pages, the `metric_daily` roll-up (not needed at this volume), compliance weights read from per-store settings, brush/zoom. The Stock check shows "no data" until products carry a minimum.

@@ -13,6 +13,7 @@ import { ConfirmService } from "../shared/confirm.service";
 import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
 import { StaffViewComponent } from "./dashboard-views/staff-view.component";
+import { OwnerInsightsComponent } from "./dashboard-views/owner-insights.component";
 import { PersonalViewComponent } from "./dashboard-views/personal-view.component";
 import { TeamRecognitionComponent } from "./recognition/team-recognition.component";
 import { DocumentsModule } from "./documents/documents.module";
@@ -136,6 +137,7 @@ const routes: Routes = [
       SecuredComponent,
       DashboardComponent,
       StaffViewComponent,
+      OwnerInsightsComponent,
       PersonalViewComponent,
       TeamRecognitionComponent,
       ProfileComponent,

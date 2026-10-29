@@ -35,4 +35,24 @@ export class DashboardService {
   getAdminSummary() {
     return this.http.get(`${environment.apiHost}/dashboard/admin-summary`);
   }
+
+  private scoped(storeid?: number | null) {
+    return storeid !== null && storeid !== undefined ? { storeid } : {};
+  }
+
+  getHealth(storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/health`, { params: this.scoped(storeid) as any });
+  }
+
+  getTargets(month?: string) {
+    return this.http.get(`${environment.apiHost}/dashboard/targets`, { params: (month ? { month } : {}) as any });
+  }
+
+  setTarget(body: { month: string; storeid?: number | null; value: number | null }) {
+    return this.http.put(`${environment.apiHost}/dashboard/targets`, body);
+  }
+
+  getMetric(name: string, storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/metrics/${name}`, { params: this.scoped(storeid) as any });
+  }
 }
