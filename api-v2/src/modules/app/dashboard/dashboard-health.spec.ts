@@ -1,4 +1,4 @@
-import { cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
+import { expectedSales, salesScoreVs, suggestedTarget, cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
 
 const settings = { weights: { sales: 25, stock: 15, cash: 15, purchasing: 10, customers: 10, compliance: 15, service: 10 }, healthyMin: 80, holdBelow: 60 };
 const all = (n: number) => ({ sales: n, stock: n, cash: n, purchasing: n, customers: n, compliance: n, service: n });
@@ -59,5 +59,43 @@ describe('combine', () => {
     const r = combine({}, settings);
     expect(r.score).toBeNull();
     expect(r.status).toBeNull();
+  });
+});
+
+describe('sales basis', () => {
+  const f = { target: 300000, day: 10, daysInMonth: 30, lastMonthSoFar: 90000, lastYearSoFar: 80000, recentMonthlyAvg: 240000 };
+  it('target uses the share of the month gone, and is nothing without a target', () => {
+    expect(expectedSales('target', f)).toEqual({ expected: 100000, source: 'target' });
+    expect(expectedSales('target', { ...f, target: null })).toEqual({ expected: null, source: null });
+  });
+  it('"target or recent average" falls back to the recent months when there is no target', () => {
+    expect(expectedSales('target or recent average', f).source).toBe('target');
+    expect(expectedSales('target or recent average', { ...f, target: null })).toEqual({ expected: 80000, source: 'recent average' });
+    expect(expectedSales('target or recent average', { ...f, target: null, recentMonthlyAvg: null })).toEqual({ expected: null, source: null });
+  });
+  it('last month and last year use the same days; off measures nothing', () => {
+    expect(expectedSales('last month', f)).toEqual({ expected: 90000, source: 'last month' });
+    expect(expectedSales('same period last year', f)).toEqual({ expected: 80000, source: 'same period last year' });
+    expect(expectedSales('last month', { ...f, lastMonthSoFar: 0 }).expected).toBeNull();
+    expect(expectedSales('off', f).expected).toBeNull();
+  });
+  it('an unknown basis behaves as the default', () => {
+    expect(expectedSales('whatever', { ...f, target: null }).source).toBe('recent average');
+  });
+  it('scores sales against what was expected, with no score when nothing is expected', () => {
+    expect(salesScoreVs(50000, 100000)).toBe(50);
+    expect(salesScoreVs(150000, 100000)).toBe(100);
+    expect(salesScoreVs(1, null)).toBeNull();
+  });
+});
+
+describe('suggestedTarget', () => {
+  it('is the same month last year plus growth, to the nearest hundred', () => {
+    expect(suggestedTarget(250000, 200000, 10)).toEqual({ value: 275000, basis: 'same month last year' });
+    expect(suggestedTarget(123456, null, 5)).toEqual({ value: 129600, basis: 'same month last year' });
+  });
+  it('uses the recent average when there is no history for the month, and nothing when there is none at all', () => {
+    expect(suggestedTarget(0, 200000, 0)).toEqual({ value: 200000, basis: 'recent average' });
+    expect(suggestedTarget(0, null, 10)).toEqual({ value: null, basis: null });
   });
 });

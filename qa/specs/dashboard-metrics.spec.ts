@@ -35,7 +35,10 @@ test.describe('Dashboard metrics @p1', () => {
     const cleared = await api.request('PUT', '/dashboard/targets', { month, value: null }, MGR);
     expect(cleared.status).toBeLessThan(300);
     expect((await api.request('GET', `/dashboard/targets?month=${month}`, undefined, MGR)).body.business).toBeNull();
-    expect((await api.request('GET', '/dashboard/health', undefined, MGR)).body.checks.find((c: any) => c.key === 'sales').score).toBeNull();
+    // with no target the sales check falls back to the recent months, or has nothing to measure against when there is no history
+    const after = (await api.request('GET', '/dashboard/health', undefined, MGR)).body;
+    expect(after.target).toBeNull();
+    expect([after.salesBasis.used, after.checks.find((c: any) => c.key === 'sales').score === null ? null : 'recent average']).toEqual(after.salesBasis.used ? ['recent average', 'recent average'] : [null, null]);
   });
 
   test('HM-3 a bad month or value is refused @negative', async ({ api }) => {
@@ -106,6 +109,47 @@ test.describe('Dashboard metrics @p1', () => {
     expect(typeof exp.body.total).toBe('number');
     for (const p of ['tiles', 'metrics/deliveries', 'metrics/expenses']) expect((await api.request('GET', `/dashboard/${p}`, undefined, SALES)).status, p).toBe(403);
     expect((await api.request('GET', '/dashboard/tiles?storeid=999999', undefined, MGR)).status).toBe(403);
+  });
+
+  test('HM-10 the sales basis can be chosen: target only has nothing without a target, off measures nothing, last month measures against last month @happy', async ({ api }) => {
+    const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+    const choose = (v: string) => api.request('PUT', '/config/health', { values: { sales_basis: v }, effectiveFrom: today }, MGR);
+    const sales = async () => { const h = (await api.request('GET', '/dashboard/health', undefined, MGR)).body; return { check: h.checks.find((c: any) => c.key === 'sales'), basis: h.salesBasis }; };
+    try {
+      await api.request('PUT', '/dashboard/targets', { month, value: null }, MGR);
+      expect((await choose('target')).status).toBe(200);
+      let r = await sales();
+      expect(r.check.score).toBeNull();
+      expect(r.check.fact).toMatch(/set a target|another basis/i);
+      expect((await choose('off')).status).toBe(200);
+      r = await sales();
+      expect(r.check.score).toBeNull();
+      expect(r.check.fact).toMatch(/switched off/i);
+      expect((await choose('last month')).status).toBe(200);
+      r = await sales();
+      expect(r.basis.chosen).toBe('last month');
+      if (r.check.score !== null) expect(r.basis.used).toBe('last month');
+      // a target set now wins under the default
+      expect((await api.request('DELETE', '/config/health/sales_basis', undefined, MGR)).status).toBe(200);
+      await api.request('PUT', '/dashboard/targets', { month, value: 500000 }, MGR);
+      r = await sales();
+      expect(r.basis.used).toBe('target');
+    } finally {
+      await api.request('DELETE', '/config/health/sales_basis', undefined, MGR);
+      await api.request('PUT', '/dashboard/targets', { month, value: null }, MGR);
+    }
+  });
+
+  test('HM-11 a target can be suggested from history, for the Business Head only, and nothing is saved @happy', async ({ api }) => {
+    const r = await api.request('GET', '/dashboard/targets/suggest?growth=10', undefined, MGR);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.growth).toBe(10);
+    expect(['same month last year', 'recent average', null]).toContain(r.body.business.basis);
+    if (r.body.business.value !== null) expect(r.body.business.value % 100).toBe(0);
+    expect(Array.isArray(r.body.stores)).toBe(true);
+    expect((await api.request('GET', `/dashboard/targets?month=${month}`, undefined, MGR)).body.business).toBeNull();
+    expect((await api.request('GET', '/dashboard/targets/suggest', undefined, HEAD)).status).toBe(403);
+    expect((await api.request('GET', '/dashboard/targets/suggest', undefined, SALES)).status).toBe(403);
   });
 
   test('HM-5 the figures are for the people who run the business or a store, not the counter @negative', async ({ api }) => {

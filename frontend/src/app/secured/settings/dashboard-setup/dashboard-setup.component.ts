@@ -98,7 +98,13 @@ const ROLES = ['Business Head', 'Owner-operator', 'Store Head', 'Sales Staff', '
             <div class="col-md-4">{{s.location}}</div>
             <div class="col-md-4"><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="targetStores[s.id]" [disabled]="!canEdit" [attr.aria-label]="'Sales target for ' + s.location" [attr.data-testid]="'dsetup-target-' + s.id"></div>
           </div>
-          <button class="btn btn-outline-primary btn-sm mt-2" *ngIf="canEdit" (click)="saveTargets()" data-testid="dsetup-target-save">Save targets</button>
+          <div class="d-flex flex-wrap gap-2 align-items-center mt-2" *ngIf="canEdit">
+            <button class="btn btn-outline-primary btn-sm" (click)="saveTargets()" data-testid="dsetup-target-save">Save targets</button>
+            <span class="text-muted small ms-2">No target in mind?</span>
+            <div class="input-group input-group-sm" style="max-width: 11rem"><span class="input-group-text">Growth</span><input type="number" class="form-control" [(ngModel)]="growth" min="-50" max="100" aria-label="Growth on last year, in percent" data-testid="dsetup-growth"><span class="input-group-text">%</span></div>
+            <button class="btn btn-outline-secondary btn-sm" (click)="suggest()" data-testid="dsetup-suggest">Suggest from history</button>
+          </div>
+          <div class="small text-muted mt-1" *ngIf="suggestNote" data-testid="dsetup-suggest-note">{{suggestNote}}</div>
         </div>
       </section>
 
@@ -132,6 +138,8 @@ export class DashboardSetupComponent implements OnInit {
     targets: any = null;
     targetBusiness: number | null = null;
     targetStores: { [id: number]: number | null } = {};
+    growth = 5;
+    suggestNote = '';
 
     constructor(private config: ConfigService, private dashboard: DashboardService, private http: HttpClient) {}
 
@@ -193,6 +201,20 @@ export class DashboardSetupComponent implements OnInit {
         this.dashboard.getTargets().subscribe({
             next: (t: any) => { this.targets = t; this.targetBusiness = t.business; this.targetStores = {}; (t.stores || []).forEach((s: any) => (this.targetStores[s.id] = s.value)); },
             error: () => (this.targets = null)
+        });
+    }
+
+    /** fills the boxes from last year's same month (or the recent average) plus the growth chosen; nothing is saved until Save targets */
+    suggest() {
+        this.error = ''; this.suggestNote = '';
+        this.dashboard.suggestTargets(this.targets?.month, Number(this.growth) || 0).subscribe({
+            next: (r: any) => {
+                if (r.business?.value !== null && r.business?.value !== undefined) this.targetBusiness = r.business.value;
+                (r.stores || []).forEach((s: any) => { if (s.value !== null && s.value !== undefined) this.targetStores[s.id] = s.value; });
+                const basis = r.business?.basis === 'same month last year' ? "the same month last year" : r.business?.basis === 'recent average' ? 'the recent monthly average' : null;
+                this.suggestNote = basis ? `Suggested from ${basis} plus ${r.growth}%. Check the figures, then press Save targets.` : 'There is not enough sales history to suggest a target yet.';
+            },
+            error: (e) => (this.error = e?.error?.message || 'A target could not be suggested.')
         });
     }
 

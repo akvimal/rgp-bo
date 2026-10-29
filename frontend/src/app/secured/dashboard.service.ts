@@ -48,6 +48,10 @@ export class DashboardService {
     return this.http.get(`${environment.apiHost}/dashboard/targets`, { params: (month ? { month } : {}) as any });
   }
 
+  suggestTargets(month: string | undefined, growth: number) {
+    return this.http.get(`${environment.apiHost}/dashboard/targets/suggest`, { params: { ...(month ? { month } : {}), growth: String(growth) } as any });
+  }
+
   setTarget(body: { month: string; storeid?: number | null; value: number | null }) {
     return this.http.put(`${environment.apiHost}/dashboard/targets`, body);
   }

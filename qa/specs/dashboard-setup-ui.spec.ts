@@ -34,6 +34,9 @@ test('DSU-UI-2 the required items are shown as locked, and the health weights mu
   await page.getByTestId('dsetup-input-w_sales').fill('30');
   await expect(page.getByTestId('dsetup-weights')).toContainText('add up to 105');
   await expect(page.getByTestId('dsetup-targets')).toBeVisible();
+  await expect(page.getByTestId('dsetup-input-sales_basis')).toBeVisible();
+  await page.getByTestId('dsetup-suggest').click();
+  await expect(page.getByTestId('dsetup-suggest-note')).toBeVisible();
   await page.getByTestId('dsetup-tab-views').click();
   await page.getByTestId('dsetup-preview-role').selectOption({ label: 'Counter' });
   await page.getByTestId('dsetup-preview-go').click();

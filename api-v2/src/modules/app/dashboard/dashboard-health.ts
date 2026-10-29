@@ -37,6 +37,56 @@ export function salesScore(actual: number, target: number | null, dayOfMonth: nu
   return pct((actual / expected) * 100);
 }
 
+export type SalesBasis = 'target or recent average' | 'target' | 'last month' | 'same period last year' | 'recent average' | 'off';
+export const SALES_BASES: SalesBasis[] = ['target or recent average', 'target', 'last month', 'same period last year', 'recent average', 'off'];
+export type BasisSource = 'target' | 'last month' | 'same period last year' | 'recent average';
+
+export interface BasisFigures {
+  /** the month's target, when one is set */
+  target: number | null;
+  day: number;
+  daysInMonth: number;
+  /** sales of the same days of last month, and of the same days a year ago */
+  lastMonthSoFar: number;
+  lastYearSoFar: number;
+  /** the average of the sales of a whole month over the recent complete months; null when there is no complete month yet */
+  recentMonthlyAvg: number | null;
+}
+
+/**
+ * What the sales of the month so far are judged against, and where that came from. A business with no target still gets a sales signal from its own
+ * history: "target or recent average" uses the target when there is one and its recent months otherwise. Null (nothing to judge) when the chosen
+ * basis has no figure, or the basis is off.
+ */
+export function expectedSales(basis: string, f: BasisFigures): { expected: number | null; source: BasisSource | null } {
+  const share = Math.max(1, f.day) / Math.max(1, f.daysInMonth);
+  const target = f.target && f.target > 0 ? { expected: f.target * share, source: 'target' as BasisSource } : null;
+  const recent = f.recentMonthlyAvg && f.recentMonthlyAvg > 0 ? { expected: f.recentMonthlyAvg * share, source: 'recent average' as BasisSource } : null;
+  const none = { expected: null, source: null };
+  switch (basis) {
+    case 'target': return target ?? none;
+    case 'recent average': return recent ?? none;
+    case 'last month': return f.lastMonthSoFar > 0 ? { expected: f.lastMonthSoFar, source: 'last month' } : none;
+    case 'same period last year': return f.lastYearSoFar > 0 ? { expected: f.lastYearSoFar, source: 'same period last year' } : none;
+    case 'off': return none;
+    default: return target ?? recent ?? none;
+  }
+}
+
+/** sales so far against what they were expected to be by now; null when there is nothing to compare */
+export function salesScoreVs(actual: number, expected: number | null): number | null {
+  return expected && expected > 0 ? pct((actual / expected) * 100) : null;
+}
+
+/** a target to suggest: the same month a year ago (or, with no history for it, the recent monthly average) plus the chosen growth, to the nearest hundred */
+export function suggestedTarget(lastYearMonth: number, recentMonthlyAvg: number | null, growthPct: number): { value: number | null; basis: 'same month last year' | 'recent average' | null } {
+  const g = 1 + (Number.isFinite(growthPct) ? growthPct : 0) / 100;
+  const round = (n: number) => Math.max(0, Math.round((n * g) / 100) * 100);
+  if (lastYearMonth > 0) return { value: round(lastYearMonth), basis: 'same month last year' };
+  if (recentMonthlyAvg && recentMonthlyAvg > 0) return { value: round(recentMonthlyAvg), basis: 'recent average' };
+  return { value: null, basis: null };
+}
+
 /** share of the products that carry a minimum that are at or above it; no such products: nothing to judge */
 export function stockScore(withMinimum: number, atOrAbove: number): number | null {
   return withMinimum > 0 ? pct((atOrAbove / withMinimum) * 100) : null;

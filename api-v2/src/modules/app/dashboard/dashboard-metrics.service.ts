@@ -6,7 +6,7 @@ import { ConfigService } from 'src/core/config/config.service';
 import { MANAGER_ROLES } from 'src/core/roles';
 import { DashboardService } from './dashboard.service';
 import { compareOf, deltaOf, marginOf, periodsFor } from './dashboard-tiles';
-import { CHECKS, cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
+import { CHECKS, cashScore, combine, complianceScore, customersScore, expectedSales, purchasingScore, salesScoreVs, serviceScore, stockScore, suggestedTarget } from './dashboard-health';
 
 /** the placeholder customer used at the counter when no mobile number is given */
 const NO_MOBILE = '0000000000';
@@ -87,6 +87,45 @@ export class DashboardMetricsService {
     return mine.length ? mine.reduce((a: number, r: any) => a + r.value, 0) : null;
   }
 
+  /** sales (completed bills) of a span of days, for the stores asked about */
+  private async sumSales(stores: number[] | null, from: string, to: string): Promise<number> {
+    const [r] = await this.manager.query(
+      `select coalesce(sum(total), 0)::float8 as v from sale where status = 'COMPLETE' and active and not archive and bill_date >= $2::date and bill_date < $3::date and ($1::int[] is null or store_id = any($1::int[]))`, [stores, from, to]);
+    return r.v;
+  }
+
+  /** the average sales of a whole month over the last `months` complete months that had any sales, or null when there is none yet */
+  private async recentMonthlyAverage(stores: number[] | null, firstOfMonth: string, months: number): Promise<number | null> {
+    const [r] = await this.manager.query(
+      `select coalesce(sum(total), 0)::float8 as total, count(distinct date_trunc('month', bill_date))::int as months from sale
+        where status = 'COMPLETE' and active and not archive and bill_date >= ($2::date - ($3 || ' months')::interval) and bill_date < $2::date and ($1::int[] is null or store_id = any($1::int[]))`,
+      [stores, firstOfMonth, String(months)]);
+    return r.months > 0 ? r.total / r.months : null;
+  }
+
+  /**
+   * A target to start from for a month, so a business that has never set one does not have to invent a number: the same month last year, or the recent
+   * monthly average when there is no history for it, plus a growth percentage. Nothing is saved; the Business Head reviews and saves.
+   */
+  async suggestTargets(user: any, month?: string, growth?: any) {
+    const sc = await this.dash.scope(user, null);
+    if (!sc.owner || !sc.businessId) throw new ForbiddenException('Only the Business Head sets targets.');
+    const m = month && MONTH.test(month) ? month : new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 7);
+    const g = Math.min(100, Math.max(-50, Number(growth) || 0));
+    const first = `${m}-01`;
+    const lastYearFirst = `${Number(m.slice(0, 4)) - 1}-${m.slice(5, 7)}-01`;
+    const lastYearNext = new Date(Date.UTC(Number(lastYearFirst.slice(0, 4)), Number(lastYearFirst.slice(5, 7)), 1)).toISOString().slice(0, 10);
+    const cfg = await this.config.valuesFor(sc.businessId, 'health');
+    const months = Number(cfg.recent_months) || 3;
+    const one = async (stores: number[] | null) => suggestedTarget(await this.sumSales(stores, lastYearFirst, lastYearNext), await this.recentMonthlyAverage(stores, first, months), g);
+    const storeRows = await this.manager.query(`select id, location from stores where business_id = $1 and active and not archive and id = any($2::int[]) order by location`, [sc.businessId, sc.stores]);
+    return {
+      month: m, growth: g,
+      business: await one(sc.stores),
+      stores: await Promise.all(storeRows.map(async (s: any) => ({ id: +s.id, location: String(s.location).trim(), ...(await one([+s.id])) }))),
+    };
+  }
+
   // ------------------------------------------------------------------ store health
 
   /** The store (or the whole business) health: seven checks, the business's weights, the Watch safeguard. */
@@ -103,7 +142,11 @@ export class DashboardMetricsService {
     const day = now.getUTCDate();
     const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
 
-    const [sales, target, stock, shifts, owed, customers, late, service] = await Promise.all([
+    const basis = String(cfg.sales_basis || 'target or recent average');
+    const todayIst = now.toISOString().slice(0, 10);
+    const per = periodsFor(todayIst, 'prev');
+    const yr = periodsFor(todayIst, 'lastyear');
+    const [sales, target, stock, shifts, owed, customers, late, service, lastMonthSoFar, lastYearSoFar, recentAvg] = await Promise.all([
       this.dash.getSalesAggregate(stores, 'month'),
       this.targetFor(sc.businessId, stores, requested, month),
       this.manager.query(
@@ -125,7 +168,11 @@ export class DashboardMetricsService {
         `select count(*) filter (where d.status = 'Delivered')::int as delivered, count(*) filter (where d.status = 'Failed')::int as failed
            from sale_deliveries d join sale s on s.id = d."saleId"
           where d.active and not d.archive and d.booked_date >= current_date - interval '30 days' and ($1::int[] is null or s.store_id = any($1::int[]))`, [stores]),
+      basis === 'last month' ? this.sumSales(stores, per.cmpFrom, per.cmpTo) : Promise.resolve(0),
+      basis === 'same period last year' ? this.sumSales(stores, yr.cmpFrom, yr.cmpTo) : Promise.resolve(0),
+      basis === 'recent average' || basis === 'target or recent average' ? this.recentMonthlyAverage(stores, `${month}-01`, Number(cfg.recent_months) || 3) : Promise.resolve(null),
     ]);
+    const exp = expectedSales(basis, { target, day, daysInMonth, lastMonthSoFar, lastYearSoFar, recentMonthlyAvg: recentAvg });
 
     const today = new Date().toISOString().slice(0, 10);
     const balance = (i: any) => Number(i.balance_amount) || 0;
@@ -134,7 +181,7 @@ export class DashboardMetricsService {
     const aim = Number(rec.capture_pct) || 95;
 
     const scores = {
-      sales: salesScore(sales.total, target, day, daysInMonth),
+      sales: salesScoreVs(sales.total, exp.expected),
       stock: stockScore(stock[0]?.withmin || 0, stock[0]?.ok || 0),
       cash: cashScore(shifts[0]?.n || 0),
       purchasing: purchasingScore(owedTotal, overdueTotal),
@@ -147,7 +194,9 @@ export class DashboardMetricsService {
     const result = combine(scores, { weights, healthyMin: Number(cfg.healthy_min) || 80, holdBelow: Number(cfg.hold_below) || 60 });
     // the figures behind each check, so a score can be explained and traced
     const facts: Record<string, string> = {
-      sales: target ? `${Math.round(sales.total)} of a ${Math.round(target)} target for the month` : 'No target set for this month',
+      sales: exp.expected
+        ? `${Math.round(sales.total)} so far, against ${Math.round(exp.expected)} expected by now (${exp.source === 'target' ? 'from the monthly target' : exp.source === 'recent average' ? 'from the recent monthly average' : exp.source === 'last month' ? 'the same days of last month' : 'the same days a year ago'})`
+        : basis === 'off' ? 'Not measured: switched off in Setup' : 'Nothing to measure against yet: set a target, or choose another basis in Setup (Health and targets)',
       stock: `${stock[0]?.ok || 0} of ${stock[0]?.withmin || 0} products with a minimum are at or above it`,
       cash: `${shifts[0]?.n || 0} shift(s) left open from an earlier day`,
       purchasing: `${Math.round(overdueTotal)} overdue of ${Math.round(owedTotal)} owed to vendors`,
@@ -155,7 +204,7 @@ export class DashboardMetricsService {
       compliance: `${late[0]?.late || 0} late and ${late[0]?.escalated || 0} escalated item(s) in the register`,
       service: `${service[0]?.delivered || 0} delivered, ${service[0]?.failed || 0} failed in 30 days`,
     };
-    return { ...result, checks: result.checks.map((c) => ({ ...c, fact: facts[c.key] })), asOf: new Date().toISOString(), target };
+    return { ...result, checks: result.checks.map((c) => ({ ...c, fact: facts[c.key] })), asOf: new Date().toISOString(), target, salesBasis: { chosen: basis, used: exp.source, expected: exp.expected === null ? null : Math.round(exp.expected) } };
   }
 
   // ------------------------------------------------------------------ tiles

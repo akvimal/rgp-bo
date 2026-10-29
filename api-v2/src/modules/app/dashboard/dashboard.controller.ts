@@ -18,6 +18,9 @@ export class DashboardController {
   @Get("/targets")
   targets(@Query("month") month: string, @User() currentUser: any) { return this.metrics.targets(currentUser, month); }
 
+  @Get("/targets/suggest")
+  suggestTargets(@Query("month") month: string, @Query("growth") growth: string, @User() currentUser: any) { return this.metrics.suggestTargets(currentUser, month, growth); }
+
   @Put("/targets")
   setTarget(@Body() body: any, @User() currentUser: any) { return this.metrics.setTarget(currentUser, body); }
 

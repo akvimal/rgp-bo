@@ -63,7 +63,9 @@ export const CONFIG_DEFS: ConfigDef[] = [
   { ...b('recognition', 'refill_on', 'Refill caller badge', true), pack: 'pharmacy' },
 
   // store health: weights add up to 100, and the safeguard threshold
-  i('health', 'w_sales', 'Weight: sales against target', 25, 0, 50, '%', 5),
+  e('health', 'sales_basis', 'Sales are measured against', 'target or recent average', ['target or recent average', 'target', 'last month', 'same period last year', 'recent average', 'off']),
+  i('health', 'recent_months', 'Months in the recent average', 3, 1, 12, 'months'),
+  i('health', 'w_sales', 'Weight: sales', 25, 0, 50, '%', 5),
   i('health', 'w_stock', 'Weight: stock', 15, 0, 50, '%', 5),
   i('health', 'w_cash', 'Weight: cash and shifts', 15, 0, 50, '%', 5),
   i('health', 'w_purchasing', 'Weight: purchasing and payables', 10, 0, 50, '%', 5),
