@@ -8,6 +8,7 @@ import { DashboardService } from "../dashboard.service";
  */
 @Component({
     selector: 'app-owner-insights',
+    styles: ['.chart-box { position: relative; width: 100%; min-width: 0; overflow: hidden; } .chart-box > * { display: block; }'],
     template: `
     <section class="card mb-3" aria-label="Store health" data-testid="health-card">
       <div class="card-body">
@@ -79,7 +80,7 @@ import { DashboardService } from "../dashboard.service";
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Sales by month <span class="text-muted fw-normal small">against the same months of the last two years</span></h2>
               <button class="btn btn-sm btn-link" (click)="tables.sales = !tables.sales">{{tables.sales ? 'Show chart' : 'Show numbers'}}</button></div>
-            <ngx-charts-line-chart *ngIf="!tables.sales && salesSeries.length" [view]="[0, 280]" [results]="salesSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [showXAxisLabel]="false" [showYAxisLabel]="false" [autoScale]="true" [scheme]="lineScheme" (select)="pickMonth($event)"></ngx-charts-line-chart>
+            <div *ngIf="!tables.sales && salesSeries.length" class="chart-box" style="height: 280px"><ngx-charts-line-chart [results]="salesSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [showXAxisLabel]="false" [showYAxisLabel]="false" [autoScale]="true" [scheme]="lineScheme" (select)="pickMonth($event)"></ngx-charts-line-chart></div>
             <div class="table-responsive" *ngIf="tables.sales"><table class="table table-sm"><thead><tr><th>Month</th><th class="text-end">Sales</th><th class="text-end">Last year</th><th class="text-end">Two years ago</th></tr></thead>
               <tbody><tr *ngFor="let m of salesMonths"><td>{{m.month}}</td><td class="text-end">{{m.sales | number:'1.0-0'}}</td><td class="text-end">{{m.lastYear | number:'1.0-0'}}</td><td class="text-end">{{m.twoYearsAgo | number:'1.0-0'}}</td></tr></tbody></table></div>
             <div class="small text-muted" *ngIf="err.sales">{{err.sales}}</div>
@@ -91,7 +92,7 @@ import { DashboardService } from "../dashboard.service";
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Sales by category <span class="text-muted fw-normal small">{{categories?.month}}</span></h2>
               <button class="btn btn-sm btn-link" (click)="tables.cat = !tables.cat">{{tables.cat ? 'Show chart' : 'Show numbers'}}</button></div>
-            <ngx-charts-bar-horizontal *ngIf="!tables.cat && catBars.length" [view]="[0, 280]" [results]="catBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-horizontal>
+            <div *ngIf="!tables.cat && catBars.length" class="chart-box" style="height: 280px"><ngx-charts-bar-horizontal [results]="catBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-horizontal></div>
             <div class="table-responsive" *ngIf="tables.cat"><table class="table table-sm"><thead><tr><th>Category</th><th class="text-end">Sales</th><th class="text-end">Share</th></tr></thead>
               <tbody><tr *ngFor="let c of categories?.categories"><td>{{c.category}}</td><td class="text-end">{{c.total | number:'1.0-0'}}</td><td class="text-end">{{c.share}}%</td></tr></tbody></table></div>
             <div class="small text-muted" *ngIf="err.cat">{{err.cat}}</div>
@@ -106,7 +107,7 @@ import { DashboardService } from "../dashboard.service";
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">New and returning customers <span class="text-muted fw-normal small">counts only, by month</span></h2>
               <button class="btn btn-sm btn-link" (click)="tables.cust = !tables.cust">{{tables.cust ? 'Show chart' : 'Show numbers'}}</button></div>
-            <ngx-charts-bar-vertical-stacked *ngIf="!tables.cust && custSeries.length" [view]="[0, 260]" [results]="custSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [scheme]="custScheme"></ngx-charts-bar-vertical-stacked>
+            <div *ngIf="!tables.cust && custSeries.length" class="chart-box" style="height: 260px"><ngx-charts-bar-vertical-stacked [results]="custSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [scheme]="custScheme"></ngx-charts-bar-vertical-stacked></div>
             <div class="table-responsive" *ngIf="tables.cust"><table class="table table-sm"><thead><tr><th>Month</th><th class="text-end">New</th><th class="text-end">Returning</th><th class="text-end">Repeat rate</th></tr></thead>
               <tbody><tr *ngFor="let m of customers"><td>{{m.month}}</td><td class="text-end">{{m.new}}</td><td class="text-end">{{m.returning}}</td><td class="text-end">{{m.repeatRate}}%</td></tr></tbody></table></div>
             <div class="small text-muted" *ngIf="err.cust">{{err.cust}}</div>
@@ -118,7 +119,7 @@ import { DashboardService } from "../dashboard.service";
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">What we owe vendors <span class="text-muted fw-normal small">by how late it is</span></h2>
               <button class="btn btn-sm btn-link" (click)="tables.pay = !tables.pay">{{tables.pay ? 'Show chart' : 'Show numbers'}}</button></div>
-            <ngx-charts-bar-vertical *ngIf="!tables.pay && payBars.length" [view]="[0, 260]" [results]="payBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-vertical>
+            <div *ngIf="!tables.pay && payBars.length" class="chart-box" style="height: 260px"><ngx-charts-bar-vertical [results]="payBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-vertical></div>
             <div class="table-responsive" *ngIf="tables.pay"><table class="table table-sm"><thead><tr><th>When</th><th class="text-end">Invoices</th><th class="text-end">Amount</th></tr></thead>
               <tbody><tr *ngFor="let b of payables?.buckets"><td>{{b.label}}</td><td class="text-end">{{b.count}}</td><td class="text-end">{{b.total | number:'1.0-0'}}</td></tr></tbody></table></div>
             <div class="small text-muted">Total owed ₹{{(payables?.total || 0) | number:'1.0-0'}} &middot; <a routerLink="/secure/purchases">open the invoices</a></div>
@@ -134,7 +135,7 @@ import { DashboardService } from "../dashboard.service";
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Deliveries by week <span class="text-muted fw-normal small" *ngIf="deliveries?.deliveredPct !== null">{{deliveries?.deliveredPct}}% delivered</span></h2>
               <button class="btn btn-sm btn-link" (click)="tables.del = !tables.del">{{tables.del ? 'Show chart' : 'Show numbers'}}</button></div>
-            <ngx-charts-bar-vertical-stacked *ngIf="!tables.del && delSeries.length" [view]="[0, 240]" [results]="delSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [scheme]="delScheme"></ngx-charts-bar-vertical-stacked>
+            <div *ngIf="!tables.del && delSeries.length" class="chart-box" style="height: 240px"><ngx-charts-bar-vertical-stacked [results]="delSeries" [xAxis]="true" [yAxis]="true" [legend]="true" [legendPosition]="below" [scheme]="delScheme"></ngx-charts-bar-vertical-stacked></div>
             <div class="text-muted small" *ngIf="!tables.del && !delSeries.length">No deliveries in the last 8 weeks.</div>
             <div class="table-responsive" *ngIf="tables.del"><table class="table table-sm"><thead><tr><th>Week of</th><th class="text-end">Delivered</th><th class="text-end">Failed</th><th class="text-end">Pending</th></tr></thead>
               <tbody><tr *ngFor="let w of deliveries?.weeks"><td>{{w.week}}</td><td class="text-end">{{w.delivered}}</td><td class="text-end">{{w.failed}}</td><td class="text-end">{{w.pending}}</td></tr></tbody></table></div>
@@ -147,7 +148,7 @@ import { DashboardService } from "../dashboard.service";
           <div class="card-body">
             <div class="d-flex justify-content-between"><h2 class="h6">Expenses this month <span class="text-muted fw-normal small">approved, by category</span></h2>
               <button class="btn btn-sm btn-link" (click)="tables.exp = !tables.exp">{{tables.exp ? 'Show chart' : 'Show numbers'}}</button></div>
-            <ngx-charts-bar-horizontal *ngIf="!tables.exp && expBars.length" [view]="[0, 240]" [results]="expBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-horizontal>
+            <div *ngIf="!tables.exp && expBars.length" class="chart-box" style="height: 240px"><ngx-charts-bar-horizontal [results]="expBars" [xAxis]="true" [yAxis]="true" [scheme]="barScheme"></ngx-charts-bar-horizontal></div>
             <div class="text-muted small" *ngIf="!tables.exp && !expBars.length">No approved expenses this month.</div>
             <div class="table-responsive" *ngIf="tables.exp"><table class="table table-sm"><thead><tr><th>Category</th><th class="text-end">Entries</th><th class="text-end">Amount</th></tr></thead>
               <tbody><tr *ngFor="let c of expenses?.categories"><td>{{c.category}}</td><td class="text-end">{{c.count}}</td><td class="text-end">{{c.total | number:'1.0-0'}}</td></tr></tbody></table></div>
@@ -162,7 +163,7 @@ import { DashboardService } from "../dashboard.service";
       <div class="card-body">
         <div class="d-flex justify-content-between"><h2 class="h6">When are we busy <span class="text-muted fw-normal small">bills by weekday and hour, last 90 days</span></h2>
           <button class="btn btn-sm btn-link" (click)="tables.hours = !tables.hours">{{tables.hours ? 'Show chart' : 'Show numbers'}}</button></div>
-        <ngx-charts-heat-map *ngIf="!tables.hours && heat.length" [view]="[0, 300]" [results]="heat" [xAxis]="true" [yAxis]="true" [legend]="false" [scheme]="heatScheme"></ngx-charts-heat-map>
+        <div *ngIf="!tables.hours && heat.length" class="chart-box" style="height: 260px"><ngx-charts-heat-map [results]="heat" [xAxis]="true" [yAxis]="true" [legend]="false" [scheme]="heatScheme" [min]="0" [max]="heatMax" [innerPadding]="2"></ngx-charts-heat-map></div>
         <div class="table-responsive" *ngIf="tables.hours"><table class="table table-sm"><thead><tr><th>Day</th><th>Busiest hours (bills)</th></tr></thead>
           <tbody><tr *ngFor="let d of busiest"><td>{{d.day}}</td><td>{{d.text}}</td></tr></tbody></table></div>
         <div class="small text-muted" *ngIf="err.hours">{{err.hours}}</div>
@@ -200,7 +201,9 @@ export class OwnerInsightsComponent implements OnChanges {
     lineScheme: any = { domain: ['#1c7ed6', '#868e96', '#ced4da'] };
     barScheme: any = { domain: ['#1c7ed6'] };
     custScheme: any = { domain: ['#2f9e44', '#1c7ed6'] };
-    heatScheme: any = { domain: ['#e7f5ff', '#a5d8ff', '#4dabf7', '#1c7ed6', '#1864ab'] };
+    heatScheme: any = { domain: ['#d0ebff', '#74c0fc', '#339af0', '#1c7ed6', '#0b4a8a'] };
+    /** the colour scale tops out at a busy-but-usual hour, so one extreme slot does not wash every other cell out to white */
+    heatMax = 1;
 
     targetInput: number | null = null;
     savingTarget = false;
@@ -261,7 +264,10 @@ export class OwnerInsightsComponent implements OnChanges {
             next: (r: any) => {
                 const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                 const hours = Array.from({ length: 24 }, (_, h) => h).filter((h) => r.cells.some((c: any) => c.hour === h));
-                this.heat = names.map((d, i) => ({ name: d, series: hours.map((h) => ({ name: `${h}h`, value: r.cells.find((c: any) => c.dow === i + 1 && c.hour === h)?.bills || 0 })) }));
+                const counts = r.cells.map((c: any) => c.bills).sort((a: number, b: number) => a - b);
+                this.heatMax = Math.max(1, counts.length ? counts[Math.min(counts.length - 1, Math.floor(counts.length * 0.9))] : 1);
+                // a slot busier than the usual-busy level is drawn at that level (the "Show numbers" table has the true counts), so no cell falls off the colour scale
+                this.heat = names.map((d, i) => ({ name: d, series: hours.map((h) => ({ name: `${h}h`, value: Math.min(this.heatMax, r.cells.find((c: any) => c.dow === i + 1 && c.hour === h)?.bills || 0) })) }));
                 this.busiest = names.map((d, i) => ({
                     day: d,
                     text: r.cells.filter((c: any) => c.dow === i + 1).sort((a: any, b: any) => b.bills - a.bills).slice(0, 3).map((c: any) => `${c.hour}h (${c.bills})`).join(', ') || 'no bills'

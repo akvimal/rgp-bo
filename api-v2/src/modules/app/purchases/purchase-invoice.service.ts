@@ -16,6 +16,7 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
+import { businessOfUser } from "src/core/business-of-user";
 import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
 
 @Injectable()
@@ -69,7 +70,13 @@ export class PurchaseInvoiceService {
 
     /** WS-6: which store this invoice's stock is received into. Falls back to the business's
      * first store when the caller doesn't say - keeps every existing single-store caller working. */
-    private async resolveDefaultStoreId(){
+    /** the store that receives an invoice when none is named: the first store of the receiving person's own business (the first store of all only when the person has none) */
+    private async resolveDefaultStoreId(userid?: number){
+        const businessId = userid ? await businessOfUser(this.manager, Number(userid)) : null;
+        if(businessId){
+          const own = await this.manager.query(`select id from stores where business_id = $1 and active and not archive order by id asc limit 1`, [businessId]);
+          if(own?.[0]?.id) return own[0].id;
+        }
         const rows = await this.manager.query(`select id from stores order by id asc limit 1`);
         return rows?.[0]?.id ?? null;
     }
@@ -84,7 +91,7 @@ export class PurchaseInvoiceService {
 
         await assertVendorUsable(this.vendorRepository.manager, dto.vendorid, 'receiving an invoice');
 
-        const storeid = dto.storeid || await this.resolveDefaultStoreId();
+        const storeid = dto.storeid || await this.resolveDefaultStoreId(userid);
         if(!storeid){
           throw new BadRequestException('No store is configured to receive this invoice.');
         }
@@ -110,7 +117,7 @@ export class PurchaseInvoiceService {
           duedate = base.toISOString().slice(0, 10);
         }
 
-        const gst = await this.deriveInvoiceGstContext(vendor, { ...dto, invoiceno, invoicedate });
+        const gst = await this.deriveInvoiceGstContext(vendor, { ...dto, invoiceno, invoicedate }, storeid);
 
         return this.purchaseInvoiceRepository.save({
           ...dto,
@@ -164,8 +171,11 @@ export class PurchaseInvoiceService {
     }
 
     /** GSTIN/place-of-supply/supply-type defaults for a new invoice header (decision #1: one GSTIN per business). */
-    private async deriveInvoiceGstContext(vendor: Vendor | null, dto: any){
-        const business = await this.businessRepository.findOne({ where: { isActive: true } as any, order: { id: 'ASC' } as any });
+    private async deriveInvoiceGstContext(vendor: Vendor | null, dto: any, storeid?: number | null){
+        // the buyer is the business that owns the receiving store; the first business is used only when the store has none
+        const [owner] = storeid ? await this.manager.query(`select business_id from stores where id = $1`, [storeid]) : [];
+        const business = (owner?.business_id ? await this.businessRepository.findOne({ where: { id: owner.business_id } as any }) : null)
+          ?? await this.businessRepository.findOne({ where: { isActive: true } as any, order: { id: 'ASC' } as any });
         const suppliergstin = dto.suppliergstin || vendor?.gstn || null;
         const placeofsupply = dto.placeofsupply || (suppliergstin ? suppliergstin.substring(0, 2) : null) || business?.statecode || null;
         const buyerstate = business?.statecode || null;

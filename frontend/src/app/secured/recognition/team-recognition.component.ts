@@ -10,9 +10,12 @@ import { RecognitionService, TeamMember } from "./recognition.service";
     template: `
     <section class="card mb-3" *ngIf="team.length" aria-label="Team recognition" data-testid="team-recognition">
       <div class="card-body">
-        <h2 class="h6">Your team's recognition <span class="text-muted fw-normal small">everyone's badges, in name order: no ranking</span></h2>
-        <div class="row g-2">
-          <div class="col-md-6 col-xl-4" *ngFor="let p of team">
+        <div class="d-flex justify-content-between align-items-center">
+          <h2 class="h6 mb-0">Your team's recognition <span class="text-muted fw-normal small">everyone's badges, in name order: no ranking</span></h2>
+          <button class="btn btn-sm btn-link" (click)="collapsed = !collapsed" [attr.aria-expanded]="!collapsed" data-testid="tr-toggle">{{collapsed ? 'Show (' + team.length + ')' : 'Hide'}}</button>
+        </div>
+        <div class="row g-2 mt-1" *ngIf="!collapsed">
+          <div class="col-md-6 col-xl-4" *ngFor="let p of shown">
             <div class="border rounded p-2 h-100">
               <div class="d-flex justify-content-between"><strong>{{p.name}}</strong><span class="small text-muted">{{p.role}}</span></div>
               <div class="d-flex flex-wrap gap-1 my-1">
@@ -31,12 +34,18 @@ import { RecognitionService, TeamMember } from "./recognition.service";
             </div>
           </div>
         </div>
+        <button class="btn btn-sm btn-outline-secondary mt-2" *ngIf="!collapsed && team.length > limit" (click)="showAll = !showAll" data-testid="tr-all">{{showAll ? 'Show fewer' : 'Show all ' + team.length}}</button>
         <div class="small text-success mt-2" *ngIf="sent" role="status">{{sent}}</div>
       </div>
     </section>`
 })
 export class TeamRecognitionComponent implements OnInit {
     team: TeamMember[] = [];
+    /** a long team is shown in part, and the card can be folded away, so it does not push the charts down the page */
+    readonly limit = 6;
+    showAll = false;
+    collapsed = false;
+    get shown(): TeamMember[] { return this.showAll ? this.team : this.team.slice(0, this.limit); }
     open: number | null = null;
     text = '';
     sent = '';

@@ -21,8 +21,8 @@ export class UserController {
     }
 
     @Get(':id')
-    async findOne(@Param('id') id: number) {
-      return this.userService.findById(id)
+    async findOne(@Param('id') id: number, @User() currentUser: any) {
+      return this.userService.findByIdFor(id, currentUser)
     }
 
     @Post()

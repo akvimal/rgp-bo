@@ -355,10 +355,17 @@ export class StockService {
         return Number.isFinite(parsed) && parsed > 0 ? parsed : 2000;
     }
 
-    /** Resolves the status for a new/edited adjustment: an explicit status always wins (bulk
-     * clearance and the audit workflow rely on this); otherwise gate on estimated value. */
+    /** whether this person holds a manager role (Business Head, Owner-operator, Store Head) */
+    private async isManagerUser(userId?: number | null): Promise<boolean> {
+        if (!userId) return false;
+        const [who] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userId]);
+        return isManagerRole(who?.name);
+    }
+
+    /** Resolves the status for a new/edited adjustment. A manager's explicit status wins (bulk clearance and the audit workflow rely on this). Anyone else
+     * cannot approve their own adjustment by naming the status: it is gated on estimated value like any other. */
     private async resolveAdjustmentStatus(explicitStatus: string | undefined, itemId: number, qty: any, storeId?: number | null, userId?: number | null): Promise<string> {
-        if (explicitStatus) {
+        if (explicitStatus && (String(explicitStatus).toUpperCase() !== 'APPROVED' || await this.isManagerUser(userId))) {
             return explicitStatus;
         }
         const unitValue = await this.resolveUnitValue(itemId);
@@ -405,6 +412,8 @@ export class StockService {
             throw new BadRequestException('Quantity must be a non-zero number.');
         }
         const reasoncode = dto.reasoncode || dto.reason || existing.reasoncode;
+        // a count line marked as a large difference is settled only by the Business Head, and only after the second count: changing it here is no way round that
+        if (existing.escalated) await this.assertMaySettle(id, userid, String(dto.status || '').toUpperCase() === 'APPROVED');
         const status = await this.resolveAdjustmentStatus(dto.status, existing.itemid, qty, existing.storeid, userid);
         await this.qtyRepository.update(id, {
             qty,

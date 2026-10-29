@@ -128,6 +128,22 @@ test.describe('New sale form @p1', () => {
     await expect(page.getByTestId('sale-tabs')).toHaveCount(saved.length > 0 ? 1 : 0);   // nothing saved: the blank bill is all there is
   });
 
+  test('POSF-9 only five saved sales are tabs; the rest are in a list, and the open one stays a tab @edge', async ({ app, api }) => {
+    const saved = (await api.request('GET', '/sales/saved', undefined, COUNTER)).body as any[];
+    test.skip(saved.length < 7, 'needs at least seven saved sales');
+    const { page } = await app.open(COUNTER, '/secure/sales/pos/new', { operatorId: 3, operatorName: 'Sale Staff One' });
+    await expect(page.getByTestId('sale-tab')).toHaveCount(5);
+    const more = page.getByTestId('sale-more');
+    await expect(more).toBeVisible();
+    await expect(more.locator('option')).toHaveCount(saved.length - 5 + 1);
+    // choosing an older one opens it, and it takes a tab so it can be seen
+    const oldest = saved[saved.length - 1];
+    await more.selectOption(String(oldest.id));
+    await expect(page).toHaveURL(new RegExp(`/pos/edit/${oldest.id}$`));
+    await expect(page.getByTestId('sale-tab')).toHaveCount(5);
+    await expect(page.locator(`[data-testid=sale-tab][href$="/pos/edit/${oldest.id}"]`)).toHaveCount(1);
+  });
+
   test('POSF-8 the product box is as wide as the Product column, and its list opens wide enough to read @happy', async ({ app, api }) => {
     const line = (await sellable(api))[0];
     test.skip(!line, 'no sellable stock');
@@ -144,11 +160,9 @@ test.describe('New sale form @p1', () => {
     expect((await panel.boundingBox())!.width).toBeGreaterThan(520);
   });
 
-  test('POSF-7 the empty mobile box asks for the number and says why @happy', async ({ app }) => {
+  test('POSF-7 the empty mobile box carries no nagging hint under it @happy', async ({ app }) => {
     const { page } = await app.open(COUNTER, '/secure/sales/pos/new', { operatorId: 3, operatorName: 'Sale Staff One' });
-    const hint = page.getByTestId('sale-mobile-hint');
-    await expect(hint).toContainText('Ask for their mobile number');
-    await expect(hint).toContainText('chronic');
-    await expect(hint).not.toContainText('walk-in');
+    await expect(page.getByTestId('sale-bill-bar')).toBeVisible();
+    await expect(page.getByTestId('sale-mobile-hint')).toHaveCount(0);
   });
 });

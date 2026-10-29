@@ -104,67 +104,7 @@ export class SaleService {
                     storeid = storeRows?.[0]?.id || null;
                 }
 
-                // A completed bill must not oversell stock at this store, and a counter sale must
-                // be fully tendered (delivery sales collect payment via the delivery flow).
-                if ((sale.status || '').toUpperCase() === 'COMPLETE') {
-                    const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
-                    const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0) + Number(sale['creditamt'] || 0);
-                    const total = Number(sale['total'] || 0);
-                    if (isCounter && Math.abs(tendered - total) > 0.5) {
-                        throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
-                    }
-
-                    // never charge more than the MRP: price + GST per unit against the batch's MRP per unit (kill switch: pricing/sale_mrp_guard = off)
-                    const pricedLines = items.filter((i: any) => Number(i.qty || 0) > 0 && Number(i.price || 0) > 0 && i.itemid);
-                    if (pricedLines.length) {
-                        const [g] = await transactionManager.query(`select setting_value from app_setting where setting_key = 'sale_mrp_guard' and active and not archive limit 1`);
-                        if (String(g?.setting_value ?? 'on').toLowerCase() !== 'off') {
-                            const mrpRows = await transactionManager.query(
-                                `select pii.id, pii.mrp_cost::float8 / nullif(p.pack, 0) as unit_mrp, p.title from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`,
-                                [pricedLines.map((i: any) => Number(i.itemid))]);
-                            const batches = new Map<number, BatchMrp>(mrpRows.map((r: any) => [Number(r.id), { unitMrp: Number(r.unit_mrp), title: r.title }]));
-                            const over = overMrp(pricedLines.map((i: any) => ({ itemid: Number(i.itemid), price: Number(i.price), taxpcnt: Number(i.taxpcnt || 0), qty: Number(i.qty) })), batches);
-                            if (over.length) throw new BadRequestException(overMrpMessage(over));
-                        }
-                    }
-                    const positiveLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
-                    if (positiveLines.length) {
-                        // available at this store = batch qty (only where it was received into this
-                        // store) - sale_item qty sold at this store + approved adjustments/transfer
-                        // postings at this store. Same shape as stock.service.findByCriteria's storeid path.
-                        const rows = await transactionManager.query(
-                            `select pii.id as item_id,
-                                (case when i.store_id = $2 then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
-                                - coalesce((select sum(si.qty) from sale_item si
-                                            inner join sale s on s.id = si.sale_id
-                                            where si.purchase_item_id = pii.id and si.active = true and si.archive = false
-                                              and s.store_id = $2), 0)
-                                + coalesce((select sum(pq.qty) from product_qtychange pq
-                                            where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED'
-                                              and pq.active = true and pq.archive = false
-                                              and pq.store_id = $2), 0)
-                                as available
-                             from purchase_invoice_item pii
-                             inner join purchase_invoice i on i.id = pii.invoice_id
-                             inner join product p on p.id = pii.product_id
-                             where pii.id = any($1::int[])`,
-                            [positiveLines.map((i: any) => Number(i.itemid)), storeid],
-                        );
-                        const avail = new Map<number, number>(rows.map((r: any) => [Number(r.item_id), Number(r.available)]));
-                        // aggregate requested qty per batch (a bill can list the same batch twice)
-                        const requested = new Map<number, number>();
-                        for (const i of positiveLines) {
-                            const k = Number(i.itemid);
-                            requested.set(k, (requested.get(k) || 0) + Number(i.qty));
-                        }
-                        for (const [k, want] of requested) {
-                            const have = avail.get(k) ?? 0;
-                            if (want > have) {
-                                throw new BadRequestException(`Not enough stock for one of the items (requested ${want}, available ${have}).`);
-                            }
-                        }
-                    }
-                }
+                await this.guardCompleteBill(transactionManager, sale, items, storeid, 0);
 
                 // Step 1: Generate order and bill numbers (uses database sequences/locking)
                 const nos = await transactionManager.query(`select generate_order_number() as order_no, generate_bill_number() as bill_no`);
@@ -173,21 +113,7 @@ export class SaleService {
                 sale['orderdate'] = new Date();
                 sale['billno'] = nos[0]['bill_no'];
 
-                let shiftid = null;
-                let staffBased = false;
-                if (storeid) {
-                    // time-based store: its one OPEN shift (enforced on open); staff-based: the serving person's own drawer
-                    const profile = await loadStoreProfile(transactionManager, storeid);
-                    staffBased = profile?.shiftmode === 'staff';
-                    const shiftRows = staffBased
-                        ? await transactionManager.query(
-                            `select id from store_shifts where store_id = $1 and status = 'OPEN' and assigned_user_id = $2 order by shift_date desc, id desc limit 1`,
-                            [storeid, actingUserid || userid])
-                        : await transactionManager.query(
-                            `select id from store_shifts where store_id = $1 and status = 'OPEN' order by shift_date desc, id desc limit 1`,
-                            [storeid]);
-                    shiftid = shiftRows?.[0]?.id || null;
-                }
+                const { shiftid, staffBased } = await this.openShiftFor(transactionManager, storeid, actingUserid, userid);
                 // A completed bill is a cash event — it must belong to an open shift so
                 // it is reconciled at close. Parked (PENDING) bills are exempt.
                 if ((sale.status || '').toUpperCase() === 'COMPLETE' && storeid && !shiftid) {
@@ -358,6 +284,93 @@ export class SaleService {
     }
 
 
+    /**
+     * What a completed bill must satisfy, whether it is made now or a parked bill is completed later: payment equal to the total for a counter sale, no price above
+     * the MRP, and no more stock than the store has. `ownSaleId` is the bill being edited, so its own earlier lines are not counted as sold.
+     */
+    private async guardCompleteBill(transactionManager: EntityManager, sale: any, items: any[], storeid: number | null, ownSaleId: number) {
+        // A completed bill must not oversell stock at this store, and a counter sale must
+        // be fully tendered (delivery sales collect payment via the delivery flow).
+        if ((sale.status || '').toUpperCase() === 'COMPLETE') {
+            const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
+            const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0) + Number(sale['creditamt'] || 0);
+            const total = Number(sale['total'] || 0);
+            if (isCounter && Math.abs(tendered - total) > 0.5) {
+                throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
+            }
+
+            // never charge more than the MRP: price + GST per unit against the batch's MRP per unit (kill switch: pricing/sale_mrp_guard = off)
+            const pricedLines = items.filter((i: any) => Number(i.qty || 0) > 0 && Number(i.price || 0) > 0 && i.itemid);
+            if (pricedLines.length) {
+                const [g] = await transactionManager.query(`select setting_value from app_setting where setting_key = 'sale_mrp_guard' and active and not archive limit 1`);
+                if (String(g?.setting_value ?? 'on').toLowerCase() !== 'off') {
+                    const mrpRows = await transactionManager.query(
+                        `select pii.id, pii.mrp_cost::float8 / nullif(p.pack, 0) as unit_mrp, p.title from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`,
+                        [pricedLines.map((i: any) => Number(i.itemid))]);
+                    const batches = new Map<number, BatchMrp>(mrpRows.map((r: any) => [Number(r.id), { unitMrp: Number(r.unit_mrp), title: r.title }]));
+                    const over = overMrp(pricedLines.map((i: any) => ({ itemid: Number(i.itemid), price: Number(i.price), taxpcnt: Number(i.taxpcnt || 0), qty: Number(i.qty) })), batches);
+                    if (over.length) throw new BadRequestException(overMrpMessage(over));
+                }
+            }
+            const positiveLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
+            if (positiveLines.length) {
+                // available at this store = batch qty (only where it was received into this
+                // store) - sale_item qty sold at this store + approved adjustments/transfer
+                // postings at this store. Same shape as stock.service.findByCriteria's storeid path.
+                const rows = await transactionManager.query(
+                    `select pii.id as item_id,
+                        (case when i.store_id = $2 then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
+                        - coalesce((select sum(si.qty) from sale_item si
+                                    inner join sale s on s.id = si.sale_id
+                                    where si.purchase_item_id = pii.id and si.active = true and si.archive = false
+                                      and s.store_id = $2 and s.id <> $3), 0)
+                        + coalesce((select sum(pq.qty) from product_qtychange pq
+                                    where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED'
+                                      and pq.active = true and pq.archive = false
+                                      and pq.store_id = $2), 0)
+                        as available
+                     from purchase_invoice_item pii
+                     inner join purchase_invoice i on i.id = pii.invoice_id
+                     inner join product p on p.id = pii.product_id
+                     where pii.id = any($1::int[])`,
+                    [positiveLines.map((i: any) => Number(i.itemid)), storeid, ownSaleId],
+                );
+                const avail = new Map<number, number>(rows.map((r: any) => [Number(r.item_id), Number(r.available)]));
+                // aggregate requested qty per batch (a bill can list the same batch twice)
+                const requested = new Map<number, number>();
+                for (const i of positiveLines) {
+                    const k = Number(i.itemid);
+                    requested.set(k, (requested.get(k) || 0) + Number(i.qty));
+                }
+                for (const [k, want] of requested) {
+                    const have = avail.get(k) ?? 0;
+                    if (want > have) {
+                        throw new BadRequestException(`Not enough stock for one of the items (requested ${want}, available ${have}).`);
+                    }
+                }
+            }
+        }
+    }
+
+    /** the open shift a bill of this store belongs to: the store's one open shift, or in a staff-based store the serving person's own */
+    private async openShiftFor(transactionManager: EntityManager, storeid: number | null, actingUserid: number | undefined, userid: number) {
+        let shiftid: number | null = null;
+        let staffBased = false;
+        if (storeid) {
+            const profile = await loadStoreProfile(transactionManager, storeid);
+            staffBased = profile?.shiftmode === 'staff';
+            const shiftRows = staffBased
+                ? await transactionManager.query(
+                    `select id from store_shifts where store_id = $1 and status = 'OPEN' and assigned_user_id = $2 order by shift_date desc, id desc limit 1`,
+                    [storeid, actingUserid || userid])
+                : await transactionManager.query(
+                    `select id from store_shifts where store_id = $1 and status = 'OPEN' order by shift_date desc, id desc limit 1`,
+                    [storeid]);
+            shiftid = shiftRows?.[0]?.id || null;
+        }
+        return { shiftid, staffBased };
+    }
+
     async updateSale(sale: SalePayload & { id?: number }, userid: number, actingUserid?: number) {
         // Wrap entire sale update in transaction to maintain data consistency
         return await this.saleRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
@@ -365,6 +378,29 @@ export class SaleService {
                 // an issued tax invoice keeps its lines and total; its number is never taken from the client
                 await assertIssuedBillUnchanged(transactionManager, sale);
                 delete (sale as any).gstinvoiceno; delete (sale as any).gstbusinessid;
+
+                const [before] = await transactionManager.query(`select status, shift_id, store_id from sale where id = $1`, [sale.id]);
+                if (!before) throw new BadRequestException('That bill does not exist.');
+                const nowComplete = String(sale.status ?? before.status ?? '').toUpperCase() === 'COMPLETE';
+                const wasComplete = String(before.status ?? '').toUpperCase() === 'COMPLETE';
+                const storeid: number | null = before.store_id ? Number(before.store_id) : (sale.storeid ? Number(sale.storeid) : null);
+                // the lines the client left out are removed with the rest of the update, so a refusal below leaves the bill as it was
+                if (Array.isArray(sale.items)) {
+                    const keep = sale.items.map((i: any) => Number(i.id)).filter((n: number) => Number.isFinite(n) && n > 0);
+                    await transactionManager.query(`delete from sale_item where sale_id = $1 and not (id = any($2::int[]))`, [sale.id, keep]);
+                }
+                if (nowComplete) {
+                    await this.guardCompleteBill(transactionManager, { ...sale, status: 'COMPLETE' }, Array.isArray(sale.items) ? sale.items : [], storeid, Number(sale.id));
+                }
+                // a parked bill completed now is a cash event: it must belong to an open shift so it is reconciled at close
+                let completedInShift: number | null = null;
+                if (nowComplete && !wasComplete && storeid && !before.shift_id) {
+                    const found = await this.openShiftFor(transactionManager, storeid, actingUserid, userid);
+                    if (!found.shiftid) throw new BadRequestException(found.staffBased ? 'Open your own shift before completing sales.' : 'Open a shift before completing sales.');
+                    completedInShift = found.shiftid;
+                    (sale as any).shiftid = found.shiftid;
+                    (sale as any).storeid = storeid;
+                }
                 if (!(sale as any).buyergstin && !(sale as any).placeofsupply) { delete (sale as any).buyergstin; delete (sale as any).placeofsupply; }
                 else await this.normaliseBuyer(transactionManager, sale);
 
@@ -387,6 +423,18 @@ export class SaleService {
                 await recordStaffCredit(transactionManager, updatedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, updatedSale, actingUserid || userid);
                 await this.hooks.saved({ manager: transactionManager, sale, saved: updatedSale, items: sale.items || [], storeId: (updatedSale as any).storeid ?? null, userId: userid, actingUserId: actingUserid });
+
+                if (completedInShift && Number(updatedSale['cashamt'] || sale['cashamt'] || 0) > 0) {
+                    await transactionManager.save(StoreCashAccount, {
+                        transdate: new Date().toISOString().slice(0, 10),
+                        category: 'SALE',
+                        description: `Sale ${updatedSale['billno'] || updatedSale['id']}`,
+                        deposit: Number(updatedSale['cashamt'] || sale['cashamt'] || 0),
+                        withdraw: 0,
+                        store: { id: storeid },
+                        shift: { id: completedInShift },
+                    } as any);
+                }
 
                 // The client only needs the saved header before loading the detail route.
                 return updatedSale;
@@ -459,13 +507,13 @@ export class SaleService {
                 const requested = Number(query.storeid);
                 const effective = allowedStoreIds.includes(requested) ? [requested] : [];
                 if (effective.length === 0) return { data: [], total: 0, page, limit };
-                qb.andWhere('shift.storeid IN (:...storeids)', { storeids: effective });
+                qb.andWhere('COALESCE(sale.storeid, shift.storeid) IN (:...storeids)', { storeids: effective });
             } else {
-                qb.andWhere('shift.storeid IN (:...storeids)', { storeids: allowedStoreIds });
+                qb.andWhere('COALESCE(sale.storeid, shift.storeid) IN (:...storeids)', { storeids: allowedStoreIds });
             }
         } else if (query.storeid) {
             // Business Head with a specific store selected
-            qb.andWhere('shift.storeid = :storeid', { storeid: Number(query.storeid) });
+            qb.andWhere('COALESCE(sale.storeid, shift.storeid) = :storeid', { storeid: Number(query.storeid) });
         }
 
         if (query.date) {
@@ -553,29 +601,35 @@ export class SaleService {
         }
 
         if (query.storeid) {
+            // a store that is not one of the person's own is refused, not silently shown
+            if (allowedStoreIds !== null && !allowedStoreIds.includes(Number(query.storeid))) throw new ForbiddenException('That store is not one of yours.');
             params.push(Number(query.storeid));
-            conditions.push(`ss.store_id = $${params.length}`);
+            conditions.push(`coalesce(s.store_id, ss.store_id) = $${params.length}`);
         } else if (allowedStoreIds !== null) {
             params.push(allowedStoreIds);
-            conditions.push(`ss.store_id = ANY($${params.length}::int[])`);
+            conditions.push(`coalesce(s.store_id, ss.store_id) = ANY($${params.length}::int[])`);
         }
 
         const where = conditions.join(' AND ');
+        // each bill is counted once: its returns are added up per bill first, so a bill with many items or returns does not multiply its totals
         const sql = `
             SELECT
                 au.id AS staff_id,
                 au.full_name AS staff_name,
-                COUNT(DISTINCT s.id)::int AS sales_count,
+                COUNT(*)::int AS sales_count,
                 COALESCE(SUM(s.cash_amount), 0) AS cash_total,
                 COALESCE(SUM(s.digi_amount), 0) AS digi_total,
                 COALESCE(SUM(s.total), 0) AS net_total,
-                COUNT(DISTINCT sri.id)::int AS return_count,
-                COALESCE(SUM(sri.qty * si.price), 0) AS return_value
+                COALESCE(SUM(r.return_count), 0)::int AS return_count,
+                COALESCE(SUM(r.return_value), 0) AS return_value
             FROM sale s
             LEFT JOIN app_user au ON au.id = s.acting_user_id
             LEFT JOIN store_shifts ss ON ss.id = s.shift_id
-            LEFT JOIN sale_item si ON si.sale_id = s.id
-            LEFT JOIN sale_return_item sri ON sri.sale_item_id = si.id
+            LEFT JOIN (
+                SELECT si.sale_id, COUNT(sri.id) AS return_count, SUM(sri.qty * si.price) AS return_value
+                  FROM sale_item si JOIN sale_return_item sri ON sri.sale_item_id = si.id
+                 GROUP BY si.sale_id
+            ) r ON r.sale_id = s.id
             WHERE ${where}
             GROUP BY au.id, au.full_name
             ORDER BY net_total DESC

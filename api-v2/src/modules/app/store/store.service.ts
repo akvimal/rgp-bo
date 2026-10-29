@@ -626,7 +626,7 @@ export class StoreService {
     }
     await this.assertUserAssignedToStore(userid, storeid);
     // "do this to continue": an unclosed shift of an earlier day is closed first, or a reason is given
-    await this.compliance.enforce({ id: userid }, storeid, 'open', body.compliancereasons);
+    const recordOpenReasons = await this.compliance.enforce({ id: userid }, storeid, 'open', body.compliancereasons);
     const profile = await loadStoreProfile(this.manager, storeid);
     const staffBased = profile?.shiftmode === "staff";
     // Staff-based: the drawer belongs to the person opening it (a manager may open one for somebody else).
@@ -661,6 +661,8 @@ export class StoreService {
       }
     }
 
+    // every check has passed: the reasons given for what was left undone are recorded now, not before
+    await recordOpenReasons();
     const shift = await this.shiftRepository.save({
       storeid,
       templateid: template ? template.id : null,
@@ -747,7 +749,7 @@ export class StoreService {
       throw new BadRequestException("This shift is already closed.");
     }
     // "do this to continue": a stock count far enough overdue is done first, or a reason is given
-    await this.compliance.enforce({ id: userid }, shift.storeid, 'close', body.compliancereasons);
+    const recordCloseReasons = await this.compliance.enforce({ id: userid }, shift.storeid, 'close', body.compliancereasons);
 
     // Drawer count: prefer the denomination breakdown; fall back to a plain
     // number; reject an empty count unless the caller explicitly allows zero.
@@ -821,7 +823,10 @@ export class StoreService {
       });
     }
 
-    await this.shiftRepository.update(id, {
+    // the close has passed every check: the reasons given for what was left undone are recorded now, and the shift is claimed with a conditional update so two
+    // closes at once cannot both succeed (and a handover cannot open two next shifts)
+    await recordCloseReasons();
+    const claimed: any = await this.shiftRepository.update({ id, status: "OPEN" } as any, {
       status: "CLOSED",
       countedcash,
       counteddenominations: countedDenoms,
@@ -835,6 +840,7 @@ export class StoreService {
       closedby: userid ? { id: userid } as any : null,
       notes: body.notes || shift.notes,
     } as any);
+    if (!claimed?.affected) throw new ConflictException("This shift was closed a moment ago.");
     await this.syncShiftTotals(id);
 
     // On a handover the counted drawer is the incoming person's float and their shift opens straight away.

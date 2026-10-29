@@ -3,7 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { ModulesService } from 'src/core/modules/modules.service';
-import { businessOfUser } from 'src/core/business-of-user';
+import { BUSINESS_OF_USER_SQL, businessOfUser } from 'src/core/business-of-user';
 import { Mapping, Parsed } from './statement-parser';
 import { readStatement } from './statement-file';
 import {
@@ -31,7 +31,19 @@ export class FinanceService {
     if (!businessId) throw new ForbiddenException('Your account is not placed in a business.');
     const stores = (await this.manager.query(`select id, location from stores where business_id = $1 and active and not archive order by id`, [businessId]))
       .map((s: any) => ({ id: +s.id, location: String(s.location).trim() }));
-    return { businessId, stores };
+    const storeIds = (await this.manager.query(`select id from stores where business_id = $1`, [businessId])).map((s: any) => +s.id);
+    return { businessId, stores, storeIds };
+  }
+
+  /** a payment to a vendor belongs to this business when it is against one of its invoices (a payment on account, when the vendor has invoices with it) */
+  private vpScope(p: string): string {
+    return `(invoice_id in (select id from purchase_invoice where store_id = any(${p}::int[])) or (invoice_id is null and vendor_id in (select vendor_id from purchase_invoice where store_id = any(${p}::int[]))))`;
+  }
+
+  /** an expense belongs to this business through its store, or (with no store) through the person who raised it */
+  private expScope(alias: string, storesP: string, businessP: string): string {
+    const a = alias ? alias + '.' : '';
+    return `(${a}store_id = any(${storesP}::int[]) or (${a}store_id is null and ${a}raised_by in (select u.id from app_user u where ${BUSINESS_OF_USER_SQL} = ${businessP})))`;
   }
 
   async tolerance(): Promise<number> {
@@ -207,21 +219,22 @@ export class FinanceService {
 
   /** a payment out, matched to a vendor payment (by its reference, or by amount and date) or to a non-cash expense */
   private async matchBooks(m: EntityManager, businessId: number, r: { date: string; debit: number; ref: string }, tol: number, used: Set<string>, vendorId: number | null) {
+    const sids: number[] = (await m.query(`select id from stores where business_id = $1`, [businessId])).map((x: any) => +x.id);
     const ref = String(r.ref || '').trim();
     const usable = ref && !/^0+$/.test(ref);
     if (usable) {
-      const rows = await m.query(`select id, vendor_id, amount::float as amount from vendor_payment where active and not archive and upper(trans_ref) = upper($1)`, [ref]);
+      const rows = await m.query(`select id, vendor_id, amount::float as amount from vendor_payment where active and not archive and upper(trans_ref) = upper($1) and ${this.vpScope('$2')}`, [ref, sids]);
       const hit = rows.find((x: any) => Math.abs(x.amount - r.debit) <= tol && !used.has('VENDOR_PAY:' + x.id));
       if (hit) return { kind: 'VENDOR_PAY', id: hit.id, tag: 'VENDOR_PAYMENT', vendorId: hit.vendor_id, category: null, reason: 'Matches a vendor payment by its reference' };
     }
     const vp = (await m.query(
-      `select id, vendor_id from vendor_payment where active and not archive and pay_date between $1::date - 7 and $1::date + 7 and abs(amount - $2) <= $3 and ($4::int is null or vendor_id = $4)`,
-      [r.date, r.debit, tol, vendorId])).filter((x: any) => !used.has('VENDOR_PAY:' + x.id));
+      `select id, vendor_id from vendor_payment where active and not archive and pay_date between $1::date - 7 and $1::date + 7 and abs(amount - $2) <= $3 and ($4::int is null or vendor_id = $4) and ${this.vpScope('$5')}`,
+      [r.date, r.debit, tol, vendorId, sids])).filter((x: any) => !used.has('VENDOR_PAY:' + x.id));
     if (vp.length === 1) return { kind: 'VENDOR_PAY', id: vp[0].id, tag: 'VENDOR_PAYMENT', vendorId: vp[0].vendor_id, category: null, reason: 'Matches a vendor payment of this amount and week' };
     const ex = (await m.query(
       `select e.id, c.name as category from expense e join expense_category c on c.id = e.category_id
-        where e.status = 'APPROVED' and upper(e.pay_mode) <> 'CASH' and e.expense_date between $1::date - 7 and $1::date + 7 and abs(e.amount - $2) <= $3`,
-      [r.date, r.debit, tol])).filter((x: any) => !used.has('EXPENSE:' + x.id));
+        where e.status = 'APPROVED' and upper(e.pay_mode) <> 'CASH' and e.expense_date between $1::date - 7 and $1::date + 7 and abs(e.amount - $2) <= $3 and ${this.expScope('e', '$4', '$5')}`,
+      [r.date, r.debit, tol, sids, businessId])).filter((x: any) => !used.has('EXPENSE:' + x.id));
     if (ex.length === 1) return { kind: 'EXPENSE', id: ex[0].id, tag: 'EXPENSE', vendorId: null, category: ex[0].category, reason: 'Matches an expense of this amount and week' };
     return null;
   }
@@ -340,12 +353,13 @@ export class FinanceService {
 
     // the books, for the same store (or the whole business)
     const store = a.store_id ?? null;
+    const { businessId: bizId, storeIds: sids } = await this.business(user);
     const sales = async (col: string, shiftDays: number) => (await this.manager.query(
-      `select coalesce(sum(${col}), 0)::float as v from sale where status = 'COMPLETE' and bill_date >= ($1::date + $4::int) and bill_date < ($2::date + $4::int) and ($3::int is null or store_id = $3)`, [start, next, store, shiftDays]))[0].v;
+      `select coalesce(sum(${col}), 0)::float as v from sale where status = 'COMPLETE' and bill_date >= ($1::date + $4::int) and bill_date < ($2::date + $4::int) and ($3::int is null or store_id = $3) and (store_id = any($5::int[]) or store_id is null)`, [start, next, store, shiftDays, sids]))[0].v;
     const tagSum = async (tag: string, col: 'credit' | 'debit') => (await this.manager.query(`select coalesce(sum(${col}), 0)::float as v from bank_txn where account_id = $1 and tag = $2 and txn_date >= $3::date and txn_date < $4::date`, [a.id, tag, start, next]))[0].v;
-    const [vp] = await this.manager.query(`select coalesce(sum(amount), 0)::float as v from vendor_payment where active and not archive and pay_date >= $1::date and pay_date < $2::date`, [start, next]);
+    const [vp] = await this.manager.query(`select coalesce(sum(amount), 0)::float as v from vendor_payment where active and not archive and pay_date >= $1::date and pay_date < $2::date and ${this.vpScope('$3')}`, [start, next, sids]);
     const [ex] = await this.manager.query(
-      `select coalesce(sum(amount), 0)::float as v from expense where status = 'APPROVED' and upper(pay_mode) <> 'CASH' and expense_date >= $1::date and expense_date < $2::date and ($3::int is null or store_id = $3)`, [start, next, store]);
+      `select coalesce(sum(amount), 0)::float as v from expense where status = 'APPROVED' and upper(pay_mode) <> 'CASH' and expense_date >= $1::date and expense_date < $2::date and ($3::int is null or store_id = $3) and ${this.expScope('', '$4', '$5')}`, [start, next, store, sids, bizId]);
     const channels = [
       // card and UPI money reaches the bank about a day after the sale
       { ...channel('digital', 'Card / UPI sales and settlements', await sales('coalesce(digi_amount, 0)', -1), await tagSum('DIGITAL_SETTLEMENT', 'credit'), tol), hint: 'Settlements arrive about a day after the sale, so the books are taken from the day before the month starts to the day before it ends.' },
@@ -407,7 +421,7 @@ export class FinanceService {
 
   // ------------------------------------------------------------------ income and expenses
   async overview(user: any, q: any) {
-    const { businessId, stores } = await this.business(user);
+    const { businessId, stores, storeIds } = await this.business(user);
     const to = isDay(q.to) ? q.to : istDay();
     const from = isDay(q.from) ? q.from : addDays(to, -29);
     if (from > to) throw new BadRequestException('The period starts after it ends.');
@@ -420,13 +434,13 @@ export class FinanceService {
     const [s] = await this.manager.query(
       `select count(*)::int as bills, coalesce(sum(total), 0)::float as total, coalesce(sum(cash_amount), 0)::float as cash, coalesce(sum(digi_amount), 0)::float as digital,
               coalesce(sum(credit_amount), 0)::float as credit, coalesce(sum(staff_credit_amount), 0)::float as staff_credit
-         from sale where status = 'COMPLETE' and bill_date >= $1::date and bill_date < $2::date and ($3::int is null or store_id = $3)`, [from, next, storeId]);
+         from sale where status = 'COMPLETE' and bill_date >= $1::date and bill_date < $2::date and ($3::int is null or store_id = $3) and (store_id = any($4::int[]) or store_id is null)`, [from, next, storeId, storeIds]);
     const [pu] = await this.manager.query(
-      `select count(*)::int as invoices, coalesce(sum(total), 0)::float as total from purchase_invoice where status = 'COMPLETE' and active and not archive and invoice_date >= $1::date and invoice_date < $2::date and ($3::int is null or store_id = $3)`, [from, next, storeId]);
-    const [vp] = await this.manager.query(`select coalesce(sum(amount), 0)::float as total from vendor_payment where active and not archive and pay_date >= $1::date and pay_date < $2::date`, [from, next]);
+      `select count(*)::int as invoices, coalesce(sum(total), 0)::float as total from purchase_invoice where status = 'COMPLETE' and active and not archive and invoice_date >= $1::date and invoice_date < $2::date and ($3::int is null or store_id = $3) and store_id = any($4::int[])`, [from, next, storeId, storeIds]);
+    const [vp] = await this.manager.query(`select coalesce(sum(amount), 0)::float as total from vendor_payment where active and not archive and pay_date >= $1::date and pay_date < $2::date and ${this.vpScope('$3')}`, [from, next, storeIds]);
     const exp = await this.manager.query(
       `select c.name as category, coalesce(sum(e.amount), 0)::float as total, count(*)::int as n from expense e join expense_category c on c.id = e.category_id
-        where e.status = 'APPROVED' and e.expense_date >= $1::date and e.expense_date < $2::date and ($3::int is null or e.store_id = $3) group by c.name order by total desc`, [from, next, storeId]);
+        where e.status = 'APPROVED' and e.expense_date >= $1::date and e.expense_date < $2::date and ($3::int is null or e.store_id = $3) and ${this.expScope('e', '$4', '$5')} group by c.name order by total desc`, [from, next, storeId, storeIds, businessId]);
     const expTotal = r2(exp.reduce((x: number, e: any) => x + e.total, 0));
 
     // the bank, for the account asked for, or the accounts of the store, or all of them
@@ -446,12 +460,12 @@ export class FinanceService {
     const trend = await this.manager.query(
       `with m as (select generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), '1 month')::date as d)
        select to_char(m.d, 'YYYY-MM') as month,
-              (select coalesce(sum(total), 0)::float from sale where status = 'COMPLETE' and date_trunc('month', bill_date) = m.d and ($3::int is null or store_id = $3)) as sales,
-              (select coalesce(sum(total), 0)::float from purchase_invoice where status = 'COMPLETE' and active and not archive and date_trunc('month', invoice_date) = m.d and ($3::int is null or store_id = $3)) as purchases,
-              (select coalesce(sum(amount), 0)::float from expense where status = 'APPROVED' and date_trunc('month', expense_date) = m.d and ($3::int is null or store_id = $3)) as expenses,
+              (select coalesce(sum(total), 0)::float from sale where status = 'COMPLETE' and date_trunc('month', bill_date) = m.d and ($3::int is null or store_id = $3) and (store_id = any($6::int[]) or store_id is null)) as sales,
+              (select coalesce(sum(total), 0)::float from purchase_invoice where status = 'COMPLETE' and active and not archive and date_trunc('month', invoice_date) = m.d and ($3::int is null or store_id = $3) and store_id = any($6::int[])) as purchases,
+              (select coalesce(sum(amount), 0)::float from expense where status = 'APPROVED' and date_trunc('month', expense_date) = m.d and ($3::int is null or store_id = $3) and ${this.expScope('', '$6', '$4')}) as expenses,
               (select coalesce(sum(t.credit), 0)::float from bank_txn t join bank_account a on a.id = t.account_id where a.business_id = $4 and date_trunc('month', t.txn_date) = m.d and ($5::int is null or t.account_id = $5) and ($3::int is null or a.store_id = $3)) as bank_in,
               (select coalesce(sum(t.debit), 0)::float from bank_txn t join bank_account a on a.id = t.account_id where a.business_id = $4 and date_trunc('month', t.txn_date) = m.d and ($5::int is null or t.account_id = $5) and ($3::int is null or a.store_id = $3)) as bank_out
-         from m order by m.d`, [from, to, storeId, businessId, accountId]);
+         from m order by m.d`, [from, to, storeId, businessId, accountId, storeIds]);
 
     return {
       from, to, stores, store: storeId, tolerance: await this.tolerance(),
@@ -467,7 +481,7 @@ export class FinanceService {
 
   // ------------------------------------------------------------------ records and retention
   async records(user: any) {
-    const { businessId, stores } = await this.business(user);
+    const { businessId, stores, storeIds } = await this.business(user);
     const [set] = await this.manager.query(`select setting_value from app_setting where setting_key = 'records_retention_years' and active and not archive limit 1`);
     const years = Math.min(Math.max(Number(set?.setting_value) || 8, 1), 30);
     const today = istDay();
@@ -475,8 +489,8 @@ export class FinanceService {
     const thisFy = fyStart(today);
     const firstFy = thisFy - years;
     const from = `${firstFy}-04-01`;
-    const sales = await this.manager.query(`select to_char(bill_date, 'YYYY-MM') as m, count(*)::int as n from sale where status = 'COMPLETE' and bill_date >= $1::date group by 1`, [from]);
-    const purchases = await this.manager.query(`select to_char(invoice_date, 'YYYY-MM') as m, count(*)::int as n from purchase_invoice where status = 'COMPLETE' and active and not archive and invoice_date >= $1::date group by 1`, [from]);
+    const sales = await this.manager.query(`select to_char(bill_date, 'YYYY-MM') as m, count(*)::int as n from sale where status = 'COMPLETE' and bill_date >= $1::date and (store_id = any($2::int[]) or store_id is null) group by 1`, [from, storeIds]);
+    const purchases = await this.manager.query(`select to_char(invoice_date, 'YYYY-MM') as m, count(*)::int as n from purchase_invoice where status = 'COMPLETE' and active and not archive and invoice_date >= $1::date and store_id = any($2::int[]) group by 1`, [from, storeIds]);
     const bank = await this.manager.query(
       `select a.id as account_id, a.name, to_char(t.txn_date, 'YYYY-MM') as m, count(*)::int as n from bank_txn t join bank_account a on a.id = t.account_id where a.business_id = $1 and t.txn_date >= $2::date group by 1, 2, 3`, [businessId, from]);
     const accounts = await this.manager.query(`select id, name from bank_account where business_id = $1 and active order by name`, [businessId]);
@@ -484,7 +498,7 @@ export class FinanceService {
     const set2 = (rows: any[]) => new Map<string, number>(rows.map((r) => [r.m, r.n]));
     const sMap = set2(sales), pMap = set2(purchases);
     const monthsOf = (fy: number) => Array.from({ length: 12 }, (_, i) => { const mm = ((i + 3) % 12) + 1; const yy = mm >= 4 ? fy : fy + 1; return `${yy}-${String(mm).padStart(2, '0')}`; }).filter((m) => m <= today.slice(0, 7));
-    const earliest = await this.manager.query(`select (select to_char(min(bill_date), 'YYYY-MM') from sale where status = 'COMPLETE') as sale, (select to_char(min(invoice_date), 'YYYY-MM') from purchase_invoice where status = 'COMPLETE' and active and not archive) as purchase`);
+    const earliest = await this.manager.query(`select (select to_char(min(bill_date), 'YYYY-MM') from sale where status = 'COMPLETE' and (store_id = any($1::int[]) or store_id is null)) as sale, (select to_char(min(invoice_date), 'YYYY-MM') from purchase_invoice where status = 'COMPLETE' and active and not archive and store_id = any($1::int[])) as purchase`, [storeIds]);
     const rows: any[] = [];
     for (let fy = thisFy; fy >= firstFy; fy--) {
       const ms = monthsOf(fy);

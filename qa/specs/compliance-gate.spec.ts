@@ -49,21 +49,28 @@ test.describe.serial('Compliance gate @p1', () => {
     const gate = await api.request('GET', `/compliance/gate?storeid=${sid}&phase=open`, undefined, MGR);
     expect(gate.body.map((i: any) => i.item_key)).toContain('shift_close');
 
-    const refused = await open(api, sid, { name: 'second' });
+    // the gate follows the person, not the store: opening a shift at another store asks about the unclosed one
+    const other = await freshStore(api);
+    const refused = await open(api, other, { name: 'second' });
     expect(refused.status).toBe(409);
     expect(refused.body.required.map((i: any) => i.item_key)).toContain('shift_close');
     expect(refused.body.message).toContain('Close the shift and count the cash');
-
-    // a reason lets it go past the gate; the store's own rule (one open shift) then speaks
     const id = refused.body.required.find((i: any) => i.item_key === 'shift_close').id;
-    const withReason = await open(api, sid, { name: 'second', compliancereasons: { [id]: 'The drawer key is with the owner who is away' } });
-    expect(withReason.status).toBe(409);
-    expect(withReason.body.required).toBeUndefined();
-    expect(String(withReason.body.message)).toMatch(/open shift/i);
+
+    // a reason is recorded only when the step then goes ahead: a refusal for another reason leaves no record
+    const same = await open(api, sid, { name: 'third', compliancereasons: { [id]: 'The drawer key is with the owner who is away' } });
+    expect(same.status).toBe(409);
+    expect(String(same.body.message)).toMatch(/open shift/i);
+    expect((await api.request('GET', `/compliance/${id}/events`, undefined, MGR)).body.map((e: any) => e.kind)).not.toContain('reason');
+
+    // with the reason, the shift at the other store opens, and the reason is recorded
+    const withReason = await open(api, other, { name: 'second', compliancereasons: { [id]: 'The drawer key is with the owner who is away' } });
+    expect(withReason.status, JSON.stringify(withReason.body)).toBeLessThan(300);
     const events = await api.request('GET', `/compliance/${id}/events`, undefined, MGR);
     expect(events.body.map((e: any) => e.kind)).toContain('reason');
     // having given a reason today, the gate is out of the way until tomorrow
-    expect((await api.request('GET', `/compliance/gate?storeid=${sid}&phase=open`, undefined, MGR)).body).toEqual([]);
+    expect((await api.request('GET', `/compliance/gate?storeid=${other}&phase=open`, undefined, MGR)).body).toEqual([]);
+    expect((await close(api, withReason.body.id, user.id)).status).toBeLessThan(300);
 
     // closing the old shift resolves the item for good
     expect((await close(api, first.body.id, user.id)).status).toBeLessThan(300);

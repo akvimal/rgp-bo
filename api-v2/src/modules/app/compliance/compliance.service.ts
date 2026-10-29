@@ -99,20 +99,30 @@ export class ComplianceService {
 
   @Cron(CronExpression.EVERY_10_MINUTES, { timeZone: TZ })
   async tick() {
+    let biz: any[] = [];
     try {
-      const biz = await this.manager.query(`select id from business where active and not archive`);
-      for (const b of biz) await this.sync(b.id);
-    } catch (e: any) { this.logger.error(`compliance sync failed: ${e?.message}`); }
+      biz = await this.manager.query(`select id from business where active and not archive`);
+    } catch (e: any) { this.logger.error(`compliance sync could not list the businesses: ${e?.message}`); return; }
+    // one business that cannot be synced is logged and skipped: it must not stop the ones after it
+    for (const b of biz) {
+      try { await this.sync(b.id); } catch (e: any) { this.logger.error(`compliance sync failed for business ${b.id}: ${e?.message}`); }
+    }
   }
 
   async sync(businessId: number): Promise<void> {
     const today = await this.today();
     const cfg = await this.config.valuesFor(businessId, 'compliance');
-    const { keys, owed } = await this.generate(businessId, today);
+    const generated = await this.generate(businessId, today);
+    const keys = generated.keys;
+    let owed = generated.owed;
     const m = this.manager;
     const idOf = (r: { item_key: string; store_id: any; person_id: any; period_key: string }) => `${r.item_key}|${r.store_id ?? 0}|${r.person_id ?? 0}|${r.period_key}`;
 
     // open what is owed and already worth listing (one statement), noting which are new
+    // two facts can name the same thing owed (a licence entered twice with the same end date): one row is kept, or the insert below would refuse the whole statement
+    const unique = new Map<string, (typeof owed)[number]>();
+    for (const o of owed) if (!unique.has(idOf(o))) unique.set(idOf(o), o);
+    owed = [...unique.values()];
     const seen = new Set<string>(owed.map(idOf));
     const list = owed.filter((o) => {
       const def = itemOf(o.item_key)!;
@@ -312,10 +322,14 @@ export class ComplianceService {
       .map((r: any) => ({ id: r.id, item_key: r.item_key, label: itemOf(r.item_key)!.label, due_on: r.due_on, step: r.step, detail: r.detail }));
   }
 
-  /** Lets the step go ahead when nothing is outstanding or every outstanding item has a reason (recorded and shown to the store head); else refuses with the list. */
-  async enforce(user: any, storeId: number, phase: 'open' | 'close', reasons?: Record<string, string>) {
+  /**
+   * Lets the step go ahead when nothing is outstanding or every outstanding item has a reason; else refuses with the list. Nothing is written here: it returns
+   * a function that records the reasons (shown to the store head, audited), to be called once the step has passed its own checks, so a step that is then
+   * refused for another reason leaves no record of having gone ahead.
+   */
+  async enforce(user: any, storeId: number, phase: 'open' | 'close', reasons?: Record<string, string>): Promise<() => Promise<void>> {
     const items = await this.gate(user, storeId, phase);
-    if (!items.length) return;
+    if (!items.length) return async () => {};
     const text = (id: number) => String((reasons || {})[String(id)] || '').trim();
     const missing = items.filter((i) => text(i.id).length < 3);
     if (missing.length) {
@@ -325,10 +339,12 @@ export class ComplianceService {
         required: missing,
       });
     }
-    for (const i of items) {
-      await this.manager.query(`insert into compliance_event (instance_id, kind, actor_id, note) values ($1, 'reason', $2, $3)`, [i.id, user.id, text(i.id).slice(0, 300)]);
-      await this.audit.record({ userId: user.id, action: 'compliance.reason', entityType: 'compliance', entityId: i.id, summary: `Went ahead without doing: ${i.label}`, details: { reason: text(i.id), phase } });
-    }
+    return async () => {
+      for (const i of items) {
+        await this.manager.query(`insert into compliance_event (instance_id, kind, actor_id, note) values ($1, 'reason', $2, $3)`, [i.id, user.id, text(i.id).slice(0, 300)]);
+        await this.audit.record({ userId: user.id, action: 'compliance.reason', entityType: 'compliance', entityId: i.id, summary: `Went ahead without doing: ${i.label}`, details: { reason: text(i.id), phase } });
+      }
+    };
   }
 
   async events(user: any, id: number) {

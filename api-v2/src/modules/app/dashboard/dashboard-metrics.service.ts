@@ -233,7 +233,7 @@ export class DashboardMetricsService {
     const rows = await this.manager.query(
       `select to_char(date_trunc('week', d.booked_date), 'YYYY-MM-DD') as week,
               count(*) filter (where d.status = 'Delivered')::int as delivered, count(*) filter (where d.status = 'Failed')::int as failed,
-              count(*) filter (where d.status not in ('Delivered', 'Failed'))::int as pending
+              count(*) filter (where coalesce(d.status, 'Pending') not in ('Delivered', 'Failed'))::int as pending
          from sale_deliveries d join sale s on s.id = d."saleId"
         where d.active and not d.archive and d.booked_date >= date_trunc('week', current_date) - interval '7 weeks'
           and ($1::int[] is null or s.store_id = any($1::int[])) group by 1 order by 1`, [sc.stores]);

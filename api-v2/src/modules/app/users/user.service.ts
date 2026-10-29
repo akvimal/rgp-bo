@@ -13,6 +13,7 @@ import { ASSIGNABLE_BY_BUSINESS_HEAD, ASSIGNABLE_BY_SITE_ADMIN } from "src/core/
 import { ModulesService } from "src/core/modules/modules.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { filterPermissions } from "src/core/modules/modules";
+import { businessOfUser } from "src/core/business-of-user";
 
 @Injectable()
 export class UserService {
@@ -216,10 +217,13 @@ export class UserService {
 
     if (currentUser) {
       const caller = await this.userRepository.findOne({ where: { id: currentUser.id }, relations: ['role'] });
-      if (caller?.role?.name === 'Business Head') {
-        qb.andWhere('COALESCE(ownbusiness.id, storebusiness.id) = :businessid', { businessid: caller.businessid });
-      } else if (caller?.role?.name === 'Site Admin') {
+      if (caller?.role?.name === 'Site Admin') {
         qb.andWhere('role.name IN (:...rolenames)', { rolenames: ASSIGNABLE_BY_SITE_ADMIN });
+      } else {
+        // everyone else sees the people of their own business only (an Owner-operator or Store Head has no business column of their own: it comes from their store)
+        const businessid = await businessOfUser(this.userRepository.manager, currentUser.id);
+        if (businessid) qb.andWhere('COALESCE(ownbusiness.id, storebusiness.id) = :businessid', { businessid });
+        else qb.andWhere('u.id = :self', { self: currentUser.id });
       }
     }
 
@@ -251,6 +255,19 @@ export class UserService {
       .leftJoinAndSelect("storeassignments.store", "store")
       .where('u.id = :id', { id })
       .getOne();
+  }
+
+  /** One person for the screen that asks: yourself, anyone in your own business, or (the platform's Site Admin) the first logins of businesses. Anyone else's id is not found. */
+  async findByIdFor(id: number, currentUser: { id: number }) {
+    const found = await this.findById(id);
+    if (!found) return found;
+    if (Number(id) === Number(currentUser?.id)) return found;
+    const caller = await this.userRepository.findOne({ where: { id: currentUser?.id }, relations: ['role'] });
+    if (caller?.role?.name === 'Site Admin') return found;
+    const manager = this.userRepository.manager;
+    const [mine, theirs] = await Promise.all([businessOfUser(manager, currentUser?.id), businessOfUser(manager, Number(id))]);
+    if (!mine || mine !== theirs) throw new ForbiddenException('That person is not in your business.');
+    return found;
   }
 
   async findByUsername(username:string) {

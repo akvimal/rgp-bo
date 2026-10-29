@@ -12,8 +12,14 @@ import { SaleService } from "../sales.service";
                        <span> New Sale </span>
                     </a>
                 </li>
-                <li class="nav-item" *ngFor="let s of saved">
-                    <a class="nav-link" [routerLinkActive]="['is-active']" [routerLink]="['/secure/sales/pos/edit',s.id]">{{s.name !== null ? s.name : s.bill_no}}</a>
+                <li class="nav-item" *ngFor="let s of shown">
+                    <a class="nav-link" [routerLinkActive]="['is-active']" [routerLink]="['/secure/sales/pos/edit',s.id]" data-testid="sale-tab">{{s.name !== null ? s.name : s.bill_no}}</a>
+                </li>
+                <li class="nav-item d-flex align-items-center ms-2" *ngIf="more.length">
+                    <select class="form-select form-select-sm" aria-label="More saved sales" data-testid="sale-more" (change)="openMore($any($event.target))">
+                        <option value="">More saved ({{more.length}})</option>
+                        <option *ngFor="let s of more" [value]="s.id">{{s.name !== null ? s.name : s.bill_no}}</option>
+                    </select>
                 </li>
             </ul>
         </nav>
@@ -22,6 +28,32 @@ import { SaleService } from "../sales.service";
 export class SalePosComponent {
     
     saved:{id:number,bill_no:'',name:'',mobile:'',created_on:''}[] = []
+
+    /** at most this many saved sales are tabs; the rest are in the "More saved" list, so the row never fills the screen */
+    readonly maxTabs = 5;
+
+    /** the sale open now stays a tab even when it is an older one */
+    private get openId(): number | null {
+        const m = /\/pos\/edit\/(\d+)/.exec(this.router.url);
+        return m ? Number(m[1]) : null;
+    }
+    get shown() {
+        const first = this.saved.slice(0, this.maxTabs);
+        const open = this.openId;
+        if (open !== null && !first.some((s) => Number(s.id) === open)) {
+            const current = this.saved.find((s) => Number(s.id) === open);
+            if (current) return [...first.slice(0, this.maxTabs - 1), current];
+        }
+        return first;
+    }
+    get more() {
+        const shownIds = new Set(this.shown.map((s) => Number(s.id)));
+        return this.saved.filter((s) => !shownIds.has(Number(s.id)));
+    }
+    openMore(select: HTMLSelectElement) {
+        if (select.value) this.router.navigate(['/secure/sales/pos/edit', select.value]);
+        select.value = '';
+    }
 
     /** the blank bill is the only thing on the page: nothing to switch to, so no tab row */
     get onNew(): boolean { return this.router.url.split('?')[0].endsWith('/pos/new'); }

@@ -125,16 +125,8 @@ export class SaleController {
 
       @Put()
       async update(@Body() updateSaleDto: any, @User() currentUser: any) {
-        //get the itemid that is removed at client end
+        // the lines the client dropped are removed by the update itself, inside its transaction, after the checks
         const sale = await this.saleService.findById(updateSaleDto.id);
-        const existingItemIds = sale?.items?.map(i => i.id);
-        const newIntemIds = updateSaleDto['items'].map(i => i.id);
-        if(existingItemIds){
-          const removedItemIds = existingItemIds.filter(num => !newIntemIds.includes(num));        
-          if(removedItemIds.length > 0 ){
-            await this.saleService.removeItemsByIds(removedItemIds);
-          }
-        }
 
         let customer = updateSaleDto.customer;
         if(customer){ //if customer not present before
