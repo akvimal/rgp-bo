@@ -32,6 +32,12 @@ const sync = (api: any) => api.request('POST', '/compliance/sync', {}, MGR);
 test.describe.serial('Compliance gate @p1', () => {
   test.skip(!haveDb, 'needs the local docker database to backdate facts');
 
+  // shifts other specs left open on earlier days would each be asked for here; start from a tidy ledger
+  test.beforeAll(async ({ api }) => {
+    sql(`update store_shifts set status = 'CLOSED', closed_on = now() where status = 'OPEN' and shift_date < current_date`);
+    await sync(api);
+  });
+
   test('GATE-1 an unclosed shift of an earlier day must be closed, or a reason given, before another is opened @happy', async ({ api }) => {
     const sid = await freshStore(api);
     const user = await me(api);

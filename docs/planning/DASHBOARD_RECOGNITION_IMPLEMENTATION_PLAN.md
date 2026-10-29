@@ -186,3 +186,12 @@ Rough total: S + M + L + L + M/L + M + L + M, about 8 to 10 weeks for one person
 Stage 0 (a day), then Stage 1 and Stage 3's Owner and Manager views, so the owner sees the new dashboard early while the register is built underneath.
 
 Stage 4 closed 2026-10-29: verified; Tamil wording, handover badge, Inbox card and thanks prompt deliberately left out.
+
+## 2G. Stage 5 built: "do this to continue" and waivers (found built 2026-10-29)
+
+- `compliance-rules.ts`: `gate` on an item (days past due, shift open or close) and `isRequired`; waivers already built in stage 2 (Business Head only, reason, expiry, longest from `waiver_max_days`).
+- `compliance.service.ts`: `gate(user, store, phase)` lists outstanding required items, `enforce` refuses with 409 and the list unless each has a reason of 3+ characters; the reason is stored as an event (shown to the store head) and audited, and clears the gate for that day. `GET /compliance/gate`. Hooked into shift open (an unclosed earlier shift of the person) and shift close (stock count far overdue) in `store.service.ts`.
+- Pharmacy drug licence block: off until the Business Head turns on `block_expired_licence`; a waiver lifts it. `compliance_late` alert kind added.
+- Frontend: shift desk shows the gate card (`shiftdesk-gate`) with a reason box per item and "go ahead" / "stay here".
+- Tests: QA GATE-1..4 (4/4 pass), CR-1..5, CR-UI pass. GATE spec now closes stale open shifts left by other specs first.
+- Not done: dialog at login (the dashboard "To finish" list covers it), a screen-level test of the gate card, one shared reason for many items (a person with many unclosed shifts is asked per item).
