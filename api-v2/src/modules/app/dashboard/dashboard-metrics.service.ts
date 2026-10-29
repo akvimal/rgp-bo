@@ -6,7 +6,7 @@ import { ConfigService } from 'src/core/config/config.service';
 import { MANAGER_ROLES } from 'src/core/roles';
 import { DashboardService } from './dashboard.service';
 import { compareOf, deltaOf, marginOf, periodsFor } from './dashboard-tiles';
-import { CHECKS, cashScore, combine, complianceScore, customersScore, expectedSales, expiryScore, purchasingScore, salesScoreVs, serviceScore, stockOutScore, stockScore, suggestedTarget } from './dashboard-health';
+import { CHECKS, backlogScore, callsScore, ceilingScore, deadStockScore, repeatScore, cashScore, combine, complianceScore, customersScore, expectedSales, expiryScore, purchasingScore, salesScoreVs, serviceScore, stockOutScore, stockScore, suggestedTarget } from './dashboard-health';
 
 /** the placeholder customer used at the counter when no mobile number is given */
 const NO_MOBILE = '0000000000';
@@ -142,8 +142,9 @@ export class DashboardMetricsService {
     const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
     const todayIst = now.toISOString().slice(0, 10);
 
-    // a check the business has switched off is not asked for at all
-    const on = (k: string) => cfg[`on_${k}`] !== false;
+    // a core check counts unless switched off; an optional one only when it is switched on; a pack's check only for a business with the pack
+    const def = (k: string) => CHECKS.find((c) => c.key === k)!;
+    const on = (k: string) => (def(k).core ? cfg[`on_${k}`] !== false : cfg[`on_${k}`] === true);
     const num = (k: string, d: number) => (Number.isFinite(Number(cfg[k])) ? Number(cfg[k]) : d);
     const skip = <T>(v: T) => Promise.resolve(v);
     const basis = String(cfg.sales_basis || 'target or recent average');
@@ -199,6 +200,32 @@ export class DashboardMetricsService {
     ]);
     const exp = expectedSales(basis, { target, day, daysInMonth, lastMonthSoFar, lastYearSoFar, recentMonthlyAvg: recentAvg });
 
+    // the optional checks: only those the business has turned on are asked for
+    const dayMs = 86400000;
+    const from30 = new Date(Date.parse(todayIst) - 30 * dayMs).toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.parse(todayIst) + dayMs).toISOString().slice(0, 10);
+    const deadDays = num('dead_days', 90);
+    const waitDays = num('approvals_wait_days', 3);
+    const [deadRow, repeatRow, rates, backlog, refillRow] = await Promise.all([
+      on('dead_stock') ? this.manager.query(
+        `select coalesce(sum(v), 0)::float8 as total, coalesce(sum(v) filter (where not sold), 0)::float8 as dead from (
+           select sv.available_qty * sv.ptr_value / nullif(sv.pack, 0) as v,
+                  (sv.product_id in (select si.product_id from sale_item si join sale s on s.id = si.sale_id
+                                      where s.status = 'COMPLETE' and s.active and not s.archive and si.active and not si.archive and s.bill_date >= current_date - ($1 || ' days')::interval)) as sold
+             from stock_view sv where sv.available_qty > 0) x`, [String(deadDays)]) : skip([{}]),
+      on('repeat') ? this.manager.query(
+        `select count(*)::int as known, count(*) filter (where n >= 2)::int as repeaters from (
+           select s.customer_id, count(*) as n from sale s join customer c on c.id = s.customer_id
+            where s.status = 'COMPLETE' and s.active and not s.archive and c.mobile <> $2 and s.bill_date >= current_date - interval '90 days'
+              and ($1::int[] is null or s.store_id = any($1::int[])) group by s.customer_id) x`, [stores, NO_MOBILE]) : skip([{}]),
+      on('returns') || on('discount') ? this.salesFigures(stores, from30, tomorrow, false) : skip(null as any),
+      on('approvals') ? this.manager.query(
+        `select (select count(*) from purchase_order where approval_status = 'Pending' and active and not archive and approval_requested_at < now() - ($2 || ' days')::interval)::int as po,
+                (select count(*) from product_qtychange where status = 'PENDING' and active and not archive and created_on < now() - ($2 || ' days')::interval
+                    and ($1::int[] is null or store_id = any($1::int[])))::int as adj`, [stores, String(waitDays)]) : skip([{}]),
+      on('refills') ? this.manager.query(`select count(*)::int as n from refill_followup where created_on >= now() - interval '7 days'`) : skip([{}]),
+    ]);
+
     const today = new Date().toISOString().slice(0, 10);
     const graceDate = (() => { const d = new Date(Date.parse(today) - num('payables_grace_days', 0) * 86400000); return d.toISOString().slice(0, 10); })();
     const balance = (i: any) => Number(i.balance_amount) || 0;
@@ -218,6 +245,12 @@ export class DashboardMetricsService {
       customers: customersScore(customers[0]?.bills || 0, customers[0]?.withmobile || 0, aim),
       compliance: complianceScore(late[0]?.late || 0, late[0]?.escalated || 0, num('compliance_late_points', 10), num('compliance_escalated_points', 25)),
       service: serviceScore((service[0]?.delivered || 0) + (service[0]?.failed || 0), service[0]?.delivered || 0),
+      dead_stock: deadStockScore(deadRow[0]?.total || 0, deadRow[0]?.dead || 0),
+      repeat: repeatScore(repeatRow[0]?.known || 0, repeatRow[0]?.repeaters || 0, num('repeat_aim_pct', 40)),
+      returns: rates ? ceilingScore(rates.returnsPct, num('returns_max_pct', 3), rates.sales > 0) : null,
+      discount: rates ? ceilingScore(rates.discountPct, num('discount_max_pct', 5), rates.sales > 0) : null,
+      approvals: backlogScore((backlog[0]?.po || 0) + (backlog[0]?.adj || 0), num('approvals_points', 10)),
+      refills: callsScore(refillRow[0]?.n || 0, num('refill_calls_aim', 10)),
     };
     const weights: any = {};
     for (const c of CHECKS) weights[c.key] = Number(cfg[c.weightKey]);
@@ -238,10 +271,19 @@ export class DashboardMetricsService {
       customers: customers[0]?.bills ? `${customers[0]?.withmobile || 0} of ${customers[0]?.bills || 0} bills in ${custDays} days carry a mobile number (aim ${aim}%)` : `No bills in the last ${custDays} days to judge by`,
       compliance: `${late[0]?.late || 0} late and ${late[0]?.escalated || 0} escalated item(s) in the register`,
       service: (service[0]?.delivered || 0) + (service[0]?.failed || 0) ? `${service[0]?.delivered || 0} delivered, ${service[0]?.failed || 0} failed in ${svcDays} days` : `No finished deliveries in the last ${svcDays} days to judge by`,
+      dead_stock: deadRow[0]?.total ? `${Math.round(deadRow[0].dead || 0)} of ${Math.round(deadRow[0].total)} of stock (at cost) has not sold in ${deadDays} days` : 'No stock on hand to judge',
+      repeat: repeatRow[0]?.known ? `${repeatRow[0].repeaters || 0} of ${repeatRow[0].known} known customers of the last 90 days came back (aim ${num('repeat_aim_pct', 40)}%)` : 'No known customers in the last 90 days to judge by',
+      returns: rates && rates.sales > 0 ? `${rates.returnsPct}% of the last 30 days' sales were returned (fine up to ${num('returns_max_pct', 3)}%)` : 'No sales in the last 30 days to judge by',
+      discount: rates && rates.sales > 0 ? `${rates.discountPct}% of the last 30 days' sales was given as discount (fine up to ${num('discount_max_pct', 5)}%)` : 'No sales in the last 30 days to judge by',
+      approvals: `${(backlog[0]?.po || 0) + (backlog[0]?.adj || 0)} request(s) have waited more than ${waitDays} days (${backlog[0]?.po || 0} purchase, ${backlog[0]?.adj || 0} stock adjustment)`,
+      refills: `${refillRow[0]?.n || 0} refill call(s) recorded in the last 7 days (enough: ${num('refill_calls_aim', 10)})`,
     };
+    // an optional check with no weight is shown but does not count
+    for (const c of CHECKS) if (!c.core && on(c.key) && num(c.weightKey, 0) === 0) facts[c.key] += ' (weight 0: not counted)';
     return {
       ...result,
-      checks: result.checks.map((c) => ({ ...c, fact: !c.on ? 'Switched off in Setup' : facts[c.key] })),
+      // an optional check the business has not turned on is not listed at all; a core check that is off is listed as off
+      checks: result.checks.filter((c) => def(c.key).core || c.on).map((c) => ({ ...c, core: def(c.key).core, fact: !c.on ? 'Switched off in Setup' : facts[c.key] })),
       asOf: new Date().toISOString(), target,
       salesBasis: { chosen: basis, used: exp.source, expected: exp.expected === null ? null : Math.round(exp.expected) },
     };

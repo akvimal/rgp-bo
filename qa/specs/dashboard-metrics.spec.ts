@@ -175,7 +175,40 @@ test.describe('Dashboard metrics @p1', () => {
     } finally { await reset(); }
   });
 
-  test('HM-13 a bad parameter is refused and only the Business Head changes them @negative', async ({ api }) => {
+  test('HM-14 the optional checks are not listed until turned on, then count only with a weight, and a pack check only for a business with the pack @happy', async ({ api }) => {
+    const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+    const keys = ['on_dead_stock', 'w_dead_stock', 'on_repeat', 'w_repeat', 'on_returns', 'w_returns', 'on_discount', 'w_discount', 'on_approvals', 'w_approvals', 'on_refills', 'w_refills', 'w_sales'];
+    const reset = async () => { for (const k of keys) await api.request('DELETE', `/config/health/${k}`, undefined, MGR); };
+    const health = async () => (await api.request('GET', '/dashboard/health', undefined, MGR)).body;
+    try {
+      await reset();
+      const base = await health();
+      expect(base.checks.map((c: any) => c.key)).toEqual(['sales', 'stock', 'cash', 'purchasing', 'customers', 'compliance', 'service']);   // none of the optional ones
+
+      // on but with no weight: shown, and says it is not counted
+      expect((await api.request('PUT', '/config/health', { values: { on_dead_stock: true, on_repeat: true, on_returns: true, on_discount: true, on_approvals: true, on_refills: true }, effectiveFrom: today }, MGR)).status).toBe(200);
+      let h = await health();
+      for (const k of ['dead_stock', 'repeat', 'returns', 'discount', 'approvals', 'refills']) {
+        const c = h.checks.find((x: any) => x.key === k);
+        expect(c, k).toBeTruthy();
+        expect(c.core).toBe(false);
+        expect(typeof c.fact).toBe('string');
+        expect(c.fact).toContain('weight 0: not counted');
+      }
+      expect(h.score).toBe(base.score);                                                  // nothing counted yet
+
+      // a weight must be taken from another check so the total stays 100
+      expect((await api.request('PUT', '/config/health', { values: { w_approvals: 10 }, effectiveFrom: today }, MGR)).status).toBe(400);
+      expect((await api.request('PUT', '/config/health', { values: { w_approvals: 10, w_sales: 15 }, effectiveFrom: today }, MGR)).status).toBe(200);
+      h = await health();
+      const ap = h.checks.find((x: any) => x.key === 'approvals');
+      expect(ap.weight).toBe(10);
+      expect(ap.fact).not.toContain('not counted');
+      expect(ap.score).not.toBeNull();
+    } finally { await reset(); }
+  });
+
+  test('HM-13a bad parameter is refused and only the Business Head changes them @negative', async ({ api }) => {
     expect((await api.request('PUT', '/config/health', { values: { stock_basis: 'by the weight' } }, MGR)).status).toBe(400);
     expect((await api.request('PUT', '/config/health', { values: { payables_grace_days: 400 } }, MGR)).status).toBe(400);
     expect((await api.request('PUT', '/config/health', { values: { cash_points_per_shift: 7 } }, MGR)).status).toBe(400);   // steps of 5

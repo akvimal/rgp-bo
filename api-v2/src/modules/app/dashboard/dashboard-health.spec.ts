@@ -1,4 +1,4 @@
-import { expiryScore, stockOutScore, expectedSales, salesScoreVs, suggestedTarget, cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
+import { backlogScore, callsScore, ceilingScore, deadStockScore, repeatScore, CHECKS, expiryScore, stockOutScore, expectedSales, salesScoreVs, suggestedTarget, cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
 
 const settings = { weights: { sales: 25, stock: 15, cash: 15, purchasing: 10, customers: 10, compliance: 15, service: 10 }, healthyMin: 80, holdBelow: 60 };
 const all = (n: number) => ({ sales: n, stock: n, cash: n, purchasing: n, customers: n, compliance: n, service: n });
@@ -137,5 +137,48 @@ describe('switched-off checks', () => {
   });
   it('with every check off there is no score', () => {
     expect(combine(all(90), { ...settings, off: ['sales', 'stock', 'cash', 'purchasing', 'customers', 'compliance', 'service'] }).score).toBeNull();
+  });
+});
+
+describe('optional checks', () => {
+  it('are in the catalogue after the core seven, and only the pack one belongs to a pack', () => {
+    expect(CHECKS.filter((c) => c.core).map((c) => c.key)).toEqual(['sales', 'stock', 'cash', 'purchasing', 'customers', 'compliance', 'service']);
+    expect(CHECKS.filter((c) => !c.core).map((c) => c.key)).toEqual(['dead_stock', 'repeat', 'returns', 'discount', 'approvals', 'refills']);
+    expect(CHECKS.filter((c) => c.pack).map((c) => [c.key, c.pack])).toEqual([['refills', 'pharmacy']]);
+    expect(new Set(CHECKS.map((c) => c.weightKey)).size).toBe(CHECKS.length);
+  });
+  it('dead stock: the share of stock value that has sat unsold', () => {
+    expect(deadStockScore(1000, 250)).toBe(75);
+    expect(deadStockScore(0, 0)).toBeNull();
+  });
+  it('repeat customers: the share who came back against the aim', () => {
+    expect(repeatScore(100, 40, 40)).toBe(100);
+    expect(repeatScore(100, 20, 40)).toBe(50);
+    expect(repeatScore(0, 0, 40)).toBeNull();
+  });
+  it('returns and discounts: full marks to the limit, nothing at twice the limit, nothing to judge without sales', () => {
+    expect(ceilingScore(2, 3, true)).toBe(100);
+    expect(ceilingScore(3, 3, true)).toBe(100);
+    expect(ceilingScore(4.5, 3, true)).toBe(50);
+    expect(ceilingScore(9, 3, true)).toBe(0);
+    expect(ceilingScore(1, 3, false)).toBeNull();
+    expect(ceilingScore(0, 0, true)).toBe(100);
+    expect(ceilingScore(1, 0, true)).toBe(0);
+  });
+  it('approvals waiting: points off for each, never below zero', () => {
+    expect(backlogScore(0, 10)).toBe(100);
+    expect(backlogScore(3, 10)).toBe(70);
+    expect(backlogScore(30, 10)).toBe(0);
+  });
+  it('refill calls: the calls recorded against the number that counts as enough', () => {
+    expect(callsScore(5, 10)).toBe(50);
+    expect(callsScore(25, 10)).toBe(100);
+    expect(callsScore(3, 0)).toBeNull();
+  });
+  it('an optional check counts only with a weight, and takes its share from the others', () => {
+    const w = { ...settings.weights, sales: 15, dead_stock: 10 } as any;
+    const r = combine({ ...all(100), dead_stock: 0 }, { ...settings, weights: w });
+    expect(r.score).toBe(90);
+    expect(combine({ ...all(100), dead_stock: 0 }, { ...settings, weights: { ...settings.weights, dead_stock: 0 } as any }).score).toBe(100);
   });
 });

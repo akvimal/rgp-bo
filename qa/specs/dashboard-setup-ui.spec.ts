@@ -62,7 +62,18 @@ test('DSU-UI-4 each health check has its own group: switch one off and the dashb
   }
 });
 
-test('DSU-UI-3the Store Head reads the settings with no controls to change them', async ({ app }) => {
+test('DSU-UI-5 the optional checks are in the health tab, off with no weight, and the weights total shows when one is given a share', async ({ app }) => {
+  const { page } = await app.open(MGR, '/secure/settings/dashboards');
+  await page.getByTestId('dsetup-tab-health').click();
+  for (const g of ['Dead stock', 'Repeat customers', 'Returns', 'Discounts', 'Approvals waiting', 'Refill calls']) await expect(page.getByTestId(`dsetup-group-${g}`)).toBeVisible();
+  await expect(page.getByTestId('dsetup-input-on_dead_stock')).not.toBeChecked();
+  await expect(page.getByTestId('dsetup-input-w_dead_stock')).toHaveValue('0');
+  await expect(page.getByTestId('dsetup-weights')).toHaveCount(0);
+  await page.getByTestId('dsetup-input-w_dead_stock').fill('10');
+  await expect(page.getByTestId('dsetup-weights')).toContainText('add up to 110');
+});
+
+test('DSU-UI-3 the Store Head reads the settings with no controls to change them', async ({ app }) => {
   const { page } = await app.open(HEAD, '/secure/settings/dashboards');
   await expect(page.getByTestId('dsetup-readonly')).toBeVisible();
   await page.getByTestId('dsetup-tab-compliance').click();

@@ -245,3 +245,16 @@ Stage 4 closed 2026-10-29: verified; Tamil wording, handover badge, Inbox card a
 - Pure rules `stockOutScore`, `expiryScore`, and parameters on `cashScore` and `complianceScore` (+7 unit tests). Defaults reproduce the earlier scores.
 - Setup > Health and targets shows a heading per check. Tests: QA HM-12, HM-13, DSU-UI-4; 315 unit tests.
 - Not built (step 3): a catalogue of extra checks (dead stock, repeat customers, returns rate, discount band, margin, attendance, pharmacy items) from which a business picks.
+
+## 2M. Store health: a catalogue of optional checks (2026-10-29, step 3)
+
+- `CHECKS` is now a catalogue (`core`, optional `pack`). The seven core checks count unless switched off. Six optional checks are off with weight 0 until the business turns them on and gives them a share (the weights must still add up to 100, so a share is taken from another check):
+  - Dead stock: share of stock value (at cost) with no sale in N days.
+  - Repeat customers: known customers (mobile number) of the last 90 days who bought again, against an aim.
+  - Returns: returns as a share of the last 30 days' sales, full marks up to a limit and nothing at twice the limit.
+  - Discounts: the same shape for discount given.
+  - Approvals waiting: purchase requests and stock adjustments waiting more than N days, points lost for each.
+  - Refill calls (pharmacy pack only): calls recorded in the last 7 days against an aim.
+- An optional check that is not on is not queried and not listed; one that is on but has weight 0 is shown with "weight 0: not counted". Pure rules `deadStockScore`, `repeatScore`, `ceilingScore`, `backlogScore`, `callsScore` (+7 unit tests). All parameters are Setup settings with limits, grouped under a heading per check.
+- Not built: margin as a check (it is owner-only, so the score would differ by viewer), attendance, drug-register coverage (the till already blocks a scheduled drug without its register line), and checks written by the business itself (free-form formulas are deliberately not offered).
+- Tests: unit 329; QA HM-14 and DSU-UI-5 added (HM-1..14, DSU-UI-1..5 pass).

@@ -6,15 +6,26 @@
  * something it does not use. Safeguard: one check under `holdBelow` keeps the whole at Watch however high the total is (it cannot be switched off).
  */
 
-export type CheckKey = 'sales' | 'stock' | 'cash' | 'purchasing' | 'customers' | 'compliance' | 'service';
-export const CHECKS: { key: CheckKey; label: string; weightKey: string }[] = [
-  { key: 'sales', label: 'Sales against target', weightKey: 'w_sales' },
-  { key: 'stock', label: 'Stock', weightKey: 'w_stock' },
-  { key: 'cash', label: 'Cash and shifts', weightKey: 'w_cash' },
-  { key: 'purchasing', label: 'Purchasing and payables', weightKey: 'w_purchasing' },
-  { key: 'customers', label: 'Customers', weightKey: 'w_customers' },
-  { key: 'compliance', label: 'Compliance', weightKey: 'w_compliance' },
-  { key: 'service', label: 'Service and deliveries', weightKey: 'w_service' },
+export type CheckKey = 'sales' | 'stock' | 'cash' | 'purchasing' | 'customers' | 'compliance' | 'service' | 'dead_stock' | 'repeat' | 'returns' | 'discount' | 'approvals' | 'refills';
+/**
+ * The catalogue. The seven core checks count unless switched off. The others are optional: they count only when the business turns them on and gives them
+ * a weight, and a pack's check (refill calls: the pharmacy pack) exists only for a business that has the pack.
+ */
+export interface CheckDef { key: CheckKey; label: string; weightKey: string; core: boolean; pack?: string }
+export const CHECKS: CheckDef[] = [
+  { key: 'sales', label: 'Sales', weightKey: 'w_sales', core: true },
+  { key: 'stock', label: 'Stock', weightKey: 'w_stock', core: true },
+  { key: 'cash', label: 'Cash and shifts', weightKey: 'w_cash', core: true },
+  { key: 'purchasing', label: 'Purchasing and payables', weightKey: 'w_purchasing', core: true },
+  { key: 'customers', label: 'Customers', weightKey: 'w_customers', core: true },
+  { key: 'compliance', label: 'Compliance', weightKey: 'w_compliance', core: true },
+  { key: 'service', label: 'Service and deliveries', weightKey: 'w_service', core: true },
+  { key: 'dead_stock', label: 'Dead stock', weightKey: 'w_dead_stock', core: false },
+  { key: 'repeat', label: 'Repeat customers', weightKey: 'w_repeat', core: false },
+  { key: 'returns', label: 'Returns', weightKey: 'w_returns', core: false },
+  { key: 'discount', label: 'Discounts', weightKey: 'w_discount', core: false },
+  { key: 'approvals', label: 'Approvals waiting', weightKey: 'w_approvals', core: false },
+  { key: 'refills', label: 'Refill calls', weightKey: 'w_refills', core: false, pack: 'pharmacy' },
 ];
 
 export type HealthStatus = 'healthy' | 'watch' | 'act';
@@ -100,6 +111,34 @@ export function cashScore(staleOpenShifts: number, stalePoints = 25, varianceShi
 /** the share of products that sold lately and are still in stock; none sold: nothing to judge */
 export function stockOutScore(selling: number, outOfStock: number): number | null {
   return selling > 0 ? pct(100 - (outOfStock / selling) * 100) : null;
+}
+
+/** the share of the stock (at cost) that has not sat unsold for the chosen days; no stock: nothing to judge */
+export function deadStockScore(totalValue: number, deadValue: number): number | null {
+  return totalValue > 0 ? pct(100 - (deadValue / totalValue) * 100) : null;
+}
+
+/** the share of known customers who came back, against the share that should have; nobody known: nothing to judge */
+export function repeatScore(known: number, repeaters: number, aimPct: number): number | null {
+  if (known <= 0) return null;
+  return pct((((repeaters / known) * 100) / Math.max(1, aimPct)) * 100);
+}
+
+/** a rate that should stay under a limit (returns, discounts): full marks up to the limit, nothing at twice the limit; no sales: nothing to judge */
+export function ceilingScore(ratePct: number, maxPct: number, hasSales: boolean): number | null {
+  if (!hasSales) return null;
+  if (maxPct <= 0) return ratePct > 0 ? 0 : 100;
+  return ratePct <= maxPct ? 100 : pct(100 - ((ratePct - maxPct) / maxPct) * 100);
+}
+
+/** each request left waiting too long takes `points` off */
+export function backlogScore(waiting: number, points: number): number {
+  return pct(100 - Math.max(0, waiting) * Math.max(0, points));
+}
+
+/** calls recorded in the week against the number that counts as enough */
+export function callsScore(calls: number, aim: number): number | null {
+  return aim > 0 ? pct((Math.max(0, calls) / aim) * 100) : null;
 }
 
 /** the share of the stock (at cost) that is not close to expiry; no stock: nothing to judge */
