@@ -35,9 +35,11 @@ const ROLES = ['Business Head', 'Owner-operator', 'Store Head', 'Sales Staff', '
 
       <div class="card mb-3"><div class="card-body p-0">
         <div class="row g-0 border-bottom p-2 small fw-semibold text-muted d-none d-md-flex"><div class="col-md-5">Setting</div><div class="col-md-3">Your choice</div><div class="col-md-2">Default</div><div class="col-md-2"></div></div>
-        <div class="row g-0 border-bottom p-2 align-items-center" *ngFor="let i of items" [attr.data-testid]="'dsetup-row-' + i.key">
+        <ng-container *ngFor="let i of items; let n = index">
+        <div class="row g-0 bg-light border-bottom px-2 py-1 small fw-semibold" *ngIf="tab === 'health' && heading(n)" [attr.data-testid]="'dsetup-group-' + heading(n)">{{heading(n)}}</div>
+        <div class="row g-0 border-bottom p-2 align-items-center" [attr.data-testid]="'dsetup-row-' + i.key">
           <div class="col-md-5">
-            <label [attr.for]="'f-' + i.key" class="mb-0">{{i.label}}</label>
+            <label [attr.for]="'f-' + i.key" class="mb-0">{{tab === 'health' && i.label.includes(': ') ? i.label.split(': ').slice(1).join(': ') : i.label}}</label>
             <div class="small text-muted" *ngIf="i.locked"><i class="bi bi-lock"></i> Required: cannot be changed.</div>
             <div class="small text-muted" *ngIf="i.planLocked && !i.locked"><i class="bi bi-lock"></i> Not changeable on your plan.</div>
             <div class="small text-muted" *ngIf="i.source === 'business' && i.since">Set from {{i.since}}</div>
@@ -58,6 +60,7 @@ const ROLES = ['Business Head', 'Owner-operator', 'Store Head', 'Sales Staff', '
             <button class="btn btn-sm btn-outline-secondary" *ngIf="canEdit && (i.source === 'business' || i.pending) && !i.planLocked && !i.locked" (click)="resetOne(i)" [attr.data-testid]="'dsetup-reset-' + i.key">Reset to default</button>
           </div>
         </div>
+        </ng-container>
         <div class="p-3 text-muted" *ngIf="loaded && !items.length">Nothing to set in this group for your business.</div>
       </div></div>
 
@@ -149,6 +152,12 @@ export class DashboardSetupComponent implements OnInit {
     get weightTotal(): number { return this.items.filter((i) => i.key.startsWith('w_')).reduce((a, i) => a + (Number(this.draft[i.key]) || 0), 0); }
 
     ngOnInit() { this.open('views'); }
+
+    /** in the health tab the settings are grouped by check (the part of the label before the colon): a heading shows where a new check starts */
+    heading(n: number): string {
+        const g = (k: number) => { const l = this.items[k]?.label || ''; return l.includes(':') ? l.split(':')[0] : ''; };
+        return n === 0 || g(n) !== g(n - 1) ? g(n) : '';
+    }
 
     editable(i: ConfigItem): boolean { return this.canEdit && !i.locked && !i.planLocked; }
     show(v: any, i: ConfigItem): string { return i.kind === 'bool' ? (v ? 'On' : 'Off') : `${v}${i.unit ? ' ' + i.unit : ''}`; }

@@ -6,7 +6,7 @@ import { ConfigService } from 'src/core/config/config.service';
 import { MANAGER_ROLES } from 'src/core/roles';
 import { DashboardService } from './dashboard.service';
 import { compareOf, deltaOf, marginOf, periodsFor } from './dashboard-tiles';
-import { CHECKS, cashScore, combine, complianceScore, customersScore, expectedSales, purchasingScore, salesScoreVs, serviceScore, stockScore, suggestedTarget } from './dashboard-health';
+import { CHECKS, cashScore, combine, complianceScore, customersScore, expectedSales, expiryScore, purchasingScore, salesScoreVs, serviceScore, stockOutScore, stockScore, suggestedTarget } from './dashboard-health';
 
 /** the placeholder customer used at the counter when no mobile number is given */
 const NO_MOBILE = '0000000000';
@@ -135,76 +135,116 @@ export class DashboardMetricsService {
     if (!sc.businessId) return { score: null, status: null, held: false, checks: [] };
     const stores = sc.stores;
     const cfg = await this.config.valuesFor(sc.businessId, 'health');
-    const comp = await this.config.valuesFor(sc.businessId, 'compliance');
     const rec = await this.config.valuesFor(sc.businessId, 'recognition');
     const now = new Date(Date.now() + 5.5 * 3600000);
     const month = now.toISOString().slice(0, 7);
     const day = now.getUTCDate();
     const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
-
-    const basis = String(cfg.sales_basis || 'target or recent average');
     const todayIst = now.toISOString().slice(0, 10);
+
+    // a check the business has switched off is not asked for at all
+    const on = (k: string) => cfg[`on_${k}`] !== false;
+    const num = (k: string, d: number) => (Number.isFinite(Number(cfg[k])) ? Number(cfg[k]) : d);
+    const skip = <T>(v: T) => Promise.resolve(v);
+    const basis = String(cfg.sales_basis || 'target or recent average');
+    const stockBasis = String(cfg.stock_basis || 'products below their minimum');
     const per = periodsFor(todayIst, 'prev');
     const yr = periodsFor(todayIst, 'lastyear');
-    const [sales, target, stock, shifts, owed, customers, late, service, lastMonthSoFar, lastYearSoFar, recentAvg] = await Promise.all([
-      this.dash.getSalesAggregate(stores, 'month'),
-      this.targetFor(sc.businessId, stores, requested, month),
-      this.manager.query(
-        `select count(*) filter (where p.min_stock > 0)::int as withmin,
-                count(*) filter (where p.min_stock > 0 and coalesce(b.q, 0) >= p.min_stock)::int as ok
-           from product p left join (select product_id, sum(available_qty) as q from stock_view group by 1) b on b.product_id = p.id
-          where p.active and not p.archive`),
-      this.manager.query(`select count(*)::int as n from store_shifts where status = 'OPEN' and shift_date < current_date and ($1::int[] is null or store_id = any($1::int[]))`, [stores]),
-      this.dash.getOutstandingInvoices(stores),
-      this.manager.query(
+    const custDays = num('customers_window_days', 30);
+    const svcDays = num('service_window_days', 30);
+    const sellDays = num('stock_window_days', 30);
+    const expiryDays = num('expiry_days', 90);
+    const tol = num('cash_tolerance', 100);
+
+    const [sales, target, stock, shifts, varShifts, owed, customers, late, service, lastMonthSoFar, lastYearSoFar, recentAvg] = await Promise.all([
+      on('sales') ? this.dash.getSalesAggregate(stores, 'month') : skip({ total: 0, orders: 0 }),
+      on('sales') ? this.targetFor(sc.businessId, stores, requested, month) : skip(null),
+      !on('stock') ? skip([{}]) : stockBasis === 'products out of stock but selling'
+        ? this.manager.query(
+          `select count(*)::int as selling, count(*) filter (where coalesce(b.q, 0) <= 0)::int as out
+             from (select si.product_id from sale_item si join sale s on s.id = si.sale_id
+                    where s.status = 'COMPLETE' and s.active and not s.archive and si.active and not si.archive and s.bill_date >= current_date - ($2 || ' days')::interval
+                      and ($1::int[] is null or s.store_id = any($1::int[])) group by si.product_id having sum(si.qty) > 0) sold
+             left join (select product_id, sum(available_qty) as q from stock_view group by 1) b on b.product_id = sold.product_id`, [stores, String(sellDays)])
+        : stockBasis === 'stock close to expiry'
+          ? this.manager.query(
+            `select coalesce(sum(available_qty * ptr_value / nullif(pack, 0)), 0)::float8 as total,
+                    coalesce(sum(available_qty * ptr_value / nullif(pack, 0)) filter (where expdate <= current_date + ($1 || ' days')::interval), 0)::float8 as expiring
+               from stock_view where available_qty > 0`, [String(expiryDays)])
+          : this.manager.query(
+            `select count(*) filter (where p.min_stock > 0)::int as withmin,
+                    count(*) filter (where p.min_stock > 0 and coalesce(b.q, 0) >= p.min_stock)::int as ok
+               from product p left join (select product_id, sum(available_qty) as q from stock_view group by 1) b on b.product_id = p.id
+              where p.active and not p.archive`),
+      on('cash') ? this.manager.query(`select count(*)::int as n from store_shifts where status = 'OPEN' and shift_date < current_date and ($1::int[] is null or store_id = any($1::int[]))`, [stores]) : skip([{ n: 0 }]),
+      on('cash') && num('cash_variance_points', 0) > 0
+        ? this.manager.query(`select count(*)::int as n from store_shifts where status = 'CLOSED' and closed_on >= now() - interval '30 days' and abs(coalesce(variance, 0)) > $2 and ($1::int[] is null or store_id = any($1::int[]))`, [stores, tol])
+        : skip([{ n: 0 }]),
+      on('purchasing') ? this.dash.getOutstandingInvoices(stores) : skip([] as any[]),
+      on('customers') ? this.manager.query(
         `select count(*)::int as bills, count(*) filter (where c.mobile is not null and c.mobile <> $2)::int as withmobile
            from sale s left join customer c on c.id = s.customer_id
-          where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '30 days'
-            and ($1::int[] is null or s.store_id = any($1::int[]))`, [stores, NO_MOBILE]),
-      this.manager.query(
+          where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - ($3 || ' days')::interval
+            and ($1::int[] is null or s.store_id = any($1::int[]))`, [stores, NO_MOBILE, String(custDays)]) : skip([{}]),
+      on('compliance') ? this.manager.query(
         `select count(*) filter (where step = 'late')::int as late, count(*) filter (where step = 'escalated')::int as escalated
-           from compliance_instance where business_id = $1 and state = 'OPEN' and not_mine = false and ($2::int[] is null or store_id is null or store_id = any($2::int[]))`, [sc.businessId, stores]),
-      this.manager.query(
+           from compliance_instance where business_id = $1 and state = 'OPEN' and not_mine = false and ($2::int[] is null or store_id is null or store_id = any($2::int[]))`, [sc.businessId, stores]) : skip([{}]),
+      on('service') ? this.manager.query(
         `select count(*) filter (where d.status = 'Delivered')::int as delivered, count(*) filter (where d.status = 'Failed')::int as failed
            from sale_deliveries d join sale s on s.id = d."saleId"
-          where d.active and not d.archive and d.booked_date >= current_date - interval '30 days' and ($1::int[] is null or s.store_id = any($1::int[]))`, [stores]),
-      basis === 'last month' ? this.sumSales(stores, per.cmpFrom, per.cmpTo) : Promise.resolve(0),
-      basis === 'same period last year' ? this.sumSales(stores, yr.cmpFrom, yr.cmpTo) : Promise.resolve(0),
-      basis === 'recent average' || basis === 'target or recent average' ? this.recentMonthlyAverage(stores, `${month}-01`, Number(cfg.recent_months) || 3) : Promise.resolve(null),
+          where d.active and not d.archive and d.booked_date >= current_date - ($2 || ' days')::interval and ($1::int[] is null or s.store_id = any($1::int[]))`, [stores, String(svcDays)]) : skip([{}]),
+      on('sales') && basis === 'last month' ? this.sumSales(stores, per.cmpFrom, per.cmpTo) : skip(0),
+      on('sales') && basis === 'same period last year' ? this.sumSales(stores, yr.cmpFrom, yr.cmpTo) : skip(0),
+      on('sales') && (basis === 'recent average' || basis === 'target or recent average') ? this.recentMonthlyAverage(stores, `${month}-01`, num('recent_months', 3)) : skip(null),
     ]);
     const exp = expectedSales(basis, { target, day, daysInMonth, lastMonthSoFar, lastYearSoFar, recentMonthlyAvg: recentAvg });
 
     const today = new Date().toISOString().slice(0, 10);
+    const graceDate = (() => { const d = new Date(Date.parse(today) - num('payables_grace_days', 0) * 86400000); return d.toISOString().slice(0, 10); })();
     const balance = (i: any) => Number(i.balance_amount) || 0;
     const owedTotal = owed.reduce((a: number, i: any) => a + balance(i), 0);
-    const overdueTotal = owed.filter((i: any) => i.due_date && String(i.due_date).slice(0, 10) < today).reduce((a: number, i: any) => a + balance(i), 0);
+    const overdueTotal = owed.filter((i: any) => i.due_date && String(i.due_date).slice(0, 10) < graceDate).reduce((a: number, i: any) => a + balance(i), 0);
     const aim = Number(rec.capture_pct) || 95;
+    const s0: any = stock[0] || {};
 
+    const stockResult = stockBasis === 'products out of stock but selling' ? stockOutScore(s0.selling || 0, s0.out || 0)
+      : stockBasis === 'stock close to expiry' ? expiryScore(s0.total || 0, s0.expiring || 0)
+      : stockScore(s0.withmin || 0, s0.ok || 0);
     const scores = {
       sales: salesScoreVs(sales.total, exp.expected),
-      stock: stockScore(stock[0]?.withmin || 0, stock[0]?.ok || 0),
-      cash: cashScore(shifts[0]?.n || 0),
+      stock: stockResult,
+      cash: cashScore(shifts[0]?.n || 0, num('cash_points_per_shift', 25), varShifts[0]?.n || 0, num('cash_variance_points', 0)),
       purchasing: purchasingScore(owedTotal, overdueTotal),
       customers: customersScore(customers[0]?.bills || 0, customers[0]?.withmobile || 0, aim),
-      compliance: complianceScore(late[0]?.late || 0, late[0]?.escalated || 0),
+      compliance: complianceScore(late[0]?.late || 0, late[0]?.escalated || 0, num('compliance_late_points', 10), num('compliance_escalated_points', 25)),
       service: serviceScore((service[0]?.delivered || 0) + (service[0]?.failed || 0), service[0]?.delivered || 0),
     };
     const weights: any = {};
     for (const c of CHECKS) weights[c.key] = Number(cfg[c.weightKey]);
-    const result = combine(scores, { weights, healthyMin: Number(cfg.healthy_min) || 80, holdBelow: Number(cfg.hold_below) || 60 });
-    // the figures behind each check, so a score can be explained and traced
+    const off = CHECKS.map((c) => c.key).filter((k) => !on(k));
+    const result = combine(scores, { weights, healthyMin: Number(cfg.healthy_min) || 80, holdBelow: Number(cfg.hold_below) || 60, off });
+    // the figures behind each check, so a score can be explained and traced; a check with nothing to judge says what is needed
     const facts: Record<string, string> = {
       sales: exp.expected
         ? `${Math.round(sales.total)} so far, against ${Math.round(exp.expected)} expected by now (${exp.source === 'target' ? 'from the monthly target' : exp.source === 'recent average' ? 'from the recent monthly average' : exp.source === 'last month' ? 'the same days of last month' : 'the same days a year ago'})`
         : basis === 'off' ? 'Not measured: switched off in Setup' : 'Nothing to measure against yet: set a target, or choose another basis in Setup (Health and targets)',
-      stock: `${stock[0]?.ok || 0} of ${stock[0]?.withmin || 0} products with a minimum are at or above it`,
-      cash: `${shifts[0]?.n || 0} shift(s) left open from an earlier day`,
-      purchasing: `${Math.round(overdueTotal)} overdue of ${Math.round(owedTotal)} owed to vendors`,
-      customers: `${customers[0]?.withmobile || 0} of ${customers[0]?.bills || 0} bills in 30 days carry a mobile number (aim ${aim}%)`,
+      stock: stockBasis === 'products out of stock but selling'
+        ? (s0.selling ? `${s0.out || 0} of ${s0.selling} products sold in the last ${sellDays} days are out of stock` : `No sales in the last ${sellDays} days to judge by`)
+        : stockBasis === 'stock close to expiry'
+          ? (s0.total ? `${Math.round(s0.expiring || 0)} of ${Math.round(s0.total)} of stock (at cost) expires within ${expiryDays} days` : 'No stock on hand to judge')
+          : (s0.withmin ? `${s0.ok || 0} of ${s0.withmin} products with a minimum are at or above it` : 'No product has a minimum stock yet: set one on the products, or choose another stock basis in Setup'),
+      cash: `${shifts[0]?.n || 0} shift(s) left open from an earlier day${num('cash_variance_points', 0) > 0 ? `, ${varShifts[0]?.n || 0} closed in 30 days with a drawer difference over ${tol}` : ''}`,
+      purchasing: `${Math.round(overdueTotal)} overdue of ${Math.round(owedTotal)} owed to vendors${num('payables_grace_days', 0) ? ` (${num('payables_grace_days', 0)} days of grace)` : ''}`,
+      customers: customers[0]?.bills ? `${customers[0]?.withmobile || 0} of ${customers[0]?.bills || 0} bills in ${custDays} days carry a mobile number (aim ${aim}%)` : `No bills in the last ${custDays} days to judge by`,
       compliance: `${late[0]?.late || 0} late and ${late[0]?.escalated || 0} escalated item(s) in the register`,
-      service: `${service[0]?.delivered || 0} delivered, ${service[0]?.failed || 0} failed in 30 days`,
+      service: (service[0]?.delivered || 0) + (service[0]?.failed || 0) ? `${service[0]?.delivered || 0} delivered, ${service[0]?.failed || 0} failed in ${svcDays} days` : `No finished deliveries in the last ${svcDays} days to judge by`,
     };
-    return { ...result, checks: result.checks.map((c) => ({ ...c, fact: facts[c.key] })), asOf: new Date().toISOString(), target, salesBasis: { chosen: basis, used: exp.source, expected: exp.expected === null ? null : Math.round(exp.expected) } };
+    return {
+      ...result,
+      checks: result.checks.map((c) => ({ ...c, fact: !c.on ? 'Switched off in Setup' : facts[c.key] })),
+      asOf: new Date().toISOString(), target,
+      salesBasis: { chosen: basis, used: exp.source, expected: exp.expected === null ? null : Math.round(exp.expected) },
+    };
   }
 
   // ------------------------------------------------------------------ tiles

@@ -230,3 +230,18 @@ Stage 4 closed 2026-10-29: verified; Tamil wording, handover badge, Inbox card a
 - `GET /dashboard/health` also returns `salesBasis {chosen, used, expected}`; the sales fact says where the expected figure came from.
 - `GET /dashboard/targets/suggest?month=&growth=` (Business Head only, saves nothing): same month last year, or the recent average when there is no history for it, plus growth, to the nearest hundred, for the business and each store. Settings > Health and targets has "Suggest from history" with a growth box; the figures are checked and saved with Save targets.
 - Tests: QA HM-10 and HM-11, DSU-UI-2 extended. Step 2 (each check on or off with its own parameters) and step 3 (a catalogue of extra checks) are proposed, not built.
+
+## 2L. Store health: each check switchable and tunable (2026-10-29, step 2)
+
+- Health settings are now grouped by check, each with an on/off switch (`on_<check>`), its weight, and its own parameters:
+  - Sales: basis and recent months (step 1).
+  - Stock: judged by products below their minimum [default], products out of stock but selling (`stock_window_days`), or stock close to expiry (`expiry_days`).
+  - Cash and shifts: points per stale open shift, optional points per recent shift with a drawer difference over a tolerance (off by default).
+  - Purchasing and payables: days of grace before an invoice counts as overdue.
+  - Customers: days of bills looked at (the mobile-number aim stays under Goals and badges).
+  - Compliance: points per late and per escalated item.
+  - Service and deliveries: days of deliveries looked at.
+- A switched-off check is not queried or scored, shows "off" on the health card, and the others are scaled up (so it can no longer hold the store at Watch). The weights still have to add up to 100; the Watch safeguard is unchanged.
+- Pure rules `stockOutScore`, `expiryScore`, and parameters on `cashScore` and `complianceScore` (+7 unit tests). Defaults reproduce the earlier scores.
+- Setup > Health and targets shows a heading per check. Tests: QA HM-12, HM-13, DSU-UI-4; 315 unit tests.
+- Not built (step 3): a catalogue of extra checks (dead stock, repeat customers, returns rate, discount band, margin, attendance, pharmacy items) from which a business picks.

@@ -140,6 +140,49 @@ test.describe('Dashboard metrics @p1', () => {
     }
   });
 
+  test('HM-12 a check can be switched off, judged another way, or given other parameters, and each setting changes only its own check @happy', async ({ api }) => {
+    const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+    const set = (values: any) => api.request('PUT', '/config/health', { values, effectiveFrom: today }, MGR);
+    const health = async () => (await api.request('GET', '/dashboard/health', undefined, MGR)).body;
+    const check = (h: any, k: string) => h.checks.find((c: any) => c.key === k);
+    const reset = async () => { for (const k of ['on_compliance', 'stock_basis', 'payables_grace_days', 'compliance_late_points']) await api.request('DELETE', `/config/health/${k}`, undefined, MGR); };
+    try {
+      await reset();
+      const base = await health();
+      expect(check(base, 'compliance').on).toBe(true);
+
+      expect((await set({ on_compliance: false })).status).toBe(200);
+      let h = await health();
+      expect(check(h, 'compliance')).toMatchObject({ on: false, score: null, fact: 'Switched off in Setup' });
+      expect(check(h, 'cash').on).toBe(true);                                   // nothing else changed
+      await api.request('DELETE', '/config/health/on_compliance', undefined, MGR);
+
+      expect((await set({ stock_basis: 'products out of stock but selling' })).status).toBe(200);
+      h = await health();
+      expect(check(h, 'stock').fact).toMatch(/sold in the last|No sales in the last/);
+      expect((await set({ stock_basis: 'stock close to expiry' })).status).toBe(200);
+      h = await health();
+      expect(check(h, 'stock').fact).toMatch(/expires within|No stock on hand/);
+
+      expect((await set({ payables_grace_days: 30 })).status).toBe(200);
+      h = await health();
+      expect(check(h, 'purchasing').fact).toContain('30 days of grace');
+      expect(check(h, 'purchasing').score).toBeGreaterThanOrEqual(check(base, 'purchasing').score);   // more grace never lowers it
+
+      expect((await set({ compliance_late_points: 1 })).status).toBe(200);
+      h = await health();
+      expect(check(h, 'compliance').score).toBeGreaterThanOrEqual(check(base, 'compliance').score);
+    } finally { await reset(); }
+  });
+
+  test('HM-13 a bad parameter is refused and only the Business Head changes them @negative', async ({ api }) => {
+    expect((await api.request('PUT', '/config/health', { values: { stock_basis: 'by the weight' } }, MGR)).status).toBe(400);
+    expect((await api.request('PUT', '/config/health', { values: { payables_grace_days: 400 } }, MGR)).status).toBe(400);
+    expect((await api.request('PUT', '/config/health', { values: { cash_points_per_shift: 7 } }, MGR)).status).toBe(400);   // steps of 5
+    expect((await api.request('PUT', '/config/health', { values: { on_sales: 'no' } }, MGR)).status).toBe(400);
+    expect((await api.request('PUT', '/config/health', { values: { on_stock: false } }, HEAD)).status).toBe(403);
+  });
+
   test('HM-11 a target can be suggested from history, for the Business Head only, and nothing is saved @happy', async ({ api }) => {
     const r = await api.request('GET', '/dashboard/targets/suggest?growth=10', undefined, MGR);
     expect(r.status, JSON.stringify(r.body)).toBe(200);

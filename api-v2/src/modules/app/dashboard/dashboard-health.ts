@@ -24,7 +24,7 @@ export interface HealthResult {
   status: HealthStatus | null;
   /** true when the total alone would have been Healthy but a single weak check keeps it at Watch */
   held: boolean;
-  checks: { key: CheckKey; label: string; score: number | null; weight: number }[];
+  checks: { key: CheckKey; label: string; score: number | null; weight: number; on: boolean }[];
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
@@ -92,9 +92,19 @@ export function stockScore(withMinimum: number, atOrAbove: number): number | nul
   return withMinimum > 0 ? pct((atOrAbove / withMinimum) * 100) : null;
 }
 
-/** every shift left open from an earlier day takes 25 points off */
-export function cashScore(staleOpenShifts: number): number {
-  return pct(100 - 25 * Math.max(0, staleOpenShifts));
+/** every shift left open from an earlier day takes `stalePoints` off, and (when counted) every recent shift with a drawer difference takes `variancePoints` */
+export function cashScore(staleOpenShifts: number, stalePoints = 25, varianceShifts = 0, variancePoints = 0): number {
+  return pct(100 - stalePoints * Math.max(0, staleOpenShifts) - variancePoints * Math.max(0, varianceShifts));
+}
+
+/** the share of products that sold lately and are still in stock; none sold: nothing to judge */
+export function stockOutScore(selling: number, outOfStock: number): number | null {
+  return selling > 0 ? pct(100 - (outOfStock / selling) * 100) : null;
+}
+
+/** the share of the stock (at cost) that is not close to expiry; no stock: nothing to judge */
+export function expiryScore(totalValue: number, expiringValue: number): number | null {
+  return totalValue > 0 ? pct(100 - (expiringValue / totalValue) * 100) : null;
 }
 
 /** the share of the money owed that is not yet overdue; nothing owed is a full score */
@@ -108,9 +118,9 @@ export function customersScore(bills: number, withMobile: number, aimPct: number
   return pct((((withMobile / bills) * 100) / Math.max(1, aimPct)) * 100);
 }
 
-/** late items cost 10 points each, escalated items 25 */
-export function complianceScore(late: number, escalated: number): number {
-  return pct(100 - 10 * Math.max(0, late) - 25 * Math.max(0, escalated));
+/** a late item costs `latePoints` (10 unless set), an escalated item `escalatedPoints` (25) */
+export function complianceScore(late: number, escalated: number, latePoints = 10, escalatedPoints = 25): number {
+  return pct(100 - latePoints * Math.max(0, late) - escalatedPoints * Math.max(0, escalated));
 }
 
 /** the share of the deliveries of the period that were delivered rather than failed or left pending; none booked: nothing to judge */
@@ -122,10 +132,13 @@ export interface HealthSettings {
   weights: Partial<Record<CheckKey, number>>;
   healthyMin: number;
   holdBelow: number;
+  /** checks the business has switched off: they are not scored and the others are scaled up, as for a check with no data */
+  off?: CheckKey[];
 }
 
 export function combine(scores: Partial<Record<CheckKey, number | null>>, s: HealthSettings): HealthResult {
-  const rows = CHECKS.map((c) => ({ key: c.key, label: c.label, score: scores[c.key] ?? null, weight: Math.max(0, Number(s.weights[c.key]) || 0) }));
+  const off = new Set(s.off || []);
+  const rows = CHECKS.map((c) => ({ key: c.key, label: c.label, score: off.has(c.key) ? null : (scores[c.key] ?? null), weight: Math.max(0, Number(s.weights[c.key]) || 0), on: !off.has(c.key) }));
   const live = rows.filter((r) => r.score !== null && r.weight > 0);
   const total = live.reduce((a, r) => a + r.weight, 0);
   if (!total) return { score: null, status: null, held: false, checks: rows };

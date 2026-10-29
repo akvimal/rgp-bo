@@ -1,4 +1,4 @@
-import { expectedSales, salesScoreVs, suggestedTarget, cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
+import { expiryScore, stockOutScore, expectedSales, salesScoreVs, suggestedTarget, cashScore, combine, complianceScore, customersScore, purchasingScore, salesScore, serviceScore, stockScore } from './dashboard-health';
 
 const settings = { weights: { sales: 25, stock: 15, cash: 15, purchasing: 10, customers: 10, compliance: 15, service: 10 }, healthyMin: 80, holdBelow: 60 };
 const all = (n: number) => ({ sales: n, stock: n, cash: n, purchasing: n, customers: n, compliance: n, service: n });
@@ -97,5 +97,45 @@ describe('suggestedTarget', () => {
   it('uses the recent average when there is no history for the month, and nothing when there is none at all', () => {
     expect(suggestedTarget(0, 200000, 0)).toEqual({ value: 200000, basis: 'recent average' });
     expect(suggestedTarget(0, null, 10)).toEqual({ value: null, basis: null });
+  });
+});
+
+describe('check parameters', () => {
+  it('cash: the points for a stale shift can be set, and drawer differences count only when given points', () => {
+    expect(cashScore(2)).toBe(50);
+    expect(cashScore(2, 10)).toBe(80);
+    expect(cashScore(1, 25, 3, 0)).toBe(75);
+    expect(cashScore(1, 25, 3, 10)).toBe(45);
+  });
+  it('compliance: the points for a late and an escalated item can be set', () => {
+    expect(complianceScore(2, 1)).toBe(55);
+    expect(complianceScore(2, 1, 5, 10)).toBe(80);
+  });
+  it('stock by what sells: the share of recently sold products that are out; nothing sold: nothing to judge', () => {
+    expect(stockOutScore(20, 5)).toBe(75);
+    expect(stockOutScore(0, 0)).toBeNull();
+  });
+  it('stock by expiry: the share of the stock at cost not close to expiry; no stock: nothing to judge', () => {
+    expect(expiryScore(1000, 100)).toBe(90);
+    expect(expiryScore(0, 0)).toBeNull();
+  });
+});
+
+describe('switched-off checks', () => {
+  it('are not scored, show as off, and the others are scaled up', () => {
+    const r = combine(all(80), { ...settings, off: ['stock', 'service'] });
+    expect(r.score).toBe(80);
+    expect(r.checks.find((c) => c.key === 'stock')).toMatchObject({ score: null, on: false });
+    expect(r.checks.find((c) => c.key === 'sales')).toMatchObject({ score: 80, on: true });
+  });
+  it('cannot hide a weak check by switching a different one off, and a switched-off weak check no longer holds the store', () => {
+    const weak = { ...all(100), compliance: 30 };
+    expect(combine(weak, settings).held).toBe(true);
+    const r = combine(weak, { ...settings, off: ['compliance'] });
+    expect(r.status).toBe('healthy');
+    expect(r.held).toBe(false);
+  });
+  it('with every check off there is no score', () => {
+    expect(combine(all(90), { ...settings, off: ['sales', 'stock', 'cash', 'purchasing', 'customers', 'compliance', 'service'] }).score).toBeNull();
   });
 });

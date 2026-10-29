@@ -36,7 +36,7 @@ import { DashboardService } from "../dashboard.service";
         </div>
         <div class="row g-2 mt-2" *ngIf="health">
           <div class="col-md-6 col-xl-4" *ngFor="let c of health.checks" [attr.data-testid]="'health-check-' + c.key">
-            <div class="d-flex justify-content-between small"><span>{{c.label}}</span><strong>{{c.score === null ? 'no data' : c.score}}</strong></div>
+            <div class="d-flex justify-content-between small" [class.text-muted]="!c.on"><span>{{c.label}}</span><strong>{{!c.on ? 'off' : c.score === null ? 'no data' : c.score}}</strong></div>
             <div class="progress" style="height: 6px" *ngIf="c.score !== null"><div class="progress-bar" [ngClass]="barClass(c.score)" [style.width.%]="c.score" role="progressbar" [attr.aria-valuenow]="c.score" aria-valuemin="0" aria-valuemax="100"></div></div>
             <div class="small text-muted">{{c.fact}}</div>
           </div>

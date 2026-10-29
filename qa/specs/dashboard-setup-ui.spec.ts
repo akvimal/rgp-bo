@@ -43,7 +43,26 @@ test('DSU-UI-2 the required items are shown as locked, and the health weights mu
   await expect(page.getByTestId('dsetup-preview-result')).toContainText('counter');
 });
 
-test('DSU-UI-3 the Store Head reads the settings with no controls to change them', async ({ app }) => {
+test('DSU-UI-4 each health check has its own group: switch one off and the dashboard shows it as off', async ({ app, api }) => {
+  await api.request('DELETE', '/config/health/on_service', undefined, MGR);
+  const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+  try {
+    const { page } = await app.open(MGR, '/secure/settings/dashboards');
+    await page.getByTestId('dsetup-tab-health').click();
+    for (const g of ['Sales', 'Stock', 'Cash and shifts', 'Purchasing and payables', 'Customers', 'Compliance', 'Service and deliveries']) await expect(page.getByTestId(`dsetup-group-${g}`)).toBeVisible();
+    await expect(page.getByTestId('dsetup-input-stock_basis')).toBeVisible();
+    await page.getByTestId('dsetup-input-on_service').uncheck();
+    await page.getByTestId('dsetup-from').fill(today);
+    await page.getByTestId('dsetup-save').click();
+    await expect(page.getByTestId('dsetup-message')).toContainText('Saved');
+    await page.goto('/secure/dashboard');
+    await expect(page.getByTestId('health-check-service')).toContainText('off');
+  } finally {
+    await api.request('DELETE', '/config/health/on_service', undefined, MGR);
+  }
+});
+
+test('DSU-UI-3the Store Head reads the settings with no controls to change them', async ({ app }) => {
   const { page } = await app.open(HEAD, '/secure/settings/dashboards');
   await expect(page.getByTestId('dsetup-readonly')).toBeVisible();
   await page.getByTestId('dsetup-tab-compliance').click();
