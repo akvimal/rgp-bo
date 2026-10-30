@@ -45,7 +45,7 @@ test('HRM-2 a limited company gets the compliance set and must decide each statu
 
 test('HRM-3 the Setup screen shows the registration choice, the mode, and the statutory block only for a limited company', async ({ app, api }) => {
   await setForm(api, 'PROPRIETORSHIP');
-  const { page } = await app.open(MGR, '/secure/settings/business-profile/setup');
+  const { page } = await app.open(MGR, '/secure/hr/setup');
   await expect(page.getByTestId('hr-legal-form-select')).toBeVisible();
   await expect(page.getByTestId('hr-mode')).toContainText('Lite');
   await expect(page.getByTestId('hr-statutory')).toHaveCount(0);

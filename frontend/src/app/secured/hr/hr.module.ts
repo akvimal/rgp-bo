@@ -12,6 +12,7 @@ import { HrKpiComponent } from "./hr-kpi.component";
 import { HrPayrollComponent } from "./hr-payroll.component";
 import { HrSetupComponent } from "./hr-setup.component";
 import { HrRolesComponent } from "./hr-roles.component";
+import { HrStartComponent } from "./hr-start.component";
 
 const routes: Routes = [
   { path: "", component: HrShellComponent, children: [
@@ -27,7 +28,7 @@ const routes: Routes = [
 
 /** Mini HR for the Business Head: staff, salary, leave, attendance, KPI and payroll. */
 @NgModule({
-  declarations: [HrShellComponent, HrStaffComponent, HrAttendanceComponent, HrLeaveComponent, HrKpiComponent, HrPayrollComponent, HrSetupComponent, HrRolesComponent],
+  declarations: [HrShellComponent, HrStaffComponent, HrAttendanceComponent, HrLeaveComponent, HrKpiComponent, HrPayrollComponent, HrSetupComponent, HrRolesComponent, HrStartComponent],
   imports: [CommonModule, FormsModule, SharedModule, RouterModule.forChild(routes)],
 })
 export class HrModule {}

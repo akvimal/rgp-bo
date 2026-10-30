@@ -184,7 +184,7 @@ export class HrKpiEngine {
               array(select us.store_id from user_stores us where us.user_id = e.user_id and us.active and not us.archive) as store_ids,
               array(select a.user_id from hr_employee_account a where a.employee_id = e.id) as linked_user_ids
          from hr_employee e left join app_user u on u.id = e.user_id
-        where e.join_date < ($1::date + interval '1 month') and (e.exit_date is null or e.exit_date >= $1::date)
+        where e.on_payroll and e.join_date < ($1::date + interval '1 month') and (e.exit_date is null or e.exit_date >= $1::date)
         order by coalesce(e.full_name, u.full_name)`, [start]);
     const metrics = await this.manager.query(
       `select id, name, description, max_points::float as max, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions

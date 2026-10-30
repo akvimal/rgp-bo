@@ -14,7 +14,7 @@
           <thead><tr><th>Code</th><th>Name</th><th>Designation</th><th>Type</th><th>Store</th><th>Joined</th><th class="text-end">Monthly earnings</th><th>Status</th></tr></thead>
           <tbody>
             <tr *ngFor="let r of rows" (click)="open(r)" style="cursor:pointer" data-testid="hr-staff-row">
-              <td>{{r.emp_code}}</td><td>{{r.name}}<div class="small text-muted">{{r.has_login ? r.email : 'No login'}}</div></td><td>{{r.designation}}</td>
+              <td>{{r.emp_code}}</td><td>{{r.name}} <span class="badge bg-light text-dark border" *ngIf="r.relationship !== 'EMPLOYEE'" data-testid="hr-rel-badge">{{relLabel[r.relationship]}}{{r.on_payroll ? ' (salaried)' : ''}}</span><div class="small text-muted">{{r.has_login ? r.email : 'No login'}}</div></td><td>{{r.designation}}</td>
               <td>{{r.emp_type === 'FULL_TIME' ? 'Full time' : 'Part time'}}<div class="small text-muted">{{schedule(r)}}</div></td><td>{{storeNames(r)}}</td><td>{{r.join_date | date:'dd MMM yyyy'}}</td>
               <td class="text-end">{{r.monthly_earnings ? (r.monthly_earnings | number:'1.2-2') : '-'}}</td>
               <td><span class="badge" [ngClass]="r.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'">{{r.status === 'ACTIVE' ? 'Active' : 'Left'}}</span></td>
@@ -84,6 +84,12 @@
                 <option [ngValue]="null">None</option>
                 <option *ngFor="let p of positions" [ngValue]="p.id" [disabled]="!p.active && p.id !== editing.position_id">{{p.name}}{{p.active ? '' : ' (not in use)'}}</option>
               </select></div>
+            <div class="col-md-3"><label class="form-label">Relationship</label>
+              <select class="form-select" [(ngModel)]="editing.relationship" (ngModelChange)="relChanged()" data-testid="hr-f-relationship">
+                <option *ngFor="let r of relOptions" [value]="r">{{relLabel[r]}}</option>
+              </select></div>
+            <div class="col-md-3 d-flex align-items-end" *ngIf="editing.relationship === 'DIRECTOR'"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="hr-f-onpay" [(ngModel)]="editing.on_payroll" data-testid="hr-f-onpayroll"><label class="form-check-label" for="hr-f-onpay">The company pays a salary (on payroll)</label></div></div>
+            <div class="col-12 small text-muted" *ngIf="editing.relationship === 'OWNER'" data-testid="hr-owner-note">An owner or partner is not paid through payroll: what you take is drawings or remuneration, not salary.</div>
             <div class="col-md-3"><label class="form-label">Designation</label><input class="form-control" [(ngModel)]="editing.designation" data-testid="hr-f-designation"></div>
             <div class="col-md-3" *ngIf="auth.packOn('pharmacy')"><label class="form-label">Pharmacist registration no.</label><input class="form-control text-uppercase" maxlength="30" [(ngModel)]="editing.pharmacist_reg_no" data-testid="hr-f-pharmreg"></div>
             <div class="col-md-3" *ngIf="auth.packOn('pharmacy')"><label class="form-label">Pharmacy council</label><input class="form-control" maxlength="60" [(ngModel)]="editing.pharmacist_council" data-testid="hr-f-pharmcouncil"></div>
@@ -170,7 +176,8 @@
       </div>
 
       <!-- salary -->
-      <ng-container *ngIf="editing.id">
+      <div class="small text-muted mt-3" *ngIf="editing.id && !editing.on_payroll" data-testid="hr-not-on-payroll">Not on payroll, so there is no salary to enter and payroll leaves this person out.</div>
+      <ng-container *ngIf="editing.id && editing.on_payroll">
         <hr>
         <div class="page-toolbar">
           <div class="page-toolbar-main"><h6 class="mb-0">Salary</h6><span class="small text-muted">Each revision is kept as history. Pay uses the salary in force on the 1st of the month.</span></div>

@@ -132,6 +132,21 @@ export function rolesToAdd(businessType: string, haveNames: string[]): StarterRo
   return STARTER_ROLES.filter((r) => (!r.businessType || r.businessType === businessType) && !have.has(r.name.toLowerCase()));
 }
 
+/** other roles a shop often has: offered to tick, never added unless the owner asks */
+export const SUGGESTED_ROLES: StarterRole[] = ['Assistant manager', 'Cashier', 'Delivery', 'Accountant', 'Helper'].map((name) => ({ name, login_role: null }));
+
+/** the suggested roles the business does not have yet */
+export function roleSuggestions(haveNames: string[]): StarterRole[] {
+  const have = new Set(haveNames.map((n) => n.trim().toLowerCase()));
+  return SUGGESTED_ROLES.filter((r) => !have.has(r.name.toLowerCase()));
+}
+
+/** the suggested roles to add for the names asked: by name in any case, only ones on the list, each once, none the business has */
+export function pickRoleSuggestions(asked: any, haveNames: string[]): StarterRole[] {
+  const want = new Set((Array.isArray(asked) ? asked : []).map((n) => String(n).trim().toLowerCase()));
+  return roleSuggestions(haveNames).filter((r) => want.has(r.name.toLowerCase()));
+}
+
 export interface StarterRow extends StarterItem { have: boolean }
 export interface StarterView { starter: StarterRow[]; suggestions: StarterRow[] }
 

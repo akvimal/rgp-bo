@@ -64,92 +64,16 @@ export class ShopSetupComponent implements OnInit {
     { key: 'gst', label: 'GST reconciliation', hint: 'Matching purchase invoices to GSTR-2A/2B. Needs purchasing.' },
   ];
 
-  // ---- HR and payroll: a starter pay structure, the year's holidays, and staff records for the logins that have none
-  hrOffer: any = null;
-  hrHolidays: any[] = [];
-  hrPeople: any[] = [];
-  hrNewHoliday: any = { date: '', name: '' };
-  hrPicked: { [code: string]: boolean } = {};
-  hrMessage = '';
-  hrError = '';
-  hrBusy = false;
-  readonly legalForms = [
-    { key: 'PROPRIETORSHIP', label: 'Proprietorship' }, { key: 'PARTNERSHIP', label: 'Partnership firm' }, { key: 'LLP', label: 'Limited liability partnership (LLP)' },
-    { key: 'PRIVATE_LIMITED', label: 'Private limited company' }, { key: 'PUBLIC_LIMITED', label: 'Public limited company' }, { key: 'OTHER', label: 'Other (trust, society, ...)' },
-  ];
-  /** how the business is registered decides how strict the payroll set-up is: limited companies follow the compliance set */
-  hrLegalForm = 'PROPRIETORSHIP';
-  get hrCompliance(): boolean { return this.hrOffer?.mode === 'COMPLIANCE'; }
+  // ---- HR and payroll is set up in HR > Setup; this screen only shows how far it has got
+  hrSteps: { done: number; total: number } | null = null;
 
   constructor(private http: HttpClient, private business: BusinessesService, private auth: AuthService, private props: PropsService, private hrApi: HrService) {}
 
   get hrOn(): boolean { return !!this.modules?.hr; }
-  get hrStarterMissing(): number { return (this.hrOffer?.starter || []).filter((i: any) => !i.have).length; }
-  get hrPickedCodes(): string[] { return Object.keys(this.hrPicked).filter(k => this.hrPicked[k]); }
-  hrOf(kind: string): any[] { return (this.hrOffer?.starter || []).filter((i: any) => kind === 'PAY' ? i.kind !== 'LEAVE' : i.kind === 'LEAVE'); }
-  hrSuggestions(kind: string): any[] { return (this.hrOffer?.suggestions || []).filter((i: any) => i.kind === kind); }
-  get hrChecklist(): { label: string; done: boolean }[] {
-    const p = this.hrOffer?.progress || {};
-    return [
-      { label: 'Pay components', done: p.components > 0 },
-      { label: 'Leave types', done: p.leave_types > 0 },
-      { label: 'Holidays for this year', done: p.holidays > 0 },
-      { label: 'A salary for at least one person', done: p.paid_staff > 0 },
-    ];
-  }
 
   loadHr() {
     if (!this.hrOn) return;
-    this.hrApi.get('starter').subscribe(r => { this.hrOffer = r; this.hrLegalForm = r.legal_form; this.hrStatutory = (r.statutory || []).map((x: any) => ({ ...x, yes: x.applies === null ? null : x.applies })); }, () => this.hrOffer = null);
-    this.hrApi.get('holidays', { year: new Date().getFullYear() }).subscribe(r => this.hrHolidays = r, () => {});
-    this.hrApi.get('staff/candidates').subscribe(r => this.hrPeople = r.map((p: any) => ({ ...p, designation: '', position_id: p.suggested_position_id || null, join_date: this.hrApi.today() })), () => {});
-    this.hrApi.get('positions').subscribe(r => this.hrPositions = (r || []).filter((p: any) => p.active), () => {});
-  }
-
-  /** the statutory items of the compliance set, each with its decision being edited */
-  hrStatutory: any[] = [];
-  get hrStatutoryLeft(): number { return this.hrStatutory.filter(x => x.applies === null).length; }
-
-  setLegalForm() {
-    this.hrMessage = this.hrError = '';
-    this.business.updateMine({ legalform: this.hrLegalForm }).subscribe(
-      () => { this.hrMessage = 'Saved. The starter set below follows how the business is registered. Press "Add the starter set" to add anything it now includes.'; this.loadHr(); },
-      err => { this.hrError = this.hrApi.msg(err); this.loadHr(); });
-  }
-
-  saveStatutory(x: any) {
-    this.hrMessage = this.hrError = '';
-    const body = { applies: x.yes, reason: x.reason || '', reg_no: x.reg_no || '' };
-    this.hrApi.put(`statutory/${x.code}`, body).subscribe(
-      () => { this.hrMessage = `${x.name}: saved.`; this.loadHr(); },
-      err => this.hrError = this.hrApi.msg(err));
-  }
-
-  /** the job roles on offer that the business does not have yet, and the ones it has */
-  hrPositions: any[] = [];
-  get hrRolesMissing(): any[] { return this.hrOffer?.roles || []; }
-
-  hrAdd(starter: boolean, codes: string[], roles = false) {
-    this.hrMessage = this.hrError = ''; this.hrBusy = true;
-    this.hrApi.post('starter', { starter, codes, roles }).subscribe(
-      (r: any) => { this.hrBusy = false; this.hrPicked = {}; const all = [...r.added, ...(r.roles || [])]; this.hrMessage = all.length ? `Added: ${all.join(', ')}.` : 'Nothing to add: you already have these.'; this.loadHr(); },
-      err => { this.hrBusy = false; this.hrError = this.hrApi.msg(err); });
-  }
-
-  hrAddHoliday() {
-    this.hrMessage = this.hrError = '';
-    this.hrApi.post('holidays', this.hrNewHoliday).subscribe(
-      () => { this.hrNewHoliday = { date: '', name: '' }; this.hrMessage = 'Holiday saved.'; this.loadHr(); },
-      err => this.hrError = this.hrApi.msg(err));
-  }
-
-  hrRemoveHoliday(h: any) { this.hrApi.delete(`holidays/${h.date}`).subscribe(() => this.loadHr(), err => this.hrError = this.hrApi.msg(err)); }
-
-  hrCreateStaff(p: any) {
-    this.hrMessage = this.hrError = '';
-    this.hrApi.post('staff', { user_id: p.id, designation: p.designation, position_id: p.position_id || null, join_date: p.join_date }).subscribe(
-      () => { this.hrMessage = `${p.name} now has a staff record. Add the salary under HR > Staff.`; this.loadHr(); },
-      err => this.hrError = this.hrApi.msg(err));
+    this.hrApi.get('starter').subscribe(r => { const p = r.progress || {}; this.hrSteps = { done: [p.components, p.leave_types, p.holidays, p.paid_staff].filter(n => n > 0).length, total: 4 }; }, () => this.hrSteps = null);
   }
 
   private loadAdjustments() {

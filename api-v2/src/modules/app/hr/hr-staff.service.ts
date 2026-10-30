@@ -2,7 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
-import { checkDecision, Decision, itemsToAdd, LEGAL_FORM_LABELS, LegalForm, payrollMode, rolesToAdd, starterView, statutoryProgress, statutoryView } from './hr-starter';
+import { checkEngagement, ownerDefault, relationshipsFor } from './hr-engagement';
+import { checkDecision, Decision, itemsToAdd, LEGAL_FORM_LABELS, LegalForm, payrollMode, pickRoleSuggestions, roleSuggestions, rolesToAdd, starterView, statutoryProgress, statutoryView } from './hr-starter';
 import { hasEarning, normaliseLines } from './hr-position';
 import { groupDesignations } from './hr-link';
 
@@ -23,7 +24,7 @@ export class HrStaffService {
   // ------------------------------------------------------------------ staff
   async list() {
     return this.manager.query(
-      `select e.id, e.emp_code, e.designation, e.emp_type, e.status, e.join_date, e.exit_date, e.weekly_off, e.user_id,
+      `select e.id, e.emp_code, e.designation, e.emp_type, e.status, e.relationship, e.on_payroll, e.join_date, e.exit_date, e.weekly_off, e.user_id,
               coalesce(e.full_name, u.full_name) as name, e.position_id, (select p.name from hr_position p where p.id = e.position_id) as position, coalesce(u.email, '') as email, (select r.name from app_role r where r.id = u.role_id) as role_name, e.work_days, to_char(e.work_start, 'HH24:MI') as work_start, to_char(e.work_end, 'HH24:MI') as work_end, s.location as store, (e.user_id is not null) as has_login,
               (select coalesce(json_agg(json_build_object('id', st.id, 'name', st.location) order by st.location), '[]'::json) from user_stores us join stores st on st.id = us.store_id where us.user_id = e.user_id and us.active and not us.archive) as stores,
               (select coalesce(sum(l.amount) filter (where c.kind = 'EARNING'), 0)::float
@@ -36,14 +37,14 @@ export class HrStaffService {
   }
 
   /** active logins that have no staff record yet */
-  async candidates() {
+  async candidates(by?: any) {
     return this.manager.query(
-      `select u.id, u.full_name as name, u.email, (select coalesce(json_agg(json_build_object('id', st.id, 'name', st.location) order by st.location), '[]'::json) from user_stores us join stores st on st.id = us.store_id where us.user_id = u.id and us.active and not us.archive) as stores,
+      `select u.id, u.full_name as name, (u.id = $1) as is_you, u.email, (select coalesce(json_agg(json_build_object('id', st.id, 'name', st.location) order by st.location), '[]'::json) from user_stores us join stores st on st.id = us.store_id where us.user_id = u.id and us.active and not us.archive) as stores,
               (select r.name from app_role r where r.id = u.role_id) as role_name,
               (select p.id from hr_position p where p.active and p.login_role = (select r.name from app_role r where r.id = u.role_id)
                   and (select count(*) from hr_position q where q.active and q.login_role = p.login_role) = 1) as suggested_position_id
          from app_user u
-        where u.active and not exists (select 1 from hr_employee e where e.user_id = u.id) order by u.full_name`);
+        where u.active and not exists (select 1 from hr_employee e where e.user_id = u.id) order by (u.id = $1) desc, u.full_name`, [by?.id || 0]);
   }
 
   async stores() {
@@ -63,6 +64,22 @@ export class HrStaffService {
          from hr_salary_revision r left join app_user b on b.id = r.created_by
         where r.employee_id = $1 order by r.effective_from desc`, [id]);
     return { ...e, revisions, can_delete: (await this.history(id)) === 0 };
+  }
+
+  /**
+   * The relationship and the payroll switch, checked against how the business is registered. Nothing given leaves a new record an employee on
+   * payroll and an existing one as it is. Taking someone off payroll is refused once payroll has paid them: mark them as left instead.
+   */
+  private async applyEngagement(f: any, b: any, by: any, cur?: any) {
+    if (b?.relationship === undefined && b?.on_payroll === undefined) return;
+    const r = checkEngagement(await this.legalFormOf(by.id), b.relationship ?? cur?.relationship, b.on_payroll ?? cur?.on_payroll);
+    if ('error' in r) throw new BadRequestException(r.error);
+    if (cur && cur.on_payroll && !r.value.on_payroll) {
+      const [h] = await this.manager.query(`select count(*)::int as n from hr_payroll_line where employee_id = $1`, [cur.id]);
+      if (h.n) throw new BadRequestException(`${cur.full_name} has already been paid through payroll, so they cannot be taken off it. Mark them as left instead.`);
+    }
+    f.relationship = r.value.relationship;
+    f.on_payroll = r.value.on_payroll;
   }
 
   /** how many records of real history the person has: payroll, attendance, leave, KPI. Salary revisions do not count; they go with a mistaken record. */
@@ -208,6 +225,7 @@ export class HrStaffService {
     this.partTimeOnly(f, f.emp_type || 'FULL_TIME');
     if (userId) await this.checkBaseStore(userId, f.store_id);
     await this.checkPosition(f.position_id);
+    await this.applyEngagement(f, b, by);
     let code = clean(b.emp_code, 20);
     if (!code) {
       const [n] = await this.manager.query(`select coalesce(max(substring(emp_code from '[0-9]+$')::int), 0) + 1 as n from hr_employee where emp_code ~ '^E[0-9]+$'`);
@@ -224,9 +242,10 @@ export class HrStaffService {
   }
 
   async update(id: number, b: any, by: any) {
-    const [cur] = await this.manager.query(`select e.id, e.user_id, coalesce(e.full_name, u.full_name) as full_name from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [id]);
+    const [cur] = await this.manager.query(`select e.id, e.user_id, e.relationship, e.on_payroll, coalesce(e.full_name, u.full_name) as full_name from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [id]);
     if (!cur) throw new NotFoundException('Staff member not found.');
     const f = this.validate(b, false);
+    await this.applyEngagement(f, b, by, cur);
     const [t] = await this.manager.query(`select emp_type from hr_employee where id = $1`, [id]);
     if (f.emp_type === 'FULL_TIME') Object.assign(f, { work_days: null, work_start: null, work_end: null });
     else this.partTimeOnly(f, f.emp_type || t.emp_type);
@@ -527,8 +546,8 @@ export class HrStaffService {
     const [n] = await this.manager.query(
       `select (select count(*) from hr_pay_component where active)::int as components, (select count(*) from hr_leave_type where active)::int as leave_types,
               (select count(*) from hr_holiday where extract(year from holiday_date) = extract(year from current_date))::int as holidays,
-              (select count(distinct r.employee_id) from hr_salary_revision r join hr_employee e on e.id = r.employee_id where e.status = 'ACTIVE')::int as paid_staff,
-              (select count(*) from hr_employee where status = 'ACTIVE')::int as staff`);
+              (select count(distinct r.employee_id) from hr_salary_revision r join hr_employee e on e.id = r.employee_id where e.status = 'ACTIVE' and e.on_payroll)::int as paid_staff,
+              (select count(*) from hr_employee where status = 'ACTIVE' and on_payroll)::int as staff`);
     const type = await this.businessTypeOf(by.id);
     const form = await this.legalFormOf(by.id);
     const mode = payrollMode(form);
@@ -536,7 +555,7 @@ export class HrStaffService {
     const decisions = mode === 'COMPLIANCE' ? await this.decisions() : [];
     return {
       ...starterView(type, have.comps, have.leave, mode), roles: rolesToAdd(type, names), progress: { ...n, positions: names.length },
-      legal_form: form, legal_form_label: LEGAL_FORM_LABELS[form], mode,
+      legal_form: form, legal_form_label: LEGAL_FORM_LABELS[form], mode, relationships: relationshipsFor(form), owner_default: ownerDefault(form), role_suggestions: roleSuggestions(names),
       statutory: mode === 'COMPLIANCE' ? statutoryView(decisions) : [], statutory_progress: mode === 'COMPLIANCE' ? statutoryProgress(decisions) : null,
     };
   }
@@ -550,10 +569,10 @@ export class HrStaffService {
       else await this.saveComponent(null, { code: i.code, name: i.name, kind: i.kind, display_order: i.kind === 'EARNING' ? 10 : 90 }, by);
     }
     let roles: string[] = [];
-    if (b?.roles) {
+    if (b?.roles || (Array.isArray(b?.role_names) && b.role_names.length)) {
       const type = await this.businessTypeOf(by.id);
       const names = (await this.manager.query(`select name from hr_position`)).map((r: any) => r.name as string);
-      for (const r of rolesToAdd(type, names)) {
+      for (const r of [...(b?.roles ? rolesToAdd(type, names) : []), ...pickRoleSuggestions(b?.role_names, names)]) {
         const [row] = await this.manager.query(`insert into hr_position (name, created_by, login_role) values ($1, $2, $3) on conflict (name) do nothing returning id`, [r.name, by.id, r.login_role]);
         if (row) {
           roles.push(r.name);
@@ -573,9 +592,10 @@ export class HrStaffService {
   // ------------------------------------------------------------------ salary revisions
   async addRevision(employeeId: number, b: any, by: any) {
     const [emp] = await this.manager.query(
-      `select e.id, coalesce(e.full_name, u.full_name) as full_name, (select r.name from app_role r where r.id = u.role_id) as role_name
+      `select e.id, e.on_payroll, coalesce(e.full_name, u.full_name) as full_name, (select r.name from app_role r where r.id = u.role_id) as role_name
          from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [employeeId]);
     if (!emp) throw new NotFoundException('Staff member not found.');
+    if (!emp.on_payroll) throw new BadRequestException(`${emp.full_name} is not on payroll, so there is no salary to enter.`);
     if (!DATE.test(b?.effective_from || '')) throw new BadRequestException('Give the date the new salary applies from.');
     const lines: { component_id: number; amount: number }[] = (Array.isArray(b?.lines) ? b.lines : [])
       .map((l: any) => ({ component_id: Number(l.component_id), amount: Math.round(Number(l.amount) * 100) / 100 }))

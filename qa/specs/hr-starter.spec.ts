@@ -41,7 +41,7 @@ test('HRS-2 adding the starter set adds only what is missing, a suggestion only 
   }
 });
 
-test('HRS-3 the Setup screen shows the step, adds a ticked suggestion and a holiday the owner defines, and lists the people with no record', async ({ app, api }) => {
+test('HRS-3 HR > Setup shows the get-started card, adds a ticked suggestion, and takes a holiday the owner defines, and lists the people with no record', async ({ app, api }) => {
   const year = new Date().getFullYear();
   const day = `${year}-12-30`;
   const cleanup = async () => {
@@ -51,17 +51,18 @@ test('HRS-3 the Setup screen shows the step, adds a ticked suggestion and a holi
   };
   await cleanup();
   try {
-    const { page } = await app.open(MGR, '/secure/settings/business-profile/setup');
+    const { page } = await app.open(MGR, '/secure/hr/setup');
     await expect(page.getByTestId('hr-setup')).toBeVisible();
     await expect(page.getByTestId('hr-setup-checklist')).toContainText('Pay components');
     await page.getByTestId('hr-suggest-ESI').check();
     await page.getByTestId('hr-add-suggested').click();
     await expect(page.getByTestId('hr-setup-message')).toContainText('ESI');
     await expect(page.getByTestId('hr-suggest-ESI')).toBeDisabled();
-    await page.getByTestId('hr-holiday-date').fill(day);
-    await page.getByTestId('hr-holiday-name').fill('Year end');
-    await page.getByTestId('hr-holiday-add').click();
-    await expect(page.getByTestId('hr-holiday-row').filter({ hasText: 'Year end' })).toBeVisible();
+    await page.getByTestId('hr-sec-leave-toggle').click();
+    await page.getByTestId('hr-set-hol-date').fill(day);
+    await page.getByTestId('hr-set-hol-name').fill('Year end');
+    await page.getByTestId('hr-set-hol-add').click();
+    await expect(page.getByTestId('hr-set-holidays').getByText('Year end')).toBeVisible();
     await expect(page.getByTestId('hr-people-none').or(page.getByTestId('hr-person').first())).toBeVisible();
   } finally {
     await cleanup();
@@ -73,4 +74,14 @@ test('HRS-4 a pharmacy is offered the pharmacist allowance as a suggestion, not 
   expect(codes(r.body.starter)).not.toContain('PHARMACIST');
   const biz = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
   expect(codes(r.body.suggestions).includes('PHARMACIST')).toBe(biz.businesstype !== 'general');
+});
+
+test('HRS-5 Shop setup only points to HR > Setup, with how far it has got, and the get-started card is not repeated there', async ({ app }) => {
+  const { page } = await app.open(MGR, '/secure/settings/business-profile/setup');
+  await expect(page.getByTestId('hr-setup-link')).toBeVisible();
+  await expect(page.getByTestId('hr-setup-steps')).toContainText('of 4 steps done');
+  await expect(page.getByTestId('hr-setup')).toHaveCount(0);
+  await page.getByTestId('hr-setup-open').click();
+  await expect(page).toHaveURL(/\/secure\/hr\/setup/);
+  await expect(page.getByTestId('hr-setup')).toBeVisible();
 });

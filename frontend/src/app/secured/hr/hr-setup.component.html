@@ -4,6 +4,8 @@
     <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
 
+    <app-hr-start (changed)="load()"></app-hr-start>
+
     <div class="d-flex justify-content-end gap-3 small mb-2">
       <a role="button" (click)="setAll(true)" data-testid="hr-sec-expand">Expand all</a>
       <a role="button" (click)="setAll(false)" data-testid="hr-sec-collapse">Collapse all</a>

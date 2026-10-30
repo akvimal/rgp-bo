@@ -25,9 +25,16 @@ export class HrStaffComponent implements OnInit {
 
   constructor(private hr: HrService, private route: ActivatedRoute, public auth: AuthService) {}
 
+  /** how the person relates to the business; which of owner or director is offered follows how the business is registered */
+  relationships: string[] = ["EMPLOYEE"];
+  readonly relLabel: { [k: string]: string } = { EMPLOYEE: "Employee", OWNER: "Owner or partner", DIRECTOR: "Director" };
+  get relOptions(): string[] { const cur = this.editing?.relationship; return cur && !this.relationships.includes(cur) ? [...this.relationships, cur] : this.relationships; }
+  relChanged() { const e = this.editing; e.on_payroll = e.relationship === "EMPLOYEE" ? true : e.relationship === "OWNER" ? false : !!e.on_payroll; }
+
   ngOnInit() { this.load(); }
 
   load() {
+    this.hr.get("starter").subscribe(r => this.relationships = r.relationships || ["EMPLOYEE"], () => {});
     this.hr.get("staff").subscribe(r => this.rows = r, e => this.error = this.hr.msg(e));
     this.hr.get("staff/candidates").subscribe(r => {
       this.candidates = r;
@@ -53,7 +60,7 @@ export class HrStaffComponent implements OnInit {
   add() {
     this.message = this.error = "";
     this.detail = null;
-    this.editing = { id: 0, work_days: [], work_start: "", work_end: "", has_login: true, full_name: "", phone: "", user_id: null, emp_code: "", designation: "", position_id: null, store_id: null, emp_type: "FULL_TIME", join_date: this.hr.today(), weekly_off: "SUNDAY" };
+    this.editing = { id: 0, relationship: "EMPLOYEE", on_payroll: true, work_days: [], work_start: "", work_end: "", has_login: true, full_name: "", phone: "", user_id: null, emp_code: "", designation: "", position_id: null, store_id: null, emp_type: "FULL_TIME", join_date: this.hr.today(), weekly_off: "SUNDAY" };
   }
 
   open(r: any) {
@@ -109,7 +116,7 @@ export class HrStaffComponent implements OnInit {
     this.message = this.error = "";
     const e = this.editing;
     const body: any = {
-      emp_code: e.emp_code, designation: e.designation, position_id: e.position_id || null, pharmacist_reg_no: e.pharmacist_reg_no || null, pharmacist_council: e.pharmacist_council || null, pharmacist_valid_to: e.pharmacist_valid_to || null, store_id: e.store_id, emp_type: e.emp_type, join_date: e.join_date, weekly_off: e.weekly_off,
+      relationship: e.relationship || "EMPLOYEE", on_payroll: !!e.on_payroll, emp_code: e.emp_code, designation: e.designation, position_id: e.position_id || null, pharmacist_reg_no: e.pharmacist_reg_no || null, pharmacist_council: e.pharmacist_council || null, pharmacist_valid_to: e.pharmacist_valid_to || null, store_id: e.store_id, emp_type: e.emp_type, join_date: e.join_date, weekly_off: e.weekly_off,
       dob: e.dob || null, address: e.address, emergency_name: e.emergency_name, emergency_phone: e.emergency_phone,
       pan: e.pan, aadhaar_last4: e.aadhaar_last4, bank_name: e.bank_name, account_no: e.account_no, ifsc: e.ifsc, notes: e.notes,
     };

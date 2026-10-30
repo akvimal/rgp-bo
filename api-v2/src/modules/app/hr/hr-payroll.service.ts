@@ -52,7 +52,7 @@ export class HrPayrollService {
     const emps = await this.manager.query(
       `select e.id, e.user_id, to_char(e.join_date, 'YYYY-MM-DD') as join_date, to_char(e.exit_date, 'YYYY-MM-DD') as exit_date, coalesce(e.full_name, u.full_name) as full_name
          from hr_employee e left join app_user u on u.id = e.user_id
-        where e.join_date <= $2::date and (e.exit_date is null or e.exit_date >= $1::date) order by coalesce(e.full_name, u.full_name)`, [start, end]);
+        where e.on_payroll and e.join_date <= $2::date and (e.exit_date is null or e.exit_date >= $1::date) order by coalesce(e.full_name, u.full_name)`, [start, end]);
     if (!emps.length) throw new BadRequestException('There is no staff employed in that month.');
 
     const warnings: string[] = [];

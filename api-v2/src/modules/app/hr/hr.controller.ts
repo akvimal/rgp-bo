@@ -37,7 +37,7 @@ export class HrController {
 
   // ---------------------------------------------------------------- staff
   @Get('staff') list() { return this.staff.list(); }
-  @Get('staff/candidates') candidates() { return this.staff.candidates(); }
+  @Get('staff/candidates') candidates(@User() u: any) { return this.staff.candidates(u); }
   @Get('stores') stores() { return this.staff.stores(); }
   @Get('staff/:id') get(@Param('id', ParseIntPipe) id: number) { return this.staff.get(id); }
   @Post('staff') create(@Body() b: any, @User() u: any) { return this.staff.create(b, u); }

@@ -1,4 +1,4 @@
-import { checkDecision, itemsToAdd, payrollMode, rolesToAdd, STARTER_BY_MODE, starterView, statutoryProgress, statutoryView, suggestionsFor } from './hr-starter';
+import { pickRoleSuggestions, roleSuggestions, checkDecision, itemsToAdd, payrollMode, rolesToAdd, STARTER_BY_MODE, starterView, statutoryProgress, statutoryView, suggestionsFor } from './hr-starter';
 
 describe('payroll mode follows how the business is registered', () => {
   it('limited companies are compliance; everything else, and anything unknown, is lite', () => {
@@ -100,5 +100,18 @@ describe('starter job roles', () => {
   });
   it('carries the usual login role as a hint only', () => {
     expect(rolesToAdd('general', []).map((r) => r.login_role)).toEqual(['Store Head', 'Sales Staff']);
+  });
+});
+
+describe('suggested job roles', () => {
+  it('offers the extra roles the business does not have, by name in any case', () => {
+    expect(roleSuggestions([]).map((r) => r.name)).toEqual(['Assistant manager', 'Cashier', 'Delivery', 'Accountant', 'Helper']);
+    expect(roleSuggestions(['cashier ', 'HELPER']).map((r) => r.name)).toEqual(['Assistant manager', 'Delivery', 'Accountant']);
+  });
+  it('adds only the ones asked for, only from the list, once each, and none the business has', () => {
+    expect(pickRoleSuggestions(['cashier', 'Cashier', 'Pilot', ' helper '], []).map((r) => r.name)).toEqual(['Cashier', 'Helper']);
+    expect(pickRoleSuggestions(['Cashier'], ['Cashier'])).toEqual([]);
+    expect(pickRoleSuggestions('Cashier', [])).toEqual([]);
+    expect(pickRoleSuggestions(undefined, [])).toEqual([]);
   });
 });

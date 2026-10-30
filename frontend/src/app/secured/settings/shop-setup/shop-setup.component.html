@@ -102,89 +102,10 @@
       </div>
     </div>
 
-    <div class="mt-4 pt-3 border-top" *ngIf="hrOn && hrOffer" data-testid="hr-setup">
+    <div class="mt-4 pt-3 border-top" *ngIf="hrOn" data-testid="hr-setup-link">
       <h6 class="mb-1">HR and payroll</h6>
-      <p class="small text-muted">Payroll adds up the amounts you enter for each person; it works out no formulas. Start with the basics, add what applies to you, and put each person's salary under HR &gt; Staff. Nothing here is ever removed or renamed.</p>
-      <div class="d-flex align-items-center gap-2 flex-wrap mb-2" data-testid="hr-legal-form">
-        <label class="small fw-semibold mb-0" for="hr-legal-form-select">How is the business registered?</label>
-        <select id="hr-legal-form-select" class="form-select form-select-sm w-auto" [(ngModel)]="hrLegalForm" (change)="setLegalForm()" data-testid="hr-legal-form-select">
-          <option *ngFor="let f of legalForms" [value]="f.key">{{f.label}}</option>
-        </select>
-        <span class="badge" [ngClass]="hrCompliance ? 'bg-primary' : 'bg-secondary'" data-testid="hr-mode">{{hrCompliance ? 'Compliance set' : 'Lite set'}}</span>
-      </div>
-      <p class="small text-muted" *ngIf="!hrCompliance" data-testid="hr-mode-note">A lite set for a proprietorship or partnership: the basics a first payroll needs. If the business becomes a limited company, change this and add what it brings; nothing you have is touched.</p>
-      <p class="small text-muted" *ngIf="hrCompliance" data-testid="hr-mode-note">A limited company follows the fuller set below, and records a decision on each statutory item. The system does not work out PF, ESI or tax: you enter the amounts. Confirm the rules with your accountant.</p>
-      <div class="alert alert-success py-2" *ngIf="hrMessage" data-testid="hr-setup-message">{{hrMessage}}</div>
-      <div class="alert alert-danger py-2" *ngIf="hrError" data-testid="hr-setup-error">{{hrError}}</div>
-
-      <ul class="list-unstyled small mb-3" data-testid="hr-setup-checklist">
-        <li *ngFor="let c of hrChecklist"><span [class.text-success]="c.done" [class.text-muted]="!c.done">{{c.done ? '&#10003;' : '&#9675;'}}</span> {{c.label}}</li>
-      </ul>
-
-      <div class="fw-semibold">1. Starter set</div>
-      <div class="small mb-1">
-        <span class="me-2" *ngFor="let i of hrOf('PAY')" [class.text-muted]="i.have">{{i.name}}<span *ngIf="i.have"> (have)</span>;</span>
-      </div>
-      <div class="small mb-2">
-        <span class="me-2" *ngFor="let i of hrOf('LEAVE')" [class.text-muted]="i.have">{{i.name}} ({{i.paid ? i.annual_days + ' days' : 'unpaid'}})<span *ngIf="i.have"> (have)</span>;</span>
-      </div>
-      <button class="btn btn-sm btn-primary mb-3" type="button" [disabled]="hrBusy || !hrStarterMissing" (click)="hrAdd(true, [])" data-testid="hr-add-starter">{{ hrStarterMissing ? 'Add the starter set' : 'Starter set is in place' }}</button>
-
-      <div class="border rounded p-3 mb-3" *ngIf="hrCompliance" data-testid="hr-statutory">
-        <div class="fw-semibold">Statutory items <span class="small text-muted fw-normal">say for each whether it applies to you, and why not if it does not{{hrStatutoryLeft ? ' (' + hrStatutoryLeft + ' still to answer)' : ''}}</span></div>
-        <div class="row g-2 align-items-end small mt-1 pb-2 border-bottom" *ngFor="let x of hrStatutory" [attr.data-testid]="'hr-stat-' + x.code">
-          <div class="col-12 col-md-4"><div class="fw-semibold">{{x.name}} <span class="badge bg-warning text-dark" *ngIf="x.applies === null">to answer</span></div><div class="text-muted">{{x.note}}</div></div>
-          <div class="col-6 col-md-2">
-            <select class="form-select form-select-sm" [(ngModel)]="x.yes" [attr.data-testid]="'hr-stat-applies-' + x.code">
-              <option [ngValue]="null">Choose</option><option [ngValue]="true">Applies</option><option [ngValue]="false">Does not apply</option>
-            </select>
-          </div>
-          <div class="col-6 col-md-3" *ngIf="x.yes === false"><input class="form-control form-control-sm" maxlength="200" placeholder="Why not" [(ngModel)]="x.reason" [attr.data-testid]="'hr-stat-reason-' + x.code"></div>
-          <div class="col-6 col-md-3" *ngIf="x.yes === true && x.reg_label"><input class="form-control form-control-sm" maxlength="40" [placeholder]="x.reg_label" [(ngModel)]="x.reg_no" [attr.data-testid]="'hr-stat-reg-' + x.code"></div>
-          <div class="col-auto"><button class="btn btn-sm btn-outline-primary" type="button" [disabled]="x.yes === null" (click)="saveStatutory(x)" [attr.data-testid]="'hr-stat-save-' + x.code">Save</button></div>
-        </div>
-      </div>
-
-      <div class="fw-semibold">Job roles <span class="small text-muted fw-normal">what each person does; the pay structure and KPI follow the job role. Amounts are yours to enter in HR &gt; Setup</span></div>
-      <div class="small mb-2" data-testid="hr-roles-offer">
-        <span class="me-2" *ngFor="let p of hrPositions">{{p.name}} (have);</span>
-        <span class="me-2 text-muted" *ngFor="let r of hrRolesMissing">{{r.name}}{{r.login_role ? ' (usually ' + r.login_role + ')' : ''}};</span>
-      </div>
-      <button class="btn btn-sm btn-outline-primary mb-3" type="button" [disabled]="hrBusy || !hrRolesMissing.length" (click)="hrAdd(false, [], true)" data-testid="hr-add-roles">{{ hrRolesMissing.length ? 'Add the starter job roles' : 'Job roles are in place' }}</button>
-
-      <div class="fw-semibold">2. Suggestions <span class="small text-muted fw-normal">tick any that apply; you enter the amount for each person</span></div>
-      <div class="row small mb-2">
-        <div class="col-12 col-md-4" *ngFor="let k of [['DEDUCTION','Deductions'],['EARNING','Earnings'],['LEAVE','Leave']]">
-          <div class="text-muted mt-1">{{k[1]}}</div>
-          <div class="form-check" *ngFor="let s of hrSuggestions(k[0])">
-            <input class="form-check-input" type="checkbox" [id]="'hrs-' + s.code" [disabled]="s.have" [checked]="s.have || hrPicked[s.code]" (change)="hrPicked[s.code] = $any($event.target).checked" [attr.data-testid]="'hr-suggest-' + s.code">
-            <label class="form-check-label" [for]="'hrs-' + s.code">{{s.name}}<span *ngIf="s.have" class="text-muted"> (have)</span><span class="d-block text-muted" *ngIf="s.note">{{s.note}}</span></label>
-          </div>
-        </div>
-      </div>
-      <button class="btn btn-sm btn-outline-primary mb-3" type="button" [disabled]="hrBusy || !hrPickedCodes.length" (click)="hrAdd(false, hrPickedCodes)" data-testid="hr-add-suggested">Add the ticked ones</button>
-
-      <div class="fw-semibold">3. Holidays <span class="small text-muted fw-normal">you decide the days</span></div>
-      <div class="row g-2 align-items-end mb-1">
-        <div class="col-auto"><input class="form-control form-control-sm" type="date" [(ngModel)]="hrNewHoliday.date" data-testid="hr-holiday-date"></div>
-        <div class="col-auto"><input class="form-control form-control-sm" placeholder="Name" [(ngModel)]="hrNewHoliday.name" data-testid="hr-holiday-name"></div>
-        <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" type="button" (click)="hrAddHoliday()" data-testid="hr-holiday-add">Add holiday</button></div>
-      </div>
-      <div class="small mb-3">
-        <span class="badge bg-light text-dark border me-1" *ngFor="let h of hrHolidays" data-testid="hr-holiday-row">{{h.date}} {{h.name}} <a href="javascript:void(0)" class="text-danger ms-1" (click)="hrRemoveHoliday(h)">x</a></span>
-        <span class="text-muted" *ngIf="!hrHolidays.length">None added for this year.</span>
-      </div>
-
-      <div class="fw-semibold">4. Your people <span class="small text-muted fw-normal">logins with no staff record; add the salary under HR &gt; Staff</span></div>
-      <div class="small text-muted" *ngIf="!hrPeople.length" data-testid="hr-people-none">Every login has a staff record.</div>
-      <div class="row g-2 align-items-end mb-1" *ngFor="let p of hrPeople" data-testid="hr-person">
-        <div class="col-12 col-md-3">{{p.name}}</div>
-        <div class="col-6 col-md-2"><select class="form-select form-select-sm" [(ngModel)]="p.position_id" [attr.data-testid]="'hr-person-role-' + p.id"><option [ngValue]="null">Job role</option><option *ngFor="let r of hrPositions" [ngValue]="r.id">{{r.name}}</option></select></div>
-        <div class="col-6 col-md-2"><input class="form-control form-control-sm" placeholder="Designation" [(ngModel)]="p.designation"></div>
-        <div class="col-6 col-md-2"><input class="form-control form-control-sm" type="date" [(ngModel)]="p.join_date"></div>
-        <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" type="button" (click)="hrCreateStaff(p)" [attr.data-testid]="'hr-person-add-' + p.id">Create staff record</button></div>
-      </div>
-      <a class="small" routerLink="/secure/hr/setup">Fine-tune in HR &gt; Setup (KPI measures and bands)</a>
+      <p class="small text-muted mb-2">How the business is registered, pay components, leave, holidays, job roles, KPI and your people are all set up in HR &gt; Setup.<span *ngIf="hrSteps" data-testid="hr-setup-steps"> {{hrSteps.done}} of {{hrSteps.total}} steps done.</span></p>
+      <a class="btn btn-sm btn-primary" routerLink="/secure/hr/setup" data-testid="hr-setup-open">Open HR &gt; Setup</a>
     </div>
 
     <div class="mt-4 pt-3 border-top" data-testid="biz-type">
