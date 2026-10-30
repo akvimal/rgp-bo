@@ -62,7 +62,32 @@ export class HrStaffService {
                  from hr_salary_revision_line l join hr_pay_component c on c.id = l.component_id where l.revision_id = r.id) as lines
          from hr_salary_revision r left join app_user b on b.id = r.created_by
         where r.employee_id = $1 order by r.effective_from desc`, [id]);
-    return { ...e, revisions };
+    return { ...e, revisions, can_delete: (await this.history(id)) === 0 };
+  }
+
+  /** how many records of real history the person has: payroll, attendance, leave, KPI. Salary revisions do not count; they go with a mistaken record. */
+  private async history(id: number): Promise<number> {
+    const [r] = await this.manager.query(
+      `select (select count(*) from hr_payroll_line where employee_id = $1)
+            + (select count(*) from hr_attendance where employee_id = $1)
+            + (select count(*) from hr_leave_request where employee_id = $1)
+            + (select count(*) from hr_kpi_review where employee_id = $1)
+            + (select count(*) from hr_kpi_rating where employee_id = $1) as n`, [id]);
+    return Number(r.n);
+  }
+
+  /** a record added by mistake: removed with its salary revisions, but only while it has no history. The login is left alone. */
+  async remove(id: number, by: any) {
+    const [cur] = await this.manager.query(`select e.id, coalesce(e.full_name, u.full_name) as full_name from hr_employee e left join app_user u on u.id = e.user_id where e.id = $1`, [id]);
+    if (!cur) throw new NotFoundException('Staff member not found.');
+    if (await this.history(id)) throw new BadRequestException('This person already has payroll, attendance, leave or KPI history, so the record cannot be deleted. Mark them as left instead.');
+    await this.manager.transaction(async (t) => {
+      await t.query(`delete from hr_salary_revision_line where revision_id in (select id from hr_salary_revision where employee_id = $1)`, [id]);
+      await t.query(`delete from hr_salary_revision where employee_id = $1`, [id]);
+      await t.query(`delete from hr_employee where id = $1`, [id]);
+    });
+    await this.audit.record({ userId: by.id, action: 'hr.staff_deleted', entityType: 'hr_employee', entityId: id, summary: `Staff record deleted (added by mistake): ${cur.full_name}`, details: {} });
+    return { id };
   }
 
   /** a staff member's stores are those their login is mapped to (Settings > Users); the base store must be one of them */

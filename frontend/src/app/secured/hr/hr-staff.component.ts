@@ -163,6 +163,13 @@ export class HrStaffComponent implements OnInit {
     this.hr.post(`staff/${this.editing.id}/exit`, { exit_date: this.exitDate }).subscribe(() => { this.message = "Marked as left."; this.open({ id: this.editing.id }); }, e => this.error = this.hr.msg(e));
   }
 
+  /** a record added by mistake; the server refuses once there is history */
+  remove() {
+    if (!confirm(`Delete ${this.editing.name || this.editing.full_name}? This record was added by mistake and nothing else depends on it. It cannot be undone.`)) return;
+    this.error = "";
+    this.hr.delete(`staff/${this.editing.id}`).subscribe(() => { this.back(); this.message = "Staff record deleted."; }, e => this.error = this.hr.msg(e));
+  }
+
   rejoin() {
     this.hr.post(`staff/${this.editing.id}/rejoin`).subscribe(() => { this.message = "Reactivated."; this.open({ id: this.editing.id }); }, e => this.error = this.hr.msg(e));
   }

@@ -42,6 +42,7 @@ export class HrController {
   @Get('staff/:id') get(@Param('id', ParseIntPipe) id: number) { return this.staff.get(id); }
   @Post('staff') create(@Body() b: any, @User() u: any) { return this.staff.create(b, u); }
   @Put('staff/:id') update(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.update(id, b, u); }
+  @Delete('staff/:id') removeStaff(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.staff.remove(id, u); }
   @Post('staff/:id/exit') exit(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.exit(id, b, u); }
   @Post('staff/:id/login') linkLogin(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.staff.linkLogin(id, b, u); }
   @Get('staff/:id/accounts') accounts(@Param('id', ParseIntPipe) id: number) { return this.staff.accounts(id); }

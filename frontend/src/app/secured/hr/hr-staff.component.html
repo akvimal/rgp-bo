@@ -165,6 +165,7 @@
             <button class="btn btn-outline-danger" type="button" (click)="leave()" data-testid="hr-staff-exit">Mark as left</button>
           </ng-container>
           <button *ngIf="editing.status === 'EXITED'" class="btn btn-outline-secondary" type="button" (click)="rejoin()">Reactivate</button>
+          <button *ngIf="editing.can_delete" class="btn btn-outline-danger ms-auto" type="button" (click)="remove()" title="Only while the person has no payroll, attendance, leave or KPI history" data-testid="hr-staff-delete">Delete (added by mistake)</button>
         </ng-container>
       </div>
 
