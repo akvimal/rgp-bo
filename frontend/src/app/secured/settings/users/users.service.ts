@@ -17,6 +17,11 @@ export class UsersService {
         return this.http.get(`${this.API_SERVER}/users`);
     }
 
+    /** the stores the signed-in person works in (what a manager may add people to) */
+    public myStores() {
+        return this.http.get(`${this.API_SERVER}/users/my-stores`);
+    }
+
     public getStores() {
         return this.http.get(`${this.API_SERVER}/stores`);
     }

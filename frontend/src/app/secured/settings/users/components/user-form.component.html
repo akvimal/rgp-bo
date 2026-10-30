@@ -64,7 +64,8 @@
                   </div>
                 </div>
               </div>
-              <small class="text-muted d-block mt-2">Leave all unchecked to allow access to all stores in {{currentUserBusinessName}}.</small>
+              <small class="text-muted d-block mt-2" *ngIf="!isManager">Leave all unchecked to allow access to all stores in {{currentUserBusinessName}}.</small>
+              <small class="text-muted d-block mt-2" *ngIf="isManager" data-testid="user-f-manager-note">Choose the store or stores this person works in. You can only choose stores you work in.</small>
             </div>
           </div>
         

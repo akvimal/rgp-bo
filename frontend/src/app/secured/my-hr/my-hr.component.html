@@ -7,6 +7,7 @@
       <ul class="nav nav-pills mb-3">
         <li class="nav-item"><a class="nav-link" [class.active]="tab === 'home'" role="button" (click)="show('home')" data-testid="myhr-tab-home">Overview</a></li>
         <li class="nav-item"><a class="nav-link" [class.active]="tab === 'profile'" role="button" (click)="show('profile')" data-testid="myhr-tab-profile">My details</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'pay'" role="button" (click)="show('pay')" data-testid="myhr-tab-pay">My pay</a></li>
         <li class="nav-item"><a class="nav-link" [class.active]="tab === 'payslips'" role="button" (click)="show('payslips')" data-testid="myhr-tab-payslips">Pay slips</a></li>
         <li class="nav-item"><a class="nav-link" [class.active]="tab === 'leave'" role="button" (click)="show('leave')" data-testid="myhr-tab-leave">Leave</a></li>
         <li class="nav-item"><a class="nav-link" [class.active]="tab === 'attendance'" role="button" (click)="show('attendance')" data-testid="myhr-tab-attendance">Attendance</a></li>
@@ -57,6 +58,40 @@
           <div class="col-md-3"><label class="form-label">Emergency phone</label><input class="form-control" maxlength="20" [(ngModel)]="profile.emergency_phone" data-testid="myhr-f-ephone"></div>
           <div class="col-12"><button class="btn btn-primary btn-sm" type="button" (click)="saveProfile()" data-testid="myhr-save">Save</button> <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="show('profile')">Cancel</button></div>
         </div>
+      </div>
+
+      <!-- my pay: the structure in force, what is coming, and how it has changed -->
+      <div *ngIf="tab === 'pay'" data-testid="myhr-pay">
+        <div *ngIf="pay && !pay.on_payroll" class="text-muted" data-testid="myhr-pay-none">You are not paid through payroll, so there is no pay structure to show.</div>
+        <ng-container *ngIf="pay?.on_payroll">
+          <div *ngIf="!pay.current && !pay.upcoming.length" class="text-muted" data-testid="myhr-pay-empty">Your pay structure has not been entered yet.</div>
+          <div *ngIf="pay.current" class="border rounded p-3 mb-3" data-testid="myhr-pay-current">
+            <div class="d-flex justify-content-between flex-wrap"><h6 class="mb-0">Your pay now</h6><span class="small text-muted">from {{pay.current.effective_from | date:'dd MMM yyyy'}}</span></div>
+            <table class="table table-sm align-middle mt-2 mb-1">
+              <tbody>
+                <tr *ngFor="let l of pay.current.lines"><td>{{l.name}}<span class="badge bg-light text-dark border ms-2" *ngIf="l.kind === 'DEDUCTION'">deduction</span></td><td class="text-end">&#8377;{{l.amount | number:'1.2-2'}}</td></tr>
+                <tr class="fw-bold"><td>Monthly gross</td><td class="text-end" data-testid="myhr-pay-gross">&#8377;{{pay.current.gross | number:'1.2-2'}}</td></tr>
+              </tbody>
+            </table>
+            <div class="small text-muted">Pay is for a 30-day month and is reduced for days not paid. Your KPI incentive is added each month from your KPI score, so it is not part of this list.</div>
+          </div>
+          <div *ngFor="let u of pay.upcoming" class="alert alert-info py-2" data-testid="myhr-pay-upcoming">
+            From {{u.effective_from | date:'dd MMM yyyy'}} your monthly gross becomes <strong>&#8377;{{u.gross | number:'1.2-2'}}</strong>.
+          </div>
+          <h6 class="mt-3" *ngIf="pay.history.length">How your pay has changed</h6>
+          <div *ngFor="let h of pay.history" class="border-top py-2" data-testid="myhr-pay-step">
+            <div class="d-flex justify-content-between flex-wrap"><strong>{{h.effective_from | date:'dd MMM yyyy'}}</strong><span>Gross &#8377;{{h.gross | number:'1.2-2'}}</span></div>
+            <div class="small text-muted" *ngIf="!h.changes.length">Your starting pay.</div>
+            <ul class="small mb-0" *ngIf="h.changes.length">
+              <li *ngFor="let c of h.changes">
+                {{c.name}}:
+                <ng-container *ngIf="c.from !== null && c.to !== null">&#8377;{{c.from | number:'1.2-2'}} to &#8377;{{c.to | number:'1.2-2'}}</ng-container>
+                <ng-container *ngIf="c.from === null">added, &#8377;{{c.to | number:'1.2-2'}}</ng-container>
+                <ng-container *ngIf="c.to === null">removed (was &#8377;{{c.from | number:'1.2-2'}})</ng-container>
+              </li>
+            </ul>
+          </div>
+        </ng-container>
       </div>
 
       <!-- pay slips -->

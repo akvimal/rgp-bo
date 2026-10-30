@@ -5,6 +5,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { HrLeaveService } from './hr-leave.service';
 import { HrPayrollService } from './hr-payroll.service';
+import { payHistory } from './hr-pay-history';
 
 import { isOwnerRole } from 'src/core/roles';
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -58,6 +59,24 @@ export class HrSelfService {
               coalesce((select sum(amount) from staff_credit_entry where user_id = $1), 0)::float as outstanding`, [user.id]);
     const [hol] = await this.manager.query(`select to_char(holiday_date, 'YYYY-MM-DD') as date, name from hr_holiday where holiday_date >= current_date order by holiday_date limit 1`);
     return { staff: true, name: e.name, role: e.role_name, latestPayslip: slip || null, pendingLeave: pending.n, recentDecisions: decided, credit, nextHoliday: hol || null };
+  }
+
+  // ------------------------------------------------------------------ pay structure
+  /**
+   * The person's own pay structure: what is in force today, what is coming, and how it has changed. The reason written against a
+   * revision is the owner's note and is not shown. Someone who is not on payroll (an owner, a partner) has no structure.
+   */
+  async pay(user: any) {
+    const e = await this.need(user);
+    const [emp] = await this.manager.query(`select on_payroll from hr_employee where id = $1`, [e.id]);
+    if (!emp?.on_payroll) return { on_payroll: false };
+    const revs = await this.manager.query(
+      `select r.id, to_char(r.effective_from, 'YYYY-MM-DD') as effective_from,
+              coalesce((select json_agg(json_build_object('component_id', c.id, 'name', c.name, 'kind', c.kind, 'amount', l.amount::float) order by c.display_order)
+                          from hr_salary_revision_line l join hr_pay_component c on c.id = l.component_id where l.revision_id = r.id), '[]'::json) as lines
+         from hr_salary_revision r where r.employee_id = $1 order by r.effective_from`, [e.id]);
+    const today = new Date().toISOString().slice(0, 10);
+    return { on_payroll: true, ...payHistory(revs, today) };
   }
 
   // ------------------------------------------------------------------ profile

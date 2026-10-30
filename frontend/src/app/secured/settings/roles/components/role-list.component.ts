@@ -29,8 +29,25 @@ export class RoleListComponent {
         return this.situational.includes(r.name) && !r.usercount;
     }
 
+    /** starter roles an owner can create in one click (none for a one-person shop) */
+    offered:any[] = [];
+    creating = false;
+    templateError = '';
+
     ngOnInit(){
         this.fetchList();
+        this.loadOffered();
+    }
+
+    private loadOffered(){
+        this.service.templates().subscribe((t:any) => this.offered = t || [], () => this.offered = []);
+    }
+
+    createTemplate(name:string){
+        this.creating = true;
+        this.templateError = '';
+        this.service.createTemplates([name]).subscribe(() => { this.creating = false; this.fetchList(); this.loadOffered(); },
+            (err:any) => { this.creating = false; this.templateError = err?.error?.message || 'Could not create the role'; });
     }
 
     delete(role:any){

@@ -7,7 +7,7 @@ import { UsersService } from "../users.service";
 import { AuthService } from "src/app/@core/auth/auth.service";
 import { blankStaffDetails, staffDetailsBody, staffDetailsModel } from "./staff-details-fields.component";
 
-const ADMIN_ROLE_NAMES = ['Site Admin', 'Business Head'];
+const ADMIN_ROLE_NAMES = ['Site Admin', 'Business Head', 'Owner-operator'];
 
 @Component({
     templateUrl: 'user-edit-form.component.html'
@@ -21,6 +21,8 @@ export class UserEditFormComponent {
   selectedStoreIds:number[] = []
   isSiteAdmin = false;
   isBusinessHead = false;
+  /** a manager (the Store Head): adds and edits the staff of their own stores, with the rights the owner gave the role */
+  isManager = false;
   currentUserBusinessName = '';
   details:any = blankStaffDetails();
   detailsError = '';
@@ -73,17 +75,20 @@ export class UserEditFormComponent {
         this.service.getCurrentUser().subscribe((current:any) => {
           this.isSiteAdmin = current?.rolename === 'Site Admin';
           this.isBusinessHead = current?.rolename === 'Business Head';
+          this.isManager = !this.isSiteAdmin && !this.isBusinessHead;
           this.currentUserBusinessName = current?.businessname || '';
 
           this.roleService.findAll().subscribe((data:any) => {
             this.allRoles = data || [];
             this.roles = this.isSiteAdmin
               ? this.allRoles.filter((r:any) => r.name === 'Business Head')
-              : this.allRoles.filter((r:any) => !ADMIN_ROLE_NAMES.includes(r.name));
+              : this.allRoles.filter((r:any) => !ADMIN_ROLE_NAMES.includes(r.name) && !(this.isManager && r.name === 'Store Head'));
           });
 
           if (this.isSiteAdmin) {
             this.businessesService.getBusinesses().subscribe((data:any) => this.businesses = data || []);
+          } else if (this.isManager) {
+            this.service.myStores().subscribe((data:any) => this.stores = data || []);
           } else if (this.isBusinessHead) {
             this.service.getStores().subscribe((data:any) => {
               this.stores = (data || []).filter((store:any) => store.business?.id === current?.businessid);
@@ -113,7 +118,7 @@ export class UserEditFormComponent {
 
         if (this.isSiteAdmin) {
           obj.businessid = this.form.value.businessid;
-        } else if (this.isBusinessHead) {
+        } else if (this.isBusinessHead || this.isManager) {
           obj.storeids = this.selectedStoreIds || [];
         }
 

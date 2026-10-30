@@ -20,6 +20,12 @@ export class UserController {
       return this.userService.findAll(currentUser);
     }
 
+    /** the stores the caller works in: what a manager may add people to */
+    @Get('my-stores')
+    async myStores(@User() currentUser: any) {
+      return this.userService.myStores(currentUser.id);
+    }
+
     @Get(':id')
     async findOne(@Param('id') id: number, @User() currentUser: any) {
       return this.userService.findByIdFor(id, currentUser)

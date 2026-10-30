@@ -16,6 +16,15 @@ export class RolesService {
         return this.http.get(`${this.API_SERVER}/roles`);
     }
 
+      /** the starter roles not created yet */
+      public templates(){
+        return this.http.get<any[]>(`${this.API_SERVER}/roles/templates`);
+      }
+
+      public createTemplates(names:string[]){
+        return this.http.post<any>(`${this.API_SERVER}/roles/templates`, { names });
+      }
+
       public save(role:any){
         return this.http.post(`${this.API_SERVER}/roles`,role);
       }

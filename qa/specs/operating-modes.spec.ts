@@ -715,7 +715,7 @@ test.describe('Operating modes: setup wizard @p1', () => {
     });
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.body.accounts.map((x: any) => x.ok)).toEqual([true, true, false, false, false]);
-    expect(r.body.accounts[2].error).toMatch(/can only create/i);
+    expect(r.body.accounts[2].error).toMatch(/can only create|platform administrator/i);
     const me = await api.request('GET', '/auth/me', undefined, `till.${tag}@qa.local`);
     expect(me.body.rolename).toBe('Counter');
   });

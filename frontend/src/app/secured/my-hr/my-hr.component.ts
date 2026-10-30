@@ -2,7 +2,7 @@ import { Component, OnInit } from "@angular/core";
 import { MyHrApi } from "./my-hr.service";
 import { printPayslip } from "../hr/payslip-print";
 
-type Tab = "home" | "profile" | "payslips" | "leave" | "attendance" | "credit";
+type Tab = "home" | "profile" | "pay" | "payslips" | "leave" | "attendance" | "credit";
 
 /** A staff member's own HR: where they stand, their details, pay slips, leave, attendance and staff credit. */
 @Component({ selector: "app-my-hr", templateUrl: "./my-hr.component.html" })
@@ -16,6 +16,7 @@ export class MyHrComponent implements OnInit {
   profile: any = null;
   editing = false;
   payslips: any[] = [];
+  pay: any = null;
   slip: any = null;
   leave: any = null;
   leaveForm: any = null;
@@ -35,6 +36,7 @@ export class MyHrComponent implements OnInit {
   show(t: Tab) {
     this.tab = t; this.message = this.error = ""; this.slip = null;
     if (t === "profile") this.api.get("profile").subscribe(p => { this.profile = p; this.editing = false; });
+    if (t === "pay") this.api.get("pay").subscribe(p => this.pay = p, e => this.error = this.api.msg(e));
     if (t === "payslips") this.api.get("payslips").subscribe(r => this.payslips = r.rows || []);
     if (t === "leave") this.loadLeave();
     if (t === "attendance") this.loadAttendance();

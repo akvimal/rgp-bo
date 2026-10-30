@@ -30,6 +30,7 @@ export class HrSelfController {
   @Get('summary') @Needs('myhr', 'view') summary(@User() u: any) { return this.service.summary(u); }
   @Get('profile') @Needs('myhr', 'view') profile(@User() u: any) { return this.service.profile(u); }
   @Put('profile') @Needs('myhr', 'view') updateProfile(@Body() b: any, @User() u: any) { return this.service.updateProfile(b, u); }
+  @Get('pay') @Needs('myhr', 'view') pay(@User() u: any) { return this.service.pay(u); }
   @Get('payslips') @Needs('myhr', 'view') payslips(@User() u: any) { return this.service.payslips(u); }
   @Get('payslips/:id') @Needs('myhr', 'view') payslip(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.service.payslip(id, u); }
   @Get('leave') @Needs('myhr', 'view') leave(@Query('year') year: string, @User() u: any) { return this.service.leaveOverview(+year, u); }

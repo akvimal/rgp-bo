@@ -25,14 +25,25 @@ export class RoleController {
       return this.roleService.findAll();
     }
 
+    /** the starter roles not created yet */
+    @Get('templates')
+    templates(@User() currentUser: any) {
+      return this.roleService.templates(currentUser.id);
+    }
+
+    @Post('templates')
+    createFromTemplates(@Body() body: any, @User() currentUser: any) {
+      return this.roleService.createFromTemplates(body?.names, currentUser.id);
+    }
+
     @Get(':id')
     async findOne(@Param('id') id: string) {
       return this.roleService.findById(Number(id))
     }
 
     @Put(':id')
-    update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
-      return this.roleService.update(id, updateRoleDto);
+    update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto, @User() currentUser: any) {
+      return this.roleService.update(id, updateRoleDto, currentUser.id);
     }
     
     @Delete(':id')

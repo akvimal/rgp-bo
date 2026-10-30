@@ -9,7 +9,8 @@ import { DeepPartial, In, Not, Repository } from "typeorm";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { AuthHelper } from "src/modules/auth/auth.helper";
-import { ASSIGNABLE_BY_BUSINESS_HEAD, ASSIGNABLE_BY_SITE_ADMIN, OWNER_ROLES } from "src/core/roles";
+import { ASSIGNABLE_BY_SITE_ADMIN, BUILT_IN_ROLES, OWNER_ROLES } from "src/core/roles";
+import { grants, isManagerOnly, mergeStores, overreach, permsOf, RESERVED_ROLES, roleBlock, sharesStore } from "src/core/role-rules";
 import { forgetUser } from "src/core/active-users";
 import { emailProblem, emailTakenMessage, removalBlock } from "src/core/user-rules";
 import { ModulesService } from "src/core/modules/modules.service";
@@ -46,6 +47,51 @@ export class UserService {
       throw new UnauthorizedException();
     }
     return caller;
+  }
+
+  /** the stores a login works in */
+  private async storesOf(userid: number): Promise<number[]> {
+    return (await this.userStoreRepository.find({ where: { userid } as any })).map((x: any) => Number(x.storeid));
+  }
+
+  /**
+   * A manager (a role that holds the right on users but is not an owner): what they may manage is the staff of their own stores.
+   * Returns null for an owner or the platform admin, who have their own rules; throws for anyone without the right.
+   */
+  private async managerContext(caller: AppUser, action: 'add' | 'edit' | 'delete', refusal: string) {
+    const name = caller.role?.name;
+    const perms = permsOf(caller.role);
+    if (name === 'Site Admin' || name === 'Business Head') return null;
+    if (name === 'Owner-operator') throw new ForbiddenException(refusal);
+    if (!grants(perms, 'users', action)) throw new ForbiddenException(refusal);
+    return { name, perms, stores: await this.storesOf(caller.id), businessid: await businessOfUser(this.userRepository.manager, caller.id) };
+  }
+
+  /** the person must work in one of the manager's stores and must not be a manager, an owner, or the manager themselves */
+  private async assertManaged(ctx: { stores: number[] }, caller: AppUser, target: AppUser) {
+    if (target.id === caller.id) throw new ForbiddenException('Change your own details under Profile.');
+    const role = await this.roleRepository.findOne({ where: { id: target.roleid } });
+    if (isManagerOnly(role?.name) || RESERVED_ROLES.includes(role?.name ?? '')) throw new ForbiddenException('You cannot change a manager or an owner.');
+    if (!sharesStore(ctx.stores, await this.storesOf(target.id))) throw new ForbiddenException('That person does not work in one of your stores.');
+    return role;
+  }
+
+  /** this person may give this role: not an owner role, no manager role from a manager, and nothing beyond what they hold themselves */
+  private assertGivable(caller: AppUser, role: AppRole) {
+    const blocked = roleBlock(caller.role?.name, role.name, BUILT_IN_ROLES.includes(role.name));
+    if (blocked) throw new ForbiddenException(blocked);
+    if (!BUILT_IN_ROLES.includes(role.name)) {
+      const over = overreach(caller.role?.name, permsOf(caller.role), permsOf(role));
+      if (over.length) throw new ForbiddenException(`That role allows more than you can do yourself (${over.slice(0, 3).join(', ')}).`);
+    }
+  }
+
+  /** the stores the caller works in */
+  async myStores(userid: number) {
+    return this.userRepository.manager.query(
+      `select s.id, s.location, s.store_type as storetype, json_build_object('name', b.name) as business
+           from user_stores us join stores s on s.id = us.store_id left join business b on b.id = s.business_id
+        where us.user_id = $1 and s.active and not s.archive order by us.is_primary desc, s.id`, [userid]);
   }
 
   /** an email that fits and is free: the login name is unique across every login, removed ones included */
@@ -95,13 +141,16 @@ export class UserService {
         throw new BadRequestException('Business is required');
       }
     } else if (caller.role?.name === 'Business Head') {
-      if (!ASSIGNABLE_BY_BUSINESS_HEAD.includes(targetRole.name)) {
-        throw new ForbiddenException('Business Head can only create Store Head, Sales Staff, Counter or Personal users');
-      }
+      this.assertGivable(caller, targetRole);
       businessid = caller.businessid;
       await this.assertStoresBelongToBusiness(dto.storeids || [], businessid);
     } else {
-      throw new ForbiddenException('Not permitted to create users');
+      const ctx = await this.managerContext(caller, 'add', 'Not permitted to create users');
+      this.assertGivable(caller, targetRole);
+      const wanted = (Array.isArray(dto.storeids) ? dto.storeids : []).map((x: any) => Number(x)).filter((x: number) => !!x);
+      if (!wanted.length) throw new BadRequestException('Choose the store this person works in.');
+      if (!wanted.every((x: number) => ctx!.stores.includes(x))) throw new ForbiddenException('You can only add people to stores you work in.');
+      businessid = ctx!.businessid;
     }
 
     const email = await this.checkedEmail(dto.email);
@@ -160,9 +209,8 @@ export class UserService {
       let roleid = target.roleid;
       if (dto.roleid !== undefined && Number(dto.roleid) !== target.roleid) {
         const newRole = await this.roleRepository.findOne({ where: { id: Number(dto.roleid) } });
-        if (!newRole || !ASSIGNABLE_BY_BUSINESS_HEAD.includes(newRole.name)) {
-          throw new ForbiddenException('Business Head can only assign Store Head, Sales Staff, Counter or Personal roles');
-        }
+        if (!newRole) throw new BadRequestException('Invalid role');
+        this.assertGivable(caller, newRole);
         roleid = newRole.id;
       }
       if (dto.storeids && dto.storeids.length) {
@@ -177,7 +225,16 @@ export class UserService {
       });
     }
 
-    throw new ForbiddenException('Not permitted to edit users');
+    const ctx = await this.managerContext(caller, 'edit', 'Not permitted to edit users');
+    await this.assertManaged(ctx!, caller, target);
+    let roleid = target.roleid;
+    if (dto.roleid !== undefined && Number(dto.roleid) !== target.roleid) {
+      const newRole = await this.roleRepository.findOne({ where: { id: Number(dto.roleid) } });
+      if (!newRole) throw new BadRequestException('Invalid role');
+      this.assertGivable(caller, newRole);
+      roleid = newRole.id;
+    }
+    return this.userRepository.update(id, { fullname: dto.fullname, email: dto.email, phone: dto.phone, location: dto.location, roleid });
   }
 
   async updateStoresScoped(id: number, storeids: any[], currentUserId: number) {
@@ -195,7 +252,11 @@ export class UserService {
       return this.updateStores(id, storeids, currentUserId);
     }
 
-    throw new ForbiddenException('Not permitted to assign stores');
+    const ctx = await this.managerContext(caller, 'edit', 'Not permitted to assign stores');
+    await this.assertManaged(ctx!, caller, target);
+    const wanted = (Array.isArray(storeids) ? storeids : []).map((x: any) => Number(x)).filter((x: number) => !!x);
+    if (!wanted.every((x: number) => ctx!.stores.includes(x))) throw new ForbiddenException('You can only assign stores you work in.');
+    return this.updateStores(id, mergeStores(await this.storesOf(id), ctx!.stores, wanted), currentUserId);
   }
 
   async deleteScoped(rawId: number, currentUserId: number) {
@@ -218,7 +279,8 @@ export class UserService {
         throw new ForbiddenException('You can only remove users in your own business');
       }
     } else {
-      throw new ForbiddenException('Not permitted to remove users');
+      const ctx = await this.managerContext(caller, 'delete', 'Not permitted to remove users');
+      await this.assertManaged(ctx!, caller, target);
     }
 
     // never remove yourself, and never the last head of the business: nobody could sign in to manage it
