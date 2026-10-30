@@ -201,6 +201,14 @@ export class HrStaffComponent implements OnInit {
   /** the job role this person holds */
   get myPosition(): any { return this.positions.find(p => p.id === this.detail?.position_id) || null; }
 
+  /** the registration fields only make sense for a pharmacist; a record that already holds one keeps showing them so nothing saved is hidden */
+  get showPharmacist(): boolean {
+    const e = this.editing;
+    if (!e) return false;
+    const role = this.positions.find(x => x.id === e.position_id);
+    return /pharmacist/i.test(role?.name || "") || !!(e.pharmacist_reg_no || e.pharmacist_council || e.pharmacist_valid_to);
+  }
+
   /** fill the amounts from the job role's pay structure; every amount can still be changed before saving */
   useStructure() {
     const p = this.myPosition;

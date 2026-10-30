@@ -112,6 +112,9 @@ export class StoreSettingsComponent implements OnInit {
     return this.auth.platform && Number.isFinite(n) ? n : null;
   }
 
+  /** a one-store plan has nothing to add: the new-store form is hidden (editing the store still shows it) */
+  get canAddStore():boolean { return this.storeLimit === null || this.storeLimit > 1; }
+
   /** a new store would go past the plan's limit */
   get atStoreLimit():boolean {
     return this.storeLimit !== null && this.stores.filter((s:any) => s.isActive !== false && !s.isArchived).length >= this.storeLimit;
@@ -281,7 +284,12 @@ export class StoreSettingsComponent implements OnInit {
     });
   }
 
+  /** a save just refreshed the store list: keep the licence panel and its "saved" message as they are */
+  private licJustSaved = false;
+
   openLicences(id:any) {
+    if (this.licJustSaved && id === this.licStoreId) { this.licJustSaved = false; return; }
+    this.licJustSaved = false;
     this.licStoreId = id;
     this.licMessage = '';
     this.licError = '';
@@ -321,7 +329,7 @@ export class StoreSettingsComponent implements OnInit {
       licenses: this.lic.licenses.map((l:any) => ({ licensetype: l.licensetype, number: l.number, validfrom: l.validfrom || null, validto: l.validto || null, notes: l.notes || '' })),
     };
     this.cashService.saveStoreLicenses(this.licStoreId, body).subscribe(
-      (r:any) => { this.licSaving = false; this.lic = r; this.licMessage = 'Licences and address saved.'; this.refreshStoreList(); },
+      (r:any) => { this.licSaving = false; this.lic = r; this.licMessage = 'Licences and address saved.'; this.licJustSaved = true; this.refreshStoreList(); },
       err => { this.licSaving = false; this.licError = err?.error?.message || 'Unable to save the licences'; });
   }
 

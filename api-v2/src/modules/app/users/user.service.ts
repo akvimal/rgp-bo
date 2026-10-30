@@ -1,15 +1,17 @@
 import { packsOf } from 'src/core/modules/modules';
-import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { AppUser } from "../../../entities/appuser.entity";
 import { AppRole } from "../../../entities/approle.entity";
 import { Store } from "../../../entities/store.entity";
 import { UserStore } from "../../../entities/user-store.entity";
-import { DeepPartial, In, Repository } from "typeorm";
+import { DeepPartial, In, Not, Repository } from "typeorm";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { AuthHelper } from "src/modules/auth/auth.helper";
-import { ASSIGNABLE_BY_BUSINESS_HEAD, ASSIGNABLE_BY_SITE_ADMIN } from "src/core/roles";
+import { ASSIGNABLE_BY_BUSINESS_HEAD, ASSIGNABLE_BY_SITE_ADMIN, OWNER_ROLES } from "src/core/roles";
+import { forgetUser } from "src/core/active-users";
+import { emailProblem, emailTakenMessage, removalBlock } from "src/core/user-rules";
 import { ModulesService } from "src/core/modules/modules.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { filterPermissions } from "src/core/modules/modules";
@@ -44,6 +46,15 @@ export class UserService {
       throw new UnauthorizedException();
     }
     return caller;
+  }
+
+  /** an email that fits and is free: the login name is unique across every login, removed ones included */
+  private async checkedEmail(email: any, exceptId?: number): Promise<string> {
+    const r = emailProblem(email);
+    if ('error' in r) throw new BadRequestException(r.error);
+    const other = await this.userRepository.findOne({ where: { email: r.value } });
+    if (other && other.id !== exceptId) throw new ConflictException(emailTakenMessage(other.isActive === false || other.isArchived === true));
+    return r.value;
   }
 
   private async assertStoresBelongToBusiness(storeids: any[], businessid: number | null) {
@@ -93,6 +104,8 @@ export class UserService {
       throw new ForbiddenException('Not permitted to create users');
     }
 
+    const email = await this.checkedEmail(dto.email);
+
     // the shared till and self-service logins are not seats on a hosted plan
     if (!['Counter', 'Personal'].includes(targetRole.name)) await this.platform.assertRoom('users');
     if (!dto.password) {
@@ -101,7 +114,7 @@ export class UserService {
 
     const user = await this.userRepository.save({
       fullname: dto.fullname,
-      email: dto.email,
+      email,
       phone: dto.phone,
       location: dto.location,
       roleid: targetRole.id,
@@ -120,6 +133,8 @@ export class UserService {
     if (!target) {
       throw new BadRequestException('User not found');
     }
+    // a changed email becomes the new login name: it must fit and be free (an unchanged one is left alone, whatever it looks like)
+    if (dto.email !== undefined && dto.email !== target.email) dto.email = await this.checkedEmail(dto.email, target.id);
 
     if (caller.role?.name === 'Site Admin') {
       const targetRole = await this.roleRepository.findOne({ where: { id: target.roleid } });
@@ -183,7 +198,10 @@ export class UserService {
     throw new ForbiddenException('Not permitted to assign stores');
   }
 
-  async deleteScoped(id: number, currentUserId: number) {
+  async deleteScoped(rawId: number, currentUserId: number) {
+    // the route hands the id over as text, and a comparison of 10 with '10' would let someone remove themselves
+    const id = Number(rawId);
+    if (!Number.isInteger(id)) throw new BadRequestException('User not found');
     const caller = await this.getCaller(currentUserId);
     const target = await this.userRepository.findOne({ where: { id } });
     if (!target) {
@@ -202,6 +220,15 @@ export class UserService {
     } else {
       throw new ForbiddenException('Not permitted to remove users');
     }
+
+    // never remove yourself, and never the last head of the business: nobody could sign in to manage it
+    const targetRole = await this.roleRepository.findOne({ where: { id: target.roleid } });
+    const headRoles = await this.roleRepository.find({ where: { name: In(OWNER_ROLES) } });
+    const otherHeads = OWNER_ROLES.includes(targetRole?.name ?? '')
+      ? await this.userRepository.count({ where: { businessid: target.businessid, roleid: In(headRoles.map(r => r.id)), isActive: true, isArchived: false, id: Not(id) } as any })
+      : 0;
+    const blocked = removalBlock(currentUserId, id, targetRole?.name, otherHeads);
+    if (blocked) throw new BadRequestException(blocked);
 
     return this.delete(id, { id: currentUserId });
   }
@@ -340,7 +367,9 @@ export class UserService {
         }
         obj.isActive = false;
         obj.updatedby = currentUser.id;
-        return await transactionManager.save(AppUser, obj as DeepPartial<AppUser>);
+        const saved = await transactionManager.save(AppUser, obj as DeepPartial<AppUser>);
+        forgetUser(id);
+        return saved;
       } catch (error) {
         // Transaction will automatically rollback on error
         throw new Error(`Failed to delete user: ${error.message}`);

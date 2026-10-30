@@ -28,6 +28,10 @@ export class AuthHelper {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+    // a removed or archived login stops working at once, not when its token runs out
+    if (user.isActive === false || user.isArchived === true) {
+      throw new UnauthorizedException('This account is no longer active');
+    }
     return user;
   }
 
