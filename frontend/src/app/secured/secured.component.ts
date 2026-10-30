@@ -113,7 +113,7 @@ export class SecuredComponent {
 
     /** the grouped menu is a per-business choice (dashboard settings, "The grouped menu"); off keeps the long-standing menu */
     newMenu = false;
-    menuGroups: MenuGroup[] = buildMenu({ has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u) });
+    menuGroups: MenuGroup[] = buildMenu({ has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) });
 
     groupVisible(g: MenuGroup): boolean {
       return g.items.some((m) => m.show());
@@ -125,6 +125,9 @@ export class SecuredComponent {
         error: () => { this.newMenu = false; },
       });
     }
+
+    /** the pharmacy guide is shown to everyone in a pharmacy business */
+    get pharmacyPack(): boolean { return this.authService.packOn('pharmacy'); }
 
     /** menu entries and section headings follow what the role may open */
     canOpen(url: string): boolean {

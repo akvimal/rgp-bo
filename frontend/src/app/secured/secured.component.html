@@ -168,6 +168,12 @@
             <span>Drug register</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="pharmacyPack">
+          <a class="nav-link collapsed" routerLink="pharmacy-guide" data-testid="nav-pharmacy-guide" title="Pharmacy guide" aria-label="Pharmacy guide">
+            <i class="bi bi-mortarboard"></i>
+            <span>Pharmacy guide</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'review.view'">
           <a class="nav-link collapsed" routerLink="review" data-testid="nav-review" title="Weekly review" aria-label="Weekly review">
             <i class="bi bi-journal-check"></i>

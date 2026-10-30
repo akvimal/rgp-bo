@@ -179,6 +179,8 @@ export class AuthService {
   public isUrlAuthorized(url:string):boolean{
     // everyone signed in has their own notifications; what shows in them is decided by the server
     if (url === '/secure/notifications') return true;
+    // the pharmacy guide is for everyone who works in a pharmacy business, whatever their role
+    if (url.split('?')[0] === '/secure/pharmacy-guide') return this.packOn('pharmacy');
     const found = this.permissions.find((p:any) => {
       if(p.path instanceof Array)
         return p.path.some((i:string) => this.matchesPath(url, i));

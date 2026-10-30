@@ -4,7 +4,7 @@
  */
 export interface MenuItem { id: string; label: string; route: string; icon: string; show: () => boolean; }
 export interface MenuGroup { key: string; label: string; items: MenuItem[]; }
-export interface MenuAccess { has: (...keys: string[]) => boolean; canOpen: (url: string) => boolean; }
+export interface MenuAccess { has: (...keys: string[]) => boolean; canOpen: (url: string) => boolean; pack?: (name: string) => boolean; }
 
 export function buildMenu(a: MenuAccess): MenuGroup[] {
   const item = (id: string, label: string, route: string, icon: string, show: () => boolean): MenuItem => ({ id, label, route: '/secure/' + route, icon, show });
@@ -45,6 +45,9 @@ export function buildMenu(a: MenuAccess): MenuGroup[] {
       item('nav-hr', 'Staff and HR', 'hr', 'bi-people', any('hr.view')),
       item('nav-leave-approvals', 'Leave requests', 'leave-approvals', 'bi-calendar2-check', any('leaveapprove.decide')),
       item('nav-kpi-rate', 'Rate staff', 'kpi/rate', 'bi-clipboard-check', any('kpirate.rate')),
+    ] },
+    { key: 'learn', label: 'Learn', items: [
+      item('nav-pharmacy-guide', 'Pharmacy guide', 'pharmacy-guide', 'bi-mortarboard', () => !!a.pack && a.pack('pharmacy')),
     ] },
     { key: 'oversight', label: 'Oversight', items: [
       item('nav-compliance', 'Compliance', 'compliance', 'bi-check2-square', any('compliance.view')),

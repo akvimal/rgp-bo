@@ -54,6 +54,7 @@
               <option value="">Select</option>
               <option *ngFor="let c of pp.choices" [value]="c.value">{{c.label}}</option>
             </select>
+            <a *ngIf="pp.id === 'schedule'" class="small" routerLink="/secure/pharmacy-guide" [queryParams]="{c: 'schedules'}" target="_blank" data-testid="prod-schedule-help">What do these mean?</a>
             <input *ngIf="!pp.type" type="text" (input)="dataInput(pp.type, pp.id, $event)"
                       class="form-control" formControlName={{pp.id}}>
             <textarea *ngIf="pp.type === 'TEXT'" rows="2" (input)="dataInput(pp.type, pp.id, $event)" class="form-control" formControlName={{pp.id}}></textarea>

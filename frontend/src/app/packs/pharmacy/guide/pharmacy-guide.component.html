@@ -1,0 +1,134 @@
+<div class="pagetitle d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <h1 class="mb-0">Pharmacy guide</h1>
+  <button type="button" class="btn btn-outline-secondary btn-sm no-print" (click)="print()" data-testid="guide-print"><i class="bi bi-printer me-1"></i>Print this page</button>
+</div>
+<p class="small text-muted mt-2 mb-3" data-testid="guide-note">{{meta.note}}</p>
+
+<div class="row g-3">
+  <!-- the chapters -->
+  <div class="col-lg-3 no-print">
+    <div class="mb-3">
+      <div class="input-group input-group-sm">
+        <input class="form-control" [(ngModel)]="query" (ngModelChange)="search()" placeholder="Search the guide" aria-label="Search the guide" data-testid="guide-search">
+        <button class="btn btn-outline-secondary" type="button" *ngIf="query" (click)="clearSearch()" aria-label="Clear the search">&times;</button>
+      </div>
+    </div>
+    <div class="nav flex-lg-column nav-pills guide-nav gap-1" data-testid="guide-nav">
+      <a *ngFor="let c of chapters" class="nav-link py-2" [class.active]="c.id === current.id && !query" (click)="open(c.id)" [attr.data-testid]="'guide-nav-' + c.id">
+        <i class="bi me-2" [ngClass]="c.icon"></i>{{c.title}} <span class="small opacity-75 ms-1">{{c.minutes}} min</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="col-lg-9">
+    <!-- search results -->
+    <div *ngIf="query" data-testid="guide-results">
+      <h5 class="mb-2">{{hits.length}} result{{hits.length === 1 ? '' : 's'}} for "{{query}}"</h5>
+      <div *ngIf="!hits.length" class="text-muted">Nothing found. Try one word, such as <a role="button" (click)="query = 'prescription'; search()">prescription</a> or <a role="button" (click)="query = 'expiry'; search()">expiry</a>.</div>
+      <div class="list-group">
+        <a *ngFor="let h of hits" class="list-group-item list-group-item-action" role="button" (click)="open(h.chapter)" data-testid="guide-hit">
+          <div class="d-flex justify-content-between"><strong>{{h.title}}</strong><span class="badge bg-light text-dark border">{{h.kind}}</span></div>
+          <div class="small text-muted">{{h.chapterTitle}}</div>
+          <div class="small">{{h.text}}</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- a chapter -->
+    <div *ngIf="!query" class="card">
+      <div class="card-body pt-3">
+        <h4 class="mb-1" data-testid="guide-chapter-title"><i class="bi me-2 text-primary" [ngClass]="current.icon"></i>{{current.title}}</h4>
+        <div class="small text-muted mb-2">About {{current.minutes}} minutes to read</div>
+        <p class="lead fs-6">{{current.intro}}</p>
+
+        <!-- start: the golden rules and the learning path -->
+        <ng-container *ngIf="current.id === 'start'">
+          <div class="border rounded p-3 mb-3 bg-light" data-testid="guide-rules">
+            <h6 class="mb-2">Six rules to remember</h6>
+            <ol class="mb-0"><li *ngFor="let r of rules" class="mb-1">{{r}}</li></ol>
+          </div>
+          <h6 class="mt-4">Your learning path as a new member of staff</h6>
+          <div class="path-step ps-3 mb-3" *ngFor="let s of path; let i = index" [attr.data-testid]="'guide-path-' + i">
+            <div class="d-flex flex-wrap justify-content-between"><strong>{{s.when}}</strong><span class="small text-muted">about {{s.minutes}} minutes</span></div>
+            <div class="small mb-1">Read:
+              <ng-container *ngFor="let id of s.chapters; let last = last"><a role="button" (click)="open(id)">{{chapterTitle(id)}}</a><span *ngIf="!last">, </span></ng-container>
+            </div>
+            <div class="small text-muted">By the end you can:</div>
+            <ul class="small mb-0"><li *ngFor="let o of s.outcome">{{o}}</li></ul>
+          </div>
+        </ng-container>
+
+        <!-- schedules -->
+        <div *ngFor="let s of current.schedules" class="sched card mb-3" [ngClass]="'tone-' + s.tone" [attr.data-testid]="'guide-schedule-' + s.id">
+          <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+              <h5 class="mb-0">{{s.name}}</h5>
+              <span class="fw-semibold" data-testid="guide-schedule-headline">{{s.headline}}</span>
+            </div>
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <div class="small text-muted">What it needs</div>
+                <ul class="mb-2"><li *ngFor="let n of s.needs">{{n}}</li></ul>
+                <div class="small text-muted">Examples and how to spot it</div>
+                <div>{{s.examples}}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted">What you do</div>
+                <ul class="mb-2"><li *ngFor="let n of s.youDo">{{n}}</li></ul>
+                <div class="small text-muted">In this app</div>
+                <div>{{s.inApp}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- cards -->
+        <div *ngFor="let k of current.cards" class="border rounded p-3 mb-3" [ngClass]="{'border-danger': k.tone === 'danger', 'border-warning': k.tone === 'warn', 'border-success': k.tone === 'good'}" data-testid="guide-card">
+          <h6 class="mb-1">{{k.title}}</h6>
+          <p class="mb-1" *ngIf="k.body">{{k.body}}</p>
+          <ul class="mb-1" *ngIf="k.points"><li *ngFor="let p of k.points">{{p}}</li></ul>
+          <div class="small text-primary" *ngIf="k.app"><i class="bi bi-app-indicator me-1"></i>In this app: {{k.app}}</div>
+        </div>
+
+        <!-- scenarios -->
+        <div *ngIf="current.scenarios" data-testid="guide-scenarios">
+          <details *ngFor="let s of current.scenarios" class="border rounded p-3 mb-2" data-testid="guide-scenario">
+            <summary class="fw-semibold">{{s.situation}}</summary>
+            <ol class="mt-2 mb-1"><li *ngFor="let d of s.doThis">{{d}}</li></ol>
+            <div class="small text-muted" *ngIf="s.why"><strong>Why:</strong> {{s.why}}</div>
+          </details>
+        </div>
+
+        <!-- concepts -->
+        <div *ngIf="current.terms" data-testid="guide-terms">
+          <input class="form-control form-control-sm mb-2 w-auto" [(ngModel)]="termFilter" placeholder="Find a word" data-testid="guide-term-filter">
+          <dl class="mb-0">
+            <ng-container *ngFor="let t of terms">
+              <dt data-testid="guide-term">{{t.term}}</dt>
+              <dd class="mb-2">{{t.meaning}}</dd>
+            </ng-container>
+          </dl>
+          <div *ngIf="!terms.length" class="text-muted">No word matches.</div>
+        </div>
+
+        <!-- the quiz -->
+        <div *ngIf="current.id === 'quiz'" data-testid="guide-quiz">
+          <div class="d-flex flex-wrap gap-2 mb-3 no-print">
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="shuffle()" data-testid="guide-quiz-shuffle">Shuffle the questions</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="showAll()">Show all answers</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="hideAll()">Hide all answers</button>
+          </div>
+          <div class="border rounded p-3 mb-2" *ngFor="let q of quiz; let i = index" data-testid="guide-quiz-q">
+            <div class="d-flex justify-content-between gap-2">
+              <div><span class="text-muted me-1">{{i + 1}}.</span><strong>{{q.q}}</strong></div>
+              <a class="small text-nowrap no-print" role="button" (click)="open(q.chapter)">read about it</a>
+            </div>
+            <button type="button" class="btn btn-sm btn-link px-0 no-print" (click)="toggle(i)" data-testid="guide-quiz-show">{{shown.has(i) ? 'Hide the answer' : 'Show the answer'}}</button>
+            <div *ngIf="shown.has(i)" class="alert alert-success py-2 px-3 mb-0 mt-1" data-testid="guide-quiz-answer">{{q.a}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="small text-muted mt-3">Guide version {{meta.version}}. Based on the {{meta.basis}}.</div>
+  </div>
+</div>

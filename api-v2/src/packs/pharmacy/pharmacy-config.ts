@@ -17,15 +17,15 @@ export const PHARMACY_PRODUCT_PROPS: any[] = [
         "filter": true,
         "choices": [
           {
-            "label": "H",
+            "label": "Schedule H: Prescription required",
             "value": "H"
           },
           {
-            "label": "H1",
+            "label": "Schedule H1: Prescription + mandatory H1 register",
             "value": "H1"
           },
           {
-            "label": "X",
+            "label": "Schedule X: Special licence + prescription + locked inventory",
             "value": "X"
           },
           {

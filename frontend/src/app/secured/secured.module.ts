@@ -102,6 +102,10 @@ const routes: Routes = [
       loadChildren: () => import('../packs/pharmacy/pharmacy.module').then(m => m.PharmacyModule)
     },
     {
+      path: 'pharmacy-guide', canActivate:[AuthGuard],
+      loadChildren: () => import('../packs/pharmacy/guide/pharmacy-guide.module').then(m => m.PharmacyGuideModule)
+    },
+    {
       path: 'gst-filing', canActivate:[AuthGuard],
       loadChildren: () => import('./gst/gst.module').then(m => m.GstModule)
     },
