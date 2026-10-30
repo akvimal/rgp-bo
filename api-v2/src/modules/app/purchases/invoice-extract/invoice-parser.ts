@@ -572,14 +572,30 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
     warnings.push('The item table was not found: no row with column names like Batch, Exp, Qty and Rate.');
     return { header, lines: [], warnings, tableFound: false };
   }
-  // a DIS% printed beside each line that the value column does not take off is the cash discount, which is taken off once, below the goods
+  // a DIS% printed on each line, with the same discount also printed at the foot ("Cash Disc 112.50"): one discount shown twice. Each line
+  // keeps its percentage (the tax is worked on the discounted value), and the foot is not entered again. Otherwise a DIS% that the value
+  // column does not take off is the cash discount, taken off once below the goods.
   if (header.cashdiscount) {
-    for (const r of rows) {
-      if (r.disc === null || !(r.disc > 0) || !r.qty || r.rate === null || r.amountRead === null) continue;
-      const plain = round2(r.qty * r.rate);
+    const plainOf = (r: ExtractedLine) => (r.qty && r.rate !== null ? round2(r.qty * r.rate) : null);
+    const notTakenOff = (r: ExtractedLine) => {
+      const plain = plainOf(r);
+      if (r.disc === null || !(r.disc > 0) || plain === null || r.amountRead === null) return false;
       const tol = Math.max(1, plain * 0.01);
-      if (Math.abs(plain - r.amountRead) <= tol && Math.abs(round2(plain * (1 - r.disc / 100)) - r.amountRead) > tol) {
-        r.disc = 0; r.amount = plain;
+      return Math.abs(plain - r.amountRead) <= tol && Math.abs(round2(plain * (1 - r.disc / 100)) - r.amountRead) > tol;
+    };
+    const discounted = rows.filter((r) => r.disc !== null && r.disc > 0);
+    const pcts = new Set(discounted.map((r) => r.disc));
+    const goods = rows.reduce((t, r) => t + (plainOf(r) ?? 0), 0);
+    const same = discounted.length > 0 && discounted.every(notTakenOff) && pcts.size === 1
+      && Math.abs(goods * (discounted[0].disc as number) / 100 - header.cashdiscount.amount) <= Math.max(1, header.cashdiscount.amount * 0.02);
+    if (same) {
+      for (const r of rows) r.warnings = r.warnings.filter((w) => !/does not match quantity/.test(w));
+      warnings.push(`The ${discounted[0].disc}% printed on each line is the cash discount of ${header.cashdiscount.amount.toFixed(2)} at the foot: it is taken off each line, so it is not entered again as a separate cash discount.`);
+      header.cashdiscount = null;
+    } else {
+      for (const r of rows) {
+        if (!notTakenOff(r)) continue;
+        r.disc = 0; r.amount = plainOf(r);
         r.warnings = r.warnings.filter((w) => !/does not match quantity/.test(w));
       }
     }

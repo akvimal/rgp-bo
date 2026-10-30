@@ -218,8 +218,7 @@ describe('a scanned distributor invoice whose header OCR lost most column names 
     expect(p.header.suppliergstin).toBe('33AAMCP7950M1ZS');
   });
 
-  it('takes the first number after "Cash Disc" as the amount, not the taxable value printed beside it', () => {
-    expect(p.header.cashdiscount).toEqual({ pct: null, amount: 112.5 });
+  it('reads the amount after "Cash Disc", not the taxable value beside it, and the goods value from "Sale Value"', () => {
     expect(p.header.goodsvalue).toBe(3750.04);
   });
 
@@ -234,11 +233,14 @@ describe('a scanned distributor invoice whose header OCR lost most column names 
     expect(p.lines[2].description).toBe('CENTRIVIVE 200MG VEG CAP 30');
   });
 
-  it('keeps the printed 3.00 as the cash discount taken off once, not off every line, so the lines add up to the printed total', () => {
-    expect(p.lines.every((l) => l.disc === 0)).toBe(true);
-    expect(p.lines.reduce((t, l) => t + (l.amount ?? 0), 0)).toBeCloseTo(3750.04, 2);
+  it('keeps the printed 3.00 on every line, takes it off each line, and does not enter the foot discount again', () => {
+    expect(p.lines.map((l) => l.disc)).toEqual([3, 3, 3, 3, 3]);
+    expect(p.header.cashdiscount).toBeNull();
+    expect(p.warnings.join(' ')).toContain('3% printed on each line');
+    expect(p.lines.map((l) => l.amount)).toEqual([638.55, 80.25, 2216.4, 598.88, 103.46]);
+    expect(p.lines.reduce((t, l) => t + (l.amount ?? 0), 0)).toBeCloseTo(3637.54, 1);        // the printed taxable total
     expect(linesTotalWithTax(p.lines, p.header)).toBeGreaterThan(3901);
-    expect(linesTotalWithTax(p.lines, p.header)).toBeLessThan(3903);
+    expect(linesTotalWithTax(p.lines, p.header)).toBeLessThan(3903);                           // the printed 3902.00
   });
 });
 
