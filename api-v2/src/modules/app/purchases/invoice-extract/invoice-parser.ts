@@ -204,7 +204,7 @@ function readHeader(lines: TextLine[], ownGstin?: string | null, known: string[]
   for (const l of lines) {
     const t = l.text;
     if (!h.invoiceno) {
-      const m = t.match(/(?:invoice|inv|bill|cash\s*memo)\s*(?:no|number|num|#)\.?\s*[:\-.]?\s*([A-Za-z0-9][A-Za-z0-9\/\-._]{1,29})/i);
+      const m = t.match(/(?:invoice|inv\.?|bill|cash\s*memo)\s*(?:no|number|num|#)\.?\s*[:\-.]?\s*([A-Za-z0-9][A-Za-z0-9\/\-._]{1,29})/i);
       if (m && !NOT_VALUE.test(m[1])) h.invoiceno = m[1].replace(/[.\-_/]+$/, '').toUpperCase();
     }
     if (!h.invoicedate) {
@@ -254,11 +254,12 @@ function readHeader(lines: TextLine[], ownGstin?: string | null, known: string[]
   for (const l of lines) {
     const t = l.text;
     if (h.goodsvalue === null) {
-      const g = t.match(/goods\s*value\D{0,6}([0-9,]+\.\d{2})/i);
+      const g = t.match(/(?:goods|sale)\s*value\D{0,6}([0-9,]+\.\d{2})/i);
       if (g) h.goodsvalue = round2(Number(g[1].replace(/,/g, '')));
     }
     if (!h.cashdiscount) {
-      const c = t.match(/(?:less\s*:?\s*c\.?\s*d\.?|cash\s*disc\w*)\s*([0-9]+(?:\.[0-9]+)?)?\s*%?\D{0,6}([0-9,]+\.\d{2})/i);
+      // the percentage is only a number followed by a % sign: in "Cash Disc 112.50  2998.99  5%" 112.50 is the amount
+      const c = t.match(/(?:less\s*:?\s*c\.?\s*d\.?|cash\s*disc\w*)\s*(?:([0-9]+(?:\.[0-9]+)?)\s*%)?\D{0,6}?([0-9,]+\.\d{2})/i);
       if (c) h.cashdiscount = { pct: c[1] ? Number(c[1]) : null, amount: round2(Number(c[2].replace(/,/g, ''))) };
     }
   }
@@ -277,7 +278,7 @@ const COLS: Array<[Key, RegExp]> = [
   ['mrp', /^(mrp|m\.r\.p)/],
   ['qty', /^(qty|quantity|qnty)\b/],
   ['free', /^(free|fr|scheme|bonus)\b/],
-  ['rate', /^(rate|ptr|pts|price|prate)\b/],
+  ['rate', /^(rate|ptr|pts|price|prate|trade)\b/],
   ['disc', /^(disc|dis|discount|d%)/],
   ['tax', /^(gst|tax|igst|cgst|sgst|vat)/],
   ['amount', /^(amount|amt|value|total|net)\b/],
@@ -310,7 +311,7 @@ const keyOf = (t: string): Key | null => {
 
 interface Anchor { key: Key; x0: number; x1: number }
 
-function headerScore(words: Word[]): { anchors: Anchor[]; score: number } {
+function headerScore(words: Word[], force = false): { anchors: Anchor[]; score: number } {
   const anchors: Anchor[] = [];
   const seen: Record<string, number> = {};
   const unknown: Word[] = [];
@@ -323,7 +324,7 @@ function headerScore(words: Word[]): { anchors: Anchor[]; score: number } {
     anchors.push({ key: k, x0: w.x0, x1: w.x1 });
   }
   const keys = new Set(anchors.map((a) => a.key));
-  const need = ['qty'].every((k) => keys.has(k as Key)) && (keys.has('rate') || keys.has('amount'));
+  const need = force || (['qty'].every((k) => keys.has(k as Key)) && (keys.has('rate') || keys.has('amount')));
   const score = Array.from(keys).filter((k) => k !== 'sl').length;
   if (need) {
     // a header word that is not a column name: the rest of a name ("PRODUCT NAME", "Batch No.", "Exp. Dt") joins the column right
@@ -357,7 +358,7 @@ function inferMrpColumn(anchors: Anchor[], lines: TextLine[], from: number) {
 }
 
 /** a piece of an expiry written in words or split over words: a month name or a year */
-const expiryPart = (t: string) => !!readExpiry(t) || !!MONTHS[t.slice(0, 4).toLowerCase()] || !!MONTHS[t.slice(0, 3).toLowerCase()] || /^\d{2}(\d{2})?$/.test(t);
+const expiryPart = (t: string) => !!readExpiry(t) || /^\d{1,2}\/$/.test(t) || !!MONTHS[t.slice(0, 4).toLowerCase()] || !!MONTHS[t.slice(0, 3).toLowerCase()] || /^\d{2}(\d{2})?$/.test(t);
 const NUMERIC = new Set<Key>(['qty', 'free', 'rate', 'mrp', 'disc', 'tax', 'amount']);
 /** how many different column names a line has */
 const keyCount = (words: Word[]) => new Set(words.map((w) => keyOf(w.t)).filter((k) => k && k !== 'sl')).size;
@@ -365,31 +366,10 @@ const keyCount = (words: Word[]) => new Set(words.map((w) => keyOf(w.t)).filter(
 const STOP_RE = /^(?:[#\d\s.:|*-]*(?:sub\s*total|grand\s*total|total\b)|amount\s*in\s*words|rupees|terms|tax\s*summary|gst\s*summary|hsn\s*summary|bank\s*details|declaration|e\.?\s*&\s*o\.?\s*e|for\s+[A-Z])|\bgoods\s*value\b|\bless\s*:?\s*c\.?\s*d\b|\badd\s*gst\b|\binvoice\s*(?:amt|amount|value|total)\b/i;
 const STOP = { test: (text: string) => STOP_RE.test(text) };
 
-export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null; knownGstins?: string[] } = {}): ParsedInvoice {
-  const header = readHeader(lines, opts.ownGstin, opts.knownGstins || []);
-  const warnings: string[] = [];
-
-  // find the header row of the item table (it may be printed over two lines)
-  let hi = -1, anchors: Anchor[] = [], headerLines = 1;
-  let bestScore = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const one = headerScore(lines[i].words);
-    if (one.score >= 4 && one.score > bestScore) { hi = i; anchors = one.anchors; headerLines = 1; bestScore = one.score; }
-    const nxt = lines[i + 1];
-    // a header printed over two lines: the first has real column names of its own and the second adds to them (a stray line of
-    // "Date  Page" above a header is not part of it)
-    if (nxt && nxt.page === lines[i].page && Math.abs(nxt.y - lines[i].y) < lines[i].h * 2.6 && keyCount(lines[i].words) >= 3 && keyCount(nxt.words) >= 1) {
-      const two = headerScore([...lines[i].words, ...nxt.words]);
-      if (two.score >= 4 && two.score > bestScore + 1) { hi = i; anchors = two.anchors; headerLines = 2; bestScore = two.score; }
-    }
-  }
-  if (hi < 0) {
-    warnings.push('The item table was not found: no row with column names like Batch, Exp, Qty and Rate.');
-    return { header, lines: [], warnings, tableFound: false };
-  }
-
+/** the item rows of the table under a header whose columns are known (`inferred`: they were worked out from the rows) */
+function readRows(lines: TextLine[], from: number, anchors: Anchor[], inferred: boolean): ExtractedLine[] {
   anchors.sort((a, b) => (a.x0 + a.x1) / 2 - (b.x0 + b.x1) / 2);
-  inferMrpColumn(anchors, lines, hi + headerLines);
+  inferMrpColumn(anchors, lines, from);
   anchors.sort((a, b) => (a.x0 + a.x1) / 2 - (b.x0 + b.x1) / 2);
   const bounds = anchors.map((a, i) => (i < anchors.length - 1 ? (a.x1 + anchors[i + 1].x0) / 2 : Infinity));
   const colOf = (w: Word) => {
@@ -402,7 +382,7 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
   const rows: ExtractedLine[] = [];
   const headerWords = new Set(anchors.map((a) => a.key));
   let last: ExtractedLine | null = null;
-  for (let i = hi + headerLines; i < lines.length; i++) {
+  for (let i = from; i < lines.length; i++) {
     const l = lines[i];
     if (STOP.test(l.text.trim())) break;
     if (headerScore(l.words).score >= 4) continue;                                     // the header again on the next page
@@ -418,7 +398,7 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
       if (k === 'tax') taxCells.push(w.t);
       (cells[k] = cells[k] || []).push(w.t);
     }
-    const txt = (k: Key) => (cells[k] || []).join(' ').trim();
+    const txt = (k: Key) => { const t = (cells[k] || []).join(' ').trim(); return NUMERIC.has(k) ? t.replace(/(\d)\.\s+(\d)/g, '$1.$2') : t; };
     let qty = headerWords.has('qty') ? readNumber(txt('qty')) : null;
     let qtyWorkedOut = false;
     let free = headerWords.has('free') ? readNumber(txt('free')) : null;
@@ -430,8 +410,15 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
     // OCR often drops the small quantity digit: it is the amount over the rate, when that comes out as a whole number
     if ((qty === null || !(qty > 0)) && rate !== null && rate > 0 && amountRead !== null && amountRead > 0) {
       const dd = headerWords.has('disc') ? (readNumber(txt('disc')) ?? 0) : 0;
+      const whole = (x: number) => x >= 1 && x <= 100000 && Math.abs(x - Math.round(x)) <= 0.02;
       const q = amountRead / (rate * (1 - dd / 100));
-      if (q >= 1 && q <= 100000 && Math.abs(q - Math.round(q)) <= 0.02) { qty = Math.round(q); qtyWorkedOut = true; }
+      const q0 = amountRead / rate;
+      if (whole(q)) { qty = Math.round(q); qtyWorkedOut = true; }
+      else if (whole(q0)) { qty = Math.round(q0); qtyWorkedOut = true; }
+    } else if (inferred && qty !== null && rate !== null && rate > 0 && amountRead !== null && amountRead > 0) {
+      // columns found from the rows, not from a clean header: a digit of the quantity is often joined to the pack, so the value over the rate decides
+      const q0 = amountRead / rate;
+      if (q0 >= 1 && q0 <= 100000 && Math.abs(q0 - Math.round(q0)) <= 0.02 && Math.round(q0) !== qty) { qty = Math.round(q0); qtyWorkedOut = true; }
     }
 
     const isItem = qty !== null && qty > 0 && (rate !== null || amountRead !== null) && /[A-Za-z]/.test(txt('desc') || txt('batch') || '');
@@ -461,7 +448,7 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
       const taxed = round2(base * (1 + (tax ?? 0) / 100));
       if (Math.abs(base - amountRead) > tol && Math.abs(taxed - amountRead) > tol) warn.push(`Amount ${amountRead} does not match quantity x rate (${base}). Check the digits.`);
     }
-    const batch = txt('batch').replace(/\s+/g, '').replace(/^[*#.:\-]+|[*#.:]+$/g, '').toUpperCase() || null;
+    const batch = txt('batch').replace(/\s+/g, '').toUpperCase().replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/g, '') || null;
     const expText = txt('exp');
     const expdate = expText ? readExpiry(expText.replace(/\s+/g, expText.match(/[A-Za-z]/) ? ' ' : '')) : null;
     if (!batch) warn.push('No batch read.');
@@ -474,6 +461,128 @@ export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null
     };
     rows.push(row);
     last = row;
+  }
+  return rows;
+}
+
+
+/** a header found by the column names that survived OCR (three of them, one being a rate, hsn or description) */
+function weakHeader(lines: TextLine[]): { hi: number; anchors: Anchor[] } | null {
+  let best: { hi: number; anchors: Anchor[]; score: number } | null = null;
+  lines.forEach((l, i) => {
+    const h = headerScore(l.words, true);
+    const keys = new Set(h.anchors.map((a) => a.key).filter((k) => k !== 'unk' && k !== 'sl'));
+    if (keys.size < 3 || !(keys.has('rate') || keys.has('hsn') || keys.has('desc'))) return;
+    if (!best || keys.size > best.score) best = { hi: i, anchors: h.anchors, score: keys.size };
+  });
+  return best ? { hi: (best as any).hi, anchors: (best as any).anchors } : null;
+}
+
+const isDecimal = (t: string) => /^\d{1,6}\.\d{1,2}$/.test(t.replace(/[^\d.]/g, '')) && /\d\.\d/.test(t);
+
+/** the expiry of a row, written as one word (05/28) or two (06/ 28): where it sits */
+function expiryOf(ws: Word[]): { x0: number; x1: number } | null {
+  for (let i = 0; i < ws.length; i++) {
+    if (/^\d{1,2}\/\d{2,4}$/.test(ws[i].t)) return { x0: ws[i].x0, x1: ws[i].x1 };
+    if (/^\d{1,2}\/$/.test(ws[i].t) && ws[i + 1] && /^\d{2}$/.test(ws[i + 1].t)) return { x0: ws[i].x0, x1: ws[i + 1].x1 };
+  }
+  return null;
+}
+
+/**
+ * Columns the header lost, found from the rows: the expiry is the word that looks like 05/28; the batch is the code just left of it, the MRP
+ * the decimal left of that, the quantity the whole number left of the MRP, the tax rate a whole number after the discount column, and
+ * the amount the last decimal on the row. A column is only added when at least two rows agree on it.
+ */
+function inferColumns(anchors: Anchor[], lines: TextLine[], from: number): Anchor[] {
+  const have = new Set(anchors.map((a) => a.key));
+  const span: Partial<Record<Key, { x0: number; x1: number; n: number }>> = {};
+  const add = (k: Key, w: { x0: number; x1: number }) => { const c = span[k]; span[k] = c ? { x0: Math.min(c.x0, w.x0), x1: Math.max(c.x1, w.x1), n: c.n + 1 } : { x0: w.x0, x1: w.x1, n: 1 }; };
+  const pack = anchors.find((a) => a.key === 'pack');
+  const disc = anchors.find((a) => a.key === 'disc') || anchors.find((a) => a.key === 'rate');
+  const hsn = anchors.find((a) => a.key === 'hsn');
+  let rows = 0;
+  for (let i = from; i < lines.length && rows < 40; i++) {
+    if (STOP.test(lines[i].text.trim())) break;
+    const ws = lines[i].words;
+    const exp = expiryOf(ws);
+    if (!exp || ws.filter((w) => isDecimal(w.t)).length < 2) continue;
+    rows++;
+    add('exp', exp);
+    const batch = ws.filter((w) => w.x1 <= exp.x0 + 2 && !/\./.test(w.t) && /\d/.test(w.t) && w.t.length >= 4).sort((a, b) => b.x1 - a.x1)[0];
+    if (batch) {
+      add('batch', batch);
+      const mrp = ws.filter((w) => w.x1 <= batch.x0 + 2 && isDecimal(w.t)).sort((a, b) => b.x1 - a.x1)[0];
+      if (mrp) {
+        add('mrp', mrp);
+        const qty = ws.filter((w) => w.x1 <= mrp.x0 + 2 && w.x0 >= (pack ? pack.x1 - 6 : 0) && /^\d{1,4}\D?$/.test(w.t)).sort((a, b) => b.x1 - a.x1)[0];
+        if (qty) add('qty', qty);
+      }
+    }
+    const tax = ws.find((w) => /^\d{1,2}$/.test(w.t) && disc && w.x0 >= disc.x1 - 3 && (!hsn || w.x1 <= hsn.x0 + 4));
+    if (tax) add('tax', tax);
+    const amount = ws.filter((w) => isDecimal(w.t) && w.x0 > (hsn ? hsn.x0 : disc ? disc.x1 : 0) + 20).sort((a, b) => b.x1 - a.x1)[0];
+    if (amount) add('amount', amount);
+  }
+  if (rows < 2) return anchors;
+  let out = anchors.map((a) => ({ ...a }));
+  // a product name runs on past its (centred) header word, up to the pack column
+  const desc = out.find((a) => a.key === 'desc');
+  if (desc && pack) desc.x1 = Math.max(desc.x1, pack.x0 - 10);
+  for (const [k, v] of Object.entries(span) as Array<[Key, { x0: number; x1: number; n: number }]>) {
+    if (have.has(k) || v.n < 2) continue;
+    // an anchor for a word OCR could not read, sitting where the column really is, gives way to it
+    out = out.filter((a) => !(a.key === 'unk' && a.x1 >= v.x0 - 4 && a.x0 <= v.x1 + 4));
+    out.push({ key: k, x0: v.x0, x1: v.x1 });
+  }
+  return out;
+}
+
+export function parseInvoice(lines: TextLine[], opts: { ownGstin?: string | null; knownGstins?: string[] } = {}): ParsedInvoice {
+  const header = readHeader(lines, opts.ownGstin, opts.knownGstins || []);
+  const warnings: string[] = [];
+
+  // find the header row of the item table (it may be printed over two lines)
+  let hi = -1, anchors: Anchor[] = [], headerLines = 1;
+  let bestScore = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const one = headerScore(lines[i].words);
+    if (one.score >= 4 && one.score > bestScore) { hi = i; anchors = one.anchors; headerLines = 1; bestScore = one.score; }
+    const nxt = lines[i + 1];
+    // a header printed over two lines: the first has real column names of its own and the second adds to them (a stray line of
+    // "Date  Page" above a header is not part of it)
+    if (nxt && nxt.page === lines[i].page && Math.abs(nxt.y - lines[i].y) < lines[i].h * 2.6 && keyCount(lines[i].words) >= 3 && keyCount(nxt.words) >= 1) {
+      const two = headerScore([...lines[i].words, ...nxt.words]);
+      if (two.score >= 4 && two.score > bestScore + 1) { hi = i; anchors = two.anchors; headerLines = 2; bestScore = two.score; }
+    }
+  }
+  let rows: ExtractedLine[] = [];
+  if (hi >= 0) rows = readRows(lines, hi + headerLines, anchors, false);
+  if (!rows.length) {
+    // the words of the header are often what OCR garbles (QTY, MRP, EXP, BATCH lost): find the header by what is left of it, and work the
+    // missing columns out from where the batch, expiry, MRP and amount of the rows sit
+    const weak = weakHeader(lines);
+    if (weak) {
+      const cols = inferColumns(weak.anchors, lines, weak.hi + 1);
+      rows = readRows(lines, weak.hi + 1, cols, true);
+      if (rows.length) hi = weak.hi;
+    }
+  }
+  if (hi < 0) {
+    warnings.push('The item table was not found: no row with column names like Batch, Exp, Qty and Rate.');
+    return { header, lines: [], warnings, tableFound: false };
+  }
+  // a DIS% printed beside each line that the value column does not take off is the cash discount, which is taken off once, below the goods
+  if (header.cashdiscount) {
+    for (const r of rows) {
+      if (r.disc === null || !(r.disc > 0) || !r.qty || r.rate === null || r.amountRead === null) continue;
+      const plain = round2(r.qty * r.rate);
+      const tol = Math.max(1, plain * 0.01);
+      if (Math.abs(plain - r.amountRead) <= tol && Math.abs(round2(plain * (1 - r.disc / 100)) - r.amountRead) > tol) {
+        r.disc = 0; r.amount = plain;
+        r.warnings = r.warnings.filter((w) => !/does not match quantity/.test(w));
+      }
+    }
   }
   if (!rows.length) warnings.push('The item table was found but no item rows could be read from it.');
   return { header, lines: rows, warnings, tableFound: true };

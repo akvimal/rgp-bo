@@ -205,3 +205,48 @@ describe('a digital invoice with a pack column and a totals row', () => {
     expect(r.lines[2].warnings).toEqual([]);
   });
 });
+
+describe('a scanned distributor invoice whose header OCR lost most column names (PALEPU, MG-26-171045)', () => {
+  // the OCR words of a real scan: the header band came out as "Mfac/ PRODUCT ME o PAC BA TCH TRADE DIS HSN pe le PROI"
+  const words: Word[] = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'palepu-scan.words.json'), 'utf8'));
+  const p = parseInvoice(toLines(words), { ownGstin: null, knownGstins: [] });
+
+  it('reads the invoice number printed as "Inv. No.", the date, the total and the supplier', () => {
+    expect(p.header.invoiceno).toBe('MG-26-171045');
+    expect(p.header.invoicedate).toBe('2026-10-27');
+    expect(p.header.printedtotal).toBe(3902);
+    expect(p.header.suppliergstin).toBe('33AAMCP7950M1ZS');
+  });
+
+  it('takes the first number after "Cash Disc" as the amount, not the taxable value printed beside it', () => {
+    expect(p.header.cashdiscount).toEqual({ pct: null, amount: 112.5 });
+    expect(p.header.goodsvalue).toBe(3750.04);
+  });
+
+  it('finds the five items from where the batch, expiry, MRP and value sit, though the header is mostly lost', () => {
+    expect(p.lines).toHaveLength(5);
+    expect(p.lines.map((l) => l.qty)).toEqual([1, 1, 1, 5, 1]);
+    expect(p.lines.map((l) => l.rate)).toEqual([658.3, 82.73, 2284.95, 123.48, 106.66]);
+    expect(p.lines.map((l) => l.mrp)).toEqual([971, 108.58, 2999, 162.07, 140]);
+    expect(p.lines.map((l) => l.tax)).toEqual([18, 5, 5, 5, 5]);
+    expect(p.lines.map((l) => l.expdate)).toEqual(['2028-05-01', '2028-06-01', '2028-07-01', '2028-03-01', '2029-06-01']);
+    expect(p.lines.map((l) => l.batch)).toEqual(['BZD6103', 'N5060058', 'CTE2607', '1852006', '111260822']);
+    expect(p.lines[2].description).toBe('CENTRIVIVE 200MG VEG CAP 30');
+  });
+
+  it('keeps the printed 3.00 as the cash discount taken off once, not off every line, so the lines add up to the printed total', () => {
+    expect(p.lines.every((l) => l.disc === 0)).toBe(true);
+    expect(p.lines.reduce((t, l) => t + (l.amount ?? 0), 0)).toBeCloseTo(3750.04, 2);
+    expect(linesTotalWithTax(p.lines, p.header)).toBeGreaterThan(3901);
+    expect(linesTotalWithTax(p.lines, p.header)).toBeLessThan(3903);
+  });
+});
+
+describe('an invoice-level cash discount', () => {
+  const header = (text: string) => parseInvoice(toLines([{ t: text, x0: 0, x1: 100, y0: 0, y1: 10, page: 1 }]), {}).header.cashdiscount;
+  it('reads the percentage only when a % sign follows it', () => {
+    expect(header('Less CD 4.00 % 48.94')).toEqual({ pct: 4, amount: 48.94 });
+    expect(header('Cash Disc 112.50 2998.99 5%')).toEqual({ pct: null, amount: 112.5 });
+    expect(header('Cash Discount 3 % 112.50')).toEqual({ pct: 3, amount: 112.5 });
+  });
+});
