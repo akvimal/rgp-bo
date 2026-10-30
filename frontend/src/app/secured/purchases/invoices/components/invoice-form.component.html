@@ -160,6 +160,17 @@
               <div class="col-6 col-md-2"><div class="inv-label">Total</div><div class="inv-value">{{extracted.header.printedtotal ? (extracted.header.printedtotal | number:'1.2-2') : '-'}}</div></div>
               <div class="col-12 col-md-3"><div class="inv-label">Supplier GSTIN</div><div class="inv-value">{{extracted.header.suppliergstin || '-'}}</div></div>
             </div>
+            <div *ngIf="extracted.tieout" class="alert py-2 px-2 small mb-2" [ngClass]="extracted.tieout.status === 'RECONCILED' ? 'alert-success' : (extracted.tieout.status === 'REVIEW' ? 'alert-danger' : 'alert-secondary')" data-testid="inv-x-tieout" [attr.data-status]="extracted.tieout.status">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <span><i class="bi me-1" [ngClass]="extracted.tieout.status === 'RECONCILED' ? 'bi-check-circle-fill' : (extracted.tieout.status === 'REVIEW' ? 'bi-exclamation-octagon-fill' : 'bi-question-circle')"></i><strong data-testid="inv-x-tieout-headline">{{extracted.tieout.headline}}</strong></span>
+                <a href="javascript:void(0)" class="text-nowrap" (click)="showChecks = !showChecks" data-testid="inv-x-tieout-toggle">{{showChecks ? 'Hide' : 'Show'}} the checks</a>
+              </div>
+              <ul class="mb-0 mt-1 list-unstyled" *ngIf="showChecks">
+                <li *ngFor="let c of extracted.tieout.checks" data-testid="inv-x-check" [attr.data-state]="c.state">
+                  <i class="bi me-1" [ngClass]="c.state === 'ok' ? 'bi-check-lg text-success' : (c.state === 'fail' ? 'bi-x-lg text-danger' : 'bi-dash-lg text-muted')"></i><strong>{{c.label}}:</strong> {{c.detail}}
+                </li>
+              </ul>
+            </div>
             <div *ngFor="let w of extracted.warnings" class="alert alert-warning py-1 px-2 small mb-2" data-testid="inv-x-warning">{{w}}</div>
             <pre *ngIf="showText" class="small bg-light border rounded p-2 mb-2" style="max-height:14rem;overflow:auto;white-space:pre-wrap" data-testid="inv-x-text">{{extracted.text}}</pre>
 

@@ -40,6 +40,8 @@ export class InvoiceFormComponent implements OnInit {
     extracted:any = null;
     lines:any[] = [];
     showText = false;
+    /** the checks behind the reconciled / needs-review verdict: open by default when something needs a look */
+    showChecks = false;
     filled:string[] = [];
     addProblem = '';
 
@@ -224,6 +226,7 @@ export class InvoiceFormComponent implements OnInit {
         (r:any) => {
           this.extracting = false;
           this.extracted = r;
+          this.showChecks = !!r?.tieout && r.tieout.status !== 'RECONCILED';
           this.lines = (r.lines || []).map((l:any) => this.toRow(l));
           this.applyHeader(false);
         },

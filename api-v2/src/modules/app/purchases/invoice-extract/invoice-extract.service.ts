@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 import { dirname, extname, join } from 'path';
 import { uploadedFilePath } from '../../files/upload-path';
 import { ExtractedLine, ParsedInvoice, TextLine, Word, cashFactor, linesTotalWithTax, parseInvoice, readDate, toLines } from './invoice-parser';
+import { tieOut } from './invoice-tieout';
 import { prepare } from './image-prep';
 
 const IMAGE_EXT = ['.jpg', '.jpeg', '.png'];
@@ -279,6 +280,7 @@ export class InvoiceExtractService {
       vendor,
       lines: parsed.lines.map((l, i) => ({ ...l, suggestions: suggestions[i], product: suggestions[i][0] && suggestions[i][0].score >= 0.9 ? suggestions[i][0] : null })),
       linesTotal: linesTotalWithTax(parsed.lines, parsed.header),
+      tieout: tieOut(parsed, linesTotalWithTax(parsed.lines, parsed.header)),
       cashFactor: cashFactor(parsed.lines, parsed.header),
       gstRates: gstRates(),
       warnings,

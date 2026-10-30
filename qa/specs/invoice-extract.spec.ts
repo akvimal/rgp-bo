@@ -91,7 +91,23 @@ test.describe('Read an invoice copy @p1', () => {
     expect(r.lines[0].product?.id).toBe(s.products[0].id);                                              // the same name in the master is chosen
     expect(r.lines[1].product?.id).toBe(s.products[1].id);
     expect(r.linesTotal).toBe(s.net);
+    expect(r.tieout.status).toBe('RECONCILED');
+    expect(r.tieout.checks.every((c: any) => c.state !== 'fail')).toBe(true);
     expect(r.text).toContain(no);
+    await page.context().close();
+  });
+
+  test('PX-13 a total that the lines do not reach is called out, with how far off, instead of passing quietly @edge', async ({ api, browser }) => {
+    const vendor = (await api.request('GET', '/vendors?status=usable', undefined, MGR)).body[0];
+    const tag = String(Date.now()).slice(-5);
+    const s = sample(tag);
+    const page = await (await browser.newContext()).newPage();
+    await page.setContent(invoiceHtml(vendor.name, `PX/${tag}`, s.rows, s.net + 500));              // the invoice says 500 more than its lines make
+    const path = await upload(await page.pdf({ format: 'A4', landscape: true }), 'inv.pdf', 'application/pdf');
+    const r = await (await post('/purchases/extract', { path })).json();
+    expect(r.tieout.status).toBe('REVIEW');
+    expect(r.tieout.checks.find((c: any) => c.key === 'total').detail).toContain('500.00');
+    expect(r.tieout.headline).toContain('Needs your review');
     await page.context().close();
   });
 
@@ -147,6 +163,8 @@ test.describe('Read an invoice copy @p1', () => {
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-panel')).toBeVisible();
     await expect(page.getByTestId('inv-x-method')).toContainText('PDF');
+    await expect(page.getByTestId('inv-x-tieout')).toHaveAttribute('data-status', 'RECONCILED');
+    await expect(page.getByTestId('inv-x-tieout-headline')).toContainText('Reconciled');
     await expect(page.getByTestId('inv-x-filled')).toContainText('invoice no.');
     await expect(page.getByTestId('inv-f-no')).toHaveValue(no);
     await expect(page.getByTestId('inv-f-total')).toHaveValue(String(s.net));
