@@ -54,7 +54,8 @@ pgs -c "drop database \"$DB\"" -c "alter database \"$SCRATCH\" rename to \"$DB\"
 
 if [ -n "$BETA_PW" ]; then
   HASH="$(docker run --rm -e PW="$BETA_PW" -w /w -v "$ROOT_WIN/api-v2/node_modules:/w/node_modules:ro" node:22.14.0-alpine node -e "console.log(require('bcryptjs').hashSync(process.env.PW, 10))")"
-  docker exec -i "$PGC" psql -U "$SUPER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -v h="$HASH" -c "update app_user set password = :'h' where password is not null"
+  # psql only substitutes :'h' in SQL read from stdin, not in a -c string
+  echo "update app_user set password = :'h' where password is not null" | docker exec -i "$PGC" psql -U "$SUPER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -v h="$HASH"
   echo "  every login in the copy now has the beta password"
 fi
 if [ -n "$OWNER_ROLE" ]; then

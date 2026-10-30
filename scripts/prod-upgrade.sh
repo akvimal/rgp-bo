@@ -70,15 +70,15 @@ die()     { echo "ERROR: $*" >&2; exit 1; }
 # One line per invariant; identical output before and after means history was not touched.
 snapshot() {
   psql_db "$1" -At -F '|' <<'SQL'
-select 'sales', count(*), round(coalesce(sum(total),0)::numeric,2) from sale;
+select 'sales', count(*), round(coalesce(sum(total::numeric),0),2) from sale;
 select 'sale_items', count(*), 0 from sale_item;
-select 'purchase_invoices', count(*), round(coalesce(sum(total),0)::numeric,2) from purchase_invoice;
+select 'purchase_invoices', count(*), round(coalesce(sum(total::numeric),0),2) from purchase_invoice;     -- total is a float4: add it as numeric so the row order cannot move the sum
 select 'purchase_items', count(*), 0 from purchase_invoice_item;
 select 'customers', count(*), 0 from customer;
 select 'products', count(*), 0 from product;
 select 'vendors', count(*), 0 from vendor;
 select 'users', count(*), 0 from app_user;
-select 'sales_'||y, n, t from (select extract(year from bill_date)::int y, count(*) n, round(sum(total)::numeric,2) t from sale group by 1 order by 1) z;
+select 'sales_'||y, n, t from (select extract(year from bill_date)::int y, count(*) n, round(sum(total::numeric),2) t from sale group by 1 order by 1) z;
 SQL
 }
 
