@@ -164,7 +164,7 @@ export class PricingController {
   @Get('/policy')
   async policy(@User() user: any) {
     await this.assertCost(user);
-    return { classes: await this.pricing.policyTable(), settings: await this.pricing.settings() };
+    return { classes: await this.pricing.policyTable(), settings: await this.pricing.settings(), counts: await this.pricing.classCounts() };
   }
 
   @Get('/rules')

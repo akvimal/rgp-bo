@@ -134,3 +134,27 @@ test('PM-6 with GST included the price dialog takes what the customer pays, caps
   expect(resp.status()).toBeLessThan(300);
   expect(Number((await resp.json()).saleprice)).toBeCloseTo(166.67, 2);
 });
+
+test('PM-7 the group limits are a grid of plain-named groups with product counts; one group opens an editor with a worked example', async ({ app, api }) => {
+  const before = (await api.request('GET', '/pricing/policy', undefined, MGR)).body;
+  expect(Object.keys(before.counts).length).toBeGreaterThan(0);                           // the server says how many products sit in each group
+  const start = before.classes.find((c: any) => c.class_key === 'HIGH_A');
+  const { page } = await app.open(MGR, '/secure/products/pricing-rules');
+  const adv = page.getByTestId('rules-advanced');                                         // open by itself when the business uses smart groups
+  if (!(await adv.evaluate((d: any) => d.open))) await adv.locator('summary').click();
+  await expect(page.getByTestId('rules-classes')).toBeVisible();
+  await expect(page.getByTestId('rules-classes').getByText('Top earners')).toBeVisible();
+  await expect(page.getByTestId('rules-classes').getByText('Wide margin')).toBeVisible();
+  await expect(page.getByTestId('group-editor')).toHaveCount(0);
+  await page.getByTestId('group-HIGH_A').click();
+  await expect(page.getByTestId('group-editor')).toContainText('Top earners, wide margin');
+  await page.getByTestId('rules-cap-HIGH_A').first().fill('25');
+  await expect(page.getByTestId('group-example')).toContainText('the lowest price you may charge');
+  await expect(page.getByTestId('group-HIGH_A')).toContainText(/off MRP|only at the MRP/);
+  try {
+    await page.getByTestId('rules-save-HIGH_A').click();
+    await expect.poll(async () => (await api.request('GET', '/pricing/policy', undefined, MGR)).body.classes.find((c: any) => c.class_key === 'HIGH_A').max_discount_pct).toBe(25);
+  } finally {
+    await api.request('PUT', '/pricing/policy/HIGH_A', { floor: start.floor_markup_pct, cap: start.max_discount_pct, usual: start.usual_discount_pct }, MGR);
+  }
+});

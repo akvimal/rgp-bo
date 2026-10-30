@@ -66,25 +66,60 @@
       <details class="mt-4" [open]="modeForm.mode === 'SMART'" data-testid="rules-advanced">
       <summary class="fw-semibold text-primary">Advanced: smart groups</summary>
       <p class="small text-muted mt-2 mb-0" *ngIf="modeForm.mode !== 'SMART'">These group limits are kept but not used while you price {{modeForm.mode === 'MRP' ? 'at the MRP' : 'with a discount off the MRP'}}.</p>
-      <h6 class="mt-3 text-primary">Class limits</h6>
+      <h6 class="mt-3 text-primary">Price limits by product group</h6>
       <p class="small text-muted mb-2">
-        Each product belongs to a class from two things: how far its cost is below the MRP (its trade margin) and how much of the profit it earns (A, B or C).
-        <b>Lowest markup</b> is the least a price may be over the cost (before GST). <b>Deepest discount</b> is the most a price may be below the MRP.
-        A price must be at or above whichever of the two gives the higher price. <b>Usual discount</b> is only a starting point: it is used to suggest a first price for a product that has none (always kept between the lowest price and the legal ceiling).
+        Every product falls into one group, from how much profit it earns you and how wide its margin is. Each box shows how far below the MRP that group may be sold. Click a box to change it.
       </p>
       <div class="table-responsive">
-        <table class="table table-sm align-middle w-auto" data-testid="rules-classes">
-          <thead><tr><th>Class</th><th class="text-end">Lowest markup (%)</th><th class="text-end">Deepest discount (%)</th><th class="text-end">Usual discount (%)</th><th></th></tr></thead>
+        <table class="table table-bordered align-middle mb-2" style="min-width:34rem" data-testid="rules-classes">
+          <thead>
+            <tr>
+              <th class="small text-muted fw-normal" style="width:9rem">Margin &darr; &nbsp; Earns &rarr;</th>
+              <th *ngFor="let c of gridCols" class="small">{{c.name}}<div class="text-muted fw-normal">{{c.help}}</div></th>
+            </tr>
+          </thead>
           <tbody>
-            <tr *ngFor="let c of classes">
-              <td class="small">{{classLabel(c.class_key)}}</td>
-              <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="1000" [(ngModel)]="c.floor" [disabled]="!canedit" [attr.data-testid]="'rules-floor-' + c.class_key"></td>
-              <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="95" [(ngModel)]="c.cap" [disabled]="!canedit" [attr.data-testid]="'rules-cap-' + c.class_key"></td>
-              <td class="text-end"><input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="95" [(ngModel)]="c.usual" [disabled]="!canedit" [attr.data-testid]="'rules-usual-' + c.class_key"></td>
-              <td><button type="button" class="btn btn-outline-primary btn-sm py-0" *ngIf="canedit" [disabled]="!classChanged(c)" (click)="saveClass(c)" [attr.data-testid]="'rules-save-' + c.class_key">Save</button></td>
+            <tr *ngFor="let r of gridRows">
+              <th class="small">{{r.name}}<div class="text-muted fw-normal">{{r.help}}</div></th>
+              <td *ngFor="let c of gridCols" class="p-0">
+                <button type="button" class="btn w-100 h-100 text-start p-2 rounded-0" [ngClass]="picked === r.band + '_' + c.abc ? 'btn-primary' : 'btn-light'" (click)="pick(r.band + '_' + c.abc)" [attr.data-testid]="'group-' + r.band + '_' + c.abc">
+                  <div class="fw-semibold small">{{headline(classOf(r.band, c.abc))}}</div>
+                  <div class="small" [class.text-muted]="picked !== r.band + '_' + c.abc">{{countOf(r.band + '_' + c.abc)}} product{{countOf(r.band + '_' + c.abc) === 1 ? '' : 's'}}</div>
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div *ngIf="pickedClass as c" class="border rounded p-3 mb-2" data-testid="group-editor">
+        <div class="fw-semibold">{{groupName(c.class_key)}} <span class="text-muted fw-normal small">({{countOf(c.class_key)}} product{{countOf(c.class_key) === 1 ? '' : 's'}})</span></div>
+        <label class="form-label small mb-0 mt-2" for="group-cap">The most you may discount: <b>{{+c.cap > 0 ? c.cap + '% off the MRP' : 'none, sell at the MRP'}}</b></label>
+        <div class="d-flex align-items-center gap-2">
+          <input id="group-cap" type="range" class="form-range" style="max-width:22rem" min="0" max="60" step="1" [(ngModel)]="c.cap" (ngModelChange)="capChanged(c)" [disabled]="!canedit" [attr.data-testid]="'rules-cap-' + c.class_key">
+          <input type="number" class="form-control form-control-sm text-end" style="width:5rem" min="0" max="95" [(ngModel)]="c.cap" (ngModelChange)="capChanged(c)" [disabled]="!canedit" aria-label="Deepest discount percent">
+          <span class="small">%</span>
+        </div>
+        <div class="small mt-2" data-testid="group-example">
+          For example, a product with an MRP of 100.00 that costs you about {{groupExample(c).cost | number:'1.2-2'}}:
+          the lowest price you may charge (GST included) is <b>{{groupExample(c).lowest | number:'1.2-2'}}</b>, which is {{groupExample(c).offPct}}% off the MRP<span *ngIf="groupExample(c).byFloor">. Here the least markup over cost sets the limit, not the discount</span>.
+        </div>
+        <details class="mt-2">
+          <summary class="small text-primary">More options</summary>
+          <div class="row g-2 mt-1">
+            <div class="col-12 col-md-6">
+              <label class="form-label small mb-0">Least markup over your cost (%)</label>
+              <input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="1000" [(ngModel)]="c.floor" [disabled]="!canedit" [attr.data-testid]="'rules-floor-' + c.class_key">
+              <div class="form-text mt-0">A price may not be less than your cost plus this. Whichever of the two limits gives the higher price is the one that applies.</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small mb-0">Usual discount when no price is set (%)</label>
+              <input type="number" class="form-control form-control-sm text-end" style="width:6rem" min="0" max="95" [(ngModel)]="c.usual" [disabled]="!canedit" [attr.data-testid]="'rules-usual-' + c.class_key">
+              <div class="form-text mt-0">Only used to suggest a first price for a product that has none.</div>
+            </div>
+          </div>
+        </details>
+        <button type="button" class="btn btn-outline-primary btn-sm mt-2" *ngIf="canedit" [disabled]="!classChanged(c)" (click)="saveClass(c)" [attr.data-testid]="'rules-save-' + c.class_key">Save this group</button>
       </div>
       </details>
 

@@ -93,6 +93,7 @@ export class PricingRulesComponent implements OnInit {
             this.form = {}; this.original = {};
             this.rules.forEach((x: any) => { this.form[x.key] = x.value; this.original[x.key] = x.value; });
             this.service.pricingPolicy().subscribe((p: any) => {
+                this.counts = p.counts || {};
                 this.classes = (p.classes || []).map((c: any) => ({ ...c, floor: c.floor_markup_pct, cap: c.max_discount_pct, usual: c.usual_discount_pct, f0: c.floor_markup_pct, c0: c.max_discount_pct, u0: c.usual_discount_pct }));
                 this.loading = false;
             }, (err: any) => { this.loading = false; this.error = this.msg(err, 'Could not load the class limits.'); });
@@ -104,6 +105,52 @@ export class PricingRulesComponent implements OnInit {
     classLabel(key: string): string {
         const [band, rank] = String(key).split('_');
         return `${this.bands[band] || band}, ${this.ranks[rank] || rank}`;
+    }
+
+    /** the groups as the owner thinks of them: how much the product earns, and how wide its margin is */
+    readonly gridRows = [
+        { band: 'HIGH', name: 'Wide margin', help: 'cost is 70% or more below the MRP' },
+        { band: 'MID', name: 'Medium margin', help: 'cost is 30 to 70% below the MRP' },
+        { band: 'LOW', name: 'Thin margin', help: 'cost is under 30% below the MRP' },
+    ];
+    readonly gridCols = [
+        { abc: 'A', name: 'Top earners', help: 'the products that make the first 70% of your profit' },
+        { abc: 'B', name: 'Steady earners', help: 'the next 20% of profit' },
+        { abc: 'C', name: 'Small earners', help: 'the last 10% of profit' },
+    ];
+    /** a typical trade margin for each band, to work out the example product */
+    private readonly typicalMargin: { [band: string]: number } = { LOW: 0.2, MID: 0.5, HIGH: 0.8 };
+    counts: { [key: string]: number } = {};
+    picked = '';
+
+    groupName(key: string): string {
+        const [band, abc] = String(key).split('_');
+        const r = this.gridRows.find((x) => x.band === band), c = this.gridCols.find((x) => x.abc === abc);
+        return `${c ? c.name : abc}, ${r ? r.name.toLowerCase() : band}`;
+    }
+    classOf(band: string, abc: string): any { return this.classes.find((c) => c.class_key === `${band}_${abc}`); }
+    countOf(key: string): number { return this.counts[key] || 0; }
+    get pickedClass(): any { return this.classes.find((c) => c.class_key === this.picked); }
+    /** the usual discount can never be deeper than the most allowed, so lowering the limit brings it down too */
+    capChanged(c: any) { if (+c.usual > +c.cap) c.usual = +c.cap; }
+    pick(key: string) { this.picked = this.picked === key ? '' : key; }
+
+    /** what the group's limits mean on a typical product (MRP 100, GST 5%): the lowest price a customer may be charged */
+    groupExample(c: any): { cost: number; lowest: number; offPct: number; byFloor: boolean } {
+        const [band] = String(c.class_key).split('_');
+        const mrp = 100, tax = 5;
+        const cost = Math.round(mrp * (1 - (this.typicalMargin[band] ?? 0.2)) * 100) / 100;
+        const floorP = Math.ceil(cost / (1 + tax / 100) * (1 + (+c.floor || 0) / 100) * 100 - 1e-6) / 100;
+        const capP = (+c.cap || 0) <= 0 ? Math.floor(mrp / (1 + tax / 100) * 100 + 1e-6) / 100 : Math.ceil(mrp * (1 - +c.cap / 100) / (1 + tax / 100) * 100 - 1e-6) / 100;
+        const lowestEx = Math.max(floorP, capP);
+        const lowest = Math.min(mrp, Math.round(lowestEx * (1 + tax / 100) * 100) / 100);
+        return { cost, lowest, offPct: Math.round((1 - lowest / mrp) * 1000) / 10, byFloor: floorP > capP };
+    }
+    /** the one number a cell shows: how far below the MRP this group may be sold */
+    headline(c: any): string {
+        if (!c) return '';
+        const e = this.groupExample(c);
+        return e.offPct <= 0 ? 'only at the MRP' : `down to ${e.offPct}% off MRP`;
     }
 
     get changedRules(): string[] { return Object.keys(this.form).filter((k) => String(this.form[k]) !== String(this.original[k])); }
@@ -125,7 +172,7 @@ export class PricingRulesComponent implements OnInit {
         this.error = ''; this.message = '';
         this.service.pricingSavePolicy(c.class_key, +c.floor, +c.cap, +c.usual).subscribe(() => {
             c.f0 = +c.floor; c.c0 = +c.cap; c.u0 = +c.usual;
-            this.message = `Saved the limits for ${c.class_key}.`;
+            this.message = `Saved the limits for ${this.groupName(c.class_key)}.`;
         }, (err: any) => this.error = this.msg(err, 'Could not save the class.'));
     }
 }

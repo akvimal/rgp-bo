@@ -67,6 +67,13 @@ export class PricingReader {
       `select class_key, floor_markup_pct::float8 as floor_markup_pct, max_discount_pct::float8 as max_discount_pct, usual_discount_pct::float8 as usual_discount_pct from price_policy order by class_key`);
   }
 
+  /** how many priced products sit in each class, so the limits screen can say which groups matter */
+  async classCounts(): Promise<{ [classkey: string]: number }> {
+    const counts: { [classkey: string]: number } = {};
+    for (const i of await this.itemsCached()) counts[i.classkey] = (counts[i.classkey] || 0) + 1;
+    return counts;
+  }
+
   /** the limits of each class under the current pricing mode: the stored class rows only count under SMART */
   protected async policyMap(): Promise<Map<string, ClassPolicy>> {
     const [rows, ms] = await Promise.all([this.policyTable(), this.modeSettings()]);
