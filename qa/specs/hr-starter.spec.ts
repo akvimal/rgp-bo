@@ -12,7 +12,7 @@ const codes = (rows: any[]) => rows.map((r) => r.code);
 test('HRS-1 the offer shows the starter set and suggestions, marks what exists, and is for the Business Head only', async ({ api }) => {
   const r = await api.request('GET', '/hr/starter', undefined, MGR);
   expect(r.status).toBe(200);
-  expect(codes(r.body.starter)).toEqual(expect.arrayContaining(['BASIC', 'HRA', 'OTHERS', 'FIXED_DED', 'CL', 'SL', 'EL', 'LWP']));
+  expect(codes(r.body.starter)).toEqual(expect.arrayContaining(['BASIC', 'DA', 'OTHERS', 'FIXED_DED', 'CL', 'SL', 'EL', 'LWP']));
   expect(codes(r.body.suggestions)).toEqual(expect.arrayContaining(['PF', 'ESI', 'PT', 'TDS']));
   expect(r.body.starter.find((i: any) => i.code === 'BASIC').have).toBe(true);
   expect(r.body.progress).toEqual(expect.objectContaining({ components: expect.any(Number), leave_types: expect.any(Number), holidays: expect.any(Number) }));

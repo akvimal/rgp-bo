@@ -105,6 +105,15 @@
     <div class="mt-4 pt-3 border-top" *ngIf="hrOn && hrOffer" data-testid="hr-setup">
       <h6 class="mb-1">HR and payroll</h6>
       <p class="small text-muted">Payroll adds up the amounts you enter for each person; it works out no formulas. Start with the basics, add what applies to you, and put each person's salary under HR &gt; Staff. Nothing here is ever removed or renamed.</p>
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-2" data-testid="hr-legal-form">
+        <label class="small fw-semibold mb-0" for="hr-legal-form-select">How is the business registered?</label>
+        <select id="hr-legal-form-select" class="form-select form-select-sm w-auto" [(ngModel)]="hrLegalForm" (change)="setLegalForm()" data-testid="hr-legal-form-select">
+          <option *ngFor="let f of legalForms" [value]="f.key">{{f.label}}</option>
+        </select>
+        <span class="badge" [ngClass]="hrCompliance ? 'bg-primary' : 'bg-secondary'" data-testid="hr-mode">{{hrCompliance ? 'Compliance set' : 'Lite set'}}</span>
+      </div>
+      <p class="small text-muted" *ngIf="!hrCompliance" data-testid="hr-mode-note">A lite set for a proprietorship or partnership: the basics a first payroll needs. If the business becomes a limited company, change this and add what it brings; nothing you have is touched.</p>
+      <p class="small text-muted" *ngIf="hrCompliance" data-testid="hr-mode-note">A limited company follows the fuller set below, and records a decision on each statutory item. The system does not work out PF, ESI or tax: you enter the amounts. Confirm the rules with your accountant.</p>
       <div class="alert alert-success py-2" *ngIf="hrMessage" data-testid="hr-setup-message">{{hrMessage}}</div>
       <div class="alert alert-danger py-2" *ngIf="hrError" data-testid="hr-setup-error">{{hrError}}</div>
 
@@ -120,6 +129,21 @@
         <span class="me-2" *ngFor="let i of hrOf('LEAVE')" [class.text-muted]="i.have">{{i.name}} ({{i.paid ? i.annual_days + ' days' : 'unpaid'}})<span *ngIf="i.have"> (have)</span>;</span>
       </div>
       <button class="btn btn-sm btn-primary mb-3" type="button" [disabled]="hrBusy || !hrStarterMissing" (click)="hrAdd(true, [])" data-testid="hr-add-starter">{{ hrStarterMissing ? 'Add the starter set' : 'Starter set is in place' }}</button>
+
+      <div class="border rounded p-3 mb-3" *ngIf="hrCompliance" data-testid="hr-statutory">
+        <div class="fw-semibold">Statutory items <span class="small text-muted fw-normal">say for each whether it applies to you, and why not if it does not{{hrStatutoryLeft ? ' (' + hrStatutoryLeft + ' still to answer)' : ''}}</span></div>
+        <div class="row g-2 align-items-end small mt-1 pb-2 border-bottom" *ngFor="let x of hrStatutory" [attr.data-testid]="'hr-stat-' + x.code">
+          <div class="col-12 col-md-4"><div class="fw-semibold">{{x.name}} <span class="badge bg-warning text-dark" *ngIf="x.applies === null">to answer</span></div><div class="text-muted">{{x.note}}</div></div>
+          <div class="col-6 col-md-2">
+            <select class="form-select form-select-sm" [(ngModel)]="x.yes" [attr.data-testid]="'hr-stat-applies-' + x.code">
+              <option [ngValue]="null">Choose</option><option [ngValue]="true">Applies</option><option [ngValue]="false">Does not apply</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-3" *ngIf="x.yes === false"><input class="form-control form-control-sm" maxlength="200" placeholder="Why not" [(ngModel)]="x.reason" [attr.data-testid]="'hr-stat-reason-' + x.code"></div>
+          <div class="col-6 col-md-3" *ngIf="x.yes === true && x.reg_label"><input class="form-control form-control-sm" maxlength="40" [placeholder]="x.reg_label" [(ngModel)]="x.reg_no" [attr.data-testid]="'hr-stat-reg-' + x.code"></div>
+          <div class="col-auto"><button class="btn btn-sm btn-outline-primary" type="button" [disabled]="x.yes === null" (click)="saveStatutory(x)" [attr.data-testid]="'hr-stat-save-' + x.code">Save</button></div>
+        </div>
+      </div>
 
       <div class="fw-semibold">Job roles <span class="small text-muted fw-normal">what each person does; the pay structure and KPI follow the job role. Amounts are yours to enter in HR &gt; Setup</span></div>
       <div class="small mb-2" data-testid="hr-roles-offer">

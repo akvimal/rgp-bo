@@ -8,6 +8,7 @@ import { isBusinessType, BUSINESS_TYPES } from "src/core/modules/modules";
 import { ModulesService } from "src/core/modules/modules.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { UserService } from "../users/user.service";
+import { isLegalForm, LEGAL_FORMS } from "../hr/hr-starter";
 import { PRESETS, PRESET_INFO, Preset, PresetInput, planPreset } from "./business-preset";
 
 import { isOwnerRole } from 'src/core/roles';
@@ -166,6 +167,10 @@ export class BusinessService {
     if (body.businesstype !== undefined) {
       if (!isBusinessType(body.businesstype)) throw new BadRequestException(`Choose the kind of business: ${BUSINESS_TYPES.join(", ")}.`);
       fields.businesstype = body.businesstype;
+    }
+    if (body.legalform !== undefined) {
+      if (!isLegalForm(body.legalform)) throw new BadRequestException(`Choose how the business is registered: ${LEGAL_FORMS.join(", ")}.`);
+      fields.legalform = body.legalform;
     }
     if (body.approvalmode !== undefined) {
       if (!isValidApprovalMode(body.approvalmode)) throw new BadRequestException("Approval mode must be self or separate.");

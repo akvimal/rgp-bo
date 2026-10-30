@@ -73,6 +73,13 @@ export class ShopSetupComponent implements OnInit {
   hrMessage = '';
   hrError = '';
   hrBusy = false;
+  readonly legalForms = [
+    { key: 'PROPRIETORSHIP', label: 'Proprietorship' }, { key: 'PARTNERSHIP', label: 'Partnership firm' }, { key: 'LLP', label: 'Limited liability partnership (LLP)' },
+    { key: 'PRIVATE_LIMITED', label: 'Private limited company' }, { key: 'PUBLIC_LIMITED', label: 'Public limited company' }, { key: 'OTHER', label: 'Other (trust, society, ...)' },
+  ];
+  /** how the business is registered decides how strict the payroll set-up is: limited companies follow the compliance set */
+  hrLegalForm = 'PROPRIETORSHIP';
+  get hrCompliance(): boolean { return this.hrOffer?.mode === 'COMPLIANCE'; }
 
   constructor(private http: HttpClient, private business: BusinessesService, private auth: AuthService, private props: PropsService, private hrApi: HrService) {}
 
@@ -93,10 +100,29 @@ export class ShopSetupComponent implements OnInit {
 
   loadHr() {
     if (!this.hrOn) return;
-    this.hrApi.get('starter').subscribe(r => this.hrOffer = r, () => this.hrOffer = null);
+    this.hrApi.get('starter').subscribe(r => { this.hrOffer = r; this.hrLegalForm = r.legal_form; this.hrStatutory = (r.statutory || []).map((x: any) => ({ ...x, yes: x.applies === null ? null : x.applies })); }, () => this.hrOffer = null);
     this.hrApi.get('holidays', { year: new Date().getFullYear() }).subscribe(r => this.hrHolidays = r, () => {});
     this.hrApi.get('staff/candidates').subscribe(r => this.hrPeople = r.map((p: any) => ({ ...p, designation: '', position_id: p.suggested_position_id || null, join_date: this.hrApi.today() })), () => {});
     this.hrApi.get('positions').subscribe(r => this.hrPositions = (r || []).filter((p: any) => p.active), () => {});
+  }
+
+  /** the statutory items of the compliance set, each with its decision being edited */
+  hrStatutory: any[] = [];
+  get hrStatutoryLeft(): number { return this.hrStatutory.filter(x => x.applies === null).length; }
+
+  setLegalForm() {
+    this.hrMessage = this.hrError = '';
+    this.business.updateMine({ legalform: this.hrLegalForm }).subscribe(
+      () => { this.hrMessage = 'Saved. The starter set below follows how the business is registered. Press "Add the starter set" to add anything it now includes.'; this.loadHr(); },
+      err => { this.hrError = this.hrApi.msg(err); this.loadHr(); });
+  }
+
+  saveStatutory(x: any) {
+    this.hrMessage = this.hrError = '';
+    const body = { applies: x.yes, reason: x.reason || '', reg_no: x.reg_no || '' };
+    this.hrApi.put(`statutory/${x.code}`, body).subscribe(
+      () => { this.hrMessage = `${x.name}: saved.`; this.loadHr(); },
+      err => this.hrError = this.hrApi.msg(err));
   }
 
   /** the job roles on offer that the business does not have yet, and the ones it has */

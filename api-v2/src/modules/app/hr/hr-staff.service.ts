@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
-import { itemsToAdd, rolesToAdd, starterView } from './hr-starter';
+import { checkDecision, Decision, itemsToAdd, LEGAL_FORM_LABELS, LegalForm, payrollMode, rolesToAdd, starterView, statutoryProgress, statutoryView } from './hr-starter';
 import { hasEarning, normaliseLines } from './hr-position';
 import { groupDesignations } from './hr-link';
 
@@ -492,6 +492,29 @@ export class HrStaffService {
     return r?.business_type || 'pharmacy';
   }
 
+  /** how the business is registered, and so how strict its payroll set-up is */
+  private async legalFormOf(userId: number): Promise<LegalForm> {
+    const [r] = await this.manager.query(`select b.legal_form from app_user u join business b on b.id = u.business_id where u.id = $1`, [userId]);
+    return (r?.legal_form || 'PROPRIETORSHIP') as LegalForm;
+  }
+
+  private async decisions(): Promise<Decision[]> {
+    return this.manager.query(`select code, applies, reason, reg_no from hr_statutory`);
+  }
+
+  /** record whether a statutory item applies to this business (compliance mode), with the reason or the registration number */
+  async saveStatutory(code: string, b: any, by: any) {
+    const checked = checkDecision(code, b);
+    if ('error' in checked) throw new BadRequestException(checked.error);
+    const d = checked.value;
+    await this.manager.query(
+      `insert into hr_statutory (code, applies, reason, reg_no, updated_by, updated_on) values ($1,$2,$3,$4,$5, now())
+       on conflict (code) do update set applies = excluded.applies, reason = excluded.reason, reg_no = excluded.reg_no, updated_by = excluded.updated_by, updated_on = now()`,
+      [d.code, d.applies, d.reason, d.reg_no, by.id]);
+    await this.audit.record({ userId: by.id, action: 'hr.statutory_decided', entityType: 'hr_statutory', entityId: 0, summary: `${d.code} ${d.applies ? 'applies' : 'does not apply: ' + d.reason}`, details: { code: d.code, applies: d.applies } });
+    return d;
+  }
+
   private async haveCodes() {
     const comps = await this.manager.query(`select code from hr_pay_component`);
     const leave = await this.manager.query(`select code from hr_leave_type`);
@@ -507,14 +530,21 @@ export class HrStaffService {
               (select count(distinct r.employee_id) from hr_salary_revision r join hr_employee e on e.id = r.employee_id where e.status = 'ACTIVE')::int as paid_staff,
               (select count(*) from hr_employee where status = 'ACTIVE')::int as staff`);
     const type = await this.businessTypeOf(by.id);
+    const form = await this.legalFormOf(by.id);
+    const mode = payrollMode(form);
     const names = (await this.manager.query(`select name from hr_position`)).map((r: any) => r.name as string);
-    return { ...starterView(type, have.comps, have.leave), roles: rolesToAdd(type, names), progress: { ...n, positions: names.length } };
+    const decisions = mode === 'COMPLIANCE' ? await this.decisions() : [];
+    return {
+      ...starterView(type, have.comps, have.leave, mode), roles: rolesToAdd(type, names), progress: { ...n, positions: names.length },
+      legal_form: form, legal_form_label: LEGAL_FORM_LABELS[form], mode,
+      statutory: mode === 'COMPLIANCE' ? statutoryView(decisions) : [], statutory_progress: mode === 'COMPLIANCE' ? statutoryProgress(decisions) : null,
+    };
   }
 
   /** add the starter set and/or the chosen suggestions; what already exists is left exactly as it is */
   async applyStarter(b: any, by: any) {
     const have = await this.haveCodes();
-    const items = itemsToAdd(await this.businessTypeOf(by.id), { starter: !!b?.starter, codes: Array.isArray(b?.codes) ? b.codes : [] }, have.comps, have.leave);
+    const items = itemsToAdd(await this.businessTypeOf(by.id), { starter: !!b?.starter, codes: Array.isArray(b?.codes) ? b.codes : [] }, have.comps, have.leave, payrollMode(await this.legalFormOf(by.id)));
     for (const i of items) {
       if (i.kind === 'LEAVE') await this.saveLeaveType({ code: i.code, name: i.name, paid: i.paid, annual_days: i.annual_days }, by);
       else await this.saveComponent(null, { code: i.code, name: i.name, kind: i.kind, display_order: i.kind === 'EARNING' ? 10 : 90 }, by);

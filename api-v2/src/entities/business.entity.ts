@@ -24,6 +24,9 @@ import { Store } from "./store.entity";
     @Column("character varying", { name: "business_type", length: 20, default: "pharmacy" })
     businesstype: string;
 
+    @Column("character varying", { name: "legal_form", length: 20, default: "PROPRIETORSHIP" })
+    legalform: string;
+
     @Column("character varying", { name: "staffing_preset", length: 20, nullable: true })
     staffingpreset: string | null;
 
