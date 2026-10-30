@@ -17,6 +17,7 @@ Detail behind each step: `sql/prod-upgrade/README.md` (commands), `docs/testing/
 | 6 | Vendor sheet: GSTIN (18 missing, 1 malformed), payment terms, phone | needs your input |
 | 7 | One login per person: list of staff and their roles and stores (Store Head / Sales Staff); the shared `lakshman` login stops being used for everyone | needs your input |
 | 8 | Who counts the shelf, and whether staff can record the expiry of each batch | needs your input |
+| 9 | Retire the catch-all vendor "stick" (fix 07): its 13 invoices with an amount (Rs 5.44 lakh, 2022 to 2024, including invoice "1" at Rs 5.21 lakh) are settled as opening balance, its 3 drafts are archived, the vendor is disabled; its stock stays. Add any other catch-all vendor names to the list in the file | tried on the local copy, needs your OK |
 | 9 | `UPLOADS_PATH` on the VPS is the same folder as today (a redeploy does not touch it); check the folder exists and has the prescriptions | check on the VPS |
 | 10 | Chronic flag on the 87 repeat-purchase candidates (`chronic_candidates.csv`): mark y/n | optional before, can follow |
 
@@ -24,7 +25,7 @@ Detail behind each step: `sql/prod-upgrade/README.md` (commands), `docs/testing/
 
 1. **Freeze the code.** Push the branch and tag the commit you rehearse against, for example `prod-2026-11-xx`. Deploy that tag, not a branch.
 2. **Rehearse on a fresh dump.** Read-only `pg_dump -Fc` from the VPS, then
-   `scripts/prod-upgrade.sh rehearse <dump> --cutoff <date> --approve "01 03"`. It must end with `RESULT: PASS`.
+   `scripts/prod-upgrade.sh rehearse <dump> --cutoff <date> --approve "01 03 07"`. It must end with `RESULT: PASS`.
    Run the dry run first (`--fixes-dry-run`), then the real one, then open the app on the rehearsal copy and walk the checks in the validation plan.
 3. **Build the lists.** `prod-upgrade.sh report <folder outside the repo>` writes the CSV lists. Hand over:
    `opening_stock_priority.csv` (about 160 products to count during the freeze), `opening_stock_sheet.csv` (full shelf, for the first weeks),
@@ -43,7 +44,7 @@ Detail behind each step: `sql/prod-upgrade/README.md` (commands), `docs/testing/
 | Step | Action | About |
 |---|---|---|
 | 1 | Stop the old app: `docker compose -f docker-compose.prod.yml stop api frontend`. An idle API holds no database connections, so the script cannot prove it is stopped; this step is on you | 2 min |
-| 2 | `PGDATABASE=<db> scripts/prod-upgrade.sh cutover --cutoff <date> --approve "01 03"` (type the database name when asked). It writes a backup, checks it can be read, applies migrations, fixes and the payables opening, then the checks | 3 min |
+| 2 | `PGDATABASE=<db> scripts/prod-upgrade.sh cutover --cutoff <date> --approve "01 03 07"` (type the database name when asked). It writes a backup, checks it can be read, applies migrations, fixes and the payables opening, then the checks | 3 min |
 | 3 | **Stop here unless it printed `RESULT: PASS`.** If it did not, restore the backup and start the old app (section 5) | |
 | 4 | `psql -f sql/prod-upgrade/users.sql -v siteadmin_hash='<hash>'` (retires `purushoth`, creates `siteadmin@rgp.com`), then `sql/prod-upgrade/business.sql` | 1 min |
 | 5 | Load the vendor sheet: `load-vendors <csv> --fixes-dry-run`, then for real | 2 min |

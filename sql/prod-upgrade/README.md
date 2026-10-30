@@ -45,9 +45,9 @@ and is replayed on a fresh dump. See `docs/testing/prod-data-fixes.md` for what 
 
 ```bash
 # fixes run automatically after the migrations; some need an explicit OK because they change stock numbers
-scripts/prod-upgrade.sh rehearse rgp_prod.dump --fixes-dry-run --approve "01 03"   # counts only, nothing written
-scripts/prod-upgrade.sh rehearse rgp_prod.dump --approve "01 03" --writeoff-days 180
-scripts/prod-upgrade.sh cutover --approve "01 03"
+scripts/prod-upgrade.sh rehearse rgp_prod.dump --fixes-dry-run --approve "01 03 07"   # counts only, nothing written
+scripts/prod-upgrade.sh rehearse rgp_prod.dump --approve "01 03 07" --writeoff-days 180
+scripts/prod-upgrade.sh cutover --approve "01 03 07"
 
 # review lists (CSV, customer data: write them outside the repo)
 PGDATABASE=<db> scripts/prod-upgrade.sh report D:/workspace/rgp-migration/reports

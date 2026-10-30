@@ -64,6 +64,7 @@ Nothing done by hand in a rehearsal copy carries over. Everything is replayed on
 | 04 | Customer mobiles, safe part only: 258 empty strings become NULL, formatted numbers become 10 digits (none in the current dump), 3 text-only mobiles become NULL; old values kept in `customer_data_fix_log`. Rehearsed on a fresh dump: PASS | no |
 | 05 | Customer names: stray spaces trimmed (2,244 had a leading or trailing space), and names written all in capitals or all in lower case become Title Case (3,282 of 3,355 were capitals). Mixed-case names keep their capitals, the NIL walk-in is skipped, and any change that would clash on name + mobile is skipped. Old values kept in `customer_data_fix_log`. The API applies the same rule to new entries | no |
 | 06 | Sale prices above the MRP: the price in force is capped at the MRP of the product's latest purchase (42 on the current dump, e.g. a diaper pack at 115,200 against an MRP of 1,499). Read `price_review.csv` first: a wrong purchase cost behind a huge margin is not fixed here. Old prices kept in `price_data_fix_log` | required |
+| 07 | Retire the catch-all vendor "stick": its COMPLETE invoices with an amount get an opening payment (settled before cut-over), its drafts are archived, the vendor is disabled. The invoices stay, so the stock they brought in and the GST and vendor history are kept (13 invoices, Rs 5,44,014, 3 drafts on the 30 Oct 2026 dump). Matches the vendor by name; add other names to the list in the file | required |
 
 ## Suggested order
 
