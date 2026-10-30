@@ -218,6 +218,37 @@
     </div>
 </div>
 
+<div class="card mt-3 border-warning" *ngIf="invoice.status !== 'NEW' && newPrices" data-testid="new-prices">
+    <div class="card-body">
+        <h6 class="mb-1">{{newPrices.products.length}} new product{{newPrices.products.length === 1 ? ' needs' : 's need'}} a sale price</h6>
+        <p class="small text-muted mb-2">The prices below follow your pricing rules{{newPrices.basis === 'incl' ? ' and include GST' : ' and are before GST'}}. Change any of them, then set them.</p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle w-auto mb-2">
+                <thead><tr><th>Product</th><th class="text-end">Cost</th><th class="text-end">MRP</th><th class="text-end">Sale price{{newPrices.basis === 'incl' ? ' (with GST)' : ''}}</th></tr></thead>
+                <tbody>
+                    <tr *ngFor="let p of newPrices.products" [attr.data-testid]="'new-price-row-' + p.productid">
+                        <td class="small">{{p.title}}</td>
+                        <td class="text-end small">{{p.cost | number:'1.2-2'}}</td>
+                        <td class="text-end small">{{p.mrp | number:'1.2-2'}}</td>
+                        <td class="text-end">
+                            <input *ngIf="p.suggestion && !p.packsuspect && newPrices.canprice" type="number" min="0" step="0.01" class="form-control form-control-sm text-end" style="width:7rem" [(ngModel)]="typedPrices[p.productid]" [attr.data-testid]="'new-price-' + p.productid">
+                            <span *ngIf="p.packsuspect" class="small text-danger">Check the pack size first</span>
+                            <span *ngIf="!p.packsuspect && !p.suggestion" class="small text-danger">Check the cost: it is above what the MRP allows</span>
+                            <span *ngIf="p.suggestion && !p.packsuspect && !newPrices.canprice" class="small text-muted">{{p.shown | number:'1.2-2'}} suggested; a Store Head sets it</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" *ngIf="newPrices.canprice" [disabled]="pricingNew" (click)="setNewPrices()" data-testid="new-prices-set">Set these prices</button>
+    </div>
+</div>
+
+<div class="small mt-2" *ngIf="invoice.status !== 'NEW' && (pricedNewMessage || pricedNewError)">
+    <span class="text-success" *ngIf="pricedNewMessage" data-testid="new-prices-message">{{pricedNewMessage}}</span>
+    <div class="text-danger" *ngIf="pricedNewError" data-testid="new-prices-error">{{pricedNewError}}</div>
+</div>
+
 <div class="alert alert-warning small mt-3 mb-0" *ngIf="invoice.status !== 'NEW' && !invoice.invoiceno" data-testid="invoice-awaiting-note">
     Received on challan {{invoice.challanno}} at the challan rates. Payment opens once the vendor's invoice number is entered
     (<a [routerLink]="['../../edit',invoice.id]">Add invoice no.</a>). If the invoice rates differ from the challan, raise a

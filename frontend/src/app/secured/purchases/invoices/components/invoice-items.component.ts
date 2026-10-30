@@ -28,6 +28,12 @@ export class InvoiceItemsComponent {
     priceByItem:{[itemid:number]:any} = {};
     impactByItem:{[itemid:number]:any} = {};
     impactSummary:any = null;
+    // new products on a received invoice that still have no sale price, with the price the rules suggest
+    newPrices:any = null;
+    typedPrices:{[productid:number]:any} = {};
+    pricingNew:boolean = false;
+    pricedNewMessage:string = '';
+    pricedNewError:string = '';
     priceTolerance:number = 0.5;
     priceApproval:number = 5;
     readonly priceReasons = [
@@ -105,6 +111,7 @@ export class InvoiceItemsComponent {
             this.outstandingBalance = +(inv.balanceamount || 0);
             this.loadPriceCheck();
             this.loadImpact();
+            this.loadNewPrices();
 
             if(this.items) {
                 this.itemSelected =  this.items.filter((i:any) => i.selected).length > 0;
@@ -175,6 +182,29 @@ export class InvoiceItemsComponent {
             (r.lines || []).forEach((l:any) => this.impactByItem[l.itemid] = l);
             this.impactSummary = r;
         }, () => { this.impactByItem = {}; this.impactSummary = null; });
+    }
+
+    /** a received invoice: the products on it that have no price yet, each with a box holding the suggested price */
+    loadNewPrices(){
+        if(!this.invoice || this.invoice.status === 'NEW'){ this.newPrices = null; return; }
+        this.invService.newPrices(this.invoice.id).subscribe((r:any) => {
+            this.newPrices = r.products && r.products.length ? r : null;
+            this.typedPrices = {};
+            (r.products || []).forEach((p:any) => this.typedPrices[p.productid] = p.shown);
+        }, () => this.newPrices = null);
+    }
+
+    setNewPrices(){
+        this.pricedNewError = ''; this.pricedNewMessage = ''; this.pricingNew = true;
+        this.invService.priceNew(this.invoice.id, this.typedPrices).subscribe((r:any) => {
+            this.pricingNew = false;
+            this.pricedNewMessage = `${r.applied} product${r.applied === 1 ? '' : 's'} priced.`;
+            if(r.failed && r.failed.length) this.pricedNewError = r.failed.map((f:any) => `${f.title}: ${f.message}`).join(' ');
+            this.loadNewPrices(); this.loadImpact();
+        }, (err:any) => {
+            this.pricingNew = false;
+            this.pricedNewError = (Array.isArray(err?.error?.message) ? err.error.message.join(' ') : err?.error?.message) || 'Could not set the prices.';
+        });
     }
 
     setPriceReason(itemid:any, reason:string){

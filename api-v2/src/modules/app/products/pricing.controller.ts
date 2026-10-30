@@ -127,6 +127,21 @@ export class PricingController {
     return this.pricing.invoiceImpact(id);
   }
 
+  /** The new products on a received invoice that need a first price, with the suggested price. */
+  @Get('/invoice/:id/new-prices')
+  async invoiceNewPrices(@Param('id', ParseIntPipe) id: number, @User() user: any) {
+    await this.assertCost(user);
+    return { ...(await this.pricing.newPricesForInvoice(id)), canprice: (await this.pricing.actorLevel(user.id)) !== null };
+  }
+
+  /** Gives the new products on a received invoice their first price: the suggested one, or what was typed in `prices` ({productid: price}). */
+  @Post('/invoice/:id/price-new')
+  async invoicePriceNew(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) {
+    await this.assertPricing(user);
+    const prices = body?.prices && typeof body.prices === 'object' ? body.prices : undefined;
+    return this.products.priceNewFromInvoice(id, user.id, prices);
+  }
+
   /** How the business prices (at the MRP, a discount off it, or smart groups) and whether prices show with GST. */
   @Get('/mode')
   async mode(@User() user: any) {

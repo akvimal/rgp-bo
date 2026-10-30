@@ -19,6 +19,7 @@ const putMode = (api: any, body: any) => api.request('PUT', '/pricing/mode', bod
 test.beforeEach(async ({ api }) => { original = await getMode(api); });
 test.afterEach(async ({ api }) => { if (original) await putMode(api, original); });
 
+let lastInvoice = 0;                                                                      // the invoice the last bought product arrived on
 async function boughtProduct(api: any) {
   const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const prod = await api.request('POST', '/products', { title: `QA PMODE ${stamp}`, taxpcnt: 12, category: 'Analgesic', code: `PM${stamp}` }, MGR);
@@ -26,6 +27,7 @@ async function boughtProduct(api: any) {
   const vendor = (await api.request('GET', '/vendors', undefined, MGR)).body.find((v: any) => v.isActive !== false && !v.blocked);
   const inv = await api.request('POST', '/purchases', { vendorid: vendor.id, invoiceno: `QA-PM-${stamp}`, invoicedate: '2026-09-01' }, MGR);
   expect(inv.status).toBeLessThan(300);
+  lastInvoice = inv.body.id;
   const it = await api.request('POST', '/purchaseitems', {
     invoiceid: inv.body.id, productid: prod.body.id, qty: 5, ptrvalue: 100, ptrcost: 100, mrpcost: 200, taxpcnt: 12, total: 560, batch: `PM-${stamp}`, expdate: '2028-06-30', saleprice: 170,
   }, MGR);
@@ -157,4 +159,38 @@ test('PM-7 the group limits are a grid of plain-named groups with product counts
   } finally {
     await api.request('PUT', '/pricing/policy/HIGH_A', { floor: start.floor_markup_pct, cap: start.max_discount_pct, usual: start.usual_discount_pct }, MGR);
   }
+});
+
+test('PM-8 a new product from a purchase gets its first price: at once at the MRP, and from a prefilled box otherwise', async ({ api }) => {
+  // at the MRP nobody has to decide: completing the invoice prices the product at the MRP less GST
+  expect((await putMode(api, { mode: 'MRP', basis: 'excl' })).status).toBeLessThan(300);
+  const a = await boughtProduct(api);
+  const priced = await api.request('GET', `/pricing/product/${a}/check`, undefined, MGR);
+  expect(priced.body.curprice).toBe(190.47);
+  expect((await api.request('GET', `/pricing/invoice/${lastInvoice}/new-prices`, undefined, MGR)).body.products).toHaveLength(0);
+
+  // with a discount the receiver sees the suggested price and may change it before it is set
+  expect((await putMode(api, { mode: 'DISCOUNT', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0, basis: 'excl' })).status).toBeLessThan(300);
+  const b = await boughtProduct(api);
+  expect((await api.request('GET', `/pricing/product/${b}/check`, undefined, MGR)).body.curprice).toBeNull();   // nothing was set for it
+  const list = (await api.request('GET', `/pricing/invoice/${lastInvoice}/new-prices`, undefined, MGR)).body;
+  expect(list.products).toHaveLength(1);
+  expect(list.products[0]).toMatchObject({ productid: b, shown: 171.43 });                                        // 10% off 200 less 5% GST
+  const set = await api.request('POST', `/pricing/invoice/${lastInvoice}/price-new`, { prices: { [b]: 175 } }, MGR);
+  expect(set.body).toMatchObject({ applied: 1, failed: [] });
+  expect((await api.request('GET', `/pricing/product/${b}/check`, undefined, MGR)).body.curprice).toBe(175);
+  expect((await api.request('GET', `/pricing/invoice/${lastInvoice}/new-prices`, undefined, MGR)).body.products).toHaveLength(0);
+});
+
+test('PM-9 the received invoice lists the products that need a price, with the suggested price in a box', async ({ app, api }) => {
+  expect((await putMode(api, { mode: 'DISCOUNT', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0, basis: 'incl' })).status).toBeLessThan(300);
+  const id = await boughtProduct(api);
+  const { page } = await app.open(MGR, `/secure/purchases/invoices/items/${lastInvoice}`);
+  await expect(page.getByTestId('new-prices')).toBeVisible();
+  await expect(page.getByTestId(`new-price-${id}`)).toHaveValue('180');                                      // 10% off the 200 MRP, GST included
+  await page.getByTestId(`new-price-${id}`).fill('185');
+  await page.getByTestId('new-prices-set').click();
+  await expect(page.getByTestId('new-prices-message')).toContainText('1 product priced');
+  await expect(page.getByTestId('new-prices')).toHaveCount(0);
+  expect((await api.request('GET', `/pricing/product/${id}/check`, undefined, MGR)).body.curprice).toBe(176.19);   // 185 with GST, before the 5% GST
 });

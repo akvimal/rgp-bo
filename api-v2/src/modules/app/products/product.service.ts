@@ -6,6 +6,7 @@ import { CreateProductDto } from "./dto/create-product.dto";
 import { Product } from "src/entities/product.entity";
 import { ProductPrice2 } from "src/entities/product-price2.entity";
 import { PricingService } from "./pricing.service";
+import { priceBeforeGst } from "./pricing-mode";
 
 @Injectable()
 export class ProductService {
@@ -327,6 +328,45 @@ export class ProductService {
           values = { ...rest, saleprice: check.price };
         }
         return this.priceRepository.update(id, {...values, updatedby:userid});
+    }
+
+    /**
+     * The first price of the new products on a received invoice. With no `prices` each gets the price the rules suggest; with `prices` (what the
+     * person typed, in the way the business shows prices) that price is used and checked against the rules like any other price change.
+     * A product the user may not price, or whose cost or pack looks wrong, is reported and left for someone who can.
+     */
+    async priceNewFromInvoice(invoiceid:number, userid:number, prices?:{[productid:number]:number}){
+      const { basis, products } = await this.pricing.newPricesForInvoice(invoiceid);
+      const done:any[] = [];
+      const failed:any[] = [];
+      for(const u of products){
+        try{
+          await this.pricing.prepareNew(u.productid, userid);
+          const typed = prices ? Number(prices[u.productid]) : NaN;
+          const own = Number.isFinite(typed) && typed > 0;
+          const price = own ? (basis === 'incl' ? priceBeforeGst(typed, u.tax, u.mrp) : typed) : u.suggestion!.price;
+          const saved = await this.addPrice(
+            { productid: u.productid, saleprice: price, reason: 'Initial', comments: `First price from purchase invoice #${invoiceid}` } as any,
+            userid, own ? undefined : { policyApproved: true });
+          await this.pricing.audited(userid, 'price.first_price', u.productid, `${u.title}: first price ${saved.saleprice} from purchase invoice #${invoiceid}${own ? ' (entered)' : ' (from the rules)'}`,
+            { price: saved.saleprice, invoiceid, class: u.classkey, cost: u.cost, mrp: u.mrp, entered: own });
+          done.push({ productid: u.productid, title: u.title, price: Number(saved.saleprice) });
+        }
+        catch(e:any){
+          const m = e?.response?.message;
+          failed.push({ productid: u.productid, title: u.title, message: (Array.isArray(m) ? m.join(' ') : m) || e?.message });
+        }
+      }
+      return { applied: done.length, done, failed };
+    }
+
+    /** Completing an invoice: when the business prices at the MRP the price of a new product needs no decision, so it is set now. Never blocks the completion. */
+    async autoPriceNew(invoiceid:number, userid:number){
+      try{
+        if((await this.pricing.mode()).mode !== 'MRP') return { auto: false, applied: 0, failed: [] };
+        return { auto: true, ...(await this.priceNewFromInvoice(invoiceid, userid)) };
+      }
+      catch(e:any){ return { auto: true, applied: 0, failed: [{ message: e?.message }] }; }
     }
 
 }

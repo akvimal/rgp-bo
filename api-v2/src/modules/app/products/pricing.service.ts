@@ -4,7 +4,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { isOwnerRole } from 'src/core/roles';
 import { LineIn, PricingItem, PricingReader, today } from './pricing-reader';
-import { MODE_KEYS, previewMode, validateModeSettings } from './pricing-mode';
+import { MODE_KEYS, previewMode, priceWithGst, validateModeSettings } from './pricing-mode';
 import { cleanRuleValue, ruleOf, RULES } from './pricing-rules';
 import {
   Abc, addDays, boundsOf, checkChange, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, PolicySettings, rank, stepLimit, Subject, suggestPrice, tradeBand, Violation, VIOLATION_TEXT,
@@ -205,6 +205,24 @@ export class PricingService extends PricingReader {
       };
     }
     return out;
+  }
+
+  /**
+   * The products on a received invoice that have no sale price yet, each with the price the rules suggest, in the way the business shows prices
+   * (with GST when the business says so). The first price can only be set once the goods are in stock, so this is for a completed invoice.
+   */
+  async newPricesForInvoice(invoiceid: number) {
+    const [mode, rows] = await Promise.all([
+      this.modeSettings(),
+      this.manager.query(`select distinct product_id from purchase_invoice_item where invoice_id = $1 and active and not archive`, [invoiceid]),
+    ]);
+    const onInvoice = new Set<number>(rows.map((r: any) => +r.product_id));
+    const products = (await this.unpriced()).filter((u) => onInvoice.has(u.productid)).map((u) => ({
+      productid: u.productid, title: u.title, pack: u.pack, classkey: u.classkey, cost: u.cost, mrp: u.mrp, tax: u.tax, packsuspect: u.packsuspect,
+      suggestion: u.suggestion,
+      shown: u.suggestion ? (mode.basis === 'incl' ? priceWithGst(u.suggestion.price, u.tax, u.mrp) : u.suggestion.price) : null,
+    }));
+    return { mode: mode.mode, basis: mode.basis, products };
   }
 
   /** What each line of a purchase invoice means for the product's current price (the receiving screen's "Sale price" column). */

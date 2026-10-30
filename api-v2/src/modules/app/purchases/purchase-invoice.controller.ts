@@ -7,6 +7,7 @@ import { AuthGuard } from "src/modules/auth/auth.guard";
 import { PurchasingGuard } from "../roles/purchasing.guard";
 import { UpdateInvoicesDto } from "./dto/update-invoices.dto";
 import { User } from "src/core/decorator/user.decorator";
+import { ProductService } from "../products/product.service";
 
 @ApiTags('PurchaseInvoices')
 @Controller('purchases')
@@ -14,7 +15,7 @@ import { User } from "src/core/decorator/user.decorator";
 @UseGuards(AuthGuard, PurchasingGuard)
 export class PurchaseInvoiceController {
 
-    constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService){}
+    constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService, private products:ProductService){}
 
     private filterOf(q:any){
       return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, q: q.q };
@@ -99,7 +100,12 @@ export class PurchaseInvoiceController {
 
     @Put('/confirm')
     async confirm(@Body() input:UpdateInvoicesDto, @User() currentUser: any) {
-      return await this.purchaseInvoiceService.update(input.ids, input.values, currentUser.id);
+      const result = await this.purchaseInvoiceService.update(input.ids, input.values, currentUser.id);
+      // the goods are in stock now: a new product gets its first price at once when the business prices at the MRP
+      if(input.values?.status === 'COMPLETE'){
+        for(const id of input.ids) await this.products.autoPriceNew(id, currentUser.id);
+      }
+      return result;
     }
 
     @Delete(':id')
