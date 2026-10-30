@@ -1,6 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { PRICING_SUBJECTS_SQL } from './pricing-subjects.sql';
 import { PRICING_UNPRICED_SQL } from './pricing-unpriced.sql';
+import { analysePrices } from './pricing-check';
 import { effectivePolicy, effectiveSteps, ModeSettings, readModeSettings } from './pricing-mode';
 import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Subject, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
 
@@ -65,6 +66,12 @@ export class PricingReader {
   async policyTable() {
     return this.manager.query(
       `select class_key, floor_markup_pct::float8 as floor_markup_pct, max_discount_pct::float8 as max_discount_pct, usual_discount_pct::float8 as usual_discount_pct from price_policy order by class_key`);
+  }
+
+  /** a read-only look at the prices already in place, for a business that has moved in with priced products */
+  async priceCheck() {
+    const [items, unpriced] = await Promise.all([this.items(null), this.unpriced()]);
+    return { ...analysePrices(items.map((i) => ({ discountPct: i.packsuspect ? null : i.discountpct, markupPct: i.packsuspect ? null : i.markuppct, action: i.action, packsuspect: i.packsuspect }))), unpriced: unpriced.length };
   }
 
   /** how many priced products sit in each class, so the limits screen can say which groups matter */

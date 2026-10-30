@@ -22,6 +22,7 @@ export class ProductsService {
     pricingPriceNewAll(){ return this.http.post<any>(`${environment.apiHost}/pricing/price-new-all`, {}); }
     pricingProductCheck(productid:number, price?:number){ return this.http.get<any>(`${environment.apiHost}/pricing/product/${productid}/check`, { params: price !== undefined ? { price: String(price) } : {} }); }
     pricingApply(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/apply`, { productid }); }
+    pricingCheck(){ return this.http.get<any>(`${environment.apiHost}/pricing/check`); }
     pricingMode(){ return this.http.get<any>(`${environment.apiHost}/pricing/mode`); }
     pricingSaveMode(body:any){ return this.http.put<any>(`${environment.apiHost}/pricing/mode`, body); }
     pricingPreviewMode(body:any){ return this.http.post<any>(`${environment.apiHost}/pricing/mode/preview`, body); }

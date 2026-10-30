@@ -142,6 +142,13 @@ export class PricingController {
     return this.products.priceNewFromInvoice(id, user.id, prices);
   }
 
+  /** What the prices already in place look like, and which way of pricing fits them. Read-only. */
+  @Get('/check')
+  async check(@User() user: any) {
+    await this.assertCost(user);
+    return this.pricing.priceCheck();
+  }
+
   /** How the business prices (at the MRP, a discount off it, or smart groups) and whether prices show with GST. */
   @Get('/mode')
   async mode(@User() user: any) {

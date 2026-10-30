@@ -121,6 +121,7 @@ test('PM-6 with GST included the price dialog takes what the customer pays, caps
   const { page } = await app.open(MGR, '/secure/products/price');
   await page.getByPlaceholder('Product').fill(title);
   const row = page.locator('tbody tr', { hasText: title });
+  await expect(page.locator('tbody tr')).toHaveCount(1);                                    // the list has finished filtering, so the row will not move under the click
   await expect(row).toHaveCount(1);
   await row.locator('i.bi-pencil-square').click();
   await expect(page.getByTestId('price-basis-note')).toContainText('include GST');
@@ -193,4 +194,22 @@ test('PM-9 the received invoice lists the products that need a price, with the s
   await expect(page.getByTestId('new-prices-message')).toContainText('1 product priced');
   await expect(page.getByTestId('new-prices')).toHaveCount(0);
   expect((await api.request('GET', `/pricing/product/${id}/check`, undefined, MGR)).body.curprice).toBe(176.19);   // 185 with GST, before the 5% GST
+});
+
+test('PM-10 a business that already has prices can look at them first: bands, what is wrong, and which way of pricing fits; nothing is changed', async ({ app, api }) => {
+  const r = (await api.request('GET', '/pricing/check', undefined, MGR)).body;
+  expect(r.products).toBeGreaterThan(0);
+  expect(r.bands).toHaveLength(6);
+  expect(r.bands.reduce((n: number, b: any) => n + b.count, 0) + r.aboveCeiling).toBeLessThanOrEqual(r.products);
+  expect(['MRP', 'DISCOUNT', 'SMART']).toContain(r.recommendation.mode);
+  expect(r.recommendation.reason.length).toBeGreaterThan(10);
+  expect((await api.request('GET', '/pricing/check', undefined, SALES)).status).toBe(403);       // it shows cost: for those who may see cost
+
+  const { page } = await app.open(MGR, '/secure/products/pricing-rules');
+  await page.getByTestId('price-check-run').click();
+  await expect(page.getByTestId('price-check-summary')).toContainText('priced product');
+  await expect(page.getByTestId('price-check-advice')).toContainText('Suggested:');
+  await page.getByTestId('price-check-use').click();
+  await expect(page.getByTestId('price-check-message')).toContainText('Save how I price');
+  expect(await getMode(api)).toMatchObject(original);                                              // choosing is not saving
 });

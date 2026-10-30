@@ -52,6 +52,29 @@ export class PricingRulesComponent implements OnInit {
         }, () => { /* without cost access the card is simply not filled */ });
     }
 
+    // a read-only look at the prices already in place, and which way of pricing fits them
+    check: any = null;
+    checking = false;
+    checkMessage = '';
+
+    runCheck() {
+        this.checking = true; this.error = ''; this.checkMessage = '';
+        this.service.pricingCheck().subscribe((r: any) => { this.check = r; this.checking = false; }, (err: any) => { this.checking = false; this.error = this.msg(err, 'Could not look at the prices.'); });
+    }
+
+    /** fills the choice above with what fits the prices; nothing is saved until "Save how I price" */
+    useRecommendation() {
+        const r = this.check?.recommendation;
+        if (!r || !this.canedit) return;
+        this.modeForm.mode = r.mode;
+        if (r.mode === 'DISCOUNT') { this.modeForm.discountPct = r.discountPct; this.modeForm.maxDiscountPct = r.maxDiscountPct; }
+        this.checkMessage = 'Filled in above. Read it, then press "Save how I price".';
+        this.refreshPreview();
+    }
+
+    maxBand(): number { return Math.max(1, ...((this.check?.bands || []).map((b: any) => b.count))); }
+    modeName(m: string): string { return m === 'MRP' ? 'At the MRP' : m === 'DISCOUNT' ? 'A discount off the MRP' : 'Smart groups'; }
+
     get modeChanged(): boolean { return JSON.stringify(this.modeForm) !== this.modeOriginal; }
 
     pickMode(m: string) {

@@ -11,6 +11,36 @@
     <div class="text-muted small" *ngIf="loading">Loading&hellip;</div>
 
     <ng-container *ngIf="!loading">
+      <div class="border rounded p-3 mb-3" data-testid="price-check">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="fw-semibold">Already have prices? Check them first</div>
+          <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="checking" (click)="runCheck()" data-testid="price-check-run">{{check ? 'Check again' : 'Check my current prices'}}</button>
+          <span class="small text-muted">Only looks. Nothing is changed.</span>
+        </div>
+        <div *ngIf="check" class="mt-3">
+          <div class="small mb-2" data-testid="price-check-summary">{{check.products}} priced product{{check.products === 1 ? '' : 's'}}<span *ngIf="check.unpriced">, and {{check.unpriced}} in stock with no price</span>.</div>
+          <div *ngFor="let b of check.bands" class="d-flex align-items-center gap-2 small mb-1">
+            <div style="width:11rem">{{b.label}}</div>
+            <div class="bg-primary" style="height:.8rem;min-width:2px" [style.width.px]="b.count / maxBand() * 220"></div>
+            <div>{{b.count}}</div>
+          </div>
+          <ul class="small mt-2 mb-2 ps-3">
+            <li *ngIf="check.aboveCeiling" class="text-danger" data-testid="price-check-above">{{check.aboveCeiling}} above the legal ceiling (more than the MRP once GST is added). These should be brought down to it: use "Pricing policy" &gt; apply cuts.</li>
+            <li *ngIf="check.belowCost" class="text-danger" data-testid="price-check-below-cost">{{check.belowCost}} below your cost.</li>
+            <li *ngIf="check.suspect">{{check.suspect}} with a pack size that looks wrong, left out of the figures above. Check them under Pack check.</li>
+            <li *ngIf="!check.aboveCeiling && !check.belowCost && !check.suspect" class="text-success">None above the legal ceiling or below cost.</li>
+          </ul>
+          <div class="alert alert-info py-2 small mb-0" data-testid="price-check-advice">
+            <b>Suggested: {{modeName(check.recommendation.mode)}}.</b> {{check.recommendation.reason}}
+            <div class="mt-2" *ngIf="canedit">
+              <button type="button" class="btn btn-primary btn-sm" (click)="useRecommendation()" data-testid="price-check-use">Use this</button>
+              <span class="text-success ms-2" *ngIf="checkMessage" data-testid="price-check-message">{{checkMessage}}</span>
+            </div>
+          </div>
+          <div class="small text-muted mt-2">Your existing prices are not touched, whichever you choose. Prices that break the rule are listed under Pricing policy for you to bring across when you are ready.</div>
+        </div>
+      </div>
+
       <h6 class="mt-3 text-primary">How do you price your goods?</h6>
       <p class="small text-muted mb-2">Choose one. Everything else on this page, and every price check in the app, follows it.</p>
       <div class="row g-3" data-testid="mode-cards">
