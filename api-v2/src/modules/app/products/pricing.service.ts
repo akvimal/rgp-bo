@@ -4,6 +4,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { isOwnerRole } from 'src/core/roles';
 import { LineIn, PricingItem, PricingReader, today } from './pricing-reader';
+import { MODE_KEYS, previewMode, validateModeSettings } from './pricing-mode';
 import { cleanRuleValue, ruleOf, RULES } from './pricing-rules';
 import {
   Abc, addDays, boundsOf, checkChange, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, PolicySettings, rank, stepLimit, Subject, suggestPrice, tradeBand, Violation, VIOLATION_TEXT,
@@ -270,6 +271,49 @@ export class PricingService extends PricingReader {
       `update price_policy set floor_markup_pct = $2, max_discount_pct = $3, usual_discount_pct = coalesce($5::numeric, usual_discount_pct), updated_by = $4, updated_on = now() where class_key = $1`, [classkey, floor, cap, userid, usual ?? null]);
     await this.audited(userid, 'price.policy_changed', 0, `Pricing policy ${classkey}: floor ${before.f}% -> ${floor}%, cap ${before.c}% -> ${cap}%${usual !== undefined ? `, usual discount ${before.u}% -> ${usual}%` : ''}`, { classkey, before, after: { floor, cap, usual } });
     return { classkey, floor, cap };
+  }
+
+  // ------------------------------------------------------------------ how the business prices
+  /** The pricing mode and the GST basis, with a worked example for the screen. */
+  async mode() {
+    return this.modeSettings();
+  }
+
+  /** Changes how the business prices (the Business Head only: the controller checks). Takes effect at once for every screen that judges a price. */
+  async saveMode(body: any, userid: number) {
+    const before = await this.modeSettings();
+    const r = validateModeSettings(body, before);
+    if (r.error || !r.value) throw new BadRequestException(r.error || 'Those settings are not valid.');
+    const after = r.value;
+    const rows: Array<[string, string, string]> = [
+      [MODE_KEYS.mode, after.mode, 'How prices are set: MRP, DISCOUNT (off the MRP) or SMART (class rules)'],
+      [MODE_KEYS.basis, after.basis, 'Prices are shown and typed with GST included (incl) or before GST (excl)'],
+      [MODE_KEYS.discountPct, String(after.discountPct), 'DISCOUNT mode: the usual discount off the MRP for a first price'],
+      [MODE_KEYS.maxDiscountPct, String(after.maxDiscountPct), 'DISCOUNT mode: the deepest discount any price may have'],
+      [MODE_KEYS.minMarginPct, String(after.minMarginPct), 'DISCOUNT mode: the lowest markup on cost'],
+    ];
+    for (const [key, value, label] of rows) {
+      await this.manager.query(
+        `insert into app_setting (category, setting_key, setting_value, description, active, archive, created_by, updated_by)
+         values ('pricing', $1, $2, $3, true, false, $4, $4)
+         on conflict (setting_key) do update set setting_value = excluded.setting_value, updated_by = $4, updated_on = now(), active = true, archive = false`,
+        [key, value, label, userid]);
+    }
+    this.cache = null;
+    const changed = (Object.keys(after) as Array<keyof typeof after>).filter((k) => after[k] !== before[k]);
+    if (changed.length) {
+      await this.audited(userid, 'price.mode_changed', 0, `Pricing mode: ${changed.map((k) => `${k} ${before[k]} -> ${after[k]}`).join(', ')}`, { before, after });
+    }
+    return { settings: after, changed };
+  }
+
+  /** What a setting would do to a product with this MRP and cost, before it is saved. */
+  async previewMode(body: any) {
+    const current = await this.modeSettings();
+    const r = validateModeSettings(body, current);
+    if (r.error || !r.value) throw new BadRequestException(r.error || 'Those settings are not valid.');
+    const mrp = Number(body?.mrp), cost = Number(body?.cost), tax = Number(body?.tax ?? 5);
+    return { settings: r.value, preview: previewMode(r.value, { mrp, cost, tax }) };
   }
 
   async addException(productid: number, reason: string, until: string, userid: number) {

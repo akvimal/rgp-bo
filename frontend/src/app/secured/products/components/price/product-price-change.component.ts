@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnDestroy, Output, SimpleChanges } from "@angular/core";
 import { DateUtilService } from "src/app/secured/date-util.service";
 import { ProductsService } from "../../products.service";
+import { priceBeforeGst, priceWithGst } from "../../price-basis";
 
 const MARGIN_WARN = 300;     // above this the price is saved with a warning
 const MARGIN_LIMIT = 1000;   // above this it is refused as a typing mistake
@@ -38,6 +39,8 @@ export class ProductPriceChangeComponent implements OnDestroy {
     /** what the policy says about the price typed: what it breaks, who must approve, whether this user may */
     check:any = null;
     saving = false;
+    /** prices are shown and typed with GST included (what the customer pays) or before GST: stored prices are always before GST */
+    basis: 'incl' | 'excl' = 'excl';
     error = '';
     /** the price breaks the pricing policy and this user may approve it: a reason is asked for */
     needsOverride = false;
@@ -52,9 +55,11 @@ export class ProductPriceChangeComponent implements OnDestroy {
             this.check = null;
             this.needsOverride = false;
             const id = changes.productid.currentValue;
+            this.service.pricingMode().subscribe((m:any) => this.basis = m?.settings?.basis === 'incl' ? 'incl' : 'excl', () => this.basis = 'excl');
             this.service.findPricesById(id).subscribe((data:any) => {
                 this.current = data || {};
-                this.price = { sale: data?.price?.price ?? '', date: this.defaultDate(), reason: '', comments: '' };
+                const ex = data?.price?.price ?? '';
+                this.price = { sale: ex === '' ? '' : this.show(+ex), date: this.defaultDate(), reason: '', comments: '' };
             });
             this.service.pricingProductCheck(id).subscribe((p:any) => this.policy = p?.known ? p : null, () => this.policy = null);
         }
@@ -94,7 +99,15 @@ export class ProductPriceChangeComponent implements OnDestroy {
     get batchTax(): number { return +(this.current?.price?.tax || 0); }
     /** the price is without GST and the bill adds GST, so the most it can be is the MRP less the GST billed */
     get ceiling(): number { return this.mrp ? Math.floor(this.mrp / (1 + this.saleTax / 100) * 100 + 1e-6) / 100 : 0; }
-    get typed(): number { return +this.price.sale || 0; }
+    /** a stored price (before GST) as shown: with GST when the business prices that way */
+    show(ex:number): number { return this.basis === 'incl' ? priceWithGst(ex, this.saleTax, this.mrp) : ex; }
+    /** what is typed, as the price before GST that is stored and checked */
+    get typed(): number {
+        const shown = +this.price.sale || 0;
+        return this.basis === 'incl' && shown > 0 ? priceBeforeGst(shown, this.saleTax, this.mrp) : shown;
+    }
+    /** with GST included, a price above the MRP is capped at the MRP */
+    get overMrp(): boolean { return this.basis === 'incl' && this.mrp > 0 && (+this.price.sale || 0) > this.mrp + 0.005; }
     get cappedAt(): number | null { return this.ceiling && this.typed > this.ceiling ? this.ceiling : null; }
     get effective(): number { return this.cappedAt ?? this.typed; }
     /** markup and discount compare like with like: the price with GST against the cost and the MRP, both with GST */
@@ -121,7 +134,7 @@ export class ProductPriceChangeComponent implements OnDestroy {
     }
 
     useSuggestion(){
-        if(this.policy?.suggestion) this.onPriceInput(this.policy.suggestion.price);
+        if(this.policy?.suggestion) this.onPriceInput(this.show(this.policy.suggestion.price));
     }
 
     /** the typed price breaks the policy and this user may not approve it */
@@ -149,7 +162,7 @@ export class ProductPriceChangeComponent implements OnDestroy {
     onSave(){
         this.error = '';
         this.saving = true;
-        this.service.addPrice({id:this.productid, ...this.price}).subscribe((data:any) => {
+        this.service.addPrice({id:this.productid, ...this.price, sale: this.typed}).subscribe((data:any) => {
             this.saving = false;
             this.added.emit(data);
         }, err => {

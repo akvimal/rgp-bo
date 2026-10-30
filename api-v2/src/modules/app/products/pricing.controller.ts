@@ -127,6 +127,40 @@ export class PricingController {
     return this.pricing.invoiceImpact(id);
   }
 
+  /** How the business prices (at the MRP, a discount off it, or smart groups) and whether prices show with GST. */
+  @Get('/mode')
+  async mode(@User() user: any) {
+    await this.assertCost(user);
+    return { settings: await this.pricing.mode(), canedit: (await this.pricing.actorLevel(user.id)) === 'BUSINESS' };
+  }
+
+  @Put('/mode')
+  async saveMode(@Body() body: any, @User() user: any) {
+    await this.assertBusinessHead(user);
+    return this.pricing.saveMode(body, user.id);
+  }
+
+  /** A worked example of a setting before it is saved: no change is made. */
+  @Post('/mode/preview')
+  async previewMode(@Body() body: any, @User() user: any) {
+    await this.assertCost(user);
+    return this.pricing.previewMode(body);
+  }
+
+  /** Applies this step's price to every product that is out of policy and that the user may apply now (under MRP, that is each product's MRP). */
+  @Post('/apply-raises')
+  async applyRaises(@User() user: any) {
+    await this.assertPricing(user);
+    const { items } = await this.pricing.queue(user.id);
+    let applied = 0;
+    const failed: any[] = [];
+    for (const i of items.filter((x: any) => x.action === 'RAISE' && x.canapply)) {
+      try { await this.applyOne(i.productid, user.id); applied++; }
+      catch (e: any) { failed.push({ productid: i.productid, title: i.title, message: e?.message }); }
+    }
+    return { applied, failed };
+  }
+
   @Get('/policy')
   async policy(@User() user: any) {
     await this.assertCost(user);

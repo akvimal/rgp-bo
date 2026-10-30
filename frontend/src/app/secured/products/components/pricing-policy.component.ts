@@ -33,7 +33,26 @@ export class PricingPolicyComponent implements OnInit {
 
     constructor(private service: ProductsService) {}
 
-    ngOnInit() { this.load(); }
+    ngOnInit() { this.load(); this.service.pricingMode().subscribe((r: any) => this.mode = r?.settings || null, () => this.mode = null); }
+
+    /** how the business prices, for the line at the top of the page */
+    mode: any = null;
+    get modeText(): string {
+        if (!this.mode) return '';
+        return this.mode.mode === 'MRP' ? 'You sell at the MRP: every price should be the MRP.'
+            : this.mode.mode === 'DISCOUNT' ? `You sell at a discount off the MRP: usually ${this.mode.discountPct}%, never deeper than ${this.mode.maxDiscountPct}%.`
+            : 'You price with smart groups: each product follows the rules of its group.';
+    }
+    get readyRaises(): number { return (this.data?.items || []).filter((i: any) => i.action === 'RAISE' && i.canapply).length; }
+
+    applyRaises() {
+        this.busy = true; this.message = ''; this.error = '';
+        this.service.pricingApplyRaises().subscribe((r: any) => {
+            this.busy = false;
+            this.message = `${r.applied} price${r.applied === 1 ? '' : 's'} brought to the rule${r.failed?.length ? '; ' + r.failed.length + ' could not be changed' : ''}.`;
+            this.load();
+        }, (err: any) => { this.busy = false; this.error = this.msg(err, 'Could not apply the prices.'); });
+    }
 
     load() {
         this.loading = true;

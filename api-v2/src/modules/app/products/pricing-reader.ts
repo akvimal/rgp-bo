@@ -1,6 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { PRICING_SUBJECTS_SQL } from './pricing-subjects.sql';
 import { PRICING_UNPRICED_SQL } from './pricing-unpriced.sql';
+import { effectivePolicy, effectiveSteps, ModeSettings, readModeSettings } from './pricing-mode';
 import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Subject, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
 
 export interface PricingItem {
@@ -37,19 +38,28 @@ export interface LineOut {
 export class PricingReader {
   constructor(protected readonly manager: EntityManager) {}
 
+  private async pricingRows(): Promise<any[]> {
+    return this.manager.query(`select setting_key, setting_value from app_setting where category = 'pricing' and active and not archive`);
+  }
+
+  /** how this business prices (at the MRP, a discount off it, or the class rules) and whether prices are shown with GST */
+  async modeSettings(): Promise<ModeSettings> {
+    return readModeSettings(await this.pricingRows());
+  }
+
+  /** the stepping and approval settings, as the current pricing mode applies them (under MRP a raise is not stepped) */
   async settings(): Promise<PolicySettings> {
-    const rows = await this.manager.query(
-      `select setting_key, setting_value from app_setting where category = 'pricing' and active and not archive`);
+    const rows = await this.pricingRows();
     const get = (k: string, d: number) => {
       const n = Number(rows.find((r: any) => r.setting_key === k)?.setting_value);
       return Number.isFinite(n) && n > 0 ? n : d;
     };
-    return {
+    return effectiveSteps(readModeSettings(rows), {
       stepPricePct: get('price_step_pct', DEFAULT_SETTINGS.stepPricePct),
       stepMrpPct: get('price_step_mrp_pct', DEFAULT_SETTINGS.stepMrpPct),
       stepDays: get('price_step_days', DEFAULT_SETTINGS.stepDays),
       storeHeadLimitPct: get('price_store_head_limit_pct', DEFAULT_SETTINGS.storeHeadLimitPct),
-    };
+    });
   }
 
   async policyTable() {
@@ -57,9 +67,10 @@ export class PricingReader {
       `select class_key, floor_markup_pct::float8 as floor_markup_pct, max_discount_pct::float8 as max_discount_pct, usual_discount_pct::float8 as usual_discount_pct from price_policy order by class_key`);
   }
 
+  /** the limits of each class under the current pricing mode: the stored class rows only count under SMART */
   protected async policyMap(): Promise<Map<string, ClassPolicy>> {
-    const rows = await this.policyTable();
-    return new Map(rows.map((r: any) => [r.class_key, { floorMarkupPct: Number(r.floor_markup_pct), maxDiscountPct: Number(r.max_discount_pct), usualDiscountPct: Number(r.usual_discount_pct) }]));
+    const [rows, ms] = await Promise.all([this.policyTable(), this.modeSettings()]);
+    return new Map(rows.map((r: any) => [r.class_key, effectivePolicy(ms, { floorMarkupPct: Number(r.floor_markup_pct), maxDiscountPct: Number(r.max_discount_pct), usualDiscountPct: Number(r.usual_discount_pct) })]));
   }
 
   protected toItem(r: any, policies: Map<string, ClassPolicy>, st: PolicySettings, exception: any): PricingItem {
@@ -99,7 +110,7 @@ export class PricingReader {
     });
   }
 
-  private cache: { at: number; items: PricingItem[] } | null = null;
+  protected cache: { at: number; items: PricingItem[] } | null = null;
 
   /** every product's evaluated price, kept for a minute: a screen that asks for many lines should not repeat the 12-month profit sums */
   protected async itemsCached(): Promise<PricingItem[]> {

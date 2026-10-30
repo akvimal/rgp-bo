@@ -11,6 +11,61 @@
     <div class="text-muted small" *ngIf="loading">Loading&hellip;</div>
 
     <ng-container *ngIf="!loading">
+      <h6 class="mt-3 text-primary">How do you price your goods?</h6>
+      <p class="small text-muted mb-2">Choose one. Everything else on this page, and every price check in the app, follows it.</p>
+      <div class="row g-3" data-testid="mode-cards">
+        <div class="col-md-4">
+          <div class="border rounded p-3 h-100" [class.border-primary]="modeForm.mode === 'MRP'" [class.bg-light]="modeForm.mode === 'MRP'" role="button" (click)="pickMode('MRP')" data-testid="mode-card-MRP">
+            <div class="form-check"><input class="form-check-input" type="radio" name="mode" id="mode-mrp" [checked]="modeForm.mode === 'MRP'" [disabled]="!canedit" (change)="pickMode('MRP')"><label class="form-check-label fw-semibold" for="mode-mrp">At the MRP</label></div>
+            <div class="small text-muted mt-1">Every product sells at the price printed on the pack. When a new batch has a new MRP, the price follows it at once.</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="border rounded p-3 h-100" [class.border-primary]="modeForm.mode === 'DISCOUNT'" [class.bg-light]="modeForm.mode === 'DISCOUNT'" role="button" (click)="pickMode('DISCOUNT')" data-testid="mode-card-DISCOUNT">
+            <div class="form-check"><input class="form-check-input" type="radio" name="mode" id="mode-discount" [checked]="modeForm.mode === 'DISCOUNT'" [disabled]="!canedit" (change)="pickMode('DISCOUNT')"><label class="form-check-label fw-semibold" for="mode-discount">A discount off the MRP</label></div>
+            <div class="small text-muted mt-1">Products start at a usual discount, and no price may go deeper than the limit you set.</div>
+            <div class="row g-2 mt-1" *ngIf="modeForm.mode === 'DISCOUNT'" (click)="$event.stopPropagation()">
+              <div class="col-12 col-xl-4"><label class="form-label small mb-0">Usual discount</label><div class="input-group input-group-sm"><input type="number" min="0" max="90" step="any" class="form-control text-end" [(ngModel)]="modeForm.discountPct" (ngModelChange)="refreshPreview()" [disabled]="!canedit" data-testid="mode-discount"><span class="input-group-text">%</span></div></div>
+              <div class="col-12 col-xl-4"><label class="form-label small mb-0">Deepest allowed</label><div class="input-group input-group-sm"><input type="number" min="0" max="95" step="any" class="form-control text-end" [(ngModel)]="modeForm.maxDiscountPct" (ngModelChange)="refreshPreview()" [disabled]="!canedit" data-testid="mode-max-discount"><span class="input-group-text">%</span></div></div>
+              <div class="col-12 col-xl-4"><label class="form-label small mb-0">Least margin</label><div class="input-group input-group-sm"><input type="number" min="0" max="1000" step="any" class="form-control text-end" [(ngModel)]="modeForm.minMarginPct" (ngModelChange)="refreshPreview()" [disabled]="!canedit" data-testid="mode-min-margin"><span class="input-group-text">%</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="border rounded p-3 h-100" [class.border-primary]="modeForm.mode === 'SMART'" [class.bg-light]="modeForm.mode === 'SMART'" role="button" (click)="pickMode('SMART')" data-testid="mode-card-SMART">
+            <div class="form-check"><input class="form-check-input" type="radio" name="mode" id="mode-smart" [checked]="modeForm.mode === 'SMART'" [disabled]="!canedit" (change)="pickMode('SMART')"><label class="form-check-label fw-semibold" for="mode-smart">Smart groups <span class="badge bg-secondary ms-1">advanced</span></label></div>
+            <div class="small text-muted mt-1">Each product follows the rules of its group, by how much margin it carries and how much profit it earns. Prices are raised in small steps. The group rules are under Advanced below.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-light border mt-3 mb-2 py-2" *ngIf="modeForm.mode !== 'SMART'" data-testid="mode-example">
+        <div class="d-flex flex-wrap align-items-center gap-2 small mb-1">An example product: MRP
+          <input type="number" class="form-control form-control-sm text-end" style="width:6rem" [(ngModel)]="example.mrp" (ngModelChange)="refreshPreview()" data-testid="mode-ex-mrp" aria-label="Example MRP">
+          cost before GST
+          <input type="number" class="form-control form-control-sm text-end" style="width:6rem" [(ngModel)]="example.cost" (ngModelChange)="refreshPreview()" data-testid="mode-ex-cost" aria-label="Example cost">
+          GST
+          <input type="number" class="form-control form-control-sm text-end" style="width:4.5rem" [(ngModel)]="example.tax" (ngModelChange)="refreshPreview()" data-testid="mode-ex-tax" aria-label="Example GST percent"> %
+        </div>
+        <div data-testid="mode-example-summary"><i class="bi bi-lightbulb me-1"></i>{{preview ? preview.summary : 'Enter an MRP and a cost to see what this setting does.'}}</div>
+      </div>
+
+      <div class="mt-3" data-testid="mode-basis">
+        <div class="fw-semibold small mb-1">How prices are shown and typed</div>
+        <div class="form-check"><input class="form-check-input" type="radio" name="basis" id="basis-incl" [(ngModel)]="modeForm.basis" value="incl" [disabled]="!canedit" data-testid="mode-basis-incl"><label class="form-check-label" for="basis-incl">With GST included: the price the customer pays. The MRP is the most it can be.</label></div>
+        <div class="form-check"><input class="form-check-input" type="radio" name="basis" id="basis-excl" [(ngModel)]="modeForm.basis" value="excl" [disabled]="!canedit" data-testid="mode-basis-excl"><label class="form-check-label" for="basis-excl">Before GST: the bill adds GST on top. Use this for goods priced without an MRP.</label></div>
+        <div class="form-text">This only changes how a price is shown and typed. The bill, the GST and the stored prices are the same either way.</div>
+      </div>
+
+      <div class="d-flex gap-2 align-items-center mt-3" *ngIf="canedit">
+        <button type="button" class="btn btn-primary" [disabled]="!modeChanged || savingMode" (click)="saveMode()" data-testid="mode-save">Save how I price</button>
+        <span class="small text-muted" *ngIf="modeChanged">Not saved yet.</span>
+        <span class="small text-success" *ngIf="modeMessage" data-testid="mode-message">{{modeMessage}}</span>
+      </div>
+
+      <details class="mt-4" [open]="modeForm.mode === 'SMART'" data-testid="rules-advanced">
+      <summary class="fw-semibold text-primary">Advanced: smart groups</summary>
+      <p class="small text-muted mt-2 mb-0" *ngIf="modeForm.mode !== 'SMART'">These group limits are kept but not used while you price {{modeForm.mode === 'MRP' ? 'at the MRP' : 'with a discount off the MRP'}}.</p>
       <h6 class="mt-3 text-primary">Class limits</h6>
       <p class="small text-muted mb-2">
         Each product belongs to a class from two things: how far its cost is below the MRP (its trade margin) and how much of the profit it earns (A, B or C).
@@ -31,10 +86,11 @@
           </tbody>
         </table>
       </div>
+      </details>
 
       <div *ngFor="let g of groups" class="mt-4">
         <h6 class="text-primary">{{g.title}}</h6>
-        <p class="small text-muted mb-2">{{g.intro}}</p>
+        <p class="small text-muted mb-2">{{g.intro}}<span *ngIf="g.key === 'steps' && modeForm.mode === 'MRP'"> Pricing at the MRP raises a price to the MRP at once, so these step limits are not used.</span></p>
         <div *ngFor="let r of inGroup(g.key)" class="row g-2 align-items-start mb-3" [attr.data-testid]="'rule-' + r.key">
           <div class="col-md-5">
             <label class="form-label mb-0 fw-semibold small">{{r.label}}</label>

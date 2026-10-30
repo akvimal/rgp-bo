@@ -40,7 +40,7 @@
                     <th style="width:34%" pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
                     <th style="width:9%" pSortableColumn="last_updated"><div class="th-bar"><span class="th-label">Updated</span><p-sortIcon field="last_updated"></p-sortIcon></div></th>
                     <th style="width:9%" class="text-end" pSortableColumn="ptr"><div class="th-bar"><span class="th-label">Cost with GST</span><p-sortIcon field="ptr"></p-sortIcon></div></th>
-                    <th style="width:8%" class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th>
+                    <th style="width:8%" class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">{{basis === 'incl' ? 'Price with GST' : 'Price'}}</span><p-sortIcon field="price"></p-sortIcon></div></th>
                     <th style="width:8%" class="text-end" pSortableColumn="margin"><div class="th-bar"><span class="th-label">Markup</span><p-columnFilter type="numeric" field="margin" display="menu"></p-columnFilter><p-sortIcon field="margin"></p-sortIcon></div></th>
                     <th style="width:8%" class="text-end" pSortableColumn="discount"><div class="th-bar"><span class="th-label">Discount</span><p-columnFilter type="numeric" field="discount" display="menu"></p-columnFilter><p-sortIcon field="discount"></p-sortIcon></div></th>
                     <th style="width:8%" class="text-end" pSortableColumn="mrp"><div class="th-bar"><span class="th-label">MRP</span><p-sortIcon field="mrp"></p-sortIcon></div></th>
@@ -53,7 +53,7 @@
                     <td>{{product.title}} ({{product.pack}})</td>
                     <td>{{product.last_updated | date : 'dd MMM yyyy'}}</td>
                     <td class="text-end">{{product.ptr | number : '1.2-2'}}</td>
-                    <td class="text-end">{{product.price | number : '1.2-2'}}</td>
+                    <td class="text-end">{{shownPrice(product) | number : '1.2-2'}}</td>
                     <td class="text-end">{{product.margin}}%</td>
                     <td class="text-end">{{product.discount}}%</td>
                     <td class="text-end">{{product.mrp | number : '1.2-2'}}</td>

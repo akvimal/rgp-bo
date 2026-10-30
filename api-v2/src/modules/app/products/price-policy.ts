@@ -57,7 +57,8 @@ export interface Bounds { ceiling: number; floorP: number; capP: number; lower: 
 export function boundsOf(s: Subject, p: ClassPolicy): Bounds {
   const ceiling = floor2(s.mrp / (1 + s.tax / 100));
   const floorP = ceil2(s.cost * (1 + p.floorMarkupPct / 100));
-  const capP = ceil2((s.mrp * (1 - p.maxDiscountPct / 100)) / (1 + s.tax / 100));
+  // no discount allowed means the MRP itself: rounding up here would put the lowest price a paisa above the ceiling
+  const capP = p.maxDiscountPct <= 0 ? ceiling : ceil2((s.mrp * (1 - p.maxDiscountPct / 100)) / (1 + s.tax / 100));
   const lower = Math.max(floorP, capP);
   return { ceiling, floorP, capP, lower, conflict: lower > ceiling + EPS };
 }

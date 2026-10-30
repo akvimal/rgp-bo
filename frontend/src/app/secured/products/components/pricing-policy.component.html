@@ -1,5 +1,10 @@
 <p class="small text-muted mt-2 mb-1">Prices that are out of policy. A raise is made in steps (at most {{data?.settings?.stepPricePct}}% of the price or {{data?.settings?.stepMrpPct}}% of the MRP, once every {{data?.settings?.stepDays}} days; change these on the Pricing rules page)
     so customers never see a sudden rise; a price above the legal ceiling goes down at once. A Store Head can apply a step on class B and C products; class A needs the Business Head.</p>
+<div class="alert alert-light border py-2 small mb-2 d-flex flex-wrap justify-content-between gap-2" *ngIf="mode" data-testid="policy-mode">
+  <span><i class="bi bi-tag me-1"></i><span data-testid="policy-mode-text">{{modeText}}</span></span>
+  <a routerLink="/secure/products/pricing-rules" data-testid="policy-mode-change">Change how you price</a>
+</div>
+<div class="small text-muted mb-2" *ngIf="mode?.basis === 'incl'" data-testid="policy-basis-note">Prices on this page are before GST. The price list shows what the customer pays, with GST.</div>
 <app-price-units></app-price-units>
 
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="policy-error">{{error}}</div>
@@ -70,6 +75,7 @@
       </div>
     </div>
     <div class="page-toolbar-actions">
+      <button type="button" class="btn btn-primary me-2" *ngIf="readyRaises && mode?.mode !== 'SMART'" [disabled]="busy" (click)="applyRaises()" data-testid="policy-apply-raises">Bring {{readyRaises}} price{{readyRaises === 1 ? '' : 's'}} to the rule</button>
       <button type="button" class="btn btn-danger" *ngIf="readyCuts" [disabled]="busy" (click)="applyCuts()" data-testid="policy-apply-cuts">Bring {{readyCuts}} price{{readyCuts === 1 ? '' : 's'}} down to the legal ceiling</button>
     </div>
   </div>

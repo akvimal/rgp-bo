@@ -1,5 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { ProductsService } from "../../products.service";
+import { priceWithGst } from "../../price-basis";
 
 /**
  * The price list: every purchased product with its current price, markup and discount, and where it stands against the pricing policy
@@ -26,7 +27,12 @@ export class ProductPriceComponent implements OnInit {
 
     constructor(private service:ProductsService){}
 
+    /** prices shown with GST included (what the customer pays) when the business prices that way */
+    basis: 'incl' | 'excl' = 'excl';
+    shownPrice(p:any): number { return this.basis === 'incl' ? priceWithGst(+p.price, +(p.sale_tax ?? p.tax ?? 0), +p.mrp) : +p.price; }
+
     ngOnInit(){
+        this.service.pricingMode().subscribe((m:any) => this.basis = m?.settings?.basis === 'incl' ? 'incl' : 'excl', () => this.basis = 'excl');
         this.filter();
         this.loadStatuses();
     }

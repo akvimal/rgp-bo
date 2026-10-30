@@ -1,24 +1,25 @@
 <div class="row g-4">
   <div class="col-md-7">
     <h5 class="card-title m-0 p-0" data-testid="price-title">{{current?.price?.title}}<span *ngIf="current?.price?.pack"> ({{current.price.pack}})</span></h5>
-    <p class="small text-muted mt-1 mb-2">Prices and costs are per pack, before GST; the MRP includes GST.</p>
+    <p class="small text-muted mt-1 mb-2" *ngIf="basis === 'excl'">Prices and costs are per pack, before GST; the MRP includes GST.</p>
+    <p class="small text-muted mt-1 mb-2" *ngIf="basis === 'incl'" data-testid="price-basis-note">Prices are per pack and include GST: what the customer pays. The MRP is the most a price can be.</p>
 
     <h6 class="text-primary">Now</h6>
     <div class="d-flex flex-wrap gap-4 mb-2">
       <div class="price-comp"><label>Cost with GST</label><h6 data-testid="price-ptr">{{ptr ? (ptr | number:'1.2-2') : '-'}}</h6></div>
       <div class="price-comp"><label>MRP</label><h6 data-testid="price-mrp">{{mrp ? (mrp | number:'1.2-2') : '-'}}</h6></div>
-      <div class="price-comp"><label>Current price</label><h6 data-testid="price-current">{{current?.price?.price ? (current.price.price | number:'1.2-2') : 'none'}}</h6></div>
+      <div class="price-comp"><label>Current price</label><h6 data-testid="price-current">{{current?.price?.price ? (show(+current.price.price) | number:'1.2-2') : 'none'}}</h6></div>
       <div class="price-comp"><label>Markup</label><h6>{{margin !== null ? margin + '%' : (current?.price?.price ? (current.price.margin + '%') : '-')}}</h6></div>
       <div class="price-comp"><label>Discount</label><h6>{{discount !== null ? discount + '%' : (current?.price?.price ? (current.price.discount + '%') : '-')}}</h6></div>
     </div>
 
     <div class="small mb-3" *ngIf="policy" data-testid="price-policy-info">
       <div>Class <b>{{policy.classkey}}</b>.
-        <span *ngIf="policy.lower !== null">Lowest price <b>{{policy.lower | number:'1.2-2'}}</b>, </span>legal ceiling <b>{{policy.ceiling | number:'1.2-2'}}</b> (the MRP less GST).
+        <span *ngIf="policy.lower !== null">Lowest price <b>{{show(policy.lower) | number:'1.2-2'}}</b>, </span><ng-container *ngIf="basis === 'excl'">legal ceiling <b>{{policy.ceiling | number:'1.2-2'}}</b> (the MRP less GST).</ng-container><ng-container *ngIf="basis === 'incl'">legal ceiling <b>{{mrp | number:'1.2-2'}}</b> (the MRP).</ng-container>
       </div>
-      <div *ngIf="policy.curprice && policy.stepmax">The largest raise now is <b>{{policy.stepmax | number:'1.2-2'}}</b> (to {{(policy.curprice + policy.stepmax) | number:'1.2-2'}}).
+      <div *ngIf="policy.curprice && policy.stepmax">The largest raise now is <b>{{(show(policy.curprice + policy.stepmax) - show(policy.curprice)) | number:'1.2-2'}}</b> (to {{show(policy.curprice + policy.stepmax) | number:'1.2-2'}}).
         <span *ngIf="policy.raiseon" class="text-muted">The next raise is allowed from {{policy.raiseon | date:'dd MMM yyyy'}}.</span></div>
-      <div *ngIf="policy.suggestion">Suggested price <b>{{policy.suggestion.price | number:'1.2-2'}}</b> ({{policy.suggestion.discountPct | number:'1.0-0'}}% off the MRP).
+      <div *ngIf="policy.suggestion">Suggested price <b>{{show(policy.suggestion.price) | number:'1.2-2'}}</b> ({{policy.suggestion.discountPct | number:'1.0-0'}}% off the MRP).
         <a role="button" (click)="useSuggestion()" data-testid="price-use-suggestion">Use it</a></div>
       <div class="text-danger" *ngIf="policy.conflict">The cost is above what the MRP allows: check the cost and the pack size first.</div>
     </div>
@@ -26,7 +27,7 @@
     <h6 class="text-primary">New price</h6>
     <div class="row g-3">
       <div class="col-md-5">
-        <label class="form-label">Sale price <span class="required">*</span> <span class="small text-muted fw-normal">(per pack, before GST)</span></label>
+        <label class="form-label">Sale price <span class="required">*</span> <span class="small text-muted fw-normal" *ngIf="basis === 'excl'">(per pack, before GST)</span><span class="small text-muted fw-normal" *ngIf="basis === 'incl'">(per pack, GST included)</span></label>
         <input type="number" min="0" step="0.01" class="form-control text-end" [ngModel]="price.sale" (ngModelChange)="onPriceInput($event)" data-testid="price-dialog-price">
       </div>
       <div class="col-md-3">
@@ -44,7 +45,8 @@
     </div>
 
     <div class="small text-muted mt-2" *ngIf="!ptr">No purchase on record yet, so there is no MRP or cost to check this price against.</div>
-    <div class="alert alert-info py-2 small mt-2 mb-0" *ngIf="cappedAt" data-testid="price-note-cap">The bill adds GST to this price, so it cannot be above the MRP less GST: it will be saved as {{cappedAt | number:'1.2-2'}}.</div>
+    <div class="alert alert-info py-2 small mt-2 mb-0" *ngIf="overMrp" data-testid="price-note-over-mrp">A customer cannot be charged more than the MRP ({{mrp | number:'1.2-2'}}): it will be saved as the MRP.</div>
+    <div class="alert alert-info py-2 small mt-2 mb-0" *ngIf="cappedAt && basis === 'excl'" data-testid="price-note-cap">The bill adds GST to this price, so it cannot be above the MRP less GST: it will be saved as {{cappedAt | number:'1.2-2'}}.</div>
     <div class="alert alert-danger py-2 small mt-2 mb-0" *ngIf="tooHigh" data-testid="price-note-error">A markup of {{margin}}% looks like a typing mistake (the limit is 1,000%). Check the price and the cost.</div>
     <div class="alert alert-warning py-2 small mt-2 mb-0" *ngIf="high" data-testid="price-note-warn">High markup: {{margin}}% on the cost. Is this price right?</div>
     <div class="alert alert-warning py-2 small mt-2 mb-0" *ngIf="belowCost" data-testid="price-note-below">This price is below the cost ({{ptr | number:'1.2-2'}} with GST).</div>
@@ -81,7 +83,7 @@
         <tbody>
           <tr *ngFor="let h of current.history" data-testid="price-history-row">
             <td class="text-nowrap">{{h.eff_date | date:'dd MMM yyyy'}}</td>
-            <td class="text-end">{{h.sale_price | number:'1.2-2'}}</td>
+            <td class="text-end">{{show(+h.sale_price) | number:'1.2-2'}}</td>
             <td class="small">{{reasonLabel(h.reason)}}<span *ngIf="h.by_name" class="text-muted"> &middot; {{h.by_name}}</span>
               <div class="text-muted" *ngIf="h.comments">{{h.comments}}</div></td>
           </tr>

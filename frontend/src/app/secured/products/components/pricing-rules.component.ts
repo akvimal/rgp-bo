@@ -18,6 +18,15 @@ export class PricingRulesComponent implements OnInit {
     canedit = false;
 
     classes: any[] = [];
+
+    // how the business prices: the mode, the GST basis, the numbers for a discount, and a worked example
+    modeForm: any = { mode: 'SMART', basis: 'excl', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0 };
+    private modeOriginal = '';
+    example = { mrp: 100, cost: 70, tax: 5 };
+    preview: any = null;
+    savingMode = false;
+    modeMessage = '';
+    private previewTimer: any = null;
     rules: any[] = [];
     form: { [key: string]: string } = {};
     private original: { [key: string]: string } = {};
@@ -33,7 +42,43 @@ export class PricingRulesComponent implements OnInit {
 
     constructor(private service: ProductsService) {}
 
-    ngOnInit() { this.load(); }
+    ngOnInit() { this.load(); this.loadMode(); }
+
+    loadMode() {
+        this.service.pricingMode().subscribe((r: any) => {
+            this.modeForm = { ...r.settings };
+            this.modeOriginal = JSON.stringify(this.modeForm);
+            this.refreshPreview();
+        }, () => { /* without cost access the card is simply not filled */ });
+    }
+
+    get modeChanged(): boolean { return JSON.stringify(this.modeForm) !== this.modeOriginal; }
+
+    pickMode(m: string) {
+        if (!this.canedit) return;
+        this.modeForm.mode = m;
+        this.refreshPreview();
+    }
+
+    /** a worked example of what the settings do to a product: asked of the server so the screen and the till never disagree */
+    refreshPreview() {
+        clearTimeout(this.previewTimer);
+        this.previewTimer = setTimeout(() => {
+            if (this.modeForm.mode === 'SMART') { this.preview = null; return; }
+            this.service.pricingPreviewMode({ ...this.modeForm, ...this.example }).subscribe((r: any) => this.preview = r.preview, (err: any) => { this.preview = null; this.error = this.msg(err, ''); });
+        }, 250);
+    }
+
+    saveMode() {
+        this.error = ''; this.modeMessage = ''; this.savingMode = true;
+        this.service.pricingSaveMode(this.modeForm).subscribe((r: any) => {
+            this.savingMode = false;
+            this.modeForm = { ...r.settings };
+            this.modeOriginal = JSON.stringify(this.modeForm);
+            this.modeMessage = 'Saved. Prices are now judged by this setting everywhere.';
+            this.load();
+        }, (err: any) => { this.savingMode = false; this.error = this.msg(err, 'Could not save how you price.'); });
+    }
 
     private msg(err: any, fallback: string): string {
         const m = err?.error?.message;
