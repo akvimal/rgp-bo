@@ -3,11 +3,12 @@
         <div class="bill" data-testid="bill">
 
             <header class="bill-head">
-                <img src="assets/img/rgp-logo.png" alt="" class="bill-logo">
+                <img *ngIf="from.logo" [src]="from.logo" alt="" class="bill-logo" data-testid="bill-logo">
                 <div class="bill-from">
                     <h1 data-testid="bill-from-name">{{from.name}}<small *ngIf="from.branch"> &middot; {{from.branch}}</small></h1>
+                    <div *ngIf="from.legalname" class="bill-sub" data-testid="bill-from-legal">{{from.legalname}}</div>
                     <div *ngIf="from.address" data-testid="bill-from-address">{{from.address}}</div>
-                    <div *ngIf="from.phone">Phone: <strong>{{from.phone}}</strong></div>
+                    <div *ngIf="from.phone" data-testid="bill-from-phone">Phone: <strong>{{from.phone}}</strong></div>
                     <div *ngIf="from.gstin">GSTIN: <strong>{{from.gstin}}</strong></div>
                     <div *ngFor="let l of from.licences" data-testid="bill-licence">{{l.label}}: {{l.numbers}}</div>
                 </div>

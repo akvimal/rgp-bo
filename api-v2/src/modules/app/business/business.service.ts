@@ -13,6 +13,7 @@ import { PRESETS, PRESET_INFO, Preset, PresetInput, planPreset } from "./busines
 import { checkLogo } from "./business-logo";
 
 import { isOwnerRole } from 'src/core/roles';
+import { checkPhones } from 'src/core/phones';
 @Injectable()
 export class BusinessService {
   constructor(
@@ -174,6 +175,11 @@ export class BusinessService {
     }
     if (body.legalname !== undefined) fields.legalname = clean(body.legalname, 120, "The legal name");
     if (body.address !== undefined) fields.address = clean(body.address, 200, "The address");
+    if (body.phone !== undefined) {
+      const p = checkPhones(body.phone, "The phone");
+      if (!p.ok) throw new BadRequestException(p.error);
+      fields.phone = p.value;
+    }
     if (body.pincode !== undefined) {
       const p = clean(body.pincode, 10, "The pincode");
       if (p && !/^[0-9]{6}$/.test(p)) throw new BadRequestException("The pincode must be 6 digits.");

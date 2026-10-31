@@ -13,7 +13,7 @@ export class SaleHelper {
             // a row without it falls back to the batch's own GST
             const taxpcnt = source.sale_tax !== undefined && source.sale_tax !== null ? +source.sale_tax : source.tax_pcnt;
             // the bill adds GST to the price, and a customer is never charged more than the MRP: cap the price at MRP less that GST
-            // the server sends the ceiling itself (price_ceiling): a counter user is not shown the MRP
+            // the server sends the ceiling itself (price_ceiling), so the cap holds even when the MRP is not in the row
             const mrpUnit = source.mrp_cost / source.pack;
             const ceiling = source.price_ceiling != null && +source.price_ceiling > 0 ? +source.price_ceiling
                 : (mrpUnit > 0 ? Math.floor(mrpUnit / (1 + (taxpcnt || 0) / 100) * 100 + 1e-6) / 100 : null);

@@ -54,6 +54,7 @@ export class MyHrComponent implements OnInit {
     const p = this.profile;
     if (!p) return "";
     if (p.work_days?.length) return `${p.work_days.map((d: string) => d.charAt(0) + d.slice(1, 3).toLowerCase()).join(", ")}${p.work_start ? " " + p.work_start + "-" + p.work_end : ""}`;
+    if (p.emp_type === "PART_TIME") return "Days vary";
     return p.weekly_off === "ROTATION" ? "Weekly off on rotation" : `Weekly off ${p.weekly_off.charAt(0) + p.weekly_off.slice(1).toLowerCase()}`;
   }
 

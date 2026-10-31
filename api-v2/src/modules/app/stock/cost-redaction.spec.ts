@@ -3,7 +3,8 @@ import { redactCostFields } from './cost-redaction';
 describe('redactCostFields', () => {
   it('leaves out what the business paid and keeps everything else', () => {
     const rows = [{ id: 1, title: 'X', mrp_cost: 10, ptr_cost: 8, ptr_value: 7, oldprice: 5, cost: 4, balance: 3, nested: { cost: 1, keep: 2 } }];
-    expect(redactCostFields(rows)).toEqual([{ id: 1, title: 'X', balance: 3, nested: { keep: 2 } }]);
+    // the MRP stays: it is on the pack, and the bill shows it
+    expect(redactCostFields(rows)).toEqual([{ id: 1, title: 'X', mrp_cost: 10, balance: 3, nested: { keep: 2 } }]);
   });
 
   it('keeps dates as dates (copying a Date field by field gave an empty object)', () => {

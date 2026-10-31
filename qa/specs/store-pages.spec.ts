@@ -38,12 +38,13 @@ test.describe('Store pages @p1', () => {
     expect(errors.filter((e) => /InvalidPipeArgument|date/i.test(e)), errors.join(' | ')).toEqual([]);
   });
 
-  test('STORE-2 a person without cost access still gets dates, and no cost fields, in the stock list @edge', async ({ api }) => {
+  test('STORE-2 a person without cost access still gets dates, and no cost fields (but the MRP), in the stock list @edge', async ({ api }) => {
     const rows = (await api.request('POST', '/stock/filter', { available: true, limit: 20 }, COUNTER)).body;
     expect(rows.length).toBeGreaterThan(0);
     const withExpiry = rows.find((r: any) => r.exp_date !== null && r.exp_date !== undefined);
     if (withExpiry) expect(typeof withExpiry.exp_date).toBe('string');                                 // an empty object here broke the expiry in the POS list
-    for (const r of rows) for (const k of ['mrp_cost', 'ptr_cost', 'ptr_value', 'oldprice', 'cost']) expect(r).not.toHaveProperty(k);
+    for (const r of rows) for (const k of ['ptr_cost', 'ptr_value', 'oldprice', 'cost']) expect(r).not.toHaveProperty(k);
+    expect(rows.every((r: any) => r.mrp_cost !== undefined)).toBe(true);                              // the MRP is on the pack, so the bill shows it
   });
 
   test('STORE-3 Transfers opens for a manager (its route was missing from the role paths) and the Cash ledger is paged @happy', async ({ app }) => {

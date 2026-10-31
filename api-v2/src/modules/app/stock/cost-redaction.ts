@@ -1,5 +1,8 @@
-/** the fields that show what the business paid; they are left out of what a person without cost access is sent */
-export const COST_FIELDS = ['mrp_cost', 'ptr_cost', 'ptr_value', 'oldprice', 'cost'];
+/**
+ * the fields that show what the business paid; they are left out of what a person without cost access is sent.
+ * The MRP is not one of them: it is printed on the pack and the counter needs it on the bill.
+ */
+export const COST_FIELDS = ['ptr_cost', 'ptr_value', 'oldprice', 'cost'];
 
 /**
  * A copy of the data without the cost fields. Only plain data is copied field by field: a date (or anything else that turns

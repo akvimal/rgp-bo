@@ -46,6 +46,11 @@
             </div>
           </div>
         </div>
+        <div class="col-md-6">
+          <label class="form-label">Phone(s)</label>
+          <input class="form-control" name="phone" [(ngModel)]="form.phone" maxlength="60" placeholder="e.g. 98400 12345, 044 2345 6789" data-testid="biz-phone">
+          <div class="form-text">Up to four numbers, separated by commas. The bill prints a store's own phone first and these when the store has none.</div>
+        </div>
         <div class="col-12">
           <label class="form-label">Address</label>
           <textarea class="form-control" name="address" rows="2" [(ngModel)]="form.address" maxlength="200" data-testid="biz-address"></textarea>

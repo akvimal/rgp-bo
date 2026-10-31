@@ -38,7 +38,7 @@ test.describe('Customer bill @p1', () => {
   test('BILL-1 the bill carries the store details, the lines, how it was paid, the tax, the total in words and the refill date @happy', async ({ api, app }) => {
     const bill = await makeBill(api);
     const set = await api.request('PUT', `/stores/${bill.storeid}/licenses`, {
-      address: '12 QA Main Road, Testville', pincode: '600001', phone: '98400 11223',
+      address: '12 QA Main Road, Testville', pincode: '600001', phone: '98400 11223, 044 2345 6789',
       licenses: [{ licensetype: 'RETAIL_20_21', number: 'QA-20-0001' }, { licensetype: 'RETAIL_20_21', number: 'QA-21-0001' }],
     }, MGR);
     expect(set.status, JSON.stringify(set.body)).toBeLessThan(300);
@@ -50,7 +50,8 @@ test.describe('Customer bill @p1', () => {
     await expect(page.getByTestId('bill-line')).toHaveCount(2);
 
     // from the store, not from the code
-    await expect(page.getByTestId('bill-from-name')).toContainText(String(biz.legalname || biz.name));
+    await expect(page.getByTestId('bill-from-name')).toContainText(String(biz.name));                      // the shop's own name; the legal name sits beneath it
+    await expect(page.getByTestId('bill-from-phone')).toContainText('98400 11223, 044 2345 6789');         // every number the store lists
     await expect(page.getByTestId('bill-from-address')).toContainText('12 QA Main Road, Testville, 600001');
     await expect(page.getByTestId('bill-licence')).toContainText('DL No.: QA-20-0001 | QA-21-0001');
     await expect(page.getByTestId('bill')).not.toContainText('Ramesh');

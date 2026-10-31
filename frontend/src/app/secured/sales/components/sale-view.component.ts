@@ -63,7 +63,7 @@ export class SaleViewComponent {
     words = '';
 
     /** who the bill is from: the store's own details, with the business's as the fallback */
-    from:any = { name: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
+    from:any = { name: '', legalname: '', logo: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
     payments:{label:string, amount:number}[] = [];
     gstRows:{rate:number, taxable:number, cgst:number, sgst:number, igst:number}[] = [];
     /** the supply crosses a state border: the tax is IGST, not CGST and SGST */
@@ -108,10 +108,14 @@ export class SaleViewComponent {
       (h.licences || []).forEach((l:any) => { (byType[l.type] = byType[l.type] || []).push(l.number); });
       this.reviewQr = s.reviewurl ? qrPath(s.reviewurl) : null;
       this.from = {
-        name: b.legalname || b.name || '',
+        // the shop's own name; the registered (legal) name goes beneath it when it is different
+        name: b.name || b.legalname || '',
+        legalname: b.legalname && b.legalname !== b.name ? b.legalname : '',
+        logo: b.logo || '',
         branch: h.multistore && s.name ? s.name : '',
         address,
-        phone: s.phone || '',
+        // the store's phone number(s); the business's when the store has none
+        phone: s.phone || b.phone || '',
         gstin: b.gstin || '',
         reviewurl: s.reviewurl || '',
         statecode: b.statecode || '',

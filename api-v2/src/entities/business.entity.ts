@@ -46,6 +46,10 @@ import { Store } from "./store.entity";
     @Column("character varying", { name: "legal_name", nullable: true })
     legalname: string | null;
 
+    /** the business's phone number(s), shown on the bill when the store has none of its own */
+    @Column("character varying", { name: "phone", length: 60, nullable: true })
+    phone: string | null;
+
     @Column("character varying", { name: "state_code", length: 2, nullable: true })
     statecode: string | null;
 

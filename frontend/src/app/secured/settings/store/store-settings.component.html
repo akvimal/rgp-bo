@@ -130,8 +130,9 @@
               <input class="form-control" maxlength="6" [(ngModel)]="lic.pincode" data-testid="store-lic-pincode">
             </div>
             <div class="col-6 col-md-3">
-              <label class="form-label">Phone</label>
-              <input class="form-control" maxlength="20" [(ngModel)]="lic.phone" data-testid="store-lic-phone">
+              <label class="form-label">Phone(s)</label>
+              <input class="form-control" maxlength="60" [(ngModel)]="lic.phone" placeholder="e.g. 98400 12345, 044 2345 6789" data-testid="store-lic-phone">
+              <div class="form-text">Up to four numbers, separated by commas. Printed on the bill; the business phone is used when this is empty.</div>
             </div>
             <div class="col-12">
               <label class="form-label">Google review link</label>

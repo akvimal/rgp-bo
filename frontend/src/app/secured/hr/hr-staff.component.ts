@@ -126,6 +126,8 @@ export class HrStaffComponent implements OnInit {
       pan: e.pan, aadhaar_last4: e.aadhaar_last4, bank_name: e.bank_name, account_no: e.account_no, ifsc: e.ifsc, notes: e.notes,
     };
     const pt = e.emp_type === "PART_TIME";
+    // a part-timer has working days, not a weekly off: with no working days ticked, no day is a fixed off day
+    if (pt) body.weekly_off = "ROTATION";
     body.work_days = pt ? e.work_days : [];
     body.work_start = pt && e.work_start ? e.work_start : null;
     body.work_end = pt && e.work_end ? e.work_end : null;

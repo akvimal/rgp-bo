@@ -6,7 +6,7 @@
 
 /* who it is from, and which bill this is */
 .bill-head { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start; padding-bottom: 10px; border-bottom: 2px solid #012970; }
-.bill-logo { width: 68px; height: 68px; object-fit: contain; }
+.bill-logo { max-width: 120px; max-height: 68px; width: auto; height: auto; object-fit: contain; }
 .bill-from h1 { font-size: 18px; font-weight: 800; color: #012970; margin: 0 0 2px; }
 .bill-from h1 small { font-size: 12px; font-weight: 600; color: #6b7280; }
 .bill-ident { text-align: right; }

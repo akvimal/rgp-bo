@@ -370,9 +370,12 @@ test.describe('HR @p1', () => {
     await expectShell(page);
     await page.getByTestId('hr-staff-add').click();
     await expect(page.getByTestId('hr-sec-schedule')).toHaveCount(0);
+    await expect(page.getByTestId('hr-f-weeklyoff')).toBeVisible();
     await page.locator('select').filter({ has: page.locator('option[value="PART_TIME"]') }).selectOption('PART_TIME');
     await expect(page.getByTestId('hr-sec-schedule')).toBeVisible();
     await expect(page.getByTestId('hr-f-wd-MONDAY')).toBeVisible();
+    // a part-timer has working days, not a weekly off
+    await expect(page.getByTestId('hr-f-weeklyoff')).toHaveCount(0);
   });
 
   test('HR-10 a login can be linked to a staff record later @edge', async ({ app, api }) => {

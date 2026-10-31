@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { checkPhones } from 'src/core/phones';
 import { ComplianceService } from '../compliance/compliance.service';
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
@@ -102,9 +103,9 @@ export class StoreService {
     const fields: any = {};
     if (body.address !== undefined) fields.address = text(body.address, 200, "The address");
     if (body.phone !== undefined) {
-      const p = text(body.phone, 20, "The phone");
-      if (p && !/^[0-9+() -]{6,20}$/.test(p)) throw new BadRequestException("The phone number is not valid.");
-      fields.phone = p;
+      const p = checkPhones(body.phone, "The phone");
+      if (!p.ok) throw new BadRequestException(p.error);
+      fields.phone = p.value;
     }
     if (body.pincode !== undefined) {
       const p = text(body.pincode, 10, "The pincode");

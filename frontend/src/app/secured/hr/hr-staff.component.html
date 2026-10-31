@@ -102,7 +102,7 @@
             <div class="col-md-6 col-lg-3"><label class="form-label">Type</label>
               <select class="form-select" [(ngModel)]="editing.emp_type"><option value="FULL_TIME">Full time</option><option value="PART_TIME">Part time</option></select></div>
             <div class="col-md-6 col-lg-3"><label class="form-label">Joined *</label><input type="date" class="form-control" [(ngModel)]="editing.join_date" data-testid="hr-f-join"></div>
-            <div class="col-md-6 col-lg-3"><label class="form-label">Weekly off</label>
+            <div class="col-md-6 col-lg-3" *ngIf="editing.emp_type !== 'PART_TIME'"><label class="form-label">Weekly off</label>
               <select class="form-select" [(ngModel)]="editing.weekly_off" data-testid="hr-f-weeklyoff"><option *ngFor="let d of days" [value]="d[0]">{{d[1]}}</option><option value="ROTATION">Rotation (marked in attendance)</option></select></div>
           </div>
         </fieldset>
@@ -118,7 +118,7 @@
                   <label class="form-check-label" [for]="'hr-wd-' + d[0]">{{d[1].slice(0, 3)}}</label>
                 </div>
               </div>
-              <div class="form-text">Leave empty if the days change; the weekly off then applies. Days not ticked are off days, not absences.</div>
+              <div class="form-text">Leave empty if the days change; no day is then treated as a fixed off day. Days not ticked are off days, not absences.</div>
             </div>
             <div class="col-6 col-md-3 col-lg-2"><label class="form-label">From</label><input type="time" class="form-control" [(ngModel)]="editing.work_start" data-testid="hr-f-wstart"></div>
             <div class="col-6 col-md-3 col-lg-2"><label class="form-label">To</label><input type="time" class="form-control" [(ngModel)]="editing.work_end" data-testid="hr-f-wend"></div>
