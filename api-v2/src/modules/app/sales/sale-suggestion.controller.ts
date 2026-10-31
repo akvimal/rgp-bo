@@ -1,4 +1,4 @@
-import { Body, Controller, Get, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
@@ -12,7 +12,6 @@ import { SaleSuggestionService } from './sale-suggestion.service';
 export class SaleSuggestionController {
   constructor(private readonly service: SaleSuggestionService) {}
 
-  @Get('alternatives') alternatives(@Query('productid', ParseIntPipe) productid: number, @Query('storeid') storeid: string) { return this.service.alternatives(productid, Number(storeid) || null); }
   @Post() suggest(@Body() b: any) { return this.service.suggest(b); }
   @Post('events') log(@Body() b: any, @User() u: any) { return this.service.log(b?.events, Number(b?.storeid) || null, u.id); }
 }

@@ -10,6 +10,7 @@ import { SaleDeliveryService } from "./sale-delivery.service";
 import { SaleController } from "./sale.controller";
 import { SaleService } from "./sale.service";
 import { SaleSuggestionController } from "./sale-suggestion.controller";
+import { SaleAlternativesController } from "./sale-alternatives.controller";
 import { SaleSuggestionService } from "./sale-suggestion.service";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { Sale } from "src/entities/sale.entity";
@@ -27,7 +28,7 @@ import { AuthModule } from "src/modules/auth/auth.module";
 
 @Module({
     imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule],
-    controllers: [SaleController,SaleDeliveryController,SaleSuggestionController],
+    controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController],
     providers: [SaleService,SaleSuggestionService,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],
   })

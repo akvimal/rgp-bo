@@ -24,6 +24,9 @@ describe('modules', () => {
     const off = resolveModules({}, 'general');
     expect(blockedBy('/refills', off)).toMatch(/Refill follow-up/);
     expect(blockedBy('/refills', resolveModules({}, 'pharmacy'))).toBeNull();
+    // the same-composition lookup at billing is not part of refill follow-up
+    expect(blockedBy('/sale-suggestions', off)).toMatch(/Refill follow-up/);
+    expect(blockedBy('/sale-alternatives', off)).toBeNull();
     const perms = [{ resource: 'refills', path: '/secure/quality/refills', policies: [{ action: 'view' }] }, { resource: 'sales', path: ['/secure/sales'], policies: [{ action: 'read' }] }];
     expect(filterPermissions(perms, off).map((p) => p.resource)).toEqual(['sales']);
     expect(filterPermissions(perms, resolveModules({ refills: true }, 'general')).map((p) => p.resource)).toEqual(['refills', 'sales']);   // a choice wins

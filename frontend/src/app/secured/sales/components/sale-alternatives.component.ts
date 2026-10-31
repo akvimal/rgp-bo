@@ -92,7 +92,7 @@ export class SaleAlternativesComponent {
     const id = +(p?.id || 0);
     if (!id) return;
     this.loading = true; this.error = ""; this.r = null;
-    this.http.get<any>(`${environment.apiHost}/sale-suggestions/alternatives`, { params: { productid: String(id), storeid: String(this.storeContext.selectedStoreId || "") } }).subscribe({
+    this.http.get<any>(`${environment.apiHost}/sale-alternatives`, { params: { productid: String(id), storeid: String(this.storeContext.selectedStoreId || "") } }).subscribe({
       next: d => { this.r = d; this.loading = false; },
       error: e => { this.loading = false; this.error = e?.error?.message || "Could not look up alternatives."; },
     });
