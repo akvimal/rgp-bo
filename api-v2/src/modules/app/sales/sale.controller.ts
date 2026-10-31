@@ -297,7 +297,7 @@ export class SaleController {
       const [sale] = await this.manager.query(`select store_id from sale where id = $1`, [Number(id)]);
       if (!sale) throw new NotFoundException('Bill not found.');
       const [store] = await this.manager.query(
-        `select st.id, st.location, st.address, st.pincode, st.phone, st.business_id,
+        `select st.id, st.location, st.address, st.pincode, st.phone, st.google_review_url, st.business_id,
                 b.name as business_name, b.legal_name, b.gstin, b.state_code, b.address as business_address, b.pincode as business_pincode,
                 (select count(*) from stores s2 where s2.business_id = st.business_id and s2.active = true and s2.archive = false)::int as store_count
            from stores st join business b on b.id = st.business_id where st.id = $1`, [sale.store_id]);
@@ -306,7 +306,7 @@ export class SaleController {
         `select license_type as type, number, valid_to as validto from store_license where store_id = $1 order by id`, [store.id]);
       return {
         business: { name: store.business_name, legalname: store.legal_name, gstin: store.gstin, statecode: store.state_code, address: store.business_address, pincode: store.business_pincode },
-        store: { name: store.location, address: store.address, pincode: store.pincode, phone: store.phone },
+        store: { name: store.location, address: store.address, pincode: store.pincode, phone: store.phone, reviewurl: store.google_review_url || null },
         multistore: Number(store.store_count) > 1,
         licences,
       };

@@ -1,3 +1,4 @@
+<app-private-page page="form"></app-private-page>
 <app-page-header [title]="isNew ? 'New customer' : 'Edit customer'" [subtitle]="!isNew && customer.name ? customer.name : ''"></app-page-header>
 <div class="alert alert-success py-2" *ngIf="saveNote" data-testid="cust-f-note">{{saveNote}}</div>
 <form [formGroup]="form" (ngSubmit)="onSave()" autocomplete="off">
@@ -31,6 +32,13 @@
         <div class="invalid-feedback d-block" *ngIf="form.controls['email'].invalid && form.controls['email'].dirty">That email address is not valid.</div>
       </div>
     </div>
+  </div>
+  <div class="alert alert-light border py-2 mt-2 d-flex flex-wrap align-items-center gap-2" *ngIf="masked" data-testid="cust-f-masked">
+    <span class="small">Contact details are hidden. Show them to change the mobile number, email or address.</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="revealing || dailyLimitReached" (click)="reveal()" data-testid="cust-f-reveal">Show details</button>
+    <span class="small text-muted" *ngIf="privacy && privacy.left !== null">{{privacy.left}} of {{privacy.limit}} left today</span>
+    <span class="small text-danger" *ngIf="dailyLimitReached">Daily limit reached: ask a manager.</span>
+    <span class="small text-danger" *ngIf="revealError">{{revealError}}</span>
   </div>
   <div class="alert alert-warning mt-3 py-2" *ngIf="sameNumber.length" data-testid="cust-f-dup-warning">
     <div><strong>{{form.value.mobile}}</strong> is already used by:
@@ -75,6 +83,36 @@
       <input type="text" id="srcdesc" class="form-control" formControlName="srcdesc" data-testid="cust-f-srcdesc">
     </div>
   </div>
+  <div class="row mt-2" data-testid="cust-f-contact">
+    <div class="col-md-4">
+      <label for="consent" class="form-label">May we send offers and announcements?</label>
+      <select id="consent" data-testid="cust-f-consent" class="form-control" formControlName="consent">
+        <option value="">Not asked yet</option>
+        <option value="YES">Yes, they agreed</option>
+        <option value="NO">No, they declined</option>
+      </select>
+      <div class="form-text">Ask at the counter and record the answer. Refill reminders do not need this; offers do.</div>
+    </div>
+    <div class="col-md-3">
+      <label for="preferredchannel" class="form-label">Prefers</label>
+      <select id="preferredchannel" data-testid="cust-f-channel" class="form-control" formControlName="preferredchannel">
+        <option value="">No preference</option>
+        <option value="CALL">Call</option>
+        <option value="WHATSAPP">WhatsApp</option>
+        <option value="SMS">SMS</option>
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-center">
+      <div class="form-check mt-4">
+        <input class="form-check-input" type="checkbox" id="donotcontact" data-testid="cust-f-dnc" formControlName="donotcontact">
+        <label class="form-check-label" for="donotcontact">Do not contact (no calls or messages at all)</label>
+      </div>
+      <div class="form-check mt-1">
+        <input class="form-check-input" type="checkbox" id="reviewoptout" data-testid="cust-f-reviewoptout" formControlName="reviewoptout">
+        <label class="form-check-label" for="reviewoptout">Do not invite to review us on Google</label>
+      </div>
+    </div>
+  </div>
   <div class="row mt-3">
     <div class="col-md-12">
       <button type="submit" class="btn btn-primary m-2" data-testid="cust-f-save" [disabled]="saving">Save</button>
@@ -87,4 +125,8 @@
 <div class="mt-4" *ngIf="!isNew && form.value.id" data-testid="cust-credit-panel">
   <h6>Store credit</h6>
   <app-customer-credit [customerId]="+form.value.id"></app-customer-credit>
+</div>
+<div class="mt-4" *ngIf="!isNew && form.value.id" data-testid="cust-rel-section">
+  <h6>Relationship</h6>
+  <app-customer-relationship [customerId]="+form.value.id"></app-customer-relationship>
 </div>

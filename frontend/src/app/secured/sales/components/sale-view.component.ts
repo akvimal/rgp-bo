@@ -1,3 +1,5 @@
+import { CustomersService } from "../../customers/customers.service";
+import { qrPath } from "src/app/shared/qr.util";
 import { stateName } from "../../purchases/vendors/gst-util";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { AuthService } from "src/app/@core/auth/auth.service";
@@ -70,8 +72,19 @@ export class SaleViewComponent {
     gstTotal = 0;
     refills:{title:string, due:Date}[] = [];
 
+    /** the store's Google review link, shown on the bill as a QR code */
+    reviewQr: { size:number, d:string } | null = null;
+    /** the invitation offered to the cashier for a larger bill (WhatsApp link ready), or why not */
+    invite: any = null;
+    inviteSent = false;
+    inviteBusy = false;
+    inviteError = '';
+    optedOut = false;
+    private saleIdNum = 0;
+
     constructor(private route: ActivatedRoute,
       private service:SaleService,
+      private customersService: CustomersService,
       private dateUtilService: DateUtilService,
       private prodUtilService: ProductUtilService,
       public auth: AuthService,
@@ -79,6 +92,8 @@ export class SaleViewComponent {
 
     ngOnInit(){
       const saleId = this.route.snapshot.paramMap.get('id');
+      this.saleIdNum = Number(saleId);
+      this.customersService.reviewInvite(this.saleIdNum).subscribe(i => this.invite = i, () => this.invite = null);
       this.service.billHeader(saleId).subscribe((h:any) => this.setHeader(h), () => {});
       this.service.find(saleId).subscribe((data:any) => this.setSale(data));
     }
@@ -91,12 +106,14 @@ export class SaleViewComponent {
       const address = s.address ? join(s.address, pin) : join(b.address, b.pincode);
       const byType:{[t:string]:string[]} = {};
       (h.licences || []).forEach((l:any) => { (byType[l.type] = byType[l.type] || []).push(l.number); });
+      this.reviewQr = s.reviewurl ? qrPath(s.reviewurl) : null;
       this.from = {
         name: b.legalname || b.name || '',
         branch: h.multistore && s.name ? s.name : '',
         address,
         phone: s.phone || '',
         gstin: b.gstin || '',
+        reviewurl: s.reviewurl || '',
         statecode: b.statecode || '',
         licences: Object.keys(byType).map(t => ({ label: LICENCE_LABELS[t] || 'Licence', numbers: byType[t].join(' | ') }))
       };
@@ -168,4 +185,21 @@ export class SaleViewComponent {
       this.loaded = true;
     }
 
+
+    /** opens WhatsApp with the message ready and keeps a record, so the same customer is not asked again soon */
+    sendInvite(){
+      if(!this.invite?.whatsappUrl) return;
+      window.open(this.invite.whatsappUrl, '_blank', 'noopener');
+      this.inviteBusy = true;
+      this.inviteError = '';
+      this.customersService.recordReviewInvite(this.saleIdNum).subscribe(() => { this.inviteBusy = false; this.inviteSent = true; },
+        err => { this.inviteBusy = false; this.inviteError = err?.error?.message || 'Could not record the invitation.'; });
+    }
+
+    /** the customer says they do not want review invitations: remembered for every later bill */
+    stopInvites(){
+      if(!this.invite?.customerId) return;
+      this.customersService.setConsent(this.invite.customerId, { reviewOptOut: true }).subscribe(() => { this.optedOut = true; },
+        err => { this.inviteError = err?.error?.message || 'Could not save that.'; });
+    }
 }

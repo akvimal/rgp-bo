@@ -9,9 +9,9 @@ import { Component, Input } from "@angular/core";
     template: `
     <div class="pagetitle dashboard" data-testid="dash-root">
       <h1>{{title}}</h1>
-      <div class="small text-muted">{{subtitle}}</div>
+      <div class="small text-muted">{{subtitle}}<span *ngIf="!showScope && updated" data-testid="dash-updated"> · Updated {{updated}}</span></div>
     </div>
-    <div class="card mb-3 dash-scope" data-testid="dash-scope">
+    <div class="card mb-3 dash-scope" data-testid="dash-scope" *ngIf="showScope">
       <div class="card-body py-2 d-flex flex-wrap align-items-center gap-3">
         <span class="fw-semibold">{{scope}}</span>
         <ng-content></ng-content>
@@ -24,4 +24,6 @@ export class DashHeaderComponent {
     @Input() subtitle = '';
     @Input() scope = '';
     @Input() updated = '';
+    /** The scope bar is only useful when there is more than one store to tell apart. */
+    @Input() showScope = true;
 }

@@ -3,6 +3,7 @@ import { AbstractControl, FormControl, FormGroup, ValidationErrors, Validators }
 import { ActivatedRoute, Router } from "@angular/router";
 import { Customer } from "../customer.model";
 import { CustomersService } from "../customers.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 /** The mobile as the API will read it: spaces, dashes, +91, 91 and a leading 0 stripped. null when it is not a mobile. */
 export function normaliseMobile(value: any): string | null {
@@ -66,7 +67,11 @@ export class CustomerFormComponent implements AfterViewInit {
         locality: new FormControl(''),
         // area: new FormControl(''),
         srctype: new FormControl(''),
-        srcdesc: new FormControl('')
+        srcdesc: new FormControl(''),
+        consent: new FormControl(''),
+        preferredchannel: new FormControl(''),
+        donotcontact: new FormControl(false),
+        reviewoptout: new FormControl(false)
     });
 
     originalMobile: string | null = null;   // the saved number: no warning while it is unchanged
@@ -77,9 +82,19 @@ export class CustomerFormComponent implements AfterViewInit {
     attempted = false;   // Save was pressed: show every problem, not only the fields already touched
     saving = false;
 
+    /** contact details arrive masked for a login that may not read them all: they stay read-only (and are never sent back) until revealed */
+    masked = false;
+    revealing = false;
+    revealError = '';
+    privacy:any = null;
+    /** the saved values, to show exactly what a save changes */
+    private baseline:any = {};
+    private readonly contactFields = ['mobile', 'altmobile', 'email', 'address'];
+
     constructor(
       private route: ActivatedRoute,
       private service:CustomersService,
+      private confirm:ConfirmService,
       private router:Router){}
 
     get isNew(): boolean { return !this.form.value.id; }
@@ -100,20 +115,54 @@ export class CustomerFormComponent implements AfterViewInit {
     ngOnInit(){
       const id = this.route.snapshot.paramMap.get('id');
 
+      this.service.privacy().subscribe(p => this.privacy = p, () => this.privacy = null);
       id && this.service.find(id).subscribe((data:any) => {
         this.customer = data;
-            this.originalMobile = data.mobile || null;
+            this.originalMobile = data.masked ? null : (data.mobile || null);
             this.form.controls['id'].setValue(data.id);
+            this.fill(data);
+            if (data.masked) {
+              this.masked = true;
+              this.contactFields.forEach(f => this.form.controls[f].disable());
+            }
+      })
+    }
+
+    private fill(data:any){
             this.form.controls['name'].setValue(data.name);
             this.form.controls['mobile'].setValue(data.mobile);
             this.form.controls['altmobile'].setValue(data.altmobile);
             this.form.controls['email'].setValue(data.email);
-            // this.form.controls['area'].setValue(data.area);
             this.form.controls['locality'].setValue(data.locality);
             this.form.controls['address'].setValue(data.address);
             this.form.controls['srctype'].setValue(data.srctype);
             this.form.controls['srcdesc'].setValue(data.srcdesc);
-      })
+            this.form.controls['consent'].setValue(data.consent || '');
+            this.form.controls['preferredchannel'].setValue(data.preferredChannel || '');
+            this.form.controls['donotcontact'].setValue(!!data.doNotContact);
+            this.form.controls['reviewoptout'].setValue(!!data.reviewOptOut);
+            this.baseline = { ...this.form.getRawValue() };
+    }
+
+    get dailyLimitReached():boolean{
+        return !!this.privacy && this.privacy.left === 0;
+    }
+
+    /** shows this customer's real contact details (counted and kept), and lets them be edited */
+    reveal(){
+      this.revealError = '';
+      this.revealing = true;
+      this.service.reveal(+this.form.value.id).subscribe(d => {
+        this.revealing = false;
+        this.masked = false;
+        this.originalMobile = d.mobile || null;
+        this.contactFields.forEach(f => { this.form.controls[f].setValue(d[f] ?? ''); this.form.controls[f].enable(); this.baseline[f] = d[f] ?? ''; });
+        this.service.privacy().subscribe(p => this.privacy = p, () => undefined);
+      }, err => {
+        this.revealing = false;
+        const m = err?.error?.message;
+        this.revealError = Array.isArray(m) ? m.join(' ') : (m || 'Could not show the details.');
+      });
     }
 
     get mobileInvalid(): boolean {
@@ -186,27 +235,61 @@ export class CustomerFormComponent implements AfterViewInit {
           this.saveNote = '';
           return;
         }
+        const v = this.form.getRawValue();
         const obj: any = {
-          name: this.form.value.name,
-          mobile: normaliseMobile(this.form.value.mobile) || this.form.value.mobile,
-          altmobile: normaliseMobile(this.form.value.altmobile) || this.form.value.altmobile || '',
-          email: this.form.value.email,
-          address: this.form.value.address,
-          locality: this.form.value.locality,
-          area: this.form.value.area,
-          srctype: this.form.value.srctype,
-          srcdesc: this.form.value.srcdesc,
+          name: v.name,
+          locality: v.locality,
+          area: v.area,
+          srctype: v.srctype,
+          srcdesc: v.srcdesc,
+          consent: v.consent || '',
+          preferredchannel: v.preferredchannel || '',
+          donotcontact: !!v.donotcontact,
+          reviewoptout: !!v.reviewoptout,
           confirmduplicate: this.confirmDuplicate
+        }
+        // masked contact details are left out: the saved ones stay exactly as they are
+        if (!this.masked) {
+          obj.mobile = normaliseMobile(v.mobile) || v.mobile;
+          obj.altmobile = normaliseMobile(v.altmobile) || v.altmobile || '';
+          obj.email = v.email;
+          obj.address = v.address;
         }
 
         const id = this.form.value.id;
+        if (!id) { this.submit(obj, addAnother); return; }
+
+        // changing someone's record asks first, and says what changes
+        const changes = this.changes(v);
+        if (!changes.length) {
+          this.saveNote = '';
+          this.saveError = 'Nothing has changed.';
+          return;
+        }
+        this.saveError = '';
+        this.confirm.confirmAction(`Save changes to ${String(v.name || '').trim() || 'this customer'}`, changes, 'Save changes', () => this.submit({ id, ...obj }, false), 'This will change:');
+    }
+
+    /** what differs from the saved record, in words */
+    private changes(now:any): string[] {
+      const labels: Record<string, string> = { name: 'Name', mobile: 'Mobile', altmobile: 'Alternate number', email: 'Email', address: 'Address', locality: 'Location',
+        srctype: 'How they found us', srcdesc: 'Referral details', consent: 'Offers consent', preferredchannel: 'Preferred channel', donotcontact: 'Do not contact', reviewoptout: 'No review invitations' };
+      const show = (k: string, x: any) => (k === 'donotcontact' || k === 'reviewoptout') ? (x ? 'yes' : 'no') : (String(x ?? '').trim() || '(blank)');
+      return Object.keys(labels)
+        .filter(k => !(this.masked && this.contactFields.includes(k)))
+        .filter(k => (k === 'donotcontact' || k === 'reviewoptout') ? !!now[k] !== !!this.baseline[k] : String(now[k] ?? '').trim() !== String(this.baseline[k] ?? '').trim())
+        .map(k => `${labels[k]}: ${show(k, this.baseline[k])} to ${show(k, now[k])}`);
+    }
+
+    private submit(obj:any, addAnother:boolean){
+        const id = obj.id;
         this.saveError = '';
         this.saving = true;
-          this.service.save(id ? {id, ...obj} : obj).subscribe((data: any) => {
+          this.service.save(obj).subscribe((data: any) => {
             this.saving = false;
             this.saved.emit(data);
             if (addAnother && !id) {
-              this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '' });
+              this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '', consent: '', preferredchannel: '', donotcontact: false, reviewoptout: false });
               this.sameNumber = [];
               this.confirmDuplicate = false;
               this.attempted = false;
@@ -215,7 +298,7 @@ export class CustomerFormComponent implements AfterViewInit {
               return;
             }
             this.form.reset();
-            this.router.navigate(['/secure/customers/cust/list'])
+            this.router.navigate(id ? ['/secure/customers/cust/view', id] : ['/secure/customers/cust/list'])
           }, err => {
             this.saving = false;
             const m = err?.error?.message;

@@ -1,4 +1,4 @@
-<app-dash-header [title]="viewTitle" [subtitle]="'Business snapshot for ' + selectedStoreLabel" [scope]="selectedStoreLabel" [updated]="updated"></app-dash-header>
+<app-dash-header [title]="viewTitle" [subtitle]="multiStore ? 'Business snapshot for ' + selectedStoreLabel : 'Business snapshot'" [scope]="selectedStoreLabel" [showScope]="multiStore" [updated]="updated"></app-dash-header>
 <app-staff-view *ngIf="view === 'staff' || view === 'counter'" [shared]="view === 'counter'"></app-staff-view>
 <app-personal-view *ngIf="view === 'personal'"></app-personal-view>
 <ng-container *ngIf="legacy">

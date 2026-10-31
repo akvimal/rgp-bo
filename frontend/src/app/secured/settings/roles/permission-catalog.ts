@@ -432,6 +432,8 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     actions: [
       { key: 'read', label: 'View customers', fixedProperties: [] },
       { key: 'delete', label: 'Delete customers', fixedProperties: [] },
+      { key: 'reveal', label: 'See customers\' full phone numbers, emails and addresses', fixedProperties: [] },
+      { key: 'export', label: 'Download customer lists', fixedProperties: [] },
     ],
   },
   {

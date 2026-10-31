@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CustomerService } from "../customers/customer.service";
+import { CustomerRelationshipService } from "../customers/customer-relationship.service";
+import { CustomerPrivacyService } from "../customers/customer-privacy.service";
 import { StockService } from "../stock/stock.service";
 import { SaleDeliveryController } from "./sale-delivery.controller";
 import { SaleDeliveryService } from "./sale-delivery.service";
@@ -26,7 +28,7 @@ import { AuthModule } from "src/modules/auth/auth.module";
 @Module({
     imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule],
     controllers: [SaleController,SaleDeliveryController,SaleSuggestionController],
-    providers: [SaleService,SaleSuggestionService,SaleDeliveryService,CustomerService,RoleService,StockService,JwtService],
+    providers: [SaleService,SaleSuggestionService,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],
   })
   export class SaleModule {}

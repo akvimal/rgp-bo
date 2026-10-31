@@ -12,6 +12,9 @@ services:
     volumes:
       - uploads:/usr/src/app/upload
     environment:
+      # Bill times are stored without a timezone, as the server's local time, so the server's zone is part of the data. The live system
+      # runs in India time (docker-compose.prod.yml); a tenant is a copy of it and must read the same bill times the same way.
+      TZ: ${TZ:-Asia/Kolkata}
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:?missing - use scripts/tenant-up.sh}
       JWT_KEY: ${JWT_KEY}

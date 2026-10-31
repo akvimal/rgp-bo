@@ -1,0 +1,94 @@
+<app-private-page page="audiences"></app-private-page>
+<app-page-header title="Audiences" subtitle="Pick who to reach, narrow it by what they bought, then message or call them. Only people who can be contacted are listed for sending.">
+  <div actions>
+    <a class="btn btn-outline-secondary" [routerLink]="['../list']" data-testid="aud-back">Customers</a>
+  </div>
+</app-page-header>
+
+<div *ngIf="error" class="alert alert-danger py-2" data-testid="aud-error">{{error}}</div>
+<div *ngIf="note" class="alert alert-success py-2" data-testid="aud-note">{{note}}</div>
+
+<div class="row g-2 mb-3" data-testid="aud-cards">
+  <div class="col-md-3 col-sm-6" *ngFor="let a of audiences">
+    <button type="button" class="card w-100 text-start h-100" [ngClass]="{'border-primary': selected?.key === a.key}" (click)="pick(a)" [attr.data-testid]="'aud-' + a.key">
+      <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-start">
+          <span class="fw-semibold">{{a.label}}</span>
+          <span class="badge" [ngClass]="a.promo ? 'bg-light text-muted border' : 'bg-info text-dark'">{{a.promo ? 'Needs consent' : 'Service'}}</span>
+        </div>
+        <div class="fs-4 lh-1 mt-1">{{a.customers}}</div>
+        <div class="small text-muted">{{a.reachable}} can be contacted<span *ngIf="a.recentlyContacted"> · {{a.recentlyContacted}} contacted lately</span></div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<div *ngIf="selected" data-testid="aud-detail">
+  <h5 class="mb-1">{{selected.label}}</h5>
+  <p class="text-muted small">{{selected.help}}</p>
+
+  <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div>
+      <label class="form-label small mb-0" for="audProduct">Bought product (name contains)</label>
+      <input id="audProduct" class="form-control form-control-sm" style="width:14rem" [(ngModel)]="product" (keyup.enter)="run()" placeholder="any" data-testid="aud-product">
+    </div>
+    <div>
+      <label class="form-label small mb-0" for="audKind">Kind</label>
+      <select id="audKind" class="form-select form-select-sm" [(ngModel)]="kind" data-testid="aud-kind">
+        <option value="">Any</option><option value="chronic">Chronic</option><option value="otc">OTC</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label small mb-0" for="audMonths">Within the last</label>
+      <select id="audMonths" class="form-select form-select-sm" [(ngModel)]="months" data-testid="aud-months">
+        <option [ngValue]="1">1 month</option><option [ngValue]="3">3 months</option><option [ngValue]="6">6 months</option><option [ngValue]="12">12 months</option><option [ngValue]="24">24 months</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label small mb-0" for="audLoc">Location contains</label>
+      <input id="audLoc" class="form-control form-control-sm" style="width:10rem" [(ngModel)]="locality" (keyup.enter)="run()" data-testid="aud-locality">
+    </div>
+    <button type="button" class="btn btn-sm btn-primary" (click)="run()" [disabled]="loading" data-testid="aud-apply">Apply</button>
+  </div>
+
+  <div *ngIf="result" data-testid="aud-result">
+    <p class="mb-1" data-testid="aud-counts"><strong>{{result.total}}</strong> in this audience, <strong>{{result.canContact}}</strong> can be contacted now.</p>
+    <p class="small text-muted mb-2" *ngIf="leftOut.length" data-testid="aud-leftout">
+      Left out:
+      <span *ngFor="let l of leftOut; let last = last">{{l.n}} ({{l.why}})<span *ngIf="!last">, </span></span>.
+      <span *ngIf="selected.promo">Offers and announcements go only to customers who agreed to messages: record consent on the customer screen.</span>
+    </p>
+
+    <div class="mb-3" *ngIf="contactable.length">
+      <label class="form-label small mb-0" for="audMsg">Message (use {{nameToken}} for the customer's first name)</label>
+      <textarea id="audMsg" class="form-control" rows="3" [ngModel]="message || text" (ngModelChange)="message = $event" (blur)="saveText()" data-testid="aud-message"></textarea>
+      <button type="button" class="btn btn-sm btn-outline-secondary mt-2" *ngIf="canExport" [disabled]="exporting" (click)="exportCsv()" data-testid="aud-export">Download list (CSV)</button>
+      <span class="small text-muted ms-2" *ngIf="!canExport" data-testid="aud-export-note">Downloading lists is limited to the Business Head.</span>
+    </div>
+
+    <table class="table table-sm align-middle" *ngIf="result.members.length" data-testid="aud-table">
+      <thead>
+        <tr><th>Name</th><th>Mobile</th><th>Segment</th><th>Why</th><th class="text-end">Spend (12 mo)</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of shown" [class.text-muted]="!m.canContact" [attr.data-testid]="'aud-row-' + m.id">
+          <td>{{m.name}}<span *ngIf="m.tier" class="badge ms-1" [ngClass]="m.tier === 'Gold' ? 'bg-warning text-dark' : 'bg-light text-muted border'">{{m.tier}}</span></td>
+          <td>{{m.mobile}}</td>
+          <td>{{m.segment}}</td>
+          <td class="small">{{m.reason}}</td>
+          <td class="text-end">{{m.spend12 | number:'1.0-0'}}</td>
+          <td class="text-nowrap">
+            <ng-container *ngIf="m.canContact; else blocked">
+              <a class="btn btn-sm btn-outline-success me-1" [href]="whatsapp(m)" target="_blank" rel="noopener" data-testid="aud-wa">WhatsApp</a>
+              <a class="btn btn-sm btn-outline-secondary me-1" [href]="'tel:' + m.mobile" data-testid="aud-call">Call</a>
+              <button type="button" class="btn btn-sm" [ngClass]="logged.has(m.id) ? 'btn-success' : 'btn-outline-primary'" [disabled]="logging.has(m.id) || logged.has(m.id)" (click)="markSent(m, 'WHATSAPP')" data-testid="aud-sent">{{logged.has(m.id) ? 'Logged' : 'Mark sent'}}</button>
+            </ng-container>
+            <ng-template #blocked><span class="small" data-testid="aud-why">{{m.why}}</span></ng-template>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="small text-muted" *ngIf="result.members.length > 200">Showing the first 200, best spenders first. The CSV has everyone who can be contacted.</p>
+    <p class="text-muted" *ngIf="!result.members.length">Nobody matches.</p>
+  </div>
+</div>

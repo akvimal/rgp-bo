@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CustomerService } from "../customers/customer.service";
+import { CustomerRelationshipService } from "../customers/customer-relationship.service";
+import { CustomerPrivacyService } from "../customers/customer-privacy.service";
 
 import { SaleReturnController } from "./salereturn.controller";
 import { SaleItemService } from "./saleitem.service";
@@ -20,7 +22,7 @@ import { JwtService } from "@nestjs/jwt";
       PurchaseInvoiceItem,
       ProductClearance]),AuthModule],
     controllers: [SaleReturnController],
-    providers: [SaleItemService,CustomerService,RoleService,JwtService],
+    providers: [SaleItemService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,JwtService],
     exports: [SaleItemService],
   })
   export class SaleReturnModule {}

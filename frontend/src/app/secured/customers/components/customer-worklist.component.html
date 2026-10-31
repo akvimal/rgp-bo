@@ -1,0 +1,75 @@
+<app-private-page page="worklist"></app-private-page>
+<app-page-header title="Contact today" subtitle="Customers worth a call or message today: regulars due back first, then people slipping away, then new customers who have not returned.">
+  <div actions>
+    <a class="btn btn-outline-secondary" [routerLink]="['../list']" data-testid="wl-back">Customers</a>
+  </div>
+</app-page-header>
+
+<div *ngIf="message" class="alert alert-success py-2" data-testid="wl-message">{{message}}</div>
+<div *ngIf="error" class="alert alert-danger py-2" data-testid="wl-error">{{error}}</div>
+
+<p class="text-muted" *ngIf="loading">Loading...</p>
+<p class="text-muted" *ngIf="!loading && !rows.length" data-testid="wl-empty">Nobody to contact today. People contacted in the last {{capDays}} days, and anyone who asked not to be contacted, are left off.</p>
+<p class="small text-muted mb-2" *ngIf="privacy && privacy.left !== null" data-testid="wl-left">Numbers are hidden until you show them: {{privacy.left}} of {{privacy.limit}} left today.<span *ngIf="dailyLimitReached" class="text-danger"> Daily limit reached: ask a manager.</span></p>
+<p class="small text-muted mb-2" *ngIf="rows.length" data-testid="wl-count">{{waiting}} waiting<span *ngIf="waiting > rows.length">, showing the first {{rows.length}}</span>.</p>
+
+<div class="card mb-2" *ngFor="let r of rows" [attr.data-testid]="'wl-row-' + r.id">
+  <div class="card-body py-2">
+    <div class="d-flex flex-wrap justify-content-between gap-2">
+      <div>
+        <span class="fw-semibold">{{r.name}}</span>
+        <span class="badge bg-info text-dark ms-2" *ngIf="r.audience === 'due_back'">Due back</span>
+        <span class="badge bg-warning text-dark ms-2" *ngIf="r.audience === 'at_risk'">At risk</span>
+        <span class="badge bg-light text-dark border ms-2" *ngIf="r.audience === 'new_second_visit'">New</span>
+        <span class="badge bg-light text-muted border ms-1" *ngIf="r.tier">{{r.tier}}</span>
+        <div class="small text-muted">{{r.reason}} · {{r.spend12 | number:'1.0-0'}} spent in 12 months<span *ngIf="r.locality"> · {{r.locality}}</span></div>
+      </div>
+      <div class="text-nowrap">
+        <ng-container *ngIf="!r.masked; else hidden">
+          <a class="btn btn-sm btn-outline-secondary me-1" [href]="'tel:' + r.mobile" data-testid="wl-call">Call {{r.mobile}}</a>
+          <a class="btn btn-sm btn-outline-success" [href]="whatsapp(r)" target="_blank" rel="noopener" data-testid="wl-wa">WhatsApp</a>
+        </ng-container>
+        <ng-template #hidden>
+          <span class="me-2" data-testid="wl-masked">{{r.mobile}}</span>
+          <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="busy.has(r.id) || dailyLimitReached" (click)="reveal(r)" data-testid="wl-reveal">Show number</button>
+        </ng-template>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+      <select class="form-select form-select-sm w-auto" [(ngModel)]="r.channel" aria-label="How" data-testid="wl-channel">
+        <option value="CALL">Call</option><option value="WHATSAPP">WhatsApp</option><option value="SMS">SMS</option><option value="VISIT">In store</option>
+      </select>
+      <select class="form-select form-select-sm w-auto" [(ngModel)]="r.outcome" aria-label="What came of it" data-testid="wl-outcome">
+        <option value="">What came of it...</option>
+        <option *ngFor="let o of outcomes" [value]="o.value">{{o.label}}</option>
+      </select>
+      <input class="form-control form-control-sm" style="width:16rem" [(ngModel)]="r.note" maxlength="300" placeholder="Note (optional)" data-testid="wl-note">
+      <button type="button" class="btn btn-sm btn-primary" [disabled]="!r.outcome || busy.has(r.id)" (click)="log(r)" data-testid="wl-log">Log</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="openSnooze(r)" data-testid="wl-snooze">Postpone a day</button>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mt-2 border-top pt-2" *ngIf="r.snoozing" data-testid="wl-snooze-panel">
+      <select class="form-select form-select-sm w-auto" [(ngModel)]="r.snoozeReason" aria-label="Why" data-testid="wl-snooze-reason">
+        <option value="">Why postpone...</option>
+        <option *ngFor="let z of snoozeReasons" [value]="z.value">{{z.label}}</option>
+      </select>
+      <input class="form-control form-control-sm" style="width:16rem" [(ngModel)]="r.snoozeNote" maxlength="200" [placeholder]="r.snoozeReason === 'OTHER' ? 'What? (required)' : 'Note (optional)'" data-testid="wl-snooze-note">
+      <button type="button" class="btn btn-sm btn-primary" [disabled]="busy.has(r.id)" (click)="snooze(r)" data-testid="wl-snooze-go">Postpone until tomorrow</button>
+      <span class="small text-danger" *ngIf="r.snoozeError" data-testid="wl-snooze-error">{{r.snoozeError}}</span>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3" *ngIf="snoozed.length" data-testid="wl-snoozed">
+  <a href="javascript:void(0)" class="small" (click)="showSnoozed = !showSnoozed" data-testid="wl-snoozed-toggle">
+    {{showSnoozed ? 'Hide' : 'Show'}} {{snoozed.length}} postponed until tomorrow
+  </a>
+  <ul class="list-unstyled mt-2" *ngIf="showSnoozed">
+    <li class="card mb-1" *ngFor="let z of snoozed" [attr.data-testid]="'wl-snoozed-' + z.id">
+      <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+        <span class="fw-semibold">{{z.name}}</span>
+        <span class="small text-muted">{{z.audienceLabel}} · {{z.reason}}<span *ngIf="z.note">: {{z.note}}</span> · by {{z.by || 'someone'}}<span *ngIf="z.times > 1"> · postponed {{z.times}} times in 30 days</span></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="bringBack(z)" data-testid="wl-bring-back">Bring back today</button>
+      </div>
+    </li>
+  </ul>
+</div>

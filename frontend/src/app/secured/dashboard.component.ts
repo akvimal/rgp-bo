@@ -167,6 +167,10 @@ export class DashboardComponent implements OnDestroy {
       return this.dateService.getDateMonth(period);
     }
 
+    get multiStore(){
+      return (this.storeContext.stores || []).length > 1;
+    }
+
     private resolveStoreLabel(){
       if(this.selectedStoreId === null || this.selectedStoreId === undefined){
         return 'All stores';

@@ -49,6 +49,10 @@ import { UserStore } from "./user-store.entity";
   @Column("character varying", { name: "phone", length: 20, nullable: true })
   phone: string | null;
 
+  /** the store's Google "write a review" link: bills carry a QR code for it */
+  @Column("text", { name: "google_review_url", nullable: true })
+  reviewurl: string | null;
+
   /** pharmacy (has a pharmacist; registration is kept for its staff) or other (a warehouse, a general shop) */
   @Column("character varying", { name: "store_type", length: 10, default: "pharmacy" })
   storetype: string;

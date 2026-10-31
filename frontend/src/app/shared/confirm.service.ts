@@ -40,6 +40,21 @@ export class ConfirmService {
         });
     }
 
+    /** A plain confirmation for an action that is not a delete: the lines are shown as a list (text is escaped), the button says what it does. */
+    confirmAction(header: string, lines: string[], acceptLabel: string, onConfirm: () => void, lead = 'Please confirm:'): void {
+        const list = lines.length ? `<ul class="mb-0 mt-2">${lines.map(l => `<li>${this.escape(l)}</li>`).join('')}</ul>` : '';
+        this.confirmation.confirm({
+            header,
+            message: `${this.escape(lead)}${list}`,
+            icon: 'pi pi-question-circle',
+            acceptLabel,
+            acceptButtonStyleClass: 'p-button-primary',
+            rejectLabel: 'Cancel',
+            rejectButtonStyleClass: 'p-button-text',
+            accept: () => onConfirm(),
+        });
+    }
+
     private escape(value: string): string {
         return String(value).replace(/[&<>"']/g, (c) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',

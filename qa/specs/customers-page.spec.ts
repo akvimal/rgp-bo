@@ -291,9 +291,13 @@ test.describe('Customers page @p1', () => {
     await page.getByTestId('cust-search').fill(shown.name);
     const row = page.locator('tbody tr', { hasText: shown.name });
     await expect(row).toHaveCount(1);
-    await row.getByTestId('cust-delete').click();
+    await expect(row.getByTestId('cust-delete')).toHaveCount(0);                     // the list only views: delete lives on the customer page
+    await row.getByTestId('cust-view').click();
+    await expect(page.getByTestId('cdv-name')).toContainText(shown.name);
+    await page.getByTestId('cdv-delete').click();
     await page.getByRole('button', { name: 'Delete', exact: true }).last().click();
-    await expect(page.getByTestId('cust-message')).toContainText('was deleted');
+    await expect(page.getByTestId('cust-message')).toContainText('was deleted');     // back on the list, which says what happened
+    await page.getByTestId('cust-search').fill(shown.name);
     await expect(page.locator('tbody tr', { hasText: shown.name })).toHaveCount(0);
   });
 });

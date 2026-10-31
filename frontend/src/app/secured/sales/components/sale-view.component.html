@@ -105,9 +105,30 @@
                 <div *ngIf="!(auth.moduleOn('returns') && shiftContext.returnsAllowed)" data-testid="bill-no-returns">{{ 'Goods' | term }} once sold are not taken back or exchanged.</div>
                 <div class="bill-thanks">Thank you for choosing us. Wishing you good health.</div>
                 <div class="bill-sub" *ngIf="from.phone">Questions about this bill? Call {{from.phone}}.</div>
+                <div class="bill-review" *ngIf="reviewQr" data-testid="bill-review">
+                    <svg class="bill-review-qr" [attr.viewBox]="'-4 -4 ' + (reviewQr.size + 8) + ' ' + (reviewQr.size + 8)" role="img" aria-label="QR code to review us on Google" shape-rendering="crispEdges"><path [attr.d]="reviewQr.d" fill="#000"/></svg>
+                    <div class="bill-review-text">Happy with us? Scan to review us on Google.</div>
+                </div>
             </footer>
         </div>
     </div>
+</div>
+<div class="non-print card mb-3" *ngIf="invite && (invite.eligible || invite.note || inviteSent || optedOut)" data-testid="bill-invite-card">
+  <div class="card-body py-2" *ngIf="invite.eligible && !inviteSent && !optedOut; else inviteState">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span><strong>{{invite.customerName}}</strong> had a larger bill. Invite them to review us on Google?</span>
+      <button type="button" class="btn btn-sm btn-success" [disabled]="inviteBusy" (click)="sendInvite()" data-testid="bill-invite-send">Send review link on WhatsApp</button>
+      <a href="javascript:void(0)" class="small ms-auto" (click)="stopInvites()" data-testid="bill-invite-stop">They do not want invitations</a>
+    </div>
+    <div class="small text-danger mt-1" *ngIf="inviteError" data-testid="bill-invite-error">{{inviteError}}</div>
+  </div>
+  <ng-template #inviteState>
+    <div class="card-body py-2 small text-muted" data-testid="bill-invite-state">
+      <ng-container *ngIf="inviteSent">Invitation sent. This customer will not be asked again for a while.</ng-container>
+      <ng-container *ngIf="!inviteSent && optedOut">Noted: this customer will not be invited to review again.</ng-container>
+      <ng-container *ngIf="!inviteSent && !optedOut">{{invite.note}}</ng-container>
+    </div>
+  </ng-template>
 </div>
 <div class="d-flex justify-content-evenly non-print bill-actions" style="text-align:center">
     <a class="btn btn-primary" role="button" [routerLink]="['/secure/sales/pos']">New Sale</a>

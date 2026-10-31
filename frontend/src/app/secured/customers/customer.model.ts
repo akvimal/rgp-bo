@@ -13,5 +13,9 @@ export interface Customer {
     srctype?:string,
     srcdesc?:string,
 
+    consent?:string|null,
+    doNotContact?:boolean,
+    preferredChannel?:string|null,
+
     createdon?:string
 }

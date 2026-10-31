@@ -87,7 +87,7 @@ export class StoreService {
       `select id, license_type as licensetype, number, valid_from::text as validfrom, valid_to::text as validto, notes
          from store_license where store_id = $1 order by license_type, valid_to desc nulls first, id`, [id]);
     const st = this.licenseStatus(licenses.map((l: any) => ({ license_type: l.licensetype, valid_to: l.validto })));
-    return { id, location: store.location, address: store.address, pincode: store.pincode, phone: store.phone, licenses, licensestatus: st.status, licensenextexpiry: st.nextexpiry };
+    return { id, location: store.location, address: store.address, pincode: store.pincode, phone: store.phone, reviewurl: store.reviewurl ?? '', licenses, licensestatus: st.status, licensenextexpiry: st.nextexpiry };
   }
 
   /** Replaces the store's ship-to details and licences (the list sent is the whole list), checked and audited. */
@@ -110,6 +110,11 @@ export class StoreService {
       const p = text(body.pincode, 10, "The pincode");
       if (p && !/^[0-9]{6}$/.test(p)) throw new BadRequestException("The pincode must be 6 digits.");
       fields.pincode = p;
+    }
+    if (body.reviewurl !== undefined) {
+      const u = text(body.reviewurl, 300, "The Google review link");
+      if (u && !/^https:\/\/[^\s]+$/.test(u)) throw new BadRequestException("The Google review link must start with https:// and have no spaces.");
+      fields.reviewurl = u;
     }
     let list: any[] | null = null;
     if (body.licenses !== undefined) {
@@ -146,7 +151,7 @@ export class StoreService {
       }
     });
     const after = await this.getLicenses(id, userid);
-    const brief = (r: any) => ({ address: r.address, pincode: r.pincode, phone: r.phone, licenses: r.licenses.map((l: any) => `${l.licensetype} ${l.number} ${l.validto || "open"}`) });
+    const brief = (r: any) => ({ address: r.address, pincode: r.pincode, phone: r.phone, reviewurl: r.reviewurl, licenses: r.licenses.map((l: any) => `${l.licensetype} ${l.number} ${l.validto || "open"}`) });
     await this.audit.record({
       userId: userid, action: "store.licenses_updated", entityType: "stores", entityId: id,
       summary: `${store.location}: ${after.licenses.length} licence(s), ${after.licensestatus}`,

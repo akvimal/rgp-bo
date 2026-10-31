@@ -46,6 +46,9 @@ describe('alert messages', () => {
       gst_rate_change: ['gst_rate_change_soon'],
       gst_filing_due: ['gst_filing_due', 'gst_filing_late'],
       compliance_late: ['compliance_escalated', 'compliance_parked'],
+      customer_reveals_many: ['customer_reveals_many'],
+      customer_lookups_many: ['customer_lookups_many'],
+      customer_data_taken: ['customer_data_taken'],
     };
     expect(KINDS.map((k) => k.kind).sort()).toEqual(Object.keys(codes).sort());
     for (const list of Object.values(codes)) for (const c of list) expect(MESSAGE_CODES).toContain(c);

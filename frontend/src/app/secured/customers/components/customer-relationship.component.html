@@ -1,0 +1,66 @@
+<div class="card" data-testid="cust-rel-panel">
+  <div class="card-body">
+    <div *ngIf="profile" class="mb-3" data-testid="cust-rel-profile">
+      <span class="badge bg-light text-dark border me-1" data-testid="cust-rel-segment">{{profile.segment}}</span>
+      <span class="badge me-1" *ngIf="profile.tier" [ngClass]="profile.tier === 'Gold' ? 'bg-warning text-dark' : profile.tier === 'Silver' ? 'bg-secondary' : 'bg-light text-muted border'">{{profile.tier}}</span>
+      <span class="badge bg-info text-dark me-1" *ngIf="profile.dueBack">Due back</span>
+      <span class="badge bg-light text-muted border" *ngIf="profile.status === 'inactive'">Inactive</span>
+      <div class="small text-muted mt-1">{{profile.reason}}<span *ngIf="profile.spend12"> · {{profile.spend12 | number:'1.0-0'}} spent in the last 12 months</span></div>
+    </div>
+
+    <div class="mb-3" *ngIf="care" data-testid="cust-care">
+      <div class="small text-muted" *ngIf="care.optOut" data-testid="cust-care-optout">Asked not to be invited to review us on Google.</div>
+      <h6 class="mb-1">Google review invitations</h6>
+      <p class="small text-muted mb-1" *ngIf="!care.invites.length" data-testid="cust-care-no-invites">Not invited yet.</p>
+      <ul class="small mb-2" *ngIf="care.invites.length" data-testid="cust-care-invites">
+        <li *ngFor="let i of care.invites">{{i.created_on | date:'dd MMM yyyy'}} · bill {{i.billno || '-'}}<span *ngIf="i.store"> · {{i.store}}</span> · {{i.channel | titlecase}}</li>
+      </ul>
+      <ng-container *ngIf="care.grievances">
+        <h6 class="mb-1">Complaints</h6>
+        <p class="small text-muted mb-1" *ngIf="!care.grievances.length" data-testid="cust-care-no-grievances">None on record.</p>
+        <ul class="small mb-2" *ngIf="care.grievances.length" data-testid="cust-care-grievances">
+          <li *ngFor="let g of care.grievances">
+            <span class="badge me-1" [ngClass]="g.status === 'OPEN' || g.status === 'IN_PROGRESS' ? 'bg-warning text-dark' : 'bg-light text-muted border'">{{g.status | titlecase}}</span>
+            {{g.created_on | date:'dd MMM yyyy'}} · {{g.summary}}
+          </li>
+        </ul>
+        <a class="small" [routerLink]="['/secure/quality/grievances']">All complaints</a>
+      </ng-container>
+    </div>
+
+    <div class="small mb-2" *ngIf="care?.snoozes?.length" data-testid="cust-care-snoozes">
+      <h6 class="mb-1">Postponed on the contact list</h6>
+      <ul class="mb-0">
+        <li *ngFor="let z of care.snoozes">{{z.created_on | date:'dd MMM yyyy'}} · {{z.reason}}<span *ngIf="z.note">: {{z.note}}</span> · by {{z.by_name || 'someone'}}</li>
+      </ul>
+    </div>
+
+    <h6>Calls and messages</h6>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+      <select class="form-select form-select-sm w-auto" [(ngModel)]="channel" aria-label="How" data-testid="cust-rel-channel">
+        <option value="CALL">Call</option><option value="WHATSAPP">WhatsApp</option><option value="SMS">SMS</option><option value="VISIT">In store</option><option value="OTHER">Other</option>
+      </select>
+      <select class="form-select form-select-sm w-auto" [(ngModel)]="outcome" aria-label="What came of it" data-testid="cust-rel-outcome">
+        <option value="">What came of it...</option>
+        <option *ngFor="let o of outcomes" [value]="o">{{labels[o]}}</option>
+      </select>
+      <input class="form-control form-control-sm" style="width:18rem" [(ngModel)]="note" maxlength="300" placeholder="Note (optional)" data-testid="cust-rel-note">
+      <button type="button" class="btn btn-sm btn-primary" [disabled]="!outcome || saving" (click)="add()" data-testid="cust-rel-add">Add</button>
+    </div>
+    <div *ngIf="error" class="alert alert-danger py-1 small" data-testid="cust-rel-error">{{error}}</div>
+
+    <p class="small text-muted mb-0" *ngIf="!contacts.length" data-testid="cust-rel-none">Nobody has contacted this customer yet.</p>
+    <table class="table table-sm mb-0" *ngIf="contacts.length" data-testid="cust-rel-log">
+      <thead><tr><th>When</th><th>How</th><th>Result</th><th>Note</th><th>By</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let c of contacts">
+          <td class="text-nowrap">{{c.created_on | date:'dd MMM yyyy, h:mm a'}}</td>
+          <td>{{c.channel | titlecase}}</td>
+          <td>{{labels[c.outcome]}}</td>
+          <td>{{c.note}}</td>
+          <td>{{c.by_name}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

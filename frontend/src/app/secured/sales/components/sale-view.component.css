@@ -54,3 +54,9 @@
     .bill-items th, .bill-items td { padding: 3px 5px; }
     .bill-head, .bill-items tr, .bill-summary, .bill-gst { break-inside: avoid; }
 }
+
+
+/* the review QR at the foot of the bill: small, centred, printed with the bill */
+.bill-review { display: flex; align-items: center; justify-content: center; gap: .6rem; margin-top: .6rem; }
+.bill-review-qr { width: 84px; height: 84px; background: #fff; }
+.bill-review-text { font-size: .8rem; max-width: 12rem; text-align: left; }

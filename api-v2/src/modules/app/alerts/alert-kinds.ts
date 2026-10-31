@@ -3,6 +3,7 @@ import { StoreService } from '../store/store.service';
 import { PricingReader } from '../products/pricing-reader';
 import { BATCH_BALANCE_SQL } from './stock-audit-alerts';
 import { lastFullWeek, reviewLate } from '../review/review-rules';
+import { BUSINESS_OF_USER_SQL } from '../../../core/business-of-user';
 
 export type Severity = 'info' | 'warning' | 'critical';
 export const SEVERITIES: Severity[] = ['info', 'warning', 'critical'];
@@ -361,6 +362,72 @@ export const KINDS: AlertKind[] = [
       }));
     },
   },
+  {
+    kind: 'customer_reveals_many',
+    label: 'Many customers\' details shown',
+    description: 'One login has shown the full contact details of many different customers within the period. A person serving customers shows a few; a long run is someone copying them out.',
+    params: [
+      { key: 'count', label: 'Alert at this many different customers', min: 3, max: 1000, default: 20, unit: 'customers' },
+      { key: 'hours', label: 'within', min: 1, max: 168, default: 24, unit: 'hours' },
+    ],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const rows = await ctx.manager.query(
+        `select u.id, u.full_name, count(distinct r.customer_id)::int as n
+           from customer_reveal r join app_user u on u.id = r.user_id
+          where r.created_on >= now() - ($2::int * interval '1 hour') and ${BUSINESS_OF_USER_SQL} = $1
+          group by u.id, u.full_name having count(distinct r.customer_id) >= $3`, [ctx.businessId, p.hours, p.count]);
+      return rows.map((r: any) => ({
+        key: `reveals:${r.id}:${ctx.today}`, storeid: null, code: 'customer_reveals_many',
+        params: { person: String(r.full_name).trim(), count: r.n, hours: p.hours }, link: '/secure/customers/cust/list',
+        severity: r.n >= p.count * 2 ? 'critical' as Severity : undefined,
+      }));
+    },
+  },
+  {
+    kind: 'customer_lookups_many',
+    label: 'Heavy customer searching',
+    description: 'One login has looked up or opened an unusually large number of customers within the period, for example by running through numbers at the counter lookup.',
+    params: [
+      { key: 'count', label: 'Alert at this many lookups', min: 20, max: 100000, default: 300, unit: 'lookups' },
+      { key: 'hours', label: 'within', min: 1, max: 168, default: 1, unit: 'hours' },
+    ],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      await ctx.manager.query(`delete from customer_access where created_on < now() - interval '30 days'`);   // the record is only for spotting a run, not for keeping
+      const rows = await ctx.manager.query(
+        `select u.id, u.full_name, count(*)::int as n
+           from customer_access a join app_user u on u.id = a.user_id
+          where a.created_on >= now() - ($2::int * interval '1 hour') and ${BUSINESS_OF_USER_SQL} = $1
+          group by u.id, u.full_name having count(*) >= $3`, [ctx.businessId, p.hours, p.count]);
+      return rows.map((r: any) => ({
+        key: `lookups:${r.id}:${ctx.today}`, storeid: null, code: 'customer_lookups_many',
+        params: { person: String(r.full_name).trim(), count: r.n, hours: p.hours }, link: '/secure/customers/cust/list',
+        severity: r.n >= p.count * 2 ? 'critical' as Severity : undefined,
+      }));
+    },
+  },
+  {
+    kind: 'customer_data_taken',
+    label: 'Customer lists downloaded or printed',
+    description: 'One login has downloaded customer lists or tried to print customer screens several times within the period.',
+    params: [
+      { key: 'count', label: 'Alert at this many downloads or prints', min: 1, max: 1000, default: 3, unit: 'times' },
+      { key: 'hours', label: 'within', min: 1, max: 168, default: 24, unit: 'hours' },
+    ],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const rows = await ctx.manager.query(
+        `select u.id, u.full_name, count(*)::int as n
+           from audit_event a join app_user u on u.id = a.user_id
+          where a.action in ('customer.exported', 'customer.print_attempt') and a.occurred_on >= now() - ($2::int * interval '1 hour') and ${BUSINESS_OF_USER_SQL} = $1
+          group by u.id, u.full_name having count(*) >= $3`, [ctx.businessId, p.hours, p.count]);
+      return rows.map((r: any) => ({
+        key: `taken:${r.id}:${ctx.today}`, storeid: null, code: 'customer_data_taken',
+        params: { person: String(r.full_name).trim(), count: r.n, hours: p.hours }, link: '/secure/quality/audit',
+      }));
+    },
+  },
 ];
 
 export const kindOf = (kind: string): AlertKind | undefined => KINDS.find((k) => k.kind === kind);
@@ -394,4 +461,7 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity }[]
   { kind: 'adjustment_other', name: 'Unexplained write-offs', severity: 'warning' },
   { kind: 'weekly_review', name: 'Weekly review not signed', severity: 'warning' },
   { kind: 'compliance_late', name: 'Compliance item gone unattended', severity: 'critical' },
+  { kind: 'customer_reveals_many', name: 'Many customers\' details shown', severity: 'warning' },
+  { kind: 'customer_lookups_many', name: 'Heavy customer searching', severity: 'warning' },
+  { kind: 'customer_data_taken', name: 'Customer lists downloaded or printed', severity: 'warning' },
 ];

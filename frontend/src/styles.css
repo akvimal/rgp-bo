@@ -422,3 +422,13 @@
 
 /* a little room between a tick box and its words (the store lists, the setup wizard, the role editor) */
 .form-check:not(.form-switch) > .form-check-input + .form-check-label { margin-left: .4rem; }
+
+
+/* customer screens: a faint watermark of who is looking and when, and no printing for logins that may not read every contact detail */
+.cust-watermark { position: fixed; inset: 0; z-index: 1900; pointer-events: none; overflow: hidden; display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 9rem; }
+.cust-watermark span { align-self: center; justify-self: center; transform: rotate(-25deg); white-space: nowrap; font-size: .85rem; color: rgba(0, 0, 0, .09); user-select: none; }
+@media print {
+  .cust-watermark span { color: rgba(0, 0, 0, .2); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body.customer-print-blocked > * { display: none !important; }
+  body.customer-print-blocked::before { content: "Printing customer details is turned off for this login."; display: block; font-size: 1.25rem; padding: 2rem; }
+}

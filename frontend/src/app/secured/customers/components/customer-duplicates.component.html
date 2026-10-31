@@ -19,13 +19,13 @@
       Merge {{toMerge(g).length || ''}} into the kept record
     </button>
   </div>
-  <table class="table table-sm mb-0 align-middle">
-    <thead><tr><th style="width:5rem">Keep</th><th style="width:6rem">Merge</th><th>Name</th><th class="text-end">Bills</th><th>Last visit</th></tr></thead>
+  <table class="table table-sm mb-0 align-middle dup-table" style="table-layout:fixed;width:100%" data-testid="dup-table">
+    <thead><tr><th style="width:5rem">Keep</th><th style="width:6rem">Merge</th><th>Name</th><th class="text-end" style="width:6rem">Bills</th><th style="width:10rem">Last visit</th></tr></thead>
     <tbody>
       <tr *ngFor="let m of g.members" data-testid="dup-row">
         <td><input type="radio" [name]="'keep-' + g.mobile" [value]="m.id" [(ngModel)]="keep[g.mobile]" data-testid="dup-keep"></td>
         <td><input type="checkbox" [disabled]="keep[g.mobile] === m.id" [(ngModel)]="picked[m.id]" data-testid="dup-pick"></td>
-        <td>{{m.name || '(no name)'}}</td>
+        <td class="text-truncate" [title]="m.name || ''">{{m.name || '(no name)'}}</td>
         <td class="text-end">{{m.bills}}</td>
         <td>{{m.lastvisit ? (m.lastvisit | date:'dd MMM yyyy') : '-'}}</td>
       </tr>

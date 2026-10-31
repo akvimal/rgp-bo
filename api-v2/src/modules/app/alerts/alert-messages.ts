@@ -57,6 +57,18 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'A parked bill is still waiting: {store}', body: 'A bill parked on {date} has not been finished or discarded. Ask whoever parked it to complete it or discard it.' },
     ta: { title: 'நிறுத்தி வைத்த பில் இன்னும் காத்திருக்கிறது: {store}', body: '{date} அன்று நிறுத்தி வைத்த பில் முடிக்கப்படவில்லை அல்லது நீக்கப்படவில்லை. நிறுத்தியவரிடம் அதை முடிக்க அல்லது நீக்கச் சொல்லுங்கள்.' },
   },
+  customer_reveals_many: {
+    en: { title: '{person} has shown {count} customers\' details in {hours} hours', body: 'Showing full contact details is meant for serving a customer, a few at a time. Ask {person} what it was for, and check the reveal log in the audit trail.' },
+    ta: { title: '{person} {hours} மணி நேரத்தில் {count} வாடிக்கையாளர் விவரங்களைக் காட்டியுள்ளார்', body: 'முழு தொடர்பு விவரங்களைக் காட்டுவது வாடிக்கையாளருக்குச் சேவை செய்ய, சிலவற்றுக்கு மட்டும். {person} இடம் இது எதற்கு என்று கேட்டு, தணிக்கைப் பதிவில் காட்டிய பதிவைப் பார்க்கவும்.' },
+  },
+  customer_lookups_many: {
+    en: { title: '{person} has looked up {count} customers in {hours} hours', body: 'That is far more than serving customers needs, and can mean numbers are being read out one by one. Ask {person} about it.' },
+    ta: { title: '{person} {hours} மணி நேரத்தில் {count} வாடிக்கையாளர்களைத் தேடியுள்ளார்', body: 'வாடிக்கையாளருக்குச் சேவை செய்ய இது தேவையானதை விட மிக அதிகம்; எண்கள் ஒவ்வொன்றாகப் படிக்கப்படுவதாக இருக்கலாம். {person} இடம் கேளுங்கள்.' },
+  },
+  customer_data_taken: {
+    en: { title: '{person} downloaded or tried to print customer data {count} times in {hours} hours', body: 'Downloads and print attempts are kept in the audit trail. Check what was taken and why.' },
+    ta: { title: '{person} {hours} மணி நேரத்தில் வாடிக்கையாளர் தரவை {count} முறை பதிவிறக்கினார் அல்லது அச்சிட முயன்றார்', body: 'பதிவிறக்கங்களும் அச்சு முயற்சிகளும் தணிக்கைப் பதிவில் உள்ளன. எது எடுக்கப்பட்டது, ஏன் என்று பாருங்கள்.' },
+  },
   weekly_review_unsigned: {
     en: { title: 'Weekly review not signed: {store}', body: 'The week starting {date} has not been reviewed. Check its discounts, cancelled bills and returns, then sign it on the Weekly review page.' },
     ta: { title: 'வாராந்திர மதிப்பாய்வு கையொப்பமிடப்படவில்லை: {store}', body: '{date} அன்று தொடங்கிய வாரம் மதிப்பாய்வு செய்யப்படவில்லை. அதன் தள்ளுபடிகள், ரத்து செய்த பில்கள் மற்றும் திருப்பங்களைச் சரிபார்த்து, வாராந்திர மதிப்பாய்வுப் பக்கத்தில் கையொப்பமிடவும்.' },

@@ -14,11 +14,19 @@ import { TabViewModule } from "primeng/tabview";
 import { CustomerViewComponent } from "./components/customer-view.component";
 import { CustomerCreditComponent } from "./components/customer-credit.component";
 import { CustomerDuplicatesComponent } from "./components/customer-duplicates.component";
+import { CustomerAudiencesComponent } from "./components/customer-audiences.component";
+import { CustomerWorklistComponent } from "./components/customer-worklist.component";
+import { CustomerRelationshipComponent } from "./components/customer-relationship.component";
+import { CustomerPrivatePageComponent } from "./components/customer-private-page.component";
+import { CustomerDetailComponent } from "./components/customer-detail.component";
 import { DocumentsModule } from "src/app/secured/documents/documents.module";
 
 const routes: Routes = [
   { path: 'cust/list', component: CustomersComponent, canActivate:[AuthGuard]},
   { path: 'cust/new', component: CustomerFormComponent, canActivate:[AuthGuard]},
+  { path: 'cust/view/:id', component: CustomerDetailComponent, canActivate:[AuthGuard]},
+  { path: 'cust/audiences', component: CustomerAudiencesComponent, canActivate:[AuthGuard]},
+  { path: 'cust/worklist', component: CustomerWorklistComponent, canActivate:[AuthGuard]},
   { path: 'cust/duplicates', component: CustomerDuplicatesComponent, canActivate:[AuthGuard]},
   { path: 'cust/edit/:id', component: CustomerFormComponent, canActivate:[AuthGuard]}
 ];
@@ -31,7 +39,12 @@ const routes: Routes = [
       CustomerDocumentsComponent,
       CustomerViewComponent,
       CustomerCreditComponent,
-      CustomerDuplicatesComponent
+      CustomerDuplicatesComponent,
+      CustomerAudiencesComponent,
+      CustomerWorklistComponent,
+      CustomerRelationshipComponent,
+      CustomerDetailComponent,
+      CustomerPrivatePageComponent
     ],
     imports: [
         RouterModule.forChild(routes),

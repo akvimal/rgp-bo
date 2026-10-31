@@ -132,6 +132,11 @@
               <label class="form-label">Phone</label>
               <input class="form-control" maxlength="20" [(ngModel)]="lic.phone" data-testid="store-lic-phone">
             </div>
+            <div class="col-12">
+              <label class="form-label">Google review link</label>
+              <input class="form-control" maxlength="300" [(ngModel)]="lic.reviewurl" placeholder="https://g.page/r/.../review" data-testid="store-lic-reviewurl">
+              <div class="form-text">The "write a review" link from the store's Google Business profile. Bills carry a QR code for it, and larger bills offer the cashier a WhatsApp invitation.</div>
+            </div>
           </div>
           <div class="table-responsive mt-3">
             <table class="table table-sm align-middle">

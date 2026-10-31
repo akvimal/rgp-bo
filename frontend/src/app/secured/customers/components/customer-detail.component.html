@@ -1,0 +1,47 @@
+<app-private-page page="detail"></app-private-page>
+<app-page-header title="Customer" [subtitle]="customer?.name || ''">
+  <div actions>
+    <a class="btn btn-outline-secondary" [routerLink]="['/secure/customers/cust/list']" data-testid="cdv-back">Customers</a>
+    <a class="btn btn-outline-primary" *ngIf="customer" [routerLink]="['/secure/customers/cust/edit', id]" data-testid="cdv-edit">Edit</a>
+    <ng-container *isAuth="'customers.delete'">
+      <button type="button" class="btn btn-outline-danger" *ngIf="canDelete" [disabled]="deleting" (click)="remove()" data-testid="cdv-delete">Delete</button>
+    </ng-container>
+  </div>
+</app-page-header>
+
+<div *ngIf="error" class="alert alert-danger py-2" data-testid="cdv-error">{{error}}</div>
+
+<div class="card mb-3" *ngIf="customer" data-testid="cdv-card">
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3" *ngIf="profile" data-testid="cdv-profile">
+      <span class="badge bg-light text-dark border">{{profile.segment}}</span>
+      <span class="badge" *ngIf="profile.tier" [ngClass]="profile.tier === 'Gold' ? 'bg-warning text-dark' : profile.tier === 'Silver' ? 'bg-secondary' : 'bg-light text-muted border'">{{profile.tier}}</span>
+      <span class="badge bg-info text-dark" *ngIf="profile.dueBack">Due back</span>
+      <span class="badge bg-light text-muted border" *ngIf="profile.status === 'inactive'">Inactive</span>
+      <span class="small text-muted">{{profile.reason}}<span *ngIf="profile.spend12"> · {{profile.spend12 | number:'1.0-0'}} spent in the last 12 months</span></span>
+    </div>
+
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Name</dt><dd class="col-sm-9" data-testid="cdv-name">{{customer.name}}</dd>
+      <dt class="col-sm-3">Mobile</dt>
+      <dd class="col-sm-9" data-testid="cdv-mobile">
+        {{customer.mobile || '-'}}
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" *ngIf="masked && customer.mobile" [disabled]="revealing || dailyLimitReached" (click)="reveal()" data-testid="cdv-reveal">Show details</button>
+        <span class="small text-muted ms-2" *ngIf="masked && privacy && privacy.left !== null" data-testid="cdv-left">{{privacy.left}} of {{privacy.limit}} left today</span>
+        <span class="small text-danger ms-2" *ngIf="masked && dailyLimitReached" data-testid="cdv-limit">Daily limit reached: ask a manager.</span>
+      </dd>
+      <ng-container *ngIf="customer.altmobile"><dt class="col-sm-3">Alternate</dt><dd class="col-sm-9">{{customer.altmobile}}</dd></ng-container>
+      <dt class="col-sm-3">Email</dt><dd class="col-sm-9">{{customer.email || '-'}}</dd>
+      <dt class="col-sm-3">Location</dt><dd class="col-sm-9">{{customer.locality || '-'}}</dd>
+      <dt class="col-sm-3">Address</dt><dd class="col-sm-9">{{customer.address || '-'}}</dd>
+      <dt class="col-sm-3">Messages</dt>
+      <dd class="col-sm-9" data-testid="cdv-consent">
+        <ng-container *ngIf="customer.doNotContact">Do not contact</ng-container>
+        <ng-container *ngIf="!customer.doNotContact">{{customer.consent === 'YES' ? 'Agreed to offers' : customer.consent === 'NO' ? 'Declined offers' : 'Not asked yet'}}<span *ngIf="customer.preferredChannel"> · prefers {{customer.preferredChannel | titlecase}}</span></ng-container>
+      </dd>
+    </dl>
+  </div>
+</div>
+
+<h6 *ngIf="customer">Relationship</h6>
+<app-customer-relationship *ngIf="customer" [customerId]="id"></app-customer-relationship>

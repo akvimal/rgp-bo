@@ -40,6 +40,21 @@ export class Customer extends BaseEntity {
   @Column("character varying", { name: "source_desc", nullable: true })
   srcdesc: string | null;
 
+  /** YES / NO, or null when never asked: promotional messages go only to YES */
+  @Column("text", { name: "contact_consent", nullable: true })
+  consent: string | null;
+  @Column("timestamptz", { name: "consent_on", nullable: true })
+  consentOn: Date | null;
+  @Column("integer", { name: "consent_by", nullable: true })
+  consentBy: number | null;
+  @Column("boolean", { name: "do_not_contact", default: false })
+  doNotContact: boolean;
+  @Column("text", { name: "preferred_channel", nullable: true })
+  preferredChannel: string | null;
+  /** asked not to be invited to review the store (does not stop other messages) */
+  @Column("boolean", { name: "review_optout", default: false })
+  reviewOptOut: boolean;
+
   @OneToMany(() => Sale, (sale) => sale.customer)
   sales: Sale[];
 

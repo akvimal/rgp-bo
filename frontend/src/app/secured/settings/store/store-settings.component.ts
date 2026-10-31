@@ -325,7 +325,7 @@ export class StoreSettingsComponent implements OnInit {
     this.licError = '';
     this.licSaving = true;
     const body = {
-      address: this.lic.address || '', pincode: this.lic.pincode || '', phone: this.lic.phone || '',
+      address: this.lic.address || '', pincode: this.lic.pincode || '', phone: this.lic.phone || '', reviewurl: this.lic.reviewurl || '',
       licenses: this.lic.licenses.map((l:any) => ({ licensetype: l.licensetype, number: l.number, validfrom: l.validfrom || null, validto: l.validto || null, notes: l.notes || '' })),
     };
     this.cashService.saveStoreLicenses(this.licStoreId, body).subscribe(

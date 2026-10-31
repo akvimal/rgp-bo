@@ -1,15 +1,23 @@
+<app-private-page page="list"></app-private-page>
 <app-page-header title="Customers" subtitle="Everyone who has bought from you, with their buying pattern.">
   <div actions>
     <!-- merging is the Business Head's job: only that role holds the audit permission -->
     <a *isAuth="'audit.view'" [routerLink]="['../duplicates']" class="btn btn-outline-secondary" data-testid="cust-dups-link">Duplicate mobiles</a>
+    <a class="btn btn-outline-primary" [routerLink]="['../worklist']" data-testid="cust-worklist-link">Contact today</a>
+    <a class="btn btn-outline-primary" *ngIf="canRevealAll" [routerLink]="['../audiences']" data-testid="cust-audiences-link">Audiences</a>
     <a class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="cust-add">Add New</a>
   </div>
 </app-page-header>
 
 <div class="page-toolbar">
   <div class="page-toolbar-main">
-    <input type="search" class="form-control" style="width:22rem" placeholder="Search name, mobile or location" data-testid="cust-search"
-      (input)="dt.filterGlobal($any($event.target).value, 'contains')">
+    <input type="search" class="form-control" style="width:22rem" placeholder="Search name or mobile" data-testid="cust-search"
+      (input)="onSearch($any($event.target).value, dt)">
+    <div class="btn-group" role="group" aria-label="Customer status" data-testid="cust-status">
+      <button type="button" class="btn btn-sm" [ngClass]="status === 'active' && !search.trim() ? 'btn-primary' : 'btn-outline-secondary'" (click)="setStatus('active')" data-testid="cust-status-active">Active <span class="ms-1">{{counts.active}}</span></button>
+      <button type="button" class="btn btn-sm" [ngClass]="status === 'inactive' && !search.trim() ? 'btn-primary' : 'btn-outline-secondary'" (click)="setStatus('inactive')" data-testid="cust-status-inactive">Inactive <span class="ms-1">{{counts.inactive}}</span></button>
+      <button type="button" class="btn btn-sm" [ngClass]="status === 'all' && !search.trim() ? 'btn-primary' : 'btn-outline-secondary'" (click)="setStatus('all')" data-testid="cust-status-all">All <span class="ms-1">{{customers.length}}</span></button>
+    </div>
     <div class="d-flex align-items-center gap-2" *ngIf="auth.packOn('pharmacy')">
       <label for="segmentFilter" class="mb-0">Buying pattern</label>
       <select id="segmentFilter" class="form-select form-select-sm w-auto" data-testid="cust-segment-filter"
@@ -20,13 +28,29 @@
     </div>
   </div>
 </div>
+<p class="small text-muted mb-1" data-testid="cust-status-note" *ngIf="summary">
+  <ng-container *ngIf="search.trim(); else statusNote">Searching all customers, active and inactive.</ng-container>
+  <ng-template #statusNote>Active = visited in the last {{summary.activeDays}} days, or still holding store credit.</ng-template>
+  <span *isAuth="'audit.view'" class="ms-2">
+    Change to <input type="number" min="30" max="1825" class="form-control form-control-sm d-inline-block" style="width:5.5rem" [(ngModel)]="activeDaysEdit" data-testid="cust-active-days"> days
+    <button type="button" class="btn btn-sm btn-outline-secondary ms-1" [disabled]="savingSettings || activeDaysEdit === summary.activeDays" (click)="saveActiveDays()" data-testid="cust-active-days-save">Save</button>
+  </span>
+</p>
+<div class="d-flex flex-wrap gap-2 my-2" *ngIf="summary" data-testid="cust-segment-strip">
+  <ng-container *ngFor="let s of summary.segments">
+    <button type="button" *ngIf="s.customers" class="btn btn-sm text-start" [ngClass]="relSegment === s.segment ? 'btn-primary' : 'btn-outline-secondary'" (click)="setSegment(s.segment, dt)" [attr.data-testid]="'cust-seg-' + s.segment">
+      <span class="fw-semibold">{{s.segment}}</span> {{s.customers}}
+      <span class="small" *ngIf="s.spend12"> · {{s.share}}% of sales</span>
+    </button>
+  </ng-container>
+</div>
 <p class="small text-muted mt-n2" *ngIf="auth.packOn('pharmacy')">OTC / Chronic only = every bill line was OTC or a chronic medicine. "Other" includes products not yet categorised.</p>
 
 <div *ngIf="message" class="alert alert-success py-2 mt-3 mb-0" data-testid="cust-message">{{message}}</div>
 <div *ngIf="error" class="alert alert-danger py-2 mt-3 mb-0" data-testid="cust-error">{{error}}</div>
 
-<p-table #dt [value]="customers" [resizableColumns]="true" columnResizeMode="expand" 
-[paginator]="true" [rows]="10" [globalFilterFields]="['name','mobile','altmobile','locality']" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
+<p-table #dt [value]="rows" [resizableColumns]="true" columnResizeMode="expand" 
+[paginator]="true" [rows]="10" [globalFilterFields]="['name','mobile','altmobile']" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
 [rowsPerPageOptions]="[10,25,50]">
 <ng-template pTemplate="header">
@@ -41,8 +65,9 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <th>Recent Visit</th> -->
       <!-- <th scope="col">Area</th> -->
       <!-- <th scope="col">Address</th> -->
-      <th pSortableColumn="locality" scope="col"><div class="th-bar"><span class="th-label">Location</span><p-sortIcon field="locality"></p-sortIcon></div></th>
       <th pSortableColumn="segment" scope="col"><div class="th-bar"><span class="th-label">Buying pattern</span><p-sortIcon field="segment"></p-sortIcon></div></th>
+      <th pSortableColumn="relsegment" scope="col"><div class="th-bar"><span class="th-label">Relationship</span><p-sortIcon field="relsegment"></p-sortIcon></div></th>
+      <th pSortableColumn="spend12" scope="col" class="text-end"><div class="th-bar"><span class="th-label">Spend (12 mo)</span><p-sortIcon field="spend12"></p-sortIcon></div></th>
       <th pSortableColumn="bills" scope="col" class="text-end"><div class="th-bar"><span class="th-label">Bills</span><p-sortIcon field="bills"></p-sortIcon></div></th>
       <th pSortableColumn="lastvisit" scope="col"><div class="th-bar"><span class="th-label">Last visit</span><p-sortIcon field="lastvisit"></p-sortIcon></div></th>
       <!-- <th scope="col">Source Type</th> -->
@@ -54,7 +79,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
   <ng-template pTemplate="body" let-c>
     <tr>
       <!-- <td>{{c.id}}</td> -->
-      <td>{{c.name}}</td>
+      <td><a [routerLink]="['../view', c.id]" class="text-reset text-decoration-none fw-semibold" data-testid="cust-name-link">{{c.name}}</a> <span *ngIf="c.status === 'inactive'" class="badge bg-light text-muted border ms-1" data-testid="cust-inactive-badge">Inactive</span></td>
       <td>{{c.mobile}}<span class="small text-muted d-block" *ngIf="c.altmobile" data-testid="cust-alt">also {{c.altmobile}}</span></td>
       <!-- <td>{{c.email}} | {{c.address}} | {{c.locality}}</td> -->
       <!-- <td>{{c.srctype}}({{c.srcdesc}})|
@@ -62,10 +87,15 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       </td>
       <td></td> -->
       <!-- <td>{{c.area}}</td> -->
-      <td>{{c.locality}}</td>
       <td data-testid="cust-segment">
         <span class="badge" [ngClass]="{'bg-success': c.segment === 'Chronic only', 'bg-info text-dark': c.segment === 'OTC only', 'bg-primary': c.segment === 'OTC + Chronic', 'bg-secondary': c.segment === 'Other', 'bg-light text-muted border': c.segment === 'No purchases'}">{{c.segment}}</span>
       </td>
+      <td data-testid="cust-relationship">
+        <span *ngIf="c.relsegment" class="badge bg-light text-dark border me-1">{{c.relsegment}}</span>
+        <span *ngIf="c.tier" class="badge" [ngClass]="{'bg-warning text-dark': c.tier === 'Gold', 'bg-secondary': c.tier === 'Silver', 'bg-light text-muted border': c.tier === 'Bronze'}">{{c.tier}}</span>
+        <span *ngIf="c.duebackflag" class="badge bg-info text-dark ms-1">Due back</span>
+      </td>
+      <td class="text-end">{{c.spend12 ? (c.spend12 | number:'1.0-0') : '-'}}</td>
       <td class="text-end" data-testid="cust-bills">{{c.bills}}</td>
       <td>{{c.lastvisit ? (c.lastvisit | date:'dd MMM yyyy') : '-'}}</td>
       <!-- <td>{{c.address}}</td> -->
@@ -74,8 +104,7 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <!-- <td>{{c.createdon | date : 'dd MMM yyyy'}}</td> -->
       <td class="text-center">
         <div class="grid-actions">
-          <a [routerLink]="['../edit',c.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
-          <ng-container *isAuth="'customers.delete'"><a *ngIf="c.mobile !== '0000000000'" href="javascript:void(0)" (click)="deleteCustomer(c)" title="Delete" data-testid="cust-delete" class="ms-3"><i class="bi bi-trash text-danger"></i></a></ng-container>
+          <a [routerLink]="['../view',c.id]" title="View" data-testid="cust-view"><i class="bi bi-eye text-primary"></i></a>
         </div>
       </td>
     </tr>

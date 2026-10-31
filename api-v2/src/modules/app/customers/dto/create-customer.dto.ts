@@ -23,6 +23,15 @@ export class CreateCustomerDto {
     @ApiProperty({ description: 'source desc', example: '' })
     readonly srcdesc: string;
 
+    @ApiProperty({ description: 'YES or NO to messages, blank when not asked', required: false })
+    readonly consent?: string;
+    @ApiProperty({ description: 'never contact this customer', required: false })
+    readonly donotcontact?: boolean;
+    @ApiProperty({ description: 'asked not to be invited to review the store', required: false })
+    readonly reviewoptout?: boolean;
+    @ApiProperty({ description: 'CALL, WHATSAPP or SMS', required: false })
+    readonly preferredchannel?: string;
+
     @ApiProperty({ description: 'confirm a different person on a mobile another customer already has', required: false })
     readonly confirmduplicate?: boolean;
     @ApiProperty({ description: 'set when editing', required: false })

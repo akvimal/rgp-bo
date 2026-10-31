@@ -6,6 +6,9 @@ import { EntityManager, Repository } from "typeorm";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuditService } from "src/core/audit/audit.service";
 import { NIL_MOBILE, cleanEmail, cleanText, likelySamePerson, normaliseMobile, tidyName } from "./customer-rules";
+import { CustomerRelationshipService } from "./customer-relationship.service";
+import { CustomerPrivacyService } from "./customer-privacy.service";
+import { isMasked } from "./customer-privacy";
 
 import { isOwnerRole, isManagerRole } from 'src/core/roles';
 @Injectable()
@@ -14,14 +17,19 @@ export class CustomerService {
     constructor(@InjectRepository(Customer) private readonly customerRepository: Repository<Customer>,
     @InjectRepository(Sale) private readonly saleRepository: Repository<Sale>,
     @InjectEntityManager() private manager: EntityManager,
-    private readonly audit: AuditService) { }
+    private readonly audit: AuditService,
+    private readonly relationships: CustomerRelationshipService,
+    private readonly privacy: CustomerPrivacyService) { }
 
     /**
      * Creates or edits a customer (the screens post both here). The name and mobile are checked and cleaned; a mobile
      * already held by another person is refused until the caller confirms it is a different person on the same number
      * (a family often shares one), and an identical name + mobile is always refused.
      */
-    async save(dto: CreateCustomerDto & { id?: number | string; confirmduplicate?: boolean }) {
+    async save(input: CreateCustomerDto & { id?: number | string; confirmduplicate?: boolean }, userId = 0) {
+        // a masked value that comes back from a screen is not an edit: the real number, email or address stays as it is
+        const dto: any = { ...input };
+        for (const f of ['mobile', 'altmobile', 'email', 'address']) if (isMasked(dto[f])) delete dto[f];
         const id = dto.id ? Number(dto.id) : null;
         const existing = id ? await this.customerRepository.findOne({ where: { id } }) : null;
         if (id && !existing) throw new NotFoundException('Customer not found.');
@@ -58,6 +66,14 @@ export class CustomerService {
         if (dto.area !== undefined) values.area = cleanText(dto.area, 60, 'The area');
         if (dto.srctype !== undefined) values.srctype = cleanText(dto.srctype, 30, 'The source');
         if (dto.srcdesc !== undefined) values.srcdesc = cleanText(dto.srcdesc, 120, 'The source text');
+        // consent is stamped (when, by whom) only when it actually changes, so the date means "since they said so"
+        const cv = this.relationships.consentValues({ consent: dto.consent, doNotContact: dto.donotcontact, preferredChannel: dto.preferredchannel, reviewOptOut: dto.reviewoptout }, userId);
+        if ('contact_consent' in cv && cv.contact_consent !== (existing?.consent ?? null)) {
+            values.consent = cv.contact_consent; values.consentOn = cv.consent_on; values.consentBy = cv.consent_by;
+        }
+        if ('do_not_contact' in cv) values.doNotContact = cv.do_not_contact;
+        if ('review_optout' in cv) values.reviewOptOut = cv.review_optout;
+        if ('preferred_channel' in cv) values.preferredChannel = cv.preferred_channel;
         try {
             return await this.customerRepository.save(existing ? { ...existing, ...values } : values);
         } catch (e: any) {
@@ -174,20 +190,50 @@ export class CustomerService {
         return result;
     }
     
-    async findAll(){
-        const [customers, segments, visits] = await Promise.all([
+    /**
+     * The customers list. It carries only what the list shows: no address or email, and the mobile numbers masked unless the caller may read
+     * them all. A person searching by number uses lookup(), which matches on the full number on the server and returns only ids.
+     */
+    async findAll(user?: any){
+        const [customers, segments, visits, profiles] = await Promise.all([
             this.customerRepository.createQueryBuilder('c')
                 .where('c.active = :flag', { flag: true }).andWhere('c.archive = false').getMany(),
             this.segmentsByCustomer(),
             this.manager.query(`select customer_id as id, count(*)::int as bills, max(bill_date) as lastvisit from sale
                                  where status = 'COMPLETE' and customer_id is not null group by customer_id`),
+            this.relationships.profiles(),
         ]);
         const seen = new Map<number, any>(visits.map((v: any) => [+v.id, v]));
-        return customers.map(c => Object.assign(c, {
-            segment: segments.get(c.id) || 'No purchases',
-            bills: seen.get(c.id)?.bills ?? 0,
-            lastvisit: seen.get(c.id)?.lastvisit ?? null,
-        }));
+        const rows = customers.map(c => {
+            const p = profiles.get(c.id);
+            return {
+                id: c.id, name: c.name, mobile: c.mobile, altmobile: c.altmobile, createdon: c.createdon,
+                segment: segments.get(c.id) || 'No purchases',
+                bills: seen.get(c.id)?.bills ?? 0,
+                lastvisit: seen.get(c.id)?.lastvisit ?? null,
+                // the relationship view: the NIL walk-in has none and is always shown as active
+                status: p?.status ?? 'active',
+                relsegment: p?.segment ?? null,
+                tier: p?.tier ?? null,
+                duebackflag: !!p?.dueBack,
+                spend12: p ? Math.round(p.spend12) : 0,
+            } as any;
+        });
+        return this.privacy.protectAll(rows, user);
+    }
+
+    /** Ids of the customers whose name or number (either of the two) contains the text: the server-side search for masked screens. */
+    async lookup(q: string, user?: any) {
+        const text = String(q || '').trim();
+        if (text.length < 3) return { ids: [] };
+        await this.privacy.recordAccess(user, 'lookup');
+        const digits = text.replace(/[^0-9]/g, '');
+        const rows = await this.manager.query(
+            `select id from customer where active and not archive
+                and (name ilike '%' || $1 || '%'
+                  or ($2 <> '' and (mobile like '%' || $2 || '%' or alt_mobile like '%' || $2 || '%')))
+              order by id limit 200`, [text, digits.length >= 3 ? digits : '']);
+        return { ids: rows.map((r: any) => r.id) };
     }
 
     /**
@@ -217,8 +263,10 @@ export class CustomerService {
         return new Map<number, string>(rows.map((r: any) => [+r.id, r.segment]));
     }
     
-    async findById(id:number) {
-        return this.customerRepository.findOne({where:{id}});
+    async findById(id:number, user?: any) {
+        await this.privacy.recordAccess(user, 'view');
+        const c = await this.customerRepository.findOne({where:{id}});
+        return c ? this.privacy.protect(c as any, user) : c;
     }
 
     async findByMobile(mobile:string) {
@@ -236,13 +284,17 @@ export class CustomerService {
     //     return await this.manager.query(query);
     // }
 
-    async filterByCriteria(criteria:any) {
+    async filterByCriteria(criteria:any, user?: any) {
 
         const qb = this.customerRepository.createQueryBuilder('c')
             .where('c.active = :flag', { flag: true });
 
             const conditions:string[] = [];
             const params:any = {};
+
+            const typed = (criteria.criteria || []).map((c: any) => String(c?.value ?? '').trim());
+            if (!typed.length || typed.every((t: string) => t.length < 3)) return [];
+            await this.privacy.recordAccess(user, 'lookup');
 
             for(let index = 0; index < criteria.criteria.length; index++) {
                 const c = criteria.criteria[index];
@@ -264,8 +316,11 @@ export class CustomerService {
                 qb.andWhere(whereClause, params);
             }
 
-            if(criteria.limit)
-                qb.limit(criteria.limit);
+        // the counter's lookup: it needs a name and number to pick someone, so these are real, but only a few, only after a few characters,
+        // and only the fields billing uses: it is not a way to read the customer list
+        qb.andWhere('c.archive = false');
+        qb.select(['c.id', 'c.name', 'c.mobile', 'c.email']);
+        qb.limit(Math.min(Number(criteria.limit) || 10, 10));
         return qb.getMany();
     }
 
