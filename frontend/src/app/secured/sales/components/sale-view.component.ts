@@ -69,6 +69,8 @@ export class SaleViewComponent {
     /** the supply crosses a state border: the tax is IGST, not CGST and SGST */
     interState = false;
     placeName = '';
+    /** when the first of the medicines supplied for months is likely to run out */
+    refillDue: Date | null = null;
     gstTotal = 0;
 
     /** the store's Google review link, shown on the bill as a QR code */
@@ -181,6 +183,9 @@ export class SaleViewComponent {
       });
       this.gstTotal = this.gstRows.reduce((t, g) => t + g.cgst + g.sgst + g.igst, 0);
 
+      const bill = new Date(data.billdate);
+      const dues = items.filter((i:any) => i.supplymonths > 0).map((i:any) => { const due = new Date(bill); due.setDate(due.getDate() + Math.round(i.supplymonths * 30)); return due; });
+      this.refillDue = dues.length ? new Date(Math.min(...dues.map((x:Date) => x.getTime()))) : null;
       this.loaded = true;
     }
 

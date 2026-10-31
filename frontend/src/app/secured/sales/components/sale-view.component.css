@@ -45,11 +45,11 @@
 .bill-gst th.c-num, .bill-gst td.c-num { text-align: right; font-variant-numeric: tabular-nums; }
 .bill-gst td { padding: 3px 6px; border-bottom: 1px solid #e5e7eb; }
 
-.bill-contact { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 22px; margin-top: 14px; padding: 6px 8px; border-top: 1px solid #d1d5db; font-size: 11px; color: #374151; text-align: center; }
-.bill-contact + .bill-foot { margin-top: 0; }
-.bill-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px; padding-top: 8px; border-top: 1px solid #d1d5db; font-size: 11px; color: #4b5563; }
-.bill-foot-text { flex: 1; text-align: center; }
-.bill-thanks { font-weight: 700; color: #012970; margin: 3px 0; }
+.bill-strip { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 6px 0; border-top: 1px solid #d1d5db; border-bottom: 1px solid #d1d5db; font-size: 11px; color: #374151; }
+.bill-strip-text { flex: 1; }
+.bill-strip-line { display: flex; flex-wrap: wrap; gap: 2px 18px; }
+.bill-strip-note { margin-top: 3px; color: #4b5563; }
+.bill-thanks { text-align: center; font-size: 11px; font-weight: 700; color: #012970; margin: 8px 0 2px; }
 
 @media print {
     .bill-card { border: 0; box-shadow: none; }

@@ -35,7 +35,7 @@ async function makeBill(api: any) {
 }
 
 test.describe('Customer bill @p1', () => {
-  test('BILL-1 the bill carries the store details, the lines, how it was paid, the tax, the total in words and no refill reminder @happy', async ({ api, app }) => {
+  test('BILL-1 the bill carries the store details, the lines, how it was paid, the tax, the total in words and the earliest refill date @happy', async ({ api, app }) => {
     const bill = await makeBill(api);
     const set = await api.request('PUT', `/stores/${bill.storeid}/licenses`, {
       address: '12 QA Main Road, Testville', pincode: '600001', phone: '98400 11223, 044 2345 6789',
@@ -71,10 +71,11 @@ test.describe('Customer bill @p1', () => {
     await expect(page.getByTestId('bill-payments')).toContainText('Cash');
     await expect(page.getByTestId('bill-payments')).toContainText('90.00');
 
-    // the total, in numbers and in words; a medicine supplied for a month no longer prints a refill reminder
+    // the total, in numbers and in words, and the earliest refill date for a medicine supplied for a month
     await expect(page.getByTestId('bill-net')).toHaveText('₹190.00');
     await expect(page.getByTestId('bill-words')).toContainText('Rupees One Hundred Ninety only');
-    await expect(page.getByTestId('bill-refill')).toHaveCount(0);                                      // the refill reminder is not printed on the bill
+    await expect(page.getByTestId('bill-refill')).toHaveCount(1);                                      // one line: the earliest refill date
+    await expect(page.getByTestId('bill-refill')).toContainText('Next refill');
     if (issued) await expect(page.getByTestId('bill-gst')).toBeVisible();
     else await expect(page.getByTestId('bill-gst')).toHaveCount(0);
 
@@ -86,6 +87,8 @@ test.describe('Customer bill @p1', () => {
     const head = await page.locator('[data-testid=bill-items] thead th').evaluateAll((ths) => ths.map((t) => Math.round(t.getBoundingClientRect().right)));
     const body = await page.getByTestId('bill-line').first().locator('td').evaluateAll((tds) => tds.map((t) => Math.round(t.getBoundingClientRect().right)));
     expect(head).toEqual(body);                                                              // headings sit over their columns
+    const titles = (await page.locator('[data-testid=bill-items] thead th').allTextContents()).map((t) => t.trim());
+    expect(titles.indexOf('MRP')).toBe(titles.indexOf('Qty') + 1);                          // the MRP follows the quantity
   });
 
   test('BILL-2 printed, only the bill shows: no buttons, no menus, fits one page @edge', async ({ api, app }) => {
