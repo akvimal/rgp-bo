@@ -13,7 +13,7 @@ import { OperatorContextService } from "../@core/operator-context.service";
 import { ShiftContextService } from "../@core/shift-context.service";
 import { AuthService } from "../@core/auth/auth.service";
 import { ConfigService } from "../shared/config.service";
-import { MenuGroup, buildMenu } from "./menu";
+import { MenuGroup, buildCounterMenu, buildMenu, isCounterRole } from "./menu";
 
 @Component({
     templateUrl: 'secured.component.html'
@@ -115,6 +115,14 @@ export class SecuredComponent {
     /** the grouped menu is a per-business choice (dashboard settings, "The grouped menu"); off keeps the long-standing menu */
     newMenu = false;
     menuGroups: MenuGroup[] = buildMenu({ has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) });
+
+    private readonly menuAccess = { has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) };
+    private counterGroups: MenuGroup[] = buildCounterMenu(this.menuAccess);
+
+    /** the counter roles always get the grouped menu; the other roles when the business has turned it on */
+    get groupedMenu(): boolean { return this.newMenu || isCounterRole(this.user?.rolename); }
+
+    get shownGroups(): MenuGroup[] { return isCounterRole(this.user?.rolename) ? this.counterGroups : this.menuGroups; }
 
     groupVisible(g: MenuGroup): boolean {
       return g.items.some((m) => m.show());

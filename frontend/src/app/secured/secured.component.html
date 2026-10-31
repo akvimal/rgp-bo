@@ -99,7 +99,7 @@
   <aside id="sidebar" class="sidebar">
   
       <ul class="sidebar-nav" id="sidebar-nav">
-        <ng-container *ngIf="!newMenu">
+        <ng-container *ngIf="!groupedMenu">
         <li class="nav-item" *ngIf="canOpen('/secure/dashboard')">
           <a class="nav-link" routerLink="dashboard" data-testid="nav-dashboard" title="Dashboard" aria-label="Dashboard">
             <i class="bi bi-speedometer2"></i>
@@ -275,10 +275,10 @@
         </li>
         </ng-container>
         <!-- the grouped menu (DASHBOARD_AND_MENU_DESIGN 7), on when the business turns it on in its dashboard settings -->
-        <ng-container *ngIf="newMenu">
-          <ng-container *ngFor="let g of menuGroups">
+        <ng-container *ngIf="groupedMenu">
+          <ng-container *ngFor="let g of shownGroups">
             <ng-container *ngIf="groupVisible(g)">
-              <li class="nav-heading" [attr.data-testid]="'nav-section-' + g.key">{{g.label}}</li>
+              <li class="nav-heading" *ngIf="g.label" [attr.data-testid]="'nav-section-' + g.key">{{g.label}}</li>
               <ng-container *ngFor="let m of g.items">
                 <li class="nav-item" *ngIf="m.show()" [routerLinkActive]="['is-active']">
                   <a class="nav-link collapsed" [routerLink]="m.route" [attr.data-testid]="m.id" [attr.title]="m.label" [attr.aria-label]="m.label">
@@ -290,7 +290,7 @@
             </ng-container>
           </ng-container>
         </ng-container>
-        <li class="nav-heading" *ngIf="has('settings.read')" data-testid="nav-section-admin">{{newMenu ? 'Setup' : 'Admin'}}</li>
+        <li class="nav-heading" *ngIf="has('settings.read')" data-testid="nav-section-admin">{{groupedMenu ? 'Setup' : 'Admin'}}</li>
         <li class="nav-item" *isAuth="'settings.read'">
           <a class="nav-link" [class.collapsed]="!settingsMenuOpen" data-testid="nav-settings"
             (click)="toggleSettingsMenu()" title="Settings" aria-label="Settings">

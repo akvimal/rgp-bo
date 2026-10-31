@@ -56,3 +56,40 @@ export function buildMenu(a: MenuAccess): MenuGroup[] {
     ] },
   ];
 }
+
+/**
+ * The roles that work the counter. They get the grouped menu, laid out in the order of their day, whatever the business has chosen for
+ * the other roles; those keep their menu until they are moved over.
+ */
+export const COUNTER_ROLES = ['Sales Staff', 'Counter'];
+
+export function isCounterRole(roleName: string | null | undefined): boolean {
+  return COUNTER_ROLES.includes(String(roleName ?? ''));
+}
+
+/** Few headings, the selling work first. The Dashboard stands alone at the top (its group has no heading). */
+const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
+  { key: 'home', label: '', ids: ['nav-dashboard'] },
+  { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-refills', 'nav-inquiries', 'nav-shift', 'nav-pharmacy-guide'] },
+  { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-outage', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
+  { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance'] },
+  { key: 'people', label: 'Me', ids: ['nav-my-hr', 'nav-kpi-mine', 'nav-hr', 'nav-leave-approvals', 'nav-kpi-rate'] },
+];
+
+/**
+ * The same entries as the grouped menu, arranged for the counter: a role keeps every page its permissions open, so anything this layout
+ * does not place (Reports, Compliance and the like) goes to a last group instead of disappearing.
+ */
+export function buildCounterMenu(a: MenuAccess): MenuGroup[] {
+  const all: MenuItem[] = [];
+  buildMenu(a).forEach((g) => g.items.forEach((i) => all.push(i)));
+  const byId = new Map(all.map((i) => [i.id, i] as [string, MenuItem]));
+  const placed = new Set<string>();
+  const groups: MenuGroup[] = COUNTER_LAYOUT.map((g) => ({
+    key: g.key, label: g.label, items: g.ids.map((id) => byId.get(id)).filter((i): i is MenuItem => !!i),
+  }));
+  groups.forEach((g) => g.items.forEach((i) => placed.add(i.id)));
+  const rest = all.filter((i) => !placed.has(i.id));
+  if (rest.length) groups.push({ key: 'more', label: 'More', items: rest });
+  return groups;
+}

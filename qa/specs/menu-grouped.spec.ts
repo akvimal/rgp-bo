@@ -16,6 +16,28 @@ test.describe.serial('Grouped menu', () => {
     expect(r.body.items.find((i: any) => i.key === 'new_menu')).toMatchObject({ value: false, source: 'default' });
   });
 
+  test('MG-1b the counter roles get the grouped menu in the order of their day even with the business switch off; the Business Head keeps the old menu', async ({ app }) => {
+    const sections = (page: any) => page.evaluate(() => {
+      const out: Record<string, string[]> = {}; let cur = '';
+      document.querySelectorAll('#sidebar-nav > li').forEach((li) => {
+        const sec = li.getAttribute('data-testid') || '';
+        if (sec.startsWith('nav-section-')) { cur = sec.replace('nav-section-', ''); out[cur] = []; return; }
+        const a = li.querySelector('a[data-testid^="nav-"]');
+        if (a && cur) out[cur].push(a.getAttribute('data-testid') as string);
+      });
+      return out;
+    });
+    const counter = await app.open('sales1@local.test', '/secure/sales/pos/new');
+    await expect(counter.page.getByTestId('nav-dashboard')).toBeVisible();
+    const g = await sections(counter.page);
+    expect(Object.keys(g)).toEqual(['sell', 'stock', 'accounts', 'people']);
+    expect(g.sell.slice(0, 2)).toEqual(['nav-sales', 'nav-customers']);
+    expect(g.sell).toContain('nav-pharmacy-guide');
+    const mgr = await app.open(MGR, '/secure/dashboard');
+    await expect(mgr.page.getByTestId('nav-section-buy')).toBeVisible();
+    expect(Object.keys(await sections(mgr.page))).toEqual(['sell', 'stock', 'buy', 'people', 'oversight', 'admin']);
+  });
+
   test('MG-2 on, the menu shows the groups in order with each page under its job', async ({ api, app }) => {
     expect((await api.request('PUT', '/config/views', { values: { new_menu: true }, effectiveFrom: today() }, MGR)).status).toBe(200);
     const { page } = await app.open(MGR, '/secure/dashboard');
