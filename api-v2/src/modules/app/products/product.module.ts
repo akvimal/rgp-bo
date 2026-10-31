@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProductController } from "./product.controller";
 import { ProductService } from "./product.service";
 import { PricingService } from "./pricing.service";
+import { PackCheckService } from "./pack-check.service";
 import { PricingController } from "./pricing.controller";
 import { Product } from "src/entities/product.entity";
 import { ProductPrice2 } from "src/entities/product-price2.entity";
@@ -13,7 +14,7 @@ import { JwtService } from "@nestjs/jwt";
 @Module({
     imports: [TypeOrmModule.forFeature([Product, ProductPrice2]),AuthModule,RoleModule],
     controllers: [ProductController, PricingController],
-    providers: [ProductService, PricingService, JwtService],
+    providers: [ProductService, PricingService, PackCheckService, JwtService],
     exports: [ProductService, PricingService],
   })
   export class ProductModule {}

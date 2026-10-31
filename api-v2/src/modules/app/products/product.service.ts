@@ -114,6 +114,8 @@ export class ProductService {
    * The list price and the purchase rate and MRP are all per pack, GST excluded for the first two.
    */
   async packCheck() {
+    // A flag comes from purchase and price history, which fixing the pack does not change. A product somebody has settled
+    // (pack_check_resolution) therefore counts a flag again only when a purchase or price AFTER that day shows it.
     return this.manager.query(
       `with pur as (
          select pii.product_id, pii.id, pi.invoice_date, pii.mrp_cost, pii.ptr_value, coalesce(pii.tax_pcnt, 0) tax,
@@ -126,19 +128,32 @@ export class ProductService {
            from pur where prev_mrp > 0 and (mrp_cost / prev_mrp >= 2.5 or mrp_cost / prev_mrp <= 0.4) and invoice_date >= current_date - 730
           order by product_id, invoice_date desc
        ), latest as (
-         select distinct on (product_id) product_id, mrp_cost, ptr_value, tax, public.gst_sale_rate(product_id, tax::double precision) as stax from pur order by product_id, invoice_date desc, id desc
-       ), cur as (select product_id, sale_price from product_price2 where end_date > current_date and sale_price > 0)
-       select p.id, p.title, p.pack, l.mrp_cost::numeric as mrp, round(l.ptr_value::numeric, 2) as rate, round(c.sale_price::numeric, 2) as price,
-              round(j.ratio::numeric, 2) as jump_ratio, to_char(j.jump_date, 'YYYY-MM-DD') as jump_date,
-              array_remove(array[
-                case when j.product_id is not null then 'UNIT_JUMP' end,
-                case when l.ptr_value * (1 + l.tax / 100) > l.mrp_cost * 1.001 then 'COST_OVER_MRP' end,
-                case when c.sale_price * (1 + l.stax / 100) > l.mrp_cost * 1.001 then 'PRICE_OVER_MRP' end,
-                case when c.sale_price * (1 + l.stax / 100) < l.mrp_cost * 0.05 then 'PRICE_FAR_BELOW_MRP' end], null) as reasons
-         from product p join latest l on l.product_id = p.id left join jumps j on j.product_id = p.id left join cur c on c.product_id = p.id
-        where p.active and (j.product_id is not null or l.ptr_value * (1 + l.tax / 100) > l.mrp_cost * 1.001
-              or c.sale_price * (1 + l.stax / 100) > l.mrp_cost * 1.001 or c.sale_price * (1 + l.stax / 100) < l.mrp_cost * 0.05)
-        order by (j.product_id is null), p.title`);
+         select distinct on (product_id) product_id, invoice_date, mrp_cost, ptr_value, tax, public.gst_sale_rate(product_id, tax::double precision) as stax from pur order by product_id, invoice_date desc, id desc
+       ), cur as (
+         select distinct on (product_id) product_id, sale_price, eff_date from product_price2 where end_date > current_date and sale_price > 0 order by product_id, eff_date desc, id desc
+       ), res as (
+         select distinct on (r.product_id) r.product_id, r.action, r.reason, r.note, r.old_pack, r.new_pack, r.created_on, r.created_on::date as res_date, u.full_name as res_by
+           from pack_check_resolution r left join app_user u on u.id = r.created_by order by r.product_id, r.id desc
+       ), flagged as (
+         select p.id, p.title, p.pack, l.mrp_cost::numeric as mrp, round(l.ptr_value::numeric, 2) as rate, round(c.sale_price::numeric, 2) as price,
+                round(j.ratio::numeric, 2) as jump_ratio, to_char(j.jump_date, 'YYYY-MM-DD') as jump_date, (j.product_id is not null) as has_jump,
+                array_remove(array[
+                  case when j.product_id is not null and (r.product_id is null or j.jump_date > r.res_date) then 'UNIT_JUMP' end,
+                  case when l.ptr_value * (1 + l.tax / 100) > l.mrp_cost * 1.001 and (r.product_id is null or l.invoice_date > r.res_date) then 'COST_OVER_MRP' end,
+                  case when c.sale_price * (1 + l.stax / 100) > l.mrp_cost * 1.001 and (r.product_id is null or c.eff_date > r.res_date) then 'PRICE_OVER_MRP' end,
+                  case when c.sale_price * (1 + l.stax / 100) < l.mrp_cost * 0.05 and (r.product_id is null or c.eff_date > r.res_date) then 'PRICE_FAR_BELOW_MRP' end], null) as reasons,
+                (j.product_id is not null or l.ptr_value * (1 + l.tax / 100) > l.mrp_cost * 1.001
+                  or c.sale_price * (1 + l.stax / 100) > l.mrp_cost * 1.001 or c.sale_price * (1 + l.stax / 100) < l.mrp_cost * 0.05) as ever_flagged,
+                r.product_id is not null as settled, r.action as resolution, r.reason as resolution_reason, r.note as resolution_note,
+                to_char(r.res_date, 'YYYY-MM-DD') as resolved_on, r.res_by as resolved_by, r.old_pack, r.new_pack
+           from product p join latest l on l.product_id = p.id left join jumps j on j.product_id = p.id left join cur c on c.product_id = p.id left join res r on r.product_id = p.id
+          where p.active)
+       select id, title, pack, mrp, rate, price, jump_ratio, jump_date, reasons, resolution, resolution_reason, resolution_note, resolved_on, resolved_by, old_pack, new_pack,
+              case when cardinality(reasons) > 0 then 'OPEN' else resolution end as status,
+              (settled and cardinality(reasons) > 0) as reopened
+         from flagged
+        where ever_flagged or settled
+        order by (cardinality(reasons) = 0), (not has_jump), title`);
   }
 
   private async checkPrice(manager: EntityManager, productid: number, raw: any) {

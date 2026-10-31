@@ -1,9 +1,21 @@
 <p class="small text-muted mt-2 mb-1" data-testid="pack-title">Products whose pack size or unit looks wrong from how they were bought and priced. A wrong pack makes every cost per unit, markup and rate check wrong.
-    Open the product, correct the pack, and the next purchase and price review will use the right unit.</p>
+    Press Review on a product to see its recent purchases and stock, then say the pack is correct or change it.</p>
 <app-price-units></app-price-units>
 
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="pack-error">{{error}}</div>
-<div class="small mb-1" *ngIf="!loading && !error" data-testid="pack-count">{{rows.length}} product{{rows.length === 1 ? '' : 's'}} to check</div>
+<div class="alert alert-success py-2 d-flex flex-wrap align-items-center gap-2" *ngIf="done" data-testid="pack-done">
+    <span><b>{{done.title}}</b>: pack changed from {{done.from}} to {{done.to}}. Now:</span>
+    <a class="btn btn-sm btn-outline-success" routerLink="/secure/products/price" data-testid="pack-done-price">Review the price</a>
+    <a class="btn btn-sm btn-outline-secondary" [routerLink]="['/secure/products/master/edit', done.id]" data-testid="pack-done-open">Open the product</a>
+    <button type="button" class="btn-close ms-auto" aria-label="Close" (click)="done = null"></button>
+</div>
+<div class="alert alert-success py-2" *ngIf="message" data-testid="pack-message">{{message}}</div>
+
+<ul class="nav nav-pills mt-2" data-testid="pack-tabs" *ngIf="!error">
+    <li class="nav-item" *ngFor="let t of tabs">
+        <a class="nav-link py-1" role="button" [class.active]="tab === t.key" (click)="setTab(t.key)" [attr.data-testid]="'pack-tab-' + t.key">{{t.label}} <span class="badge rounded-pill bg-light text-dark border">{{counts[t.key]}}</span></a>
+    </li>
+</ul>
 
 <p-table [value]="rows" dataKey="id" styleClass="p-datatable-sm p-datatable-gridlines mt-2" [loading]="loading" data-testid="pack-table"
         [paginator]="true" [rows]="25" [showCurrentPageReport]="true"
@@ -15,22 +27,102 @@
             <th class="text-end" pSortableColumn="mrp"><div class="th-bar"><span class="th-label">MRP</span><p-sortIcon field="mrp"></p-sortIcon></div></th>
             <th class="text-end" pSortableColumn="rate"><div class="th-bar"><span class="th-label">Cost</span><p-sortIcon field="rate"></p-sortIcon></div></th>
             <th class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th>
-            <th>Why flagged</th>
+            <th>{{tab === 'OPEN' ? 'Why flagged' : 'What was decided'}}</th>
+            <th style="width:6rem"></th>
         </tr>
     </ng-template>
     <ng-template pTemplate="body" let-r>
-        <tr data-testid="pack-row">
-            <td><a [routerLink]="['/secure/products/master/edit', r.id]">{{r.title}}</a></td>
+        <tr data-testid="pack-row" [attr.data-product]="r.id">
+            <td>{{r.title}}</td>
             <td class="text-end">{{r.pack}}</td>
             <td class="text-end">{{r.mrp | number:'1.2-2'}}</td>
             <td class="text-end">{{r.rate | number:'1.2-2'}}</td>
             <td class="text-end">{{r.price !== null ? (r.price | number:'1.2-2') : '-'}}</td>
             <td>
-                <div *ngFor="let c of r.reasons" class="small">{{why[c] || c}}<span *ngIf="c === 'UNIT_JUMP' && r.jump_ratio"> ({{r.jump_ratio}}&times; on {{r.jump_date | date:'dd MMM yyyy'}})</span></div>
+                <ng-container *ngIf="r.status === 'OPEN'">
+                    <div class="small text-warning" *ngIf="r.reopened" data-testid="pack-reopened">Settled on {{r.resolved_on}}, but a later purchase or price shows it again.</div>
+                    <div *ngFor="let c of r.reasons" class="small">{{why[c] || c}}<span *ngIf="c === 'UNIT_JUMP' && r.jump_ratio"> ({{r.jump_ratio}}&times; on {{r.jump_date | date:'dd MMM yyyy'}})</span></div>
+                </ng-container>
+                <ng-container *ngIf="r.status !== 'OPEN'">
+                    <div class="small" *ngIf="r.status === 'FIXED'">Pack changed from {{r.old_pack}} to {{r.new_pack}}</div>
+                    <div class="small" *ngIf="r.status === 'DISMISSED'">Pack of {{r.pack}} is correct</div>
+                    <div class="small text-muted">{{r.resolved_by || 'Someone'}}, {{r.resolved_on | date:'dd MMM yyyy'}}: {{r.resolution_note || reasonLabel[r.resolution_reason] || r.resolution_reason}}</div>
+                </ng-container>
+            </td>
+            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary py-0" (click)="review(r)" [attr.aria-expanded]="open === r.id" data-testid="pack-review">{{open === r.id ? 'Close' : 'Review'}}</button></td>
+        </tr>
+        <tr *ngIf="open === r.id" data-testid="pack-panel">
+            <td colspan="7" class="bg-light">
+                <div *ngIf="evLoading" class="small text-muted">Loading...</div>
+                <div class="alert alert-danger py-1 small" *ngIf="panelError" data-testid="pack-panel-error">{{panelError}}</div>
+
+                <ng-container *ngIf="ev">
+                    <div class="row g-3">
+                        <div class="col-lg-7">
+                            <h6 class="mb-1">Recent purchases</h6>
+                            <table class="table table-sm mb-1" data-testid="pack-evidence">
+                                <thead><tr class="small text-muted"><th>Date</th><th>Vendor</th><th class="text-end">Packs</th><th class="text-end">MRP</th><th class="text-end">Rate</th><th></th></tr></thead>
+                                <tbody>
+                                    <tr *ngFor="let p of ev.purchases; let i = index" class="small" [class.table-warning]="jumpAt(i)">
+                                        <td class="text-nowrap">{{p.invoice_date | date:'dd MMM yy'}}</td>
+                                        <td class="text-truncate" style="max-width:12rem">{{p.vendor || '-'}}</td>
+                                        <td class="text-end">{{p.qty}}<span *ngIf="p.free_qty"> + {{p.free_qty}} free</span></td>
+                                        <td class="text-end">{{p.mrp | number:'1.2-2'}}</td>
+                                        <td class="text-end">{{p.rate | number:'1.2-2'}}</td>
+                                        <td class="text-nowrap"><span *ngIf="jumpAt(i)" class="text-warning-emphasis">MRP &times;{{jumpAt(i)}}</span>
+                                            <a class="ms-1" [routerLink]="['/secure/purchases/invoices/items', p.invoice_id]" title="Open the invoice to correct a line">invoice</a></td>
+                                    </tr>
+                                    <tr *ngIf="!ev.purchases.length"><td colspan="6" class="small text-muted">No purchases.</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="small text-muted" data-testid="pack-stock">Pack now <b>{{ev.product.pack}}</b> &middot; {{ev.stockUnits}} units in stock across {{ev.batches}} batch{{ev.batches === 1 ? '' : 'es'}} (worth &#8377;{{ev.stockValue | number:'1.0-0'}}) &middot; {{ev.soldLast90Days}} units sold in 90 days.</div>
+                            <div class="small text-muted mt-1">If only one purchase was keyed in the wrong unit, correct that line on its invoice and leave the pack alone.</div>
+                        </div>
+
+                        <div class="col-lg-5" *ngIf="tab === 'OPEN' || r.status === 'OPEN'">
+                            <ng-container *isAuth="'products.edit'">
+                                <h6 class="mb-1">Change the pack</h6>
+                                <div class="small text-muted mb-1" *ngIf="ev.candidates?.packs?.length" data-testid="pack-candidates">The MRP changed &times;{{ev.candidates.ratio}}. Packs that would explain it:
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 ms-1" *ngFor="let n of ev.candidates.packs" (click)="quickPack(n)" [attr.data-testid]="'pack-cand-' + n">{{n}}</button></div>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <input type="number" min="1" step="1" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="fixPack" (ngModelChange)="packChanged()" placeholder="New pack" aria-label="New pack" data-testid="pack-new">
+                                    <select class="form-select form-select-sm w-auto" [(ngModel)]="fixReason" aria-label="Why" data-testid="pack-fix-reason">
+                                        <option value="">Why...</option>
+                                        <option *ngFor="let k of ['PACK_WRONG','PACKING_CHANGED','OTHER']" [value]="k">{{ev.fixReasons[k]}}</option>
+                                    </select>
+                                </div>
+                                <input class="form-control form-control-sm mt-1" [(ngModel)]="fixNote" maxlength="200" [placeholder]="fixReason === 'OTHER' ? 'What? (required)' : 'Note (optional)'" data-testid="pack-fix-note">
+                                <div class="small mt-1" *ngIf="impact" data-testid="pack-impact" [class.text-danger]="impact.belowZero">
+                                    Stock {{impact.unitsBefore}} &rarr; {{impact.unitsAfter}} units across {{impact.batches}} batch{{impact.batches === 1 ? '' : 'es'}}.
+                                    <span *ngIf="impact.belowZero">{{impact.belowZero}} batch{{impact.belowZero === 1 ? ' has' : 'es have'}} already sold more than this pack would give: correct the purchase lines instead.</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-primary mt-1" [disabled]="!canFix" (click)="fix(r)" data-testid="pack-fix">Change the pack</button>
+
+                                <hr class="my-2">
+                                <h6 class="mb-1">Or the pack is correct</h6>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <select class="form-select form-select-sm w-auto" [(ngModel)]="dismissReason" aria-label="Why it is correct" data-testid="pack-dismiss-reason">
+                                        <option value="">Why...</option>
+                                        <option *ngFor="let k of ['MAKER_CHANGED_PACK','SOLD_LOOSE_AND_FULL','ONE_OFF','OTHER']" [value]="k">{{ev.dismissReasons[k]}}</option>
+                                    </select>
+                                    <input class="form-control form-control-sm" style="width:12rem" [(ngModel)]="dismissNote" maxlength="200" [placeholder]="dismissReason === 'OTHER' ? 'What? (required)' : 'Note (optional)'" data-testid="pack-dismiss-note">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="!canDismiss" (click)="dismiss(r)" data-testid="pack-dismiss">Leave it as it is</button>
+                                </div>
+                            </ng-container>
+                        </div>
+                        <div class="col-lg-5" *ngIf="tab !== 'OPEN' && r.status !== 'OPEN' && ev.history?.length">
+                            <h6 class="mb-1">History</h6>
+                            <div class="small" *ngFor="let h of ev.history">{{h.on | date:'dd MMM yyyy'}} &middot; {{h.by || 'someone'}} &middot; {{h.action === 'FIXED' ? 'pack ' + h.old_pack + ' to ' + h.new_pack : 'left at ' + h.old_pack}}: {{h.note || (h.action === 'FIXED' ? ev.fixReasons[h.reason] : ev.dismissReasons[h.reason])}}</div>
+                        </div>
+                    </div>
+                    <div class="mt-2 small">
+                        <a [routerLink]="['/secure/products/master/edit', r.id]" data-testid="pack-open-product">Open the product</a> for anything else about it.
+                    </div>
+                </ng-container>
             </td>
         </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
-        <tr><td colspan="6" class="text-center text-muted py-4" data-testid="pack-clear">{{loading ? 'Loading...' : 'Nothing looks wrong.'}}</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4" data-testid="pack-clear">{{loading ? 'Loading...' : (tab === 'OPEN' ? 'Nothing looks wrong.' : 'Nothing here yet.')}}</td></tr>
     </ng-template>
 </p-table>

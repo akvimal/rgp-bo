@@ -36,6 +36,16 @@ export class ProductsService {
         return this.http.get<any[]>(`${this.apiurl}/pack-check`);
     }
 
+    /** recent purchases, stock and sales of one product on the pack check list */
+    packEvidence(id:number){ return this.http.get<any>(`${this.apiurl}/pack-check/${id}`); }
+
+    /** what changing the pack would do to the stock */
+    packImpact(id:number, pack:number){ return this.http.get<any>(`${this.apiurl}/pack-check/${id}/impact`, { params: { pack: String(pack) } }); }
+
+    packDismiss(id:number, body:{reason:string, note?:string}){ return this.http.post<any>(`${this.apiurl}/pack-check/${id}/dismiss`, body); }
+
+    packFix(id:number, body:{pack:number, expectedPack:number, reason:string, note?:string, confirm:boolean}){ return this.http.post<any>(`${this.apiurl}/pack-check/${id}/fix`, body); }
+
     findAll(criteria:any){
         return this.http.post(this.apiurl,{criteria});
     }

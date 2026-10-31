@@ -1,4 +1,5 @@
 import { ProductService } from "./product.service";
+import { PackCheckService } from "./pack-check.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { CreateProductDto } from "./dto/create-product.dto";
@@ -15,7 +16,7 @@ import { PermissionService } from "../roles/permission.service";
 @UseGuards(AuthGuard)
 export class ProductController {
 
-    constructor(private productService:ProductService, private permissions: PermissionService){}
+    constructor(private productService:ProductService, private permissions: PermissionService, private packCheckService: PackCheckService){}
 
     private async assertPricingAccess(currentUser: any) {
       if (!(await this.permissions.canManagePricing(currentUser.roleid))) {
@@ -46,6 +47,31 @@ export class ProductController {
     async packCheck(@User() currentUser: any) {
       await this.assertCostAccess(currentUser);
       return this.productService.packCheck();
+    }
+
+    /** what to look at to settle one product: recent purchases, stock, sales, and the packs the MRP change would explain */
+    @Get('/pack-check/:id')
+    async packEvidence(@Param('id') id: string, @User() currentUser: any) {
+      await this.assertCostAccess(currentUser);
+      return this.packCheckService.evidence(Number(id));
+    }
+
+    @Get('/pack-check/:id/impact')
+    async packImpact(@Param('id') id: string, @Query('pack') pack: string, @User() currentUser: any) {
+      await this.assertCostAccess(currentUser);
+      return this.packCheckService.impact(Number(id), pack);
+    }
+
+    @Post('/pack-check/:id/dismiss')
+    async packDismiss(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      await this.assertProductEditAccess(currentUser);
+      return this.packCheckService.dismiss(Number(id), body, currentUser);
+    }
+
+    @Post('/pack-check/:id/fix')
+    async packFix(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      await this.assertProductEditAccess(currentUser);
+      return this.packCheckService.fix(Number(id), body, currentUser);
     }
 
     @Post('/filter')
