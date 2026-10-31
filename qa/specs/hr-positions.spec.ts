@@ -65,14 +65,17 @@ test('HRP-3 the Setup screen adds a job role with amounts, shows its earnings, a
   await cleanup(api);
   try {
     const { page } = await app.open(MGR, '/secure/hr/setup');
-    await page.getByTestId('hr-sec-position-toggle').click();
-    await page.getByTestId('hr-pos-new-name').fill(NAME);
-    await page.getByTestId('hr-pos-new-amt-BASIC').fill('12000');
-    await page.getByTestId('hr-pos-add').click();
+    await page.getByTestId('hr-set-tab-position').click();
+    await page.getByTestId('hr-pos-new').click();
+    await page.getByTestId('hr-pos-name').fill(NAME);
+    await page.getByTestId('hr-pos-amt-BASIC').fill('12000');
+    await page.getByTestId('hr-pos-save').click();
     await expect(page.getByTestId('hr-message')).toContainText('Job role added');
-    const row = page.getByTestId('hr-pos-row').filter({ has: page.locator(`input[data-testid="hr-pos-name"]`) }).filter({ hasText: 'earnings 12,000' });
+    const row = page.getByTestId('hr-pos-row').filter({ hasText: NAME }).filter({ hasText: 'Earnings 12,000' });
     await expect(row).toHaveCount(1);
-    await row.getByTestId('hr-pos-remove').click();
+    await row.getByTestId('hr-pos-edit').click();
+    await page.getByTestId('hr-pos-remove').click();
+    await page.getByTestId('hr-panel-remove-yes').click();
     await expect(page.getByTestId('hr-message')).toContainText('removed');
   } finally {
     await cleanup(api);

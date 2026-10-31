@@ -39,6 +39,12 @@ export class HrStartComponent implements OnInit {
     ];
   }
 
+  /** the guide folds away once every step is done; the person can open it again */
+  opened = false;
+  get hrDoneCount(): number { return this.hrChecklist.filter(c => c.done).length; }
+  get hrAllDone(): boolean { return !!this.hrOffer && this.hrChecklist.every(c => c.done); }
+  get folded(): boolean { return this.hrAllDone && !this.opened; }
+
   /** after something was added or changed here, the sections below it in HR > Setup refresh too */
   private reload() { this.loadHr(); this.changed.emit(); }
 

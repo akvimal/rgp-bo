@@ -105,7 +105,7 @@ test('HRL-4 the Setup screens show the job role beside a measure and in the band
   const a = await mk(api, A);
   try {
     const { page } = await app.open(MGR, '/secure/hr/setup');
-    await page.getByTestId('hr-sec-kpi-toggle').click();
+    await page.getByTestId('hr-set-tab-kpi').click();
     await expect(page.getByTestId('hr-set-band-role').locator('option', { hasText: A })).toHaveCount(1);
     await page.getByTestId('hr-set-band-role').selectOption({ label: A });
     await expect(page.getByTestId('hr-set-bands')).toBeVisible();

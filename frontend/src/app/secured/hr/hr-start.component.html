@@ -1,5 +1,10 @@
 <div class="border rounded p-3 mb-3" *ngIf="hrOffer" data-testid="hr-setup">
-  <h6 class="mb-1">Get started</h6>
+  <div class="d-flex flex-wrap align-items-center gap-2" [class.mb-2]="!folded">
+    <h6 class="mb-0">Get started</h6>
+    <span class="small text-muted" data-testid="hr-setup-progress">{{hrDoneCount}} of {{hrChecklist.length}} done</span>
+    <button type="button" class="btn btn-link btn-sm ms-auto p-0" *ngIf="hrAllDone" (click)="opened = !opened" [attr.aria-expanded]="!folded" data-testid="hr-setup-fold">{{folded ? 'Show the set-up guide' : 'Hide'}}</button>
+  </div>
+<div *ngIf="!folded">
   <p class="small text-muted">Payroll adds up the amounts you enter for each person; it works out no formulas. Start with the basics, add what applies to you, and put each person's salary under HR &gt; Staff. Nothing here is ever removed or renamed.</p>
   <div class="d-flex align-items-center gap-2 flex-wrap mb-2" data-testid="hr-legal-form">
     <label class="small fw-semibold mb-0" for="hr-legal-form-select">How is the business registered?</label>
@@ -79,4 +84,5 @@
     <div class="col-6 col-md-2"><input class="form-control form-control-sm" type="date" [(ngModel)]="p.join_date"></div>
     <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" type="button" (click)="hrCreateStaff(p)" [attr.data-testid]="'hr-person-add-' + p.id">{{p.relationship === 'EMPLOYEE' ? 'Create staff record' : (p.relationship === 'OWNER' ? 'Record me, not on payroll' : 'Record director')}}</button></div>
   </div>
+</div>
 </div>

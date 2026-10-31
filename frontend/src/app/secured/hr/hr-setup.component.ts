@@ -1,12 +1,32 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, HostListener, Injectable, OnDestroy, OnInit } from "@angular/core";
+import { ActivatedRoute, CanDeactivate, Router } from "@angular/router";
+import { forkJoin, Subscription } from "rxjs";
 import { HrService } from "./hr.service";
 
-/** Pay components, leave types, holidays, KPI measures and bands: everything that is configurable. All of it except holidays can be limited to roles. */
+/** The five areas of Setup, one tab each. The tab is kept in the address (?tab=holiday) so a link can open it. */
+export const SETUP_TABS: { key: string; label: string }[] = [
+  { key: "pay", label: "Pay" },
+  { key: "position", label: "Job roles" },
+  { key: "leave", label: "Leave" },
+  { key: "holiday", label: "Holidays" },
+  { key: "kpi", label: "KPI" },
+];
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** What is open in the side panel: one item being added or changed, held as a copy so nothing on the page changes until Save. */
+interface Panel { kind: "component" | "position" | "type" | "holiday" | "copy" | "measure"; title: string; model: any; snap: string; }
+
+/**
+ * Pay components, job roles, leave types, holidays, KPI measures and bands: everything that is configurable.
+ * Lists are read-only; Add and Edit open a panel with one Save. The incentive bands are a table edited as a whole, with a save bar.
+ */
 @Component({ selector: "app-hr-setup", templateUrl: "./hr-setup.component.html" })
-export class HrSetupComponent implements OnInit {
+export class HrSetupComponent implements OnInit, OnDestroy {
   components: any[] = [];
   leaveTypes: any[] = [];
   holidays: any[] = [];
+  holidayGroups: { month: string; items: any[] }[] = [];
   metrics: any[] = [];
   allBands: any[] = [];
   roles: string[] = [];
@@ -15,53 +35,98 @@ export class HrSetupComponent implements OnInit {
   message = "";
   error = "";
 
-  newComp: any = { name: "", kind: "EARNING", applies_roles: null };
-  newType: any = { name: "", paid: true, annual_days: 0, applies_roles: null, position_names: null };
-  newHoliday: any = { date: "", name: "" };
+  tabs = SETUP_TABS;
+  tab = "pay";
+  /** the word typed in the search box of the list on screen */
+  q = "";
 
   /** job roles, each with the standard amount of every pay component; amounts are held by component id while editing */
   positions: any[] = [];
-  newPos: any = { id: 0, name: "", active: true, login_role: null, amounts: {} };
 
-  /** the measure being added or edited */
+  panel: Panel | null = null;
+  readonly saveIds: { [kind: string]: string } = { component: "hr-set-comp-save", position: "hr-pos-save", type: "hr-set-type-save", holiday: "hr-set-hol-save", copy: "hr-set-hol-copy-save", measure: "hr-set-metric-save" };
+  readonly removeIds: { [kind: string]: string } = { component: "hr-set-comp-remove", position: "hr-pos-remove", type: "hr-set-type-remove" };
+  /** an error from saving, shown in the panel so it is not hidden behind it */
+  perr = "";
+  busy = false;
+  /** the holiday whose Remove is waiting for a yes */
+  confirmHoliday = "";
+
+  /** the measure being added or edited (the panel's model) */
   mf: any = null;
   /** which role's band set is on screen ("" = the default set) */
   bandRole = "";
   bands: any[] = [];
+  /** the bands as last loaded or saved, to tell what has changed */
+  private bandsSnap = "[]";
+  /** the role the person asked for while the bands on screen had unsaved changes */
+  bandPending: string | null = null;
 
-  /** which sections are open; the first by default, and the choice is remembered in this browser */
-  private open: { [key: string]: boolean } = { pay: true };
+  private sub?: Subscription;
+  private msgTimer: any;
 
-  constructor(private hr: HrService) {
-    try {
-      const saved = JSON.parse(localStorage.getItem("hr_setup_open") || "null");
-      if (saved && typeof saved === "object") this.open = saved;
-    } catch { /* storage blocked: the default stands */ }
-  }
-
-  isOpen(key: string): boolean { return !!this.open[key]; }
-
-  toggle(key: string) { this.open = { ...this.open, [key]: !this.open[key] }; this.remember(); }
-
-  setAll(on: boolean) { this.open = { pay: on, position: on, leave: on, holiday: on, kpi: on }; this.remember(); }
-
-  private remember() { try { localStorage.setItem("hr_setup_open", JSON.stringify(this.open)); } catch { /* ignore */ } }
-
+  constructor(private hr: HrService, private route: ActivatedRoute, private router: Router) {}
 
   ngOnInit() {
+    this.sub = this.route.queryParamMap.subscribe(p => {
+      const t = p.get("tab");
+      if (t && this.tabs.some(x => x.key === t)) this.tab = t;
+    });
     this.hr.get("roles").subscribe(r => this.roles = r.map((x: any) => x.name));
     this.hr.get("kpi/system-measures").subscribe(r => this.systemMeasures = r);
     this.load();
   }
 
+  ngOnDestroy() { this.sub?.unsubscribe(); clearTimeout(this.msgTimer); }
+
+  go(key: string) {
+    this.q = "";
+    this.router.navigate([], { relativeTo: this.route, queryParams: { tab: key }, queryParamsHandling: "merge", replaceUrl: true });
+  }
+
+  tabCount(key: string): number {
+    return { pay: this.components.length, position: this.positions.length, leave: this.leaveTypes.length, holiday: this.holidays.length, kpi: this.metrics.length }[key] ?? 0;
+  }
+
   load() {
     this.hr.get("components").subscribe(r => { this.components = r; this.loadPositions(); });
     this.hr.get("leave/types").subscribe(r => { this.leaveTypes = r; this.syncLeaveNames(); });
-    this.hr.get("holidays", { year: this.year }).subscribe(r => this.holidays = r);
+    this.loadHolidays();
     this.hr.get("kpi/metrics").subscribe(r => this.metrics = r);
-    this.hr.get("kpi/bands").subscribe(r => { this.allBands = r; this.showBands(); });
+    // unsaved band changes stay on screen when something else on the page reloads the data
+    this.hr.get("kpi/bands").subscribe(r => { this.allBands = r; if (!this.bandsDirty) this.showBands(); });
   }
 
+  loadHolidays() {
+    this.hr.get("holidays", { year: this.year }).subscribe(r => {
+      this.holidays = r;
+      const groups: { month: string; items: any[] }[] = [];
+      for (const h of r) {
+        const m = MONTHS[Number(String(h.date).slice(5, 7)) - 1] || "";
+        const last = groups[groups.length - 1];
+        if (last && last.month === m) last.items.push(h); else groups.push({ month: m, items: [h] });
+      }
+      this.holidayGroups = groups;
+    });
+  }
+
+  setYear(y: number) { if (y > 1999 && y < 2200) { this.year = y; this.loadHolidays(); } }
+
+  // ------------------------------------------------------------ search, shown on lists long enough to need it
+  private hit(...vals: any[]): boolean {
+    const q = this.q.trim().toLowerCase();
+    return !q || vals.some(v => String(v ?? "").toLowerCase().includes(q));
+  }
+  get shownComponents(): any[] { return this.components.filter(c => this.hit(c.name, c.code)); }
+  get shownPositions(): any[] { return this.positions.filter(p => this.hit(p.name, p.login_role)); }
+  get shownTypes(): any[] { return this.leaveTypes.filter(t => this.hit(t.name)); }
+  get shownMetrics(): any[] { return this.metrics.filter(m => this.hit(m.name, m.description)); }
+  get shownHolidayGroups(): { month: string; items: any[] }[] {
+    return this.holidayGroups.map(g => ({ month: g.month, items: g.items.filter(h => this.hit(h.name, h.date)) })).filter(g => g.items.length);
+  }
+  trackId(_: number, x: any) { return x.id; }
+
+  // ------------------------------------------------------------ job roles, for the chips and the lists
   /** job role names for the chips, and back to ids for saving */
   get positionNames(): string[] { return this.positions.filter(p => p.active).map(p => p.name); }
   private namesToIds(names: string[] | null): number[] { return (names || []).map(n => this.positions.find(p => p.name === n)?.id).filter((x: any) => !!x); }
@@ -76,7 +141,7 @@ export class HrSetupComponent implements OnInit {
   get pickedDesignations(): string[] { return this.designations.filter(g => g.pick).map(g => g.designation); }
   adoptDesignations() {
     this.hr.post("positions/designations", { designations: this.pickedDesignations }).subscribe(
-      (r: any) => this.done(`${r.created.length} job role${r.created.length === 1 ? "" : "s"} created, ${r.assigned} staff given their job role. Add the pay structure to each below.`)(), this.fail());
+      (r: any) => this.done(`${r.created.length} job role${r.created.length === 1 ? "" : "s"} created, ${r.assigned} staff given their job role. Open each to add its pay structure.`)(), this.fail());
   }
 
   /** the active pay components a structure can hold */
@@ -100,31 +165,137 @@ export class HrSetupComponent implements OnInit {
   /** earnings of a structure, for the one-line summary */
   posEarnings(p: any): number { return this.payComponents.filter(c => c.kind === "EARNING").reduce((t, c) => t + (+p.amounts[c.id] || 0), 0); }
 
-  addPosition() {
-    this.hr.post("positions", this.posBody(this.newPos)).subscribe(() => { this.newPos = { id: 0, name: "", active: true, login_role: null, amounts: {} }; this.done("Job role added.")(); }, this.fail());
-  }
-  savePosition(p: any) { this.hr.put(`positions/${p.id}`, this.posBody(p)).subscribe(this.done("Job role saved. Salaries already given are not changed."), this.fail()); }
-  removePosition(p: any) {
-    this.hr.delete(`positions/${p.id}`).subscribe(r => this.done(r.removed ? `${p.name} removed.` : `${p.name} is held by staff, so it was made inactive instead.`)(), this.fail());
+  // ------------------------------------------------------------ the side panel
+  private openPanel(kind: Panel["kind"], title: string, model: any) {
+    this.perr = ""; this.error = ""; this.message = ""; this.busy = false;
+    this.panel = { kind, title, model, snap: JSON.stringify(model) };
   }
 
-  private done(text: string) { return () => { this.message = text; this.error = ""; this.load(); }; }
-  private fail() { return (e: any) => { this.error = this.hr.msg(e); this.message = ""; }; }
+  closePanel() { this.panel = null; this.mf = null; this.perr = ""; this.busy = false; }
 
-  addComponent() { this.hr.post("components", this.newComp).subscribe(() => { this.newComp = { name: "", kind: "EARNING", applies_roles: null }; this.done("Component added.")(); }, this.fail()); }
-  saveComponent(c: any) { this.hr.put(`components/${c.id}`, c).subscribe(this.done("Component saved."), this.fail()); }
-  removeComponent(c: any) {
-    this.hr.delete(`components/${c.id}`).subscribe(r => this.done(r.removed ? `${c.name} removed.` : `${c.name} is in the salary history, so it was made inactive instead.`)(), this.fail());
+  get panelDirty(): boolean { return !!this.panel && JSON.stringify(this.panel.model) !== this.panel.snap; }
+
+  get panelCanSave(): boolean {
+    const m = this.panel?.model;
+    switch (this.panel?.kind) {
+      case "holiday": return !!m.date && !!String(m.name || "").trim();
+      case "copy": return m.rows.some((r: any) => r.pick && r.date && String(r.name || "").trim());
+      default: return !!String(m?.name || "").trim();
+    }
   }
 
-  addType() { this.hr.post("leave/types", { ...this.newType, applies_positions: this.namesToIds(this.newType.position_names) }).subscribe(() => { this.newType = { name: "", paid: true, annual_days: 0, applies_roles: null, position_names: null }; this.done("Leave type added.")(); }, this.fail()); }
-  saveType(t: any) { this.hr.put(`leave/types/${t.id}`, { ...t, applies_positions: this.namesToIds(t.position_names) }).subscribe(this.done("Leave type saved."), this.fail()); }
-  removeType(t: any) {
-    this.hr.delete(`leave/types/${t.id}`).subscribe(r => this.done(r.removed ? `${t.name} removed.` : `${t.name} has leave recorded against it, so it was made inactive instead.`)(), this.fail());
+  savePanel() {
+    if (!this.panel) return;
+    switch (this.panel.kind) {
+      case "component": return this.saveComponent();
+      case "position": return this.savePosition();
+      case "type": return this.saveType();
+      case "holiday": return this.saveHoliday();
+      case "copy": return this.saveCopy();
+      case "measure": return this.saveMeasure();
+    }
   }
 
-  addHoliday() { this.hr.post("holidays", this.newHoliday).subscribe(() => { this.newHoliday = { date: "", name: "" }; this.done("Holiday saved.")(); }, this.fail()); }
-  removeHoliday(h: any) { this.hr.delete(`holidays/${h.date}`).subscribe(this.done("Holiday removed."), this.fail()); }
+  removePanel() {
+    switch (this.panel?.kind) {
+      case "component": return this.removeComponent();
+      case "position": return this.removePosition();
+      case "type": return this.removeType();
+    }
+  }
+
+  /** the panel's request finished: close it and say so */
+  private saved(text: string) { return () => { this.closePanel(); this.done(text)(); }; }
+  private done(text: string) {
+    return () => {
+      this.message = text; this.error = ""; this.load();
+      clearTimeout(this.msgTimer);
+      this.msgTimer = setTimeout(() => this.message = "", 6000);
+    };
+  }
+  private fail() { return (e: any) => { this.busy = false; const t = this.hr.msg(e); if (this.panel) this.perr = t; else { this.error = t; this.message = ""; } }; }
+
+  // ------------------------------------------------------------ pay components
+  openComponent(c?: any) {
+    this.openPanel("component", c ? "Edit pay component" : "New pay component",
+      c ? { ...c, applies_roles: c.applies_roles ? [...c.applies_roles] : null } : { id: 0, name: "", kind: "EARNING", applies_roles: null, active: true });
+  }
+  private saveComponent() {
+    const c = this.panel!.model; this.busy = true;
+    const req = c.id ? this.hr.put(`components/${c.id}`, c) : this.hr.post("components", c);
+    req.subscribe(this.saved(c.id ? "Component saved." : "Component added."), this.fail());
+  }
+  private removeComponent() {
+    const c = this.panel!.model; this.busy = true;
+    this.hr.delete(`components/${c.id}`).subscribe(r => this.saved(r.removed ? `${c.name} removed.` : `${c.name} is in the salary history, so it was made inactive instead.`)(), this.fail());
+  }
+
+  // ------------------------------------------------------------ job roles
+  openPosition(p?: any) {
+    this.openPanel("position", p ? "Edit job role" : "New job role",
+      p ? { ...p, amounts: { ...p.amounts } } : { id: 0, name: "", active: true, login_role: null, incentive_cap: null, staff: 0, amounts: {} });
+  }
+  private savePosition() {
+    const p = this.panel!.model; this.busy = true;
+    const req = p.id ? this.hr.put(`positions/${p.id}`, this.posBody(p)) : this.hr.post("positions", this.posBody(p));
+    req.subscribe(this.saved(p.id ? "Job role saved. Salaries already given are not changed." : "Job role added."), this.fail());
+  }
+  private removePosition() {
+    const p = this.panel!.model; this.busy = true;
+    this.hr.delete(`positions/${p.id}`).subscribe(r => this.saved(r.removed ? `${p.name} removed.` : `${p.name} is held by staff, so it was made inactive instead.`)(), this.fail());
+  }
+
+  // ------------------------------------------------------------ leave types
+  openType(t?: any) {
+    this.openPanel("type", t ? "Edit leave type" : "New leave type",
+      t ? { ...t, applies_roles: t.applies_roles ? [...t.applies_roles] : null, position_names: t.position_names ? [...t.position_names] : null }
+        : { id: 0, name: "", paid: true, annual_days: 0, applies_roles: null, position_names: null, active: true });
+  }
+  private saveType() {
+    const t = this.panel!.model; this.busy = true;
+    const body = { ...t, applies_positions: this.namesToIds(t.position_names) };
+    const req = t.id ? this.hr.put(`leave/types/${t.id}`, body) : this.hr.post("leave/types", body);
+    req.subscribe(this.saved(t.id ? "Leave type saved." : "Leave type added."), this.fail());
+  }
+  private removeType() {
+    const t = this.panel!.model; this.busy = true;
+    this.hr.delete(`leave/types/${t.id}`).subscribe(r => this.saved(r.removed ? `${t.name} removed.` : `${t.name} has leave recorded against it, so it was made inactive instead.`)(), this.fail());
+  }
+
+  // ------------------------------------------------------------ holidays
+  openHoliday(h?: any) {
+    this.openPanel("holiday", h ? "Edit holiday" : "New holiday", h ? { date: String(h.date).slice(0, 10), name: h.name, isNew: false } : { date: "", name: "", isNew: true });
+  }
+  private saveHoliday() {
+    const h = this.panel!.model; this.busy = true;
+    this.hr.post("holidays", { date: h.date, name: h.name }).subscribe(this.saved("Holiday saved."), this.fail());
+  }
+  removeHoliday(h: any) {
+    this.hr.delete(`holidays/${String(h.date).slice(0, 10)}`).subscribe(() => { this.confirmHoliday = ""; this.done("Holiday removed.")(); }, this.fail());
+  }
+
+  /** the same day in the year on screen; 29 February falls back to the 28th in a year without one */
+  private sameDayIn(date: string, year: number): string {
+    const md = String(date).slice(5, 10);
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return `${year}-${md === "02-29" && !leap ? "02-28" : md}`;
+  }
+
+  /** Offer last year's list for this year, each date open to change since festival dates move; days already listed start unticked. */
+  openCopy() {
+    this.hr.get("holidays", { year: this.year - 1 }).subscribe((prev: any[]) => {
+      const have = new Set(this.holidays.map(h => String(h.date).slice(0, 10)));
+      const rows = prev.map(h => { const date = this.sameDayIn(h.date, this.year); return { pick: !have.has(date), date, name: h.name, was: String(h.date).slice(0, 10) }; });
+      this.openPanel("copy", `Copy the ${this.year - 1} list to ${this.year}`, { rows });
+    }, this.fail());
+  }
+  get copyCount(): number { return this.panel?.kind === "copy" ? this.panel.model.rows.filter((r: any) => r.pick).length : 0; }
+  private saveCopy() {
+    const rows = this.panel!.model.rows.filter((r: any) => r.pick && r.date && String(r.name || "").trim());
+    this.busy = true;
+    forkJoin(rows.map((r: any) => this.hr.post("holidays", { date: r.date, name: r.name }))).subscribe(
+      () => { this.year = Number(rows[0].date.slice(0, 4)) || this.year; this.saved(`${rows.length} holiday${rows.length === 1 ? "" : "s"} added.`)(); }, this.fail());
+  }
 
   // ------------------------------------------------------------ KPI measures
   private blankMeasure() {
@@ -132,7 +303,7 @@ export class HrSetupComponent implements OnInit {
              target: null, floor: null, min_activity: 0, rating_scale: 5, applies_types: [], designations: "", applies_roles: null, position_names: null, active: true };
   }
 
-  newMeasure() { this.mf = this.blankMeasure(); this.open = { ...this.open, kpi: true }; }
+  newMeasure() { this.mf = this.blankMeasure(); this.openPanel("measure", "New KPI measure", this.mf); }
 
   editMeasure(m: any) {
     const f = this.blankMeasure();
@@ -144,7 +315,7 @@ export class HrSetupComponent implements OnInit {
     if (m.rule?.kind === "steps") Object.assign(f, { rule_kind: "steps", steps: m.rule.steps.map((s: any) => ({ ...s })), otherwise: m.rule.otherwise ?? 0 });
     if (m.rule?.kind === "linear") Object.assign(f, { rule_kind: "linear", target: m.rule.target, floor: m.rule.floor });
     this.mf = f;
-    this.open = { ...this.open, kpi: true };
+    this.openPanel("measure", "Edit KPI measure", f);
   }
 
   get direction(): string { return this.systemMeasures.find(s => s.key === this.mf?.system_key)?.direction || ""; }
@@ -156,8 +327,8 @@ export class HrSetupComponent implements OnInit {
   removeStep(i: number) { this.mf.steps = this.mf.steps.filter((_: any, k: number) => k !== i); }
   toggleType(t: string) { const a: string[] = this.mf.applies_types; this.mf.applies_types = a.includes(t) ? a.filter(x => x !== t) : [...a, t]; }
 
-  saveMeasure() {
-    const f = this.mf;
+  private saveMeasure() {
+    const f = this.mf; this.busy = true;
     const body: any = {
       name: f.name, description: f.description, max_points: f.max_points, source: f.source, min_activity: f.min_activity, rating_scale: f.rating_scale,
       applies_types: f.applies_types, applies_roles: f.applies_roles || [], applies_positions: this.namesToIds(f.position_names), active: f.active,
@@ -170,7 +341,7 @@ export class HrSetupComponent implements OnInit {
         : { kind: "linear", target: +f.target, floor: +f.floor };
     }
     const req = f.id ? this.hr.put(`kpi/metrics/${f.id}`, body) : this.hr.post("kpi/metrics", body);
-    req.subscribe(() => { this.mf = null; this.done("Measure saved.")(); }, this.fail());
+    req.subscribe(this.saved("Measure saved."), this.fail());
   }
 
   roleSummary(r: string[] | null) { return r?.length ? r.join(", ") : "All roles"; }
@@ -182,15 +353,45 @@ export class HrSetupComponent implements OnInit {
     const job = this.bandJob;
     return this.allBands.filter(b => job ? b.position_id === job : (!b.position_id && (b.role_name || "") === this.bandRole));
   }
-  showBands() { this.bands = this.bandsOf().map(b => ({ ...b })); }
+  private snapOf(list: any[]): string { return JSON.stringify(list.map(b => [b.min_percent, b.label, b.incentive_percent])); }
+  showBands() { this.bands = this.bandsOf().map(b => ({ ...b })); this.bandsSnap = this.snapOf(this.bands); }
+  get bandsDirty(): boolean { return this.snapOf(this.bands) !== this.bandsSnap; }
   get hasOwnBands(): boolean { return !this.bandRole || this.bandsOf().length > 0; }
-  get bandLabel(): string { return this.bandJob ? (this.positions.find(p => p.id === this.bandJob)?.name || "this job role") : this.bandRole; }
+  get bandLabel(): string { return this.bandJob ? (this.positions.find(p => p.id === this.bandJob)?.name || "this job role") : (this.bandRole || "the default set"); }
   addBand() { this.bands = [...this.bands, { min_percent: 0, label: "", incentive_percent: 0 }]; }
   removeBand(i: number) { this.bands = this.bands.filter((_, k) => k !== i); }
-  saveBands() {
+
+  /** choose another role's bands; with unsaved changes on screen, ask what to do with them first */
+  pickBandRole(v: string, el?: HTMLSelectElement) {
+    if (v === this.bandRole) return;
+    if (this.bandsDirty) { this.bandPending = v; if (el) el.value = this.bandRole; return; }
+    this.bandRole = v; this.showBands();
+  }
+  switchBands(save: boolean) {
+    const v = this.bandPending; this.bandPending = null;
+    if (v === null) return;
+    if (save) this.saveBands(() => { this.bandRole = v; }); else { this.bandRole = v; this.showBands(); }
+  }
+
+  saveBands(then?: () => void) {
     const job = this.bandJob;
+    const text = this.bandRole ? `Bands saved for ${this.bandLabel}.` : "Default bands saved.";
     this.hr.put("kpi/bands", { role_name: job ? null : (this.bandRole || null), position_id: job, bands: this.bands })
-      .subscribe(this.done(this.bandRole ? `Bands saved for ${this.bandLabel}.` : "Default bands saved."), this.fail());
+      .subscribe(() => { this.bandsSnap = this.snapOf(this.bands); if (then) then(); this.done(text)(); }, this.fail());
   }
   startOwnBands() { this.bands = this.allBands.filter(b => !b.role_name && !b.position_id).map(b => ({ min_percent: b.min_percent, label: b.label, incentive_percent: b.incentive_percent })); }
+
+  // ------------------------------------------------------------ leaving with unsaved changes
+  get hasUnsaved(): boolean { return this.bandsDirty || this.panelDirty; }
+
+  @HostListener("window:beforeunload", ["$event"])
+  onUnload(e: BeforeUnloadEvent) { if (this.hasUnsaved) { e.preventDefault(); e.returnValue = ""; } }
+}
+
+/** Asks before leaving Setup with edits not saved. */
+@Injectable({ providedIn: "root" })
+export class HrSetupLeaveGuard implements CanDeactivate<HrSetupComponent> {
+  canDeactivate(c: HrSetupComponent): boolean {
+    return !c.hasUnsaved || window.confirm("You have changes on this page that are not saved. Leave without saving them?");
+  }
 }

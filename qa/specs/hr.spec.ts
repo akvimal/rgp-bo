@@ -247,19 +247,19 @@ test.describe('HR @p1', () => {
     await expect(page.getByTestId('hr-stub-print')).toBeVisible();
 
     await page.getByTestId('hr-tab-setup').click();
-    // grouped into collapsible sections: the first is open, the rest open on demand
+    // one tab per area: the first is open, the others open on demand; lists are read-only with an Edit button
     await expect(page.getByTestId('hr-sec-pay-body')).toBeVisible();
     await expect(page.getByTestId('hr-sec-kpi-body')).toHaveCount(0);
-    await page.getByTestId('hr-sec-collapse').click();
-    await expect(page.getByTestId('hr-sec-pay-body')).toHaveCount(0);
-    await page.getByTestId('hr-sec-expand').click();
+    await expect(page.getByTestId('hr-set-components')).toBeVisible();
+    await expect(page.getByTestId('hr-set-comp-edit').first()).toBeVisible();
+    await page.getByTestId('hr-set-tab-leave').click();
+    await expect(page.getByTestId('hr-set-types')).toBeVisible();
+    await expect(page.getByTestId('hr-set-type-edit').first()).toBeVisible();
+    await page.getByTestId('hr-set-tab-holiday').click();
+    await expect(page.getByTestId('hr-set-holidays')).toBeVisible();
+    await page.getByTestId('hr-set-tab-kpi').click();
     await expect(page.getByTestId('hr-set-metrics')).toBeVisible();
     await expect(page.getByTestId('hr-set-bands')).toBeVisible();
-    await expect(page.getByTestId('hr-set-holidays')).toBeVisible();
-    await expect(page.getByTestId('hr-set-components')).toBeVisible();
-    await expect(page.getByTestId('hr-set-types')).toBeVisible();
-    await expect(page.getByTestId('hr-set-comp-remove').first()).toBeVisible();
-    await expect(page.getByTestId('hr-set-type-remove').first()).toBeVisible();
 
     // other roles have no menu entry or page
     const sh = await app.open(STOREHEAD, '/secure/dashboard');
@@ -552,10 +552,12 @@ test.describe('HR @p1', () => {
     await expect(page.getByTestId('hr-set-comp-row').first()).toBeVisible();
     await api.request('POST', '/hr/components', { name: 'QA Page Remove', kind: 'EARNING' }, MGR);
     await page.reload();
-    const names = () => page.getByTestId('hr-set-comp-row').evaluateAll((rows: any[]) => rows.map(r => (r.querySelector('input') as HTMLInputElement).value));
+    const names = () => page.getByTestId('hr-set-comp-cellname').allTextContents().then(a => a.map(x => x.trim()));
     const idx = (await names()).indexOf('QA Page Remove');
     expect(idx).toBeGreaterThanOrEqual(0);
-    await page.getByTestId('hr-set-comp-row').nth(idx).getByTestId('hr-set-comp-remove').click();
+    await page.getByTestId('hr-set-comp-row').nth(idx).getByTestId('hr-set-comp-edit').click();
+    await page.getByTestId('hr-set-comp-remove').click();
+    await page.getByTestId('hr-panel-remove-yes').click();
     await expect(page.getByTestId('hr-message')).toContainText('removed');
     await expect.poll(names).not.toContain('QA Page Remove');
   });
