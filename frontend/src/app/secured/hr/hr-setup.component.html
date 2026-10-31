@@ -97,12 +97,12 @@
     <section class="border rounded mb-3" data-testid="hr-sec-leave">
       <button type="button" class="w-100 d-flex justify-content-between align-items-center btn btn-light text-start px-3 py-2 rounded-0 rounded-top"
               (click)="toggle('leave')" [attr.aria-expanded]="isOpen('leave')" data-testid="hr-sec-leave-toggle">
-        <span><strong>Leave and holidays</strong> <span class="text-muted small ms-2">leave types, and the holidays everyone shares</span></span>
-        <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-leave-count">{{leaveTypes.length}} types · {{holidays.length}} holidays</span><i class="bi" [ngClass]="isOpen('leave') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
+        <span><strong>Leave</strong> <span class="text-muted small ms-2">leave types and the days each gives</span></span>
+        <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-leave-count">{{leaveTypes.length}} types</span><i class="bi" [ngClass]="isOpen('leave') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
       </button>
       <div class="p-3" *ngIf="isOpen('leave')" data-testid="hr-sec-leave-body">
-        <div class="row g-4">
-          <div class="col-lg-7">
+        <div>
+          <div>
             <!-- leave types -->
               <h6>Leave types</h6>
               <table class="table table-sm align-middle" data-testid="hr-set-types">
@@ -124,9 +124,19 @@
                 </tbody>
               </table>
           </div>
-          <div class="col-lg-5">
-            <!-- holidays -->
-              <div class="d-flex align-items-end gap-3 mb-1"><h6 class="mb-0">Holidays</h6><span class="small text-muted">shared by every role</span><input type="number" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="year" (change)="load()"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="border rounded mb-3" data-testid="hr-sec-holiday">
+      <button type="button" class="w-100 d-flex justify-content-between align-items-center btn btn-light text-start px-3 py-2 rounded-0 rounded-top"
+              (click)="toggle('holiday')" [attr.aria-expanded]="isOpen('holiday')" data-testid="hr-sec-holiday-toggle">
+        <span><strong>Holidays</strong> <span class="text-muted small ms-2">the days everyone has off</span></span>
+        <span class="d-flex gap-2 align-items-center"><span class="badge bg-secondary" data-testid="hr-sec-holiday-count">{{holidays.length}} in {{year}}</span><i class="bi" [ngClass]="isOpen('holiday') ? 'bi-chevron-up' : 'bi-chevron-down'"></i></span>
+      </button>
+      <div class="p-3" *ngIf="isOpen('holiday')" data-testid="hr-sec-holiday-body">
+        <div style="max-width:40rem">
+              <div class="d-flex align-items-end gap-3 mb-1"><span class="small text-muted">shared by every role; pick the year to list</span><input type="number" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="year" (change)="load()"></div>
               <table class="table table-sm align-middle" data-testid="hr-set-holidays">
                 <tbody>
                   <tr *ngFor="let h of holidays"><td>{{h.date | date:'dd MMM yyyy'}}</td><td>{{h.name}}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" type="button" (click)="removeHoliday(h)">Remove</button></td></tr>
@@ -135,7 +145,6 @@
                     <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addHoliday()" data-testid="hr-set-hol-add">Add</button></td></tr>
                 </tbody>
               </table>
-          </div>
         </div>
       </div>
     </section>

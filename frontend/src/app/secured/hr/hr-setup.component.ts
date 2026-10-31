@@ -43,7 +43,7 @@ export class HrSetupComponent implements OnInit {
 
   toggle(key: string) { this.open = { ...this.open, [key]: !this.open[key] }; this.remember(); }
 
-  setAll(on: boolean) { this.open = { pay: on, position: on, leave: on, kpi: on }; this.remember(); }
+  setAll(on: boolean) { this.open = { pay: on, position: on, leave: on, holiday: on, kpi: on }; this.remember(); }
 
   private remember() { try { localStorage.setItem("hr_setup_open", JSON.stringify(this.open)); } catch { /* ignore */ } }
 

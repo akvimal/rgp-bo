@@ -379,7 +379,7 @@ export class UserService {
     .select(['u.id as user_id', 'u.fullname as fullname',
     'u.lastlogin as lastlogin', 'role.name as rolename',
     'role.permissions as permissions', 'u.business_id as businessid',
-    'business.name as businessname', 'business.businesstype as businesstype'])
+    'business.name as businessname', 'business.logo as businesslogo', 'business.businesstype as businesstype'])
     .getRawOne();
 
     // the role as stored, narrowed to the modules this business has switched on (menus, buttons and routes follow it)
@@ -390,7 +390,7 @@ export class UserService {
     return {id:data.user_id, fullname: data.fullname,
       lastlogin:data.lastlogin,rolename:data.rolename,
       permissions:filterPermissions(data.permissions, modules), modules, platform: this.platform.summary(), businessid:data.businessid,
-      businessname:data.businessname,
+      businessname:data.businessname, businesslogo: data.businesslogo || null,
       // the kind of business and its packs: the app shows a pack's screens, fields and words only to a business that has it
       businesstype: data.businesstype || 'pharmacy', packs: packsOf(data.businesstype),
       gst: { registered: reg?.reg_type === 'registered', go_live: reg?.go_live ?? null, state_code: reg?.state_code ?? null }};

@@ -517,3 +517,10 @@
   body.customer-print-blocked > * { display: none !important; }
   body.customer-print-blocked::before { content: "Printing customer details is turned off for this login."; display: block; font-size: 1.25rem; padding: 2rem; }
 }
+
+/* The header brand: the business's own logo, and a name that stays on one line (a long name is shortened, the full name is its tooltip). */
+#header .brand-logo { max-height: 40px; max-width: 150px; object-fit: contain; }
+#header .logo { width: auto; max-width: min(360px, 30vw); min-width: 0; }
+#header .logo .brand-text { font-size: 1.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+#header .logo .brand-text.brand-long { font-size: 1.2rem; }
+#header .logo .brand-text.brand-xlong { font-size: 1.05rem; }

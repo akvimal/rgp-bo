@@ -6,9 +6,9 @@
         <button type="button" data-testid="sidebar-toggle" class="btn btn-link p-0 me-2 sidebar-toggle-btn" (click)="toggleSidebar()" aria-label="Toggle menu" title="Show or hide the menu">
           <i class="bi bi-list"></i>
         </button>
-        <img [src]="hosted ? 'assets/img/logo-placeholder.svg' : 'assets/img/rgp-logo.png'" alt="" width="50px" data-testid="brand-logo">
+        <img class="brand-logo" [src]="user.businesslogo || (hosted ? 'assets/img/logo-placeholder.svg' : 'assets/img/rgp-logo.png')" alt="" [style.width]="user.businesslogo ? 'auto' : '50px'" data-testid="brand-logo">
         <a href="index.html" class="logo d-flex align-items-center">
-          <span class="brand-text d-none d-lg-block" data-testid="brand-name">{{brandName}}</span>
+          <span class="brand-text d-none d-lg-block" [class.brand-long]="brandName.length > 22" [class.brand-xlong]="brandName.length > 32" [title]="brandName" data-testid="brand-name">{{brandName}}</span>
         </a>
         <span *ngIf="businessName && !isSiteAdmin && !hosted" class="d-none d-lg-block small text-muted ms-2">{{businessName}}</span>
         <span *ngIf="isSiteAdmin" class="badge bg-warning text-dark ms-2" data-testid="platform-badge">PLATFORM ADMIN</span>

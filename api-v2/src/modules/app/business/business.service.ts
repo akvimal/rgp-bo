@@ -10,6 +10,7 @@ import { PlatformService } from "src/core/platform/platform.service";
 import { UserService } from "../users/user.service";
 import { isLegalForm, LEGAL_FORMS } from "../hr/hr-starter";
 import { PRESETS, PRESET_INFO, Preset, PresetInput, planPreset } from "./business-preset";
+import { checkLogo } from "./business-logo";
 
 import { isOwnerRole } from 'src/core/roles';
 @Injectable()
@@ -157,6 +158,11 @@ export class BusinessService {
       if (!n || n.length < 2) throw new BadRequestException("The business name is required.");
       fields.name = n;
     }
+    if (body.logo !== undefined) {
+      const c = checkLogo(body.logo);
+      if (!c.ok) throw new BadRequestException(c.error);
+      fields.logo = c.logo;
+    }
     if (body.legalname !== undefined) fields.legalname = clean(body.legalname, 120, "The legal name");
     if (body.address !== undefined) fields.address = clean(body.address, 200, "The address");
     if (body.pincode !== undefined) {
@@ -203,7 +209,7 @@ export class BusinessService {
     if (fields.businesstype !== undefined) this.modules.refresh(cur.id);
     const after = await this.businessRepository.findOne({ where: { id: cur.id } });
     const diff: any = {};
-    for (const k of Object.keys(fields)) if ((cur as any)[k] !== (after as any)[k]) diff[k] = { from: (cur as any)[k] ?? null, to: (after as any)[k] ?? null };
+    for (const k of Object.keys(fields)) if ((cur as any)[k] !== (after as any)[k]) diff[k] = k === "logo" ? { from: (cur as any).logo ? "a logo" : null, to: (after as any).logo ? "a logo" : null } : { from: (cur as any)[k] ?? null, to: (after as any)[k] ?? null };
     if (Object.keys(diff).length) {
       await this.audit.record({ userId: user.id, action: "business.details_updated", entityType: "businesses", entityId: cur.id, summary: `business details changed: ${Object.keys(diff).join(", ")}`, details: diff });
     }

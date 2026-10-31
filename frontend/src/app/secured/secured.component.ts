@@ -226,6 +226,14 @@ export class SecuredComponent {
       }
     }
 
+    /** the business profile page tells the shell when the logo or name was changed, so the header follows without a reload */
+    @HostListener('window:rgp-brand-changed', ['$event'])
+    onBrandChanged(e: any) {
+      if (!this.user || !e?.detail) return;
+      if ('logo' in e.detail) this.user.businesslogo = e.detail.logo || null;
+      if (e.detail.name) this.user.businessname = e.detail.name;
+    }
+
     @HostListener('document:keydown.escape')
     onEscape(){
       this.userMenuOpen = false;

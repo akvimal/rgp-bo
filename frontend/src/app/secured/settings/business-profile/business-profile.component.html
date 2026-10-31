@@ -31,6 +31,21 @@
           <label class="form-label">Pincode</label>
           <input class="form-control" name="pincode" [(ngModel)]="form.pincode" maxlength="6" data-testid="biz-pincode">
         </div>
+        <div class="col-12" data-testid="biz-logo-box">
+          <label class="form-label">Logo <span class="text-muted small">shown at the top of every page</span></label>
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="border rounded bg-light d-flex align-items-center justify-content-center" style="width:11rem;height:4rem">
+              <img *ngIf="logo" [src]="logo" alt="Logo" style="max-width:100%;max-height:100%;object-fit:contain" data-testid="biz-logo-preview">
+              <span *ngIf="!logo" class="small text-muted">Default logo</span>
+            </div>
+            <div>
+              <input type="file" accept="image/png,image/jpeg,image/webp" class="form-control form-control-sm" style="max-width:16rem" (change)="pickLogo($event)" data-testid="biz-logo-file">
+              <button type="button" class="btn btn-sm btn-link px-0" *ngIf="logo" (click)="removeLogo()" data-testid="biz-logo-remove">Use the default logo</button>
+              <div class="form-text">PNG, JPEG or WebP. It is shrunk to fit; a wide logo on a plain or transparent background looks best. Press Save to keep it.</div>
+              <div class="small text-danger" *ngIf="logoError" data-testid="biz-logo-error">{{logoError}}</div>
+            </div>
+          </div>
+        </div>
         <div class="col-12">
           <label class="form-label">Address</label>
           <textarea class="form-control" name="address" rows="2" [(ngModel)]="form.address" maxlength="200" data-testid="biz-address"></textarea>

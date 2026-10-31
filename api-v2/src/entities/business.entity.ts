@@ -18,6 +18,10 @@ import { Store } from "./store.entity";
     @Column("character varying", { name: "name", unique: true, length: 40 })
     name: string;
 
+    /** the business's own logo for the page header: a small image data URL, or empty for the default */
+    @Column("text", { name: "logo", nullable: true })
+    logo: string | null;
+
     @Column("character varying", { name: "approval_mode", length: 10, default: "separate" })
     approvalmode: string;
 

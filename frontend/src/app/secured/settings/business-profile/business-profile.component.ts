@@ -7,6 +7,9 @@ import { BusinessesService } from "../businesses/businesses.service";
 export class BusinessProfileComponent implements OnInit {
 
     form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '' };
+    logo: string | null = null;        // the logo as shown (the saved one, or a new pick)
+    logoChanged = false;
+    logoError = '';
     loaded = false;
     saving = false;
     message = '';
@@ -23,6 +26,8 @@ export class BusinessProfileComponent implements OnInit {
             name: b.name || '', legalname: b.legalname || '', gstin: b.gstin || '',
             statecode: b.statecode || '', address: b.address || '', pincode: b.pincode || '',
         };
+        this.logo = b.logo || null;
+        this.logoChanged = false;
         this.loaded = true;
     }
 
@@ -38,10 +43,38 @@ export class BusinessProfileComponent implements OnInit {
         this.saving = true;
         const body: any = { ...this.form, gstin: (this.form.gstin || '').trim().toUpperCase() };
         if (this.stateFromGstin) body.statecode = this.stateFromGstin;
+        if (this.logoChanged) body.logo = this.logo;
         this.service.updateMine(body).subscribe(
-            (b: any) => { this.saving = false; this.fill(b); this.message = 'Business details saved.'; },
+            (b: any) => { this.saving = false; this.fill(b); this.message = 'Business details saved.'; window.dispatchEvent(new CustomEvent('rgp-brand-changed', { detail: { logo: b.logo || null, name: b.name } })); },
             err => { this.saving = false; this.error = this.msg(err, 'Could not save the business details.'); });
     }
+
+    /** A picked picture is scaled to fit a header (at most 320 x 100) in the browser, so what is kept is small; PNG keeps a transparent background. */
+    pickLogo(event: Event) {
+        this.logoError = '';
+        const file = (event.target as HTMLInputElement).files?.[0];
+        (event.target as HTMLInputElement).value = '';
+        if (!file) return;
+        if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { this.logoError = 'Use a PNG, JPEG or WebP picture.'; return; }
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const scale = Math.min(1, 320 / img.width, 100 / img.height);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+            let data = canvas.toDataURL('image/png');
+            if (data.length > 78000) data = canvas.toDataURL('image/jpeg', 0.85);       // a photo-like logo is smaller as JPEG
+            if (data.length > 78000) { this.logoError = 'That picture is too detailed for a logo. Use a simpler or smaller one.'; return; }
+            this.logo = data; this.logoChanged = true;
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); this.logoError = 'That file could not be read as a picture.'; };
+        img.src = url;
+    }
+
+    removeLogo() { this.logo = null; this.logoChanged = true; this.logoError = ''; }
 
     private msg(err: any, fallback: string): string {
         const m = err?.error?.message;

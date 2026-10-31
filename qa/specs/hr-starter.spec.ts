@@ -58,7 +58,7 @@ test('HRS-3 HR > Setup shows the get-started card, adds a ticked suggestion, and
     await page.getByTestId('hr-add-suggested').click();
     await expect(page.getByTestId('hr-setup-message')).toContainText('ESI');
     await expect(page.getByTestId('hr-suggest-ESI')).toBeDisabled();
-    await page.getByTestId('hr-sec-leave-toggle').click();
+    await page.getByTestId('hr-sec-holiday-toggle').click();
     await page.getByTestId('hr-set-hol-date').fill(day);
     await page.getByTestId('hr-set-hol-name').fill('Year end');
     await page.getByTestId('hr-set-hol-add').click();
