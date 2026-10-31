@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
     <div class="page-toolbar">
@@ -19,19 +20,19 @@
 
     <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="exp-form">
       <div class="row g-3">
-        <div class="col-md-2"><label class="form-label">Date *</label><input type="date" class="form-control" [(ngModel)]="form.expense_date" data-testid="exp-d-date"></div>
-        <div class="col-md-3"><label class="form-label">Store</label>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Date *</label><input type="date" class="form-control" [(ngModel)]="form.expense_date" data-testid="exp-d-date"></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label">Store</label>
           <select class="form-select" [(ngModel)]="form.store_id" data-testid="exp-d-store"><option [ngValue]="null" *ngIf="isBusinessHead">Business level</option><option [ngValue]="null" *ngIf="!isBusinessHead">Choose</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.name}}</option></select></div>
-        <div class="col-md-3"><label class="form-label">Category *</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label">Category *</label>
           <select class="form-select" [(ngModel)]="form.category_id" data-testid="exp-d-category"><option [ngValue]="null">Choose</option><option *ngFor="let c of categories" [ngValue]="c.id">{{c.name}}</option></select></div>
-        <div class="col-md-2"><label class="form-label">Amount *</label><input type="number" min="0" class="form-control" [(ngModel)]="form.amount" data-testid="exp-d-amount"></div>
-        <div class="col-md-2"><label class="form-label">GST included</label><input type="number" min="0" class="form-control" [(ngModel)]="form.gst_amount" data-testid="exp-d-gst"></div>
-        <div class="col-md-3"><label class="form-label">Paid to</label><input class="form-control" maxlength="100" [(ngModel)]="form.payee" data-testid="exp-d-payee"></div>
-        <div class="col-md-2"><label class="form-label">Bill no.</label><input class="form-control" maxlength="40" [(ngModel)]="form.bill_no"></div>
-        <div class="col-md-2"><label class="form-label">Paid by *</label>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Amount *</label><input type="number" min="0" class="form-control" [(ngModel)]="form.amount" data-testid="exp-d-amount"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">GST included</label><input type="number" min="0" class="form-control" [(ngModel)]="form.gst_amount" data-testid="exp-d-gst"></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label">Paid to</label><input class="form-control" maxlength="100" [(ngModel)]="form.payee" data-testid="exp-d-payee"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Bill no.</label><input class="form-control" maxlength="40" [(ngModel)]="form.bill_no"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Paid by *</label>
           <select class="form-select" [(ngModel)]="form.pay_mode" data-testid="exp-d-mode"><option *ngFor="let m of modes" [value]="m[0]">{{m[1]}}</option></select></div>
         <div class="col-md-5"><label class="form-label">What for</label><input class="form-control" maxlength="300" [(ngModel)]="form.description" data-testid="exp-d-desc"></div>
-        <div class="col-md-4"><label class="form-label">Receipt / bill copy</label><input type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)"><div class="small text-success" *ngIf="form.receipt_path">Attached</div></div>
+        <div class="col-md-6 col-lg-4"><label class="form-label">Receipt / bill copy</label><input type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)"><div class="small text-success" *ngIf="form.receipt_path">Attached</div></div>
         <div class="col-md-8 small text-muted align-self-end" data-testid="exp-d-hint">{{willNeedApproval()}}</div>
         <div class="col-md-12"><button class="btn btn-primary" type="button" (click)="save()" data-testid="exp-d-save">{{form.id ? 'Save changes' : 'Save expense'}}</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
       </div>
@@ -39,7 +40,7 @@
 
     <div *ngIf="deciding" class="row g-2 align-items-end mb-3">
       <div class="col-md-6"><label class="form-label">Why is it rejected?</label><input class="form-control" maxlength="200" [(ngModel)]="deciding.note" data-testid="exp-reject-note"></div>
-      <div class="col-md-3"><button class="btn btn-danger" type="button" (click)="decide({id: deciding.id}, 'reject')" data-testid="exp-reject-go">Reject</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="deciding = null">Cancel</button></div>
+      <div class="col-md-6 col-lg-3"><button class="btn btn-danger" type="button" (click)="decide({id: deciding.id}, 'reject')" data-testid="exp-reject-go">Reject</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="deciding = null">Cancel</button></div>
     </div>
 
     <div class="table-responsive">
@@ -65,4 +66,5 @@
       </table>
     </div>
   </div>
+</div>
 </div>

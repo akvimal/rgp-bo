@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
     <div class="small text-muted mb-2">A bonus is paid with the salary of the month you pick, so choose the month it is worked out in. Payroll adds it to the pay and shows it on the pay slip as its own line. An approved month is locked.</div>
@@ -15,16 +16,16 @@
     <div *ngIf="!data?.locked">
       <h6 class="mt-3">Give a bonus to staff</h6>
       <div class="row g-2 align-items-end">
-        <div class="col-md-3"><label class="form-label small mb-0">Name</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="form.name" placeholder="e.g. Diwali 2026" data-testid="hr-b-name"></div>
-        <div class="col-md-2"><label class="form-label small mb-0">Kind</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Name</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="form.name" placeholder="e.g. Diwali 2026" data-testid="hr-b-name"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">Kind</label>
           <select class="form-select form-select-sm" [(ngModel)]="form.kind" data-testid="hr-b-kind"><option *ngFor="let k of kinds" [value]="k[0]">{{k[1]}}</option></select></div>
-        <div class="col-md-3"><label class="form-label small mb-0">Worked out as</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Worked out as</label>
           <select class="form-select form-select-sm" [(ngModel)]="form.basis" data-testid="hr-b-basis"><option *ngFor="let b of bases" [value]="b[0]">{{b[1]}}</option></select></div>
-        <div class="col-md-2"><label class="form-label small mb-0">{{valueLabel}}</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="form.value" data-testid="hr-b-value"></div>
-        <div class="col-md-2"><label class="form-label small mb-0">Months of service</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="form.min_service_months" data-testid="hr-b-minservice"></div>
-        <div class="col-md-3"><label class="form-label small mb-0">Job role</label>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">{{valueLabel}}</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="form.value" data-testid="hr-b-value"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">Months of service</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="form.min_service_months" data-testid="hr-b-minservice"></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Job role</label>
           <select class="form-select form-select-sm" [(ngModel)]="form.position_id" data-testid="hr-b-position"><option [ngValue]="null">Everyone on payroll</option><option *ngFor="let p of positions" [ngValue]="p.id">{{p.name}}</option></select></div>
-        <div class="col-md-3"><button class="btn btn-outline-primary btn-sm" type="button" (click)="runPreview()" data-testid="hr-b-preview">See who gets what</button></div>
+        <div class="col-md-6 col-lg-3"><button class="btn btn-outline-primary btn-sm" type="button" (click)="runPreview()" data-testid="hr-b-preview">See who gets what</button></div>
       </div>
 
       <div *ngIf="preview" class="mt-3" data-testid="hr-b-preview-box">
@@ -49,13 +50,13 @@
 
       <h6 class="mt-4">Give a bonus to one person</h6>
       <div class="row g-2 align-items-end">
-        <div class="col-md-3"><label class="form-label small mb-0">Staff</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Staff</label>
           <select class="form-select form-select-sm" [(ngModel)]="one.employee_id" data-testid="hr-b1-staff"><option [ngValue]="null">Choose...</option><option *ngFor="let s of staff" [ngValue]="s.id">{{s.name}}</option></select></div>
-        <div class="col-md-3"><label class="form-label small mb-0">Name</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="one.name" placeholder="e.g. Best month" data-testid="hr-b1-name"></div>
-        <div class="col-md-2"><label class="form-label small mb-0">Kind</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Name</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="one.name" placeholder="e.g. Best month" data-testid="hr-b1-name"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">Kind</label>
           <select class="form-select form-select-sm" [(ngModel)]="one.kind"><option *ngFor="let k of kinds" [value]="k[0]">{{k[1]}}</option></select></div>
-        <div class="col-md-2"><label class="form-label small mb-0">Amount</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="one.amount" data-testid="hr-b1-amount"></div>
-        <div class="col-md-2"><button class="btn btn-outline-primary btn-sm" type="button" (click)="giveOne()" data-testid="hr-b1-give">Give</button></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label small mb-0">Amount</label><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="one.amount" data-testid="hr-b1-amount"></div>
+        <div class="col-6 col-md-3 col-lg-2"><button class="btn btn-outline-primary btn-sm" type="button" (click)="giveOne()" data-testid="hr-b1-give">Give</button></div>
       </div>
     </div>
 
@@ -86,4 +87,5 @@
     </table>
     <ng-template #noBonus><div class="text-muted">No bonus for {{period}} yet.</div></ng-template>
   </div>
+</div>
 </div>

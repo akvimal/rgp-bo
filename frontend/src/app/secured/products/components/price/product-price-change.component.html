@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="row g-4">
   <div class="col-md-7">
     <h5 class="card-title m-0 p-0" data-testid="price-title">{{current?.price?.title}}<span *ngIf="current?.price?.pack"> ({{current.price.pack}})</span></h5>
@@ -30,11 +31,11 @@
         <label class="form-label">Sale price <span class="required">*</span> <span class="small text-muted fw-normal" *ngIf="basis === 'excl'">(per pack, before GST)</span><span class="small text-muted fw-normal" *ngIf="basis === 'incl'">(per pack, GST included)</span></label>
         <input type="number" min="0" step="0.01" class="form-control text-end" [ngModel]="price.sale" (ngModelChange)="onPriceInput($event)" data-testid="price-dialog-price">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-6 col-lg-3">
         <label class="form-label">Effective date <span class="required">*</span></label>
         <input type="date" class="form-control" [(ngModel)]="price.date" [min]="minDate" data-testid="price-date">
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-lg-4">
         <label class="form-label">Reason <span class="required">*</span></label>
         <select class="form-select" [(ngModel)]="price.reason" data-testid="price-reason">
           <option value="">Select</option>
@@ -92,4 +93,5 @@
     </div>
     <div class="small text-muted" *ngIf="!current.history?.length">No earlier prices.</div>
   </div>
+</div>
 </div>

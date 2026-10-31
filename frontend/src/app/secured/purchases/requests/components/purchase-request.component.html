@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="row">
   <div class="col-12 page-toolbar justify-content-end">
     <button class="btn btn-primary" (click)="add()" data-testid="req-add">Add Request</button>
@@ -68,14 +69,14 @@
           <a role="button" class="small d-inline-block mt-1" (click)="useList()" data-testid="req-search-list"><i class="bi bi-search me-1"></i>Search the product list instead</a>
         </ng-container>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-lg-4">
         <label class="form-label">Qty <span class="text-danger">*</span></label>
         <input class="form-control" type="number" formControlName="qty" [class.is-invalid]="form.controls['qty'].touched && form.controls['qty'].invalid">
         <div class="invalid-feedback d-block" *ngIf="form.controls['qty'].touched && form.controls['qty'].invalid">
           Qty is required.
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-lg-4">
         <label class="form-label">Source <span class="text-danger">*</span></label>
         <select class="form-select" formControlName="source" [class.is-invalid]="form.controls['source'].touched && form.controls['source'].invalid">
           <option *ngFor="let source of sources" [value]="source">{{source}}</option>
@@ -84,7 +85,7 @@
           Source is required.
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-lg-4">
         <label class="form-label">Type <span class="text-danger">*</span></label>
         <select class="form-select" formControlName="requesttype" [class.is-invalid]="form.controls['requesttype'].touched && form.controls['requesttype'].invalid">
           <option *ngFor="let type of requestTypes" [value]="type">{{type}}</option>
@@ -93,7 +94,7 @@
           Request type is required.
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-lg-4">
         <label class="form-label">Priority <span class="text-danger">*</span></label>
         <select class="form-select" formControlName="priority" [class.is-invalid]="form.controls['priority'].touched && form.controls['priority'].invalid">
           <option *ngFor="let priority of priorities" [value]="priority">{{priority}}</option>
@@ -102,14 +103,14 @@
           Priority is required.
         </div>
       </div>
-      <div class="col-md-4" *isAuth="'purchases.add'">
+      <div class="col-md-6 col-lg-4" *isAuth="'purchases.add'">
         <label class="form-label">Vendor</label>
         <select class="form-select" formControlName="vendorid">
           <option value="">Select</option>
           <option *ngFor="let vendor of vendors" [value]="vendor.id">{{vendor.name}}</option>
         </select>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6 col-lg-4">
         <label class="form-label">Needed By</label>
         <input class="form-control" type="date" formControlName="neededby">
       </div>
@@ -152,3 +153,4 @@
     <button type="button" class="btn btn-primary ms-2" (click)="saveLink()" data-testid="req-link-save">Link</button>
   </ng-template>
 </p-dialog>
+</div>

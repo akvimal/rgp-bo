@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="pagetitle">
   <h1>Outage kit</h1>
 </div>
@@ -36,7 +37,7 @@
     </div>
   </div>
   <div class="row g-3 mb-2">
-    <div class="col-md-3">
+    <div class="col-md-6 col-lg-3">
       <label class="form-label" for="kit-last">Last number used in the bill book</label>
       <input type="text" class="form-control" id="kit-last" maxlength="40" [(ngModel)]="billBookLast" placeholder="e.g. M-0123" data-testid="kit-billbook">
     </div>
@@ -97,27 +98,27 @@
     <div class="fw-semibold mb-2">{{editingId ? 'Correct this outage' : 'Record an outage'}}</div>
     <div class="alert alert-danger py-2 small" *ngIf="eventError" data-testid="outage-event-error">{{eventError}}</div>
     <div class="row g-3">
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label">Cause <span class="required">*</span></label>
         <select class="form-select" [(ngModel)]="event.cause" data-testid="outage-cause"><option *ngFor="let c of causes" [value]="c.value">{{c.label}}</option></select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-6 col-lg-3">
         <label class="form-label">Started <span class="required">*</span></label>
         <input type="datetime-local" class="form-control" [(ngModel)]="event.startedon" data-testid="outage-started">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-6 col-lg-3">
         <label class="form-label">Ended</label>
         <input type="datetime-local" class="form-control" [(ngModel)]="event.endedon" data-testid="outage-ended">
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label">First manual bill</label>
         <input type="text" class="form-control" maxlength="40" [(ngModel)]="event.manualfrom" data-testid="outage-from">
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label">Last manual bill</label>
         <input type="text" class="form-control" maxlength="40" [(ngModel)]="event.manualto" data-testid="outage-to">
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label">Bills written</label>
         <input type="number" min="0" class="form-control" [(ngModel)]="event.manualcount" data-testid="outage-count">
       </div>
@@ -133,3 +134,4 @@
     </div>
   </div>
 </ng-container>
+</div>

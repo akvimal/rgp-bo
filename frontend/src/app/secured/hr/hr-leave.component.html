@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
     <div class="page-toolbar">
@@ -9,21 +10,21 @@
 
     <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="hr-leave-form">
       <div class="row g-3">
-        <div class="col-md-3"><label class="form-label">Staff *</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label">Staff *</label>
           <select class="form-select" [(ngModel)]="form.employee_id" data-testid="hr-l-emp"><option [ngValue]="null">Choose</option><option *ngFor="let s of staff" [ngValue]="s.id">{{s.name}}</option></select></div>
-        <div class="col-md-3"><label class="form-label">Type *</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label">Type *</label>
           <select class="form-select" [(ngModel)]="form.leave_type_id" data-testid="hr-l-type"><option [ngValue]="null">Choose</option><option *ngFor="let t of typesForPerson" [ngValue]="t.id">{{t.name}} ({{t.paid ? 'paid' : 'unpaid'}})</option></select></div>
-        <div class="col-md-2"><label class="form-label">From *</label><input type="date" class="form-control" [(ngModel)]="form.from_date" data-testid="hr-l-from"></div>
-        <div class="col-md-2"><label class="form-label">To *</label><input type="date" class="form-control" [(ngModel)]="form.to_date" data-testid="hr-l-to"></div>
-        <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="half" [(ngModel)]="form.half_day"><label class="form-check-label" for="half">Half day</label></div></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">From *</label><input type="date" class="form-control" [(ngModel)]="form.from_date" data-testid="hr-l-from"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">To *</label><input type="date" class="form-control" [(ngModel)]="form.to_date" data-testid="hr-l-to"></div>
+        <div class="col-6 col-md-3 col-lg-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="half" [(ngModel)]="form.half_day"><label class="form-check-label" for="half">Half day</label></div></div>
         <div class="col-md-9"><label class="form-label">Reason</label><input class="form-control" maxlength="200" [(ngModel)]="form.reason"></div>
-        <div class="col-md-3 d-flex align-items-end"><button class="btn btn-primary" type="button" (click)="save()" data-testid="hr-l-save">Save</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
+        <div class="col-md-6 col-lg-3 d-flex align-items-end"><button class="btn btn-primary" type="button" (click)="save()" data-testid="hr-l-save">Save</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
       </div>
     </div>
 
     <div *ngIf="deciding" class="row g-2 align-items-end mb-3">
       <div class="col-md-6"><label class="form-label">Why is it rejected?</label><input class="form-control" maxlength="200" [(ngModel)]="deciding.note" data-testid="hr-l-note"></div>
-      <div class="col-md-3"><button class="btn btn-danger" type="button" (click)="decide(deciding.id, 'reject')" data-testid="hr-l-reject-go">Reject</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="deciding = null">Cancel</button></div>
+      <div class="col-md-6 col-lg-3"><button class="btn btn-danger" type="button" (click)="decide(deciding.id, 'reject')" data-testid="hr-l-reject-go">Reject</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="deciding = null">Cancel</button></div>
     </div>
 
     <div class="table-responsive">
@@ -51,7 +52,7 @@
     <div class="d-flex align-items-end gap-3 mt-4 mb-2"><h6 class="mb-0">Balances</h6>
       <input type="number" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="year" (change)="load()" data-testid="hr-l-year"></div>
     <div class="row g-3">
-      <div class="col-md-4" *ngFor="let p of people">
+      <div class="col-md-6 col-lg-4" *ngFor="let p of people">
         <div class="border rounded p-2">
           <strong>{{p.name}}</strong>
           <table class="table table-sm mb-0"><tbody>
@@ -62,4 +63,5 @@
       </div>
     </div>
   </div>
+</div>
 </div>

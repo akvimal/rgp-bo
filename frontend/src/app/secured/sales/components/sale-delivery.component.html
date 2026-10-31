@@ -1,3 +1,4 @@
+<div class="form-compact">
 <app-sale-header></app-sale-header>
 
 <div class="d-flex justify-content-between align-items-baseline mt-3 mb-1">
@@ -133,7 +134,7 @@
   <div class="row g-3" *ngIf="editingDelivery.saleid">
 
     <div class="col-12"><div class="fw-semibold text-muted small text-uppercase">Status &amp; schedule</div></div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Status</label>
       <select class="form-select" [(ngModel)]="editingDelivery.status" (ngModelChange)="onStatusChange()">
         <option value="Pending">Pending</option>
@@ -143,29 +144,29 @@
         <option value="Cancelled">Cancelled</option>
       </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Method</label>
       <select class="form-select" [(ngModel)]="editingDelivery.deliverymethod">
         <option value="Staff Delivery">Staff Delivery</option>
         <option value="Courier">Courier</option>
       </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Scheduled date</label>
       <input class="form-control" type="date" [(ngModel)]="editingDelivery.deliverydate">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Assigned to</label>
       <input class="form-control" [(ngModel)]="editingDelivery.deliveryby">
     </div>
-    <div class="col-md-4" *ngIf="editingDelivery.deliverymethod === 'Courier'">
+    <div class="col-md-6 col-lg-4" *ngIf="editingDelivery.deliverymethod === 'Courier'">
       <label class="form-label">Courier partner</label>
       <select class="form-select" [(ngModel)]="editingDelivery.courierpartner">
         <option value="">Select partner</option>
         <option *ngFor="let partner of deliveryPartners" [value]="partner.name">{{partner.name}}</option>
       </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Delivered at</label>
       <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.deliveredat">
     </div>
@@ -203,15 +204,15 @@
     </div>
 
     <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Payment</div></div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Delivery charge</label>
       <input class="form-control" type="number" [(ngModel)]="editingDelivery.charges">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Actual cost</label>
       <input class="form-control" type="number" [(ngModel)]="editingDelivery.actualcost">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Payment mode</label>
       <select class="form-select" [(ngModel)]="editingDelivery.paymentmode">
         <option value="Prepaid">Prepaid</option>
@@ -219,7 +220,7 @@
         <option value="Collect by Courier">Collect by Courier</option>
       </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Collection status</label>
       <select class="form-select" [(ngModel)]="editingDelivery.collectionstatus">
         <option value="Pending">Pending</option>
@@ -229,18 +230,18 @@
     </div>
 
     <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Confirmation</div></div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Confirmed</label>
       <select class="form-select" [(ngModel)]="editingDelivery.confirmed" (ngModelChange)="onConfirmedChange()">
         <option [ngValue]="false">No</option>
         <option [ngValue]="true">Yes</option>
       </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Confirmed by</label>
       <input class="form-control" [(ngModel)]="editingDelivery.confirmedby" [disabled]="!editingDelivery.confirmed">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-4">
       <label class="form-label">Confirmed at</label>
       <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.confirmedat" [disabled]="!editingDelivery.confirmed">
     </div>
@@ -255,3 +256,4 @@
     <button class="btn btn-primary" (click)="saveDelivery()">Save</button>
   </ng-template>
 </p-dialog>
+</div>

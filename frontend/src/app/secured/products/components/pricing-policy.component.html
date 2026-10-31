@@ -1,3 +1,4 @@
+<div class="form-compact">
 <p class="small text-muted mt-2 mb-1">Prices that are out of policy. A raise is made in steps (at most {{data?.settings?.stepPricePct}}% of the price or {{data?.settings?.stepMrpPct}}% of the MRP, once every {{data?.settings?.stepDays}} days; change these on the Pricing rules page)
     so customers never see a sudden rise; a price above the legal ceiling goes down at once. A Store Head can apply a step on class B and C products; class A needs the Business Head.</p>
 <div class="alert alert-light border py-2 small mb-2 d-flex flex-wrap justify-content-between gap-2" *ngIf="mode" data-testid="policy-mode">
@@ -164,3 +165,4 @@
     </div>
   </div>
 </p-dialog>
+</div>

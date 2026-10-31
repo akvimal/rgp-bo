@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card mt-2">
   <div class="card-body pt-3">
     <div class="d-flex align-items-center gap-2 mb-1">
@@ -11,22 +12,22 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="off">
       <div class="row g-3">
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="inv-vendor" class="form-label">Vendor *</label>
           <select class="form-select" id="inv-vendor" formControlName="vendorid" (change)="vendorChanged()" data-testid="inv-f-vendor">
             <option value="">Choose a vendor</option>
             <option *ngFor="let v of vendors" [value]="v.id">{{v.name}}</option>
           </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="inv-no" class="form-label">Invoice no. <span class="text-muted small">(leave empty if only the challan has come)</span></label>
           <input type="text" class="form-control" id="inv-no" formControlName="invoiceno" maxlength="40" (blur)="checkDuplicate()" placeholder="As printed, e.g. INV/24-25/0012" data-testid="inv-f-no">
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-3 col-lg-2">
           <label for="inv-date" class="form-label">Invoice date *</label>
           <input type="date" class="form-control" id="inv-date" formControlName="invoicedate" (change)="setDue()" data-testid="inv-f-date">
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-3 col-lg-2">
           <label for="inv-total" class="form-label">Invoice total <span *ngIf="!id && hasInvoiceNo">*</span><span class="text-muted small" *ngIf="!hasInvoiceNo">(or challan total)</span></label>
           <div class="input-group">
             <span class="input-group-text">&#8377;</span>
@@ -40,7 +41,7 @@
             <a [routerLink]="['/secure/purchases/invoices/items', duplicate.id]">Open it</a> instead of entering it again.</div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="inv-store" class="form-label">Receiving store *</label>
           <select class="form-select" id="inv-store" formControlName="storeid" *ngIf="stores.length > 1; else oneStore" data-testid="inv-f-store">
             <option value="">Choose a store</option>
@@ -56,7 +57,7 @@
           </select>
           <div class="form-text" *ngIf="form.value.purchaseorderid">You can bring the order's lines in on the next page.</div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6 col-lg-3">
           <label class="form-label">Payment due</label>
           <div *ngIf="!changingDue" class="form-control-plaintext" data-testid="inv-f-due-text">{{dueText() || '-'}}
             <a role="button" class="small ms-1" (click)="changingDue = true" data-testid="inv-f-due-change">Change</a></div>
@@ -67,11 +68,11 @@
           <div class="border rounded p-2">
             <div class="small fw-semibold mb-2">Delivery challan <span class="text-muted fw-normal">&mdash; when the goods come before the invoice. The challan rates are the cost until the invoice arrives.</span></div>
             <div class="row g-2">
-              <div class="col-md-4">
+              <div class="col-md-6 col-lg-4">
                 <label for="inv-challan-no" class="form-label small mb-1">Challan no.</label>
                 <input type="text" class="form-control" id="inv-challan-no" formControlName="challanno" maxlength="60" data-testid="inv-f-challan-no">
               </div>
-              <div class="col-md-3">
+              <div class="col-md-6 col-lg-3">
                 <label for="inv-challan-date" class="form-label small mb-1">Challan date</label>
                 <input type="date" class="form-control" id="inv-challan-date" formControlName="challandate" data-testid="inv-f-challan-date">
               </div>
@@ -98,12 +99,12 @@
         </div>
 
         <ng-container *ngIf="showMore">
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="inv-cd" class="form-label">Cash discount</label>
             <div class="input-group"><span class="input-group-text">&#8377;</span><input type="number" min="0" step="0.01" class="form-control" id="inv-cd" formControlName="cashdiscount" placeholder="As printed, if any" data-testid="inv-f-cd"></div>
             <div class="form-text">A discount at the foot of the invoice that is not a line.</div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="inv-ref" class="form-label">Reference no.</label>
             <input type="text" class="form-control" id="inv-ref" formControlName="referenceno" maxlength="30" data-testid="inv-f-ref">
           </div>
@@ -112,13 +113,13 @@
             <input type="text" class="form-control" id="inv-notes" formControlName="notes" maxlength="300" data-testid="inv-f-notes">
           </div>
           <div class="col-12"><div class="small fw-semibold mt-1">GST <span class="text-muted fw-normal">&mdash; filled in from the vendor; change only if this invoice differs</span></div></div>
-          <div class="col-md-4">
+          <div class="col-md-6 col-lg-4">
             <label for="inv-gstin" class="form-label">Supplier GSTIN</label>
             <input type="text" class="form-control" id="inv-gstin" formControlName="suppliergstin" maxlength="15" [class.is-invalid]="gstinBad" placeholder="{{vendor?.gstn || 'Not recorded on the vendor'}}" data-testid="inv-f-gstin">
             <div class="invalid-feedback" data-testid="inv-f-gstin-bad">That is not a valid GSTIN.</div>
             <div class="form-text" *ngIf="!form.value.suppliergstin && vendor && !vendor.gstn">The vendor has no GSTIN: this invoice cannot be matched in GST reconciliation until one is added.</div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="inv-supply" class="form-label">Supply</label>
             <select class="form-select" id="inv-supply" formControlName="supplytype" data-testid="inv-f-supplytype">
               <option value="">{{id ? 'Intra-state' : 'Worked out from the GSTIN'}}</option>
@@ -126,7 +127,7 @@
               <option value="INTER">Inter-state (IGST)</option>
             </select>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="inv-itc" class="form-label">Input tax credit</label>
             <select class="form-select" id="inv-itc" formControlName="itceligibility" data-testid="inv-f-itc">
               <option value="">Inputs</option>
@@ -134,7 +135,7 @@
               <option value="INELIGIBLE">Ineligible</option>
             </select>
           </div>
-          <div class="col-md-2 d-flex align-items-end">
+          <div class="col-6 col-md-3 col-lg-2 d-flex align-items-end">
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="inv-rc" formControlName="reversecharge" data-testid="inv-f-rc"><label class="form-check-label" for="inv-rc">Reverse charge</label></div>
           </div>
         </ng-container>
@@ -294,3 +295,4 @@
     </div>
   </div>
 </p-dialog>
+</div>

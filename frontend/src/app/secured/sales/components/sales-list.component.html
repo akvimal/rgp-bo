@@ -1,3 +1,4 @@
+<div class="form-compact">
 <!-- <div class="pagetitle no-print">
   <h1>Sales</h1>
 </div> -->
@@ -7,33 +8,33 @@
   <p-tabView (onChange)="onSalesTabChange($event)">
     <p-tabPanel header="Invoice Level" headerStyleClass="no-print">
     <div class="row mt-3 no-print">
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label for="billno">Bill No.</label>
         <input type="text" id="billno" name="filterbybillno" class="form-control" 
           (input)="filterBillSales($event)">
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label for="fromdate">Bill Date</label>
         <input type="date" id="fromdate" name="filterbydate" class="form-control" [(ngModel)]="date" (change)="filterDateSales($event, 'date')">
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label for="sustomer">Customer</label><br>
         <app-customer-select id="customer" (customerSelected)="filterCustomerSales($event)"></app-customer-select>
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label for="staff-filter">Sale Staff</label>
         <select id="staff-filter" class="form-select" [(ngModel)]="staffFilter" (ngModelChange)="applyFilters()" data-testid="inv-staff-filter">
           <option value="">All staff</option>
           <option *ngFor="let n of staffOptions" [value]="n">{{n}}</option>
         </select>
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label for="pay-filter">Payment</label>
         <select id="pay-filter" class="form-select" [(ngModel)]="payFilter" (ngModelChange)="applyFilters()" data-testid="inv-pay-filter">
           <option *ngFor="let o of payOptions" [value]="o.value">{{o.label}}</option>
         </select>
       </div>
-      <!-- <div class="col-md-2">
+      <!-- <div class="col-6 col-md-3 col-lg-2">
         <label for="status">Status</label>
         <select name="filterbystatus" id="status" class="form-control" [(ngModel)]="criteria.status" (change)="fetchSales()">
           <option value=""></option>
@@ -41,7 +42,7 @@
           <option value="COMPLETE">COMPLETE</option>
         </select>
       </div> -->
-      <!-- <div class="col-md-2">
+      <!-- <div class="col-6 col-md-3 col-lg-2">
         <BR>
           <button type="button" class="btn btn-primary" (click)="fetchSales()">Search</button>
           &nbsp;&nbsp;<button type="button" class="btn btn-outline-primary" (click)="clearFilter()">Clear</button>
@@ -230,3 +231,4 @@
 <p-dialog [header]="'Return'" [(visible)]="showReturnForm" [modal]="true">
     <sale-return-form [id]="returnSaleId" (success)="onReturnSubmitSuccess($event)"></sale-return-form>
 </p-dialog>
+</div>

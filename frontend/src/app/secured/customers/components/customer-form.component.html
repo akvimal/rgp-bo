@@ -1,46 +1,46 @@
 <app-private-page page="form"></app-private-page>
 <app-page-header [title]="isNew ? 'New customer' : 'Edit customer'" [subtitle]="!isNew && customer.name ? customer.name : ''"></app-page-header>
 <div class="alert alert-success py-2" *ngIf="saveNote" data-testid="cust-f-note">{{saveNote}}</div>
-<form [formGroup]="form" (ngSubmit)="onSave()" autocomplete="off">
+<form [formGroup]="form" (ngSubmit)="onSave()" autocomplete="off" class="form-compact">
   <div class="row">
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
       <label for="name" class="form-label">Name <span class="required">*</span></label>
       <input id="name" #nameInput data-testid="cust-f-name" type="text" class="form-control" [class.is-invalid]="!!fieldError('name')" formControlName="name" (blur)="onNameBlur()" maxlength="80">
-      <div style="min-height:1.6rem">
+      <div class="field-error">
         <div class="invalid-feedback d-block" *ngIf="fieldError('name')" data-testid="cust-f-name-error">{{fieldError('name')}}</div>
       </div>
     </div>
-    <div class="col-md-4">
-      <label for="mobile" class="form-label">Mobile<span class="required">*</span></label>
+    <div class="col-md-6 col-lg-3">
+      <label for="mobile" class="form-label">Mobile <span class="required">*</span></label>
       <input id="mobile" data-testid="cust-f-mobile" type="text" class="form-control" [class.is-invalid]="!!fieldError('mobile')" formControlName="mobile" inputmode="tel" (blur)="onMobileBlur()">
-      <div style="min-height:1.6rem">
+      <div class="field-error">
         <div class="invalid-feedback d-block" *ngIf="fieldError('mobile')" data-testid="cust-f-mobile-error">{{fieldError('mobile')}}</div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
       <label for="altmobile" class="form-label">Alternate number</label>
       <input id="altmobile" data-testid="cust-f-altmobile" type="text" class="form-control" [class.is-invalid]="altInvalid || altSameAsMobile" formControlName="altmobile" inputmode="tel" (blur)="onAltBlur()" placeholder="optional">
-      <div style="min-height:1.6rem">
+      <div class="field-error">
         <div class="invalid-feedback d-block" *ngIf="altInvalid" data-testid="cust-f-altmobile-error">Enter a 10-digit mobile number starting with 6, 7, 8 or 9, or leave it blank.</div>
         <div class="invalid-feedback d-block" *ngIf="!altInvalid && altSameAsMobile">That is the same as the mobile number.</div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
       <label for="email" class="form-label">Email</label>
       <input id="email" data-testid="cust-f-email" type="text" class="form-control" [class.is-invalid]="form.controls['email'].invalid && form.controls['email'].dirty" formControlName="email">
-      <div style="min-height:1.6rem">
+      <div class="field-error">
         <div class="invalid-feedback d-block" *ngIf="form.controls['email'].invalid && form.controls['email'].dirty">That email address is not valid.</div>
       </div>
     </div>
   </div>
-  <div class="alert alert-light border py-2 mt-2 d-flex flex-wrap align-items-center gap-2" *ngIf="masked" data-testid="cust-f-masked">
+  <div class="alert alert-light border py-2 mt-1 mb-2 d-flex flex-wrap align-items-center gap-2" *ngIf="masked" data-testid="cust-f-masked">
     <span class="small">Contact details are hidden. Show them to change the mobile number, email or address.</span>
     <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="revealing || dailyLimitReached" (click)="reveal()" data-testid="cust-f-reveal">Show details</button>
     <span class="small text-muted" *ngIf="privacy && privacy.left !== null">{{privacy.left}} of {{privacy.limit}} left today</span>
     <span class="small text-danger" *ngIf="dailyLimitReached">Daily limit reached: ask a manager.</span>
     <span class="small text-danger" *ngIf="revealError">{{revealError}}</span>
   </div>
-  <div class="alert alert-warning mt-3 py-2" *ngIf="sameNumber.length" data-testid="cust-f-dup-warning">
+  <div class="alert alert-warning mt-1 mb-2 py-2" *ngIf="sameNumber.length" data-testid="cust-f-dup-warning">
     <div><strong>{{form.value.mobile}}</strong> is already used by:
       <span *ngFor="let m of sameNumber; let last = last">{{m.name || '(no name)'}} <span class="text-muted">({{m.bills}} bills)</span><span *ngIf="!last">, </span></span>.
     </div>
@@ -49,84 +49,75 @@
       <label class="form-check-label" for="confirmDup">This is a different person on the same number (for example a family member)</label>
     </div>
   </div>
-  <div class="alert alert-danger mt-3 py-2" *ngIf="saveError" data-testid="cust-f-error">{{saveError}}</div>
+  <div class="alert alert-danger mt-1 mb-2 py-2" *ngIf="saveError" data-testid="cust-f-error">{{saveError}}</div>
 
+  <div class="form-section">Where and how they found us</div>
   <div class="row">
-    <!-- <div class="col-md-4">
-      <label for="area" class="form-label">Area</label>
-      <input type="text" id="area"  class="form-control" formControlName="area">
-    </div> -->
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
       <label for="locality" class="form-label">Location</label>
-      <input type="text" id="locality"  class="form-control" formControlName="locality">
+      <input type="text" id="locality" class="form-control" formControlName="locality">
     </div>
-    <div class="col-md-4">
-      <label for="address" class="form-label">Address</label>
-      <textarea id="address"  class="form-control" formControlName="address" rows="3"></textarea>
-    </div>
-  </div>
-  
-  <div class="row">
-    <div class="col-12">&nbsp;</div>
-  </div>
-    <div class="row">
-    <div class="col-md-3">
+    <div class="col-md-6 col-lg-3">
       <label for="srctype" class="form-label">How did they find us?</label>
-      <select id="srctype" data-testid="cust-f-srctype" class="form-control" formControlName="srctype">
+      <select id="srctype" data-testid="cust-f-srctype" class="form-select" formControlName="srctype">
         <option value="">Not recorded</option>
         <option *ngFor="let t of custLeadTypes" [value]="t.value">{{t.label}}</option>
       </select>
     </div>
-
-    <div class="col-md-3" *ngIf="sourceNeedsText">
+    <div class="col-md-6 col-lg-3" *ngIf="sourceNeedsText">
       <label for="srcdesc" class="form-label">Who referred them / details</label>
       <input type="text" id="srcdesc" class="form-control" formControlName="srcdesc" data-testid="cust-f-srcdesc">
     </div>
+    <div class="col-12 col-lg-6">
+      <label for="address" class="form-label">Address</label>
+      <textarea id="address" class="form-control" formControlName="address" rows="2"></textarea>
+    </div>
   </div>
-  <div class="row mt-2" data-testid="cust-f-contact">
-    <div class="col-md-4">
+
+  <div class="form-section">Contact preferences</div>
+  <div class="row" data-testid="cust-f-contact">
+    <div class="col-md-6 col-lg-4">
       <label for="consent" class="form-label">May we send offers and announcements?</label>
-      <select id="consent" data-testid="cust-f-consent" class="form-control" formControlName="consent">
+      <select id="consent" data-testid="cust-f-consent" class="form-select" formControlName="consent">
         <option value="">Not asked yet</option>
         <option value="YES">Yes, they agreed</option>
         <option value="NO">No, they declined</option>
       </select>
       <div class="form-text">Ask at the counter and record the answer. Refill reminders do not need this; offers do.</div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-6 col-lg-2">
       <label for="preferredchannel" class="form-label">Prefers</label>
-      <select id="preferredchannel" data-testid="cust-f-channel" class="form-control" formControlName="preferredchannel">
+      <select id="preferredchannel" data-testid="cust-f-channel" class="form-select" formControlName="preferredchannel">
         <option value="">No preference</option>
         <option value="CALL">Call</option>
         <option value="WHATSAPP">WhatsApp</option>
         <option value="SMS">SMS</option>
       </select>
     </div>
-    <div class="col-md-4 d-flex align-items-center">
-      <div class="form-check mt-4">
+    <div class="col-12 col-lg-6 pt-lg-3">
+      <div class="form-check">
         <input class="form-check-input" type="checkbox" id="donotcontact" data-testid="cust-f-dnc" formControlName="donotcontact">
         <label class="form-check-label" for="donotcontact">Do not contact (no calls or messages at all)</label>
       </div>
-      <div class="form-check mt-1">
+      <div class="form-check">
         <input class="form-check-input" type="checkbox" id="reviewoptout" data-testid="cust-f-reviewoptout" formControlName="reviewoptout">
         <label class="form-check-label" for="reviewoptout">Do not invite to review us on Google</label>
       </div>
     </div>
   </div>
-  <div class="row mt-3">
-    <div class="col-md-12">
-      <button type="submit" class="btn btn-primary m-2" data-testid="cust-f-save" [disabled]="saving">Save</button>
-      <button type="button" *ngIf="isNew" class="btn btn-outline-primary m-2" data-testid="cust-f-save-add" [disabled]="saving" (click)="onSave(true)">Save and add another</button>
-      <a class="btn btn-outline-secondary" [routerLink]="['/secure/customers/cust/list']" data-testid="cust-f-cancel">Cancel</a>
-      <div class="small mt-1 ms-2" [class.text-danger]="attempted" [class.text-muted]="!attempted" *ngIf="blockedReason" data-testid="cust-f-hint">{{blockedReason}}</div>
-    </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" data-testid="cust-f-save" [disabled]="saving">Save</button>
+    <button type="button" *ngIf="isNew" class="btn btn-outline-primary" data-testid="cust-f-save-add" [disabled]="saving" (click)="onSave(true)">Save and add another</button>
+    <a class="btn btn-outline-secondary" [routerLink]="['/secure/customers/cust/list']" data-testid="cust-f-cancel">Cancel</a>
+    <div class="small" [class.text-danger]="attempted" [class.text-muted]="!attempted" *ngIf="blockedReason" data-testid="cust-f-hint">{{blockedReason}}</div>
   </div>
-  </form>
-<div class="mt-4" *ngIf="!isNew && form.value.id" data-testid="cust-credit-panel">
-  <h6>Store credit</h6>
+</form>
+<div class="mt-3" *ngIf="!isNew && form.value.id" data-testid="cust-credit-panel">
+  <div class="form-section">Store credit</div>
   <app-customer-credit [customerId]="+form.value.id"></app-customer-credit>
 </div>
-<div class="mt-4" *ngIf="!isNew && form.value.id" data-testid="cust-rel-section">
-  <h6>Relationship</h6>
+<div class="mt-3" *ngIf="!isNew && form.value.id" data-testid="cust-rel-section">
+  <div class="form-section">Relationship</div>
   <app-customer-relationship [customerId]="+form.value.id"></app-customer-relationship>
 </div>

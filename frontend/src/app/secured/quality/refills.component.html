@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
     <h5 class="card-title mb-0">Refill follow-up</h5>
@@ -40,7 +41,7 @@
             <tr *ngIf="open === r.customer_id" data-testid="rf-form">
               <td colspan="8" class="bg-light">
                 <div class="row g-2 align-items-end">
-                  <div class="col-md-4">
+                  <div class="col-md-6 col-lg-4">
                     <label class="form-label small mb-0">What happened</label>
                     <select class="form-select form-select-sm" data-testid="rf-outcome" [(ngModel)]="outcome">
                       <option *ngFor="let o of outcomes" [value]="o.value">{{o.label}}</option>
@@ -50,7 +51,7 @@
                     <label class="form-label small mb-0">Note <span class="text-muted">(optional)</span></label>
                     <input class="form-control form-control-sm" maxlength="500" data-testid="rf-note" [(ngModel)]="note">
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-6 col-lg-3">
                     <button class="btn btn-primary btn-sm me-1" data-testid="rf-save" [disabled]="saving" (click)="save(r.customer_id)">Save</button>
                     <button class="btn btn-outline-secondary btn-sm" (click)="open = null">Cancel</button>
                   </div>
@@ -65,4 +66,5 @@
     </div>
     <div class="small text-muted">After you log a contact the customer is hidden for a while (2 days if no answer, 14 if they will come in, 30 if they bought elsewhere, 90 if they no longer need it). Only customers with a real mobile number appear.</div>
   </div>
+</div>
 </div>

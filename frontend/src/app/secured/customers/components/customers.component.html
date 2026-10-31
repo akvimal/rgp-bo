@@ -9,9 +9,9 @@
   </div>
 </app-page-header>
 
-<div class="page-toolbar">
+<div class="page-toolbar mb-2">
   <div class="page-toolbar-main">
-    <input type="search" class="form-control" style="width:22rem" placeholder="Search name or mobile" data-testid="cust-search"
+    <input type="search" class="form-control form-control-sm" style="width:16rem;max-width:100%" placeholder="Search name or mobile" data-testid="cust-search"
       (input)="onSearch($any($event.target).value, dt)">
     <div class="btn-group" role="group" aria-label="Customer status" data-testid="cust-status">
       <button type="button" class="btn btn-sm" [ngClass]="status === 'active' && !search.trim() ? 'btn-primary' : 'btn-outline-secondary'" (click)="setStatus('active')" data-testid="cust-status-active">Active <span class="ms-1">{{counts.active}}</span></button>
@@ -19,7 +19,7 @@
       <button type="button" class="btn btn-sm" [ngClass]="status === 'all' && !search.trim() ? 'btn-primary' : 'btn-outline-secondary'" (click)="setStatus('all')" data-testid="cust-status-all">All <span class="ms-1">{{customers.length}}</span></button>
     </div>
     <div class="d-flex align-items-center gap-2" *ngIf="auth.packOn('pharmacy')">
-      <label for="segmentFilter" class="mb-0">Buying pattern</label>
+      <label for="segmentFilter" class="mb-0 small" title="OTC / Chronic only means every bill line was OTC or a chronic medicine. Other includes products not yet categorised.">Buying pattern</label>
       <select id="segmentFilter" class="form-select form-select-sm w-auto" data-testid="cust-segment-filter"
         (change)="dt.filter($any($event.target).value, 'segment', 'equals')">
         <option value="">All customers</option>
@@ -44,13 +44,12 @@
     </button>
   </ng-container>
 </div>
-<p class="small text-muted mt-n2" *ngIf="auth.packOn('pharmacy')">OTC / Chronic only = every bill line was OTC or a chronic medicine. "Other" includes products not yet categorised.</p>
 
 <div *ngIf="message" class="alert alert-success py-2 mt-3 mb-0" data-testid="cust-message">{{message}}</div>
 <div *ngIf="error" class="alert alert-danger py-2 mt-3 mb-0" data-testid="cust-error">{{error}}</div>
 
 <p-table #dt [value]="rows" [resizableColumns]="true" columnResizeMode="expand" 
-[paginator]="true" [rows]="10" [globalFilterFields]="['name','mobile','altmobile']" [showCurrentPageReport]="true" styleClass="p-datatable-gridlines mt-2"
+[paginator]="true" [rows]="10" [globalFilterFields]="['name','mobile','altmobile']" [showCurrentPageReport]="true" styleClass="p-datatable-sm p-datatable-gridlines mt-2"
 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries" 
 [rowsPerPageOptions]="[10,25,50]">
 <ng-template pTemplate="header">
@@ -67,8 +66,8 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       <!-- <th scope="col">Address</th> -->
       <th pSortableColumn="segment" scope="col"><div class="th-bar"><span class="th-label">Buying pattern</span><p-sortIcon field="segment"></p-sortIcon></div></th>
       <th pSortableColumn="relsegment" scope="col"><div class="th-bar"><span class="th-label">Relationship</span><p-sortIcon field="relsegment"></p-sortIcon></div></th>
-      <th pSortableColumn="spend12" scope="col" class="text-end"><div class="th-bar"><span class="th-label">Spend (12 mo)</span><p-sortIcon field="spend12"></p-sortIcon></div></th>
-      <th pSortableColumn="bills" scope="col" class="text-end"><div class="th-bar"><span class="th-label">Bills</span><p-sortIcon field="bills"></p-sortIcon></div></th>
+      <th pSortableColumn="spend12" scope="col" class="text-end d-none d-xl-table-cell"><div class="th-bar"><span class="th-label">Spend (12 mo)</span><p-sortIcon field="spend12"></p-sortIcon></div></th>
+      <th pSortableColumn="bills" scope="col" class="text-end d-none d-xl-table-cell"><div class="th-bar"><span class="th-label">Bills</span><p-sortIcon field="bills"></p-sortIcon></div></th>
       <th pSortableColumn="lastvisit" scope="col"><div class="th-bar"><span class="th-label">Last visit</span><p-sortIcon field="lastvisit"></p-sortIcon></div></th>
       <!-- <th scope="col">Source Type</th> -->
       <!-- <th scope="col">Source Info</th> -->
@@ -95,8 +94,8 @@ currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
         <span *ngIf="c.tier" class="badge" [ngClass]="{'bg-warning text-dark': c.tier === 'Gold', 'bg-secondary': c.tier === 'Silver', 'bg-light text-muted border': c.tier === 'Bronze'}">{{c.tier}}</span>
         <span *ngIf="c.duebackflag" class="badge bg-info text-dark ms-1">Due back</span>
       </td>
-      <td class="text-end">{{c.spend12 ? (c.spend12 | number:'1.0-0') : '-'}}</td>
-      <td class="text-end" data-testid="cust-bills">{{c.bills}}</td>
+      <td class="text-end d-none d-xl-table-cell">{{c.spend12 ? (c.spend12 | number:'1.0-0') : '-'}}</td>
+      <td class="text-end d-none d-xl-table-cell" data-testid="cust-bills">{{c.bills}}</td>
       <td>{{c.lastvisit ? (c.lastvisit | date:'dd MMM yyyy') : '-'}}</td>
       <!-- <td>{{c.address}}</td> -->
       <!-- <td>{{c.srctype}}</td> -->

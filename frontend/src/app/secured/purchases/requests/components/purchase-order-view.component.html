@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div *ngIf="order" class="po-detail" data-testid="po-detail" [attr.data-po-status]="order?.status" [attr.data-po-approval]="order?.approvalstatus || 'Not Required'">
 
   <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
@@ -136,3 +137,4 @@
     <button class="btn btn-danger" data-testid="po-reject-confirm" (click)="onReject()">Reject</button>
   </div>
 </p-dialog>
+</div>

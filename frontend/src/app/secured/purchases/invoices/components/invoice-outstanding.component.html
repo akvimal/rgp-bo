@@ -1,5 +1,6 @@
+<div class="form-compact">
 <div class="row mt-2">
-  <div class="col-md-4">
+  <div class="col-md-6 col-lg-4">
     <div class="card">
       <div class="card-body">
         <div class="text-muted">Outstanding Invoices</div>
@@ -7,7 +8,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-6 col-lg-4">
     <div class="card">
       <div class="card-body">
         <div class="text-muted">Outstanding Amount</div>
@@ -15,7 +16,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-6 col-lg-4">
     <div class="card">
       <div class="card-body">
         <div class="text-muted">Overdue Amount</div>
@@ -28,7 +29,7 @@
 <div class="card mt-3">
   <div class="card-body">
     <div class="row align-items-end">
-      <div class="col-md-4">
+      <div class="col-md-6 col-lg-4">
         <label for="vendorfilter" class="form-label">Vendor</label>
         <select id="vendorfilter" class="form-select" [(ngModel)]="vendorid" (change)="fetchOutstanding()">
           <option value="">All Vendors</option>
@@ -75,4 +76,5 @@
       </table>
     </div>
   </div>
+</div>
 </div>

@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
     <h5 class="card-title mb-0">Staff credit</h5>
@@ -45,7 +46,7 @@
             <tr *ngIf="openId === r.user_id" data-testid="sc-detail">
               <td colspan="7" class="bg-light">
                 <div class="row g-2 align-items-end mb-2" *ngIf="mode">
-                  <div class="col-md-3">
+                  <div class="col-md-6 col-lg-3">
                     <label class="form-label">{{mode === 'recover' ? 'Amount taken from the salary' : 'Amount (negative takes it off)'}}</label>
                     <input type="number" class="form-control" [(ngModel)]="form.amount" data-testid="sc-amount">
                   </div>
@@ -53,7 +54,7 @@
                     <label class="form-label">{{mode === 'recover' ? 'Note (optional)' : 'Why'}}</label>
                     <input type="text" class="form-control" maxlength="200" [(ngModel)]="form.note" data-testid="sc-note">
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-6 col-lg-3">
                     <button class="btn btn-primary" type="button" (click)="save(r)" data-testid="sc-save">{{mode === 'recover' ? 'Record recovery for ' + period : 'Save adjustment'}}</button>
                     <button class="btn btn-outline-secondary ms-1" type="button" (click)="mode = ''">Cancel</button>
                   </div>
@@ -76,4 +77,5 @@
       </table>
     </div>
   </div>
+</div>
 </div>

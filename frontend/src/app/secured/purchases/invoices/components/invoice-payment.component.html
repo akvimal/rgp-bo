@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card mt-3" data-testid="invoice-payments">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -51,35 +52,35 @@
       </div>
 
       <form class="row g-3" *ngIf="(balanceamount || 0) > 0" [formGroup]="form" (ngSubmit)="submit()" data-testid="invoice-pay-form">
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="paydate" class="form-label">Date</label>
           <input type="date" class="form-control" id="paydate" formControlName="paydate">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="paymode" class="form-label">Mode</label>
           <select class="form-select" id="paymode" formControlName="paymode" aria-label="Mode">
             <option value="">Select</option>
             <option *ngFor="let mode of paymentModes" [value]="mode">{{mode}}</option>
           </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="payrefno" class="form-label">Reference no.</label>
           <input type="text" class="form-control" id="payrefno" formControlName="payrefno">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="payamount" class="form-label">Amount</label>
           <input type="number" min="0.01" step="0.01" class="form-control" id="payamount" formControlName="payamount">
           <div class="form-text" *ngIf="form.controls['payamount'].dirty && form.controls['payamount'].invalid">
             Enter an amount up to the outstanding balance ({{balanceamount || invoiceamt || 0 | number:'1.2-2'}}).
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="communicationstatus" class="form-label">Communication status</label>
           <select class="form-select" id="communicationstatus" formControlName="communicationstatus">
             <option *ngFor="let status of communicationStatuses" [value]="status">{{status}}</option>
           </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label for="communicationchannel" class="form-label">Channel</label>
           <select class="form-select" id="communicationchannel" formControlName="communicationchannel">
             <option *ngFor="let channel of communicationChannels" [value]="channel">{{channel}}</option>
@@ -89,9 +90,10 @@
           <label for="paycomments" class="form-label">Remarks</label>
           <input type="text" class="form-control" id="paycomments" formControlName="paycomments" maxlength="300">
         </div>
-        <div class="col-md-4 d-flex align-items-end">
+        <div class="col-md-6 col-lg-4 d-flex align-items-end">
           <button type="submit" class="btn btn-primary" [disabled]="!form.valid" data-testid="invoice-pay-save">Record payment</button>
         </div>
       </form>
     </div>
   </div>
+</div>

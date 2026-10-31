@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="row">
   <div class="col-12 mt-2">
     <div class="page-toolbar mb-0">
@@ -35,7 +36,7 @@
   <!-- filters -->
   <div class="col-12 mt-3">
     <div class="row g-2 align-items-end" data-testid="inv-filters">
-      <div class="col-md-3" data-testid="inv-vendor-filter">
+      <div class="col-md-6 col-lg-3" data-testid="inv-vendor-filter">
         <label class="form-label small mb-0">Vendor</label>
         <select class="form-select form-select-sm" data-testid="inv-vendor" [ngModel]="vendorId" (ngModelChange)="setVendor($event)">
           <option [ngValue]="null">All vendors</option>
@@ -44,8 +45,8 @@
       </div>
       <div class="col-6 col-md-2"><label class="form-label small mb-0">Invoice date from</label><input type="date" class="form-control form-control-sm" data-testid="inv-from" [(ngModel)]="from" (change)="applyFilters()"></div>
       <div class="col-6 col-md-2"><label class="form-label small mb-0">to</label><input type="date" class="form-control form-control-sm" data-testid="inv-to" [(ngModel)]="to" (change)="applyFilters()"></div>
-      <div class="col-md-3"><label class="form-label small mb-0">Invoice no.</label><input class="form-control form-control-sm" placeholder="part of the number" data-testid="inv-search" [(ngModel)]="q" (keyup.enter)="applyFilters()" (change)="applyFilters()"></div>
-      <div class="col-md-2 text-md-end"><button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="hasFilters || view !== (isOutstanding ? 'pending' : 'all')" data-testid="inv-clear" (click)="clearFilters()">Clear filters</button></div>
+      <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Invoice no.</label><input class="form-control form-control-sm" placeholder="part of the number" data-testid="inv-search" [(ngModel)]="q" (keyup.enter)="applyFilters()" (change)="applyFilters()"></div>
+      <div class="col-6 col-md-3 col-lg-2 text-md-end"><button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="hasFilters || view !== (isOutstanding ? 'pending' : 'all')" data-testid="inv-clear" (click)="clearFilters()">Clear filters</button></div>
     </div>
   </div>
 
@@ -205,3 +206,4 @@
     </div>
   </div>
 </p-dialog>
+</div>

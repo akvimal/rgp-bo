@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -26,14 +27,14 @@
     <div *ngIf="showForm" class="border rounded p-3 mt-3" data-testid="gr-form">
       <h6>New grievance</h6>
       <div class="row g-2">
-        <div class="col-md-3" *ngIf="stores.length > 1">
+        <div class="col-md-6 col-lg-3" *ngIf="stores.length > 1">
           <label class="form-label small mb-0">Store</label>
           <select class="form-select form-select-sm" data-testid="gr-f-store" [(ngModel)]="form.storeid">
             <option value="">Choose…</option>
             <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6 col-lg-3">
           <label class="form-label small mb-0">What is it about</label>
           <select class="form-select form-select-sm" data-testid="gr-f-category" [(ngModel)]="form.category">
             <option *ngFor="let c of categories" [value]="c.value">{{c.label}}</option>
@@ -59,7 +60,7 @@
           <label class="form-label small mb-0">Details <span class="text-muted">(optional)</span></label>
           <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.description"></textarea>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label class="form-label small mb-0">Customer <span class="text-muted">(optional)</span></label>
           <div *ngIf="pickedCustomer" class="small">{{pickedCustomer.name}} <button class="btn btn-link btn-sm p-0" (click)="pickedCustomer = null">change</button></div>
           <ng-container *ngIf="!pickedCustomer">
@@ -69,7 +70,7 @@
             </div>
           </ng-container>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <label class="form-label small mb-0">Bill no. <span class="text-muted">(optional)</span></label>
           <div *ngIf="pickedBill" class="small">#{{pickedBill.bill_no}} · {{pickedBill.bill_date | date:'dd MMM yyyy'}} · {{pickedBill.total | currency:'INR':'symbol':'1.0-0'}} <button class="btn btn-link btn-sm p-0" (click)="pickedBill = null">change</button></div>
           <ng-container *ngIf="!pickedBill">
@@ -79,14 +80,14 @@
             </div>
           </ng-container>
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-3 col-lg-2">
           <label class="form-label small mb-0">Concerns <span class="text-muted">(staff)</span></label>
           <select class="form-select form-select-sm" data-testid="gr-f-about" [(ngModel)]="form.aboutuserid">
             <option value="">No one in particular</option>
             <option *ngFor="let p of people" [value]="p.id">{{p.name}}</option>
           </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-3 col-lg-2">
           <label class="form-label small mb-0">Assign to</label>
           <select class="form-select form-select-sm" [(ngModel)]="form.assignedto">
             <option value="">Not assigned</option>
@@ -212,4 +213,5 @@
       </table>
     </div>
   </div>
+</div>
 </div>

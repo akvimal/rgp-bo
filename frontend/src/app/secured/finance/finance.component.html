@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="pagetitle"><h1>Finance</h1></div>
 
 <p class="small text-muted mb-2" data-testid="fin-intro">
@@ -108,18 +109,18 @@
   <div class="border rounded p-3 mb-3" *ngIf="editing" data-testid="fin-edit">
     <div class="small text-muted mb-2">{{editing.narration}}</div>
     <div class="row g-2 align-items-end">
-      <div class="col-md-3"><label class="form-label">What is it?</label>
+      <div class="col-md-6 col-lg-3"><label class="form-label">What is it?</label>
         <select class="form-select form-select-sm" [(ngModel)]="editing.tag" data-testid="fin-e-tag"><option value="">(not explained)</option><option *ngFor="let t of editTags" [value]="t.tag">{{t.label}}</option></select></div>
-      <div class="col-md-3" *ngIf="editing.tag === 'VENDOR_PAYMENT'"><label class="form-label">Vendor</label>
+      <div class="col-md-6 col-lg-3" *ngIf="editing.tag === 'VENDOR_PAYMENT'"><label class="form-label">Vendor</label>
         <select class="form-select form-select-sm" [(ngModel)]="editing.vendor_id" data-testid="fin-e-vendor"><option [ngValue]="null">Choose</option><option *ngFor="let v of ln.vendors" [ngValue]="v.id">{{v.name}}</option></select></div>
-      <div class="col-md-3" *ngIf="editing.tag === 'EXPENSE'"><label class="form-label">Expense category</label>
+      <div class="col-md-6 col-lg-3" *ngIf="editing.tag === 'EXPENSE'"><label class="form-label">Expense category</label>
         <select class="form-select form-select-sm" [(ngModel)]="editing.category" data-testid="fin-e-category"><option value="">Choose</option><option *ngFor="let c of ln.categories" [value]="c">{{c}}</option></select></div>
-      <div class="col-md-3"><label class="form-label">Note</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="editing.note"></div>
+      <div class="col-md-6 col-lg-3"><label class="form-label">Note</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="editing.note"></div>
       <div class="col-md-6" *ngIf="editing.tag">
         <div class="form-check"><input class="form-check-input" type="checkbox" id="fin-remember" [(ngModel)]="editing.remember" data-testid="fin-e-remember"><label class="form-check-label small" for="fin-remember">Do the same for every line like this, now and in future statements</label></div>
         <input class="form-control form-control-sm mt-1" *ngIf="editing.remember" [(ngModel)]="editing.pattern" placeholder="text the narration contains" data-testid="fin-e-pattern">
       </div>
-      <div class="col-md-3"><button type="button" class="btn btn-primary btn-sm" (click)="saveTag()" data-testid="fin-e-save">Save</button> <button type="button" class="btn btn-outline-secondary btn-sm" (click)="editing = null">Cancel</button></div>
+      <div class="col-md-6 col-lg-3"><button type="button" class="btn btn-primary btn-sm" (click)="saveTag()" data-testid="fin-e-save">Save</button> <button type="button" class="btn btn-outline-secondary btn-sm" (click)="editing = null">Cancel</button></div>
     </div>
   </div>
 
@@ -225,14 +226,14 @@
   <p class="small text-muted mb-2">An account belongs to the business, or to one store. Only the last four digits of the number are kept.</p>
   <div class="border rounded p-3 mb-3" *ngIf="acc" data-testid="fin-acc-form">
     <div class="row g-2">
-      <div class="col-md-3"><label class="form-label">Name *</label><input class="form-control form-control-sm" maxlength="80" [(ngModel)]="acc.name" data-testid="fin-a-name"></div>
-      <div class="col-md-3"><label class="form-label">Bank</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="acc.bank_name" data-testid="fin-a-bank"></div>
-      <div class="col-md-2"><label class="form-label">Last 4 digits</label><input class="form-control form-control-sm" maxlength="4" [(ngModel)]="acc.last4" data-testid="fin-a-last4"></div>
-      <div class="col-md-4"><label class="form-label">Belongs to</label>
+      <div class="col-md-6 col-lg-3"><label class="form-label">Name *</label><input class="form-control form-control-sm" maxlength="80" [(ngModel)]="acc.name" data-testid="fin-a-name"></div>
+      <div class="col-md-6 col-lg-3"><label class="form-label">Bank</label><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="acc.bank_name" data-testid="fin-a-bank"></div>
+      <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Last 4 digits</label><input class="form-control form-control-sm" maxlength="4" [(ngModel)]="acc.last4" data-testid="fin-a-last4"></div>
+      <div class="col-md-6 col-lg-4"><label class="form-label">Belongs to</label>
         <select class="form-select form-select-sm" [(ngModel)]="acc.store_id" data-testid="fin-a-store"><option [ngValue]="null">The whole business</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.location}} only</option></select></div>
-      <div class="col-md-3"><label class="form-label">Opening balance (optional)</label><input type="number" class="form-control form-control-sm" [(ngModel)]="acc.opening_balance"></div>
-      <div class="col-md-3"><label class="form-label">As on</label><input type="date" class="form-control form-control-sm" [(ngModel)]="acc.opening_date"></div>
-      <div class="col-md-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="fin-a-active" [(ngModel)]="acc.active"><label class="form-check-label" for="fin-a-active">In use</label></div></div>
+      <div class="col-md-6 col-lg-3"><label class="form-label">Opening balance (optional)</label><input type="number" class="form-control form-control-sm" [(ngModel)]="acc.opening_balance"></div>
+      <div class="col-md-6 col-lg-3"><label class="form-label">As on</label><input type="date" class="form-control form-control-sm" [(ngModel)]="acc.opening_date"></div>
+      <div class="col-md-6 col-lg-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="fin-a-active" [(ngModel)]="acc.active"><label class="form-check-label" for="fin-a-active">In use</label></div></div>
     </div>
     <div class="mt-2"><button type="button" class="btn btn-primary btn-sm" [disabled]="!acc.name" (click)="saveAccount()" data-testid="fin-a-save">Save account</button> <button type="button" class="btn btn-outline-secondary btn-sm" (click)="acc = null">Cancel</button></div>
   </div>
@@ -355,3 +356,4 @@
     </ng-container>
   </ng-container>
 </ng-container>
+</div>

@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="pagetitle"><h1>Stock audits</h1></div>
 <div class="card">
   <div class="card-body pt-3">
@@ -26,13 +27,13 @@
 
     <div *ngIf="skipping" class="border rounded p-2 mb-2" data-testid="sa-skip-form">
       <div class="row g-2 align-items-end"><div class="col-md-8"><label class="form-label">Why is it being skipped? *</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="skipping.reason" data-testid="sa-skip-reason"></div>
-        <div class="col-md-4"><button class="btn btn-danger btn-sm" type="button" (click)="confirmSkip()" data-testid="sa-skip-save">Skip it</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="skipping = null">Cancel</button></div></div>
+        <div class="col-md-6 col-lg-4"><button class="btn btn-danger btn-sm" type="button" (click)="confirmSkip()" data-testid="sa-skip-save">Skip it</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="skipping = null">Cancel</button></div></div>
     </div>
     <div *ngIf="certifying" class="border rounded p-3 mb-2" data-testid="sa-certify-form">
       <div class="fw-semibold mb-1">Verify and approve this audit</div>
       <p class="small text-muted mb-2">You are confirming that the count was done as recorded and its differences were dealt with. A certificate is made and kept as printed; print it and sign it with the person who counted.</p>
       <div class="row g-2 align-items-end"><div class="col-md-8"><label class="form-label">Note (optional)</label><input class="form-control form-control-sm" maxlength="300" [(ngModel)]="certifying.note" data-testid="sa-certify-note"></div>
-        <div class="col-md-4"><button class="btn btn-primary btn-sm" type="button" (click)="confirmCertify()" data-testid="sa-certify-save">Certify</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="certifying = null">Cancel</button></div></div>
+        <div class="col-md-6 col-lg-4"><button class="btn btn-primary btn-sm" type="button" (click)="confirmCertify()" data-testid="sa-certify-save">Certify</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="certifying = null">Cancel</button></div></div>
     </div>
     <div *ngIf="assigning" class="border rounded p-2 mb-2" data-testid="sa-assign-form">
       <div class="row g-2 align-items-end"><div class="col-md-6"><label class="form-label">Who does it</label>
@@ -89,13 +90,13 @@
         <span><button class="btn btn-outline-primary btn-sm me-2" type="button" (click)="standardPlans()" data-testid="sa-plan-standard">Add the standard plans</button><button class="btn btn-primary btn-sm" type="button" (click)="addPlan()" data-testid="sa-plan-add">Add a plan</button></span></div>
       <div *ngIf="plan" class="border rounded p-3 mb-3" data-testid="sa-plan-form">
         <div class="row g-3">
-          <div class="col-md-4"><label class="form-label">Name *</label><input class="form-control" maxlength="60" [(ngModel)]="plan.name" data-testid="sa-p-name"></div>
-          <div class="col-md-3"><label class="form-label">Store</label><select class="form-select" [(ngModel)]="plan.store_id" data-testid="sa-p-store"><option [ngValue]="null">Every store</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
-          <div class="col-md-3"><label class="form-label">Covers</label><select class="form-select" [(ngModel)]="plan.scope" data-testid="sa-p-scope"><option value="ALL">Everything</option><option value="CATEGORY">One category</option><option value="ROTATE">Rotate through categories</option><option value="FAST">Fast movers (top 30 by sales)</option><option value="SCHEDULE" *ngIf="auth.packOn('pharmacy')">Scheduled drugs (H, H1, X)</option><option value="EXPIRY">Expired and expiring batches</option></select></div>
-          <div class="col-md-2"><label class="form-label">Every (days)</label><input type="number" min="1" max="366" class="form-control" [(ngModel)]="plan.frequency_days" data-testid="sa-p-days"></div>
-          <div class="col-md-3"><label class="form-label">First due</label><input type="date" class="form-control" [(ngModel)]="plan.first_due" data-testid="sa-p-first"></div>
-          <div class="col-md-4"><label class="form-label">Usually done by</label><select class="form-select" [(ngModel)]="plan.assigned_to" data-testid="sa-p-assignee"><option [ngValue]="null">Anyone</option><option *ngFor="let u of opts.staff" [ngValue]="u.id">{{u.name}}</option></select></div>
-          <div class="col-md-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="spa" [(ngModel)]="plan.active"><label class="form-check-label" for="spa">Active</label></div></div>
+          <div class="col-md-6 col-lg-4"><label class="form-label">Name *</label><input class="form-control" maxlength="60" [(ngModel)]="plan.name" data-testid="sa-p-name"></div>
+          <div class="col-md-6 col-lg-3"><label class="form-label">Store</label><select class="form-select" [(ngModel)]="plan.store_id" data-testid="sa-p-store"><option [ngValue]="null">Every store</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
+          <div class="col-md-6 col-lg-3"><label class="form-label">Covers</label><select class="form-select" [(ngModel)]="plan.scope" data-testid="sa-p-scope"><option value="ALL">Everything</option><option value="CATEGORY">One category</option><option value="ROTATE">Rotate through categories</option><option value="FAST">Fast movers (top 30 by sales)</option><option value="SCHEDULE" *ngIf="auth.packOn('pharmacy')">Scheduled drugs (H, H1, X)</option><option value="EXPIRY">Expired and expiring batches</option></select></div>
+          <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Every (days)</label><input type="number" min="1" max="366" class="form-control" [(ngModel)]="plan.frequency_days" data-testid="sa-p-days"></div>
+          <div class="col-md-6 col-lg-3"><label class="form-label">First due</label><input type="date" class="form-control" [(ngModel)]="plan.first_due" data-testid="sa-p-first"></div>
+          <div class="col-md-6 col-lg-4"><label class="form-label">Usually done by</label><select class="form-select" [(ngModel)]="plan.assigned_to" data-testid="sa-p-assignee"><option [ngValue]="null">Anyone</option><option *ngFor="let u of opts.staff" [ngValue]="u.id">{{u.name}}</option></select></div>
+          <div class="col-md-6 col-lg-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="spa" [(ngModel)]="plan.active"><label class="form-check-label" for="spa">Active</label></div></div>
           <div class="col-12" *ngIf="plan.scope === 'CATEGORY' || plan.scope === 'ROTATE'" data-testid="sa-p-cats">
             <label class="form-label">{{plan.scope === 'CATEGORY' ? 'Category' : 'Categories, in the order to go through them'}}</label>
             <div class="d-flex flex-wrap gap-1"><button *ngFor="let c of opts.categories" type="button" class="btn btn-sm" [ngClass]="plan.categories.includes(c) ? 'btn-primary' : 'btn-outline-secondary'" (click)="toggleCategory(c)">{{c}}</button></div>
@@ -156,4 +157,5 @@
       </div>
     </ng-container>
   </div>
+</div>
 </div>

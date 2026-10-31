@@ -1,26 +1,27 @@
+<div class="form-compact">
 <div class="card mt-2">
   <div class="card-body">
     <div class="row g-3 align-items-end">
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label" title="How far back to measure what sells">Days</label>
         <input class="form-control" type="number" min="1" [(ngModel)]="days" data-testid="reo-days">
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label" title="How many days of sales the stock should cover">Target Days</label>
         <input class="form-control" type="number" min="1" [(ngModel)]="targetdays" data-testid="reo-target">
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <label class="form-label" title="When nothing sold in the days above, look this far back so slow movers are not missed">Slow-mover days</label>
         <input class="form-control" type="number" min="1" [(ngModel)]="slowdays" data-testid="reo-slow">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-6 col-lg-3">
         <label class="form-label">Vendor</label>
         <select class="form-select" [(ngModel)]="vendorid">
           <option value="">All Vendors</option>
           <option *ngFor="let vendor of vendors" [value]="vendor.id">{{vendor.name}}</option>
         </select>
       </div>
-      <div class="col-md-2">
+      <div class="col-6 col-md-3 col-lg-2">
         <div class="form-check mb-2" title="Scale the demand by how this time of year went in the last two years">
           <input class="form-check-input" type="checkbox" id="reo-seasonal" [(ngModel)]="seasonal" data-testid="reo-seasonal">
           <label class="form-check-label" for="reo-seasonal">Seasonal</label>
@@ -29,7 +30,7 @@
       </div>
     </div>
     <div class="row g-3 align-items-end mt-2">
-      <div class="col-md-3">
+      <div class="col-md-6 col-lg-3">
         <label class="form-label">Expected Date</label>
         <input class="form-control" type="date" [(ngModel)]="expecteddate">
       </div>
@@ -37,7 +38,7 @@
         <label class="form-label">Order Comments</label>
         <input class="form-control" type="text" [(ngModel)]="comments">
       </div>
-      <div class="col-md-4 text-end">
+      <div class="col-md-6 col-lg-4 text-end">
         <button class="btn btn-primary" (click)="createOrders()">Create Orders From Selected ({{selectedCount()}})</button>
       </div>
     </div>
@@ -91,3 +92,4 @@
     </tr>
   </ng-template>
 </p-table>
+</div>

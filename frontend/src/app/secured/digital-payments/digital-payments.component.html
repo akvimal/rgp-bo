@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="pagetitle"><h1>Digital payments</h1></div>
 <div class="card">
   <div class="card-body pt-3">
@@ -64,9 +65,9 @@
     <div *ngIf="editing" class="border rounded p-2 mb-2" data-testid="dp-flag-form">
       <div class="fw-semibold small mb-1">{{editing.status === 'MISMATCH' ? 'The statement shows a different amount' : 'The payment is not on the statement'}}</div>
       <div class="row g-2 align-items-end">
-        <div class="col-md-3" *ngIf="editing.status === 'MISMATCH'"><label class="form-label">Amount on the statement *</label><input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="editing.amount_seen" data-testid="dp-flag-amount"></div>
+        <div class="col-md-6 col-lg-3" *ngIf="editing.status === 'MISMATCH'"><label class="form-label">Amount on the statement *</label><input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="editing.amount_seen" data-testid="dp-flag-amount"></div>
         <div class="col-md-6"><label class="form-label">Note *</label><input class="form-control form-control-sm" maxlength="300" [(ngModel)]="editing.note" data-testid="dp-flag-note" placeholder="What the statement shows, or what you found"></div>
-        <div class="col-md-3"><button class="btn btn-primary btn-sm" type="button" [disabled]="busy" (click)="saveFlag()" data-testid="dp-flag-save">Save</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="editing = null">Cancel</button></div>
+        <div class="col-md-6 col-lg-3"><button class="btn btn-primary btn-sm" type="button" [disabled]="busy" (click)="saveFlag()" data-testid="dp-flag-save">Save</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="editing = null">Cancel</button></div>
       </div>
     </div>
 
@@ -134,4 +135,5 @@
       </table></div>
     </div>
   </div>
+</div>
 </div>

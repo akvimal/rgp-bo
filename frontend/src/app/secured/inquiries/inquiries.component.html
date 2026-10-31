@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="pagetitle"><h1>Customer inquiries</h1></div>
 <div class="card">
   <div class="card-body pt-3">
@@ -16,16 +17,16 @@
     <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="inq-form">
       <h6>{{form.id ? 'Change inquiry' : 'New inquiry'}}</h6>
       <div class="row g-3">
-        <div class="col-md-3" *ngIf="!form.id"><label class="form-label">Store *</label>
+        <div class="col-md-6 col-lg-3" *ngIf="!form.id"><label class="form-label">Store *</label>
           <select class="form-select" [(ngModel)]="form.store_id" data-testid="inq-f-store"><option [ngValue]="null">Choose</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
-        <div class="col-md-3"><label class="form-label">Kind</label>
+        <div class="col-md-6 col-lg-3"><label class="form-label">Kind</label>
           <select class="form-select" [(ngModel)]="form.kind" data-testid="inq-f-kind"><option *ngFor="let k of kinds" [value]="k[0]">{{k[1]}}</option></select></div>
         <div class="col-md-6"><label class="form-label">Product / topic</label><input class="form-control" [(ngModel)]="form.product_text" maxlength="120" data-testid="inq-f-product" placeholder="e.g. Metformin 500 SR"></div>
         <div class="col-12"><label class="form-label">What did the customer ask? *</label><input class="form-control" [(ngModel)]="form.details" maxlength="500" data-testid="inq-f-details"></div>
-        <div class="col-md-4"><label class="form-label">Customer</label><input class="form-control" [(ngModel)]="form.customer_name" maxlength="80" data-testid="inq-f-name"></div>
-        <div class="col-md-3"><label class="form-label">Mobile</label><input class="form-control" [(ngModel)]="form.mobile" maxlength="20" data-testid="inq-f-mobile"></div>
-        <div class="col-md-2"><label class="form-label">Due by</label><input type="date" class="form-control" [(ngModel)]="form.due_on" data-testid="inq-f-due"></div>
-        <div class="col-md-3" *ngIf="opts.canAssign"><label class="form-label">Assigned to</label>
+        <div class="col-md-6 col-lg-4"><label class="form-label">Customer</label><input class="form-control" [(ngModel)]="form.customer_name" maxlength="80" data-testid="inq-f-name"></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label">Mobile</label><input class="form-control" [(ngModel)]="form.mobile" maxlength="20" data-testid="inq-f-mobile"></div>
+        <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Due by</label><input type="date" class="form-control" [(ngModel)]="form.due_on" data-testid="inq-f-due"></div>
+        <div class="col-md-6 col-lg-3" *ngIf="opts.canAssign"><label class="form-label">Assigned to</label>
           <select class="form-select" [(ngModel)]="form.assigned_to" data-testid="inq-f-assignee"><option *ngFor="let u of opts.staff" [ngValue]="u.id">{{u.name}}</option></select></div>
       </div>
       <div class="mt-3"><button class="btn btn-primary" type="button" (click)="save()" data-testid="inq-save">Save</button>
@@ -36,7 +37,7 @@
     <div *ngIf="closing" class="border rounded p-3 mb-3" data-testid="inq-close-form">
       <h6>Close the inquiry</h6>
       <div class="row g-3">
-        <div class="col-md-4"><label class="form-label">How did it end? *</label>
+        <div class="col-md-6 col-lg-4"><label class="form-label">How did it end? *</label>
           <select class="form-select" [(ngModel)]="closing.outcome" data-testid="inq-c-outcome"><option *ngFor="let o of outcomes" [value]="o[0]">{{o[1]}}</option></select></div>
         <div class="col-md-8"><label class="form-label">Note <span class="text-muted small">(needed for no response or dropped)</span></label><input class="form-control" maxlength="300" [(ngModel)]="closing.note" data-testid="inq-c-note"></div>
       </div>
@@ -80,4 +81,5 @@
       </table>
     </div>
   </div>
+</div>
 </div>

@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card mt-2">
   <div class="card-body pt-3">
     <h5 class="card-title p-0 m-0 mb-1" data-testid="rules-title">Pricing rules</h5>
@@ -44,13 +45,13 @@
       <h6 class="mt-3 text-primary">How do you price your goods?</h6>
       <p class="small text-muted mb-2">Choose one. Everything else on this page, and every price check in the app, follows it.</p>
       <div class="row g-3" data-testid="mode-cards">
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <div class="border rounded p-3 h-100" [class.border-primary]="modeForm.mode === 'MRP'" [class.bg-light]="modeForm.mode === 'MRP'" role="button" (click)="pickMode('MRP')" data-testid="mode-card-MRP">
             <div class="form-check"><input class="form-check-input" type="radio" name="mode" id="mode-mrp" [checked]="modeForm.mode === 'MRP'" [disabled]="!canedit" (change)="pickMode('MRP')"><label class="form-check-label fw-semibold" for="mode-mrp">At the MRP</label></div>
             <div class="small text-muted mt-1">Every product sells at the price printed on the pack. When a new batch has a new MRP, the price follows it at once.</div>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <div class="border rounded p-3 h-100" [class.border-primary]="modeForm.mode === 'DISCOUNT'" [class.bg-light]="modeForm.mode === 'DISCOUNT'" role="button" (click)="pickMode('DISCOUNT')" data-testid="mode-card-DISCOUNT">
             <div class="form-check"><input class="form-check-input" type="radio" name="mode" id="mode-discount" [checked]="modeForm.mode === 'DISCOUNT'" [disabled]="!canedit" (change)="pickMode('DISCOUNT')"><label class="form-check-label fw-semibold" for="mode-discount">A discount off the MRP</label></div>
             <div class="small text-muted mt-1">Products start at a usual discount, and no price may go deeper than the limit you set.</div>
@@ -61,7 +62,7 @@
             </div>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-4">
           <div class="border rounded p-3 h-100" [class.border-primary]="modeForm.mode === 'SMART'" [class.bg-light]="modeForm.mode === 'SMART'" role="button" (click)="pickMode('SMART')" data-testid="mode-card-SMART">
             <div class="form-check"><input class="form-check-input" type="radio" name="mode" id="mode-smart" [checked]="modeForm.mode === 'SMART'" [disabled]="!canedit" (change)="pickMode('SMART')"><label class="form-check-label fw-semibold" for="mode-smart">Smart groups <span class="badge bg-secondary ms-1">advanced</span></label></div>
             <div class="small text-muted mt-1">Each product follows the rules of its group, by how much margin it carries and how much profit it earns. Prices are raised in small steps. The group rules are under Advanced below.</div>
@@ -161,7 +162,7 @@
             <label class="form-label mb-0 fw-semibold small">{{r.label}}</label>
             <div class="form-text mt-0">{{r.help}}</div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <div class="input-group input-group-sm" *ngIf="r.type === 'number'">
               <input type="number" class="form-control text-end" [min]="r.min" [max]="r.max" step="any" [(ngModel)]="form[r.key]" [disabled]="!canedit || !r.editable" [attr.data-testid]="'rule-input-' + r.key">
               <span class="input-group-text">{{r.unit}}</span>
@@ -179,4 +180,5 @@
       </div>
     </ng-container>
   </div>
+</div>
 </div>

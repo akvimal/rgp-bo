@@ -1,3 +1,4 @@
+<div class="form-compact">
 <p class="small text-muted mt-2 mb-1" data-testid="price-intro">Every product that has been purchased (a product never purchased is not listed), with its current price. Use the pencil to set a price.
     Prices that break the pricing rules, and products with no price, are also listed under <a routerLink="/secure/products/pricing-policy">Pricing policy</a>.</p>
 <app-price-units></app-price-units>
@@ -85,3 +86,4 @@
 <p-dialog [header]="'Set the price'" [(visible)]="showPriceChange" [modal]="true" [style]="{width:'64rem', maxWidth:'95vw'}">
     <app-product-price-change [productid]="productid" (added)="changed($event)" (cancelled)="showPriceChange = false"></app-product-price-change>
 </p-dialog>
+</div>

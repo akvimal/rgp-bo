@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card mt-3" style="max-width:46rem">
   <div class="card-body">
     <h5 class="card-title d-flex justify-content-between align-items-center flex-wrap gap-2">Business details
@@ -22,11 +23,11 @@
           <input class="form-control text-uppercase" name="gstin" [(ngModel)]="form.gstin" maxlength="15" placeholder="15 characters" data-testid="biz-gstin">
           <div class="form-text" *ngIf="stateFromGstin">State code {{stateFromGstin}}</div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6 col-lg-3">
           <label class="form-label">State code</label>
           <input class="form-control" name="statecode" [ngModel]="stateFromGstin || form.statecode" (ngModelChange)="form.statecode = $event" [readonly]="!!stateFromGstin" maxlength="2" data-testid="biz-state">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6 col-lg-3">
           <label class="form-label">Pincode</label>
           <input class="form-control" name="pincode" [(ngModel)]="form.pincode" maxlength="6" data-testid="biz-pincode">
         </div>
@@ -38,4 +39,5 @@
       <button type="submit" class="btn btn-primary mt-3" [disabled]="saving" data-testid="biz-save">Save</button>
     </form>
   </div>
+</div>
 </div>

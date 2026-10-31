@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card mt-2">
     <div class="card-body">
       <h5 class="card-title m-0 p-0" data-testid="prod-f-heading">{{isNew ? 'New' : 'Edit'}} product</h5>
@@ -14,7 +15,7 @@
             <app-lookup [default]="form.value.title" [entity]="'product'" [property]="'title'" (update)="onLookupInput($event, 'title')"></app-lookup>
             <div class="form-text">Shown in sales, purchases and stock. Make it unique and easy to recognise: {{ auth.packOn('pharmacy') ? 'include the strength and form, for example the tablet count.' : 'include the size or variant so it is not confused with another.' }}</div>
           </div>
-          <div class="col-md-4" *ngIf="(productProps$ | async).length > 0">
+          <div class="col-md-6 col-lg-4" *ngIf="(productProps$ | async).length > 0">
             <label for="category" class="form-label">Category <span class="required">*</span></label>
             <select formControlName="category" class="form-select" id="category" (change)="selectProps($event,undefined)" required>
               <option value="">Select</option>
@@ -22,24 +23,24 @@
             </select>
             <div class="form-text">Choosing a category shows the properties for it below.</div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="brand" class="form-label">Brand</label>
             <app-lookup [default]="form.value.brand" [entity]="'product'" [property]="'brand'" (update)="onLookupInput($event, 'brand')"></app-lookup>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="mfr" class="form-label">Manufacturer</label>
             <app-lookup [default]="form.value.mfr" [entity]="'product'" [property]="'mfr'" (update)="onLookupInput($event, 'mfr')"></app-lookup>
           </div>
-          <div class="col-md-2">
+          <div class="col-6 col-md-3 col-lg-2">
             <label for="pack" class="form-label">Pack <span class="required">*</span></label>
             <input type="number" min="1" step="1" class="form-control" id="pack" formControlName="pack" data-testid="prod-pack" [class.is-invalid]="form.controls['pack'].invalid && form.controls['pack'].touched">
             <div class="form-text">{{ auth.packOn('pharmacy') ? 'Units in one pack, for example tablets in a strip.' : 'Units in one pack, for example pieces in a box.' }} Costs and prices are per pack.</div>
           </div>
-          <div class="col-md-2">
+          <div class="col-6 col-md-3 col-lg-2">
             <label for="prcode" class="form-label">Product code</label>
             <app-lookup [default]="form.value.code" [entity]="'product'" [property]="'product_code'" (update)="onLookupInput($event, 'code')"></app-lookup>
           </div>
-          <div class="col-md-2">
+          <div class="col-6 col-md-3 col-lg-2">
             <label for="hsncode" class="form-label">HSN code</label>
             <app-lookup [default]="form.value.hsn" [entity]="'product'" [property]="'hsn_code'" (update)="onLookupInput($event, 'hsn')"></app-lookup>
           </div>
@@ -47,7 +48,7 @@
 
         <h6 class="mt-4 text-primary" *ngIf="props && props.length">Properties of {{form.value.category}}</h6>
         <div class="row g-3" formGroupName="props">
-          <div class="col-md-3" *ngFor="let pp of props">
+          <div class="col-md-6 col-lg-3" *ngFor="let pp of props">
             <label class="form-label">{{pp.label}}<span class="text-danger" *ngIf="pp.required"> *</span></label>
             <select class="form-select" formControlName={{pp.id}} *ngIf="pp.type === 'SINGLE-SELECT'"
               (change)="dataInput(pp.type, pp.id, $event)">
@@ -67,16 +68,16 @@
 
         <h6 class="mt-4 text-primary">Stock and returns</h6>
         <div class="row g-3">
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="binlocation" class="form-label">Bin or rack</label>
             <input type="text" class="form-control" id="binlocation" formControlName="binlocation" maxlength="40" placeholder="e.g. A-12">
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="minstock" class="form-label">Minimum stock</label>
             <input type="number" min="0" step="1" class="form-control" id="minstock" formControlName="minstock" placeholder="units" data-testid="prod-minstock">
             <div class="form-text">Keep at least this many on hand: the Reorder list orders up to it.</div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="returnrule" class="form-label">If a customer returns it</label>
             <select class="form-select" id="returnrule" formControlName="returnrule" data-testid="prod-returnrule">
               <option value="">Follow its category</option>
@@ -90,13 +91,13 @@
 
         <h6 class="mt-4 text-primary">Ordering</h6>
         <div class="row g-3">
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <div class="form-check mt-4">
               <input type="checkbox" class="form-check-input" id="purchaseApprovalRequired" formControlName="purchaseApprovalRequired">
               <label class="form-check-label" for="purchaseApprovalRequired">Purchase needs approval</label>
             </div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-6 col-lg-3">
             <label for="purchaseApprovalQtyThreshold" class="form-label">Approval needed above (units)</label>
             <input id="purchaseApprovalQtyThreshold" class="form-control" type="number" min="0" formControlName="purchaseApprovalQtyThreshold" placeholder="any quantity">
             <div class="form-text">Leave empty to ask for approval at any quantity.</div>
@@ -117,3 +118,4 @@
       </form>
     </div>
   </div>
+</div>

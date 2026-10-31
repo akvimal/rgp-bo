@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="pagetitle">
   <h1>Weekly review</h1>
 </div>
@@ -145,3 +146,4 @@
   <p class="small text-muted" *ngIf="!data.canSign && data.over && !data.store && data.pending.length && data.stores.length > 1">Choose one store to sign for it.</p>
   <p class="small text-muted" *ngIf="!data.over">This week can be signed from {{data.week.next | date:'EEE d MMM'}}.</p>
 </ng-container>
+</div>

@@ -1,3 +1,4 @@
+<div class="form-compact">
 <div class="card">
   <div class="card-body pt-3">
     <div class="small text-muted mb-3">Everything here except holidays can be limited to roles; with no role chosen it applies to every role. To give two roles different leave days, add a leave type for each role. Remove deletes an item that was never used; one already in the salary or leave history is made inactive instead.</div>
@@ -55,12 +56,12 @@
         </div>
         <div class="border rounded p-3 mb-3" *ngFor="let p of positions" data-testid="hr-pos-row" [attr.data-pos]="p.name">
           <div class="row g-2 align-items-end">
-            <div class="col-md-3"><label class="form-label small mb-0">Job role</label><input class="form-control form-control-sm" [(ngModel)]="p.name" maxlength="60" data-testid="hr-pos-name"></div>
-            <div class="col-md-3"><label class="form-label small mb-0">Usual login role</label>
+            <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Job role</label><input class="form-control form-control-sm" [(ngModel)]="p.name" maxlength="60" data-testid="hr-pos-name"></div>
+            <div class="col-md-6 col-lg-3"><label class="form-label small mb-0">Usual login role</label>
               <select class="form-select form-select-sm" [(ngModel)]="p.login_role" data-testid="hr-pos-login-role"><option [ngValue]="null">None</option><option *ngFor="let r of roles" [ngValue]="r">{{r}}</option></select></div>
-            <div class="col-md-2"><div class="form-check mt-3"><input class="form-check-input" type="checkbox" [(ngModel)]="p.active" [id]="'pos-a-' + p.id"><label class="form-check-label small" [for]="'pos-a-' + p.id">In use</label></div></div>
-            <div class="col-md-2 small text-muted">{{p.staff}} staff &middot; earnings {{posEarnings(p) | number}}</div>
-            <div class="col-md-2 text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="savePosition(p)" data-testid="hr-pos-save">Save</button>
+            <div class="col-6 col-md-3 col-lg-2"><div class="form-check mt-3"><input class="form-check-input" type="checkbox" [(ngModel)]="p.active" [id]="'pos-a-' + p.id"><label class="form-check-label small" [for]="'pos-a-' + p.id">In use</label></div></div>
+            <div class="col-6 col-md-3 col-lg-2 small text-muted">{{p.staff}} staff &middot; earnings {{posEarnings(p) | number}}</div>
+            <div class="col-6 col-md-3 col-lg-2 text-end text-nowrap"><button class="btn btn-outline-primary btn-sm" type="button" (click)="savePosition(p)" data-testid="hr-pos-save">Save</button>
               <button class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="removePosition(p)" data-testid="hr-pos-remove">Remove</button></div>
           </div>
           <div class="row g-2 mt-1">
@@ -76,7 +77,7 @@
         </div>
         <div class="border rounded p-3 bg-light" data-testid="hr-pos-new">
           <div class="row g-2 align-items-end">
-            <div class="col-md-4"><label class="form-label small mb-0">New job role</label><input class="form-control form-control-sm" [(ngModel)]="newPos.name" maxlength="60" placeholder="e.g. Pharmacist" data-testid="hr-pos-new-name"></div>
+            <div class="col-md-6 col-lg-4"><label class="form-label small mb-0">New job role</label><input class="form-control form-control-sm" [(ngModel)]="newPos.name" maxlength="60" placeholder="e.g. Pharmacist" data-testid="hr-pos-new-name"></div>
             <div class="col-md-8 text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addPosition()" data-testid="hr-pos-add">Add job role</button></div>
           </div>
           <div class="row g-2 mt-1">
@@ -169,15 +170,15 @@
           <div *ngIf="mf" class="border rounded p-3" data-testid="hr-set-metric-form">
             <h6>{{mf.id ? 'Edit measure' : 'New measure'}}</h6>
             <div class="row g-3">
-              <div class="col-md-4"><label class="form-label">Name *</label><input class="form-control" [(ngModel)]="mf.name" maxlength="60" data-testid="hr-set-metric-name"></div>
-              <div class="col-md-2"><label class="form-label">Max points *</label><input type="number" min="1" class="form-control" [(ngModel)]="mf.max_points" data-testid="hr-set-metric-max"></div>
-              <div class="col-md-3"><label class="form-label">Measured by</label>
+              <div class="col-md-6 col-lg-4"><label class="form-label">Name *</label><input class="form-control" [(ngModel)]="mf.name" maxlength="60" data-testid="hr-set-metric-name"></div>
+              <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Max points *</label><input type="number" min="1" class="form-control" [(ngModel)]="mf.max_points" data-testid="hr-set-metric-max"></div>
+              <div class="col-md-6 col-lg-3"><label class="form-label">Measured by</label>
                 <select class="form-select" [(ngModel)]="mf.source" data-testid="hr-set-metric-source"><option value="MANUAL">A manager's rating</option><option value="SYSTEM">The system</option></select></div>
-              <div class="col-md-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfactive" [(ngModel)]="mf.active"><label class="form-check-label" for="mfactive">Active</label></div></div>
+              <div class="col-md-6 col-lg-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfactive" [(ngModel)]="mf.active"><label class="form-check-label" for="mfactive">Active</label></div></div>
               <div class="col-12"><label class="form-label">Description</label><input class="form-control" [(ngModel)]="mf.description" maxlength="200" placeholder="What good looks like"></div>
 
               <ng-container *ngIf="mf.source === 'MANUAL'">
-                <div class="col-md-3"><label class="form-label">Rating scale (1 to)</label><input type="number" min="2" max="10" class="form-control" [(ngModel)]="mf.rating_scale" data-testid="hr-set-metric-scale"></div>
+                <div class="col-md-6 col-lg-3"><label class="form-label">Rating scale (1 to)</label><input type="number" min="2" max="10" class="form-control" [(ngModel)]="mf.rating_scale" data-testid="hr-set-metric-scale"></div>
                 <div class="col-md-9 small text-muted align-self-end">A rating of {{mf.rating_scale}} earns all the points; each step below earns proportionally less.</div>
               </ng-container>
 
@@ -186,9 +187,9 @@
                   <select class="form-select" [(ngModel)]="mf.system_key" (ngModelChange)="systemChanged()" data-testid="hr-set-metric-key">
                     <option value="">Choose</option><option *ngFor="let s of systemMeasures" [value]="s.key">{{s.label}}</option></select>
                   <div class="form-text">{{measureHint}}</div></div>
-                <div class="col-md-3"><label class="form-label">Judged only after</label><input type="number" min="0" class="form-control" [(ngModel)]="mf.min_activity" data-testid="hr-set-metric-minact">
+                <div class="col-md-6 col-lg-3"><label class="form-label">Judged only after</label><input type="number" min="0" class="form-control" [(ngModel)]="mf.min_activity" data-testid="hr-set-metric-minact">
                   <div class="form-text">activity needed (bills, shifts, inquiries); below it the measure drops out</div></div>
-                <div class="col-md-4" *ngIf="mf.system_key">
+                <div class="col-md-6 col-lg-4" *ngIf="mf.system_key">
                   <label class="form-label">Points from the figure</label>
                   <select class="form-select" [(ngModel)]="mf.rule_kind" data-testid="hr-set-metric-rule"><option value="steps" [disabled]="direction === 'higher'">Steps (less is better)</option><option value="linear">Target and floor</option></select></div>
                 <div class="col-12" *ngIf="mf.system_key && mf.rule_kind === 'steps'" data-testid="hr-set-metric-steps">
@@ -211,7 +212,7 @@
               <div class="col-12"><label class="form-label">Applies to job roles</label><app-hr-roles [roles]="positionNames" [(value)]="mf.position_names"></app-hr-roles>
                 <div class="small text-muted">Pick the job roles this measure is for. None picked means every job role.</div></div>
               <div class="col-12"><label class="form-label">Applies to login roles</label><app-hr-roles [roles]="roles" [(value)]="mf.applies_roles"></app-hr-roles></div>
-              <div class="col-md-4"><label class="form-label">Staff types</label>
+              <div class="col-md-6 col-lg-4"><label class="form-label">Staff types</label>
                 <div>
                   <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="mft1" [checked]="mf.applies_types.includes('FULL_TIME')" (change)="toggleType('FULL_TIME')"><label class="form-check-label" for="mft1">Full time</label></div>
                   <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="mft2" [checked]="mf.applies_types.includes('PART_TIME')" (change)="toggleType('PART_TIME')"><label class="form-check-label" for="mft2">Part time</label></div>
@@ -253,4 +254,5 @@
     </section>
 
   </div>
+</div>
 </div>

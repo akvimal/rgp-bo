@@ -171,6 +171,20 @@ a.btn, a.nav-link, .sidebar a, .page-menu a, .grid-actions a, .dropdown-item, .p
 #main input[type=checkbox] { width: 1.1rem !important; height: 1.1rem !important; }
 .invalid-feedback, .form-text { font-size: .8rem; }
 
+/* ------------------------------------------------------------------ compact forms
+   The shared layout for a data-entry form: opt in with class="form-compact" on the form. Fields sit four to a row on a laptop (col-md-6
+   col-lg-3), gaps are tight, each error has a small fixed slot so the form does not jump, and a section is a quiet heading, not a card. */
+.form-compact { --bs-gutter-x: .75rem; --bs-gutter-y: .5rem; }
+.form-compact .form-label, .form-compact label:not(.form-check-label):not(.btn) { font-size: .8rem; margin-bottom: .1rem; }
+.form-compact .form-control, .form-compact .form-select { padding: .3rem .6rem; font-size: .875rem; }
+.form-compact textarea.form-control { min-height: 0; }
+.form-compact .field-error { min-height: 1.1rem; font-size: .78rem; line-height: 1.1rem; }
+.form-compact .form-text { font-size: .75rem; margin-top: .1rem; }
+.form-compact .form-check { margin-bottom: .15rem; min-height: 0; }
+.form-compact .form-check-label { font-size: .85rem; }
+.form-section { font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #6b7280; margin: .75rem 0 .35rem; padding-bottom: .2rem; border-bottom: 1px solid var(--rgp-line); }
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .75rem; }
+
 /* ------------------------------------------------------------------ cards, dialogs, alerts, badges */
 .card {
   border: 1px solid var(--rgp-line);
