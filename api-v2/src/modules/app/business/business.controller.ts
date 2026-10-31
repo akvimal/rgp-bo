@@ -5,6 +5,18 @@ import { User } from "src/core/decorator/user.decorator";
 import { PermissionService } from "../roles/permission.service";
 import { BusinessService } from "./business.service";
 
+/** Public: the sign-in page asks for the business's name and logo before anyone is signed in. Nothing else is given. */
+@ApiTags("Brand")
+@Controller("brand")
+export class BrandController {
+  constructor(private readonly service: BusinessService) {}
+
+  @Get()
+  brand() {
+    return this.service.publicBrand();
+  }
+}
+
 @ApiTags("Businesses")
 @Controller("businesses")
 @ApiBearerAuth()

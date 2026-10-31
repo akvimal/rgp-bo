@@ -1,4 +1,6 @@
-import { Component, Input, ViewEncapsulation } from "@angular/core";
+import { Component, Input, OnInit, ViewEncapsulation } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { environment } from "../../../../environments/environment";
 
 /**
  * The one frame for every signed-out page (sign in, change password): the same card, brand, title, spacing and, for the
@@ -10,7 +12,9 @@ import { Component, Input, ViewEncapsulation } from "@angular/core";
   styles: [`
     .auth-page { background: #f6f9ff; min-height: 100vh; }
     .auth-page .auth-card { width: 100%; max-width: 26rem; border: 0; }
-    .auth-page .auth-brand img { width: 72px; height: 72px; }
+    .auth-page .auth-brand img { width: 72px; height: 72px; object-fit: contain; }
+    .auth-page .auth-brand img.custom { width: auto; max-width: 220px; height: auto; max-height: 72px; }
+    .auth-page .auth-brand .brand-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .auth-platform { background: #12171f; }
     .auth-platform .auth-card { background: #1c232e; color: #e6e9ee; border-top: 4px solid #f0a020; }
     .auth-platform .auth-card h5, .auth-platform .auth-card .form-text { color: #e6e9ee; }
@@ -30,8 +34,8 @@ import { Component, Input, ViewEncapsulation } from "@angular/core";
           <div class="card-body p-4">
             <div class="auth-brand text-center mb-3" data-testid="auth-brand">
               <ng-container *ngIf="!platform">
-                <img src="assets/img/rgp-logo.png" alt="RGP">
-                <div class="fw-semibold mt-2">Ramesh Generic Pharmacy</div>
+                <img [src]="brand.logo || 'assets/img/rgp-logo.png'" [class.custom]="!!brand.logo" [alt]="brand.name" data-testid="auth-logo">
+                <div class="fw-semibold mt-2 brand-name" [title]="brand.name" data-testid="auth-business-name">{{brand.name}}</div>
               </ng-container>
               <div *ngIf="platform" data-testid="login-platform-banner">
                 <i class="bi bi-shield-lock" style="font-size: 56px; color: #f0a020;"></i>
@@ -46,7 +50,26 @@ import { Component, Input, ViewEncapsulation } from "@angular/core";
       </section>
     </main>`,
 })
-export class AuthShellComponent {
+export class AuthShellComponent implements OnInit {
   @Input() platform = false;
   @Input() title = "";
+
+  /** the business's own name and logo; the last ones seen are kept in this browser so the page does not flash the default first */
+  brand: { name: string; logo: string | null } = { name: "Ramesh Generic Pharmacy", logo: null };
+
+  constructor(private http: HttpClient) {
+    try {
+      const saved = JSON.parse(localStorage.getItem("rgp.brand") || "null");
+      if (saved?.name) this.brand = { name: String(saved.name), logo: typeof saved.logo === "string" ? saved.logo : null };
+    } catch { /* the default is used */ }
+  }
+
+  ngOnInit() {
+    if (this.platform) return;
+    this.http.get<{ name?: string; logo?: string | null }>(`${environment.apiHost}/brand`).subscribe(b => {
+      if (!b?.name) return;                       // several businesses on one install: keep the default
+      this.brand = { name: b.name, logo: b.logo || null };
+      try { localStorage.setItem("rgp.brand", JSON.stringify(this.brand)); } catch { /* not remembered */ }
+    }, () => { /* the default stays */ });
+  }
 }

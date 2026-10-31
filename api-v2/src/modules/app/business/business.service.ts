@@ -128,6 +128,15 @@ export class BusinessService {
     return { ...plan, info: PRESET_INFO[plan.preset], accounts, current: plan.preset };
   }
 
+  /**
+   * The name and logo for the sign-in page, which has no one signed in yet. A copy of the app belongs to one business, so when there
+   * is exactly one active business its name and logo are given; with several (a shared install) nothing is, and the page keeps its default.
+   */
+  async publicBrand(): Promise<{ name?: string; logo?: string | null }> {
+    const rows = await this.manager.query(`select name, logo from business where active = true order by id limit 2`);
+    return rows.length === 1 ? { name: rows[0].name, logo: rows[0].logo || null } : {};
+  }
+
   /** Which modules the Business Head's business has switched on (the whole picture, with defaults filled in). */
   async myModules(user: any) {
     const b = await this.ownBusiness(user);
