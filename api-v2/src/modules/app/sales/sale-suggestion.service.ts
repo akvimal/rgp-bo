@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
+import { compositionKey, needsPrescription } from './composition-match';
 
 /** a pair has to have been bought together on at least this many bills before it is worth saying */
 const MIN_TOGETHER = 2;
@@ -23,11 +24,11 @@ export class SaleSuggestionService {
   constructor(@InjectEntityManager() private readonly manager: EntityManager) {}
 
   /** the batch of each product to sell first at the store: in date for long enough, with stock left */
-  private async liveBatches(productIds: number[], storeId: number | null) {
+  private async liveBatches(productIds: number[], storeId: number | null, withRestricted = false) {
     if (!productIds.length) return [];
     return this.manager.query(
       `select * from (
-         select distinct on (pii.product_id) pii.product_id, pii.id as item_id, pii.batch, to_char(pii.exp_date, 'YYYY-MM-DD') as exp_date, p.title, p.more_props,
+         select distinct on (pii.product_id) pii.product_id, pii.id as item_id, pii.batch, to_char(pii.exp_date, 'YYYY-MM-DD') as exp_date, p.title, p.mfr, p.more_props,
                 coalesce(pii.sale_price, pii.mrp_cost)::float as price, pii.mrp_cost::float as mrp, pii.ptr_cost::float as ptr_cost, coalesce(p.pack, 1) as pack,
                 ((case when i.store_id = $2 then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
                  - coalesce((select sum(si.qty) from sale_item si inner join sale s on s.id = si.sale_id
@@ -38,7 +39,57 @@ export class SaleSuggestionService {
           where pii.product_id = any($1::int[]) and pii.status = 'VERIFIED' and pii.active = true and pii.archive = false and p.active = true and p.archive = false
             and (pii.exp_date is null or pii.exp_date >= current_date + ${MIN_SHELF_DAYS})
           order by pii.product_id, pii.exp_date nulls last, pii.id) x
-       where x.available > 0 and coalesce(x.more_props->>'schedule', '') <> 'H1'`, [productIds, storeId]);
+       where x.available > 0 ${withRestricted ? '' : "and coalesce(x.more_props->>'schedule', '') <> 'H1'"}`, [productIds, storeId]);
+  }
+
+  /** every product's cleaned composition, kept for a minute so a lookup at the counter does not rescan the catalogue */
+  private compCache: { at: number; rows: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean }[] } | null = null;
+
+  private async compositions() {
+    if (this.compCache && Date.now() - this.compCache.at < 60_000) return this.compCache.rows;
+    const rows = await this.manager.query(`select id, title, more_props->>'composition' as comp from product where active and not archive and nullif(btrim(more_props->>'composition'), '') is not null`);
+    const out: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean }[] = [];
+    for (const r of rows) {
+      const k = compositionKey(r.comp);
+      if (k) out.push({ id: Number(r.id), title: r.title, comp: String(r.comp).trim(), ...k });
+    }
+    this.compCache = { at: Date.now(), rows: out };
+    return out;
+  }
+
+  /**
+   * A customer asks for a brand: what has the same composition and strength, and is in stock? Medicines with the same ingredients in
+   * another strength are listed apart. Medicines that need a prescription are marked, not hidden. Medicines with no strength recorded
+   * are not matched, because the match could not be trusted. The pharmacist decides on any substitution.
+   */
+  async alternatives(productId: number, storeId: number | null) {
+    const [asked] = await this.manager.query(`select id, title, mfr, more_props from product where id = $1 and active and not archive`, [productId]);
+    if (!asked) throw new BadRequestException('Product not found.');
+    const mk = compositionKey(asked.more_props?.composition);
+    const base = { asked: { id: Number(asked.id), title: asked.title, composition: asked.more_props?.composition?.trim() || null, schedule: asked.more_props?.schedule || null } };
+    if (!mk) return { ...base, status: 'NO_COMPOSITION', same: [], otherStrengths: [], notStocked: [] };
+    if (!mk.hasStrength) return { ...base, status: 'NO_STRENGTH', same: [], otherStrengths: [], notStocked: [] };
+
+    const all = await this.compositions();
+    const sameIds = all.filter((c) => c.id !== productId && c.key === mk.key).map((c) => c.id);
+    const otherIds = all.filter((c) => c.id !== productId && c.key !== mk.key && c.salts === mk.salts && c.hasStrength).map((c) => c.id);
+    const live = await this.liveBatches([productId, ...sameIds, ...otherIds], storeId, true);
+    const liveBy = new Map<number, any>(live.map((l: any) => [Number(l.product_id), l]));
+    const mine = liveBy.get(productId);
+    const unit = (l: any) => (l.pack > 0 ? l.price / l.pack : l.price);
+    const detail = (l: any) => ({
+      productid: Number(l.product_id), title: l.title, composition: String(l.more_props?.composition || '').trim(), mfr: (l.mfr || '').trim() || null,
+      generic: l.more_props?.generic === true || l.more_props?.generic === 'true',
+      schedule: l.more_props?.schedule || null, prescription: needsPrescription(l.more_props?.schedule),
+      batch: l.batch, exp_date: l.exp_date, mrp: l.mrp, price: l.price, pack: l.pack, available: l.available,
+      cheaperPct: mine && unit(mine) > 0 ? Math.round(((unit(mine) - unit(l)) / unit(mine)) * 1000) / 10 : null,
+    });
+    const byPrice = (a: any, b: any) => (a.cheaperPct === null || b.cheaperPct === null ? 0 : b.cheaperPct - a.cheaperPct);
+    const same = sameIds.filter((id) => liveBy.has(id)).map((id) => detail(liveBy.get(id))).sort(byPrice);
+    const otherStrengths = otherIds.filter((id) => liveBy.has(id)).map((id) => detail(liveBy.get(id))).sort((a: any, b: any) => a.composition.localeCompare(b.composition));
+    // the same medicine the shop knows but does not have now: the starting point for asking a vendor
+    const notStocked = all.filter((c) => c.key === mk.key && (c.id === productId ? !mine : !liveBy.has(c.id))).slice(0, 8).map((c) => ({ productid: c.id, title: c.title }));
+    return { ...base, status: 'OK', askedInStock: !!mine, askedAvailable: mine?.available ?? 0, same, otherStrengths, notStocked };
   }
 
   private marginPct(price: number, cost: number, pack: number) {

@@ -49,6 +49,7 @@
                 <td colspan="7" class="small">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <span data-testid="sale-add-item-links"><ng-content></ng-content></span>
+                        <app-sale-alternatives *ngIf="auth.packOn('pharmacy')" (pick)="addSuggested($event)"></app-sale-alternatives>
                         <app-sale-suggestions *ngIf="auth.moduleOn('refills')" [items]="items" (add)="addSuggested($event)" (swap)="swapSuggested($event)" (supply)="setSupplyFor($event)"></app-sale-suggestions>
                     </div>
                 </td>
