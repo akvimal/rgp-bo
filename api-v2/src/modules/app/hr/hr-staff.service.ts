@@ -14,6 +14,13 @@ export const WEEKLY_OFF = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const PHONE = /^[0-9+\-\s]{7,20}$/;
 
+/** a monthly incentive maximum: empty means no cap of their own */
+const capValue = (v: any): number | null => {
+  if (v === null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 10000000) throw new BadRequestException('The incentive cap is an amount from 0 up, or empty for none.');
+  return Math.round(n * 100) / 100;
+};
 const clean = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
 
 /** Staff records, pay components and dated salary revisions. */
@@ -147,6 +154,7 @@ export class HrStaffService {
       out.pharmacist_valid_to = b.pharmacist_valid_to || null;
     }
     if (b.position_id !== undefined) out.position_id = b.position_id ? Number(b.position_id) : null;
+    if (b.incentive_cap !== undefined) out.incentive_cap = capValue(b.incentive_cap);
     if (b.store_id !== undefined) out.store_id = b.store_id ? Number(b.store_id) : null;
     if (b.emp_type !== undefined) {
       if (!['FULL_TIME', 'PART_TIME'].includes(b.emp_type)) throw new BadRequestException('Type must be full time or part time.');
@@ -419,7 +427,7 @@ export class HrStaffService {
   /** every job role with its standard amounts and how many staff hold it */
   async positions() {
     return this.manager.query(
-      `select p.id, p.name, p.active, p.login_role,
+      `select p.id, p.name, p.active, p.login_role, p.incentive_cap::float as incentive_cap,
               (select count(*)::int from hr_employee e where e.position_id = p.id and e.status = 'ACTIVE') as staff,
               (select coalesce(json_agg(json_build_object('component_id', c.id, 'code', c.code, 'name', c.name, 'kind', c.kind, 'amount', l.amount::float) order by c.display_order, c.name), '[]'::json)
                  from hr_position_line l join hr_pay_component c on c.id = l.component_id where l.position_id = p.id) as lines
@@ -434,6 +442,7 @@ export class HrStaffService {
     if (comps.length !== lines.length) throw new BadRequestException('A pay component in the list is not valid.');
     if (lines.length && !hasEarning(lines, Object.fromEntries(comps.map((c: any) => [c.id, c.kind])))) throw new BadRequestException('A pay structure with amounts needs at least one earning.');
     const loginRole = clean(b?.login_role, 60);
+    const cap = capValue(b?.incentive_cap ?? null);
     await this.checkRoles(loginRole ? [loginRole] : null);
     const [dup] = await this.manager.query(`select id from hr_position where lower(name) = lower($1) and id is distinct from $2`, [name, id]);
     if (dup) throw new BadRequestException(`There is already a job role called ${name}.`);
@@ -442,10 +451,10 @@ export class HrStaffService {
       if (pid) {
         const [cur] = await tx.query(`select id from hr_position where id = $1`, [pid]);
         if (!cur) throw new NotFoundException('Job role not found.');
-        await tx.query(`update hr_position set name = $2, active = $3, login_role = $4 where id = $1`, [pid, name, b.active !== false, loginRole]);
+        await tx.query(`update hr_position set name = $2, active = $3, login_role = $4, incentive_cap = $5 where id = $1`, [pid, name, b.active !== false, loginRole, cap]);
         await tx.query(`delete from hr_position_line where position_id = $1`, [pid]);
       } else {
-        const [r] = await tx.query(`insert into hr_position (name, created_by, login_role) values ($1, $2, $3) returning id`, [name, by.id, loginRole]);
+        const [r] = await tx.query(`insert into hr_position (name, created_by, login_role, incentive_cap) values ($1, $2, $3, $4) returning id`, [name, by.id, loginRole, cap]);
         pid = r.id as number;
       }
       for (const l of lines) await tx.query(`insert into hr_position_line (position_id, component_id, amount) values ($1,$2,$3)`, [pid, l.component_id, l.amount]);

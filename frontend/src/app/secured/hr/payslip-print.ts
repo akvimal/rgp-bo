@@ -21,7 +21,8 @@ export function printPayslip(s: any): boolean {
     <tr><td>Designation</td><td>${e(s.designation)}</td><td>Joined</td><td>${s.join_date}</td></tr>
     <tr><td>Bank</td><td>${e(s.bank_name)} ${e(s.account_no)}</td><td>Days paid</td><td>${s.payable_days} of 30</td></tr></table>
     <table><tr><th>Earnings</th><th class="r">Full month</th><th class="r">Paid</th></tr>${earn}
-      ${+s.kpi_incentive ? `<tr><td>Incentive</td><td></td><td class="r">${n(s.kpi_incentive)}</td></tr>` : ""}
+      ${+s.kpi_incentive ? `<tr><td>Incentive${s.incentive_cap !== null && s.incentive_cap !== undefined && +s.incentive_uncapped > +s.incentive_cap ? ` (capped at ${n(s.incentive_cap)})` : ""}</td><td></td><td class="r">${n(s.kpi_incentive)}</td></tr>` : ""}
+      ${(s.bonus_items || []).map((b: any) => `<tr><td>${e(b.name)}</td><td></td><td class="r">${n(b.amount)}</td></tr>`).join("")}
       ${+s.adjustment ? `<tr><td>${e(s.adjustment_note || "Adjustment")}</td><td></td><td class="r">${n(s.adjustment)}</td></tr>` : ""}</table>
     <table><tr><th>Deductions</th><th class="r">Amount</th></tr>${dedRows || '<tr><td colspan="2" class="muted">None</td></tr>'}</table>
     <table><tr class="tot net"><td>Net pay</td><td class="r">${n(s.net)}</td></tr></table>

@@ -68,6 +68,10 @@
               <label class="form-label small mb-0">{{c.name}} <span class="text-muted">({{c.kind === 'EARNING' ? 'earning' : 'deduction'}})</span></label>
               <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="p.amounts[c.id]" [attr.data-testid]="'hr-pos-amt-' + c.code">
             </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label small mb-0">Incentive cap <span class="text-muted">(per month)</span></label>
+              <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="p.incentive_cap" placeholder="No cap" [attr.data-testid]="'hr-pos-cap'">
+            </div>
           </div>
         </div>
         <div class="border rounded p-3 bg-light" data-testid="hr-pos-new">
@@ -79,6 +83,10 @@
             <div class="col-6 col-md-3" *ngFor="let c of payComponents">
               <label class="form-label small mb-0">{{c.name}} <span class="text-muted">({{c.kind === 'EARNING' ? 'earning' : 'deduction'}})</span></label>
               <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="newPos.amounts[c.id]" [attr.data-testid]="'hr-pos-new-amt-' + c.code">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label small mb-0">Incentive cap <span class="text-muted">(per month)</span></label>
+              <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="newPos.incentive_cap" placeholder="No cap" [attr.data-testid]="'hr-pos-new-cap'">
             </div>
           </div>
         </div>

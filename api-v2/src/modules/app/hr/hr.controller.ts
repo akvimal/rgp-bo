@@ -7,6 +7,7 @@ import { User } from 'src/core/decorator/user.decorator';
 import { HrStaffService } from './hr-staff.service';
 import { HrLeaveService } from './hr-leave.service';
 import { HrPayrollService } from './hr-payroll.service';
+import { HrBonusService } from './hr-bonus.service';
 import { HrKpiService } from './hr-kpi.service';
 import { HrKpiEngine } from './hr-kpi-engine.service';
 
@@ -31,6 +32,7 @@ export class HrController {
     private readonly staff: HrStaffService,
     private readonly leave: HrLeaveService,
     private readonly payroll: HrPayrollService,
+    private readonly bonus: HrBonusService,
     private readonly kpi: HrKpiService,
     private readonly engine: HrKpiEngine,
   ) {}
@@ -97,6 +99,14 @@ export class HrController {
   @Put('kpi/bands') saveBands(@Body() b: any, @User() u: any) { return this.kpi.saveBands(b, u); }
   @Get('kpi/month') month(@Query('period') period: string) { return this.kpi.month(period); }
   @Post('kpi/score') score(@Body() b: any, @User() u: any) { return this.kpi.score(b, u); }
+
+  // ---------------------------------------------------------------- bonuses
+  @Get('bonuses') bonuses(@Query('period') period: string) { return this.bonus.list(period); }
+  @Post('bonuses/preview') bonusPreview(@Body() b: any) { return this.bonus.preview(b); }
+  @Post('bonuses') giveBonus(@Body() b: any, @User() u: any) { return this.bonus.create(b, u); }
+  @Post('bonuses/item') giveOneBonus(@Body() b: any, @User() u: any) { return this.bonus.addOne(b, u); }
+  @Put('bonuses/items/:id') changeBonus(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.bonus.update(id, b, u); }
+  @Delete('bonuses/items/:id') removeBonus(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.bonus.remove(id, u); }
 
   // ---------------------------------------------------------------- payroll
   @Get('payroll') runs() { return this.payroll.runs(); }

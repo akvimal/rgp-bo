@@ -90,11 +90,11 @@ export class HrSetupComponent implements OnInit {
   private editable(p: any) {
     const amounts: any = {};
     for (const l of p.lines || []) amounts[l.component_id] = l.amount;
-    return { id: p.id, name: p.name, active: p.active, staff: p.staff || 0, login_role: p.login_role || null, amounts };
+    return { id: p.id, name: p.name, active: p.active, staff: p.staff || 0, login_role: p.login_role || null, incentive_cap: p.incentive_cap ?? null, amounts };
   }
 
   private posBody(p: any) {
-    return { name: p.name, active: p.active, login_role: p.login_role || null, lines: this.payComponents.map(c => ({ component_id: c.id, amount: p.amounts[c.id] })).filter(l => +l.amount > 0) };
+    return { name: p.name, active: p.active, login_role: p.login_role || null, incentive_cap: p.incentive_cap === "" || p.incentive_cap === undefined ? null : p.incentive_cap, lines: this.payComponents.map(c => ({ component_id: c.id, amount: p.amounts[c.id] })).filter(l => +l.amount > 0) };
   }
 
   /** earnings of a structure, for the one-line summary */

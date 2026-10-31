@@ -108,7 +108,8 @@
             <div><button class="btn btn-outline-primary btn-sm" type="button" (click)="printSlip()" data-testid="myhr-slip-print">Print / save as PDF</button> <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="slip = null">Close</button></div></div>
           <table class="table table-sm mt-2 mb-0">
             <tr *ngFor="let e of slip.earnings"><td>{{e.name}}</td><td class="text-end">{{e.paid | number:'1.2-2'}}</td></tr>
-            <tr *ngIf="slip.kpi_incentive"><td>Incentive</td><td class="text-end">{{slip.kpi_incentive | number:'1.2-2'}}</td></tr>
+            <tr *ngIf="slip.kpi_incentive"><td>Incentive<span class="small text-muted" *ngIf="slip.incentive_cap !== null && slip.incentive_uncapped > slip.incentive_cap"> (capped at {{slip.incentive_cap | number:'1.2-2'}})</span></td><td class="text-end">{{slip.kpi_incentive | number:'1.2-2'}}</td></tr>
+            <tr *ngFor="let b of slip.bonus_items"><td>{{b.name}}</td><td class="text-end">{{b.amount | number:'1.2-2'}}</td></tr>
             <tr *ngIf="slip.adjustment"><td>{{slip.adjustment_note || 'Adjustment'}}</td><td class="text-end">{{slip.adjustment | number:'1.2-2'}}</td></tr>
             <tr *ngFor="let d of slip.deductions"><td>{{d.name}}</td><td class="text-end">-{{d.amount | number:'1.2-2'}}</td></tr>
             <tr *ngIf="slip.extra_deduction"><td>Other deduction</td><td class="text-end">-{{slip.extra_deduction | number:'1.2-2'}}</td></tr>

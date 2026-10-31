@@ -58,13 +58,15 @@ export class HrPayrollComponent implements OnInit {
       e => this.error = this.hr.msg(e));
   }
 
-  startEdit(l: any) { this.edit = { id: l.id, name: l.name, unpaid_days: l.unpaid_days, extra_deduction: l.extra_deduction, kpi_incentive: l.kpi_incentive, adjustment: l.adjustment, adjustment_note: l.adjustment_note || "", staff_credit_recovery: l.staff_credit_recovery, owed: l.credit_outstanding }; }
+  startEdit(l: any) { this.edit = { id: l.id, name: l.name, unpaid_days: l.unpaid_days, extra_deduction: l.extra_deduction, kpi_incentive: l.kpi_incentive, incentive_cap: l.incentive_cap, adjustment: l.adjustment, adjustment_note: l.adjustment_note || "", staff_credit_recovery: l.staff_credit_recovery, owed: l.credit_outstanding }; }
 
   saveEdit() {
     this.error = this.message = "";
-    const { id, name, owed, ...body } = this.edit;
+    const { id, name, owed, incentive_cap, ...body } = this.edit;
     this.hr.put(`payroll/lines/${id}`, body).subscribe(() => { this.edit = null; this.message = "Line updated."; this.load(); }, e => this.error = this.hr.msg(e));
   }
+
+  bonusNames(l: any): string { return (l.bonus_items || []).map((b: any) => b.name).join(", "); }
 
   showStub(l: any) { this.hr.get(`payroll/stub/${l.id}`).subscribe(s => this.stub = s, e => this.error = this.hr.msg(e)); }
 

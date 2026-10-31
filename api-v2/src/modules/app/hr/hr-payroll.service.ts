@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { AuditService } from 'src/core/audit/audit.service';
+import { capIncentive, effectiveCap } from './hr-variable-pay';
 
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const PAY_DAYS = 30;                       // a fixed 30-day pay month
@@ -14,6 +15,8 @@ const iso = (d: any) => (d instanceof Date ? d.toISOString() : String(d)).slice(
  * Payable days = 30 - unpaid days (absent, unpaid leave, half days) - days before joining / after leaving.
  * Days nobody marked count as worked. Staff-credit balances are recovered in the run; approving it writes the recovery
  * entries, and reopening it takes them back.
+ * The KPI incentive is the band's share of the month's earned pay, held to the person's monthly maximum (their own, else their job
+ * role's). Bonuses given for the month (hr_bonus_item) are added as they stand.
  */
 @Injectable()
 export class HrPayrollService {
@@ -34,6 +37,7 @@ export class HrPayrollService {
       `select l.id, l.employee_id, coalesce(e.full_name, u.full_name) as name, e.emp_code, e.designation, l.payable_days::float as payable_days, l.unpaid_days::float as unpaid_days, l.not_employed_days::float as not_employed_days,
               l.earnings, l.deductions, l.earnings_paid::float as earnings_paid, l.fixed_deductions::float as fixed_deductions, l.extra_deduction::float as extra_deduction,
               l.staff_credit_recovery::float as staff_credit_recovery, l.kpi_incentive::float as kpi_incentive, l.adjustment::float as adjustment, l.adjustment_note, l.net::float as net,
+              l.bonus::float as bonus, l.bonus_items, l.incentive_cap::float as incentive_cap, l.incentive_uncapped::float as incentive_uncapped,
               coalesce((select sum(amount) from staff_credit_entry c where c.user_id = e.user_id), 0)::float as credit_outstanding
          from hr_payroll_line l join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id
         where l.run_id = $1 order by coalesce(e.full_name, u.full_name)`, [run.id]);
@@ -50,7 +54,8 @@ export class HrPayrollService {
     const end = `${period}-${String(dim).padStart(2, '0')}`;
 
     const emps = await this.manager.query(
-      `select e.id, e.user_id, to_char(e.join_date, 'YYYY-MM-DD') as join_date, to_char(e.exit_date, 'YYYY-MM-DD') as exit_date, coalesce(e.full_name, u.full_name) as full_name
+      `select e.id, e.user_id, to_char(e.join_date, 'YYYY-MM-DD') as join_date, to_char(e.exit_date, 'YYYY-MM-DD') as exit_date, coalesce(e.full_name, u.full_name) as full_name,
+              e.incentive_cap::float as own_cap, (select p.incentive_cap::float from hr_position p where p.id = e.position_id) as role_cap
          from hr_employee e left join app_user u on u.id = e.user_id
         where e.on_payroll and e.join_date <= $2::date and (e.exit_date is null or e.exit_date >= $1::date) order by coalesce(e.full_name, u.full_name)`, [start, end]);
     if (!emps.length) throw new BadRequestException('There is no staff employed in that month.');
@@ -90,15 +95,21 @@ export class HrPayrollService {
       const fixedDed = r2(deductions.reduce((t: number, x: any) => t + x.amount, 0));
 
       const [kpi] = await this.manager.query(`select incentive_percent::float as pct from hr_kpi_review where employee_id = $1 and period = $2`, [e.id, period]);
-      const kpiIncentive = kpi ? r2(earningsPaid * kpi.pct / 100) : 0;
+      const cap = effectiveCap(e.own_cap, e.role_cap);
+      const uncapped = kpi ? r2(earningsPaid * kpi.pct / 100) : 0;
+      const kpiIncentive = capIncentive(uncapped, cap).amount;
+
+      const bonusItems = await this.manager.query(
+        `select id, name, kind, amount::float as amount from hr_bonus_item where employee_id = $1 and period = $2 order by id`, [e.id, period]);
+      const bonus = r2(bonusItems.reduce((t: number, x: any) => t + x.amount, 0));
 
       let recovery = 0;
       if (e.user_id) {
         const [bal] = await this.manager.query(`select coalesce(sum(amount), 0)::float as b from staff_credit_entry where user_id = $1`, [e.user_id]);
-        recovery = r2(Math.max(0, Math.min(bal.b, earningsPaid + kpiIncentive - fixedDed)));
+        recovery = r2(Math.max(0, Math.min(bal.b, earningsPaid + kpiIncentive + bonus - fixedDed)));
       }
-      lines.push({ e, payable, unpaid, notEmployed, earnings, deductions, earningsPaid, fixedDed, kpiIncentive, recovery,
-        net: r2(earningsPaid + kpiIncentive - fixedDed - recovery) });
+      lines.push({ e, payable, unpaid, notEmployed, earnings, deductions, earningsPaid, fixedDed, kpiIncentive, uncapped, cap, bonus, bonusItems, recovery,
+        net: r2(earningsPaid + kpiIncentive + bonus - fixedDed - recovery) });
     }
     if (!lines.length) throw new BadRequestException('No one has a salary set for that month. ' + warnings.join(' '));
 
@@ -108,9 +119,11 @@ export class HrPayrollService {
       await tm.query(`delete from hr_payroll_line where run_id = $1`, [id]);
       for (const l of lines) {
         await tm.query(
-          `insert into hr_payroll_line (run_id, employee_id, payable_days, unpaid_days, not_employed_days, earnings, deductions, earnings_paid, fixed_deductions, staff_credit_recovery, kpi_incentive, net)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-          [id, l.e.id, l.payable, l.unpaid, l.notEmployed, JSON.stringify(l.earnings), JSON.stringify(l.deductions), l.earningsPaid, l.fixedDed, l.recovery, l.kpiIncentive, l.net]);
+          `insert into hr_payroll_line (run_id, employee_id, payable_days, unpaid_days, not_employed_days, earnings, deductions, earnings_paid, fixed_deductions, staff_credit_recovery, kpi_incentive, net,
+                                        incentive_uncapped, incentive_cap, bonus, bonus_items)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+          [id, l.e.id, l.payable, l.unpaid, l.notEmployed, JSON.stringify(l.earnings), JSON.stringify(l.deductions), l.earningsPaid, l.fixedDed, l.recovery, l.kpiIncentive, l.net,
+            l.uncapped, l.cap, l.bonus, JSON.stringify(l.bonusItems)]);
       }
       await this.totals(tm, id);
       return id;
@@ -122,7 +135,7 @@ export class HrPayrollService {
   private async totals(tm: EntityManager, runId: number) {
     await tm.query(
       `update hr_payroll_run r set total_earnings = coalesce(t.e, 0), total_deductions = coalesce(t.d, 0), total_net = coalesce(t.n, 0)
-         from (select sum(earnings_paid + kpi_incentive + adjustment) as e, sum(fixed_deductions + extra_deduction + staff_credit_recovery) as d, sum(net) as n
+         from (select sum(earnings_paid + kpi_incentive + bonus + adjustment) as e, sum(fixed_deductions + extra_deduction + staff_credit_recovery) as d, sum(net) as n
                  from hr_payroll_line where run_id = $1) t where r.id = $1`, [runId]);
   }
 
@@ -147,6 +160,9 @@ export class HrPayrollService {
     const earningsPaid = r2(earnings.reduce((t, x) => t + x.paid, 0));
     const extra = num(b.extra_deduction, Number(l.extra_deduction), 'The extra deduction');
     const kpi = num(b.kpi_incentive, Number(l.kpi_incentive), 'The incentive');
+    if (l.incentive_cap !== null && kpi > Number(l.incentive_cap) + 0.005) {
+      throw new BadRequestException(`${l.full_name}'s incentive is capped at ${Number(l.incentive_cap).toFixed(2)} a month. Raise the cap on their job role or on them first.`);
+    }
     const adj = num(b.adjustment, Number(l.adjustment), 'The adjustment', true);
     const note = b.adjustment_note !== undefined ? (String(b.adjustment_note || '').trim().slice(0, 200) || null) : l.adjustment_note;
     if (adj !== 0 && !note) throw new BadRequestException('Say what the adjustment is for.');
@@ -155,7 +171,7 @@ export class HrPayrollService {
       const [bal] = await this.manager.query(`select coalesce(sum(amount), 0)::float as b from staff_credit_entry where user_id = $1`, [l.user_id || 0]);
       if (recovery > bal.b + 0.005) throw new BadRequestException(`${l.full_name} owes ${bal.b.toFixed(2)} on staff credit; more than that cannot be recovered.`);
     }
-    const net = r2(earningsPaid + kpi + adj - Number(l.fixed_deductions) - extra - recovery);
+    const net = r2(earningsPaid + kpi + Number(l.bonus) + adj - Number(l.fixed_deductions) - extra - recovery);
     if (net < 0) throw new BadRequestException(`Net pay would be ${net.toFixed(2)}. Lower the deductions or recovery.`);
     await this.manager.transaction(async tm => {
       await tm.query(
@@ -165,6 +181,34 @@ export class HrPayrollService {
     });
     await this.audit.record({ userId: by.id, action: 'hr.payroll_line_edited', entityType: 'hr_payroll_line', entityId: id, summary: `${l.full_name} ${l.period}: payroll line edited, net ${net.toFixed(2)}`, details: b });
     return { id, net };
+  }
+
+  /** a month's pay is locked once approved; bonuses cannot be added, changed or removed then */
+  async assertOpen(period: string) {
+    const [run] = await this.manager.query(`select status from hr_payroll_run where period = $1`, [period]);
+    if (run?.status === 'APPROVED') throw new BadRequestException(`Payroll for ${period} is approved. Reopen it to change a bonus.`);
+  }
+
+  /** after a bonus changes: a draft run for that month takes the month's bonuses as they now stand */
+  async syncBonus(period: string, by: any, within?: EntityManager) {
+    const [run] = await this.manager.query(`select id, status from hr_payroll_run where period = $1`, [period]);
+    if (!run || run.status !== 'DRAFT') return;
+    const work = async (tm: EntityManager) => {
+      const lines = await tm.query(
+        `select l.id, l.earnings_paid::float as earnings_paid, l.kpi_incentive::float as kpi, l.adjustment::float as adj, l.fixed_deductions::float as fixed, l.extra_deduction::float as extra,
+                l.staff_credit_recovery::float as rec, coalesce(e.full_name, u.full_name) as name,
+                (select coalesce(json_agg(json_build_object('id', b.id, 'name', b.name, 'kind', b.kind, 'amount', b.amount::float) order by b.id), '[]'::json) from hr_bonus_item b where b.employee_id = l.employee_id and b.period = $2) as items
+           from hr_payroll_line l join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id where l.run_id = $1`, [run.id, period]);
+      for (const l of lines) {
+        const bonus = r2((l.items as any[]).reduce((t, x) => t + x.amount, 0));
+        const net = r2(l.earnings_paid + l.kpi + bonus + l.adj - l.fixed - l.extra - l.rec);
+        if (net < 0) throw new BadRequestException(`${l.name}'s net pay would be ${net.toFixed(2)}. Lower their deductions or recovery on the payroll first.`);
+        await tm.query(`update hr_payroll_line set bonus = $2, bonus_items = $3, net = $4 where id = $1`, [l.id, bonus, JSON.stringify(l.items), net]);
+      }
+      await this.totals(tm, run.id);
+    };
+    await (within ? work(within) : this.manager.transaction(work));
+    void by;
   }
 
   async approve(period: string, by: any) {
@@ -209,7 +253,8 @@ export class HrPayrollService {
       `select l.id, r.period, r.status, e.emp_code, e.designation, e.pan, e.bank_name, e.account_no, e.ifsc, to_char(e.join_date, 'DD Mon YYYY') as join_date, coalesce(e.full_name, u.full_name) as name,
               l.payable_days::float as payable_days, l.unpaid_days::float as unpaid_days, l.not_employed_days::float as not_employed_days, l.earnings, l.deductions,
               l.earnings_paid::float as earnings_paid, l.fixed_deductions::float as fixed_deductions, l.extra_deduction::float as extra_deduction, l.staff_credit_recovery::float as staff_credit_recovery,
-              l.kpi_incentive::float as kpi_incentive, l.adjustment::float as adjustment, l.adjustment_note, l.net::float as net
+              l.kpi_incentive::float as kpi_incentive, l.adjustment::float as adjustment, l.adjustment_note, l.net::float as net,
+              l.bonus::float as bonus, l.bonus_items, l.incentive_cap::float as incentive_cap, l.incentive_uncapped::float as incentive_uncapped
          from hr_payroll_line l join hr_payroll_run r on r.id = l.run_id join hr_employee e on e.id = l.employee_id left join app_user u on u.id = e.user_id where l.id = $1`, [lineId]);
     if (!l) throw new NotFoundException('Pay stub not found.');
     const [biz] = await this.manager.query(`select coalesce(legal_name, name) as name, address, gstin from business order by id limit 1`);
@@ -227,13 +272,13 @@ export class HrPayrollService {
     const bank = new Map<number, any>(rows.map((r: any) => [r.id, r]));
     ws.columns = [
       { header: 'Code', key: 'code', width: 9 }, { header: 'Name', key: 'name', width: 24 }, { header: 'Payable days', key: 'days', width: 13 },
-      { header: 'Earnings', key: 'earn', width: 13 }, { header: 'Incentive', key: 'kpi', width: 12 }, { header: 'Adjustment', key: 'adj', width: 12 },
+      { header: 'Earnings', key: 'earn', width: 13 }, { header: 'Incentive', key: 'kpi', width: 12 }, { header: 'Bonus', key: 'bonus', width: 12 }, { header: 'Adjustment', key: 'adj', width: 12 },
       { header: 'Fixed deductions', key: 'fixed', width: 16 }, { header: 'Other deduction', key: 'extra', width: 15 }, { header: 'Staff credit recovered', key: 'sc', width: 20 },
       { header: 'Net pay', key: 'net', width: 13 }, { header: 'Bank', key: 'bank', width: 20 }, { header: 'Account', key: 'acct', width: 20 }, { header: 'IFSC', key: 'ifsc', width: 14 },
     ];
     for (const l of run.lines) {
       const b = bank.get(l.id) || {};
-      ws.addRow({ code: l.emp_code, name: l.name, days: l.payable_days, earn: l.earnings_paid, kpi: l.kpi_incentive, adj: l.adjustment, fixed: l.fixed_deductions, extra: l.extra_deduction, sc: l.staff_credit_recovery, net: l.net, bank: b.bank_name, acct: b.account_no, ifsc: b.ifsc });
+      ws.addRow({ code: l.emp_code, name: l.name, days: l.payable_days, earn: l.earnings_paid, kpi: l.kpi_incentive, bonus: l.bonus, adj: l.adjustment, fixed: l.fixed_deductions, extra: l.extra_deduction, sc: l.staff_credit_recovery, net: l.net, bank: b.bank_name, acct: b.account_no, ifsc: b.ifsc });
     }
     ws.addRow({ name: 'Total', net: run.lines.reduce((t: number, l: any) => t + l.net, 0) }).font = { bold: true };
     ws.getRow(1).font = { bold: true };

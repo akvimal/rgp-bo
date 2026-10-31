@@ -217,6 +217,12 @@ export class HrStaffComponent implements OnInit {
   }
 
   /** choosing a job role fills the designation when it is still blank */
+  /** the placeholder of the person's own cap: what their job role gives */
+  roleCapText(): string {
+    const cap = this.positions.find(x => x.id === this.editing?.position_id)?.incentive_cap;
+    return cap === null || cap === undefined ? "No cap" : `Job role: ${cap}`;
+  }
+
   positionChanged() {
     const p = this.positions.find(x => x.id === this.editing.position_id);
     if (p && !String(this.editing.designation || "").trim()) this.editing.designation = p.name;

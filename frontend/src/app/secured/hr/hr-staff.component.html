@@ -84,6 +84,9 @@
                 <option [ngValue]="null">None</option>
                 <option *ngFor="let p of positions" [ngValue]="p.id" [disabled]="!p.active && p.id !== editing.position_id">{{p.name}}{{p.active ? '' : ' (not in use)'}}</option>
               </select></div>
+            <div class="col-md-3"><label class="form-label">Incentive cap <span class="text-muted small">(per month)</span></label>
+              <input type="number" min="0" class="form-control" [(ngModel)]="editing.incentive_cap" [placeholder]="roleCapText()" data-testid="hr-f-cap">
+              <div class="form-text">Empty uses the job role's cap.</div></div>
             <div class="col-md-3"><label class="form-label">Relationship</label>
               <select class="form-select" [(ngModel)]="editing.relationship" (ngModelChange)="relChanged()" data-testid="hr-f-relationship">
                 <option *ngFor="let r of relOptions" [value]="r">{{relLabel[r]}}</option>

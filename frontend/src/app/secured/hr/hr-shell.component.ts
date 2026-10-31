@@ -9,6 +9,7 @@ import { Component } from "@angular/core";
       <li class="nav-item"><a class="nav-link" routerLink="attendance" routerLinkActive="active" data-testid="hr-tab-attendance">Attendance</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="leave" routerLinkActive="active" data-testid="hr-tab-leave">Leave</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="kpi" routerLinkActive="active" data-testid="hr-tab-kpi">KPI</a></li>
+      <li class="nav-item"><a class="nav-link" routerLink="bonus" routerLinkActive="active" data-testid="hr-tab-bonus">Bonus</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="payroll" routerLinkActive="active" data-testid="hr-tab-payroll">Payroll</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="setup" routerLinkActive="active" data-testid="hr-tab-setup">Setup</a></li>
     </ul>
