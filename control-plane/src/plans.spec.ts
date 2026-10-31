@@ -9,11 +9,11 @@ describe('plan grants', () => {
     const m = effectiveModules(shop, g.value!);
     expect(m.refills).toBe(true);
     expect(m.drug_register).toBe(true);
-    expect(m.returns).toBeUndefined();
   });
 
-  it('leaves them off for a customer with no grant', () => {
-    expect(effectiveModules(shop, {}).refills).toBeUndefined();
+  it('has the default plans allow them, and a plan that omits them leaves them off', () => {
+    for (const p of DEFAULT_PLANS) expect([p.modules.drug_register, p.modules.refills, p.modules.returns]).toEqual([true, true, true]);
+    expect(effectiveModules({ ...shop, refills: undefined }, {}).refills).toBeUndefined();
   });
 
   it('refuses a module it does not know and a value that is not on or off', () => {

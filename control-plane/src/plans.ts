@@ -13,7 +13,7 @@ export interface ModuleSet {
   payment_recon: boolean;
   stock_audits: boolean;
   transfers: boolean;
-  /** the pharmacy modules; a plan that does not list them leaves them off until a customer is granted them */
+  /** the pharmacy modules; a plan that does not list them leaves them off until a customer is granted them (the default plans allow all three) */
   drug_register?: boolean;
   refills?: boolean;
   returns?: boolean;
@@ -32,15 +32,15 @@ export interface PlanDef {
 export const DEFAULT_PLANS: PlanDef[] = [
   {
     key: 'starter', label: 'Starter (just me)', sort: 1, price_month: null, max_stores: 1, max_users: 2,
-    modules: { hr: false, purchasing: 'simple', gst: false, expenses: false, payment_recon: false, stock_audits: false, transfers: false },
+    modules: { hr: false, purchasing: 'simple', gst: false, expenses: false, payment_recon: false, stock_audits: false, transfers: false, drug_register: true, refills: true, returns: true },
   },
   {
     key: 'shop', label: 'Shop (owner and staff)', sort: 2, price_month: null, max_stores: 1, max_users: 8,
-    modules: { hr: false, purchasing: 'full', gst: false, expenses: true, payment_recon: true, stock_audits: true, transfers: false },
+    modules: { hr: false, purchasing: 'full', gst: false, expenses: true, payment_recon: true, stock_audits: true, transfers: false, drug_register: true, refills: true, returns: true },
   },
   {
     key: 'chain', label: 'Chain (several stores)', sort: 3, price_month: null, max_stores: 10, max_users: 50,
-    modules: { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true },
+    modules: { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true, drug_register: true, refills: true, returns: true },
   },
 ];
 
