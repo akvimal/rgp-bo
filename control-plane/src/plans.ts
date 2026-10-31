@@ -13,6 +13,10 @@ export interface ModuleSet {
   payment_recon: boolean;
   stock_audits: boolean;
   transfers: boolean;
+  /** the pharmacy modules; a plan that does not list them leaves them off until a customer is granted them */
+  drug_register?: boolean;
+  refills?: boolean;
+  returns?: boolean;
 }
 
 export interface PlanDef {
@@ -40,7 +44,7 @@ export const DEFAULT_PLANS: PlanDef[] = [
   },
 ];
 
-export const MODULE_KEYS: Array<keyof ModuleSet> = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers'];
+export const MODULE_KEYS: Array<keyof ModuleSet> = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register', 'refills', 'returns'];
 
 const LEVEL: Record<PurchasingLevel, number> = { off: 0, simple: 1, full: 2 };
 
