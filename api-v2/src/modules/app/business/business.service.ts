@@ -14,6 +14,7 @@ import { checkLogo } from "./business-logo";
 
 import { isOwnerRole } from 'src/core/roles';
 import { checkPhones } from 'src/core/phones';
+import { checkWebsite } from 'src/core/website';
 @Injectable()
 export class BusinessService {
   constructor(
@@ -179,6 +180,16 @@ export class BusinessService {
       const p = checkPhones(body.phone, "The phone");
       if (!p.ok) throw new BadRequestException(p.error);
       fields.phone = p.value;
+    }
+    if (body.grievancephone !== undefined) {
+      const p = checkPhones(body.grievancephone, "The grievance phone");
+      if (!p.ok) throw new BadRequestException(p.error);
+      fields.grievancephone = p.value;
+    }
+    if (body.website !== undefined) {
+      const w = checkWebsite(body.website, "The website");
+      if (!w.ok) throw new BadRequestException(w.error);
+      fields.website = w.value;
     }
     if (body.pincode !== undefined) {
       const p = clean(body.pincode, 10, "The pincode");

@@ -36,6 +36,21 @@ test.describe('Business details @p1', () => {
     }
   });
 
+  test('BIZ-4 the phone numbers, the grievance number and the website are checked and kept @edge', async ({ api }) => {
+    const before = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
+    try {
+      expect((await api.request('PUT', '/businesses/mine', { phone: 'call me' }, MGR)).status).toBe(400);
+      expect((await api.request('PUT', '/businesses/mine', { grievancephone: '12345' }, MGR)).status).toBe(400);
+      expect((await api.request('PUT', '/businesses/mine', { website: 'not a site' }, MGR)).status).toBe(400);
+      const ok = await api.request('PUT', '/businesses/mine', { phone: '98400 12345 / 044 2345 6789', grievancephone: '98400 99999', website: ' www.qashop.in ' }, MGR);
+      expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+      const after = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
+      expect([after.phone, after.grievancephone, after.website]).toEqual(['98400 12345, 044 2345 6789', '98400 99999', 'www.qashop.in']);
+    } finally {
+      await api.request('PUT', '/businesses/mine', { phone: before.phone ?? '', grievancephone: before.grievancephone ?? '', website: before.website ?? '' }, MGR);
+    }
+  });
+
   test('BIZ-2 only the Business Head reaches it, and the Businesses admin list stays with the Site Admin @negative', async ({ api }) => {
     expect((await api.request('GET', '/businesses/mine', undefined, SALES)).status).toBe(403);
     expect((await api.request('PUT', '/businesses/mine', { legalname: 'x' }, SALES)).status).toBe(403);

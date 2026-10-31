@@ -50,6 +50,14 @@ import { Store } from "./store.entity";
     @Column("character varying", { name: "phone", length: 60, nullable: true })
     phone: string | null;
 
+    /** the website printed at the end of the bill */
+    @Column("character varying", { name: "website", length: 120, nullable: true })
+    website: string | null;
+
+    /** a separate phone number for grievances, printed at the end of the bill */
+    @Column("character varying", { name: "grievance_phone", length: 60, nullable: true })
+    grievancephone: string | null;
+
     @Column("character varying", { name: "state_code", length: 2, nullable: true })
     statecode: string | null;
 

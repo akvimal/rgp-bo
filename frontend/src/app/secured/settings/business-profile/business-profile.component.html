@@ -51,6 +51,16 @@
           <input class="form-control" name="phone" [(ngModel)]="form.phone" maxlength="60" placeholder="e.g. 98400 12345, 044 2345 6789" data-testid="biz-phone">
           <div class="form-text">Up to four numbers, separated by commas. The bill prints a store's own phone first and these when the store has none.</div>
         </div>
+        <div class="col-md-6">
+          <label class="form-label">Grievance phone(s)</label>
+          <input class="form-control" name="grievancephone" [(ngModel)]="form.grievancephone" maxlength="60" placeholder="a different number for complaints" data-testid="biz-grievance-phone">
+          <div class="form-text">Printed at the end of the bill: "For any complaint or grievance, please call ...".</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Website</label>
+          <input class="form-control" name="website" [(ngModel)]="form.website" maxlength="120" placeholder="www.yourshop.in" data-testid="biz-website">
+          <div class="form-text">Printed at the end of the bill.</div>
+        </div>
         <div class="col-12">
           <label class="form-label">Address</label>
           <textarea class="form-control" name="address" rows="2" [(ngModel)]="form.address" maxlength="200" data-testid="biz-address"></textarea>

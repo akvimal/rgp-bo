@@ -63,7 +63,7 @@ export class SaleViewComponent {
     words = '';
 
     /** who the bill is from: the store's own details, with the business's as the fallback */
-    from:any = { name: '', legalname: '', logo: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
+    from:any = { name: '', legalname: '', logo: '', website: '', grievancephone: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
     payments:{label:string, amount:number}[] = [];
     gstRows:{rate:number, taxable:number, cgst:number, sgst:number, igst:number}[] = [];
     /** the supply crosses a state border: the tax is IGST, not CGST and SGST */
@@ -112,6 +112,8 @@ export class SaleViewComponent {
         name: b.name || b.legalname || '',
         legalname: b.legalname && b.legalname !== b.name ? b.legalname : '',
         logo: b.logo || '',
+        website: b.website || '',
+        grievancephone: b.grievancephone || '',
         branch: h.multistore && s.name ? s.name : '',
         address,
         // the store's phone number(s); the business's when the store has none

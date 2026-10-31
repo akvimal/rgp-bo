@@ -43,6 +43,7 @@ test.describe('Customer bill @p1', () => {
     }, MGR);
     expect(set.status, JSON.stringify(set.body)).toBeLessThan(300);
     const biz = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
+    await api.request('PUT', '/businesses/mine', { grievancephone: '98400 99999', website: 'www.qashop.in' }, MGR);
     const issued = !!(await api.request('GET', `/sales/${bill.id}`, undefined, MGR)).body.gstinvoiceno;       // a tax invoice has its number; any other bill is a cash bill
 
     const { page } = await app.open(MGR, `/secure/sales/pos/view/${bill.id}`);
@@ -55,6 +56,10 @@ test.describe('Customer bill @p1', () => {
     await expect(page.getByTestId('bill-from-address')).toContainText('12 QA Main Road, Testville, 600001');
     await expect(page.getByTestId('bill-licence')).toContainText('DL No.: QA-20-0001 | QA-21-0001');
     await expect(page.getByTestId('bill')).not.toContainText('Ramesh');
+    // the end of the bill: a separate number for complaints, and the website
+    await expect(page.getByTestId('bill-grievance')).toContainText('98400 99999');
+    await expect(page.getByTestId('bill-website')).toContainText('www.qashop.in');
+    await api.request('PUT', '/businesses/mine', { grievancephone: biz.grievancephone ?? '', website: biz.website ?? '' }, MGR);
     await expect(page.getByTestId('bill-kind')).toHaveText(issued ? 'Tax Invoice' : 'Cash Bill');
 
     // the bill, who it is for, how it was paid

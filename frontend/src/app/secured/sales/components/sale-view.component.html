@@ -110,6 +110,8 @@
                     <svg class="bill-review-qr" [attr.viewBox]="'-4 -4 ' + (reviewQr.size + 8) + ' ' + (reviewQr.size + 8)" role="img" aria-label="QR code to review us on Google" shape-rendering="crispEdges"><path [attr.d]="reviewQr.d" fill="#000"/></svg>
                     <div class="bill-review-text">Happy with us? Scan to review us on Google.</div>
                 </div>
+                <div class="bill-sub" *ngIf="from.grievancephone" data-testid="bill-grievance">For any complaint or grievance, please call {{from.grievancephone}}.</div>
+                <div class="bill-sub" *ngIf="from.website" data-testid="bill-website">{{from.website}}</div>
             </footer>
         </div>
     </div>
