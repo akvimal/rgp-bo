@@ -64,7 +64,7 @@ test('HRS-3 HR > Setup shows the get-started card, adds a ticked suggestion, and
     await page.getByTestId('hr-set-hol-name').fill('Year end');
     await page.getByTestId('hr-set-hol-save').click();
     await expect(page.getByTestId('hr-set-holidays').getByText('Year end')).toBeVisible();
-    await expect(page.getByTestId('hr-people-none').or(page.getByTestId('hr-person').first())).toBeVisible();
+    await expect(page.getByTestId('hr-people-none').or(page.getByTestId('hr-people-link'))).toBeVisible();
   } finally {
     await cleanup();
   }

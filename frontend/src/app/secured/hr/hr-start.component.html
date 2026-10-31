@@ -73,16 +73,10 @@
   </div>
   <button class="btn btn-sm btn-outline-primary mb-3" type="button" [disabled]="hrBusy || !hrPickedCodes.length" (click)="hrAdd(false, hrPickedCodes)" data-testid="hr-add-suggested">Add the ticked ones</button>
 
-  <div class="fw-semibold">3. Your people <span class="small text-muted fw-normal">logins with no staff record; add the salary under HR &gt; Staff</span></div>
-  <div class="small text-muted" *ngIf="!hrPeople.length" data-testid="hr-people-none">Every login has a staff record.</div>
-  <div class="row g-2 align-items-end mb-1" *ngFor="let p of hrPeople" data-testid="hr-person">
-    <div class="col-12 col-md-3">{{p.name}} <span class="badge bg-info text-dark" *ngIf="p.is_you">You</span></div>
-    <div class="col-6 col-md-2"><select class="form-select form-select-sm" [(ngModel)]="p.relationship" [attr.data-testid]="'hr-person-rel-' + p.id"><option *ngFor="let r of hrOffer.relationships" [value]="r">{{relLabel[r]}}</option></select>
-      <div class="form-check small" *ngIf="p.relationship === 'DIRECTOR'"><input class="form-check-input" type="checkbox" [id]="'hrd-' + p.id" [(ngModel)]="p.on_payroll" [attr.data-testid]="'hr-person-onpay-' + p.id"><label class="form-check-label" [for]="'hrd-' + p.id">Salaried</label></div></div>
-    <div class="col-6 col-md-2"><select class="form-select form-select-sm" [(ngModel)]="p.position_id" [attr.data-testid]="'hr-person-role-' + p.id"><option [ngValue]="null">Job role</option><option *ngFor="let r of hrPositions" [ngValue]="r.id">{{r.name}}</option></select></div>
-    <div class="col-6 col-md-2"><input class="form-control form-control-sm" placeholder="Designation" [(ngModel)]="p.designation"></div>
-    <div class="col-6 col-md-2"><input class="form-control form-control-sm" type="date" [(ngModel)]="p.join_date"></div>
-    <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" type="button" (click)="hrCreateStaff(p)" [attr.data-testid]="'hr-person-add-' + p.id">{{p.relationship === 'EMPLOYEE' ? 'Create staff record' : (p.relationship === 'OWNER' ? 'Record me, not on payroll' : 'Record director')}}</button></div>
-  </div>
+  <div class="fw-semibold">3. Your people</div>
+  <div class="small text-muted" *ngIf="!hrPeople.length" data-testid="hr-people-none">Every login is in HR.</div>
+  <div class="small" *ngIf="hrPeople.length" data-testid="hr-people-pointer">{{hrPeople.length}} {{hrPeople.length === 1 ? 'login is' : 'logins are'}} not in HR yet, so {{hrPeople.length === 1 ? 'has' : 'have'}} no leave, KPI score or salary.
+    <a routerLink="/secure/hr/staff" data-testid="hr-people-link">Add them in HR &gt; Staff</a></div>
+  <div class="small" *ngIf="hrNoSalary" data-testid="hr-nosalary-pointer">{{hrNoSalary}} {{hrNoSalary === 1 ? 'person on payroll has' : 'people on payroll have'}} no salary yet. <a routerLink="/secure/hr/staff" data-testid="hr-nosalary-link">Set the salaries in HR &gt; Staff</a></div>
 </div>
 </div>

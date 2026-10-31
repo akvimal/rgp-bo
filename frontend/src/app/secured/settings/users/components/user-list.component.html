@@ -2,6 +2,10 @@
     <a *isAuth="'users.add'" class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="user-add">Add New</a>
 </div>
 
+<div class="alert alert-danger py-2 mt-3 mb-0 d-flex justify-content-between align-items-start" *ngIf="removeMessage" role="alert" data-testid="user-remove-error">
+    <span>{{removeMessage}}</span>
+    <button type="button" class="btn-close" aria-label="Close" (click)="removeMessage = ''"></button>
+</div>
 <div class="alert alert-warning py-2 mt-3 mb-0" *ngIf="showDetails && attention" data-testid="staff-attention">
     {{attention}} pharmacist registration{{attention === 1 ? ' has' : 's have'}} lapsed or lapse{{attention === 1 ? 's' : ''}} within 60 days.
 </div>

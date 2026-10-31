@@ -49,7 +49,7 @@ export class HrStaffComponent implements OnInit {
   private openFromQuery() {
     const q = this.route.snapshot.queryParamMap;
     const userId = Number(q.get("user")), staffId = Number(q.get("staff"));
-    if (staffId && !this.editing) { this.open({ id: staffId }); return; }
+    if (staffId && !this.editing) { this.open({ id: staffId }, q.get("salary") === "1"); return; }
     if (userId && !this.editing && this.candidates.some(c => c.id === userId)) {
       this.add();
       this.editing.user_id = userId;
@@ -63,7 +63,11 @@ export class HrStaffComponent implements OnInit {
     this.editing = { id: 0, relationship: "EMPLOYEE", on_payroll: true, work_days: [], work_start: "", work_end: "", has_login: true, full_name: "", phone: "", user_id: null, emp_code: "", designation: "", position_id: null, store_id: null, emp_type: "FULL_TIME", join_date: this.hr.today(), weekly_off: "SUNDAY" };
   }
 
-  open(r: any) {
+  /** from the "Add your team to HR" table: open the person, straight to the salary form when asked */
+  openFromPeople(e: { id: number; salary: boolean }) { this.open({ id: e.id }, e.salary); }
+
+  /** open a person's record; salary = go straight to the first salary form when they are on payroll and have none yet */
+  open(r: any, salary = false) {
     this.message = this.error = "";
     this.hr.get(`staff/${r.id}`).subscribe(d => {
       this.detail = d;
@@ -71,6 +75,7 @@ export class HrStaffComponent implements OnInit {
       this.revising = false;
       this.exitDate = this.hr.today();
       this.loadAccounts();
+      if (salary && d.on_payroll && !(d.revisions || []).length) this.startRevision();
     }, e => this.error = this.hr.msg(e));
   }
 

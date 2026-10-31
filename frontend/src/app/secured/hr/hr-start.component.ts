@@ -9,6 +9,7 @@ export class HrStartComponent implements OnInit {
 
   hrOffer: any = null;
   hrPeople: any[] = [];
+  hrNoSalary = 0;
   hrPicked: { [code: string]: boolean } = {};
   hrMessage = '';
   hrError = '';
@@ -50,7 +51,9 @@ export class HrStartComponent implements OnInit {
 
   loadHr() {
     this.hrApi.get('starter').subscribe(r => { this.hrOffer = r; this.hrLegalForm = r.legal_form; this.hrStatutory = (r.statutory || []).map((x: any) => ({ ...x, yes: x.applies === null ? null : x.applies }));
-      this.hrApi.get('staff/candidates').subscribe(r => this.hrPeople = r.map((p: any) => ({ ...p, designation: '', position_id: p.suggested_position_id || null, join_date: this.hrApi.today(), relationship: p.is_you ? (this.hrOffer?.owner_default || 'OWNER') : 'EMPLOYEE', on_payroll: false })), () => {});
+      this.hrApi.get('staff/candidates').subscribe(r => this.hrPeople = r, () => {});
+      // staff on payroll with no salary in force yet, for the pointer in step 3 (the staff list is the Business Head's)
+      this.hrApi.get('staff').subscribe((r: any[]) => this.hrNoSalary = (r || []).filter(x => x.status === 'ACTIVE' && x.on_payroll && !x.monthly_earnings).length, () => this.hrNoSalary = 0);
     }, () => this.hrOffer = null);
     this.hrApi.get('positions').subscribe(r => this.hrPositions = (r || []).filter((p: any) => p.active), () => {});
   }
@@ -81,19 +84,11 @@ export class HrStartComponent implements OnInit {
   /** other job roles a shop often has, ticked to add */
   hrRolePicked: { [name: string]: boolean } = {};
   get hrRolePickedNames(): string[] { return Object.keys(this.hrRolePicked).filter(k => this.hrRolePicked[k]); }
-  readonly relLabel: { [k: string]: string } = { EMPLOYEE: 'Employee', OWNER: 'Owner or partner (not on payroll)', DIRECTOR: 'Director' };
 
   hrAdd(starter: boolean, codes: string[], roles = false, roleNames: string[] = []) {
     this.hrMessage = this.hrError = ''; this.hrBusy = true;
     this.hrApi.post('starter', { starter, codes, roles, role_names: roleNames }).subscribe(
       (r: any) => { this.hrBusy = false; this.hrPicked = {}; this.hrRolePicked = {}; const all = [...r.added, ...(r.roles || [])]; this.hrMessage = all.length ? `Added: ${all.join(', ')}.` : 'Nothing to add: you already have these.'; this.reload(); },
       err => { this.hrBusy = false; this.hrError = this.hrApi.msg(err); });
-  }
-
-  hrCreateStaff(p: any) {
-    this.hrMessage = this.hrError = '';
-    this.hrApi.post('staff', { user_id: p.id, designation: p.designation, position_id: p.position_id || null, join_date: p.join_date, relationship: p.relationship, on_payroll: p.relationship === 'DIRECTOR' && !!p.on_payroll }).subscribe(
-      () => { this.hrMessage = `${p.name} now has a staff record. Add the salary under HR > Staff.`; this.reload(); },
-      err => this.hrError = this.hrApi.msg(err));
   }
 }

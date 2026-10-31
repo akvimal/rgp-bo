@@ -10,6 +10,8 @@ import { HrService } from "../../../hr/hr.service";
 export class UserListComponent {
 
     users:any;
+    /** why the last removal was refused, shown above the list */
+    removeMessage = '';
     /** where the HR module is off, the owner keeps a few staff details here (pharmacist registration, joining date, emergency contact) */
     details:{[userId:number]:any} = {};
     attention = 0;
@@ -55,7 +57,12 @@ export class UserListComponent {
 
     delete(user:any){
         this.confirm.confirmDelete(user?.fullname, () => {
-            this.service.remove(user.id).subscribe(() => this.fetchList());
+            this.removeMessage = '';
+            this.service.remove(user.id).subscribe(() => this.fetchList(), (e:any) => {
+                // the server says why (your own account, the only head of the business, another business): show it instead of failing silently
+                const m = e?.error?.message;
+                this.removeMessage = (Array.isArray(m) ? m.join(' ') : m) || 'The user could not be removed.';
+            });
         }, { entity: 'user', consequence: 'They will no longer be able to sign in; historical records are kept.' });
     }
 

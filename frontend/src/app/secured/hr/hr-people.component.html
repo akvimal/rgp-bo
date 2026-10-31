@@ -1,0 +1,65 @@
+<div class="border rounded p-3 mb-3" *ngIf="rows.length || added.length || message" data-testid="hr-people">
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+    <h6 class="mb-0">Add your team to HR</h6>
+    <span class="badge bg-warning text-dark" *ngIf="rows.length" data-testid="hr-people-count">{{rows.length}} not in HR yet</span>
+  </div>
+  <div class="small text-muted mb-2" *ngIf="rows.length">These people can sign in, but have no HR record, so they get no leave, KPI score or salary. Tick the ones to add, say what each is, and give the day they started. The start date is the first day they worked for you: leave, bonus service and pay count from it.</div>
+
+  <div class="alert alert-success py-2" *ngIf="message" data-testid="hr-people-message">{{message}}</div>
+
+  <div class="table-responsive" *ngIf="rows.length">
+    <table class="table table-sm align-middle mb-2" data-testid="hr-people-table">
+      <thead><tr>
+        <th style="width:2rem"><input type="checkbox" class="form-check-input" [checked]="allPicked" (change)="toggleAll($any($event.target).checked)" aria-label="Tick everyone" data-testid="hr-people-all"></th>
+        <th>Person</th><th>Is a</th><th>Job role</th><th>Started on</th>
+      </tr></thead>
+      <tbody>
+        <ng-container *ngFor="let p of rows">
+          <tr data-testid="hr-person" [attr.data-user]="p.id">
+            <td><input type="checkbox" class="form-check-input" [(ngModel)]="p.pick" [attr.aria-label]="'Add ' + p.name" [attr.data-testid]="'hr-person-pick-' + p.id"></td>
+            <td>{{p.name}} <span class="badge bg-info text-dark" *ngIf="p.is_you">You</span><div class="small text-muted">{{p.email}}</div></td>
+            <td><select class="form-select form-select-sm" [(ngModel)]="p.kind" [disabled]="!p.pick" [attr.aria-label]="'What ' + p.name + ' is'" [attr.data-testid]="'hr-person-rel-' + p.id">
+              <option *ngFor="let k of kinds" [value]="k.value">{{k.label}}</option></select></td>
+            <td><select class="form-select form-select-sm" [(ngModel)]="p.position_id" [disabled]="!p.pick" [attr.aria-label]="'Job role of ' + p.name" [attr.data-testid]="'hr-person-role-' + p.id">
+              <option [ngValue]="null">No job role</option><option *ngFor="let r of positions" [ngValue]="r.id">{{r.name}}</option></select></td>
+            <td><input type="date" class="form-control form-control-sm" style="min-width:9.5rem" [(ngModel)]="p.join_date" [disabled]="!p.pick" [class.is-invalid]="attempted && p.pick && !p.join_date"
+                       [attr.aria-label]="'Day ' + p.name + ' started'" [attr.data-testid]="'hr-person-date-' + p.id"></td>
+          </tr>
+          <tr *ngIf="p.error"><td></td><td colspan="4" class="text-danger small pt-0" data-testid="hr-person-error">{{p.error}}</td></tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="rows.length">
+    <button type="button" class="btn btn-primary btn-sm" [disabled]="busy || !picked.length" (click)="addPicked()" data-testid="hr-people-add">Add {{picked.length}} to HR</button>
+    <span class="small" [class.text-danger]="attempted" [class.text-muted]="!attempted" *ngIf="picked.length && missingDates" data-testid="hr-people-hint">Pick the day started for {{missingDates}} {{missingDates === 1 ? 'person' : 'people'}}.</span>
+    <span class="small text-muted" *ngIf="!picked.length">Tick at least one person.</span>
+  </div>
+
+  <!-- added during this visit: the next step is the salary -->
+  <div *ngIf="added.length" [class.mt-3]="rows.length" data-testid="hr-people-added">
+    <div class="fw-semibold small mb-1">Added to HR. Next: the salary</div>
+    <div class="border rounded p-2 mb-2" *ngFor="let a of added" data-testid="hr-person-added" [attr.data-staff]="a.id">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span><strong>{{a.name}}</strong> <span class="small text-muted">{{a.code}} &middot; {{kindLabel(a.kind)}}{{a.position ? ' &middot; ' + a.position.name : ''}}</span></span>
+        <span class="ms-auto d-flex flex-wrap align-items-center gap-2">
+          <ng-container *ngIf="a.paid && !a.salary && !a.confirm">
+            <button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="a.std" (click)="a.confirm = true" [attr.data-testid]="'hr-person-std-' + a.id">Start from the {{a.position.name}} pay ({{a.std.earnings | number}})</button>
+            <button type="button" class="btn btn-primary btn-sm" (click)="openStaff.emit({id: a.id, salary: true})" [attr.data-testid]="'hr-person-salary-' + a.id">Set salary</button>
+          </ng-container>
+          <span class="small text-success" *ngIf="a.salary" data-testid="hr-person-salary-set">&#10003; Salary set: earnings {{a.salary.earnings | number}} from {{a.salary.from | date:'dd MMM yyyy'}}</span>
+          <span class="small text-muted" *ngIf="!a.paid">No salary needed.</span>
+          <button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="a.salary || !a.paid" (click)="openStaff.emit({id: a.id, salary: false})">Open record</button>
+        </span>
+      </div>
+      <div class="small mt-2" *ngIf="a.confirm && a.std" [attr.data-testid]="'hr-person-std-ask-' + a.id">
+        Give {{a.name}} the {{a.position.name}} pay from {{a.std.from | date:'dd MMM yyyy'}}:
+        <span *ngFor="let l of a.std.lines; let last = last">{{l.name}} {{l.amount | number}}{{last ? '' : ', '}}</span>.
+        A salary that has started cannot be deleted later, only replaced by a new one.
+        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" (click)="a.confirm = false">No</button>
+        <button type="button" class="btn btn-primary btn-sm ms-1" [disabled]="a.busy" (click)="useStandardPay(a)" [attr.data-testid]="'hr-person-std-yes-' + a.id">Yes, set it</button>
+      </div>
+      <div class="small text-danger mt-1" *ngIf="a.error">{{a.error}}</div>
+    </div>
+  </div>
+</div>

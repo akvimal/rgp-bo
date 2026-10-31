@@ -60,18 +60,21 @@ test('HRO-2 in a limited company a director is off payroll until salaried, and a
   expect(await inKpi(dir.body.id)).toBe(false);
 });
 
-test('HRO-3 the Setup screen marks the owner, offers owner or director by registration, and adds suggested job roles', async ({ app, api }) => {
+test('HRO-3 the Staff screen marks the owner and offers owner or director by registration; Setup adds suggested job roles', async ({ app, api }) => {
   await setForm(api, 'PROPRIETORSHIP');
   const cand = (await api.request('GET', '/hr/staff/candidates', undefined, MGR)).body as any[];
   const me = cand.find((c) => c.is_you);
-  const { page } = await app.open(MGR, '/secure/hr/setup');
+  const { page } = await app.open(MGR, '/secure/hr/staff');
   if (me) {
     const row = page.getByTestId('hr-person').filter({ has: page.getByText('You', { exact: true }) });
     await expect(row).toBeVisible();
     await expect(page.getByTestId(`hr-person-rel-${me.id}`)).toHaveValue('OWNER');
-    await expect(page.getByTestId(`hr-person-add-${me.id}`)).toContainText('not on payroll');
-    await expect(page.getByTestId(`hr-person-rel-${me.id}`).locator('option[value="DIRECTOR"]')).toHaveCount(0);
+    await expect(page.getByTestId(`hr-person-rel-${me.id}`).locator('option:checked')).toContainText('no salary');
+    await expect(page.getByTestId(`hr-person-rel-${me.id}`).locator('option[value^="DIRECTOR"]')).toHaveCount(0);
+    // the start date is left for the person to fill in: the add button waits for it
+    await expect(page.getByTestId(`hr-person-date-${me.id}`)).toHaveValue('');
   }
+  await page.goto('/secure/hr/setup');
   await page.getByTestId('hr-role-suggest-Cashier').check();
   await page.getByTestId('hr-add-role-suggested').click();
   await expect(page.getByTestId('hr-setup-message')).toContainText('Cashier');
