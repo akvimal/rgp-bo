@@ -3,12 +3,12 @@
         <thead>
             <tr class="table-light">
                 <th style="width:2rem"></th>
-                <th>Product</th>
-                <th style="width:11rem">Batch / use by</th>
+                <th style="min-width:13rem">Product</th>
+                <th class="d-none d-xl-table-cell" style="width:11rem">Batch / use by</th>
                 <th class="text-end" style="width:5.5rem">MRP</th>
                 <th class="text-end" style="width:10.5rem">Units</th>
                 <th class="text-end" style="width:5.5rem">Rate</th>
-                <th class="text-end" style="width:4.5rem">Tax</th>
+                <th class="text-end d-none d-xl-table-cell" style="width:4.5rem">Tax</th>
                 <th class="text-end" style="width:6.5rem">Amount</th>
             </tr>
         </thead>
@@ -20,8 +20,10 @@
                 <td>
                     <div *ngIf="item.title"><strong>{{item.title}}</strong> <span *ngIf="auth.packOn('pharmacy') && item.more_props?.schedule === 'H1'" class="h1-badge">H1</span></div>
                     <div class="small text-muted fst-italic">{{item.more_props?.composition}}</div>
+                    <!-- on a narrow screen the batch and tax columns are out, so they ride under the name -->
+                    <div class="small text-muted d-xl-none" *ngIf="item.batch">Batch {{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span> &middot; tax {{item.taxpcnt}}%</div>
                 </td>
-                <td class="text-nowrap">{{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span></td>
+                <td class="text-nowrap d-none d-xl-table-cell">{{item.batch}} <span class="text-primary">/ {{item.expdate | date : 'MMM-yy'}}</span></td>
                 <td class="text-end">{{item.mrpcost | number : '1.2-2'}}</td>
                 <td>
                     <span *ngIf="!item.edited">{{item.qty}}</span>
@@ -32,7 +34,7 @@
                     </div>
                 </td>
                 <td class="text-end">{{item.price | number : '1.2-2'}}</td>
-                <td class="text-end">{{item.taxpcnt}}%</td>
+                <td class="text-end d-none d-xl-table-cell">{{item.taxpcnt}}%</td>
                 <td class="text-end fw-semibold">{{item.total | number : '1.2-2'}}</td>
             </tr>
             <!-- the new row: the product search sits where the next line will be, and choosing a product moves focus to its units -->

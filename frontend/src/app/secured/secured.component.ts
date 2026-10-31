@@ -100,6 +100,7 @@ export class SecuredComponent {
       private propsService: PropsService,
       private config: ConfigService){
         this.state$ = this.appStateService.state;
+        this.readRailChoice();
     }
 
     /** show the header shift pill for roles that run a cash drawer once a specific store is picked */
@@ -227,11 +228,30 @@ export class SecuredComponent {
       this.storeContextService.setSelectedStoreId(value === '' ? null : Number(value));
     }
 
-    /** the menu drawer on a phone; on a desktop the menu is always open */
+    /**
+     * The menu is a drawer on a phone or tablet, and on a laptop a full menu or a narrow rail of icons (the full labels show while the
+     * pointer is over the rail). With no choice made the rail is used below 1280px; the person's choice is remembered on this device.
+     */
+    sidebarRail = false;
+    private railChoice: string | null = null;
+
+    private readRailChoice() {
+      try { this.railChoice = localStorage.getItem('rgp.sidebar'); } catch { this.railChoice = null; }
+      this.applyRail();
+    }
+
+    private applyRail() {
+      this.sidebarRail = this.railChoice ? this.railChoice === 'rail' : window.innerWidth < 1280;
+    }
+
     toggleSidebar(){
       if (this.isMobileViewport()) {
         this.sidebarDrawerOpen = !this.sidebarDrawerOpen;
+        return;
       }
+      this.railChoice = this.sidebarRail ? 'full' : 'rail';
+      try { localStorage.setItem('rgp.sidebar', this.railChoice); } catch { /* the choice just is not remembered */ }
+      this.applyRail();
     }
 
     closeSidebar(){
@@ -243,6 +263,7 @@ export class SecuredComponent {
       if (!this.isMobileViewport()) {
         this.sidebarDrawerOpen = false;
       }
+      this.applyRail();
     }
 
     private isMobileViewport(): boolean {

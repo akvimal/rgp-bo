@@ -123,8 +123,8 @@
     {{submitError || 'This bill has a chronic medicine: enter the customer mobile number before completing.'}}
 </div>
 
-<!-- Actions -->
-<div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Actions: stuck to the bottom of the screen so Complete never scrolls out of sight on a short screen -->
+<div class="sale-actions d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex gap-2">
         <button (click)="submit('PENDING')" class="btn btn-outline-secondary" [disabled]="total === 0" data-testid="sale-save">Save for later</button>
         <button type="button" (click)="discard()" *ngIf="sale.id && sale.status === 'PENDING'" class="btn btn-outline-danger">Discard</button>
