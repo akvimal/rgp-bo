@@ -1,7 +1,7 @@
 /**
  * The customer's bill (sale view and its print) - BILL-1..2
  * It comes from the store's own details, lines up in columns, shows how it was paid, the tax and the total in words, and gives
- * the customer what they need to come back (refill date, who to call). The print is the same page without the buttons.
+ * the customer what they need to come back (who to call). The print is the same page without the buttons.
  */
 import { test, expect } from '../fixtures/index.js';
 
@@ -35,7 +35,7 @@ async function makeBill(api: any) {
 }
 
 test.describe('Customer bill @p1', () => {
-  test('BILL-1 the bill carries the store details, the lines, how it was paid, the tax, the total in words and the refill date @happy', async ({ api, app }) => {
+  test('BILL-1 the bill carries the store details, the lines, how it was paid, the tax, the total in words and no refill reminder @happy', async ({ api, app }) => {
     const bill = await makeBill(api);
     const set = await api.request('PUT', `/stores/${bill.storeid}/licenses`, {
       address: '12 QA Main Road, Testville', pincode: '600001', phone: '98400 11223, 044 2345 6789',
@@ -51,7 +51,7 @@ test.describe('Customer bill @p1', () => {
     await expect(page.getByTestId('bill-line')).toHaveCount(2);
 
     // from the store, not from the code
-    await expect(page.getByTestId('bill-from-name')).toContainText(String(biz.name));                      // the shop's own name; the legal name sits beneath it
+    await expect(page.getByTestId('bill-from-name')).toContainText(String(biz.name));                      // the shop's own name; the legal name is not printed
     await expect(page.getByTestId('bill-from-phone')).toContainText('98400 11223, 044 2345 6789');         // every number the store lists
     await expect(page.getByTestId('bill-from-address')).toContainText('12 QA Main Road, Testville, 600001');
     await expect(page.getByTestId('bill-licence')).toContainText('DL No.: QA-20-0001 | QA-21-0001');
@@ -71,11 +71,10 @@ test.describe('Customer bill @p1', () => {
     await expect(page.getByTestId('bill-payments')).toContainText('Cash');
     await expect(page.getByTestId('bill-payments')).toContainText('90.00');
 
-    // the total, in numbers and in words, and a refill date for the medicine supplied for a month
+    // the total, in numbers and in words; a medicine supplied for a month no longer prints a refill reminder
     await expect(page.getByTestId('bill-net')).toHaveText('₹190.00');
     await expect(page.getByTestId('bill-words')).toContainText('Rupees One Hundred Ninety only');
-    await expect(page.getByTestId('bill-refill')).toContainText(bill.titles[0]);
-    await expect(page.getByTestId('bill-refill')).not.toContainText(bill.titles[1]);
+    await expect(page.getByTestId('bill-refill')).toHaveCount(0);                                      // the refill reminder is not printed on the bill
     if (issued) await expect(page.getByTestId('bill-gst')).toBeVisible();
     else await expect(page.getByTestId('bill-gst')).toHaveCount(0);
 

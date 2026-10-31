@@ -1,7 +1,10 @@
 <div class="card mb-2 border-warning" data-testid="sd-panel">
     <div class="card-body py-2">
         <div class="fw-semibold mb-1"><i class="bi bi-prescription2 me-1"></i>Scheduled drugs on this bill</div>
-        <div class="small text-muted mb-2" data-testid="sd-drugs">{{names}}. The drug register needs the patient and the prescriber before the bill is completed.</div>
+        <div class="small text-muted mb-2" data-testid="sd-drugs">{{names}}.
+            <span *ngIf="enforce || later">The drug register needs the patient and the prescriber{{later ? '' : ' before the bill is completed'}}.</span>
+            <span *ngIf="!enforce && !later" data-testid="sd-optional">Optional: the bill can be completed without these. Give them now, or a manager can add them later from the Drug register.</span>
+        </div>
         <div class="row g-2">
             <div class="col-lg-6">
                 <div class="small fw-semibold text-muted mb-1">Patient</div>
@@ -26,7 +29,32 @@
                 </div>
             </div>
         </div>
-        <div class="small text-danger mt-2" *ngIf="problems.length" data-testid="sd-problems">To complete this bill, give {{problems.join(', ')}}.</div>
+        <div class="small text-danger mt-2" *ngIf="problems.length && (enforce || later)" data-testid="sd-problems">To {{later ? 'save the register entry' : 'complete this bill'}}, give {{problems.join(', ')}}.</div>
+        <div class="small text-warning-emphasis mt-2" *ngIf="problems.length && !enforce && !later" data-testid="sd-pending"><i class="bi bi-info-circle"></i> Not given yet: {{problems.join(', ')}}. The bill will be listed in the Drug register as missing them until they are added.</div>
         <div class="small text-success mt-2" *ngIf="!problems.length" data-testid="sd-ok"><i class="bi bi-check-circle"></i> The register entry is ready.</div>
+
+        <!-- the prescription itself: a picture or PDF, kept with the customer and attached to the bill, with the patient and the doctor entered above -->
+        <div class="border-top mt-2 pt-2" data-testid="sd-rx">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="small fw-semibold text-muted"><i class="bi bi-file-earmark-medical me-1"></i>Prescription</span>
+                <button type="button" class="btn btn-outline-primary btn-sm" *ngIf="!rxOpen" (click)="openRx()" data-testid="sd-rx-open"><i class="bi bi-upload me-1"></i>Upload prescription</button>
+                <span class="badge bg-light text-dark border" *ngFor="let d of prescriptions" data-testid="sd-rx-doc">{{d.alias || d.name}}</span>
+                <span class="small text-success" *ngIf="rxMessage" data-testid="sd-rx-done">{{rxMessage}}</span>
+            </div>
+            <div class="mt-2" *ngIf="rxOpen" data-testid="sd-rx-form">
+                <div class="small text-muted mb-1">The file goes to {{customerId ? (customerName || 'this customer') + '\'s documents' : 'this bill only (the customer is not on record yet)'}} with the patient and the doctor entered above{{detail.rx_date ? '' : ' and today as the prescription date'}}.</div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-6"><input type="file" class="form-control form-control-sm" accept="image/*,.pdf" (change)="pickFile($event)" aria-label="Prescription picture or PDF" data-testid="sd-rx-file"></div>
+                    <div class="col-6 col-md-3"><input type="text" inputmode="tel" class="form-control form-control-sm" maxlength="10" placeholder="Patient mobile *" [(ngModel)]="rx.patient_mobile" (input)="digits('patient_mobile')" data-testid="sd-rx-patient-mobile"></div>
+                    <div class="col-6 col-md-3"><input type="text" inputmode="tel" class="form-control form-control-sm" maxlength="10" placeholder="Doctor phone" [(ngModel)]="rx.doctor_phone" (input)="digits('doctor_phone')" data-testid="sd-rx-doctor-phone"></div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="rxBusy || rxProblems.length > 0" (click)="uploadRx()" data-testid="sd-rx-save">{{rxBusy ? 'Uploading...' : 'Upload'}}</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeRx()" data-testid="sd-rx-cancel">Cancel</button>
+                    <span class="small text-muted" *ngIf="rxProblems.length" data-testid="sd-rx-needs">Needs {{rxProblems.join(', ')}}.</span>
+                    <span class="small text-danger" *ngIf="rxError" data-testid="sd-rx-error">{{rxError}}</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

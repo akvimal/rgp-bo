@@ -2,18 +2,28 @@
 <div class="pagetitle"><h1>Drug register</h1></div>
 
 <p class="small text-muted mb-2" data-testid="dr-intro">
-  Every Schedule H, H1 and X drug supplied, with the patient and the prescriber, numbered in the register's own order. The counter writes it through the bill: a bill with a scheduled drug
-  cannot be completed without them. Print it for an inspector, or download it to Excel.
+  Every Schedule H, H1 and X drug supplied, with the patient and the prescriber, numbered in the register's own order. The counter writes it through the bill. The details are optional
+  when completing a bill; a sale completed without them is listed below until a manager adds them. Print it for an inspector, or download it to Excel.
 </p>
 
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="dr-error">{{error}}</div>
 
 <div class="alert alert-warning py-2" *ngIf="data && data.coverage.missing" data-testid="dr-missing">
   <b>{{data.coverage.missing}} scheduled sale{{data.coverage.missing === 1 ? '' : 's'}} since {{data.since | date:'dd MMM yyyy'}} {{data.coverage.missing === 1 ? 'has' : 'have'}} no register line.</b>
-  The bill was made some other way, or before the details were asked for. The most recent:
-  <ul class="mb-0 small">
-    <li *ngFor="let m of data.coverage.items.slice(0, 5)">Bill {{m.bill_no}}, {{m.day | date:'dd MMM'}}: {{m.title}} (Schedule {{m.schedule}}), {{m.qty}} unit{{m.qty === 1 ? '' : 's'}}</li>
+  The bill was completed without the patient and the prescriber, made some other way, or made before the details were asked for. The most recent:
+  <ul class="mb-2 small">
+    <li *ngFor="let b of bills.slice(0, 5)" data-testid="dr-missing-bill">Bill {{b.bill_no}}, {{b.day | date:'dd MMM'}}: {{titles(b)}}
+      <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline" (click)="openLater(b)" data-testid="dr-add-details">Add details</button></li>
   </ul>
+  <div class="bg-white border rounded p-2" *ngIf="later" data-testid="dr-later">
+    <div class="fw-semibold small mb-1">Patient and prescriber for bill {{later.bill.bill_no}}</div>
+    <app-schedule-detail [detail]="later.detail" [drugs]="later.bill.drugs" [customer]="later.bill.customer" [later]="true"></app-schedule-detail>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <button type="button" class="btn btn-primary btn-sm" [disabled]="later.busy || laterProblems.length > 0" (click)="saveLater()" data-testid="dr-later-save">Add to the register</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeLater()" data-testid="dr-later-cancel">Cancel</button>
+      <span class="small text-danger" *ngIf="later.error" data-testid="dr-later-error">{{later.error}}</span>
+    </div>
+  </div>
 </div>
 <div class="small text-muted mb-2" *ngIf="data">The online register began on {{data.since | date:'dd MMM yyyy'}}; earlier supplies are in the paper register.</div>
 

@@ -63,14 +63,13 @@ export class SaleViewComponent {
     words = '';
 
     /** who the bill is from: the store's own details, with the business's as the fallback */
-    from:any = { name: '', legalname: '', logo: '', website: '', grievancephone: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
+    from:any = { name: '', logo: '', website: '', grievancephone: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
     payments:{label:string, amount:number}[] = [];
     gstRows:{rate:number, taxable:number, cgst:number, sgst:number, igst:number}[] = [];
     /** the supply crosses a state border: the tax is IGST, not CGST and SGST */
     interState = false;
     placeName = '';
     gstTotal = 0;
-    refills:{title:string, due:Date}[] = [];
 
     /** the store's Google review link, shown on the bill as a QR code */
     reviewQr: { size:number, d:string } | null = null;
@@ -103,14 +102,15 @@ export class SaleViewComponent {
       const b = h.business || {}, s = h.store || {};
       const join = (...bits:any[]) => bits.map(x => (x || '').toString().trim()).filter(Boolean).join(', ');
       const pin = s.pincode || (s.address ? '' : b.pincode);
-      const address = s.address ? join(s.address, pin) : join(b.address, b.pincode);
+      // the pincode is added only when the address does not already end with it
+      const withPin = (addr:any, code:any) => { const a = (addr || '').toString().trim(), c = (code || '').toString().trim(); return a && c && a.includes(c) ? a : join(a, c); };
+      const address = s.address ? withPin(s.address, pin) : withPin(b.address, b.pincode);
       const byType:{[t:string]:string[]} = {};
       (h.licences || []).forEach((l:any) => { (byType[l.type] = byType[l.type] || []).push(l.number); });
       this.reviewQr = s.reviewurl ? qrPath(s.reviewurl) : null;
       this.from = {
-        // the shop's own name; the registered (legal) name goes beneath it when it is different
+        // the shop's own name; the registered (legal) name is not printed
         name: b.name || b.legalname || '',
-        legalname: b.legalname && b.legalname !== b.name ? b.legalname : '',
         logo: b.logo || '',
         website: b.website || '',
         grievancephone: b.grievancephone || '',
@@ -181,13 +181,6 @@ export class SaleViewComponent {
       });
       this.gstTotal = this.gstRows.reduce((t, g) => t + g.cgst + g.sgst + g.igst, 0);
 
-      // a medicine supplied for months: when it is likely to run out
-      const bill = new Date(data.billdate);
-      this.refills = items.filter((i:any) => i.supplymonths > 0).map((i:any) => {
-        const due = new Date(bill);
-        due.setDate(due.getDate() + Math.round(i.supplymonths * 30));
-        return { title: i.title, due };
-      });
       this.loaded = true;
     }
 

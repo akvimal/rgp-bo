@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { saveAs } from "file-saver";
 import { DrugRegisterService } from "./drug-register.service";
+import { detailProblems } from "./drug-register-rules";
 
 const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
@@ -17,6 +18,10 @@ export class DrugRegisterComponent implements OnInit {
     error = '';
     loading = false;
     f: any = { schedule: '', from: '', to: '', storeid: null, q: '', superseded: false };
+    /** the sales with no register line, one entry for each bill */
+    bills: any[] = [];
+    /** the bill whose patient and prescriber are being added */
+    later: any = null;
 
     constructor(private service: DrugRegisterService) {}
 
@@ -36,7 +41,35 @@ export class DrugRegisterComponent implements OnInit {
 
     load() {
         this.error = ''; this.loading = true;
-        this.service.register(this.query()).subscribe((r: any) => { this.data = r; this.loading = false; }, (e: any) => { this.loading = false; this.error = this.msg(e, 'Could not load the register.'); });
+        this.service.register(this.query()).subscribe((r: any) => { this.data = r; this.bills = this.group(r?.coverage?.items || []); this.loading = false; }, (e: any) => { this.loading = false; this.error = this.msg(e, 'Could not load the register.'); });
+    }
+
+    /** the sales with no register line, a bill at a time, with its scheduled drugs and who it was for */
+    private group(items: any[]): any[] {
+        const by = new Map<number, any>();
+        for (const m of items) {
+            let b = by.get(m.sale_id);
+            if (!b) {
+                b = { sale_id: m.sale_id, bill_no: m.bill_no, day: m.day, drugs: [], customer: m.customer_id ? { id: m.customer_id, existing: true, name: m.customer_name, mobile: m.customer_mobile, address: m.customer_address } : null };
+                by.set(m.sale_id, b);
+            }
+            b.drugs.push({ title: m.title, more_props: { schedule: m.schedule } });
+        }
+        return Array.from(by.values());
+    }
+
+    titles(b: any): string { return b.drugs.map((d: any) => `${d.title} (${d.more_props.schedule})`).join(', '); }
+
+    openLater(b: any) { this.later = { bill: b, detail: {}, busy: false, error: '' }; }
+    closeLater() { this.later = null; }
+    get laterProblems(): string[] { return this.later ? detailProblems(this.later.detail) : []; }
+
+    saveLater() {
+        if (!this.later || this.laterProblems.length) return;
+        this.later.busy = true; this.later.error = '';
+        this.service.addDetails(this.later.bill.sale_id, this.later.detail).subscribe(
+            () => { this.later = null; this.load(); },
+            (e: any) => { this.later.busy = false; this.later.error = this.msg(e, 'Could not add the details.'); });
     }
 
     month(offset: number) {

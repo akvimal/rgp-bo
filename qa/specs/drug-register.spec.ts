@@ -34,11 +34,17 @@ function bill(d: { itemid: number; productid: number; batch: string }, extra: an
   };
 }
 
-async function required(api: any, value: string) {
-  const s = (await api.request('GET', '/settings?key=schedule_register_required', undefined, MGR)).body[0];
-  expect(s, 'the setting exists').toBeTruthy();
+async function setting(api: any, key: string, value: string) {
+  const s = (await api.request('GET', `/settings?key=${key}`, undefined, MGR)).body[0];
+  expect(s, `the setting ${key} exists`).toBeTruthy();
   const r = await api.request('PUT', `/settings/${s.id}`, { value }, MGR);
   expect(r.status, JSON.stringify(r.body)).toBeLessThan(300);
+}
+
+/** which schedules need details; a list also holds bills back until the details are given (by default they are optional), an empty one asks for nothing */
+async function required(api: any, value: string) {
+  await setting(api, 'schedule_register_required', value);
+  await setting(api, 'schedule_register_enforce', value ? 'yes' : 'no');
 }
 
 const register = async (api: any, who = MGR, q = '') => (await api.request('GET', `/schedule/register?from=2020-01-01&to=2099-12-31${q}`, undefined, who));
@@ -137,6 +143,37 @@ test.describe('Drug register @p1', () => {
     expect(cov).toHaveProperty('missing');
     expect(cov.months.length).toBeGreaterThan(0);
     expect((await api.request('GET', '/schedule/register?from=2026-02-01&to=2026-01-01', undefined, MGR)).status).toBe(400);
+  });
+
+  test('DREG-6 the patient and the prescriber are optional on a bill; the sale is listed as missing them until a manager adds them @happy', async ({ api }) => {
+    await required(api, 'H1,H,X');
+    await setting(api, 'schedule_register_enforce', 'no');                                             // the shop that does not hold bills back
+    const h1 = await drug(api, `opt-${run}`, 'H1');
+    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ enforce: false });
+
+    const made = await api.request('POST', '/sales', bill(h1), SALES);                                 // completes without any details
+    expect(made.status, JSON.stringify(made.body)).toBeLessThan(300);
+    const missing = async () => ((await api.request('GET', '/schedule/coverage', undefined, MGR)).body.items as any[]).filter((i) => i.sale_id === made.body.id);
+    expect((await missing()).length).toBeGreaterThan(0);                                               // listed as having no register line, with who it was for
+    expect((await missing())[0]).toHaveProperty('customer_name');
+
+    // the counter cannot add them; a manager can, and only with the details the register needs
+    const path = `/schedule/sales/${made.body.id}/details`;
+    expect((await api.request('POST', path, { ...GOOD }, SALES)).status).toBe(403);
+    expect((await api.request('POST', path, { patient_name: 'X' }, MGR)).status).toBe(400);
+    const patient = `${GOOD.patient_name} LATER`;
+    const ok = await api.request('POST', path, { ...GOOD, patient_name: patient }, MGR);
+    expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+    const rows = mine((await register(api)).body.rows, patient);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ schedule: 'H1', qty: 2, batch: h1.batch, drug_name: h1.title, prescriber_name: GOOD.prescriber_name });
+    expect(await missing()).toHaveLength(0);                                                           // no longer missing
+    expect((await api.request('POST', path, { ...GOOD }, MGR)).status).toBe(400);                      // it already has its lines
+
+    // the shop that holds bills back still refuses the same bill without details
+    await setting(api, 'schedule_register_enforce', 'yes');
+    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ enforce: true });
+    expect((await api.request('POST', '/sales', bill(h1), SALES)).status).toBe(400);
   });
 
   test('DREG-5 the drug register is a module of the pharmacy pack: switched off, it is gone and the bill is not held up @negative', async ({ api }) => {

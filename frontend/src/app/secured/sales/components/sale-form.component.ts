@@ -66,7 +66,7 @@ export class SaleFormComponent {
 
     ngOnInit(){
       // pharmacy pack: which schedules need the patient and the prescriber on a bill (nothing is asked when the business has not got the drug register)
-      if (this.auth.moduleOn('drug_register')) this.drugRegister.config().subscribe((c) => this.scheduleRequired = c.required || [], () => this.scheduleRequired = []);
+      if (this.auth.moduleOn('drug_register')) this.drugRegister.config().subscribe((c) => { this.scheduleRequired = c.required || []; this.scheduleEnforce = !!c.enforce; }, () => this.scheduleRequired = []);
 
       this.sale.billdate = new Date();
       this.sale['customer'] = this.customer;
@@ -194,6 +194,8 @@ export class SaleFormComponent {
   // ------------------------------------------------------------------ pharmacy pack: the drug register
   scheduleDetail: any = {};
   scheduleRequired: string[] = [];
+  /** the shop holds a bill back until the patient and the prescriber are given; by default they are optional */
+  scheduleEnforce = false;
 
   /** the drugs on the bill whose schedule needs the patient and the prescriber */
   get scheduledItems(): any[] {
@@ -201,9 +203,16 @@ export class SaleFormComponent {
     return (this.sale.items || []).filter((i:any) => i.edited && this.scheduleRequired.includes(String(i.more_props?.schedule ?? '').toUpperCase()));
   }
 
-  /** the bill cannot be completed until the register has what it needs */
+  /** the bill cannot be completed until the register has what it needs (only when the shop holds bills back; otherwise the details can follow) */
   get scheduleMissing(): boolean {
-    return this.scheduledItems.length > 0 && detailProblems(this.scheduleDetail).length > 0;
+    return this.scheduleEnforce && this.scheduledItems.length > 0 && detailProblems(this.scheduleDetail).length > 0;
+  }
+
+  /** a prescription was uploaded from the scheduled-drugs panel: the bill carries it like any document picked from the customer's documents */
+  onPrescriptionUploaded(d:any){
+    if(!this.documents.find((td:any) => td.id === d.id))
+      this.documents.push({id:d.id, category:d.category, name:d.name, alias:d.alias, path:d.path, props: d.docprops ? JSON.parse(d.docprops) : []});
+    this.sale.docpending = false;
   }
 
   /** chronic medicines on the bill (more_props.chronic is stored as true or "true") */

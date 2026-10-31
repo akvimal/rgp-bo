@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -36,7 +36,13 @@ export class DrugRegisterService {
     return isDay(s?.setting_value) ? s.setting_value : istDay();
   }
 
-  async config() { return { required: await this.required(), since: await this.since() }; }
+  /** whether a bill with a scheduled drug is held back until the patient and the prescriber are given; by default it is not, and the details can follow */
+  async enforce(m: EntityManager = this.manager): Promise<boolean> {
+    const [s] = await m.query(`select setting_value from app_setting where setting_key = 'schedule_register_enforce' and active and not archive limit 1`);
+    return String(s?.setting_value ?? 'no').trim().toLowerCase() === 'yes';
+  }
+
+  async config() { return { required: await this.required(), since: await this.since(), enforce: await this.enforce() }; }
 
   // ------------------------------------------------------------------ the bill
   private async scheduledProducts(m: EntityManager, productIds: number[]): Promise<ScheduledProduct[]> {
@@ -52,9 +58,10 @@ export class DrugRegisterService {
     })).filter((l) => l.productid > 0);
   }
 
-  /** the hook before a bill is saved: a completed bill with a scheduled drug needs the patient and the prescriber */
+  /** the hook before a bill is saved: when the shop holds bills back, a completed bill with a scheduled drug needs the patient and the prescriber */
   async check(ctx: SaleContext) {
     if (String(ctx.sale?.status || '').toUpperCase() !== 'COMPLETE') return;
+    if (!(await this.enforce(ctx.manager))) return;
     const lines = this.billLines(ctx.sale);
     const scheduled = scheduledLines(lines, await this.scheduledProducts(ctx.manager, [...new Set(lines.map((l) => l.productid))]));
     const need = requiredLines(scheduled, await this.required(ctx.manager));
@@ -89,14 +96,20 @@ export class DrugRegisterService {
     const d = normaliseDetail(raw);
 
     const storeId = ctx.storeId ?? ctx.saved?.storeid ?? null;
+    await this.writeEntries(m, { storeId, saleId, billNo: ctx.saved?.billno ?? null, billDate: ctx.saved?.billdate ? new Date(ctx.saved.billdate) : new Date(), scheduled, d, userId: ctx.userId, by });
+  }
+
+  /** one numbered register line for each scheduled drug on a bill, with its patient and prescriber */
+  private async writeEntries(m: EntityManager, a: { storeId: number | null; saleId: number; billNo: any; billDate: Date; scheduled: ReturnType<typeof scheduledLines>; d: ReturnType<typeof normaliseDetail>; userId: number; by: number }) {
+    const { storeId, saleId, scheduled, d } = a;
     const [st] = storeId ? await m.query(`select business_id from stores where id = $1`, [storeId]) : [null];
     if (!st) return;
     const businessId = +st.business_id;
-    const prescriberId = await this.prescriberId(m, businessId, d, ctx.userId);
+    const prescriberId = await this.prescriberId(m, businessId, d, a.userId);
     const drafts = draftEntries(scheduled);
     const expiry = drafts.length ? await m.query(`select id, exp_date from purchase_invoice_item where id = any($1::int[])`, [drafts.map((x) => x.itemid).filter(Boolean)]) : [];
     const expOf = new Map<number, string | null>(expiry.map((e: any) => [+e.id, e.exp_date]));
-    const entryOn = ctx.saved?.billdate ? new Date(ctx.saved.billdate) : new Date();
+    const entryOn = a.billDate;
 
     const next = new Map<string, number>();
     for (const x of drafts) {
@@ -111,9 +124,36 @@ export class DrugRegisterService {
         `insert into schedule_register (business_id, store_id, schedule, serial_no, sale_id, sale_item_id, entry_on, bill_no, product_id, drug_name, batch, exp_date, qty, pack,
             patient_name, patient_address, patient_age, prescriber_id, prescriber_name, prescriber_reg_no, prescriber_address, rx_date, supplied_by)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
-        [businessId, storeId, x.schedule, serial, saleId, x.sale_item_id, entryOn, ctx.saved?.billno ?? null, x.product_id, x.drug_name, x.batch, x.itemid ? expOf.get(+x.itemid) ?? null : null, x.qty, x.pack,
-          d.patient_name, d.patient_address || null, d.patient_age || null, prescriberId, d.prescriber_name, d.prescriber_reg_no || null, d.prescriber_address || null, d.rx_date, by]);
+        [businessId, storeId, x.schedule, serial, saleId, x.sale_item_id, entryOn, a.billNo, x.product_id, x.drug_name, x.batch, x.itemid ? expOf.get(+x.itemid) ?? null : null, x.qty, x.pack,
+          d.patient_name, d.patient_address || null, d.patient_age || null, prescriberId, d.prescriber_name, d.prescriber_reg_no || null, d.prescriber_address || null, d.rx_date, a.by]);
     }
+  }
+
+  /**
+   * Details for a bill that was completed without them: a manager gives the patient and the prescriber, and the register lines are written as if the bill
+   * had carried them (dated as the bill). A bill that already has its lines is left as it is.
+   */
+  async addDetails(user: any, saleId: number, raw: any) {
+    const sc = await this.scope(user);
+    const [sale] = await this.manager.query(`select id, store_id, bill_no, bill_date, status from sale where id = $1 and active and not archive`, [Number(saleId) || 0]);
+    if (!sale || !sc.stores.some((s) => s.id === +sale.store_id)) throw new NotFoundException('Bill not found.');
+    if (String(sale.status).toUpperCase() !== 'COMPLETE') throw new BadRequestException('Only a completed bill has register lines.');
+    const problems = detailProblems(raw, istDay());
+    if (problems.length) throw new BadRequestException(`Give ${problems.join(', ')}.`);
+    const d = normaliseDetail(raw);
+    const rows = await this.manager.query(
+      `select si.id, si.purchase_item_id as itemid, si.product_id as productid, si.batch, si.qty from sale_item si
+        where si.sale_id = $1 and si.status = 'Complete' and si.active and not si.archive`, [sale.id]);
+    await this.manager.transaction(async (m) => {
+      const lines = this.billLines({}, rows);
+      const scheduled = scheduledLines(lines, await this.scheduledProducts(m, [...new Set(lines.map((l) => l.productid))]));
+      if (!scheduled.length) throw new BadRequestException('This bill has no scheduled drug.');
+      const [have] = await m.query(`select count(*)::int as n from schedule_register where sale_id = $1 and superseded_on is null`, [sale.id]);
+      if (have.n) throw new BadRequestException('This bill already has its register lines.');
+      await this.writeEntries(m, { storeId: +sale.store_id, saleId: +sale.id, billNo: sale.bill_no, billDate: new Date(sale.bill_date), scheduled, d, userId: user.id, by: user.id });
+    });
+    await this.audit.record({ userId: user.id, action: 'drug_register.details_added', entityType: 'sale', entityId: +sale.id, summary: `Register details added to bill ${sale.bill_no}`, details: { patient: d.patient_name, prescriber: d.prescriber_name } });
+    return { sale_id: +sale.id };
   }
 
   // ------------------------------------------------------------------ prescribers (for the counter)
@@ -190,8 +230,9 @@ export class DrugRegisterService {
     if (!ids.length) return { since, required, missing: 0, items: [], months: [] };
     const none = !required.length;          // nothing is required: no sale can be missing, but the register still has its lines to count
     const miss = none ? [] : await this.manager.query(
-      `select s.id as sale_id, s.bill_no, to_char(s.bill_date, 'YYYY-MM-DD') as day, p.title, upper(p.more_props->>'schedule') as schedule, si.qty
-         from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id
+      `select s.id as sale_id, s.bill_no, to_char(s.bill_date, 'YYYY-MM-DD') as day, p.title, upper(p.more_props->>'schedule') as schedule, si.qty,
+              c.id as customer_id, c.name as customer_name, c.mobile as customer_mobile, c.address as customer_address
+         from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id left join customer c on c.id = s.customer_id
         where si.status = 'Complete' and si.active and not si.archive and upper(p.more_props->>'schedule') = any($1::text[]) and s.bill_date >= $2::date and s.store_id = any($3::int[])
           and not exists (select 1 from schedule_register r where r.sale_item_id = si.id and r.superseded_on is null)
         order by s.bill_date desc limit 100`, [required, since, ids]);

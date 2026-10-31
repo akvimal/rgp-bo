@@ -6,9 +6,6 @@
                 <img *ngIf="from.logo" [src]="from.logo" alt="" class="bill-logo" data-testid="bill-logo">
                 <div class="bill-from">
                     <h1 data-testid="bill-from-name">{{from.name}}<small *ngIf="from.branch"> &middot; {{from.branch}}</small></h1>
-                    <div *ngIf="from.legalname" class="bill-sub" data-testid="bill-from-legal">{{from.legalname}}</div>
-                    <div *ngIf="from.address" data-testid="bill-from-address">{{from.address}}</div>
-                    <div *ngIf="from.phone" data-testid="bill-from-phone">Phone: <strong>{{from.phone}}</strong></div>
                     <div *ngIf="from.gstin">GSTIN: <strong>{{from.gstin}}</strong></div>
                     <div *ngFor="let l of from.licences" data-testid="bill-licence">{{l.label}}: {{l.numbers}}</div>
                 </div>
@@ -72,10 +69,6 @@
                 <div class="bill-notes">
                     <div><span class="bill-label">Items</span> <strong>{{itemsCount}}</strong> &middot; <span class="bill-label">Units</span> <strong>{{unitsCount}}</strong></div>
                     <div class="bill-words" data-testid="bill-words"><span class="bill-label">Amount in words</span> Rupees {{words}} only</div>
-                    <div class="bill-refill" *ngIf="refills.length && auth.moduleOn('refills')" data-testid="bill-refill">
-                        <span class="bill-label">Refill reminder</span>
-                        <div *ngFor="let r of refills">{{r.title}}: about <strong>{{r.due | date:'dd MMM yyyy'}}</strong></div>
-                    </div>
                 </div>
                 <table class="bill-totals">
                     <tr *ngIf="mrpTotal > 0 && savedAmount > 0"><td>MRP total</td><td>{{mrpTotal | number:'1.2-2'}}</td></tr>
@@ -101,17 +94,25 @@
                 </tbody>
             </table>
 
+            <!-- where to find the shop: the address, the phone number(s) and the website, in one strip under the total -->
+            <div class="bill-contact" *ngIf="from.address || from.phone || from.website" data-testid="bill-contact">
+                <span *ngIf="from.address" data-testid="bill-from-address">{{from.address}}</span>
+                <span *ngIf="from.phone" data-testid="bill-from-phone">Phone: <strong>{{from.phone}}</strong></span>
+                <span *ngIf="from.website" data-testid="bill-website">{{from.website}}</span>
+            </div>
+
             <footer class="bill-foot">
+              <div class="bill-foot-text">
                 <div *ngIf="auth.moduleOn('returns') && shiftContext.returnsAllowed">Please keep this bill for any return or exchange. {{ 'Goods' | term }} once sold are taken back only as the law and our policy allow.</div>
                 <div *ngIf="!(auth.moduleOn('returns') && shiftContext.returnsAllowed)" data-testid="bill-no-returns">{{ 'Goods' | term }} once sold are not taken back or exchanged.</div>
                 <div class="bill-thanks">Thank you for choosing us. Wishing you good health.</div>
-                <div class="bill-sub" *ngIf="from.phone">Questions about this bill? Call {{from.phone}}.</div>
-                <div class="bill-review" *ngIf="reviewQr" data-testid="bill-review">
-                    <svg class="bill-review-qr" [attr.viewBox]="'-4 -4 ' + (reviewQr.size + 8) + ' ' + (reviewQr.size + 8)" role="img" aria-label="QR code to review us on Google" shape-rendering="crispEdges"><path [attr.d]="reviewQr.d" fill="#000"/></svg>
-                    <div class="bill-review-text">Happy with us? Scan to review us on Google.</div>
-                </div>
                 <div class="bill-sub" *ngIf="from.grievancephone" data-testid="bill-grievance">For any complaint or grievance, please call {{from.grievancephone}}.</div>
-                <div class="bill-sub" *ngIf="from.website" data-testid="bill-website">{{from.website}}</div>
+              </div>
+              <!-- the review QR sits at the right of the footer, beside the text, so it takes no height of its own -->
+              <div class="bill-review" *ngIf="reviewQr" data-testid="bill-review">
+                  <svg class="bill-review-qr" [attr.viewBox]="'-4 -4 ' + (reviewQr.size + 8) + ' ' + (reviewQr.size + 8)" role="img" aria-label="QR code to review us on Google" shape-rendering="crispEdges"><path [attr.d]="reviewQr.d" fill="#000"/></svg>
+                  <div class="bill-review-text">Happy with us? Scan to review us on Google.</div>
+              </div>
             </footer>
         </div>
     </div>

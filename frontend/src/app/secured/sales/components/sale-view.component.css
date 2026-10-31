@@ -45,7 +45,10 @@
 .bill-gst th.c-num, .bill-gst td.c-num { text-align: right; font-variant-numeric: tabular-nums; }
 .bill-gst td { padding: 3px 6px; border-bottom: 1px solid #e5e7eb; }
 
-.bill-foot { margin-top: 16px; padding-top: 8px; border-top: 1px solid #d1d5db; font-size: 11px; color: #4b5563; text-align: center; }
+.bill-contact { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 22px; margin-top: 14px; padding: 6px 8px; border-top: 1px solid #d1d5db; font-size: 11px; color: #374151; text-align: center; }
+.bill-contact + .bill-foot { margin-top: 0; }
+.bill-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px; padding-top: 8px; border-top: 1px solid #d1d5db; font-size: 11px; color: #4b5563; }
+.bill-foot-text { flex: 1; text-align: center; }
 .bill-thanks { font-weight: 700; color: #012970; margin: 3px 0; }
 
 @media print {
@@ -56,7 +59,7 @@
 }
 
 
-/* the review QR at the foot of the bill: small, centred, printed with the bill */
-.bill-review { display: flex; align-items: center; justify-content: center; gap: .6rem; margin-top: .6rem; }
-.bill-review-qr { width: 84px; height: 84px; background: #fff; }
-.bill-review-text { font-size: .8rem; max-width: 12rem; text-align: left; }
+/* the review QR at the right of the foot of the bill: small, beside the text, printed with the bill */
+.bill-review { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: none; width: 96px; }
+.bill-review-qr { width: 72px; height: 72px; background: #fff; }
+.bill-review-text { font-size: 9px; line-height: 1.2; text-align: center; }

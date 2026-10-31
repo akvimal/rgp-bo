@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Post, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
@@ -34,4 +34,6 @@ export class DrugRegisterController {
   @Get('register/pdf') async pdf(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.pdf(u, q)); }
   @Get('register/xlsx') async xlsx(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.xlsx(u, q)); }
   @Get('coverage') async coverage(@User() u: any) { await this.assertReader(u); return this.register.coverage(u); }
+  /** the patient and the prescriber for a bill that was completed without them */
+  @Post('sales/:id/details') async addDetails(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { await this.assertReader(u); return this.register.addDetails(u, id, b); }
 }
