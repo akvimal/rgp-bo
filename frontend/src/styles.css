@@ -84,17 +84,20 @@
 }
 
 .sidebar-toggle-btn {
-  color: #333;
-  font-size: 1.6rem;
+  color: #012970;
   line-height: 1;
   text-decoration: none;
-  /* a finger-sized target */
+  /* a finger-sized target; pulled left so the icon sits in the same column as the menu icons below it (the header has 20px of padding), with the same gap on its right as between the logo and the name */
   min-width: 44px;
   min-height: 44px;
+  margin: 0 0 0 -8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
+
+/* bigger than the menu icons (16px) but in their column; stated with the header's id so Bootstrap's button size does not win */
+#header .sidebar-toggle-btn { font-size: 1.5rem; }
 
 .sidebar-toggle-btn:focus {
   box-shadow: none;
@@ -519,7 +522,7 @@
 }
 
 /* The header brand: the business's own logo, and a name that stays on one line (a long name is shortened, the full name is its tooltip). */
-#header .brand-logo { max-height: 40px; max-width: 150px; object-fit: contain; }
+#header .brand-logo { max-height: 40px; max-width: 150px; object-fit: contain; margin-right: 10px; }
 #header .logo { width: auto; max-width: min(360px, 30vw); min-width: 0; }
 #header .logo .brand-text { font-size: 1.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #header .logo .brand-text.brand-long { font-size: 1.2rem; }

@@ -34,21 +34,21 @@ const ROLES = ['Business Head', 'Owner-operator', 'Store Head', 'Sales Staff', '
       <div class="alert alert-success" *ngIf="message" role="status" data-testid="dsetup-message">{{message}}</div>
 
       <div class="card mb-3"><div class="card-body p-0">
-        <div class="row g-0 border-bottom p-2 small fw-semibold text-muted d-none d-md-flex"><div class="col-md-5">Setting</div><div class="col-md-3">Your choice</div><div class="col-md-2">Default</div><div class="col-md-2"></div></div>
+        <div class="row g-0 border-bottom p-2 small fw-semibold text-muted d-none d-md-flex"><div class="col-md-5 pe-md-3">Setting</div><div class="col-md-3 pe-md-3">Your choice</div><div class="col-md-2">Default</div><div class="col-md-2"></div></div>
         <ng-container *ngFor="let i of items; let n = index">
         <div class="row g-0 bg-light border-bottom px-2 py-1 small fw-semibold" *ngIf="tab === 'health' && heading(n)" [attr.data-testid]="'dsetup-group-' + heading(n)">{{heading(n)}}</div>
         <div class="row g-0 border-bottom p-2 align-items-center" [attr.data-testid]="'dsetup-row-' + i.key">
-          <div class="col-md-5">
+          <div class="col-md-5 pe-md-3">
             <label [attr.for]="'f-' + i.key" class="mb-0">{{tab === 'health' && i.label.includes(': ') ? i.label.split(': ').slice(1).join(': ') : i.label}}</label>
             <div class="small text-muted" *ngIf="i.locked"><i class="bi bi-lock"></i> Required: cannot be changed.</div>
             <div class="small text-muted" *ngIf="i.planLocked && !i.locked"><i class="bi bi-lock"></i> Not changeable on your plan.</div>
             <div class="small text-muted" *ngIf="i.source === 'business' && i.since">Set from {{i.since}}</div>
             <div class="small text-primary" *ngIf="i.pending" [attr.data-testid]="'dsetup-pending-' + i.key">Changes to {{show(i.pending.value, i)}} from {{i.pending.from}}</div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-3 pe-md-3">
             <ng-container [ngSwitch]="i.kind">
-              <input *ngSwitchCase="'int'" type="number" class="form-control form-control-sm" [id]="'f-' + i.key" [min]="i.min" [max]="i.max" [step]="i.step || 1" [(ngModel)]="draft[i.key]" [disabled]="!editable(i)" [attr.data-testid]="'dsetup-input-' + i.key">
-              <select *ngSwitchCase="'enum'" class="form-select form-select-sm" [id]="'f-' + i.key" [(ngModel)]="draft[i.key]" [disabled]="!editable(i)" [attr.data-testid]="'dsetup-input-' + i.key">
+              <input *ngSwitchCase="'int'" type="number" class="form-control form-control-sm" style="max-width: 16rem" [id]="'f-' + i.key" [min]="i.min" [max]="i.max" [step]="i.step || 1" [(ngModel)]="draft[i.key]" [disabled]="!editable(i)" [attr.data-testid]="'dsetup-input-' + i.key">
+              <select *ngSwitchCase="'enum'" class="form-select form-select-sm" style="max-width: 16rem" [id]="'f-' + i.key" [(ngModel)]="draft[i.key]" [disabled]="!editable(i)" [attr.data-testid]="'dsetup-input-' + i.key">
                 <option *ngFor="let o of i.options" [ngValue]="o">{{o}}</option>
               </select>
               <div *ngSwitchCase="'bool'" class="form-check form-switch"><input type="checkbox" class="form-check-input" [id]="'f-' + i.key" [(ngModel)]="draft[i.key]" [disabled]="!editable(i)" [attr.data-testid]="'dsetup-input-' + i.key"></div>
@@ -95,11 +95,11 @@ const ROLES = ['Business Head', 'Owner-operator', 'Store Head', 'Sales Staff', '
           <h2 class="h6">Sales target for {{targets?.month}} <span class="text-muted fw-normal small">a store with no target of its own uses the business target</span></h2>
           <div class="row g-2 align-items-center mb-1">
             <div class="col-md-4">Whole business</div>
-            <div class="col-md-4"><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="targetBusiness" [disabled]="!canEdit" aria-label="Business sales target" data-testid="dsetup-target-business"></div>
+            <div class="col-md-4 pe-md-3"><input type="number" min="0" class="form-control form-control-sm" style="max-width: 14rem" [(ngModel)]="targetBusiness" [disabled]="!canEdit" aria-label="Business sales target" data-testid="dsetup-target-business"></div>
           </div>
           <div class="row g-2 align-items-center mb-1" *ngFor="let s of targets?.stores">
             <div class="col-md-4">{{s.location}}</div>
-            <div class="col-md-4"><input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="targetStores[s.id]" [disabled]="!canEdit" [attr.aria-label]="'Sales target for ' + s.location" [attr.data-testid]="'dsetup-target-' + s.id"></div>
+            <div class="col-md-4 pe-md-3"><input type="number" min="0" class="form-control form-control-sm" style="max-width: 14rem" [(ngModel)]="targetStores[s.id]" [disabled]="!canEdit" [attr.aria-label]="'Sales target for ' + s.location" [attr.data-testid]="'dsetup-target-' + s.id"></div>
           </div>
           <div class="d-flex flex-wrap gap-2 align-items-center mt-2" *ngIf="canEdit">
             <button class="btn btn-outline-primary btn-sm" (click)="saveTargets()" data-testid="dsetup-target-save">Save targets</button>

@@ -3,7 +3,7 @@
     <header id="header" class="header fixed-top d-flex align-items-center">
       
       <div class="d-flex align-items-center justify-content-between">
-        <button type="button" data-testid="sidebar-toggle" class="btn btn-link p-0 me-2 sidebar-toggle-btn" (click)="toggleSidebar()" aria-label="Toggle menu" title="Show or hide the menu">
+        <button type="button" data-testid="sidebar-toggle" class="btn btn-link p-0 sidebar-toggle-btn" (click)="toggleSidebar()" aria-label="Toggle menu" title="Show or hide the menu">
           <i class="bi bi-list"></i>
         </button>
         <img class="brand-logo" [src]="user.businesslogo || (hosted ? 'assets/img/logo-placeholder.svg' : 'assets/img/rgp-logo.png')" alt="" [style.width]="user.businesslogo ? 'auto' : '50px'" data-testid="brand-logo">
