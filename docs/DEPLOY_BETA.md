@@ -9,7 +9,7 @@ When the new version is accepted, the same script is run with a last dump and th
 
 | | Live (old) | Beta (new) |
 |---|---|---|
-| Code | the folder it runs from today (branch `v2`) | a second clone of this repository |
+| Code | the folder it runs from today (branch `v2`) | a second clone of this repository, branch `v3` |
 | Database | the existing Postgres | its own Postgres container (`beta_pgdata` volume), never published to the network |
 | Port | as today | `BETA_PORT` (default 8080); put your web server in front of it |
 | Keys | its own | its own `JWT_KEY` and database password (a login from one is not accepted by the other) |
@@ -21,7 +21,7 @@ On the server, in a **new folder** (not the live one):
 
 ```bash
 git clone <this repository> rgp-beta && cd rgp-beta
-git checkout feature/vendor-receiving-and-pricing-governance      # or the branch you are given
+git checkout v3
 
 cp .env.beta.example .env.beta
 # set POSTGRES_PASSWORD and JWT_KEY to NEW random values (openssl rand -hex 24), and BETA_PORT to a free port
