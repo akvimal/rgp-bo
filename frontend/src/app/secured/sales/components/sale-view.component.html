@@ -74,9 +74,8 @@
                     <div class="bill-saved" *ngIf="savedAmount > 0 && from.showsaving" data-testid="bill-saved">You saved &#8377;{{savedAmount | number:'1.0-0'}} ({{saving}}%) on MRP</div>
                 </div>
                 <table class="bill-totals">
-                    <tr *ngIf="itemsTotal > 0 && (sale.discamount > 0 || roundOff !== 0 || gstTotal > 0)" data-testid="bill-total"><td>Total</td><td>{{itemsTotal | number:'1.2-2'}}</td></tr>
+                    <tr *ngIf="itemsTotal > 0 && (sale.discamount > 0 || roundOff !== 0)" data-testid="bill-total"><td>Total (GST included)</td><td>{{itemsTotal | number:'1.2-2'}}</td></tr>
                     <tr *ngIf="sale.discamount > 0"><td>Discount<span *ngIf="sale.disccode"> ({{sale.disccode}})</span></td><td>&minus;{{sale.discamount | number:'1.2-2'}}</td></tr>
-                    <tr *ngIf="gstTotal > 0"><td>GST included</td><td>{{gstTotal | number:'1.2-2'}}</td></tr>
                     <tr *ngIf="roundOff !== 0"><td>Round off</td><td>{{roundOff | number:'1.2-2'}}</td></tr>
                     <tr class="bill-net"><td>Net total</td><td data-testid="bill-net">&#8377;{{finalAmt | number:'1.2-2'}}</td></tr>
                 </table>

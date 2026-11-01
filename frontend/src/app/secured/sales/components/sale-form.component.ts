@@ -167,7 +167,8 @@ export class SaleFormComponent {
       let mrptotal = 0;
 
       this.sale.items?.filter((i:any) => i.edited).forEach((i:any) => {        
-          this.total += Math.round(+i.total);
+          // lines are added with their paise and the sum rounded once to the nearest rupee: rounding each line first adds up to a different total
+          this.total += +i.total || 0;
           mrptotal += +(i.mrpcost||0)*i.qty;
       });
 
