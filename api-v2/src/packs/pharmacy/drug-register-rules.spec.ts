@@ -1,4 +1,4 @@
-import { detailProblems, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel, normaliseRx, rxProblems } from './drug-register-rules';
+import { detailProblems, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel, normaliseRx, parseStandingMonths, rxProblems, standingState, validUntil } from './drug-register-rules';
 
 const good = { patient_name: 'A Patient', patient_address: '12 Main Road, Town', prescriber_name: 'Dr B Doctor', prescriber_reg_no: 'TN12345' };
 
@@ -67,5 +67,19 @@ describe('drug register rules', () => {
     expect(rxProblems({ rx_basis: 'LATER', rx_due: '2026-12-02' }, [], today).length).toBe(1);
     expect(rxProblems({ rx_basis: 'LATER', rx_due: '2026-12-01' }, [], today)).toEqual([]);
     expect(rxProblems({ rx_basis: 'REGULAR' }, [], today)).toEqual([]);
+  });
+
+  it('says how long a prescription can be used again: months from its date, the last day of a shorter month, and expired when it has no date', () => {
+    expect(validUntil('2026-10-03', 6)).toBe('2027-04-03');
+    expect(validUntil('2026-08-31', 6)).toBe('2027-02-28');
+    expect(validUntil('2026-12-15', 1)).toBe('2027-01-15');
+    expect(standingState('2026-05-01', '2026-11-01', 6)).toEqual({ valid_until: '2026-11-01', expired: false });   // the last day still counts
+    expect(standingState('2026-05-01', '2026-11-02', 6)).toEqual({ valid_until: '2026-11-01', expired: true });
+    expect(standingState('', '2026-11-01', 6)).toEqual({ valid_until: null, expired: true });
+    expect(parseStandingMonths('6')).toBe(6);
+    expect(parseStandingMonths('0')).toBe(6);
+    expect(parseStandingMonths('99')).toBe(6);
+    expect(parseStandingMonths(undefined)).toBe(6);
+    expect(parseStandingMonths('12')).toBe(12);
   });
 });

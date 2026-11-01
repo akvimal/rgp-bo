@@ -11,13 +11,17 @@
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1" *ngFor="let p of ctx.prescriptions" data-testid="sd-known-rx">
                 <i class="bi bi-file-earmark-medical text-muted"></i>
                 <span class="small">Prescription on file: <strong>{{p.doctor || 'doctor not recorded'}}</strong>{{p.date ? ', ' + (p.date | date:'dd MMM yyyy') : ', added ' + (p.added | date:'dd MMM yyyy')}}</span>
-                <button type="button" class="btn btn-outline-primary btn-sm py-0" (click)="useRx(p)" data-testid="sd-use-rx">Use it</button>
+                <span class="small text-muted" *ngIf="!p.expired && p.valid_until" data-testid="sd-valid">valid until {{p.valid_until | date:'dd MMM yyyy'}}</span>
+                <span class="small text-warning-emphasis" *ngIf="p.expired" data-testid="sd-expired">older than {{ctx.standing_months}} months: ask for a fresh one</span>
+                <button type="button" class="btn btn-sm py-0" [ngClass]="warns(p.expired) ? 'btn-outline-warning' : 'btn-outline-primary'" (click)="useRx(p)" data-testid="sd-use-rx">{{warns(p.expired) ? 'Use it anyway' : 'Use it'}}</button>
                 <span class="small text-success" *ngIf="usedKey === 'rx' + p.id" data-testid="sd-used"><i class="bi bi-check-circle"></i> in use{{later ? '' : ', attached to this bill'}}</span>
             </div>
+            <div class="small text-warning-emphasis mb-1" *ngIf="notChronic.length" data-testid="sd-not-chronic"><i class="bi bi-exclamation-triangle"></i> A record on file is meant for repeat supplies of chronic medicines. {{notChronic.join(', ')}} {{notChronic.length === 1 ? 'is' : 'are'}} not marked chronic: ask for a fresh prescription.</div>
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1" *ngFor="let l of ctx.last; let i = index" data-testid="sd-known-last">
                 <i class="bi bi-arrow-repeat text-muted"></i>
                 <span class="small">Same as last supply (bill {{l.bill_no}}, {{l.entry_on | date:'dd MMM yyyy'}}): <strong>{{l.prescriber_name}}</strong> for {{l.patient_name}}</span>
-                <button type="button" class="btn btn-outline-primary btn-sm py-0" (click)="useLast(l, i)" data-testid="sd-use-last">Use it</button>
+                <span class="small text-warning-emphasis" *ngIf="l.expired" data-testid="sd-last-expired">older than {{ctx.standing_months}} months: ask for a fresh one</span>
+                <button type="button" class="btn btn-sm py-0" [ngClass]="warns(l.expired) ? 'btn-outline-warning' : 'btn-outline-primary'" (click)="useLast(l, i)" data-testid="sd-use-last">{{warns(l.expired) ? 'Use it anyway' : 'Use it'}}</button>
                 <span class="small text-success" *ngIf="usedKey === 'last' + i" data-testid="sd-used"><i class="bi bi-check-circle"></i> in use</span>
             </div>
         </div>

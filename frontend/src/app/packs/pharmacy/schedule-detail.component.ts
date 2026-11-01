@@ -43,7 +43,7 @@ export class ScheduleDetailComponent implements OnChanges {
     constructor(private service: DrugRegisterService, private files: FileUploadService, private docs: DocumentsService, private customers: CustomersService) {}
 
     /** what is already on record for the customer: prescriptions kept with them, and the patient and prescriber of their last supplies */
-    ctx: { prescriptions: any[]; last: any[] } | null = null;
+    ctx: { prescriptions: any[]; last: any[]; standing_months: number } | null = null;
     /** the one in use now ("rx12" or "last0"), so the person can see it was taken */
     usedKey = '';
     private ctxFor = 0;
@@ -90,6 +90,7 @@ export class ScheduleDetailComponent implements OnChanges {
         if (p.date && p.date <= this.today) this.detail.rx_date = p.date;
         this.usedKey = 'rx' + p.id;
         this.detail.rx_basis = 'ON_FILE'; this.detail.rx_document_id = p.id; this.detail.rx_due = '';
+        this.detail.rx_note = this.standingNote(!!p.expired, p.date || p.added);
         if (!this.later) this.uploaded.emit({ id: p.id, category: p.category, name: p.name, alias: p.alias, path: p.path, docprops: p.docprops });
     }
 
@@ -104,6 +105,24 @@ export class ScheduleDetailComponent implements OnChanges {
         this.detail.rx_date = l.rx_date && l.rx_date <= this.today ? l.rx_date : null;
         this.usedKey = 'last' + i;
         this.detail.rx_basis = 'LAST_SUPPLY'; this.detail.rx_document_id = undefined; this.detail.rx_due = '';
+        this.detail.rx_note = this.standingNote(!!l.expired, l.rx_date || l.entry_on);
+    }
+
+    /** the scheduled drugs on the bill that are not marked chronic: a prescription is used again only for a repeat supply of a chronic medicine */
+    get notChronic(): string[] {
+        if (this.later) return [];
+        return this.drugs.filter((d: any) => String(d.more_props?.chronic) !== 'true').map((d: any) => d.title);
+    }
+
+    /** using this record again needs a second look: it is past its validity, or a drug on the bill is not chronic */
+    warns(expired: boolean): boolean { return expired || this.notChronic.length > 0; }
+
+    /** what goes on the register line when a record is used though it needs a second look */
+    private standingNote(expired: boolean, day: string): string {
+        const out: string[] = [];
+        if (expired) out.push(`used past ${this.ctx?.standing_months ?? 6} months (dated ${day || 'unknown'})`);
+        if (this.notChronic.length) out.push('medicine not marked chronic');
+        return out.length ? out.join('; ').replace(/^./, (x) => x.toUpperCase()) : '';
     }
 
     get names(): string {

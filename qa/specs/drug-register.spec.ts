@@ -204,6 +204,19 @@ test.describe('Drug register @p1', () => {
     const withRx = (await api.request('GET', `/schedule/customer/${cid}/context`, undefined, SALES)).body;
     expect(withRx.prescriptions[0]).toMatchObject({ id: doc.body.id, doctor: GOOD.prescriber_name, date: '2026-10-03', patient, reg_no: GOOD.prescriber_reg_no });
     expect(JSON.parse(withRx.prescriptions[0].docprops)).toHaveLength(3);
+    expect(withRx.standing_months).toBe(6);
+    expect(withRx.prescriptions[0]).toMatchObject({ valid_until: '2027-04-03', expired: false });
+    expect(withRx.last[0]).toMatchObject({ expired: false });
+    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ standing_months: 6 });
+
+    // an old prescription is still offered but marked as past its validity; the shop can change the months
+    const old = await api.request('POST', '/documents', { name: 'old.png', path: 'qa/none', extn: 'png', category: 'Prescription', alias: 'QA old prescription', docprops: JSON.stringify([{ id: 'prescdate', label: 'Date', value: '2025-01-10' }, { id: 'doctorname', label: 'Doctor Name', value: 'DR OLD' }]) }, MGR);
+    expect((await api.request('POST', '/customers/documents/add', { customerId: cid, documentId: old.body.id }, MGR)).status).toBeLessThan(300);
+    const aged = (await api.request('GET', `/schedule/customer/${cid}/context`, undefined, SALES)).body.prescriptions.find((x: any) => x.id === old.body.id);
+    expect(aged).toMatchObject({ date: '2025-01-10', valid_until: '2025-07-10', expired: true });
+    await setting(api, 'schedule_standing_months', '24');
+    expect((await api.request('GET', `/schedule/customer/${cid}/context`, undefined, SALES)).body.prescriptions.find((x: any) => x.id === old.body.id)).toMatchObject({ valid_until: '2027-01-10', expired: false });
+    await setting(api, 'schedule_standing_months', '6');
 
     // how the supplies were covered: counted by schedule and by who sold them; for the people who run the shop only
     const rep = (await api.request('GET', '/schedule/coverage-report?from=2020-01-01&to=2099-12-31', undefined, MGR)).body;
@@ -227,7 +240,8 @@ test.describe('Drug register @p1', () => {
     expect((await post({ props: { scheduledetail: { ...GOOD, rx_basis: 'LATER' } } })).status).toBe(400);
     expect((await post({ props: { scheduledetail: { ...GOOD, rx_basis: 'LATER', rx_due: day(45) } } })).status).toBe(400);
     expect((await post({ props: { scheduledetail: { ...GOOD, rx_basis: 'LATER', rx_due: day(-1) } } })).status).toBe(400);
-    const walkIn = await api.request('POST', '/sales', bill(h, { customer: { name: 'NIL', mobile: '0000000000' }, props: { scheduledetail: { ...GOOD, rx_basis: 'LATER', rx_due: day(3) } } }), SALES);
+    const nil = (await api.request('GET', '/customers/search/mobile/0000000000', undefined, MGR)).body;
+    const walkIn = await api.request('POST', '/sales', bill(h, { customer: nil?.id ? { id: nil.id, name: nil.name, mobile: '0000000000' } : { name: 'Nil', mobile: '0000000000' }, props: { scheduledetail: { ...GOOD, rx_basis: 'LATER', rx_due: day(3) } } }), SALES);
     expect(walkIn.status, JSON.stringify(walkIn.body)).toBe(400);
 
     // a reason is recorded on the register line

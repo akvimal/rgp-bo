@@ -116,3 +116,28 @@ export function rxProblems(raw: any, docs: any = [], today: string = new Date().
   if (rx.basis === 'LATER' && (!rx.due || rx.due < today || rx.due > plusDays(today, LATER_MAX_DAYS))) out.push(`the day the prescription will be brought (within ${LATER_MAX_DAYS} days)`);
   return out;
 }
+
+// ------------------------------------------------------------------ a prescription used again (standing use for chronic medicines)
+export const DEFAULT_STANDING_MONTHS = 6;
+
+/** a number of months, 1 to 24; anything else means the default */
+export const parseStandingMonths = (value: any): number => {
+  const n = Math.floor(Number(String(value ?? '').trim()));
+  return Number.isFinite(n) && n >= 1 && n <= 24 ? n : DEFAULT_STANDING_MONTHS;
+};
+
+/** the day a prescription dated `day` stops being usable again: the same date `months` later (the last day of a shorter month) */
+export function validUntil(day: string, months: number): string {
+  const [y, m, d] = day.split('-').map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(d, last));
+  return target.toISOString().slice(0, 10);
+}
+
+/** whether a prescription dated `day` can still be used again today; one with no usable date is treated as expired */
+export function standingState(day: string | null | undefined, today: string, months: number): { valid_until: string | null; expired: boolean } {
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { valid_until: null, expired: true };
+  const until = validUntil(day, months);
+  return { valid_until: until, expired: until < today };
+}

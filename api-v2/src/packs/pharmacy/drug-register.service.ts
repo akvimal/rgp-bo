@@ -7,7 +7,7 @@ import { businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole } from 'src/core/roles';
 import { SaleContext, SavedSaleContext } from 'src/core/sale-hooks/sale-hooks';
 import {
-  Rx, RX_LABELS, Schedule, SCHEDULES, ScheduledProduct, detailProblems, draftEntries, normaliseDetail, normaliseRx, parseRequired, requiredLines, rxProblems, scheduledLines, schedulesOf, serialLabel,
+  Rx, RX_LABELS, Schedule, SCHEDULES, ScheduledProduct, detailProblems, draftEntries, normaliseDetail, normaliseRx, parseRequired, parseStandingMonths, requiredLines, rxProblems, scheduledLines, schedulesOf, serialLabel, standingState,
 } from './drug-register-rules';
 import { NIL_MOBILE } from 'src/modules/app/customers/customer-rules';
 import { buildRegisterPdf } from './drug-register-pdf';
@@ -49,7 +49,13 @@ export class DrugRegisterService {
     return parseRequired(v);
   }
 
-  async config() { return { required: await this.required(), since: await this.since(), enforce: await this.enforced() }; }
+  /** months a prescription on file can be used again for a repeat supply of a chronic medicine */
+  async standingMonths(m: EntityManager = this.manager): Promise<number> {
+    const [s] = await m.query(`select setting_value from app_setting where setting_key = 'schedule_standing_months' and active and not archive limit 1`);
+    return parseStandingMonths(s?.setting_value);
+  }
+
+  async config() { return { required: await this.required(), since: await this.since(), enforce: await this.enforced(), standing_months: await this.standingMonths() }; }
 
   // ------------------------------------------------------------------ the bill
   private async scheduledProducts(m: EntityManager, productIds: number[]): Promise<ScheduledProduct[]> {
@@ -198,7 +204,8 @@ export class DrugRegisterService {
    */
   async customerContext(user: any, customerId: number) {
     const businessId = await businessOfUser(this.manager, user.id);
-    if (!businessId || !(Number(customerId) > 0)) return { prescriptions: [], last: [] };
+    const months = await this.standingMonths();
+    if (!businessId || !(Number(customerId) > 0)) return { prescriptions: [], last: [], standing_months: months };
     await this.settleFollowups();
     const docs = await this.manager.query(
       `select d.id, d.doc_name as name, d.doc_path as path, d.alias, d.category, d.doc_props, to_char(d.created_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as added
@@ -216,6 +223,7 @@ export class DrugRegisterService {
       prescriptions.push({
         id: d.id, name: d.name, path: d.path, alias: d.alias, category: d.category, docprops: JSON.stringify(Array.isArray(props) ? props : []), added: d.added,
         doctor, date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '', patient: get('ptntname'), reg_no: match?.reg_no ?? '', address: match?.address ?? '',
+        ...standingState(/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : d.added, istDay(), months),
       });
     }
     const last = await this.manager.query(
@@ -226,7 +234,7 @@ export class DrugRegisterService {
           where s.customer_id = $1 and r.business_id = $2 and r.superseded_on is null
           order by upper(r.patient_name), upper(r.prescriber_name), r.entry_on desc) x
         order by x.at desc limit 3`, [customerId, businessId]);
-    return { prescriptions, last: last.map(({ at, ...rest }: any) => rest) };
+    return { prescriptions, standing_months: months, last: last.map(({ at, ...rest }: any) => ({ ...rest, ...standingState(rest.rx_date || rest.entry_on, istDay(), months) })) };
   }
 
   /**
