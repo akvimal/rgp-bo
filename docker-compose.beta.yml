@@ -1,0 +1,88 @@
+# The new version, run beside the live one (see docs/DEPLOY_BETA.md). Its own database, uploads and network, loaded from a dump of the live data;
+# nothing here talks to the live database.
+#
+#   docker compose -p rgp-beta -f docker-compose.beta.yml --env-file .env.beta up -d --build
+#
+# scripts/beta-refresh.sh does the whole job (start, load a dump, run the upgrade, start the app).
+services:
+  db:
+    image: postgres:17.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rgpapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.beta}
+      POSTGRES_DB: postgres
+      TZ: ${TZ:-Asia/Kolkata}
+    volumes:
+      - beta_pgdata:/var/lib/postgresql/data
+    # no published port: only the beta API (and scripts/beta-refresh.sh, through docker) reach it
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rgpapp} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - beta-network
+
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: ./api-v2
+    restart: unless-stopped
+    command: npm run start:prod
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - beta_uploads:/usr/src/app/upload
+    environment:
+      # Bill times are stored without a timezone, as the server's local time: the beta must read them the way the live system does.
+      TZ: ${TZ:-Asia/Kolkata}
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rgpapp}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-rgpbeta}
+      JWT_KEY: ${JWT_KEY:?Set a JWT_KEY of its own in .env.beta}
+      JWT_EXPIRES: ${JWT_EXPIRES:-24h}
+      PORT: 3000
+      LOG_SQL: "false"
+      FILEUPLOAD_LOCATION: /usr/src/app/upload
+      FILEUPLOAD_SIZE_LIMIT: ${FILEUPLOAD_SIZE_LIMIT:-10485760}
+      GST_RATES: ${GST_RATES:-0,5,12,18}
+      # Nothing leaves the beta unless these are set: no Telegram, no AI. A copy of live data must not alert the real staff twice.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      APP_BASE_URL: ${APP_BASE_URL:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_MODEL: ${AI_MODEL:-}
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get({host:'127.0.0.1',port:3000,path:'/'},res=>process.exit(res.statusCode < 500 ? 0 : 1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - beta-network
+
+  frontend:
+    build:
+      dockerfile: Dockerfile.prod
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${BETA_PORT:-8080}:80"
+    networks:
+      - beta-network
+
+volumes:
+  beta_pgdata:
+  beta_uploads:
+
+networks:
+  beta-network:
+    driver: bridge

@@ -21,3 +21,5 @@ tests/node_modules/
 .env.platform
 deploy/tenants/
 qa/_tmp_*.diff
+.env.beta
+beta-refresh.log
