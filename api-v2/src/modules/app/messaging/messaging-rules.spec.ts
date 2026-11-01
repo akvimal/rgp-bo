@@ -63,6 +63,10 @@ describe('messaging rules', () => {
     expect(parseUpdate(msg('/status'))).toMatchObject({ kind: 'status' });
     expect(parseUpdate(msg('hello'))).toMatchObject({ kind: 'other' });
     expect(parseUpdate(msg('/start abc', 'group'))).toBeNull();      // only private chats
+    expect(parseUpdate(msg('/status', 'supergroup'))).toBeNull();
+    // /chatid works anywhere, so a group's id can be found
+    expect(parseUpdate(msg('/chatid', 'private'))).toEqual({ kind: 'chatid', chatId: '42', chatType: 'private', title: null });
+    expect(parseUpdate({ message: { text: '/chatid@ShopBot', chat: { id: -100123, type: 'supergroup', title: 'Main Store' } } })).toEqual({ kind: 'chatid', chatId: '-100123', chatType: 'supergroup', title: 'Main Store' });
     expect(parseUpdate({})).toBeNull();
   });
 });

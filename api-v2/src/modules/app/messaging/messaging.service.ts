@@ -76,6 +76,11 @@ export class MessagingService implements OnApplicationBootstrap, OnApplicationSh
   async handle(cmd: Command | null) {
     if (!cmd) return;
     const say = (text: string) => this.telegram.send(cmd.chatId, text).catch((e) => this.log.warn(`Telegram reply failed: ${e?.message}`));
+    if (cmd.kind === 'chatid') {
+      // for the people who set up the daily digest: the id to paste under Settings > Notifications (it works in a group too, and says nothing else)
+      await say(`This ${cmd.chatType === 'private' ? 'chat' : cmd.chatType}${cmd.title ? ` (${cmd.title})` : ''} has the chat ID ${cmd.chatId}. Paste it under Settings > Notifications in the app.`);
+      return;
+    }
     if (cmd.kind === 'start') {
       if (!cmd.token) { await say('To get alerts here, open Notifications in the app and press "Connect Telegram". It gives you a link that brings you back to this chat.'); return; }
       const used = await this.manager.query(

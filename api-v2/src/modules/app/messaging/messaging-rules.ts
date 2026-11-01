@@ -54,16 +54,19 @@ export function formatAlert(m: { title: string; body: string; severity: string; 
 
 export type Command =
   | { kind: 'start'; token: string; chatId: string; handle: string | null }
+  | { kind: 'chatid'; chatId: string; chatType: string; title: string | null }
   | { kind: 'stop' | 'status' | 'help' | 'other'; chatId: string };
 
-/** what a person typed to the bot: only private chats count; /start carries the one-time link token */
+/** what a person typed to the bot: only private chats count (except /chatid, which works anywhere, to find a group's id); /start carries the one-time link token */
 export function parseUpdate(update: any): Command | null {
   const msg = update?.message;
-  if (!msg || msg.chat?.type !== 'private' || msg.chat?.id === undefined || msg.chat?.id === null) return null;
+  if (!msg || msg.chat?.id === undefined || msg.chat?.id === null) return null;
   const chatId = String(msg.chat.id);
   const text = String(msg.text ?? '').trim();
   const [cmd, ...rest] = text.split(/\s+/);
   const name = cmd.replace(/@\w+$/, '').toLowerCase();
+  if (name === '/chatid') return { kind: 'chatid', chatId, chatType: String(msg.chat.type ?? 'private'), title: msg.chat.title ? String(msg.chat.title).slice(0, 80) : null };
+  if (msg.chat.type !== 'private') return null;
   if (name === '/start') return { kind: 'start', token: (rest[0] ?? '').slice(0, 64), chatId, handle: msg.from?.username ? String(msg.from.username).slice(0, 80) : null };
   if (name === '/stop') return { kind: 'stop', chatId };
   if (name === '/status') return { kind: 'status', chatId };
