@@ -110,6 +110,11 @@ export class CreateSaleDto {
     @IsBoolean()
     readonly docpending: boolean;
 
+    @ApiProperty({ description: 'cashier chose to sell a chronic medicine without a customer mobile number', example: false, required: false })
+    @IsOptional()
+    @IsBoolean()
+    readonly chronicoverride?: boolean;
+
     @ApiProperty({ description: 'customer id', example: 0 })
     @IsOptional()
     @IsNumber()

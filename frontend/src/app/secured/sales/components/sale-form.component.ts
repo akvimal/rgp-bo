@@ -237,6 +237,7 @@ export class SaleFormComponent {
   /** a bill with a chronic medicine needs a real customer mobile; the NIL walk-in does not count */
   get chronicMobileMissing(): boolean {
     if (!this.chronicItems.length) return false;
+    if (this.sale.chronicoverride) return false;     // cashier ticked "sell without the mobile number"
     const mobile = String(this.sale.customer?.mobile ?? '').trim();
     if (mobile && mobile !== '0000000000') return false;
     const id = this.sale.customerid;

@@ -122,6 +122,10 @@
 <div class="alert alert-warning py-2 mb-2" *ngIf="chronicMobileMissing || submitError" data-testid="sale-chronic-mobile">
     {{submitError || 'This bill has a chronic medicine: enter the customer mobile number before completing.'}}
 </div>
+<div class="alert alert-warning py-2 mb-2 d-flex align-items-center gap-2" *ngIf="chronicItems.length && (chronicMobileMissing || sale.chronicoverride)" data-testid="sale-chronic-override-box">
+    <input type="checkbox" class="form-check-input mt-0" id="chronicoverride" [(ngModel)]="sale.chronicoverride" (ngModelChange)="submitError = ''" style="width:1.2rem;height:1.2rem" data-testid="sale-chronic-override">
+    <label for="chronicoverride" class="mb-0">Allow the sale without the customer's mobile number (no refill reminders for this bill).</label>
+</div>
 
 <!-- Actions: stuck to the bottom of the screen so Complete never scrolls out of sight on a short screen -->
 <div class="sale-actions d-flex justify-content-between align-items-center mb-3">

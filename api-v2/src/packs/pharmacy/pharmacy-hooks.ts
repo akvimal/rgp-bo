@@ -13,6 +13,7 @@ export const chronicMobileHook: SaleHook = {
   async check(ctx: SaleContext) {
     const { sale, customer, manager } = ctx;
     if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return;
+    if (sale?.chronicoverride === true || sale?.chronicoverride === 'true') return;     // the cashier chose to sell without a mobile number
     const productIds = (Array.isArray(sale.items) ? sale.items : [])
       .map((i: any) => Number(i.productid ?? i.product_id)).filter((n: number) => Number.isFinite(n) && n > 0);
     if (!productIds.length) return;
