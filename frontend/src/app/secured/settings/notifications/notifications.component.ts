@@ -105,11 +105,14 @@ export class NotificationsComponent implements OnInit {
     this.error = '';
     this.previewText = '';
     this.previewing = true;
-    const storeid = this.previewScope === 'all' ? null : +this.previewScope;
+    const personal = String(this.previewScope).startsWith('m:');
+    const storeid = this.previewScope === 'all' ? null : +String(this.previewScope).replace('m:', '');
     this.service.preview(this.digestDate, storeid).subscribe(rows => {
       this.previewing = false;
-      const wanted = this.previewScope === 'all' ? 'all' : `store:${this.previewScope}`;
-      this.previewText = (rows || []).find(r => r.scope === wanted)?.message || 'Nothing to show for this selection.';
+      const wanted = this.previewScope === 'all' ? 'all' : personal ? `managers:store:${storeid}` : `store:${this.previewScope}`;
+      const message = (rows || []).find(r => r.scope === wanted)?.message;
+      // the personal message is plain text (the group's carries its own markup), and the box shows markup: escape it
+      this.previewText = message ? (personal ? message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : message) : 'Nothing to show for this selection.';
     }, err => {
       this.previewing = false;
       this.error = this.errorText(err, 'Unable to build the preview');

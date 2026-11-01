@@ -94,6 +94,7 @@
         <select class="form-select" data-testid="nt-preview-scope" [(ngModel)]="previewScope">
           <option value="all">All stores</option>
           <option *ngFor="let store of config.stores" [value]="store.id">{{store.location}}</option>
+          <option *ngFor="let store of config.stores" [value]="'m:' + store.id" [attr.data-testid]="'nt-preview-personal-' + store.id">{{store.location}} (personal message to owners and heads)</option>
         </select>
       </div>
       <div class="col-12 col-md-5 d-flex gap-2 flex-wrap">

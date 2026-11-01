@@ -2,7 +2,10 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
+import { ShiftDigestService } from "../messaging/shift-digest.service";
 import { ConsolidatedDigest, DailyDigestBuilder, StoreDigest } from "./daily-digest.builder";
+import { DayDetailBuilder } from "./day-digest.builder";
+import { formatDayManager } from "./day-digest";
 import { formatConsolidatedDaily, formatStoreDaily } from "./message-formatter";
 import { TelegramClient } from "./telegram.client";
 
@@ -29,6 +32,8 @@ export class NotificationService {
     @InjectEntityManager() private readonly manager: EntityManager,
     private readonly telegram: TelegramClient,
     private readonly builder: DailyDigestBuilder,
+    private readonly detail: DayDetailBuilder,
+    private readonly managers: ShiftDigestService,
   ) {}
 
   /**
@@ -58,8 +63,8 @@ export class NotificationService {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException("date must be YYYY-MM-DD");
     if (!opts.preview && !this.telegram.configured) throw new BadRequestException("TELEGRAM_BOT_TOKEN is not set");
 
-    const stores: { id: number; location: string; telegramchatid: string | null; enabled: boolean }[] = await this.manager.query(`
-      select id, location, telegram_chat_id as telegramchatid, telegram_digest_enabled as enabled
+    const stores: { id: number; location: string; telegramchatid: string | null; enabled: boolean; businessid: number | null }[] = await this.manager.query(`
+      select id, location, telegram_chat_id as telegramchatid, telegram_digest_enabled as enabled, business_id as businessid
       from stores
       where active = true and archive = false
       order by id
@@ -75,10 +80,20 @@ export class NotificationService {
       const digest = await this.builder.forStore(store.id, store.location, date);
       digests.push(digest);
       if (!targeted) continue;
-      if (!routable && !opts.preview) continue;
+      // the day beyond the sales: built once, for the store's group and for the people who run the shop
+      const groupDone = !opts.preview && !opts.force && (!routable || !!(await this.logged("DAILY", date, `store:${store.id}`, "SENT")));
+      const managersDone = !opts.preview && !opts.force && !!(await this.logged("DAILY", date, `managers:store:${store.id}`, "SENT"));
+      if (groupDone && managersDone) { results.push({ scope: `store:${store.id}`, status: "SKIPPED" }); continue; }
+      // the all-stores preview only needs the totals: do not build every store's whole day for it
+      const wholeDay = !(opts.preview && !opts.storeid);
+      const facts = wholeDay ? await this.detail.forStore(store.id, date) : undefined;
 
-      const message = formatStoreDaily(digest, date);
-      results.push(await this.deliver("DAILY", date, `store:${store.id}`, store.telegramchatid, message, opts));
+      if (routable || opts.preview) {
+        results.push(await this.deliver("DAILY", date, `store:${store.id}`, store.telegramchatid, formatStoreDaily(digest, date, facts), opts));
+      }
+      if (!facts) continue;
+      const text = formatDayManager({ store: store.location, dateLabel: this.prettyDate(date), sales: digest.sales, bills: digest.bills, prevSales: digest.prevsales }, facts);
+      results.push(await this.toManagers(store, date, text, opts, managersDone));
     }
 
     if (!opts.storeid) {
@@ -90,6 +105,36 @@ export class NotificationService {
       }
     }
     return results;
+  }
+
+  /** the same day in a personal message for each connected owner and head of the store, with the cash and the differences (queued once; a resend replaces it) */
+  private async toManagers(store: { id: number; location: string; businessid: number | null }, date: string, text: string, opts: { force?: boolean; preview?: boolean }, done: boolean): Promise<DigestResult> {
+    const scope = `managers:store:${store.id}`;
+    if (opts.preview) return { scope, status: "PREVIEW", message: text };
+    if (done) return { scope, status: "SKIPPED" };
+    try {
+      const [title, ...rest] = text.split("\n");
+      const queued = await this.managers.queueToManagers({
+        businessId: store.businessid, storeId: store.id, kind: "DAILY_DIGEST", refType: `day:${date}`, refId: store.id,
+        title: title.replace(/^\S+\s/, ""), body: rest.join("\n").trim(), replace: !!opts.force,
+      });
+      await this.record("DAILY", date, scope, "SENT", queued ? null : "nobody connected");
+      return { scope, status: "SENT", message: `${queued} queued` };
+    } catch (e: any) {
+      const error = String(e?.message ?? e).slice(0, 400);
+      this.logger.warn(`Management digest ${date} store ${store.id} failed: ${error}`);
+      await this.record("DAILY", date, scope, "FAILED", error);
+      return { scope, status: "FAILED", error };
+    }
+  }
+
+  private async logged(kind: string, periodKey: string, scope: string, status: string) {
+    const [r] = await this.manager.query(`select 1 from notification_log where kind = $1 and period_key = $2 and scope = $3 and status = $4`, [kind, periodKey, scope, status]);
+    return r;
+  }
+
+  private prettyDate(date: string): string {
+    return new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
   }
 
   async sendTest(chatId: string) {

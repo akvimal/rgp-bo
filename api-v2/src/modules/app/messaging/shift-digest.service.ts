@@ -111,16 +111,23 @@ export class ShiftDigestService {
     }
   }
 
-  /** each connected owner, Business Head or Store Head of the store gets the full message in their own chat (held to the morning in their quiet hours) */
-  private async toManagers(shiftId: number, businessId: number | null, storeId: number, facts: ShiftFacts): Promise<number> {
-    if (!businessId) return 0;
+  private toManagers(shiftId: number, businessId: number | null, storeId: number, facts: ShiftFacts): Promise<number> {
+    const [title, ...rest] = formatShiftManager(facts).split('\n');
+    return this.queueToManagers({ businessId, storeId, kind: KIND, refType: 'shift', refId: shiftId, title: title.replace(/^\S+\s/, ''), body: rest.join('\n').trim() });
+  }
+
+  /**
+   * Queues one personal message for each connected owner, Business Head or Store Head of the store (held to the morning in their quiet hours). One per person
+   * for a kind and reference, so a repeat does nothing, unless `replace` is set (a manual resend).
+   */
+  async queueToManagers(o: { businessId: number | null; storeId: number; kind: string; refType: string; refId: number; title: string; body: string; replace?: boolean }): Promise<number> {
+    const { businessId, storeId } = o;
+    if (!businessId || !this.telegram.configured) return 0;
     const people = await this.manager.query(
       `select uc.user_id, uc.chat_id, uc.quiet_from, uc.quiet_to, r.name as role
          from user_channel uc join app_user u on u.id = uc.user_id join app_role r on r.id = u.role_id
         where uc.channel = $1 and uc.status = 'ACTIVE' and u.active and not u.archive and (${BUSINESS_OF_USER_SQL}) = $2`, [CHANNEL, businessId]);
-    const text = formatShiftManager(facts);
-    const [title, ...rest] = text.split('\n');
-    const body = rest.join('\n').trim();
+    if (o.replace) await this.manager.query(`delete from message_outbox where channel = $1 and kind = $2 and ref_type = $3 and ref_id = $4`, [CHANNEL, o.kind, o.refType, o.refId]);
     let queued = 0;
     for (const p of people) {
       if (!isManagerRole(p.role)) continue;
@@ -132,9 +139,9 @@ export class ShiftDigestService {
       const quiet = inQuiet(istMinute(now), p.quiet_from, p.quiet_to);
       const rows = await this.manager.query(
         `insert into message_outbox (business_id, channel, recipient_user_id, chat_id, kind, ref_type, ref_id, severity, title, body, link, status, send_after)
-         values ($1, $2, $3, $4, $5, 'shift', $6, 'info', $7, $8, null, 'PENDING', $9)
+         values ($1, $2, $3, $4, $5, $6, $7, 'info', $8, $9, null, 'PENDING', $10)
          on conflict (channel, recipient_user_id, kind, ref_type, ref_id) where ref_id is not null do nothing returning id`,
-        [businessId, CHANNEL, p.user_id, p.chat_id, KIND, shiftId, title.replace(/^\S+\s/, '').slice(0, 200), body, quiet ? quietEnds(now, p.quiet_to) : now]);
+        [businessId, CHANNEL, p.user_id, p.chat_id, o.kind, o.refType, o.refId, o.title.slice(0, 200), o.body, quiet ? quietEnds(now, p.quiet_to) : now]);
       if (rows.length) queued++;
     }
     if (queued) void this.messaging.processOutbox().catch(() => undefined);

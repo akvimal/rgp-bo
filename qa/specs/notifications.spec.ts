@@ -79,6 +79,13 @@ test.describe('Settings — Notifications @p1', () => {
     await page.getByTestId('nt-preview').click();
     await expect(text).toContainText('All stores');
     await expect(text).toContainText('Purchases received');
+
+    // the personal message for the owners and heads is previewed on its own, and may carry the cash
+    await page.getByTestId('nt-preview-scope').selectOption({ label: 'Main Store (personal message to owners and heads)' });
+    await page.getByTestId('nt-preview').click();
+    await expect(text).toContainText('Main Store');
+    await expect(text).toContainText('Sales');
+    await expect(text).toContainText(/Nothing to look at|To look at/);
   });
 
   test('NOTIF-4 roles without the permission cannot open the screen or call the API @edge', async ({ app, api }) => {

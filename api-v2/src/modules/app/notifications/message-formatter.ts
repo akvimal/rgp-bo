@@ -1,4 +1,5 @@
 import { ConsolidatedDigest, StoreDigest } from "./daily-digest.builder";
+import { DayFacts, groupDetailLines } from "./day-digest";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const money = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
@@ -15,7 +16,7 @@ function prettyDate(date: string): string {
   });
 }
 
-export function formatStoreDaily(d: StoreDigest, date: string): string {
+export function formatStoreDaily(d: StoreDigest, date: string, detail?: DayFacts): string {
   const lines = [
     `<b>📊 ${esc(d.location)} — ${prettyDate(date)}</b>`,
     "",
@@ -29,6 +30,7 @@ export function formatStoreDaily(d: StoreDigest, date: string): string {
   }
   lines.push("", `🕒 Shifts closed: ${d.closedshifts}`);
   if (d.openshifts) lines.push(`⚠️ Shifts still open: ${d.openshifts}`);
+  if (detail) lines.push(...groupDetailLines(detail, esc));
   return lines.join("\n");
 }
 
