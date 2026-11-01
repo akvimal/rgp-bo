@@ -346,16 +346,19 @@ export class SaleFormComponent {
         }
     }
 
-    const obj = this.sale;
-    
-    if(this.sale.customer.mobile === ''){
+    // the payload is a copy: a failed save must leave the form's own customer in place (it used to be nulled here, which broke the form)
+    const obj:any = {...this.sale};
+
+    if(!this.sale.customer || !this.sale.customer.mobile){
         obj['customer'] = null;
-        if(this.sale.status == 'COMPLETE')
+        if(this.sale.status == 'COMPLETE'){
           //setting default nil customer
-          this.sale.customerid = +localStorage.getItem('nil');
+          this.sale.customerid = +(localStorage.getItem('nil') || 0);
+          obj['customerid'] = this.sale.customerid;
+        }
     }
     else{
-        this.sale.customer['name'] = this.sale.customer['name'].toUpperCase();
+        this.sale.customer['name'] = String(this.sale.customer['name'] || '').toUpperCase();
     }
     
     this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {})};
