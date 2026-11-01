@@ -152,6 +152,25 @@ export class InvoiceService {
         return this.http.put(`${this.apiurl}/purchaseitems`,{ids,values});
     }
 
+    /** the tax rates a purchase line offers (the business's own list, else the usual ones of its type of business) */
+    taxRates(){
+        return this.http.get<{rates:number[]}>(`${this.apiurl}/purchaseitems/tax-rates`);
+    }
+
+    /** what a line being typed means before it is added: new product, best margin, suggested price, MRP far above the rate */
+    lineCheck(line:any){
+        return this.http.post<any>(`${this.apiurl}/pricing/line-check`, line);
+    }
+
+    /** lines the vendor must clarify leave the invoice total until accepted or rejected */
+    dispute(ids:number[], note:string){
+        return this.http.post<any>(`${this.apiurl}/purchaseitems/dispute`, { ids, note });
+    }
+
+    resolveDispute(ids:number[], action:'ACCEPT'|'REJECT', note?:string){
+        return this.http.post<any>(`${this.apiurl}/purchaseitems/resolve`, { ids, action, note });
+    }
+
     removeItems(ids:any){
         return this.http.delete(`${this.apiurl}/purchaseitems`,{body:ids});
     }

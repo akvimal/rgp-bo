@@ -30,33 +30,52 @@
             </td>
             <td width="8%">
                     <p-calendar formControlName="expdate" view="month" dateFormat="M-y" [minDate]="today()" [disabled]="noExpiry"
-                        [placeholder]="noExpiry ? 'No expiry' : ''" [yearNavigator]="true" yearRange="2024:2034" data-testid="item-exp"></p-calendar>
+                        [placeholder]="noExpiry ? 'No expiry' : ''" [yearNavigator]="true" [yearRange]="yearRange" data-testid="item-exp"></p-calendar>
             </td>
             <td width="8%">
-                <input type="number" id="mrp" class="form-control" formControlName="mrpcost" (input)="calculate()">
+                <input type="number" id="mrp" class="form-control" formControlName="mrpcost" min="0" step="any" (keydown)="noMinus($event)" (input)="calculate()">
             </td>
             <td width="8%">
-                <input type="number" id="qty" class="form-control" formControlName="qty" (input)="calculate()">
+                <input type="number" id="qty" class="form-control" formControlName="qty" min="1" step="any" (keydown)="noMinus($event)" (input)="calculate()">
             </td>
             <td width="5%">
-                <input type="number" id="freeqty" class="form-control" formControlName="freeqty">
+                <input type="number" id="freeqty" class="form-control" formControlName="freeqty" min="0" step="any" (keydown)="noMinus($event)" (input)="calculate()">
             </td>
             <td width="8%">
-                <input type="number" id="ptr" class="form-control" formControlName="ptrvalue" size="6" (input)="calculate()">
+                <input type="number" id="ptr" class="form-control" formControlName="ptrvalue" size="6" min="0" step="any" (keydown)="noMinus($event)" (input)="calculate()">
             </td>
             <td width="5%">
-                <input type="text" id="disc" class="form-control" formControlName="discpcnt" size="6" (input)="calculate()">
+                <input type="number" id="disc" class="form-control" formControlName="discpcnt" size="6" min="0" max="100" step="any" (keydown)="noMinus($event)" (input)="calculate()">
             </td>
             <td width="5%">
-                <input type="number" id="taxpcnt" class="form-control" formControlName="taxpcnt" size="4" (input)="calculate()">
+                <select id="taxpcnt" class="form-select" formControlName="taxpcnt" (change)="calculate()" aria-label="Tax %" data-testid="item-tax">
+                    <option [ngValue]="''">-</option>
+                    <option *ngFor="let t of taxOptions" [ngValue]="t">{{t}}%</option>
+                </select>
             </td>
             <td width="6%" class="inv-total">
                 {{total | number:'1.2-2'}}
             </td>
             <td width="4%">
-                <button type="submit" [disabled]="total == 0 || total == undefined || expiryMissing" class="btn btn-primary w-100" [attr.title]="expiryMissing ? 'Enter the expiry date' : null" data-testid="item-add">Add</button>
+                <button type="submit" [disabled]="total == 0 || total == undefined || expiryMissing || problems.length > 0 || taxMissing" class="btn btn-primary w-100" [attr.title]="expiryMissing ? 'Enter the expiry date' : (taxMissing ? 'Choose the tax %' : null)" data-testid="item-add">Add</button>
             </td>
         </tr>
     </table>
 
+    <div class="small text-danger mt-1" *ngFor="let p of problems" data-testid="item-problem">{{p}}.</div>
+    <div class="small text-danger mt-1" *ngIf="error" data-testid="item-error">{{error}}</div>
+
+    <!-- what the line means before it is added: an MRP far above the rate, and for a new product the best margin and the price the rules would set -->
+    <div class="mt-2" *ngIf="check" data-testid="item-check">
+        <div class="alert alert-warning py-1 px-2 small mb-1" *ngIf="check.ratioflag" data-testid="item-mrp-flag">
+            <i class="bi bi-exclamation-triangle"></i> The MRP is <b>{{check.ratio | number:'1.1-1'}} times</b> the net rate (without GST; flagged from {{check.ratiothreshold}} times). Check the printed MRP: selling near it would show customers a discount that is not real.
+        </div>
+        <div class="alert alert-danger py-1 px-2 small mb-1" *ngIf="check.isnew && check.status === 'CHECK_COST'" data-testid="item-margin-low">
+            <i class="bi bi-exclamation-octagon"></i> New product: even sold at the MRP (without GST {{check.ceiling | number:'1.2-2'}}) the margin is only <b>{{check.bestmarkuppct | number:'1.0-0'}}%</b> over the cost, below the minimum your pricing rules ask for this kind of product. Check the rate, the MRP and the pack size.
+        </div>
+        <div class="alert alert-info py-1 px-2 small mb-1" *ngIf="check.isnew && check.status !== 'CHECK_COST'" data-testid="item-new-info">
+            New product: at best <b>{{check.bestmarkuppct | number:'1.0-0'}}%</b> over cost when sold at the MRP.
+            <span *ngIf="check.suggestion">The pricing rules would price it at <b>{{check.suggestion.price | number:'1.2-2'}}</b> ({{check.suggestion.markupPct | number:'1.0-0'}}% over cost, {{check.suggestion.discountPct | number:'1.0-0'}}% off the MRP), without GST.</span>
+        </div>
+    </div>
 </form>

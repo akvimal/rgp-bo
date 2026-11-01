@@ -3,6 +3,7 @@ import { PRICING_SUBJECTS_SQL } from './pricing-subjects.sql';
 import { PRICING_UNPRICED_SQL } from './pricing-unpriced.sql';
 import { analysePrices } from './pricing-check';
 import { effectivePolicy, effectiveSteps, ModeSettings, readModeSettings } from './pricing-mode';
+import { mrpRatio, bestMarkupPct } from './receiving-check';
 import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Subject, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
 
 export interface PricingItem {
@@ -30,6 +31,8 @@ export interface LineIn { itemid: number; productid: number; mrp: number; ptrval
 export interface LineOut {
   itemid: number; curprice: number | null; status: LineStatus; markuppct: number | null; discountpct: number | null;
   ceiling: number; lower: number; suggestion: Suggestion | null; classkey: string;
+  /** the MRP without GST over the net cost per pack, and the markup selling at that MRP would leave */
+  ratio: number | null; bestmarkuppct: number | null; cost: number;
 }
 
 /**
@@ -144,7 +147,8 @@ export class PricingReader {
     return lines.map((l) => {
       const k = this.subjectOf(l, c);
       const impact = lineImpact(k.subject, k.policy, c.st);
-      return { itemid: l.itemid, curprice: k.subject.price, classkey: k.classkey, status: impact.status, markuppct: impact.markupPct, discountpct: impact.discountPct, ceiling: impact.ceiling, lower: impact.lower, suggestion: impact.suggestion };
+      return { itemid: l.itemid, curprice: k.subject.price, classkey: k.classkey, status: impact.status, markuppct: impact.markupPct, discountpct: impact.discountPct, ceiling: impact.ceiling, lower: impact.lower, suggestion: impact.suggestion,
+        ratio: mrpRatio(l.mrp, k.saletax, k.subject.cost), bestmarkuppct: bestMarkupPct(l.mrp, k.saletax, k.subject.cost), cost: Math.round(k.subject.cost * 100) / 100 };
     });
   }
 

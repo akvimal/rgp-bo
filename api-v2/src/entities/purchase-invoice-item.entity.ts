@@ -112,6 +112,25 @@ import { PurchaseRequest } from "./purchase-request.entity";
     @Column("integer", { name: "price_approved_by", nullable: true })
     priceapprovedby: number | null;
 
+    /** a line the vendor must clarify (status DISPUTED), and how it ended (ACCEPTED, or REJECTED with the original total kept) */
+    @Column("character varying", { name: "dispute_note", length: 300, nullable: true })
+    disputenote: string | null;
+
+    @Column("integer", { name: "dispute_by", nullable: true })
+    disputeby: number | null;
+
+    @Column("timestamp with time zone", { name: "dispute_on", nullable: true })
+    disputeon: Date | null;
+
+    @Column("character varying", { name: "dispute_result", length: 10, nullable: true })
+    disputeresult: string | null;
+
+    @Column("character varying", { name: "dispute_result_note", length: 300, nullable: true })
+    disputeresultnote: string | null;
+
+    @Column("numeric", { name: "rejected_total", precision: 12, scale: 2, nullable: true, transformer: { to: (v: any) => v, from: (v: any) => v === null ? null : +v } })
+    rejectedtotal: number | null;
+
     @Column("timestamptz", { name: "price_approved_on", nullable: true })
     priceapprovedon: Date | null;
 

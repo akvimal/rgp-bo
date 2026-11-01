@@ -118,7 +118,7 @@
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="body" let-i>
-                    <tr [class.table-active]="i.selected">
+                    <tr [class.table-active]="i.selected" [class.table-warning]="i.status === 'DISPUTED'" [class.text-muted]="i.status === 'REJECTED'" [attr.data-testid]="'item-row-' + i.id">
                         <td class="text-center">
                             <input type="checkbox" *ngIf="i.status === 'NEW'" [checked]="i.selected" (change)="selectItem($event,i.id)">
                         </td>
@@ -127,7 +127,22 @@
                                 <i class="bi bi-pencil-square text-primary"></i>
                             </a>
                         </td>
-                        <td>{{i.product?.title}}</td>
+                        <td>
+                            <span [class.text-decoration-line-through]="i.status === 'REJECTED'">{{i.product?.title}}</span>
+                            <span class="badge bg-warning text-dark ms-1" *ngIf="i.status === 'DISPUTED'" data-testid="item-disputed">In dispute</span>
+                            <span class="badge bg-secondary ms-1" *ngIf="i.status === 'REJECTED'" data-testid="item-rejected">Rejected</span>
+                            <div class="small" *ngIf="i.status === 'DISPUTED' && i.disputenote" data-testid="item-dispute-note">{{i.disputenote}}</div>
+                            <div class="small" *ngIf="i.status === 'REJECTED' && i.disputeresultnote">{{i.disputeresultnote}}</div>
+                            <div class="mt-1" *ngIf="i.status === 'DISPUTED' && invoice.status === 'NEW'">
+                                <button type="button" class="btn btn-outline-success btn-sm py-0 me-1" (click)="acceptLine(i)" data-testid="item-accept">Accept</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm py-0" (click)="openReject(i)" data-testid="item-reject-open">Reject</button>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1 mt-1" *ngIf="i.rejecting">
+                                <input class="form-control form-control-sm" style="max-width:16rem" maxlength="300" placeholder="Why? (required)" [(ngModel)]="i.rejectNote" data-testid="item-reject-note">
+                                <button type="button" class="btn btn-danger btn-sm" (click)="rejectLine(i)" data-testid="item-reject-go">Reject the line</button>
+                            </div>
+                            <div class="small text-danger" *ngIf="i.resolveError" data-testid="item-resolve-error">{{i.resolveError}}</div>
+                        </td>
                         <td>{{i.batch}}</td>
                         <td class="text-center">{{i.expdate ? (i.expdate | date:'MMM-yy') : '-'}}</td>
                         <td class="text-end">{{i.mrpcost | number:'1.2-2'}}</td>
@@ -151,6 +166,7 @@
                                 <div *ngIf="pc.unitjump !== null" class="small text-danger" [attr.data-testid]="'unit-jump-' + i.id">MRP is {{pc.unitjump}}&times; the last purchase. Pack is {{pc.pack}}:
                                     <a [routerLink]="['/secure/products/master/edit', i.productid]">check it</a></div>
                                 <div *ngIf="pc.level === 'APPROVAL'" class="small text-danger">Above {{priceApproval}}%: Store Head to complete</div>
+                                <a *ngIf="pc.level !== 'NONE' && i.status === 'NEW'" href="javascript:void(0)" class="small" (click)="disputeFromPrice(i, pc)" data-testid="price-dispute">Not agreed: dispute</a>
                             </ng-container>
                         </td>
                         <td class="text-end" style="min-width:11rem" [attr.data-testid]="'price-impact-' + i.id">
@@ -166,11 +182,16 @@
                                 <span *ngIf="im.status === 'OVER_CAP'" class="badge bg-warning text-dark">Discount too deep</span>
                                 <div *ngIf="im.status === 'OVER_CAP'" class="small text-muted">lowest {{im.lower | number:'1.2-2'}}</div>
                                 <span *ngIf="im.status === 'CHECK_COST'" class="badge bg-secondary">Check cost or pack</span>
+                                <div *ngIf="im.status === 'CHECK_COST' && im.bestmarkuppct !== null" class="small text-danger" data-testid="margin-low">best margin {{im.bestmarkuppct | number:'1.0-0'}}% at the MRP</div>
+                                <div *ngIf="impactSummary && impactSummary.ratiothreshold && im.ratio !== null && im.ratio >= impactSummary.ratiothreshold" class="small text-danger" [attr.data-testid]="'mrp-flag-' + i.id">MRP is {{im.ratio | number:'1.1-1'}}&times; the rate: check it</div>
                             </ng-container>
                         </td>
                         <td class="text-end">{{i.discpcnt}}<span *ngIf="i.discpcnt">%</span></td>
                         <td class="text-end">{{i.taxpcnt}}<span *ngIf="i.taxpcnt">%</span></td>
-                        <td class="text-end">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</td>
+                        <td class="text-end">
+                            <span *ngIf="!outside(i)">{{(i.ptrvalue * i.qty) | number:'1.2-2'}}</span>
+                            <span *ngIf="outside(i)" class="small" title="Not part of the invoice total">not counted</span>
+                        </td>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="footer">
@@ -192,7 +213,20 @@
 
             <div class="mt-3" *ngIf="itemSelected && invoice.status === 'NEW'">
                 <button type="button" class="btn btn-primary me-2" (click)="verifyItems()">Verify</button>
+                <button type="button" class="btn btn-outline-warning me-2" (click)="openDispute()" data-testid="item-dispute-open">Move to dispute</button>
                 <button type="button" class="btn btn-outline-danger" (click)="removeItems()">Remove</button>
+            </div>
+            <div class="border rounded p-2 mt-2 bg-light" *ngIf="disputing && invoice.status === 'NEW'" data-testid="item-dispute-panel">
+                <div class="small text-muted mb-1">The selected lines leave the invoice total until you accept or reject them. Clarify with the vendor, then decide. The invoice cannot be completed meanwhile.</div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <input class="form-control form-control-sm" style="max-width:28rem" maxlength="300" placeholder="What to clarify with the vendor (required)" [(ngModel)]="disputeNote" data-testid="item-dispute-note-input">
+                    <button type="button" class="btn btn-warning btn-sm" (click)="confirmDispute()" data-testid="item-dispute-go">Move to dispute</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="disputing = false">Cancel</button>
+                    <span class="small text-danger" *ngIf="disputeError" data-testid="item-dispute-error">{{disputeError}}</span>
+                </div>
+            </div>
+            <div class="alert alert-warning py-2 small mt-3 mb-0" *ngIf="invoice.status === 'NEW' && disputedCount > 0" data-testid="item-dispute-banner">
+                <b>{{disputedCount}} line{{disputedCount === 1 ? ' is' : 's are'}} in dispute</b> and not counted in the total. Accept or reject {{disputedCount === 1 ? 'it' : 'them'}} before completing the invoice.
             </div>
 
             <div class="alert alert-info py-2 small mt-3 mb-0" *ngIf="invoice.status === 'NEW' && impactSummary && (impactSummary.needsprice || impactSummary.attention)" data-testid="price-impact-note">
@@ -205,7 +239,7 @@
             </div>
             <div class="text-danger small mt-2" *ngIf="completeError" data-testid="invoice-complete-error">{{completeError}}</div>
 
-            <div class="row g-3 mt-1 border-top pt-3" *ngIf="allVerified && invoice.status === 'NEW'">
+            <div class="row g-3 mt-1 border-top pt-3" *ngIf="allVerified && invoice.status === 'NEW' && disputedCount === 0">
                 <div class="col-md-8">
                     <label for="feedback" class="form-label">Comments</label>
                     <textarea id="feedback" class="form-control" rows="2" [value]="feedback" (change)="updateFeedback($event)"></textarea>

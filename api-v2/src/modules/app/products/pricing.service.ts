@@ -6,6 +6,7 @@ import { isOwnerRole } from 'src/core/roles';
 import { LineIn, PricingItem, PricingReader, today } from './pricing-reader';
 import { MODE_KEYS, previewMode, priceWithGst, validateModeSettings } from './pricing-mode';
 import { cleanRuleValue, ruleOf, RULES } from './pricing-rules';
+import { ratioSetting } from './receiving-check';
 import {
   Abc, addDays, boundsOf, checkChange, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, PolicySettings, rank, stepLimit, Subject, suggestPrice, tradeBand, Violation, VIOLATION_TEXT,
 } from './price-policy';
@@ -214,7 +215,7 @@ export class PricingService extends PricingReader {
   async newPricesForInvoice(invoiceid: number) {
     const [mode, rows] = await Promise.all([
       this.modeSettings(),
-      this.manager.query(`select distinct product_id from purchase_invoice_item where invoice_id = $1 and active and not archive`, [invoiceid]),
+      this.manager.query(`select distinct product_id from purchase_invoice_item where invoice_id = $1 and active and not archive and status not in ('DISPUTED', 'REJECTED')`, [invoiceid]),
     ]);
     const onInvoice = new Set<number>(rows.map((r: any) => +r.product_id));
     const products = (await this.unpriced()).filter((u) => onInvoice.has(u.productid)).map((u) => ({
@@ -230,10 +231,38 @@ export class PricingService extends PricingReader {
     const rows = await this.manager.query(
       `select id, product_id, mrp_cost::float8 as mrp, ptr_value::float8 as ptrvalue, ptr_cost::float8 as ptrcost, coalesce(disc_pcnt, 0)::float8 as disc,
               qty, coalesce(free_qty, 0) as free, coalesce(tax_pcnt, 0)::float8 as taxbatch
-         from purchase_invoice_item where invoice_id = $1 and active and not archive and mrp_cost > 0 and ptr_value > 0 order by id`, [invoiceid]);
+         from purchase_invoice_item where invoice_id = $1 and active and not archive and status not in ('DISPUTED', 'REJECTED') and mrp_cost > 0 and ptr_value > 0 order by id`, [invoiceid]);
     const lines: LineIn[] = rows.map((r: any) => ({ itemid: +r.id, productid: +r.product_id, mrp: r.mrp, ptrvalue: r.ptrvalue, ptrcost: r.ptrcost, disc: r.disc, qty: +r.qty, free: +r.free, taxbatch: r.taxbatch }));
     const lineImpacts = await this.lineImpacts(lines);
-    return { lines: lineImpacts, needsprice: lineImpacts.filter((l) => l.status === 'NO_PRICE').length, attention: lineImpacts.filter((l) => !['OK', 'NO_PRICE'].includes(l.status)).length };
+    return { lines: lineImpacts, ratiothreshold: await this.mrpRatioThreshold(), needsprice: lineImpacts.filter((l) => l.status === 'NO_PRICE').length, attention: lineImpacts.filter((l) => !['OK', 'NO_PRICE'].includes(l.status)).length };
+  }
+
+  /** an MRP (without GST) this many times the net rate is flagged */
+  async mrpRatioThreshold(): Promise<number> {
+    const [s] = await this.manager.query(`select setting_value from app_setting where setting_key = 'mrp_rate_flag_ratio' and active and not archive limit 1`);
+    return ratioSetting(s?.setting_value);
+  }
+
+  /**
+   * What a line being typed on a purchase invoice means, before it is added: whether the product is new to the business (no price and no earlier
+   * purchase), the best markup selling at the MRP (without GST) could leave, whether even that is below the minimum the business's pricing rules ask
+   * for the product's class, the price the rules would suggest, and whether the MRP is far above the rate. Nothing is saved.
+   */
+  async lineCheck(b: any) {
+    const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const productid = num(b?.productid), mrp = num(b?.mrp), ptr = num(b?.ptrvalue);
+    if (!(productid > 0)) throw new BadRequestException('Choose the product first.');
+    if (!(mrp > 0) || !(ptr > 0)) return { ready: false };
+    const line: LineIn = {
+      itemid: 0, productid, mrp, ptrvalue: ptr, ptrcost: null, disc: Math.min(100, Math.max(0, num(b?.disc))),
+      qty: num(b?.qty) > 0 ? num(b.qty) : 1, free: Math.max(0, num(b?.free)), taxbatch: Math.max(0, num(b?.tax)),
+    };
+    const [out] = await this.lineImpacts([line]);
+    const [prior] = await this.manager.query(
+      `select count(*)::int as n from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.status = 'COMPLETE' and pi.active and not pi.archive
+        where pii.product_id = $1 and pii.active and not pii.archive`, [productid]);
+    const threshold = await this.mrpRatioThreshold();
+    return { ready: true, isnew: out.curprice === null && prior.n === 0, ...out, ratiothreshold: threshold, ratioflag: out.ratio !== null && out.ratio >= threshold };
   }
 
   /** The pricing rules with their current values, for the Pricing rules page. */

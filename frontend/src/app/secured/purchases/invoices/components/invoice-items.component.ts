@@ -95,16 +95,15 @@ export class InvoiceItemsComponent {
         this.disctotal = 0;
         this.taxtotal = 0;
 
-        this.invService.find(id).subscribe((inv:any) => { 
+        this.invService.find(id).subscribe((inv:any) => {
             this.invoice = inv;
             this.items = inv.items.map((i:any) => {
-                // this.grosstotal += +i.total;
-                // console.log(`qty: ${i.qty}, ptrvalue: ${i.ptrvalue}, discpcnt: ${i.discpcnt}, taxpcnt: ${i.taxpcnt}`);
-                this.grosstotal += i.ptrvalue*i.qty;
-                this.disctotal += i.ptrvalue*i.qty*(i.discpcnt/100);
-                this.taxtotal += ((i.ptrvalue*i.qty)-(i.ptrvalue*i.qty*(i.discpcnt/100))) *(i.taxpcnt/100);
-                // console.log(`taxtotal: ${this.taxtotal}`);
-                
+                // a line in dispute or rejected is not part of the invoice: it is left out of the totals
+                if(!this.outside(i)){
+                    this.grosstotal += i.ptrvalue*i.qty;
+                    this.disctotal += i.ptrvalue*i.qty*(i.discpcnt/100);
+                    this.taxtotal += ((i.ptrvalue*i.qty)-(i.ptrvalue*i.qty*(i.discpcnt/100))) *(i.taxpcnt/100);
+                }
                 return {...i, selected:false}
             });
             this.nettotal = this.grosstotal - this.disctotal + this.taxtotal;
@@ -115,15 +114,70 @@ export class InvoiceItemsComponent {
 
             if(this.items) {
                 this.itemSelected =  this.items.filter((i:any) => i.selected).length > 0;
-                const verifiedItems = this.items.filter((i:any) => i.status === 'VERIFIED');
-                this.allVerified = this.items.length > 0 && verifiedItems.length === this.items.length;
+                // every line still part of the invoice is verified (lines in dispute or rejected are not counted: disputes are settled first)
+                const live = this.items.filter((i:any) => !this.outside(i));
+                this.allVerified = live.length > 0 && live.every((i:any) => i.status === 'VERIFIED');
             }
         });
     }
 
+    /** a line the invoice does not count: in dispute with the vendor, or rejected */
+    outside(i:any):boolean { return i.status === 'DISPUTED' || i.status === 'REJECTED'; }
+
+    get disputedCount():number { return (this.items || []).filter((i:any) => i.status === 'DISPUTED').length; }
+    get rejectedCount():number { return (this.items || []).filter((i:any) => i.status === 'REJECTED').length; }
+
+    // ------------------------------------------------------------ lines in dispute
+    disputing:boolean = false;
+    disputeNote:string = '';
+    disputeError:string = '';
+
+    private selectedNew():any[] { return (this.items || []).filter((i:any) => i.selected && i.status === 'NEW'); }
+
+    openDispute(){
+        this.disputing = true; this.disputeError = '';
+    }
+
+    /** the price flag's shortcut: the line is picked and the note starts with what is wrong with the rate */
+    disputeFromPrice(i:any, pc:any){
+        (this.items || []).forEach((x:any) => x.selected = x.id === i.id);
+        this.itemSelected = true;
+        this.disputeNote = pc && pc.pcnt !== null ? `Rate ${pc.pcnt > 0 ? '+' : ''}${(Math.round(pc.pcnt * 100) / 100)}% against the last purchase (was ${pc.prevrate}). Vendor to confirm.` : '';
+        this.openDispute();
+    }
+
+    confirmDispute(){
+        this.disputeError = '';
+        const ids = this.selectedNew().map((i:any) => i.id);
+        if(!ids.length){ this.disputeError = 'Select the lines first.'; return; }
+        if(this.disputeNote.trim().length < 3){ this.disputeError = 'Say in a few words what to clarify with the vendor.'; return; }
+        this.invService.dispute(ids, this.disputeNote).subscribe(() => {
+            this.disputing = false; this.disputeNote = '';
+            this.fetchItems(this.invoice.id);
+        }, (err:any) => this.disputeError = this.say(err, 'Could not move the lines into dispute.'));
+    }
+
+    openReject(i:any){ i.rejecting = !i.rejecting; i.rejectNote = i.rejectNote || ''; i.resolveError = ''; }
+
+    acceptLine(i:any){
+        i.resolveError = '';
+        this.invService.resolveDispute([i.id], 'ACCEPT').subscribe(() => this.fetchItems(this.invoice.id), (err:any) => i.resolveError = this.say(err, 'Could not accept the line.'));
+    }
+
+    rejectLine(i:any){
+        i.resolveError = '';
+        if(String(i.rejectNote || '').trim().length < 3){ i.resolveError = 'Say in a few words why it is rejected.'; return; }
+        this.invService.resolveDispute([i.id], 'REJECT', i.rejectNote).subscribe(() => this.fetchItems(this.invoice.id), (err:any) => i.resolveError = this.say(err, 'Could not reject the line.'));
+    }
+
+    private say(err:any, fallback:string):string {
+        const m = err?.error?.message;
+        return (Array.isArray(m) ? m.join(' ') : m) || fallback;
+    }
+
     selectItem(event:any,id:any){
         this.items && this.items.forEach((i:any) => {
-            if(i.id === id) 
+            if(i.id === id)
                 i.selected = event.target.checked;
         });
 
@@ -155,7 +209,7 @@ export class InvoiceItemsComponent {
     updateFeedback(event:any){
         this.feedback = event.target.value;
     }
-    
+
     confirmInvoice(){
         this.completeError = '';
         this.invService.confirm([this.invoice.id],{status:'COMPLETE',comments:this.feedback}).subscribe(data => {
@@ -230,7 +284,7 @@ export class InvoiceItemsComponent {
     onPaid(event:any){
         this.fetchItems(event);
     }
-    
+
     showItemEdit(itemid:any){
         this.itemid = itemid;
         this.displayEditItem = true;

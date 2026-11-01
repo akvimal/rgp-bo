@@ -17,6 +17,7 @@ import { AuditService } from "src/core/audit/audit.service";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
 import { businessOfUser } from "src/core/business-of-user";
+import { taxRatesFor } from "./tax-rates";
 import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
 
 @Injectable()
@@ -210,7 +211,8 @@ export class PurchaseInvoiceService {
         if(!invoice){
           return;
         }
-        const items = await this.purchaseInvoiceItemRepository.find({ where: { invoiceid, isActive: true, isArchived: false } });
+        // a line in dispute or rejected is not part of the invoice
+        const items = (await this.purchaseInvoiceItemRepository.find({ where: { invoiceid, isActive: true, isArchived: false } })).filter((i:any) => !['DISPUTED', 'REJECTED'].includes(i.status));
         const taxablevalue = +items.reduce((sum, i:any) => sum + +(i.taxablevalue || 0), 0).toFixed(2);
         const cgstamount = +items.reduce((sum, i:any) => sum + +(i.cgstamount || 0), 0).toFixed(2);
         const sgstamount = +items.reduce((sum, i:any) => sum + +(i.sgstamount || 0), 0).toFixed(2);
@@ -613,7 +615,7 @@ export class PurchaseInvoiceService {
         const lines = await this.manager.query(
           `select i.id, i.product_id, p.title, p.pack, i.batch, i.ptr_value, i.mrp_cost, i.disc_pcnt, i.price_reason, i.price_approved_by
              from purchase_invoice_item i join product p on p.id = i.product_id
-            where i.invoice_id = $1 and i.active and not i.archive order by i.id`, [invoiceid]);
+            where i.invoice_id = $1 and i.active and not i.archive and i.status <> 'REJECTED' order by i.id`, [invoiceid]);
         const previous = lines.length === 0 ? [] : await this.manager.query(
           `select distinct on (pii.product_id) pii.product_id, pii.ptr_value, pii.disc_pcnt, to_char(pi.invoice_date, 'YYYY-MM-DD') as invoice_date
              from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
@@ -718,6 +720,7 @@ export class PurchaseInvoiceService {
           await this.assertApprovedPurchaseOrder(+values.purchaseorderid);
         }
         if(values?.status === 'COMPLETE'){
+          for(const id of ids) await this.assertNoDisputes(id);
           for(const id of ids) await this.assertPriceRules(id, userid);
         }
         if(ids.length === 1 && values && ('invoiceno' in values || 'challanno' in values || 'invoicedate' in values)){
@@ -736,6 +739,90 @@ export class PurchaseInvoiceService {
         }
 
         return result;
+      }
+
+      // ---------------------------------------------------------------- lines in dispute
+      /** an invoice cannot be completed while a line is still being clarified with the vendor */
+      private async assertNoDisputes(invoiceid:number){
+        const rows = await this.manager.query(
+          `select p.title from purchase_invoice_item i join product p on p.id = i.product_id where i.invoice_id = $1 and i.active and not i.archive and i.status = 'DISPUTED' order by i.id`, [invoiceid]);
+        if(rows.length){
+          throw new BadRequestException(`${rows.length} line${rows.length === 1 ? ' is' : 's are'} in dispute (${rows.slice(0, 3).map((r:any) => r.title).join(', ')}${rows.length > 3 ? ', ...' : ''}). Accept or reject ${rows.length === 1 ? 'it' : 'them'} before completing the invoice.`);
+        }
+      }
+
+      /** the lines still part of the invoice: not in dispute and not rejected */
+      async sumLive(invoiceid:number): Promise<number>{
+        const [r] = await this.manager.query(
+          `select coalesce(sum(total), 0)::float8 as t from purchase_invoice_item where invoice_id = $1 and active and not archive and status not in ('DISPUTED', 'REJECTED')`, [invoiceid]);
+        return +(r?.t || 0);
+      }
+
+      /** sets the invoice total to its live lines (rounded when asked) and refreshes the GST split */
+      async refreshTotal(invoiceid:number, userid:number, round = true){
+        const total = await this.sumLive(invoiceid);
+        await this.update([invoiceid], { total: round ? Math.round(total) : total }, userid);
+      }
+
+      private cleanNote(note:any, min:number, what:string){
+        const text = String(note ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+        if(text.length < min) throw new BadRequestException(`Say in a few words ${what}.`);
+        return text;
+      }
+
+      private async disputable(ids:number[], statuses:string[], action:string){
+        if(!Array.isArray(ids) || !ids.length) throw new BadRequestException('Choose the lines first.');
+        const rows = await this.manager.query(
+          `select i.id, i.invoice_id, i.status, i.total, p.title, v.status as invoice_status
+             from purchase_invoice_item i join purchase_invoice v on v.id = i.invoice_id join product p on p.id = i.product_id
+            where i.id = any($1::int[]) and i.active and not i.archive`, [ids.map(Number)]);
+        if(rows.length !== new Set(ids.map(Number)).size) throw new NotFoundException('One of those lines does not exist.');
+        if(rows.some((r:any) => r.invoice_status !== 'NEW')) throw new BadRequestException(`A line can be ${action} only while the invoice is a draft.`);
+        const wrong = rows.filter((r:any) => !statuses.includes(r.status));
+        if(wrong.length) throw new BadRequestException(`${wrong.map((r:any) => r.title).join(', ')} cannot be ${action}: it is ${wrong[0].status.toLowerCase()}.`);
+        return rows;
+      }
+
+      /** a line the vendor must clarify (a price, a quantity, a damaged pack) leaves the invoice total until it is accepted or rejected */
+      async disputeItems(ids:number[], note:any, userid:number){
+        const text = this.cleanNote(note, 3, 'what to clarify with the vendor');
+        const rows = await this.disputable(ids, ['NEW', 'VERIFIED'], 'moved into dispute');
+        await this.manager.query(
+          `update purchase_invoice_item set status = 'DISPUTED', verified_by = null, dispute_note = $2, dispute_by = $3, dispute_on = now(), dispute_result = null, dispute_result_note = null,
+                  dispute_result_by = null, dispute_result_on = null, updated_by = $3 where id = any($1::int[])`, [rows.map((r:any) => +r.id), text, userid]);
+        for(const invoiceid of new Set<number>(rows.map((r:any) => +r.invoice_id))) await this.refreshTotal(invoiceid, userid);
+        await this.audit.record({ userId: userid, action: 'purchase.line_disputed', entityType: 'purchase_invoice', entityId: +rows[0].invoice_id,
+          summary: `${rows.length} line${rows.length === 1 ? '' : 's'} moved into dispute: ${rows.map((r:any) => r.title).slice(0, 3).join(', ')}`, details: { items: rows.map((r:any) => +r.id), note: text } });
+        return { disputed: rows.length };
+      }
+
+      /** ACCEPT puts the line back to be verified at the agreed values; REJECT takes it off the invoice (its total becomes 0, the original is kept) */
+      async resolveItems(ids:number[], action:string, note:any, userid:number){
+        const act = String(action ?? '').toUpperCase();
+        if(act !== 'ACCEPT' && act !== 'REJECT') throw new BadRequestException('Choose accept or reject.');
+        const text = act === 'REJECT' ? this.cleanNote(note, 3, 'why the line is rejected') : String(note ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+        const rows = await this.disputable(ids, ['DISPUTED'], act === 'ACCEPT' ? 'accepted' : 'rejected');
+        const keys = rows.map((r:any) => +r.id);
+        if(act === 'ACCEPT'){
+          await this.manager.query(
+            `update purchase_invoice_item set status = 'NEW', dispute_result = 'ACCEPTED', dispute_result_note = nullif($2, ''), dispute_result_by = $3, dispute_result_on = now(), updated_by = $3 where id = any($1::int[])`, [keys, text, userid]);
+        } else {
+          await this.manager.query(
+            `update purchase_invoice_item set status = 'REJECTED', rejected_total = total, total = 0, dispute_result = 'REJECTED', dispute_result_note = $2, dispute_result_by = $3, dispute_result_on = now(), updated_by = $3 where id = any($1::int[])`, [keys, text, userid]);
+          await this.recomputeLineGstForItems(keys);
+        }
+        for(const invoiceid of new Set<number>(rows.map((r:any) => +r.invoice_id))) await this.refreshTotal(invoiceid, userid);
+        await this.audit.record({ userId: userid, action: act === 'ACCEPT' ? 'purchase.line_accepted' : 'purchase.line_rejected', entityType: 'purchase_invoice', entityId: +rows[0].invoice_id,
+          summary: `${rows.length} disputed line${rows.length === 1 ? '' : 's'} ${act === 'ACCEPT' ? 'accepted' : 'rejected'}: ${rows.map((r:any) => r.title).slice(0, 3).join(', ')}`, details: { items: keys, note: text } });
+        return { resolved: rows.length, action: act };
+      }
+
+      /** the tax rates a purchase line offers: the business's own list, else the usual rates of its type of business */
+      async taxRates(userid:number){
+        const businessId = await businessOfUser(this.manager, userid);
+        const [b] = businessId ? await this.manager.query(`select business_type from business where id = $1`, [businessId]) : [null];
+        const [s] = await this.manager.query(`select setting_value from app_setting where setting_key = 'purchase_tax_rates' and active and not archive limit 1`);
+        return { rates: taxRatesFor(s?.setting_value, b?.business_type) };
       }
 
       async updateItems(ids:number[], values:any, userid:any){

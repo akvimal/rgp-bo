@@ -127,6 +127,13 @@ export class PricingController {
     return this.pricing.invoiceImpact(id);
   }
 
+  /** What a purchase line being typed means before it is added: new product, best margin, the suggested price, MRP far above the rate. */
+  @Post('/line-check')
+  async lineCheck(@Body() body: any, @User() user: any) {
+    await this.assertCost(user);
+    return this.pricing.lineCheck(body);
+  }
+
   /** The new products on a received invoice that need a first price, with the suggested price. */
   @Get('/invoice/:id/new-prices')
   async invoiceNewPrices(@Param('id', ParseIntPipe) id: number, @User() user: any) {

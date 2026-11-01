@@ -19,12 +19,12 @@ export class InvoiceItemFormComponent {
         productid: new FormControl('',Validators.required),
         batch: new FormControl(''),
         expdate: new FormControl(''),
-        qty: new FormControl('',Validators.required),
-        ptrvalue: new FormControl('',[Validators.required]),
-        mrpcost: new FormControl('',Validators.required),
-        taxpcnt: new FormControl(''),
-        discpcnt: new FormControl(''),
-        freeqty: new FormControl('')
+        qty: new FormControl('',[Validators.required, Validators.min(0.0001)]),
+        ptrvalue: new FormControl('',[Validators.required, Validators.min(0)]),
+        mrpcost: new FormControl('',[Validators.required, Validators.min(0)]),
+        taxpcnt: new FormControl('',Validators.required),
+        discpcnt: new FormControl('',[Validators.min(0), Validators.max(100)]),
+        freeqty: new FormControl('',Validators.min(0))
       });
       
     @Input() invoiceid:any;
@@ -40,10 +40,66 @@ export class InvoiceItemFormComponent {
     sellermargin:number = 0;
     customersaving:number = 0;
     batches:any[]=[];
+    /** the tax rates this business buys at (a pharmacy: 0, 5 and 18) */
+    taxRates:number[] = [];
+    /** what the line being typed means: new product, best margin, suggested price, MRP far above the rate */
+    check:any = null;
+    error = '';
+    private checkTimer:any = null;
 
+    constructor(private invService: InvoiceService,
+        private dateUtilService: DateUtilService){
+        this.invService.taxRates().subscribe((r) => this.taxRates = r.rates || [], () => this.taxRates = [0, 5, 12, 18, 28]);
+    }
 
-    constructor(private invService: InvoiceService, 
-        private dateUtilService: DateUtilService){}
+    /** the rates to choose from, plus the one the line already has (an older batch may carry a rate no longer in the list) */
+    get taxOptions():number[] {
+        const cur = this.form.value.taxpcnt;
+        const all = new Set<number>(this.taxRates);
+        if(cur !== '' && cur !== null && cur !== undefined && !isNaN(+cur)) all.add(+cur);
+        return Array.from(all).sort((a, b) => a - b);
+    }
+
+    /** the years offered for the expiry: this year and the next fifteen (it moves with the date) */
+    get yearRange():string {
+        const y = new Date().getFullYear();
+        return `${y}:${y + 15}`;
+    }
+
+    /** a minus sign, plus or exponent cannot be typed into a number box */
+    noMinus(e:KeyboardEvent){
+        if(e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') e.preventDefault();
+    }
+
+    /** what is wrong with the values typed, said in plain words (only for boxes that have something in them) */
+    get problems():string[] {
+        const v = this.form.value;
+        const given = (x:any) => x !== '' && x !== null && x !== undefined;
+        const out:string[] = [];
+        if(given(v.qty) && !(+v.qty > 0)) out.push('Qty must be more than 0');
+        if(given(v.freeqty) && +v.freeqty < 0) out.push('Free cannot be negative');
+        if(given(v.mrpcost) && +v.mrpcost < 0) out.push('MRP cannot be negative');
+        if(given(v.ptrvalue) && +v.ptrvalue < 0) out.push('Rate cannot be negative');
+        if(given(v.discpcnt) && (+v.discpcnt < 0 || +v.discpcnt > 100)) out.push('Disc% must be from 0 to 100');
+        if(given(v.taxpcnt) && +v.taxpcnt < 0) out.push('Tax% cannot be negative');
+        return out;
+    }
+
+    get taxMissing():boolean {
+        const t = this.form.value.taxpcnt;
+        return !!this.form.value.productid && (t === '' || t === null || t === undefined);
+    }
+
+    /** asks what the line means (after a pause, so typing is not interrupted) */
+    private scheduleCheck(){
+        clearTimeout(this.checkTimer);
+        const v = this.form.value;
+        if(this.mode === 'edit' || !v.productid || !(+v.mrpcost > 0) || !(+v.ptrvalue > 0)){ this.check = null; return; }
+        this.checkTimer = setTimeout(() => {
+            this.invService.lineCheck({productid: v.productid, mrp: +v.mrpcost, ptrvalue: +v.ptrvalue, disc: +v.discpcnt || 0, qty: +v.qty || 1, free: +v.freeqty || 0, tax: +v.taxpcnt || 0})
+                .subscribe((r:any) => this.check = r && r.ready ? r : null, () => this.check = null);
+        }, 400);
+    }
 
     ngOnChanges(changes:SimpleChanges){
         if(changes.itemid && changes.itemid.currentValue){
@@ -164,6 +220,7 @@ export class InvoiceItemFormComponent {
                     this.form.controls['discpcnt'].setValue(latestBatch.discpcnt);
                     this.form.controls['taxpcnt'].setValue(latestBatch.taxpcnt);
                     this.form.controls['mrpcost'].setValue(latestBatch.mrpcost);
+                    this.calculate();
                 } else {
                     // Only clear if no existing batches
                     this.clearBatch();
@@ -223,14 +280,20 @@ export class InvoiceItemFormComponent {
     }
 
     calculate(){
-        this.total = this.calculateTotal(this.form.value.qty, 
-            this.form.value.ptrvalue, this.form.value.discpcnt, this.form.value.taxpcnt);
+        this.total = this.calculateTotal(this.form.value.qty, this.form.value.ptrvalue, this.form.value.discpcnt, this.form.value.taxpcnt);
         const invalid = this.total >= (this.form.value.qty * this.form.value.mrpcost);
         invalid && this.form.setErrors({valid:false})
+        this.scheduleCheck();
+    }
+
+    private failed(err:any){
+        const m = err?.error?.message;
+        this.error = (Array.isArray(m) ? m.join(' ') : m) || 'The item could not be added. Check the values and try again.';
     }
 
     submit(){
-        if(this.expiryMissing) return;
+        this.error = '';
+        if(this.expiryMissing || this.problems.length || this.taxMissing) return;
         if(this.itemid){
             this.invService.updateItems([this.form.value.id],{...this.form.value,
                 batch:this.form.value.batch.toUpperCase(),
@@ -239,7 +302,7 @@ export class InvoiceItemFormComponent {
                 total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);
                 this.resetValues();
-            });
+            }, (err:any) => this.failed(err));
         }
         else {
             this.invService.saveItem({...this.form.value, expdate:this.dateUtilService.parseDate(this.form.value.expdate) , invoiceid:this.invoiceid,
@@ -247,7 +310,7 @@ export class InvoiceItemFormComponent {
                 ptrcost:this.getPTRAfterTax(), total: this.total}).subscribe(data => {
                 this.added.emit(this.invoiceid);
                 this.resetValues();
-            });
+            }, (err:any) => this.failed(err));
         }
     }
 
@@ -258,5 +321,7 @@ export class InvoiceItemFormComponent {
         this.sellermargin = 0;
         this.customersaving = 0;
         this.productReset = true;
+        this.check = null;
+        this.error = '';
     }
 }

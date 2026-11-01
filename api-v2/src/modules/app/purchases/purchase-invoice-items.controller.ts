@@ -25,6 +25,12 @@ export class PurchaseItemController {
       return this.purchaseInvoiceService.findItemsByProduct(id);
     }
 
+    /** the tax rates a line offers (the business's own list, else the usual rates of its type of business) */
+    @Get('/tax-rates')
+    async taxRates(@User() currentUser: any) {
+      return this.purchaseInvoiceService.taxRates(currentUser.id);
+    }
+
     @Get('/:id')
     async findItemById(@Param('id') id: number) {
       return this.purchaseInvoiceService.findItemById(id);
@@ -52,13 +58,7 @@ export class PurchaseItemController {
         // A product with no price is not priced here: it appears under Products > Pricing policy > Needs a price once the invoice is completed,
         // with a suggested price from its class. (A price added here used to be skipped whenever the line itself had just made the product visible.)
 
-        await this.purchaseInvoiceService.findAllItemsByInvoice(item.invoiceid).then(async (items:any) => {
-          let total = 0;
-          items.forEach(item => {
-            total += item.total && +item.total;
-          })
-          await this.purchaseInvoiceService.update([item.invoiceid],{total:Math.round(total)},currentUser.id)
-        })
+        await this.purchaseInvoiceService.refreshTotal(item.invoiceid, currentUser.id);
         return item;
     }
 
@@ -67,16 +67,21 @@ export class PurchaseItemController {
       return this.purchaseInvoiceService.updateItems(input.ids, input.values, currentUser.id);
     }
 
+    /** lines the vendor must clarify: they leave the invoice total until accepted or rejected, and the invoice cannot be completed meanwhile */
+    @Post('/dispute')
+    dispute(@Body() input:{ids:number[], note:string}, @User() currentUser: any) {
+      return this.purchaseInvoiceService.disputeItems(input?.ids, input?.note, currentUser.id);
+    }
+
+    @Post('/resolve')
+    resolve(@Body() input:{ids:number[], action:string, note?:string}, @User() currentUser: any) {
+      return this.purchaseInvoiceService.resolveItems(input?.ids, input?.action, input?.note, currentUser.id);
+    }
+
     @Delete()
     async remove(@Body() input:{invoiceid:number, ids:number[]}, @User() currentUser: any) {
       await this.purchaseInvoiceService.removeItems(input.ids).then(async(data) => {
-        await this.purchaseInvoiceService.findAllItemsByInvoice(input.invoiceid).then(async (items:any) => {
-          let total = 0;
-          items.forEach(item => {
-            total += item.total && +item.total;
-          })
-          await this.purchaseInvoiceService.update([input.invoiceid],{total},currentUser.id)
-        })
+        await this.purchaseInvoiceService.refreshTotal(input.invoiceid, currentUser.id, false);
       })
       return { success: true, message: 'Items removed successfully' };
     }
