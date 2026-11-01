@@ -382,6 +382,15 @@ export class UserService {
     'business.name as businessname', 'business.logo as businesslogo', 'business.businesstype as businesstype'])
     .getRawOne();
 
+    // counter and store logins carry no business of their own: they work in the business of their store, whose name, logo and kind the header and the packs need
+    if (data && !data.businessid) {
+      const bid = await businessOfUser(this.userRepository.manager, Number(id));
+      if (bid) {
+        const [b] = await this.userRepository.manager.query(`select id, name, logo, business_type from business where id = $1`, [bid]);
+        if (b) Object.assign(data, { businessid: b.id, businessname: b.name, businesslogo: b.logo, businesstype: b.business_type });
+      }
+    }
+
     // the role as stored, narrowed to the modules this business has switched on (menus, buttons and routes follow it)
     const modules = await this.modules.forUser(Number(id));
     // GST: whether the business issues tax invoices and from when (the till then asks for the buyer's GSTIN)
