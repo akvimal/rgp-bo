@@ -32,6 +32,8 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 set -a; . ./.env.beta; set +a
 [ -n "${POSTGRES_PASSWORD:-}" ] && [ -n "${JWT_KEY:-}" ] || die "set POSTGRES_PASSWORD and JWT_KEY in .env.beta"
 export POSTGRES_USER="${POSTGRES_USER:-rgpapp}" POSTGRES_DB="${POSTGRES_DB:-rgpbeta}"
+# beside a proxy on this server: join its network (docker-compose.beta.edge.yml)
+[ -n "${BETA_EDGE_NETWORK:-}" ] && COMPOSE="$COMPOSE -f docker-compose.beta.edge.yml"
 
 echo "== dump: $(basename "$dump") ($(du -h "$dump" | cut -f1)) -> project $PROJECT, database $POSTGRES_DB"
 $COMPOSE up -d db

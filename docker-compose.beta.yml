@@ -75,7 +75,8 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${BETA_PORT:-8080}:80"
+      # BETA_BIND=127.0.0.1 keeps the port off the internet when a proxy on this server fronts it
+      - "${BETA_BIND:-0.0.0.0}:${BETA_PORT:-8080}:80"
     networks:
       - beta-network
 

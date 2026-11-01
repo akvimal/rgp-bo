@@ -1,0 +1,16 @@
+# Optional: lets a proxy that runs in docker on the same server (Caddy) reach the beta by name, so no port has to be open to the internet.
+# Used when BETA_EDGE_NETWORK is set in .env.beta (scripts/beta-refresh.sh adds it); for hand-typed commands add it as a second -f:
+#   docker compose -p rgp-beta -f docker-compose.beta.yml -f docker-compose.beta.edge.yml --env-file .env.beta up -d
+# The proxy then forwards to  rgp-beta-web:80  (for Caddy:  reverse_proxy rgp-beta-web:80 ).
+services:
+  frontend:
+    networks:
+      beta-network: {}
+      edge:
+        aliases:
+          - rgp-beta-web
+
+networks:
+  edge:
+    external: true
+    name: ${BETA_EDGE_NETWORK:?set BETA_EDGE_NETWORK in .env.beta}
