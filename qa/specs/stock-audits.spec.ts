@@ -36,9 +36,10 @@ test.describe('Stock audits @p1', () => {
     const planId = made.body.id;
     const mine = async () => (await api.request('GET', '/stock-audits?status=ALL', undefined, MGR)).body.filter((a: any) => a.plan_id === planId);
 
-    // the first audit is due already; a second is not made while it is open
+    // the first audit is due already, so saving the plan planned it at once; a second is not made while it is open
+    expect(made.body.created).toBeGreaterThan(0);
     const g1 = await api.request('POST', '/stock-audits/generate', {}, MGR);
-    expect(g1.body.created).toBeGreaterThan(0);
+    expect(g1.body.created).toBe(0);
     let audits = await mine();
     expect(audits.length).toBe(1);
     expect(audits[0]).toMatchObject({ status: 'PLANNED', category: s.cats[0], overdue: true });

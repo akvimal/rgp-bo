@@ -45,13 +45,13 @@ test.describe('Stock count escalation @p1', () => {
     expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, undefined, MGR)).status).toBe(400);   // a large difference is counted again first
     expect((await api.request('PUT', `/stock/audit/${adj.id}/recount`, { qty: 47 }, MGR)).status).toBe(403);  // not by the person who counted
     expect((await api.request('PUT', `/stock/audit/${adj.id}/recount`, { qty: 47 }, STORE_HEAD)).status).toBeLessThan(300);
-    expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, undefined, MGR)).status).toBeLessThan(300);
+    expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, { reasoncode: 'SHRINKAGE' }, MGR)).status).toBeLessThan(300);
   });
 
   test('COUNTESC-2 a small difference is settled by the Store Head as before @happy', async ({ api }) => {
     const adj = await countOne(api, `esc-small-${Date.now()}`, 300, 49);         // 1 unit x 210 = 210 at cost
     expect(adj.escalated).toBe(false);
-    expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, undefined, STORE_HEAD)).status).toBeLessThan(300);
+    expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, { reasoncode: 'SHRINKAGE' }, STORE_HEAD)).status).toBeLessThan(300);
   });
 
   test('COUNTESC-3 the stock audit alerts are available and run @happy', async ({ api }) => {

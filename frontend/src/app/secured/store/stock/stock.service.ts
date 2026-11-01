@@ -81,12 +81,19 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock/adjust/price`);
     }
 
-    deleteQtyAdjustment(id:number){
-        return this.http.delete(`${this.apiurl}/stock/adjust/qty/${id}`)
+    /** a draft adjustment is deleted with the reason, which is recorded */
+    deleteQtyAdjustment(id:number, note:string){
+        return this.http.delete(`${this.apiurl}/stock/adjust/qty/${id}`, { body: { note } })
     }
 
-    findAllQtyAdjustments(){
-        return this.http.get(`${this.apiurl}/stock/adjust/qty`);
+    /** the adjustments, or only those of one audit */
+    findAllQtyAdjustments(audit?:number|null){
+        return this.http.get(`${this.apiurl}/stock/adjust/qty`, { params: audit ? { audit: String(audit) } : {} });
+    }
+
+    /** the audits an adjustment can be made for: counting now, or counted and not yet signed off */
+    auditsForAdjust(){
+        return this.http.get<any[]>(`${this.apiurl}/stock-audits`, { params: { status: 'ALL' } });
     }
 
     updatePrice(price:any){
@@ -106,8 +113,9 @@ export class StockService {
         return this.http.get(`${this.apiurl}/stock/audit`);
     }
 
-    approveAdjustment(id:number){
-        return this.http.put(`${this.apiurl}/stock/audit/${id}/approve`, {});
+    /** a count difference is approved with the reason it arose (reasoncode, and a note for Other) */
+    approveAdjustment(id:number, payload:any = {}){
+        return this.http.put(`${this.apiurl}/stock/audit/${id}/approve`, payload);
     }
 
     openCountItems(storeid?:number|null){
@@ -118,8 +126,9 @@ export class StockService {
         return this.http.put(`${this.apiurl}/stock/audit/${id}/recount`, { qty });
     }
 
-    rejectAdjustment(id:number){
-        return this.http.put(`${this.apiurl}/stock/audit/${id}/reject`, {});
+    /** rejecting needs the reason, which is kept */
+    rejectAdjustment(id:number, note:string){
+        return this.http.put(`${this.apiurl}/stock/audit/${id}/reject`, { note });
     }
 
     startCount(category?:string, storeid?:number|null, auditid?:number|null){

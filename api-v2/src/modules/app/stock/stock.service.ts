@@ -9,7 +9,8 @@ import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
 import { approvalModeFor } from "src/core/approval-mode";
-import { isDiscard } from "./reason-codes";
+import { isDiscard, USER_REASON_CODES } from "./reason-codes";
+import { AuditService } from "src/core/audit/audit.service";
 import { DEFAULT_ESCALATION_VALUE, escalatedProducts, maySettleEscalated } from "./count-rules";
 import { EXPIRING_DAYS, FAST_MOVERS, escalateAll, recountProblem } from "../stock-audits/audit-rules";
 
@@ -18,6 +19,7 @@ import { isManagerRole } from 'src/core/roles';
 export class StockService {
 
     constructor(@InjectEntityManager() private manager: EntityManager,
+        private readonly audit: AuditService,
         @InjectRepository(ProductPriceChange) private readonly priceRepository: Repository<ProductPriceChange>,
         @InjectRepository(ProductQtyChange) private readonly qtyRepository: Repository<ProductQtyChange>,
         @InjectRepository(Setting) private readonly settingRepository: Repository<Setting>,
@@ -288,13 +290,18 @@ export class StockService {
           return qb.getMany();
     }     
 
-    async findAllQtyAdjust() {
+    async findAllQtyAdjust(auditid?: number) {
         const qb = this.qtyRepository.createQueryBuilder('q')
         .leftJoinAndSelect("q.purchaseitem", "item")
         .leftJoinAndSelect("item.product", "product")
         .select(['q','item','product'])
             .where('q.isActive = :flag', { flag: true }).orderBy('q.createdon','DESC');
-          return qb.getMany();
+        if (auditid) qb.andWhere('q.auditid = :aid', { aid: auditid });
+        const rows: any[] = await qb.getMany();
+        const ids = [...new Set<number>(rows.map((r: any) => r.auditid).filter(Boolean))];
+        const audits = ids.length ? await this.manager.query(`select id, audit_no from stock_audit where id = any($1::int[])`, [ids]) : [];
+        const no = new Map<number, number>(audits.map((a: any) => [+a.id, +a.audit_no]));
+        return rows.map((r: any) => Object.assign(r, { auditno: r.auditid ? (no.get(r.auditid) ?? null) : null }));
     } 
 
     async findQtyAudits() {
@@ -385,6 +392,10 @@ export class StockService {
         // `reason` is NOT NULL in the DB; older callers always sent it, but a reasoncode-only
         // caller (any new integration) must still satisfy that constraint.
         const reason = (dto as any).reason || dto.reasoncode;
+        if (dto.auditid) {
+            const [a] = await this.manager.query(`select id from stock_audit where id = $1`, [Number(dto.auditid)]);
+            if (!a) throw new BadRequestException('That audit was not found.');
+        }
         const status = await this.resolveAdjustmentStatus(dto.status, dto.itemid, dto.qty, storeid, userid);
         return this.qtyRepository.save({...dto, reason, reasoncode, storeid, status, createdby:userid, discarded: isDiscard(reasoncode, dto.qty)} as any);
     }
@@ -407,6 +418,9 @@ export class StockService {
         if (!existing) {
             throw new NotFoundException('Adjustment not found.');
         }
+        if (dto.status && existing.countid && String(dto.status).toUpperCase() !== String(existing.status || '').toUpperCase()) {
+            throw new BadRequestException('Settle a count difference with Approve or Reject, so the reason is recorded.');
+        }
         const qty = dto.qty !== undefined ? dto.qty : existing.qty;
         if (!Number.isFinite(Number(qty)) || Number(qty) === 0) {
             throw new BadRequestException('Quantity must be a non-zero number.');
@@ -428,6 +442,12 @@ export class StockService {
     }
 
     async createStockAudit(items: any[], userid) {
+        // the audit a count belongs to, so each difference names the event it came from
+        const auditOf = new Map<number, number | null>();
+        for (const countid of new Set<number>((items || []).map((i: any) => Number(i.countid)).filter(Boolean))) {
+            const [a] = await this.manager.query(`select id from stock_audit where count_id = $1 limit 1`, [countid]);
+            auditOf.set(countid, a?.id ?? null);
+        }
         const payload = await Promise.all((items || []).map(async (item) => ({
             itemid: item.itemid,
             qty: (+item.countedqty || 0) - (+item.bookqty || 0),
@@ -438,6 +458,7 @@ export class StockService {
             status: 'PENDING',
             storeid: item.storeid ?? await this.resolveHomeStoreId(item.itemid),
             countid: item.countid ?? null,
+            auditid: item.countid ? (auditOf.get(Number(item.countid)) ?? null) : (item.auditid ?? null),
             escalated: !!item.escalated,
             bookqty: item.bookqty ?? null,
             countedqty: item.countedqty ?? null,
@@ -458,14 +479,45 @@ export class StockService {
         if (problem) throw new BadRequestException(problem);
     }
 
-    async approveQtyAudit(id:any, userid:any) {
-        await this.assertMaySettle(id, userid, true);
-        return this.qtyRepository.update(id, {status:'APPROVED', updatedby:userid});
+    private settleText(v: any, min: number): string | null {
+        const t = String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+        return t.length >= min ? t : null;
     }
 
-    async rejectQtyAudit(id:any, userid:any) {
+    /**
+     * Approving moves the stock. A difference found by a count needs the reason it arose (shrinkage, damaged, expired, correction ...), and a few words
+     * for "Other": the count itself only says the shelf and the book differ. Every approval is recorded with who and why.
+     */
+    async approveQtyAudit(id:any, userid:any, body:any = {}) {
+        await this.assertMaySettle(id, userid, true);
+        const row: any = await this.qtyRepository.findOne({ where: { id } });
+        if (!row) throw new NotFoundException('Adjustment not found.');
+        const note = this.settleText(body?.note, 1);
+        const patch: any = { status: 'APPROVED', updatedby: userid, settlenote: note, settledby: userid, settledon: new Date() };
+        if (row.countid) {
+            const code = String(body?.reasoncode ?? '').toUpperCase();
+            if (!(USER_REASON_CODES as readonly string[]).includes(code)) throw new BadRequestException('Say why the count differed (shrinkage, damaged, expired, correction ...) before approving it.');
+            if (code === 'OTHER' && !this.settleText(body?.note, 3)) throw new BadRequestException('Say in a few words what the difference was.');
+            patch.reasoncode = code; patch.reason = code; patch.discarded = isDiscard(code, row.qty);
+        }
+        await this.qtyRepository.update(id, patch);
+        await this.audit.record({ userId: userid, action: 'stock_adjustment.approved', entityType: 'product_qtychange', entityId: +id,
+            summary: `Stock adjustment ${row.qty > 0 ? '+' : ''}${row.qty} approved${row.countid ? ` (count difference: ${patch.reasoncode})` : ''}`,
+            details: { item: row.itemid, qty: row.qty, reasoncode: patch.reasoncode ?? row.reasoncode, note, countid: row.countid, auditid: row.auditid } });
+        return this.qtyRepository.findOne({ where: { id } });
+    }
+
+    /** Rejecting leaves the stock as the books have it: the reason is kept, so a difference is never set aside without one. */
+    async rejectQtyAudit(id:any, userid:any, body:any = {}) {
         await this.assertMaySettle(id, userid);
-        return this.qtyRepository.update(id, {status:'REJECTED', updatedby:userid});
+        const row: any = await this.qtyRepository.findOne({ where: { id } });
+        if (!row) throw new NotFoundException('Adjustment not found.');
+        const note = this.settleText(body?.note, 3);
+        if (!note) throw new BadRequestException('Say why the adjustment is rejected.');
+        await this.qtyRepository.update(id, { status: 'REJECTED', updatedby: userid, settlenote: note, settledby: userid, settledon: new Date() } as any);
+        await this.audit.record({ userId: userid, action: 'stock_adjustment.rejected', entityType: 'product_qtychange', entityId: +id,
+            summary: `Stock adjustment ${row.qty > 0 ? '+' : ''}${row.qty} rejected: ${note}`, details: { item: row.itemid, qty: row.qty, note, countid: row.countid, auditid: row.auditid } });
+        return this.qtyRepository.findOne({ where: { id } });
     }
 
     /** the second count of a large difference, by someone other than the first counter. It replaces the first count: the line is re-valued from the book quantity. */
@@ -734,9 +786,22 @@ export class StockService {
     //     return await this.manager.query(query);
     // }
 
-    async deleteQtyAdjustment(id:any){
+    /**
+     * Only a draft adjustment that never moved the stock can be deleted, with a reason, and the deletion is recorded. A difference found by a
+     * count is rejected with a reason instead, and an approved adjustment is undone with an opposite one: neither disappears.
+     */
+    async deleteQtyAdjustment(id:any, userid:any, body:any = {}){
+        const row: any = await this.qtyRepository.findOne({ where: { id } });
+        if (!row) throw new NotFoundException('Adjustment not found.');
+        if (row.countid) throw new BadRequestException('A difference found by a count cannot be deleted. Reject it with a reason instead.');
+        if (String(row.status || 'APPROVED') === 'APPROVED') throw new BadRequestException('An approved adjustment has already changed the stock, so it cannot be deleted. Make an opposite adjustment instead.');
+        const note = this.settleText(body?.note, 3);
+        if (!note) throw new BadRequestException('Say why the adjustment is deleted.');
         await this.qtyRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             await transaction.delete(ProductQtyChange, id);
         });
+        await this.audit.record({ userId: userid, action: 'stock_adjustment.deleted', entityType: 'product_qtychange', entityId: +id,
+            summary: `Stock adjustment ${row.qty > 0 ? '+' : ''}${row.qty} deleted: ${note}`, details: { item: row.itemid, qty: row.qty, status: row.status, reasoncode: row.reasoncode, note, auditid: row.auditid } });
+        return { id: +id };
     }
 }

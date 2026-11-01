@@ -69,8 +69,8 @@ export class StockController {
     @Get('/adjust/qty')
     @UseGuards(PermissionGuard)
     @Permission('auditStock')
-    async findAllQtyAdjust() {
-      return (await this.service.findAllQtyAdjust()).map((data: any) => ({
+    async findAllQtyAdjust(@Query('audit') audit?: string) {
+      return (await this.service.findAllQtyAdjust(Number(audit) || undefined)).map((data: any) => ({
         id: data.id,
         itemid: data.purchaseitem.id,
         title: data.purchaseitem.product.title,
@@ -87,7 +87,12 @@ export class StockController {
         escalated: !!data.escalated,
         bookqty: data.bookqty,
         countedqty: data.countedqty,
-        recountqty: data.recountqty
+        recountqty: data.recountqty,
+        countid: data.countid,
+        auditid: data.auditid,
+        auditno: data.auditno,
+        settlenote: data.settlenote,
+        settledon: data.settledon
       }));
     }
 
@@ -152,8 +157,8 @@ export class StockController {
     @Put('/audit/:id/approve')
     @UseGuards(PermissionGuard)
     @Permission('auditStock')
-    async approveAudit(@Param('id') id: string, @User() currentUser: any) {
-      return this.service.approveQtyAudit(id, currentUser.id);
+    async approveAudit(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      return this.service.approveQtyAudit(id, currentUser.id, body);
     }
 
     @Put('/audit/:id/recount')
@@ -166,8 +171,8 @@ export class StockController {
     @Put('/audit/:id/reject')
     @UseGuards(PermissionGuard)
     @Permission('auditStock')
-    async rejectAudit(@Param('id') id: string, @User() currentUser: any) {
-      return this.service.rejectQtyAudit(id, currentUser.id);
+    async rejectAudit(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      return this.service.rejectQtyAudit(id, currentUser.id, body);
     }
 
     @Post('/counts')
@@ -208,7 +213,7 @@ export class StockController {
     @Delete('/adjust/qty/:id')
     @UseGuards(PermissionGuard)
     @Permission('auditStock')
-    async remove(@Param('id') id: string) {
-      return this.service.deleteQtyAdjustment(id);
+    async remove(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      return this.service.deleteQtyAdjustment(id, currentUser.id, body);
     }
 }

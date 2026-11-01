@@ -75,7 +75,7 @@ test.describe('Stock — adjustments & audit @p1', () => {
     }, MGR);
     expect(r.body.status).toBe('PENDING');
 
-    await api.request('PUT', `/stock/audit/${r.body.id}/reject`, undefined, MGR);
+    await api.request('PUT', `/stock/audit/${r.body.id}/reject`, { note: 'qa rejected' }, MGR);
     expect(await bal(api, b.batch)).toBe(50);
     const refetched = (await api.request('GET', '/stock/adjust/qty', undefined, MGR)).body.find((x: any) => x.id === r.body.id);
     expect(refetched.status).toBe('REJECTED');
@@ -141,7 +141,7 @@ test.describe('Stock — adjustments & audit @p1', () => {
     const pending = (await api.request('GET', '/stock/audit', undefined, MGR)).body
       .filter((a: any) => a.itemid === it.item_id && (a.status === 'PENDING' || a.status == null)).slice(-1)[0];
     expect(pending).toBeTruthy();
-    const del = await api.request('DELETE', `/stock/adjust/qty/${pending.id}`, undefined, MGR);
+    const del = await api.request('DELETE', `/stock/adjust/qty/${pending.id}`, { note: 'qa draft removed' }, MGR);
     expect(del.status).toBeLessThan(400);
     expect(await bal(api, it.batch)).toBe(b0); // no partial effect
   });
@@ -217,7 +217,7 @@ test.describe('Stock — adjustments & audit @p1', () => {
 
     // pending: stock unchanged until approved
     expect(await bal(api, b.batch)).toBe(50);
-    await api.request('PUT', `/stock/audit/${submitted.body.adjustments[0].id}/approve`, undefined, MGR);
+    await api.request('PUT', `/stock/audit/${submitted.body.adjustments[0].id}/approve`, { reasoncode: 'SHRINKAGE' }, MGR);
     expect(await bal(api, b.batch)).toBe(47);
 
     // the count now shows up completed, with the adjustment attributed to it
@@ -256,7 +256,7 @@ test.describe('Stock — adjustments & audit @p1', () => {
       items: [{ itemid: b.itemid, bookqty: 30, countedqty: 28 }],
     }, MGR);
     expect(submitted.body.adjustments[0].storeid).toBe(store1);
-    await api.request('PUT', `/stock/audit/${submitted.body.adjustments[0].id}/approve`, undefined, MGR);
+    await api.request('PUT', `/stock/audit/${submitted.body.adjustments[0].id}/approve`, { reasoncode: 'SHRINKAGE' }, MGR);
 
     const rescan = await api.request('POST', '/stock/counts', { storeid: store1 }, MGR);
     const rowAfter = rescan.body.items.find((i: any) => i.item_id === b.itemid);

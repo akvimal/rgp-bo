@@ -65,6 +65,19 @@ export class ProductQtyChange extends BaseEntity {
   @Column("integer", { name: "recount_by", nullable: true })
   recountby: number | null;
 
+  /** the stock audit this belongs to (a count difference, or an adjustment made for an audit), and how it was settled */
+  @Column("integer", { name: "audit_id", nullable: true })
+  auditid: number | null;
+
+  @Column("character varying", { name: "settle_note", length: 300, nullable: true })
+  settlenote: string | null;
+
+  @Column("integer", { name: "settled_by", nullable: true })
+  settledby: number | null;
+
+  @Column("timestamp with time zone", { name: "settled_on", nullable: true })
+  settledon: Date | null;
+
   @Column("timestamp with time zone", { name: "recount_on", nullable: true })
   recounton: Date | null;
 

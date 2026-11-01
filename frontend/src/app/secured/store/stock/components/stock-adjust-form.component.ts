@@ -22,12 +22,23 @@ export class StockAdjustFormComponent {
         itemid: new FormControl('',Validators.required),
         reason: new FormControl('',Validators.required),
         qty: new FormControl(0,Validators.required),
-        comments: new FormControl('')
+        comments: new FormControl(''),
+        auditid: new FormControl(null)
     });
+
+    /** the audits this adjustment can be made for: counting now, or counted and not yet signed off, at the selected store */
+    audits:any[] = [];
 
     qtyChangeReasons = STOCK_ADJUSTMENT_REASONS;
 
-    constructor(private service: StockService, private storeContext: StoreContextService){}
+    constructor(private service: StockService, private storeContext: StoreContextService){
+        this.service.auditsForAdjust().subscribe((rows:any[]) => {
+            const store = this.storeContext.selectedStoreId;
+            this.audits = (rows || []).filter((a:any) => (!store || a.store_id === store) && (a.status === 'IN_PROGRESS' || (a.status === 'DONE' && !a.certified_on)));
+        }, () => this.audits = []);
+    }
+
+    auditNo(n:number):string { return n ? `SA-${String(n).padStart(4, '0')}` : ''; }
 
     ngOnChanges(changes:SimpleChanges){
         
@@ -53,7 +64,7 @@ export class StockAdjustFormComponent {
         // Post against the store currently selected in the header - not wherever this batch
         // was originally received - so an adjustment made after a transfer lands on the store
         // it's actually happening at.
-        this.service.updateQty({...value, reasoncode: value.reason, storeid: this.storeContext.selectedStoreId})
+        this.service.updateQty({...value, auditid: value.auditid || undefined, reasoncode: value.reason, storeid: this.storeContext.selectedStoreId})
             .subscribe(data => {
                 this.saved.emit(data);
         });

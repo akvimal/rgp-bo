@@ -91,7 +91,7 @@ test.describe('Stock audit paper trail @p1', () => {
     const re = await api.request('PUT', `/stock/audit/${adj.id}/recount`, { qty: 49 }, MGR);
     expect(re.status, JSON.stringify(re.body)).toBeLessThan(300);
     expect(re.body.qty).toBe(-1);                                                       // the second count replaces the first
-    expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, undefined, MGR)).status).toBeLessThan(300);
+    expect((await api.request('PUT', `/stock/audit/${adj.id}/approve`, { reasoncode: 'SHRINKAGE' }, MGR)).status).toBeLessThan(300);
 
     expect((await api.request('POST', `/stock-audits/${audit.id}/certify`, {}, STORE_HEAD)).status).toBe(403);   // the counter cannot also sign as verifier
     const cert = await api.request('POST', `/stock-audits/${audit.id}/certify`, { note: 'qa' }, MGR);

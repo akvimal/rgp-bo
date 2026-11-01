@@ -25,4 +25,7 @@ export class CreateProductQtyChangeDto {
 
     @ApiProperty({ description: 'the stock_count this line belongs to, if any', required: false })
     readonly countid?: number;
+
+    @ApiProperty({ description: 'the stock audit this adjustment is made for, if any', required: false })
+    readonly auditid?: number;
 }

@@ -43,10 +43,10 @@
 
     <div class="table-responsive" *ngIf="tab !== 'PLANS' && tab !== 'REGISTER'">
       <table class="table table-sm align-middle" data-testid="sa-table">
-        <thead><tr><th>Store</th><th>Covers</th><th>Due</th><th>Who</th><th>Status / result</th><th></th></tr></thead>
+        <thead><tr><th>{{multiStore ? 'Store' : 'Audit'}}</th><th>Covers</th><th>Due</th><th>Who</th><th>Status / result</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let a of rows" data-testid="sa-row" [attr.data-id]="a.id">
-            <td><span class="badge bg-light text-dark border me-1" data-testid="sa-no">{{no(a.audit_no)}}</span>{{a.store}}<div class="small text-muted">{{a.plan}}</div></td>
+            <td><span class="badge bg-light text-dark border me-1" data-testid="sa-no">{{no(a.audit_no)}}</span><ng-container *ngIf="multiStore">{{a.store}}</ng-container><div class="small text-muted">{{a.plan}}</div></td>
             <td>{{a.category || scopeLabels[a.scope] || 'Everything'}}</td>
             <td [class.text-danger]="a.overdue">{{a.due_on | date:'dd MMM yyyy'}}</td>
             <td>{{a.assigned_name || 'Anyone'}}</td>
@@ -54,12 +54,13 @@
               <span class="badge bg-danger" *ngIf="a.overdue">Overdue</span>
               <span class="badge bg-primary" *ngIf="a.status === 'PLANNED' && !a.overdue">Planned</span>
               <span class="badge bg-info text-dark" *ngIf="a.status === 'IN_PROGRESS' && !a.overdue">Counting</span>
-              <span class="badge" [ngClass]="a.late ? 'bg-warning text-dark' : 'bg-success'" *ngIf="a.status === 'DONE'">{{a.late ? 'Done late' : 'Done'}}</span>
+              <span class="badge" [ngClass]="a.certified_on ? 'bg-success' : (a.late ? 'bg-warning text-dark' : 'bg-info text-dark')" *ngIf="a.status === 'DONE'" data-testid="sa-state">{{a.certified_on ? (a.late ? 'Certified, done late' : 'Certified') : (a.late ? 'Counted late' : 'Counted')}}</span>
               <span class="badge bg-secondary" *ngIf="a.status === 'SKIPPED'">Skipped</span>
               <div class="small text-muted" *ngIf="a.status === 'DONE'">{{a.completed_name}} · {{a.lines_counted}} lines, {{a.lines_changed}} differed · {{a.variance_units}} units · &#8377;{{a.variance_value | number:'1.0-0'}}</div>
               <div class="small text-muted" *ngIf="a.status === 'SKIPPED'">{{a.note}}</div>
               <div class="small text-success" *ngIf="a.certified_on" data-testid="sa-certified">Certified by {{a.certified_name}} on {{a.certified_on | date:'dd MMM yyyy'}}</div>
-              <div class="small text-warning" *ngIf="a.status === 'DONE' && !a.certified_on && a.pending_lines" data-testid="sa-waiting">{{a.pending_lines}} adjustment{{a.pending_lines === 1 ? '' : 's'}} waiting for approval</div>
+              <div class="small text-warning" *ngIf="a.status === 'DONE' && !a.certified_on && a.pending_lines" data-testid="sa-waiting">{{a.pending_lines}} adjustment{{a.pending_lines === 1 ? '' : 's'}} to settle with a reason, then it can be signed off</div>
+              <div class="small text-muted" *ngIf="a.status === 'DONE' && !a.certified_on && !a.pending_lines" data-testid="sa-ready">All differences settled: ready to sign off</div>
             </td>
             <td class="text-end text-nowrap">
               <ng-container *ngIf="a.status === 'IN_PROGRESS' && a.count_id">
@@ -68,6 +69,7 @@
               <ng-container *ngIf="a.status === 'DONE' && a.count_id">
                 <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openDoc(a.id + '/sheet')" data-testid="sa-sheet">Count sheet</button>
                 <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openDoc(a.id + '/variance')" data-testid="sa-variance">Variance</button>
+                <button *ngIf="a.adjustments" class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="showAdjustments(a)" data-testid="sa-adjustments">Adjustments ({{a.adjustments}})</button>
                 <button *ngIf="a.certified_on" class="btn btn-outline-success btn-sm" type="button" (click)="openDoc(a.id + '/certificate')" data-testid="sa-certificate">Certificate</button>
                 <ng-container *ngIf="!a.certified_on && !a.pending_lines"><button *isAuth="'stockaudit.perform'" class="btn btn-primary btn-sm" type="button" (click)="certifying = { id: a.id, note: '' }" data-testid="sa-certify">Sign off</button></ng-container>
               </ng-container>
@@ -91,7 +93,7 @@
       <div *ngIf="plan" class="border rounded p-3 mb-3" data-testid="sa-plan-form">
         <div class="row g-3">
           <div class="col-md-6 col-lg-4"><label class="form-label">Name *</label><input class="form-control" maxlength="60" [(ngModel)]="plan.name" data-testid="sa-p-name"></div>
-          <div class="col-md-6 col-lg-3"><label class="form-label">Store</label><select class="form-select" [(ngModel)]="plan.store_id" data-testid="sa-p-store"><option [ngValue]="null">Every store</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
+          <div class="col-md-6 col-lg-3" *ngIf="multiStore"><label class="form-label">Store</label><select class="form-select" [(ngModel)]="plan.store_id" data-testid="sa-p-store"><option [ngValue]="null">Every store</option><option *ngFor="let s of opts.stores" [ngValue]="s.id">{{s.name}}</option></select></div>
           <div class="col-md-6 col-lg-3"><label class="form-label">Covers</label><select class="form-select" [(ngModel)]="plan.scope" data-testid="sa-p-scope"><option value="ALL">Everything</option><option value="CATEGORY">One category</option><option value="ROTATE">Rotate through categories</option><option value="FAST">Fast movers (top 30 by sales)</option><option value="SCHEDULE" *ngIf="auth.packOn('pharmacy')">Scheduled drugs (H, H1, X)</option><option value="EXPIRY">Expired and expiring batches</option></select></div>
           <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Every (days)</label><input type="number" min="1" max="366" class="form-control" [(ngModel)]="plan.frequency_days" data-testid="sa-p-days"></div>
           <div class="col-md-6 col-lg-3"><label class="form-label">First due</label><input type="date" class="form-control" [(ngModel)]="plan.first_due" data-testid="sa-p-first"></div>
@@ -105,9 +107,9 @@
         <div class="mt-3"><button class="btn btn-primary" type="button" (click)="savePlan()" data-testid="sa-p-save">Save plan</button> <button class="btn btn-outline-secondary ms-2" type="button" (click)="plan = null">Cancel</button></div>
       </div>
       <table class="table table-sm align-middle" data-testid="sa-plans">
-        <thead><tr><th>Plan</th><th>Store</th><th>Covers</th><th>Every</th><th>Done by</th><th>Active</th><th></th></tr></thead>
+        <thead><tr><th>Plan</th><th *ngIf="multiStore">Store</th><th>Covers</th><th>Every</th><th>Done by</th><th>Active</th><th></th></tr></thead>
         <tbody>
-          <tr *ngFor="let p of plans" data-testid="sa-plan-row"><td>{{p.name}}</td><td>{{p.store || 'Every store'}}</td><td>{{scopeLabels[p.scope]}}<div class="small text-muted" *ngIf="p.categories?.length">{{p.categories.join(', ')}}</div></td><td>{{p.frequency_days}} days</td><td>{{p.assigned_name || 'Anyone'}}</td><td>{{p.active ? 'Yes' : 'No'}}</td>
+          <tr *ngFor="let p of plans" data-testid="sa-plan-row"><td>{{p.name}}</td><td *ngIf="multiStore">{{p.store || 'Every store'}}</td><td>{{scopeLabels[p.scope]}}<div class="small text-muted" *ngIf="p.categories?.length">{{p.categories.join(', ')}}</div></td><td>{{p.frequency_days}} days</td><td>{{p.assigned_name || 'Anyone'}}</td><td>{{p.active ? 'Yes' : 'No'}}</td>
             <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="editPlan(p)">Edit</button></td></tr>
           <tr *ngIf="!plans.length"><td colspan="7" class="text-center text-muted py-3">No plans yet.</td></tr>
         </tbody>
@@ -125,10 +127,10 @@
       </div>
       <div class="table-responsive">
         <table class="table table-sm align-middle" data-testid="sa-register">
-          <thead><tr><th>No</th><th>Store</th><th>Covers</th><th>Completed</th><th class="text-end">Lines</th><th class="text-end">Differed</th><th class="text-end">Net value</th><th>Counted by</th><th>Certified</th></tr></thead>
+          <thead><tr><th>No</th><th *ngIf="multiStore">Store</th><th>Covers</th><th>Completed</th><th class="text-end">Lines</th><th class="text-end">Differed</th><th class="text-end">Net value</th><th>Counted by</th><th>Certified</th></tr></thead>
           <tbody>
             <tr *ngFor="let r of reg.rows" data-testid="sa-reg-row">
-              <td>{{r.no}}</td><td>{{r.store}}</td><td>{{r.scope_label}}<span class="small text-muted" *ngIf="r.category">: {{r.category}}</span></td>
+              <td>{{r.no}}</td><td *ngIf="multiStore">{{r.store}}</td><td>{{r.scope_label}}<span class="small text-muted" *ngIf="r.category">: {{r.category}}</span></td>
               <td class="text-nowrap">{{r.completed_on | date:'dd MMM yyyy'}}<span class="badge bg-secondary ms-1" *ngIf="r.status === 'SKIPPED'">Skipped</span></td>
               <td class="text-end">{{r.lines_counted}}</td><td class="text-end">{{r.lines_changed}}</td><td class="text-end">{{r.variance_value | number:'1.0-0'}}</td>
               <td>{{r.counted_by}}</td>

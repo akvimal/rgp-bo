@@ -62,6 +62,12 @@ export class StockAuditsComponent implements OnInit {
   /** SA-0012 */
   no(n: number) { return n ? `SA-${String(n).padStart(4, "0")}` : ""; }
 
+  /** the store is shown and chosen only when the business has more than one */
+  get multiStore(): boolean { return (this.opts.stores || []).length > 1; }
+
+  /** the adjustments this audit raised, with their reasons */
+  showAdjustments(a: any) { this.router.navigate(["/secure/store/stock/adjust"], { queryParams: { audit: a.id } }); }
+
   /** open a PDF in a new tab, or save an Excel file */
   openDoc(path: string, filename?: string) {
     this.error = "";
@@ -133,6 +139,11 @@ export class StockAuditsComponent implements OnInit {
   savePlan() {
     const p = this.plan;
     const req = p.id ? this.http.put(`${this.api}/plans/${p.id}`, p) : this.http.post(`${this.api}/plans`, p);
-    req.subscribe(() => { this.message = "Plan saved."; this.plan = null; this.load(); }, e => this.error = this.msg(e));
+    req.subscribe((r: any) => {
+      this.message = r?.created
+        ? `Plan saved. ${r.created} audit${r.created === 1 ? "" : "s"} planned: see Due.`
+        : r?.appears_on ? `Plan saved. Its first audit appears in Due on ${r.appears_on}, a week before it is due.` : "Plan saved.";
+      this.plan = null; this.load();
+    }, e => this.error = this.msg(e));
   }
 }

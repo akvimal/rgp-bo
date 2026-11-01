@@ -1,5 +1,6 @@
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { Component } from "@angular/core";
+import { ActivatedRoute, Router } from "@angular/router";
 import { StockService } from "../stock.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
 import { STOCK_ADJUSTMENT_REASONS } from "../reason-codes";
@@ -21,10 +22,60 @@ export class StockAdjustComponent {
     editForm:any = { id: null, qty: 0, reasoncode: '', comments: '' };
     message = '';
 
-    constructor(private stockService:StockService, private confirm:ConfirmService, private storeContext:StoreContextService) {}
+    /** the audit whose adjustments are shown (from the Done list), if any */
+    auditFilter:number|null = null;
+
+    constructor(private stockService:StockService, private confirm:ConfirmService, private storeContext:StoreContextService, private route:ActivatedRoute, private router:Router) {}
 
     ngOnInit() {
-       this.fetchAdjustments();
+       this.route.queryParamMap.subscribe(p => {
+           this.auditFilter = Number(p.get('audit')) || null;
+           this.fetchAdjustments();
+       });
+    }
+
+    /** SA-0012 */
+    auditNo(n:number):string { return n ? `SA-${String(n).padStart(4, '0')}` : ''; }
+
+    showAudit(item:any){ this.router.navigate([], { queryParams: { audit: item.auditid }, queryParamsHandling: 'merge' }); }
+    showAll(){ this.router.navigate([], { queryParams: { audit: null }, queryParamsHandling: 'merge' }); }
+
+    get auditLabel():string {
+        const row = this.quantities.find((q:any) => q.auditno);
+        return row ? this.auditNo(row.auditno) : 'this audit';
+    }
+
+    // ------------------------------------------------------------ settling with a reason
+    /** the adjustment being approved, rejected or deleted, with the reason asked for */
+    settle:any = null;
+    settleError = '';
+    readonly settleReasons = STOCK_ADJUSTMENT_REASONS;
+
+    /** a difference found by a count is approved with the reason it arose; any other adjustment already carries its reason */
+    private askSettle(item:any, action:'APPROVE'|'REJECT'|'DELETE'){
+        this.message = ''; this.settleError = '';
+        this.settle = { item, action, reasoncode: '', note: '' };
+    }
+
+    get settleNeedsReason():boolean { return !!this.settle && this.settle.action === 'APPROVE'; }
+    get settleNeedsNote():boolean {
+        if(!this.settle) return false;
+        return this.settle.action !== 'APPROVE' || this.settle.reasoncode === 'OTHER';
+    }
+    get settleReady():boolean {
+        if(!this.settle) return false;
+        if(this.settleNeedsReason && !this.settle.reasoncode) return false;
+        return !this.settleNeedsNote || String(this.settle.note || '').trim().length >= 3;
+    }
+
+    confirmSettle(){
+        const s = this.settle; if(!s || !this.settleReady) return;
+        this.settleError = '';
+        const done = () => { this.settle = null; this.fetchAdjustments(); };
+        const fail = (err:any) => { const m = err?.error?.message; this.settleError = (Array.isArray(m) ? m.join(' ') : m) || 'Could not save.'; };
+        if(s.action === 'APPROVE') this.stockService.approveAdjustment(s.item.id, { reasoncode: s.reasoncode, note: s.note }).subscribe(done, fail);
+        else if(s.action === 'REJECT') this.stockService.rejectAdjustment(s.item.id, s.note).subscribe(done, fail);
+        else this.stockService.deleteQtyAdjustment(s.item.id, s.note).subscribe(done, fail);
     }
 
     /** batches that are in a count right now */
@@ -38,7 +89,7 @@ export class StockAdjustComponent {
 
     fetchAdjustments(){
         this.loadCounting();
-        this.stockService.findAllQtyAdjustments().subscribe((data:any) => {
+        this.stockService.findAllQtyAdjustments(this.auditFilter).subscribe((data:any) => {
             this.quantities = data;
         });
     }
@@ -70,6 +121,8 @@ export class StockAdjustComponent {
             this.message = 'This batch is being counted right now. Approving moves the stock while the count is open: it is taken into account when the count is submitted. Press Approve again to go ahead.';
             return;
         }
+        // a count difference is approved with the reason it arose; any other adjustment already has its reason
+        if(item.countid){ this.askSettle(item, 'APPROVE'); return; }
         this.stockService.approveAdjustment(item.id).subscribe(() => this.fetchAdjustments(), (err:any) => this.message = err?.error?.message || 'Unable to approve this adjustment.');
     }
 
@@ -80,15 +133,13 @@ export class StockAdjustComponent {
     }
 
     reject(item:any){
-        this.message = '';
-        this.stockService.rejectAdjustment(item.id).subscribe(() => this.fetchAdjustments(), (err:any) => this.message = err?.error?.message || 'Unable to reject this adjustment.');
+        this.askSettle(item, 'REJECT');
     }
 
+    /** only a draft that never moved the stock can be deleted; the reason is recorded */
+    canDelete(item:any):boolean { return !item.countid && (item.status === 'PENDING' || item.status === 'REJECTED'); }
+
     delete(item:any){
-        const id = typeof item === 'object' ? item?.id : item;
-        const label = typeof item === 'object' ? (item?.product?.title || item?.title || 'this adjustment') : 'this adjustment';
-        this.confirm.confirmDelete(label, () => {
-            this.stockService.deleteQtyAdjustment(id).subscribe(() => this.fetchAdjustments());
-        }, { entity: 'stock adjustment', consequence: 'Available stock will be recalculated.' });
+        this.askSettle(item, 'DELETE');
     }
 }

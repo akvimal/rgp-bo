@@ -99,13 +99,19 @@ export class StockAuditService {
       id = r.id;
     }
     await this.audit.record({ userId: c.id, action: 'stock_audit.plan_saved', entityType: 'stock_audit_plan', entityId: id, summary: `Stock audit plan ${p.name}: ${p.scope.toLowerCase()} every ${p.freq} days`, details: {} });
-    return { id };
+    // the plan's audit appears in Due now when it is within the lead time, instead of tomorrow morning
+    let created = 0;
+    try { created = (await this.generate(c.id, id as number)).created; } catch (e) { this.log.error(`planning after saving a plan failed: ${(e as Error).message}`); }
+    const appears = new Date(new Date(p.first + 'T00:00:00Z').getTime() - LEAD_DAYS * 86400000).toISOString().slice(0, 10);
+    return { id, created, first_due: p.first, appears_on: appears > today() ? appears : null };
   }
 
   // ------------------------------------------------------------------ making the audits
   /** each active plan and store gets its next audit once it is within a week of due; nothing is made while one is still open */
-  async generate(by?: number) {
-    const plans = await this.manager.query(`select * from stock_audit_plan where active`);
+  async generate(by?: number, onlyPlan?: number) {
+    const plans = onlyPlan
+      ? await this.manager.query(`select * from stock_audit_plan where active and id = $1`, [onlyPlan])
+      : await this.manager.query(`select * from stock_audit_plan where active`);
     let created = 0;
     for (const p of plans) {
       const stores = p.store_id
@@ -159,7 +165,7 @@ export class StockAuditService {
     if (q?.overdue === 'true') where.push(`a.status in ('PLANNED', 'IN_PROGRESS') and a.due_on < current_date`);
     if (+q?.store_id) { args.push(+q.store_id); where.push(`a.store_id = $${args.length}`); }
     return this.manager.query(
-      `select a.id, a.audit_no, a.scope, a.certified_on, ce.full_name as certified_name, (select count(*) from product_qtychange q where q.count_id = a.count_id and coalesce(q.status, 'PENDING') = 'PENDING')::int as pending_lines, a.plan_id, p.name as plan, a.store_id, st.location as store, a.category, to_char(a.due_on, 'YYYY-MM-DD') as due_on, a.status, a.assigned_to, u.full_name as assigned_name,
+      `select a.id, a.audit_no, a.scope, a.certified_on, ce.full_name as certified_name, (select count(*) from product_qtychange q where q.count_id = a.count_id and coalesce(q.status, 'PENDING') = 'PENDING')::int as pending_lines, (select count(*) from product_qtychange q where q.count_id = a.count_id)::int as adjustments, a.plan_id, p.name as plan, a.store_id, st.location as store, a.category, to_char(a.due_on, 'YYYY-MM-DD') as due_on, a.status, a.assigned_to, u.full_name as assigned_name,
               a.count_id, a.started_on, a.completed_on, cb.full_name as completed_name, a.lines_counted, a.lines_changed, a.variance_units, a.variance_value::float as variance_value, a.note,
               (a.status in ('PLANNED', 'IN_PROGRESS') and a.due_on < current_date) as overdue, (a.status = 'DONE' and a.completed_on::date > a.due_on) as late
          from stock_audit a join stores st on st.id = a.store_id left join stock_audit_plan p on p.id = a.plan_id left join app_user u on u.id = a.assigned_to left join app_user cb on cb.id = a.completed_by left join app_user ce on ce.id = a.certified_by
