@@ -23,6 +23,7 @@ export interface Sale {
     cashamt?:number,
     props?:any,
     docpending?:any,
+    chronicoverride?:boolean,
     mrptotal?:number,
     saving?:number,
     expreturndays?:number,
