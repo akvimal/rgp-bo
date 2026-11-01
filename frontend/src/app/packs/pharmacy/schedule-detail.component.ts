@@ -42,7 +42,14 @@ export class ScheduleDetailComponent implements OnChanges {
 
     constructor(private service: DrugRegisterService, private files: FileUploadService, private docs: DocumentsService, private customers: CustomersService) {}
 
+    /** what is already on record for the customer: prescriptions kept with them, and the patient and prescriber of their last supplies */
+    ctx: { prescriptions: any[]; last: any[] } | null = null;
+    /** the one in use now ("rx12" or "last0"), so the person can see it was taken */
+    usedKey = '';
+    private ctxFor = 0;
+
     ngOnChanges(c: SimpleChanges) {
+        if (c['customer']) this.loadContext();
         // the patient is usually the customer: start from them, once, when nothing has been typed
         if ((c['customer'] || c['detail']) && this.customer && !this.detail.patient_name && this.customer.name && String(this.customer.name).trim().toUpperCase() !== 'NIL') {
             this.detail.patient_name = this.customer.name;
@@ -51,6 +58,35 @@ export class ScheduleDetailComponent implements OnChanges {
     }
 
     get problems(): string[] { return detailProblems(this.detail); }
+
+    private loadContext() {
+        const id = this.customerId;
+        if (id === this.ctxFor) return;
+        this.ctxFor = id; this.ctx = null; this.usedKey = '';
+        if (!id) return;
+        this.service.customerContext(id).subscribe((r) => { if (this.ctxFor === id) this.ctx = r; }, () => this.ctx = null);
+    }
+
+    /** take the details of a prescription kept with the customer, and carry it on the bill (not when adding details to a bill already completed) */
+    useRx(p: any) {
+        if (p.patient) this.detail.patient_name = p.patient;
+        if (p.doctor) { this.detail.prescriber_name = p.doctor; this.detail.prescriber_reg_no = p.reg_no || ''; this.detail.prescriber_address = p.address || ''; }
+        if (p.date && p.date <= this.today) this.detail.rx_date = p.date;
+        this.usedKey = 'rx' + p.id;
+        if (!this.later) this.uploaded.emit({ id: p.id, category: p.category, name: p.name, alias: p.alias, path: p.path, docprops: p.docprops });
+    }
+
+    /** the same patient and prescriber as the customer's last supply */
+    useLast(l: any, i: number) {
+        this.detail.patient_name = l.patient_name || '';
+        this.detail.patient_address = l.patient_address || this.detail.patient_address || '';
+        this.detail.patient_age = l.patient_age || '';
+        this.detail.prescriber_name = l.prescriber_name || '';
+        this.detail.prescriber_reg_no = l.prescriber_reg_no || '';
+        this.detail.prescriber_address = l.prescriber_address || '';
+        this.detail.rx_date = l.rx_date && l.rx_date <= this.today ? l.rx_date : null;
+        this.usedKey = 'last' + i;
+    }
 
     get names(): string {
         const seen: { [k: string]: boolean } = {};

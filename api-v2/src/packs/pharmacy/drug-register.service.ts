@@ -36,13 +36,19 @@ export class DrugRegisterService {
     return isDay(s?.setting_value) ? s.setting_value : istDay();
   }
 
-  /** whether a bill with a scheduled drug is held back until the patient and the prescriber are given; by default it is not, and the details can follow */
-  async enforce(m: EntityManager = this.manager): Promise<boolean> {
+  /**
+   * the schedules whose bills are held back until the patient and the prescriber are given; the others can be completed and the details added later.
+   * The setting is a list ("H1,X"); "yes" means every schedule, and "no" or nothing means none.
+   */
+  async enforced(m: EntityManager = this.manager): Promise<Schedule[]> {
     const [s] = await m.query(`select setting_value from app_setting where setting_key = 'schedule_register_enforce' and active and not archive limit 1`);
-    return String(s?.setting_value ?? 'no').trim().toLowerCase() === 'yes';
+    const v = String(s?.setting_value ?? '').trim().toLowerCase();
+    if (v === 'yes') return [...SCHEDULES];
+    if (!v || v === 'no') return [];
+    return parseRequired(v);
   }
 
-  async config() { return { required: await this.required(), since: await this.since(), enforce: await this.enforce() }; }
+  async config() { return { required: await this.required(), since: await this.since(), enforce: await this.enforced() }; }
 
   // ------------------------------------------------------------------ the bill
   private async scheduledProducts(m: EntityManager, productIds: number[]): Promise<ScheduledProduct[]> {
@@ -58,13 +64,14 @@ export class DrugRegisterService {
     })).filter((l) => l.productid > 0);
   }
 
-  /** the hook before a bill is saved: when the shop holds bills back, a completed bill with a scheduled drug needs the patient and the prescriber */
+  /** the hook before a bill is saved: a completed bill with a drug of a schedule the shop holds back needs the patient and the prescriber */
   async check(ctx: SaleContext) {
     if (String(ctx.sale?.status || '').toUpperCase() !== 'COMPLETE') return;
-    if (!(await this.enforce(ctx.manager))) return;
+    const enforced = await this.enforced(ctx.manager);
+    if (!enforced.length) return;
     const lines = this.billLines(ctx.sale);
     const scheduled = scheduledLines(lines, await this.scheduledProducts(ctx.manager, [...new Set(lines.map((l) => l.productid))]));
-    const need = requiredLines(scheduled, await this.required(ctx.manager));
+    const need = requiredLines(scheduled, await this.required(ctx.manager)).filter((n) => enforced.includes(n.product.schedule));
     if (!need.length) return;
     const problems = detailProblems(ctx.sale?.props?.scheduledetail, istDay());
     if (!problems.length) return;
@@ -154,6 +161,90 @@ export class DrugRegisterService {
     });
     await this.audit.record({ userId: user.id, action: 'drug_register.details_added', entityType: 'sale', entityId: +sale.id, summary: `Register details added to bill ${sale.bill_no}`, details: { patient: d.patient_name, prescriber: d.prescriber_name } });
     return { sale_id: +sale.id };
+  }
+
+  // ------------------------------------------------------------------ what is already on record for a customer (for the counter)
+  /**
+   * The prescriptions kept with the customer and the patient and prescriber of their last supplies, so a bill for a regular customer can use them with one tap
+   * instead of asking again. A prescription's doctor is matched to the prescribers the shop already knows, for the registration number.
+   */
+  async customerContext(user: any, customerId: number) {
+    const businessId = await businessOfUser(this.manager, user.id);
+    if (!businessId || !(Number(customerId) > 0)) return { prescriptions: [], last: [] };
+    const docs = await this.manager.query(
+      `select d.id, d.doc_name as name, d.doc_path as path, d.alias, d.category, d.doc_props, to_char(d.created_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as added
+         from customer_documents cd join documents d on d.id = cd.document_id
+        where cd.customer_id = $1 and cd.active and not cd.archive and d.active and not d.archive and lower(d.category) = 'prescription'
+        order by d.created_on desc limit 5`, [customerId]);
+    const prescriptions: any[] = [];
+    for (const d of docs) {
+      let props: any = d.doc_props;
+      if (typeof props === 'string') { try { props = JSON.parse(props); } catch { props = []; } }
+      const get = (id: string) => String((Array.isArray(props) ? props.find((x: any) => x?.id === id)?.value : '') ?? '').trim();
+      const doctor = get('doctorname');
+      const [match] = doctor ? await this.manager.query(`select reg_no, address from prescriber where business_id = $1 and active and upper(name) = upper($2) limit 1`, [businessId, doctor]) : [null];
+      const date = get('prescdate');
+      prescriptions.push({
+        id: d.id, name: d.name, path: d.path, alias: d.alias, category: d.category, docprops: JSON.stringify(Array.isArray(props) ? props : []), added: d.added,
+        doctor, date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '', patient: get('ptntname'), reg_no: match?.reg_no ?? '', address: match?.address ?? '',
+      });
+    }
+    const last = await this.manager.query(
+      `select * from (
+         select distinct on (upper(r.patient_name), upper(r.prescriber_name)) r.patient_name, r.patient_address, r.patient_age, r.prescriber_name, r.prescriber_reg_no, r.prescriber_address,
+                to_char(r.rx_date, 'YYYY-MM-DD') as rx_date, r.bill_no, to_char(r.entry_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as entry_on, r.entry_on as at
+           from schedule_register r join sale s on s.id = r.sale_id
+          where s.customer_id = $1 and r.business_id = $2 and r.superseded_on is null
+          order by upper(r.patient_name), upper(r.prescriber_name), r.entry_on desc) x
+        order by x.at desc limit 3`, [customerId, businessId]);
+    return { prescriptions, last: last.map(({ at, ...rest }: any) => rest) };
+  }
+
+  /**
+   * How the scheduled supplies of a period were covered: those with the patient and the prescriber in the register, those that also carry a prescription
+   * picture, and those with no register line at all, by schedule and by the person who made the sale. Only supplies since the register began and of the
+   * schedules the shop asks details for are counted.
+   */
+  async coverageReport(user: any, q: any) {
+    const sc = await this.scope(user);
+    const storeId = Number(q?.storeid) || null;
+    if (storeId && !sc.stores.some((s) => s.id === storeId)) throw new BadRequestException('That store is not one you can see.');
+    const ids = storeId ? [storeId] : sc.stores.map((s) => s.id);
+    const to = isDay(q?.to) ? q.to : istDay();
+    const asked = isDay(q?.from) ? q.from : addDays(to, -29);
+    if (asked > to) throw new BadRequestException('The period starts after it ends.');
+    const since = await this.since();
+    const from = asked > since ? asked : since;
+    const required = await this.required();
+    const empty = { from, to, since, required, totals: { supplies: 0, covered: 0, with_rx: 0, missing: 0 }, by_schedule: [], by_user: [] };
+    if (!ids.length || !required.length || from > to) return empty;
+    const rows = await this.manager.query(
+      `select upper(p.more_props->>'schedule') as schedule, coalesce(s.acting_user_id, s.created_by) as uid,
+              exists (select 1 from schedule_register r where r.sale_item_id = si.id and r.superseded_on is null) as covered,
+              coalesce((s.more_props::jsonb -> 'documents') @> '[{"category":"Prescription"}]'::jsonb, false) as has_rx
+         from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id
+        where si.status = 'Complete' and si.active and not si.archive and upper(p.more_props->>'schedule') = any($1::text[]) and s.store_id = any($2::int[])
+          and s.bill_date >= $3::date and s.bill_date < ($4::date + 1)`, [required, ids, from, to]);
+    const tally = () => ({ supplies: 0, covered: 0, with_rx: 0, missing: 0 });
+    const add = (t: any, r: any) => { t.supplies += 1; if (r.covered) t.covered += 1; else t.missing += 1; if (r.has_rx) t.with_rx += 1; };
+    const totals = tally();
+    const bySchedule = new Map<string, any>();
+    const byUser = new Map<number, any>();
+    for (const r of rows) {
+      add(totals, r);
+      if (!bySchedule.has(r.schedule)) bySchedule.set(r.schedule, { schedule: r.schedule, ...tally() });
+      add(bySchedule.get(r.schedule), r);
+      const uid = r.uid === null ? 0 : +r.uid;
+      if (!byUser.has(uid)) byUser.set(uid, { user_id: uid, ...tally() });
+      add(byUser.get(uid), r);
+    }
+    const names = byUser.size ? await this.manager.query(`select id, full_name from app_user where id = any($1::int[])`, [[...byUser.keys()]]) : [];
+    const nameOf = new Map<number, string>(names.map((n: any) => [+n.id, String(n.full_name).trim()]));
+    return {
+      ...empty, totals,
+      by_schedule: SCHEDULES.filter((s) => bySchedule.has(s)).map((s) => bySchedule.get(s)),
+      by_user: [...byUser.values()].map((u) => ({ ...u, name: nameOf.get(u.user_id) || 'Not recorded' })).sort((a, b) => b.missing - a.missing || b.supplies - a.supplies),
+    };
   }
 
   // ------------------------------------------------------------------ prescribers (for the counter)

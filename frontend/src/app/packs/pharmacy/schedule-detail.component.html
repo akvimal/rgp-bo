@@ -5,6 +5,22 @@
             <span *ngIf="enforce || later">The drug register needs the patient and the prescriber{{later ? '' : ' before the bill is completed'}}.</span>
             <span *ngIf="!enforce && !later" data-testid="sd-optional">Optional: the bill can be completed without these. Give them now, or a manager can add them later from the Drug register.</span>
         </div>
+        <!-- a regular customer: what the shop already has, taken with one tap instead of asking again -->
+        <div class="border rounded p-2 mb-2 bg-light" *ngIf="ctx && (ctx.prescriptions.length || ctx.last.length)" data-testid="sd-known">
+            <div class="small fw-semibold text-muted mb-1">Already on record for {{customerName || 'this customer'}}</div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1" *ngFor="let p of ctx.prescriptions" data-testid="sd-known-rx">
+                <i class="bi bi-file-earmark-medical text-muted"></i>
+                <span class="small">Prescription on file: <strong>{{p.doctor || 'doctor not recorded'}}</strong>{{p.date ? ', ' + (p.date | date:'dd MMM yyyy') : ', added ' + (p.added | date:'dd MMM yyyy')}}</span>
+                <button type="button" class="btn btn-outline-primary btn-sm py-0" (click)="useRx(p)" data-testid="sd-use-rx">Use it</button>
+                <span class="small text-success" *ngIf="usedKey === 'rx' + p.id" data-testid="sd-used"><i class="bi bi-check-circle"></i> in use{{later ? '' : ', attached to this bill'}}</span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1" *ngFor="let l of ctx.last; let i = index" data-testid="sd-known-last">
+                <i class="bi bi-arrow-repeat text-muted"></i>
+                <span class="small">Same as last supply (bill {{l.bill_no}}, {{l.entry_on | date:'dd MMM yyyy'}}): <strong>{{l.prescriber_name}}</strong> for {{l.patient_name}}</span>
+                <button type="button" class="btn btn-outline-primary btn-sm py-0" (click)="useLast(l, i)" data-testid="sd-use-last">Use it</button>
+                <span class="small text-success" *ngIf="usedKey === 'last' + i" data-testid="sd-used"><i class="bi bi-check-circle"></i> in use</span>
+            </div>
+        </div>
         <div class="row g-2">
             <div class="col-lg-6">
                 <div class="small fw-semibold text-muted mb-1">Patient</div>

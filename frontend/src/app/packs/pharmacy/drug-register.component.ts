@@ -18,6 +18,8 @@ export class DrugRegisterComponent implements OnInit {
     error = '';
     loading = false;
     f: any = { schedule: '', from: '', to: '', storeid: null, q: '', superseded: false };
+    /** how the scheduled supplies of the period were covered */
+    report: any = null;
     /** the sales with no register line, one entry for each bill */
     bills: any[] = [];
     /** the bill whose patient and prescriber are being added */
@@ -41,6 +43,7 @@ export class DrugRegisterComponent implements OnInit {
 
     load() {
         this.error = ''; this.loading = true;
+        this.service.coverageReport({ from: this.f.from, to: this.f.to, storeid: this.f.storeid }).subscribe((c: any) => this.report = c, () => this.report = null);
         this.service.register(this.query()).subscribe((r: any) => { this.data = r; this.bills = this.group(r?.coverage?.items || []); this.loading = false; }, (e: any) => { this.loading = false; this.error = this.msg(e, 'Could not load the register.'); });
     }
 
@@ -57,6 +60,9 @@ export class DrugRegisterComponent implements OnInit {
         }
         return Array.from(by.values());
     }
+
+    /** the share of supplies that have the patient and the prescriber in the register */
+    pct(n: number, of: number): string { return of ? Math.round((n / of) * 100) + '%' : '-'; }
 
     titles(b: any): string { return b.drugs.map((d: any) => `${d.title} (${d.more_props.schedule})`).join(', '); }
 

@@ -149,7 +149,7 @@ test.describe('Drug register @p1', () => {
     await required(api, 'H1,H,X');
     await setting(api, 'schedule_register_enforce', 'no');                                             // the shop that does not hold bills back
     const h1 = await drug(api, `opt-${run}`, 'H1');
-    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ enforce: false });
+    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ enforce: [] });
 
     const made = await api.request('POST', '/sales', bill(h1), SALES);                                 // completes without any details
     expect(made.status, JSON.stringify(made.body)).toBeLessThan(300);
@@ -172,8 +172,46 @@ test.describe('Drug register @p1', () => {
 
     // the shop that holds bills back still refuses the same bill without details
     await setting(api, 'schedule_register_enforce', 'yes');
-    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ enforce: true });
+    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ enforce: ['H1', 'H', 'X'] });
     expect((await api.request('POST', '/sales', bill(h1), SALES)).status).toBe(400);
+  });
+
+  test('DREG-7 the shop holds back only the schedules it names; a regular customer\'s prescriber and prescription are offered again; the coverage report counts how supplies were covered @happy', async ({ api }) => {
+    await required(api, 'H1,H,X');
+    await setting(api, 'schedule_register_enforce', 'H1,X');                                           // the default: H1 and X are held back, H is optional
+    expect((await api.request('GET', '/schedule/config', undefined, SALES)).body).toMatchObject({ enforce: ['H1', 'X'] });
+    const h = await drug(api, `ps-h-${run}`, 'H');
+    const h1 = await drug(api, `ps-h1-${run}`, 'H1');
+    expect((await api.request('POST', '/sales', bill(h), SALES)).status).toBeLessThan(300);            // H completes without details
+    expect((await api.request('POST', '/sales', bill(h1), SALES)).status).toBe(400);                   // H1 is held back
+
+    // a regular customer: the first supply carries the details, and the next bill finds them on record
+    const patient = `${GOOD.patient_name} REG`;
+    const mobile = `9${Math.floor(100000000 + Math.random() * 899999999)}`;
+    const first = await api.request('POST', '/sales', bill(h1, { customer: { name: 'QA Regular Customer', mobile }, props: { scheduledetail: { ...GOOD, patient_name: patient } } }), SALES);
+    expect(first.status, JSON.stringify(first.body)).toBeLessThan(300);
+    const cid = (await api.request('GET', `/sales/${first.body.id}`, undefined, MGR)).body.customerid;
+    expect(cid).toBeTruthy();
+    const ctx = (await api.request('GET', `/schedule/customer/${cid}/context`, undefined, SALES)).body;
+    expect(ctx.prescriptions).toEqual([]);
+    expect(ctx.last[0]).toMatchObject({ patient_name: patient, prescriber_name: GOOD.prescriber_name, prescriber_reg_no: GOOD.prescriber_reg_no, bill_no: expect.anything() });
+
+    // a prescription kept with the customer is offered too, with the doctor's registration number from the prescribers the shop knows
+    const props = [{ id: 'prescdate', label: 'Date', value: '2026-10-03' }, { id: 'doctorname', label: 'Doctor Name', value: GOOD.prescriber_name }, { id: 'ptntname', label: 'Patient Name', value: patient }];
+    const doc = await api.request('POST', '/documents', { name: 'rx.png', path: 'qa/none', extn: 'png', category: 'Prescription', alias: 'QA prescription', docprops: JSON.stringify(props) }, MGR);
+    expect(doc.status, JSON.stringify(doc.body)).toBeLessThan(300);
+    expect((await api.request('POST', '/customers/documents/add', { customerId: cid, documentId: doc.body.id }, MGR)).status).toBeLessThan(300);
+    const withRx = (await api.request('GET', `/schedule/customer/${cid}/context`, undefined, SALES)).body;
+    expect(withRx.prescriptions[0]).toMatchObject({ id: doc.body.id, doctor: GOOD.prescriber_name, date: '2026-10-03', patient, reg_no: GOOD.prescriber_reg_no });
+    expect(JSON.parse(withRx.prescriptions[0].docprops)).toHaveLength(3);
+
+    // how the supplies were covered: counted by schedule and by who sold them; for the people who run the shop only
+    const rep = (await api.request('GET', '/schedule/coverage-report?from=2020-01-01&to=2099-12-31', undefined, MGR)).body;
+    expect(rep.totals.supplies).toBeGreaterThan(0);
+    expect(rep.totals.covered + rep.totals.missing).toBe(rep.totals.supplies);
+    expect(rep.by_schedule.length).toBeGreaterThan(0);
+    expect(rep.by_user[0]).toHaveProperty('name');
+    expect((await api.request('GET', '/schedule/coverage-report', undefined, SALES)).status).toBe(403);
   });
 
   test('DREG-5 the drug register is a module of the pharmacy pack: switched off, it is gone and the bill is not held up @negative', async ({ api }) => {

@@ -29,11 +29,15 @@ export class DrugRegisterController {
   /** what the counter needs: which schedules need details on a bill */
   @Get('config') config() { return this.register.config(); }
   @Get('prescribers') prescribers(@Query('q') q: string, @User() u: any) { return this.register.prescribers(u, q); }
+  /** what is already on record for a customer: prescriptions kept with them and the patient and prescriber of their last supplies */
+  @Get('customer/:id/context') customerContext(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.register.customerContext(u, id); }
 
   @Get('register') async list(@Query() q: any, @User() u: any) { await this.assertReader(u); return this.register.register(u, q); }
   @Get('register/pdf') async pdf(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.pdf(u, q)); }
   @Get('register/xlsx') async xlsx(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.xlsx(u, q)); }
   @Get('coverage') async coverage(@User() u: any) { await this.assertReader(u); return this.register.coverage(u); }
+  /** how the scheduled supplies of a period were covered, by schedule and by the person who made the sale */
+  @Get('coverage-report') async coverageReport(@Query() q: any, @User() u: any) { await this.assertReader(u); return this.register.coverageReport(u, q); }
   /** the patient and the prescriber for a bill that was completed without them */
   @Post('sales/:id/details') async addDetails(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { await this.assertReader(u); return this.register.addDetails(u, id, b); }
 }

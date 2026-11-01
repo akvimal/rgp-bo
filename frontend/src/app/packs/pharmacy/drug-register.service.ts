@@ -8,7 +8,9 @@ export class DrugRegisterService {
 
     constructor(private http: HttpClient) {}
 
-    config() { return this.http.get<{ required: string[]; since: string; enforce: boolean }>(`${this.api}/config`); }
+    config() { return this.http.get<{ required: string[]; since: string; enforce: string[] }>(`${this.api}/config`); }
+    /** the prescriptions kept with a customer and the patient and prescriber of their last supplies */
+    customerContext(customerId: number) { return this.http.get<{ prescriptions: any[]; last: any[] }>(`${this.api}/customer/${customerId}/context`); }
     prescribers(q: string) { return this.http.get<any[]>(`${this.api}/prescribers`, { params: { q } }); }
 
     private params(q: any) {
@@ -19,6 +21,8 @@ export class DrugRegisterService {
     register(q: any) { return this.http.get<any>(`${this.api}/register`, { params: this.params(q) }); }
     file(kind: 'pdf' | 'xlsx', q: any) { return this.http.get(`${this.api}/register/${kind}`, { params: this.params(q), responseType: 'blob' }); }
     coverage() { return this.http.get<any>(`${this.api}/coverage`); }
+    /** how the scheduled supplies of a period were covered, by schedule and by the person who made the sale */
+    coverageReport(q: any) { return this.http.get<any>(`${this.api}/coverage-report`, { params: this.params(q) }); }
     /** the patient and the prescriber for a bill that was completed without them */
     addDetails(saleId: number, detail: any) { return this.http.post<any>(`${this.api}/sales/${saleId}/details`, detail); }
 }

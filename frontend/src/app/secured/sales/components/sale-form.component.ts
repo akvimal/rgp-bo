@@ -66,7 +66,7 @@ export class SaleFormComponent {
 
     ngOnInit(){
       // pharmacy pack: which schedules need the patient and the prescriber on a bill (nothing is asked when the business has not got the drug register)
-      if (this.auth.moduleOn('drug_register')) this.drugRegister.config().subscribe((c) => { this.scheduleRequired = c.required || []; this.scheduleEnforce = !!c.enforce; }, () => this.scheduleRequired = []);
+      if (this.auth.moduleOn('drug_register')) this.drugRegister.config().subscribe((c) => { this.scheduleRequired = c.required || []; this.scheduleEnforce = c.enforce || []; }, () => this.scheduleRequired = []);
 
       this.sale.billdate = new Date();
       this.sale['customer'] = this.customer;
@@ -194,8 +194,8 @@ export class SaleFormComponent {
   // ------------------------------------------------------------------ pharmacy pack: the drug register
   scheduleDetail: any = {};
   scheduleRequired: string[] = [];
-  /** the shop holds a bill back until the patient and the prescriber are given; by default they are optional */
-  scheduleEnforce = false;
+  /** the schedules the shop holds a bill back for until the patient and the prescriber are given; for the others they are optional */
+  scheduleEnforce: string[] = [];
 
   /** the drugs on the bill whose schedule needs the patient and the prescriber */
   get scheduledItems(): any[] {
@@ -205,7 +205,12 @@ export class SaleFormComponent {
 
   /** the bill cannot be completed until the register has what it needs (only when the shop holds bills back; otherwise the details can follow) */
   get scheduleMissing(): boolean {
-    return this.scheduleEnforce && this.scheduledItems.length > 0 && detailProblems(this.scheduleDetail).length > 0;
+    return this.enforcedHere && detailProblems(this.scheduleDetail).length > 0;
+  }
+
+  /** a drug on this bill is of a schedule the shop holds bills back for */
+  get enforcedHere(): boolean {
+    return this.scheduledItems.some((i:any) => this.scheduleEnforce.includes(String(i.more_props?.schedule ?? '').toUpperCase()));
   }
 
   /** a prescription was uploaded from the scheduled-drugs panel: the bill carries it like any document picked from the customer's documents */

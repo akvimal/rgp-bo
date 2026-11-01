@@ -80,7 +80,7 @@
 </div>
 
 <!-- Pharmacy pack: the patient and the prescriber for scheduled drugs -->
-<app-schedule-detail *ngIf="scheduledItems.length" [detail]="scheduleDetail" [drugs]="scheduledItems" [customer]="sale.customer" [enforce]="scheduleEnforce" [documents]="documents" (uploaded)="onPrescriptionUploaded($event)"></app-schedule-detail>
+<app-schedule-detail *ngIf="scheduledItems.length" [detail]="scheduleDetail" [drugs]="scheduledItems" [customer]="sale.customer" [enforce]="enforcedHere" [documents]="documents" (uploaded)="onPrescriptionUploaded($event)"></app-schedule-detail>
 
 <!-- Payment and total -->
 <div class="card mb-2" *ngIf="sale.items && sale.items.length > 0" data-testid="sale-pay-card">
