@@ -5,6 +5,7 @@ import { Entitlements, TenantStatus, documentLimits, effectiveStatus, sign } fro
 import { checkGrants, effectiveModules } from './plans';
 import { SLUG, createDemoDatabase, createTenantDatabase, dbNameFor, dropTenantDatabase, migrateTenantDatabase, randomPassword, randomSecret, resetDemoDatabase } from './provision';
 import { KEY_SHAPE, lock, unlock } from './secrets';
+import { APP_URL_SHAPE, BOT_NAME_SHAPE, BOT_TOKEN_SHAPE, checkBotToken, cleanAppUrl, cleanBotName } from './telegram';
 import { captureTemplate, templateInfo } from './template';
 
 const FIRST_PORT = Number(process.env.TENANT_FIRST_PORT || 8201);
@@ -24,8 +25,13 @@ const AI_PROVIDERS = ['openrouter', 'anthropic'];
 
 /** a customer without its secrets: the assistant's key is never sent out, only whether there is one and its last four characters */
 const publicView = (t: any) => {
-  const { secret, db_password, ai_key_enc, ai_key_hint, ...rest } = t;
-  return { ...rest, ai: { mode: t.ai_mode || 'platform', provider: t.ai_provider, keySet: !!ai_key_enc, keyHint: ai_key_hint || null, model: t.ai_model || '', allowed: t.ai_allowed || '' } };
+  const { secret, db_password, ai_key_enc, ai_key_hint, telegram_token_enc, telegram_token_hint, ...rest } = t;
+  return {
+    ...rest,
+    ai: { mode: t.ai_mode || 'platform', provider: t.ai_provider, keySet: !!ai_key_enc, keyHint: ai_key_hint || null, model: t.ai_model || '', allowed: t.ai_allowed || '' },
+    // the bot's token is never sent out either: only whether there is one and its last four characters
+    telegram: { tokenSet: !!telegram_token_enc, tokenHint: telegram_token_hint || null, bot: t.telegram_bot || '', baseUrl: t.app_base_url || '' },
+  };
 };
 
 @Injectable()
@@ -179,6 +185,7 @@ export class TenantsService implements OnModuleInit, OnModuleDestroy {
       // fixed for the tenant, so restarting its containers does not sign everyone out
       ...(t.is_demo ? ['FILEUPLOAD_SIZE_LIMIT=2097152'] : []),
       ...this.aiEnv(t),
+      ...this.telegramEnv(t),
       `JWT_KEY=${createHmac('sha256', t.secret).update('login-token-key').digest('hex')}`,
       '',
     ].join('\n');
@@ -200,6 +207,45 @@ export class TenantsService implements OnModuleInit, OnModuleDestroy {
     if (t.ai_model) out.push(`AI_MODEL=${t.ai_model}`);
     if (t.ai_allowed) out.push(`AI_ALLOWED_MODELS=${t.ai_allowed}`);
     return out;
+  }
+
+  /** the shop's Telegram bot for staff alerts, and the app's public address for the links in them (the app reads these three names) */
+  private telegramEnv(t: any): string[] {
+    const out: string[] = [];
+    const token = unlock(t.telegram_token_enc);
+    if (token && BOT_TOKEN_SHAPE.test(token)) {
+      out.push(`TELEGRAM_BOT_TOKEN=${token}`);
+      if (t.telegram_bot && BOT_NAME_SHAPE.test(t.telegram_bot)) out.push(`TELEGRAM_BOT_USERNAME=${t.telegram_bot}`);
+    }
+    if (t.app_base_url && APP_URL_SHAPE.test(t.app_base_url)) out.push(`APP_BASE_URL=${t.app_base_url}`);
+    return out;
+  }
+
+  /**
+   * The Telegram fields of an update, checked. A new token is asked of Telegram first: a wrong one is refused, and the bot's @name is taken from the answer.
+   * An empty token keeps the one there; null removes it (and the bot's name with it).
+   */
+  private async telegramChanges(b: any, set: (col: string, v: any) => void) {
+    if (b.telegram_token !== undefined && b.telegram_token !== '') {
+      if (b.telegram_token === null) { set('telegram_token_enc', null); set('telegram_token_hint', null); set('telegram_bot', null); }
+      else {
+        const token = String(b.telegram_token).trim();
+        if (!BOT_TOKEN_SHAPE.test(token)) throw new BadRequestException('That does not look like a bot token from BotFather (numbers, a colon, then letters and digits).');
+        const check = await checkBotToken(token);
+        if (!check.ok) throw new BadRequestException(check.error);
+        set('telegram_token_enc', lock(token)); set('telegram_token_hint', token.slice(-4)); set('telegram_bot', check.username);
+      }
+    }
+    if (b.telegram_bot !== undefined && (b.telegram_token === undefined || b.telegram_token === '')) {
+      const name = cleanBotName(b.telegram_bot);
+      if (name && !BOT_NAME_SHAPE.test(name)) throw new BadRequestException('The bot\'s name is 5 to 32 letters, digits or underscores, such as ShopNameBot.');
+      set('telegram_bot', name || null);
+    }
+    if (b.app_base_url !== undefined) {
+      const url = cleanAppUrl(b.app_base_url);
+      if (url && !APP_URL_SHAPE.test(url)) throw new BadRequestException('The app\'s public address must start with https:// and have no spaces, such as https://shop.example.com.');
+      set('app_base_url', url || null);
+    }
   }
 
   /** the assistant fields of an update, checked (they end up in an env file, so nothing but plain characters is let through) */
@@ -263,10 +309,11 @@ export class TenantsService implements OnModuleInit, OnModuleDestroy {
     }
     if (b.notes !== undefined) set('notes', b.notes ? String(b.notes).slice(0, 500) : null);
     this.aiChanges(b, set);
+    await this.telegramChanges(b, set);
     if (!sets.length) throw new BadRequestException('Nothing to change.');
     await this.db.query(`update tenant set ${sets.join(', ')}, updated_on = now() where id = $1`, args);
     // the history shows what changed, never a key
-    await this.event(t.id, 'updated', { ...b, ...(b.ai_key ? { ai_key: '(set)' } : {}) });
+    await this.event(t.id, 'updated', { ...b, ...(b.ai_key ? { ai_key: '(set)' } : {}), ...(b.telegram_token ? { telegram_token: '(set)' } : {}) });
     return this.get(slug);
   }
 

@@ -128,8 +128,11 @@ and at once when something is queued) claims rows, sends through the Telegram Bo
 Quiet hours (default 22:00-07:00 India time) hold warning and info rows until they end; critical alerts always go. The same alert never goes twice to the same
 person (unique outbox key); an alert that becomes critical is sent once more at that level.
 
-- **One bot per shop.** Set `TELEGRAM_BOT_TOKEN` (from BotFather) and `TELEGRAM_BOT_USERNAME` in that tenant's env, and `APP_BASE_URL` (public https address, used for
-  the "open it" link; no link is sent for http or localhost). `docker-compose.tenant.yml` passes all three. Without a token the feature is off and the screens say so.
+- **One bot per shop.** Set the bot's token in the control plane (admin screen > customer > Telegram alerts): it is checked with Telegram (`getMe`), stored encrypted
+  like the assistant's key, never shown again, and the bot's @name is filled from Telegram's answer. The same section holds the app's public https address
+  (`APP_BASE_URL`, used for the "open it" link; no link is sent for http or localhost). `GET /tenants/:slug/env` writes `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` and
+  `APP_BASE_URL` into the customer's env file, so `scripts/tenant-up.sh <slug>` carries them on every deploy (`docker-compose.tenant.yml` passes them on).
+  Without a token the feature is off and the screens say so. Shell variables of the same names work for a one-off run.
   The API reads what people type with long polling (`getUpdates`), so no public webhook is needed per tenant; two apps must not share one bot token.
 - **Linking.** Notifications > Alerts on Telegram > Connect makes a one-time link `t.me/<bot>?start=<token>` (random, only its SHA-256 kept, 15 minutes, single use).
   Pressing Start in the chat connects that person; `/stop` stops, `/status` shows the settings. One chat belongs to one person. A 403 from Telegram marks the

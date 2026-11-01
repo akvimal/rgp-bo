@@ -46,6 +46,10 @@ alter table tenant add column if not exists ai_key_enc text;
 alter table tenant add column if not exists ai_key_hint text;
 alter table tenant add column if not exists ai_model text;
 alter table tenant add column if not exists ai_allowed text;
+alter table tenant add column if not exists telegram_token_enc text;
+alter table tenant add column if not exists telegram_token_hint text;
+alter table tenant add column if not exists telegram_bot text;
+alter table tenant add column if not exists app_base_url text;
 create table if not exists tenant_event (
   id        serial primary key,
   tenant_id integer references tenant(id) on delete cascade,

@@ -216,6 +216,15 @@ async function detail(slug) {
         <button id="d-ai-save">Save assistant</button>
       </div>
       <p class="mute">The key is kept encrypted and never shown again. It reaches their app when it is next started (<code>scripts/tenant-up.sh ${esc(t.slug)}</code>). A customer on "the platform's key" uses the account in <code>.env.platform</code>.</p>
+      <h2>Telegram alerts</h2>
+      <div class="row">
+        <label>Bot token<input id="d-tg-token" type="password" autocomplete="off" size="40" placeholder="${t.telegram.tokenSet ? 'set (ends ' + esc(t.telegram.tokenHint || '') + '): blank keeps it' : 'paste the token from BotFather'}"></label>
+        ${t.telegram.tokenSet ? '<button class="ghost" id="d-tg-clear">Remove token</button>' : ''}
+        <label>Bot name<input id="d-tg-bot" size="22" value="${esc(t.telegram.bot)}" placeholder="filled from the token" ${t.telegram.tokenSet ? 'readonly' : ''}></label>
+        <label>App's public address<input id="d-tg-url" size="32" value="${esc(t.telegram.baseUrl)}" placeholder="https://shop.example.com"></label>
+        <button id="d-tg-save">Save Telegram</button>
+      </div>
+      <p class="mute">This customer's own bot (made with BotFather), so their staff can get alerts on Telegram. The token is checked with Telegram when saved, kept encrypted and never shown again. The public address is used for the "open it" link in a message (leave it empty if the app is not on a public https address). It reaches their app when it is next started (<code>scripts/tenant-up.sh ${esc(t.slug)}</code>). Each customer needs their own bot: two apps cannot share one.</p>
       <h2>Modules for this customer</h2>
       <p class="mute">Each one follows the plan unless you set it here. Setting a module on or off here affects this customer only; save with the first Save button, then restart their app.</p>
       ${grantSelects(t.plan, t.grants || {})}
@@ -226,6 +235,8 @@ async function detail(slug) {
     const act = (fn) => async () => { try { await fn(); flash('Done.'); refresh(); detail(slug); } catch (er) { flash(er.message, true); } };
     $('d-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { plan: $('d-plan').value, trial_ends: $('d-trial').value || null, max_stores: $('d-stores').value || null, max_users: $('d-users').value || null, max_documents: $('d-docs').value === '' ? null : $('d-docs').value, max_scans: $('d-scans').value === '' ? null : $('d-scans').value, grants: readGrants() }));
     $('d-ai-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { ai_mode: $('d-ai-mode').value, ai_provider: $('d-ai-provider').value, ai_key: $('d-ai-key').value.trim(), ai_model: $('d-ai-model').value, ai_allowed: $('d-ai-allowed').value }));
+    $('d-tg-save').onclick = act(async () => api('PUT', '/tenants/' + slug, { telegram_token: $('d-tg-token').value.trim(), ...(t.telegram.tokenSet ? {} : { telegram_bot: $('d-tg-bot').value }), app_base_url: $('d-tg-url').value }));
+    if ($('d-tg-clear')) $('d-tg-clear').onclick = act(() => { if (!confirm('Remove their bot token? Staff stop getting Telegram alerts when their app next starts.')) throw new Error('Cancelled.'); return api('PUT', '/tenants/' + slug, { telegram_token: null }); });
     if ($('d-ai-clear')) $('d-ai-clear').onclick = act(() => { if (!confirm('Remove their key?')) throw new Error('Cancelled.'); return api('PUT', '/tenants/' + slug, { ai_key: null }); });
     if ($('d-reset')) $('d-reset').onclick = act(() => { if (!confirm('Replace everything in this demo with the sample data?')) throw new Error('Cancelled.'); return api('POST', '/tenants/' + slug + '/reset'); });
     if ($('d-extend')) $('d-extend').onclick = act(() => api('POST', '/tenants/' + slug + '/extend', { days: 14 }));
