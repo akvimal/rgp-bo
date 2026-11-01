@@ -186,7 +186,8 @@ export class BusinessService {
       if (!p.ok) throw new BadRequestException(p.error);
       fields.grievancephone = p.value;
     }
-    for (const key of ["showmrp", "showsaving"]) {
+    if (body.returnnote !== undefined) fields.returnnote = clean(body.returnnote, 300, "The return note");
+    for (const key of ["showmrp", "showsaving", "showreturnnote"]) {
       if (body[key] !== undefined) {
         if (typeof body[key] !== "boolean") throw new BadRequestException("Choose yes or no for what the bill prints.");
         fields[key] = body[key];

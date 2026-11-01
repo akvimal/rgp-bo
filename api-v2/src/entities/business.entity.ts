@@ -65,6 +65,14 @@ import { Store } from "./store.entity";
     @Column("boolean", { name: "bill_show_saving", default: true })
     showsaving: boolean;
 
+    /** the "Please keep this bill for any return or exchange" line on the bill (on) */
+    @Column("boolean", { name: "bill_show_return_note", default: true })
+    showreturnnote: boolean;
+
+    /** the words of that line; empty means the standard wording */
+    @Column("character varying", { name: "bill_return_note", length: 300, nullable: true })
+    returnnote: string | null;
+
     @Column("character varying", { name: "state_code", length: 2, nullable: true })
     statecode: string | null;
 

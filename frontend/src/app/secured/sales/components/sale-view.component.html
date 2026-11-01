@@ -98,7 +98,7 @@
             <!-- the whole foot of the bill in one strip, one line under another at the left, the review QR at the right -->
             <div class="bill-strip" data-testid="bill-contact">
                 <div class="bill-strip-text">
-                    <div *ngIf="auth.moduleOn('returns') && shiftContext.returnsAllowed">Please keep this bill for any return or exchange. {{ 'Goods' | term }} once sold are taken back only as the law and our policy allow.</div>
+                    <div *ngIf="auth.moduleOn('returns') && shiftContext.returnsAllowed && from.showreturnnote" data-testid="bill-keep-note">{{ from.returnnote || ('Please keep this bill for any return or exchange. ' + ('Goods' | term) + ' once sold are taken back only as the law and our policy allow.') }}</div>
                     <div *ngIf="!(auth.moduleOn('returns') && shiftContext.returnsAllowed)" data-testid="bill-no-returns">{{ 'Goods' | term }} once sold are not taken back or exchanged.</div>
                     <div *ngIf="from.phone" data-testid="bill-from-phone">For refill and complaints call or WhatsApp: <strong>{{from.phone}}</strong></div>
                     <div *ngIf="from.grievancephone" data-testid="bill-grievance">For grievances call or WhatsApp: <strong>{{from.grievancephone}}</strong></div>

@@ -118,6 +118,30 @@ test.describe('Customer bill @p1', () => {
     }
   });
 
+  test('BILL-1c the "Please keep this bill" line is printed unless the business switches it off @edge', async ({ api, app }) => {
+    const bill = await makeBill(api);
+    const biz = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
+    expect(biz.showreturnnote).toBe(true);                                                              // on, as it has been
+    try {
+      const { page } = await app.open(MGR, `/secure/sales/pos/view/${bill.id}`);
+      await expect(page.getByTestId('bill-line')).toHaveCount(2);
+      const note = page.getByTestId('bill-keep-note');
+      const shown = await note.count();
+      await api.request('PUT', '/businesses/mine', { showreturnnote: false }, MGR);
+      await page.reload();
+      await expect(page.getByTestId('bill-line')).toHaveCount(2);
+      await expect(note).toHaveCount(0);
+      await expect(page.getByTestId('bill-contact')).toBeVisible();                                    // the rest of the foot stays
+      if (shown) {
+        await api.request('PUT', '/businesses/mine', { showreturnnote: true }, MGR);
+        await page.reload();
+        await expect(note).toHaveCount(1);
+      }
+    } finally {
+      await api.request('PUT', '/businesses/mine', { showreturnnote: biz.showreturnnote ?? true }, MGR);
+    }
+  });
+
   test('BILL-2 printed, only the bill shows: no buttons, no menus, fits one page @edge', async ({ api, app }) => {
     const bill = await makeBill(api);
     const { page } = await app.open(MGR, `/secure/sales/pos/view/${bill.id}`);

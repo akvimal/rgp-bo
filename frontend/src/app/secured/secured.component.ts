@@ -162,6 +162,7 @@ export class SecuredComponent {
       this.userService.getCurrentUser().subscribe(data => {
         this.titleService.setTitle(`${data['platform'] ? (data['businessname'] || 'Back office') : 'RGP'} - ${data['fullname']}`)
         this.user = data;
+        this.setFavicon(data['businesslogo']);
         // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).
         this.authService.setModules(data['modules']);
         this.authService.setBusiness(data['businesstype'], data['packs']);
@@ -235,7 +236,18 @@ export class SecuredComponent {
     onBrandChanged(e: any) {
       if (!this.user || !e?.detail) return;
       if ('logo' in e.detail) this.user.businesslogo = e.detail.logo || null;
+      if ('logo' in e.detail) this.setFavicon(e.detail.logo);
       if (e.detail.name) this.user.businessname = e.detail.name;
+    }
+
+    /** the business logo is the tab icon; the stock icon comes back when there is none */
+    private setFavicon(logo: string | null | undefined) {
+      document.querySelectorAll('link[rel="icon"]').forEach((el: Element) => {
+        const link = el as HTMLLinkElement;
+        if (!link.dataset.stock) link.dataset.stock = link.getAttribute('href') || '';
+        link.removeAttribute('type');
+        link.setAttribute('href', logo || link.dataset.stock);
+      });
     }
 
     @HostListener('document:keydown.escape')

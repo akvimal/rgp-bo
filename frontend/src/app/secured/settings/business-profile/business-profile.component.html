@@ -71,6 +71,14 @@
             <input class="form-check-input" type="checkbox" id="biz-show-saving" name="showsaving" [(ngModel)]="form.showsaving" data-testid="biz-show-saving">
             <label class="form-check-label" for="biz-show-saving">Show "You saved ... on MRP" under the total</label>
           </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="biz-show-return-note" name="showreturnnote" [(ngModel)]="form.showreturnnote" data-testid="biz-show-return-note">
+            <label class="form-check-label" for="biz-show-return-note">Print the return note at the foot of the bill</label>
+          </div>
+          <div class="mt-1" *ngIf="form.showreturnnote">
+            <textarea class="form-control" rows="2" maxlength="300" name="returnnote" [(ngModel)]="form.returnnote" data-testid="biz-return-note" placeholder="Please keep this bill for any return or exchange. Goods once sold are taken back only as the law and our policy allow."></textarea>
+            <div class="form-text">Leave empty to print the standard wording. Only printed when returns are allowed.</div>
+          </div>
           <div class="form-text">The MRP is off unless you choose it. Without it the grid shows the quantity, rate, GST and amount.</div>
         </div>
         <div class="col-12">
