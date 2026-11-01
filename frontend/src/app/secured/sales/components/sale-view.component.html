@@ -43,7 +43,7 @@
                         <th class="c-name">Product</th>
                         <th class="c-batch">Batch / Exp</th>
                         <th class="c-num">Qty</th>
-                        <th class="c-num">MRP</th>
+                        <th class="c-num" *ngIf="from.showmrp" data-testid="bill-mrp-col">MRP</th>
                         <th class="c-num">Rate</th>
                         <th class="c-num">GST</th>
                         <th class="c-num">Amount</th>
@@ -58,7 +58,7 @@
                         </td>
                         <td class="c-batch">{{i.batch}}<span *ngIf="i.expdate"> / {{i.expdate | date : 'MMM-yy'}}</span></td>
                         <td class="c-num">{{i.qty}}</td>
-                        <td class="c-num">{{i.mrp > 0 ? (i.mrp | number : '1.2-2') : '-'}}</td>
+                        <td class="c-num" *ngIf="from.showmrp">{{i.mrp > 0 ? (i.mrp | number : '1.2-2') : '-'}}</td>
                         <td class="c-num">{{i.price | number : '1.2-2'}}</td>
                         <td class="c-num">{{i.taxpcnt}}%</td>
                         <td class="c-num">{{i.total | number : '1.2-2'}}</td>
@@ -71,10 +71,10 @@
                     <div><span class="bill-label">Items</span> <strong>{{itemsCount}}</strong> &middot; <span class="bill-label">Units</span> <strong>{{unitsCount}}</strong></div>
                     <div class="bill-words" data-testid="bill-words"><span class="bill-label">Amount in words</span> Rupees {{words}} only</div>
                     <div class="bill-refill" *ngIf="refillDue && auth.moduleOn('refills')" data-testid="bill-refill"><span class="bill-label">Next refill</span> about <strong>{{refillDue | date:'dd MMM yyyy'}}</strong></div>
-                    <div class="bill-saved" *ngIf="savedAmount > 0" data-testid="bill-saved">You saved &#8377;{{savedAmount | number:'1.0-0'}} ({{saving}}%) on MRP</div>
+                    <div class="bill-saved" *ngIf="savedAmount > 0 && from.showsaving" data-testid="bill-saved">You saved &#8377;{{savedAmount | number:'1.0-0'}} ({{saving}}%) on MRP</div>
                 </div>
                 <table class="bill-totals">
-                    <tr *ngIf="mrpTotal > 0 && savedAmount > 0"><td>MRP total</td><td>{{mrpTotal | number:'1.2-2'}}</td></tr>
+                    <tr *ngIf="itemsTotal > 0 && (sale.discamount > 0 || roundOff !== 0 || gstTotal > 0)" data-testid="bill-total"><td>Total</td><td>{{itemsTotal | number:'1.2-2'}}</td></tr>
                     <tr *ngIf="sale.discamount > 0"><td>Discount<span *ngIf="sale.disccode"> ({{sale.disccode}})</span></td><td>&minus;{{sale.discamount | number:'1.2-2'}}</td></tr>
                     <tr *ngIf="gstTotal > 0"><td>GST included</td><td>{{gstTotal | number:'1.2-2'}}</td></tr>
                     <tr *ngIf="roundOff !== 0"><td>Round off</td><td>{{roundOff | number:'1.2-2'}}</td></tr>

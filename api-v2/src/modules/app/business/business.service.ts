@@ -186,6 +186,12 @@ export class BusinessService {
       if (!p.ok) throw new BadRequestException(p.error);
       fields.grievancephone = p.value;
     }
+    for (const key of ["showmrp", "showsaving"]) {
+      if (body[key] !== undefined) {
+        if (typeof body[key] !== "boolean") throw new BadRequestException("Choose yes or no for what the bill prints.");
+        fields[key] = body[key];
+      }
+    }
     if (body.website !== undefined) {
       const w = checkWebsite(body.website, "The website");
       if (!w.ok) throw new BadRequestException(w.error);

@@ -43,7 +43,7 @@ test.describe('Customer bill @p1', () => {
     }, MGR);
     expect(set.status, JSON.stringify(set.body)).toBeLessThan(300);
     const biz = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
-    await api.request('PUT', '/businesses/mine', { grievancephone: '98400 99999', website: 'www.qashop.in' }, MGR);
+    await api.request('PUT', '/businesses/mine', { grievancephone: '98400 99999', website: 'www.qashop.in', showmrp: true, showsaving: true }, MGR);       // the MRP column is printed only when the business chooses it
     const issued = !!(await api.request('GET', `/sales/${bill.id}`, undefined, MGR)).body.gstinvoiceno;       // a tax invoice has its number; any other bill is a cash bill
 
     const { page } = await app.open(MGR, `/secure/sales/pos/view/${bill.id}`);
@@ -59,7 +59,7 @@ test.describe('Customer bill @p1', () => {
     // the end of the bill: a separate number for complaints, and the website
     await expect(page.getByTestId('bill-grievance')).toContainText('98400 99999');
     await expect(page.getByTestId('bill-website')).toContainText('www.qashop.in');
-    await api.request('PUT', '/businesses/mine', { grievancephone: biz.grievancephone ?? '', website: biz.website ?? '' }, MGR);
+    await api.request('PUT', '/businesses/mine', { grievancephone: biz.grievancephone ?? '', website: biz.website ?? '', showmrp: biz.showmrp ?? false, showsaving: biz.showsaving ?? true }, MGR);
     await expect(page.getByTestId('bill-kind')).toHaveText(issued ? 'Tax Invoice' : 'Cash Bill');
 
     // the bill, who it is for, how it was paid
@@ -89,6 +89,33 @@ test.describe('Customer bill @p1', () => {
     expect(head).toEqual(body);                                                              // headings sit over their columns
     const titles = (await page.locator('[data-testid=bill-items] thead th').allTextContents()).map((t) => t.trim());
     expect(titles.indexOf('MRP')).toBe(titles.indexOf('Qty') + 1);                          // the MRP follows the quantity
+  });
+
+  test('BILL-1b the MRP column and the "You saved" box are printed only when the business chooses them @edge', async ({ api, app }) => {
+    const bill = await makeBill(api);
+    const biz = (await api.request('GET', '/businesses/mine', undefined, MGR)).body;
+    expect(biz.showmrp).toBe(false);                                                                    // off by default
+    try {
+      expect((await api.request('PUT', '/businesses/mine', { showmrp: 'yes' }, MGR)).status).toBe(400);   // a yes or no
+      await api.request('PUT', '/businesses/mine', { showmrp: false, showsaving: false }, MGR);
+      const { page } = await app.open(MGR, `/secure/sales/pos/view/${bill.id}`);
+      await expect(page.getByTestId('bill-line')).toHaveCount(2);
+      await expect(page.getByTestId('bill-mrp-col')).toHaveCount(0);
+      await expect(page.getByTestId('bill-saved')).toHaveCount(0);
+      const titles = (await page.locator('[data-testid=bill-items] thead th').allTextContents()).map((t) => t.trim());
+      expect(titles).not.toContain('MRP');
+      await expect(page.getByTestId('bill-net')).toHaveText('₹190.00');
+      const productWidth = () => page.locator('[data-testid=bill-items] thead th.c-name').evaluate((th) => Math.round(th.getBoundingClientRect().width));
+      const without = await productWidth();
+
+      await api.request('PUT', '/businesses/mine', { showmrp: true, showsaving: true }, MGR);
+      await page.reload();
+      await expect(page.getByTestId('bill-line')).toHaveCount(2);
+      await expect(page.getByTestId('bill-mrp-col')).toHaveCount(1);
+      expect(without - (await productWidth())).toBeGreaterThanOrEqual(60);                           // the width the MRP column would take goes to the product name
+    } finally {
+      await api.request('PUT', '/businesses/mine', { showmrp: biz.showmrp ?? false, showsaving: biz.showsaving ?? true }, MGR);
+    }
   });
 
   test('BILL-2 printed, only the bill shows: no buttons, no menus, fits one page @edge', async ({ api, app }) => {

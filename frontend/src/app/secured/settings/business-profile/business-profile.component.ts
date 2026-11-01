@@ -6,7 +6,7 @@ import { BusinessesService } from "../businesses/businesses.service";
 })
 export class BusinessProfileComponent implements OnInit {
 
-    form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '', phone: '', grievancephone: '', website: '' };
+    form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '', phone: '', grievancephone: '', website: '', showmrp: false, showsaving: true };
     logo: string | null = null;        // the logo as shown (the saved one, or a new pick)
     logoChanged = false;
     logoError = '';
@@ -25,6 +25,7 @@ export class BusinessProfileComponent implements OnInit {
         this.form = {
             name: b.name || '', legalname: b.legalname || '', gstin: b.gstin || '',
             statecode: b.statecode || '', address: b.address || '', pincode: b.pincode || '', phone: b.phone || '', grievancephone: b.grievancephone || '', website: b.website || '',
+            showmrp: !!b.showmrp, showsaving: b.showsaving !== false,
         };
         this.logo = b.logo || null;
         this.logoChanged = false;

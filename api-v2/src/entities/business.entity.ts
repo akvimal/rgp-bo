@@ -58,6 +58,13 @@ import { Store } from "./store.entity";
     @Column("character varying", { name: "grievance_phone", length: 60, nullable: true })
     grievancephone: string | null;
 
+    /** what the bill prints: the MRP column (off by default) and the "You saved" box (on) */
+    @Column("boolean", { name: "bill_show_mrp", default: false })
+    showmrp: boolean;
+
+    @Column("boolean", { name: "bill_show_saving", default: true })
+    showsaving: boolean;
+
     @Column("character varying", { name: "state_code", length: 2, nullable: true })
     statecode: string | null;
 

@@ -63,7 +63,7 @@ export class SaleViewComponent {
     words = '';
 
     /** who the bill is from: the store's own details, with the business's as the fallback */
-    from:any = { name: '', logo: '', website: '', grievancephone: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
+    from:any = { name: '', logo: '', website: '', grievancephone: '', showmrp: false, showsaving: true, address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
     payments:{label:string, amount:number}[] = [];
     gstRows:{rate:number, taxable:number, cgst:number, sgst:number, igst:number}[] = [];
     /** the supply crosses a state border: the tax is IGST, not CGST and SGST */
@@ -116,6 +116,9 @@ export class SaleViewComponent {
         logo: b.logo || '',
         website: b.website || '',
         grievancephone: b.grievancephone || '',
+        // what the business chose to print: the MRP column (off unless chosen) and the "You saved" box (on unless switched off)
+        showmrp: !!b.showmrp,
+        showsaving: b.showsaving !== false,
         branch: h.multistore && s.name ? s.name : '',
         address,
         // the store's phone number(s); the business's when the store has none
