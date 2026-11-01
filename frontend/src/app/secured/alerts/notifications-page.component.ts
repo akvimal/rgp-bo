@@ -1,4 +1,4 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
 import { Router } from "@angular/router";
 import { AuthService } from "src/app/@core/auth/auth.service";
 import { AlertsService } from "./alerts.service";
@@ -25,6 +25,39 @@ import { AlertsService } from "./alerts.service";
         </div>
         <button class="btn btn-sm btn-outline-secondary" type="button" (click)="markAll()" [disabled]="!unread" data-testid="np-read-all">Mark all read</button>
       </div>
+    </div>
+
+    <!-- alerts on the person's own Telegram -->
+    <div class="border rounded p-3 mb-3" *ngIf="tg && tg.configured && tg.enabled" data-testid="np-telegram">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <i class="bi bi-telegram fs-5 text-primary"></i>
+        <span class="fw-semibold">Alerts on Telegram</span>
+        <span class="badge bg-success" *ngIf="tg.linked" data-testid="np-tg-connected">Connected<span *ngIf="tg.handle"> as @{{tg.handle}}</span></span>
+        <span class="badge bg-secondary" *ngIf="!tg.linked && tg.status === 'STOPPED'">Stopped</span>
+        <span class="badge bg-danger" *ngIf="tg.status === 'BLOCKED'" title="Telegram refused the last message: the bot was blocked">Blocked</span>
+        <span class="small text-muted" *ngIf="!tg.linked && !tgLink">Get the alerts that matter on your phone, even when the app is closed.</span>
+        <span class="ms-auto d-flex gap-2">
+          <button class="btn btn-sm btn-primary" type="button" *ngIf="!tg.linked || tg.status === 'BLOCKED'" (click)="connectTelegram()" [disabled]="tgBusy" data-testid="np-tg-connect">{{tg.status === 'BLOCKED' || tg.status === 'STOPPED' ? 'Reconnect' : 'Connect Telegram'}}</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" *ngIf="tg.linked" (click)="testTelegram()" data-testid="np-tg-test">Send a test</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" *ngIf="tg.linked || tg.status" (click)="disconnectTelegram()" data-testid="np-tg-disconnect">Disconnect</button>
+        </span>
+      </div>
+      <div class="mt-2 small" *ngIf="tgLink" data-testid="np-tg-link">
+        <a class="btn btn-sm btn-outline-primary me-2" [href]="tgLink.url" target="_blank" rel="noopener" data-testid="np-tg-open">Open Telegram</a>
+        Press <b>Start</b> there. This page notices when you are connected. The link works once and ends in {{tgLink.minutes}} minutes.
+      </div>
+      <div class="d-flex flex-wrap align-items-end gap-3 mt-3" *ngIf="tg.linked" data-testid="np-tg-prefs">
+        <div><label class="form-label small mb-0" for="tg-level">Send me</label>
+          <select class="form-select form-select-sm" id="tg-level" [(ngModel)]="tg.min_severity" data-testid="np-tg-level">
+            <option value="info">Everything</option><option value="warning">Warnings and critical</option><option value="critical">Critical only</option></select></div>
+        <div><label class="form-label small mb-0" for="tg-from">Quiet from</label><input type="time" class="form-control form-control-sm" id="tg-from" [(ngModel)]="tg.quiet_from" data-testid="np-tg-from"></div>
+        <div><label class="form-label small mb-0" for="tg-to">until</label><input type="time" class="form-control form-control-sm" id="tg-to" [(ngModel)]="tg.quiet_to" data-testid="np-tg-to"></div>
+        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="tg.quiet_from = null; tg.quiet_to = null">No quiet hours</button>
+        <button class="btn btn-sm btn-primary" type="button" (click)="saveTelegram()" data-testid="np-tg-save">Save</button>
+        <span class="small text-muted w-100">Critical alerts come at any hour; lower ones wait until the quiet hours end.</span>
+      </div>
+      <div class="small text-success mt-2" *ngIf="tgMessage" data-testid="np-tg-message">{{tgMessage}}</div>
+      <div class="small text-danger mt-2" *ngIf="tgError" data-testid="np-tg-error">{{tgError}}</div>
     </div>
 
     <div *ngIf="loading" class="text-muted py-3">Loading...</div>
@@ -59,7 +92,7 @@ import { AlertsService } from "./alerts.service";
   </div>
 </div>`,
 })
-export class NotificationsPageComponent implements OnInit {
+export class NotificationsPageComponent implements OnInit, OnDestroy {
   items: any[] = [];
   unread = 0;
   loading = true;
@@ -72,6 +105,53 @@ export class NotificationsPageComponent implements OnInit {
   ngOnInit() {
     this.alerts.prefs().subscribe((p) => this.language = p.language, () => {});
     this.load();
+    this.loadTelegram();
+  }
+
+  ngOnDestroy() { clearInterval(this.tgTimer); }
+
+  // ------------------------------------------------------------ Telegram
+  tg: any = null;
+  tgLink: any = null;
+  tgBusy = false;
+  tgMessage = '';
+  tgError = '';
+  private tgTimer: any = null;
+
+  private say(e: any, fallback: string): string { const m = e?.error?.message; return (Array.isArray(m) ? m.join(' ') : m) || fallback; }
+
+  loadTelegram() { this.alerts.tgMe().subscribe((me) => this.tg = me, () => this.tg = null); }
+
+  /** makes the one-time link; the person presses Start in Telegram, and this page sees them connected */
+  connectTelegram() {
+    this.tgError = ''; this.tgMessage = ''; this.tgBusy = true;
+    this.alerts.tgLink().subscribe((l) => {
+      this.tgBusy = false; this.tgLink = l;
+      clearInterval(this.tgTimer);
+      let n = 0;
+      this.tgTimer = setInterval(() => {
+        if (++n > 300) { clearInterval(this.tgTimer); return; }
+        this.alerts.tgMe().subscribe((me) => {
+          if (me.linked && me.status === 'ACTIVE') { clearInterval(this.tgTimer); this.tg = me; this.tgLink = null; this.tgMessage = 'Connected. Alerts will come to your Telegram.'; }
+        }, () => undefined);
+      }, 3000);
+    }, (e) => { this.tgBusy = false; this.tgError = this.say(e, 'Could not make the link.'); });
+  }
+
+  saveTelegram() {
+    this.tgError = ''; this.tgMessage = '';
+    this.alerts.tgSave({ min_severity: this.tg.min_severity, quiet_from: this.tg.quiet_from || null, quiet_to: this.tg.quiet_to || null })
+      .subscribe((me) => { this.tg = me; this.tgMessage = 'Saved.'; }, (e) => this.tgError = this.say(e, 'Could not save.'));
+  }
+
+  testTelegram() {
+    this.tgError = ''; this.tgMessage = '';
+    this.alerts.tgTest().subscribe(() => this.tgMessage = 'A test message was sent. Check Telegram.', (e) => { this.tgError = this.say(e, 'The test did not go.'); this.loadTelegram(); });
+  }
+
+  disconnectTelegram() {
+    this.tgError = ''; this.tgMessage = ''; clearInterval(this.tgTimer); this.tgLink = null;
+    this.alerts.tgUnlink().subscribe((me) => { this.tg = me; this.tgMessage = 'Disconnected.'; }, (e) => this.tgError = this.say(e, 'Could not disconnect.'));
   }
 
   load() {

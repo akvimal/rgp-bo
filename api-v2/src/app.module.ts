@@ -31,6 +31,7 @@ import { BusinessModule } from './modules/app/business/business.module';
 import { GstModule } from './modules/app/gst/gst.module';
 import { NotificationModule } from './modules/app/notifications/notification.module';
 import { AlertsModule } from './modules/app/alerts/alerts.module';
+import { MessagingModule } from './modules/app/messaging/messaging.module';
 import { AuditModule } from './core/audit/audit.module';
 import { ModulesModule } from './core/modules/modules.service';
 import { BusinessConfigModule } from './core/config/config.service';
@@ -89,6 +90,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     GstModule,
     NotificationModule,
     AlertsModule,
+    MessagingModule,
     AuditModule,
     ModulesModule,
     BusinessConfigModule,

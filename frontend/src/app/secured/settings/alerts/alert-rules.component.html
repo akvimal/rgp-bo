@@ -13,6 +13,42 @@
     <div class="alert alert-success py-2" *ngIf="message" data-testid="al-message">{{message}}</div>
     <div class="alert alert-danger py-2" *ngIf="error" data-testid="al-error">{{error}}</div>
 
+    <!-- alerts that also go to staff on Telegram -->
+    <div class="border rounded p-3 mb-3" *ngIf="delivery" data-testid="al-delivery">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <i class="bi bi-telegram fs-5 text-primary"></i>
+        <span class="fw-semibold">Alerts on Telegram</span>
+        <span class="badge bg-secondary" *ngIf="!delivery.configured" data-testid="al-tg-off">Not set up on this server</span>
+        <span class="small text-muted" *ngIf="delivery.configured">Bot: &#64;{{delivery.bot || 'not reachable'}}</span>
+        <div class="form-check form-switch ms-auto m-0" *ngIf="delivery.configured">
+          <input class="form-check-input" type="checkbox" id="al-tg-on" [checked]="delivery.enabled" (change)="setDelivery($any($event.target).checked)" data-testid="al-tg-switch">
+          <label class="form-check-label small" for="al-tg-on">Send alerts to staff on Telegram</label>
+        </div>
+      </div>
+      <div class="small text-muted mt-1" *ngIf="!delivery.configured">The shop's Telegram bot is added by your administrator (a bot token from BotFather). Until then alerts show in the app only.</div>
+      <ng-container *ngIf="delivery.configured">
+        <div class="small text-muted mt-1">Each person connects their own Telegram on the Notifications page. Only what they can see in the app is sent, at the level they choose, and critical alerts reach them at any hour.</div>
+        <div class="row g-3 mt-1">
+          <div class="col-lg-5">
+            <div class="small fw-semibold mb-1">Connected ({{delivery.staff.length}})</div>
+            <div class="small text-muted" *ngIf="!delivery.staff.length">Nobody yet.</div>
+            <table class="table table-sm mb-0 small" *ngIf="delivery.staff.length" data-testid="al-tg-staff">
+              <tbody><tr *ngFor="let s of delivery.staff"><td>{{s.name}}</td><td><span class="badge" [ngClass]="s.status === 'ACTIVE' ? 'bg-success' : s.status === 'BLOCKED' ? 'bg-danger' : 'bg-secondary'">{{s.status === 'ACTIVE' ? 'Connected' : s.status === 'BLOCKED' ? 'Blocked' : 'Stopped'}}</span></td><td class="text-muted">{{s.min_severity === 'info' ? 'everything' : s.min_severity === 'critical' ? 'critical only' : 'warnings and up'}}</td></tr></tbody>
+            </table>
+            <div class="small text-muted mt-2">Last 7 days: {{delivery.week.sent}} sent<span *ngIf="delivery.week.pending">, {{delivery.week.pending}} waiting</span><span *ngIf="delivery.week.failed" class="text-danger">, {{delivery.week.failed}} failed</span><span *ngIf="delivery.week.skipped">, {{delivery.week.skipped}} held back by the hourly limit</span>.</div>
+          </div>
+          <div class="col-lg-7">
+            <div class="small fw-semibold mb-1">Latest messages</div>
+            <div class="small text-muted" *ngIf="!delivery.recent.length">None yet.</div>
+            <table class="table table-sm mb-0 small" *ngIf="delivery.recent.length" data-testid="al-tg-recent">
+              <tbody><tr *ngFor="let m of delivery.recent.slice(0, 8)"><td class="text-nowrap">{{m.created_on | date:'d MMM, h:mm a'}}</td><td>{{m.recipient}}</td><td>{{m.title}}</td>
+                <td><span class="badge" [ngClass]="m.status === 'SENT' ? 'bg-success' : m.status === 'FAILED' ? 'bg-danger' : 'bg-secondary'" [title]="m.last_error || ''">{{m.status === 'SENT' ? 'Sent' : m.status === 'FAILED' ? 'Failed' : m.status === 'SKIPPED' ? 'Held back' : 'Waiting'}}</span></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+
     <!-- say it in a sentence -->
     <div class="border rounded p-3 mb-3" *ngIf="assistant" data-testid="al-assistant">
       <div class="d-flex align-items-center flex-wrap gap-2 mb-3" *ngIf="ai" data-testid="al-model">

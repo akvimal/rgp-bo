@@ -118,3 +118,24 @@ Translations are drafted by the agent or a translator and **reviewed by a native
 2. Which model runs the agent, and who pays for it (plan allowance vs the customer's own key)?
 3. Which Tamil review route (a named person)?
 4. Is the assistant a paid add-on or part of Chain only?
+
+
+## Staff alerts on Telegram (built 2026-11-01, migration 140)
+
+How an alert reaches a person's phone: the alert engine opens a notification, and `MessagingService.notifyAlert` writes one row to `message_outbox` for each
+connected person who may see it (same rule as the bell, `canSee`), wants that level, and is not over the hourly limit (12 below critical). A worker (every 30 s,
+and at once when something is queued) claims rows, sends through the Telegram Bot API and marks them SENT / FAILED / retried (1, 5, 30, 120, 360 minutes).
+Quiet hours (default 22:00-07:00 India time) hold warning and info rows until they end; critical alerts always go. The same alert never goes twice to the same
+person (unique outbox key); an alert that becomes critical is sent once more at that level.
+
+- **One bot per shop.** Set `TELEGRAM_BOT_TOKEN` (from BotFather) and `TELEGRAM_BOT_USERNAME` in that tenant's env, and `APP_BASE_URL` (public https address, used for
+  the "open it" link; no link is sent for http or localhost). `docker-compose.tenant.yml` passes all three. Without a token the feature is off and the screens say so.
+  The API reads what people type with long polling (`getUpdates`), so no public webhook is needed per tenant; two apps must not share one bot token.
+- **Linking.** Notifications > Alerts on Telegram > Connect makes a one-time link `t.me/<bot>?start=<token>` (random, only its SHA-256 kept, 15 minutes, single use).
+  Pressing Start in the chat connects that person; `/stop` stops, `/status` shows the settings. One chat belongs to one person. A 403 from Telegram marks the
+  channel BLOCKED and the message FAILED (not retried).
+- **Owner.** Settings > Alerts shows who is connected, the last 7 days (sent, waiting, failed, held back) and the latest messages, and has the switch
+  `alerts_telegram` (on/off) for the shop.
+- **Not built:** customers (decided: not on Telegram), WhatsApp (the outbox and the channel table are made for a second adapter), a daily digest, Tamil replies from the bot.
+- **Tests.** `qa/specs/staff-telegram.spec.ts` (ATG-1..4) runs against a stand-in for Telegram (`qa/fixtures/fake-telegram.ts`): start the API with
+  `TELEGRAM_BOT_TOKEN=test:token TELEGRAM_BOT_USERNAME=ShopTestBot TELEGRAM_API_BASE=http://localhost:4400` and run the spec with `QA_TELEGRAM_FAKE_PORT=4400`.

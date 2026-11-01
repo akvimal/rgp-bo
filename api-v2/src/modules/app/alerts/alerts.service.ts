@@ -11,6 +11,7 @@ import { DEFAULT_RULES, Finding, KINDS, SEVERITIES, cleanParams, kindOf } from '
 import { canSee } from './alert-access';
 import { ModulesService } from 'src/core/modules/modules.service';
 import { LANGUAGES, Lang, render } from './alert-messages';
+import { MessagingService } from '../messaging/messaging.service';
 
 const TZ = 'Asia/Kolkata';
 const MAX_RULES = 50;
@@ -29,6 +30,7 @@ export class AlertsService {
     private readonly drafter: AlertDrafter,
     private readonly ai: AiProvider,
     private readonly modules: ModulesService,
+    private readonly messaging: MessagingService,
   ) {}
 
   // ------------------------------------------------------------------------------------------------ who is asking
@@ -101,26 +103,36 @@ export class AlertsService {
 
   /** open what is newly found, update what is still true, close what has cleared */
   private async reconcile(rule: any, found: Finding[]) {
-    const open = await this.manager.query(`select id, dedupe_key from notification where rule_id = $1 and resolved_on is null`, [rule.id]);
+    const open = await this.manager.query(`select id, dedupe_key, severity from notification where rule_id = $1 and resolved_on is null`, [rule.id]);
     const byKey = new Map<string, number>(open.map((o: any) => [o.dedupe_key, o.id]));
+    const severityOf = new Map<string, string>(open.map((o: any) => [o.dedupe_key, o.severity]));
     const keys = new Set<string>();
     for (const f of found) {
       if (keys.has(f.key)) continue;
       keys.add(f.key);
       const severity = f.severity === 'critical' ? 'critical' : rule.severity;
       const id = byKey.get(f.key);
+      const toSend = { businessId: rule.business_id, severity, code: f.code, params: f.params, link: f.link, storeId: f.storeid, recipients: rule.recipients };
       if (id) {
         await this.manager.query(`update notification set severity = $2, code = $3, params = $4::jsonb, link = $5, store_id = $6 where id = $1`,
           [id, severity, f.code, JSON.stringify(f.params), f.link, f.storeid]);
+        // an alert that becomes critical is sent again at that level (once)
+        if (severity === 'critical' && severityOf.get(f.key) !== 'critical') await this.send({ ...toSend, notificationId: Number(id), kind: 'ALERT_UP' });
       } else {
-        await this.manager.query(
+        const made = await this.manager.query(
           `insert into notification (rule_id, business_id, store_id, dedupe_key, severity, code, params, link) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
-           on conflict do nothing`,
+           on conflict do nothing returning id`,
           [rule.id, rule.business_id, f.storeid, f.key, severity, f.code, JSON.stringify(f.params), f.link]);
+        if (made.length) await this.send({ ...toSend, notificationId: Number(made[0].id) });
       }
     }
     const gone = open.filter((o: any) => !keys.has(o.dedupe_key)).map((o: any) => o.id);
     if (gone.length) await this.manager.query(`update notification set resolved_on = now() where id = any($1::int8[])`, [gone]);
+  }
+
+  /** sends a new alert out of the app to the people who asked for it; a failure here never stops the engine */
+  private async send(alert: any) {
+    try { await this.messaging.notifyAlert(alert); } catch (e: any) { this.logger.error(`Sending alert ${alert.notificationId} failed: ${e?.message}`); }
   }
 
   /** the owner's "check now" */

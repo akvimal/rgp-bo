@@ -28,6 +28,16 @@ export class AlertsService {
   prefs() { return this.http.get<any>(`${this.api}/prefs`); }
   savePrefs(language: string) { return this.http.put<any>(`${this.api}/prefs`, { language }); }
 
+  // ------------------------------------------------------------ alerts on the person's Telegram
+  private readonly msg = `${environment.apiHost}/messaging`;
+  tgMe() { return this.http.get<any>(`${this.msg}/telegram/me`); }
+  tgLink() { return this.http.post<any>(`${this.msg}/telegram/link`, {}); }
+  tgSave(body: any) { return this.http.put<any>(`${this.msg}/telegram/me`, body); }
+  tgUnlink() { return this.http.delete<any>(`${this.msg}/telegram/me`); }
+  tgTest() { return this.http.post<any>(`${this.msg}/telegram/test`, {}); }
+  tgOverview() { return this.http.get<any>(`${this.msg}/overview`); }
+  tgEnabled(on: boolean) { return this.http.put<any>(`${this.msg}/overview/enabled`, { on }); }
+
   ai() { return this.http.get<any>(`${this.api}/ai`); }
   saveAi(model: string) { return this.http.put<any>(`${this.api}/ai`, { model }); }
 

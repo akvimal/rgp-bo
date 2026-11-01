@@ -44,6 +44,16 @@ export class AlertRulesComponent implements OnInit {
     this.alerts.kinds().subscribe((k) => { this.kinds = k.kinds; this.assistant = k.assistant; if (k.assistant) this.loadAi(); });
     this.cash.getStores().subscribe((s: any) => this.stores = (s || []).filter((x: any) => x.isActive !== false && !x.isArchived));
     this.load();
+    this.loadDelivery();
+  }
+
+  // ------------------------------------------------------------ how alerts leave the app (Telegram)
+  delivery: any = null;
+
+  loadDelivery() { this.alerts.tgOverview().subscribe((d) => this.delivery = d, () => this.delivery = null); }
+
+  setDelivery(on: boolean) {
+    this.alerts.tgEnabled(on).subscribe((d) => { this.delivery = d; this.message = on ? 'Alerts will also go to staff who connected Telegram.' : 'Alerts stay in the app only.'; }, (e) => this.error = this.msg(e));
   }
 
   load() {
