@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { checkPhones } from 'src/core/phones';
 import { ComplianceService } from '../compliance/compliance.service';
+import { ShiftDigestService } from '../messaging/shift-digest.service';
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { Store } from "src/entities/store.entity";
@@ -34,6 +35,7 @@ export class StoreService {
     private readonly platform: PlatformService,
     private readonly assistant: ChecklistAssistant,
     private readonly compliance: ComplianceService,
+    private readonly shiftDigest: ShiftDigestService,
   ) {}
 
   async findStores() {
@@ -876,6 +878,8 @@ export class StoreService {
     if (Array.isArray(body.closingchecklist)) {
       await this.recordChecklist(id, shift.storeid, 'CLOSE', closeType === 'HANDOVER' ? 'HANDOVER' : 'CLOSING', body.closingchecklist, body.closingchecklistat, userid, closedOperatorId);
     }
+    // the shop is told the shift has closed (the group, and the people who run it): never holds up or fails the close
+    this.shiftDigest.notifyClosed(id);
     const closed = await this.shiftRepository.findOne({
       where: { id },
       relations: ["store", "template", "openedby", "closedby"],
