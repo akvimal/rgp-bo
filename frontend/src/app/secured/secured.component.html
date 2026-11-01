@@ -168,18 +168,6 @@
             <span>Drug register</span>
           </a>
         </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="pharmacyPack">
-          <a class="nav-link collapsed" routerLink="pharmacy-guide" data-testid="nav-pharmacy-guide" title="Pharmacy guide" aria-label="Pharmacy guide">
-            <i class="bi bi-mortarboard"></i>
-            <span>Pharmacy guide</span>
-          </a>
-        </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']">
-          <a class="nav-link collapsed" routerLink="app-guide" data-testid="nav-app-guide" title="App guide" aria-label="App guide">
-            <i class="bi bi-question-circle"></i>
-            <span>App guide</span>
-          </a>
-        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'review.view'">
           <a class="nav-link collapsed" routerLink="review" data-testid="nav-review" title="Weekly review" aria-label="Weekly review">
             <i class="bi bi-journal-check"></i>
@@ -357,6 +345,21 @@
             </li>
           </ul>
         </li>
+
+        <!-- the guides, at the very bottom -->
+        <ng-container *ngIf="learnGroup as lg">
+          <ng-container *ngIf="groupVisible(lg)">
+            <li class="nav-heading" data-testid="nav-section-learn">{{lg.label}}</li>
+            <ng-container *ngFor="let m of lg.items">
+              <li class="nav-item" *ngIf="m.show()" [routerLinkActive]="['is-active']">
+                <a class="nav-link collapsed" [routerLink]="m.route" [attr.data-testid]="m.id" [attr.title]="m.label" [attr.aria-label]="m.label">
+                  <i class="bi" [ngClass]="m.icon"></i>
+                  <span>{{m.label}}</span>
+                </a>
+              </li>
+            </ng-container>
+          </ng-container>
+        </ng-container>
 
       </ul>
 

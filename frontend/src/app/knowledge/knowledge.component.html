@@ -1,0 +1,131 @@
+<div class="pagetitle"><h1>Knowledge check</h1></div>
+<p class="small text-muted" data-testid="kc-note">Five short questions a week, to keep what matters fresh. After each answer you see the right one and why. Your results are for coaching: they do not count towards pay or any KPI.</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="kc-error">{{error}}</div>
+<p class="text-muted" *ngIf="loading">Loading...</p>
+
+<ng-container *ngIf="me">
+  <ul class="nav nav-pills mb-3" *ngIf="me.canSeeTeam && !attempt && !result">
+    <li class="nav-item"><a class="nav-link" [class.active]="tab === 'week'" role="button" (click)="setTab('week')" data-testid="kc-tab-week">My check</a></li>
+    <li class="nav-item"><a class="nav-link" [class.active]="tab === 'team'" role="button" (click)="setTab('team')" data-testid="kc-tab-team">Team</a></li>
+  </ul>
+
+  <!-- taking a check -->
+  <div class="card" *ngIf="attempt && question" data-testid="kc-runner">
+    <div class="card-body">
+      <div class="d-flex justify-content-between small text-muted mb-2">
+        <span>{{attempt.kind === 'SCORED' ? 'This week\'s check' : 'Practice'}} &middot; question {{index + 1}} of {{attempt.questions.length}}</span>
+        <span class="badge bg-light text-dark border">{{question.topicLabel}}</span>
+      </div>
+      <h5 class="mb-3" data-testid="kc-question">{{question.text}}</h5>
+      <div class="d-grid gap-2">
+        <button type="button" class="btn text-start" *ngFor="let o of question.options; let i = index" [ngClass]="optionClass(question, i)" [disabled]="question.answered || busy" (click)="choose(i)" [attr.data-testid]="'kc-option-' + i">{{o}}</button>
+      </div>
+      <div class="mt-3" *ngIf="question.answered" data-testid="kc-feedback">
+        <div class="fw-semibold" [class.text-success]="question.correct" [class.text-danger]="!question.correct">{{question.correct ? 'Right.' : 'Not quite.'}}</div>
+        <div class="small">{{question.explain}}</div>
+        <a role="button" class="small" (click)="read(question.guide)" data-testid="kc-read">Read more</a>
+      </div>
+      <div class="d-flex gap-2 mt-3">
+        <button type="button" class="btn btn-primary" *ngIf="question.answered && index < attempt.questions.length - 1" (click)="next()" data-testid="kc-next">Next question</button>
+        <button type="button" class="btn btn-primary" *ngIf="allAnswered" [disabled]="busy" (click)="finish()" data-testid="kc-finish">Finish</button>
+        <button type="button" class="btn btn-outline-secondary ms-auto" (click)="leave()" data-testid="kc-leave">Leave for now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- the result -->
+  <div class="card" *ngIf="result" data-testid="kc-result">
+    <div class="card-body">
+      <h5 class="mb-1">You got {{result.score}} of {{result.total}}
+        <span class="badge ms-2" [ngClass]="result.passed ? 'bg-success' : 'bg-warning text-dark'" data-testid="kc-passed">{{result.passed ? 'Passed' : 'Not yet at ' + result.passPct + '%'}}</span></h5>
+      <p class="small text-muted" *ngIf="result.kind === 'SCORED'">This is recorded as your check for the week.</p>
+      <div *ngIf="result.missed.length">
+        <div class="fw-semibold mt-2">Read these again</div>
+        <div class="border rounded p-2 mb-2" *ngFor="let m of result.missed" data-testid="kc-missed">
+          <div class="small text-muted">{{m.topicLabel}}</div>
+          <div>{{m.text}}</div>
+          <div class="small"><b>Right answer:</b> {{m.right}}</div>
+          <div class="small">{{m.explain}}</div>
+          <a role="button" class="small" (click)="read(m.guide)">Read more</a>
+        </div>
+      </div>
+      <div *ngIf="!result.missed.length" class="text-success">Every answer was right.</div>
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" class="btn btn-outline-primary" (click)="start(true)" data-testid="kc-practise-again">Practise some more</button>
+        <button type="button" class="btn btn-outline-secondary" (click)="leave()">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- my page -->
+  <div *ngIf="!attempt && !result && tab === 'week'" data-testid="kc-week">
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <div>
+            <div class="fw-semibold">This week</div>
+            <div class="small text-muted" *ngIf="me.thisWeek.finished" data-testid="kc-done">Done: {{me.thisWeek.score}} of {{me.thisWeek.total}}
+              <span class="badge ms-1" [ngClass]="me.thisWeek.passed ? 'bg-success' : 'bg-warning text-dark'">{{me.thisWeek.passed ? 'Passed' : 'Not yet at ' + me.passPct + '%'}}</span></div>
+            <div class="small text-muted" *ngIf="!me.thisWeek.finished && me.thisWeek.started">You have started this week's check. Carry on where you left off.</div>
+            <div class="small text-muted" *ngIf="!me.thisWeek.started">Five questions, about three minutes.</div>
+          </div>
+          <div class="ms-auto d-flex gap-2">
+            <button type="button" class="btn btn-primary" *ngIf="!me.thisWeek.finished" [disabled]="busy" (click)="start(false)" data-testid="kc-start">{{me.thisWeek.started ? 'Continue the check' : 'Start this week\'s check'}}</button>
+            <button type="button" class="btn btn-outline-primary" [disabled]="busy" (click)="start(true)" data-testid="kc-practise">Practise</button>
+          </div>
+        </div>
+        <div class="small text-muted mt-2">
+          <span *ngIf="me.streak">{{me.streak}} week{{me.streak === 1 ? '' : 's'}} in a row. </span>
+          <span *ngIf="me.practiceThisMonth">{{me.practiceThisMonth}} practice round{{me.practiceThisMonth === 1 ? '' : 's'}} this month. </span>
+          <span *ngIf="me.kind === 'counter'">If several people share this login, the results are kept against the login.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3" *ngIf="me.weak.length" data-testid="kc-weak">
+      <div class="card-body">
+        <div class="fw-semibold mb-1">Topics to read again</div>
+        <ul class="small mb-0"><li *ngFor="let t of me.weak">{{t.label}}: {{t.missed}} of {{t.answered}} answers were wrong lately</li></ul>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="fw-semibold mb-1">Your checks</div>
+        <div class="small text-muted" *ngIf="!me.history.length" data-testid="kc-no-history">Nothing yet.</div>
+        <table class="table table-sm mb-0" *ngIf="me.history.length" data-testid="kc-history">
+          <thead><tr><th>Date</th><th>Score</th><th></th></tr></thead>
+          <tbody><tr *ngFor="let h of me.history"><td>{{h.day | date:'dd MMM yyyy'}}</td><td>{{h.score}} of {{h.total}}</td><td><span class="badge" [ngClass]="h.passed ? 'bg-success' : 'bg-warning text-dark'">{{h.passed ? 'Passed' : 'Below ' + me.passPct + '%'}}</span></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="small text-muted" data-testid="kc-bank">{{me.bank.size}} questions for your role (version {{me.bank.version}}).<span *ngIf="!me.bank.reviewedBy"> The questions are a draft until the pharmacist-in-charge has read them.</span></p>
+  </div>
+
+  <!-- the team (the people who run the shop) -->
+  <div *ngIf="!attempt && !result && tab === 'team'" data-testid="kc-team">
+    <p class="small text-muted">Who has done this week's check, and the topics that need another look. Use it to coach, not to rank: the results are not part of pay or KPI.</p>
+    <div *ngIf="!team" class="text-muted">Loading...</div>
+    <ng-container *ngIf="team">
+      <div class="card mb-3" *ngIf="team.topics.length" data-testid="kc-team-topics">
+        <div class="card-body"><div class="fw-semibold mb-1">Topics to go over with the team</div>
+          <ul class="small mb-0"><li *ngFor="let t of team.topics">{{t.label}}: {{t.missed}} of {{t.answered}} answers wrong in the last 90 days</li></ul></div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" data-testid="kc-team-table">
+          <thead><tr><th>Person</th><th>This week</th><th>Last check</th><th class="text-end">Weeks done (last 8)</th><th>Weak topics</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of team.people" [attr.data-testid]="'kc-person-' + p.id">
+              <td>{{p.name}}<div class="small text-muted">{{p.role}}</div></td>
+              <td><span class="badge" [ngClass]="p.doneThisWeek ? (p.passedThisWeek ? 'bg-success' : 'bg-warning text-dark') : 'bg-secondary'">{{p.doneThisWeek ? (p.passedThisWeek ? 'Passed' : 'Done') : 'Not yet'}}</span></td>
+              <td>{{p.lastScore || '-'}}<span class="small text-muted" *ngIf="p.lastDay"> &middot; {{p.lastDay | date:'dd MMM'}}</span></td>
+              <td class="text-end">{{p.weeksDone}}</td>
+              <td class="small">{{p.weak.length ? p.weak.join(', ') : '-'}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+  </div>
+</ng-container>

@@ -122,7 +122,11 @@ export class SecuredComponent {
     /** the counter roles always get the grouped menu; the other roles when the business has turned it on */
     get groupedMenu(): boolean { return this.newMenu || isCounterRole(this.user?.rolename); }
 
-    get shownGroups(): MenuGroup[] { return isCounterRole(this.user?.rolename) ? this.counterGroups : this.menuGroups; }
+    /** the groups drawn above Setup: Learn is drawn at the very bottom, below it */
+    get shownGroups(): MenuGroup[] { return (isCounterRole(this.user?.rolename) ? this.counterGroups : this.menuGroups).filter((g) => g.key !== 'learn'); }
+
+    /** the guides, at the bottom of the sidebar for every role and both menus */
+    get learnGroup(): MenuGroup | undefined { return this.menuGroups.find((g) => g.key === 'learn'); }
 
     groupVisible(g: MenuGroup): boolean {
       return g.items.some((m) => m.show());

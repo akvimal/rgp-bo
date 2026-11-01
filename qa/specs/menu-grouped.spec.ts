@@ -30,12 +30,12 @@ test.describe.serial('Grouped menu', () => {
     const counter = await app.open('sales1@local.test', '/secure/sales/pos/new');
     await expect(counter.page.getByTestId('nav-dashboard')).toBeVisible();
     const g = await sections(counter.page);
-    expect(Object.keys(g)).toEqual(['sell', 'stock', 'accounts', 'people']);
+    expect(Object.keys(g)).toEqual(['sell', 'stock', 'accounts', 'people', 'learn']);
     expect(g.sell.slice(0, 2)).toEqual(['nav-sales', 'nav-customers']);
-    expect(g.sell).toContain('nav-pharmacy-guide');
+    expect(g.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge']);                // the guides sit at the bottom
     const mgr = await app.open(MGR, '/secure/dashboard');
     await expect(mgr.page.getByTestId('nav-section-buy')).toBeVisible();
-    expect(Object.keys(await sections(mgr.page))).toEqual(['sell', 'stock', 'buy', 'people', 'oversight', 'admin']);
+    expect(Object.keys(await sections(mgr.page))).toEqual(['sell', 'stock', 'buy', 'people', 'oversight', 'admin', 'learn']);
   });
 
   test('MG-2 on, the menu shows the groups in order with each page under its job', async ({ api, app }) => {
@@ -52,8 +52,8 @@ test.describe.serial('Grouped menu', () => {
       });
       return out;
     });
-    expect(Object.keys(groups)).toEqual(['home', 'sell', 'stock', 'buy', 'accounts', 'people', 'learn', 'oversight', 'admin']);
-    expect(groups.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide']);                       // the guides: the pharmacy's rules, and how to use the app
+    expect(Object.keys(groups)).toEqual(['home', 'sell', 'stock', 'buy', 'accounts', 'people', 'oversight', 'admin', 'learn']);
+    expect(groups.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge']);                       // the guides sit at the very bottom, below Setup
     expect(groups.home).toEqual(['nav-dashboard', 'nav-shift', 'nav-reports']);
     expect(groups.accounts).toEqual(['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance']);
     expect(groups.oversight).toEqual(['nav-compliance', 'nav-review', 'nav-quality']);

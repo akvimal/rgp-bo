@@ -1,4 +1,5 @@
 import { Component, OnInit } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import { AuthService } from "src/app/@core/auth/auth.service";
 import { UsersService } from "../secured/settings/users/users.service";
 import { RolesService } from "../secured/settings/roles/roles.service";
@@ -41,7 +42,7 @@ export class AppGuideComponent implements OnInit {
   matrix: { role: string; ids: Set<string> }[] = [];
   matrixLoaded = false;
 
-  constructor(private auth: AuthService, private users: UsersService, private roles: RolesService) {}
+  constructor(private auth: AuthService, private users: UsersService, private roles: RolesService, private route: ActivatedRoute) {}
 
   private access() {
     return { has: (...k: string[]) => k.some((x) => this.auth.isActionAuthorized(x)), canOpen: (u: string) => this.auth.isUrlAuthorized(u), pack: (n: string) => this.auth.packOn(n) };
@@ -53,6 +54,10 @@ export class AppGuideComponent implements OnInit {
     this.walks = visibleWalkthroughs(this.pages);
     this.groups = groupedPages(this.pages);
     this.canSeeRoles = a.has('roles');
+    // a link from elsewhere can open a job or a page: ?job=w-bill or ?page=nav-sales
+    const q = this.route.snapshot.queryParamMap;
+    if (q.get('job') && this.walks.some((w) => w.id === q.get('job'))) { this.tab = 'jobs'; this.openJob = q.get('job') as string; }
+    else if (q.get('page') && this.pages.some((p) => p.id === q.get('page'))) { this.tab = 'pages'; this.openPage = q.get('page') as string; }
     this.users.getCurrentUser().subscribe((u: any) => {
       this.roleName = u?.rolename || '';
       this.day = dayPlanOf(dayKindOf(this.roleName));

@@ -262,6 +262,13 @@ export const PAGES: PageGuide[] = [
     who: 'Everyone, and new staff especially.', keywords: 'training law schedule prescription licence',
   },
   {
+    id: 'nav-knowledge', group: 'learn', title: 'Knowledge check', route: '/secure/knowledge',
+    purpose: 'Five short questions a week to keep what matters fresh, with the right answer and why after each one.',
+    tasks: ['Take this week\'s check (one counted attempt a week), or practise as much as you like.', 'See the topics to read again and your past checks.', 'Store heads and the owner: see who has done it and the topics that need another look.'],
+    who: 'Everyone. The results are for coaching and do not count towards pay or any KPI.',
+    watch: ['If several people share one login, the results are kept against the login.'], keywords: 'quiz test questions learn weekly coaching',
+  },
+  {
     id: 'nav-app-guide', group: 'learn', title: 'App guide', route: '/secure/app-guide',
     purpose: 'This page: what each page of the app is for and how to do the common jobs.',
     tasks: ['Start with Your day.', 'Search for a page or a job.', 'Follow a walk-through step by step.'],
@@ -404,6 +411,11 @@ export const WALKTHROUGHS: Walkthrough[] = [
     keywords: 'leave approve decline',
   },
   {
+    id: 'w-knowledge', title: 'Take the weekly knowledge check', from: 'nav-knowledge',
+    steps: ['Open Knowledge check and press Start this week\'s check.', 'Read each question and choose an answer. The right answer and why show at once.', 'Press Next, and Finish after the last one.', 'Read the topics it lists again. Practise as often as you like: only the weekly check is recorded.'],
+    tips: ['A scored check is one a week (Monday to Sunday). You can leave and carry on later.'], keywords: 'quiz test weekly practise',
+  },
+  {
     id: 'w-telegram', title: 'Get alerts on Telegram', from: 'bell',
     steps: ['Open the bell, then Notifications. Press Connect Telegram.', 'Press Open Telegram and then Start in the chat. This page shows Connected.', 'Choose which level you want and your quiet hours, and press Save.', 'Press Send a test to check.'],
     tips: ['Critical alerts come at any hour; the others wait until quiet hours end.', 'Send /stop to the bot to stop them.'], keywords: 'telegram alerts phone',
@@ -416,21 +428,21 @@ export const DAYS: DayPlan[] = [
     kind: 'counter', label: 'Counter',
     intro: 'Your work is the counter: the bill, the customer and the shift.',
     daily: ['Open your shift (My shift) before the first bill.', 'Bill customers (Sales and billing). Check the medicine, batch and expiry each time.', 'For a scheduled drug, fill the patient and prescriber panel.', 'Call the refills that are due (Refills or Customers > Contact today).', 'Close your shift: count the cash and enter the card and UPI totals.'],
-    weekly: ['Look at your KPI (My KPI) and your leave (My HR).', 'Read the part of the Pharmacy guide you are least sure of.'],
+    weekly: ['Take the weekly Knowledge check (five questions).', 'Look at your KPI (My KPI) and your leave (My HR).', 'Read the part of the Pharmacy guide you are least sure of.'],
     monthly: ['Check your pay slip in My HR.'],
   },
   {
     kind: 'storehead', label: 'Store Head',
     intro: 'You run the store: the stock, the people at the counter and the money at the end of the day.',
     daily: ['Look at the bell: approvals and anything late.', 'Settle stock adjustments waiting for approval (Stock > Adjustments).', 'Check the shifts that closed with a difference.', 'Receive deliveries and complete invoices (Purchase).', 'Check expiry (Stock > Expiry) and bank the cash when the alert says.'],
-    weekly: ['Do the stock counts and audits that are due (Stock audits).', 'Do the weekly review.', 'Print the outage price list and check the kit.', 'Approve leave and rate staff (People).'],
+    weekly: ['Take the weekly Knowledge check and look at the team\'s results (Knowledge check > Team).', 'Do the stock counts and audits that are due (Stock audits).', 'Do the weekly review.', 'Print the outage price list and check the kit.', 'Approve leave and rate staff (People).'],
     monthly: ['Check the Drug register is complete and print it.', 'Look at payables and vendor issues.', 'Close the month\'s KPI ratings.'],
   },
   {
     kind: 'owner', label: 'Business Head / Owner',
     intro: 'You see the whole business: what to look at each day, week and month.',
     daily: ['Open the Dashboard and the bell: what needs you.', 'Check cash and deposits, and anything escalated in Compliance.', 'Look at approvals waiting for you (large stock differences, price rises, adjustments).'],
-    weekly: ['Do the Weekly review.', 'Look at Compliance: late and escalated duties.', 'Look at Contact today and Refills with your staff.', 'Check Digital payments against the statements.'],
+    weekly: ['Do the Weekly review.', 'Look at Knowledge check > Team: who has done it, and which topics need coaching.', 'Look at Compliance: late and escalated duties.', 'Look at Contact today and Refills with your staff.', 'Check Digital payments against the statements.'],
     monthly: ['Close the GST month and check the registers.', 'Approve payroll and KPI.', 'Reconcile the bank (Finance) and check the Records.', 'Look at stock audits done and certified, and the Drug register coverage.'],
   },
   {
