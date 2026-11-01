@@ -1,0 +1,443 @@
+/**
+ * The app guide: what each page of the app is for and how to do the common jobs, shown to a person only for the pages their login can open.
+ * Plain data, so it can be reviewed and edited in one place, and pure (no Angular) so a test can check it against the menu. Every menu page must have an
+ * entry here (the test fails otherwise), so a new page cannot be added without saying what it is for.
+ *
+ * The pharmacy guide (a separate page) teaches the rules of the trade; this guide is about the app.
+ */
+
+export type GuideGroup = 'home' | 'sell' | 'stock' | 'buy' | 'accounts' | 'people' | 'learn' | 'oversight' | 'setup';
+
+export const GROUP_ORDER: GuideGroup[] = ['home', 'sell', 'stock', 'buy', 'accounts', 'people', 'oversight', 'learn', 'setup'];
+
+export const GROUP_LABELS: Record<GuideGroup, string> = {
+  home: 'Home', sell: 'Sell', stock: 'Inventory', buy: 'Purchasing', accounts: 'Accounts', people: 'People', learn: 'Learn', oversight: 'Oversight', setup: 'Setup',
+};
+
+export interface PageGuide {
+  /** the menu item's id (nav-sales), or an id of its own for a page the menu does not list (setup pages, the bell) */
+  id: string;
+  group: GuideGroup;
+  title: string;
+  route: string;
+  purpose: string;
+  /** the main things done here */
+  tasks: string[];
+  /** who usually uses it */
+  who: string;
+  /** what to be careful about */
+  watch?: string[];
+  /** for a page the menu does not decide: the permissions that open it (any one of them) */
+  needs?: string[];
+  /** open to everyone signed in */
+  always?: boolean;
+  keywords?: string;
+}
+
+export interface Walkthrough {
+  id: string;
+  title: string;
+  /** the page it starts on: shown only to a person who can open that page */
+  from: string;
+  steps: string[];
+  tips?: string[];
+  keywords?: string;
+}
+
+export type DayKind = 'counter' | 'storehead' | 'owner' | 'other';
+
+export interface DayPlan {
+  kind: DayKind;
+  label: string;
+  intro: string;
+  daily: string[];
+  weekly: string[];
+  monthly: string[];
+}
+
+export const GUIDE_META = {
+  version: '2026.11',
+  note: 'This guide follows your login: it shows the pages you can open. If a page is missing that you need, ask the Business Head to change your role.',
+};
+
+// ------------------------------------------------------------------------------------------------ the pages
+export const PAGES: PageGuide[] = [
+  // ---- home
+  {
+    id: 'nav-dashboard', group: 'home', title: 'Dashboard', route: '/secure/dashboard',
+    purpose: 'Today at a glance, for the work your role does: sales, cash, and what needs attention.',
+    tasks: ['See today\'s and this month\'s figures for your stores.', 'Open a number or an alert to go to the page behind it.', 'Change the period or the store where the page offers it.'],
+    who: 'Everyone. What it shows depends on the role.',
+    watch: ['Figures cover only the stores you are placed in; the Business Head sees all of them.'], keywords: 'home overview sales today',
+  },
+  {
+    id: 'bell', group: 'home', title: 'Notifications (the bell)', route: '/secure/notifications', always: true,
+    purpose: 'Everything that needs your attention, in your language, until the cause is fixed.',
+    tasks: ['Open an alert to go straight to what it is about.', 'Snooze it for an hour, four hours or a day, or dismiss it for yourself.', 'Choose English or Tamil.', 'Connect Telegram to get the important ones on your phone.'],
+    who: 'Everyone. You see only the alerts meant for your role and your stores.',
+    watch: ['An alert goes away by itself once the cause is fixed. Dismissing hides it for you only.'], keywords: 'alerts telegram bell snooze',
+  },
+  {
+    id: 'nav-shift', group: 'home', title: 'My shift', route: '/secure/shift',
+    purpose: 'Your cash for the shift: open it, and close it with the cash and the card or UPI totals counted.',
+    tasks: ['Open your shift with the cash in the drawer before billing.', 'Close it at the end: count the cash by denomination and enter what each payment terminal shows.', 'Do the checklist items, or say why one cannot be done.'],
+    who: 'Counter staff and anyone who bills.',
+    watch: ['A bill cannot be completed without an open shift.', 'A shift left open from an earlier day can stop the next one opening.'], keywords: 'cash drawer open close denomination',
+  },
+  {
+    id: 'nav-reports', group: 'home', title: 'Reports', route: '/secure/reports',
+    purpose: 'Sales reports for a period, which can be downloaded to Excel.',
+    tasks: ['Choose the dates and the store, and run the report.', 'Download it to Excel for your accountant.'],
+    who: 'Managers and the owner.', keywords: 'excel download sales report',
+  },
+
+  // ---- sell
+  {
+    id: 'nav-sales', group: 'sell', title: 'Sales and billing', route: '/secure/sales',
+    purpose: 'Billing at the counter, and everything about a sale after it: reports, deliveries and returns.',
+    tasks: ['New sale: add the customer by mobile number, add products, take payment, complete and print the bill.', 'Save a sale for later and come back to it from its tab.', 'Reports: find a bill, filter by staff or payment, check a digital payment.', 'Deliveries: follow orders handed over by delivery.', 'Returns: take back goods against a bill.'],
+    who: 'Counter staff, store heads and the owner.',
+    watch: ['Open your shift first.', 'A scheduled drug asks for the patient and prescriber; Schedule X will not complete without them.', 'The total is the lines added up and rounded once to the nearest rupee.'], keywords: 'bill pos billing sale return delivery',
+  },
+  {
+    id: 'nav-customers', group: 'sell', title: 'Customers', route: '/secure/customers/cust/list',
+    purpose: 'Your customers, their bills and documents, and who to contact today.',
+    tasks: ['Find or add a customer (the mobile number is the key).', 'Keep a prescription in their documents.', 'Contact today: the short daily list of regulars due back, people slipping away and prescriptions to collect.', 'Audiences and duplicates (for the people who run the shop).'],
+    who: 'Counter staff, store heads and the owner.',
+    watch: ['Phone numbers may be masked until you press Show; each reveal is counted and kept.', 'Never contact a customer who asked to stop.'], keywords: 'customer mobile contact worklist audience',
+  },
+  {
+    id: 'nav-refills', group: 'sell', title: 'Refills', route: '/secure/quality/refills',
+    purpose: 'Regular customers whose chronic medicine is about to run out, so they can be called before they do.',
+    tasks: ['See who is due, with what and when.', 'Call or message them and record what came of it.'],
+    who: 'Counter staff.', keywords: 'chronic refill call reminder',
+  },
+  {
+    id: 'nav-inquiries', group: 'sell', title: 'Requests and inquiries', route: '/secure/inquiries',
+    purpose: 'What customers asked for that the shop did not have, so it is followed up.',
+    tasks: ['Write down an inquiry or a request at the counter.', 'Work through Open, Overdue and Mine; close it when done.'],
+    who: 'Counter staff and store heads.', keywords: 'request inquiry customer ask',
+  },
+
+  // ---- inventory
+  {
+    id: 'nav-products', group: 'stock', title: 'Products and prices', route: '/secure/products',
+    purpose: 'The catalogue of what the shop sells, and the sale price of each product.',
+    tasks: ['Add a product: name, category, composition, schedule, whether it is chronic, HSN and pack.', 'Set or change a sale price: the rules say the lowest and highest price allowed and who must approve.', 'Needs a price: new products bought and not yet priced, each with a suggested price.', 'Data check: products whose pack size or details look wrong.'],
+    who: 'Store heads and the owner; counter staff may see products.',
+    watch: ['A price can never be above the MRP.', 'A big or sudden raise needs approval and is stepped.'], keywords: 'product price catalogue schedule hsn pricing policy',
+  },
+  {
+    id: 'nav-store', group: 'stock', title: 'Stock', route: '/secure/store',
+    purpose: 'What is on the shelf, by product and batch, and everything that changes it.',
+    tasks: ['Stock: products and batches with what is available.', 'Expiry: batches that are expired or close to it.', 'Adjustments: write stock off or correct it, with a reason.', 'Count: count the shelf against the books.', 'Shifts, Transfers and Cash: shift reports, stock moved between stores, and the cash book.'],
+    who: 'Store heads and the owner.',
+    watch: ['Every adjustment needs a reason, and a large one needs approval.'], keywords: 'stock batch expiry adjustment count transfer cash',
+  },
+  {
+    id: 'nav-stock-audits', group: 'stock', title: 'Stock audits', route: '/secure/stock-audits',
+    purpose: 'Planned counts of the stock, with the differences settled and signed off on paper.',
+    tasks: ['Due, Overdue and Mine: the audits to do, who does them and by when.', 'Do an audit: the count screen opens for that audit.', 'Settle each difference with a reason, then sign off (a different person from the counter).', 'Done: the count sheet, variance report, adjustments and certificate of each audit.', 'Plans: how often each store is audited (the Business Head sets them).'],
+    who: 'Store heads and the owner.',
+    watch: ['Sign-off is blocked while any difference is still waiting.', 'Late bills written by hand must be entered before an audit is settled.'], keywords: 'audit count variance certificate plan sign off',
+  },
+  {
+    id: 'nav-outage', group: 'stock', title: 'Outage kit', route: '/secure/outage',
+    purpose: 'Being ready to bill by hand when the system is down.',
+    tasks: ['Tick each item of the kit once you have seen it yourself.', 'Print the price list and keep it at the counter.', 'Log each outage with the first and last hand-written bill number.'],
+    who: 'Store heads.', watch: ['The kit counts as ready only when every item is ticked.'], keywords: 'power cut manual bill price list',
+  },
+  {
+    id: 'nav-schedule-register', group: 'stock', title: 'Drug register', route: '/secure/schedule-register',
+    purpose: 'Every Schedule H, H1 and X drug sold, with the patient and the prescriber, numbered in the register\'s own order.',
+    tasks: ['Look up, print or download the register for a period.', 'Missing details: bills completed without the patient and prescriber; add them here.', 'See how each supply stands with its prescription (attached, on file, to come, or a reason).', 'See how well the supplies were covered, by schedule and by who sold them.'],
+    who: 'Store heads, the pharmacist and the owner.',
+    watch: ['The register is what an inspector reads: keep it complete.'], keywords: 'h1 h x register inspector prescription',
+  },
+
+  // ---- purchasing
+  {
+    id: 'nav-purchases', group: 'buy', title: 'Purchase', route: '/secure/purchases',
+    purpose: 'Buying: what to order, the invoices that come in, what you owe vendors, and the GST on purchases.',
+    tasks: ['Ordering: requests, what to reorder, and purchase orders.', 'Invoices: enter an invoice or delivery challan, add its items, verify them and complete it.', 'Pay vendors, hold or release an invoice, see what is overdue.', 'Vendors: the vendor list and each one\'s balance.'],
+    who: 'Store heads, the purchaser and the owner.',
+    watch: ['A rate that rose against the last purchase needs a reason, and a big rise needs a Store Head or Business Head.', 'A line in dispute is not counted until it is accepted or rejected.'], keywords: 'invoice vendor order challan payment grn',
+  },
+  {
+    id: 'nav-purchase-requests', group: 'buy', title: 'Purchase requests', route: '/secure/purchases/my-requests',
+    purpose: 'Ask for something to be bought and see what happened to it.',
+    tasks: ['Add a request: what and how many.', 'Follow it: open, ordered or declined.'],
+    who: 'Staff who may ask but not buy.', keywords: 'request ask product',
+  },
+  {
+    id: 'nav-vendor-issues', group: 'buy', title: 'Vendor issues', route: '/secure/vendor-issues',
+    purpose: 'Goods returned or claimed back from a vendor (damaged, short, wrong or near expiry) until the vendor settles.',
+    tasks: ['Record an issue against a vendor.', 'Track Active, Overdue and Settled.', 'Vendor scorecard: how each vendor performs.'],
+    who: 'Store heads and the purchaser.', keywords: 'return vendor damaged short claim credit note',
+  },
+
+  // ---- accounts
+  {
+    id: 'nav-expenses', group: 'accounts', title: 'Expenses', route: '/secure/expenses',
+    purpose: 'Money the shop spends, with the receipt, by category.',
+    tasks: ['Record an expense: date, store, category, amount, GST and a photo of the receipt.', 'Set up a recurring expense, such as rent.', 'See which were paid from the cash drawer.'],
+    who: 'Store heads and the owner.', watch: ['Spending without a receipt is flagged to the owner.'], keywords: 'expense receipt rent drawer',
+  },
+  {
+    id: 'nav-digital-payments', group: 'accounts', title: 'Digital payments', route: '/secure/digital-payments',
+    purpose: 'Checking that card and UPI payments on bills really reached the account.',
+    tasks: ['Compare each bill with the Paytm or card statement and mark it.', 'Import the statement as a CSV; bills are matched by amount, time and the last 4 digits.', 'Look at payments with no bill.'],
+    who: 'Store heads and the owner.', watch: ['A day\'s total here should equal the statement\'s total for the day.'], keywords: 'paytm upi card reconcile statement',
+  },
+  {
+    id: 'nav-gst-filing', group: 'accounts', title: 'GST', route: '/secure/gst-filing',
+    purpose: 'The monthly GST work: what was sold and bought, the totals for the return, and the rate changes.',
+    tasks: ['Check the month\'s sales and purchase registers.', 'Close the month once the figures are right.', 'Rate changes: see what a GST change does to stock and prices before it starts.', 'Fix products that have no HSN code.'],
+    who: 'The owner and the accountant.', keywords: 'gst gstr hsn return filing rate change',
+  },
+  {
+    id: 'nav-finance', group: 'accounts', title: 'Finance', route: '/secure/finance',
+    purpose: 'The shop\'s money against the bank, and the records it must keep.',
+    tasks: ['Import a bank statement from any bank.', 'Reconcile bank lines against payments and receipts.', 'Records: how long to keep accounts and drug records, and whether each month\'s records are complete.'],
+    who: 'The owner and the accountant.', keywords: 'bank reconcile statement records retention',
+  },
+
+  // ---- people
+  {
+    id: 'nav-my-hr', group: 'people', title: 'My HR', route: '/secure/my-hr',
+    purpose: 'Your own pay, attendance and leave.',
+    tasks: ['See your pay structure and pay slips.', 'See your attendance and leave balance.', 'Apply for leave.'],
+    who: 'Every member of staff with a staff record.', watch: ['Bank, PAN and Aadhaar are shown in part. Ask the Business Head to change them.'], keywords: 'pay slip leave attendance salary',
+  },
+  {
+    id: 'nav-kpi-mine', group: 'people', title: 'My KPI', route: '/secure/kpi/mine',
+    purpose: 'How your month is scored, and the evidence behind each score.',
+    tasks: ['See each measure and your score.', 'Open one to see the sales, shifts and other records it comes from.'],
+    who: 'Staff on a KPI plan.', keywords: 'kpi score incentive',
+  },
+  {
+    id: 'nav-hr', group: 'people', title: 'Staff and HR', route: '/secure/hr',
+    purpose: 'The people who work for the shop: their pay, attendance, leave and payroll.',
+    tasks: ['Staff: add your team to HR and give each a start date and pay.', 'Setup: pay, job roles, leave, holidays and KPI.', 'Attendance: mark absences and half days.', 'Payroll: work out and approve the month\'s pay; add bonuses.'],
+    who: 'The Business Head and the owner.', watch: ['An approved month is locked.'], keywords: 'staff payroll attendance holiday bonus salary job role',
+  },
+  {
+    id: 'nav-leave-approvals', group: 'people', title: 'Leave requests', route: '/secure/leave-approvals',
+    purpose: 'Leave staff have asked for, waiting for a decision.',
+    tasks: ['Read the request and approve or decline it.'],
+    who: 'Store heads and the owner.', keywords: 'leave approve decline',
+  },
+  {
+    id: 'nav-kpi-rate', group: 'people', title: 'Rate staff', route: '/secure/kpi/rate',
+    purpose: 'Scoring the measures the system cannot work out itself.',
+    tasks: ['Choose a person and a month and give each measure a rating.', 'Finalise the month so payroll can use it.'],
+    who: 'Store heads and the owner.', keywords: 'kpi rating review staff',
+  },
+
+  // ---- oversight
+  {
+    id: 'nav-compliance', group: 'oversight', title: 'Compliance', route: '/secure/compliance',
+    purpose: 'The regular duties of the shop (counts, shift closes, reviews, licences), who owns each and whether it is on time.',
+    tasks: ['See what is due, late or escalated.', 'Give a waiver, with a reason, for a duty that cannot be done in time.'],
+    who: 'Store heads and the owner.', watch: ['A late duty rises step by step: a reminder, then the store head, then the owner, then a block.'], keywords: 'compliance late waiver escalate duty licence',
+  },
+  {
+    id: 'nav-review', group: 'oversight', title: 'Weekly review', route: '/secure/review',
+    purpose: 'The week\'s exceptions in one place, to look at once a week.',
+    tasks: ['Prices below the list, discarded and edited bills, returns.', 'Mark the review done.'],
+    who: 'The owner and store heads.', keywords: 'weekly review exception void edit',
+  },
+  {
+    id: 'nav-quality', group: 'oversight', title: 'Staff and quality', route: '/secure/quality',
+    purpose: 'Who did what, and where things went wrong: cash that did not balance, complaints and the audit trail.',
+    tasks: ['Audit log: who did what and when (it cannot be edited).', 'Cash and shift differences.', 'Customer complaints and whether they were settled in time.'],
+    who: 'The owner and store heads.', keywords: 'audit log grievance complaint cash difference',
+  },
+
+  // ---- learn
+  {
+    id: 'nav-pharmacy-guide', group: 'learn', title: 'Pharmacy guide', route: '/secure/pharmacy-guide',
+    purpose: 'The rules of retail pharmacy in everyday words: schedules, prescriptions, licences and records.',
+    tasks: ['Follow the Day 1 and Day 2 learning path.', 'Look something up when you are not sure at the counter.', 'Test yourself with the quiz.'],
+    who: 'Everyone, and new staff especially.', keywords: 'training law schedule prescription licence',
+  },
+  {
+    id: 'nav-app-guide', group: 'learn', title: 'App guide', route: '/secure/app-guide',
+    purpose: 'This page: what each page of the app is for and how to do the common jobs.',
+    tasks: ['Start with Your day.', 'Search for a page or a job.', 'Follow a walk-through step by step.'],
+    who: 'Everyone, for the pages their login opens.', keywords: 'help how to guide',
+  },
+
+  // ---- setup
+  {
+    id: 'setup-business-profile', group: 'setup', title: 'Business details', route: '/secure/settings/business-profile', needs: ['businessprofile'],
+    purpose: 'The shop\'s name, address, GSTIN, phone numbers and logo, and what the bill prints.',
+    tasks: ['Fill in the name, address and phones; add the logo.', 'Add a grievance phone and the website for the end of the bill.', 'Choose whether the bill shows the MRP of each item and the "You saved" box.'],
+    who: 'The Business Head.', keywords: 'business name gstin logo bill phone website',
+  },
+  {
+    id: 'setup-shop-setup', group: 'setup', title: 'Shop setup', route: '/secure/settings/business-profile/setup', needs: ['businessprofile'],
+    purpose: 'A short checklist for getting a new shop ready to bill.',
+    tasks: ['Work through the steps in order; each shows when it is done.'], who: 'The Business Head.', keywords: 'setup start checklist onboarding',
+  },
+  {
+    id: 'setup-roles', group: 'setup', title: 'Roles', route: '/secure/settings/roles', needs: ['roles'],
+    purpose: 'What each kind of login may open and do.',
+    tasks: ['Create a role from a template or from scratch.', 'Choose the pages and actions a role may use.'],
+    who: 'The Business Head.', watch: ['A change takes effect the next time the person signs in.'], keywords: 'role permission access',
+  },
+  {
+    id: 'setup-users', group: 'setup', title: 'Users', route: '/secure/settings/users', needs: ['users'],
+    purpose: 'The logins of the people who use the app.',
+    tasks: ['Add a user, give a role and the stores they work in.', 'Switch someone off, or remove them (a person with records cannot be removed; switch them off).'],
+    who: 'The Business Head.', keywords: 'user login password store',
+  },
+  {
+    id: 'setup-delivery-partners', group: 'setup', title: 'Delivery partners', route: '/secure/settings/delivery-partners', needs: ['purchases'],
+    purpose: 'The couriers and delivery people the shop uses.',
+    tasks: ['Add or edit a delivery partner.'], who: 'Store heads.', keywords: 'delivery courier',
+  },
+  {
+    id: 'setup-alerts', group: 'setup', title: 'Alerts', route: '/secure/settings/alerts', needs: ['alerts.manage'],
+    purpose: 'What the shop is told about, who is told and how loudly, and whether alerts also go to staff on Telegram.',
+    tasks: ['Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence.', 'See who has connected Telegram and how the messages went.'],
+    who: 'The Business Head.', keywords: 'alert rule telegram notification',
+  },
+  {
+    id: 'setup-dashboards', group: 'setup', title: 'Dashboards', route: '/secure/settings/dashboards', needs: ['dashsetup.view'],
+    purpose: 'What the dashboard and the store health score measure for this shop.',
+    tasks: ['Set goals and the thresholds for badges and compliance.', 'Choose what counts in the store health score.'], who: 'The Business Head.', keywords: 'dashboard goals health badges',
+  },
+  {
+    id: 'setup-store', group: 'setup', title: 'Store settings', route: '/secure/settings/store', needs: ['storesettings'],
+    purpose: 'Each store\'s address, phone, licences, review link and opening details.',
+    tasks: ['Add the drug licence numbers and dates.', 'Add the store\'s own address and phone for its bills.', 'Paste the Google review link for the QR on the bill.'],
+    who: 'The Business Head and store heads.', keywords: 'store licence address review qr',
+  },
+  {
+    id: 'setup-businesses', group: 'setup', title: 'Businesses', route: '/secure/settings/businesses', needs: ['businesses.manage'],
+    purpose: 'Creating and managing businesses on a self-hosted system.',
+    tasks: ['Add or edit a business.'], who: 'The site administrator.', keywords: 'business tenant admin',
+  },
+];
+
+// ------------------------------------------------------------------------------------------------ the jobs, step by step
+export const WALKTHROUGHS: Walkthrough[] = [
+  {
+    id: 'w-bill', title: 'Make a bill', from: 'nav-sales',
+    steps: ['Open Sales and billing. Make sure your shift is open (My shift).', 'Type the customer\'s mobile number; pick them if they are listed, or add the name.', 'Type the product name or its composition in the product box and press Enter on the one you want. The batch to sell first is marked.', 'Type the units. The rate, GST and amount fill in.', 'Choose how they pay: cash, card or UPI, or a split.', 'Press Complete. The bill opens; press Print.'],
+    tips: ['Save for later if the customer steps away; the sale stays as a tab.', 'The total is the lines added up with their paise, rounded once to the nearest rupee; the bill shows the round-off.'], keywords: 'bill sale pos print',
+  },
+  {
+    id: 'w-scheduled', title: 'Sell a scheduled drug (H, H1, X)', from: 'nav-sales',
+    steps: ['Add the medicine to the sale. A "Scheduled drugs on this bill" panel appears.', 'If the customer is on record, "Already on record" may offer their prescription or the last supply: press Use it.', 'Otherwise type the patient and the doctor, with the doctor\'s registration number or address.', 'Say how the prescription stands: attached, seen, or why there is none. For "Will bring it later" give the day and make sure the customer is on the bill.', 'Complete the bill.'],
+    tips: ['Schedule X cannot be completed without the details; H and H1 can, and are then listed in the Drug register as missing them.', 'A prescription on file older than six months, or for a medicine not marked chronic, is flagged: ask for a fresh one.', 'Upload the prescription picture in the panel to keep it with the customer.'], keywords: 'h1 prescription register patient doctor',
+  },
+  {
+    id: 'w-return', title: 'Take a return', from: 'nav-sales',
+    steps: ['Open Sales and billing, then Returns.', 'Find the bill by its number or the customer.', 'Choose the items and the units coming back, and the reason.', 'Save it. The refund follows how the bill was paid.'],
+    tips: ['Only goods that may be returned can be chosen. A medicine that has left the shop cannot go back on the shelf for resale.'], keywords: 'return refund exchange',
+  },
+  {
+    id: 'w-shift', title: 'Open and close your shift', from: 'nav-shift',
+    steps: ['Open My shift. Enter the cash in the drawer and open it.', 'Bill through the day.', 'At the end press Close. Count the cash by denomination and enter what each card or UPI terminal shows.', 'Do the checklist items, or give the reason one cannot be done.', 'Submit. A difference is shown to your store head.'],
+    tips: ['Close every shift: an unclosed one can stop the next from opening.'], keywords: 'shift cash drawer close open',
+  },
+  {
+    id: 'w-purchase', title: 'Receive a purchase invoice', from: 'nav-purchases',
+    steps: ['Open Purchase, then Invoices, then Add New. Choose the vendor and give the invoice number (or the challan number if the invoice has not come).', 'Add each item: product, batch, expiry, MRP, units, free units, rate, discount and tax. The tax is chosen from your list of rates.', 'Look at the flags: a rate that rose, an MRP far above the rate, a new product\'s margin.', 'Select the lines and press Verify.', 'When every line is verified, press Complete.', 'After completing, give new products their first price (Products and prices > Needs a price).'],
+    tips: ['Check the printed total at the bottom against the vendor\'s invoice.', 'Expiry is needed on every line except a product that never expires.'], keywords: 'invoice grn challan vendor receive',
+  },
+  {
+    id: 'w-dispute', title: 'Deal with a rate rise or a line you do not agree with', from: 'nav-purchases',
+    steps: ['On the invoice, look at the "Vs last" column: a rise over the limit needs a reason.', 'If you accept the new rate, choose the reason (price revised, new batch, scheme ended, vendor error or pack changed).', 'If the vendor must clarify it, select the line and press Move to dispute, with a note of what to ask.', 'The line leaves the invoice total. When the vendor answers, press Accept (it comes back to be verified) or Reject (with the reason).', 'Complete the invoice once nothing is in dispute.'],
+    tips: ['A rise above the approval limit can only be completed by a Store Head or Business Head.'], keywords: 'dispute reject price rise',
+  },
+  {
+    id: 'w-price', title: 'Set or change a price', from: 'nav-products',
+    steps: ['Open Products and prices, then Price (or Needs a price for a new product).', 'Open the product\'s Set the price box. It shows the lowest and highest price allowed and a suggested price.', 'Type the price. A warning says if it breaks a rule and who must approve it.', 'Save. A raise is stepped: a big one happens in steps over days.'],
+    tips: ['The price can never be above the MRP.'], keywords: 'price mrp policy approve raise cut',
+  },
+  {
+    id: 'w-count', title: 'Count the stock', from: 'nav-store',
+    steps: ['Open Stock, then Count, and choose the store and the category.', 'Start the count; print the count sheet if you want a paper copy.', 'Count the shelf and enter the counted units for each batch.', 'Submit. Differences become adjustments to settle.'],
+    tips: ['Sales made during the count are not shortages: the difference is measured against what should be there when counting finished.'], keywords: 'count stocktake shelf',
+  },
+  {
+    id: 'w-audit', title: 'Do a stock audit and sign it off', from: 'nav-stock-audits',
+    steps: ['Open Stock audits. Under Due, press Do the audit and count as above.', 'After the count, open Stock > Adjustments. For each difference, press Approve and choose why it arose, or Reject with a reason.', 'A large difference is counted again by another person before the Business Head settles it.', 'Back in Stock audits, once nothing is waiting, a different person from the counter presses Sign off.', 'Print the certificate and sign it with the person who counted.'],
+    tips: ['Done > Adjustments shows what an audit raised, with the reasons.'], keywords: 'audit sign off certificate variance difference',
+  },
+  {
+    id: 'w-adjust', title: 'Adjust stock with a reason', from: 'nav-store',
+    steps: ['Open Stock, find the product and batch, and press Adjust.', 'Enter the units to add or remove, choose the reason (damaged, expired, returned to vendor, shrinkage, correction or other) and add a comment.', 'If the adjustment is for an audit, choose the audit.', 'Save. A large one waits for approval.'],
+    tips: ['An approved adjustment cannot be deleted: make an opposite one instead.'], keywords: 'adjust write off damaged expired shrinkage',
+  },
+  {
+    id: 'w-contact', title: 'Call your regular customers', from: 'nav-customers',
+    steps: ['Open Customers, then Contact today.', 'Each row says why: due back, slipping away or new.', 'Press Show number if it is masked, then call or WhatsApp.', 'Choose what came of it and press Log. They leave the list for the contact gap.', 'Not today? Press Postpone a day and give the reason.'],
+    tips: ['Prescriptions to collect appear at the top: open the customer, upload the prescription and the item closes by itself.'], keywords: 'contact worklist refill call whatsapp',
+  },
+  {
+    id: 'w-register-details', title: 'Add details to a scheduled sale made without them', from: 'nav-schedule-register',
+    steps: ['Open Drug register. The banner lists sales with no register line, with the reason the bill gave.', 'Press Add details beside a bill.', 'Give the patient and the prescriber (use what is on record if offered) and how the prescription stands.', 'Press Add to the register. The line is numbered and dated as the bill.'],
+    keywords: 'register missing details h1',
+  },
+  {
+    id: 'w-expense', title: 'Record an expense', from: 'nav-expenses',
+    steps: ['Open Expenses and add one.', 'Give the date, store, category, amount and GST, and add a photo of the receipt.', 'Say if it was paid from the cash drawer.', 'Save.'],
+    tips: ['Set up rent and other repeating costs as recurring.'], keywords: 'expense receipt',
+  },
+  {
+    id: 'w-digital', title: 'Check card and UPI payments', from: 'nav-digital-payments',
+    steps: ['Open Digital payments.', 'Import the statement (CSV) for the day or month.', 'Bills are matched to payments; confirm each match or mark it.', 'Look at payments with no bill and bills with no payment.'],
+    tips: ['A day\'s total should equal the statement\'s total.'], keywords: 'paytm card upi reconcile',
+  },
+  {
+    id: 'w-hr-team', title: 'Add your team to HR', from: 'nav-hr',
+    steps: ['Open Staff and HR, then Staff.', 'In "Add your team to HR", set what each person is, their job role and the day they started.', 'Press Add to HR.', 'For each person added, press Set salary, or Start from the job role\'s pay.'],
+    tips: ['Set the pay, job roles, leave and holidays first under Setup.'], keywords: 'staff hr add salary job role',
+  },
+  {
+    id: 'w-leave', title: 'Approve leave', from: 'nav-leave-approvals',
+    steps: ['Open Leave requests.', 'Read the request: who, which days and why.', 'Approve or decline, with a note if you decline.'],
+    keywords: 'leave approve decline',
+  },
+  {
+    id: 'w-telegram', title: 'Get alerts on Telegram', from: 'bell',
+    steps: ['Open the bell, then Notifications. Press Connect Telegram.', 'Press Open Telegram and then Start in the chat. This page shows Connected.', 'Choose which level you want and your quiet hours, and press Save.', 'Press Send a test to check.'],
+    tips: ['Critical alerts come at any hour; the others wait until quiet hours end.', 'Send /stop to the bot to stop them.'], keywords: 'telegram alerts phone',
+  },
+];
+
+// ------------------------------------------------------------------------------------------------ your day
+export const DAYS: DayPlan[] = [
+  {
+    kind: 'counter', label: 'Counter',
+    intro: 'Your work is the counter: the bill, the customer and the shift.',
+    daily: ['Open your shift (My shift) before the first bill.', 'Bill customers (Sales and billing). Check the medicine, batch and expiry each time.', 'For a scheduled drug, fill the patient and prescriber panel.', 'Call the refills that are due (Refills or Customers > Contact today).', 'Close your shift: count the cash and enter the card and UPI totals.'],
+    weekly: ['Look at your KPI (My KPI) and your leave (My HR).', 'Read the part of the Pharmacy guide you are least sure of.'],
+    monthly: ['Check your pay slip in My HR.'],
+  },
+  {
+    kind: 'storehead', label: 'Store Head',
+    intro: 'You run the store: the stock, the people at the counter and the money at the end of the day.',
+    daily: ['Look at the bell: approvals and anything late.', 'Settle stock adjustments waiting for approval (Stock > Adjustments).', 'Check the shifts that closed with a difference.', 'Receive deliveries and complete invoices (Purchase).', 'Check expiry (Stock > Expiry) and bank the cash when the alert says.'],
+    weekly: ['Do the stock counts and audits that are due (Stock audits).', 'Do the weekly review.', 'Print the outage price list and check the kit.', 'Approve leave and rate staff (People).'],
+    monthly: ['Check the Drug register is complete and print it.', 'Look at payables and vendor issues.', 'Close the month\'s KPI ratings.'],
+  },
+  {
+    kind: 'owner', label: 'Business Head / Owner',
+    intro: 'You see the whole business: what to look at each day, week and month.',
+    daily: ['Open the Dashboard and the bell: what needs you.', 'Check cash and deposits, and anything escalated in Compliance.', 'Look at approvals waiting for you (large stock differences, price rises, adjustments).'],
+    weekly: ['Do the Weekly review.', 'Look at Compliance: late and escalated duties.', 'Look at Contact today and Refills with your staff.', 'Check Digital payments against the statements.'],
+    monthly: ['Close the GST month and check the registers.', 'Approve payroll and KPI.', 'Reconcile the bank (Finance) and check the Records.', 'Look at stock audits done and certified, and the Drug register coverage.'],
+  },
+  {
+    kind: 'other', label: 'Your role',
+    intro: 'This is the usual rhythm for the pages your role opens. Start with the bell and the pages below.',
+    daily: ['Open the Dashboard and the bell.', 'Do the work of the pages in the guide below.'],
+    weekly: ['Look through your pages for anything overdue.'],
+    monthly: ['Ask your manager what is needed at month end for your pages.'],
+  },
+];

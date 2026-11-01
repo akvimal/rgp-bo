@@ -102,6 +102,10 @@ const routes: Routes = [
       loadChildren: () => import('../packs/pharmacy/pharmacy.module').then(m => m.PharmacyModule)
     },
     {
+      path: 'app-guide', canActivate:[AuthGuard],
+      loadChildren: () => import('../guide/app-guide.module').then(m => m.AppGuideModule)
+    },
+    {
       path: 'pharmacy-guide', canActivate:[AuthGuard],
       loadChildren: () => import('../packs/pharmacy/guide/pharmacy-guide.module').then(m => m.PharmacyGuideModule)
     },

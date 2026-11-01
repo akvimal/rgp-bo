@@ -48,6 +48,7 @@ export function buildMenu(a: MenuAccess): MenuGroup[] {
     ] },
     { key: 'learn', label: 'Learn', items: [
       item('nav-pharmacy-guide', 'Pharmacy guide', 'pharmacy-guide', 'bi-mortarboard', () => !!a.pack && a.pack('pharmacy')),
+      item('nav-app-guide', 'App guide', 'app-guide', 'bi-question-circle', () => true),
     ] },
     { key: 'oversight', label: 'Oversight', items: [
       item('nav-compliance', 'Compliance', 'compliance', 'bi-check2-square', any('compliance.view')),
@@ -70,7 +71,7 @@ export function isCounterRole(roleName: string | null | undefined): boolean {
 /** Few headings, the selling work first. The Dashboard stands alone at the top (its group has no heading). */
 const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
   { key: 'home', label: '', ids: ['nav-dashboard'] },
-  { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-refills', 'nav-inquiries', 'nav-shift', 'nav-pharmacy-guide'] },
+  { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-refills', 'nav-inquiries', 'nav-shift', 'nav-pharmacy-guide', 'nav-app-guide'] },
   { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-outage', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance'] },
   { key: 'people', label: 'Me', ids: ['nav-my-hr', 'nav-kpi-mine', 'nav-hr', 'nav-leave-approvals', 'nav-kpi-rate'] },

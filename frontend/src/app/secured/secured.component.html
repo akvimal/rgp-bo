@@ -174,6 +174,12 @@
             <span>Pharmacy guide</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']">
+          <a class="nav-link collapsed" routerLink="app-guide" data-testid="nav-app-guide" title="App guide" aria-label="App guide">
+            <i class="bi bi-question-circle"></i>
+            <span>App guide</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'review.view'">
           <a class="nav-link collapsed" routerLink="review" data-testid="nav-review" title="Weekly review" aria-label="Weekly review">
             <i class="bi bi-journal-check"></i>

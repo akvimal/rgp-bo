@@ -52,7 +52,8 @@ test.describe.serial('Grouped menu', () => {
       });
       return out;
     });
-    expect(Object.keys(groups)).toEqual(['home', 'sell', 'stock', 'buy', 'accounts', 'people', 'oversight', 'admin']);
+    expect(Object.keys(groups)).toEqual(['home', 'sell', 'stock', 'buy', 'accounts', 'people', 'learn', 'oversight', 'admin']);
+    expect(groups.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide']);                       // the guides: the pharmacy's rules, and how to use the app
     expect(groups.home).toEqual(['nav-dashboard', 'nav-shift', 'nav-reports']);
     expect(groups.accounts).toEqual(['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance']);
     expect(groups.oversight).toEqual(['nav-compliance', 'nav-review', 'nav-quality']);

@@ -1,0 +1,111 @@
+<div class="pagetitle d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <h1 class="mb-0">App guide</h1>
+  <button type="button" class="btn btn-outline-secondary btn-sm no-print" (click)="print()" data-testid="ag-print"><i class="bi bi-printer me-1"></i>Print this page</button>
+</div>
+<p class="small text-muted mt-2 mb-3" data-testid="ag-note">{{meta.note}}<span *ngIf="roleName"> You are signed in as <b>{{roleName}}</b>.</span></p>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3 no-print">
+  <ul class="nav nav-pills guide-nav" data-testid="ag-tabs">
+    <li class="nav-item"><a class="nav-link" [class.active]="tab === 'day' && !query" (click)="setTab('day')" data-testid="ag-tab-day">Your day</a></li>
+    <li class="nav-item"><a class="nav-link" [class.active]="tab === 'pages' && !query" (click)="setTab('pages')" data-testid="ag-tab-pages">Pages ({{pages.length}})</a></li>
+    <li class="nav-item"><a class="nav-link" [class.active]="tab === 'jobs' && !query" (click)="setTab('jobs')" data-testid="ag-tab-jobs">Walk-throughs ({{walks.length}})</a></li>
+    <li class="nav-item" *ngIf="canSeeRoles"><a class="nav-link" [class.active]="tab === 'roles' && !query" (click)="setTab('roles')" data-testid="ag-tab-roles">Who can do what</a></li>
+  </ul>
+  <div class="input-group input-group-sm ms-lg-auto" style="max-width:22rem">
+    <input class="form-control" [(ngModel)]="query" (ngModelChange)="search()" placeholder="Search the guide" aria-label="Search the guide" data-testid="ag-search">
+    <button class="btn btn-outline-secondary" type="button" *ngIf="query" (click)="clearSearch()" aria-label="Clear the search">&times;</button>
+  </div>
+</div>
+
+<!-- search results -->
+<div *ngIf="query" data-testid="ag-results">
+  <h5 class="mb-2">{{hits.length}} result{{hits.length === 1 ? '' : 's'}} for "{{query}}"</h5>
+  <div *ngIf="!hits.length" class="text-muted">Nothing found among the pages you can open. Try one word, such as <a role="button" (click)="query = 'price'; search()">price</a> or <a role="button" (click)="query = 'return'; search()">return</a>.</div>
+  <div class="list-group">
+    <a *ngFor="let h of hits" class="list-group-item list-group-item-action" role="button" (click)="show(h)" data-testid="ag-hit">
+      <div class="d-flex justify-content-between"><strong>{{h.title}}</strong><span class="badge bg-light text-dark border">{{h.kind === 'page' ? 'Page' : 'Walk-through'}}</span></div>
+      <div class="small text-muted">{{h.text}}</div>
+    </a>
+  </div>
+</div>
+
+<!-- your day -->
+<div *ngIf="!query && tab === 'day'" data-testid="ag-day">
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title mb-1">Your day: {{day.label}}</h5>
+      <p class="text-muted mb-3">{{day.intro}}</p>
+      <div class="row g-3">
+        <div class="col-md-4"><h6 class="text-primary">Every day</h6><ul class="small ps-3 mb-0"><li *ngFor="let t of day.daily">{{t}}</li></ul></div>
+        <div class="col-md-4"><h6 class="text-primary">Every week</h6><ul class="small ps-3 mb-0"><li *ngFor="let t of day.weekly">{{t}}</li></ul></div>
+        <div class="col-md-4"><h6 class="text-primary">Every month</h6><ul class="small ps-3 mb-0"><li *ngFor="let t of day.monthly">{{t}}</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <h6 class="mb-2">Your pages</h6>
+  <div class="d-flex flex-wrap gap-2 mb-3" data-testid="ag-quick">
+    <a *ngFor="let p of pages" class="btn btn-sm btn-outline-secondary" [routerLink]="p.route" [attr.data-testid]="'ag-open-' + p.id">{{p.title}}</a>
+  </div>
+  <h6 class="mb-2">Jobs you can do</h6>
+  <ul class="small ps-3">
+    <li *ngFor="let w of walks"><a role="button" (click)="show({kind: 'walkthrough', id: w.id, title: w.title, text: ''})">{{w.title}}</a></li>
+  </ul>
+</div>
+
+<!-- the pages -->
+<div *ngIf="!query && tab === 'pages'" data-testid="ag-pages">
+  <div *ngFor="let g of groups" class="mb-4">
+    <h5 class="text-primary mb-2" [attr.data-testid]="'ag-group-' + g.group">{{labels[g.group]}}</h5>
+    <div class="card page-card mb-2" *ngFor="let p of g.pages" [attr.data-testid]="'ag-page-' + p.id">
+      <div class="card-body py-2">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <a role="button" class="fw-semibold text-decoration-none" (click)="togglePage(p.id)"><i class="bi me-1" [ngClass]="openPage === p.id ? 'bi-chevron-down' : 'bi-chevron-right'"></i>{{p.title}}</a>
+          <a class="btn btn-sm btn-outline-primary no-print" [routerLink]="p.route">Open the page</a>
+        </div>
+        <div class="small text-muted">{{p.purpose}}</div>
+        <div *ngIf="openPage === p.id" class="mt-2">
+          <div class="small fw-semibold">What you do here</div>
+          <ul class="small ps-3 mb-2"><li *ngFor="let t of p.tasks">{{t}}</li></ul>
+          <div class="small"><span class="fw-semibold">Who uses it:</span> {{p.who}}</div>
+          <div *ngIf="p.watch?.length" class="small mt-1"><span class="fw-semibold text-warning-emphasis">Be careful:</span>
+            <ul class="ps-3 mb-0"><li *ngFor="let t of p.watch">{{t}}</li></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- the jobs, step by step -->
+<div *ngIf="!query && tab === 'jobs'" data-testid="ag-jobs">
+  <div *ngIf="!walks.length" class="text-muted">There are no walk-throughs for the pages your login opens.</div>
+  <div class="card job-card mb-2" *ngFor="let w of walks" [attr.data-testid]="'ag-job-' + w.id">
+    <div class="card-body py-2">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <a role="button" class="fw-semibold text-decoration-none" (click)="toggleJob(w.id)"><i class="bi me-1" [ngClass]="openJob === w.id ? 'bi-chevron-down' : 'bi-chevron-right'"></i>{{w.title}}</a>
+        <a *ngIf="pageOf(w.from) as fp" class="btn btn-sm btn-outline-primary no-print" [routerLink]="fp.route">Open {{fp.title}}</a>
+      </div>
+      <div *ngIf="openJob === w.id" class="mt-2">
+        <ol class="small ps-3 mb-2"><li *ngFor="let s of w.steps" class="mb-1">{{s}}</li></ol>
+        <div *ngIf="w.tips?.length" class="small"><span class="fw-semibold text-success">Good to know:</span>
+          <ul class="ps-3 mb-0"><li *ngFor="let t of w.tips">{{t}}</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- who can do what (the owner) -->
+<div *ngIf="!query && tab === 'roles'" data-testid="ag-roles">
+  <p class="small text-muted">The pages each role can open, from the permissions saved for it. Change them under Setup &gt; Roles. The pages your shop has switched off, or that need the pharmacy pack, follow your shop, not the role.</p>
+  <div *ngIf="!matrixLoaded" class="text-muted">Loading...</div>
+  <div class="table-responsive" *ngIf="matrixLoaded && matrix.length">
+    <table class="table table-sm align-middle small" data-testid="ag-matrix">
+      <thead><tr><th>Page</th><th *ngFor="let r of matrix" class="text-center">{{r.role}}</th></tr></thead>
+      <tbody>
+        <ng-container *ngFor="let g of groups">
+          <tr class="table-light"><td [attr.colspan]="matrix.length + 1" class="fw-semibold">{{labels[g.group]}}</td></tr>
+          <tr *ngFor="let p of g.pages"><td>{{p.title}}</td><td *ngFor="let r of matrix" class="text-center"><i *ngIf="r.ids.has(p.id)" class="bi bi-check-lg text-success" [attr.data-testid]="'ag-can-' + p.id + '-' + r.role"></i></td></tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+</div>
