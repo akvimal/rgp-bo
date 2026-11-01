@@ -50,7 +50,7 @@ export PGUSER="$POSTGRES_USER"
 args=(rehearse "$dump" --scratch "$POSTGRES_DB")
 [ -n "$cutoff" ] && args+=(--cutoff "$cutoff")
 [ -n "$approve" ] && args+=(--approve "$approve")
-"$ROOT/scripts/prod-upgrade.sh" "${args[@]}" 2>&1 | tee "$ROOT/beta-refresh.log" | sed 's/^/   /' || true
+bash "$ROOT/scripts/prod-upgrade.sh" "${args[@]}" 2>&1 | tee "$ROOT/beta-refresh.log" | sed 's/^/   /' || true
 grep -q "RESULT: PASS" "$ROOT/beta-refresh.log" || die "the upgrade checks did not pass: the app was NOT started (see beta-refresh.log)"
 
 if [ "$build" = 1 ]; then $COMPOSE up -d --build api frontend; else $COMPOSE up -d api frontend; fi
