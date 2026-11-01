@@ -23,6 +23,9 @@ export class DrugRegisterService {
     coverage() { return this.http.get<any>(`${this.api}/coverage`); }
     /** how the scheduled supplies of a period were covered, by schedule and by the person who made the sale */
     coverageReport(q: any) { return this.http.get<any>(`${this.api}/coverage-report`, { params: this.params(q) }); }
+    /** the prescriptions promised for later and not yet brought */
+    followups() { return this.http.get<{ rows: any[] }>(`${this.api}/followups`); }
+    waiveFollowup(id: number, note: string) { return this.http.post<any>(`${this.api}/followups/${id}/waive`, { note }); }
     /** the patient and the prescriber for a bill that was completed without them */
     addDetails(saleId: number, detail: any) { return this.http.post<any>(`${this.api}/sales/${saleId}/details`, detail); }
 }

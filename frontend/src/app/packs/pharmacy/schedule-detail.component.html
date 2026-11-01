@@ -49,6 +49,27 @@
         <div class="small text-warning-emphasis mt-2" *ngIf="problems.length && !enforce && !later" data-testid="sd-pending"><i class="bi bi-info-circle"></i> Not given yet: {{problems.join(', ')}}. The bill will be listed in the Drug register as missing them until they are added.</div>
         <div class="small text-success mt-2" *ngIf="!problems.length" data-testid="sd-ok"><i class="bi bi-check-circle"></i> The register entry is ready.</div>
 
+        <!-- how the prescription stands: set by using one on file, the last supply or an upload; otherwise the person says why there is none -->
+        <div class="border-top mt-2 pt-2" data-testid="sd-basis">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="small fw-semibold text-muted"><i class="bi bi-clipboard-check me-1"></i>Prescription status</span>
+                <span class="small text-success" *ngIf="hasPrescription" data-testid="sd-basis-attached"><i class="bi bi-check-circle"></i> Prescription attached to this bill</span>
+                <ng-container *ngIf="!hasPrescription">
+                    <select class="form-select form-select-sm w-auto" [(ngModel)]="detail.rx_basis" (ngModelChange)="basisChanged()" aria-label="How the prescription stands" data-testid="sd-basis-select">
+                        <option value="">Choose how it stands...</option>
+                        <option value="ON_FILE" disabled>{{labels['ON_FILE']}} (use it above)</option>
+                        <option value="LAST_SUPPLY" disabled>{{labels['LAST_SUPPLY']}} (use it above)</option>
+                        <option *ngFor="let b of choices" [value]="b">{{labels[b]}}</option>
+                    </select>
+                    <input type="date" class="form-control form-control-sm w-auto" *ngIf="detail.rx_basis === 'LATER'" [min]="laterFirst" [max]="laterEnd" [(ngModel)]="detail.rx_due" title="The day they will bring it" data-testid="sd-basis-due">
+                    <input type="text" class="form-control form-control-sm" style="width:16rem" maxlength="200" *ngIf="detail.rx_basis && choices.indexOf(detail.rx_basis) >= 0 && detail.rx_basis !== 'LATER'"
+                           [placeholder]="detail.rx_basis === 'OTHER' ? 'Why? (required)' : 'Note (optional)'" [(ngModel)]="detail.rx_note" data-testid="sd-basis-note">
+                </ng-container>
+            </div>
+            <div class="small text-muted mt-1" *ngIf="detail.rx_basis === 'LATER' && !hasPrescription" data-testid="sd-basis-later">It will show in the customer worklist until a prescription is uploaded for {{customerName || 'the customer'}}.</div>
+            <div class="small text-danger mt-1" *ngIf="rxIssues.length" data-testid="sd-basis-needs">Needs {{rxIssues.join(', ')}}.</div>
+        </div>
+
         <!-- the prescription itself: a picture or PDF, kept with the customer and attached to the bill, with the patient and the doctor entered above -->
         <div class="border-top mt-2 pt-2" data-testid="sd-rx">
             <div class="d-flex flex-wrap align-items-center gap-2">

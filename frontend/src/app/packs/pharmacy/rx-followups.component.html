@@ -1,0 +1,25 @@
+<div class="card border-warning mb-3" *ngIf="rows.length || message" data-testid="rx-followups">
+    <div class="card-body py-2">
+        <div class="fw-semibold mb-1"><i class="bi bi-prescription2 me-1"></i>Prescriptions to collect <span class="badge bg-warning text-dark">{{rows.length}}</span></div>
+        <div class="small text-muted mb-2">These customers took scheduled drugs and said they would bring the prescription. Each closes by itself when a prescription is uploaded to their documents.</div>
+        <div class="small text-success mb-2" *ngIf="message" data-testid="rx-message">{{message}}</div>
+        <div class="border rounded p-2 mb-1" *ngFor="let r of rows" [attr.data-testid]="'rx-followup-' + r.id">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="fw-semibold">{{r.customer_name}}</span>
+                <span class="small text-muted">bill {{r.bill_no}}, {{r.day | date:'dd MMM'}}: {{r.drugs}}</span>
+                <span class="badge bg-danger" *ngIf="r.days_over > 0" data-testid="rx-overdue">{{r.days_over}} day{{r.days_over === 1 ? '' : 's'}} late</span>
+                <span class="badge bg-light text-dark border" *ngIf="r.days_over <= 0">due {{r.due_on | date:'dd MMM'}}</span>
+                <span class="small text-muted" *ngIf="r.note">{{r.note}}</span>
+                <span class="ms-auto text-nowrap">
+                    <a class="btn btn-sm btn-outline-primary me-1" [routerLink]="['../view', r.customer_id]" data-testid="rx-open-customer">Open customer</a>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="openWaive(r)" data-testid="rx-waive-open">Stop chasing</button>
+                </span>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center mt-2 border-top pt-2" *ngIf="r.waiving" data-testid="rx-waive-panel">
+                <input class="form-control form-control-sm" style="width:20rem" maxlength="200" placeholder="Why? (required)" [(ngModel)]="r.waiveNote" data-testid="rx-waive-note">
+                <button type="button" class="btn btn-sm btn-primary" [disabled]="busy.has(r.id)" (click)="waive(r)" data-testid="rx-waive-go">Stop chasing</button>
+                <span class="small text-danger" *ngIf="r.waiveError" data-testid="rx-waive-error">{{r.waiveError}}</span>
+            </div>
+        </div>
+    </div>
+</div>

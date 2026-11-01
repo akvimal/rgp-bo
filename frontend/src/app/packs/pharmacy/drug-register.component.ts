@@ -1,7 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { saveAs } from "file-saver";
 import { DrugRegisterService } from "./drug-register.service";
-import { detailProblems } from "./drug-register-rules";
+import { detailProblems, RX_LABELS, rxProblems } from "./drug-register-rules";
 
 const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
@@ -53,7 +53,7 @@ export class DrugRegisterComponent implements OnInit {
         for (const m of items) {
             let b = by.get(m.sale_id);
             if (!b) {
-                b = { sale_id: m.sale_id, bill_no: m.bill_no, day: m.day, drugs: [], customer: m.customer_id ? { id: m.customer_id, existing: true, name: m.customer_name, mobile: m.customer_mobile, address: m.customer_address } : null };
+                b = { sale_id: m.sale_id, bill_no: m.bill_no, day: m.day, drugs: [], reason: m.rx_basis ? RX_LABELS[m.rx_basis] + (m.rx_note ? ': ' + m.rx_note : '') : '', customer: m.customer_id ? { id: m.customer_id, existing: true, name: m.customer_name, mobile: m.customer_mobile, address: m.customer_address } : null };
                 by.set(m.sale_id, b);
             }
             b.drugs.push({ title: m.title, more_props: { schedule: m.schedule } });
@@ -68,7 +68,7 @@ export class DrugRegisterComponent implements OnInit {
 
     openLater(b: any) { this.later = { bill: b, detail: {}, busy: false, error: '' }; }
     closeLater() { this.later = null; }
-    get laterProblems(): string[] { return this.later ? detailProblems(this.later.detail) : []; }
+    get laterProblems(): string[] { return this.later ? [...detailProblems(this.later.detail), ...rxProblems(this.later.detail, false, true)] : []; }
 
     saveLater() {
         if (!this.later || this.laterProblems.length) return;

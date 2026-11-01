@@ -1,4 +1,4 @@
-import { detailProblems, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel } from './drug-register-rules';
+import { detailProblems, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel, normaliseRx, rxProblems } from './drug-register-rules';
 
 const good = { patient_name: 'A Patient', patient_address: '12 Main Road, Town', prescriber_name: 'Dr B Doctor', prescriber_reg_no: 'TN12345' };
 
@@ -50,5 +50,22 @@ describe('drug register rules', () => {
     expect(draftEntries(f)).toEqual([{ schedule: 'H1', sale_item_id: 10, product_id: 1, drug_name: 'ALPREK 0.25MG', batch: 'G-7103', qty: 2, pack: 30, itemid: 77 }]);
     expect(serialLabel('H1', 7)).toBe('H1-0007');
     expect(serialLabel('H', 12345)).toBe('H-12345');
+  });
+
+  it('reads how the prescription stands: a prescription on the bill is attached, "Other" needs words, "Later" needs a day within 30 days', () => {
+    const today = '2026-11-01';
+    const rx = { id: 9, category: 'Prescription' };
+    expect(normaliseRx({}, [])).toEqual({ basis: null, note: '', due: null, documentId: null });
+    expect(normaliseRx({}, [rx])).toMatchObject({ basis: 'ATTACHED', documentId: 9 });
+    expect(normaliseRx({ rx_basis: 'LATER', rx_due: '2026-11-04' }, [rx])).toMatchObject({ basis: 'ATTACHED', due: null });    // it arrived: nothing to chase
+    expect(normaliseRx({ rx_basis: 'ON_FILE', rx_document_id: 4 }, [])).toMatchObject({ basis: 'ON_FILE', documentId: 4 });
+    expect(normaliseRx({ rx_basis: 'nonsense' }, []).basis).toBeNull();
+    expect(rxProblems({ rx_basis: 'OTHER' }, [], today)).toEqual(['a few words on why there is no prescription']);
+    expect(rxProblems({ rx_basis: 'OTHER', rx_note: 'doctor is a relative' }, [], today)).toEqual([]);
+    expect(rxProblems({ rx_basis: 'LATER' }, [], today).length).toBe(1);
+    expect(rxProblems({ rx_basis: 'LATER', rx_due: '2026-10-31' }, [], today).length).toBe(1);
+    expect(rxProblems({ rx_basis: 'LATER', rx_due: '2026-12-02' }, [], today).length).toBe(1);
+    expect(rxProblems({ rx_basis: 'LATER', rx_due: '2026-12-01' }, [], today)).toEqual([]);
+    expect(rxProblems({ rx_basis: 'REGULAR' }, [], today)).toEqual([]);
   });
 });

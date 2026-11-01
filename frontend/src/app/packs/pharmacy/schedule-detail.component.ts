@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
 import { DrugRegisterService } from "./drug-register.service";
-import { detailProblems, ScheduleDetail } from "./drug-register-rules";
+import { detailProblems, laterDefault, laterLast, RX_CHOICES, RX_LABELS, rxProblems, ScheduleDetail } from "./drug-register-rules";
 import { FileUploadService } from "src/app/secured/documents/file-upload.service";
 import { DocumentsService } from "src/app/secured/documents/documents.service";
 import { CustomersService } from "src/app/secured/customers/customers.service";
@@ -59,6 +59,22 @@ export class ScheduleDetailComponent implements OnChanges {
 
     get problems(): string[] { return detailProblems(this.detail); }
 
+    // ------------------------------------------------------------ how the prescription stands
+    choices = RX_CHOICES;
+    labels = RX_LABELS;
+    get hasPrescription(): boolean { return this.prescriptions.length > 0; }
+    get rxIssues(): string[] { return rxProblems(this.detail, this.hasPrescription, this.later || this.customerId > 0); }
+    get laterFirst(): string { return this.today; }
+    get laterEnd(): string { return laterLast(this.today); }
+
+    /** "Will bring it later" starts a week out; a choice that needs no day or words clears them */
+    basisChanged() {
+        if (this.detail.rx_basis === 'LATER') { if (!this.detail.rx_due) this.detail.rx_due = laterDefault(this.today); }
+        else this.detail.rx_due = '';
+        if (this.detail.rx_basis !== 'OTHER' && this.detail.rx_basis !== 'LATER' && this.detail.rx_basis !== 'COULD_NOT' && this.detail.rx_basis !== 'REGULAR' && this.detail.rx_basis !== 'SEEN') this.detail.rx_note = '';
+        this.detail.rx_document_id = undefined;
+    }
+
     private loadContext() {
         const id = this.customerId;
         if (id === this.ctxFor) return;
@@ -73,6 +89,7 @@ export class ScheduleDetailComponent implements OnChanges {
         if (p.doctor) { this.detail.prescriber_name = p.doctor; this.detail.prescriber_reg_no = p.reg_no || ''; this.detail.prescriber_address = p.address || ''; }
         if (p.date && p.date <= this.today) this.detail.rx_date = p.date;
         this.usedKey = 'rx' + p.id;
+        this.detail.rx_basis = 'ON_FILE'; this.detail.rx_document_id = p.id; this.detail.rx_due = '';
         if (!this.later) this.uploaded.emit({ id: p.id, category: p.category, name: p.name, alias: p.alias, path: p.path, docprops: p.docprops });
     }
 
@@ -86,6 +103,7 @@ export class ScheduleDetailComponent implements OnChanges {
         this.detail.prescriber_address = l.prescriber_address || '';
         this.detail.rx_date = l.rx_date && l.rx_date <= this.today ? l.rx_date : null;
         this.usedKey = 'last' + i;
+        this.detail.rx_basis = 'LAST_SUPPLY'; this.detail.rx_document_id = undefined; this.detail.rx_due = '';
     }
 
     get names(): string {
@@ -160,6 +178,7 @@ export class ScheduleDetailComponent implements OnChanges {
                     this.rxBusy = false;
                     this.rxMessage = this.customerId ? `Prescription saved to ${this.customerName || 'the customer'}'s documents${this.later ? '' : ' and attached to this bill'}.` : 'Prescription attached to this bill. Add the customer to keep it with their record.';
                     this.rxOpen = false; this.rxFile = null;
+                    this.detail.rx_basis = 'ATTACHED'; this.detail.rx_document_id = doc?.id; this.detail.rx_due = '';
                     this.uploaded.emit(doc);
                 };
                 if (this.customerId) this.customers.addDocument({ customerId: this.customerId, documentId: doc.id }).subscribe(done, fail);

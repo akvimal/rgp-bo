@@ -214,6 +214,76 @@ test.describe('Drug register @p1', () => {
     expect((await api.request('GET', '/schedule/coverage-report', undefined, SALES)).status).toBe(403);
   });
 
+  test('DREG-8 a supply records how its prescription stands; a prescription promised for later is chased in the worklist until one is kept for the customer @happy', async ({ api }) => {
+    await required(api, 'H1,H,X');
+    await setting(api, 'schedule_register_enforce', 'H1,X');
+    const h = await drug(api, `rx-h-${run}`, 'H');
+    const day = (n: number) => new Date(Date.now() + 5.5 * 3600000 + n * 86400000).toISOString().slice(0, 10);
+    const post = (extra: any) => api.request('POST', '/sales', bill(h, { customer: { name: 'QA Promise Customer', mobile: `9${Math.floor(100000000 + Math.random() * 899999999)}` }, ...extra }), SALES);
+    const followups = async () => (await api.request('GET', '/schedule/followups', undefined, SALES)).body.rows as any[];
+
+    // the basis is checked: "Other" needs words, "Will bring it later" needs a day within 30 days
+    expect((await post({ props: { scheduledetail: { ...GOOD, rx_basis: 'OTHER' } } })).status).toBe(400);
+    expect((await post({ props: { scheduledetail: { ...GOOD, rx_basis: 'LATER' } } })).status).toBe(400);
+    expect((await post({ props: { scheduledetail: { ...GOOD, rx_basis: 'LATER', rx_due: day(45) } } })).status).toBe(400);
+    expect((await post({ props: { scheduledetail: { ...GOOD, rx_basis: 'LATER', rx_due: day(-1) } } })).status).toBe(400);
+    const walkIn = await api.request('POST', '/sales', bill(h, { customer: { name: 'NIL', mobile: '0000000000' }, props: { scheduledetail: { ...GOOD, rx_basis: 'LATER', rx_due: day(3) } } }), SALES);
+    expect(walkIn.status, JSON.stringify(walkIn.body)).toBe(400);
+
+    // a reason is recorded on the register line
+    const patient = `${GOOD.patient_name} RX`;
+    const other = await post({ props: { scheduledetail: { ...GOOD, patient_name: patient, rx_basis: 'OTHER', rx_note: 'Customer is a doctor\'s relative' } } });
+    expect(other.status, JSON.stringify(other.body)).toBeLessThan(300);
+    const line = mine((await register(api)).body.rows, patient)[0];
+    expect(line).toMatchObject({ rx_basis: 'OTHER', rx_note: 'Customer is a doctor\'s relative', rx_label: 'Other' });
+
+    // promised for later: the register line says so, and the customer is on the worklist of prescriptions to collect
+    const patient2 = `${GOOD.patient_name} LATER`;
+    const later = await post({ props: { scheduledetail: { ...GOOD, patient_name: patient2, rx_basis: 'LATER', rx_due: day(3) } } });
+    expect(later.status, JSON.stringify(later.body)).toBeLessThan(300);
+    const cid = (await api.request('GET', `/sales/${later.body.id}`, undefined, MGR)).body.customerid;
+    expect(mine((await register(api)).body.rows, patient2)[0]).toMatchObject({ rx_basis: 'LATER' });
+    const open = (await followups()).find((f) => f.sale_id === later.body.id);
+    expect(open, 'the follow-up is listed').toBeTruthy();
+    expect(open).toMatchObject({ customer_id: cid, due_on: day(3), days_over: -3 });
+    expect(open.drugs).toContain('(H)');
+
+    // a bill with no details at all but a promise is listed as missing with its reason, and still chased
+    const bare = await post({ props: { scheduledetail: { rx_basis: 'LATER', rx_due: day(5) } } });
+    expect(bare.status, JSON.stringify(bare.body)).toBeLessThan(300);
+    const missing = (await api.request('GET', '/schedule/coverage', undefined, MGR)).body.items.find((i: any) => i.sale_id === bare.body.id);
+    expect(missing).toMatchObject({ rx_basis: 'LATER' });
+    expect((await followups()).some((f) => f.sale_id === bare.body.id)).toBe(true);
+
+    // stopping the chase needs the people who run the shop, and words
+    expect((await api.request('POST', `/schedule/followups/${open.id}/waive`, { note: 'gave up' }, SALES)).status).toBe(403);
+    expect((await api.request('POST', `/schedule/followups/${open.id}/waive`, { note: '' }, MGR)).status).toBe(400);
+    const bareFollow = (await followups()).find((f) => f.sale_id === bare.body.id);
+    expect((await api.request('POST', `/schedule/followups/${bareFollow.id}/waive`, { note: 'Customer moved away' }, MGR)).status).toBeLessThan(300);
+    expect((await followups()).some((f) => f.sale_id === bare.body.id)).toBe(false);
+
+    // a prescription kept with the customer closes the follow-up by itself and the register line points to it
+    const props = [{ id: 'prescdate', label: 'Date', value: day(0) }, { id: 'doctorname', label: 'Doctor Name', value: GOOD.prescriber_name }, { id: 'ptntname', label: 'Patient Name', value: patient2 }];
+    const doc = await api.request('POST', '/documents', { name: 'later.png', path: 'qa/none', extn: 'png', category: 'Prescription', alias: 'QA brought later', docprops: JSON.stringify(props) }, MGR);
+    expect(doc.status, JSON.stringify(doc.body)).toBeLessThan(300);
+    expect((await api.request('POST', '/customers/documents/add', { customerId: cid, documentId: doc.body.id }, MGR)).status).toBeLessThan(300);
+    expect((await followups()).some((f) => f.sale_id === later.body.id)).toBe(false);
+    expect(mine((await register(api)).body.rows, patient2)[0]).toMatchObject({ rx_basis: 'ATTACHED', rx_document_id: doc.body.id });
+
+    // a bill changed to something else takes its follow-up back; the waived one is recorded as "could not provide"
+    const again = await post({ props: { scheduledetail: { ...GOOD, patient_name: `${patient2} 2`, rx_basis: 'LATER', rx_due: day(2) } } });
+    expect(again.status, JSON.stringify(again.body)).toBeLessThan(300);
+    const mid = (await followups()).find((f) => f.sale_id === again.body.id);
+    expect(mid).toBeTruthy();
+    expect((await api.request('POST', `/schedule/followups/${mid.id}/waive`, { note: 'Doctor changed the medicine' }, MGR)).status).toBeLessThan(300);
+    expect(mine((await register(api)).body.rows, `${patient2} 2`)[0]).toMatchObject({ rx_basis: 'COULD_NOT', rx_note: 'Doctor changed the medicine' });
+
+    // the coverage report counts the supplies by how their prescription stands
+    const rep = (await api.request('GET', '/schedule/coverage-report?from=2020-01-01&to=2099-12-31', undefined, MGR)).body;
+    const kinds = rep.by_basis.map((b: any) => b.basis);
+    expect(kinds).toEqual(expect.arrayContaining(['OTHER', 'ATTACHED', 'COULD_NOT']));
+  });
+
   test('DREG-5 the drug register is a module of the pharmacy pack: switched off, it is gone and the bill is not held up @negative', async ({ api }) => {
     await required(api, 'H1,H,X');
     const d = await drug(api, `off-${run}`, 'H1');

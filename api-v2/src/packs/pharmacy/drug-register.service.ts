@@ -7,8 +7,9 @@ import { businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole } from 'src/core/roles';
 import { SaleContext, SavedSaleContext } from 'src/core/sale-hooks/sale-hooks';
 import {
-  Schedule, SCHEDULES, ScheduledProduct, detailProblems, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel,
+  Rx, RX_LABELS, Schedule, SCHEDULES, ScheduledProduct, detailProblems, draftEntries, normaliseDetail, normaliseRx, parseRequired, requiredLines, rxProblems, scheduledLines, schedulesOf, serialLabel,
 } from './drug-register-rules';
+import { NIL_MOBILE } from 'src/modules/app/customers/customer-rules';
 import { buildRegisterPdf } from './drug-register-pdf';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -67,11 +68,16 @@ export class DrugRegisterService {
   /** the hook before a bill is saved: a completed bill with a drug of a schedule the shop holds back needs the patient and the prescriber */
   async check(ctx: SaleContext) {
     if (String(ctx.sale?.status || '').toUpperCase() !== 'COMPLETE') return;
-    const enforced = await this.enforced(ctx.manager);
-    if (!enforced.length) return;
     const lines = this.billLines(ctx.sale);
     const scheduled = scheduledLines(lines, await this.scheduledProducts(ctx.manager, [...new Set(lines.map((l) => l.productid))]));
-    const need = requiredLines(scheduled, await this.required(ctx.manager)).filter((n) => enforced.includes(n.product.schedule));
+    const covered = requiredLines(scheduled, await this.required(ctx.manager));
+    if (!covered.length) return;
+    const basisProblems = rxProblems(ctx.sale?.props?.scheduledetail, ctx.sale?.props?.documents, istDay());
+    if (basisProblems.length) throw new BadRequestException(`This bill has a scheduled drug. Give ${basisProblems.join(', ')}.`);
+    const walkIn = normaliseRx(ctx.sale?.props?.scheduledetail, ctx.sale?.props?.documents).basis === 'LATER' && String(ctx.sale?.customer?.mobile ?? '') === NIL_MOBILE;
+    if (walkIn) throw new BadRequestException('A prescription to follow needs a customer on record to ask: add the customer to the bill.');
+    const enforced = await this.enforced(ctx.manager);
+    const need = covered.filter((n) => enforced.includes(n.product.schedule));
     if (!need.length) return;
     const problems = detailProblems(ctx.sale?.props?.scheduledetail, istDay());
     if (!problems.length) return;
@@ -93,21 +99,36 @@ export class DrugRegisterService {
     const saleId = ctx.saved.id;
     const by = ctx.actingUserId ?? ctx.userId;
     await m.query(`update schedule_register set superseded_on = now(), superseded_by = $2 where sale_id = $1 and superseded_on is null`, [saleId, ctx.userId]);
-    if (String(ctx.sale?.status || ctx.saved?.status || '').toUpperCase() !== 'COMPLETE') return;
+    const storeId = ctx.storeId ?? ctx.saved?.storeid ?? null;
+    if (String(ctx.sale?.status || ctx.saved?.status || '').toUpperCase() !== 'COMPLETE') { await this.syncFollowup(m, { storeId, saleId, customerId: 0, rx: normaliseRx(null), userId: ctx.userId }); return; }
 
     const lines = this.billLines(ctx.sale, ctx.items);
     const scheduled = scheduledLines(lines, await this.scheduledProducts(m, [...new Set(lines.map((l) => l.productid))]));
-    if (!scheduled.length) return;
     const raw = ctx.sale?.props?.scheduledetail;
+    const rx = scheduled.length ? normaliseRx(raw, ctx.sale?.props?.documents) : normaliseRx(null);
+    await this.syncFollowup(m, { storeId, saleId, customerId: ctx.saved?.customerid ?? 0, rx, userId: ctx.userId });
+    if (!scheduled.length) return;
     if (detailProblems(raw, istDay()).length) return;          // only drugs the setting does not cover, and no details given: nothing to record
     const d = normaliseDetail(raw);
 
-    const storeId = ctx.storeId ?? ctx.saved?.storeid ?? null;
-    await this.writeEntries(m, { storeId, saleId, billNo: ctx.saved?.billno ?? null, billDate: ctx.saved?.billdate ? new Date(ctx.saved.billdate) : new Date(), scheduled, d, userId: ctx.userId, by });
+    await this.writeEntries(m, { storeId, saleId, billNo: ctx.saved?.billno ?? null, billDate: ctx.saved?.billdate ? new Date(ctx.saved.billdate) : new Date(), scheduled, d, rx, userId: ctx.userId, by });
+  }
+
+  /** a prescription promised for later leaves a follow-up on the customer; a bill changed or cancelled takes its follow-up back */
+  private async syncFollowup(m: EntityManager, a: { storeId: number | null; saleId: number; customerId: any; rx: Rx; userId: number }) {
+    await m.query(`update schedule_rx_followup set status = 'CANCELLED', closed_on = now(), closed_by = $2 where sale_id = $1 and status = 'OPEN'`, [a.saleId, a.userId]);
+    if (a.rx.basis !== 'LATER' || !a.rx.due || !a.storeId || !(Number(a.customerId) > 0)) return;
+    const [c] = await m.query(`select c.id, st.business_id from customer c, stores st where c.id = $1 and st.id = $2 and c.mobile is distinct from $3`, [Number(a.customerId), a.storeId, NIL_MOBILE]);
+    if (!c) return;
+    await m.query(
+      `insert into schedule_rx_followup (business_id, store_id, sale_id, customer_id, due_on, note, created_by) values ($1, $2, $3, $4, $5, $6, $7)
+       on conflict (sale_id) do update set status = 'OPEN', due_on = excluded.due_on, note = excluded.note, customer_id = excluded.customer_id, closed_on = null, closed_by = null
+       where schedule_rx_followup.status in ('OPEN', 'CANCELLED')`,
+      [c.business_id, a.storeId, a.saleId, c.id, a.rx.due, a.rx.note || null, a.userId]);
   }
 
   /** one numbered register line for each scheduled drug on a bill, with its patient and prescriber */
-  private async writeEntries(m: EntityManager, a: { storeId: number | null; saleId: number; billNo: any; billDate: Date; scheduled: ReturnType<typeof scheduledLines>; d: ReturnType<typeof normaliseDetail>; userId: number; by: number }) {
+  private async writeEntries(m: EntityManager, a: { storeId: number | null; saleId: number; billNo: any; billDate: Date; scheduled: ReturnType<typeof scheduledLines>; d: ReturnType<typeof normaliseDetail>; rx: Rx; userId: number; by: number }) {
     const { storeId, saleId, scheduled, d } = a;
     const [st] = storeId ? await m.query(`select business_id from stores where id = $1`, [storeId]) : [null];
     if (!st) return;
@@ -129,10 +150,11 @@ export class DrugRegisterService {
       next.set(x.schedule, serial);
       await m.query(
         `insert into schedule_register (business_id, store_id, schedule, serial_no, sale_id, sale_item_id, entry_on, bill_no, product_id, drug_name, batch, exp_date, qty, pack,
-            patient_name, patient_address, patient_age, prescriber_id, prescriber_name, prescriber_reg_no, prescriber_address, rx_date, supplied_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
+            patient_name, patient_address, patient_age, prescriber_id, prescriber_name, prescriber_reg_no, prescriber_address, rx_date, supplied_by, rx_basis, rx_note, rx_document_id)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
         [businessId, storeId, x.schedule, serial, saleId, x.sale_item_id, entryOn, a.billNo, x.product_id, x.drug_name, x.batch, x.itemid ? expOf.get(+x.itemid) ?? null : null, x.qty, x.pack,
-          d.patient_name, d.patient_address || null, d.patient_age || null, prescriberId, d.prescriber_name, d.prescriber_reg_no || null, d.prescriber_address || null, d.rx_date, a.by]);
+          d.patient_name, d.patient_address || null, d.patient_age || null, prescriberId, d.prescriber_name, d.prescriber_reg_no || null, d.prescriber_address || null, d.rx_date, a.by,
+          a.rx.basis, a.rx.note || null, a.rx.documentId]);
     }
   }
 
@@ -142,12 +164,17 @@ export class DrugRegisterService {
    */
   async addDetails(user: any, saleId: number, raw: any) {
     const sc = await this.scope(user);
-    const [sale] = await this.manager.query(`select id, store_id, bill_no, bill_date, status from sale where id = $1 and active and not archive`, [Number(saleId) || 0]);
+    const [sale] = await this.manager.query(`select id, store_id, bill_no, bill_date, status, customer_id, more_props from sale where id = $1 and active and not archive`, [Number(saleId) || 0]);
     if (!sale || !sc.stores.some((s) => s.id === +sale.store_id)) throw new NotFoundException('Bill not found.');
     if (String(sale.status).toUpperCase() !== 'COMPLETE') throw new BadRequestException('Only a completed bill has register lines.');
     const problems = detailProblems(raw, istDay());
     if (problems.length) throw new BadRequestException(`Give ${problems.join(', ')}.`);
     const d = normaliseDetail(raw);
+    const kept = typeof sale.more_props === 'string' ? JSON.parse(sale.more_props || '{}') : sale.more_props || {};
+    const source = raw?.rx_basis ? raw : kept.scheduledetail;
+    const rxIssues = rxProblems(source, kept.documents, istDay());
+    if (rxIssues.length) throw new BadRequestException(`Give ${rxIssues.join(', ')}.`);
+    const rx = normaliseRx(source, kept.documents);
     const rows = await this.manager.query(
       `select si.id, si.purchase_item_id as itemid, si.product_id as productid, si.batch, si.qty from sale_item si
         where si.sale_id = $1 and si.status = 'Complete' and si.active and not si.archive`, [sale.id]);
@@ -157,7 +184,8 @@ export class DrugRegisterService {
       if (!scheduled.length) throw new BadRequestException('This bill has no scheduled drug.');
       const [have] = await m.query(`select count(*)::int as n from schedule_register where sale_id = $1 and superseded_on is null`, [sale.id]);
       if (have.n) throw new BadRequestException('This bill already has its register lines.');
-      await this.writeEntries(m, { storeId: +sale.store_id, saleId: +sale.id, billNo: sale.bill_no, billDate: new Date(sale.bill_date), scheduled, d, userId: user.id, by: user.id });
+      await this.writeEntries(m, { storeId: +sale.store_id, saleId: +sale.id, billNo: sale.bill_no, billDate: new Date(sale.bill_date), scheduled, d, rx, userId: user.id, by: user.id });
+      await this.syncFollowup(m, { storeId: +sale.store_id, saleId: +sale.id, customerId: sale.customer_id, rx, userId: user.id });
     });
     await this.audit.record({ userId: user.id, action: 'drug_register.details_added', entityType: 'sale', entityId: +sale.id, summary: `Register details added to bill ${sale.bill_no}`, details: { patient: d.patient_name, prescriber: d.prescriber_name } });
     return { sale_id: +sale.id };
@@ -171,6 +199,7 @@ export class DrugRegisterService {
   async customerContext(user: any, customerId: number) {
     const businessId = await businessOfUser(this.manager, user.id);
     if (!businessId || !(Number(customerId) > 0)) return { prescriptions: [], last: [] };
+    await this.settleFollowups();
     const docs = await this.manager.query(
       `select d.id, d.doc_name as name, d.doc_path as path, d.alias, d.category, d.doc_props, to_char(d.created_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as added
          from customer_documents cd join documents d on d.id = cd.document_id
@@ -216,12 +245,13 @@ export class DrugRegisterService {
     const since = await this.since();
     const from = asked > since ? asked : since;
     const required = await this.required();
-    const empty = { from, to, since, required, totals: { supplies: 0, covered: 0, with_rx: 0, missing: 0 }, by_schedule: [], by_user: [] };
+    const empty = { from, to, since, required, totals: { supplies: 0, covered: 0, with_rx: 0, missing: 0 }, by_schedule: [], by_user: [], by_basis: [] };
     if (!ids.length || !required.length || from > to) return empty;
     const rows = await this.manager.query(
       `select upper(p.more_props->>'schedule') as schedule, coalesce(s.acting_user_id, s.created_by) as uid,
               exists (select 1 from schedule_register r where r.sale_item_id = si.id and r.superseded_on is null) as covered,
-              coalesce((s.more_props::jsonb -> 'documents') @> '[{"category":"Prescription"}]'::jsonb, false) as has_rx
+              coalesce((s.more_props::jsonb -> 'documents') @> '[{"category":"Prescription"}]'::jsonb, false) as has_rx,
+              coalesce((select r.rx_basis from schedule_register r where r.sale_item_id = si.id and r.superseded_on is null limit 1), s.more_props::jsonb->'scheduledetail'->>'rx_basis') as basis
          from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id
         where si.status = 'Complete' and si.active and not si.archive and upper(p.more_props->>'schedule') = any($1::text[]) and s.store_id = any($2::int[])
           and s.bill_date >= $3::date and s.bill_date < ($4::date + 1)`, [required, ids, from, to]);
@@ -230,8 +260,11 @@ export class DrugRegisterService {
     const totals = tally();
     const bySchedule = new Map<string, any>();
     const byUser = new Map<number, any>();
+    const byBasis = new Map<string, number>();
     for (const r of rows) {
       add(totals, r);
+      const basis = r.basis || 'NONE';
+      byBasis.set(basis, (byBasis.get(basis) ?? 0) + 1);
       if (!bySchedule.has(r.schedule)) bySchedule.set(r.schedule, { schedule: r.schedule, ...tally() });
       add(bySchedule.get(r.schedule), r);
       const uid = r.uid === null ? 0 : +r.uid;
@@ -242,9 +275,60 @@ export class DrugRegisterService {
     const nameOf = new Map<number, string>(names.map((n: any) => [+n.id, String(n.full_name).trim()]));
     return {
       ...empty, totals,
+      by_basis: [...byBasis.entries()].map(([basis, supplies]) => ({ basis, label: (RX_LABELS as any)[basis] ?? basis, supplies })).sort((a, b) => b.supplies - a.supplies),
       by_schedule: SCHEDULES.filter((s) => bySchedule.has(s)).map((s) => bySchedule.get(s)),
       by_user: [...byUser.values()].map((u) => ({ ...u, name: nameOf.get(u.user_id) || 'Not recorded' })).sort((a, b) => b.missing - a.missing || b.supplies - a.supplies),
     };
+  }
+
+  // ------------------------------------------------------------------ prescriptions promised for later
+  /**
+   * A follow-up is done when a prescription is kept with the customer after the bill: the register lines of that bill then point to it. Run whenever the
+   * follow-ups are read, so nobody has to link the prescription to the bill by hand.
+   */
+  async settleFollowups(m: EntityManager = this.manager) {
+    const done = await m.query(
+      `update schedule_rx_followup f set status = 'DONE', closed_on = now(), document_id = x.document_id
+         from (select distinct on (f2.id) f2.id as fid, d.id as document_id
+                 from schedule_rx_followup f2
+                 join customer_documents cd on cd.customer_id = f2.customer_id and cd.active and not cd.archive
+                 join documents d on d.id = cd.document_id and d.active and not d.archive and lower(d.category) = 'prescription' and d.created_on > f2.created_on - interval '1 hour'
+                where f2.status = 'OPEN' order by f2.id, d.created_on) x
+        where f.id = x.fid returning f.sale_id, f.document_id`);
+    for (const row of done[0] && Array.isArray(done[0]) ? done[0] : done) {
+      await m.query(`update schedule_register set rx_basis = 'ATTACHED', rx_document_id = $2 where sale_id = $1 and rx_basis = 'LATER' and superseded_on is null`, [row.sale_id, row.document_id]);
+    }
+  }
+
+  /** the prescriptions still to be collected, the oldest promise first, for the customer worklist */
+  async followups(user: any) {
+    const businessId = await businessOfUser(this.manager, user.id);
+    if (!businessId) return { rows: [] };
+    await this.settleFollowups();
+    const rows = await this.manager.query(
+      `select f.id, f.sale_id, s.bill_no, to_char(s.bill_date, 'YYYY-MM-DD') as day, f.customer_id, c.name as customer_name, c.locality, to_char(f.due_on, 'YYYY-MM-DD') as due_on,
+              ((now() at time zone 'Asia/Kolkata')::date - f.due_on)::int as days_over, f.note, u.full_name as by_name,
+              (select string_agg(distinct p.title || ' (' || upper(p.more_props->>'schedule') || ')', ', ')
+                 from sale_item si join product p on p.id = si.product_id
+                where si.sale_id = s.id and si.status = 'Complete' and si.active and not si.archive and upper(p.more_props->>'schedule') in ('H', 'H1', 'X')) as drugs
+         from schedule_rx_followup f join sale s on s.id = f.sale_id join customer c on c.id = f.customer_id left join app_user u on u.id = f.created_by
+        where f.business_id = $1 and f.status = 'OPEN' order by f.due_on, f.id limit 100`, [businessId]);
+    return { rows };
+  }
+
+  /** the customer will not bring the prescription: the follow-up is closed and the register lines say so, with the reason */
+  async waiveFollowup(user: any, id: number, noteRaw: any) {
+    const businessId = await businessOfUser(this.manager, user.id);
+    const note = String(noteRaw ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (note.length < 3) throw new BadRequestException('Say in a few words why the prescription is no longer chased.');
+    await this.manager.transaction(async (m) => {
+      const [f] = await m.query(`select id, sale_id from schedule_rx_followup where id = $1 and business_id = $2 and status = 'OPEN'`, [Number(id) || 0, businessId]);
+      if (!f) throw new NotFoundException('That follow-up is not open.');
+      await m.query(`update schedule_rx_followup set status = 'WAIVED', note = $2, closed_on = now(), closed_by = $3 where id = $1`, [f.id, note, user.id]);
+      await m.query(`update schedule_register set rx_basis = 'COULD_NOT', rx_note = $2 where sale_id = $1 and rx_basis = 'LATER' and superseded_on is null`, [f.sale_id, note]);
+      await this.audit.record({ userId: user.id, action: 'drug_register.followup_waived', entityType: 'sale', entityId: +f.sale_id, summary: `Prescription no longer chased for sale ${f.sale_id}`, details: { note } });
+    });
+    return { id: Number(id) };
   }
 
   // ------------------------------------------------------------------ prescribers (for the counter)
@@ -297,11 +381,11 @@ export class DrugRegisterService {
     const limit = Math.min(Math.max(Number(q?.limit) || 1000, 1), 5000);
     const rows = await this.manager.query(
       `select r.id, r.schedule, r.serial_no, to_char(r.entry_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') as entry_on, r.bill_no, r.sale_id, r.drug_name, r.batch, to_char(r.exp_date, 'YYYY-MM-DD') as exp_date,
-              r.qty, r.pack, r.patient_name, r.patient_address, r.patient_age, r.prescriber_name, r.prescriber_reg_no, r.prescriber_address, to_char(r.rx_date, 'YYYY-MM-DD') as rx_date,
+              r.qty, r.pack, r.patient_name, r.patient_address, r.patient_age, r.prescriber_name, r.prescriber_reg_no, r.prescriber_address, to_char(r.rx_date, 'YYYY-MM-DD') as rx_date, r.rx_basis, r.rx_note, r.rx_document_id,
               st.location as store, u.full_name as supplied_by, (r.superseded_on is not null) as superseded
          from schedule_register r left join stores st on st.id = r.store_id left join app_user u on u.id = r.supplied_by
         where ${f.where.join(' and ')} order by r.schedule, r.serial_no limit ${limit}`, f.args);
-    return { rows: rows.map((r: any) => ({ ...r, label: serialLabel(r.schedule, r.serial_no) })), sc, from: f.from, to: f.to, schedule: String(q?.schedule || '').toUpperCase() };
+    return { rows: rows.map((r: any) => ({ ...r, label: serialLabel(r.schedule, r.serial_no), rx_label: r.rx_basis ? (RX_LABELS as any)[r.rx_basis] ?? r.rx_basis : '' })), sc, from: f.from, to: f.to, schedule: String(q?.schedule || '').toUpperCase() };
   }
 
   async register(user: any, q: any) {
@@ -322,7 +406,8 @@ export class DrugRegisterService {
     const none = !required.length;          // nothing is required: no sale can be missing, but the register still has its lines to count
     const miss = none ? [] : await this.manager.query(
       `select s.id as sale_id, s.bill_no, to_char(s.bill_date, 'YYYY-MM-DD') as day, p.title, upper(p.more_props->>'schedule') as schedule, si.qty,
-              c.id as customer_id, c.name as customer_name, c.mobile as customer_mobile, c.address as customer_address
+              c.id as customer_id, c.name as customer_name, c.mobile as customer_mobile, c.address as customer_address,
+              s.more_props::jsonb->'scheduledetail'->>'rx_basis' as rx_basis, s.more_props::jsonb->'scheduledetail'->>'rx_note' as rx_note
          from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id left join customer c on c.id = s.customer_id
         where si.status = 'Complete' and si.active and not si.archive and upper(p.more_props->>'schedule') = any($1::text[]) and s.bill_date >= $2::date and s.store_id = any($3::int[])
           and not exists (select 1 from schedule_register r where r.sale_item_id = si.id and r.superseded_on is null)
@@ -357,10 +442,10 @@ export class DrugRegisterService {
       { header: 'Drug', key: 'drug_name', width: 36 }, { header: 'Batch', key: 'batch', width: 14 }, { header: 'Expiry', key: 'exp_date', width: 11 }, { header: 'Units', key: 'qty', width: 7 },
       { header: 'Patient', key: 'patient_name', width: 24 }, { header: 'Patient address', key: 'patient_address', width: 36 }, { header: 'Age', key: 'patient_age', width: 6 },
       { header: 'Prescriber', key: 'prescriber_name', width: 24 }, { header: 'Registration no', key: 'prescriber_reg_no', width: 16 }, { header: 'Prescriber address', key: 'prescriber_address', width: 32 },
-      { header: 'Prescription date', key: 'rx_date', width: 12 }, { header: 'Supplied by', key: 'supplied_by', width: 18 }, { header: 'Store', key: 'store', width: 16 }, { header: 'Superseded', key: 'sup', width: 10 },
+      { header: 'Prescription date', key: 'rx_date', width: 12 }, { header: 'Prescription', key: 'rx_text', width: 30 }, { header: 'Supplied by', key: 'supplied_by', width: 18 }, { header: 'Store', key: 'store', width: 16 }, { header: 'Superseded', key: 'sup', width: 10 },
     ];
     ws.getRow(1).font = { bold: true };
-    rows.forEach((r: any) => ws.addRow({ ...r, sup: r.superseded ? 'yes' : '' }));
+    rows.forEach((r: any) => ws.addRow({ ...r, sup: r.superseded ? 'yes' : '', rx_text: [r.rx_label, r.rx_note].filter(Boolean).join(': ') }));
     await this.audit.record({ userId: user.id, action: 'drug_register.exported', entityType: 'schedule_register', entityId: null, summary: `Drug register exported (${schedule || 'H, H1, X'}, ${from} to ${to}, ${rows.length} lines)`, details: { schedule, from, to, lines: rows.length } });
     return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), filename: `drug-register-${schedule || 'all'}-${from}-to-${to}.xlsx`, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
   }

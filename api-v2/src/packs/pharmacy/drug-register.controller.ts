@@ -32,6 +32,10 @@ export class DrugRegisterController {
   /** what is already on record for a customer: prescriptions kept with them and the patient and prescriber of their last supplies */
   @Get('customer/:id/context') customerContext(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.register.customerContext(u, id); }
 
+  /** the prescriptions promised for later and not yet brought: shown in the customer worklist */
+  @Get('followups') followups(@User() u: any) { return this.register.followups(u); }
+  @Post('followups/:id/waive') async waive(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { await this.assertReader(u); return this.register.waiveFollowup(u, id, b?.note); }
+
   @Get('register') async list(@Query() q: any, @User() u: any) { await this.assertReader(u); return this.register.register(u, q); }
   @Get('register/pdf') async pdf(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.pdf(u, q)); }
   @Get('register/xlsx') async xlsx(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.xlsx(u, q)); }

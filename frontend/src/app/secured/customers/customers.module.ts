@@ -20,6 +20,7 @@ import { CustomerRelationshipComponent } from "./components/customer-relationshi
 import { CustomerPrivatePageComponent } from "./components/customer-private-page.component";
 import { CustomerDetailComponent } from "./components/customer-detail.component";
 import { DocumentsModule } from "src/app/secured/documents/documents.module";
+import { PharmacyUiModule } from "src/app/packs/pharmacy/pharmacy-ui.module";
 
 const routes: Routes = [
   { path: 'cust/list', component: CustomersComponent, canActivate:[AuthGuard]},
@@ -55,6 +56,7 @@ const routes: Routes = [
         TableModule,
         TabViewModule,
         DocumentsModule,
+        PharmacyUiModule,
         SharedModule
     ],
     exports: [RouterModule,CustomerOrdersComponent,

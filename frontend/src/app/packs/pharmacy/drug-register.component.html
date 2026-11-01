@@ -12,7 +12,7 @@
   <b>{{data.coverage.missing}} scheduled sale{{data.coverage.missing === 1 ? '' : 's'}} since {{data.since | date:'dd MMM yyyy'}} {{data.coverage.missing === 1 ? 'has' : 'have'}} no register line.</b>
   The bill was completed without the patient and the prescriber, made some other way, or made before the details were asked for. The most recent:
   <ul class="mb-2 small">
-    <li *ngFor="let b of bills.slice(0, 5)" data-testid="dr-missing-bill">Bill {{b.bill_no}}, {{b.day | date:'dd MMM'}}: {{titles(b)}}
+    <li *ngFor="let b of bills.slice(0, 5)" data-testid="dr-missing-bill">Bill {{b.bill_no}}, {{b.day | date:'dd MMM'}}: {{titles(b)}}<span class="text-muted" *ngIf="b.reason" data-testid="dr-missing-reason"> ({{b.reason}})</span>
       <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline" (click)="openLater(b)" data-testid="dr-add-details">Add details</button></li>
   </ul>
   <div class="bg-white border rounded p-2" *ngIf="later" data-testid="dr-later">
@@ -53,6 +53,10 @@
   <div class="card-body py-2">
     <div class="fw-semibold small mb-1">How the scheduled supplies were covered
       <span class="text-muted fw-normal">{{report.from | date:'dd MMM'}} to {{report.to | date:'dd MMM yyyy'}}: {{report.totals.supplies}} supplies, <b>{{pct(report.totals.covered, report.totals.supplies)}}</b> with the patient and the prescriber in the register, {{report.totals.with_rx}} with a prescription attached</span></div>
+    <div class="small mb-2" *ngIf="report.by_basis.length" data-testid="dr-coverage-basis">
+      <span class="text-muted">How each stands with its prescription:</span>
+      <span class="badge bg-light text-dark border ms-1" *ngFor="let b of report.by_basis">{{b.label}}: {{b.supplies}}</span>
+    </div>
     <div class="row g-3">
       <div class="col-lg-5">
         <table class="table table-sm mb-0 small" data-testid="dr-coverage-schedule">
@@ -72,7 +76,7 @@
 
 <div class="table-responsive" *ngIf="data">
   <table class="table table-sm align-middle" data-testid="dr-table">
-    <thead><tr><th>Register no</th><th>Date and time</th><th>Bill</th><th>Patient</th><th>Prescriber</th><th>Drug</th><th>Batch</th><th class="text-end">Units</th><th>Supplied by</th></tr></thead>
+    <thead><tr><th>Register no</th><th>Date and time</th><th>Bill</th><th>Patient</th><th>Prescriber</th><th>Drug</th><th>Batch</th><th class="text-end">Units</th><th>Prescription</th><th>Supplied by</th></tr></thead>
     <tbody>
       <tr *ngFor="let r of data.rows" data-testid="dr-row" [class.table-danger]="r.superseded">
         <td class="text-nowrap fw-semibold">{{r.label}}<span class="badge bg-secondary ms-1" *ngIf="r.superseded">changed</span></td>
@@ -83,9 +87,10 @@
         <td>{{r.drug_name}} <span class="badge bg-light text-dark border">{{r.schedule}}</span></td>
         <td class="small">{{r.batch}}<div class="text-muted" *ngIf="r.exp_date">{{r.exp_date | date:'MMM yy'}}</div></td>
         <td class="text-end fw-semibold">{{r.qty}}</td>
+        <td class="small" data-testid="dr-rx"><span *ngIf="r.rx_label">{{r.rx_label}}</span><span class="text-muted" *ngIf="!r.rx_label">-</span><div class="text-muted" *ngIf="r.rx_note">{{r.rx_note}}</div></td>
         <td class="small">{{r.supplied_by}}</td>
       </tr>
-      <tr *ngIf="!data.rows.length"><td colspan="9" class="text-center text-muted py-3" data-testid="dr-empty">No scheduled drug was supplied in this period.</td></tr>
+      <tr *ngIf="!data.rows.length"><td colspan="10" class="text-center text-muted py-3" data-testid="dr-empty">No scheduled drug was supplied in this period.</td></tr>
     </tbody>
   </table>
 </div>

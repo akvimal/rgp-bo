@@ -71,3 +71,48 @@ export const draftEntries = (lines: ScheduledLine[]): EntryDraft[] => lines.map(
 
 /** the schedules in a list of lines, in register order (H1 first) */
 export const schedulesOf = (lines: ScheduledLine[]): Schedule[] => SCHEDULES.filter((s) => lines.some((l) => l.product.schedule === s));
+
+// ------------------------------------------------------------------ how a supply stands with its prescription
+/** the basis a register line records for its prescription; the first three are set by the panel when it is used, the others are chosen by the person */
+export const RX_BASES = ['ATTACHED', 'ON_FILE', 'LAST_SUPPLY', 'SEEN', 'REGULAR', 'LATER', 'COULD_NOT', 'OTHER'] as const;
+export type RxBasis = typeof RX_BASES[number];
+export const RX_LABELS: Record<RxBasis | 'NONE', string> = {
+  ATTACHED: 'Prescription attached', ON_FILE: 'Prescription on file', LAST_SUPPLY: 'Same as last supply', SEEN: 'Seen, not kept', REGULAR: 'Regular customer, earlier prescription',
+  LATER: 'Will bring it later', COULD_NOT: 'Customer could not provide', OTHER: 'Other', NONE: 'No reason recorded',
+};
+/** a prescription promised for later is chased for at most this many days */
+export const LATER_MAX_DAYS = 30;
+
+export interface Rx { basis: RxBasis | null; note: string; due: string | null; documentId: number | null; }
+
+const plusDays = (day: string, n: number) => new Date(Date.parse(day + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+
+/** the last prescription among the documents on a bill, if any */
+export const prescriptionOf = (docs: any): any | null => {
+  const list = Array.isArray(docs) ? docs.filter((d: any) => String(d?.category ?? '').toLowerCase() === 'prescription') : [];
+  return list.length ? list[list.length - 1] : null;
+};
+
+/** the basis as the bill gives it; a prescription on the bill means ATTACHED unless the person took one already on file */
+export function normaliseRx(raw: any, docs: any = []): Rx {
+  const given = String(raw?.rx_basis ?? '').trim().toUpperCase();
+  let basis: RxBasis | null = (RX_BASES as readonly string[]).includes(given) ? (given as RxBasis) : null;
+  const doc = prescriptionOf(docs);
+  if (doc && (basis === null || basis === 'LATER')) basis = 'ATTACHED';
+  const due = clean(raw?.rx_due, 10);
+  const asked = Number(raw?.rx_document_id);
+  const docId = Number.isFinite(asked) && asked > 0 ? asked : doc && Number(doc.id) > 0 ? Number(doc.id) : null;
+  return {
+    basis, note: clean(raw?.rx_note, 200), due: basis === 'LATER' && /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
+    documentId: basis === 'ATTACHED' || basis === 'ON_FILE' ? docId : null,
+  };
+}
+
+/** what the basis still needs: a few words for "Other", and the day for "Will bring it later" */
+export function rxProblems(raw: any, docs: any = [], today: string = new Date().toISOString().slice(0, 10)): string[] {
+  const rx = normaliseRx(raw, docs);
+  const out: string[] = [];
+  if (rx.basis === 'OTHER' && rx.note.length < 3) out.push('a few words on why there is no prescription');
+  if (rx.basis === 'LATER' && (!rx.due || rx.due < today || rx.due > plusDays(today, LATER_MAX_DAYS))) out.push(`the day the prescription will be brought (within ${LATER_MAX_DAYS} days)`);
+  return out;
+}

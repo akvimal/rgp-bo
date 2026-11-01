@@ -13,7 +13,7 @@ import { StoreContextService } from "src/app/@core/store-context.service";
 import { monthlyUnits, monthsCovered } from "../supply-rule";
 import { AuthService } from "src/app/@core/auth/auth.service";
 import { DrugRegisterService } from "src/app/packs/pharmacy/drug-register.service";
-import { detailProblems } from "src/app/packs/pharmacy/drug-register-rules";
+import { detailProblems, rxProblems } from "src/app/packs/pharmacy/drug-register-rules";
 
 @Component({
     templateUrl: 'sale-form.component.html'
@@ -205,7 +205,14 @@ export class SaleFormComponent {
 
   /** the bill cannot be completed until the register has what it needs (only when the shop holds bills back; otherwise the details can follow) */
   get scheduleMissing(): boolean {
-    return this.enforcedHere && detailProblems(this.scheduleDetail).length > 0;
+    return (this.enforcedHere && detailProblems(this.scheduleDetail).length > 0) || this.scheduleRxMissing;
+  }
+
+  /** the prescription status is incomplete: "Other" without words, or "Will bring it later" without a day or a customer on record */
+  get scheduleRxMissing(): boolean {
+    if (!this.scheduledItems.length) return false;
+    const hasRx = (this.documents || []).some((d:any) => String(d.category || '').toLowerCase() === 'prescription');
+    return rxProblems(this.scheduleDetail, hasRx, !!(this.sale.customer?.existing && this.sale.customer?.id)).length > 0;
   }
 
   /** a drug on this bill is of a schedule the shop holds bills back for */
