@@ -19,6 +19,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?missing - use scripts/tenant-up.sh}
       JWT_KEY: ${JWT_KEY}
       JWT_EXPIRES: ${JWT_EXPIRES:-24h}
+      MFA_MODE: ${MFA_MODE:-required}
       PORT: 3000
       LOG_SQL: "false"
       FILEUPLOAD_LOCATION: /usr/src/app/upload

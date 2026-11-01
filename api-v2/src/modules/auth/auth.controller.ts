@@ -1,7 +1,8 @@
-import { Body, Controller, Inject, Post, UseGuards, Req, Get, HttpStatus } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Inject, Param, Post, UseGuards, Req, Get, HttpStatus } from '@nestjs/common';
 import { Request } from 'express';
 
-import { LoginDto, ChangePasswordDto } from './auth.dto';
+import { LoginDto, ChangePasswordDto, MfaCodeDto, MfaTokenDto } from './auth.dto';
+import { MfaService } from './mfa.service';
 
 import { AuthService } from './auth.service';
 import { ApiTags } from '@nestjs/swagger';
@@ -18,12 +19,49 @@ export class AuthController {
   private readonly service: AuthService;
   @Inject(UserService)
   private readonly userService: UserService;
+  @Inject(MfaService)
+  private readonly mfa: MfaService;
 
   @Post('login')
   private async login(@Body() body: LoginDto, @Req() request: Request): Promise<AppUser | never> {
       return this.service.login(body, request.ip);
   }  
   
+  /** step 2: the code from the authenticator app (or a recovery code) */
+  @Post('mfa/verify')
+  private mfaVerify(@Body() body: MfaCodeDto, @Req() request: Request) {
+    return this.service.mfaVerify(body.mfaToken, body.code, request.ip);
+  }
+
+  /** first sign-in with MFA required: a secret and QR code to link an app */
+  @Post('mfa/setup')
+  private mfaSetup(@Body() body: MfaTokenDto) {
+    return this.service.mfaSetup(body.mfaToken);
+  }
+
+  /** a code from the new app confirms the link and signs the person in */
+  @Post('mfa/enable')
+  private mfaEnable(@Body() body: MfaCodeDto, @Req() request: Request) {
+    return this.service.mfaEnable(body.mfaToken, body.code, request.ip);
+  }
+
+  /** who has an authenticator linked (the users list shows it) */
+  @Get('mfa/status')
+  @UseGuards(AuthGuard)
+  private mfaStatus() {
+    return this.mfa.statusOf();
+  }
+
+  /** a manager unlinks someone's authenticator (lost phone); the person links a new one at the next sign-in */
+  @Post('mfa/reset/:id')
+  @UseGuards(AuthGuard)
+  private async mfaReset(@Param('id') id: string, @User() currentUser: any) {
+    const target = Number(id);
+    if (target === Number(currentUser.id)) throw new BadRequestException('Ask another manager to reset your own authenticator.');
+    await this.userService.assertCanManage(target, currentUser.id);
+    return this.mfa.reset(target, currentUser.id);
+  }
+
   @Post('changepwd')
   private async changepwd(@Body() body: ChangePasswordDto): Promise<AppUser | never> {
       return this.service.changepwd(body);

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Trim } from 'class-sanitizer';
-import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ description: 'email', example: '' })
@@ -24,4 +24,17 @@ export class ChangePasswordDto extends LoginDto {
   @IsString()
   public readonly newpassword: string;
 
+}
+
+export class MfaTokenDto {
+  @ApiProperty({ description: 'the short-lived token the password step returned' })
+  @IsString()
+  public readonly mfaToken: string;
+}
+
+export class MfaCodeDto extends MfaTokenDto {
+  @ApiProperty({ description: 'the 6-digit code from the authenticator app, or a recovery code' })
+  @IsString()
+  @MaxLength(32)
+  public readonly code: string;
 }

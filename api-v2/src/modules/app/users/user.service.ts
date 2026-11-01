@@ -295,6 +295,24 @@ export class UserService {
     return this.delete(id, { id: currentUserId });
   }
 
+  /** throws unless the caller may manage this person's login (the same reach as editing them) */
+  async assertCanManage(rawId: number, currentUserId: number) {
+    const id = Number(rawId);
+    if (!Number.isInteger(id)) throw new BadRequestException('User not found');
+    const caller = await this.getCaller(currentUserId);
+    const target = await this.userRepository.findOne({ where: { id } });
+    if (!target) throw new BadRequestException('User not found');
+    if (caller.role?.name === 'Site Admin') {
+      const targetRole = await this.roleRepository.findOne({ where: { id: target.roleid } });
+      if (!ASSIGNABLE_BY_SITE_ADMIN.includes(targetRole?.name ?? '')) throw new ForbiddenException('Site Admin can only manage Business Head or Owner-operator users');
+    } else if (caller.role?.name === 'Business Head') {
+      if (target.businessid !== caller.businessid) throw new ForbiddenException('You can only manage users in your own business');
+    } else {
+      const ctx = await this.managerContext(caller, 'edit', 'Not permitted to manage users');
+      await this.assertManaged(ctx!, caller, target);
+    }
+  }
+
   async findAll(currentUser?: { id: number }) {
     const qb = this.userRepository.createQueryBuilder('u')
     .leftJoin("u.role", "role")

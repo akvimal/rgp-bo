@@ -42,6 +42,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-rgpapp}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-rgpbeta}
       JWT_KEY: ${JWT_KEY:?Set a JWT_KEY of its own in .env.beta}
       JWT_EXPIRES: ${JWT_EXPIRES:-24h}
+      MFA_MODE: ${MFA_MODE:-required}
       PORT: 3000
       LOG_SQL: "false"
       FILEUPLOAD_LOCATION: /usr/src/app/upload

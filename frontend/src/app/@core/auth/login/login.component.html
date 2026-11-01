@@ -1,5 +1,5 @@
-<app-auth-shell [platform]="platform" [title]="platform ? 'Sign in to platform administration' : 'Sign in'">
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="d-grid gap-3">
+<app-auth-shell [platform]="platform" [title]="title">
+  <form *ngIf="step === 'password'" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="d-grid gap-3">
     <div>
       <label for="email" class="form-label">Username</label>
       <div class="input-group">
@@ -13,7 +13,7 @@
     </div>
 
     <div class="alert alert-danger py-2 mb-0" role="alert" data-testid="login-error" *ngIf="error && !form.controls['password'].dirty">
-      Invalid credentials. Check your username and password.
+      {{ error.startsWith('That sign-in') ? error : 'Invalid credentials. Check your username and password.' }}
     </div>
 
     <button class="btn btn-primary" type="submit" data-testid="login-submit" [disabled]="!form.valid">{{platform ? 'Sign in to platform' : 'Sign in'}}</button>
@@ -22,4 +22,54 @@
       <a routerLink="/changepassword" [queryParams]="platform ? {scope: 'platform'} : null" data-testid="login-changepw-link">Change password</a>
     </div>
   </form>
+
+  <!-- step 2: the code from the authenticator app -->
+  <form *ngIf="step === 'code'" (ngSubmit)="onCode()" novalidate class="d-grid gap-3" data-testid="mfa-code-form">
+    <p class="mb-0">{{ useRecovery ? 'Enter one of your recovery codes. Each works only once.' : 'Open your authenticator app and enter the 6-digit code for this account.' }}</p>
+    <div>
+      <label for="mfacode" class="form-label">{{ useRecovery ? 'Recovery code' : 'Authenticator code' }}</label>
+      <input id="mfacode" type="text" class="form-control form-control-lg text-center" [formControl]="codeControl" data-testid="mfa-code"
+             [attr.inputmode]="useRecovery ? 'text' : 'numeric'" autocomplete="one-time-code" [attr.maxlength]="useRecovery ? 12 : 7" autofocus required>
+    </div>
+    <div class="alert alert-danger py-2 mb-0" role="alert" data-testid="mfa-error" *ngIf="mfaError">{{mfaError}}</div>
+    <button class="btn btn-primary" type="submit" data-testid="mfa-submit" [disabled]="!codeControl.value || busy">Verify</button>
+    <div class="text-center small d-flex justify-content-between">
+      <a href="javascript:void(0)" (click)="toggleRecovery()" data-testid="mfa-toggle-recovery">{{ useRecovery ? 'Use the app code instead' : 'Use a recovery code' }}</a>
+      <a href="javascript:void(0)" (click)="cancelMfa()">Back</a>
+    </div>
+  </form>
+
+  <!-- first sign-in with MFA required: link an authenticator app -->
+  <form *ngIf="step === 'setup'" (ngSubmit)="onEnable()" novalidate class="d-grid gap-3" data-testid="mfa-setup-form">
+    <p class="mb-0">Your business requires a second step at sign-in. Install an authenticator app (Google Authenticator, Microsoft Authenticator or similar), scan this code, then enter the 6-digit code it shows.</p>
+    <div class="text-center" *ngIf="setup">
+      <img [src]="setup.qr" alt="QR code to link your authenticator app" width="220" height="220" data-testid="mfa-qr">
+      <details class="mt-2 small">
+        <summary>Cannot scan? Enter the key by hand</summary>
+        <code class="user-select-all" data-testid="mfa-secret">{{setup.secret}}</code>
+      </details>
+    </div>
+    <div class="text-center text-muted" *ngIf="!setup && !mfaError">Preparing...</div>
+    <div>
+      <label for="mfasetupcode" class="form-label">Code from the app</label>
+      <input id="mfasetupcode" type="text" class="form-control form-control-lg text-center" [formControl]="codeControl" data-testid="mfa-setup-code"
+             inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+    </div>
+    <div class="alert alert-danger py-2 mb-0" role="alert" data-testid="mfa-error" *ngIf="mfaError">{{mfaError}}</div>
+    <button class="btn btn-primary" type="submit" data-testid="mfa-enable" [disabled]="!setup || !codeControl.value || busy">Link app and continue</button>
+    <div class="text-center small"><a href="javascript:void(0)" (click)="cancelMfa()">Back</a></div>
+  </form>
+
+  <!-- the recovery codes, shown once -->
+  <div *ngIf="step === 'recovery'" class="d-grid gap-3" data-testid="mfa-recovery">
+    <div class="alert alert-warning py-2 mb-0">Keep these codes somewhere safe. If you lose your phone, each one lets you sign in once. They are not shown again.</div>
+    <div class="row row-cols-2 g-2 font-monospace text-center">
+      <div class="col" *ngFor="let c of recoveryCodes"><div class="border rounded py-1 user-select-all">{{c}}</div></div>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary flex-fill" (click)="copyRecoveryCodes()">Copy</button>
+      <button type="button" class="btn btn-outline-secondary flex-fill" (click)="downloadRecoveryCodes()">Download</button>
+    </div>
+    <button type="button" class="btn btn-primary" (click)="recoveryDone()" data-testid="mfa-recovery-done">I have saved them. Continue</button>
+  </div>
 </app-auth-shell>

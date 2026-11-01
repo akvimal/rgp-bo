@@ -6,6 +6,10 @@
     <span>{{removeMessage}}</span>
     <button type="button" class="btn-close" aria-label="Close" (click)="removeMessage = ''"></button>
 </div>
+<div class="alert alert-info py-2 mt-3 mb-0 d-flex justify-content-between align-items-start" *ngIf="mfaMessage" role="status" data-testid="user-mfa-message">
+    <span>{{mfaMessage}}</span>
+    <button type="button" class="btn-close" aria-label="Close" (click)="mfaMessage = ''"></button>
+</div>
 <div class="alert alert-warning py-2 mt-3 mb-0" *ngIf="showDetails && attention" data-testid="staff-attention">
     {{attention}} pharmacist registration{{attention === 1 ? ' has' : 's have'}} lapsed or lapse{{attention === 1 ? 's' : ''}} within 60 days.
 </div>
@@ -18,6 +22,7 @@
             <th scope="col">Role</th>
             <th *isAuth="'businesses'" scope="col">Business</th>
             <th scope="col">Store</th>
+            <th scope="col">Two-step</th>
             <th *isAuth="'hr.view'" scope="col">Staff record</th>
             <th scope="col">Actions</th>
         </tr>
@@ -35,6 +40,9 @@
             <td data-testid="user-row-role">{{p.role}}</td>
             <td *isAuth="'businesses'" data-testid="user-row-business">{{p.business || '—'}}</td>
             <td>{{p.store || '—'}}</td>
+            <td data-testid="user-row-mfa">
+                <span class="badge" [ngClass]="mfaByUser[p.id] ? 'bg-success' : 'bg-secondary'">{{mfaByUser[p.id] ? 'On' : 'Not set up'}}</span>
+            </td>
             <td *isAuth="'hr.view'" data-testid="user-row-staff">
                 <a *ngIf="staffOf(p.id) as st; else noStaff" routerLink="/secure/hr/staff" [queryParams]="{staff: st.id}" [attr.data-testid]="'user-staff-open'">{{st.emp_code}}{{st.designation ? ' · ' + st.designation : ''}}{{st.status !== 'ACTIVE' ? ' (left)' : ''}}</a>
                 <ng-template #noStaff><a routerLink="/secure/hr/staff" [queryParams]="{user: p.id}" data-testid="user-staff-add">Add as staff</a></ng-template>
@@ -43,6 +51,7 @@
                 <div class="grid-actions">
                     <a *ngIf="showDetails && detailOf(p.id)" [routerLink]="['../profile', p.id]" title="Staff details" [attr.data-testid]="'user-details-' + p.id"><i class="bi bi-person-vcard text-secondary"></i></a>
                     <a *isAuth="'users.edit'" [routerLink]="['../edit', p.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
+                    <a *ngIf="mfaByUser[p.id]" (click)="resetMfa(p)" title="Reset two-step sign-in (lost phone)" [attr.data-testid]="'user-mfa-reset-' + p.id"><i class="bi bi-shield-x text-warning"></i></a>
                     <a *isAuth="'users.delete'" (click)="delete(p)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
                 </div>
             </td>

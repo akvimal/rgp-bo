@@ -37,6 +37,33 @@ export class UserListComponent {
         }, () => {});
     }
 
+    /** who has an authenticator app linked (two-step sign-in) */
+    mfaByUser:{[userId:number]:boolean} = {};
+    mfaMessage = '';
+
+    loadMfa(){
+        this.auth.mfaStatus().subscribe((rows:any[]) => {
+            this.mfaByUser = {};
+            (rows || []).forEach(r => this.mfaByUser[r.id] = !!r.enabled);
+        }, () => {});
+    }
+
+    /** a lost phone: unlink the authenticator, and the person links a new one at their next sign-in */
+    resetMfa(user:any){
+        this.confirm.confirmAction('Reset two-step sign-in',
+            ['They sign in with their password, then link an authenticator app again.', 'Their recovery codes stop working.'],
+            'Reset', () => {
+                this.mfaMessage = '';
+                this.auth.mfaReset(user.id).subscribe(() => {
+                    this.mfaMessage = `Two-step sign-in reset for ${user.fullname}. They link a new app at their next sign-in.`;
+                    this.loadMfa();
+                }, (e:any) => {
+                    const m = e?.error?.message;
+                    this.mfaMessage = (Array.isArray(m) ? m.join(' ') : m) || 'Could not reset it.';
+                });
+            }, `Reset the authenticator of ${user.fullname}?`);
+    }
+
     private staffByUser:{[userId:number]:any} = {};
 
     constructor(private service:UsersService, private confirm:ConfirmService, private auth:AuthService, private hr:HrService){}
@@ -46,6 +73,7 @@ export class UserListComponent {
     ngOnInit(){
         this.fetchList();
         this.loadDetails();
+        this.loadMfa();
         // the staff link is the Business Head's HR data; only ask when the role may see it
         if (this.auth.isActionAuthorized('hr.view')) {
             this.hr.get('staff').subscribe((rows:any[]) => {

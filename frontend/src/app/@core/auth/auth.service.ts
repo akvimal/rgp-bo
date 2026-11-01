@@ -56,6 +56,31 @@ export class AuthService {
     return this.http.post<any>(`${environment.apiHost}/auth/login`,cred);
   }
     
+  /** step 2 of a sign-in: the 6-digit code from the authenticator app, or a recovery code */
+  public mfaVerify(mfaToken:string, code:string):Observable<any>{
+    return this.http.post<any>(`${environment.apiHost}/auth/mfa/verify`,{mfaToken, code});
+  }
+
+  /** first sign-in with MFA required: the secret and QR code for linking an app */
+  public mfaSetup(mfaToken:string):Observable<any>{
+    return this.http.post<any>(`${environment.apiHost}/auth/mfa/setup`,{mfaToken});
+  }
+
+  /** a code from the newly linked app: confirms the link, returns the token and the recovery codes */
+  public mfaEnable(mfaToken:string, code:string):Observable<any>{
+    return this.http.post<any>(`${environment.apiHost}/auth/mfa/enable`,{mfaToken, code});
+  }
+
+  /** a manager unlinks someone's authenticator (lost phone) */
+  public mfaReset(userId:number):Observable<any>{
+    return this.http.post<any>(`${environment.apiHost}/auth/mfa/reset/${userId}`,{});
+  }
+
+  /** who has an authenticator linked */
+  public mfaStatus():Observable<any>{
+    return this.http.get<any>(`${environment.apiHost}/auth/mfa/status`);
+  }
+
   public changepwd(passwords:any):Observable<any>{
     return this.http.post<any>(`${environment.apiHost}/auth/changepwd`,passwords);
   }
