@@ -71,6 +71,7 @@
                     <div><span class="bill-label">Items</span> <strong>{{itemsCount}}</strong> &middot; <span class="bill-label">Units</span> <strong>{{unitsCount}}</strong></div>
                     <div class="bill-words" data-testid="bill-words"><span class="bill-label">Amount in words</span> Rupees {{words}} only</div>
                     <div class="bill-refill" *ngIf="refillDue && auth.moduleOn('refills')" data-testid="bill-refill"><span class="bill-label">Next refill</span> about <strong>{{refillDue | date:'dd MMM yyyy'}}</strong></div>
+                    <div class="bill-saved" *ngIf="savedAmount > 0" data-testid="bill-saved">You saved &#8377;{{savedAmount | number:'1.0-0'}} ({{saving}}%) on MRP</div>
                 </div>
                 <table class="bill-totals">
                     <tr *ngIf="mrpTotal > 0 && savedAmount > 0"><td>MRP total</td><td>{{mrpTotal | number:'1.2-2'}}</td></tr>
@@ -78,7 +79,6 @@
                     <tr *ngIf="gstTotal > 0"><td>GST included</td><td>{{gstTotal | number:'1.2-2'}}</td></tr>
                     <tr *ngIf="roundOff !== 0"><td>Round off</td><td>{{roundOff | number:'1.2-2'}}</td></tr>
                     <tr class="bill-net"><td>Net total</td><td data-testid="bill-net">&#8377;{{finalAmt | number:'1.2-2'}}</td></tr>
-                    <tr class="bill-saved" *ngIf="savedAmount > 0" data-testid="bill-saved"><td colspan="2">You saved &#8377;{{savedAmount | number:'1.0-0'}} ({{saving}}%) on MRP</td></tr>
                 </table>
             </section>
 
@@ -101,8 +101,8 @@
                 <div class="bill-strip-text">
                     <div *ngIf="auth.moduleOn('returns') && shiftContext.returnsAllowed">Please keep this bill for any return or exchange. {{ 'Goods' | term }} once sold are taken back only as the law and our policy allow.</div>
                     <div *ngIf="!(auth.moduleOn('returns') && shiftContext.returnsAllowed)" data-testid="bill-no-returns">{{ 'Goods' | term }} once sold are not taken back or exchanged.</div>
-                    <div *ngIf="from.phone" data-testid="bill-from-phone">Phone/WhatsApp: <strong>{{from.phone}}</strong></div>
-                    <div *ngIf="from.grievancephone" data-testid="bill-grievance">Complaints or grievances: <strong>{{from.grievancephone}}</strong></div>
+                    <div *ngIf="from.phone" data-testid="bill-from-phone">For refill and complaints call or WhatsApp: <strong>{{from.phone}}</strong></div>
+                    <div *ngIf="from.grievancephone" data-testid="bill-grievance">For grievances call or WhatsApp: <strong>{{from.grievancephone}}</strong></div>
                     <div *ngIf="from.website" data-testid="bill-website">{{from.website}}</div>
                     <div class="bill-thanks">Thank you for choosing us. Wishing you good health.</div>
                 </div>

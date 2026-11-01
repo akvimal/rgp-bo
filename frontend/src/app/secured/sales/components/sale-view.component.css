@@ -37,7 +37,7 @@
 .bill-totals td { padding: 2px 0; }
 .bill-totals td:last-child { text-align: right; padding-left: 24px; font-variant-numeric: tabular-nums; }
 .bill-totals .bill-net td { font-size: 15px; font-weight: 800; color: #012970; border-top: 1.5px solid #012970; padding-top: 5px; }
-.bill-totals .bill-saved td { text-align: right; color: #166534; font-weight: 700; padding-top: 4px; }
+.bill-notes .bill-saved { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 800; letter-spacing: .04em; color: #166534; border: 1.5px solid #166534; border-radius: 3px; padding: 1px 8px; }
 
 /* the tax, by rate */
 .bill-gst { margin-top: 12px; border-collapse: collapse; width: 60%; font-size: 11px; }
