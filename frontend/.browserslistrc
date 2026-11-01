@@ -1,0 +1,10 @@
+# Browsers this app is built for. Leaving old browsers (IE 11) out skips the second, ES5, build of every bundle,
+# which roughly halves the production build time and shrinks what the browser downloads.
+last 2 Chrome versions
+last 2 Edge major versions
+last 2 Firefox versions
+Firefox ESR
+last 2 Safari major versions
+last 2 iOS major versions
+not IE 11
+not IE 9-10
