@@ -90,6 +90,50 @@
           </tbody>
         </table>
       </div>
+      <ng-container *ngIf="data.vault">
+        <h5 class="mt-4">Vault</h5>
+        <div class="small text-muted mb-2">The vault is counted on its own, so these never mix with the drawer figures above.</div>
+        <div class="row g-3 mb-2" data-testid="dc-vault-totals">
+          <div class="col-6 col-md-3"><div class="small text-muted">Counts that differed</div><div class="fs-5" data-testid="dc-vault-off">{{data.totals.vault_counts_off}}</div></div>
+          <div class="col-6 col-md-3"><div class="small text-muted">Vault short</div><div class="fs-5" [class.text-danger]="data.totals.vault_short < 0" data-testid="dc-vault-short">{{data.totals.vault_short | currency:'INR':'symbol':'1.0-0'}}</div></div>
+          <div class="col-6 col-md-3"><div class="small text-muted">Vault over</div><div class="fs-5" data-testid="dc-vault-over">{{data.totals.vault_over | currency:'INR':'symbol':'1.0-0'}}</div></div>
+          <div class="col-6 col-md-3"><div class="small text-muted">Surplus left in a drawer</div><div class="fs-5" data-testid="dc-vault-skipped">{{data.totals.vault_drops_skipped}} <span class="small text-muted">shifts</span></div></div>
+        </div>
+
+        <div class="alert alert-warning py-2" *ngIf="data.vault.pending.length" data-testid="dc-vault-pending">
+          <strong>{{data.vault.pending.length}} vault movement{{data.vault.pending.length === 1 ? '' : 's'}} waiting for a second person.</strong>
+          <span *ngFor="let p of data.vault.pending; let last = last"> {{p.store}}: &#8377;{{p.amount | number:'1.0-0'}} ({{p.by_name}}, {{p.hours_waiting}}h){{last ? '' : ';'}}</span>
+        </div>
+
+        <h6 class="mt-3">Vault counts that did not match the books</h6>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle" data-testid="dc-vault-counts">
+            <thead><tr><th>When</th><th>Store</th><th>Counted by</th><th class="text-end">Books</th><th class="text-end">Counted</th><th class="text-end">Difference</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let c of data.vault.counts" data-testid="dc-vault-count-row">
+                <td class="text-nowrap">{{c.counted_on | date:'dd MMM yyyy, h:mm a'}}</td><td>{{c.store}}</td><td>{{c.counted_by_name}}</td>
+                <td class="text-end">{{c.expected | currency:'INR':'symbol':'1.0-0'}}</td><td class="text-end">{{c.counted | currency:'INR':'symbol':'1.0-0'}}</td>
+                <td class="text-end fw-semibold" [class.text-danger]="c.variance < 0" [class.text-success]="c.variance > 0">{{c.variance > 0 ? '+' : ''}}{{c.variance | currency:'INR':'symbol':'1.0-0'}}</td>
+                <td class="small">{{c.notes}}</td>
+              </tr>
+              <tr *ngIf="!data.vault.counts.length"><td colspan="7" class="text-center text-muted py-3" data-testid="dc-vault-counts-empty">Every vault count matched the books.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h6 class="mt-3">Days the surplus stayed in the drawer</h6>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle" data-testid="dc-vault-skipped-table">
+            <thead><tr><th>When</th><th>Store</th><th>Shift</th><th>Closed by</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let s of data.vault.skipped" data-testid="dc-vault-skipped-row">
+                <td class="text-nowrap">{{s.occurred_on | date:'dd MMM yyyy, h:mm a'}}</td><td>{{s.store}}</td><td>{{s.shift_id}}</td><td>{{s.by_name}}</td><td class="small">{{s.summary}}</td>
+              </tr>
+              <tr *ngIf="!data.vault.skipped.length"><td colspan="5" class="text-center text-muted py-3">Every surplus went into the vault.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
       <div class="small text-muted">Difference = counted cash minus expected cash (opening cash plus cash in, less cash out). Rows over {{significant}} rupees are highlighted.</div>
     </ng-container>
   </div>

@@ -39,7 +39,8 @@ export class DashboardComponent implements OnDestroy {
     jump(id: string) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 
     get cashBalancePct(): number {
-      const bal = +this.summary?.kpis?.cash_balance || 0;
+      // the balance the deposit rule is read against: the vault's for a store with a vault, otherwise the cash book's
+      const bal = +(this.summary?.kpis?.deposit_balance ?? this.summary?.kpis?.cash_balance) || 0;
       const threshold = +this.summary?.kpis?.deposit_threshold || 0;
       if (!threshold) return 0;
       return Math.min(Math.round((bal / threshold) * 100), 100);

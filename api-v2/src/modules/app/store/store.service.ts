@@ -365,12 +365,26 @@ export class StoreService {
               to_char(max(trans_date) filter (where category = 'BANK_DEPOSIT'), 'YYYY-MM-DD') as last_deposit
          from store_cash_accounts group by store_id`);
     const by = new Map<number, any>(rows.map((r: any) => [r.store_id, r]));
+    // a store with a vault banks from the vault: what waits to be banked is the vault's confirmed balance, not the whole cash book
+    const vaults = await this.manager.query(
+      `select store_id,
+              coalesce(sum(case when status = 'CONFIRMED' then (case when direction = 'IN' then amount else -amount end) end), 0)::float as balance,
+              count(*) filter (where status = 'PENDING')::int as pending
+         from store_vault_movements group by store_id`);
+    const vaultBy = new Map<number, any>(vaults.map((v: any) => [v.store_id, v]));
     const today = this.today();
     return mine.map((s) => {
       const r = by.get(s.id);
       const rule = this.ruleOf(s);
-      const balance = Math.round((r?.balance ?? 0) * 100) / 100;
-      return { storeid: s.id, location: String(s.location).trim(), balance, lastdeposit: r?.last_deposit ?? null, rule: { ...rule }, description: describeDepositRule(rule), ...evaluateDeposit(rule, balance, r?.last_deposit ?? null, today) };
+      const bookbalance = Math.round((r?.balance ?? 0) * 100) / 100;
+      const v = vaultBy.get(s.id);
+      const vaultbalance = Math.round((v?.balance ?? 0) * 100) / 100;
+      const balance = s.vaultenabled ? vaultbalance : bookbalance;
+      return {
+        storeid: s.id, location: String(s.location).trim(), balance, bookbalance, lastdeposit: r?.last_deposit ?? null, rule: { ...rule }, description: describeDepositRule(rule),
+        vault: s.vaultenabled ? { enabled: true, balance: vaultbalance, pending: v?.pending ?? 0 } : { enabled: false },
+        ...evaluateDeposit(rule, balance, r?.last_deposit ?? null, today),
+      };
     });
   }
 

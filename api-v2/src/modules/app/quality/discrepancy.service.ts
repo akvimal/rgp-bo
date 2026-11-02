@@ -56,8 +56,37 @@ export class DiscrepancyService {
           and ($1::int is null or sh.store_id = $1::int)
         order by sh.shift_date`, [q.storeid ?? null]);
 
+    // The vault, kept apart from the drawers above: counts that differed from the books, drops left in the drawer with a reason,
+    // and drops or deposits still waiting for a second person.
+    const vaultCounts = await this.manager.query(
+      `select c.id::text as id, c.counted_on, st.location as store, u.full_name as counted_by_name,
+              round(c.expected::numeric, 2) as expected, round(c.counted::numeric, 2) as counted, round(c.variance::numeric, 2) as variance, c.notes
+         from store_vault_counts c join stores st on st.id = c.store_id left join app_user u on u.id = c.counted_by
+        where c.variance <> 0 and c.counted_on >= $1::date and c.counted_on < ($2::date + 1) and ($3::int is null or c.store_id = $3::int)
+        order by c.counted_on desc, c.id desc`, args);
+    const vaultSkipped = await this.manager.query(
+      `select a.id::text as id, a.occurred_on, a.entity_id as shift_id, a.summary, u.full_name as by_name, st.location as store
+         from audit_event a
+         left join app_user u on u.id = a.user_id
+         left join store_shifts sh on sh.id = nullif(a.entity_id, '')::int
+         left join stores st on st.id = sh.store_id
+        where a.action = 'vault.drop_skipped' and a.occurred_on >= $1::date and a.occurred_on < ($2::date + 1)
+          and ($3::int is null or sh.store_id = $3::int)
+        order by a.occurred_on desc limit 200`, args);
+    const vaultPending = await this.manager.query(
+      `select m.id::text as id, m.created_on, st.location as store, m.move_type, round(m.amount::numeric, 2) as amount, u.full_name as by_name,
+              round((extract(epoch from (now() - m.created_on)) / 3600)::numeric, 1) as hours_waiting
+         from store_vault_movements m join stores st on st.id = m.store_id left join app_user u on u.id = m.actor_id
+        where m.status = 'PENDING' and ($1::int is null or m.store_id = $1::int)
+        order by m.created_on`, [q.storeid ?? null]);
+
     const sum = (rows: any[], k: string) => rows.reduce((t, r) => t + (+r[k] || 0), 0);
     const totals = {
+      vault_counts_off: vaultCounts.length,
+      vault_short: Math.round(sum(vaultCounts.filter((c: any) => +c.variance < 0), 'variance') * 100) / 100,
+      vault_over: Math.round(sum(vaultCounts.filter((c: any) => +c.variance > 0), 'variance') * 100) / 100,
+      vault_drops_skipped: vaultSkipped.length,
+      vault_pending: vaultPending.length,
       shifts_off: shifts.length,
       short: Math.round(sum(shifts.filter((s: any) => +s.variance < 0), 'variance') * 100) / 100,
       over: Math.round(sum(shifts.filter((s: any) => +s.variance > 0), 'variance') * 100) / 100,
@@ -65,6 +94,6 @@ export class DiscrepancyService {
       no_receipt_amount: Math.round(sum(noReceipt, 'amount') * 100) / 100,
       stale_open: stale.length,
     };
-    return { totals, shifts, people, noReceipt, stale };
+    return { totals, shifts, people, noReceipt, stale, vault: { counts: vaultCounts, skipped: vaultSkipped, pending: vaultPending } };
   }
 }

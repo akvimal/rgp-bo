@@ -210,6 +210,11 @@ export class DashboardService {
         purchase_month_invoices: purchaseMonth.invoices,
         open_shifts: openShifts.length,
         cash_balance: cashSnapshot.cashbalance,
+        deposit_balance: cashSnapshot.depositbalance,
+        vault_stores: cashSnapshot.vaultstores,
+        cash_in_vault: cashSnapshot.vaultbalance,
+        vault_pending: cashSnapshot.vaultpending,
+        cash_in_drawers: cashSnapshot.drawercash,
         deposit_threshold: cashSnapshot.depositthreshold,
         deposit_due: cashSnapshot.depositdue,
         deposit_reason: cashSnapshot.depositreason,
@@ -434,10 +439,31 @@ export class DashboardService {
     }
 
     const cashbalance = (+row?.[0]?.deposit || 0) - (+row?.[0]?.withdraw || 0);
-    const status = storeid ? evaluateDeposit(rule, cashbalance, lastDeposit, new Date().toISOString().slice(0, 10)) : null;
+
+    // cash in the vaults of the stores in view, and in the drawers of their open shifts: kept apart, never netted
+    const [vault] = await this.manager.query(`
+      select count(distinct s.id)::int as stores,
+             coalesce(sum(case when m.status = 'CONFIRMED' then (case when m.direction = 'IN' then m.amount else -m.amount end) end), 0)::float as balance,
+             count(m.id) filter (where m.status = 'PENDING')::int as pending
+        from stores s left join store_vault_movements m on m.store_id = s.id
+       where s.vault_enabled and s.active and not s.archive and ($1::int[] is null or s.id = any($1::int[]))
+    `, [stores]);
+    const [drawers] = await this.manager.query(`
+      select coalesce(sum(expected_cash), 0)::float as cash, count(*)::int as shifts
+        from store_shifts where status = 'OPEN' and not archive and ($1::int[] is null or store_id = any($1::int[]))
+    `, [stores]);
+    // a store with a vault banks from the vault, so the deposit rule is read against the vault's balance
+    const storeHasVault = storeid ? !!(await this.manager.query(`select 1 from stores where id = $1 and vault_enabled`, [storeid]))?.[0] : false;
+    const depositbalance = storeHasVault ? (vault?.balance || 0) : cashbalance;
+    const status = storeid ? evaluateDeposit(rule, depositbalance, lastDeposit, new Date().toISOString().slice(0, 10)) : null;
 
     return {
       cashbalance,
+      depositbalance,
+      vaultstores: vault?.stores || 0,
+      vaultbalance: vault?.balance || 0,
+      vaultpending: vault?.pending || 0,
+      drawercash: drawers?.cash || 0,
       depositthreshold: rule.threshold,
       depositdue: !!status?.due,
       depositexcess: status?.excess ?? 0,

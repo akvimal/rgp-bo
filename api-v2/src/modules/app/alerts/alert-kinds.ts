@@ -53,9 +53,10 @@ export const KINDS: AlertKind[] = [
       return rows.filter((r: any) => r.due).map((r: any) => ({
         key: `deposit:${r.storeid}`,
         storeid: r.storeid,
-        code: r.reason === 'amount' ? 'deposit_due_amount' : 'deposit_due_schedule',
+        // a store with a vault banks from the vault: the message names the vault and the link goes to its page
+        code: (r.reason === 'amount' ? 'deposit_due_amount' : 'deposit_due_schedule') + (r.vault?.enabled ? '_vault' : ''),
         params: { store: r.location, balance: r.balance, excess: r.excess, since: r.since },
-        link: '/secure/store/cash',
+        link: r.vault?.enabled ? '/secure/store/vault' : '/secure/store/cash',
       }));
     },
   },

@@ -391,6 +391,8 @@
         <div class="small text-muted" *ngIf="summary?.kpis?.deposit_threshold">Threshold: ₹{{summary?.kpis?.deposit_threshold | number:'1.0-0'}}</div>
         <div class="small" *ngIf="summary?.kpis?.deposit_due && summary?.kpis?.deposit_reason === 'schedule'" data-testid="dash-deposit-reason">A deposit day has passed without a deposit</div>
         <div class="small text-muted" *ngIf="!summary?.kpis?.deposit_due && summary?.kpis?.deposit_next" data-testid="dash-deposit-next">Next deposit day: {{summary?.kpis?.deposit_next | date:'EEE d MMM'}}</div>
+        <div class="small" *ngIf="summary?.kpis?.vault_stores" data-testid="dash-cash-split">In drawers ₹{{summary?.kpis?.cash_in_drawers | number:'1.0-0'}} · In the vault ₹{{summary?.kpis?.cash_in_vault | number:'1.0-0'}}</div>
+        <div class="small text-warning" *ngIf="summary?.kpis?.vault_pending" data-testid="dash-vault-pending">{{summary?.kpis?.vault_pending}} vault movement{{summary?.kpis?.vault_pending === 1 ? '' : 's'}} waiting for confirmation</div>
         <div class="small text-muted">Expenses: ₹{{summary?.kpis?.cash_expenses_month | number:'1.0-0'}} · Deposits: ₹{{summary?.kpis?.bank_deposits_month | number:'1.0-0'}}</div>
       </div>
     </div>
