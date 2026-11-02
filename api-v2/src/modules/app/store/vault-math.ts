@@ -47,6 +47,16 @@ export function firstShortfall(request: Denoms, held: Map<number, number>, reser
   return null;
 }
 
+/** The first face value the drop takes more of than the drawer count showed, or null when the drop comes out of what was counted. */
+export function dropExceedsCount(drop: Denoms, counted: Denoms | null): { d: number; wanted: number; counted: number } | null {
+  const have = new Map<number, number>();
+  for (const part of counted || []) have.set(part.d, part.n);
+  for (const part of drop) {
+    if (part.n > (have.get(part.d) || 0)) return { d: part.d, wanted: part.n, counted: have.get(part.d) || 0 };
+  }
+  return null;
+}
+
 /** A request as clean denominations and the amount they add up to; null when nothing usable was sent. */
 export function readRequest(raw: any): { denominations: Denoms; amount: number } | null {
   const denominations = normalizeDenominations(raw);

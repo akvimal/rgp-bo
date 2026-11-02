@@ -14,6 +14,8 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { denominationTotal, normalizeDenominations } from "./denominations";
+import { VaultService } from "./vault.service";
+import { dropExceedsCount, readRequest } from "./vault-math";
 import { findAccountableUser, loadStoreProfile, parseProfileInput, parseStoreType } from "./store-profile";
 import { DepositRule, checkDepositRule, describeDepositRule, evaluateDeposit, parseDepositInput } from "./deposit-rule";
 import { ChecklistAssistant } from "./checklist-assistant";
@@ -36,6 +38,7 @@ export class StoreService {
     private readonly assistant: ChecklistAssistant,
     private readonly compliance: ComplianceService,
     private readonly shiftDigest: ShiftDigestService,
+    private readonly vault: VaultService,
   ) {}
 
   async findStores() {
@@ -850,6 +853,9 @@ export class StoreService {
       if (!taker) throw new BadRequestException('That staff member does not work at this store.');
     }
 
+    // The vault drop: at the end of the day the surplus over the float goes into the vault, counted by note and coin. Checked now, before anything is changed.
+    const vaultPlan = await this.planVaultDrop(shift.storeid, closeType, body, countedcash, countedDenoms);
+
     // Digital takings: what the system recorded per provider against what the terminal shows.
     let closingDigital: any[] | null = null;
     if (body.closingdigital !== undefined) {
@@ -876,6 +882,8 @@ export class StoreService {
     // the close has passed every check: the reasons given for what was left undone are recorded now, and the shift is claimed with a conditional update so two
     // closes at once cannot both succeed (and a handover cannot open two next shifts)
     await recordCloseReasons();
+    // the cash goes into the vault first; if the shift then turns out to be closed already, the drop is withdrawn again
+    const vaultDrop = vaultPlan.drop ? await this.vault.drop(shift.storeid, { shiftid: id, denominations: vaultPlan.drop.denominations, notes: vaultPlan.notes }, userid) : null;
     const claimed: any = await this.shiftRepository.update({ id, status: "OPEN" } as any, {
       status: "CLOSED",
       countedcash,
@@ -890,8 +898,14 @@ export class StoreService {
       closedby: userid ? { id: userid } as any : null,
       notes: body.notes || shift.notes,
     } as any);
-    if (!claimed?.affected) throw new ConflictException("This shift was closed a moment ago.");
+    if (!claimed?.affected) {
+      if (vaultDrop) await this.manager.query(`update store_vault_movements set status = 'REJECTED', reason = 'The shift was closed by someone else first' where id = $1 and status <> 'REJECTED'`, [vaultDrop.id]);
+      throw new ConflictException("This shift was closed a moment ago.");
+    }
     await this.syncShiftTotals(id);
+    if (vaultPlan.skipReason) {
+      await this.audit.record({ userId: userid, action: 'vault.drop_skipped', entityType: 'store_shift', entityId: id, summary: `Shift ${id} closed without a vault drop (surplus Rs ${vaultPlan.surplus}): ${vaultPlan.skipReason}`, details: { surplus: vaultPlan.surplus } });
+    }
 
     // On a handover the counted drawer is the incoming person's float and their shift opens straight away.
     let nextShiftId: number | null = null;
@@ -926,7 +940,48 @@ export class StoreService {
       where: { id },
       relations: ["store", "template", "openedby", "closedby"],
     });
-    return { ...(closed as any), nextshiftid: nextShiftId };
+    return { ...(closed as any), nextshiftid: nextShiftId, vaultdrop: vaultDrop };
+  }
+
+  /**
+   * What the close must do about the vault. A store with a vault puts the cash above its float into it at the end of the day: a drop is sent
+   * (counted by note and coin, taken from the drawer count), or a reason is given for leaving the surplus in the drawer. Nothing is dropped at a
+   * handover (the counted drawer goes to the next person) or in a store without a vault.
+   */
+  private async planVaultDrop(storeid: number, closeType: string, body: any, countedcash: number, countedDenoms: Array<{ d: number; n: number }> | null) {
+    const [s] = await this.manager.query(`select vault_enabled as enabled, float_amount::float as floatamount from stores where id = $1`, [storeid]);
+    const wants = body.vaultdrop !== undefined && body.vaultdrop !== null;
+    const none = { drop: null as null | { denominations: Array<{ d: number; n: number }>; amount: number }, notes: null as string | null, skipReason: null as string | null, surplus: 0 };
+    if (!s?.enabled) {
+      if (wants) throw new BadRequestException('This store does not keep a vault, so nothing can be dropped into it.');
+      return none;
+    }
+    if (closeType !== 'END_OF_DAY') {
+      if (wants) throw new BadRequestException('Cash is put into the vault when the day ends. At a handover the counted drawer goes to the next person.');
+      return none;
+    }
+    const surplus = Math.max(0, countedcash - Number(s.floatamount || 0));
+    if (wants) {
+      const r = readRequest(body.vaultdrop?.denominations);
+      if (!r || r.amount <= 0) throw new BadRequestException('Count the cash for the vault by note and coin, or give a reason for leaving it in the drawer.');
+      const over = dropExceedsCount(r.denominations, countedDenoms);
+      if (over) throw new BadRequestException(`The vault drop has ${over.wanted} of Rs ${over.d}, but only ${over.counted} were counted in the drawer.`);
+      return { ...none, drop: r, notes: typeof body.vaultdrop?.notes === 'string' ? body.vaultdrop.notes.trim().slice(0, 500) || null : null, surplus };
+    }
+    if (surplus > 0) {
+      const why = typeof body.vaultdropskipreason === 'string' ? body.vaultdropskipreason.trim().slice(0, 200) : '';
+      if (!why) throw new BadRequestException(`The drawer holds Rs ${surplus} more than the float. Put it in the vault, or say why it stays in the drawer.`);
+      return { ...none, skipReason: why, surplus };
+    }
+    return none;
+  }
+
+  /** the vault as the person closing sees it: whether the store keeps one, the float to leave in the drawer and any drop this shift has made */
+  private async vaultSummary(storeid: number, shiftId: number) {
+    const [s] = await this.manager.query(`select vault_enabled as enabled, float_amount::float as floatamount, float_denominations as floatdenominations, vault_drop_confirm_limit::float as confirmlimit from stores where id = $1`, [storeid]);
+    if (!s?.enabled) return { enabled: false };
+    const [drop] = await this.manager.query(`select id::text as id, amount::float as amount, status from store_vault_movements where shift_id = $1 and move_type = 'DROP_IN' and status <> 'REJECTED' limit 1`, [shiftId]);
+    return { enabled: true, floatamount: s.floatamount || 0, floatdenominations: s.floatdenominations || [], confirmlimit: s.confirmlimit || 0, dropped: drop || null };
   }
 
   /** What the person closing sees: takings by tender, the digital totals to match, and the cash drawer's expenses. */
@@ -958,6 +1013,7 @@ export class StoreService {
       digitalByProvider: digital, expenses, expensesTotal: expenses.reduce((s: number, e: any) => s + e.amount, 0),
       refunds: out.refunds, deposits: out.deposits, expected: stats.expectedcash,
       checklists: await this.shiftChecklists(shiftId),
+      vault: await this.vaultSummary(shift.storeid, shiftId),
     };
   }
 
