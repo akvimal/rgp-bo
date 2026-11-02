@@ -1,0 +1,35 @@
+name: Feature
+description: New capability or improvement
+labels: ["type: feature"]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options: [sales, purchases, inventory, customers, vendors, reports, gst, hr, auth, core, frontend, database, other]
+    validations: { required: true }
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The problem or business need, in plain words.
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes:
+      label: What to build
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist the work is accepted against.
+      placeholder: "- [ ] ..."
+    validations: { required: true }
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - label: Needs a database migration
+        - label: Changes existing behaviour (breaking)

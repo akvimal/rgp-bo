@@ -1,0 +1,27 @@
+name: Bug
+description: Something is broken or behaves wrongly
+labels: ["type: bug"]
+body:
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options: [sales, purchases, inventory, customers, vendors, reports, gst, hr, auth, core, frontend, database, other]
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: Include the screen, the steps and what you expected instead.
+    validations: { required: true }
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Error text, screenshot, bill number, user and store.
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options: ["critical - money or data wrong, no workaround", "high - blocks a daily task", "medium - workaround exists", "low - cosmetic"]
+    validations: { required: true }
