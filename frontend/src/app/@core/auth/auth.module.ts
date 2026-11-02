@@ -1,6 +1,6 @@
 import { CommonModule } from "@angular/common";
 import { NgModule } from "@angular/core";
-import { ReactiveFormsModule } from "@angular/forms";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { ChangePwdComponent } from "./changepwd/changepwd.component";
 import { LoginComponent } from "./login/login.component";
@@ -24,6 +24,7 @@ const routes: Routes = [
     ],
     imports: [
         CommonModule,
+        FormsModule,            // the code and set-up forms use (ngSubmit) without a formGroup, which needs NgForm
         ReactiveFormsModule,
         RouterModule.forChild(routes)
     ],
