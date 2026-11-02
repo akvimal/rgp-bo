@@ -1,5 +1,8 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
 import { Router } from "@angular/router";
+import { Subscription } from "rxjs";
+import { StoreContextService } from "src/app/@core/store-context.service";
+import { AuthService } from "src/app/@core/auth/auth.service";
 import { PurchaseIntentService } from "./intent/purchase-intent.service";
 import { StockService } from "./stock/stock.service";
 
@@ -32,6 +35,9 @@ import { StockService } from "./stock/stock.service";
                 <li class="nav-item" *isNavAuth>
                     <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
                 </li>
+                <li class="nav-item" *ngIf="vaultOn">
+                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="vault" data-testid="store-tab-vault">Vault</a>
+                </li>
             </ul>
         </nav>
         <router-outlet></router-outlet>
@@ -44,15 +50,29 @@ import { StockService } from "./stock/stock.service";
         .expiry-tile:hover { background:#ffdede; }
     `]
 })
-export class StoreComponent implements OnInit {
+export class StoreComponent implements OnInit, OnDestroy {
 
     reorderCount = 0;
     nearExpiryCount = 0;
     expiryDays = 30;
 
-    constructor(private intentService: PurchaseIntentService, private stockService: StockService, private router: Router) {}
+    /** the selected store keeps a vault: the Vault tab shows only then */
+    vaultOn = false;
+    private subs = new Subscription();
+
+    constructor(private intentService: PurchaseIntentService, private stockService: StockService, private router: Router, private storeContext: StoreContextService, private auth: AuthService) {}
+
+    ngOnDestroy(): void { this.subs.unsubscribe(); }
+
+    private syncVault() {
+        const id = this.storeContext.selectedStoreId;
+        const store = this.storeContext.stores.find((s: any) => s.id === id);
+        this.vaultOn = !!store?.vaultenabled && this.auth.isUrlAuthorized('/secure/store/vault');
+    }
 
     ngOnInit(): void {
+        this.subs.add(this.storeContext.stores$.subscribe(() => this.syncVault()));
+        this.subs.add(this.storeContext.selectedStoreId$.subscribe(() => this.syncVault()));
         this.intentService.findSuggestions({}).subscribe((data: any) => {
             this.reorderCount = (data || []).filter((row: any) => +row.final_qty > 0).length;
         }, () => this.reorderCount = 0);
