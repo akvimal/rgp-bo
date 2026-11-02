@@ -7,6 +7,8 @@ import { AuthModule } from "src/modules/auth/auth.module";
 import { RoleModule } from "../roles/role.module";
 import { Store } from "src/entities/store.entity";
 import { StoreCashAccount } from "src/entities/store-cash-account.entity";
+import { StoreVaultMovement } from "src/entities/store-vault-movement.entity";
+import { StoreVaultCount } from "src/entities/store-vault-count.entity";
 import { StoreShift } from "src/entities/store-shift.entity";
 import { StoreShiftTemplate } from "src/entities/store-shift-template.entity";
 import { AppUser } from "src/entities/appuser.entity";
@@ -19,7 +21,7 @@ import { ChecklistAssistant } from "./checklist-assistant";
 import { AiProvider } from "../alerts/ai-provider";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule, RoleModule, ComplianceModule, MessagingModule],
+  imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreVaultMovement, StoreVaultCount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule, RoleModule, ComplianceModule, MessagingModule],
   controllers: [StoreController, StoreCashController],
   providers: [StoreService, JwtService, ChecklistAssistant, AiProvider],
   exports: [StoreService],
