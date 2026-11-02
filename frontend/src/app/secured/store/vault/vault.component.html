@@ -1,0 +1,175 @@
+<div class="container-fluid py-3" data-testid="vault-page">
+  <div class="alert alert-info py-2" *ngIf="!storeId" data-testid="vault-nostore">Select a store in the header to see its vault.</div>
+
+  <div class="alert alert-danger py-2" *ngIf="error" data-testid="vault-error">{{ error }}</div>
+  <div class="alert alert-success py-2" *ngIf="message" data-testid="vault-message">{{ message }}</div>
+  <div class="text-muted" *ngIf="loading">Loading...</div>
+
+  <div class="alert alert-secondary" *ngIf="state && !state.enabled" data-testid="vault-off">
+    {{ state.location }} does not keep a vault. A Business Head can switch it on under Settings &rsaquo; Store &rsaquo; Cash &rsaquo; Vault.
+  </div>
+
+  <ng-container *ngIf="state?.enabled">
+    <!-- balance -->
+    <div class="row g-3">
+      <div class="col-12 col-lg-5">
+        <div class="border rounded p-3 h-100" data-testid="vault-balance-card">
+          <div class="text-muted small">In the vault - {{ state.location }}</div>
+          <div class="display-6 fw-semibold" data-testid="vault-balance">&#8377;{{ state.balance | number:'1.0-0' }}</div>
+          <table class="table table-sm mt-2 mb-2" style="max-width:22rem" *ngIf="state.denominations.length; else emptyVault">
+            <thead><tr><th class="text-end">Note / coin</th><th class="text-end">Count</th><th class="text-end">Value</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let r of state.denominations">
+                <td class="text-end">&#8377;{{ r.d }}</td><td class="text-end">{{ r.n }}</td><td class="text-end">&#8377;{{ r.d * r.n | number:'1.0-0' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <ng-template #emptyVault><div class="small text-muted my-2">Nothing in the vault.</div></ng-template>
+          <div class="small text-muted">
+            Drawer float: &#8377;{{ state.float.amount | number:'1.0-0' }}
+            <span *ngIf="state.confirmlimit > 0"> &middot; a second person confirms above &#8377;{{ state.confirmlimit | number:'1.0-0' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-7">
+        <div class="border rounded p-3 h-100">
+          <div class="fw-semibold mb-2">Last count</div>
+          <div *ngIf="state.lastcount; else noCount" data-testid="vault-lastcount">
+            &#8377;{{ state.lastcount.counted | number:'1.0-0' }} counted against &#8377;{{ state.lastcount.expected | number:'1.0-0' }} in the books -
+            <span class="fw-semibold" [class.text-danger]="state.lastcount.variance < 0" [class.text-success]="state.lastcount.variance > 0">
+              {{ state.lastcount.variance >= 0 ? '+' : '' }}&#8377;{{ state.lastcount.variance | number:'1.0-0' }}</span>
+            <div class="small text-muted">{{ state.lastcount.countedon | date:'medium' }}<span *ngIf="state.lastcount.countedby"> by {{ state.lastcount.countedby }}</span></div>
+          </div>
+          <ng-template #noCount><div class="text-muted small">The vault has not been counted yet.</div></ng-template>
+
+          <div class="d-flex flex-wrap gap-2 mt-3" data-testid="vault-actions">
+            <button class="btn btn-outline-primary btn-sm" type="button" (click)="open('deposit')" data-testid="vault-act-deposit" [disabled]="!state.balance">Bank cash</button>
+            <button class="btn btn-outline-primary btn-sm" type="button" (click)="open('change')" data-testid="vault-act-change" [disabled]="!state.balance">Give change to a drawer</button>
+            <button class="btn btn-outline-primary btn-sm" type="button" (click)="open('count')" data-testid="vault-act-count">Count the vault</button>
+            <button class="btn btn-outline-secondary btn-sm" type="button" *ngIf="isOwner && noMovements" (click)="open('opening')" data-testid="vault-act-opening">Set the opening balance</button>
+            <button class="btn btn-outline-secondary btn-sm" type="button" *ngIf="isOwner" (click)="open('adjust')" data-testid="vault-act-adjust">Adjust</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- action panel -->
+    <div class="border rounded p-3 mt-3" *ngIf="panel" data-testid="vault-panel">
+      <h6 class="mb-1">
+        {{ panel === 'opening' ? 'Opening balance' : panel === 'deposit' ? 'Bank cash from the vault' : panel === 'change' ? 'Give change to a drawer' : panel === 'count' ? 'Count the vault' : 'Adjust the vault' }}
+      </h6>
+      <div class="small text-muted mb-2">
+        <ng-container [ngSwitch]="panel">
+          <span *ngSwitchCase="'opening'">Count what is in the vault now, by note and coin. This can be done once.</span>
+          <span *ngSwitchCase="'deposit'">Take the notes out, then enter how many of each you are taking to the bank. Above the limit it waits for a second person.</span>
+          <span *ngSwitchCase="'change'">Enter the notes and coins handed to a drawer.</span>
+          <span *ngSwitchCase="'count'">Count everything in the vault. The difference from the books is recorded, and it never goes into a shift's variance.</span>
+          <span *ngSwitchCase="'adjust'">A correction to the books after a count. A reason is required.</span>
+        </ng-container>
+      </div>
+      <div *ngIf="panel === 'adjust'" class="mb-2">
+        <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="adj-in" name="adjdir" value="IN" [(ngModel)]="direction"><label class="form-check-label" for="adj-in">Add cash</label></div>
+        <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="adj-out" name="adjdir" value="OUT" [(ngModel)]="direction"><label class="form-check-label" for="adj-out">Take cash out</label></div>
+      </div>
+      <app-denomination-grid [rows]="rows" (rowsChange)="rows = $event" (totalChange)="total = $event"></app-denomination-grid>
+      <div class="small mt-2" *ngIf="panel === 'count'">
+        Counted &#8377;{{ total | number:'1.0-0' }} against &#8377;{{ state.balance | number:'1.0-0' }} in the books:
+        <span class="fw-semibold" [class.text-danger]="total - state.balance < 0" [class.text-success]="total - state.balance > 0" data-testid="vault-count-variance">
+          {{ total - state.balance >= 0 ? '+' : '' }}&#8377;{{ total - state.balance | number:'1.0-0' }}</span>
+      </div>
+      <div class="row g-2 mt-1" style="max-width:40rem">
+        <div class="col-12 col-sm-6" *ngIf="panel === 'deposit'">
+          <label class="form-label small mb-1">Deposit slip / reference</label>
+          <input class="form-control form-control-sm" maxlength="40" [(ngModel)]="referenceno" data-testid="vault-ref">
+        </div>
+        <div class="col-12 col-sm-6" *ngIf="panel === 'deposit'">
+          <label class="form-label small mb-1">Date banked</label>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="transdate">
+        </div>
+        <div class="col-12" *ngIf="panel === 'adjust'">
+          <label class="form-label small mb-1">Reason *</label>
+          <input class="form-control form-control-sm" maxlength="200" [(ngModel)]="reason" data-testid="vault-reason">
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-1">Notes</label>
+          <input class="form-control form-control-sm" maxlength="500" [(ngModel)]="notes">
+        </div>
+      </div>
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" type="button" [disabled]="!canSubmit" (click)="submit()" data-testid="vault-submit">{{ busy ? 'Saving...' : 'Save' }}</button>
+        <button class="btn btn-outline-secondary" type="button" (click)="closePanel()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="border rounded p-3 mt-3" *ngIf="countResult && !panel" data-testid="vault-count-result">
+      <div class="fw-semibold mb-1">Count result</div>
+      <div>Counted &#8377;{{ countResult.counted | number:'1.0-0' }}, books &#8377;{{ countResult.expected | number:'1.0-0' }}, difference
+        <span class="fw-semibold" [class.text-danger]="countResult.variance < 0">{{ countResult.variance >= 0 ? '+' : '' }}&#8377;{{ countResult.variance | number:'1.0-0' }}</span></div>
+      <table class="table table-sm mt-2 mb-0" style="max-width:24rem" *ngIf="countResult.differences?.length">
+        <thead><tr><th class="text-end">Note / coin</th><th class="text-end">Books</th><th class="text-end">Counted</th></tr></thead>
+        <tbody><tr *ngFor="let x of countResult.differences"><td class="text-end">&#8377;{{ x.d }}</td><td class="text-end">{{ x.books }}</td><td class="text-end">{{ x.counted }}</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- waiting for a second person -->
+    <div class="border rounded p-3 mt-3" *ngIf="state.pending.length" data-testid="vault-pending">
+      <div class="fw-semibold mb-2">Waiting for a second person</div>
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>What</th><th class="text-end">Amount</th><th>Notes</th><th>By</th><th>When</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let m of state.pending" [attr.data-testid]="'vault-pending-' + m.id">
+            <td>{{ label(m.movetype) }}</td>
+            <td class="text-end">&#8377;{{ m.amount | number:'1.0-0' }}</td>
+            <td class="small">{{ words(m.denominations) }}</td>
+            <td>{{ m.actor }}</td>
+            <td class="small">{{ m.createdon | date:'short' }}</td>
+            <td class="text-end text-nowrap">
+              <button class="btn btn-sm btn-success me-1" type="button" [disabled]="busy || mine(m)" [title]="mine(m) ? 'A second person must confirm this' : ''" (click)="confirm(m)" data-testid="vault-confirm">Confirm</button>
+              <button class="btn btn-sm btn-outline-danger" type="button" [disabled]="busy" (click)="startReject(m)" data-testid="vault-reject">{{ mine(m) ? 'Withdraw' : 'Turn down' }}</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="mt-3 border-top pt-2" *ngIf="rejecting" data-testid="vault-reject-form">
+        <label class="form-label small mb-1">Why? *</label>
+        <div class="d-flex gap-2" style="max-width:40rem">
+          <input class="form-control form-control-sm" maxlength="200" [(ngModel)]="rejectReason" data-testid="vault-reject-reason">
+          <button class="btn btn-sm btn-danger" type="button" [disabled]="busy || !rejectReason.trim()" (click)="sendReject()" data-testid="vault-reject-send">Send</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="cancelReject()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- history -->
+    <div class="mt-3">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div class="fw-semibold">History</div>
+        <select class="form-select form-select-sm w-auto" [(ngModel)]="filterType" (ngModelChange)="loadHistory()" data-testid="vault-filter">
+          <option value="">All movements</option>
+          <option value="DROP_IN">Put in from a shift</option>
+          <option value="BANK_DEPOSIT_OUT">Banked</option>
+          <option value="CHANGE_TO_DRAWER">Change to a drawer</option>
+          <option value="ADJUSTMENT">Adjustments</option>
+          <option value="OPENING">Opening balance</option>
+        </select>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" data-testid="vault-history">
+          <thead><tr><th>When</th><th>What</th><th class="text-end">Amount</th><th>Notes and coins</th><th>By</th><th>Status</th><th>Reference</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let m of history">
+              <td class="small text-nowrap">{{ m.createdon | date:'short' }}</td>
+              <td>{{ label(m.movetype) }}<span class="small text-muted" *ngIf="m.shiftid"> (shift {{ m.shiftid }})</span><div class="small text-muted" *ngIf="m.reason">{{ m.reason }}</div></td>
+              <td class="text-end text-nowrap" [class.text-success]="m.direction === 'IN'" [class.text-danger]="m.direction === 'OUT'">{{ m.direction === 'IN' ? '+' : '-' }}&#8377;{{ m.amount | number:'1.0-0' }}</td>
+              <td class="small">{{ words(m.denominations) }}</td>
+              <td>{{ m.actor }}<div class="small text-muted" *ngIf="m.confirmer">confirmed by {{ m.confirmer }}</div></td>
+              <td><span class="badge" [ngClass]="m.status === 'CONFIRMED' ? 'bg-success' : m.status === 'PENDING' ? 'bg-warning text-dark' : 'bg-secondary'">{{ m.status | titlecase }}</span></td>
+              <td class="small">{{ m.referenceno }}</td>
+            </tr>
+            <tr *ngIf="!history.length"><td colspan="7" class="text-center text-muted py-3">No movements yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </ng-container>
+</div>

@@ -275,7 +275,8 @@ export class StoreSettingsComponent implements OnInit {
     if (this.activeTab === 'details') {
       this.openLicences(this.selectedStore.id);
     }
-    this.selectedStore = { ...this.selectedStore, depositschedule: this.selectedStore.depositschedule || 'none', depositweekdays: [...(this.selectedStore.depositweekdays || [])] };
+    this.selectedStore = { ...this.selectedStore, depositschedule: this.selectedStore.depositschedule || 'none', depositweekdays: [...(this.selectedStore.depositweekdays || [])],
+      floatrows: [...(this.selectedStore.floatdenominations || [])] };
     this.monthDaysText = (this.selectedStore.depositmonthdays || []).map((d:number) => d === 0 ? 'last' : String(d)).join(', ');
     this.templateForm.storeid = this.selectedStore.id;
     this.cashService.getUsers(this.selectedStore.id).subscribe((users:any) => this.users = users || [], () => this.users = []);
@@ -417,6 +418,30 @@ export class StoreSettingsComponent implements OnInit {
     if (r.schedule === 'monthly') r.monthdays = this.parseMonthDays(this.monthDaysText);
     const w = this.words(r);
     return w ? `A deposit is due at ${w}, whichever comes first.` : 'No deposit reminder is set.';
+  }
+
+  floatTotal = 0;
+  savingVault = false;
+  vaultError = '';
+
+  saveVault() {
+    this.vaultError = '';
+    const s = this.selectedStore;
+    if (!s?.id) return;
+    this.savingVault = true;
+    this.cashService.updateStore(s.id, {
+      vaultenabled: !!s.vaultenabled,
+      ...(s.vaultenabled ? { floatdenominations: s.floatrows || [], vaultdropconfirmlimit: Number(s.vaultdropconfirmlimit || 0) } : {}),
+    }).subscribe((store:any) => {
+      this.savingVault = false;
+      const index = this.stores.findIndex((row:any) => row.id === store.id);
+      if (index > -1) this.stores[index] = store;
+      this.refreshSelectedStore();
+      this.message = 'Vault settings saved.';
+    }, err => {
+      this.savingVault = false;
+      this.vaultError = err?.error?.message || 'Unable to save the vault settings';
+    });
   }
 
   savePolicy() {

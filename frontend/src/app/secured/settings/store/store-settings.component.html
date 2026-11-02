@@ -192,6 +192,29 @@
           </button>
       </div>
 
+      <div *ngIf="activeTab === 'cash' && selectedStore?.id" class="border rounded p-3 mt-3" data-testid="store-vault-panel">
+        <h6 class="mb-1">Vault</h6>
+        <div class="small text-muted mb-3">Cash kept apart from the till drawer until it is banked. At the end of the day each drawer keeps its float and the surplus goes into the vault.</div>
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="vault-on" [(ngModel)]="selectedStore.vaultenabled" data-testid="store-vault-enabled">
+          <label class="form-check-label" for="vault-on">This store keeps a vault</label>
+        </div>
+        <ng-container *ngIf="selectedStore.vaultenabled">
+          <div class="mb-3">
+            <label class="form-label">Float each drawer starts with, by note and coin</label>
+            <app-denomination-grid [rows]="selectedStore.floatrows" (rowsChange)="selectedStore.floatrows = $event" (totalChange)="floatTotal = $event"></app-denomination-grid>
+            <small class="text-muted d-block mt-1">Float: &#8377;{{ floatTotal | number:'1.0-0' }}. The drawer keeps this at the end of the day.</small>
+          </div>
+          <div class="mb-3" style="max-width:22rem">
+            <label class="form-label">A second person must confirm above</label>
+            <input type="number" min="0" class="form-control" [(ngModel)]="selectedStore.vaultdropconfirmlimit" data-testid="store-vault-limit">
+            <small class="text-muted">Drops into the vault and bank deposits above this amount wait for a Store Head or Business Head to confirm. 0 means no confirmation.</small>
+          </div>
+        </ng-container>
+        <div class="text-danger small mb-2" *ngIf="vaultError" data-testid="store-vault-error">{{ vaultError }}</div>
+        <button class="btn btn-primary" type="button" data-testid="store-vault-save" [disabled]="savingVault" (click)="saveVault()">{{ savingVault ? 'Saving...' : 'Save' }}</button>
+      </div>
+
       <div *ngIf="activeTab === 'cash'" class="border rounded p-3 mt-3" data-testid="store-profile-panel">
         <div *ngIf="!profile" class="text-muted">Choose a store.</div>
         <ng-container *ngIf="profile">

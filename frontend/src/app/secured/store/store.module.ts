@@ -31,6 +31,7 @@ import { StockExpiryComponent } from "./stock/components/stock-expiry.component"
 import { StockExpiryItemsComponent } from "./stock/components/stock-expiry-items.component";
 import { StockCountComponent } from "./stock/components/stock-count.component";
 import { TransfersComponent } from "./transfers/components/transfers.component";
+import { VaultComponent } from "./vault/vault.component";
 
 const routes: Routes = [
   { path: '', component: StoreComponent, canActivate:[AuthGuard], children: [
@@ -51,7 +52,8 @@ const routes: Routes = [
     // superseded by the fuller Requests screen at /secure/purchases/requests (same
     // purchase_request data via PurchaseIntentService); kept as a redirect for old links.
     { path: 'intent', redirectTo: '/secure/purchases/requests', pathMatch: 'full' },
-    { path: 'cash', component: CashComponent}
+    { path: 'cash', component: CashComponent},
+    { path: 'vault', component: VaultComponent}
   ]}
 ];
 
@@ -68,7 +70,8 @@ const routes: Routes = [
       StockProductItemsComponent,
       StockAdjustFormComponent,
       StockCountComponent,
-      TransfersComponent
+      TransfersComponent,
+      VaultComponent
     ],
     imports: [
         RouterModule.forChild(routes),
