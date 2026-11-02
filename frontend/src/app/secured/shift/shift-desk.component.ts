@@ -8,7 +8,7 @@ import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../store/cash/cash.service";
 import { EXPENSE_CATEGORIES } from "../store/cash/expense-categories";
-import { DenominationRow } from "src/app/shared/denominations";
+import { DenominationRow, suggestVaultDrop } from "src/app/shared/denominations";
 import { CLOSING_CHECKLIST_ITEMS, ChecklistItem, HANDOVER_CHECKLIST_ITEMS, OPENING_CHECKLIST_ITEMS, OPENING_OPEN_STORE_CHECKLIST_ITEMS, freshChecklist } from "src/app/shared/shift-checklist";
 
 /**
@@ -46,6 +46,11 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   handoverTo: number | null = null;
   staff: any[] = [];
   digitalCounted: { [provider: string]: any } = {};
+
+  /** the cash going into the store's vault when the day ends, and the reason when the surplus stays in the drawer instead */
+  dropRows: DenominationRow[] = [];
+  dropTotal = 0;
+  dropSkipReason = "";
 
   expenseForm: any = null;
   readonly categories = EXPENSE_CATEGORIES;
@@ -171,6 +176,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
       this.mode = "close"; this.denoms = []; this.denomTotal = 0;
       this.closeType = "END_OF_DAY"; this.handoverTo = null;
       this.digitalCounted = {};
+      this.dropRows = []; this.dropTotal = 0; this.dropSkipReason = "";
       for (const d of this.summary?.digitalByProvider || []) this.digitalCounted[d.provider] = null;
       this.resetChecklist();
       this.loadSummary();
@@ -201,6 +207,25 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   get checklistComplete(): boolean { return this.checklist.every(c => c.checked); }
   get expected(): number { return Number(this.summary?.expected ?? this.openShift?.expectedcash ?? 0); }
   get variance(): number { return this.denomTotal - this.expected; }
+
+  // ------------------------------------------------------------ the vault drop (end of day, stores that keep a vault)
+  get vault(): any { return this.summary?.vault; }
+  /** the day is ending in a store with a vault, and this shift has not put its cash in already */
+  get vaultOn(): boolean { return !!this.vault?.enabled && this.closeType === "END_OF_DAY" && !this.vault?.dropped; }
+  /** what the drawer holds above its float */
+  get surplus(): number { return Math.max(0, this.denomTotal - Number(this.vault?.floatamount || 0)); }
+  /** the drop takes more of a note than was counted in the drawer */
+  get dropOverCount(): boolean {
+    return this.dropRows.some(r => Number(r.n) > (this.denoms.find(c => c.d === r.d)?.n || 0));
+  }
+  get dropNeedsConfirm(): boolean { return Number(this.vault?.confirmlimit || 0) > 0 && this.dropTotal > Number(this.vault.confirmlimit); }
+  fillDrop() { this.dropRows = suggestVaultDrop(this.denoms, Number(this.vault?.floatamount || 0), this.vault?.floatdenominations); }
+  /** the close may go ahead as far as the vault is concerned */
+  get vaultReady(): boolean {
+    if (!this.vaultOn || this.surplus <= 0) return true;
+    if (this.dropTotal > 0) return !this.dropOverCount;
+    return this.dropSkipReason.trim().length > 0;
+  }
   digitalVariance(d: any): number | null {
     const v = this.digitalCounted[d.provider];
     return v === null || v === undefined || v === "" ? null : Number(v) - d.amount;
@@ -213,19 +238,24 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     if (this.closeType === "HANDOVER" && !this.handoverTo) { this.error = "Choose who is taking over."; return; }
     if (!this.digitalReady) { this.error = "Enter each digital total from the terminal."; return; }
     if (!this.checklistComplete) { this.error = "Complete the checklist before closing the shift."; return; }
+    if (!this.vaultReady) { this.error = this.dropOverCount ? "The vault cash has more of a note than the drawer count." : "Put the surplus in the vault, or say why it stays in the drawer."; return; }
     this.busy = true; this.error = "";
     const taker = this.staff.find(u => u.id === this.handoverTo)?.fullname;
     this.cash.closeShift(this.openShift.id, {
       counteddenominations: this.denoms, closedoperatorid: this.operatorId, closingchecklist: this.checklist.map(c => c.key), closingchecklistat: this.tickTimes(),
       closetype: this.closeType, handovertoid: this.closeType === "HANDOVER" ? this.handoverTo : undefined,
       closingdigital: (this.summary?.digitalByProvider || []).map((d: any) => ({ provider: d.provider, counted: Number(this.digitalCounted[d.provider]) })),
+      ...(this.vaultOn && this.surplus > 0
+        ? (this.dropTotal > 0 ? { vaultdrop: { denominations: this.dropRows } } : { vaultdropskipreason: this.dropSkipReason.trim() })
+        : {}),
       ...this.reasonsBody(),
     }).subscribe({
-      next: () => {
+      next: (res: any) => {
         this.busy = false; this.mode = ""; this.gateItems = []; this.gateReasons = {};
+        const dropped = res?.vaultdrop;
         this.message = this.closeType === "HANDOVER"
           ? `Handed over to ${taker}. Their shift is open with Rs ${Math.round(this.denomTotal).toLocaleString("en-IN")} in the drawer.`
-          : "Shift closed.";
+          : "Shift closed." + (dropped ? ` Rs ${Math.round(dropped.amount).toLocaleString("en-IN")} put in the vault${dropped.status === "PENDING" ? " (waiting for a manager to confirm)" : ""}.` : "");
         this.shiftContext.reload();
       },
       error: err => { this.busy = false; if (!this.gateFrom(err, "close")) this.error = err?.error?.message || "Unable to close the shift"; },

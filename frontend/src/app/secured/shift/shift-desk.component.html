@@ -152,6 +152,32 @@
             </table>
           </div>
 
+          <div class="mt-3" *ngIf="vaultOn" data-testid="shiftdesk-vault">
+            <div class="fw-semibold small mb-1">Put the surplus in the vault</div>
+            <div class="small text-muted mb-2" style="max-width:34rem">
+              The drawer keeps its float of &#8377;{{ vault.floatamount | number:'1.0-0' }}. It holds &#8377;{{ denomTotal | number:'1.0-0' }}, so &#8377;{{ surplus | number:'1.0-0' }} goes to the vault.
+              Take the notes out, then count them here.
+            </div>
+            <ng-container *ngIf="surplus > 0; else noSurplus">
+              <button class="btn btn-sm btn-outline-secondary mb-2" type="button" [disabled]="!denoms.length" (click)="fillDrop()" data-testid="shiftdesk-vault-fill">Fill from the drawer count</button>
+              <app-denomination-grid [rows]="dropRows" (rowsChange)="dropRows = $event" (totalChange)="dropTotal = $event"></app-denomination-grid>
+              <div class="small mt-2" style="max-width:24rem">
+                <div class="d-flex justify-content-between"><span class="text-muted">To the vault</span><span class="fw-semibold" data-testid="shiftdesk-vault-total">&#8377;{{ dropTotal | number:'1.0-0' }}</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">Drawer keeps</span><span>&#8377;{{ denomTotal - dropTotal | number:'1.0-0' }}</span></div>
+              </div>
+              <div class="small text-danger mt-1" *ngIf="dropOverCount" data-testid="shiftdesk-vault-over">This has more of a note or coin than was counted in the drawer.</div>
+              <div class="small text-warning mt-1" *ngIf="dropNeedsConfirm" data-testid="shiftdesk-vault-confirm">Above &#8377;{{ vault.confirmlimit | number:'1.0-0' }}: a manager must confirm this before it counts in the vault.</div>
+              <div class="mt-2" *ngIf="dropTotal === 0">
+                <label class="form-label small mb-1">Not putting it in the vault? Say why *</label>
+                <input type="text" class="form-control form-control-sm" style="max-width:34rem" maxlength="200" [(ngModel)]="dropSkipReason" placeholder="e.g. the vault key is with the owner" data-testid="shiftdesk-vault-skip">
+              </div>
+            </ng-container>
+            <ng-template #noSurplus><div class="small text-muted">Nothing above the float, so nothing goes to the vault.</div></ng-template>
+          </div>
+          <div class="small text-muted mt-3" *ngIf="vault?.enabled && vault?.dropped" data-testid="shiftdesk-vault-done">
+            This shift already put &#8377;{{ vault.dropped.amount | number:'1.0-0' }} in the vault.
+          </div>
+
           <div class="small mt-3">
             <div class="fw-semibold mb-1">{{ closeType === 'HANDOVER' ? 'Handover checklist' : 'Closing checklist' }}</div>
             <div class="form-check" *ngFor="let c of checklist">
@@ -160,7 +186,7 @@
             </div>
           </div>
           <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-danger" type="button" [disabled]="busy || !denoms.length || !checklistComplete" data-testid="shift-card-close-confirm" (click)="confirmClose()">{{ closeType === 'HANDOVER' ? 'Hand over the shift' : 'Close shift' }}</button>
+            <button class="btn btn-danger" type="button" [disabled]="busy || !denoms.length || !checklistComplete || !vaultReady" data-testid="shift-card-close-confirm" (click)="confirmClose()">{{ closeType === 'HANDOVER' ? 'Hand over the shift' : 'Close shift' }}</button>
             <button class="btn btn-outline-secondary" type="button" (click)="cancel()">Cancel</button>
           </div>
         </div>
