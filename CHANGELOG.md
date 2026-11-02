@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.1](https://github.com/akvimal/rgp-bo/compare/v3.2.0...v3.2.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **cash:** show the Vault tab in a one-store business and refresh it after saving vault settings ([#163](https://github.com/akvimal/rgp-bo/issues/163)) ([556f9ee](https://github.com/akvimal/rgp-bo/commit/556f9ee5e1e5347279d990cdc00210ef1a1c3abe)), closes [#162](https://github.com/akvimal/rgp-bo/issues/162)
+
 ## [3.2.0](https://github.com/akvimal/rgp-bo/compare/v3.1.0...v3.2.0) (2026-11-02)
 
 
