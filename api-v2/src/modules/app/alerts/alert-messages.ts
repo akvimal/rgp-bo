@@ -17,6 +17,14 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'Bank deposit due: {store}', body: 'Cash of {balance} has not been banked since {since}. Bank it and record the deposit.' },
     ta: { title: 'வங்கியில் பணம் செலுத்த வேண்டும்: {store}', body: '{balance} பணம் {since} முதல் வங்கியில் செலுத்தப்படவில்லை. வங்கியில் செலுத்தி பதிவு செய்யவும்.' },
   },
+  deposit_due_amount_vault: {
+    en: { title: 'Bank deposit due: {store}', body: 'The vault holds {balance}, which is {excess} over the limit. Bank it from the vault page.' },
+    ta: { title: 'வங்கியில் பணம் செலுத்த வேண்டும்: {store}', body: 'பெட்டகத்தில் {balance} உள்ளது; வரம்பை விட {excess} அதிகம். பெட்டகப் பக்கத்திலிருந்து வங்கியில் செலுத்தவும்.' },
+  },
+  deposit_due_schedule_vault: {
+    en: { title: 'Bank deposit due: {store}', body: 'The vault holds {balance}, not banked since {since}. Bank it from the vault page.' },
+    ta: { title: 'வங்கியில் பணம் செலுத்த வேண்டும்: {store}', body: 'பெட்டகத்தில் {balance} உள்ளது; {since} முதல் வங்கியில் செலுத்தப்படவில்லை. பெட்டகப் பக்கத்திலிருந்து வங்கியில் செலுத்தவும்.' },
+  },
   licence_expiring: {
     en: { title: '{type} licence ends on {date}: {store}', body: '{days} days left. Renew it and add the new dates under Store settings.' },
     ta: { title: '{type} உரிமம் {date} அன்று முடிகிறது: {store}', body: '{days} நாட்கள் மீதமுள்ளன. புதுப்பித்து புதிய தேதிகளை கடை அமைப்புகளில் சேர்க்கவும்.' },

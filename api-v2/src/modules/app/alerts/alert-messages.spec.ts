@@ -34,7 +34,7 @@ describe('alert messages', () => {
 
   it('every kind raises only codes the catalogue knows', () => {
     const codes: Record<string, string[]> = {
-      deposit_due: ['deposit_due_amount', 'deposit_due_schedule'], licence_expiring: ['licence_expiring', 'licence_expired'],
+      deposit_due: ['deposit_due_amount', 'deposit_due_schedule', 'deposit_due_amount_vault', 'deposit_due_schedule_vault'], licence_expiring: ['licence_expiring', 'licence_expired'],
       registration_expiring: ['registration_expiring', 'registration_expired'], shift_open_long: ['shift_open_long'], approvals_pending: ['approvals_pending', 'approvals_pending_one'],
       price_policy: ['pricing_cuts', 'pricing_raises', 'pricing_check', 'pricing_unpriced'],
       outage_kit: ['outage_kit_overdue', 'outage_kit_never'],
