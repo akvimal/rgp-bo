@@ -28,7 +28,14 @@
       "Bash(rm:*)",
       "Bash(mkdir:*)",
       "Bash(git mv:*)",
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(docker exec *)",
+      "Bash(docker info *)",
+      "Artifact",
+      "Bash(npx tsc *)",
+      "Bash(docker compose *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec rgp-db-dev *)",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); print\\([\\(u['fullname'],u.get\\('business'\\)\\) for u in data]\\)\")"
     ],
     "deny": [],
     "ask": []
