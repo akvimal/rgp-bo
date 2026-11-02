@@ -17,13 +17,15 @@ import { Business } from "src/entities/business.entity";
 import { StoreController } from "./store.controller";
 import { StoreCashController } from "./store-cash.controller";
 import { StoreService } from "./store.service";
+import { VaultController } from "./vault.controller";
+import { VaultService } from "./vault.service";
 import { ChecklistAssistant } from "./checklist-assistant";
 import { AiProvider } from "../alerts/ai-provider";
 
 @Module({
   imports: [TypeOrmModule.forFeature([Store, StoreCashAccount, StoreVaultMovement, StoreVaultCount, StoreShift, StoreShiftTemplate, AppUser, UserStore, Business]), AuthModule, RoleModule, ComplianceModule, MessagingModule],
-  controllers: [StoreController, StoreCashController],
-  providers: [StoreService, JwtService, ChecklistAssistant, AiProvider],
+  controllers: [StoreController, StoreCashController, VaultController],
+  providers: [StoreService, VaultService, JwtService, ChecklistAssistant, AiProvider],
   exports: [StoreService],
 })
 export class StoreModule {}

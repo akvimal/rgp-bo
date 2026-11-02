@@ -252,6 +252,7 @@ export class StoreService {
       // the amount and the schedule change only when they are sent (the Store Master form no longer carries them)
       ...(body.depositthreshold === undefined ? {} : { depositthreshold: body.depositthreshold === null || body.depositthreshold === "" ? 0 : Number(body.depositthreshold) }),
       ...this.depositFields(body, current),
+      ...(await this.vaultFields(id, body, current)),
       isActive: body.isActive === undefined ? current.isActive : !!body.isActive,
       isArchived: body.isArchived === undefined ? current.isArchived : !!body.isArchived,
     };
@@ -260,6 +261,47 @@ export class StoreService {
       where: { id },
       relations: ["business"],
     });
+  }
+
+  /**
+   * The vault settings of a request (only the parts that are sent): whether the store keeps a vault, the drawer float (by face value, the
+   * amount follows from the count) and the amount above which a drop or deposit waits for a second person. A vault that still holds
+   * cash cannot be switched off.
+   */
+  private async vaultFields(id: number, body: any, current: Store) {
+    const out: Record<string, any> = {};
+    if (body.vaultenabled !== undefined) {
+      const on = !!body.vaultenabled;
+      if (!on && current.vaultenabled) {
+        const [v] = await this.manager.query(
+          `select coalesce(sum(case when direction = 'IN' then amount else -amount end), 0)::float as balance
+             from store_vault_movements where store_id = $1 and status = 'CONFIRMED'`, [id]);
+        if (Number(v?.balance || 0) > 0) throw new ConflictException(`The vault still holds Rs ${v.balance}. Bank or adjust it to nil before switching it off.`);
+      }
+      out.vaultenabled = on;
+    }
+    if (body.floatdenominations !== undefined) {
+      const given = body.floatdenominations === null ? null : normalizeDenominations(body.floatdenominations);
+      if (body.floatdenominations !== null && !given && !(Array.isArray(body.floatdenominations) && body.floatdenominations.length === 0)) {
+        throw new BadRequestException("Enter the float as how many of each note and coin.");
+      }
+      out.floatdenominations = given;
+      out.floatamount = given ? denominationTotal(given) : 0;
+      if (body.floatamount !== undefined && given && Number(body.floatamount) !== out.floatamount) {
+        throw new BadRequestException(`The float notes add up to Rs ${out.floatamount}, not Rs ${Number(body.floatamount)}.`);
+      }
+    } else if (body.floatamount !== undefined) {
+      const n = Number(body.floatamount);
+      if (!Number.isFinite(n) || n < 0) throw new BadRequestException("The float must be zero or more.");
+      out.floatamount = n;
+      out.floatdenominations = null;
+    }
+    if (body.vaultdropconfirmlimit !== undefined) {
+      const n = body.vaultdropconfirmlimit === null || body.vaultdropconfirmlimit === "" ? 0 : Number(body.vaultdropconfirmlimit);
+      if (!Number.isFinite(n) || n < 0) throw new BadRequestException("The confirmation limit must be zero or more (zero means none).");
+      out.vaultdropconfirmlimit = n;
+    }
+    return out;
   }
 
   /** the deposit schedule parts of a request, checked as a whole against what the store already has */
