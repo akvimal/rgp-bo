@@ -81,6 +81,19 @@ import { UserStore } from "./user-store.entity";
   @Column("character varying", { name: "approval_mode", length: 10, nullable: true })
   approvalmode: string | null;
 
+  @Column({ name: "vault_enabled", type: "boolean", default: false })
+  vaultenabled: boolean;
+
+  @Column("double precision", { name: "float_amount", precision: 53, default: 0 })
+  floatamount: number;
+
+  @Column("jsonb", { name: "float_denominations", nullable: true })
+  floatdenominations: Array<{ d: number; n: number }> | null;
+
+  /** a drop to the vault above this waits for a second person; 0 means none needed */
+  @Column("double precision", { name: "vault_drop_confirm_limit", precision: 53, default: 0 })
+  vaultdropconfirmlimit: number;
+
   @Column({ name: "active", type: "boolean", default: true })
   isActive: boolean;
 

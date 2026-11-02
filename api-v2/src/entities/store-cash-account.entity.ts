@@ -31,6 +31,13 @@ import { StoreShift } from "./store-shift.entity";
     @Column("character varying", { name: "reference_no", length: 40, nullable: true })
     referenceno: string | null;
 
+    /** which cash holder the row belongs to: the shift drawer or the store vault */
+    @Column("character varying", { name: "holder", length: 6, default: "DRAWER" })
+    holder: "DRAWER" | "VAULT";
+
+    @Column("bigint", { name: "vault_movement_id", nullable: true })
+    vaultmovementid: string | null;
+
     @Column("character varying", { name: "expense_category", length: 30, nullable: true })
     expensecategory: string | null;
 
