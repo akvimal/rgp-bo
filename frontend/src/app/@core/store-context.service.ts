@@ -37,6 +37,12 @@ export class StoreContextService {
     return this.storesSubject.value || [];
   }
 
+  /** the store a store-level screen works on: the one picked, or the only one the business has (there is no picker then) */
+  effectiveStoreId(id: number | null = this.selectedStoreId): number | null {
+    if (id !== null && id !== undefined) return Number(id);
+    return this.stores.length === 1 ? Number(this.stores[0].id) : null;
+  }
+
   get selectedStoreId(): number | null {
     return this.selectedStoreIdSubject.value;
   }

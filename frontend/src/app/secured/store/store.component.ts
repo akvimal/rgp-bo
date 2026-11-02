@@ -65,8 +65,8 @@ export class StoreComponent implements OnInit, OnDestroy {
     ngOnDestroy(): void { this.subs.unsubscribe(); }
 
     private syncVault() {
-        const id = this.storeContext.selectedStoreId;
-        const store = this.storeContext.stores.find((s: any) => s.id === id);
+        const id = this.storeContext.effectiveStoreId();
+        const store = this.storeContext.stores.find((s: any) => Number(s.id) === id);
         this.vaultOn = !!store?.vaultenabled && this.auth.isUrlAuthorized('/secure/store/vault');
     }
 

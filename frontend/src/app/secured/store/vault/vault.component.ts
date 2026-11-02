@@ -48,11 +48,15 @@ export class VaultComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.users.getCurrentUser().subscribe((u: any) => this.me = u, () => this.me = null);
-    this.subs.add(this.storeContext.selectedStoreId$.subscribe((id: any) => {
-      this.storeId = id ? Number(id) : null;
+    const pick = () => {
+      const id = this.storeContext.effectiveStoreId();
+      if (id === this.storeId && this.state) return;
+      this.storeId = id;
       this.closePanel();
       this.reload();
-    }));
+    };
+    this.subs.add(this.storeContext.selectedStoreId$.subscribe(pick));
+    this.subs.add(this.storeContext.stores$.subscribe(pick));
   }
 
   ngOnDestroy(): void { this.subs.unsubscribe(); }

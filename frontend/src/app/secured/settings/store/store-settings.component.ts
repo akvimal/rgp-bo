@@ -4,6 +4,7 @@ import { CashService } from "src/app/secured/store/cash/cash.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
 import { BusinessesService } from "../businesses/businesses.service";
 import { AuthService } from "src/app/@core/auth/auth.service";
+import { StoreContextService } from "src/app/@core/store-context.service";
 
 @Component({
   templateUrl: './store-settings.component.html'
@@ -73,7 +74,7 @@ export class StoreSettingsComponent implements OnInit {
     active: true
   };
 
-  constructor(private cashService: CashService, private confirm: ConfirmService, private businessService: BusinessesService, public auth: AuthService, private props: PropsService) {
+  constructor(private storeContext: StoreContextService, private cashService: CashService, private confirm: ConfirmService, private businessService: BusinessesService, public auth: AuthService, private props: PropsService) {
     this.props.licenceTypes$.subscribe((l: any[]) => this.licenceTypes = (l || []).filter((t) => t.for.includes('store')).map((t) => ({ key: t.code, label: t.label })));
   }
 
@@ -437,6 +438,8 @@ export class StoreSettingsComponent implements OnInit {
       const index = this.stores.findIndex((row:any) => row.id === store.id);
       if (index > -1) this.stores[index] = store;
       this.refreshSelectedStore();
+      // the Vault tab reads the store list the app loaded at sign-in, so refresh it
+      this.storeContext.loadContext().subscribe({ error: () => {} });
       this.message = 'Vault settings saved.';
     }, err => {
       this.savingVault = false;
