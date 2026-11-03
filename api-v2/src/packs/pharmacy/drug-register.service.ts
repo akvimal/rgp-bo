@@ -120,6 +120,12 @@ export class DrugRegisterService {
     await this.writeEntries(m, { storeId, saleId, billNo: ctx.saved?.billno ?? null, billDate: ctx.saved?.billdate ? new Date(ctx.saved.billdate) : new Date(), scheduled, d, rx, userId: ctx.userId, by });
   }
 
+  /** a voided bill: its register lines are marked withdrawn (the register is never deleted from) and its promised-prescription follow-up is closed */
+  async voided(ctx: { manager: EntityManager; saleId: number; userId: number; reason: string }) {
+    await ctx.manager.query(`update schedule_register set superseded_on = now(), superseded_by = $2 where sale_id = $1 and superseded_on is null`, [ctx.saleId, ctx.userId]);
+    await ctx.manager.query(`update schedule_rx_followup set status = 'CANCELLED', closed_on = now(), closed_by = $2 where sale_id = $1 and status = 'OPEN'`, [ctx.saleId, ctx.userId]);
+  }
+
   /** a prescription promised for later leaves a follow-up on the customer; a bill changed or cancelled takes its follow-up back */
   private async syncFollowup(m: EntityManager, a: { storeId: number | null; saleId: number; customerId: any; rx: Rx; userId: number }) {
     await m.query(`update schedule_rx_followup set status = 'CANCELLED', closed_on = now(), closed_by = $2 where sale_id = $1 and status = 'OPEN'`, [a.saleId, a.userId]);

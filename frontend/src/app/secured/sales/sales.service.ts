@@ -51,6 +51,11 @@ export class SaleService {
         return this.http.post(`${this.apiurl}/items`,item);
     }
 
+    /** void a completed bill rung up by mistake, during its shift */
+    voidBill(id:number, reason:string){
+        return this.http.post<any>(`${this.apiurl}/${id}/void`, { reason });
+    }
+
     remove(id:number){
         return this.http.delete(`${this.apiurl}/${id}`);
     }

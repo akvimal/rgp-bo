@@ -8,6 +8,7 @@ import { ActivatedRoute } from "@angular/router";
 import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
 import { SaleService } from "../sales.service";
+import { canVoidBill, signedInUserId } from "../bill-void";
 
 const LICENCE_LABELS: {[type:string]:string} = {
     RETAIL_20_21: 'DL No.', WHOLESALE_20B_21B: 'Wholesale DL No.', FSSAI: 'FSSAI', OTHER: 'Licence'
@@ -83,6 +84,26 @@ export class SaleViewComponent {
     optedOut = false;
     private saleIdNum = 0;
 
+    voiding = false;
+    voidReason = '';
+    voidBusy = false;
+    voidError = '';
+
+    /** the bill can be voided now: it was rung in the shift that is still open, by this person (or a manager) */
+    get canVoid(): boolean {
+      return canVoidBill(this.sale, this.shiftContext.openShift?.id, this.auth.isActionAuthorized('sales.void'), signedInUserId());
+    }
+
+    confirmVoid(){
+      this.voidError = '';
+      if(this.voidReason.trim().length < 3){ this.voidError = 'Say why the bill is being voided.'; return; }
+      this.voidBusy = true;
+      this.service.voidBill(this.saleIdNum, this.voidReason.trim()).subscribe({
+        next: () => { this.voidBusy = false; this.voiding = false; this.sale = {...this.sale, status: 'VOID'}; },
+        error: (err:any) => { this.voidBusy = false; this.voidError = err?.error?.message || 'The bill could not be voided.'; }
+      });
+    }
+
     constructor(private route: ActivatedRoute,
       private service:SaleService,
       private customersService: CustomersService,
@@ -154,6 +175,7 @@ export class SaleViewComponent {
       });
       this.sale = {
         id: data.id, billno: data.billno, billdate: data.billdate, items,
+        status: data.status, shiftid: data.shiftid, createdby: data.createdby, actinguserid: data.actinguserid, voidreason: data.voidreason || null,
         customer: data.customer ? { mobile: data.customer.mobile, name: data.customer.name, email: data.customer.email, address: data.customer.address } : null,
         total: data.total, disccode: data.disccode, discamount: +data.discamount || 0,
         digiamt: +data.digiamt || 0, digimethod: data.digimethod, cashamt: +data.cashamt || 0,

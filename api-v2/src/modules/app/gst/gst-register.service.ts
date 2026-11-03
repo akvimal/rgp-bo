@@ -86,6 +86,11 @@ export class GstRegisterService {
         order by ri.settled_on`, [businessId, from, to, store]);
     const returns_cash = cashReturns.map((r: any) => ({ date: r.day, bill_no: r.bill_no, product: r.product, qty: Number(r.qty), amount: r2(r.amount) }));
 
+    // a tax invoice voided in its shift keeps its number: it is listed as cancelled and is not a gap in the series
+    const cancelled = (await this.manager.query(
+      `select s.gst_invoice_no as doc_no, to_char(s.bill_date, 'YYYY-MM-DD') as day from sale s join stores st on st.id = s.store_id
+        where st.business_id = $1 and s.status = 'VOID' and s.gst_invoice_no is not null and s.bill_date >= $2::date and s.bill_date < ($3::date + 1) and ($4::int is null or s.store_id = $4)
+        order by s.bill_date, s.id`, [businessId, from, to, store])).map((c: any) => ({ doc_no: c.doc_no, date: c.day }));
     const taxInvoices = invoices.filter((i: any) => i.kind === 'TAX');
     const invRates: RateTotals[] = taxInvoices.flatMap((i: any) => i.rates.map((r: any) => ({ rate: r.rate, taxable: r.taxable, cgst: r.cgst, sgst: r.sgst, igst: r.igst, tax: r.tax })));
     const cnRates: RateTotals[] = credit_notes.map((c: any) => ({ rate: c.rate, taxable: c.taxable, cgst: c.cgst, sgst: c.sgst, igst: c.igst, tax: c.tax }));
@@ -93,8 +98,8 @@ export class GstRegisterService {
     const cash = invoices.filter((i: any) => i.kind === 'CASH');
     return {
       month, label: monthLabel(month), from, to, registered: reg.reg_type === 'registered', gstin: reg.gstin, state_code: reg.state_code, business: reg.legal_name || reg.name,
-      invoices, credit_notes, returns_cash,
-      gaps: findGaps(taxInvoices.map((i: any) => i.doc_no)),
+      invoices, credit_notes, returns_cash, cancelled,
+      gaps: findGaps([...taxInvoices.map((i: any) => i.doc_no), ...cancelled.map((c: any) => c.doc_no)]),
       totals: {
         tax_invoices: taxInvoices.length, tax_invoice_total: r2(taxInvoices.reduce((t: number, i: any) => t + i.total, 0)),
         credit_notes: credit_notes.length, credit_note_total: r2(credit_notes.reduce((t: number, c: any) => t + c.gross, 0)),

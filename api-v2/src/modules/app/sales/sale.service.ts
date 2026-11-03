@@ -8,6 +8,7 @@ import { EntityManager } from "typeorm";
 import { loadStoreProfile } from "../store/store-profile";
 import { returnRules } from "./return-rule";
 import { BatchMrp, overMrp, overMrpMessage } from "./mrp-guard";
+import { voidProblem, voidReasonProblem } from "./void-rule";
 import { staleGst, staleGstMessage, CurrentGst } from "./gst-guard";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
@@ -801,6 +802,62 @@ export class SaleService {
         });
     } 
     
+    /**
+     * Voids a completed bill rung up by mistake, while its shift is still open. Nothing is deleted: the bill stays with status VOID, who and why;
+     * stock comes back (it is counted from completed bills), the shift's cash is corrected with a reversing line, the staff / store credit the bill
+     * used is put back, and a business pack marks what it wrote (the drug register lines are withdrawn). A tax invoice keeps its number.
+     */
+    async voidSale(id: number | string, reason: string, user: { id: number; roleid?: number }, canVoidAny: boolean) {
+        const why = voidReasonProblem(reason);
+        if (why) throw new BadRequestException(why);
+        return this.manager.transaction(async (tx) => {
+            const [sale] = await tx.query(
+                `select s.id, s.status, s.shift_id, s.store_id, s.bill_no, s.cash_amount::float8 as cash, s.created_by, s.acting_user_id, s.customer_id, s.staff_credit_amount::float8 as staff_credit, s.staff_credit_user_id,
+                        s.credit_amount::float8 as store_credit, sh.status as shift_status
+                   from sale s left join store_shifts sh on sh.id = s.shift_id where s.id = $1 for update of s`, [+id]);
+            if (!sale) throw new BadRequestException('Bill not found.');
+            const [{ n: returns }] = await tx.query(
+                `select count(*)::int as n from sale_return_item sri join sale_item si on si.id = sri.sale_item_id where si.sale_id = $1`, [+id]);
+            const problem = voidProblem({
+                status: sale.status, shiftId: sale.shift_id ? +sale.shift_id : null, shiftStatus: sale.shift_status, returns,
+                isOwn: [sale.created_by, sale.acting_user_id].some((u: any) => u && +u === +user.id), canVoidAny,
+            });
+            if (problem) throw new BadRequestException(problem);
+            const text = `${reason}`.trim();
+
+            await tx.query(`update sale set status = 'VOID', voided_on = now(), voided_by = $2, void_reason = $3, updated_by = $2, updated_on = now() where id = $1`, [+id, user.id, text]);
+
+            // stock is counted from the bill's lines that are active, so they are set aside (not removed: the voided bill still shows what was on it)
+            await tx.query(`update sale_item set active = false, status = 'Void', updated_by = $2, updated_on = now() where sale_id = $1`, [+id, user.id]);
+
+            // the shift's cash: the bill's cash came in as a SALE line, so a reversing line takes it out again
+            if (+sale.cash > 0) {
+                await tx.save(StoreCashAccount, {
+                    transdate: new Date().toISOString().slice(0, 10),
+                    category: 'SALE_VOID',
+                    description: `Void bill ${sale.bill_no || sale.id}`,
+                    deposit: 0,
+                    withdraw: +sale.cash,
+                    store: { id: sale.store_id },
+                    shift: { id: sale.shift_id },
+                } as any);
+            }
+            // credit the bill gave or used goes back
+            if (+sale.staff_credit > 0 && sale.staff_credit_user_id) {
+                await tx.query(
+                    `insert into staff_credit_entry (user_id, kind, amount, period, sale_id, store_id, note, created_by) values ($1, 'ADJUSTMENT', $2, to_char(now() at time zone 'Asia/Kolkata', 'YYYY-MM'), $3, $4, $5, $6)`,
+                    [sale.staff_credit_user_id, -sale.staff_credit, sale.id, sale.store_id, `Void bill ${sale.bill_no || sale.id}`, user.id]);
+            }
+            if (+sale.store_credit > 0 && sale.customer_id) {
+                await tx.query(
+                    `insert into customer_credit_entry (customer_id, kind, amount, sale_id, store_id, note, created_by) values ($1, 'ADJUSTMENT', $2, $3, $4, $5, $6)`,
+                    [sale.customer_id, +sale.store_credit, sale.id, sale.store_id, `Void bill ${sale.bill_no || sale.id}`, user.id]);
+            }
+            await this.hooks.voided({ manager: tx, saleId: +id, storeId: sale.store_id ? +sale.store_id : null, userId: user.id, reason: text });
+            return { id: +id, status: 'VOID', billno: sale.bill_no, cashreversed: +sale.cash > 0 ? +sale.cash : 0 };
+        });
+    }
+
     async removeItem(itemid: number | string, userid: number) {
         await this.saleItemRepository.manager.transaction('SERIALIZABLE', async (transaction) => {
             await transaction.update(SaleItem, itemid, {isArchived:true, updatedby:userid});

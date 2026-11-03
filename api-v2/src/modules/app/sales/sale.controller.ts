@@ -339,6 +339,18 @@ export class SaleController {
       return this.saleService.findAllEligibleItemsToReturn(id);
     }
 
+    /** void a completed bill rung up by mistake, while its shift is open: { reason } */
+    @Post(':id/void')
+    async voidBill(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      const [role] = await this.manager.query(
+        `select exists (select 1 from app_role r, json_array_elements(r.permissions) e, json_array_elements(e->'policies') p
+                         where r.id = $1 and e->>'resource' = 'sales' and p->>'action' = 'void') as can`, [currentUser.roleid]);
+      const result = await this.saleService.voidSale(id, body?.reason, currentUser, !!role?.can);
+      await this.audit.record({ userId: currentUser.id, action: 'sale.voided', entityType: 'sale', entityId: +id,
+        summary: `Bill ${result.billno ?? id} voided: ${`${body?.reason}`.trim()}`, details: { reason: `${body?.reason}`.trim(), cashreversed: result.cashreversed } });
+      return result;
+    }
+
     @Delete(':id')
     remove(@Param('id') id: string, @User() currentUser: any) {
       return this.saleService.delete(id, currentUser?.id);
