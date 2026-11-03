@@ -918,6 +918,9 @@ export class PurchaseInvoiceService {
         throw new Error('Linked purchase order not found');
       }
 
+      if(order.status === 'CANCELLED'){
+        throw new Error('This purchase order was cancelled: an invoice cannot be created from it');
+      }
       if(order.approvalstatus !== 'Approved'){
         throw new Error('Invoice can only be created from an approved purchase order');
       }

@@ -46,6 +46,11 @@ export class PurchaseOrderService {
         return this.http.post(`${this.apiurl}/merge`, { targetid, sourceids });
     }
 
+    /** cancel (void) an order that was sent, while no invoice is linked to it */
+    cancel(id:number, reason:string){
+        return this.http.post(`${this.apiurl}/${id}/cancel`, { reason });
+    }
+
     submit(id:number){
         return this.http.post(`${this.apiurl}/${id}/submit`, {});
     }

@@ -67,6 +67,12 @@ export class PurchaseOrderController {
     return this.service.mergeDraftOrders(+body?.targetid, body?.sourceids || [], currentUser.id);
   }
 
+  /** cancel (void) an order that was sent, while no purchase invoice is linked to it: { reason } */
+  @Post(':id/cancel')
+  async cancel(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+    return this.service.cancelOrder(+id, body?.reason, currentUser.id);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string, @User() currentUser: any) {
     const order = await this.service.findOrderById(id);

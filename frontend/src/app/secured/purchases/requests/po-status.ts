@@ -10,6 +10,8 @@ export function poStatus(order: any): PoStatus {
             return { label: 'Awaiting approval', cls: 'bg-warning text-dark', hint: 'Waiting for someone allowed to approve it' };
         case 'SUBMITTED':
             return { label: 'Submitted', cls: 'bg-success', hint: order?.approvalstatus === 'Approved' ? 'Approved and submitted' : 'Submitted' };
+        case 'CANCELLED':
+            return { label: 'Cancelled', cls: 'bg-dark', hint: 'Cancelled: it was not sent on, and what was on it is free to order again' };
         case 'REJECTED':
             return { label: 'Rejected', cls: 'bg-danger', hint: 'Sent back: change it and submit again' };
         default:
@@ -24,4 +26,5 @@ export const PO_STATUS_FILTERS: { value: string; label: string }[] = [
     { value: 'PENDING_APPROVAL', label: 'Awaiting approval' },
     { value: 'SUBMITTED', label: 'Submitted' },
     { value: 'REJECTED', label: 'Rejected' },
+    { value: 'CANCELLED', label: 'Cancelled' },
 ];
