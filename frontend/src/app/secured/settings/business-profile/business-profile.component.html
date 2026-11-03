@@ -81,6 +81,14 @@
           </div>
           <div class="form-text">The MRP is off unless you choose it. Without it the grid shows the quantity, rate, GST and amount.</div>
         </div>
+        <div class="col-md-6">
+          <label class="form-label d-block">Sign-in page</label>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="biz-show-changepw" name="showchangepasswordlink" [(ngModel)]="form.showchangepasswordlink" data-testid="biz-show-changepw">
+            <label class="form-check-label" for="biz-show-changepw">Show the "Change password" link</label>
+          </div>
+          <div class="form-text">Untick to hide it. Staff can still change their password after signing in.</div>
+        </div>
         <div class="col-12">
           <label class="form-label">Address</label>
           <textarea class="form-control" name="address" rows="2" [(ngModel)]="form.address" maxlength="200" data-testid="biz-address"></textarea>

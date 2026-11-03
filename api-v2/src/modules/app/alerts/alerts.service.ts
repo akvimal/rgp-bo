@@ -77,10 +77,10 @@ export class AlertsService {
       const kind = kindOf(d.kind)!;
       if (kind.pack && !(await this.modules.packOnForBusiness(businessId, kind.pack))) continue;     // a pack's alert is not set up for a business without the pack
       await this.manager.query(
-        `insert into alert_rule (business_id, kind, name, params, severity, source)
-         select $1::int4, $2::varchar, $3::varchar, $4::jsonb, $5::varchar, 'system'
+        `insert into alert_rule (business_id, kind, name, params, severity, source, recipients)
+         select $1::int4, $2::varchar, $3::varchar, $4::jsonb, $5::varchar, 'system', coalesce($6::jsonb, '{"roles":["owners","managers"],"userids":[]}'::jsonb)
           where not exists (select 1 from alert_rule where business_id = $1::int4 and kind = $2::varchar and source = 'system')`,
-        [businessId, d.kind, d.name, JSON.stringify(cleanParams(kind, {})), d.severity]);
+        [businessId, d.kind, d.name, JSON.stringify(cleanParams(kind, {})), d.severity, d.recipients ? JSON.stringify(d.recipients) : null]);
     }
   }
 

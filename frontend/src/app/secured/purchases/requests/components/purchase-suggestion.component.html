@@ -76,7 +76,15 @@
     <tr>
       <td><input type="checkbox" [(ngModel)]="item.selected"></td>
       <td>{{item.title}}</td>
-      <td>{{item.vendor_name || '-'}}</td>
+      <td>
+        <ng-container *ngIf="item.vendor_id; else pickVendor">{{item.vendor_name}}</ng-container>
+        <ng-template #pickVendor>
+          <select class="form-select form-select-sm" [(ngModel)]="item.vendor_id" title="No vendor yet for this product: choose who to order it from" data-testid="reo-pick-vendor">
+            <option [ngValue]="null">Choose vendor</option>
+            <option *ngFor="let vendor of vendors" [ngValue]="vendor.id">{{vendor.name}}</option>
+          </select>
+        </ng-template>
+      </td>
       <td class="text-end">{{item.available_stock}}</td>
       <td class="text-end">{{item.min_stock || '-'}}</td>
       <td class="text-end">{{item.sales_qty}}</td>

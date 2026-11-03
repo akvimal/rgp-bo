@@ -85,6 +85,10 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'No stock count for {days} days: {store}', body: 'The last completed count was on {date}. Start the next category count.' },
     ta: { title: '{days} நாட்களாக இருப்பு எண்ணிக்கை இல்லை: {store}', body: 'கடைசியாக முடிந்த எண்ணிக்கை {date}. அடுத்த வகை எண்ணிக்கையைத் தொடங்கவும்.' },
   },
+  customer_request_arrived: {
+    en: { title: '{product} has arrived for {customer}', body: '{qty} received at {store}. Call {customer} {phone} and then close the request on the Requests page.' },
+    ta: { title: '{customer} கேட்ட {product} வந்துவிட்டது', body: '{store} இல் {qty} பெறப்பட்டது. {customer} {phone} ஐ அழைத்து, பின்னர் கோரிக்கைகள் பக்கத்தில் கோரிக்கையை மூடவும்.' },
+  },
   stock_count_never: {
     en: { title: 'No stock count has ever been completed: {store}', body: 'Book stock has never been checked against the shelf. Start a count.' },
     ta: { title: 'இதுவரை இருப்பு எண்ணிக்கை முடிக்கப்படவில்லை: {store}', body: 'புத்தக இருப்பு அலமாரியுடன் ஒருபோதும் சரிபார்க்கப்படவில்லை. எண்ணிக்கையைத் தொடங்கவும்.' },

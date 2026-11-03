@@ -17,6 +17,8 @@ export class LoginComponent {
     error:any;
     /** the platform-administration page: dark, no business branding, Site Admin only */
     platform = false;
+    /** the business can hide the "Change password" link on this page (Settings > Business details) */
+    showChangePasswordLink = true;
 
     form = new FormGroup({
         email: new FormControl('',Validators.required),

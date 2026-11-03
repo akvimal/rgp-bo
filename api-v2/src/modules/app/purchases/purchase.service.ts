@@ -281,8 +281,34 @@ export class PurchaseService {
         }
         return this.requestRepository.update(id, {...values, updatedby:userid});
     }
+    /**
+     * Takes an item off its order: the request goes back to Reviewed and is free again. The order link has to be set to null:
+     * TypeORM skips undefined values in an update, so the item used to stay on the order it was taken off.
+     * Only while the order can still be changed (a draft, or one that was turned down).
+     */
     async removeOrder(id: number | string, userid: number) {
-        return this.requestRepository.update(id, {status: 'Reviewed', orderid: undefined, updatedby:userid});
+        const [row] = await this.manager.query(
+            `select pr.order_id, po.status from purchase_request pr left join purchase_order po on po.id = pr.order_id where pr.id = $1`, [+id]);
+        if(row?.order_id && !['PENDING', 'REJECTED'].includes(row.status)){
+            throw new BadRequestException('An item cannot be taken off an order that has been submitted.');
+        }
+        return this.requestRepository.update(id, {status: 'Reviewed', orderid: null as any, orderedqty: null as any, updatedby:userid});
+    }
+
+    /**
+     * Deletes a draft order and frees what was on it. A request somebody raised goes back to Reviewed so it can be ordered
+     * again; a line the Reorder screen made up only for this order is removed with it (it would otherwise be counted twice).
+     */
+    async deleteOrder(id: number | string, userid: number) {
+        return this.manager.transaction(async (tx) => {
+            await tx.query(
+                `update purchase_request set active = false, updated_by = $2
+                  where order_id = $1 and source = 'System' and source_ref = 'purchase-suggestions'`, [+id, userid]);
+            await tx.query(
+                `update purchase_request set status = 'Reviewed', order_id = null, ordered_qty = null, updated_by = $2
+                  where order_id = $1 and active = true and status = 'Ordered'`, [+id, userid]);
+            return tx.getRepository(PurchaseOrder).update(id, {isActive: false, updatedby: userid});
+        });
     }
 
     async updateOrder(id: number | string, values: Partial<PurchaseOrder>, userid: number) {

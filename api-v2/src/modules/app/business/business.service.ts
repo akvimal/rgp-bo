@@ -134,9 +134,9 @@ export class BusinessService {
    * The name and logo for the sign-in page, which has no one signed in yet. A copy of the app belongs to one business, so when there
    * is exactly one active business its name and logo are given; with several (a shared install) nothing is, and the page keeps its default.
    */
-  async publicBrand(): Promise<{ name?: string; logo?: string | null }> {
-    const rows = await this.manager.query(`select name, logo from business where active = true order by id limit 2`);
-    return rows.length === 1 ? { name: rows[0].name, logo: rows[0].logo || null } : {};
+  async publicBrand(): Promise<{ name?: string; logo?: string | null; showchangepassword?: boolean }> {
+    const rows = await this.manager.query(`select name, logo, login_show_change_password from business where active = true order by id limit 2`);
+    return rows.length === 1 ? { name: rows[0].name, logo: rows[0].logo || null, showchangepassword: rows[0].login_show_change_password !== false } : {};
   }
 
   /** Which modules the Business Head's business has switched on (the whole picture, with defaults filled in). */
@@ -187,7 +187,7 @@ export class BusinessService {
       fields.grievancephone = p.value;
     }
     if (body.returnnote !== undefined) fields.returnnote = clean(body.returnnote, 300, "The return note");
-    for (const key of ["showmrp", "showsaving", "showreturnnote"]) {
+    for (const key of ["showmrp", "showsaving", "showreturnnote", "showchangepasswordlink"]) {
       if (body[key] !== undefined) {
         if (typeof body[key] !== "boolean") throw new BadRequestException("Choose yes or no for what the bill prints.");
         fields[key] = body[key];

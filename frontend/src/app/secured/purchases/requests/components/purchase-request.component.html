@@ -32,7 +32,11 @@
           <td>{{request.source}}</td>
           <td>{{request.requesttype}}</td>
           <td>{{request.priority}}</td>
-          <td>{{request.status}}</td>
+          <td>
+            {{request.status}}
+            <span class="small text-muted" *ngIf="request.status === 'Ordered' && request.fulfilledqty > 0" data-testid="req-progress">({{request.fulfilledqty}} of {{request.orderedqty || request.qty}} in)</span>
+            <span class="badge bg-success ms-1" *ngIf="request.status === 'Received' && request.customername" title="The stock has come in: tell the customer, then close the request" data-testid="req-tell-customer">Tell {{request.customername}}<span *ngIf="request.customerphone"> &middot; {{request.customerphone}}</span></span>
+          </td>
           <td class="text-end">{{request.qty}}</td>
           <td>{{request.neededby | date:'dd MMM yyyy'}}</td>
           <td>{{request.customername || '-'}}</td>
@@ -41,6 +45,7 @@
               <a *ngIf="!request.product" (click)="openLink(request)" title="Link to a product" data-testid="req-link"><i class="bi bi-link-45deg text-warning"></i></a>
               <a (click)="edit(request)" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
               <a *ngIf="request.status === 'Open'" (click)="markReviewed(request)" title="Mark reviewed"><i class="bi bi-check2 text-success"></i></a>
+              <a *ngIf="request.status === 'Received'" (click)="markClosed(request)" title="Done: close this request" data-testid="req-close"><i class="bi bi-check2-all text-success"></i></a>
               <a (click)="remove(request)" title="Delete"><i class="bi bi-trash text-danger"></i></a>
             </div>
           </td>

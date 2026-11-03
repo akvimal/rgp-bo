@@ -533,10 +533,40 @@ export class PurchaseInvoiceService {
       if (inv.payments > 0) throw new BadRequestException('This invoice has payments recorded against it, so it cannot be deleted.');
       if (inv.issues > 0) throw new BadRequestException('A vendor issue is raised against this invoice, so it cannot be deleted.');
       if (inv.gst > 0) throw new BadRequestException('This invoice is matched in GST reconciliation, so it cannot be deleted.');
+      const requestids = await this.requestsOnInvoices([id]);
       const result = await this.removeRows(id);
+      await this.syncRequestFulfilment(requestids);               // what this invoice had received is no longer received
       await this.audit.record({ userId: userId ?? null, action: 'purchase.invoice_deleted', entityType: 'purchase_invoice', entityId: id,
         summary: `${inv.status === 'NEW' ? 'Draft invoice' : 'Invoice'} ${inv.invoice_no} (${inv.vendor ?? 'vendor'}) deleted with ${inv.items} line${inv.items === 1 ? '' : 's'}`, details: { invoice_no: inv.invoice_no, status: inv.status, total: inv.total, items: inv.items } });
       return result;
+    }
+
+    /** the purchase requests that the lines of these invoices were raised for */
+    private async requestsOnInvoices(invoiceids:number[]): Promise<number[]> {
+      if(!invoiceids.length) return [];
+      const rows = await this.manager.query(
+        `select distinct request_id from purchase_invoice_item where invoice_id = any($1::int[]) and request_id is not null`, [invoiceids]);
+      return rows.map((r:any) => +r.request_id);
+    }
+
+    /**
+     * Brings requests up to date with what has actually been received (lines on COMPLETE invoices): `fulfilled_qty` is that
+     * quantity, and a request is Received once the ordered quantity is in, Ordered while some or none of it is. Worked out
+     * from the invoices each time, so completing, and deleting, an invoice both leave it right.
+     */
+    async syncRequestFulfilment(requestids:number[]){
+      if(!requestids.length) return;
+      await this.manager.query(
+        `update purchase_request pr
+            set fulfilled_qty = got.qty,
+                status = case when got.qty >= coalesce(pr.ordered_qty, pr.qty) then 'Received' else 'Ordered' end
+           from (select r.id, coalesce((select sum(pii.qty) from purchase_invoice_item pii
+                                          join purchase_invoice pi on pi.id = pii.invoice_id
+                                         where pii.request_id = r.id and pii.active and not pii.archive
+                                           and pii.status not in ('DISPUTED', 'REJECTED')
+                                           and pi.active and not pi.archive and pi.status = 'COMPLETE'), 0) as qty
+                   from purchase_request r where r.id = any($1::int[])) got
+          where pr.id = got.id and pr.active and pr.status in ('Ordered', 'Received')`, [requestids]);
     }
 
     private async removeRows(id:number){
@@ -730,6 +760,11 @@ export class PurchaseInvoiceService {
         .update(PurchaseInvoice, {...values, updatedby: userid})
         .where("id in (:...ids)", { ids })
         .execute();
+
+        // the goods are in: the requests they were ordered for are received (fully or in part)
+        if(values?.status === 'COMPLETE'){
+          await this.syncRequestFulfilment(await this.requestsOnInvoices(ids));
+        }
 
         // `total` (set at GRN completion, after all items exist) drives round_off - recompute once it lands.
         if(values?.total !== undefined){
