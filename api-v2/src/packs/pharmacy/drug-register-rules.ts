@@ -141,3 +141,42 @@ export function standingState(day: string | null | undefined, today: string, mon
   const until = validUntil(day, months);
   return { valid_until: until, expired: until < today };
 }
+
+// ------------------------------------------------------------------ people offered for copying on the counter
+export interface PatientChoice { name: string; address: string; age: string; last_on: string }
+export interface PrescriberChoice { name: string; reg_no: string; address: string; last_on: string }
+
+const tidy = (v: any): string => String(v ?? '').replace(/\s+/g, ' ').trim();
+
+/**
+ * The distinct patients in a customer's earlier register lines, newest first (the rows must come newest first). A person is the same person
+ * whatever the case of the name; what the newest line lacks (an age, an address) is filled from an older line of the same person.
+ */
+export function distinctPatients(rows: any[], limit = 5): PatientChoice[] {
+  const seen = new Map<string, PatientChoice>();
+  for (const r of rows || []) {
+    const name = tidy(r.patient_name);
+    if (name.length < 2) continue;
+    const key = name.toUpperCase();
+    const have = seen.get(key);
+    if (!have) { seen.set(key, { name, address: tidy(r.patient_address), age: tidy(r.patient_age), last_on: tidy(r.entry_on) }); continue; }
+    if (!have.address) have.address = tidy(r.patient_address);
+    if (!have.age) have.age = tidy(r.patient_age);
+  }
+  return Array.from(seen.values()).slice(0, limit);
+}
+
+/** The same for doctors: one per name, newest first, the registration number and clinic filled from an older line when the newest has none. */
+export function distinctPrescribers(rows: any[], limit = 5): PrescriberChoice[] {
+  const seen = new Map<string, PrescriberChoice>();
+  for (const r of rows || []) {
+    const name = tidy(r.prescriber_name);
+    if (name.length < 3) continue;
+    const key = name.toUpperCase();
+    const have = seen.get(key);
+    if (!have) { seen.set(key, { name, reg_no: tidy(r.prescriber_reg_no), address: tidy(r.prescriber_address), last_on: tidy(r.entry_on) }); continue; }
+    if (!have.reg_no) have.reg_no = tidy(r.prescriber_reg_no);
+    if (!have.address) have.address = tidy(r.prescriber_address);
+  }
+  return Array.from(seen.values()).slice(0, limit);
+}

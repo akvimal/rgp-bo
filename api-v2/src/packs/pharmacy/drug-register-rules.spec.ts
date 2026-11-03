@@ -1,4 +1,4 @@
-import { detailProblems, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel, normaliseRx, parseStandingMonths, rxProblems, standingState, validUntil } from './drug-register-rules';
+import { detailProblems, distinctPatients, distinctPrescribers, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel, normaliseRx, parseStandingMonths, rxProblems, standingState, validUntil } from './drug-register-rules';
 
 const good = { patient_name: 'A Patient', patient_address: '12 Main Road, Town', prescriber_name: 'Dr B Doctor', prescriber_reg_no: 'TN12345' };
 
@@ -83,3 +83,37 @@ describe('drug register rules', () => {
     expect(parseStandingMonths('12')).toBe(12);
   });
 });
+
+describe('people offered for copying on the counter', () => {
+  const rows = [
+    { patient_name: 'Meena Kumar', patient_address: '', patient_age: '67', prescriber_name: 'Dr Rao', prescriber_reg_no: '', prescriber_address: '', entry_on: '2026-11-02' },
+    { patient_name: 'RAVI KUMAR', patient_address: '12 Main Road', patient_age: '42', prescriber_name: 'Dr Anitha', prescriber_reg_no: 'TN8821', prescriber_address: 'Clinic A', entry_on: '2026-10-20' },
+    { patient_name: 'meena kumar', patient_address: '12 Main Road', patient_age: '66', prescriber_name: 'DR RAO', prescriber_reg_no: 'TN4455', prescriber_address: 'Rao Clinic', entry_on: '2026-10-12' },
+    { patient_name: ' ', patient_address: 'x', patient_age: '', prescriber_name: 'Dr', prescriber_reg_no: '', prescriber_address: '', entry_on: '2026-10-01' },
+  ];
+
+  it('lists each patient once, newest first, whatever the case of the name', () => {
+    expect(distinctPatients(rows).map((p) => p.name)).toEqual(['Meena Kumar', 'RAVI KUMAR']);
+  });
+
+  it('keeps the newest values and fills what is missing from an older line of the same person', () => {
+    const meena = distinctPatients(rows)[0];
+    expect(meena).toMatchObject({ name: 'Meena Kumar', age: '67', address: '12 Main Road', last_on: '2026-11-02' });   // newest age, address from the older line
+  });
+
+  it('lists each doctor once, with the registration number and clinic from an older line when the newest has none', () => {
+    const list = distinctPrescribers(rows);
+    expect(list.map((d) => d.name)).toEqual(['Dr Rao', 'Dr Anitha']);
+    expect(list[0]).toMatchObject({ reg_no: 'TN4455', address: 'Rao Clinic' });
+  });
+
+  it('leaves out lines with no usable name, honours the limit, and copes with nothing', () => {
+    expect(distinctPatients([{ patient_name: '' }, { patient_name: 'A' }])).toEqual([]);
+    expect(distinctPrescribers([{ prescriber_name: 'Dr' }])).toEqual([]);
+    const many = Array.from({ length: 9 }, (_, i) => ({ patient_name: `Patient ${i}`, prescriber_name: `Doctor ${i}` }));
+    expect(distinctPatients(many, 3)).toHaveLength(3);
+    expect(distinctPrescribers(many)).toHaveLength(5);
+    expect(distinctPatients(undefined as any)).toEqual([]);
+  });
+});
+

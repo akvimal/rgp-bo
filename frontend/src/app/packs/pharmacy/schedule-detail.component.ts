@@ -29,6 +29,8 @@ export class ScheduleDetailComponent implements OnChanges {
     @Input() documents: any[] = [];
     /** a prescription was uploaded: the document as saved */
     @Output() uploaded = new EventEmitter<any>();
+    /** a prescription taken for another patient is let go of: its document id (the bill drops it) */
+    @Output() detached = new EventEmitter<number>();
 
     suggestions: any[] = [];
     private timer: any = null;
@@ -43,7 +45,7 @@ export class ScheduleDetailComponent implements OnChanges {
     constructor(private service: DrugRegisterService, private files: FileUploadService, private docs: DocumentsService, private customers: CustomersService) {}
 
     /** what is already on record for the customer: prescriptions kept with them, and the patient and prescriber of their last supplies */
-    ctx: { prescriptions: any[]; last: any[]; standing_months: number } | null = null;
+    ctx: { prescriptions: any[]; last: any[]; patients?: any[]; prescribers?: any[]; standing_months: number } | null = null;
     /** the one in use now ("rx12" or "last0"), so the person can see it was taken */
     usedKey = '';
     private ctxFor = 0;
@@ -54,6 +56,8 @@ export class ScheduleDetailComponent implements OnChanges {
         if ((c['customer'] || c['detail']) && this.customer && !this.detail.patient_name && this.customer.name && String(this.customer.name).trim().toUpperCase() !== 'NIL') {
             this.detail.patient_name = this.customer.name;
             if (!this.detail.patient_address && this.customer.address) this.detail.patient_address = this.customer.address;
+            this.patientUndo = { patient_name: '', patient_age: this.detail.patient_age || '', patient_address: '' };
+            this.patientSrc = this.customerId ? 'the customer record' : 'the bill';
         }
     }
 
@@ -88,7 +92,8 @@ export class ScheduleDetailComponent implements OnChanges {
         if (p.patient) this.detail.patient_name = p.patient;
         if (p.doctor) { this.detail.prescriber_name = p.doctor; this.detail.prescriber_reg_no = p.reg_no || ''; this.detail.prescriber_address = p.address || ''; }
         if (p.date && p.date <= this.today) this.detail.rx_date = p.date;
-        this.usedKey = 'rx' + p.id;
+        this.usedKey = 'rx' + p.id; this.usedRxId = p.id; this.usedRxPatient = p.patient || '';
+        this.patientKey = ''; this.patientSrc = ''; this.rxPatientWarning = '';
         this.detail.rx_basis = 'ON_FILE'; this.detail.rx_document_id = p.id; this.detail.rx_due = '';
         this.detail.rx_note = this.standingNote(!!p.expired, p.date || p.added);
         if (!this.later) this.uploaded.emit({ id: p.id, category: p.category, name: p.name, alias: p.alias, path: p.path, docprops: p.docprops });
@@ -103,7 +108,8 @@ export class ScheduleDetailComponent implements OnChanges {
         this.detail.prescriber_reg_no = l.prescriber_reg_no || '';
         this.detail.prescriber_address = l.prescriber_address || '';
         this.detail.rx_date = l.rx_date && l.rx_date <= this.today ? l.rx_date : null;
-        this.usedKey = 'last' + i;
+        this.usedKey = 'last' + i; this.usedRxId = 0; this.usedRxPatient = '';
+        this.patientKey = ''; this.patientSrc = ''; this.prescriberKey = ''; this.prescriberSrc = ''; this.rxPatientWarning = '';
         this.detail.rx_basis = 'LAST_SUPPLY'; this.detail.rx_document_id = undefined; this.detail.rx_due = '';
         this.detail.rx_note = this.standingNote(!!l.expired, l.rx_date || l.entry_on);
     }
@@ -125,6 +131,104 @@ export class ScheduleDetailComponent implements OnChanges {
         return out.length ? out.join('; ').replace(/^./, (x) => x.toUpperCase()) : '';
     }
 
+    // ------------------------------------------------------------ copying a patient or a doctor, one at a time
+    /** where the patient on the bill came from, shown under the fields with an Undo; empty once someone types over it */
+    patientSrc = '';
+    patientKey = '';
+    private patientUndo: { patient_name: string; patient_age: string; patient_address: string } | null = null;
+    prescriberSrc = '';
+    prescriberKey = '';
+    private prescriberUndo: { prescriber_name: string; prescriber_reg_no: string; prescriber_address: string } | null = null;
+    /** the prescription in use, and whom it is for: another patient chosen later lets it go */
+    usedRxId = 0;
+    usedRxPatient = '';
+    rxPatientWarning = '';
+
+    private norm(v: any): string { return String(v ?? '').replace(/\s+/g, ' ').trim().toUpperCase(); }
+    private short(day: string): string { return day ? new Date(day + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : ''; }
+
+    /** the customer first (from their record), then the other people on their earlier supplies */
+    get patientChips(): { key: string; label: string; name: string; address: string; age: string; source: string }[] {
+        const past: any[] = this.ctx?.patients || [];
+        const out: { key: string; label: string; name: string; address: string; age: string; source: string }[] = [];
+        const cust = this.customerId ? this.customerName : '';
+        if (cust) {
+            const same = past.find((p) => this.norm(p.name) === this.norm(cust));
+            out.push({ key: 'cust', label: 'Customer: ' + cust, name: cust, address: this.customer?.address || same?.address || '', age: same?.age || '', source: 'the customer record' });
+        }
+        past.forEach((p, i) => {
+            if (cust && this.norm(p.name) === this.norm(cust)) return;
+            out.push({ key: 'p' + i, label: p.age ? `${p.name}, ${p.age}` : p.name, name: p.name, address: p.address || '', age: p.age || '', source: 'last supply, ' + this.short(p.last_on) });
+        });
+        return out;
+    }
+
+    get prescriberChips(): { key: string; label: string; name: string; reg_no: string; address: string; source: string }[] {
+        return (this.ctx?.prescribers || []).map((d: any, i: number) => ({
+            key: 'd' + i, label: d.reg_no ? `${d.name} \u00b7 ${d.reg_no}` : d.name, name: d.name, reg_no: d.reg_no || '', address: d.address || '', source: 'last supply, ' + this.short(d.last_on),
+        }));
+    }
+
+    copyPatient(c: { key: string; name: string; address: string; age: string; source: string }) {
+        this.patientUndo = { patient_name: this.detail.patient_name || '', patient_age: this.detail.patient_age || '', patient_address: this.detail.patient_address || '' };
+        this.detail.patient_name = c.name; this.detail.patient_age = c.age; this.detail.patient_address = c.address;
+        this.patientKey = c.key; this.patientSrc = c.source;
+        // a prescription in use belongs to its own patient: another one chosen lets it go
+        if (this.usedRxId && this.usedRxPatient && this.norm(this.usedRxPatient) !== this.norm(c.name)) {
+            this.rxPatientWarning = `The prescription on file is for ${this.usedRxPatient}, not ${c.name}, so it is not attached. Upload one for ${c.name}, or say why there is none.`;
+            this.detached.emit(this.usedRxId);
+            this.usedRxId = 0; this.usedRxPatient = ''; this.usedKey = '';
+            this.detail.rx_basis = ''; this.detail.rx_document_id = undefined; this.detail.rx_note = '';
+        } else this.rxPatientWarning = '';
+    }
+
+    /** someone not offered above: the patient fields are cleared and the cursor goes to the name */
+    patientElse() {
+        this.patientUndo = { patient_name: this.detail.patient_name || '', patient_age: this.detail.patient_age || '', patient_address: this.detail.patient_address || '' };
+        this.detail.patient_name = ''; this.detail.patient_age = ''; this.detail.patient_address = '';
+        this.patientKey = 'else'; this.patientSrc = '';
+        setTimeout(() => (document.querySelector('[data-testid=sd-patient-name]') as HTMLInputElement | null)?.focus());
+    }
+
+    undoPatient() {
+        if (this.patientUndo) Object.assign(this.detail, this.patientUndo);
+        this.patientUndo = null; this.patientKey = ''; this.patientSrc = '';
+    }
+
+    /** typing over a copied value: it is no longer "from" anywhere */
+    patientTyped() { this.patientSrc = ''; this.patientKey = ''; }
+
+    copyPrescriber(c: { key: string; name: string; reg_no: string; address: string; source: string }) {
+        this.prescriberUndo = { prescriber_name: this.detail.prescriber_name || '', prescriber_reg_no: this.detail.prescriber_reg_no || '', prescriber_address: this.detail.prescriber_address || '' };
+        this.detail.prescriber_name = c.name; this.detail.prescriber_reg_no = c.reg_no; this.detail.prescriber_address = c.address;
+        this.prescriberKey = c.key; this.prescriberSrc = c.source; this.suggestions = [];
+    }
+
+    prescriberElse() {
+        this.prescriberUndo = { prescriber_name: this.detail.prescriber_name || '', prescriber_reg_no: this.detail.prescriber_reg_no || '', prescriber_address: this.detail.prescriber_address || '' };
+        this.detail.prescriber_name = ''; this.detail.prescriber_reg_no = ''; this.detail.prescriber_address = '';
+        this.prescriberKey = 'else'; this.prescriberSrc = ''; this.suggestions = [];
+        setTimeout(() => (document.querySelector('[data-testid=sd-prescriber-name]') as HTMLInputElement | null)?.focus());
+    }
+
+    undoPrescriber() {
+        if (this.prescriberUndo) Object.assign(this.detail, this.prescriberUndo);
+        this.prescriberUndo = null; this.prescriberKey = ''; this.prescriberSrc = ''; this.suggestions = [];
+    }
+
+    prescriberTyped() { this.prescriberSrc = ''; this.prescriberKey = ''; }
+
+    /** a prescription on file cannot be taken for a patient picked from the chips when it is someone else's */
+    rxMismatch(p: any): boolean {
+        return !!this.patientKey && this.patientKey !== 'else' && !!p.patient && this.norm(this.detail.patient_name) !== this.norm(p.patient);
+    }
+
+    /** the chips are worked out afresh each time, so the buttons are kept by their key: otherwise they are rebuilt under the pointer and a click is lost */
+    chipKey = (_: number, c: { key: string }) => c.key;
+
+    /** the customer is not on record: there is nothing of theirs to copy */
+    get walkIn(): boolean { return !this.later && !this.customerId && !!this.customerName; }
+
     get names(): string {
         const seen: { [k: string]: boolean } = {};
         return this.drugs.map((d: any) => `${d.title} (${d.more_props?.schedule})`).filter((n) => !seen[n] && (seen[n] = true)).join(', ');
@@ -142,6 +246,7 @@ export class ScheduleDetailComponent implements OnChanges {
         this.detail.prescriber_reg_no = p.reg_no || '';
         this.detail.prescriber_address = p.address || '';
         this.suggestions = [];
+        this.prescriberKey = ''; this.prescriberSrc = '';
     }
 
     get today(): string { return new Date().toISOString().slice(0, 10); }

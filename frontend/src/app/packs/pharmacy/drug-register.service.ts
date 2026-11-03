@@ -10,7 +10,7 @@ export class DrugRegisterService {
 
     config() { return this.http.get<{ required: string[]; since: string; enforce: string[] }>(`${this.api}/config`); }
     /** the prescriptions kept with a customer and the patient and prescriber of their last supplies */
-    customerContext(customerId: number) { return this.http.get<{ prescriptions: any[]; last: any[]; standing_months: number }>(`${this.api}/customer/${customerId}/context`); }
+    customerContext(customerId: number) { return this.http.get<{ prescriptions: any[]; last: any[]; patients?: any[]; prescribers?: any[]; standing_months: number }>(`${this.api}/customer/${customerId}/context`); }
     prescribers(q: string) { return this.http.get<any[]>(`${this.api}/prescribers`, { params: { q } }); }
 
     private params(q: any) {

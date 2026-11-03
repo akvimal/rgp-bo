@@ -5,6 +5,10 @@
             <span *ngIf="enforce || later">The drug register needs the patient and the prescriber{{later ? '' : ' before the bill is completed'}}.</span>
             <span *ngIf="!enforce && !later" data-testid="sd-optional">Optional: the bill can be completed without these. Give them now, or a manager can add them later from the Drug register.</span>
         </div>
+        <!-- the customer is not on record: nothing of theirs to copy -->
+        <div class="border rounded p-2 mb-2 bg-light small" *ngIf="walkIn" data-testid="sd-walkin">
+            <i class="bi bi-person text-muted me-1"></i>{{customerName}} is not on record, so there is nothing to copy. The patient is taken from the name on the bill.
+        </div>
         <!-- a regular customer: what the shop already has, taken with one tap instead of asking again -->
         <div class="border rounded p-2 mb-2 bg-light" *ngIf="ctx && (ctx.prescriptions.length || ctx.last.length)" data-testid="sd-known">
             <div class="small fw-semibold text-muted mb-1">Already on record for {{customerName || 'this customer'}}</div>
@@ -13,7 +17,8 @@
                 <span class="small">Prescription on file: <strong>{{p.doctor || 'doctor not recorded'}}</strong>{{p.date ? ', ' + (p.date | date:'dd MMM yyyy') : ', added ' + (p.added | date:'dd MMM yyyy')}}</span>
                 <span class="small text-muted" *ngIf="!p.expired && p.valid_until" data-testid="sd-valid">valid until {{p.valid_until | date:'dd MMM yyyy'}}</span>
                 <span class="small text-warning-emphasis" *ngIf="p.expired" data-testid="sd-expired">older than {{ctx.standing_months}} months: ask for a fresh one</span>
-                <button type="button" class="btn btn-sm py-0" [ngClass]="warns(p.expired) ? 'btn-outline-warning' : 'btn-outline-primary'" (click)="useRx(p)" data-testid="sd-use-rx">{{warns(p.expired) ? 'Use it anyway' : 'Use it'}}</button>
+                <button type="button" class="btn btn-sm py-0" [ngClass]="warns(p.expired) ? 'btn-outline-warning' : 'btn-outline-primary'" [disabled]="rxMismatch(p)" (click)="useRx(p)" data-testid="sd-use-rx">{{warns(p.expired) ? 'Use it anyway' : 'Use it'}}</button>
+                <span class="small text-muted" *ngIf="rxMismatch(p)" data-testid="sd-rx-mismatch">for {{p.patient}}, not the patient chosen below</span>
                 <span class="small text-success" *ngIf="usedKey === 'rx' + p.id" data-testid="sd-used"><i class="bi bi-check-circle"></i> in use{{later ? '' : ', attached to this bill'}}</span>
             </div>
             <div class="small text-warning-emphasis mb-1" *ngIf="notChronic.length" data-testid="sd-not-chronic"><i class="bi bi-exclamation-triangle"></i> A record on file is meant for repeat supplies of chronic medicines. {{notChronic.join(', ')}} {{notChronic.length === 1 ? 'is' : 'are'}} not marked chronic: ask for a fresh prescription.</div>
@@ -28,27 +33,42 @@
         <div class="row g-2">
             <div class="col-lg-6">
                 <div class="small fw-semibold text-muted mb-1">Patient</div>
-                <div class="row g-2">
-                    <div class="col-8"><input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Patient name *" [(ngModel)]="detail.patient_name" data-testid="sd-patient-name"></div>
-                    <div class="col-4"><input type="text" class="form-control form-control-sm" maxlength="10" placeholder="Age" [(ngModel)]="detail.patient_age" data-testid="sd-patient-age"></div>
-                    <div class="col-12"><input type="text" class="form-control form-control-sm" maxlength="250" placeholder="Patient address *" [(ngModel)]="detail.patient_address" data-testid="sd-patient-address"></div>
+                <div class="d-flex flex-wrap gap-1 mb-2" role="group" aria-label="Copy the patient from" *ngIf="patientChips.length" data-testid="sd-patient-chips">
+                    <button type="button" class="btn btn-sm rounded-pill py-0" *ngFor="let c of patientChips; trackBy: chipKey" [ngClass]="patientKey === c.key ? 'btn-primary' : 'btn-outline-primary'" [attr.aria-pressed]="patientKey === c.key" (click)="copyPatient(c)" data-testid="sd-patient-chip">
+                        <i class="bi bi-check-lg me-1" *ngIf="patientKey === c.key"></i><i class="bi bi-person me-1" *ngIf="patientKey !== c.key && c.key === 'cust'"></i>{{c.label}}</button>
+                    <button type="button" class="btn btn-sm rounded-pill py-0 btn-outline-secondary" [attr.aria-pressed]="patientKey === 'else'" (click)="patientElse()" data-testid="sd-patient-else">Someone else</button>
                 </div>
+                <div class="row g-2">
+                    <div class="col-8"><input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Patient name *" [(ngModel)]="detail.patient_name" (ngModelChange)="patientTyped()" data-testid="sd-patient-name"></div>
+                    <div class="col-4"><input type="text" class="form-control form-control-sm" maxlength="10" placeholder="Age" [(ngModel)]="detail.patient_age" (ngModelChange)="patientTyped()" data-testid="sd-patient-age"></div>
+                    <div class="col-12"><input type="text" class="form-control form-control-sm" maxlength="250" placeholder="Patient address *" [(ngModel)]="detail.patient_address" (ngModelChange)="patientTyped()" data-testid="sd-patient-address"></div>
+                </div>
+                <div class="small text-success mt-1" *ngIf="patientSrc" data-testid="sd-patient-src"><i class="bi bi-check-lg me-1"></i>{{patientKey ? 'Copied from ' : 'Taken from '}}{{patientSrc}}
+                    <a role="button" class="ms-1" (click)="undoPatient()" data-testid="sd-patient-undo"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</a></div>
             </div>
             <div class="col-lg-6">
                 <div class="small fw-semibold text-muted mb-1">Prescriber</div>
+                <div class="d-flex flex-wrap gap-1 mb-2" role="group" aria-label="Copy the doctor from" *ngIf="prescriberChips.length" data-testid="sd-prescriber-chips">
+                    <button type="button" class="btn btn-sm rounded-pill py-0" *ngFor="let c of prescriberChips; trackBy: chipKey" [ngClass]="prescriberKey === c.key ? 'btn-primary' : 'btn-outline-primary'" [attr.aria-pressed]="prescriberKey === c.key" (click)="copyPrescriber(c)" data-testid="sd-prescriber-chip">
+                        <i class="bi bi-check-lg me-1" *ngIf="prescriberKey === c.key"></i>{{c.label}}</button>
+                    <button type="button" class="btn btn-sm rounded-pill py-0 btn-outline-secondary" [attr.aria-pressed]="prescriberKey === 'else'" (click)="prescriberElse()" data-testid="sd-prescriber-else">Another doctor</button>
+                </div>
                 <div class="row g-2">
                     <div class="col-7 position-relative">
-                        <input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Doctor's name *" [(ngModel)]="detail.prescriber_name" (input)="search()" autocomplete="off" data-testid="sd-prescriber-name">
+                        <input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Doctor's name *" [(ngModel)]="detail.prescriber_name" (ngModelChange)="prescriberTyped()" (input)="search()" autocomplete="off" data-testid="sd-prescriber-name">
                         <div class="list-group position-absolute w-100 shadow-sm" style="z-index:20" *ngIf="suggestions.length" data-testid="sd-suggestions">
                             <button type="button" class="list-group-item list-group-item-action py-1 small" *ngFor="let p of suggestions" (click)="pick(p)">{{p.name}}<span class="text-muted" *ngIf="p.reg_no"> &middot; {{p.reg_no}}</span></button>
                         </div>
                     </div>
-                    <div class="col-5"><input type="text" class="form-control form-control-sm" maxlength="40" placeholder="Registration no" [(ngModel)]="detail.prescriber_reg_no" data-testid="sd-prescriber-reg"></div>
-                    <div class="col-8"><input type="text" class="form-control form-control-sm" maxlength="200" placeholder="Clinic or address" [(ngModel)]="detail.prescriber_address" data-testid="sd-prescriber-address"></div>
+                    <div class="col-5"><input type="text" class="form-control form-control-sm" maxlength="40" placeholder="Registration no" [(ngModel)]="detail.prescriber_reg_no" (ngModelChange)="prescriberTyped()" data-testid="sd-prescriber-reg"></div>
+                    <div class="col-8"><input type="text" class="form-control form-control-sm" maxlength="200" placeholder="Clinic or address" [(ngModel)]="detail.prescriber_address" (ngModelChange)="prescriberTyped()" data-testid="sd-prescriber-address"></div>
                     <div class="col-4"><input type="date" class="form-control form-control-sm" [max]="today" title="Date on the prescription" [(ngModel)]="detail.rx_date" data-testid="sd-rx-date"></div>
                 </div>
+                <div class="small text-success mt-1" *ngIf="prescriberSrc" data-testid="sd-prescriber-src"><i class="bi bi-check-lg me-1"></i>Copied from {{prescriberSrc}}
+                    <a role="button" class="ms-1" (click)="undoPrescriber()" data-testid="sd-prescriber-undo"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo</a></div>
             </div>
         </div>
+        <div class="alert alert-warning py-2 mt-2 mb-0 small" *ngIf="rxPatientWarning" data-testid="sd-rx-let-go"><i class="bi bi-exclamation-triangle me-1"></i>{{rxPatientWarning}}</div>
         <div class="small text-danger mt-2" *ngIf="problems.length && (enforce || later)" data-testid="sd-problems">To {{later ? 'save the register entry' : 'complete this bill'}}, give {{problems.join(', ')}}.</div>
         <div class="small text-warning-emphasis mt-2" *ngIf="problems.length && !enforce && !later" data-testid="sd-pending"><i class="bi bi-info-circle"></i> Not given yet: {{problems.join(', ')}}. The bill will be listed in the Drug register as missing them until they are added.</div>
         <div class="small text-success mt-2" *ngIf="!problems.length" data-testid="sd-ok"><i class="bi bi-check-circle"></i> The register entry is ready.</div>
