@@ -69,6 +69,10 @@ import { Store } from "./store.entity";
     @Column("boolean", { name: "bill_show_return_note", default: true })
     showreturnnote: boolean;
 
+    /** the "Change password" link on the sign-in page (on) */
+    @Column("boolean", { name: "login_show_change_password", default: true })
+    showchangepasswordlink: boolean;
+
     /** the words of that line; empty means the standard wording */
     @Column("character varying", { name: "bill_return_note", length: 300, nullable: true })
     returnnote: string | null;

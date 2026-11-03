@@ -1,4 +1,4 @@
-<app-auth-shell [platform]="platform" [title]="title">
+<app-auth-shell [platform]="platform" [title]="title" (showChangePassword)="showChangePasswordLink = $event">
   <form *ngIf="step === 'password'" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="d-grid gap-3">
     <div>
       <label for="email" class="form-label">Username</label>
@@ -18,7 +18,7 @@
 
     <button class="btn btn-primary" type="submit" data-testid="login-submit" [disabled]="!form.valid">{{platform ? 'Sign in to platform' : 'Sign in'}}</button>
 
-    <div class="text-center small">
+    <div class="text-center small" *ngIf="platform || showChangePasswordLink">
       <a routerLink="/changepassword" [queryParams]="platform ? {scope: 'platform'} : null" data-testid="login-changepw-link">Change password</a>
     </div>
   </form>

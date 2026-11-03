@@ -9,10 +9,13 @@ function serviceWith(rows: any[]): BusinessService {
 
 describe('sign-in brand', () => {
   it('one business: its name and logo', async () => {
-    expect(await serviceWith([{ name: 'Ramesh Generic Pharmacy', logo: 'data:image/png;base64,AAAA' }]).publicBrand()).toEqual({ name: 'Ramesh Generic Pharmacy', logo: 'data:image/png;base64,AAAA' });
+    expect(await serviceWith([{ name: 'Ramesh Generic Pharmacy', logo: 'data:image/png;base64,AAAA' }]).publicBrand()).toEqual({ name: 'Ramesh Generic Pharmacy', logo: 'data:image/png;base64,AAAA', showchangepassword: true });
   });
   it('one business without a logo: the name and no logo', async () => {
-    expect(await serviceWith([{ name: 'Sri Medicals', logo: null }]).publicBrand()).toEqual({ name: 'Sri Medicals', logo: null });
+    expect(await serviceWith([{ name: 'Sri Medicals', logo: null, login_show_change_password: true }]).publicBrand()).toEqual({ name: 'Sri Medicals', logo: null, showchangepassword: true });
+  });
+  it('the change-password link switched off', async () => {
+    expect((await serviceWith([{ name: 'Sri Medicals', logo: null, login_show_change_password: false }]).publicBrand()).showchangepassword).toBe(false);
   });
   it('several businesses: nothing, so the page keeps its default', async () => {
     expect(await serviceWith([{ name: 'A', logo: null }, { name: 'B', logo: null }]).publicBrand()).toEqual({});

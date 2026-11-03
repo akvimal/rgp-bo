@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewEncapsulation } from "@angular/core";
+import { Component, EventEmitter, Input, OnInit, Output, ViewEncapsulation } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "../../../../environments/environment";
 
@@ -55,20 +55,24 @@ export class AuthShellComponent implements OnInit {
   @Input() title = "";
 
   /** the business's own name and logo; the last ones seen are kept in this browser so the page does not flash the default first */
-  brand: { name: string; logo: string | null } = { name: "Ramesh Generic Pharmacy", logo: null };
+  brand: { name: string; logo: string | null; showChangePassword?: boolean } = { name: "Ramesh Generic Pharmacy", logo: null };
+  /** tells the page whether the business shows the "Change password" link on sign-in */
+  @Output() showChangePassword = new EventEmitter<boolean>();
 
   constructor(private http: HttpClient) {
     try {
       const saved = JSON.parse(localStorage.getItem("rgp.brand") || "null");
-      if (saved?.name) this.brand = { name: String(saved.name), logo: typeof saved.logo === "string" ? saved.logo : null };
+      if (saved?.name) this.brand = { name: String(saved.name), logo: typeof saved.logo === "string" ? saved.logo : null, showChangePassword: saved.showChangePassword !== false };
     } catch { /* the default is used */ }
   }
 
   ngOnInit() {
     if (this.platform) return;
-    this.http.get<{ name?: string; logo?: string | null }>(`${environment.apiHost}/brand`).subscribe(b => {
+    if (this.brand.showChangePassword === false) setTimeout(() => this.showChangePassword.emit(false));
+    this.http.get<{ name?: string; logo?: string | null; showchangepassword?: boolean }>(`${environment.apiHost}/brand`).subscribe(b => {
       if (!b?.name) return;                       // several businesses on one install: keep the default
-      this.brand = { name: b.name, logo: b.logo || null };
+      this.brand = { name: b.name, logo: b.logo || null, showChangePassword: b.showchangepassword !== false };
+      this.showChangePassword.emit(this.brand.showChangePassword !== false);
       try { localStorage.setItem("rgp.brand", JSON.stringify(this.brand)); } catch { /* not remembered */ }
     }, () => { /* the default stays */ });
   }
