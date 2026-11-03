@@ -100,6 +100,9 @@
                   <h4 class="icon" *ngIf="isActionAllowed('Edit',s)">
                     <a [routerLink]="['../pos/edit',s.id]" title="Edit"><i class="bi bi-pencil"></i></a>
                   </h4>
+                  <h4 class="icon text-danger" *ngIf="canVoid(s)" title="Void: rung up by mistake">
+                    <i class="bi bi-x-octagon" (click)="openVoid(s)" data-testid="bill-void-row"></i>
+                  </h4>
                   <h4 class="icon" *ngIf="isActionAllowed('Return',s)">
                     <i class="bi bi-arrow-return-left" title="Return" (click)="showReturn(s.id)"></i>
                   </h4>
@@ -225,6 +228,19 @@
     <button type="button" class="btn btn-outline-danger me-auto" *ngIf="checkOf(checkSale || {})" (click)="undoCheck()" [disabled]="checkSaving" data-testid="digi-undo">Remove the check</button>
     <button type="button" class="btn btn-outline-secondary" (click)="closeCheck()">Cancel</button>
     <button type="button" class="btn btn-primary ms-2" (click)="saveCheck()" [disabled]="checkSaving" data-testid="digi-save">Save</button>
+  </ng-template>
+</p-dialog>
+
+<p-dialog [header]="'Void bill ' + (voidSale?.billno || '')" [visible]="!!voidSale" (visibleChange)="!$event && closeVoid()" [modal]="true" [style]="{width: '32rem'}">
+  <div *ngIf="voidSale">
+    <label class="form-label fw-semibold" for="vs-reason">Why is this bill being voided?</label>
+    <input id="vs-reason" class="form-control" maxlength="200" [(ngModel)]="voidReason" placeholder="e.g. rung up twice, wrong customer" data-testid="void-reason">
+    <p class="small text-muted mt-2 mb-0">The stock goes back, the shift's cash is corrected and the bill stays on record as voided. This cannot be undone.</p>
+    <div class="text-danger mt-2" *ngIf="voidError" data-testid="void-error">{{voidError}}</div>
+  </div>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-outline-secondary" (click)="closeVoid()" [disabled]="voidBusy">Keep it</button>
+    <button type="button" class="btn btn-danger ms-2" (click)="saveVoid()" [disabled]="voidBusy" data-testid="void-confirm">Void bill</button>
   </ng-template>
 </p-dialog>
 

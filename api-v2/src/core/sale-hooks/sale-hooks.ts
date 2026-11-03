@@ -21,6 +21,7 @@ export interface SaleContext {
   actingUserId?: number | null;
 }
 export interface SavedSaleContext extends SaleContext { saved: any; items: any[]; }
+export interface VoidedSaleContext { manager: EntityManager; saleId: number; storeId: number | null; userId: number; reason: string; }
 
 export interface SaleHook {
   name: string;
@@ -28,6 +29,8 @@ export interface SaleHook {
   module?: ModuleKey;
   check?(ctx: SaleContext): Promise<void>;
   saved?(ctx: SavedSaleContext): Promise<void>;
+  /** runs inside the transaction that voids a bill: what the pack wrote for it is marked as withdrawn */
+  voided?(ctx: VoidedSaleContext): Promise<void>;
 }
 
 @Injectable()
@@ -60,6 +63,10 @@ export class SaleHooks {
 
   async check(ctx: SaleContext) {
     for (const h of this.hooks) if (h.check && (await this.active(h, ctx.storeId))) await h.check(ctx);
+  }
+
+  async voided(ctx: VoidedSaleContext) {
+    for (const h of this.hooks) if (h.voided && (await this.active(h, ctx.storeId))) await h.voided(ctx);
   }
 
   async saved(ctx: SavedSaleContext) {

@@ -130,10 +130,24 @@
     </div>
   </ng-template>
 </div>
+<div class="alert alert-danger non-print" *ngIf="sale.status === 'VOID'" data-testid="bill-voided">This bill was voided: it does not count as a sale.</div>
+<div class="card border-danger non-print mb-3" *ngIf="voiding" data-testid="bill-void-form">
+  <div class="card-body">
+    <label class="form-label fw-semibold" for="void-reason">Why is this bill being voided?</label>
+    <input id="void-reason" class="form-control" maxlength="200" [(ngModel)]="voidReason" placeholder="e.g. rung up twice, wrong customer" data-testid="bill-void-reason">
+    <div class="small text-muted mt-2">The stock goes back, the shift's cash is corrected and the bill stays on record as voided. This cannot be undone.</div>
+    <div class="text-danger mt-2" *ngIf="voidError" data-testid="bill-void-error">{{voidError}}</div>
+    <div class="mt-3">
+      <button type="button" class="btn btn-danger" [disabled]="voidBusy" (click)="confirmVoid()" data-testid="bill-void-confirm">Void this bill</button>
+      <button type="button" class="btn btn-outline-secondary ms-2" [disabled]="voidBusy" (click)="voiding = false">Keep it</button>
+    </div>
+  </div>
+</div>
 <div class="d-flex justify-content-evenly non-print bill-actions" style="text-align:center">
     <a class="btn btn-primary" role="button" [routerLink]="['/secure/sales/pos']">New Sale</a>
     <a class="btn btn-success" style="font-size:larger;padding-left:3em;padding-right:3em" role="button" onclick="javascript:window.print();return false;" data-testid="bill-print">
         <i class="bi bi-printer"></i>&nbsp;&nbsp;Print
     </a>
     <a class="btn btn-outline-primary" role="button" [routerLink]="['/secure/sales/list']">Sales</a>
+    <button type="button" class="btn btn-outline-danger" *ngIf="canVoid && !voiding" (click)="voiding = true" data-testid="bill-void">Void bill</button>
 </div>

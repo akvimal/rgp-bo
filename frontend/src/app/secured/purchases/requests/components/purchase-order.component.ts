@@ -82,6 +82,32 @@ export class PurchaseOrderComponent implements OnDestroy {
         });
     }
 
+    /** vendors with more than one open draft: the drafts can be folded into the oldest */
+    get mergeGroups(): { vendorname: string; target: any; others: any[] }[] {
+        const byVendor = new Map<any, any[]>();
+        this.orders.filter((o: any) => o.status === 'PENDING').forEach((o: any) => {
+            const list = byVendor.get(o.vendorid) || [];
+            list.push(o);
+            byVendor.set(o.vendorid, list);
+        });
+        return Array.from(byVendor.values()).filter((l) => l.length > 1).map((l) => {
+            const sorted = [...l].sort((a, b) => a.id - b.id);
+            return { vendorname: sorted[0].vendorname, target: sorted[0], others: sorted.slice(1) };
+        });
+    }
+
+    merging = false;
+    mergeError = '';
+
+    mergeDrafts(group: { target: any; others: any[] }) {
+        this.merging = true;
+        this.mergeError = '';
+        this.service.merge(group.target.id, group.others.map((o: any) => o.id)).subscribe({
+            next: () => { this.merging = false; this.service.notifyChanged(); },
+            error: (err: any) => { this.merging = false; this.mergeError = err?.error?.message || 'The drafts could not be merged.'; }
+        });
+    }
+
     open(order: any) {
         this.router.navigate(['/secure/purchases/orders', order.id]);
     }

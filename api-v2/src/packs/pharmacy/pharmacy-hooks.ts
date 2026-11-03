@@ -38,4 +38,5 @@ export const drugRegisterHook = (register: DrugRegisterService): SaleHook => ({
   module: 'drug_register',
   check: (ctx) => register.check(ctx),
   saved: (ctx) => register.saved(ctx),
+  voided: (ctx) => register.voided(ctx),
 });

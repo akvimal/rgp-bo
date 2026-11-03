@@ -41,6 +41,11 @@ export class PurchaseOrderService {
         return this.http.put(`${this.apiurl}/${id}`,order);
     }
 
+    /** fold other drafts of the same vendor into `targetid` */
+    merge(targetid:number, sourceids:number[]){
+        return this.http.post(`${this.apiurl}/merge`, { targetid, sourceids });
+    }
+
     submit(id:number){
         return this.http.post(`${this.apiurl}/${id}/submit`, {});
     }

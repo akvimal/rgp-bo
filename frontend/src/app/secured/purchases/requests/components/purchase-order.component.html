@@ -13,6 +13,12 @@
             <option *ngFor="let f of statusFilters" [value]="f.value">{{f.label}}</option>
           </select>
         </div>
+        <div class="alert alert-warning py-2 mb-2 small" *ngFor="let g of mergeGroups" data-testid="po-merge">
+          <strong>{{g.vendorname}}</strong> has {{g.others.length + 1}} open drafts:
+          <ng-container *ngFor="let o of [g.target].concat(g.others); last as isLast">#{{o.ponumber || o.id}}{{isLast ? '' : ', '}}</ng-container>.
+          <button type="button" class="btn btn-sm btn-outline-dark ms-2" [disabled]="merging" (click)="mergeDrafts(g)" data-testid="po-merge-go">Merge into #{{g.target.ponumber || g.target.id}}</button>
+        </div>
+        <div class="alert alert-danger py-2 mb-2 small" *ngIf="mergeError">{{mergeError}}</div>
         <p-table
           [value]="rows"
           [paginator]="true"

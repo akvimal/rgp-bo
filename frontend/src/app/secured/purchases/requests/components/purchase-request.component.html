@@ -34,6 +34,8 @@
           <td>{{request.priority}}</td>
           <td>
             {{request.status}}
+            <a class="badge bg-secondary ms-1 text-decoration-none" *ngIf="request.status === 'Ordered' && request.po?.status === 'PENDING'" [routerLink]="['/secure/purchases/orders', request.po.id]" title="On a draft order: not sent to the vendor yet. Deleting the draft frees this request." data-testid="req-on-draft">on draft #{{request.po.id}}</a>
+            <a class="badge bg-info text-dark ms-1 text-decoration-none" *ngIf="request.status === 'Ordered' && request.po && request.po.status !== 'PENDING'" [routerLink]="['/secure/purchases/orders', request.po.id]" data-testid="req-on-po">PO #{{request.po.id}}</a>
             <span class="small text-muted" *ngIf="request.status === 'Ordered' && request.fulfilledqty > 0" data-testid="req-progress">({{request.fulfilledqty}} of {{request.orderedqty || request.qty}} in)</span>
             <span class="badge bg-success ms-1" *ngIf="request.status === 'Received' && request.customername" title="The stock has come in: tell the customer, then close the request" data-testid="req-tell-customer">Tell {{request.customername}}<span *ngIf="request.customerphone"> &middot; {{request.customerphone}}</span></span>
           </td>

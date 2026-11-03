@@ -39,6 +39,7 @@
         <input class="form-control" type="text" [(ngModel)]="comments">
       </div>
       <div class="col-md-6 col-lg-4 text-end">
+        <label class="form-check small me-3 d-inline-block text-start" title="If the vendor already has a draft order, the items go on it instead of a second draft"><input class="form-check-input me-1" type="checkbox" [(ngModel)]="addToDraft" data-testid="reo-add-to-draft">Add to the vendor's open draft</label>
         <button class="btn btn-primary" (click)="createOrders()">Create Orders From Selected ({{selectedCount()}})</button>
       </div>
     </div>
@@ -50,32 +51,51 @@
       They cannot be ordered from here until each is linked to a product, whatever vendor is set.
       <a routerLink="/secure/purchases/requests" data-testid="reo-unlinked-go">Link them in Requests</a>
     </div>
-    <div class="mt-3 text-success" *ngIf="feedback">{{feedback}}</div>
+    <div class="mt-3 text-success" *ngIf="feedback" data-testid="reo-created">{{feedback}}
+      <ng-container *ngFor="let o of createdOrders; last as isLast"><a [routerLink]="['/secure/purchases/orders', o.id]" data-testid="reo-created-link">#{{o.id}} {{o.vendorname}}</a>{{isLast ? '' : ', '}}</ng-container>
+      <span class="text-muted" *ngIf="createdOrders.length"> (open the Orders tab to review and submit)</span>
+    </div>
   </div>
 </div>
 
-<p-table [value]="suggestions" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines mt-3">
+<div class="d-flex flex-wrap gap-2 align-items-center mt-3" data-testid="reo-view">
+  <div class="input-group" style="max-width:22rem;">
+    <span class="input-group-text"><i class="bi bi-search"></i></span>
+    <input class="form-control" type="text" [(ngModel)]="search" (ngModelChange)="applyView()" placeholder="Product, vendor or reason" aria-label="Search products" data-testid="reo-search">
+  </div>
+  <select class="form-select" style="max-width:14rem;" [(ngModel)]="show" (ngModelChange)="applyView()" aria-label="Show" data-testid="reo-show">
+    <option *ngFor="let o of showOptions" [value]="o.value">{{o.label}}</option>
+  </select>
+  <span class="small text-muted" data-testid="reo-count">{{view.length}} of {{suggestions.length}}</span>
+</div>
+
+<p-table [value]="view" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines mt-3">
   <ng-template pTemplate="header">
     <tr>
       <th></th>
-      <th>Product</th>
-      <th>Vendor</th>
-      <th class="text-end">Stock</th>
-      <th class="text-end" title="The product's minimum stock">Min</th>
-      <th class="text-end">Sales {{days}}d</th>
-      <th class="text-end">Stock Days</th>
-      <th class="text-end" title="How this time of year went against the days before it, in the last two years">Season</th>
-      <th class="text-end" title="Expected sales over the target days">Expected</th>
-      <th class="text-end">Trend Qty</th>
-      <th class="text-end">Ad-hoc Qty</th>
-      <th class="text-end">Final Qty</th>
-      <th>Reasons</th>
+      <th pSortableColumn="title">Product <p-sortIcon field="title"></p-sortIcon></th>
+      <th pSortableColumn="vendor_name">Vendor <p-sortIcon field="vendor_name"></p-sortIcon></th>
+      <th class="text-end" pSortableColumn="available_stock">Stock <p-sortIcon field="available_stock"></p-sortIcon></th>
+      <th class="text-end" title="The product's minimum stock" pSortableColumn="min_stock">Min <p-sortIcon field="min_stock"></p-sortIcon></th>
+      <th class="text-end" pSortableColumn="sales_qty">Sales {{days}}d <p-sortIcon field="sales_qty"></p-sortIcon></th>
+      <th class="text-end" pSortableColumn="stock_days_left">Stock Days <p-sortIcon field="stock_days_left"></p-sortIcon></th>
+      <th class="text-end" title="How this time of year went against the days before it, in the last two years" pSortableColumn="season_factor">Season <p-sortIcon field="season_factor"></p-sortIcon></th>
+      <th class="text-end" title="Expected sales over the target days" pSortableColumn="forecast_qty">Expected <p-sortIcon field="forecast_qty"></p-sortIcon></th>
+      <th class="text-end" pSortableColumn="trend_qty">Trend Qty <p-sortIcon field="trend_qty"></p-sortIcon></th>
+      <th class="text-end" pSortableColumn="adhoc_qty">Ad-hoc Qty <p-sortIcon field="adhoc_qty"></p-sortIcon></th>
+      <th class="text-end" pSortableColumn="final_qty">Final Qty <p-sortIcon field="final_qty"></p-sortIcon></th>
+      <th pSortableColumn="reason_summary">Reasons <p-sortIcon field="reason_summary"></p-sortIcon></th>
     </tr>
   </ng-template>
   <ng-template pTemplate="body" let-item>
     <tr>
       <td><input type="checkbox" [(ngModel)]="item.selected"></td>
-      <td>{{item.title}}</td>
+      <td>{{item.title}}
+        <div class="small mt-1" *ngIf="item.on_order_qty > 0" data-testid="reo-on-order">
+          <span class="badge" [ngClass]="item.on_order_draft ? 'bg-secondary' : 'bg-success'" title="This quantity is already counted: it is not suggested again">{{item.on_order_draft ? 'On draft' : 'On order'}}: {{item.on_order_qty}}</span>
+          <ng-container *ngFor="let id of item.order_ids"> <a [routerLink]="['/secure/purchases/orders', id]">#{{id}}</a></ng-container>
+        </div>
+      </td>
       <td>
         <ng-container *ngIf="item.vendor_id; else pickVendor">{{item.vendor_name}}</ng-container>
         <ng-template #pickVendor>

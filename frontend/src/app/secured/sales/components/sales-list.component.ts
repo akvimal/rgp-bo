@@ -2,6 +2,7 @@ import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { Component, OnDestroy } from "@angular/core";
 import { DateUtilService } from "../../date-util.service";
 import { Sale } from "../models/sale.model";
+import { canVoidBill, signedInUserId } from "../bill-void";
 import { SaleService } from "../sales.service";
 import { Subscription } from "rxjs";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
@@ -274,6 +275,28 @@ export class SalesListComponent implements OnDestroy {
         const {id} = customer;
         // this.criteria.customer = id || 0;
         this.fetchSales({customer:id});
+      }
+
+      voidSale:any = null;
+      voidReason = '';
+      voidBusy = false;
+      voidError = '';
+
+      /** a completed bill of the shift that is open now, rung by this person (or any, for a manager) */
+      canVoid(sale:any):boolean{
+        return canVoidBill(sale, this.shiftContext.openShift?.id, this.auth.isActionAuthorized('sales.void'), signedInUserId());
+      }
+
+      openVoid(sale:any){ this.voidSale = sale; this.voidReason = ''; this.voidError = ''; }
+      closeVoid(){ this.voidSale = null; }
+      saveVoid(){
+        this.voidError = '';
+        if(this.voidReason.trim().length < 3){ this.voidError = 'Say why the bill is being voided.'; return; }
+        this.voidBusy = true;
+        this.service.voidBill(this.voidSale.id, this.voidReason.trim()).subscribe({
+          next: () => { this.voidBusy = false; this.voidSale = null; this.fetchSales(); },
+          error: (err:any) => { this.voidBusy = false; this.voidError = err?.error?.message || 'The bill could not be voided.'; }
+        });
       }
 
       isActionAllowed(action:string,sale:any){

@@ -1304,7 +1304,7 @@ export class StoreService {
     const raw = await this.cashAccountRepository.createQueryBuilder("ledger")
       .select("COALESCE(SUM(ledger.deposit), 0)", "deposit")
       .addSelect("COALESCE(SUM(ledger.withdraw), 0)", "withdraw")
-      .addSelect("COALESCE(SUM(CASE WHEN ledger.category = 'SALE' THEN ledger.deposit ELSE 0 END), 0)", "salescash")
+      .addSelect("COALESCE(SUM(CASE WHEN ledger.category = 'SALE' THEN ledger.deposit WHEN ledger.category = 'SALE_VOID' THEN -ledger.withdraw ELSE 0 END), 0)", "salescash")
       .addSelect("COALESCE(SUM(CASE WHEN ledger.category IN ('EXPENSE', 'REFUND', 'BANK_DEPOSIT') THEN ledger.withdraw ELSE 0 END), 0)", "outcash")
       .where("ledger.shift_id = :shiftid", { shiftid })
       .getRawOne();
