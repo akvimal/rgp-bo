@@ -346,6 +346,12 @@ export class SaleFormComponent {
         }
     }
 
+    // set before the copy below: the payload is built from the bill as it stands, so these have to be on it by then
+    // (they were set after it, which sent no documents, no prescription or patient details, no serving person and no store)
+    this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {})};
+    this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
+    this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
+
     // the payload is a copy: a failed save must leave the form's own customer in place (it used to be nulled here, which broke the form)
     const obj:any = {...this.sale};
 
@@ -361,10 +367,6 @@ export class SaleFormComponent {
         this.sale.customer['name'] = String(this.sale.customer['name'] || '').toUpperCase();
     }
     
-    this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {})};
-    this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
-    this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
-
     this.service.save({...obj, billdate:new Date(), status, checkbatches:true, ackwarnings:this.ackWarnings} as any).subscribe((data:any) => {
       this.ackWarnings = false;
       if (data.status === 'COMPLETE') this.operatorContext.afterBill();
