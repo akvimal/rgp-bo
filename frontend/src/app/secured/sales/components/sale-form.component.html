@@ -79,8 +79,15 @@
     </div>
 </div>
 
+<div class="alert alert-warning py-2 mb-2 small" *ngIf="mixedGstItems.length" data-testid="sale-gst-mixed">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    {{ mixedGstItems.length === 1 ? 'This product has' : 'These products have' }} batches at different GST ({{ mixedGstItems[0].title }}{{ mixedGstItems.length > 1 ? ' and ' + (mixedGstItems.length - 1) + ' more' : '' }}),
+    and no rate change covers them, so each batch bills at its own rate. If the rate has changed for all stock, enter it under
+    <a routerLink="/secure/gst-filing">GST &rsaquo; Rate changes</a>.
+</div>
+
 <!-- Pharmacy pack: the patient and the prescriber for scheduled drugs -->
-<app-schedule-detail *ngIf="scheduledItems.length" [detail]="scheduleDetail" [drugs]="scheduledItems" [customer]="sale.customer" [enforce]="enforcedHere" [documents]="documents" (uploaded)="onPrescriptionUploaded($event)"></app-schedule-detail>
+<app-schedule-detail *ngIf="scheduledItems.length" [detail]="scheduleDetail" [drugs]="scheduledItems" [customer]="sale.customer" [enforce]="enforcedHere" [documents]="documents" (uploaded)="onPrescriptionUploaded($event)" (detached)="removeDocument($event)"></app-schedule-detail>
 
 <!-- Payment and total -->
 <div class="card mb-2" *ngIf="sale.items && sale.items.length > 0" data-testid="sale-pay-card">
