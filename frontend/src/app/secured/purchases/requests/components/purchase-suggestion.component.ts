@@ -1,6 +1,7 @@
 import { Component, OnDestroy } from "@angular/core";
 import { Subscription } from "rxjs";
 import { StoreContextService } from "src/app/@core/store-context.service";
+import { PurchaseOrderService } from "../purchase-order.service";
 import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 import { VendorsService } from "../../vendors/vendors.service";
 
@@ -25,10 +26,26 @@ export class PurchaseSuggestionComponent implements OnDestroy {
     expecteddate:string = '';
     comments:string = '';
     feedback:string = '';
+    /** what the table shows: the suggestions narrowed by the search and the "show" choice */
+    view:any[] = [];
+    search:string = '';
+    show:string = 'all';
+    showOptions = [
+        { value: 'all', label: 'All products' },
+        { value: 'toorder', label: 'Needs ordering' },
+        { value: 'onorder', label: 'Already on an order' },
+        { value: 'novendor', label: 'No vendor yet' },
+        { value: 'selected', label: 'Ticked' }
+    ];
+    /** the orders just made, to link to them */
+    createdOrders:any[] = [];
+    /** put the items on the vendor's open draft rather than starting a second one */
+    addToDraft:boolean = true;
 
     constructor(
         private requestService: PurchaseIntentService,
         private vendorService: VendorsService,
+        private orderService: PurchaseOrderService,
         private storeContext: StoreContextService
     ) {}
 
@@ -49,8 +66,9 @@ export class PurchaseSuggestionComponent implements OnDestroy {
         this.fetchSuggestions();
     }
 
-    fetchSuggestions(){
-        this.feedback = '';
+    /** `keepMessage`: reloading after orders were made must not wipe the message that says where they went (it used to vanish at once) */
+    fetchSuggestions(keepMessage = false){
+        if(!keepMessage){ this.feedback = ''; this.createdOrders = []; }
         const params:any = {
             days: this.days,
             targetdays: this.targetdays,
@@ -68,6 +86,22 @@ export class PurchaseSuggestionComponent implements OnDestroy {
         }, () => { this.unlinked = []; });
         this.requestService.findSuggestions(params).subscribe((data:any) => {
             this.suggestions = (data || []).map((item:any) => ({ ...item, selected: false }));
+            this.applyView();
+        });
+    }
+
+    /** the search looks in the product, the vendor and the reasons; "show" narrows by what needs doing */
+    applyView(){
+        const q = `${this.search || ''}`.trim().toLowerCase();
+        this.view = this.suggestions.filter((i:any) => {
+            if(q && ![i.title, i.vendor_name, i.reason_summary].some((v:any) => `${v || ''}`.toLowerCase().includes(q))) return false;
+            switch(this.show){
+                case 'toorder': return +i.final_qty > 0;
+                case 'onorder': return +i.on_order_qty > 0;
+                case 'novendor': return !i.vendor_id;
+                case 'selected': return !!i.selected;
+                default: return true;
+            }
         });
     }
 
@@ -101,11 +135,16 @@ export class PurchaseSuggestionComponent implements OnDestroy {
         this.requestService.createOrdersFromSuggestions({
             expecteddate: this.expecteddate || null,
             comments: this.comments || null,
+            adddraft: this.addToDraft,
             items
         }).subscribe((result:any) => {
-            const ids = (result.orders || []).map((order:any) => `#${order.id}`).join(', ');
-            this.feedback = `Created ${result.created} order(s) ${ids}`;
-            this.fetchSuggestions();
+            this.createdOrders = result.orders || [];
+            const added = this.createdOrders.filter((o:any) => o.reused).length;
+            this.feedback = added
+                ? `${this.createdOrders.length - added} new draft(s) and ${added} existing draft(s) updated:`
+                : `Created ${result.created} draft order(s):`;
+            this.orderService.notifyChanged();          // the Orders tab is on this page: it shows the new draft now
+            this.fetchSuggestions(true);
         });
     }
 }

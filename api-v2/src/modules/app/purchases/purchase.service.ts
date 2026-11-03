@@ -525,6 +525,12 @@ export class PurchaseService {
                 union
                 select product_id from open_manual_requests
                 union
+                -- products already on an order that has not been received: listed too, so the screen can say so
+                select pr.product_id from purchase_request pr
+                  join purchase_order po on po.id = pr.order_id and po.active = true
+                 where pr.active = true and pr.archive = false and pr.status = 'Ordered' and pr.product_id is not null
+                   and po.status in ('PENDING', 'PENDING_APPROVAL', 'SUBMITTED')
+                union
                 select product_id from season where coalesce(ly1_next, 0) + coalesce(ly2_next, 0) > 0
                 union
                 select id from product where coalesce(min_stock, 0) > 0
@@ -589,8 +595,29 @@ export class PurchaseService {
             order by f.priority_rank desc, final_qty desc, f.title
         `, [days, targetDays, vendorFilter, storeFilter, slowDays, seasonal]);
 
+        // what is already on an order that has not been received: counted against the need, and shown on the row, so the same product is not ordered twice
+        const onOrder = await this.manager.query(`
+            select pr.product_id, sum(greatest(coalesce(pr.ordered_qty, pr.qty) - coalesce(pr.fulfilled_qty, 0), 0))::int as qty,
+                   array_agg(distinct po.id order by po.id) as order_ids, bool_or(po.status = 'PENDING') as in_draft
+              from purchase_request pr
+              join purchase_order po on po.id = pr.order_id and po.active = true
+             where pr.active = true and pr.archive = false and pr.status = 'Ordered' and pr.product_id is not null
+               and po.status in ('PENDING', 'PENDING_APPROVAL', 'SUBMITTED')
+             group by pr.product_id`);
+        const onOrderBy = new Map<number, any>(onOrder.map((o:any) => [+o.product_id, o]));
+
         return rows
             .map((row:any) => {
+                const ord = onOrderBy.get(+row.product_id);
+                if(ord){
+                    row.on_order_qty = +ord.qty;
+                    row.order_ids = ord.order_ids;
+                    row.on_order_draft = !!ord.in_draft;
+                    row.trend_qty = Math.max(0, +row.trend_qty - +ord.qty);
+                    row.final_qty = +row.trend_qty + +row.adhoc_qty;
+                } else {
+                    row.on_order_qty = 0; row.order_ids = []; row.on_order_draft = false;
+                }
                 const reasons:string[] = [];
                 const stock = +row.available_stock;
                 if(+row.trend_qty > 0){
@@ -638,7 +665,7 @@ export class PurchaseService {
                     reason_summary: reasons.join(', ')
                 };
             })
-            .filter((row:any) => (query.includezero === 'true') || row.final_qty > 0);
+            .filter((row:any) => (query.includezero === 'true') || row.final_qty > 0 || row.on_order_qty > 0);
     }
 
     async createOrdersFromSuggestions(dto:any, userid:number){
@@ -663,16 +690,30 @@ export class PurchaseService {
                 const vendor = await this.vendorRepository.findOne({ where: { id: vendorid, isActive: true, isArchived: false }});
                 const sourceSummary = Array.from(new Set(vendorItems.map((item:any) => item.reasonsummary).filter(Boolean))).join(' | ');
                 const orderRepo = transactionManager.getRepository(PurchaseOrder);
-                const order = await orderRepo.save(orderRepo.create({
-                    vendorid,
-                    status: 'PENDING',
-                    comments: dto.comments || 'Generated from purchase suggestions',
-                    expecteddate: dto.expecteddate || null,
-                    sourcesummary: sourceSummary || 'Generated from purchase suggestions',
-                    ponumber: undefined,
-                    createdby: userid,
-                    updatedby: userid
-                }));
+                // adddraft: put the items on the vendor's open draft (the latest) instead of starting another one
+                let order:any = null;
+                let reused = false;
+                if(dto.adddraft){
+                    order = await orderRepo.findOne({ where: { vendorid, status: 'PENDING', isActive: true }, order: { id: 'DESC' } });
+                    if(order){
+                        reused = true;
+                        if(sourceSummary && !`${order.sourcesummary || ''}`.includes(sourceSummary)){
+                            await orderRepo.update(order.id, { sourcesummary: [order.sourcesummary, sourceSummary].filter(Boolean).join(' | '), updatedby: userid });
+                        }
+                    }
+                }
+                if(!order){
+                    order = await orderRepo.save(orderRepo.create({
+                        vendorid,
+                        status: 'PENDING',
+                        comments: dto.comments || 'Generated from purchase suggestions',
+                        expecteddate: dto.expecteddate || null,
+                        sourcesummary: sourceSummary || 'Generated from purchase suggestions',
+                        ponumber: undefined,
+                        createdby: userid,
+                        updatedby: userid
+                    }));
+                }
 
                 const orderRequests:number[] = [];
 
@@ -720,6 +761,7 @@ export class PurchaseService {
 
                 createdOrders.push({
                     id: order.id,
+                    reused,
                     vendorid,
                     vendorname: vendor?.name || '',
                     requestids: orderRequests
@@ -730,6 +772,37 @@ export class PurchaseService {
                 created: createdOrders.length,
                 orders: createdOrders
             };
+        });
+    }
+
+    /**
+     * Folds draft orders of one vendor into one: the items of the others move to `targetid` and the others are removed.
+     * Only drafts (PENDING), all of the same vendor; a submitted order is never touched.
+     */
+    async mergeDraftOrders(targetid:number, sourceids:number[], userid:number){
+        const sources = Array.from(new Set((sourceids || []).map((i:any) => +i).filter((i:number) => i > 0 && i !== +targetid)));
+        if(!(+targetid > 0) || sources.length === 0){
+            throw new BadRequestException('Choose the order to keep and at least one other draft to fold into it.');
+        }
+        return this.manager.transaction(async (tx) => {
+            const rows = await tx.query(
+                `select id, vendor_id, status, active, source_summary, comments from purchase_order where id = any($1::int[]) for update`, [[+targetid, ...sources]]);
+            const byId = new Map<number, any>(rows.map((r:any) => [+r.id, r]));
+            const target = byId.get(+targetid);
+            if(!target || !target.active) throw new BadRequestException('The order to keep was not found.');
+            for(const id of [+targetid, ...sources]){
+                const o = byId.get(id);
+                if(!o || !o.active) throw new BadRequestException(`Order #${id} was not found.`);
+                if(o.status !== 'PENDING') throw new BadRequestException(`Order #${id} is not a draft (${o.status}): only drafts can be merged.`);
+                if(+o.vendor_id !== +target.vendor_id) throw new BadRequestException(`Order #${id} is for another vendor: only drafts of the same vendor can be merged.`);
+            }
+            const moved = await tx.query(
+                `update purchase_request set order_id = $1, updated_by = $3 where order_id = any($2::int[]) and active = true returning id`, [+targetid, sources, userid]);
+            const summaries = sources.map((id) => byId.get(id)?.source_summary).filter(Boolean);
+            const merged = Array.from(new Set([target.source_summary, ...summaries].filter(Boolean))).join(' | ');
+            await tx.query(`update purchase_order set source_summary = $2, updated_by = $3 where id = $1`, [+targetid, merged || null, userid]);
+            await tx.query(`update purchase_order set active = false, comments = coalesce(comments || ' ', '') || '(merged into #' || $2::text || ')', updated_by = $3 where id = any($1::int[])`, [sources, +targetid, userid]);
+            return { id: +targetid, merged: sources, moved: moved.length };
         });
     }
 

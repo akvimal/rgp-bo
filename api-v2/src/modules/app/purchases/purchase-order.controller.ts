@@ -61,6 +61,12 @@ export class PurchaseOrderController {
     return this.service.rejectOrder(+id, body?.reason || '', currentUser.id);
   }
 
+  /** fold several drafts of one vendor into one: { targetid, sourceids: [...] } */
+  @Post('merge')
+  async merge(@Body() body: any, @User() currentUser: any) {
+    return this.service.mergeDraftOrders(+body?.targetid, body?.sourceids || [], currentUser.id);
+  }
+
   @Delete(':id')
   async remove(@Param('id') id: string, @User() currentUser: any) {
     const order = await this.service.findOrderById(id);
