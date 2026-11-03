@@ -88,8 +88,13 @@ export class PurchaseSuggestionComponent implements OnDestroy {
                 reasonsummary: item.reason_summary
             }));
 
+        const noVendor = this.suggestions.filter((item:any) => item.selected && item.final_qty > 0 && !item.vendor_id).length;
         if(items.length === 0){
-            this.feedback = 'Select at least one suggestion with a vendor and a positive final quantity.';
+            this.feedback = noVendor ? 'Choose a vendor for the selected product(s) first.' : 'Select at least one suggestion with a positive final quantity.';
+            return;
+        }
+        if(noVendor){
+            this.feedback = `${noVendor} selected product(s) have no vendor yet. Choose a vendor for them, or untick them.`;
             return;
         }
 

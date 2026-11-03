@@ -67,6 +67,6 @@ export class PurchaseOrderController {
     if (order && order.status && order.status !== 'PENDING') {
       throw new BadRequestException(`Only a draft (PENDING) purchase order can be deleted; this one is ${order.status}.`);
     }
-    return this.service.updateOrder(id, {isActive:false}, currentUser.id);
+    return this.service.deleteOrder(id, currentUser.id);
   }
 }

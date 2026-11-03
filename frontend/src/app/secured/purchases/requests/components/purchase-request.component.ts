@@ -158,6 +158,11 @@ export class PurchaseRequestComponent {
         this.requestService.update(request.id, { status: 'Reviewed' }).subscribe(() => this.fetchRequests());
     }
 
+    /** the stock has come in and whoever asked has been told */
+    markClosed(request:any){
+        this.requestService.update(request.id, { status: 'Closed' }).subscribe(() => this.fetchRequests());
+    }
+
     remove(request:any){
         this.confirm.confirmDelete(request?.product?.title || request?.requestedname, () => {
             this.requestService.remove(request.id).subscribe(() => this.fetchRequests());
