@@ -296,8 +296,8 @@ export class PurchaseService {
     }
 
     /**
-     * Deletes a draft order and frees what was on it. A request somebody raised goes back to Reviewed so it can be ordered
-     * again; a line the Reorder screen made up only for this order is removed with it (it would otherwise be counted twice).
+     * Deletes a draft order and frees what was on it. A request somebody raised goes back to Open (as it was before it was put on the
+     * order) so it can be reviewed and ordered again; a line the Reorder screen made up only for this order is removed with it (it would otherwise be counted twice).
      */
     async deleteOrder(id: number | string, userid: number) {
         return this.manager.transaction(async (tx) => {
@@ -305,7 +305,7 @@ export class PurchaseService {
                 `update purchase_request set active = false, updated_by = $2
                   where order_id = $1 and source = 'System' and source_ref = 'purchase-suggestions'`, [+id, userid]);
             await tx.query(
-                `update purchase_request set status = 'Reviewed', order_id = null, ordered_qty = null, updated_by = $2
+                `update purchase_request set status = 'Open', order_id = null, ordered_qty = null, updated_by = $2
                   where order_id = $1 and active = true and status = 'Ordered'`, [+id, userid]);
             return tx.getRepository(PurchaseOrder).update(id, {isActive: false, updatedby: userid});
         });

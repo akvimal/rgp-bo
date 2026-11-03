@@ -92,14 +92,14 @@ test.describe('Reorder and draft orders @p1', () => {
     expect(refused.body.message).toContain('not a draft');
   });
 
-  test('RD-4 deleting a draft frees its items: the request is Reviewed again and the product is back on Reorder @edge', async ({ api }) => {
+  test('RD-4 deleting a draft frees its items: the request is Open again and the product is back on Reorder @edge', async ({ api }) => {
     const [v] = await vendors(api);
     const w = await wanted(api, v);
     const order = await orderIt(api, w);
     expect((await suggestion(api, w.productid)).on_order_qty).toBeGreaterThan(0);
     expect((await api.request('DELETE', `/purchaseorders/${order.id}`, undefined, MGR)).status).toBeLessThan(300);
     const r = await request(api, w.requestid);
-    expect(r.status).toBe('Reviewed');
+    expect(r.status).toBe('Open');
     expect(r.orderid ?? null).toBeNull();
     const back = await suggestion(api, w.productid);
     expect(back.on_order_qty).toBe(0);
