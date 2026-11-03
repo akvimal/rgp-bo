@@ -146,7 +146,11 @@ export class StockService {
                     -- the most a unit may be priced before GST so that price + GST does not exceed the MRP; sent to the till, which may not see the MRP itself
                     floor(((pii.mrp_cost::numeric / nullif(p.pack, 0)) / (1 + public.gst_sale_rate(p.id, pii.tax_pcnt::double precision, current_date)::numeric / 100)) * 100) / 100 as price_ceiling,
                     -- the GST the till bills for this product today (a change of rate by date, GST > Rate changes), the batch's own GST when none applies
-                    public.gst_sale_rate(p.id, pii.tax_pcnt::double precision, current_date) as sale_tax
+                    public.gst_sale_rate(p.id, pii.tax_pcnt::double precision, current_date) as sale_tax,
+                    -- batches of this product that still bill at different GST today (no rate change in force brings them together): the till says so
+                    case when exists (select 1 from purchase_invoice_item x where x.product_id = p.id and x.active and not x.archive and x.tax_pcnt is distinct from pii.tax_pcnt)
+                         then (select count(distinct public.gst_sale_rate(p.id, x.tax_pcnt::double precision, current_date)) > 1 from purchase_invoice_item x where x.product_id = p.id and x.active and not x.archive and x.tax_pcnt is not null)
+                         else false end as gst_mixed
                 from product p
                 inner join purchase_invoice_item pii
                     on pii.product_id = p.id
@@ -195,10 +199,15 @@ export class StockService {
             if (!ids || ids.length === 0) return [];
             const placeholders = ids.map((_, index) => `$${index + 1}`).join(',');
             return await this.manager.query(`
-            select piv.*, public.gst_sale_rate(piv.id, piv.tax_pcnt::double precision, current_date) as sale_tax, p.more_props, pp.sale_price from product_items_view piv
+            select distinct on (piv.id) piv.*, public.gst_sale_rate(piv.id, piv.tax_pcnt::double precision, current_date) as sale_tax,
+                case when exists (select 1 from purchase_invoice_item x where x.product_id = piv.id and x.active and not x.archive and x.tax_pcnt is distinct from piv.tax_pcnt)
+                     then (select count(distinct public.gst_sale_rate(piv.id, x.tax_pcnt::double precision, current_date)) > 1 from purchase_invoice_item x where x.product_id = piv.id and x.active and not x.archive and x.tax_pcnt is not null)
+                     else false end as gst_mixed,
+                p.more_props, pp.sale_price from product_items_view piv
             inner join product p on p.id = piv.id and p.id in (${placeholders})
-            left join product_price2 pp on pp.product_id = piv.id where piv.expired = false and piv.balance > 0
-            order by piv.exp_date asc`, ids);
+            left join product_price2 pp on pp.product_id = piv.id and pp.end_date > current_date and pp.active = true and pp.archive = false
+            where piv.expired = false and piv.balance > 0
+            order by piv.id, piv.exp_date asc`, ids);
         }
 
         // async findAvailableQty(prodid:number, batch:string, expdate:string){

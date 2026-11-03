@@ -81,8 +81,13 @@ export class SaleFormComponent {
           
           this.service.findItemsWithAvailableQty(+saleId).subscribe((items:any) => {
             result['items'] = items.map((element:any) => {
-              return {...element, edited:true, title: element.product_title, 
-                taxpcnt: element.product_taxpcnt,
+              // the GST is today's rate for the product, not the batch's own (product_taxpcnt) nor what the line was saved at (tax_pcnt): a held bill
+              // reopened after a change of rate used to come back at the old batch rate. A line whose rate moves is totalled again.
+              const rate = element.sale_tax !== undefined && element.sale_tax !== null ? +element.sale_tax : +element.product_taxpcnt;
+              const moved = Math.abs(rate - (+element.tax_pcnt || 0)) >= 0.005;
+              return {...element, edited:true, title: element.product_title,
+                taxpcnt: rate,
+                total: moved ? this.helper.lineTotal(+element.qty, +element.price, rate) : element.total,
                 mrpcost: (element.mrp/element.product_pack),
                 expdate: element.product_expdate,
                 unitsbal: element.available - element.product_pack,
@@ -346,6 +351,12 @@ export class SaleFormComponent {
         }
     }
 
+    // set before the copy below: the payload is built from the bill as it stands, so these have to be on it by then
+    // (they were set after it, which sent no documents, no prescription or patient details, no serving person and no store)
+    this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {})};
+    this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
+    this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
+
     // the payload is a copy: a failed save must leave the form's own customer in place (it used to be nulled here, which broke the form)
     const obj:any = {...this.sale};
 
@@ -361,10 +372,6 @@ export class SaleFormComponent {
         this.sale.customer['name'] = String(this.sale.customer['name'] || '').toUpperCase();
     }
     
-    this.sale.props = {documents: this.documents, ...(this.scheduledItems.length ? {scheduledetail: this.scheduleDetail} : {})};
-    this.sale['actinguserid'] = this.operatorContext.selectedOperatorId || this.sale['actinguserid'];
-    this.sale['storeid'] = this.storeContext.selectedStoreId || this.sale['storeid'];
-
     this.service.save({...obj, billdate:new Date(), status, checkbatches:true, ackwarnings:this.ackWarnings} as any).subscribe((data:any) => {
       this.ackWarnings = false;
       if (data.status === 'COMPLETE') this.operatorContext.afterBill();
@@ -372,6 +379,11 @@ export class SaleFormComponent {
       this.service.refreshSavedSales();
     }, (err:any) => {
       this.ackWarnings = false;
+      if(err?.status === 409 && err?.error?.code === 'GST_RATE_CHANGED'){
+        this.applyCurrentGst(err.error.lines || []);
+        this.submitError = err.error.message || "The GST rate has changed. The bill has been updated: check the total and complete it again.";
+        return;
+      }
       if(err?.status === 409 && err?.error?.code === 'SALE_WARNINGS'){
         this.batchWarnings = err.error;
         return;
@@ -379,6 +391,22 @@ export class SaleFormComponent {
       const m = err?.error?.message;
       this.submitError = Array.isArray(m) ? m.join(' ') : (m || 'Could not save the bill.');
     });
+  }
+
+  /** the server found lines at a rate other than today's: take its rate on each, total them again, and let the person check the bill */
+  applyCurrentGst(lines:{itemid:number; current:number}[]){
+    lines.forEach((l) => {
+      this.sale.items?.filter((i:any) => i.itemid === l.itemid).forEach((i:any) => {
+        i.taxpcnt = l.current;
+        i.total = this.helper.lineTotal(+i.qty, +i.price, l.current);
+      });
+    });
+    this.recalculateTotal();
+  }
+
+  /** products on the bill whose batches still bill at different GST today: no rate change brings them together */
+  get mixedGstItems(): any[] {
+    return (this.sale.items || []).filter((i:any) => i.edited && i.gst_mixed);
   }
 
   redirectAfterSubmit(status:string,id:number){
@@ -471,8 +499,8 @@ export class SaleFormComponent {
   }
 
   removeDocument(id:number){
-    const index = this.documents.indexOf((d:any) => d.id == id);
-    this.documents.splice(index,1)
+    const index = this.documents.findIndex((d:any) => d.id == id);     // indexOf with a function never matched, so the last document was removed instead
+    if(index >= 0) this.documents.splice(index,1)
   }
 
   isDocumentRequiredOnSale() {

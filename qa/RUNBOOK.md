@@ -73,3 +73,7 @@ non-duplicate title). Their specs are flipped to assert the fix.
 | [142](https://github.com/akvimal/rgp-bo/issues/142) | Second open shift per store allowed | CASH-4 | `store.service.createShift` rejects if an OPEN shift exists |
 
 Not a bug (recorded as behaviour): duplicate vendor name/GST is blocked with HTTP 409 (`VEND-2`).
+
+## Settings the suite expects
+
+`pricing/sale_mrp_guard` and `pricing/sale_gst_guard` are `off` on the QA database: many specs and the seed post bills at the batch's own GST rate, which the GST guard (migration 149) would send back. `gst-sale-rate.spec.ts` (GSTS-1..4) and `price-policy.spec.ts` switch the guard they test on for themselves and put it back.

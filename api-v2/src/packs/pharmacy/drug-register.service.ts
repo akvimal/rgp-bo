@@ -7,7 +7,7 @@ import { businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole } from 'src/core/roles';
 import { SaleContext, SavedSaleContext } from 'src/core/sale-hooks/sale-hooks';
 import {
-  Rx, RX_LABELS, Schedule, SCHEDULES, ScheduledProduct, detailProblems, draftEntries, normaliseDetail, normaliseRx, parseRequired, parseStandingMonths, requiredLines, rxProblems, scheduledLines, schedulesOf, serialLabel, standingState,
+  Rx, RX_LABELS, Schedule, SCHEDULES, ScheduledProduct, detailProblems, distinctPatients, distinctPrescribers, draftEntries, normaliseDetail, normaliseRx, parseRequired, parseStandingMonths, requiredLines, rxProblems, scheduledLines, schedulesOf, serialLabel, standingState,
 } from './drug-register-rules';
 import { NIL_MOBILE } from 'src/modules/app/customers/customer-rules';
 import { buildRegisterPdf } from './drug-register-pdf';
@@ -205,7 +205,7 @@ export class DrugRegisterService {
   async customerContext(user: any, customerId: number) {
     const businessId = await businessOfUser(this.manager, user.id);
     const months = await this.standingMonths();
-    if (!businessId || !(Number(customerId) > 0)) return { prescriptions: [], last: [], standing_months: months };
+    if (!businessId || !(Number(customerId) > 0)) return { prescriptions: [], last: [], patients: [], prescribers: [], standing_months: months };
     await this.settleFollowups();
     const docs = await this.manager.query(
       `select d.id, d.doc_name as name, d.doc_path as path, d.alias, d.category, d.doc_props, to_char(d.created_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as added
@@ -234,7 +234,14 @@ export class DrugRegisterService {
           where s.customer_id = $1 and r.business_id = $2 and r.superseded_on is null
           order by upper(r.patient_name), upper(r.prescriber_name), r.entry_on desc) x
         order by x.at desc limit 3`, [customerId, businessId]);
-    return { prescriptions, standing_months: months, last: last.map(({ at, ...rest }: any) => ({ ...rest, ...standingState(rest.rx_date || rest.entry_on, istDay(), months) })) };
+    // the people on this customer's earlier supplies, for the chips on the bill (their own records only)
+    const earlier = await this.manager.query(
+      `select r.patient_name, r.patient_address, r.patient_age, r.prescriber_name, r.prescriber_reg_no, r.prescriber_address,
+              to_char(r.entry_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as entry_on
+         from schedule_register r join sale s on s.id = r.sale_id
+        where s.customer_id = $1 and r.business_id = $2 and r.superseded_on is null
+        order by r.entry_on desc limit 60`, [customerId, businessId]);
+    return { prescriptions, patients: distinctPatients(earlier), prescribers: distinctPrescribers(earlier), standing_months: months, last: last.map(({ at, ...rest }: any) => ({ ...rest, ...standingState(rest.rx_date || rest.entry_on, istDay(), months) })) };
   }
 
   /**

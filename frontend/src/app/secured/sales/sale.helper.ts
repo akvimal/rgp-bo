@@ -6,6 +6,12 @@ import { SaleItem } from "./models/sale-item.model";
 })
 export class SaleHelper {
 
+    /** a line's total: quantity at the price before GST, plus the GST */
+    lineTotal(qty:number, price:number, tax:number):number{
+        const total = (+qty || 0) * (+price || 0) * (1 + (+tax || 0) / 100);
+        return isNaN(total) ? 0 : +total.toFixed(2);
+    }
+
     mapStockToSaleItem(source:any,editable:boolean){
         const output = source;
         if(source){
@@ -22,7 +28,8 @@ export class SaleHelper {
             if (capped) { listPrice = ceiling as number; }
             const price = listPrice.toFixed(2);
             // const total = ((+price * (1 + (source.tax_pcnt/100))) * source.pack).toFixed(2);
-            const total = (+price * source.pack).toFixed(2);
+            // the line as it is added carries its GST (a line copied from an earlier bill used to be added without it, until its units were touched)
+            const total = this.lineTotal(source.pack, +price, taxpcnt).toFixed(2);
             output.itemid = source.item_id;
             output.product_id = source.id;
             output.title = source.title;

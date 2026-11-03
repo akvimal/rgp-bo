@@ -1,6 +1,6 @@
 import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
 import { ModulesService } from "src/core/modules/modules.service";
-import { BadRequestException, ForbiddenException, HttpException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, HttpException, Injectable, ConflictException } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { recordStaffCredit } from "./staff-credit-rule";
 import { recordStoreCredit, settleReturn } from "./store-credit-rule";
@@ -8,6 +8,7 @@ import { EntityManager } from "typeorm";
 import { loadStoreProfile } from "../store/store-profile";
 import { returnRules } from "./return-rule";
 import { BatchMrp, overMrp, overMrpMessage } from "./mrp-guard";
+import { staleGst, staleGstMessage, CurrentGst } from "./gst-guard";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
 import { CreateSaleReturnItemDto } from "./dto/create-salereturnitem.dto";
@@ -312,6 +313,21 @@ export class SaleService {
                     if (over.length) throw new BadRequestException(overMrpMessage(over));
                 }
             }
+            // the GST charged is the rate in force today for the product, not the rate of the batch it came from (kill switch: pricing/sale_gst_guard = off).
+            // A bill that carries another rate is sent back with the right one on each line, so the till can correct it and the person can check the total.
+            const gstLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
+            if (gstLines.length) {
+                const [gg] = await transactionManager.query(`select setting_value from app_setting where setting_key = 'sale_gst_guard' and active and not archive limit 1`);
+                if (String(gg?.setting_value ?? 'on').toLowerCase() !== 'off') {
+                    const rateRows = await transactionManager.query(
+                        `select pii.id, p.title, public.gst_sale_rate(p.id, pii.tax_pcnt::double precision, current_date) as rate
+                           from purchase_invoice_item pii join product p on p.id = pii.product_id where pii.id = any($1::int[])`,
+                        [gstLines.map((i: any) => Number(i.itemid))]);
+                    const today = new Map<number, CurrentGst>(rateRows.map((r: any) => [Number(r.id), { title: r.title, rate: Number(r.rate) }]));
+                    const stale = staleGst(gstLines.map((i: any) => ({ itemid: Number(i.itemid), taxpcnt: Number(i.taxpcnt || 0), qty: Number(i.qty) })), today);
+                    if (stale.length) throw new ConflictException({ code: 'GST_RATE_CHANGED', message: staleGstMessage(stale), lines: stale });
+                }
+            }
             const positiveLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
             if (positiveLines.length) {
                 // available at this store = batch qty (only where it was received into this
@@ -458,7 +474,8 @@ export class SaleService {
     }
 
     async findSaleItemsForSaleWithAvailableQty(id:number){
-        const query = `select si.*, iv.* from sale_item si
+        // sale_tax: the GST in force today for the product (what the till bills), beside product_taxpcnt (the batch's own) and tax_pcnt (what this line was saved at)
+        const query = `select si.*, iv.*, public.gst_sale_rate(iv.product_id, iv.product_taxpcnt::double precision, current_date) as sale_tax from sale_item si
         inner join inventory_view iv on iv.purchase_itemid = si.purchase_item_id
         inner join sale s on s.id = si.sale_id
         where s.id = $1`;
