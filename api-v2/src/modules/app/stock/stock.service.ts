@@ -95,8 +95,8 @@ export class StockService {
 
             if(Object.prototype.hasOwnProperty.call(criteria, 'expired')){
                 conditions.push(criteria['expired']
-                    ? 'pii.exp_date < current_date + 30'
-                    : '(pii.exp_date is null or pii.exp_date >= current_date + 30)');
+                    ? 'public.expiry_end(pii.exp_date) < current_date + 30'
+                    : '(pii.exp_date is null or public.expiry_end(pii.exp_date) >= current_date + 30)');
             }
 
             if(criteria['id']){
@@ -136,7 +136,7 @@ export class StockService {
                     pii.tax_pcnt,
                     pii.mrp_cost,
                     sold.last_sale_date,
-                    (pii.exp_date < current_date + 30) as expired,
+                    (public.expiry_end(pii.exp_date) < current_date + 30) as expired,
                     ${purchasedExpr} as purchased,
                     sold.sold,
                     adjusted.adjusted,

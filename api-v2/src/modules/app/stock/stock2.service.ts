@@ -24,7 +24,7 @@ export class Stock2Service {
         const rows = await this.manager.query(
             `select count(distinct item_id)::int as count
              from product_items_view
-             where active = true and balance > 0 and exp_date <= current_date + ($1 || ' days')::interval`,
+             where active = true and balance > 0 and public.expiry_end(exp_date) <= current_date + ($1 || ' days')::interval`,
             [days],
         );
         return { count: Number(rows?.[0]?.count || 0), days };
@@ -33,8 +33,8 @@ export class Stock2Service {
     async findAll(criteria:any) {
         const expired = criteria.expired === true;
         const expiryCondition = expired
-            ? 'pii.exp_date < current_date + 30'
-            : '(pii.exp_date is null or pii.exp_date >= current_date + 30)';
+            ? 'public.expiry_end(pii.exp_date) < current_date + 30'
+            : '(pii.exp_date is null or public.expiry_end(pii.exp_date) >= current_date + 30)';
         const availableCondition = criteria.available
             ? `having sum(
                     (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
