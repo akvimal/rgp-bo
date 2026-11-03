@@ -67,7 +67,7 @@
         <app-sale-form-items [items]="sale.items"
             (itemRemoved)="onItemRemoved($event)"
             (itemAdded)="onItemAdd($event)" (itemUpdated)="onItemUpdate($event)">
-            <ng-container *isAuth="'purchases.read'">
+            <ng-container *ngIf="auth.isActionAuthorized('purchases.read') || auth.isActionAuthorized('purchases.request')">
                 <button type="button" class="btn btn-link btn-sm p-0" (click)="requestVisible = true" data-testid="pos-request-product">
                     <i class="bi bi-bag-plus"></i> Request a product we don't have
                 </button>
