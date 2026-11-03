@@ -296,8 +296,8 @@ export class PurchaseService {
     }
 
     /**
-     * Deletes a draft order and frees what was on it. A request somebody raised goes back to Reviewed so it can be ordered
-     * again; a line the Reorder screen made up only for this order is removed with it (it would otherwise be counted twice).
+     * Deletes a draft order and frees what was on it. A request somebody raised goes back to Open (as it was before it was put on the
+     * order) so it can be reviewed and ordered again; a line the Reorder screen made up only for this order is removed with it (it would otherwise be counted twice).
      */
     async deleteOrder(id: number | string, userid: number) {
         return this.manager.transaction(async (tx) => {
@@ -305,9 +305,37 @@ export class PurchaseService {
                 `update purchase_request set active = false, updated_by = $2
                   where order_id = $1 and source = 'System' and source_ref = 'purchase-suggestions'`, [+id, userid]);
             await tx.query(
-                `update purchase_request set status = 'Reviewed', order_id = null, ordered_qty = null, updated_by = $2
+                `update purchase_request set status = 'Open', order_id = null, ordered_qty = null, updated_by = $2
                   where order_id = $1 and active = true and status = 'Ordered'`, [+id, userid]);
             return tx.getRepository(PurchaseOrder).update(id, {isActive: false, updatedby: userid});
+        });
+    }
+
+    /**
+     * Cancels (voids) an order that was sent or is waiting for approval, as long as no purchase invoice is linked to it. The order stays on record as
+     * CANCELLED with who and why; what was on it is freed as when a draft is deleted: a request goes back to Open, a line the Reorder screen made up is removed.
+     */
+    async cancelOrder(id: number | string, reason: string, userid: number) {
+        const why = `${reason ?? ''}`.trim();
+        if(why.length < 3) throw new BadRequestException('Say why the order is being cancelled.');
+        return this.manager.transaction(async (tx) => {
+            const [po] = await tx.query(`select id, status, active, po_number from purchase_order where id = $1 for update`, [+id]);
+            if(!po || !po.active) throw new BadRequestException('Order not found.');
+            if(po.status === 'CANCELLED') throw new BadRequestException('This order is already cancelled.');
+            if(po.status === 'PENDING') throw new BadRequestException('A draft is deleted, not cancelled.');
+            const [{ n: invoices }] = await tx.query(
+                `select count(*)::int as n from purchase_invoice where purchase_order_id = $1::text and active = true and archive = false`, [+id]);
+            if(invoices > 0) throw new BadRequestException(`A purchase invoice is linked to this order (${invoices}), so it cannot be cancelled. Remove or unlink the invoice first.`);
+            await tx.query(
+                `update purchase_request set active = false, updated_by = $2
+                  where order_id = $1 and source = 'System' and source_ref = 'purchase-suggestions'`, [+id, userid]);
+            await tx.query(
+                `update purchase_request set status = 'Open', order_id = null, ordered_qty = null, updated_by = $2
+                  where order_id = $1 and active = true and status = 'Ordered'`, [+id, userid]);
+            await tx.query(
+                `update purchase_order set status = 'CANCELLED', cancelled_on = now(), cancelled_by = $2, cancel_reason = $3, updated_by = $2, updated_on = now() where id = $1`,
+                [+id, userid, why]);
+            return { id: +id, status: 'CANCELLED', ponumber: po.po_number };
         });
     }
 
@@ -359,6 +387,7 @@ export class PurchaseService {
     }
 
     async approveOrder(id:number, userid:number){
+        await this.assertNotCancelled(id);
         await this.orderRepository.update(id, {
             status: 'SUBMITTED',
             approvalstatus: 'Approved',
@@ -372,7 +401,13 @@ export class PurchaseService {
         return this.findOrderById(`${id}`);
     }
 
+    private async assertNotCancelled(id:number){
+        const [po] = await this.manager.query(`select status from purchase_order where id = $1`, [+id]);
+        if(po?.status === 'CANCELLED') throw new BadRequestException('This order was cancelled.');
+    }
+
     async rejectOrder(id:number, reason:string, userid:number){
+        await this.assertNotCancelled(id);
         await this.orderRepository.update(id, {
             status: 'REJECTED',
             approvalstatus: 'Rejected',

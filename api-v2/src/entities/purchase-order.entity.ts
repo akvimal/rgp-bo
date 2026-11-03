@@ -61,6 +61,15 @@ import { PurchaseRequest } from "./purchase-request.entity";
     @Column("character varying", { name: "rejection_reason", nullable: true, length: 400 })
     rejectionreason: string | null;
   
+    @Column("timestamptz", { name: "cancelled_on", nullable: true })
+    cancelledon: Date | null;
+
+    @Column("integer", { name: "cancelled_by", nullable: true })
+    cancelledby: number | null;
+
+    @Column("text", { name: "cancel_reason", nullable: true })
+    cancelreason: string | null;
+
     @Column("integer", { name: "vendor_id" })
     vendorid: number;
 

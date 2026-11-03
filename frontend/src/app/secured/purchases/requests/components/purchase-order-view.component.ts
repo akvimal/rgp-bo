@@ -144,6 +144,28 @@ export class PurchaseOrderViewComponent {
         });
     }
 
+    cancelOpen = false;
+    cancelReason = '';
+    cancelBusy = false;
+    cancelError = '';
+
+    /** a sent order (or one waiting for approval or turned down) can be cancelled while no invoice is linked to it */
+    get canCancel(): boolean {
+        return ['PENDING_APPROVAL', 'SUBMITTED', 'REJECTED'].includes(this.order?.status);
+    }
+
+    openCancel(){ this.cancelOpen = true; this.cancelReason = ''; this.cancelError = ''; }
+
+    confirmCancel(){
+        this.cancelError = '';
+        if(this.cancelReason.trim().length < 3){ this.cancelError = 'Say why the order is being cancelled.'; return; }
+        this.cancelBusy = true;
+        this.service.cancel(this.order.id, this.cancelReason.trim()).subscribe({
+            next: () => { this.cancelBusy = false; this.cancelOpen = false; this.changed(); },
+            error: (e) => { this.cancelBusy = false; this.cancelError = e?.error?.message || 'The order could not be cancelled.'; }
+        });
+    }
+
     /** an unsent order that is no longer wanted */
     deleteOrder(){
         this.confirm.confirmDelete(`PO ${this.order.ponumber || this.order.id}`, () => {
