@@ -37,7 +37,7 @@ export class SaleSuggestionService {
                               where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED' and pq.active = true and pq.archive = false and pq.store_id = $2), 0))::int as available
            from purchase_invoice_item pii join purchase_invoice i on i.id = pii.invoice_id join product p on p.id = pii.product_id
           where pii.product_id = any($1::int[]) and pii.status = 'VERIFIED' and pii.active = true and pii.archive = false and p.active = true and p.archive = false
-            and (pii.exp_date is null or pii.exp_date >= current_date + ${MIN_SHELF_DAYS})
+            and (pii.exp_date is null or public.expiry_end(pii.exp_date) >= current_date + ${MIN_SHELF_DAYS})
           order by pii.product_id, pii.exp_date nulls last, pii.id) x
        where x.available > 0 ${withRestricted ? '' : "and coalesce(x.more_props->>'schedule', '') <> 'H1'"}`, [productIds, storeId]);
   }

@@ -75,7 +75,7 @@ export async function findBatchWarnings(manager: EntityManager, sale: any, store
        join purchase_invoice i on i.id = pii.invoice_id
        join product p on p.id = pii.product_id
       where pii.product_id = any($1::int[]) and pii.status = 'VERIFIED' and pii.active = true and pii.archive = false
-        and pii.exp_date is not null and pii.exp_date >= current_date`, [productIds, storeId]);
+        and pii.exp_date is not null and public.expiry_end(pii.exp_date) >= current_date`, [productIds, storeId]);
 
   // what this very bill takes from each batch, so a batch it empties is not "still in stock"
   const taking = new Map<number, number>();

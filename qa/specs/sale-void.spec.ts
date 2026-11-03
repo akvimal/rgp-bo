@@ -82,16 +82,20 @@ test.describe('Voiding a bill @p1', () => {
   });
 
   test('VOID-3 a bill of a closed shift, or a held bill, cannot be voided @edge', async ({ api }) => {
-    const sales = (await api.request('GET', '/sales?limit=200', undefined, MGR)).body;
-    const list = ((sales.data || sales) as any[]).filter((x) => x.status === 'COMPLETE' && x.shiftid);
     const closedShift = new Map<number, boolean>();
     let old: any = null;
-    for (const s of list) {
-      if (!closedShift.has(s.shiftid)) {
-        const sh = (await api.request('GET', `/store-cash/shifts/${s.shiftid}/summary`, undefined, MGR)).body;
-        closedShift.set(s.shiftid, `${sh?.shift?.status}`.toUpperCase() === 'CLOSED');
+    // newer bills are all on the shift that is open now: page back until one from a closed shift turns up
+    for (let page = 1; page <= 12 && !old; page++) {
+      const res = (await api.request('GET', `/sales?limit=200&page=${page}`, undefined, MGR)).body;
+      const list = ((res.data || res) as any[]).filter((x) => x.status === 'COMPLETE' && x.shiftid);
+      if (!list.length) break;
+      for (const s of list) {
+        if (!closedShift.has(s.shiftid)) {
+          const sh = (await api.request('GET', `/store-cash/shifts/${s.shiftid}/summary`, undefined, MGR)).body;
+          closedShift.set(s.shiftid, `${sh?.shift?.status}`.toUpperCase() === 'CLOSED');
+        }
+        if (closedShift.get(s.shiftid)) { old = s; break; }
       }
-      if (closedShift.get(s.shiftid)) { old = s; break; }
     }
     expect(old, 'a completed bill of a closed shift').toBeTruthy();
     const closed = await api.request('POST', `/sales/${old.id}/void`, { reason: 'too late' }, MGR);

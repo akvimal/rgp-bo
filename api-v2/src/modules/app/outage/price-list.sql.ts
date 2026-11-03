@@ -16,7 +16,7 @@ with sold as (
     join product p on p.id = pii.product_id and p.active and p.pack > 0
     left join sold s on s.purchase_item_id = pii.id
     left join adj a on a.item_id = pii.id
-   where pii.active and not pii.archive and pii.mrp_cost > 0 and (pii.exp_date is null or pii.exp_date >= current_date)
+   where pii.active and not pii.archive and pii.mrp_cost > 0 and (pii.exp_date is null or public.expiry_end(pii.exp_date) >= current_date)
 ), agg as (
   select product_id,
          min(mrp_cost) filter (where units > 0) as min_mrp,

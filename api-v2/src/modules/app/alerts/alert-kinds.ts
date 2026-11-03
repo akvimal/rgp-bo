@@ -331,7 +331,7 @@ export const KINDS: AlertKind[] = [
     async evaluate(ctx, p) {
       const [r] = await ctx.manager.query(
         `select count(*)::int as batches, coalesce(sum(bal * unit_cost), 0)::float as value
-           from (${BATCH_BALANCE_SQL}) b where bal > 0 and exp_date < current_date`, []);
+           from (${BATCH_BALANCE_SQL}) b where bal > 0 and public.expiry_end(exp_date) < current_date`, []);
       return r.value > p.value ? [{ key: 'expired_stock', storeid: null, code: 'expired_stock', params: { batches: r.batches, value: Math.round(r.value) }, link: '/secure/store/stock' }] : [];
     },
   },
