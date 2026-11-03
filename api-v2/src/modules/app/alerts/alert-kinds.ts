@@ -43,6 +43,34 @@ const addDays = (day: string, n: number) => new Date(Date.parse(day + 'T00:00:00
 
 export const KINDS: AlertKind[] = [
   {
+    kind: 'customer_request_arrived',
+    label: 'Customer request arrived',
+    description: "A product a customer asked for has been received (its purchase invoice is complete). The store is told to call the customer; the alert clears when the request is closed on the Requests page. The store is the one the goods were received at.",
+    params: [],
+    defaultSeverity: 'info',
+    async evaluate(ctx) {
+      const rows = await ctx.manager.query(
+        `select pr.id, pr.customer_name, pr.customer_phone, pr.fulfilled_qty, coalesce(p.title, pr.requested_name) as product,
+                st.id as store_id, st.location
+           from purchase_request pr
+           join app_user u on u.id = pr.created_by
+           left join product p on p.id = pr.product_id
+           left join lateral (select pi.store_id from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
+                               where pii.request_id = pr.id and pi.status = 'COMPLETE' and pi.active and not pi.archive
+                               order by pi.id desc limit 1) rcv on true
+           left join stores st on st.id = rcv.store_id
+          where pr.active and not pr.archive and pr.status = 'Received' and pr.customer_name is not null
+            and ${BUSINESS_OF_USER_SQL} = $1`, [ctx.businessId]);
+      return rows.map((r: any) => ({
+        key: `request_arrived:${r.id}`,
+        storeid: r.store_id ?? null,
+        code: 'customer_request_arrived',
+        params: { customer: String(r.customer_name).trim(), phone: r.customer_phone || '', product: r.product, qty: r.fulfilled_qty ?? 0, store: r.location ? String(r.location).trim() : 'the store' },
+        link: '/secure/purchases/requests',
+      }));
+    },
+  },
+  {
     kind: 'deposit_due',
     label: 'Bank deposit due',
     description: "A store's cash is due at the bank by its deposit rule (the amount, or the daily / weekly / monthly schedule, whichever comes first). Set the rule under Settings > Store > Cash & shifts.",
@@ -446,7 +474,7 @@ export function cleanParams(kind: AlertKind, input: Record<string, any> | undefi
 }
 
 /** the alerts a business starts with: each is a rule that can be edited or switched off, not deleted */
-export const DEFAULT_RULES: { kind: string; name: string; severity: Severity }[] = [
+export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; recipients?: { roles: string[]; userids: number[] } }[] = [
   { kind: 'deposit_due', name: 'Bank deposit due', severity: 'warning' },
   { kind: 'licence_expiring', name: 'Store licence ending', severity: 'warning' },
   { kind: 'registration_expiring', name: 'Pharmacist registration ending', severity: 'warning' },
@@ -464,5 +492,6 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity }[]
   { kind: 'compliance_late', name: 'Compliance item gone unattended', severity: 'critical' },
   { kind: 'customer_reveals_many', name: 'Many customers\' details shown', severity: 'warning' },
   { kind: 'customer_lookups_many', name: 'Heavy customer searching', severity: 'warning' },
+  { kind: 'customer_request_arrived', name: 'Customer request arrived', severity: 'info', recipients: { roles: ['owners', 'managers', 'staff'], userids: [] } },
   { kind: 'customer_data_taken', name: 'Customer lists downloaded or printed', severity: 'warning' },
 ];

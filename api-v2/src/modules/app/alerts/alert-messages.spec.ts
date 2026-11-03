@@ -39,6 +39,7 @@ describe('alert messages', () => {
       price_policy: ['pricing_cuts', 'pricing_raises', 'pricing_check', 'pricing_unpriced'],
       outage_kit: ['outage_kit_overdue', 'outage_kit_never'],
       stock_count_overdue: ['stock_count_overdue', 'stock_count_never'],
+      customer_request_arrived: ['customer_request_arrived'],
       negative_stock: ['negative_stock'],
       expired_stock: ['expired_stock'],
       adjustment_other: ['adjustment_other'],
