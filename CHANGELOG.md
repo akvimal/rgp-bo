@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.3.0](https://github.com/akvimal/rgp-bo/compare/v3.2.1...v3.3.0) (2026-11-03)
+
+
+### Features
+
+* **purchases:** cancel a sent purchase order (no invoice linked); Open on draft delete ([#170](https://github.com/akvimal/rgp-bo/issues/170)) ([5860d3a](https://github.com/akvimal/rgp-bo/commit/5860d3ae8977435c56d464019706dc50fe83f115))
+* Reorder on-order tags, draft merge, Reorder search/sort; void a bill in its open shift ([#167](https://github.com/akvimal/rgp-bo/issues/167)) ([67fca49](https://github.com/akvimal/rgp-bo/commit/67fca49fe20c7ab5266c328534125f8112e9ae03))
+
+
+### Bug Fixes
+
+* **pos:** bill GST at today's rate; prescription panel chips; sale payload fix ([#166](https://github.com/akvimal/rgp-bo/issues/166)) ([f296c44](https://github.com/akvimal/rgp-bo/commit/f296c44669c98115f251ffb0adede44b02a67587))
+* **stock:** measure the 30-day expiry rule from the last day of the expiry month ([#169](https://github.com/akvimal/rgp-bo/issues/169)) ([3686439](https://github.com/akvimal/rgp-bo/commit/36864397e8a9193a17da665ac27283e6442c64b7))
+
 ## [3.2.1](https://github.com/akvimal/rgp-bo/compare/v3.2.0...v3.2.1) (2026-11-02)
 
 
