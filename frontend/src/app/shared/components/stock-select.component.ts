@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { StockService } from "src/app/secured/store/stock/stock.service";
 import { PropsService } from "../props.service";
+import { StoreContextService } from "src/app/@core/store-context.service";
 
 @Component({
     selector: 'app-stock-select',
@@ -39,7 +40,7 @@ export class StockSelectComponent {
 
     // props$?:Observable<any>;
 
-    constructor(private stockService:StockService, private propsService:PropsService, private http: HttpClient){
+    constructor(private stockService:StockService, private propsService:PropsService, private http: HttpClient, private storeContext:StoreContextService){
         // this.props$ = this.propsService.props;
     }
 
@@ -91,7 +92,9 @@ export class StockSelectComponent {
     filterStock(event:any) {
         let filtered : any[] = [];
         
+        // scoped to the store being billed from, so "left" matches what the save check allows
         this.stockService.filterByCriteria({title:event.query, excludeItems:this.excludeItems,
+            storeid:this.storeContext.selectedStoreId,
             starts:true, 
             available:true,
             expired:false,
