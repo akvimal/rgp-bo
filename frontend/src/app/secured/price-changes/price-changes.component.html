@@ -1,0 +1,96 @@
+<div class="price-sheet form-compact">
+<div class="pagetitle no-print">
+  <h1>Price changes</h1>
+</div>
+
+<p class="small text-muted mb-2 no-print" data-testid="pc-intro">
+  What changed in our selling prices, for the counter. Prices are what the customer pays for a pack, GST included. When a customer asks why a price moved, the reason is on the right.
+  Print it and keep it beside the till.
+</p>
+
+<div class="card mb-3 no-print">
+  <div class="card-body p-2 p-md-3">
+    <div class="d-flex flex-wrap align-items-end gap-2">
+      <div style="width:9.5rem">
+        <label class="form-label small mb-0" for="pc-from">From</label>
+        <input id="pc-from" type="date" class="form-control form-control-sm" [(ngModel)]="from" (change)="load()" data-testid="pc-from">
+      </div>
+      <div style="width:9.5rem">
+        <label class="form-label small mb-0" for="pc-to">To</label>
+        <input id="pc-to" type="date" class="form-control form-control-sm" [(ngModel)]="to" (change)="load()" data-testid="pc-to">
+      </div>
+      <div class="btn-group btn-group-sm" role="group" aria-label="Quick periods">
+        <button type="button" class="btn btn-outline-secondary" (click)="range(7)" data-testid="pc-7">7 days</button>
+        <button type="button" class="btn btn-outline-secondary" (click)="range(14)" data-testid="pc-14">14 days</button>
+        <button type="button" class="btn btn-outline-secondary" (click)="thisMonth()" data-testid="pc-month">This month</button>
+        <button type="button" class="btn btn-outline-secondary" (click)="lastMonth()" data-testid="pc-lastmonth">Last month</button>
+      </div>
+      <div style="width:7rem">
+        <label class="form-label small mb-0" for="pc-min" title="Hide changes smaller than this percent">Changed by at least %</label>
+        <input id="pc-min" type="number" min="0" step="1" class="form-control form-control-sm" [(ngModel)]="min" (change)="load()" data-testid="pc-min">
+      </div>
+      <div class="flex-grow-1" style="min-width:12rem">
+        <label class="form-label small mb-0" for="pc-search">Find a product</label>
+        <input id="pc-search" class="form-control form-control-sm" [(ngModel)]="search" placeholder="Name" data-testid="pc-search">
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" (click)="print()" [disabled]="!data" data-testid="pc-print"><i class="bi bi-printer"></i> Print</button>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="pc-error">{{error}}</div>
+<div class="text-muted small" *ngIf="loading && !data">Loading&hellip;</div>
+
+<ng-container *ngIf="data">
+  <!-- the heading of the printed sheet -->
+  <div class="mb-3" data-testid="pc-sheet-head">
+    <h2 class="h4 mb-1 print-only">Price changes &mdash; for counter staff</h2>
+    <div class="small">
+      <b>{{data.from | date:'d MMM yyyy'}}</b> to <b>{{data.to | date:'d MMM yyyy'}}</b><span *ngIf="data.min"> &middot; changes of {{data.min}}% or more</span>
+      <span *ngIf="storeName"> &middot; {{storeName}}</span>
+      &middot; <span class="text-muted">Prices are per pack, what the customer pays (GST included). Printed {{printedOn | date:'d MMM yyyy, h:mm a'}}.</span>
+    </div>
+  </div>
+
+  <div class="text-muted" *ngIf="!data.counts.decreased && !data.counts.increased" data-testid="pc-empty">No selling price changed in this period.</div>
+
+  <!-- came down -->
+  <section class="sec-down mb-4" *ngIf="decreased.length" data-testid="pc-down">
+    <h5 class="mb-1">Price came down <span class="badge bg-success ms-1">{{decreased.length}}</span></h5>
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-light"><tr><th>Product</th><th class="text-end">Pack</th><th class="text-end">Was</th><th class="text-end">Now</th><th class="text-end">Change</th><th>From</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let c of decreased" [attr.data-testid]="'pc-row-' + c.productid">
+          <td>{{c.title}}</td><td class="text-end">{{c.pack}}</td>
+          <td class="text-end">{{c.oldprice | number:'1.2-2'}}</td><td class="text-end fw-semibold">{{c.newprice | number:'1.2-2'}}</td>
+          <td class="text-end chg-down">{{c.change | number:'1.2-2'}} ({{c.pct | number:'1.0-1'}}%)</td>
+          <td>{{c.effdate | date:'d MMM'}}</td><td>{{c.reasonlabel}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- went up -->
+  <section class="sec-up mb-4" *ngIf="increased.length" data-testid="pc-up">
+    <h5 class="mb-1">Price went up <span class="badge bg-danger ms-1">{{increased.length}}</span></h5>
+    <table class="table table-sm table-bordered align-middle mb-0">
+      <thead class="table-light"><tr><th>Product</th><th class="text-end">Pack</th><th class="text-end">Was</th><th class="text-end">Now</th><th class="text-end">Change</th><th>From</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let c of increased" [attr.data-testid]="'pc-row-' + c.productid">
+          <td>{{c.title}}</td><td class="text-end">{{c.pack}}</td>
+          <td class="text-end">{{c.oldprice | number:'1.2-2'}}</td><td class="text-end fw-semibold">{{c.newprice | number:'1.2-2'}}</td>
+          <td class="text-end chg-up">+{{c.change | number:'1.2-2'}} (+{{c.pct | number:'1.0-1'}}%)</td>
+          <td>{{c.effdate | date:'d MMM'}}</td><td>{{c.reasonlabel}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="text-muted small" *ngIf="search && !decreased.length && !increased.length && (data.counts.decreased || data.counts.increased)">No changed product matches "{{search}}".</div>
+
+  <div class="small text-muted mt-3 border-top pt-2">
+    <b>For the counter:</b> a customer cannot be charged more than the MRP printed on the pack in their hand. If an older pack shows a lower MRP than the one in the system, bill it at that MRP.
+    A product is listed only when the price the customer pays changed; a price that went up and came back is not shown.
+  </div>
+</ng-container>
+</div>

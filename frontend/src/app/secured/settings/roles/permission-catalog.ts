@@ -228,6 +228,14 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'pricechanges',
+    label: 'Price changes sheet',
+    description: 'What changed in the selling prices over a period (what the customer pays), to read at the counter or print. It shows no cost.',
+    group: 'Sales & Store Operations',
+    path: '/secure/price-changes',
+    actions: [{ key: 'view', label: 'Open and print the sheet' }],
+  },
+  {
     key: 'todos',
     label: 'To-dos',
     description: 'The to-do list with reminders: keep your own, tick the shared ones of your store, and (for managers) give them to others and see the whole team.',

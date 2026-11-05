@@ -131,6 +131,12 @@
             <span>Inquiries</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'pricechanges.view'">
+          <a class="nav-link collapsed" routerLink="price-changes" data-testid="nav-price-changes" title="Price changes" aria-label="Price changes">
+            <i class="bi bi-tag"></i>
+            <span>Price changes</span>
+          </a>
+        </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'shiftdesk.view'">
           <a class="nav-link collapsed" routerLink="shift" data-testid="nav-shift" title="My shift" aria-label="My shift">
             <i class="bi bi-cash-stack"></i>

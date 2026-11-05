@@ -94,6 +94,10 @@ const routes: Routes = [
       loadChildren: () => import('./compliance/compliance.module').then(m => m.ComplianceModule)
     },
     {
+      path: 'price-changes', canActivate:[AuthGuard],
+      loadChildren: () => import('./price-changes/price-changes.module').then(m => m.PriceChangesModule)
+    },
+    {
       path: 'todos', canActivate:[AuthGuard],
       loadChildren: () => import('./todos/todos.module').then(m => m.TodosModule)
     },
