@@ -1,6 +1,6 @@
 # To-do list with reminders, and KPI goals
 
-Status: designed 2026-11-05. **Phase 1 built 2026-11-05** (migration 155, `api-v2/src/modules/app/todos/`, `frontend/src/app/secured/todos/`, alert kind `todo_due`); phases 2 and 3 not built. Decisions below are the user's.
+Status: designed 2026-11-05. **Phase 1 built 2026-11-05** (migration 155, `api-v2/src/modules/app/todos/`, `frontend/src/app/secured/todos/`, alert kind `todo_due`); phase 2 (KPI items) **deferred by the user 2026-11-05**; phase 3 not built. Decisions below are the user's.
 
 ## Decisions
 
