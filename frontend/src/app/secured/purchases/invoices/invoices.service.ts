@@ -140,6 +140,16 @@ export class InvoiceService {
     }
 
     /** reads an uploaded invoice copy (PDF text or OCR of a photo); nothing is saved */
+    // ---- the lines read from a scanned copy, saved with the draft and checked one at a time
+    scan(id:any){ return this.http.get<any>(`${this.apiurl}/purchases/${id}/scan`); }
+    saveScan(id:any, body:any){ return this.http.put<any>(`${this.apiurl}/purchases/${id}/scan`, body); }
+    saveScanLine(id:any, lineId:any, body:any){ return this.http.put<any>(`${this.apiurl}/purchases/${id}/scan/lines/${lineId}`, body); }
+    verifyScanLine(id:any, lineId:any){ return this.http.post<any>(`${this.apiurl}/purchases/${id}/scan/lines/${lineId}/verify`, {}); }
+    unverifyScanLine(id:any, lineId:any){ return this.http.post<any>(`${this.apiurl}/purchases/${id}/scan/lines/${lineId}/unverify`, {}); }
+    discardScanLine(id:any, lineId:any, reason:string){ return this.http.post<any>(`${this.apiurl}/purchases/${id}/scan/lines/${lineId}/discard`, { reason }); }
+    restoreScanLine(id:any, lineId:any){ return this.http.post<any>(`${this.apiurl}/purchases/${id}/scan/lines/${lineId}/restore`, {}); }
+    verifyAllScan(id:any){ return this.http.post<any>(`${this.apiurl}/purchases/${id}/scan/verify-all`, {}); }
+
     extract(path:string){
         return this.http.post<any>(`${this.apiurl}/purchases/extract`, { path });
     }

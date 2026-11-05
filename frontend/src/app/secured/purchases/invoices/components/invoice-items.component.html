@@ -5,8 +5,12 @@
                 <div class="fw-semibold fs-5">{{invoice.vendor?.name}}</div>
                 <div class="inv-label">
                     <ng-container *ngIf="invoice.invoiceno; else onChallan">Invoice #{{invoice.invoiceno}} &middot; {{invoice.invoicedate | date:'dd MMM yyyy'}}</ng-container>
-                    <ng-template #onChallan>Challan #{{invoice.challanno}} &middot; {{(invoice.challandate || invoice.invoicedate) | date:'dd MMM yyyy'}}
-                        <span class="badge bg-warning text-dark ms-1" data-testid="invoice-awaiting">Awaiting invoice</span></ng-template>
+                    <ng-template #onChallan>
+                        <ng-container *ngIf="invoice.challanno; else noNumber">Challan #{{invoice.challanno}} &middot; {{(invoice.challandate || invoice.invoicedate) | date:'dd MMM yyyy'}}
+                            <span class="badge bg-warning text-dark ms-1" data-testid="invoice-awaiting">Awaiting invoice</span></ng-container>
+                        <ng-template #noNumber>{{invoice.invoicedate | date:'dd MMM yyyy'}}
+                            <span class="badge bg-warning text-dark ms-1" data-testid="invoice-no-number">No invoice number yet</span></ng-template>
+                    </ng-template>
                     <ng-container *ngIf="invoice.invoiceno && invoice.challanno"> &middot; Challan {{invoice.challanno}}</ng-container>
                     <a *ngIf="invoice.challanpath" role="button" class="ms-2" (click)="viewChallan()" data-testid="invoice-challan-copy"><i class="bi bi-paperclip"></i> Challan copy</a>
                     <span *ngIf="invoice.duedate"> &middot; Due {{invoice.duedate | date:'dd MMM yyyy'}}</span>
@@ -26,6 +30,13 @@
                 </span>
             </div>
         </div>
+
+        <div class="alert alert-warning py-2 mt-2 d-flex flex-wrap justify-content-between align-items-center gap-2" *ngIf="invoice.status === 'NEW' && scanOpen > 0" data-testid="invoice-scan-open">
+            <span><b>{{scanOpen}}</b> line{{scanOpen === 1 ? '' : 's'}} of the scanned invoice {{scanOpen === 1 ? 'is' : 'are'}} still to check<span *ngIf="scanChecked"> ({{scanChecked}} checked)</span>.
+                The invoice cannot be completed until {{scanOpen === 1 ? 'it is' : 'they are'}} checked or discarded.</span>
+            <a class="btn btn-warning btn-sm" [routerLink]="['../../edit',invoice.id]" data-testid="invoice-scan-continue">Continue checking</a>
+        </div>
+        <div class="small text-muted mt-2" *ngIf="invoice.status === 'NEW' && liveCount > 0" data-testid="invoice-verified-count"><b>{{verifiedLiveCount}}</b> of {{liveCount}} lines verified</div>
 
         <div class="row g-3 mt-1" data-testid="invoice-figures">
             <div class="col-6 col-md-2"><div class="inv-label">GRN</div><div class="inv-value text-success">{{invoice.grno || '-'}}</div></div>

@@ -101,9 +101,11 @@ export class PurchaseInvoiceService {
 
         const vendor = await this.vendorRepository.findOne({ where: { id: +dto.vendorid } });
         // goods can arrive on a delivery challan before the invoice: then only the challan number is known
+        const draft = !!(dto as any).draft;
+        delete (dto as any).draft;
         const invoiceno = cleanRef(dto.invoiceno);
         const challanno = cleanRef(dto.challanno);
-        if(!invoiceno && !challanno){
+        if(!invoiceno && !challanno && !draft){
           throw new BadRequestException(`Enter the invoice number, or the delivery challan number if the invoice has not come yet.`);
         }
         await this.assertNotDuplicate(+dto.vendorid, invoiceno ?? undefined, null);
@@ -750,6 +752,7 @@ export class PurchaseInvoiceService {
           await this.assertApprovedPurchaseOrder(+values.purchaseorderid);
         }
         if(values?.status === 'COMPLETE'){
+          for(const id of ids) await this.assertReadyToComplete(id);
           for(const id of ids) await this.assertNoDisputes(id);
           for(const id of ids) await this.assertPriceRules(id, userid);
         }
@@ -777,6 +780,18 @@ export class PurchaseInvoiceService {
       }
 
       // ---------------------------------------------------------------- lines in dispute
+      /** a draft saved with no number must have one, and a scanned draft must have every line checked or discarded, before it is completed */
+      private async assertReadyToComplete(invoiceid:number){
+        const [inv] = await this.manager.query(`select invoice_no, challan_no from purchase_invoice where id = $1`, [invoiceid]);
+        if(inv && !String(inv.invoice_no ?? '').trim() && !String(inv.challan_no ?? '').trim()){
+          throw new BadRequestException('Enter the invoice number, or the delivery challan number, before completing the invoice.');
+        }
+        const [open] = await this.manager.query(`select count(*)::int as n from purchase_invoice_scan_line where invoice_id = $1 and state = 'OPEN'`, [invoiceid]);
+        if(open && open.n > 0){
+          throw new BadRequestException(`${open.n} line${open.n === 1 ? '' : 's'} of the scanned invoice ${open.n === 1 ? 'is' : 'are'} still to check. Check ${open.n === 1 ? 'it' : 'them'} against the invoice copy, or discard what is not on the invoice, before completing.`);
+        }
+      }
+
       /** an invoice cannot be completed while a line is still being clarified with the vendor */
       private async assertNoDisputes(invoiceid:number){
         const rows = await this.manager.query(

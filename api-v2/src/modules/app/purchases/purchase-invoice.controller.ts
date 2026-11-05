@@ -85,8 +85,10 @@ export class PurchaseInvoiceController {
 
     @Post()
     async create(@Body() dto: CreatePurchaseInvoiceDto, @User() currentUser: any) {
-      if(dto.id)
-        return this.purchaseInvoiceService.update([dto.id], dto, currentUser.id);
+      if(dto.id){
+        const { draft, ...values } = dto as any;          // "draft" only matters when an invoice is first made
+        return this.purchaseInvoiceService.update([dto.id], values, currentUser.id);
+      }
       else {
         const result = await this.purchaseInvoiceService.getGRN('R'); 
         return this.purchaseInvoiceService.create({...dto, grno:result[0].generate_grn}, currentUser.id);
