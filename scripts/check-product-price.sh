@@ -27,30 +27,36 @@ q="${q//\'/}"
 if [[ "$q" =~ ^[0-9]+$ ]]; then WHERE="p.id = $q"; else WHERE="p.title ilike '%$q%'"; fi
 
 $PSQL -q -v ON_ERROR_STOP=1 -P pager=off <<SQL
-create temp table cpp_prod as select p.id, p.title from product p where $WHERE and not p.archive order by p.active desc, p.title limit 3;
+create temp table cpp_prod as select p.id, p.title from product p where $WHERE and not p.archive order by p.active desc, p.title limit 8;
 \echo ================================================================  the product(s) matched
 select * from cpp_prod;
+\echo (use more of the name, e.g. EXTRA POWER, to narrow it to one product)
 
 \echo
-\echo ================================================================  its purchases, newest invoice first (the top rows are the ones that matter)
-select pi.invoice_date as date, coalesce(pi.invoice_no, 'challan ' || pi.challan_no) as invoice, pi.status, pii.batch, to_char(pii.exp_date, 'YYYY-MM') as expiry,
-       pii.mrp_cost as mrp, pii.ptr_value as rate, pii.tax_pcnt as batch_gst, pii.ptr_cost as cost_with_gst,
-       round((pii.mrp_cost / (1 + public.sale_gst(pii.tax_pcnt::double precision) / 100))::numeric, 2) as ceiling_for_this_mrp
-  from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.active and not pi.archive
- where pii.product_id in (select id from cpp_prod) and pii.active and not pii.archive
- order by pi.invoice_date desc, pii.id desc limit 8;
+\echo ================================================================  its purchases, newest invoice first (the top rows of each product are the ones that matter)
+select left(p.title, 24) as product, pi.invoice_date as date, coalesce(pi.invoice_no, 'challan ' || pi.challan_no) as invoice, pi.status, pii.batch, to_char(pii.exp_date, 'YYYY-MM') as expiry,
+       pii.mrp_cost as mrp, pii.ptr_value as rate, pii.tax_pcnt as batch_gst, round(pii.ptr_cost::numeric, 2) as cost_with_gst,
+       (floor((pii.mrp_cost / (1 + public.sale_gst(pii.tax_pcnt::double precision) / 100))::numeric * 100) / 100)::numeric(10,2) as ceiling_for_this_mrp
+  from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.active and not pi.archive join cpp_prod p on p.id = pii.product_id
+ where pii.active and not pii.archive
+ order by p.title, pi.invoice_date desc, pii.id desc;
 
 \echo
-\echo ================================================================  what each part uses
-select 'dialog Now block (price_view)' as part, v.mrp, v.ptr as cost_with_gst, v.tax as batch_gst, v.sale_tax as gst_billed, round((v.mrp / (1 + v.sale_tax / 100))::numeric, 2) as legal_ceiling_from_it
-  from price_view v where v.id in (select id from cpp_prod)
+\echo ================================================================  what each part uses, product by product
+select left(c.title, 24) as product, 'dialog Now block (price_view)' as part, v.mrp, round(v.ptr::numeric, 2) as cost_with_gst, v.tax as batch_gst, v.sale_tax as gst_billed,
+       (floor((v.mrp / (1 + v.sale_tax / 100))::numeric * 100) / 100)::numeric(10,2) as legal_ceiling
+  from cpp_prod c join price_view v on v.id = c.id
 union all
-select 'pricing policy (latest COMPLETED purchase)', x.mrp_cost, x.ptr_cost, x.tax_pcnt, public.sale_gst(x.tax_pcnt::double precision), round((x.mrp_cost / (1 + public.sale_gst(x.tax_pcnt::double precision) / 100))::numeric, 2)
-  from (select pii.mrp_cost, pii.ptr_cost, pii.tax_pcnt from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.status = 'COMPLETE' and pi.active and not pi.archive
-         where pii.product_id in (select id from cpp_prod) and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
-         order by pi.invoice_date desc, pii.id desc limit 1) x;
+select left(c.title, 24), 'pricing policy (latest COMPLETED)', x.mrp_cost, round(x.ptr_cost::numeric, 2), x.tax_pcnt, public.sale_gst(x.tax_pcnt::double precision)::real,
+       (floor((x.mrp_cost / (1 + public.sale_gst(x.tax_pcnt::double precision) / 100))::numeric * 100) / 100)::numeric(10,2)
+  from cpp_prod c left join lateral (
+         select pii.mrp_cost, pii.ptr_cost, pii.tax_pcnt from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.status = 'COMPLETE' and pi.active and not pi.archive
+          where pii.product_id = c.id and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
+          order by pi.invoice_date desc, pii.id desc limit 1) x on true
+ order by 1, 2;
 
 \echo
-\echo Reading it: if the two rows above have different mrp, the dialog and the policy are looking at different purchases (usually a newer invoice that is still a draft).
+\echo Reading it: for each product, if the two rows have different mrp (or the policy row is empty), the dialog and the policy are looking at different purchases
+\echo (usually a newer invoice that is still a draft - status NEW - and has not been completed).
 \echo The policy ceiling is the one that is enforced when the price is saved.
 SQL
