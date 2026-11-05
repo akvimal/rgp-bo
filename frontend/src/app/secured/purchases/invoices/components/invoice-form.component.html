@@ -143,15 +143,15 @@
         <div class="col-12" *ngIf="extracted" data-testid="inv-x-panel">
           <div class="border rounded p-2 p-md-3">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-              <h6 class="inv-title mb-0">Read from the invoice copy
-                <span class="badge bg-light text-dark border ms-1" data-testid="inv-x-method">{{extracted.method === 'pdf' ? 'text of the PDF' : (extracted.method === 'pdf-ocr' ? 'scanned PDF (OCR)' : 'photo (OCR)')}}</span></h6>
-              <div class="d-flex gap-2">
+              <h6 class="inv-title mb-0">{{extracted.resumed ? 'Lines of the invoice copy' : 'Read from the invoice copy'}}
+                <span class="badge bg-light text-dark border ms-1" *ngIf="extracted.method" data-testid="inv-x-method">{{extracted.method === 'pdf' ? 'text of the PDF' : (extracted.method === 'pdf-ocr' ? 'scanned PDF (OCR)' : 'photo (OCR)')}}</span></h6>
+              <div class="d-flex gap-2" *ngIf="!extracted.resumed">
                 <button type="button" class="btn btn-outline-primary btn-sm" (click)="applyHeader(true)" data-testid="inv-x-fill">Use all read values</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm" (click)="showText = !showText" data-testid="inv-x-text-toggle">{{showText ? 'Hide' : 'Show'}} text read</button>
               </div>
             </div>
             <div class="small mb-2" *ngIf="filled.length" data-testid="inv-x-filled"><i class="bi bi-check-circle text-success"></i> Filled in: {{filled.join(', ')}}. Check them against the invoice.</div>
-            <div class="row g-3 mb-2" data-testid="inv-x-header">
+            <div class="row g-3 mb-2" *ngIf="!extracted.resumed" data-testid="inv-x-header">
               <div class="col-6 col-md-3"><div class="inv-label">Vendor on the invoice</div>
                 <div class="inv-value" data-testid="inv-x-vendor">{{extracted.vendor ? extracted.vendor.name : (extracted.header.suppliername || '-')}}</div>
                 <div class="inv-label" *ngIf="!extracted.vendor">not matched to a vendor: choose one above</div>
@@ -161,7 +161,7 @@
               <div class="col-6 col-md-2"><div class="inv-label">Total</div><div class="inv-value">{{extracted.header.printedtotal ? (extracted.header.printedtotal | number:'1.2-2') : '-'}}</div></div>
               <div class="col-12 col-md-3"><div class="inv-label">Supplier GSTIN</div><div class="inv-value">{{extracted.header.suppliergstin || '-'}}</div></div>
             </div>
-            <div *ngIf="extracted.tieout" class="alert py-2 px-2 small mb-2" [ngClass]="extracted.tieout.status === 'RECONCILED' ? 'alert-success' : (extracted.tieout.status === 'REVIEW' ? 'alert-danger' : 'alert-secondary')" data-testid="inv-x-tieout" [attr.data-status]="extracted.tieout.status">
+            <div *ngIf="extracted.tieout && !extracted.resumed" class="alert py-2 px-2 small mb-2" [ngClass]="extracted.tieout.status === 'RECONCILED' ? 'alert-success' : (extracted.tieout.status === 'REVIEW' ? 'alert-danger' : 'alert-secondary')" data-testid="inv-x-tieout" [attr.data-status]="extracted.tieout.status">
               <div class="d-flex justify-content-between align-items-start gap-2">
                 <span><i class="bi me-1" [ngClass]="extracted.tieout.status === 'RECONCILED' ? 'bi-check-circle-fill' : (extracted.tieout.status === 'REVIEW' ? 'bi-exclamation-octagon-fill' : 'bi-question-circle')"></i><strong data-testid="inv-x-tieout-headline">{{extracted.tieout.headline}}</strong></span>
                 <a href="javascript:void(0)" class="text-nowrap" (click)="showChecks = !showChecks" data-testid="inv-x-tieout-toggle">{{showChecks ? 'Hide' : 'Show'}} the checks</a>
@@ -175,6 +175,19 @@
             <div *ngFor="let w of extracted.warnings" class="alert alert-warning py-1 px-2 small mb-2" data-testid="inv-x-warning">{{w}}</div>
             <pre *ngIf="showText" class="small bg-light border rounded p-2 mb-2" style="max-height:14rem;overflow:auto;white-space:pre-wrap" data-testid="inv-x-text">{{extracted.text}}</pre>
 
+            <div *ngIf="lines.length" class="d-flex flex-wrap align-items-center gap-2 mb-2" data-testid="inv-x-progress">
+              <div class="flex-grow-1" style="min-width:14rem">
+                <div class="small mb-1"><b data-testid="inv-x-checked">{{verifiedCount}}</b> checked &middot; <b data-testid="inv-x-open">{{openCount}}</b> to check
+                  <span *ngIf="discardedCount"> &middot; {{discardedCount}} discarded</span></div>
+                <div class="progress" style="height:.5rem"><div class="progress-bar bg-success" [style.width.%]="(verifiedCount + discardedCount) * 100 / lines.length"></div></div>
+              </div>
+              <select class="form-select form-select-sm w-auto" [(ngModel)]="scanFilter" [ngModelOptions]="{standalone: true}" aria-label="Show lines" data-testid="inv-x-filter">
+                <option value="all">All lines</option><option value="open">To check</option><option value="verified">Checked</option><option value="discarded">Discarded</option>
+              </select>
+              <button type="button" class="btn btn-outline-success btn-sm" *ngIf="form.value.id" [disabled]="!completeOpenCount || checkingAll" (click)="checkAll()" data-testid="inv-x-checkall">Check all complete lines ({{completeOpenCount}})</button>
+            </div>
+            <div class="small text-muted mb-2" *ngIf="lines.length && !form.value.id" data-testid="inv-x-savefirst">Save the draft first, then check each line against the invoice copy. Nothing is lost if you leave and come back.</div>
+            <div class="small mb-2" *ngIf="scanMessage" data-testid="inv-x-scanmsg">{{scanMessage}}</div>
             <div *ngIf="lines.length" class="table-responsive" data-testid="inv-x-lines">
               <table class="table table-sm table-bordered align-middle inv-table inv-grid mb-2">
                 <colgroup>
@@ -182,16 +195,22 @@
                   <col style="width:4rem"><col style="width:3.5rem"><col style="width:6.5rem"><col style="width:4.25rem"><col style="width:4.75rem"><col style="width:5rem">
                 </colgroup>
                 <thead><tr>
-                  <th></th><th>Read as</th><th>Product</th><th>Batch</th><th>Expiry</th><th class="text-end">MRP</th>
+                  <th class="text-center" title="Ticked when the line agrees with the invoice copy">Checked</th><th>Read as</th><th>Product</th><th>Batch</th><th>Expiry</th><th class="text-end">MRP</th>
                   <th class="text-end">Qty</th><th class="text-end">Free</th><th class="text-end">Rate</th><th class="text-end">Disc %</th><th class="text-end">Tax %</th><th class="text-end">Total</th>
                 </tr></thead>
                 <tbody>
-                  <tr *ngFor="let l of lines; let i = index" [attr.data-testid]="'inv-x-row-' + i">
-                    <td class="text-center"><input type="checkbox" [(ngModel)]="l.include" [ngModelOptions]="{standalone: true}" [disabled]="!ready(l)" [attr.data-testid]="'inv-x-include-' + i" aria-label="Add this line"></td>
+                  <tr *ngFor="let l of shownLines; let i = index" (focusout)="lineBlur(l)" [class.table-success]="l.state === 'VERIFIED'" [class.text-muted]="l.state === 'DISCARDED'" [attr.data-testid]="'inv-x-row-' + i" [attr.data-state]="l.state">
+                    <td class="text-center"><input type="checkbox" [checked]="l.state === 'VERIFIED'" (change)="toggleCheck(l, $event)" [disabled]="!l.lineid || l.busy || l.state === 'DISCARDED' || (l.state === 'OPEN' && !ready(l))" [attr.title]="!l.lineid ? 'Save the draft first' : (l.state === 'OPEN' && !ready(l) ? 'Complete the line first' : 'Agrees with the invoice copy')" [attr.data-testid]="'inv-x-check-' + i" aria-label="Checked against the invoice copy"></td>
                     <td class="small">{{l.description}}
                       <div class="text-danger" *ngFor="let w of l.warnings">{{w}}</div>
-                      <div class="text-warning" *ngIf="!ready(l)">Needs: {{missingFor(l)}}</div></td>
+                      <div class="text-warning" *ngIf="l.state === 'OPEN' && !ready(l)">Needs: {{missingFor(l)}}</div>
+                      <div class="text-success" *ngIf="l.state === 'VERIFIED'" [attr.data-testid]="'inv-x-by-' + i"><i class="bi bi-check2"></i> checked<span *ngIf="l.verifiedbyname"> by {{l.verifiedbyname}}</span></div>
+                      <div *ngIf="l.state === 'DISCARDED'" [attr.data-testid]="'inv-x-discarded-' + i">Discarded: {{l.discardreason}} &middot; <a role="button" (click)="restoreLine(l)" [attr.data-testid]="'inv-x-restore-' + i">restore</a></div>
+                      <div *ngIf="l.state === 'OPEN' && l.lineid"><a role="button" class="text-danger" (click)="openDiscard(l)" [attr.data-testid]="'inv-x-discard-' + i">not on the invoice</a></div>
+                      <div class="text-danger" *ngIf="l.rowError" [attr.data-testid]="'inv-x-rowerr-' + i">{{l.rowError}}</div></td>
                     <td>
+                      <div class="small" *ngIf="l.state !== 'OPEN'"><b>{{l.productTitle || '-'}}</b></div>
+                      <ng-container *ngIf="l.state === 'OPEN'">
                       <ng-container *ngIf="l.suggestions.length && !l.searching; else searchProduct">
                         <select class="form-select form-select-sm" [(ngModel)]="l.productid" [ngModelOptions]="{standalone: true}" (change)="pick(l)" [attr.data-testid]="'inv-x-product-' + i">
                           <option [ngValue]="null">Choose the product</option>
@@ -209,25 +228,26 @@
                           <a role="button" *isAuth="'products.add'" (click)="openNewProduct(l)" [attr.data-testid]="'inv-x-new-' + i">not in the system? add it</a>
                         </div>
                       </ng-template>
+                      </ng-container>
                     </td>
-                    <td><input class="form-control form-control-sm px-1 w-100" [attr.title]="l.batch" [(ngModel)]="l.batch" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-batch-' + i"></td>
-                    <td><input type="text" maxlength="7" placeholder="MM/YY" autocomplete="off" class="form-control form-control-sm px-1 text-center w-100" [(ngModel)]="l.expText" [ngModelOptions]="{standalone: true}" (input)="onExpiry(l)" [class.is-invalid]="l.expText && !l.exp" [disabled]="l.noexpiry" [attr.title]="l.noexpiry ? 'This product has no expiry date' : 'Month and year, like 08/28'" [attr.data-testid]="'inv-x-exp-' + i">
+                    <td><input class="form-control form-control-sm px-1 w-100" [attr.title]="l.batch" [(ngModel)]="l.batch" [ngModelOptions]="{standalone: true}" [disabled]="l.state !== 'OPEN'" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-batch-' + i"></td>
+                    <td><input type="text" maxlength="7" placeholder="MM/YY" autocomplete="off" class="form-control form-control-sm px-1 text-center w-100" [(ngModel)]="l.expText" [ngModelOptions]="{standalone: true}" (input)="onExpiry(l)" [class.is-invalid]="l.expText && !l.exp" [disabled]="l.noexpiry || l.state !== 'OPEN'" [attr.title]="l.noexpiry ? 'This product has no expiry date' : 'Month and year, like 08/28'" [attr.data-testid]="'inv-x-exp-' + i">
                       <div class="inv-label" *ngIf="l.noexpiry" [attr.data-testid]="'inv-x-noexp-' + i">no expiry</div></td>
-                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.mrp" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-mrp-' + i"></td>
-                    <td><input type="number" min="0" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.qty" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-qty-' + i"></td>
-                    <td><input type="number" min="0" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.free" [ngModelOptions]="{standalone: true}"></td>
-                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.rate" [ngModelOptions]="{standalone: true}" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-rate-' + i"></td>
-                    <td><input type="number" min="0" max="100" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.disc" [ngModelOptions]="{standalone: true}" (input)="onDiscount(l)" [attr.data-testid]="'inv-x-disc-' + i"></td>
-                    <td><select class="form-select form-select-sm px-1 w-100" [(ngModel)]="l.tax" [ngModelOptions]="{standalone: true}" (change)="l.include = ready(l)" [attr.data-testid]="'inv-x-tax-' + i">
+                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.mrp" [ngModelOptions]="{standalone: true}" [disabled]="l.state !== 'OPEN'" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-mrp-' + i"></td>
+                    <td><input type="number" min="0" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.qty" [ngModelOptions]="{standalone: true}" [disabled]="l.state !== 'OPEN'" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-qty-' + i"></td>
+                    <td><input type="number" min="0" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.free" [ngModelOptions]="{standalone: true}" [disabled]="l.state !== 'OPEN'"></td>
+                    <td><input type="number" min="0" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.rate" [ngModelOptions]="{standalone: true}" [disabled]="l.state !== 'OPEN'" (input)="l.include = ready(l)" [attr.data-testid]="'inv-x-rate-' + i"></td>
+                    <td><input type="number" min="0" max="100" step="0.01" class="form-control form-control-sm text-end w-100" [(ngModel)]="l.disc" [ngModelOptions]="{standalone: true}" [disabled]="l.state !== 'OPEN'" (input)="onDiscount(l)" [attr.data-testid]="'inv-x-disc-' + i"></td>
+                    <td><select class="form-select form-select-sm px-1 w-100" [(ngModel)]="l.tax" [ngModelOptions]="{standalone: true}" [disabled]="l.state !== 'OPEN'" (change)="l.include = ready(l)" [attr.data-testid]="'inv-x-tax-' + i">
                       <option [ngValue]="null">GST?</option><option *ngFor="let t of rates" [ngValue]="t">{{t}}%</option></select></td>
                     <td class="text-end">{{amountOf(l) | number:'1.2-2'}}</td>
                   </tr>
                 </tbody>
               </table>
               <div class="small" data-testid="inv-x-summary">
-                <b>{{readyLines.length}}</b> of {{lines.length}} lines will be added to the draft when you save.
                 Lines with tax<span *ngIf="cashFactor < 1" data-testid="inv-x-cd"> and the cash discount</span> come to <b>{{linesNet | number:'1.2-2'}}</b><span *ngIf="form.value.printedtotal"> against the invoice total {{form.value.printedtotal | number:'1.2-2'}}:
                 <span [class.text-success]="linesAgree" [class.text-danger]="!linesAgree" data-testid="inv-x-total-check">{{linesAgree ? 'they agree' : 'they differ, so a line may be missing or misread'}}</span></span>.
+                <span class="text-muted" *ngIf="openCount">Lines still to check are counted when they are complete.</span>
               </div>
             </div>
           </div>
@@ -238,14 +258,29 @@
         </div>
 
         <div class="col-12 d-flex flex-wrap align-items-center gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="missing.length > 0 || saving" data-testid="inv-f-save">{{id ? 'Save changes' : (readyLines.length ? 'Save and add ' + readyLines.length + ' item' + (readyLines.length === 1 ? '' : 's') : 'Save and add items')}}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="headerNeeded.length > 0 || saving" data-testid="inv-f-save">{{id || form.value.id ? 'Save changes' : (lines.length ? 'Save draft' : 'Save and add items')}}</button>
+          <button type="button" *ngIf="form.value.id && lines.length" class="btn btn-outline-primary" (click)="gotoEdit(form.value.id)" data-testid="inv-f-items">Go to the invoice items</button>
+          <span class="small text-success" *ngIf="savedNote" data-testid="inv-f-saved">{{savedNote}}</span>
           <button type="button" (click)="cancel()" class="btn btn-outline-secondary" data-testid="inv-f-cancel">Cancel</button>
-          <span class="small text-muted" *ngIf="missing.length" data-testid="inv-f-hint">Still needed: {{missing.join(', ')}}.</span>
+          <span class="small text-muted" *ngIf="headerNeeded.length" data-testid="inv-f-hint">Still needed: {{headerNeeded.join(', ')}}.</span>
         </div>
       </div>
     </form>
   </div>
 </div>
+
+<p-dialog header="Not on the invoice" [visible]="!!discarding" (visibleChange)="$event || (discarding = null)" [modal]="true" [style]="{width:'30rem'}">
+  <div *ngIf="discarding" data-testid="inv-x-discard-dialog">
+    <p class="small text-muted mb-2">Put this line aside because it is not on the invoice copy (a misread row, a total, a repeat). It is kept with the draft, with your reason, and can be restored.</p>
+    <div class="small mb-2"><b>{{discarding.line.description}}</b></div>
+    <input class="form-control" maxlength="200" placeholder="Why is it not on the invoice?" [(ngModel)]="discarding.reason" (keydown.enter)="confirmDiscard()" data-testid="inv-x-discard-reason">
+    <div class="text-danger small mt-2" *ngIf="discarding.error" data-testid="inv-x-discard-error">{{discarding.error}}</div>
+    <div class="mt-3 d-flex gap-2">
+      <button type="button" class="btn btn-danger" (click)="confirmDiscard()" [disabled]="discarding.busy" data-testid="inv-x-discard-confirm">Put aside</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="discarding = null">Keep it</button>
+    </div>
+  </div>
+</p-dialog>
 
 <p-dialog header="Add a product" [visible]="!!newProduct" (visibleChange)="$event || (newProduct = null)" [modal]="true" [style]="{width:'36rem'}">
   <div *ngIf="newProduct" data-testid="inv-np">

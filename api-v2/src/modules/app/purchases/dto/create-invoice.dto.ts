@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min } from 'class-validator';
+import { IsArray, IsDateString, IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min, IsBoolean } from 'class-validator';
 
 export class CreatePurchaseInvoiceDto {
 
@@ -82,6 +82,11 @@ export class CreatePurchaseInvoiceDto {
     @IsNumber()
     @Min(0)
     readonly cashdiscount?: number;
+
+    @ApiProperty({ description: 'a draft being saved before its invoice or challan number is known', example: false, required: false })
+    @IsOptional()
+    @IsBoolean()
+    readonly draft?: boolean;
 
     @ApiProperty({ description: 'path of the attached invoice copy', example: '', required: false })
     @IsOptional()

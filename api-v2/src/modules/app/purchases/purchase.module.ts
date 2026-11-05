@@ -2,6 +2,8 @@ import { RoleModule } from "../roles/role.module";
 import { InvoiceViewService } from "./invoice-view.service";
 import { InvoiceExtractController } from "./invoice-extract/invoice-extract.controller";
 import { InvoiceExtractService } from "./invoice-extract/invoice-extract.service";
+import { InvoiceScanController } from "./invoice-extract/invoice-scan.controller";
+import { InvoiceScanService } from "./invoice-extract/invoice-scan.service";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -47,10 +49,12 @@ import { PurchaseDownloadController } from "./purchase-download.controller";
       PurchaseSuggestionController,
       PurchaseInvoiceController,
       InvoiceExtractController,
+      InvoiceScanController,
       PurchaseItemController,
       VendorPaymentController,
       PurchaseDownloadController],
-    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,InvoiceViewService,InvoiceExtractService,JwtService],
+    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,InvoiceViewService,InvoiceExtractService,
+      InvoiceScanService,JwtService],
     exports: [PurchaseService,PurchaseInvoiceService,VendorPaymentService],
   })
   export class PurchaseModule {}

@@ -1,7 +1,5 @@
 import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component, OnInit } from "@angular/core";
-import { from } from "rxjs";
-import { concatMap, toArray } from "rxjs/operators";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { VendorsService } from "../../vendors/vendors.service";
@@ -44,6 +42,13 @@ export class InvoiceFormComponent implements OnInit {
     showChecks = false;
     filled:string[] = [];
     addProblem = '';
+
+    // the lines saved with the draft, and how the checking is going
+    scanFilter:'all' | 'open' | 'verified' | 'discarded' = 'all';
+    discarding:any = null;
+    savedNote = '';
+    checkingAll = false;
+    scanMessage = '';
 
     // a product that is not in the system, added from a line without leaving the invoice
     newProduct:any = null;
@@ -127,6 +132,8 @@ export class InvoiceFormComponent implements OnInit {
           fixed.forEach(k => this.form.controls[k].disable());
         }
         this.loadOrders(data.vendorid);
+        // a draft made from a scanned copy comes back with its lines, as they were left
+        if(data.status === 'NEW') this.loadScan(id);
       });
     }
 
@@ -277,7 +284,8 @@ export class InvoiceFormComponent implements OnInit {
         batch: l.batch || '', exp: l.expdate ? String(l.expdate).slice(0, 7) : '', expText: '',
         mrp: l.mrp, qty: l.qty, free: l.free || 0, rate: l.rate, disc: Math.min(100, Math.max(0, +l.disc || 0)),
         tax: this.rateOf(l.tax !== null && l.tax !== undefined ? l.tax : (product ? product.tax_pcnt : null)),     // only one of the allowed rates, else the person chooses
-        warnings: l.warnings || [], include: false
+        warnings: l.warnings || [], include: false,
+        hsn: l.hsn || null, lineid: null, state: 'OPEN', itemid: null, verifiedbyname: null, discardreason: null, busy: false, rowError: '', snap: ''
       };
       row.expText = this.expiryText(row.exp);
       row.include = this.ready(row);
@@ -372,7 +380,139 @@ export class InvoiceFormComponent implements OnInit {
       r.include = this.ready(r);
     }
 
-    get readyLines(): any[] { return this.lines.filter(l => l.include && this.ready(l)); }
+    /** the lines that count towards the invoice total: the ones checked, and the open ones that are complete */
+    get readyLines(): any[] { return this.lines.filter(l => l.state === 'VERIFIED' || (l.state === 'OPEN' && this.ready(l))); }
+    get openCount(): number { return this.lines.filter(l => l.state === 'OPEN').length; }
+    get verifiedCount(): number { return this.lines.filter(l => l.state === 'VERIFIED').length; }
+    get discardedCount(): number { return this.lines.filter(l => l.state === 'DISCARDED').length; }
+    get completeOpenCount(): number { return this.lines.filter(l => l.state === 'OPEN' && l.lineid && this.ready(l)).length; }
+    get shownLines(): any[] { return this.scanFilter === 'all' ? this.lines : this.lines.filter(l => l.state === this.scanFilter.toUpperCase()); }
+
+    // ---- the draft and the checking of its lines
+    private invoiceId(): any { return this.form.getRawValue().id || this.id; }
+
+    private fail(err:any, fallback:string): string {
+      const m = err?.error?.message;
+      return (Array.isArray(m) ? m.join(' ') : m) || fallback;
+    }
+
+    /** a line from the server as a row of the grid */
+    private fromServer(l:any){
+      const row:any = {
+        lineid: l.id, description: l.description, suggestions: l.suggestions || [], searching: false,
+        productid: l.productid, productTitle: l.producttitle || '', noexpiry: !!l.noexpiry,
+        batch: l.batch || '', exp: l.exp || '', expText: this.expiryText(l.exp || ''),
+        mrp: l.mrp, qty: l.qty, free: l.free || 0, rate: l.rate, disc: l.disc || 0, tax: l.tax,
+        hsn: l.hsn, warnings: l.warnings || [], include: false,
+        state: l.state, itemid: l.itemid, verifiedbyname: l.verifiedbyname, discardreason: l.discardreason, busy: false, rowError: ''
+      };
+      row.snap = this.snapOf(row);
+      return row;
+    }
+
+    /** the part of a row that is saved as it is typed */
+    private snapOf(r:any): string {
+      return JSON.stringify([r.productid, r.batch, r.exp, r.mrp, r.qty, r.free, r.rate, r.disc, r.tax]);
+    }
+
+    private applyLine(row:any, l:any){ Object.assign(row, this.fromServer(l)); }
+
+    /** open the lines saved with this draft (the panel comes back as it was left) */
+    loadScan(id:any){
+      this.service.scan(id).subscribe((r:any) => {
+        if(!r?.lines?.length) return;
+        this.extracted = { resumed: true, method: r.meta?.method || '', gstRates: r.gstRates, cashFactor: r.meta?.cashFactor || 1, header: {}, warnings: [], vendor: null };
+        this.lines = r.lines.map((l:any) => this.fromServer(l));
+      }, () => {});
+    }
+
+    /** a correction to an open line is saved when the cursor leaves the row */
+    lineBlur(l:any){
+      if(!l.lineid || l.state !== 'OPEN' || l.busy) return;
+      if(this.snapOf(l) === l.snap) return;
+      this.persist(l);
+    }
+
+    private persist(l:any): Promise<boolean> {
+      l.rowError = '';
+      return this.service.saveScanLine(this.invoiceId(), l.lineid, {
+        productid: l.productid, batch: l.batch, exp: l.exp, mrp: l.mrp, qty: l.qty, free: l.free, rate: l.rate, disc: l.disc, tax: l.tax
+      }).toPromise().then(() => { l.snap = this.snapOf(l); return true; }, (err:any) => { l.rowError = this.fail(err, 'The change could not be saved.'); return false; });
+    }
+
+    /** ticking "Checked" says the line agrees with the invoice copy: it becomes a verified item of the invoice now */
+    async toggleCheck(l:any, ev:any){
+      const want = !!ev.target.checked;
+      l.busy = true; l.rowError = ''; this.scanMessage = '';
+      try {
+        if(want){
+          if(!(await this.persist(l))){ ev.target.checked = false; return; }
+          this.applyLine(l, await this.service.verifyScanLine(this.invoiceId(), l.lineid).toPromise());
+        } else {
+          this.applyLine(l, await this.service.unverifyScanLine(this.invoiceId(), l.lineid).toPromise());
+        }
+      } catch(err:any){
+        ev.target.checked = !want;
+        l.rowError = this.fail(err, want ? 'The line could not be checked.' : 'The line could not be unchecked.');
+      } finally { l.busy = false; }
+    }
+
+    /** a clean copy: every open line that is complete is checked at once */
+    async checkAll(){
+      if(this.checkingAll) return;
+      this.checkingAll = true; this.scanMessage = '';
+      try {
+        for(const l of this.lines){ if(l.lineid && l.state === 'OPEN' && this.snapOf(l) !== l.snap) await this.persist(l); }
+        const r = await this.service.verifyAllScan(this.invoiceId()).toPromise();
+        this.lines = (r.lines || []).map((x:any) => this.fromServer(x));
+        this.scanMessage = `${r.verified} line${r.verified === 1 ? '' : 's'} checked` + (r.skipped ? `, ${r.skipped} still incomplete` : '') + (r.failed?.length ? `, ${r.failed.length} could not be checked` : '') + '.';
+      } catch(err:any){ this.scanMessage = this.fail(err, 'The lines could not be checked.'); }
+      finally { this.checkingAll = false; }
+    }
+
+    openDiscard(l:any){ this.discarding = { line: l, reason: '', error: '', busy: false }; }
+
+    confirmDiscard(){
+      const d = this.discarding;
+      if(!d || d.busy) return;
+      if(String(d.reason || '').trim().length < 3){ d.error = 'Say why the line is not on the invoice.'; return; }
+      d.busy = true; d.error = '';
+      this.service.discardScanLine(this.invoiceId(), d.line.lineid, d.reason).subscribe(
+        (r:any) => { this.applyLine(d.line, r); this.discarding = null; },
+        (err:any) => { d.busy = false; d.error = this.fail(err, 'The line could not be discarded.'); });
+    }
+
+    restoreLine(l:any){
+      l.busy = true; l.rowError = '';
+      this.service.restoreScanLine(this.invoiceId(), l.lineid).subscribe(
+        (r:any) => { this.applyLine(l, r); },
+        (err:any) => { l.busy = false; l.rowError = this.fail(err, 'The line could not be restored.'); });
+    }
+
+    /** the first save of a reading: its lines go with the draft, then the page is opened again from what was saved */
+    private saveScan(invoiceid:any){
+      const lines = this.lines.filter(l => !l.lineid).map(l => ({
+        description: l.description, productid: l.productid, suggestions: l.suggestions, batch: l.batch, exp: l.exp, mrp: l.mrp, qty: l.qty,
+        free: l.free, rate: l.rate, disc: l.disc, tax: l.tax, hsn: l.hsn, warnings: l.warnings
+      }));
+      this.service.saveScan(invoiceid, { meta: { method: this.extracted?.method || '', cashFactor: this.extracted?.cashFactor || 1 }, lines }).subscribe(
+        () => { this.saving = false; this.router.navigate(['/secure/purchases/invoices/edit', invoiceid], { replaceUrl: true }); },
+        (err:any) => {
+          this.saving = false;
+          this.errorMessage = 'The draft is saved, but its lines could not be: ' + this.fail(err, 'try Save draft again.');
+        });
+    }
+
+    /** a draft needs only the vendor and the store: the numbers can follow */
+    get missingDraft(): string[] {
+      const v = this.form.getRawValue();
+      const out: string[] = [];
+      if(!v.vendorid) out.push('vendor');
+      if(!v.storeid) out.push('receiving store');
+      if(this.gstinBad) out.push('a valid supplier GSTIN');
+      return out;
+    }
+    get headerNeeded(): string[] { return this.lines.length && !this.locked ? this.missingDraft : this.missing; }
     /** an invoice-level cash discount ("Less CD 4%") comes off the goods before tax: the lines are compared after it */
     get cashFactor(): number {
       const f = +(this.extracted && this.extracted.cashFactor);
@@ -452,7 +592,8 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     submit(){
-      if(this.missing.length || this.saving) return;
+      if(this.headerNeeded.length || this.saving) return;
+      this.savedNote = '';
       this.errorMessage = '';
       const v = this.form.getRawValue();
       const obj:any = {
@@ -478,6 +619,7 @@ export class InvoiceFormComponent implements OnInit {
       if(v.supplytype) obj.supplytype = v.supplytype;
       if(v.itceligibility) obj.itceligibility = v.itceligibility;
       obj.reversecharge = !!v.reversecharge;
+      if(!v.id && this.lines.length) obj.draft = true;           // a scanned copy is saved before its numbers are all known
       this.saving = true;
       this.addProblem = '';
       const id = v.id;
@@ -486,37 +628,15 @@ export class InvoiceFormComponent implements OnInit {
           if(data?.status === 'ERROR'){ this.saving = false; this.errorMessage = data.message; return; }
           const invoiceid = id || data.id;
           if(!id) this.form.controls['id'].setValue(invoiceid);          // a second Save edits this invoice rather than making another
-          const todo = this.readyLines;
-          if(!todo.length){ this.saving = false; this.gotoEdit(invoiceid); return; }
-          this.addLines(invoiceid, todo);
+          if(this.lines.some(l => !l.lineid)){ this.saveScan(invoiceid); return; }          // the lines go with the draft
+          if(this.lines.length){ this.saving = false; this.savedNote = 'Saved.'; return; }     // stay with the lines being checked
+          this.saving = false; this.gotoEdit(invoiceid);
         },
         (err:any) => {
           this.saving = false;
           const m = err?.error?.message;
           this.errorMessage = (Array.isArray(m) ? m.join(' ') : m) || 'The invoice could not be saved.';
         });
-    }
-
-    /** add the confirmed lines to the saved draft, one after another (each also keeps the invoice total in step) */
-    private addLines(invoiceid:any, todo:any[]){
-      const firstDay = (ym:string) => `${ym}-01`;                                       // an expiry is kept as the 1st of its month, like the item form does
-      let failed = 0;
-      from(todo).pipe(
-        concatMap((l:any) => {
-          const rate = +l.rate, tax = +l.tax || 0;
-          return new Promise<void>((resolve) => this.service.saveItem({
-            invoiceid, productid: l.productid, batch: String(l.batch).trim().toUpperCase(), ...(l.exp && !l.noexpiry ? { expdate: firstDay(l.exp) } : {}),
-            mrpcost: +l.mrp, qty: +l.qty, freeqty: +l.free || 0, ptrvalue: rate, ptrcost: Math.round(rate * (1 + tax / 100) * 100) / 100,
-            discpcnt: +l.disc || 0, taxpcnt: tax, total: this.amountOf(l),
-            ...(String(l.hsn || '').replace(/\s+/g, '') ? { hsn: String(l.hsn).replace(/\s+/g, '') } : {})        // the code the vendor printed, kept for the product's HSN
-          } as any).subscribe(() => resolve(), () => { failed++; resolve(); }));
-        }),
-        toArray()
-      ).subscribe(() => {
-        this.saving = false;
-        if(failed){ this.addProblem = `The invoice is saved, but ${failed} of ${todo.length} lines could not be added. Add them on the next page.`; }
-        this.gotoEdit(invoiceid);
-      });
     }
 
     gotoList() {

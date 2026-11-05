@@ -97,6 +97,10 @@ export class InvoiceItemsComponent {
 
         this.invService.find(id).subscribe((inv:any) => {
             this.invoice = inv;
+            // lines of a scanned copy still to check against it keep the invoice from being completed
+            if(inv.status === 'NEW'){
+                this.invService.scan(inv.id).subscribe((r:any) => { this.scanOpen = r?.counts?.open || 0; this.scanChecked = r?.counts?.verified || 0; }, () => {});
+            } else { this.scanOpen = 0; this.scanChecked = 0; }
             this.items = inv.items.map((i:any) => {
                 // a line in dispute or rejected is not part of the invoice: it is left out of the totals
                 if(!this.outside(i)){
@@ -120,6 +124,13 @@ export class InvoiceItemsComponent {
             }
         });
     }
+
+    scanOpen = 0;
+    scanChecked = 0;
+
+    /** how many of the lines still part of the invoice are verified */
+    get liveCount(): number { return (this.items || []).filter((i:any) => !this.outside(i)).length; }
+    get verifiedLiveCount(): number { return (this.items || []).filter((i:any) => !this.outside(i) && i.status === 'VERIFIED').length; }
 
     /** a line the invoice does not count: in dispute with the vendor, or rejected */
     outside(i:any):boolean { return i.status === 'DISPUTED' || i.status === 'REJECTED'; }
