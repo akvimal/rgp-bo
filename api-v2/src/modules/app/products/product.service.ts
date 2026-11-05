@@ -190,11 +190,45 @@ export class ProductService {
     return { price: final, capped, mrp, ceiling, tax, ptr, margin, warnings };
   }
 
+  /**
+   * The product's price row for the Set the price dialog. price_view takes the cost and MRP from the purchase on the newest invoice date, whatever its
+   * status (a draft counts), but the pricing policy (the lowest price, the legal ceiling, the largest raise) is judged against the newest COMPLETED purchase.
+   * With the two being different purchases the dialog disagreed with itself. So the dialog's figures come from the same completed purchase as the policy,
+   * and a newer purchase that is not completed yet is reported on its own (`pending`), with the ceiling it would give once it is.
+   */
   async findPriceById(productid:number){
-    // Fixed SQL injection vulnerability - now using parameterized query
-    return await this.manager.query(
+    const rows = await this.manager.query(
       `SELECT v.*, p.pack FROM price_view v JOIN product p ON p.id = v.id WHERE v.id = $1`,
       [productid]);
+    if(!rows.length) return rows;
+    const BASIS = `select pi.invoice_no, coalesce(pi.invoice_no, 'challan ' || pi.challan_no) as ref, to_char(pi.invoice_date, 'YYYY-MM-DD') as invoice_date, pi.status,
+                          pii.mrp_cost::float8 as mrp, pii.ptr_cost::float8 as ptr, coalesce(pii.tax_pcnt, 0)::float8 as tax,
+                          public.sale_gst(coalesce(pii.tax_pcnt, 0)::double precision)::float8 as sale_tax
+                     from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.active and not pi.archive`;
+    const [done] = await this.manager.query(
+      `${BASIS} and pi.status = 'COMPLETE' where pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
+        order by pi.invoice_date desc, pii.id desc limit 1`, [productid]);
+    const [open] = await this.manager.query(
+      `${BASIS} and pi.status <> 'COMPLETE' where pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
+        order by pi.invoice_date desc, pii.id desc limit 1`, [productid]);
+    const row: any = { ...rows[0] };
+    const ceilingOf = (mrp:number, saleTax:number) => Math.floor(mrp / (1 + saleTax / 100) * 100 + 1e-6) / 100;
+    if(done){
+      // the same purchase the policy reads
+      row.mrp = done.mrp; row.ptr = done.ptr; row.tax = done.tax; row.sale_tax = done.sale_tax;
+      const price = row.price !== null && row.price !== undefined ? +row.price : done.mrp / (1 + done.sale_tax / 100);
+      row.margin = done.ptr > 0 ? Math.round(((price * (1 + done.tax / 100) - done.ptr) / done.ptr) * 100) : row.margin;
+      row.discount = done.mrp > 0 ? Math.round(((done.mrp - price * (1 + done.sale_tax / 100)) / done.mrp) * 100) : row.discount;
+      row.basis = { invoiceno: done.ref, invoicedate: done.invoice_date };
+      // a newer purchase that is still a draft, with a different MRP or cost: shown, and what its MRP would allow
+      if(open && open.invoice_date >= done.invoice_date && (Math.abs(open.mrp - done.mrp) > 0.005 || Math.abs(open.ptr - done.ptr) > 0.005)){
+        row.pending = { invoiceno: open.ref, invoicedate: open.invoice_date, status: open.status, mrp: open.mrp, ptr: open.ptr, ceiling: ceilingOf(open.mrp, open.sale_tax) };
+      }
+    } else if(open){
+      // no completed purchase yet: the figures are a draft's, and the policy has nothing to judge them by until it is completed
+      row.basisdraft = { invoiceno: open.ref, invoicedate: open.invoice_date, status: open.status };
+    }
+    return [row];
   }
 
   async endCurrentPrice(productid:number,enddate?:string){

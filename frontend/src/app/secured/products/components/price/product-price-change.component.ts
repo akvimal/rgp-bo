@@ -91,6 +91,10 @@ export class ProductPriceChangeComponent implements OnDestroy {
     }
 
     // ------------------------------------------------------------------ the figures
+    /** a newer purchase that is not completed yet (its MRP and cost are not what the limits use), and where the figures above come from */
+    get pending(): any { return this.current?.price?.pending || null; }
+    get basis_(): any { return this.current?.price?.basis || null; }
+    get basisDraft(): any { return this.current?.price?.basisdraft || null; }
     /** the purchase cost and MRP the price is checked against (none until the product has been bought) */
     get ptr(): number { return +(this.current?.price?.ptr || 0); }
     get mrp(): number { return +(this.current?.price?.mrp || 0); }

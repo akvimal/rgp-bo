@@ -25,6 +25,17 @@
       <div class="text-danger" *ngIf="policy.conflict">The cost is above what the MRP allows: check the cost and the pack size first.</div>
     </div>
 
+    <div class="alert alert-warning py-2 small mb-3" *ngIf="pending" data-testid="price-pending-note">
+      <b>A newer purchase is not completed yet.</b> {{pending.invoiceno}} ({{pending.invoicedate | date:'dd MMM yyyy'}}, {{pending.status === 'NEW' ? 'draft' : (pending.status | lowercase)}})
+      has MRP <b>{{pending.mrp | number:'1.2-2'}}</b> and cost with GST <b>{{pending.ptr | number:'1.2-2'}}</b>.
+      The figures and limits above come from the last completed purchase<span *ngIf="basis_"> ({{basis_.invoiceno}}, {{basis_.invoicedate | date:'dd MMM yyyy'}})</span>.
+      Once the newer one is completed, the legal ceiling becomes <b>{{pending.ceiling | number:'1.2-2'}}</b>.
+    </div>
+    <div class="alert alert-info py-2 small mb-3" *ngIf="basisDraft" data-testid="price-draft-note">
+      <b>No completed purchase yet.</b> These figures come from {{basisDraft.invoiceno}} ({{basisDraft.invoicedate | date:'dd MMM yyyy'}}), which is not completed.
+      The pricing policy checks prices only against completed purchases, so its limits apply once an invoice is completed.
+    </div>
+
     <h6 class="text-primary">New price</h6>
     <div class="row g-3">
       <div class="col-md-5">
