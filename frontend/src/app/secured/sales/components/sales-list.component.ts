@@ -287,13 +287,20 @@ export class SalesListComponent implements OnDestroy {
         return canVoidBill(sale, this.shiftContext.openShift?.id, this.auth.isActionAuthorized('sales.void'), signedInUserId());
       }
 
-      openVoid(sale:any){ this.voidSale = sale; this.voidReason = ''; this.voidError = ''; }
-      closeVoid(){ this.voidSale = null; }
+      /** a completed bill the ordinary void refuses (closed shift, someone else's): only for a role with "force void" */
+      canForceVoid(sale:any):boolean{
+        return `${sale?.status}`.toUpperCase() === 'COMPLETE' && !this.canVoid(sale) && this.auth.isActionAuthorized('sales.forcevoid');
+      }
+
+      voidForce = false;
+      openVoid(sale:any, force = false){ this.voidSale = sale; this.voidForce = force; this.voidReason = ''; this.voidError = ''; }
+      closeVoid(){ this.voidSale = null; this.voidForce = false; }
       saveVoid(){
         this.voidError = '';
         if(this.voidReason.trim().length < 3){ this.voidError = 'Say why the bill is being voided.'; return; }
         this.voidBusy = true;
-        this.service.voidBill(this.voidSale.id, this.voidReason.trim()).subscribe({
+        const call = this.voidForce ? this.service.forceVoidBill(this.voidSale.id, this.voidReason.trim()) : this.service.voidBill(this.voidSale.id, this.voidReason.trim());
+        call.subscribe({
           next: () => { this.voidBusy = false; this.voidSale = null; this.fetchSales(); },
           error: (err:any) => { this.voidBusy = false; this.voidError = err?.error?.message || 'The bill could not be voided.'; }
         });

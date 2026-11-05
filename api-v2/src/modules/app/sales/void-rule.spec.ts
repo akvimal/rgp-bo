@@ -13,6 +13,14 @@ describe('voiding a bill', () => {
     expect(voidProblem({ ...ok, status: 'PENDING' })).toContain('discarded');
     expect(voidProblem({ ...ok, status: 'VOID' })).toContain('already voided');
   });
+  it('a force-void ignores the shift and who rang the bill, but not returns or status', () => {
+    const f = { ...ok, force: true, isOwn: false, shiftStatus: 'CLOSED' };
+    expect(voidProblem(f)).toBeNull();
+    expect(voidProblem({ ...f, shiftId: null, shiftStatus: null })).toBeNull();
+    expect(voidProblem({ ...f, returns: 1 })).toContain('returned');
+    expect(voidProblem({ ...f, status: 'VOID' })).toContain('already voided');
+    expect(voidProblem({ ...f, status: 'PENDING' })).toContain('discarded');
+  });
   it('needs a reason', () => {
     expect(voidReasonProblem('  ')).not.toBeNull();
     expect(voidReasonProblem('ab')).not.toBeNull();

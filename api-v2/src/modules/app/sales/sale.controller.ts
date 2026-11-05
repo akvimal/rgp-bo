@@ -351,6 +351,19 @@ export class SaleController {
       return result;
     }
 
+    /** a Business Head's force-void of a bill the ordinary void refuses (closed shift, someone else's, no shift): { reason }. The bill stays on record as VOID. */
+    @Post(':id/force-void')
+    async forceVoidBill(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      const [role] = await this.manager.query(
+        `select exists (select 1 from app_role r, json_array_elements(r.permissions) e, json_array_elements(e->'policies') p
+                         where r.id = $1 and e->>'resource' = 'sales' and p->>'action' = 'forcevoid') as can`, [currentUser.roleid]);
+      if (!role?.can) throw new ForbiddenException('Only a Business Head or Owner-operator may force-void a bill.');
+      const result = await this.saleService.voidSale(id, body?.reason, currentUser, true, true);
+      await this.audit.record({ userId: currentUser.id, action: 'sale.force_voided', entityType: 'sale', entityId: +id,
+        summary: `Bill ${result.billno ?? id} force-voided: ${`${body?.reason}`.trim()}`, details: { reason: `${body?.reason}`.trim(), cashreversed: result.cashreversed } });
+      return result;
+    }
+
     @Delete(':id')
     remove(@Param('id') id: string, @User() currentUser: any) {
       return this.saleService.delete(id, currentUser?.id);

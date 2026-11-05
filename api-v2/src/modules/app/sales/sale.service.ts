@@ -812,7 +812,7 @@ export class SaleService {
      * stock comes back (it is counted from completed bills), the shift's cash is corrected with a reversing line, the staff / store credit the bill
      * used is put back, and a business pack marks what it wrote (the drug register lines are withdrawn). A tax invoice keeps its number.
      */
-    async voidSale(id: number | string, reason: string, user: { id: number; roleid?: number }, canVoidAny: boolean) {
+    async voidSale(id: number | string, reason: string, user: { id: number; roleid?: number }, canVoidAny: boolean, force = false) {
         const why = voidReasonProblem(reason);
         if (why) throw new BadRequestException(why);
         return this.manager.transaction(async (tx) => {
@@ -825,7 +825,7 @@ export class SaleService {
                 `select count(*)::int as n from sale_return_item sri join sale_item si on si.id = sri.sale_item_id where si.sale_id = $1`, [+id]);
             const problem = voidProblem({
                 status: sale.status, shiftId: sale.shift_id ? +sale.shift_id : null, shiftStatus: sale.shift_status, returns,
-                isOwn: [sale.created_by, sale.acting_user_id].some((u: any) => u && +u === +user.id), canVoidAny,
+                isOwn: [sale.created_by, sale.acting_user_id].some((u: any) => u && +u === +user.id), canVoidAny, force,
             });
             if (problem) throw new BadRequestException(problem);
             const text = `${reason}`.trim();
@@ -837,14 +837,21 @@ export class SaleService {
 
             // the shift's cash: the bill's cash came in as a SALE line, so a reversing line takes it out again
             if (+sale.cash > 0) {
+                // a closed shift's cash is already counted: a force-void takes the cash out of the shift that is open now instead
+                let cashShift: number | null = sale.shift_id ? +sale.shift_id : null;
+                if (force && String(sale.shift_status ?? '').toUpperCase() !== 'OPEN') {
+                    const [open] = await tx.query(`select id from store_shifts where store_id = $1 and status = 'OPEN' order by shift_date desc, id desc limit 1`, [sale.store_id]);
+                    if (!open) throw new BadRequestException('Open a shift first: the cash of this bill goes back out of the drawer of the open shift.');
+                    cashShift = +open.id;
+                }
                 await tx.save(StoreCashAccount, {
                     transdate: new Date().toISOString().slice(0, 10),
                     category: 'SALE_VOID',
-                    description: `Void bill ${sale.bill_no || sale.id}`,
+                    description: `${force ? 'Force-void' : 'Void'} bill ${sale.bill_no || sale.id}`,
                     deposit: 0,
                     withdraw: +sale.cash,
                     store: { id: sale.store_id },
-                    shift: { id: sale.shift_id },
+                    shift: { id: cashShift },
                 } as any);
             }
             // credit the bill gave or used goes back
