@@ -26,6 +26,7 @@ export class LogoutComponent {
             localStorage.removeItem('selected_store_id');
             localStorage.removeItem('selected_operator_id');
             localStorage.removeItem('selected_operator_name');
-            this.router.navigateByUrl(back,{replaceUrl:true});
+            // ?manual=1: the sign-in page does not sign a registered PC's Counter login back in by itself, so someone else can sign in
+            this.router.navigateByUrl(`${back}?manual=1`,{replaceUrl:true});
         }
 }

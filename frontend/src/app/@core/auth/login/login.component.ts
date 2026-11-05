@@ -39,6 +39,36 @@ export class LoginComponent {
         this.platform = !!this.route.snapshot.data['platform'];
         this.credService.clearCredentials();
         this.operatorContext.clear();
+        if (!this.platform) this.checkStorePc();
+    }
+
+    /** a registered store PC with a Counter login linked signs it in by itself, unless the person just signed out on purpose */
+    storePcName = '';
+    autoBusy = false;
+    private checkStorePc(){
+        if (!this.authService.getDeviceToken()) return;
+        this.authService.deviceStatus().subscribe({
+            next: (s:any) => {
+                if (!s?.registered) {
+                    // the PC was revoked: forget its secret so it behaves like any other browser
+                    this.authService.setDeviceToken(null);
+                    return;
+                }
+                if (!s.autosignin) return;
+                this.storePcName = s.name;
+                if (!this.route.snapshot.queryParamMap.has('manual')) this.autoSignIn();
+            },
+            error: () => {}
+        });
+    }
+
+    autoSignIn(){
+        if (this.autoBusy) return;
+        this.autoBusy = true;
+        this.authService.deviceLogin().subscribe({
+            next: (data:any) => { this.autoBusy = false; this.finishLogin(data['token']); },
+            error: () => { this.autoBusy = false; }
+        });
     }
     
     /**

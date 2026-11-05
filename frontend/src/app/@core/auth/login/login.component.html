@@ -18,6 +18,8 @@
 
     <button class="btn btn-primary" type="submit" data-testid="login-submit" [disabled]="!form.valid">{{platform ? 'Sign in to platform' : 'Sign in'}}</button>
 
+    <button *ngIf="storePcName" type="button" class="btn btn-outline-primary" (click)="autoSignIn()" [disabled]="autoBusy" data-testid="login-counter">Sign in as the counter on this PC ({{storePcName}})</button>
+
     <div class="text-center small" *ngIf="platform || showChangePasswordLink">
       <a routerLink="/changepassword" [queryParams]="platform ? {scope: 'platform'} : null" data-testid="login-changepw-link">Change password</a>
     </div>

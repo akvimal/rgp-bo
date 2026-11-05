@@ -22,7 +22,7 @@ export class StoreSettingsComponent implements OnInit {
   message:string = '';
   savingPolicy:boolean = false;
   savingStore:boolean = false;
-  activeTab:'details' | 'cash' | 'checklists' | 'returns' = 'details';
+  activeTab:'details' | 'cash' | 'checklists' | 'returns' | 'pcs' = 'details';
 
   // the checklists a person ticks when a shift is opened, handed over or closed
   readonly checklistKinds = [
@@ -101,7 +101,7 @@ export class StoreSettingsComponent implements OnInit {
     this.cashService.saveReturnRule(row.category, rule).subscribe(() => {}, err => { row.rule = before; this.rrError = err?.error?.message || 'Unable to save'; });
   }
 
-  selectTab(tab:'details' | 'cash' | 'checklists' | 'returns') {
+  selectTab(tab:'details' | 'cash' | 'checklists' | 'returns' | 'pcs') {
     this.activeTab = tab;
     if (tab === 'returns') this.loadRules();
     this.refreshSelectedStore();

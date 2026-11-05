@@ -53,7 +53,53 @@ export class AuthService {
   }
 
   public login(cred:any):Observable<any>{
-    return this.http.post<any>(`${environment.apiHost}/auth/login`,cred);
+    return this.http.post<any>(`${environment.apiHost}/auth/login`,cred,{ headers: this.deviceHeaders() });
+  }
+
+  // ---- registered store PCs: the PC keeps a secret that the server recognises (only its hash is stored there)
+  private readonly deviceKey = 'rgp_device';
+
+  public getDeviceToken(): string | null {
+    try { return localStorage.getItem(this.deviceKey); } catch { return null; }
+  }
+
+  public setDeviceToken(token:string | null){
+    try { token ? localStorage.setItem(this.deviceKey, token) : localStorage.removeItem(this.deviceKey); } catch { /* storage blocked: the PC just is not trusted */ }
+  }
+
+  private deviceHeaders(): {[h:string]:string} {
+    const t = this.getDeviceToken();
+    return t ? { 'x-device-token': t } : {};
+  }
+
+  /** is this browser a registered store PC, and does it sign a Counter login in by itself */
+  public deviceStatus():Observable<any>{
+    return this.http.get<any>(`${environment.apiHost}/auth/device/status`,{ headers: this.deviceHeaders() });
+  }
+
+  /** a registered store PC signs its linked Counter login in on its own */
+  public deviceLogin():Observable<any>{
+    return this.http.post<any>(`${environment.apiHost}/auth/device/login`,{},{ headers: this.deviceHeaders() });
+  }
+
+  public devices():Observable<any>{
+    return this.http.get<any>(`${environment.apiHost}/auth/devices`);
+  }
+
+  public registerDevice(body:any):Observable<any>{
+    return this.http.post<any>(`${environment.apiHost}/auth/device/register`,body);
+  }
+
+  public linkDeviceCounter(id:number, counteruserid:number | null):Observable<any>{
+    return this.http.put<any>(`${environment.apiHost}/auth/devices/${id}/counter`,{counteruserid});
+  }
+
+  public setDeviceMode(mode:string):Observable<any>{
+    return this.http.put<any>(`${environment.apiHost}/auth/devices/mode`,{mode});
+  }
+
+  public revokeDevice(id:number):Observable<any>{
+    return this.http.delete<any>(`${environment.apiHost}/auth/devices/${id}`);
   }
     
   /** step 2 of a sign-in: the 6-digit code from the authenticator app, or a recovery code */

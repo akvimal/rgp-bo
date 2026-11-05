@@ -30,6 +30,8 @@ export class AuthGuard implements CanActivate {
 
     // 💡 We're assigning the payload to the request object here
     // so that we can access it in our route handlers
+    // a session that came from a registered store PC ends as soon as that PC is revoked
+    if (payload?.devid && !(await this.deviceActive(Number(payload.devid)))) throw new UnauthorizedException();
     request['user'] = payload;
     return true;
   }
@@ -37,6 +39,11 @@ export class AuthGuard implements CanActivate {
   private async stillActive(id: number): Promise<boolean> {
     const [u] = await this.manager.query(`select active, archive from app_user where id = $1`, [id]);
     return !!u && u.active === true && u.archive !== true;
+  }
+
+  private async deviceActive(id: number): Promise<boolean> {
+    const [d] = await this.manager.query(`select 1 as ok from store_device where id = $1 and active`, [id]);
+    return !!d;
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {

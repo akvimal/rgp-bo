@@ -7,6 +7,7 @@ import { ChangePasswordDto, LoginDto } from './auth.dto';
 import { UserService } from '../app/users/user.service';
 import { AuditService } from 'src/core/audit/audit.service';
 import { MfaService, mfaMode } from './mfa.service';
+import { DeviceService } from './device.service';
 
 @Injectable()
 export class AuthService {
@@ -17,9 +18,10 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly audit: AuditService,
-    private readonly mfa: MfaService){}
+    private readonly mfa: MfaService,
+    private readonly devices: DeviceService){}
 
-  public async login(body: LoginDto, ip?: string): Promise<any | never> {
+  public async login(body: LoginDto, ip?: string, deviceToken?: string): Promise<any | never> {
     const { email, password }: LoginDto = body;
     const scope = body.scope === 'platform' ? 'platform' : 'business';
     const user = await this.userService.findByUsername(email );
@@ -41,16 +43,31 @@ export class AuthService {
     // the password is right: with MFA on, a token comes only after the code from the person's authenticator app
     const mode = mfaMode();
     if (mode !== 'off') {
+      // a registered store PC may skip the second step for the roles the business allows (the password was still needed)
+      const device = await this.devices.skipsMfa(deviceToken, user.role?.name, ip);
+      if (device) {
+        this.audit.record({ userId: user.id, action: 'auth.mfa_skipped_trusted_pc', summary: `second step skipped on store PC "${device.name}"`, details: { deviceid: device.id }, ip });
+        return this.signedIn(user, ip, device.id);
+      }
       if (await this.mfa.isEnabled(user.id)) return { mfaRequired: true, mfaToken: await this.mfa.signStepToken(user.id, 'verify') };
       if (mode === 'required') return { mfaSetupRequired: true, mfaToken: await this.mfa.signStepToken(user.id, 'enrol') };
     }
     return this.signedIn(user, ip);
   }
 
-  private signedIn(user: AppUser, ip?: string) {
+  private signedIn(user: AppUser, ip?: string, devid?: number | null) {
     this.userService.update(user.id, { lastlogin: new Date() });
     this.audit.record({ userId: user.id, action: 'auth.login', summary: 'signed in', status: 200, ip });
-    return { token: this.helper.generateToken(user) };
+    return { token: this.helper.generateToken(user, devid) };
+  }
+
+  /** a registered store PC signs its linked Counter login in on its own (no password) */
+  public async deviceLogin(deviceToken: string | undefined, ip?: string) {
+    const { device, userId } = await this.devices.counterLogin(deviceToken, ip);
+    const user = await this.userService.findById(userId);
+    if (!user || user.isActive === false || user.isArchived === true || user.role?.name !== 'Counter') throw new UnauthorizedException();
+    this.audit.record({ userId: user.id, action: 'auth.device_login', summary: `Counter login signed in on store PC "${device.name}"`, details: { deviceid: device.id }, status: 200, ip });
+    return this.signedIn(user, ip, device.id);
   }
 
   /** the person behind a step token, still allowed to sign in */
@@ -105,8 +122,8 @@ export class AuthService {
     return { changed: true };
   }
 
-  public async refresh(user: AppUser): Promise<{token: string}> {
+  public async refresh(user: AppUser, devid?: number | null): Promise<{token: string}> {
     this.userService.update(user.id, { lastlogin: new Date() });
-    return {token: this.helper.generateToken(user)};
+    return {token: this.helper.generateToken(user, devid)};
   }
 }

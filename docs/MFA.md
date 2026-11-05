@@ -1,7 +1,7 @@
 # Two-step sign-in (authenticator app)
 
 Every login can be asked for a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy and similar) after the password.
-There is no SMS code and no "trust this device": the code is asked at every sign-in.
+There is no SMS code. The code is asked at every sign-in, except on a **registered store PC** (see below).
 
 ## The setting
 
@@ -55,3 +55,25 @@ Scripts that sign in over the API with a password (for example `control-plane/sc
 
 `api-v2/src/modules/auth/mfa.service.spec.ts` (the code maths against the RFC 6238 test vector, the encryption, the token) always runs.
 `mfa.integration.spec.ts` runs the real SQL against a scratch PostgreSQL when `MFA_TEST_DB_URL` is set. The scratch database needs an `app_user` table with `id` and `email`, and migration 144 applied. Never point it at real data.
+
+## Registered store PCs
+
+A manager can register the PC at the counter, so staff there do not need the authenticator code, and the store's Counter login signs in by itself.
+
+**Register:** a Business Head, Owner-operator or Store Head signs in on that PC with their own password and code, opens Settings > Stores > **Store PCs**, names the PC, picks the store and (optionally) the Counter login to sign in automatically, and presses Register. The browser keeps a random secret (`rgp_device` in its local storage); the server stores only its hash (table `store_device`, migration 153).
+
+**What a registered PC does** (the setting at the top of that screen, `trusted_device_mfa`; owners only):
+
+| Setting | Effect on a registered PC |
+|---|---|
+| `off` | Nothing: the PC is treated like any other browser, and automatic Counter sign-in stops. |
+| `counter` (default) | Counter logins skip the authenticator code (the password is still asked). |
+| `all` | Everyone except Business Heads and Owner-operators skips the code. |
+
+Owners and the platform admin always use the authenticator. A Counter login linked to the PC signs in with no password at all when the sign-in page opens; signing out on purpose goes to the sign-in page with `?manual=1` so someone else can sign in (a button there signs the counter back in).
+
+**Revoke:** Settings > Stores > Store PCs > Revoke. Every session that came from that PC is refused at its next request, and the PC must be registered again to be trusted. Revoke a PC that is lost, stolen or replaced. Sessions that came from a store PC cannot register or change PCs; managers do that from their own sign-in.
+
+Registering, linking, revoking, automatic sign-ins and skipped codes are in the audit log (`auth.device_*`, `auth.mfa_skipped_trusted_pc`). The database tests are `device.integration.spec.ts` (set `DEVICE_TEST_DB_URL` to a scratch database with migration 153 applied).
+
+Rolling out: apply `sql/migrations/153_store_devices.sql` (rollback `153_rollback.sql`), deploy the API and frontend together, then register each store PC.

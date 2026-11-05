@@ -36,8 +36,9 @@ export class AuthHelper {
   }
 
   // Generate JWT Token
-  public generateToken(user: AppUser): string {
-    return this.jwt.sign({ id: user.id, email: user.email, roleid: user.roleid });
+  public generateToken(user: AppUser, devid?: number | null): string {
+    // a token that came from a registered store PC carries it (devid), so revoking the PC ends the session and the token cannot register another PC
+    return this.jwt.sign({ id: user.id, email: user.email, roleid: user.roleid, ...(devid ? { devid } : {}) });
   }
 
   // Validate User's password

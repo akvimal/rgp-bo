@@ -24,6 +24,7 @@ import { DeliveryPartnersComponent } from "./delivery-partners/components/delive
 import { DeliveryPartnerListComponent } from "./delivery-partners/components/delivery-partner-list.component";
 import { DeliveryPartnerFormComponent } from "./delivery-partners/components/delivery-partner-form.component";
 import { StoreSettingsComponent } from "./store/store-settings.component";
+import { StorePcsComponent } from "./store/store-pcs.component";
 import { BusinessesComponent } from "./businesses/businesses.component";
 import { BusinessProfileComponent } from "./business-profile/business-profile.component";
 import { ShopSetupComponent } from "./shop-setup/shop-setup.component";
@@ -78,6 +79,7 @@ const routes: Routes = [
       DeliveryPartnerListComponent,
       DeliveryPartnerFormComponent,
       StoreSettingsComponent,
+      StorePcsComponent,
       BusinessesComponent,
       BusinessProfileComponent,
       ShopSetupComponent,
