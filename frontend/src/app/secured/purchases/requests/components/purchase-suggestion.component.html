@@ -1,89 +1,174 @@
 <div class="form-compact">
 <div class="card mt-2">
-  <div class="card-body">
-    <div class="row g-3 align-items-end">
-      <div class="col-6 col-md-3 col-lg-2">
-        <label class="form-label" title="How far back to measure what sells">Days</label>
-        <input class="form-control" type="number" min="1" [(ngModel)]="days" data-testid="reo-days">
+  <div class="card-body p-2 p-md-3">
+    <!-- what to measure: one strip -->
+    <div class="d-flex flex-wrap align-items-end gap-2" data-testid="reo-settings">
+      <div style="width:4.75rem">
+        <label class="form-label small mb-0" title="How far back to measure what sells">Days</label>
+        <input class="form-control form-control-sm" type="number" min="1" [(ngModel)]="days" data-testid="reo-days">
       </div>
-      <div class="col-6 col-md-3 col-lg-2">
-        <label class="form-label" title="How many days of sales the stock should cover">Target Days</label>
-        <input class="form-control" type="number" min="1" [(ngModel)]="targetdays" data-testid="reo-target">
+      <div style="width:5.25rem">
+        <label class="form-label small mb-0" title="How many days of sales the stock should cover">Target days</label>
+        <input class="form-control form-control-sm" type="number" min="1" [(ngModel)]="targetdays" data-testid="reo-target">
       </div>
-      <div class="col-6 col-md-3 col-lg-2">
-        <label class="form-label" title="When nothing sold in the days above, look this far back so slow movers are not missed">Slow-mover days</label>
-        <input class="form-control" type="number" min="1" [(ngModel)]="slowdays" data-testid="reo-slow">
+      <div style="width:5.25rem">
+        <label class="form-label small mb-0" title="When nothing sold in the days above, look this far back so slow movers are not missed">Slow days</label>
+        <input class="form-control form-control-sm" type="number" min="1" [(ngModel)]="slowdays" data-testid="reo-slow">
       </div>
-      <div class="col-md-6 col-lg-3">
-        <label class="form-label">Vendor</label>
-        <select class="form-select" [(ngModel)]="vendorid">
-          <option value="">All Vendors</option>
+      <div style="min-width:11rem">
+        <label class="form-label small mb-0">Vendor</label>
+        <select class="form-select form-select-sm" [(ngModel)]="vendorid">
+          <option value="">All vendors</option>
           <option *ngFor="let vendor of vendors" [value]="vendor.id">{{vendor.name}}</option>
         </select>
       </div>
-      <div class="col-6 col-md-3 col-lg-2">
-        <div class="form-check mb-2" title="Scale the demand by how this time of year went in the last two years">
-          <input class="form-check-input" type="checkbox" id="reo-seasonal" [(ngModel)]="seasonal" data-testid="reo-seasonal">
-          <label class="form-check-label" for="reo-seasonal">Seasonal</label>
-        </div>
-        <button class="btn btn-outline-primary" (click)="fetchSuggestions()" data-testid="reo-refresh">Refresh</button>
+      <div class="form-check mb-1" title="Scale the demand by how this time of year went in the last two years">
+        <input class="form-check-input" type="checkbox" id="reo-seasonal" [(ngModel)]="seasonal" data-testid="reo-seasonal">
+        <label class="form-check-label small" for="reo-seasonal">Seasonal</label>
       </div>
+      <button class="btn btn-outline-primary btn-sm" (click)="fetchSuggestions()" data-testid="reo-refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <button class="btn btn-link btn-sm ms-auto text-decoration-none" type="button" (click)="toggleHelp()" [attr.aria-expanded]="showHelp" data-testid="reo-help-toggle">
+        <i class="bi" [ngClass]="showHelp ? 'bi-x-circle' : 'bi-question-circle'"></i> {{showHelp ? 'Hide help' : 'How to read this'}}
+      </button>
     </div>
-    <div class="row g-3 align-items-end mt-2">
-      <div class="col-md-6 col-lg-3">
-        <label class="form-label">Expected Date</label>
-        <input class="form-control" type="date" [(ngModel)]="expecteddate">
+
+    <!-- the order: one line -->
+    <div class="d-flex flex-wrap align-items-end gap-2 mt-2 pt-2 border-top">
+      <div style="width:9.5rem">
+        <label class="form-label small mb-0">Expected date</label>
+        <input class="form-control form-control-sm" type="date" [(ngModel)]="expecteddate">
       </div>
-      <div class="col-md-5">
-        <label class="form-label">Order Comments</label>
-        <input class="form-control" type="text" [(ngModel)]="comments">
+      <div class="flex-grow-1" style="min-width:12rem">
+        <label class="form-label small mb-0">Order comments</label>
+        <input class="form-control form-control-sm" type="text" [(ngModel)]="comments">
       </div>
-      <div class="col-md-6 col-lg-4 text-end">
-        <label class="form-check small me-3 d-inline-block text-start" title="If the vendor already has a draft order, the items go on it instead of a second draft"><input class="form-check-input me-1" type="checkbox" [(ngModel)]="addToDraft" data-testid="reo-add-to-draft">Add to the vendor's open draft</label>
-        <button class="btn btn-primary" (click)="createOrders()">Create Orders From Selected ({{selectedCount()}})</button>
+      <div class="form-check mb-1" title="If the vendor already has a draft order, the items go on it instead of a second draft">
+        <input class="form-check-input" type="checkbox" id="reo-adddraft" [(ngModel)]="addToDraft" data-testid="reo-add-to-draft"><label class="form-check-label small" for="reo-adddraft">Add to the vendor's open draft</label>
       </div>
+      <button class="btn btn-primary btn-sm" (click)="createOrders()" data-testid="reo-create">Create Orders From Selected ({{selectedCount()}})</button>
     </div>
-    <div class="mt-3 small text-muted" data-testid="reo-store"><ng-container *ngIf="storeid; else allStores">For <strong>{{storeName}}</strong>: sales and stock are this store's only. Change the store at the top of the page.</ng-container>
-      <ng-template #allStores>For <strong>All stores</strong>: sales and stock of every store together. Choose a store at the top of the page to see just that store.</ng-template></div>
-    <div class="alert alert-warning py-2 mt-3 mb-0" *ngIf="unlinked.length" data-testid="reo-unlinked">
+
+    <div class="alert alert-warning py-1 px-2 small mt-2 mb-0" *ngIf="unlinked.length" data-testid="reo-unlinked">
       <strong>{{unlinked.length}}</strong> open request{{unlinked.length === 1 ? ' is' : 's are'}} for a product that is not in the product list yet
       (<span *ngFor="let r of unlinked | slice:0:3; last as isLast">{{r.requestedname}}<span *ngIf="!isLast">, </span></span><span *ngIf="unlinked.length > 3"> and {{unlinked.length - 3}} more</span>).
-      They cannot be ordered from here until each is linked to a product, whatever vendor is set.
+      They cannot be ordered from here until each is linked to a product.
       <a routerLink="/secure/purchases/requests" data-testid="reo-unlinked-go">Link them in Requests</a>
     </div>
-    <div class="mt-3 text-success" *ngIf="feedback" data-testid="reo-created">{{feedback}}
+    <div class="mt-2 small text-success" *ngIf="feedback" data-testid="reo-created">{{feedback}}
       <ng-container *ngFor="let o of createdOrders; last as isLast"><a [routerLink]="['/secure/purchases/orders', o.id]" data-testid="reo-created-link">#{{o.id}} {{o.vendorname}}</a>{{isLast ? '' : ', '}}</ng-container>
       <span class="text-muted" *ngIf="createdOrders.length"> (open the Orders tab to review and submit)</span>
     </div>
   </div>
 </div>
 
-<div class="d-flex flex-wrap gap-2 align-items-center mt-3" data-testid="reo-view">
-  <div class="input-group" style="max-width:22rem;">
+<!-- help: how the numbers are made -->
+<div class="card mt-2 border-primary" *ngIf="showHelp" data-testid="reo-help">
+  <div class="card-body p-3">
+    <div class="fw-semibold mb-1">How the reorder quantity is worked out</div>
+    <p class="small text-muted mb-3">
+      <b>In one line:</b> what we expect to sell before the next delivery, plus a safety buffer, less what we already have or have on order &mdash; plus anything customers asked for.
+      Every figure is in <b>units</b>, and you can change the final quantity before ordering.
+    </p>
+
+    <!-- the flow -->
+    <div class="d-flex flex-wrap align-items-stretch gap-2 mb-3" data-testid="reo-help-flow">
+      <div class="reo-step"><div class="reo-step-t">1 &middot; Pace</div><div class="small">Sales in the last <b>Days</b> &divide; Days<br><span class="text-muted">= units sold per day</span></div></div>
+      <div class="reo-arrow">&rarr;</div>
+      <div class="reo-step"><div class="reo-step-t">2 &middot; Expected</div><div class="small">per day &times; <b>Season</b> &times; <b>Target days</b><br><span class="text-muted">= sales until the next delivery</span></div></div>
+      <div class="reo-arrow">&rarr;</div>
+      <div class="reo-step"><div class="reo-step-t">3 &middot; Trend Qty</div><div class="small">Expected + <b>Min</b> &minus; <b>Stock</b> &minus; On order<br><span class="text-muted">= what the pattern says to buy</span></div></div>
+      <div class="reo-arrow">+</div>
+      <div class="reo-step"><div class="reo-step-t">4 &middot; Ad-hoc</div><div class="small">Open customer / manual requests<br><span class="text-muted">not yet received</span></div></div>
+      <div class="reo-arrow">=</div>
+      <div class="reo-step reo-step-final"><div class="reo-step-t">Final Qty</div><div class="small">The box you can edit.<br><span class="text-muted">This is what goes on the order.</span></div></div>
+    </div>
+
+    <div class="row g-3">
+      <!-- worked example -->
+      <div class="col-lg-5">
+        <div class="small fw-semibold mb-1">A worked example</div>
+        <div class="small text-muted mb-1">Days 30, Target days 21, one product:</div>
+        <table class="table table-sm small mb-1" data-testid="reo-help-example">
+          <tbody>
+            <tr><td>Sold in the last 30 days</td><td class="text-end">60</td></tr>
+            <tr><td>Per day (60 &divide; 30)</td><td class="text-end">2</td></tr>
+            <tr><td>In stock now &rarr; <b>Stock Days</b> = 25 &divide; 2</td><td class="text-end">25 &rarr; 12.5</td></tr>
+            <tr><td><b>Expected</b> = 2 &times; 1.00 (no season) &times; 21</td><td class="text-end">42</td></tr>
+            <tr><td>Min stock</td><td class="text-end">10</td></tr>
+            <tr><td><b>Trend Qty</b> = 42 + 10 &minus; 25</td><td class="text-end">27</td></tr>
+            <tr><td>Customer request not yet received</td><td class="text-end">5</td></tr>
+            <tr class="table-success fw-semibold"><td>Final Qty = 27 + 5</td><td class="text-end">32</td></tr>
+          </tbody>
+        </table>
+        <div class="small text-muted">Min stock is a buffer <i>on top of</i> the target days, so a row can need ordering while stock is still above Min.</div>
+      </div>
+
+      <!-- the columns, in plain words -->
+      <div class="col-lg-7">
+        <div class="small fw-semibold mb-1">The columns, in plain words</div>
+        <dl class="row small mb-2" data-testid="reo-help-columns">
+          <dt class="col-4 col-md-3">Stock</dt><dd class="col-8 col-md-9 mb-1">What is on hand: everything bought (free units too) less what was sold, plus approved stock adjustments.</dd>
+          <dt class="col-4 col-md-3">Min</dt><dd class="col-8 col-md-9 mb-1">The product's minimum stock setting.</dd>
+          <dt class="col-4 col-md-3">Sales {{days}}d</dt><dd class="col-8 col-md-9 mb-1">Units sold in the last <b>Days</b> (completed bills only).</dd>
+          <dt class="col-4 col-md-3">Stock Days</dt><dd class="col-8 col-md-9 mb-1">How many days the stock lasts at the current pace. Under 7 is "fast moving". "-" means nothing sold.</dd>
+          <dt class="col-4 col-md-3">Season</dt><dd class="col-8 col-md-9 mb-1"><b>&times;1.30</b> means this stretch of the year sold about 30% more than the days before it, in the last two years. "-" means no adjustment (not enough history).</dd>
+          <dt class="col-4 col-md-3">Expected</dt><dd class="col-8 col-md-9 mb-1">Sales over the <b>Target days</b>. A product that did not sell recently uses the <b>Slow days</b> window instead.</dd>
+          <dt class="col-4 col-md-3">Trend Qty</dt><dd class="col-8 col-md-9 mb-1">What the sales pattern says to buy. Anything already on an order is taken off, and shown on the product as <span class="badge bg-success">On order</span> or <span class="badge bg-secondary">On draft</span>.</dd>
+          <dt class="col-4 col-md-3">Ad-hoc Qty</dt><dd class="col-8 col-md-9 mb-1">Open customer or manual requests for the product, less what has come in against them.</dd>
+          <dt class="col-4 col-md-3">Vendor</dt><dd class="col-8 col-md-9 mb-1">The vendor a request names, else the last vendor this product was bought from. Choose one in the row if there is none.</dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- why a row is listed -->
+    <div class="small fw-semibold mt-2 mb-1">Why a product is listed (the Reasons chips)</div>
+    <div class="d-flex flex-wrap gap-2 small mb-2" data-testid="reo-help-reasons">
+      <span><span class="badge" [ngClass]="reasonClass('Urgent')">Urgent</span> a request marked urgent</span>
+      <span><span class="badge" [ngClass]="reasonClass('Low Stock')">Low Stock</span> the pattern says to buy</span>
+      <span><span class="badge" [ngClass]="reasonClass('Below Minimum')">Below Minimum</span> stock is under Min</span>
+      <span><span class="badge" [ngClass]="reasonClass('Customer Request')">Customer Request</span> someone asked for it</span>
+      <span><span class="badge" [ngClass]="reasonClass('Fast Moving')">Fast Moving</span> a week or less of stock</span>
+      <span><span class="badge" [ngClass]="reasonClass('Slow Mover')">Slow Mover</span> sold only in the Slow days window</span>
+      <span><span class="badge" [ngClass]="reasonClass('Season Rising')">Season Rising</span> / <span class="badge" [ngClass]="reasonClass('Season Easing')">Season Easing</span> demand is changing with the time of year</span>
+      <span><span class="badge" [ngClass]="reasonClass('Sold Now Last Year')">Sold Now Last Year</span> no sales lately, but it sold at this time last year</span>
+    </div>
+
+    <div class="alert alert-light border small py-2 mb-0">
+      <b>Tips.</b> Raise <b>Target days</b> to order further ahead; lower <b>Days</b> to react faster to a change; untick <b>Seasonal</b> if last year was unusual.
+      Choose a store at the top of the page to use that store's sales and stock only.
+    </div>
+  </div>
+</div>
+
+<!-- finding things -->
+<div class="d-flex flex-wrap gap-2 align-items-center mt-2" data-testid="reo-view">
+  <div class="input-group input-group-sm" style="max-width:20rem;">
     <span class="input-group-text"><i class="bi bi-search"></i></span>
     <input class="form-control" type="text" [(ngModel)]="search" (ngModelChange)="applyView()" placeholder="Product, vendor or reason" aria-label="Search products" data-testid="reo-search">
   </div>
-  <select class="form-select" style="max-width:14rem;" [(ngModel)]="show" (ngModelChange)="applyView()" aria-label="Show" data-testid="reo-show">
+  <select class="form-select form-select-sm" style="max-width:13rem;" [(ngModel)]="show" (ngModelChange)="applyView()" aria-label="Show" data-testid="reo-show">
     <option *ngFor="let o of showOptions" [value]="o.value">{{o.label}}</option>
   </select>
   <span class="small text-muted" data-testid="reo-count">{{view.length}} of {{suggestions.length}}</span>
+  <span class="small text-muted ms-auto" data-testid="reo-store"><ng-container *ngIf="storeid; else allStores"><i class="bi bi-shop"></i> <strong>{{storeName}}</strong> only (sales and stock). Change the store at the top of the page.</ng-container>
+    <ng-template #allStores><i class="bi bi-shop"></i> <strong>All stores</strong> together. Choose a store at the top of the page for one store.</ng-template></span>
 </div>
 
-<p-table [value]="view" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines mt-3">
+<p-table [value]="view" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines mt-2">
   <ng-template pTemplate="header">
     <tr>
       <th></th>
       <th pSortableColumn="title">Product <p-sortIcon field="title"></p-sortIcon></th>
       <th pSortableColumn="vendor_name">Vendor <p-sortIcon field="vendor_name"></p-sortIcon></th>
-      <th class="text-end" pSortableColumn="available_stock">Stock <p-sortIcon field="available_stock"></p-sortIcon></th>
+      <th class="text-end" title="On hand now: bought (with free units) less sold, plus approved adjustments" pSortableColumn="available_stock">Stock <p-sortIcon field="available_stock"></p-sortIcon></th>
       <th class="text-end" title="The product's minimum stock" pSortableColumn="min_stock">Min <p-sortIcon field="min_stock"></p-sortIcon></th>
-      <th class="text-end" pSortableColumn="sales_qty">Sales {{days}}d <p-sortIcon field="sales_qty"></p-sortIcon></th>
-      <th class="text-end" pSortableColumn="stock_days_left">Stock Days <p-sortIcon field="stock_days_left"></p-sortIcon></th>
+      <th class="text-end" title="Units sold in the last days chosen above" pSortableColumn="sales_qty">Sales {{days}}d <p-sortIcon field="sales_qty"></p-sortIcon></th>
+      <th class="text-end" title="How many days the stock lasts at the current pace of sales" pSortableColumn="stock_days_left">Stock Days <p-sortIcon field="stock_days_left"></p-sortIcon></th>
       <th class="text-end" title="How this time of year went against the days before it, in the last two years" pSortableColumn="season_factor">Season <p-sortIcon field="season_factor"></p-sortIcon></th>
       <th class="text-end" title="Expected sales over the target days" pSortableColumn="forecast_qty">Expected <p-sortIcon field="forecast_qty"></p-sortIcon></th>
-      <th class="text-end" pSortableColumn="trend_qty">Trend Qty <p-sortIcon field="trend_qty"></p-sortIcon></th>
-      <th class="text-end" pSortableColumn="adhoc_qty">Ad-hoc Qty <p-sortIcon field="adhoc_qty"></p-sortIcon></th>
-      <th class="text-end" pSortableColumn="final_qty">Final Qty <p-sortIcon field="final_qty"></p-sortIcon></th>
+      <th class="text-end" title="Expected + Min - Stock - already on order: what the sales pattern says to buy" pSortableColumn="trend_qty">Trend Qty <p-sortIcon field="trend_qty"></p-sortIcon></th>
+      <th class="text-end" title="Open customer or manual requests not yet received" pSortableColumn="adhoc_qty">Ad-hoc Qty <p-sortIcon field="adhoc_qty"></p-sortIcon></th>
+      <th class="text-end" title="Trend Qty + Ad-hoc Qty: what goes on the order. You can change it." pSortableColumn="final_qty">Final Qty <p-sortIcon field="final_qty"></p-sortIcon></th>
       <th pSortableColumn="reason_summary">Reasons <p-sortIcon field="reason_summary"></p-sortIcon></th>
     </tr>
   </ng-template>
@@ -116,7 +201,10 @@
       <td class="text-end" style="min-width:7.5rem;">
         <input class="form-control text-end" type="number" [(ngModel)]="item.final_qty">
       </td>
-      <td>{{item.reason_summary}}</td>
+      <td>
+        <span *ngFor="let r of item.reasons" class="badge me-1 mb-1" [ngClass]="reasonClass(r)">{{r}}</span>
+        <span class="visually-hidden">{{item.reason_summary}}</span>
+      </td>
     </tr>
   </ng-template>
 </p-table>
