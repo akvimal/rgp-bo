@@ -177,6 +177,9 @@ a.btn, a.nav-link, .sidebar a, .page-menu a, .grid-actions a, .dropdown-item, .p
 .form-compact { --bs-gutter-x: .75rem; --bs-gutter-y: .5rem; }
 .form-compact .form-label, .form-compact label:not(.form-check-label):not(.btn) { font-size: .8rem; margin-bottom: .1rem; }
 .form-compact .form-control, .form-compact .form-select { padding: .3rem .6rem; font-size: .875rem; }
+/* a select keeps room on the right for its arrow: the compact padding above used to remove it, so the text ran under the arrow and looked cut off */
+.form-compact .form-select:not([multiple]):not([size]), .form-compact .form-select[size="1"] { padding-right: 2.25rem; }
+.form-compact .form-select-sm:not([multiple]):not([size]) { padding-right: 2rem; }
 .form-compact textarea.form-control { min-height: 0; }
 .form-compact .field-error { min-height: 1.1rem; font-size: .78rem; line-height: 1.1rem; }
 .form-compact .form-text { font-size: .75rem; margin-top: .1rem; }
