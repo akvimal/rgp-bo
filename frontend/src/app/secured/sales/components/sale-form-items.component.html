@@ -28,7 +28,7 @@
                 <td>
                     <span *ngIf="!item.edited">{{item.qty}}</span>
                     <div *ngIf="item.edited" class="d-flex align-items-center gap-2 text-nowrap">
-                        <input [value]="item.qty" [disabled]="item.maxqty == 0" class="form-control form-control-sm text-end" style="width:4.5rem"
+                        <input [value]="item.qty" inputmode="numeric" pattern="[0-9]*" [disabled]="item.maxqty == 0" class="form-control form-control-sm text-end" style="width:4.5rem"
                             [class.is-invalid]="+item.qty > +item.maxqty" (input)="changeItemQty(item.itemid,$event)" aria-label="Units" data-testid="sale-qty" [attr.data-itemid]="item.itemid">
                         <span class="small flex-grow-1 text-end" style="min-width:3.5rem" [class.text-danger]="item.unitsbal < 0" [class.text-muted]="item.unitsbal >= 0" title="Left in stock after this bill">{{item.unitsbal}} left</span>
                     </div>

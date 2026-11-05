@@ -150,7 +150,10 @@ export class SaleFormItemsComponent{
   changeItemQty(itemid:any,event:any){
     
     const item = this.items.find((i:any) => i.itemid === itemid);
-    item.qty = event.target.value;  
+    // units are whole numbers: drop anything typed or pasted that is not a digit
+    const digits = String(event.target.value ?? '').replace(/\D+/g, '');
+    if (digits !== event.target.value) event.target.value = digits;
+    item.qty = digits;
     if(+event.target.value > +item.balance){
       item.qty = item.balance;
       event.target.value = item.balance; //prevent entering value over max qty

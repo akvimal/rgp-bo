@@ -396,7 +396,8 @@ export class SaleService {
                 await assertIssuedBillUnchanged(transactionManager, sale);
                 delete (sale as any).gstinvoiceno; delete (sale as any).gstbusinessid;
 
-                const [before] = await transactionManager.query(`select status, shift_id, store_id from sale where id = $1`, [sale.id]);
+                const [before] = await transactionManager.query(
+                    `select s.status, s.shift_id, s.store_id, sh.status as shift_status from sale s left join store_shifts sh on sh.id = s.shift_id where s.id = $1`, [sale.id]);
                 if (!before) throw new BadRequestException('That bill does not exist.');
                 const nowComplete = String(sale.status ?? before.status ?? '').toUpperCase() === 'COMPLETE';
                 const wasComplete = String(before.status ?? '').toUpperCase() === 'COMPLETE';
@@ -411,7 +412,9 @@ export class SaleService {
                 }
                 // a parked bill completed now is a cash event: it must belong to an open shift so it is reconciled at close
                 let completedInShift: number | null = null;
-                if (nowComplete && !wasComplete && storeid && !before.shift_id) {
+                // a draft parked while an earlier shift was open carries that shift's id: once that shift is closed the bill belongs to the shift it is completed in
+                const parkedShiftOpen = !!before.shift_id && String(before.shift_status ?? '').toUpperCase() === 'OPEN';
+                if (nowComplete && !wasComplete && storeid && !parkedShiftOpen) {
                     const found = await this.openShiftFor(transactionManager, storeid, actingUserid, userid);
                     if (!found.shiftid) throw new BadRequestException(found.staffBased ? 'Open your own shift before completing sales.' : 'Open a shift before completing sales.');
                     completedInShift = found.shiftid;

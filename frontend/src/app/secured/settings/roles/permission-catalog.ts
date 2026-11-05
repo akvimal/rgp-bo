@@ -461,6 +461,7 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
       { key: 'view', label: 'View sale details' },
       { key: 'add', label: 'Create sales' },
       { key: 'bill', label: 'Print bills' },
+      { key: 'void', label: 'Void any bill of the open shift (everyone may void their own)' },
     ],
   },
   {
