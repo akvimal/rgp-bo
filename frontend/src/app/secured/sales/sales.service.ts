@@ -56,6 +56,11 @@ export class SaleService {
         return this.http.post<any>(`${this.apiurl}/${id}/void`, { reason });
     }
 
+    /** a Business Head's force-void of a bill the ordinary void refuses: it stays on record as VOID */
+    forceVoidBill(id:number, reason:string){
+        return this.http.post<any>(`${this.apiurl}/${id}/force-void`, { reason });
+    }
+
     remove(id:number){
         return this.http.delete(`${this.apiurl}/${id}`);
     }

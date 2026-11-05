@@ -103,6 +103,9 @@
                   <h4 class="icon text-danger" *ngIf="canVoid(s)" title="Void: rung up by mistake">
                     <i class="bi bi-x-octagon" (click)="openVoid(s)" data-testid="bill-void-row"></i>
                   </h4>
+                  <h4 class="icon text-danger" *ngIf="canForceVoid(s)" title="Force void (Business Head): remove this bill from the books, kept on record as voided">
+                    <i class="bi bi-trash3" (click)="openVoid(s, true)" data-testid="bill-force-void-row"></i>
+                  </h4>
                   <h4 class="icon" *ngIf="isActionAllowed('Return',s)">
                     <i class="bi bi-arrow-return-left" title="Return" (click)="showReturn(s.id)"></i>
                   </h4>
@@ -236,6 +239,7 @@
     <label class="form-label fw-semibold" for="vs-reason">Why is this bill being voided?</label>
     <input id="vs-reason" class="form-control" maxlength="200" [(ngModel)]="voidReason" placeholder="e.g. rung up twice, wrong customer" data-testid="void-reason">
     <p class="small text-muted mt-2 mb-0">The stock goes back, the shift's cash is corrected and the bill stays on record as voided. This cannot be undone.</p>
+    <p class="small text-danger mt-2 mb-0" *ngIf="voidForce" data-testid="force-void-note">Force void: this works even though the bill's shift is closed or another person rang it. Any cash of the bill goes back out of the drawer of the shift that is open now. It is recorded in the audit log with your name and this reason.</p>
     <div class="text-danger mt-2" *ngIf="voidError" data-testid="void-error">{{voidError}}</div>
   </div>
   <ng-template pTemplate="footer">

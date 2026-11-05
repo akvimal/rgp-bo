@@ -462,6 +462,7 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
       { key: 'add', label: 'Create sales' },
       { key: 'bill', label: 'Print bills' },
       { key: 'void', label: 'Void any bill of the open shift (everyone may void their own)' },
+      { key: 'forcevoid', label: 'Force void a bill even after its shift is closed (Business Head)' },
     ],
   },
   {
