@@ -107,7 +107,7 @@
       <div class="col-lg-7">
         <div class="small fw-semibold mb-1">The columns, in plain words</div>
         <dl class="row small mb-2" data-testid="reo-help-columns">
-          <dt class="col-4 col-md-3">Stock</dt><dd class="col-8 col-md-9 mb-1">What is on hand: everything bought (free units too) less what was sold, plus approved stock adjustments.</dd>
+          <dt class="col-4 col-md-3">Stock</dt><dd class="col-8 col-md-9 mb-1">What can still be sold: everything bought (free units too) less what was sold, plus approved adjustments, on batches that have not expired and do not expire within 30 days &mdash; the same as <b>Avail</b> on the Stock screen, for the store chosen above. It never shows below 0; a red <i class="bi bi-exclamation-triangle-fill text-danger"></i> means the records say it would be.</dd>
           <dt class="col-4 col-md-3">Min</dt><dd class="col-8 col-md-9 mb-1">The product's minimum stock setting.</dd>
           <dt class="col-4 col-md-3">Sales {{days}}d</dt><dd class="col-8 col-md-9 mb-1">Units sold in the last <b>Days</b> (completed bills only).</dd>
           <dt class="col-4 col-md-3">Stock Days</dt><dd class="col-8 col-md-9 mb-1">How many days the stock lasts at the current pace. Under 7 is "fast moving". "-" means nothing sold.</dd>
@@ -124,6 +124,7 @@
     <div class="small fw-semibold mt-2 mb-1">Why a product is listed (the Reasons chips)</div>
     <div class="d-flex flex-wrap gap-2 small mb-2" data-testid="reo-help-reasons">
       <span><span class="badge" [ngClass]="reasonClass('Urgent')">Urgent</span> a request marked urgent</span>
+      <span><span class="badge" [ngClass]="reasonClass('Stock Below Zero')">Stock Below Zero</span> the records show more sold than bought: check them before ordering</span>
       <span><span class="badge" [ngClass]="reasonClass('Low Stock')">Low Stock</span> the pattern says to buy</span>
       <span><span class="badge" [ngClass]="reasonClass('Below Minimum')">Below Minimum</span> stock is under Min</span>
       <span><span class="badge" [ngClass]="reasonClass('Customer Request')">Customer Request</span> someone asked for it</span>
@@ -190,7 +191,8 @@
           </select>
         </ng-template>
       </td>
-      <td class="text-end">{{item.available_stock}}</td>
+      <td class="text-end" [attr.title]="item.raw_stock < 0 ? 'The records show ' + item.raw_stock + ' (more was sold than was bought on some batches). It is counted as 0 here: check the stock records.' : null">
+        {{item.available_stock}}<i class="bi bi-exclamation-triangle-fill text-danger ms-1" *ngIf="item.raw_stock < 0" data-testid="reo-below-zero"></i></td>
       <td class="text-end">{{item.min_stock || '-'}}</td>
       <td class="text-end">{{item.sales_qty}}</td>
       <td class="text-end">{{item.stock_days_left !== null && item.stock_days_left !== undefined ? item.stock_days_left : '-'}}</td>

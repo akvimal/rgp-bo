@@ -61,6 +61,7 @@ export class PurchaseSuggestionComponent implements OnDestroy {
     reasonClass(r:string): string {
         switch(r){
             case 'Urgent': return 'bg-danger';
+            case 'Stock Below Zero': return 'bg-danger';
             case 'Below Minimum': return 'bg-warning text-dark';
             case 'Low Stock': return 'bg-warning text-dark';
             case 'Fast Moving': return 'bg-primary';
