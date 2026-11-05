@@ -94,6 +94,13 @@ export class InvoiceFormComponent implements OnInit {
     get awaiting(): boolean { return this.locked && !String(this.invoice.invoiceno || '').trim(); }
     get hasInvoiceNo(): boolean { return !!String(this.form.value.invoiceno || '').trim(); }
     uploadingChallan = false;
+    /** the delivery challan panel: a challan comes only now and then, so it stays folded until it is wanted or one is already recorded */
+    showChallan = false;
+    get challanSummary(): string {
+      const v = this.form.getRawValue();
+      const bits = [String(v.challanno || '').trim() ? 'Challan ' + String(v.challanno).trim() : '', v.challanpath ? 'photo attached' : ''].filter(Boolean);
+      return bits.length ? bits.join(' · ') : 'only when the goods come before the invoice (click to add)';
+    }
 
     get locked(): boolean { return !!this.id && !!this.invoice.status && this.invoice.status !== 'NEW'; }
     get vendor(): any { return this.vendors.find(v => +v.id === +this.form.value.vendorid) || null; }
@@ -124,6 +131,7 @@ export class InvoiceFormComponent implements OnInit {
           cashdiscount: data.cashdiscount ?? null, suppliergstin: data.suppliergstin || '', supplytype: data.supplytype || '', itceligibility: data.itceligibility || '', reversecharge: !!data.reversecharge
         });
         this.showMore = !!(data.referenceno || data.notes || data.cashdiscount);
+        this.showChallan = !!(data.challanno || data.challanpath || data.challandate) || (!data.invoiceno && data.status !== 'NEW');      // opened when a challan is recorded, or the receipt awaits its invoice
         this.form.controls['vendorid'].disable();
         // a received invoice is fixed, except that a receipt still awaiting its invoice can take the invoice's number, date, total and GST details
         if(this.locked){

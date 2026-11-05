@@ -66,8 +66,12 @@
 
         <div class="col-12" *ngIf="!locked || awaiting" data-testid="inv-f-challan">
           <div class="border rounded p-2">
-            <div class="small fw-semibold mb-2">Delivery challan <span class="text-muted fw-normal">&mdash; when the goods come before the invoice. The challan rates are the cost until the invoice arrives.</span></div>
-            <div class="row g-2">
+            <a href="javascript:void(0)" class="small fw-semibold text-decoration-none text-reset d-block" [class.mb-2]="showChallan" (click)="showChallan = !showChallan" [attr.aria-expanded]="showChallan" data-testid="inv-f-challan-toggle">
+              <i class="bi me-1" [ngClass]="showChallan ? 'bi-chevron-down' : 'bi-chevron-right'"></i>Delivery challan
+              <span class="text-muted fw-normal" *ngIf="showChallan">&mdash; when the goods come before the invoice. The challan rates are the cost until the invoice arrives.</span>
+              <span class="text-muted fw-normal" *ngIf="!showChallan" data-testid="inv-f-challan-summary">&mdash; {{challanSummary}}</span>
+            </a>
+            <div class="row g-2" *ngIf="showChallan">
               <div class="col-md-6 col-lg-4">
                 <label for="inv-challan-no" class="form-label small mb-1">Challan no.</label>
                 <input type="text" class="form-control" id="inv-challan-no" formControlName="challanno" maxlength="60" data-testid="inv-f-challan-no">
