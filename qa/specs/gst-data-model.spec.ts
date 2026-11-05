@@ -22,13 +22,14 @@ async function completedInvoice(api: any, tag: string, opts: { taxpcnt?: number;
   const qty = opts.qty ?? 10;
   const ptrvalue = opts.ptrvalue ?? 15;
   const taxpcnt = opts.taxpcnt ?? 12;
-  const lineTotal = +(qty * ptrvalue * (1 + taxpcnt / 100)).toFixed(2);
+  // a line's total is its amount BEFORE tax (what the item form and the invoice reading both send); the GST goes on top of it
+  const lineTotal = +(qty * ptrvalue).toFixed(2);
   const it = await api.request('POST', '/purchaseitems', {
-    invoiceid: inv.body.id, productid: prod, qty, ptrvalue, ptrcost: ptrvalue, mrpcost: 22,
+    invoiceid: inv.body.id, productid: prod, qty, ptrvalue, ptrcost: +(ptrvalue * (1 + taxpcnt / 100)).toFixed(2), mrpcost: 22,
     taxpcnt, total: lineTotal, batch: `GST-${tag}-${po.body.id}`, expdate: '2028-06-30', saleprice: 20,
   }, MGR);
   await api.request('PUT', '/purchaseitems', { ids: [it.body.id], values: { status: 'VERIFIED' } }, MGR);
-  await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE', total: lineTotal } }, MGR);
+  await api.request('PUT', '/purchases/confirm', { ids: [inv.body.id], values: { status: 'COMPLETE' } }, MGR);
   return { id: inv.body.id, vendorid: v, total: lineTotal, itemId: it.body.id };
 }
 
@@ -64,9 +65,28 @@ test.describe('GST data model @p1', () => {
     const fetched = (await api.request('GET', `/purchases/${inv.id}`, undefined, MGR)).body;
     const line = fetched.items.find((i: any) => i.id === inv.itemId);
     expect(line).toBeTruthy();
-    expect(Number(line.taxablevalue)).toBeGreaterThan(0);
-    expect(Number(line.taxablevalue)).toBeLessThan(Number(line.total));
-    expect(Number(line.cgstamount) + Number(line.sgstamount) + Number(line.igstamount)).toBeGreaterThan(0);
+    // the line total is before tax, so the taxable value is that amount and the GST (5% of 200) comes on top of it
+    expect(Number(line.taxablevalue)).toBeCloseTo(Number(line.total), 2);
+    expect(Number(line.cgstamount) + Number(line.sgstamount) + Number(line.igstamount)).toBeCloseTo(10, 2);
+  });
+
+  test('GST-5 the invoice total is its lines with GST, and follows a line that is edited @happy', async ({ api }) => {
+    const v = (await api.request('GET', '/vendors', undefined, MGR)).body[0].id;
+    const prod = data.m.products[41].id;
+    const inv = await api.request('POST', '/purchases', { vendorid: v, invoiceno: `QA-GST-TOT-${Date.now()}`, invoicedate: '2026-07-16' }, MGR);
+    const it = await api.request('POST', '/purchaseitems', {
+      invoiceid: inv.body.id, productid: prod, qty: 2, ptrvalue: 100, ptrcost: 112, mrpcost: 160, taxpcnt: 12, total: 200, batch: `GST-TOT-${Date.now()}`, expdate: '2028-06-30', saleprice: 150,
+    }, MGR);
+    let fetched = (await api.request('GET', `/purchases/${inv.body.id}`, undefined, MGR)).body;
+    expect(Number(fetched.total)).toBe(224);                                   // 200 + 12% GST
+    expect(Number(fetched.taxablevalue)).toBeCloseTo(200, 2);
+    expect(Number(fetched.cgstamount) + Number(fetched.sgstamount)).toBeCloseTo(24, 2);
+    expect(Number(fetched.balanceamount)).toBe(224);                           // what is owed is the same figure the lines come to
+    // editing the line changes what the invoice comes to (it used to stay as it was when the line was added)
+    await api.request('PUT', '/purchaseitems', { ids: [it.body.id], values: { ptrvalue: 150, total: 300 } }, MGR);
+    fetched = (await api.request('GET', `/purchases/${inv.body.id}`, undefined, MGR)).body;
+    expect(Number(fetched.total)).toBe(336);
+    expect(Number(fetched.taxablevalue)).toBeCloseTo(300, 2);
   });
 
   test('GST-4 editing GST details (place of supply, reverse charge, ITC eligibility) persists @happy', async ({ api }) => {

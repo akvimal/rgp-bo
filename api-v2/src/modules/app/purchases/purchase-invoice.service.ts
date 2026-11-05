@@ -16,6 +16,7 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
+import { invoiceNet, lineGst, r2 } from "./purchase-totals";
 import { businessOfUser } from "src/core/business-of-user";
 import { taxRatesFor } from "./tax-rates";
 import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
@@ -195,16 +196,9 @@ export class PurchaseInvoiceService {
         };
     }
 
-    /** Split one line's total into taxable value + CGST/SGST (intra-state) or IGST (inter-state). */
+    /** Split one line into taxable value + CGST/SGST (intra-state) or IGST (inter-state). The line's `total` is its amount BEFORE tax, so the GST goes on top of it. */
     private computeLineGst(total: number, taxpcnt: any, supplytype: string){
-        const pcnt = Number(taxpcnt || 0);
-        const taxablevalue = pcnt > 0 ? +(total / (1 + pcnt / 100)).toFixed(2) : +(+total).toFixed(2);
-        const taxamount = +(total - taxablevalue).toFixed(2);
-        if(supplytype === 'INTER'){
-          return { taxablevalue, cgstamount: 0, sgstamount: 0, igstamount: taxamount };
-        }
-        const half = +(taxamount / 2).toFixed(2);
-        return { taxablevalue, cgstamount: half, sgstamount: +(taxamount - half).toFixed(2), igstamount: 0 };
+        return lineGst(total, taxpcnt, supplytype);
     }
 
     /** Sums active line GST splits back up to the invoice header, plus the rounding remainder vs `total`. */
@@ -329,10 +323,7 @@ export class PurchaseInvoiceService {
         imported++;
       }
 
-      const items = await this.findAllItemsByInvoice(invoiceid);
-      const total = items.reduce((sum:number, item:any) => sum + +(item.total || 0), 0);
-      await this.update([invoiceid], { total: Math.round(total * 100) / 100 }, userid);
-      await this.recomputeInvoiceGstTotals(invoiceid);
+      await this.refreshTotal(invoiceid, userid);
 
       return {
         imported,
@@ -769,6 +760,11 @@ export class PurchaseInvoiceService {
           await this.syncRequestFulfilment(await this.requestsOnInvoices(ids));
         }
 
+        // a cash discount typed after the lines were added changes what the invoice comes to
+        if(values?.cashdiscount !== undefined && ids.length === 1 && values?.total === undefined){
+          await this.refreshTotal(ids[0], userid);
+        }
+
         // `total` (set at GRN completion, after all items exist) drives round_off - recompute once it lands.
         if(values?.total !== undefined){
           for(const id of ids){
@@ -808,10 +804,18 @@ export class PurchaseInvoiceService {
         return +(r?.t || 0);
       }
 
-      /** sets the invoice total to its live lines (rounded when asked) and refreshes the GST split */
+      /** what the invoice comes to: its live lines before tax, the GST on them, less any cash discount printed at the foot */
+      async netLive(invoiceid:number){
+        const lines = await this.manager.query(
+          `select total::float8 as total, tax_pcnt::float8 as taxpcnt from purchase_invoice_item where invoice_id = $1 and active and not archive and status not in ('DISPUTED', 'REJECTED')`, [invoiceid]);
+        const [inv] = await this.manager.query(`select coalesce(cash_discount, 0)::float8 as cd from purchase_invoice where id = $1`, [invoiceid]);
+        return invoiceNet(lines, inv?.cd || 0);
+      }
+
+      /** sets the invoice total to what its live lines come to with GST (rounded to the rupee when asked) and refreshes the GST split */
       async refreshTotal(invoiceid:number, userid:number, round = true){
-        const total = await this.sumLive(invoiceid);
-        await this.update([invoiceid], { total: round ? Math.round(total) : total }, userid);
+        const { net } = await this.netLive(invoiceid);
+        await this.update([invoiceid], { total: round ? Math.round(net) : r2(net) }, userid);
       }
 
       private cleanNote(note:any, min:number, what:string){
@@ -888,6 +892,11 @@ export class PurchaseInvoiceService {
         // total/taxpcnt changed -> the line's GST split (and its invoice's header totals) is stale.
         if(values['total'] !== undefined || values['taxpcnt'] !== undefined){
           await this.recomputeLineGstForItems(ids);
+        }
+        // a change to what a line costs changes what the invoice comes to (it used to be left as it was when the line was added)
+        if(['total', 'taxpcnt', 'qty', 'ptrvalue', 'discpcnt'].some(k => values[k] !== undefined)){
+          const rows = await this.manager.query(`select distinct invoice_id from purchase_invoice_item where id = any($1::int[])`, [ids]);
+          for(const r of rows) await this.refreshTotal(+r.invoice_id, userid);
         }
 
         return result;
