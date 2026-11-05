@@ -444,7 +444,9 @@ export class SaleService {
                 await recordStoreCredit(transactionManager, updatedSale, actingUserid || userid);
                 await this.hooks.saved({ manager: transactionManager, sale, saved: updatedSale, items: sale.items || [], storeId: (updatedSale as any).storeid ?? null, userId: userid, actingUserId: actingUserid });
 
-                if (completedInShift && Number(updatedSale['cashamt'] || sale['cashamt'] || 0) > 0) {
+                // the cash of a parked bill reaches the drawer when it is completed: in the shift it was moved to, or the open shift it was already parked in
+                const cashShift: number | null = completedInShift ?? (nowComplete && !wasComplete && parkedShiftOpen ? Number(before.shift_id) : null);
+                if (cashShift && Number(updatedSale['cashamt'] || sale['cashamt'] || 0) > 0) {
                     await transactionManager.save(StoreCashAccount, {
                         transdate: new Date().toISOString().slice(0, 10),
                         category: 'SALE',
@@ -452,7 +454,7 @@ export class SaleService {
                         deposit: Number(updatedSale['cashamt'] || sale['cashamt'] || 0),
                         withdraw: 0,
                         store: { id: storeid },
-                        shift: { id: completedInShift },
+                        shift: { id: cashShift },
                     } as any);
                 }
 
