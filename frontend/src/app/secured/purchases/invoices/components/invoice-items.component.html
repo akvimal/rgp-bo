@@ -169,7 +169,7 @@
                                     {{pc.pcnt > 0 ? '+' : ''}}{{pc.pcnt | number:'1.1-2'}}%
                                     <span class="fw-normal">(was {{pc.prevrate | number:'1.2-2'}})</span>
                                 </span>
-                                <select *ngIf="pc.level !== 'NONE' && i.status === 'NEW'" class="form-select form-select-sm mt-1" [attr.data-testid]="'price-reason-' + i.id"
+                                <select *ngIf="pc.level !== 'NONE' && inDraft(i)" class="form-select form-select-sm mt-1" [attr.data-testid]="'price-reason-' + i.id"
                                         [ngModel]="pc.reason || ''" (ngModelChange)="setPriceReason(i.id, $event)" aria-label="Reason for the rate change">
                                     <option value="">Reason...</option>
                                     <option *ngFor="let r of priceReasons" [value]="r.value">{{r.label}}</option>
@@ -177,7 +177,7 @@
                                 <div *ngIf="pc.unitjump !== null" class="small text-danger" [attr.data-testid]="'unit-jump-' + i.id">MRP is {{pc.unitjump}}&times; the last purchase. Pack is {{pc.pack}}:
                                     <a [routerLink]="['/secure/products/master/edit', i.productid]">check it</a></div>
                                 <div *ngIf="pc.level === 'APPROVAL'" class="small text-danger">Above {{priceApproval}}%: Store Head to complete</div>
-                                <a *ngIf="pc.level !== 'NONE' && i.status === 'NEW'" href="javascript:void(0)" class="small" (click)="disputeFromPrice(i, pc)" data-testid="price-dispute">Not agreed: dispute</a>
+                                <a *ngIf="pc.level !== 'NONE' && inDraft(i)" href="javascript:void(0)" class="small" (click)="disputeFromPrice(i, pc)" data-testid="price-dispute">Not agreed: dispute</a>
                             </ng-container>
                         </td>
                         <td class="text-end" style="min-width:11rem" [attr.data-testid]="'price-impact-' + i.id">
@@ -247,6 +247,12 @@
             </div>
             <div class="alert alert-warning py-2 small mt-3 mb-0" *ngIf="invoice.status === 'NEW' && priceLinesNeedingReason > 0" data-testid="price-needs-reason">
                 {{priceLinesNeedingReason}} line{{priceLinesNeedingReason === 1 ? '' : 's'}} changed against the last purchase (rate up over {{priceTolerance}}%, or a different pack/unit). Choose a reason on each before completing.
+                <span class="ms-2 d-inline-flex align-items-center gap-1">
+                    <select class="form-select form-select-sm w-auto d-inline-block" aria-label="Same reason for all" (change)="setReasonForAll($any($event.target).value); $any($event.target).value = ''" data-testid="price-reason-all">
+                        <option value="">Same reason for all...</option>
+                        <option *ngFor="let r of priceReasons" [value]="r.value">{{r.label}}</option>
+                    </select>
+                </span>
             </div>
             <div class="text-danger small mt-2" *ngIf="completeError" data-testid="invoice-complete-error">{{completeError}}</div>
 

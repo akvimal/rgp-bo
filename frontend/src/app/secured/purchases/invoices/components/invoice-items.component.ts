@@ -143,7 +143,11 @@ export class InvoiceItemsComponent {
     disputeNote:string = '';
     disputeError:string = '';
 
-    private selectedNew():any[] { return (this.items || []).filter((i:any) => i.selected && i.status === 'NEW'); }
+    /** the lines selected that can still be moved into dispute: new or verified (the server allows both) */
+    private selectedNew():any[] { return (this.items || []).filter((i:any) => i.selected && (i.status === 'NEW' || i.status === 'VERIFIED')); }
+
+    /** a line of a draft invoice that is still part of it: its price reason can be given and it can be disputed, verified or not (a verified line used to hide both) */
+    inDraft(i:any): boolean { return !!this.invoice && this.invoice.status === 'NEW' && (i.status === 'NEW' || i.status === 'VERIFIED'); }
 
     openDispute(){
         this.disputing = true; this.disputeError = '';
@@ -274,6 +278,14 @@ export class InvoiceItemsComponent {
 
     setPriceReason(itemid:any, reason:string){
         this.invService.updateItems([itemid], { pricereason: reason || null }).subscribe(() => this.loadPriceCheck(), () => this.loadPriceCheck());
+    }
+
+    /** one reason for every line that still needs one (a vendor price list change often explains them all) */
+    setReasonForAll(reason:string){
+        if(!reason) return;
+        const ids = (this.items || []).filter((i:any) => this.inDraft(i) && this.priceByItem[i.id] && this.priceByItem[i.id].level !== 'NONE' && !this.priceByItem[i.id].reason).map((i:any) => i.id);
+        if(!ids.length) return;
+        this.invService.updateItems(ids, { pricereason: reason }).subscribe(() => this.loadPriceCheck(), () => this.loadPriceCheck());
     }
 
     get priceLinesNeedingReason(): number {
