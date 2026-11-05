@@ -16,6 +16,14 @@ export class InvoicePaymentComponent implements OnInit, OnChanges {
     @Input() paymentstatus:any;
     @Output() payUpdated = new EventEmitter();
 
+    /** the panel can be folded away; the choice is remembered in this browser */
+    private readonly hideKey = 'rgp_invoice_payments_hidden';
+    hidden = (() => { try { return localStorage.getItem(this.hideKey) === '1'; } catch { return false; } })();
+    toggle(){
+        this.hidden = !this.hidden;
+        try { localStorage.setItem(this.hideKey, this.hidden ? '1' : '0'); } catch { /* storage blocked: it just is not remembered */ }
+    }
+
     payments:any[] = [];
     communicationStatuses = ['Not Sent', 'Sent', 'Acknowledged', 'Disputed'];
     communicationChannels = ['WhatsApp', 'SMS', 'Email', 'Call', 'Other'];
