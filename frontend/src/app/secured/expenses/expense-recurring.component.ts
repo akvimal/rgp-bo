@@ -1,5 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { ExpenseApi } from "./expense.service";
+import { EVERY_MONTHS, everyLabel, offered } from "./expense-category-kinds";
 
 /** Rent, salaries, utilities: the usual monthly amounts. "Create entries" adds the month's expenses once, for approval. */
 @Component({
@@ -20,10 +21,12 @@ import { ExpenseApi } from "./expense.service";
       <div *ngIf="form" class="border rounded p-3 mb-3" data-testid="rec-form">
         <div class="row g-3">
           <div class="col-md-3"><label class="form-label">Category *</label>
-            <select class="form-select" [(ngModel)]="form.category_id" data-testid="rec-category"><option [ngValue]="null">Choose</option><option *ngFor="let c of categories" [ngValue]="c.id">{{c.name}}</option></select></div>
+            <select class="form-select" [(ngModel)]="form.category_id" data-testid="rec-category"><option [ngValue]="null">Choose</option><option *ngFor="let c of categoryChoices" [ngValue]="c.id">{{c.name}}</option></select></div>
           <div class="col-md-3"><label class="form-label">Store</label>
-            <select class="form-select" [(ngModel)]="form.store_id"><option [ngValue]="null">Business level</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.name}}</option></select></div>
+            <select class="form-select" [(ngModel)]="form.store_id" (ngModelChange)="storeChanged()"><option [ngValue]="null">Business level</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.name}}</option></select></div>
           <div class="col-md-2"><label class="form-label">Usual amount *</label><input type="number" min="0" class="form-control" [(ngModel)]="form.amount" data-testid="rec-amount"></div>
+          <div class="col-md-2"><label class="form-label">Repeats</label>
+            <select class="form-select" [(ngModel)]="form.every_months" data-testid="rec-every"><option *ngFor="let e of everyOptions" [ngValue]="e.value">{{e.label}}</option></select></div>
           <div class="col-md-2"><label class="form-label">Day of month</label><input type="number" min="1" max="28" class="form-control" [(ngModel)]="form.day_of_month"></div>
           <div class="col-md-2"><label class="form-label">Paid by</label>
             <select class="form-select" [(ngModel)]="form.pay_mode"><option value="CASH">Cash</option><option value="BANK">Bank transfer</option><option value="UPI">UPI</option><option value="CARD">Card</option><option value="CHEQUE">Cheque</option></select></div>
@@ -37,11 +40,11 @@ import { ExpenseApi } from "./expense.service";
       </div>
 
       <table class="table table-sm align-middle" data-testid="rec-table">
-        <thead><tr><th>Category</th><th>Store</th><th>Paid to</th><th class="text-end">Amount</th><th>Day</th><th>From</th><th>Until</th><th>Active</th><th></th></tr></thead>
+        <thead><tr><th>Category</th><th>Store</th><th>Paid to</th><th class="text-end">Amount</th><th>Repeats</th><th>Day</th><th>From</th><th>Until</th><th>Active</th><th></th></tr></thead>
         <tbody>
-          <tr *ngFor="let r of rows" data-testid="rec-row"><td>{{r.category}}</td><td>{{r.store || 'Business'}}</td><td>{{r.payee}}</td><td class="text-end">{{r.amount | number:'1.2-2'}}</td><td>{{r.day_of_month}}</td><td>{{r.start_month}}</td><td>{{r.end_month}}</td><td>{{r.active ? 'Yes' : 'No'}}</td>
+          <tr *ngFor="let r of rows" data-testid="rec-row"><td>{{r.category}}</td><td>{{r.store || 'Business'}}</td><td>{{r.payee}}</td><td class="text-end">{{r.amount | number:'1.2-2'}}</td><td>{{everyLabel(r.every_months)}}</td><td>{{r.day_of_month}}</td><td>{{r.start_month}}</td><td>{{r.end_month}}</td><td>{{r.active ? 'Yes' : 'No'}}</td>
             <td class="text-end"><button class="btn btn-outline-secondary btn-sm" type="button" (click)="edit(r)">Edit</button></td></tr>
-          <tr *ngIf="!rows.length"><td colspan="9" class="text-center text-muted py-3">Nothing set up yet.</td></tr>
+          <tr *ngIf="!rows.length"><td colspan="10" class="text-center text-muted py-3">Nothing set up yet.</td></tr>
         </tbody>
       </table>
     </div></div>`
@@ -49,6 +52,13 @@ import { ExpenseApi } from "./expense.service";
 export class ExpenseRecurringComponent implements OnInit {
   rows: any[] = [];
   categories: any[] = [];
+  everyOptions = EVERY_MONTHS;
+  everyLabel = everyLabel;
+
+  get categoryChoices(): any[] { return offered(this.categories, this.form?.store_id ?? null); }
+  storeChanged() {
+    if (this.form?.category_id && !this.categoryChoices.some((c: any) => c.id === this.form.category_id)) this.form.category_id = null;
+  }
   stores: any[] = [];
   period = "";
   form: any = null;
@@ -66,7 +76,7 @@ export class ExpenseRecurringComponent implements OnInit {
 
   load() { this.api.get("recurring").subscribe(r => this.rows = r, e => this.error = this.api.msg(e)); }
 
-  add() { this.message = this.error = ""; this.form = { id: 0, category_id: null, store_id: null, amount: null, day_of_month: 1, pay_mode: "BANK", payee: "", description: "", start_month: this.api.thisMonth(), end_month: "", active: true }; }
+  add() { this.message = this.error = ""; this.form = { id: 0, category_id: null, store_id: null, amount: null, day_of_month: 1, every_months: 1, pay_mode: "BANK", payee: "", description: "", start_month: this.api.thisMonth(), end_month: "", active: true }; }
   edit(r: any) { this.message = this.error = ""; this.form = { ...r, end_month: r.end_month || "" }; }
 
   save() {

@@ -22,9 +22,9 @@
       <div class="row g-3">
         <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Date *</label><input type="date" class="form-control" [(ngModel)]="form.expense_date" data-testid="exp-d-date"></div>
         <div class="col-md-6 col-lg-3"><label class="form-label">Store</label>
-          <select class="form-select" [(ngModel)]="form.store_id" data-testid="exp-d-store"><option [ngValue]="null" *ngIf="isBusinessHead">Business level</option><option [ngValue]="null" *ngIf="!isBusinessHead">Choose</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.name}}</option></select></div>
+          <select class="form-select" [(ngModel)]="form.store_id" (ngModelChange)="storeChanged()" data-testid="exp-d-store"><option [ngValue]="null" *ngIf="isBusinessHead">Business level</option><option [ngValue]="null" *ngIf="!isBusinessHead">Choose</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.name}}</option></select></div>
         <div class="col-md-6 col-lg-3"><label class="form-label">Category *</label>
-          <select class="form-select" [(ngModel)]="form.category_id" data-testid="exp-d-category"><option [ngValue]="null">Choose</option><option *ngFor="let c of categories" [ngValue]="c.id">{{c.name}}</option></select></div>
+          <select class="form-select" [(ngModel)]="form.category_id" data-testid="exp-d-category"><option [ngValue]="null">Choose</option><option *ngFor="let c of categoryChoices" [ngValue]="c.id">{{c.name}}</option></select></div>
         <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Amount *</label><input type="number" min="0" class="form-control" [(ngModel)]="form.amount" data-testid="exp-d-amount"></div>
         <div class="col-6 col-md-3 col-lg-2"><label class="form-label">GST included</label><input type="number" min="0" class="form-control" [(ngModel)]="form.gst_amount" data-testid="exp-d-gst"></div>
         <div class="col-md-6 col-lg-3"><label class="form-label">Paid to</label><input class="form-control" maxlength="100" [(ngModel)]="form.payee" data-testid="exp-d-payee"></div>

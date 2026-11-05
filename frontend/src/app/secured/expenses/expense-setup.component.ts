@@ -1,5 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { ExpenseApi } from "./expense.service";
+import { GROUPS, LEVELS } from "./expense-category-kinds";
 
 /** The Store Head's approval limit and the category list. */
 @Component({
@@ -15,12 +16,16 @@ import { ExpenseApi } from "./expense.service";
         <button class="btn btn-primary" type="button" (click)="saveLimit()" data-testid="set-limit-save">Save</button>
       </div>
       <h6>Categories</h6>
-      <table class="table table-sm align-middle" style="max-width:40rem" data-testid="set-cats">
-        <thead><tr><th>Name</th><th class="text-center">Active</th><th></th></tr></thead>
+      <table class="table table-sm align-middle" style="max-width:60rem" data-testid="set-cats">
+        <thead><tr><th>Name</th><th>Paid at</th><th>Group</th><th class="text-center">Active</th><th></th></tr></thead>
         <tbody>
-          <tr *ngFor="let c of categories"><td><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="c.name"></td><td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="c.active"></td>
+          <tr *ngFor="let c of categories"><td><input class="form-control form-control-sm" maxlength="60" [(ngModel)]="c.name"></td>
+            <td><select class="form-select form-select-sm" [(ngModel)]="c.level" data-testid="set-cat-level"><option *ngFor="let l of levels" [value]="l.value">{{l.label}}</option></select></td>
+            <td><select class="form-select form-select-sm" [(ngModel)]="c.cost_group" data-testid="set-cat-group"><option *ngFor="let g of groups" [value]="g">{{g}}</option></select></td><td class="text-center"><input type="checkbox" class="form-check-input" [(ngModel)]="c.active"></td>
             <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="saveCategory(c)">Save</button></td></tr>
-          <tr><td><input class="form-control form-control-sm" placeholder="New category" maxlength="60" [(ngModel)]="newName" data-testid="set-cat-name"></td><td></td>
+          <tr><td><input class="form-control form-control-sm" placeholder="New category" maxlength="60" [(ngModel)]="newName" data-testid="set-cat-name"></td>
+            <td><select class="form-select form-select-sm" [(ngModel)]="newLevel"><option *ngFor="let l of levels" [value]="l.value">{{l.label}}</option></select></td>
+            <td><select class="form-select form-select-sm" [(ngModel)]="newGroup"><option *ngFor="let g of groups" [value]="g">{{g}}</option></select></td><td></td>
             <td class="text-end"><button class="btn btn-primary btn-sm" type="button" (click)="addCategory()" data-testid="set-cat-add">Add</button></td></tr>
         </tbody>
       </table>
@@ -30,6 +35,10 @@ export class ExpenseSetupComponent implements OnInit {
   limit = 0;
   categories: any[] = [];
   newName = "";
+  newLevel = "BOTH";
+  newGroup = "Other";
+  levels = LEVELS;
+  groups = GROUPS;
   message = "";
   error = "";
 
@@ -47,5 +56,5 @@ export class ExpenseSetupComponent implements OnInit {
 
   saveLimit() { this.api.put("limit", { limit: this.limit }).subscribe(this.done("Limit saved."), this.fail()); }
   saveCategory(c: any) { this.api.put(`categories/${c.id}`, c).subscribe(this.done("Category saved."), this.fail()); }
-  addCategory() { this.api.post("categories", { name: this.newName }).subscribe(() => { this.newName = ""; this.done("Category added.")(); }, this.fail()); }
+  addCategory() { this.api.post("categories", { name: this.newName, level: this.newLevel, cost_group: this.newGroup }).subscribe(() => { this.newName = ""; this.newLevel = "BOTH"; this.newGroup = "Other"; this.done("Category added.")(); }, this.fail()); }
 }

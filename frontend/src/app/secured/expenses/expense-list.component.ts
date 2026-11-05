@@ -1,12 +1,20 @@
 import { Component, OnInit } from "@angular/core";
 import { FileUploadService } from "../documents/file-upload.service";
 import { ExpenseApi } from "./expense.service";
+import { offered } from "./expense-category-kinds";
 
 /** The ledger: raise an expense, see them, approve or reject the ones waiting for you. */
 @Component({ selector: "app-expense-list", templateUrl: "./expense-list.component.html" })
 export class ExpenseListComponent implements OnInit {
   rows: any[] = [];
   categories: any[] = [];
+
+  /** only the categories that fit where the expense is paid: a store's, or business level */
+  get categoryChoices(): any[] { return offered(this.categories, this.form?.store_id ?? null); }
+  /** a category that does not fit the new store is dropped, so it is chosen again */
+  storeChanged() {
+    if (this.form?.category_id && !this.categoryChoices.some((c: any) => c.id === this.form.category_id)) this.form.category_id = null;
+  }
   stores: any[] = [];
   role = "";
   limit = 0;

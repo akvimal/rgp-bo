@@ -18,6 +18,15 @@ import { ExpenseApi } from "./expense.service";
         <div class="mb-3">Total <strong data-testid="rep-total">{{data.total | number:'1.2-2'}}</strong>
           <span class="text-muted"> &middot; GST included {{data.gst | number:'1.2-2'}} &middot; of which paid from the cash drawer (Cash screen) {{data.drawer | number:'1.2-2'}}</span>
           <span class="badge bg-warning text-dark ms-2" *ngIf="data.pending?.n">{{data.pending.n}} pending, {{data.pending.total | number:'1.2-2'}} not counted yet</span></div>
+        <div class="mb-4" *ngIf="data.byGroup?.length" data-testid="rep-group">
+          <h6>By kind of cost</h6>
+          <table class="table table-sm" style="max-width:36rem"><tbody>
+            <ng-container *ngFor="let g of data.byGroup">
+              <tr class="fw-semibold"><td>{{g.name}}</td><td class="text-end">{{g.amount | number:'1.2-2'}}</td></tr>
+              <tr *ngFor="let c of g.categories" class="text-muted"><td class="ps-4">{{c.name}}</td><td class="text-end">{{c.amount | number:'1.2-2'}}</td></tr>
+            </ng-container>
+          </tbody></table>
+        </div>
         <div class="row g-4">
           <div class="col-lg-4"><h6>By category</h6><table class="table table-sm" data-testid="rep-cat"><tbody><tr *ngFor="let r of data.byCategory"><td>{{r.name}}</td><td class="text-end">{{r.amount | number:'1.2-2'}}</td></tr></tbody></table></div>
           <div class="col-lg-4"><h6>By store</h6><table class="table table-sm" data-testid="rep-store"><tbody><tr *ngFor="let r of data.byStore"><td>{{r.name}}</td><td class="text-end">{{r.amount | number:'1.2-2'}}</td></tr></tbody></table></div>
@@ -43,7 +52,7 @@ export class ExpenseReportComponent implements OnInit {
   load() { this.api.get("report", { from: this.from, to: this.to }).subscribe(r => this.data = r, e => this.error = this.api.msg(e)); }
 
   download() {
-    const lines: any[][] = [["Report", `${this.data.from} to ${this.data.to}`], [], ["By category", "Amount"], ...this.data.byCategory.map((r: any) => [r.name, r.amount]),
+    const lines: any[][] = [["Report", `${this.data.from} to ${this.data.to}`], [], ["By kind of cost", "Amount"], ...(this.data.byGroup || []).map((g: any) => [g.name, g.amount]), [], ["By category", "Amount"], ...this.data.byCategory.map((r: any) => [r.name, r.amount]),
       [], ["By store", "Amount"], ...this.data.byStore.map((r: any) => [r.name, r.amount]), [], ["By month", "Amount"], ...this.data.byMonth.map((r: any) => [r.name, r.amount]), [], ["Total", this.data.total]];
     const csv = lines.map(l => l.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
     const a = document.createElement("a");
