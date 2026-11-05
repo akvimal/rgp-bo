@@ -105,6 +105,22 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'Unexplained write-offs: {value} in 30 days', body: '{count} adjustments were given the reason "Other". Ask for the proper reason on each.' },
     ta: { title: 'விளக்கமில்லாத கழிவுகள்: 30 நாட்களில் {value}', body: '{count} மாற்றங்களுக்கு "Other" என்ற காரணம் கொடுக்கப்பட்டுள்ளது. ஒவ்வொன்றிற்கும் சரியான காரணத்தைக் கேட்கவும்.' },
   },
+  todo_soon: {
+    en: { title: 'To-do coming up on {date}: {title}', body: 'Open the To-dos page to do it, or change the day.' },
+    ta: { title: '{date} அன்று செய்ய வேண்டியது: {title}', body: 'செய்ய வேண்டியவை பக்கத்தைத் திறந்து செய்யவும் அல்லது நாளை மாற்றவும்.' },
+  },
+  todo_due: {
+    en: { title: 'To-do due now: {title}', body: 'It is due on {date}. Tick it off on the To-dos page when it is done.' },
+    ta: { title: 'இப்போது செய்ய வேண்டியது: {title}', body: '{date} அன்று செய்ய வேண்டியது. முடிந்ததும் செய்ய வேண்டியவை பக்கத்தில் குறிக்கவும்.' },
+  },
+  todo_overdue: {
+    en: { title: 'To-do is {days} days late: {title}', body: 'It was due on {date}. Do it, or change the day.' },
+    ta: { title: 'செய்ய வேண்டியது {days} நாட்கள் தாமதம்: {title}', body: '{date} அன்று செய்திருக்க வேண்டும். செய்து முடிக்கவும் அல்லது நாளை மாற்றவும்.' },
+  },
+  todo_escalated: {
+    en: { title: 'To-do {days} days late: {title}', body: '{person} has not done it yet. It was due on {date}.' },
+    ta: { title: 'செய்ய வேண்டியது {days} நாட்கள் தாமதம்: {title}', body: '{person} இன்னும் செய்யவில்லை. {date} அன்று செய்திருக்க வேண்டும்.' },
+  },
   outage_kit_overdue: {
     en: { title: 'Outage kit not checked for {days} days: {store}', body: 'Last checked on {date}. Tick off the weekly checklist on the Outage kit page and print a fresh price list.' },
     ta: { title: 'மின்தடை தயார்நிலை {days} நாட்களாகச் சரிபார்க்கப்படவில்லை: {store}', body: 'கடைசியாகச் சரிபார்த்தது {date}. மின்தடை தயார்நிலைப் பக்கத்தில் வாராந்திரப் பட்டியலைச் சரிபார்த்து புதிய விலைப் பட்டியலை அச்சிடவும்.' },

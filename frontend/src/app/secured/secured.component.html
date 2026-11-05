@@ -106,6 +106,12 @@
             <span>Dashboard</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'todos.view'">
+          <a class="nav-link collapsed" routerLink="todos" data-testid="nav-todos" title="To-dos" aria-label="To-dos">
+            <i class="bi bi-check2-circle"></i>
+            <span>To-dos</span>
+          </a>
+        </li>
         <li class="nav-heading" *ngIf="has('sales','customers.read','shiftdesk.view','inquiries.view')" data-testid="nav-section-sell">Sell</li>
         <li class="nav-item" *isAuth="'sales'">
           <a class="nav-link collapsed" routerLink="sales" data-testid="nav-sales" title="Sales" aria-label="Sales">

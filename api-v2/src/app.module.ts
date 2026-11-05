@@ -8,6 +8,7 @@ import { VendorModule } from './modules/app/vendors/vendor.module';
 import { ProductModule } from './modules/app/products/product.module';
 import { OutageModule } from './modules/app/outage/outage.module';
 import { ReviewModule } from './modules/app/review/review.module';
+import { TodoModule } from './modules/app/todos/todo.module';
 import { FinanceModule } from './modules/app/finance/finance.module';
 import { SaleHooksModule } from './core/sale-hooks/sale-hooks';
 import { PharmacyPackModule } from './packs/pharmacy/pharmacy-pack.module';
@@ -68,6 +69,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     ProductModule,
     OutageModule,
     ReviewModule,
+    TodoModule,
     FinanceModule,
     SaleHooksModule,
     PackConfigModule,

@@ -1,0 +1,189 @@
+<div class="form-compact">
+<div class="pagetitle">
+  <h1>To-dos</h1>
+</div>
+
+<p class="small text-muted mb-2" data-testid="todo-intro">
+  Things to do, with a reminder before they are due and again if they are late. Give one to yourself, or (for a manager) to a person or to a whole store's staff.
+  A repeating to-do makes the next one when its turn comes.
+</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="todo-error">{{error}}</div>
+<div class="alert alert-success py-2" *ngIf="message" data-testid="todo-message">{{message}}</div>
+
+<ul class="nav nav-tabs mb-3" *ngIf="options.canassign" data-testid="todo-scope">
+  <li class="nav-item"><a class="nav-link" [class.active]="scope === 'mine'" href="javascript:void(0)" (click)="setScope('mine')" data-testid="todo-scope-mine">Mine</a></li>
+  <li class="nav-item"><a class="nav-link" [class.active]="scope === 'team'" href="javascript:void(0)" (click)="setScope('team')" data-testid="todo-scope-team">My team's</a></li>
+</ul>
+
+<!-- add / change -->
+<div class="card mb-3" data-testid="todo-form">
+  <div class="card-body">
+    <div class="fw-bold mb-2">{{editing ? 'Change this to-do' : 'Add a to-do'}}</div>
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-5">
+        <label class="form-label small mb-0" for="td-title">What needs doing</label>
+        <input id="td-title" class="form-control" [(ngModel)]="form.title" maxlength="200" placeholder="e.g. Check the fridge temperature" (keydown.enter)="form.title && !busy && save()" data-testid="todo-title">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0" for="td-day">{{!editing && form.repeat ? 'First day' : 'Due on'}}</label>
+        <input id="td-day" type="date" class="form-control" [(ngModel)]="form.dueday" data-testid="todo-day">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0" for="td-time">At</label>
+        <input id="td-time" type="time" class="form-control" [(ngModel)]="form.duetime" data-testid="todo-time">
+      </div>
+      <div class="col-6 col-md-2" *ngIf="options.canassign">
+        <label class="form-label small mb-0" for="td-who">For</label>
+        <select id="td-who" class="form-select" [(ngModel)]="form.who" data-testid="todo-who">
+          <option value="me">Me</option>
+          <option *ngFor="let p of options.people" [value]="'u:' + p.id" [hidden]="p.id === options.me">{{p.name}}</option>
+          <option *ngIf="options.stores.length" value="pool">A store's staff</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2" *ngIf="options.canassign && form.who === 'pool'">
+        <label class="form-label small mb-0" for="td-store">Store</label>
+        <select id="td-store" class="form-select" [(ngModel)]="form.storeid" data-testid="todo-store">
+          <option *ngFor="let s of options.stores" [ngValue]="s.id">{{s.name}}</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2" *ngIf="!editing">
+        <label class="form-label small mb-0" for="td-repeat">Repeats</label>
+        <select id="td-repeat" class="form-select" [(ngModel)]="form.repeat" data-testid="todo-repeat">
+          <option value="">Does not repeat</option>
+          <option value="DAILY">Every day</option>
+          <option value="WEEKDAYS">Every weekday (Mon to Fri)</option>
+          <option value="WEEKLY">Every week, on chosen days</option>
+          <option value="MONTHLY">Every month</option>
+          <option value="EVERY_N_DAYS_AFTER_DONE">Some days after it is done</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0" for="td-priority">Priority</label>
+        <select id="td-priority" class="form-select" [(ngModel)]="form.priority" data-testid="todo-priority">
+          <option value="low">Low</option>
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mt-2" *ngIf="!editing && form.repeat === 'WEEKLY'" data-testid="todo-weekdays">
+      <span class="small me-2">On</span>
+      <label class="me-2 small" *ngFor="let n of dayNames; let d = index">
+        <input type="checkbox" class="form-check-input me-1" [checked]="form.days.indexOf(d) >= 0" (change)="toggleDay(d)" [attr.data-testid]="'todo-weekday-' + d">{{n}}
+      </label>
+    </div>
+    <div class="mt-2 d-flex align-items-center gap-2" *ngIf="!editing && form.repeat === 'MONTHLY'">
+      <span class="small">On day</span>
+      <input type="number" min="0" max="31" class="form-control w-auto" style="width:5rem" [(ngModel)]="form.day" data-testid="todo-monthday">
+      <span class="small text-muted">(0 is the last day of the month; the 31st falls on the last day of a shorter month)</span>
+    </div>
+    <div class="mt-2 d-flex align-items-center gap-2" *ngIf="!editing && form.repeat === 'EVERY_N_DAYS_AFTER_DONE'">
+      <span class="small">Make the next one</span>
+      <input type="number" min="1" max="365" class="form-control w-auto" style="width:5rem" [(ngModel)]="form.every" data-testid="todo-every">
+      <span class="small">days after this one is ticked</span>
+    </div>
+
+    <div class="mt-2">
+      <a href="javascript:void(0)" class="small" (click)="more = !more" data-testid="todo-more-toggle">{{more ? 'Fewer options' : 'More options'}}</a>
+    </div>
+    <div class="row g-2 mt-1" *ngIf="more">
+      <div class="col-12 col-md-6">
+        <label class="form-label small mb-0" for="td-notes">Notes</label>
+        <input id="td-notes" class="form-control" [(ngModel)]="form.notes" maxlength="2000" data-testid="todo-notes">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0" for="td-soon">Heads-up (days before)</label>
+        <input id="td-soon" type="number" min="0" max="30" class="form-control" [(ngModel)]="form.soondays" data-testid="todo-soon">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-0" for="td-esc">Tell the manager after (days late)</label>
+        <input id="td-esc" type="number" min="1" max="60" class="form-control" [(ngModel)]="form.escalatedays" data-testid="todo-escalate">
+      </div>
+      <div class="col-6 col-md-2" *ngIf="!editing && form.repeat">
+        <label class="form-label small mb-0" for="td-ends">Stop repeating on</label>
+        <input id="td-ends" type="date" class="form-control" [(ngModel)]="form.endson" data-testid="todo-ends">
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-primary" (click)="save()" [disabled]="busy || !form.title || !form.dueday" data-testid="todo-save">{{editing ? 'Save' : 'Add'}}</button>
+      <button class="btn btn-outline-secondary" *ngIf="editing" (click)="cancelEdit()" data-testid="todo-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="text-muted small" *ngIf="!loaded">Loading&hellip;</div>
+
+<!-- the open to-dos, by when -->
+<ng-template #rows let-list let-title="title" let-tone="tone" let-id="id">
+  <div class="mb-3" *ngIf="list.length" [attr.data-testid]="'todo-section-' + id">
+    <h6 [class]="'mb-1 ' + tone">{{title}} <span class="badge bg-secondary ms-1">{{list.length}}</span></h6>
+    <ul class="list-group">
+      <li class="list-group-item d-flex align-items-start gap-2" *ngFor="let i of list" [attr.data-testid]="'todo-row-' + i.id">
+        <input type="checkbox" class="form-check-input mt-1" [disabled]="!i.cantick" (change)="tick(i)" [attr.aria-label]="'Done: ' + i.title" [attr.data-testid]="'todo-tick-' + i.id">
+        <div class="flex-grow-1">
+          <div>
+            <span class="fw-semibold">{{i.title}}</span>
+            <span class="badge bg-danger ms-1" *ngIf="i.priority === 'high'">High</span>
+            <span class="badge ms-1" [ngClass]="stageClass(i)" *ngIf="stageLabel(i)" [attr.data-testid]="'todo-stage-' + i.id">{{stageLabel(i)}}</span>
+            <span class="badge bg-light text-dark border ms-1" *ngIf="i.repeatrule" title="Repeating"><i class="bi bi-arrow-repeat"></i> {{repeatText(i.repeatrule)}}</span>
+          </div>
+          <div class="small text-muted" *ngIf="i.notes">{{i.notes}}</div>
+          <div class="small text-muted">
+            Due {{i.dueon | date:'EEE d MMM, h:mm a'}}
+            <span *ngIf="whoFor(i)"> &middot; For {{whoFor(i)}}</span>
+            <span *ngIf="i.assignedbyname && i.assignedby !== i.assigneeuserid"> &middot; Given by {{i.assignedbyname}}</span>
+          </div>
+        </div>
+        <div class="d-flex gap-2" *ngIf="i.canmanage">
+          <a href="javascript:void(0)" title="Change" (click)="edit(i)" [attr.data-testid]="'todo-edit-' + i.id"><i class="bi bi-pencil"></i></a>
+          <a href="javascript:void(0)" class="text-danger" title="Remove" (click)="remove(i)" [attr.data-testid]="'todo-remove-' + i.id"><i class="bi bi-x-circle"></i></a>
+        </div>
+      </li>
+    </ul>
+  </div>
+</ng-template>
+
+<ng-container *ngTemplateOutlet="rows; context: { $implicit: overdue, title: 'Late', tone: 'text-danger', id: 'late' }"></ng-container>
+<ng-container *ngTemplateOutlet="rows; context: { $implicit: dueToday, title: 'Today', tone: '', id: 'today' }"></ng-container>
+<ng-container *ngTemplateOutlet="rows; context: { $implicit: later, title: 'Coming up', tone: 'text-muted', id: 'later' }"></ng-container>
+
+<div class="text-muted" *ngIf="loaded && !items.length" data-testid="todo-empty">Nothing to do. Add a to-do above.</div>
+
+<!-- done lately -->
+<div class="mb-3" *ngIf="doneItems.length" data-testid="todo-section-done">
+  <h6 class="mb-1 text-muted">Done lately</h6>
+  <ul class="list-group">
+    <li class="list-group-item d-flex align-items-center gap-2 text-muted" *ngFor="let i of doneItems" [attr.data-testid]="'todo-done-' + i.id">
+      <input type="checkbox" class="form-check-input" checked disabled>
+      <div class="flex-grow-1"><s>{{i.title}}</s>
+        <span class="small"> &middot; {{i.completedon | date:'d MMM, h:mm a'}}<span *ngIf="i.completedbyname"> by {{i.completedbyname}}</span></span>
+        <span class="small" *ngIf="i.donenote"> &middot; {{i.donenote}}</span>
+      </div>
+      <a href="javascript:void(0)" class="small" (click)="reopen(i)" [attr.data-testid]="'todo-reopen-' + i.id">Reopen</a>
+    </li>
+  </ul>
+</div>
+
+<!-- repeats -->
+<div class="mb-3" *ngIf="repeats.length" data-testid="todo-repeats">
+  <a href="javascript:void(0)" class="small" (click)="showRepeats = !showRepeats" data-testid="todo-repeats-toggle">
+    <i class="bi" [ngClass]="showRepeats ? 'bi-chevron-down' : 'bi-chevron-right'"></i> Repeating to-dos ({{repeats.length}})
+  </a>
+  <table class="table table-sm align-middle mt-2" *ngIf="showRepeats">
+    <thead><tr><th>To-do</th><th>Repeats</th><th>For</th><th>Next</th><th>Missed</th><th></th></tr></thead>
+    <tbody>
+      <tr *ngFor="let r of repeats" [attr.data-testid]="'todo-repeat-' + r.id">
+        <td>{{r.title}}</td>
+        <td>{{repeatText(r)}}</td>
+        <td>{{r.pool ? (r.store + ' (anyone)') : r.assignee}}</td>
+        <td>{{r.nextdue ? (r.nextdue | date:'d MMM') : 'after it is done'}}</td>
+        <td [title]="'Days it came round while the last one was still open'">{{r.missed}}</td>
+        <td class="text-end"><a href="javascript:void(0)" class="text-danger small" (click)="stopRepeat(r)" [attr.data-testid]="'todo-repeat-stop-' + r.id">Stop</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</div>
