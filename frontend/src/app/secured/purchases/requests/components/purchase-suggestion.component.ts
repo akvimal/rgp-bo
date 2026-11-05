@@ -7,7 +7,14 @@ import { VendorsService } from "../../vendors/vendors.service";
 
 @Component({
     selector: 'app-purchase-suggestion',
-    templateUrl: './purchase-suggestion.component.html'
+    templateUrl: './purchase-suggestion.component.html',
+    styles: [`
+      .reo-step { flex: 1 1 11rem; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .5rem; padding: .5rem .65rem; background: #f8f9fc; }
+      .reo-step-t { font-weight: 600; font-size: .8rem; color: #4154f1; margin-bottom: .15rem; }
+      .reo-step-final { background: #e8f5e9; border-color: #a5d6a7; }
+      .reo-step-final .reo-step-t { color: #2e7d32; }
+      .reo-arrow { align-self: center; font-weight: 700; color: #6b7280; }
+    `]
 })
 export class PurchaseSuggestionComponent implements OnDestroy {
     suggestions:any[] = [];
@@ -41,6 +48,30 @@ export class PurchaseSuggestionComponent implements OnDestroy {
     createdOrders:any[] = [];
     /** put the items on the vendor's open draft rather than starting a second one */
     addToDraft:boolean = true;
+
+    /** the "How to read this" panel: closed until asked for, and remembered in this browser */
+    private readonly helpKey = 'rgp_reorder_help';
+    showHelp:boolean = (() => { try { return localStorage.getItem(this.helpKey) === '1'; } catch { return false; } })();
+    toggleHelp(){
+        this.showHelp = !this.showHelp;
+        try { localStorage.setItem(this.helpKey, this.showHelp ? '1' : '0'); } catch { /* storage blocked: it is just not remembered */ }
+    }
+
+    /** the colour of a reason chip: red for what cannot wait, amber for what is running low, blue for what a person asked for, green and grey for the season */
+    reasonClass(r:string): string {
+        switch(r){
+            case 'Urgent': return 'bg-danger';
+            case 'Below Minimum': return 'bg-warning text-dark';
+            case 'Low Stock': return 'bg-warning text-dark';
+            case 'Fast Moving': return 'bg-primary';
+            case 'Customer Request': return 'bg-info text-dark';
+            case 'Season Rising': return 'bg-success';
+            case 'Season Easing': return 'bg-secondary';
+            case 'Slow Mover': return 'bg-secondary';
+            case 'Sold Now Last Year': return 'bg-light text-dark border';
+            default: return 'bg-light text-dark border';
+        }
+    }
 
     constructor(
         private requestService: PurchaseIntentService,
