@@ -5,6 +5,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
 import { isOwnerRole } from 'src/core/roles';
+import { cleanCategoryKind, EVERY_MONTHS, fallsIn, levelProblem, rollUpByGroup } from './expense-category-rules';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MODES = ['CASH', 'BANK', 'UPI', 'CARD', 'CHEQUE'];
@@ -48,7 +49,7 @@ export class ExpenseService {
 
   // ------------------------------------------------------------------ reference data
   categories() {
-    return this.manager.query(`select id, name, display_order, active from expense_category order by display_order, name`);
+    return this.manager.query(`select id, name, display_order, active, level, cost_group from expense_category order by display_order, name`);
   }
 
   async saveCategory(id: number | null, b: any, by: any) {
@@ -56,12 +57,16 @@ export class ExpenseService {
     if (!name) throw new BadRequestException('Give the category a name.');
     const [dup] = await this.manager.query(`select 1 from expense_category where lower(name) = lower($1) and id <> $2`, [name, id || 0]);
     if (dup) throw new BadRequestException(`There is already a category called ${name}.`);
+    const [cur] = id ? await this.manager.query(`select level, cost_group from expense_category where id = $1`, [id]) : [undefined];
+    if (id && !cur) throw new NotFoundException('Category not found.');
+    let kind: { level: string; cost_group: string };
+    try { kind = cleanCategoryKind(b, cur); } catch (e: any) { throw new BadRequestException(e.message); }
     if (id) {
-      const [cur] = await this.manager.query(`select 1 from expense_category where id = $1`, [id]);
-      if (!cur) throw new NotFoundException('Category not found.');
-      await this.manager.query(`update expense_category set name = $2, display_order = $3, active = $4 where id = $1`, [id, name, Number(b.display_order) || 10, b.active !== false]);
+      await this.manager.query(`update expense_category set name = $2, display_order = $3, active = $4, level = $5, cost_group = $6 where id = $1`,
+        [id, name, Number(b.display_order) || 10, b.active !== false, kind.level, kind.cost_group]);
     } else {
-      const [r] = await this.manager.query(`insert into expense_category (name, display_order) values ($1, $2) returning id`, [name, Number(b.display_order) || 50]);
+      const [r] = await this.manager.query(`insert into expense_category (name, display_order, level, cost_group) values ($1, $2, $3, $4) returning id`,
+        [name, Number(b.display_order) || 50, kind.level, kind.cost_group]);
       id = r.id;
     }
     await this.audit.record({ userId: by.id, action: 'expense.category_saved', entityType: 'expense_category', entityId: id, summary: `Expense category ${name} saved`, details: {} });
@@ -95,7 +100,7 @@ export class ExpenseService {
     const gst = r2(Number(b?.gst_amount || 0));
     if (!(gst >= 0) || gst > amount) throw new BadRequestException('GST cannot be more than the amount.');
     if (!MODES.includes(b?.pay_mode)) throw new BadRequestException('Choose how it was paid: cash, bank, UPI, card or cheque.');
-    const [cat] = await this.manager.query(`select id from expense_category where id = $1 and active`, [Number(b?.category_id)]);
+    const [cat] = await this.manager.query(`select id, name, level from expense_category where id = $1 and active`, [Number(b?.category_id)]);
     if (!cat) throw new BadRequestException('Choose the category.');
     let store: number | null = b?.store_id ? Number(b.store_id) : null;
     if (isOwnerRole(c.role)) {
@@ -108,6 +113,8 @@ export class ExpenseService {
       if (!store) throw new BadRequestException('Business-level expenses are raised by the Business Head; choose your store.');
       if (!c.stores.includes(store)) throw new ForbiddenException('You can raise expenses only for your own store.');
     }
+    const fit = levelProblem(cat.name, cat.level, store);
+    if (fit) throw new BadRequestException(fit);
     return {
       expense_date: b.expense_date, store_id: store, category_id: cat.id, amount, gst_amount: gst, pay_mode: b.pay_mode,
       payee: text(b.payee, 100), bill_no: text(b.bill_no, 40), description: text(b.description, 300), receipt_path: text(b.receipt_path, 300),
@@ -205,7 +212,7 @@ export class ExpenseService {
   // ------------------------------------------------------------------ recurring
   recurring() {
     return this.manager.query(
-      `select r.id, r.category_id, k.name as category, r.store_id, s.location as store, r.amount::float as amount, r.payee, r.pay_mode, r.description, r.day_of_month, r.start_month, r.end_month, r.active
+      `select r.id, r.category_id, k.name as category, r.store_id, s.location as store, r.amount::float as amount, r.payee, r.pay_mode, r.description, r.day_of_month, r.start_month, r.end_month, r.active, r.every_months
          from expense_recurring r join expense_category k on k.id = r.category_id left join stores s on s.id = r.store_id order by r.active desc, k.name, r.id`);
   }
 
@@ -213,8 +220,12 @@ export class ExpenseService {
     const amount = r2(Number(b?.amount));
     if (!(amount > 0)) throw new BadRequestException('Enter the usual amount.');
     if (!MODES.includes(b?.pay_mode)) throw new BadRequestException('Choose how it is paid.');
-    const [cat] = await this.manager.query(`select id from expense_category where id = $1 and active`, [Number(b?.category_id)]);
+    const [cat] = await this.manager.query(`select id, name, level from expense_category where id = $1 and active`, [Number(b?.category_id)]);
     if (!cat) throw new BadRequestException('Choose the category.');
+    const fit = levelProblem(cat.name, cat.level, b.store_id ? Number(b.store_id) : null);
+    if (fit) throw new BadRequestException(fit);
+    const every = b.every_months === undefined || b.every_months === null || b.every_months === '' ? 1 : Number(b.every_months);
+    if (!EVERY_MONTHS.includes(every)) throw new BadRequestException('It repeats every 1, 3, 6 or 12 months.');
     if (b.store_id) {
       const [s] = await this.manager.query(`select 1 from stores where id = $1`, [Number(b.store_id)]);
       if (!s) throw new BadRequestException('That store was not found.');
@@ -223,14 +234,14 @@ export class ExpenseService {
     if (!Number.isInteger(day) || day < 1 || day > 28) throw new BadRequestException('The day of the month is 1 to 28.');
     if (!PERIOD.test(b.start_month || '')) throw new BadRequestException('Give the first month (YYYY-MM).');
     if (b.end_month && (!PERIOD.test(b.end_month) || b.end_month < b.start_month)) throw new BadRequestException('The last month is before the first.');
-    const vals = [cat.id, b.store_id ? Number(b.store_id) : null, amount, text(b.payee, 100), b.pay_mode, text(b.description, 300), day, b.start_month, b.end_month || null, b.active !== false];
+    const vals = [cat.id, b.store_id ? Number(b.store_id) : null, amount, text(b.payee, 100), b.pay_mode, text(b.description, 300), day, b.start_month, b.end_month || null, b.active !== false, every];
     if (id) {
       const [cur] = await this.manager.query(`select 1 from expense_recurring where id = $1`, [id]);
       if (!cur) throw new NotFoundException('Recurring expense not found.');
-      await this.manager.query(`update expense_recurring set category_id=$2, store_id=$3, amount=$4, payee=$5, pay_mode=$6, description=$7, day_of_month=$8, start_month=$9, end_month=$10, active=$11 where id=$1`, [id, ...vals]);
+      await this.manager.query(`update expense_recurring set category_id=$2, store_id=$3, amount=$4, payee=$5, pay_mode=$6, description=$7, day_of_month=$8, start_month=$9, end_month=$10, active=$11, every_months=$12 where id=$1`, [id, ...vals]);
     } else {
       const [r] = await this.manager.query(
-        `insert into expense_recurring (category_id, store_id, amount, payee, pay_mode, description, day_of_month, start_month, end_month, active, created_by) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`, [...vals, by.id]);
+        `insert into expense_recurring (category_id, store_id, amount, payee, pay_mode, description, day_of_month, start_month, end_month, active, every_months, created_by) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`, [...vals, by.id]);
       id = r.id;
     }
     await this.audit.record({ userId: by.id, action: 'expense.recurring_saved', entityType: 'expense_recurring', entityId: id, summary: `Recurring expense ${amount} saved`, details: {} });
@@ -240,13 +251,21 @@ export class ExpenseService {
   /** creates the month's entries from the templates, once each; they wait for approval like any other expense */
   async generate(period: string, by: any) {
     if (!PERIOD.test(period || '')) throw new BadRequestException('A month (YYYY-MM) is required.');
-    const rows = await this.manager.query(
-      `insert into expense (expense_date, store_id, category_id, amount, payee, pay_mode, description, status, raised_by, recurring_id, recurring_period)
-       select ($1 || '-' || lpad(r.day_of_month::text, 2, '0'))::date, r.store_id, r.category_id, r.amount, r.payee, r.pay_mode, r.description, 'PENDING', $2, r.id, $1
-         from expense_recurring r where r.active and r.start_month <= $1 and (r.end_month is null or r.end_month >= $1)
-       on conflict (recurring_id, recurring_period) where recurring_id is not null do nothing returning id`, [period, by.id]);
-    await this.audit.record({ userId: by.id, action: 'expense.recurring_generated', entityType: 'expense', entityId: null, summary: `Recurring expenses for ${period}: ${rows.length} created`, details: {} });
-    return { created: rows.length };
+    const templates = await this.manager.query(
+      `select r.id, r.store_id, r.category_id, r.amount, r.payee, r.pay_mode, r.description, r.day_of_month, r.start_month, r.every_months
+         from expense_recurring r where r.active and r.start_month <= $1 and (r.end_month is null or r.end_month >= $1)`, [period]);
+    let created = 0;
+    for (const r of templates) {
+      if (!fallsIn(r.start_month, period, r.every_months)) continue;          // a quarterly or yearly one comes only in its own months
+      const made = await this.manager.query(
+        `insert into expense (expense_date, store_id, category_id, amount, payee, pay_mode, description, status, raised_by, recurring_id, recurring_period)
+         values (($1 || '-' || lpad($2::text, 2, '0'))::date, $3, $4, $5, $6, $7, $8, 'PENDING', $9, $10, $1)
+         on conflict (recurring_id, recurring_period) where recurring_id is not null do nothing returning id`,
+        [period, r.day_of_month, r.store_id, r.category_id, r.amount, r.payee, r.pay_mode, r.description, by.id, r.id]);
+      created += made.length;
+    }
+    await this.audit.record({ userId: by.id, action: 'expense.recurring_generated', entityType: 'expense', entityId: null, summary: `Recurring expenses for ${period}: ${created} created`, details: {} });
+    return { created };
   }
 
   // ------------------------------------------------------------------ report
@@ -278,6 +297,8 @@ export class ExpenseService {
            from store_cash_accounts l left join stores s on s.id = l.store_id
           where l.category = 'EXPENSE' and l.trans_date between $1 and $2 ${scopeT}
        ) t order by d`, args);
+    const groupOf = new Map<string, string>((await this.manager.query(`select name, cost_group from expense_category`)).map((k: any) => [k.name, k.cost_group]));
+    rows.forEach((r: any) => { r.group = groupOf.get(r.category) || 'Other'; });
     const sum = (key: string) => {
       const m = new Map<string, { name: string; amount: number; gst: number }>();
       for (const r of rows) { const k = r[key] || '-'; const x = m.get(k) || { name: k, amount: 0, gst: 0 }; x.amount = r2(x.amount + r.amount); x.gst = r2(x.gst + r.gst); m.set(k, x); }
@@ -287,7 +308,7 @@ export class ExpenseService {
     return {
       from, to, total: r2(rows.reduce((t: number, r: any) => t + r.amount, 0)), gst: r2(rows.reduce((t: number, r: any) => t + r.gst, 0)),
       drawer: r2(rows.filter((r: any) => r.src === 'Cash drawer').reduce((t: number, r: any) => t + r.amount, 0)),
-      byCategory: sum('category'), byStore: sum('store'), byMonth: sum('month').sort((a, b) => a.name.localeCompare(b.name)),
+      byCategory: sum('category'), byGroup: rollUpByGroup(rows), byStore: sum('store'), byMonth: sum('month').sort((a, b) => a.name.localeCompare(b.name)),
       pending: isOwnerRole(c.role) ? pend : null,
     };
   }
