@@ -94,6 +94,10 @@ const routes: Routes = [
       loadChildren: () => import('./compliance/compliance.module').then(m => m.ComplianceModule)
     },
     {
+      path: 'todos', canActivate:[AuthGuard],
+      loadChildren: () => import('./todos/todos.module').then(m => m.TodosModule)
+    },
+    {
       path: 'review', canActivate:[AuthGuard],
       loadChildren: () => import('./review/review.module').then(m => m.ReviewModule)
     },

@@ -228,6 +228,18 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'todos',
+    label: 'To-dos',
+    description: 'The to-do list with reminders: keep your own, tick the shared ones of your store, and (for managers) give them to others and see the whole team.',
+    group: 'Sales & Store Operations',
+    path: '/secure/todos',
+    actions: [
+      { key: 'view', label: 'Open the page, see and tick your to-dos and those of your store' },
+      { key: 'add', label: 'Add, change and remove your own to-dos' },
+      { key: 'assign', label: 'Give to-dos to other people and to the staff of a store, and see the team list' },
+    ],
+  },
+  {
     key: 'shiftdesk',
     label: 'My shift page',
     description: 'The page where staff open and close their shift; opening and closing themselves are still the store shift permissions.',

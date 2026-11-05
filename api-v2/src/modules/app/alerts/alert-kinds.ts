@@ -4,6 +4,7 @@ import { PricingReader } from '../products/pricing-reader';
 import { BATCH_BALANCE_SQL } from './stock-audit-alerts';
 import { lastFullWeek, reviewLate } from '../review/review-rules';
 import { BUSINESS_OF_USER_SQL } from '../../../core/business-of-user';
+import { stageOf } from '../todos/todo-rules';
 
 export type Severity = 'info' | 'warning' | 'critical';
 export const SEVERITIES: Severity[] = ['info', 'warning', 'critical'];
@@ -18,6 +19,8 @@ export interface Finding {
   params: Record<string, any>;
   link: string;
   severity?: Severity;
+  /** who is told, when it is not the rule's recipients (a to-do's own person, or a store's staff) */
+  recipients?: { roles: string[]; userids: number[] };
 }
 
 export interface Ctx {
@@ -457,6 +460,43 @@ export const KINDS: AlertKind[] = [
       }));
     },
   },
+  {
+    kind: 'todo_due',
+    label: 'To-dos coming due',
+    description: "A to-do is coming up, due, late, or very late. The person it is for is told (for a store's to-do, the store's staff and its head). A to-do that is very late is also raised to the person who gave it and the store head. The timing of each to-do is set on the to-do itself, under To-dos.",
+    params: [],
+    defaultSeverity: 'info',
+    async evaluate(ctx) {
+      const rows = await ctx.manager.query(
+        `select i.id, i.title, i.store_id, i.pool, i.assignee_user_id, i.assigned_by, i.due_on, i.soon_days, i.escalate_days, i.priority, s.location, a.full_name as assignee
+           from todo_item i left join stores s on s.id = i.store_id left join app_user a on a.id = i.assignee_user_id
+          where i.business_id = $1 and i.status = 'OPEN' and not i.archive and i.due_on <= now() + (i.soon_days + 1) * interval '1 day'`, [ctx.businessId]);
+      const now = new Date();
+      const out: Finding[] = [];
+      for (const r of rows) {
+        const stage = stageOf(r.due_on, now, r.soon_days, r.escalate_days);
+        if (stage === 'none') continue;
+        const day = new Date(r.due_on.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
+        const late = Math.max(0, daysBetween(day, ctx.today));
+        const store = r.location ? String(r.location).trim() : '';
+        const params = { title: r.title, date: day, days: late, person: r.pool ? (store || 'The store') : r.assignee, store };
+        const mine = r.pool ? { roles: ['staff', 'managers'], userids: [] as number[] } : { roles: [] as string[], userids: [r.assignee_user_id] as number[] };
+        const storeid = r.pool ? r.store_id : null;
+        const high = r.priority === 'high';
+        if (stage === 'soon') out.push({ key: `todo:${r.id}:soon`, storeid, code: 'todo_soon', params, link: '/secure/todos', recipients: mine, severity: high ? 'warning' : 'info' });
+        else if (stage === 'due') out.push({ key: `todo:${r.id}:due`, storeid, code: 'todo_due', params, link: '/secure/todos', recipients: mine, severity: high ? 'warning' : 'info' });
+        else {
+          // late: said again each day, so it is not missed
+          out.push({ key: `todo:${r.id}:overdue:${ctx.today}`, storeid, code: 'todo_overdue', params, link: '/secure/todos', recipients: mine, severity: 'warning' });
+          if (stage === 'escalated' && r.assigned_by && r.assigned_by !== r.assignee_user_id) {
+            out.push({ key: `todo:${r.id}:escalated`, storeid: r.store_id ?? null, code: 'todo_escalated', params, link: '/secure/todos',
+              recipients: { roles: r.store_id ? ['managers'] : [], userids: [r.assigned_by] }, severity: 'critical' });
+          }
+        }
+      }
+      return out;
+    },
+  },
 ];
 
 export const kindOf = (kind: string): AlertKind | undefined => KINDS.find((k) => k.kind === kind);
@@ -494,4 +534,5 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'customer_lookups_many', name: 'Heavy customer searching', severity: 'warning' },
   { kind: 'customer_request_arrived', name: 'Customer request arrived', severity: 'info', recipients: { roles: ['owners', 'managers', 'staff'], userids: [] } },
   { kind: 'customer_data_taken', name: 'Customer lists downloaded or printed', severity: 'warning' },
+  { kind: 'todo_due', name: 'To-dos coming due', severity: 'info' },
 ];

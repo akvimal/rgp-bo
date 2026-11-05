@@ -50,6 +50,7 @@ describe('alert messages', () => {
       customer_reveals_many: ['customer_reveals_many'],
       customer_lookups_many: ['customer_lookups_many'],
       customer_data_taken: ['customer_data_taken'],
+      todo_due: ['todo_soon', 'todo_due', 'todo_overdue', 'todo_escalated'],
     };
     expect(KINDS.map((k) => k.kind).sort()).toEqual(Object.keys(codes).sort());
     for (const list of Object.values(codes)) for (const c of list) expect(MESSAGE_CODES).toContain(c);

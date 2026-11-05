@@ -110,19 +110,19 @@ export class AlertsService {
     for (const f of found) {
       if (keys.has(f.key)) continue;
       keys.add(f.key);
-      const severity = f.severity === 'critical' ? 'critical' : rule.severity;
+      const severity = f.severity && SEVERITIES.includes(f.severity) ? f.severity : rule.severity;
       const id = byKey.get(f.key);
-      const toSend = { businessId: rule.business_id, severity, code: f.code, params: f.params, link: f.link, storeId: f.storeid, recipients: rule.recipients };
+      const toSend = { businessId: rule.business_id, severity, code: f.code, params: f.params, link: f.link, storeId: f.storeid, recipients: f.recipients ?? rule.recipients };
       if (id) {
-        await this.manager.query(`update notification set severity = $2, code = $3, params = $4::jsonb, link = $5, store_id = $6 where id = $1`,
-          [id, severity, f.code, JSON.stringify(f.params), f.link, f.storeid]);
+        await this.manager.query(`update notification set severity = $2, code = $3, params = $4::jsonb, link = $5, store_id = $6, audience = $7::jsonb where id = $1`,
+          [id, severity, f.code, JSON.stringify(f.params), f.link, f.storeid, f.recipients ? JSON.stringify(f.recipients) : null]);
         // an alert that becomes critical is sent again at that level (once)
         if (severity === 'critical' && severityOf.get(f.key) !== 'critical') await this.send({ ...toSend, notificationId: Number(id), kind: 'ALERT_UP' });
       } else {
         const made = await this.manager.query(
-          `insert into notification (rule_id, business_id, store_id, dedupe_key, severity, code, params, link) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+          `insert into notification (rule_id, business_id, store_id, dedupe_key, severity, code, params, link, audience) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::jsonb)
            on conflict do nothing returning id`,
-          [rule.id, rule.business_id, f.storeid, f.key, severity, f.code, JSON.stringify(f.params), f.link]);
+          [rule.id, rule.business_id, f.storeid, f.key, severity, f.code, JSON.stringify(f.params), f.link, f.recipients ? JSON.stringify(f.recipients) : null]);
         if (made.length) await this.send({ ...toSend, notificationId: Number(made[0].id) });
       }
     }
@@ -148,7 +148,7 @@ export class AlertsService {
     if (!w.businessId) return { unread: 0, items: [] };
     const lang = await this.language(user.id);
     const rows = await this.manager.query(
-      `select n.id, n.store_id, n.severity, n.code, n.params, n.link, n.created_on, n.resolved_on, r.recipients, r.name as rule_name, s.location,
+      `select n.id, n.store_id, n.severity, n.code, n.params, n.link, n.created_on, n.resolved_on, coalesce(n.audience, r.recipients) as recipients, r.name as rule_name, s.location,
               st.read_on, st.dismissed_on, st.snoozed_until
          from notification n
          join alert_rule r on r.id = n.rule_id
@@ -180,7 +180,7 @@ export class AlertsService {
   private async visibleOne(user: any, id: number) {
     const w = await this.who(user);
     const [n] = await this.manager.query(
-      `select n.id, n.store_id, n.business_id, r.recipients from notification n join alert_rule r on r.id = n.rule_id where n.id = $1`, [id]);
+      `select n.id, n.store_id, n.business_id, coalesce(n.audience, r.recipients) as recipients from notification n join alert_rule r on r.id = n.rule_id where n.id = $1`, [id]);
     if (!n || n.business_id !== w.businessId || !canSee(n.recipients, w, n.store_id)) throw new NotFoundException('That notification is not here any more.');
     return n;
   }
