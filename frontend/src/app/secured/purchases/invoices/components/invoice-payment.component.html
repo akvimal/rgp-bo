@@ -2,13 +2,18 @@
 <div class="card mt-3" data-testid="invoice-payments">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h6 class="inv-title mb-0">Payments</h6>
+        <h6 class="inv-title mb-0">
+          <a href="javascript:void(0)" class="text-decoration-none text-reset" (click)="toggle()" [attr.aria-expanded]="!hidden" data-testid="invoice-pay-toggle" title="{{hidden ? 'Show' : 'Hide'}} the payments panel">
+            <i class="bi me-1" [ngClass]="hidden ? 'bi-chevron-right' : 'bi-chevron-down'"></i>Payments
+          </a>
+        </h6>
         <div class="d-flex align-items-center gap-3">
           <span class="badge" [ngClass]="paymentstatus === 'Paid' ? 'bg-success' : (paymentstatus === 'Overdue' ? 'bg-danger' : 'bg-warning text-dark')" data-testid="invoice-pay-status">{{paymentstatus || 'Unpaid'}}</span>
           <span><span class="inv-label me-1">Balance</span><span class="inv-value" data-testid="invoice-pay-balance">{{(balanceamount || 0) | number:'1.2-2'}}</span></span>
         </div>
       </div>
 
+      <div *ngIf="!hidden" data-testid="invoice-pay-body">
       <div class="table-responsive" [class.mb-3]="payments.length > 0" *ngIf="payments.length > 0">
         <table class="table table-sm table-bordered align-middle inv-table mb-0">
           <thead>
@@ -94,6 +99,7 @@
           <button type="submit" class="btn btn-primary" [disabled]="!form.valid" data-testid="invoice-pay-save">Record payment</button>
         </div>
       </form>
+      </div>
     </div>
   </div>
 </div>
