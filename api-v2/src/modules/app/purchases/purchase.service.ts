@@ -495,7 +495,7 @@ export class PurchaseService {
                               then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
                         - coalesce(sold.sold, 0)
                         + coalesce(adj.adjusted, 0)
-                    ) as available_stock
+                    ) as raw_stock
                 from purchase_invoice_item pii
                 inner join product p on p.id = pii.product_id
                 inner join purchase_invoice pi on pi.id = pii.invoice_id
@@ -519,6 +519,9 @@ export class PurchaseService {
                   and pii.archive = false
                   and pi.active = true
                   and pi.archive = false
+                  -- the same batches the Stock screen counts as available: a batch that has expired, or expires within 30 days, cannot be sold,
+                  -- so it is not stock (and an old batch that was sold more than was bought no longer pulls the product below zero)
+                  and (pii.exp_date is null or public.expiry_end(pii.exp_date) >= current_date + 30)
                 group by pii.product_id
             ),
             preferred_vendor as (
@@ -578,7 +581,8 @@ export class PurchaseService {
                     coalesce(p.min_stock, 0) as min_stock,
                     coalesce(omr.vendor_id, pv.vendor_id) as vendor_id,
                     v.business_name as vendor_name,
-                    coalesce(sb.available_stock, 0)::numeric as available_stock,
+                    greatest(coalesce(sb.raw_stock, 0), 0)::numeric as available_stock,
+                    coalesce(sb.raw_stock, 0)::numeric as raw_stock,
                     coalesce(rs.sales_qty, 0)::numeric as sales_qty,
                     coalesce(rs.long_qty, 0)::numeric as long_qty,
                     case when coalesce(rs.sales_qty, 0) > 0 then rs.sales_qty::numeric / $1::numeric
@@ -616,7 +620,7 @@ export class PurchaseService {
             )
             select
                 f.product_id, f.title, f.pack, f.min_stock, f.vendor_id, f.vendor_name,
-                f.available_stock, f.sales_qty, f.long_qty,
+                f.available_stock, f.raw_stock, f.sales_qty, f.long_qty,
                 round(f.base_rate, 2) as avg_daily_sales,
                 case when f.base_rate > 0 then round(f.available_stock / f.base_rate, 1) else null end as stock_days_left,
                 round(f.season_factor, 2) as season_factor,
@@ -655,6 +659,10 @@ export class PurchaseService {
                 }
                 const reasons:string[] = [];
                 const stock = +row.available_stock;
+                // the records say more was sold than was bought: shown, so the figures are looked at, not trusted
+                if(+row.raw_stock < 0){
+                    reasons.push('Stock Below Zero');
+                }
                 if(+row.trend_qty > 0){
                     reasons.push('Low Stock');
                 }
@@ -685,6 +693,7 @@ export class PurchaseService {
                 return {
                     ...row,
                     available_stock: stock,
+                    raw_stock: +row.raw_stock,
                     sales_qty: +row.sales_qty,
                     long_qty: +row.long_qty,
                     min_stock: +row.min_stock,

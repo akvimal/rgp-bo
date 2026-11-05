@@ -85,14 +85,22 @@ select coalesce(s.location, '(no store)') as store, st.store_id,
 
 \echo
 \echo ================================================================  3. the batches pulling the stock down (most negative first)
-select b.item_id, b.invoice_no as invoice, b.invoice_status as inv_status, left(coalesce(s.location, '-'), 14) as bought_at, b.batch, to_char(b.exp_date, 'YYYY-MM') as expiry,
-       case when b.near_expired then 'yes' else '' end as expired, b.purchased, b.sold_total as sold, b.sold_at_inv_store as sold_where_bought, b.sold_total - b.sold_at_inv_store as sold_elsewhere,
-       b.adj_total as adjusted, b.balance
-  from cps_bal b left join stores s on s.id = b.inv_store where b.balance < 0 order by b.balance limit 15;
+\echo batch_total = the same batch number added up over every invoice it was bought on (a batch bought several times but sold against one invoice looks short here, and is fine in total)
+select item_id, invoice, inv_status, bought_at, batch, expiry, expired, purchased, sold, sold_where_bought, sold_elsewhere, adjusted, balance,
+       same_batch_bought_on_other_invoices as other_invoices_units, batch_total
+  from (
+    select b.item_id, b.invoice_no as invoice, b.invoice_status as inv_status, left(coalesce(s.location, '-'), 14) as bought_at, b.batch, to_char(b.exp_date, 'YYYY-MM') as expiry,
+           case when b.near_expired then 'yes' else '' end as expired, b.purchased, b.sold_total as sold, b.sold_at_inv_store as sold_where_bought, b.sold_total - b.sold_at_inv_store as sold_elsewhere,
+           b.adj_total as adjusted, b.balance,
+           coalesce((select sum(o.purchased) from cps_item o where o.product_id = b.product_id and upper(btrim(o.batch)) = upper(btrim(b.batch)) and o.item_id <> b.item_id), 0) as same_batch_bought_on_other_invoices,
+           sum(b.balance) over (partition by b.product_id, upper(btrim(b.batch))) as batch_total
+      from cps_bal b left join stores s on s.id = b.inv_store
+  ) x where balance < 0 order by balance limit 15;
 
 \echo
 \echo Reading it: section 1 stock_screen_avail is the Stock screen Avail. The Reorder number for a store is in section 2.
 \echo - A big negative in expired_or_near_expiry_balance means old batches were sold more than was bought: the Stock screen hides them, Reorder does not.
 \echo - sold_elsewhere > 0 means a batch bought at one store was sold at another: Reorder counts the sale at the selling store but the purchase only at the buying store.
-\echo - A purchased far below sold on a batch usually means a purchase was entered in packs and sold in units (or not entered at all).
+\echo - batch_total at or above 0 means the same batch was bought on other invoices and the sales were attached to just one of them: only the allocation is off, the stock is fine.
+\echo - batch_total still below 0 with nothing bought elsewhere means a purchase was never entered (or was entered in packs and sold in units).
 SQL
