@@ -19,7 +19,7 @@ export class ReportService {
       let sql = '';
       if(criteria.report == 'sale'){
         sql = `
-        select s.bill_date, s.bill_no, s.more_props, c."name" || ' (' || c.mobile || ')' as customer, round(s.total) as sale_total, 
+        select s.bill_date, s.bill_no, s.more_props, c."name" || coalesce(' (' || c.mobile || ')', '') as customer, round(s.total) as sale_total, 
         p.title as product, (batch || ' (' || to_char(exp_date, 'Mon-YY') || ')') as batch, si.mrp_cost as MRP, si.qty, si.price as price, si.total as item_total
         from sale s 
         inner join sale_item si on si.sale_id = s.id 

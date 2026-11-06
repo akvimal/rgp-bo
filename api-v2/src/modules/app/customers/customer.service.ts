@@ -5,7 +5,7 @@ import { Sale } from "src/entities/sale.entity";
 import { EntityManager, Repository } from "typeorm";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuditService } from "src/core/audit/audit.service";
-import { NIL_MOBILE, cleanEmail, cleanText, likelySamePerson, normaliseMobile, tidyName } from "./customer-rules";
+import { NIL_MOBILE, cleanEmail, cleanText, identityProblem, likelySamePerson, normaliseMobile, sameWords, tidyName } from "./customer-rules";
 import { CustomerRelationshipService } from "./customer-relationship.service";
 import { CustomerPrivacyService } from "./customer-privacy.service";
 import { isMasked } from "./customer-privacy";
@@ -37,7 +37,26 @@ export class CustomerService {
         const name = tidyName(cleanText(dto.name ?? existing?.name, 80, 'The name'));
         if (!name || name.length < 2) throw new BadRequestException('The customer name is required.');
         const mobile = dto.mobile === undefined ? (existing?.mobile ?? null) : normaliseMobile(dto.mobile);
-        if (!mobile && (!existing || existing.mobile)) throw new BadRequestException('The mobile number is required.');
+        // the location (a free-text area name) says which person this is when there is no mobile number
+        const locality = dto.locality === undefined ? (existing?.locality ?? null) : cleanText(dto.locality, 60, 'The location');
+        // a customer without a number must have a name and a location; an old record that has neither is left as it was
+        const asBefore = !!existing && !existing.mobile && !existing.locality;
+        if (!mobile && !asBefore) {
+            const problem = identityProblem(mobile, name, locality);
+            if (problem) throw new BadRequestException(problem);
+        }
+        if (!mobile && (!existing || existing.mobile || !sameWords(existing.name, name) || !sameWords(existing.locality, locality))) {
+            const same = await this.manager.query(
+                `select id, name, locality from customer where mobile is null and active and not archive and id <> $1
+                   and lower(btrim(coalesce(locality, ''))) = lower(btrim($2))`, [id ?? 0, locality ?? '']);
+            if (same.some((o: any) => sameWords(o.name, name))) {
+                throw new ConflictException(`A customer named ${name} in ${locality} already exists. Choose them from the list instead of adding another.`);
+            }
+            const alike = same.find((o: any) => likelySamePerson(String(o.name || ''), name));
+            if (alike && !dto.confirmduplicate) {
+                throw new ConflictException(`${String(alike.name).trim()} in ${locality} may be the same person. Confirm that this is a different person.`);
+            }
+        }
 
         if (mobile && mobile !== NIL_MOBILE && (!existing || existing.mobile !== mobile || (existing.name || '').trim().toLowerCase() !== name.toLowerCase())) {
             const others = await this.manager.query(
@@ -61,7 +80,7 @@ export class CustomerService {
             values.altmobile = null;   // the primary was changed to the number held as the alternate
         }
         if (dto.email !== undefined) values.email = cleanEmail(dto.email);
-        if (dto.locality !== undefined) values.locality = cleanText(dto.locality, 60, 'The location');
+        if (dto.locality !== undefined) values.locality = locality;
         if (dto.address !== undefined) values.address = cleanText(dto.address, 200, 'The address');
         if (dto.area !== undefined) values.area = cleanText(dto.area, 60, 'The area');
         if (dto.srctype !== undefined) values.srctype = cleanText(dto.srctype, 30, 'The source');
@@ -77,7 +96,11 @@ export class CustomerService {
         try {
             return await this.customerRepository.save(existing ? { ...existing, ...values } : values);
         } catch (e: any) {
-            if (String(e?.code) === '23505') throw new ConflictException(`A customer named ${name} with the mobile ${mobile} already exists.`);
+            if (String(e?.code) === '23505') {
+                throw new ConflictException(mobile
+                    ? `A customer named ${name} with the mobile ${mobile} already exists.`
+                    : `A customer named ${name} in ${locality} already exists. Choose them from the list instead of adding another.`);
+            }
             throw e;
         }
     }
@@ -317,9 +340,10 @@ export class CustomerService {
             }
 
         // the counter's lookup: it needs a name and number to pick someone, so these are real, but only a few, only after a few characters,
-        // and only the fields billing uses: it is not a way to read the customer list
+        // and only the fields billing uses: it is not a way to read the customer list. The location (an area name) is there so that two
+        // people with the same name can be told apart, and a customer with no mobile is found by name and location.
         qb.andWhere('c.archive = false');
-        qb.select(['c.id', 'c.name', 'c.mobile', 'c.email']);
+        qb.select(['c.id', 'c.name', 'c.mobile', 'c.email', 'c.locality']);
         qb.limit(Math.min(Number(criteria.limit) || 10, 10));
         return qb.getMany();
     }

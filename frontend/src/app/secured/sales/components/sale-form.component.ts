@@ -20,7 +20,9 @@ import { detailProblems, rxProblems } from "src/app/packs/pharmacy/drug-register
 })
 export class SaleFormComponent {
 
-    customer = {existing:false,mobile:'',name:''}
+    customer: any = {existing:false,mobile:'',name:'',locality:''}
+    /** a bill for someone with no mobile number: the name and location tell them apart */
+    noMobileMode = false;
     /** the states of GST, for a delivery to another state */
     gstStates = GST_STATES;
     sale:Sale = {status:'NEW',items:[],digimethod:'UPI'}
@@ -102,7 +104,7 @@ export class SaleFormComponent {
             this.sale = result;
 
             if(this.sale.customer)
-              this.sale.customer = {...this.sale.customer, existing:true};
+              this.sale.customer = {...this.sale.customer, existing:true, mobile: this.sale.customer.mobile ?? ''};
             else
               this.sale.customer = this.customer;
 
@@ -136,6 +138,32 @@ export class SaleFormComponent {
       this.sale.customer['mobile'] = '';
       this.sale.customer['name'] = '';
       this.sale.customer['email'] = '';
+      this.sale.customer['locality'] = '';
+      this.noMobileMode = false;
+    }
+
+    useNoMobile(){
+      this.noMobileMode = true;
+      this.sale.customer = {existing:false, mobile:'', name:'', locality:'', email:''};
+    }
+
+    useMobile(){
+      this.noMobileMode = false;
+      this.sale.customer = {existing:false, mobile:'', name:'', locality:''};
+    }
+
+    /** who the bill is for is known: a mobile number, a customer chosen from the list, or a name with a location */
+    get customerIdentified(): boolean {
+      const c = this.sale.customer;
+      if (!c) return false;
+      if (String(c.mobile ?? '').length === 10) return true;
+      return !!c.existing || (this.noMobileMode && this.noMobileReady);
+    }
+
+    /** the name and the location of a customer with no mobile number are both there */
+    get noMobileReady(): boolean {
+      const c = this.sale.customer;
+      return !!c && String(c.name ?? '').trim().length > 2 && !!String(c.locality ?? '').trim();
     }
 
     customerInfoCaptured(){
@@ -186,7 +214,9 @@ export class SaleFormComponent {
     }
 
     selectCustomer(customer:any, copySales:boolean){
-      this.sale.customer = customer;
+      this.noMobileMode = false;
+      // the location is left as the list gave it (not defaulted to empty): saving the bill must never blank a customer's location
+      this.sale.customer = {...customer, mobile: customer.mobile ?? ''};
       this.showCustomerView = copySales; 
     }
 
@@ -360,7 +390,8 @@ export class SaleFormComponent {
     // the payload is a copy: a failed save must leave the form's own customer in place (it used to be nulled here, which broke the form)
     const obj:any = {...this.sale};
 
-    if(!this.sale.customer || !this.sale.customer.mobile){
+    const keepsCustomer = !!this.sale.customer && (!!this.sale.customer.mobile || !!this.sale.customer.existing || (this.noMobileMode && this.noMobileReady));
+    if(!keepsCustomer){
         obj['customer'] = null;
         if(this.sale.status == 'COMPLETE'){
           //setting default nil customer
@@ -370,6 +401,8 @@ export class SaleFormComponent {
     }
     else{
         this.sale.customer['name'] = String(this.sale.customer['name'] || '').toUpperCase();
+        // at the counter a second person with a similar name in the same place is normal: the warning is pre-confirmed, as for a shared number
+        obj['customer'] = {...this.sale.customer, confirmduplicate: true};
     }
     
     this.service.save({...obj, billdate:new Date(), status, checkbatches:true, ackwarnings:this.ackWarnings} as any).subscribe((data:any) => {
@@ -448,7 +481,9 @@ export class SaleFormComponent {
   }
 
   captureCustomerInfo(event:any){
-    this.sale.customer = event;
+    // with no mobile the box is only a search by name: what is typed in it is not a number
+    if (this.noMobileMode) return;
+    this.sale.customer = {...event, locality: ''};
   }
 
   onCustomerData(event:any){
@@ -481,11 +516,15 @@ export class SaleFormComponent {
     if(this.sale.items?.length == 0 || this.sale.total == 0)
       return false;
 
-    const customerValid = this.sale.customer && (this.sale.customer.mobile.length == 0 || 
-        (this.sale.customer.mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2));
+    const mobile = String(this.sale.customer?.mobile ?? '');
+    // no customer at all is the walk-in; otherwise a mobile with a name, a chosen customer, or (no mobile) a name with a location
+    const customerValid = this.sale.customer && (this.noMobileMode
+        ? (this.sale.customer.existing || this.noMobileReady)
+        : (mobile.length == 0 || this.sale.customer.existing ||
+          (mobile.length == 10 && this.sale.customer.name && this.sale.customer.name.length > 2)));
 
     return (this.doctypes.length == 0 || 
-      (this.isDocumentProvided() || (this.sale.customer.mobile.length == 10 && this.sale.docpending)))
+      (this.isDocumentProvided() || (this.customerIdentified && this.sale.docpending)))
       && customerValid && this.digitalValid();
   }
 

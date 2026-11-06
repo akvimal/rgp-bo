@@ -11,10 +11,11 @@
       </div>
     </div>
     <div class="col-md-6 col-lg-3">
-      <label for="mobile" class="form-label">Mobile <span class="required">*</span></label>
+      <label for="mobile" class="form-label">Mobile</label>
       <input id="mobile" data-testid="cust-f-mobile" type="text" class="form-control" [class.is-invalid]="!!fieldError('mobile')" formControlName="mobile" inputmode="tel" (blur)="onMobileBlur()">
       <div class="field-error">
         <div class="invalid-feedback d-block" *ngIf="fieldError('mobile')" data-testid="cust-f-mobile-error">{{fieldError('mobile')}}</div>
+        <div class="small text-muted" *ngIf="noMobile && !fieldError('mobile')" data-testid="cust-f-nomobile-hint">Optional. With no number, enter the location below.</div>
       </div>
     </div>
     <div class="col-md-6 col-lg-3">
@@ -54,8 +55,8 @@
   <div class="form-section">Where and how they found us</div>
   <div class="row">
     <div class="col-md-6 col-lg-3">
-      <label for="locality" class="form-label">Location</label>
-      <input type="text" id="locality" class="form-control" formControlName="locality">
+      <label for="locality" class="form-label">Location <span class="required" *ngIf="noMobile">*</span></label>
+      <input type="text" id="locality" data-testid="cust-f-locality" class="form-control" [class.is-invalid]="noMobile && attempted && !form.controls['locality'].value" formControlName="locality" maxlength="60" placeholder="Area or locality">
     </div>
     <div class="col-md-6 col-lg-3">
       <label for="srctype" class="form-label">How did they find us?</label>

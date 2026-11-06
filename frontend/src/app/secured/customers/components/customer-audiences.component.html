@@ -74,7 +74,7 @@
       <tbody>
         <tr *ngFor="let m of shown" [class.text-muted]="!m.canContact" [attr.data-testid]="'aud-row-' + m.id">
           <td>{{m.name}}<span *ngIf="m.tier" class="badge ms-1" [ngClass]="m.tier === 'Gold' ? 'bg-warning text-dark' : 'bg-light text-muted border'">{{m.tier}}</span></td>
-          <td>{{m.mobile}}</td>
+          <td>{{m.mobile || "no mobile"}}</td>
           <td>{{m.segment}}</td>
           <td class="small">{{m.reason}}</td>
           <td class="text-end">{{m.spend12 | number:'1.0-0'}}</td>

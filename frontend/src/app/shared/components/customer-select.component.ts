@@ -7,12 +7,12 @@ import { CustomersService } from "../../secured/customers/customers.service";
     <p-autoComplete [(ngModel)]="inputText"
                 (onSelect)="selected($event)"
                 (onKeyUp)="input($event)"
-                field="''" placeholder="Mobile"
+                field="''" [placeholder]="placeholder"
                 [suggestions]="filteredCustomer" 
                 [inputStyle]="{'background-color':'#f4f7ff'}"
                 (completeMethod)="filterCustomer($event)" [minLength]="3">
                 <ng-template let-customer pTemplate="item">
-                    <div>{{customer.name}} - {{customer.mobile}}</div>
+                    <div>{{customer.name}} - {{customer.mobile || 'no mobile'}}<span *ngIf="customer.locality" class="text-muted"> ({{customer.locality}})</span></div>
                 </ng-template>
     </p-autoComplete>            
     `
@@ -22,6 +22,8 @@ export class CustomerSelectComponent {
     @Output() customerSelected = new EventEmitter();
     @Output() onInput = new EventEmitter();
     @Input() disabled:boolean = false;
+    /** the box finds a customer by mobile or by name; the sale screen says "Find by name" when the bill is for someone with no mobile */
+    @Input() placeholder:string = 'Mobile';
 
     @Input() inputText:any;
     filteredCustomer: any[] = [];
@@ -33,7 +35,8 @@ export class CustomerSelectComponent {
             existing:true,
             id:event.id,
             name:event.name,
-            mobile:event.mobile,
+            mobile:event.mobile ?? '',
+            locality:event.locality,
             email:event.email,
             address:event.address});
     }
