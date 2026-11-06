@@ -1,8 +1,10 @@
+import { userError } from 'src/core/db-error';
 import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
 import { ModulesService } from "src/core/modules/modules.service";
 import { BadRequestException, ForbiddenException, HttpException, Injectable, ConflictException } from "@nestjs/common";
 import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { recordStaffCredit } from "./staff-credit-rule";
+import { recordCustomerDue } from "./customer-due-rule";
 import { recordStoreCredit, settleReturn } from "./store-credit-rule";
 import { EntityManager } from "typeorm";
 import { loadStoreProfile } from "../store/store-profile";
@@ -60,6 +62,9 @@ interface SalePayload {
   digiprovider?: string | null;
   staffcreditamt?: number;
   staffcredituserid?: number | null;
+  staffcreditfor?: string | null;
+  dueamt?: number;
+  duedate?: string | null;
   creditamt?: number;
   digiamt?: number;
   cashamt?: number;
@@ -147,6 +152,7 @@ export class SaleService {
                 if (invoiceNo) { savedSale.gstinvoiceno = invoiceNo; }
                 await recordStaffCredit(transactionManager, savedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, savedSale, actingUserid || userid);
+                await recordCustomerDue(transactionManager, savedSale, actingUserid || userid);
                 // a business pack may write its own records for this bill (they stand or fall with it)
                 await this.hooks.saved({ manager: transactionManager, sale, saved: savedSale, items: sale.items || [], storeId: storeid, userId: userid, actingUserId: actingUserid });
 
@@ -168,7 +174,7 @@ export class SaleService {
                 // Transaction will automatically rollback on error.
                 // Preserve validation errors (400s) instead of masking them as 500.
                 if (error instanceof HttpException) { throw error; }
-                throw new Error(`Failed to create sale: ${error.message}`);
+                throw userError(error, 'save the bill');
             }
         });
     }
@@ -254,7 +260,7 @@ export class SaleService {
             } catch (error) {
                 // Transaction will automatically rollback on error
                 if (error instanceof HttpException) { throw error; }
-                throw new Error(`Failed to create return items: ${error.message}`);
+                throw userError(error, 'record the return');
             }
         });
     }
@@ -280,7 +286,7 @@ export class SaleService {
             } catch (error) {
                 // Transaction will automatically rollback on error
                 if (error instanceof HttpException) { throw error; }
-                throw new Error(`Failed to update return item: ${error.message}`);
+                throw userError(error, 'update the return');
             }
         });
     }
@@ -295,7 +301,7 @@ export class SaleService {
         // be fully tendered (delivery sales collect payment via the delivery flow).
         if ((sale.status || '').toUpperCase() === 'COMPLETE') {
             const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
-            const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0) + Number(sale['creditamt'] || 0);
+            const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0) + Number(sale['creditamt'] || 0) + Number(sale['dueamt'] || 0);
             const total = Number(sale['total'] || 0);
             if (isCounter && Math.abs(tendered - total) > 0.5) {
                 throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
@@ -442,6 +448,7 @@ export class SaleService {
                 if (invoiceNo) { updatedSale.gstinvoiceno = invoiceNo; }
                 await recordStaffCredit(transactionManager, updatedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, updatedSale, actingUserid || userid);
+                await recordCustomerDue(transactionManager, updatedSale, actingUserid || userid);
                 await this.hooks.saved({ manager: transactionManager, sale, saved: updatedSale, items: sale.items || [], storeId: (updatedSale as any).storeid ?? null, userId: userid, actingUserId: actingUserid });
 
                 // the cash of a parked bill reaches the drawer when it is completed: in the shift it was moved to, or the open shift it was already parked in
@@ -463,7 +470,7 @@ export class SaleService {
             } catch (error) {
                 // Transaction will automatically rollback on error; a refusal (400) is passed on as it is
                 if (error instanceof HttpException) { throw error; }
-                throw new Error(`Failed to update sale: ${error.message}`);
+                throw userError(error, 'update the bill');
             }
         });
     }
@@ -818,7 +825,7 @@ export class SaleService {
         return this.manager.transaction(async (tx) => {
             const [sale] = await tx.query(
                 `select s.id, s.status, s.shift_id, s.store_id, s.bill_no, s.cash_amount::float8 as cash, s.created_by, s.acting_user_id, s.customer_id, s.staff_credit_amount::float8 as staff_credit, s.staff_credit_user_id,
-                        s.credit_amount::float8 as store_credit, sh.status as shift_status
+                        s.credit_amount::float8 as store_credit, s.due_amount::float8 as due_amount, sh.status as shift_status
                    from sale s left join store_shifts sh on sh.id = s.shift_id where s.id = $1 for update of s`, [+id]);
             if (!sale) throw new BadRequestException('Bill not found.');
             const [{ n: returns }] = await tx.query(
@@ -864,6 +871,11 @@ export class SaleService {
                 await tx.query(
                     `insert into customer_credit_entry (customer_id, kind, amount, sale_id, store_id, note, created_by) values ($1, 'ADJUSTMENT', $2, $3, $4, $5, $6)`,
                     [sale.customer_id, +sale.store_credit, sale.id, sale.store_id, `Void bill ${sale.bill_no || sale.id}`, user.id]);
+            }
+            if (+sale.due_amount > 0 && sale.customer_id) {
+                await tx.query(
+                    `insert into customer_due_entry (customer_id, kind, amount, sale_id, store_id, note, created_by) values ($1, 'ADJUSTMENT', $2, $3, $4, $5, $6)`,
+                    [sale.customer_id, -sale.due_amount, sale.id, sale.store_id, `Void bill ${sale.bill_no || sale.id}`, user.id]);
             }
             await this.hooks.voided({ manager: tx, saleId: +id, storeId: sale.store_id ? +sale.store_id : null, userId: user.id, reason: text });
             return { id: +id, status: 'VOID', billno: sale.bill_no, cashreversed: +sale.cash > 0 ? +sale.cash : 0 };

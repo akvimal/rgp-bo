@@ -1,3 +1,4 @@
+import { userError } from 'src/core/db-error';
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -53,9 +54,7 @@ export class LookupService {
 
       return result.map((row) => row.value);
     } catch (error) {
-      throw new BadRequestException(
-        `Failed to fetch lookup values: ${error.message}`,
-      );
+      throw userError(error, 'load the choices');
     }
   }
 

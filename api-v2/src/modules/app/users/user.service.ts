@@ -1,3 +1,4 @@
+import { userError } from 'src/core/db-error';
 import { packsOf } from 'src/core/modules/modules';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -461,7 +462,7 @@ export class UserService {
         return saved;
       } catch (error) {
         // Transaction will automatically rollback on error
-        throw new Error(`Failed to delete user: ${error.message}`);
+        throw userError(error, 'remove the login');
       }
     });
   }

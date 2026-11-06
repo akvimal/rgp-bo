@@ -6,7 +6,7 @@ import { AuditService } from 'src/core/audit/audit.service';
 export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting'] as const;
 export type InvoiceView = typeof INVOICE_VIEWS[number];
 
-export interface InvoiceFilter { vendor?: number; from?: string; to?: string; q?: string }
+export interface InvoiceFilter { vendor?: number; from?: string; to?: string; q?: string; product?: string }
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // sortable columns -> SQL (all from the wrapped query below)
@@ -36,6 +36,8 @@ export class InvoiceViewService {
     if (f.from && DATE.test(f.from)) add('i.invoice_date >= ?::date', f.from);
     if (f.to && DATE.test(f.to)) add('i.invoice_date <= ?::date', f.to);
     if (f.q && f.q.trim()) add(`(i.invoice_no ilike ? or i.challan_no ilike ?)`, `%${f.q.trim()}%`);
+    // invoices that have a line for a product whose name contains the text
+    if (f.product && f.product.trim()) add(`exists (select 1 from purchase_invoice_item x join product p on p.id = x.product_id where x.invoice_id = i.id and x.active and not x.archive and p.title ilike ?)`, `%${f.product.trim()}%`);
     const sql = `
       select w.*,
              greatest(w.total - w.paid, 0) as balance,

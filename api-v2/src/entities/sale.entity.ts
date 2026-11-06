@@ -71,6 +71,12 @@ export class Sale extends BaseEntity {
   staffcreditamt: number;
   @Column("integer", { name: "staff_credit_user_id", nullable: true })
   staffcredituserid: number | null;
+  @Column("character varying", { name: "staff_credit_for", nullable: true, length: 80 })
+  staffcreditfor: string | null;
+  @Column("real", { name: "due_amount", default: 0 })
+  dueamt: number;
+  @Column("date", { name: "due_date", nullable: true })
+  duedate: string | null;
   @Column("real", { name: "credit_amount", default: 0 })
   creditamt: number;
 

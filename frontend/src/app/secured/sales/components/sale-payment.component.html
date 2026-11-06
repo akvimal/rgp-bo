@@ -4,6 +4,8 @@
         <div class="btn-group btn-group-sm" role="group" aria-label="How it is paid">
             <button type="button" class="btn" [ngClass]="cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(true)" data-testid="pos-pay-cash">Cash</button>
             <button type="button" class="btn" [ngClass]="!cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(false)" data-testid="pos-pay-digital">Digital / split</button>
+            <button type="button" *ngIf="staffOptions.length" class="btn" [ngClass]="payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useStaffCredit()" data-testid="pos-staff-credit" [attr.aria-pressed]="!!payment.staffcredit">Staff credit</button>
+            <button type="button" *ngIf="customerId" class="btn" [ngClass]="payment.latemode && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useLater()" data-testid="pos-pay-later" [attr.aria-pressed]="!!payment.latemode">Pay later</button>
         </div>
         <ng-container *ngIf="!cashonly && !payment.staffcredit">
             <select class="form-select form-select-sm w-auto" [(ngModel)]="payment.digimode" (change)="digimodechange($event)" aria-label="Digital method">
@@ -23,19 +25,35 @@
             </div>
         </ng-container>
     </div>
+    <!-- pay later: the customer owes it (all or part) and pays by a promised day -->
+    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="payment.latemode && !payment.staffcredit" data-testid="pos-later-row">
+        <div class="input-group input-group-sm w-auto">
+            <span class="input-group-text">Customer owes &#8377;</span>
+            <input type="number" min="0" class="form-control" style="width:6.5rem" [ngModel]="payment.dueamt ?? dueUse" (ngModelChange)="payment.dueamt = $event" aria-label="Amount left to pay later" data-testid="pos-later-amount">
+        </div>
+        <div class="input-group input-group-sm w-auto">
+            <span class="input-group-text">Pays by</span>
+            <input type="date" class="form-control" [(ngModel)]="payment.duedate" aria-label="Day the customer will pay" data-testid="pos-later-date">
+        </div>
+        <span class="small text-muted" *ngIf="dueBrief" data-testid="pos-later-info">Limit &#8377;{{dueBrief.limit | number:'1.0-0'}}, owes &#8377;{{dueBrief.balance | number:'1.0-0'}}</span>
+        <span class="small text-danger" *ngIf="overLimit" data-testid="pos-later-over">Over their credit limit: a Store Head or Business Head must bill this.</span>
+        <span class="small text-danger" *ngIf="dueBrief && dueBrief.overdue > 0" data-testid="pos-later-overdue">&#8377;{{dueBrief.overdue | number:'1.0-0'}} overdue since {{dueBrief.since | date:'dd MMM'}}.</span>
+    </div>
     <div class="small text-danger" *ngIf="refMissing" data-testid="pos-digi-ref-msg">Enter the last 4 digits of the Paytm transaction id, or leave it blank.</div>
 
     <!-- staff credit / store credit -->
-    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="staffOptions.length">
-        <div class="form-check mb-0">
-            <input class="form-check-input" type="checkbox" id="onStaffCredit" data-testid="pos-staff-credit" [(ngModel)]="payment.staffcredit" (change)="staffCreditChange()">
-            <label class="form-check-label" for="onStaffCredit">Put this bill on a staff member's credit</label>
-        </div>
-        <select *ngIf="payment.staffcredit" class="form-select form-select-sm w-auto" data-testid="pos-staff-credit-user" [(ngModel)]="payment.staffcredituserid">
-            <option [ngValue]="null">Choose staff</option>
+    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="staffOptions.length && payment.staffcredit">
+        <select class="form-select form-select-sm w-auto" aria-label="Staff member" data-testid="pos-staff-credit-user" [(ngModel)]="payment.staffcredituserid">
+            <option [ngValue]="null">Choose staff member</option>
             <option *ngFor="let s of staffOptions" [ngValue]="s.id">{{s.name}} (&#8377;{{s.remaining | number:'1.0-0'}} left this month)</option>
         </select>
         <span class="small text-danger" *ngIf="staffShort" data-testid="pos-staff-credit-short">This bill is more than what is left of their limit.</span>
+        <div class="form-check mb-0" *ngIf="payment.staffcredit && payment.staffcredituserid">
+            <input class="form-check-input" type="checkbox" id="familyBuying" data-testid="pos-staff-credit-family" [(ngModel)]="payment.familybuying" (change)="familyChange()">
+            <label class="form-check-label" for="familyBuying">A family member is collecting</label>
+        </div>
+        <input *ngIf="payment.staffcredit && payment.staffcredituserid && payment.familybuying" type="text" class="form-control form-control-sm w-auto" style="width:16rem !important" maxlength="80"
+               placeholder="Name and relation, e.g. Lakshmi, wife" data-testid="pos-staff-credit-for" [(ngModel)]="payment.staffcreditfor">
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="(payment.creditbalance || 0) > 0 && !payment.staffcredit" data-testid="pos-credit-row">
         <div class="form-check mb-0">
@@ -46,7 +64,7 @@
     </div>
 
     <!-- change to give -->
-    <div class="d-flex align-items-center gap-2" *ngIf="cashonly || (payment.cashamt || 0) > 0">
+    <div class="d-flex align-items-center gap-2" *ngIf="(cashonly || (payment.cashamt || 0) > 0) && (total - creditUse - dueUse) > 0">
         <div class="input-group input-group-sm w-auto">
             <span class="input-group-text">Cash given &#8377;</span>
             <input type="number" class="form-control" style="width:7rem" (input)="tenderBal($event)" aria-label="Cash given by the customer" data-testid="pos-tender">

@@ -174,11 +174,11 @@ export class StockService {
                         and pq.archive = false
                         and coalesce(pq.status, 'APPROVED') = 'APPROVED'${adjustedStoreFilter}
                 ) adjusted on true
-                left join product_price2 pp
-                    on pp.product_id = p.id
-                    and pp.end_date > current_date
-                    and pp.active = true
-                    and pp.archive = false
+                left join lateral (
+                    select x.sale_price from product_price2 x
+                     where x.product_id = p.id and x.eff_date <= current_date and x.end_date > current_date and x.active = true and x.archive = false
+                     order by x.eff_date desc, x.id desc limit 1
+                ) pp on true
                 where ${conditions.join(' and ')}
                 order by p.title, pii.exp_date`;
 
@@ -205,7 +205,7 @@ export class StockService {
                      else false end as gst_mixed,
                 p.more_props, pp.sale_price from product_items_view piv
             inner join product p on p.id = piv.id and p.id in (${placeholders})
-            left join product_price2 pp on pp.product_id = piv.id and pp.end_date > current_date and pp.active = true and pp.archive = false
+            left join lateral (select x.sale_price from product_price2 x where x.product_id = piv.id and x.eff_date <= current_date and x.end_date > current_date and x.active = true and x.archive = false order by x.eff_date desc, x.id desc limit 1) pp on true
             where piv.expired = false and piv.balance > 0
             order by piv.id, piv.exp_date asc`, ids);
         }

@@ -22,6 +22,7 @@ export class InvoiceListComponent implements OnInit {
     from = '';
     to = '';
     q = '';
+    product = '';
 
     invoices: any[] = [];
     total = 0;
@@ -78,6 +79,7 @@ export class InvoiceListComponent implements OnInit {
         if (this.from) p.from = this.from;
         if (this.to) p.to = this.to;
         if ((this.q || '').trim()) p.q = this.q.trim();
+        if ((this.product || '').trim()) p.product = this.product.trim();
         return p;
     }
 
@@ -105,11 +107,11 @@ export class InvoiceListComponent implements OnInit {
     applyFilters() { this.page = 1; this.reload(); }
 
     clearFilters() {
-        this.from = ''; this.to = ''; this.q = '';
+        this.from = ''; this.to = ''; this.q = ''; this.product = '';
         this.router.navigate([], { relativeTo: this.route, queryParams: { vendor: null, view: null }, queryParamsHandling: 'merge' });
     }
 
-    get hasFilters(): boolean { return !!(this.vendorId || this.from || this.to || this.q); }
+    get hasFilters(): boolean { return !!(this.vendorId || this.from || this.to || this.q || this.product); }
 
     sortBy(field: string) {
         if (this.sortField === field) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';

@@ -12,6 +12,9 @@
     <p-tabPanel header="Store credit">
         <app-customer-credit [customerId]="id"></app-customer-credit>
     </p-tabPanel>
+    <p-tabPanel header="Dues (pay later)">
+        <app-customer-dues [customerId]="id"></app-customer-dues>
+    </p-tabPanel>
     <p-tabPanel header="Documents">
         <app-customer-documents [customer]="customer" (selected)="documentsSelected($event)"></app-customer-documents>
     </p-tabPanel>

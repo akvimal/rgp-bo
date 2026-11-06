@@ -1,3 +1,4 @@
+import { userError } from 'src/core/db-error';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { Customer } from "src/entities/customer.entity";
@@ -402,7 +403,7 @@ export class CustomerService {
                 return result;
             } catch (error) {
                 // Transaction will automatically rollback on error
-                throw new Error(`Failed to remove document: ${error.message}`);
+                throw userError(error, 'remove the document');
             }
         });
     }

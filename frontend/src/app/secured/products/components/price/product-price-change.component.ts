@@ -72,17 +72,14 @@ export class ProductPriceChangeComponent implements OnDestroy {
     ngOnDestroy(){ clearTimeout(this.timer); }
 
     // ------------------------------------------------------------------ dates: a new price starts after the day of the last change
-    /** the date of the latest price row, which a new price cannot start on or before */
+    /** the date of the latest price row, which a new price cannot start before */
     get lastEffective(): string | null {
         const d = this.current?.history?.[0]?.eff_date;
         return d ? String(d).slice(0, 10) : null;
     }
+    /** a new price may start on the day of the last one (it replaces that price from then) but not before it */
     get minDate(): string | null {
-        const last = this.lastEffective;
-        if(!last) return null;
-        const d = new Date(last + 'T00:00:00Z');
-        d.setUTCDate(d.getUTCDate() + 1);
-        return d.toISOString().slice(0, 10);
+        return this.lastEffective;
     }
     private defaultDate(): string {
         const today = this.dateService.getFormatDate(new Date());

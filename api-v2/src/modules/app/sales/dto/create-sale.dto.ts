@@ -87,6 +87,23 @@ export class CreateSaleDto {
     @IsNumber()
     readonly staffcredituserid?: number | null;
 
+    @ApiProperty({ description: 'Who collected it when it was not the staff member (a family member)', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(80)
+    readonly staffcreditfor?: string | null;
+
+    @ApiProperty({ description: 'The part of the bill left to pay later (the customer owes it)', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    readonly dueamt?: number;
+
+    @ApiProperty({ description: 'The day the customer promised to pay', required: false })
+    @IsOptional()
+    @IsString()
+    readonly duedate?: string | null;
+
     @ApiProperty({ description: 'Digital Payment Amount', example: 0 })
     @IsOptional()
     @IsNumber()

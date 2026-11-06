@@ -18,7 +18,7 @@ export class PurchaseInvoiceController {
     constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService, private products:ProductService){}
 
     private filterOf(q:any){
-      return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, q: q.q };
+      return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, q: q.q, product: typeof q.product === 'string' ? q.product : undefined };
     }
 
     /** The invoice list: view = all | pending | overdue | due7 | hold | paid | draft, with vendor / date / invoice-no filters and paging. */

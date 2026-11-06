@@ -4,6 +4,7 @@
     <!-- merging is the Business Head's job: only that role holds the audit permission -->
     <a *isAuth="'audit.view'" [routerLink]="['../duplicates']" class="btn btn-outline-secondary" data-testid="cust-dups-link">Duplicate mobiles</a>
     <a class="btn btn-outline-primary" [routerLink]="['../worklist']" data-testid="cust-worklist-link">Contact today</a>
+    <a class="btn btn-outline-secondary" [routerLink]="['../dues']" data-testid="cust-dues-link">Who owes</a>
     <a class="btn btn-outline-primary" *ngIf="canRevealAll" [routerLink]="['../audiences']" data-testid="cust-audiences-link">Audiences</a>
     <a class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="cust-add">Add New</a>
   </div>

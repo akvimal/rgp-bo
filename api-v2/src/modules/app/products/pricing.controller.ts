@@ -1,3 +1,4 @@
+import { messageOf } from 'src/core/db-error';
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
@@ -64,7 +65,7 @@ export class PricingController {
     const failed: any[] = [];
     for (const c of cuts) {
       try { await this.applyOne(c.productid, user.id); applied++; }
-      catch (e: any) { failed.push({ productid: c.productid, title: c.title, message: e?.message }); }
+      catch (e: any) { failed.push({ productid: c.productid, title: c.title, message: messageOf(e) }); }
     }
     return { applied, failed };
   }
@@ -97,7 +98,7 @@ export class PricingController {
     const failed: any[] = [];
     for (const u of unpriced.filter((x: any) => x.canapply)) {
       try { await this.priceOne(u.productid, user.id); applied++; }
-      catch (e: any) { failed.push({ productid: u.productid, title: u.title, message: e?.message }); }
+      catch (e: any) { failed.push({ productid: u.productid, title: u.title, message: messageOf(e) }); }
     }
     return { applied, failed };
   }
@@ -185,7 +186,7 @@ export class PricingController {
     const failed: any[] = [];
     for (const i of items.filter((x: any) => x.action === 'RAISE' && x.canapply)) {
       try { await this.applyOne(i.productid, user.id); applied++; }
-      catch (e: any) { failed.push({ productid: i.productid, title: i.title, message: e?.message }); }
+      catch (e: any) { failed.push({ productid: i.productid, title: i.title, message: messageOf(e) }); }
     }
     return { applied, failed };
   }

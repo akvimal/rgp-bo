@@ -53,7 +53,7 @@
           <option *ngFor="let r of reasons" [value]="r.value">{{r.label}}</option>
         </select>
       </div>
-      <div class="col-12 form-text mt-1" *ngIf="lastEffective">A new price starts after the last change ({{lastEffective | date:'dd MMM yyyy'}}), so a price changed today takes effect tomorrow.</div>
+      <div class="col-12 form-text mt-1" *ngIf="lastEffective">A price applies from the date given. The last change started on {{lastEffective | date:'dd MMM yyyy'}}; a new price cannot start before that, and one that starts on the same day replaces it at once.</div>
     </div>
 
     <div class="small text-muted mt-2" *ngIf="!ptr">No purchase on record yet, so there is no MRP or cost to check this price against.</div>

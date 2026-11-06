@@ -13,7 +13,7 @@ export const currentPeriod = () => new Date().toISOString().slice(0, 7);
  * staff-credit amount is refused; a bill without one carries none.
  */
 export async function checkStaffCredit(manager: EntityManager, sale: any, saleId?: number | null) {
-  const none = { staffcreditamt: 0, staffcredituserid: null };
+  const none = { staffcreditamt: 0, staffcredituserid: null, staffcreditfor: null };
   if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return null;
   const amount = money(Number(sale?.staffcreditamt || 0));
   if (!(amount > 0)) return none;
@@ -24,6 +24,8 @@ export async function checkStaffCredit(manager: EntityManager, sale: any, saleId
   }
   const userId = Number(sale?.staffcredituserid || 0);
   if (!userId) throw new BadRequestException('Choose the staff member the credit is for.');
+  const collector = collectorProblem(sale?.staffcreditfor);
+  if (collector.error) throw new BadRequestException(collector.error);
 
   const [u] = await manager.query(`select u.id, u.full_name, l.monthly_cap from app_user u left join staff_credit_limit l on l.user_id = u.id where u.id = $1 and u.active`, [userId]);
   if (!u) throw new BadRequestException('That staff member was not found or is not active.');
@@ -37,7 +39,18 @@ export async function checkStaffCredit(manager: EntityManager, sale: any, saleId
   if (spent + amount > cap + 0.005) {
     throw new BadRequestException(`${u.full_name}'s monthly staff-credit limit is ${cap.toFixed(2)}; ${spent.toFixed(2)} is already used, this bill is ${amount.toFixed(2)}.`);
   }
-  return { staffcreditamt: amount, staffcredituserid: userId };
+  return { staffcreditamt: amount, staffcredituserid: userId, staffcreditfor: collectorProblem(sale?.staffcreditfor).value };
+}
+
+/**
+ * Who collected the medicines when it was not the staff member (a family member: "Lakshmi, wife"). Blank means the staff member themselves.
+ * The credit, the cap and the salary recovery stay with the staff member either way; this only says where the goods went.
+ */
+export function collectorProblem(raw: any): { value: string | null; error?: string } {
+  const text = String(raw ?? '').replace(/\s+/g, ' ').trim();
+  if (!text) return { value: null };
+  if (text.length < 3) return { value: null, error: 'Give the name of the person collecting, and how they are related (for example Lakshmi, wife).' };
+  return { value: text.slice(0, 80) };
 }
 
 /** writes the CREDIT entry for a completed staff-credit bill, once */
@@ -47,5 +60,5 @@ export async function recordStaffCredit(tm: EntityManager, saved: any, byUserId:
   await tm.query(
     `insert into staff_credit_entry (user_id, kind, amount, period, sale_id, store_id, note, created_by)
      values ($1, 'CREDIT', $2, $3, $4, $5, $6, $7) on conflict do nothing`,
-    [saved.staffcredituserid, amount, currentPeriod(), saved.id, saved.storeid ?? null, `Bill ${saved.billno ?? saved.id}`, byUserId]);
+    [saved.staffcredituserid, amount, currentPeriod(), saved.id, saved.storeid ?? null, `Bill ${saved.billno ?? saved.id}${saved.staffcreditfor ? ` · for ${saved.staffcreditfor}` : ''}`, byUserId]);
 }

@@ -13,6 +13,8 @@ import { CustomerDocumentsComponent } from "./components/customer-documents.comp
 import { TabViewModule } from "primeng/tabview";
 import { CustomerViewComponent } from "./components/customer-view.component";
 import { CustomerCreditComponent } from "./components/customer-credit.component";
+import { CustomerDuesComponent } from "./components/customer-dues.component";
+import { CustomerDuesListComponent } from "./components/customer-dues-list.component";
 import { CustomerDuplicatesComponent } from "./components/customer-duplicates.component";
 import { CustomerAudiencesComponent } from "./components/customer-audiences.component";
 import { CustomerWorklistComponent } from "./components/customer-worklist.component";
@@ -27,6 +29,7 @@ const routes: Routes = [
   { path: 'cust/new', component: CustomerFormComponent, canActivate:[AuthGuard]},
   { path: 'cust/view/:id', component: CustomerDetailComponent, canActivate:[AuthGuard]},
   { path: 'cust/audiences', component: CustomerAudiencesComponent, canActivate:[AuthGuard]},
+  { path: 'cust/dues', component: CustomerDuesListComponent, canActivate:[AuthGuard]},
   { path: 'cust/worklist', component: CustomerWorklistComponent, canActivate:[AuthGuard]},
   { path: 'cust/duplicates', component: CustomerDuplicatesComponent, canActivate:[AuthGuard]},
   { path: 'cust/edit/:id', component: CustomerFormComponent, canActivate:[AuthGuard]}
@@ -40,6 +43,8 @@ const routes: Routes = [
       CustomerDocumentsComponent,
       CustomerViewComponent,
       CustomerCreditComponent,
+      CustomerDuesComponent,
+      CustomerDuesListComponent,
       CustomerDuplicatesComponent,
       CustomerAudiencesComponent,
       CustomerWorklistComponent,

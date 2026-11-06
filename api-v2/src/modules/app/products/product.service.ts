@@ -1,3 +1,4 @@
+import { userError, messageOf } from 'src/core/db-error';
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
@@ -130,7 +131,7 @@ export class ProductService {
        ), latest as (
          select distinct on (product_id) product_id, invoice_date, mrp_cost, ptr_value, tax, public.gst_sale_rate(product_id, tax::double precision) as stax from pur order by product_id, invoice_date desc, id desc
        ), cur as (
-         select distinct on (product_id) product_id, sale_price, eff_date from product_price2 where end_date > current_date and sale_price > 0 order by product_id, eff_date desc, id desc
+         select distinct on (product_id) product_id, sale_price, eff_date from product_price2 where eff_date <= current_date and end_date > current_date and sale_price > 0 order by product_id, eff_date desc, id desc
        ), res as (
          select distinct on (r.product_id) r.product_id, r.action, r.reason, r.note, r.old_pack, r.new_pack, r.created_on, r.created_on::date as res_date, u.full_name as res_by
            from pack_check_resolution r left join app_user u on u.id = r.created_by order by r.product_id, r.id desc
@@ -241,7 +242,7 @@ export class ProductService {
   async findPriceHistoryById(productid:number){
     // Fixed SQL injection vulnerability - now using parameterized query
     return await this.manager.query(
-      `SELECT h.id, h.product_id, h.eff_date, h.end_date, round(h.sale_price::numeric, 2)::float8 AS sale_price, h.reason, h.comments, h.created_by, u.full_name AS by_name, h.created_on
+      `SELECT h.id, h.product_id, to_char(h.eff_date, 'YYYY-MM-DD') AS eff_date, to_char(h.end_date, 'YYYY-MM-DD') AS end_date, round(h.sale_price::numeric, 2)::float8 AS sale_price, h.reason, h.comments, h.created_by, u.full_name AS by_name, h.created_on
          FROM product_price2 h LEFT JOIN app_user u ON u.id = h.created_by WHERE h.product_id = $1 ORDER BY h.eff_date DESC, h.id DESC`,
       [productid]);
   }
@@ -300,28 +301,21 @@ export class ProductService {
 
           // Step 1: Query existing prices within transaction
           const priceHistory = await transactionManager.query(
-            `SELECT * FROM product_price2 WHERE product_id = $1 ORDER BY eff_date DESC`,
+            `SELECT *, to_char(eff_date, 'YYYY-MM-DD') AS eff_day FROM product_price2 WHERE product_id = $1 ORDER BY eff_date DESC, id DESC`,
             [createProductPrice2Dto.productid]
           );
 
-          // A new price applies forward only. If the given effective date is not
-          // after the latest existing price, clamp it to the day after so the
-          // history stays chronological and ranges never overlap or invert.
-          let applyFrom = effdate;
-          const latestEff = priceHistory?.[0]?.eff_date
-            ? new Date(priceHistory[0].eff_date).toISOString().split('T')[0]
-            : null;
-          if (latestEff && applyFrom <= latestEff) {
-            const d = new Date(latestEff);
-            d.setDate(d.getDate() + 1);
-            applyFrom = d.toISOString().split('T')[0];
-          }
+          // A new price applies forward only: a date before the latest price's start is moved up to it, so the history stays chronological.
+          // A change on the very day the latest price started replaces it from that day (the earlier one is closed at once and never billed).
+          let applyFrom = String(effdate).slice(0, 10);
+          const latestEff: string | null = priceHistory?.[0]?.eff_day ?? null;
+          if (latestEff && applyFrom < latestEff) applyFrom = latestEff;
 
           // Step 2: Close the currently-open price row at the new start date.
           if (priceHistory && priceHistory.length > 0) {
             await transactionManager.query(
               `UPDATE product_price2 SET end_date = $1
-               WHERE product_id = $2 AND end_date = '2099-12-31' AND eff_date < $1`,
+               WHERE product_id = $2 AND end_date = '2099-12-31' AND eff_date <= $1`,
               [applyFrom, createProductPrice2Dto.productid]
             );
           }
@@ -341,7 +335,7 @@ export class ProductService {
         } catch (error) {
           // Transaction will automatically rollback on error
           if (error instanceof HttpException) throw error;
-          throw new Error(`Failed to add price: ${error.message}`);
+          throw userError(error, 'add the price');
         }
       });
     }
@@ -402,8 +396,7 @@ export class ProductService {
           done.push({ productid: u.productid, title: u.title, price: Number(saved.saleprice) });
         }
         catch(e:any){
-          const m = e?.response?.message;
-          failed.push({ productid: u.productid, title: u.title, message: (Array.isArray(m) ? m.join(' ') : m) || e?.message });
+          failed.push({ productid: u.productid, title: u.title, message: messageOf(e) });
         }
       }
       return { applied: done.length, done, failed };
@@ -415,7 +408,7 @@ export class ProductService {
         if((await this.pricing.mode()).mode !== 'MRP') return { auto: false, applied: 0, failed: [] };
         return { auto: true, ...(await this.priceNewFromInvoice(invoiceid, userid)) };
       }
-      catch(e:any){ return { auto: true, applied: 0, failed: [{ message: e?.message }] }; }
+      catch(e:any){ return { auto: true, applied: 0, failed: [{ message: messageOf(e) }] }; }
     }
 
 }

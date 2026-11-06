@@ -159,7 +159,7 @@ export class PricingReader {
     const [prices, policies, st, all, gst] = await Promise.all([
       this.manager.query(
         `select distinct on (product_id) product_id, round(sale_price::numeric, 2)::float8 as price, to_char(eff_date, 'YYYY-MM-DD') as eff
-           from product_price2 where end_date > current_date and sale_price > 0 and product_id = any($1::int[]) order by product_id, eff_date desc, id desc`, [ids]),
+           from product_price2 where eff_date <= current_date and end_date > current_date and sale_price > 0 and product_id = any($1::int[]) order by product_id, eff_date desc, id desc`, [ids]),
       this.policyMap(), this.settings(), this.itemsCached(),
       this.manager.query(`select x.pid, x.t::float8 as t, public.gst_sale_rate(x.pid, x.t)::float8 as s from unnest($1::int[], $2::double precision[]) as x(pid, t)`, [pairs.map((l) => l.productid), pairs.map((l) => l.taxbatch)]),
     ]);
