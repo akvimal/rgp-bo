@@ -150,7 +150,7 @@ export class InvoiceListComponent implements OnInit {
         this.payError = '';
         const amount = +this.pay.amount;
         if (!(amount > 0)) { this.payError = 'Enter the amount paid.'; return; }
-        if (amount > this.payInv.balance_amount + 0.5) { this.payError = `The amount is more than the balance (${this.payInv.balance_amount}).`; return; }
+        if (amount > this.payInv.balance_amount + 1.005) { this.payError = `The amount is more than the balance (${this.payInv.balance_amount}).`; return; }
         if (!this.pay.paymode) { this.payError = 'Choose how it was paid.'; return; }
         this.paying = true;
         this.service.savePayment({

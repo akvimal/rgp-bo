@@ -86,9 +86,9 @@
       </ng-template>
 
       <ng-template pTemplate="body" let-i>
-        <tr>
+        <tr [class.table-warning]="isLate(i)" [attr.data-late]="isLate(i)">
           <td>
-            <div class="fw-semibold">#{{i.sale?.billno}}</div>
+            <div class="fw-semibold">#{{i.sale?.billno}}<span class="badge bg-warning text-dark ms-1" *ngIf="isLate(i)" title="Booked before today and still not marked delivered" data-testid="delivery-late">Not delivered yet</span></div>
             <small class="text-muted">{{i.sale?.ordertype || '-'}} &middot; {{i.sale?.billdate | date:'dd MMM yyyy'}}</small>
           </td>
           <td>

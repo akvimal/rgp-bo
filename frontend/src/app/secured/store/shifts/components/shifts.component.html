@@ -98,6 +98,7 @@
   [(visible)]="showReportModal" [modal]="true" [style]="{width:'600px'}" [closable]="true">
 
   <div *ngIf="reportLoading" class="text-center py-4 text-muted">Loading report…</div>
+  <div *ngIf="reportError && !reportLoading" class="alert alert-danger" data-testid="shift-report-error">{{reportError}}</div>
 
   <div *ngIf="shiftReport && !reportLoading" data-testid="shift-report-body">
     <div class="mb-3">

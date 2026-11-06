@@ -26,6 +26,12 @@ export class SaleDeliveryController {
       return this.service.findAll(query,query['self']==='true'?currentUser.id:null);
     }
 
+    /** a completed bill becomes a delivery (or a counter sale again): { type: 'Delivery' | 'Counter', reason?, delivery?: {...} } */
+    @Post('mode/:saleid')
+    async changeMode(@Param('saleid') saleid: string, @Body() body: any, @User() currentUser: any) {
+      return this.service.changeMode(+saleid, body, currentUser);
+    }
+
     @Put(':saleid')
     async update(@Param('saleid') saleid: string, @Body() dto: UpdateSaleDeliveryDto, @User() currentUser: any) {
       return this.service.save({ ...dto, saleid: +saleid }, currentUser.id);

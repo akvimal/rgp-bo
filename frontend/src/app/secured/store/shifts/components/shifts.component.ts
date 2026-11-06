@@ -114,6 +114,9 @@ export class ShiftsComponent implements OnInit {
     this.cashService.assignShift(shift.id, { assigneduserid: event.target.value || null }).subscribe(() => this.refresh());
   }
 
+  /** why the shift detail could not be opened (blank when it opened) */
+  reportError = '';
+
   viewReport(shift:any) {
     this.shiftReport = null;
     this.countedDenoms = [];
@@ -121,9 +124,19 @@ export class ShiftsComponent implements OnInit {
     this.closing = shift.status === 'OPEN';
     this.showReportModal = true;
     this.reportLoading = true;
+    this.reportError = '';
     this.cashService.getShiftReport(shift.id).subscribe(
       (report:any) => { this.shiftReport = report; this.reportLoading = false; },
-      () => { this.reportLoading = false; }
+      (err:any) => {
+        this.reportLoading = false;
+        // never an empty dialog: say what went wrong (a missing right, a shift that is gone, or a fault)
+        const m = err?.error?.message;
+        const server = Array.isArray(m) ? m.join(' ') : (typeof m === 'string' ? m : '');
+        this.reportError = err?.status === 403 ? 'You do not have access to this shift.'
+          : err?.status === 404 ? 'This shift could not be found.'
+          : err?.status === 0 ? 'Cannot reach the server. Check the connection and try again.'
+          : (server || 'The shift could not be opened. Please try again, and tell your administrator if it keeps happening.');
+      }
     );
   }
 

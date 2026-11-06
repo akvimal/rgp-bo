@@ -1018,6 +1018,9 @@ export class StoreService {
          union all
          select coalesce(nullif(btrim(provider), ''), 'OTHER'), 0, -amount from customer_due_entry where shift_id = $1 and kind = 'PAYMENT' and pay_mode = 'DIGITAL') x
         group by 1 order by 1`, [shiftId]);
+    const [pendingDeliveries] = await this.manager.query(
+      `select count(*)::int as n from sale s left join sale_deliveries d on d."saleId" = s.id
+        where s.shift_id = $1 and s.status = 'COMPLETE' and s.active = true and s.delivery_type = 'Delivery' and coalesce(d.status, 'Pending') = 'Pending'`, [shiftId]);
     const [dues] = await this.manager.query(
       `select coalesce((select sum(due_amount) from sale where shift_id = $1 and status = 'COMPLETE' and active = true), 0)::float as left_to_pay,
               coalesce(sum(-amount) filter (where pay_mode = 'CASH'), 0)::float as collected_cash, coalesce(sum(-amount) filter (where pay_mode = 'DIGITAL'), 0)::float as collected_digital
@@ -1036,7 +1039,7 @@ export class StoreService {
       shift: { id: shift.id, name: shift.name, status: shift.status, storeid: shift.storeid, store: (shift as any).store?.location, assigneduserid: shift.assigneduserid,
                assigned: (shift as any).assigneduser?.fullname || null, openingcash: Number(shift.openingcash), expectedcash: stats.expectedcash, openedon: shift.openedon },
       bills: t.bills, total: t.total, cash: t.cash, digital: t.digital, storeCredit: t.store_credit, staffCredit: t.staff_credit,
-      dueLeft: dues?.left_to_pay ?? 0, duesCollectedCash: dues?.collected_cash ?? 0, duesCollectedDigital: dues?.collected_digital ?? 0,
+      pendingDeliveries: pendingDeliveries?.n ?? 0, dueLeft: dues?.left_to_pay ?? 0, duesCollectedCash: dues?.collected_cash ?? 0, duesCollectedDigital: dues?.collected_digital ?? 0,
       digitalByProvider: digital, expenses, expensesTotal: expenses.reduce((s: number, e: any) => s + e.amount, 0),
       refunds: out.refunds, deposits: out.deposits, expected: stats.expectedcash,
       checklists: await this.shiftChecklists(shiftId),
@@ -1253,7 +1256,7 @@ export class StoreService {
       where: { id: shiftId },
       relations: ['store', 'store.business', 'template', 'assigneduser', 'openedby', 'closedby'],
     });
-    if (!shift) throw new Error('Shift not found');
+    if (!shift) throw new NotFoundException('Shift not found.');
 
     const stats = await this.getShiftStats(shiftId);
 
