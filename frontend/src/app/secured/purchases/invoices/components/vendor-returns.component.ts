@@ -130,7 +130,7 @@ export class VendorReturnsComponent implements OnInit {
   constructor(private http: HttpClient, private vendorsService: VendorsService, private storeContext: StoreContextService) {}
 
   ngOnInit() {
-    this.vendorsService.findAll("all").subscribe((v: any) => this.vendors = (v || []).sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")), () => {});
+    this.vendorsService.options().subscribe((v: any) => this.vendors = v, () => {});
     this.storeContext.stores$.subscribe((s: any) => this.storeid = this.storeContext.selectedStoreId || (s && s[0] && s[0].id) || null);
     this.load();
   }

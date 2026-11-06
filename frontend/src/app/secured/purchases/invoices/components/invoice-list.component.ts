@@ -60,7 +60,7 @@ export class InvoiceListComponent implements OnInit {
     constructor(private service: InvoiceService, private route: ActivatedRoute, private router: Router, private vendorsService: VendorsService) {}
 
     ngOnInit() {
-        this.vendorsService.findAll('all').subscribe(v => this.vendors = (v || []).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')), () => {});
+        this.vendorsService.options().subscribe(v => this.vendors = v, () => {});
         combineLatest([this.route.url, this.route.queryParamMap]).subscribe(([segments, q]) => {
             this.isOutstanding = segments?.[0]?.path === 'outstanding';
             const v = q.get('vendor');

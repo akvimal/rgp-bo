@@ -59,7 +59,7 @@ export class VendorIssueService {
   // ------------------------------------------------------------------ pick lists
   async options(user: any) {
     const c = await this.ctx(user);
-    const vendors = await this.manager.query(`select id, business_name as name from vendor where active and not archive order by business_name`);
+    const vendors = await this.manager.query(`select id, business_name as name from vendor where active and not archive order by lower(business_name)`);
     const stores = c.manage
       ? await this.manager.query(`select id, location as name from stores where active and not archive order by location`)
       : await this.manager.query(`select id, location as name from stores where id = any($1::int[]) and active order by location`, [c.stores.length ? c.stores : [0]]);

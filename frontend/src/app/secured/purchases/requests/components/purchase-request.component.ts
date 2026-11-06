@@ -55,7 +55,7 @@ export class PurchaseRequestComponent {
             this.add();
             this.form.patchValue({ customername: q.get('cname') || '', customerphone: q.get('cphone') || '', source: 'Customer' });
         }
-        this.vendorService.findUsable().subscribe((data:any) => this.vendors = data || []);
+        this.vendorService.options(true).subscribe((data:any) => this.vendors = data || []);
     }
 
     fetchRequests(){

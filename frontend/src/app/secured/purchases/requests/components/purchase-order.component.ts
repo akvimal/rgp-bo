@@ -38,7 +38,7 @@ export class PurchaseOrderComponent implements OnDestroy {
 
     ngOnInit() {
         this.load();
-        this.vendorService.findUsable().subscribe(data => this.vendors = data);
+        this.vendorService.options(true).subscribe(data => this.vendors = data);
         this.updateActiveOrderId();
         this.subs.add(this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.updateActiveOrderId()));
         // an order changed beside this list (submitted, edited, deleted): show it as it is now
