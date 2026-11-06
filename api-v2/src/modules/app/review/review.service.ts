@@ -115,7 +115,7 @@ export class ReviewService {
         where w.store_id = any($1::int[]) and w.week_start = $2::date order by st.location`, [ids, start]) : [];
     const over = isOver(start, today);
     return {
-      week: range, today, over, stores, store: q.storeid ? +q.storeid : null, canSign: over && ids.length === 1 && !signoffs.length,
+      week: range, today, over, stores, store: q.storeid ? +q.storeid : (ids.length === 1 ? ids[0] : null), canSign: over && ids.length === 1 && !signoffs.length,
       signoffs: signoffs.map((s: any) => ({ storeid: s.store_id, store: String(s.location).trim(), on: s.reviewed_on, by: s.by_name, note: s.note })),
       pending: stores.filter((s) => ids.includes(s.id) && !signoffs.some((x: any) => x.store_id === s.id)).map((s) => s.location),
       summary, before, marked: marked(cur), limits: { belowList: BELOW_LIST_PCT, bigDiscount: BIG_DISCOUNT_PCT, lateReturnDays: LATE_RETURN_DAYS, lateVoidHours: LATE_VOID_HOURS, listLimit: LIST_LIMIT },
@@ -127,7 +127,8 @@ export class ReviewService {
 
   async signoff(user: any, body: any) {
     const { businessId, stores } = await this.scope(user);
-    const storeid = Number(body?.storeid);
+    // a business with one store has nothing to choose: that store is the one being signed for
+    const storeid = Number(body?.storeid) || (stores.length === 1 ? stores[0].id : 0);
     if (!storeid) throw new BadRequestException('Choose the store you are signing for.');
     const ids = this.pick(stores, storeid);
     const start = String(body?.weekstart ?? '');

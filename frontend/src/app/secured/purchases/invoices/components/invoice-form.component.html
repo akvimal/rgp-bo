@@ -43,11 +43,10 @@
 
         <div class="col-md-6 col-lg-4">
           <label for="inv-store" class="form-label">Receiving store *</label>
-          <select class="form-select" id="inv-store" formControlName="storeid" *ngIf="stores.length > 1; else oneStore" data-testid="inv-f-store">
+          <select class="form-select" id="inv-store" formControlName="storeid" data-testid="inv-f-store">
             <option value="">Choose a store</option>
             <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
           </select>
-          <ng-template #oneStore><div class="form-control-plaintext" data-testid="inv-f-store-one">{{stores[0]?.location}}</div></ng-template>
         </div>
         <div class="col-md-5">
           <label for="inv-po" class="form-label">Purchase order <span class="text-muted small">(optional)</span></label>

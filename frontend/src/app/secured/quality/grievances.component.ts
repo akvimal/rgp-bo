@@ -133,7 +133,7 @@ export class GrievancesComponent implements OnInit {
   save() {
     this.formError = "";
     if ((this.form.summary || "").trim().length < 5) { this.formError = "Describe the complaint in a few words."; return; }
-    if (this.stores.length > 1 && !this.form.storeid) { this.formError = "Choose the store."; return; }
+    if (this.stores.length && !this.form.storeid) { this.formError = "Choose the store."; return; }
     const body: any = {
       category: this.form.category, severity: this.form.severity, source: this.form.source,
       summary: this.form.summary.trim(), description: (this.form.description || "").trim() || undefined,

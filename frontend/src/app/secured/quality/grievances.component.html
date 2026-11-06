@@ -27,7 +27,7 @@
     <div *ngIf="showForm" class="border rounded p-3 mt-3" data-testid="gr-form">
       <h6>New grievance</h6>
       <div class="row g-2">
-        <div class="col-md-6 col-lg-3" *ngIf="stores.length > 1">
+        <div class="col-md-6 col-lg-3" *ngIf="stores.length">
           <label class="form-label small mb-0">Store</label>
           <select class="form-select form-select-sm" data-testid="gr-f-store" [(ngModel)]="form.storeid">
             <option value="">Choose…</option>

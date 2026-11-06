@@ -20,7 +20,7 @@
     </div>
     <div class="fw-semibold" data-testid="review-week">{{data.week.start | date:'EEE d MMM'}} to {{data.week.end | date:'EEE d MMM yyyy'}}</div>
     <span class="badge bg-warning text-dark" *ngIf="!data.over" data-testid="review-open">Week not over yet</span>
-    <div class="d-flex align-items-center gap-2 ms-auto" *ngIf="data.stores.length > 1">
+    <div class="d-flex align-items-center gap-2 ms-auto" *ngIf="data.stores.length">
       <label class="form-label mb-0">Store</label>
       <select class="form-select w-auto" [ngModel]="data.store" (ngModelChange)="changeStore($event)" data-testid="review-store">
         <option [ngValue]="null">All stores</option>
