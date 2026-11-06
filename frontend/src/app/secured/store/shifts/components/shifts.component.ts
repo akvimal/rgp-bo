@@ -3,7 +3,7 @@ import { ConfirmationService } from "primeng/api";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../../cash/cash.service";
-import { DenominationRow } from "src/app/shared/denominations";
+import { DenominationRow, suggestVaultDrop } from "src/app/shared/denominations";
 import { EXPENSE_CATEGORIES } from "../../cash/expense-categories";
 
 @Component({
@@ -115,6 +115,25 @@ export class ShiftsComponent implements OnInit {
     this.cashService.assignShift(shift.id, { assigneduserid: event.target.value || null }).subscribe(() => this.refresh());
   }
 
+  // ---- the vault drop at the end of the day (stores that keep a vault): the surplus over the float goes in, or a reason is given
+  vault:any = null;
+  dropRows:DenominationRow[] = [];
+  dropTotal = 0;
+  dropSkipReason = '';
+  closeError = '';
+  closeBusy = false;
+
+  get vaultOn(): boolean { return !!this.vault?.enabled && !this.vault?.dropped; }
+  get surplus(): number { return Math.max(0, this.countedTotal - Number(this.vault?.floatamount || 0)); }
+  get dropOverCount(): boolean { return this.dropRows.some(r => Number(r.n) > (this.countedDenoms.find(c => c.d === r.d)?.n || 0)); }
+  get dropNeedsConfirm(): boolean { return Number(this.vault?.confirmlimit || 0) > 0 && this.dropTotal > Number(this.vault.confirmlimit); }
+  fillDrop() { this.dropRows = suggestVaultDrop(this.countedDenoms, Number(this.vault?.floatamount || 0), this.vault?.floatdenominations); }
+  get vaultReady(): boolean {
+    if (!this.vaultOn || this.surplus <= 0) return true;
+    if (this.dropTotal > 0) return !this.dropOverCount;
+    return this.dropSkipReason.trim().length > 0;
+  }
+
   /** an expense paid from this shift's drawer that was not recorded on the day (a manager closing someone else's shift adds it before counting) */
   readonly categories = EXPENSE_CATEGORIES;
   expenseForm:any = null;
@@ -148,6 +167,8 @@ export class ShiftsComponent implements OnInit {
     this.reportLoading = true;
     this.reportError = '';
     this.expenseForm = null; this.expenseError = '';
+    this.vault = null; this.dropRows = []; this.dropTotal = 0; this.dropSkipReason = ''; this.closeError = ''; this.closeBusy = false;
+    if (shift.status === 'OPEN') this.cashService.getShiftSummary(shift.id).subscribe((s:any) => this.vault = s?.vault || null, () => {});
     this.cashService.getShiftReport(shift.id).subscribe(
       (report:any) => { this.shiftReport = report; this.reportLoading = false; },
       (err:any) => {
@@ -166,11 +187,21 @@ export class ShiftsComponent implements OnInit {
   confirmClose() {
     if (!this.shiftReport || !this.countedDenoms.length) return;
     const shiftId = this.shiftReport.shift.id;
-    this.cashService.closeShift(shiftId, { counteddenominations: this.countedDenoms, notes: this.shiftReport.shift.notes || '' })
-      .subscribe(() => {
+    if (!this.vaultReady) { this.closeError = this.dropOverCount ? 'The vault cash has more of a note than the drawer count.' : 'Put the surplus in the vault, or say why it stays in the drawer.'; return; }
+    this.closeError = ''; this.closeBusy = true;
+    this.cashService.closeShift(shiftId, {
+      counteddenominations: this.countedDenoms, notes: this.shiftReport.shift.notes || '',
+      ...(this.vaultOn && this.surplus > 0 ? (this.dropTotal > 0 ? { vaultdrop: { denominations: this.dropRows } } : { vaultdropskipreason: this.dropSkipReason.trim() }) : {})
+    }).subscribe(() => {
+        this.closeBusy = false;
         this.showReportModal = false;
         this.refresh();
-      }, err => this.message = err?.error?.message || 'Unable to close shift');
+      }, err => {
+        // said inside the dialog, where the person is looking (a message at the foot of the page hides behind it)
+        this.closeBusy = false;
+        const m = err?.error?.message;
+        this.closeError = Array.isArray(m) ? m.join(' ') : (m || 'Unable to close the shift.');
+      });
   }
 
   reportDenoms = [2000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
