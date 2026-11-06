@@ -4,6 +4,7 @@ import { StoreContextService } from "src/app/@core/store-context.service";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../../cash/cash.service";
 import { DenominationRow } from "src/app/shared/denominations";
+import { EXPENSE_CATEGORIES } from "../../cash/expense-categories";
 
 @Component({
   templateUrl: './shifts.component.html'
@@ -114,6 +115,27 @@ export class ShiftsComponent implements OnInit {
     this.cashService.assignShift(shift.id, { assigneduserid: event.target.value || null }).subscribe(() => this.refresh());
   }
 
+  /** an expense paid from this shift's drawer that was not recorded on the day (a manager closing someone else's shift adds it before counting) */
+  readonly categories = EXPENSE_CATEGORIES;
+  expenseForm:any = null;
+  expenseError = '';
+
+  addExpense() { this.expenseError = ''; this.expenseForm = { amount: null, expensecategory: this.categories[0]?.value || '', description: '' }; }
+
+  saveExpense() {
+    const f = this.expenseForm; const shift = this.shiftReport?.shift;
+    if (!f || !shift) return;
+    if (!(Number(f.amount) > 0)) { this.expenseError = 'Enter the amount paid out.'; return; }
+    if (!String(f.description || '').trim()) { this.expenseError = 'Say what it was for.'; return; }
+    this.expenseError = '';
+    this.cashService.saveLedger({ storeid: shift.storeid, shiftid: shift.id, category: 'EXPENSE', withdraw: Number(f.amount), expensecategory: f.expensecategory, description: f.description })
+      .subscribe(() => {
+        this.expenseForm = null;
+        // the expected cash moves with it: read the report again, keeping what has been counted
+        this.cashService.getShiftReport(shift.id).subscribe((r:any) => this.shiftReport = r, () => {});
+      }, (e:any) => { const m = e?.error?.message; this.expenseError = Array.isArray(m) ? m.join(' ') : (m || 'Could not record the expense.'); });
+  }
+
   /** why the shift detail could not be opened (blank when it opened) */
   reportError = '';
 
@@ -125,6 +147,7 @@ export class ShiftsComponent implements OnInit {
     this.showReportModal = true;
     this.reportLoading = true;
     this.reportError = '';
+    this.expenseForm = null; this.expenseError = '';
     this.cashService.getShiftReport(shift.id).subscribe(
       (report:any) => { this.shiftReport = report; this.reportLoading = false; },
       (err:any) => {
