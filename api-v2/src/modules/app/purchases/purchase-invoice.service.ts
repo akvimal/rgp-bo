@@ -16,7 +16,7 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
-import { invoiceNet, lineGst, r2 } from "./purchase-totals";
+import { invoiceGstHeader, invoiceNet, lineGst, r2 } from "./purchase-totals";
 import { businessOfUser } from "src/core/business-of-user";
 import { taxRatesFor } from "./tax-rates";
 import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
@@ -209,12 +209,9 @@ export class PurchaseInvoiceService {
         }
         // a line in dispute or rejected is not part of the invoice
         const items = (await this.purchaseInvoiceItemRepository.find({ where: { invoiceid, isActive: true, isArchived: false } })).filter((i:any) => !['DISPUTED', 'REJECTED'].includes(i.status));
-        const taxablevalue = +items.reduce((sum, i:any) => sum + +(i.taxablevalue || 0), 0).toFixed(2);
-        const cgstamount = +items.reduce((sum, i:any) => sum + +(i.cgstamount || 0), 0).toFixed(2);
-        const sgstamount = +items.reduce((sum, i:any) => sum + +(i.sgstamount || 0), 0).toFixed(2);
-        const igstamount = +items.reduce((sum, i:any) => sum + +(i.igstamount || 0), 0).toFixed(2);
-        const roundoff = +((+(invoice.total || 0)) - (taxablevalue + cgstamount + sgstamount + igstamount)).toFixed(2);
-        await this.purchaseInvoiceRepository.update(invoiceid, { taxablevalue, cgstamount, sgstamount, igstamount, roundoff });
+        // a cash discount at the foot comes off the goods before tax, so the taxable value and the GST fall with it, as the total does
+        const header = invoiceGstHeader(items as any[], invoice.cashdiscount, invoice.total);
+        await this.purchaseInvoiceRepository.update(invoiceid, header);
     }
 
     async importOrderItems(invoiceid:number, userid:number){

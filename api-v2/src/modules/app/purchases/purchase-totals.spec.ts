@@ -1,4 +1,4 @@
-import { cashFactor, invoiceNet, lineGst } from './purchase-totals';
+import { cashFactor, invoiceGstHeader, invoiceNet, lineGst } from './purchase-totals';
 
 describe('the GST of a line whose total is before tax', () => {
   it('is worked out on top of it, not taken out of it', () => {
@@ -34,4 +34,29 @@ describe('what an invoice comes to', () => {
   it('a cash discount as big as the goods is ignored (it is a mistake, not a free invoice)', () => expect(invoiceNet([{ total: 500, taxpcnt: 5 }], 500).net).toBe(525));
   it('no lines come to nothing', () => expect(invoiceNet([]).net).toBe(0));
   it('the factor is 1 with no discount', () => expect(cashFactor(1000, 0)).toBe(1));
+});
+
+describe('the GST figures on the invoice header', () => {
+  const lines = [
+    { total: 1000, ...lineGst(1000, 5, 'INTRA') },
+    { total: 500, ...lineGst(500, 18, 'INTRA') },
+  ];
+  it('add up the lines, and the round-off is what is left of the total', () => {
+    const net = invoiceNet(lines.map((l) => ({ total: l.total, taxpcnt: l.total === 1000 ? 5 : 18 }))).net; // 1000*1.05 + 500*1.18 = 1640
+    expect(net).toBe(1640);
+    expect(invoiceGstHeader(lines, 0, 1640)).toEqual({ taxablevalue: 1500, cgstamount: 70, sgstamount: 70, igstamount: 0, roundoff: 0 });
+    expect(invoiceGstHeader(lines, 0, 1641).roundoff).toBe(1);
+  });
+  it('fall with a cash discount, as the total does, so the round-off stays small', () => {
+    const net = invoiceNet(lines.map((l) => ({ total: l.total, taxpcnt: l.total === 1000 ? 5 : 18 })), 150).net; // factor 0.9
+    expect(net).toBe(1476);
+    const h = invoiceGstHeader(lines, 150, Math.round(net));
+    expect(h).toEqual({ taxablevalue: 1350, cgstamount: 63, sgstamount: 63, igstamount: 0, roundoff: 0 });
+  });
+  it('ignore a cash discount as big as the goods, the same as the total does', () => {
+    expect(invoiceGstHeader(lines, 1500, 1640).taxablevalue).toBe(1500);
+  });
+  it('an invoice with no lines has nothing', () => {
+    expect(invoiceGstHeader([], 0, 0)).toEqual({ taxablevalue: 0, cgstamount: 0, sgstamount: 0, igstamount: 0, roundoff: 0 });
+  });
 });

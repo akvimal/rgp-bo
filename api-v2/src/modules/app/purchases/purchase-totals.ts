@@ -32,3 +32,22 @@ export function invoiceNet(lines: { total: any; taxpcnt: any }[], cashDiscount: 
   const f = cashFactor(goods, Number(cashDiscount) || 0);
   return { goods: r2(goods), tax: r2((gross - goods) * f), net: r2(gross * f) };
 }
+
+export interface GstHeader { taxablevalue: number; cgstamount: number; sgstamount: number; igstamount: number; roundoff: number }
+
+/**
+ * The GST figures kept on the invoice header: the lines' taxable value and GST added up, each scaled by the cash discount printed at
+ * the foot (it comes off the goods before tax, so the taxable value and the GST fall with it, the same as the total does), and the
+ * round-off, which is what is left between the total and those figures.
+ */
+export function invoiceGstHeader(
+  lines: { total: any; taxablevalue: any; cgstamount: any; sgstamount: any; igstamount: any }[],
+  cashDiscount: any,
+  total: any,
+): GstHeader {
+  const goods = lines.reduce((s, l) => s + (Number(l.total) || 0), 0);
+  const f = cashFactor(goods, Number(cashDiscount) || 0);
+  const sum = (k: 'taxablevalue' | 'cgstamount' | 'sgstamount' | 'igstamount') => r2(lines.reduce((s, l) => s + (Number(l[k]) || 0), 0) * f);
+  const taxablevalue = sum('taxablevalue'), cgstamount = sum('cgstamount'), sgstamount = sum('sgstamount'), igstamount = sum('igstamount');
+  return { taxablevalue, cgstamount, sgstamount, igstamount, roundoff: r2((Number(total) || 0) - (taxablevalue + cgstamount + sgstamount + igstamount)) };
+}
