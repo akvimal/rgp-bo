@@ -45,6 +45,13 @@ export class SaleDeliveryComponent {
         this.loadDeliveries();
     }
 
+    /** a delivery bill from an earlier day that nobody has marked delivered (or failed or cancelled) */
+    isLate(i:SaleDelivery):boolean {
+        const day = String(i.bookeddate || i.sale?.billdate || '').slice(0, 10);
+        const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+        return (i.status || 'Pending') === 'Pending' && !!day && day < today;
+    }
+
     loadDeliveries(){
         this.service.findAll().subscribe((result:any) => {
             this.deliveries = result;

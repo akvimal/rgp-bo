@@ -181,7 +181,8 @@ export class VendorPaymentService {
 
         const paid = await this.sumActivePayments(tm, invoice.id);
         const balance = Number(invoice.total || 0) - paid;
-        if (amount > balance + 0.5) {
+        // vendors round their own bill to the rupee, sometimes up where we round down (3162.49 -> 3163), so up to Re 1 over is a rounding, not an overpayment
+        if (amount > balance + 1.005) {
             throw new BadRequestException(
                 `${invoice.invoiceno}: payment (${amount.toFixed(2)}) exceeds the outstanding balance (${Math.max(0, balance).toFixed(2)}).`);
         }

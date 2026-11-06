@@ -100,6 +100,9 @@
                   <h4 class="icon" *ngIf="isActionAllowed('Edit',s)">
                     <a [routerLink]="['../pos/edit',s.id]" title="Edit"><i class="bi bi-pencil"></i></a>
                   </h4>
+                  <h4 class="icon" *ngIf="canChangeDelivery(s)" [title]="s.deliverytype === 'Delivery' ? 'Change to a counter sale' : 'Make this a delivery'">
+                    <i class="bi" [ngClass]="s.deliverytype === 'Delivery' ? 'bi-bag-check' : 'bi-truck'" (click)="modeSale = s" data-testid="bill-delivery-mode"></i>
+                  </h4>
                   <h4 class="icon text-danger" *ngIf="canVoid(s)" title="Void: rung up by mistake">
                     <i class="bi bi-x-octagon" (click)="openVoid(s)" data-testid="bill-void-row"></i>
                   </h4>
@@ -233,6 +236,8 @@
     <button type="button" class="btn btn-primary ms-2" (click)="saveCheck()" [disabled]="checkSaving" data-testid="digi-save">Save</button>
   </ng-template>
 </p-dialog>
+
+<app-sale-delivery-mode [sale]="modeSale" (closed)="modeSale = null; $event && fetchSales()"></app-sale-delivery-mode>
 
 <p-dialog [header]="'Void bill ' + (voidSale?.billno || '')" [visible]="!!voidSale" (visibleChange)="!$event && closeVoid()" [modal]="true" [style]="{width: '32rem'}">
   <div *ngIf="voidSale">

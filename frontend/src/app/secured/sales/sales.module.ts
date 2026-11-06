@@ -25,6 +25,7 @@ import { SalePosComponent } from "./components/sale-pos.component";
 import { SaleProductRequestComponent } from "./components/sale-product-request.component";
 import { SaleReturnsComponent } from "./components/sale-returns.component";
 import { SaleDeliveryComponent } from "./components/sale-delivery.component";
+import { SaleDeliveryModeComponent } from "./components/sale-delivery-mode.component";
 import { SalePaymentComponent } from "./components/sale-payment.component";
 import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
 import { SaleReturnFormComponent } from "./components/sale-return-form.component";
@@ -69,6 +70,7 @@ const routes: Routes = [
       SaleReturnAdjustFormComponent,
       SaleReturnFormComponent,
       SaleDeliveryComponent,
+      SaleDeliveryModeComponent,
       SaleDeliveryFormComponent
     ],
     imports: [PharmacyUiModule, 

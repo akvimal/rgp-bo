@@ -292,6 +292,14 @@ export class SalesListComponent implements OnDestroy {
         return `${sale?.status}`.toUpperCase() === 'COMPLETE' && !this.canVoid(sale) && this.auth.isActionAuthorized('sales.forcevoid');
       }
 
+      /** the bill whose counter / delivery type is being changed */
+      modeSale:any = null;
+
+      /** offered where a void would be (own bill in the open shift, or a manager): the server checks the same rules again */
+      canChangeDelivery(sale:any):boolean{
+        return `${sale?.status}`.toUpperCase() === 'COMPLETE' && (this.canVoid(sale) || this.canForceVoid(sale));
+      }
+
       voidForce = false;
       openVoid(sale:any, force = false){ this.voidSale = sale; this.voidForce = force; this.voidReason = ''; this.voidError = ''; }
       closeVoid(){ this.voidSale = null; this.voidForce = false; }

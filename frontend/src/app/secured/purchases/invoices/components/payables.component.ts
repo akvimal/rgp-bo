@@ -104,7 +104,7 @@ export class PayablesComponent {
 
     get canSubmit(): boolean {
         return !!this.payForm.paymode && this.selectedTotal > 0
-            && this.payInvoices.filter(r => r.checked).every(r => Number(r.payamount) > 0 && Number(r.payamount) <= Number(r.balance_amount) + 0.5);
+            && this.payInvoices.filter(r => r.checked).every(r => Number(r.payamount) > 0 && Number(r.payamount) <= Number(r.balance_amount) + 1.005);
     }
 
     submitPayRun() {
