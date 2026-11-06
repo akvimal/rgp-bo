@@ -128,6 +128,10 @@
           <td class="text-muted">Cash Returns<span *ngIf="shiftReport.returns.return_count > 0"> ({{shiftReport.returns.return_count}} items)</span></td>
           <td class="text-end text-danger" data-testid="rep-refunds">− ₹{{(shiftReport.cashbreakdown ? shiftReport.cashbreakdown.refunds : shiftReport.returns.return_value) | number:'1.0-0'}}</td>
         </tr>
+        <tr *ngIf="shiftReport.cashbreakdown?.vaultdrops">
+          <td class="text-muted">Put in the vault during the shift</td>
+          <td class="text-end text-danger" data-testid="rep-vaultdrops">− ₹{{shiftReport.cashbreakdown.vaultdrops | number:'1.0-0'}}</td>
+        </tr>
         <tr *ngIf="shiftReport.cashbreakdown?.othercashin > 0">
           <td class="text-muted">Other Cash In</td>
           <td class="text-end text-success" data-testid="rep-cashin">+ ₹{{shiftReport.cashbreakdown.othercashin | number:'1.0-0'}}</td>

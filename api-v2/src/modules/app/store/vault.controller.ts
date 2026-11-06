@@ -41,6 +41,11 @@ export class VaultController {
     return this.service.drop(storeid, body, u?.id);
   }
 
+  @Post(':storeid/drop-now')
+  dropNow(@Param('storeid', ParseIntPipe) storeid: number, @Body() body: any, @User() u: any) {
+    return this.service.dropNow(storeid, body, u?.id);
+  }
+
   @Post(':storeid/deposit')
   deposit(@Param('storeid', ParseIntPipe) storeid: number, @Body() body: any, @User() u: any) {
     return this.service.deposit(storeid, body, u?.id);

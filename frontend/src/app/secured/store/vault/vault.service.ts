@@ -21,6 +21,7 @@ export class VaultService {
 
   opening(storeid: number, denominations: DenominationRow[], notes?: string): Observable<any> { return this.http.post(`${this.base}/${storeid}/opening`, { denominations, notes }); }
   deposit(storeid: number, body: { denominations: DenominationRow[]; referenceno?: string; transdate?: string; notes?: string }): Observable<any> { return this.http.post(`${this.base}/${storeid}/deposit`, body); }
+  dropNow(storeid: number, shiftid: number, denominations: DenominationRow[], notes?: string): Observable<any> { return this.http.post(`${this.base}/${storeid}/drop-now`, { shiftid, denominations, notes }); }
   change(storeid: number, denominations: DenominationRow[], notes?: string): Observable<any> { return this.http.post(`${this.base}/${storeid}/change`, { denominations, notes }); }
   count(storeid: number, denominations: DenominationRow[], notes?: string): Observable<any> { return this.http.post(`${this.base}/${storeid}/count`, { denominations, notes }); }
   adjust(storeid: number, body: { direction: "IN" | "OUT"; denominations: DenominationRow[]; reason: string; notes?: string }): Observable<any> { return this.http.post(`${this.base}/${storeid}/adjust`, body); }

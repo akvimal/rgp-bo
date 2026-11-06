@@ -43,6 +43,7 @@
           <ng-template #noCount><div class="text-muted small">The vault has not been counted yet.</div></ng-template>
 
           <div class="d-flex flex-wrap gap-2 mt-3" data-testid="vault-actions">
+            <button class="btn btn-primary btn-sm" type="button" (click)="open('dropnow')" data-testid="vault-act-drop">Drop to vault</button>
             <button class="btn btn-outline-primary btn-sm" type="button" (click)="open('deposit')" data-testid="vault-act-deposit" [disabled]="!state.balance">Bank cash</button>
             <button class="btn btn-outline-primary btn-sm" type="button" (click)="open('change')" data-testid="vault-act-change" [disabled]="!state.balance">Give change to a drawer</button>
             <button class="btn btn-outline-primary btn-sm" type="button" (click)="open('count')" data-testid="vault-act-count">Count the vault</button>
@@ -56,16 +57,25 @@
     <!-- action panel -->
     <div class="border rounded p-3 mt-3" *ngIf="panel" data-testid="vault-panel">
       <h6 class="mb-1">
-        {{ panel === 'opening' ? 'Opening balance' : panel === 'deposit' ? 'Bank cash from the vault' : panel === 'change' ? 'Give change to a drawer' : panel === 'count' ? 'Count the vault' : 'Adjust the vault' }}
+        {{ panel === 'dropnow' ? 'Drop cash into the vault' : panel === 'opening' ? 'Opening balance' : panel === 'deposit' ? 'Bank cash from the vault' : panel === 'change' ? 'Give change to a drawer' : panel === 'count' ? 'Count the vault' : 'Adjust the vault' }}
       </h6>
       <div class="small text-muted mb-2">
         <ng-container [ngSwitch]="panel">
+          <span *ngSwitchCase="'dropnow'">Take the notes out of the drawer, then count them here. The drawer's expected cash falls by the same amount. Above the limit it waits for a second person to confirm.</span>
           <span *ngSwitchCase="'opening'">Count what is in the vault now, by note and coin. This can be done once.</span>
           <span *ngSwitchCase="'deposit'">Take the notes out, then enter how many of each you are taking to the bank. Above the limit it waits for a second person.</span>
           <span *ngSwitchCase="'change'">Enter the notes and coins handed to a drawer.</span>
           <span *ngSwitchCase="'count'">Count everything in the vault. The difference from the books is recorded, and it never goes into a shift's variance.</span>
           <span *ngSwitchCase="'adjust'">A correction to the books after a count. A reason is required.</span>
         </ng-container>
+      </div>
+      <div *ngIf="panel === 'dropnow'" class="mb-2" style="max-width:30rem">
+        <label class="form-label small mb-1">From which shift's drawer *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="dropShiftId" data-testid="vault-drop-shift">
+          <option value="">Choose the open shift</option>
+          <option *ngFor="let s of openShifts" [value]="s.id">{{ s.name }} &middot; {{ s.assigneduser?.fullname || 'shared till' }} &middot; expected &#8377;{{ s.expectedcash | number:'1.0-0' }}</option>
+        </select>
+        <div class="small text-muted mt-1" *ngIf="!openShifts.length">There is no open shift in this store.</div>
       </div>
       <div *ngIf="panel === 'adjust'" class="mb-2">
         <div class="form-check form-check-inline"><input class="form-check-input" type="radio" id="adj-in" name="adjdir" value="IN" [(ngModel)]="direction"><label class="form-check-label" for="adj-in">Add cash</label></div>

@@ -179,6 +179,44 @@ export class VaultService {
     });
   }
 
+  /**
+   * Cash put into the vault from a drawer during the shift, without closing it (a manager lifts surplus out of a busy till). The cash leaves the drawer
+   * at once, so the shift's expected cash falls with it; the movement is not tied to the shift (that would use up the one drop a shift makes when it
+   * closes), and the cash-book row carries the shift. Above the store's limit the vault waits for a second person to confirm, as with any drop.
+   */
+  async dropNow(storeid: number, body: any, userid: number) {
+    const c = await this.caller(userid);
+    this.needManager(c, 'put cash into the vault from a drawer');
+    const r = this.request(body, 'cash for the vault');
+    const shiftid = Number(body?.shiftid);
+    if (!shiftid) throw new BadRequestException('Choose the shift whose drawer the cash comes from.');
+    return this.manager.transaction(async (m) => {
+      const s = await this.store(m, storeid, c, { lock: true });
+      this.needVault(s);
+      const [sh] = await m.query(`select id, store_id, status, expected_cash::float as expected, name from store_shifts where id = $1 for update`, [shiftid]);
+      if (!sh || Number(sh.store_id) !== storeid) throw new BadRequestException('That shift does not belong to this store.');
+      if (sh.status !== 'OPEN') throw new BadRequestException('That shift is closed. Cash is put into the vault from an open shift.');
+      if (r.amount > Number(sh.expected) + 0.005) throw new BadRequestException(`The drawer is expected to hold only ${money(sh.expected)}, so ${money(r.amount)} cannot be taken out of it.`);
+      const limit = Number(s.confirmlimit || 0);
+      const status = limit > 0 && r.amount > limit ? 'PENDING' : 'CONFIRMED';
+      const id = await this.insertMovement(m, { storeid, shiftid: null, type: 'DROP_IN', direction: 'IN', amount: r.amount, denominations: r.denominations, status, actor: c.id,
+        reference: `shift:${shiftid}`, reason: 'Put in during the shift', notes: this.cleanText(body?.notes, 500) });
+      await m.query(
+        `insert into store_cash_accounts (trans_date, category, description, deposit, withdraw, store_id, shift_id, holder, vault_movement_id)
+         values (current_date, 'VAULT_DROP', 'Put in the vault during the shift', 0, $1, $2, $3, 'DRAWER', $4)`, [r.amount, storeid, shiftid, id]);
+      await this.shiftMoved(m, shiftid, -r.amount);
+      await this.audit.record({ userId: c.id, action: 'vault.drop_now', entityType: 'store_vault', entityId: storeid,
+        summary: `${String(s.location).trim()}: ${money(r.amount)} from the drawer of shift ${shiftid} to the vault${status === 'PENDING' ? ' (waiting for confirmation)' : ''}`, details: { movement: id, shiftid, denominations: r.denominations } });
+      return { id, amount: r.amount, status };
+    });
+  }
+
+  /** the drawer of an open shift holds `by` more (or less): its expected cash, and the variance if it was counted, move with it */
+  private async shiftMoved(m: EntityManager, shiftid: number, by: number) {
+    await m.query(
+      `update store_shifts set expected_cash = expected_cash + $2, variance = case when counted_cash is null then null else counted_cash - (expected_cash + $2) end, updated_on = now() where id = $1`, [shiftid, by]);
+  }
+
   /** cash taken from the vault to the bank. A deposit above the limit waits for a second person; the cash book row is posted once it is confirmed. */
   async deposit(storeid: number, body: any, userid: number) {
     const c = await this.caller(userid);
@@ -252,6 +290,13 @@ export class VaultService {
       const own = Number(mv.actor_id) === c.id;
       if (!own) this.needManager(c, 'turn down a vault movement');
       await m.query(`update store_vault_movements set status = 'REJECTED', reason = $2, confirmed_by = $3, confirmed_on = now() where id = $1`, [movementId, why, own ? null : c.id]);
+      const [took] = mv.move_type === 'DROP_IN' ? await m.query(`select shift_id, withdraw::float as amount from store_cash_accounts where vault_movement_id = $1 and category = 'VAULT_DROP' limit 1`, [movementId]) : [];
+      if (took?.shift_id) {
+        await m.query(
+          `insert into store_cash_accounts (trans_date, category, description, deposit, withdraw, store_id, shift_id, holder, vault_movement_id)
+           values (current_date, 'VAULT_DROP', 'Vault drop turned down: cash back in the drawer', $1, 0, $2, $3, 'DRAWER', $4)`, [took.amount, mv.store_id, took.shift_id, movementId]);
+        await this.shiftMoved(m, Number(took.shift_id), Number(took.amount));
+      }
       await this.audit.record({ userId: c.id, action: 'vault.reject', entityType: 'store_vault', entityId: mv.store_id, summary: `${String(s.location).trim()}: ${money(mv.amount)} ${mv.move_type === 'DROP_IN' ? 'drop' : 'deposit'} ${own ? 'withdrawn' : 'turned down'}: ${why}`, details: { movement: mv.id } });
       return { id: mv.id, status: 'REJECTED' };
     });
