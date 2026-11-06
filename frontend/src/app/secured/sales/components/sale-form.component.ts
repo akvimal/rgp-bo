@@ -358,10 +358,14 @@ export class SaleFormComponent {
         const total = +(this.sale.total || 0);
         // store credit takes its part off the bill first; cash and digital pay the rest
         const credit = this.payment['usecredit'] ? Math.max(0, Math.min(+(this.payment['creditbalance'] || 0), total)) : 0;
-        const payable = total - credit;
+        // what is left to pay later comes off next, then cash and digital pay the rest
+        const due = this.dueNow(total, credit);
+        const payable = total - credit - due;
         const digiamt = Math.max(0, Math.min(payable, +(this.payment.digiamt || 0)));
         const cashamt = payable - digiamt;
         this.sale['creditamt'] = this.payment['staffcredit'] ? 0 : credit;
+        this.sale['dueamt'] = this.payment['staffcredit'] ? 0 : due;
+        this.sale['duedate'] = due > 0 ? (this.payment['duedate'] || null) : null;
 
         if(this.payment['staffcredit']){
             // the whole bill on one person's credit: no cash or digital part
@@ -371,6 +375,7 @@ export class SaleFormComponent {
             this.sale['digirefno'] = null;
             this.sale['staffcreditamt'] = total;
             this.sale['staffcredituserid'] = this.payment['staffcredituserid'];
+            this.sale['staffcreditfor'] = (this.payment['familybuying'] && String(this.payment['staffcreditfor'] || '').trim()) || null;
         } else {
             this.sale['cashamt'] = cashamt;
             this.sale['digiamt'] = digiamt;
@@ -378,6 +383,7 @@ export class SaleFormComponent {
             this.sale['digirefno'] = this.payment.digirefno;
             this.sale['staffcreditamt'] = 0;
             this.sale['staffcredituserid'] = null;
+            this.sale['staffcreditfor'] = null;
         }
     }
 
@@ -528,11 +534,23 @@ export class SaleFormComponent {
       && customerValid && this.digitalValid();
   }
 
+  /** what is left for the customer to pay later: the whole of what store credit leaves, or the part typed (0 unless Pay later is chosen) */
+  private dueNow(total:number, credit:number): number {
+    if(!this.payment?.latemode || this.payment?.staffcredit) return 0;
+    const rest = Math.max(0, total - credit);
+    const typed:any = this.payment.dueamt;
+    return typed === null || typed === undefined || typed === '' ? rest : Math.max(0, Math.min(rest, +typed || 0));
+  }
+
   /** the provider's reference (last 4 digits of the transaction id) is optional, but if typed it must look right */
   digitalValid(){
-    if(this.payment?.staffcredit) return !!this.payment.staffcredituserid;   // the whole bill, on someone's credit
+    // the whole bill, on someone's credit; when a family member collects, who is asked for
+    if(this.payment?.staffcredit) return !!this.payment.staffcredituserid && (!this.payment.familybuying || String(this.payment.staffcreditfor || '').trim().length > 2);
     const credit = this.payment?.['usecredit'] ? Math.max(0, Math.min(+(this.payment?.['creditbalance'] || 0), +(this.sale.total || 0))) : 0;
-    if(!(Math.min(+(this.payment?.digiamt || 0), +(this.sale.total || 0) - credit) > 0)) return true;
+    const later = this.dueNow(+(this.sale.total || 0), credit);
+    // paying later needs a customer chosen from the list and a day to pay by
+    if(later > 0 && (!this.sale.customer?.existing || !this.payment.duedate)) return false;
+    if(!(Math.min(+(this.payment?.digiamt || 0), +(this.sale.total || 0) - credit - later) > 0)) return true;
     const ref = String(this.payment?.digirefno || '').replace(/\s+/g, '');
     return !ref || /^[A-Za-z0-9][A-Za-z0-9\-_\/]{3,39}$/.test(ref);
   }

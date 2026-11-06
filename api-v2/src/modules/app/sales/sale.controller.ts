@@ -7,6 +7,7 @@ import { AuthGuard } from "src/modules/auth/auth.guard";
 import { User } from "src/core/decorator/user.decorator";
 import { checkDigitalPayment } from "./digital-payment";
 import { checkStaffCredit } from "./staff-credit-rule";
+import { checkCustomerDue } from "./customer-due-rule";
 import { checkStoreCredit } from "./store-credit-rule";
 import { enforceBatchWarnings, findBatchWarnings } from "./batch-rules";
 import { CustomerService } from "../customers/customer.service";
@@ -76,6 +77,12 @@ export class SaleController {
       }
 
       /** the store a bill is for: the one it names, else the business's first (same fallback as saving it) */
+      /** a Store Head, Business Head or owner (may bill past a customer's credit limit) */
+      private async isManagerUser(currentUser: any): Promise<boolean> {
+        const [role] = await this.manager.query(`select name from app_role where id = $1`, [currentUser?.roleid || 0]);
+        return isManagerRole(role?.name);
+      }
+
       private async billStore(sale: any): Promise<number | null> {
         const asked = Number(sale?.storeid) || null;
         if (asked) {
@@ -115,10 +122,11 @@ export class SaleController {
         const recordBatchOverride = await this.checkBatches(createSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, createSaleDto);
         const staffCredit = await checkStaffCredit(this.manager, createSaleDto);
+        const customerDue = await checkCustomerDue(this.manager, createSaleDto, customer, await this.isManagerUser(currentUser));
         const storeCredit = await checkStoreCredit(this.manager, createSaleDto, customer);
         await this.assertOperatorNamed(createSaleDto, currentUser);
         const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser, undefined, await this.billStore(createSaleDto));
-        const created = await this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
+        const created = await this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(customerDue || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await recordBatchOverride((created as any)?.id ?? null);
         return created;
       }
@@ -136,10 +144,11 @@ export class SaleController {
         const recordBatchOverride = await this.checkBatches(updateSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, updateSaleDto, updateSaleDto.id);
         const staffCredit = await checkStaffCredit(this.manager, updateSaleDto, updateSaleDto.id);
+        const customerDue = await checkCustomerDue(this.manager, updateSaleDto, customer, await this.isManagerUser(currentUser), updateSaleDto.id);
         const storeCredit = await checkStoreCredit(this.manager, updateSaleDto, customer, updateSaleDto.id);
         await this.assertOperatorNamed(updateSaleDto, currentUser);
         const actingUserId = await this.resolveActingUser(updateSaleDto.actinguserid, currentUser, updateSaleDto.id, await this.billStore(updateSaleDto));
-        const saved = await this.saleService.updateSale({...updateSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
+        const saved = await this.saleService.updateSale({...updateSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(customerDue || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await this.recordSaleEdit(sale, updateSaleDto, currentUser.id, actingUserId);
         await recordBatchOverride(updateSaleDto.id ?? null);
         return saved;

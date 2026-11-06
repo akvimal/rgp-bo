@@ -89,6 +89,7 @@
           <div class="col-12 small text-muted">
             Paid out of the cash drawer: expenses &#8377;{{ summary.expensesTotal | number:'1.0-0' }}, refunds &#8377;{{ summary.refunds | number:'1.0-0' }}, deposits &#8377;{{ summary.deposits | number:'1.0-0' }}.
             <span *ngIf="summary.storeCredit || summary.staffCredit">Also on credit: store credit &#8377;{{ summary.storeCredit | number:'1.0-0' }}, staff credit &#8377;{{ summary.staffCredit | number:'1.0-0' }}.</span>
+            <span *ngIf="summary.dueLeft || summary.duesCollectedCash || summary.duesCollectedDigital" data-testid="shiftdesk-dues"> Left to pay later &#8377;{{ summary.dueLeft | number:'1.0-0' }}; dues collected: cash &#8377;{{ summary.duesCollectedCash | number:'1.0-0' }} (in the drawer), digital &#8377;{{ summary.duesCollectedDigital | number:'1.0-0' }}.</span>
           </div>
         </div>
 

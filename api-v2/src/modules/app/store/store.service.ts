@@ -874,8 +874,12 @@ export class StoreService {
     let closingDigital: any[] | null = null;
     if (body.closingdigital !== undefined) {
       const system = await this.manager.query(
-        `select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, coalesce(sum(digi_amount), 0)::float as amount
-           from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0 group by 1`, [id]);
+        `select provider, sum(amount)::float as amount from (
+           select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, digi_amount as amount
+             from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0
+           union all
+           select coalesce(nullif(btrim(provider), ''), 'OTHER'), -amount from customer_due_entry where shift_id = $1 and kind = 'PAYMENT' and pay_mode = 'DIGITAL') x
+          group by 1`, [id]);
       const given = new Map<string, number>();
       for (const g of Array.isArray(body.closingdigital) ? body.closingdigital : []) {
         const n = Number(g?.counted);
@@ -1008,8 +1012,16 @@ export class StoreService {
               coalesce(sum(credit_amount), 0)::float as store_credit, coalesce(sum(staff_credit_amount), 0)::float as staff_credit, coalesce(sum(total), 0)::float as total
          from sale where shift_id = $1 and status = 'COMPLETE' and active = true`, [shiftId]);
     const digital = await this.manager.query(
-      `select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, count(*)::int as bills, coalesce(sum(digi_amount), 0)::float as amount
-         from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0 group by 1 order by 1`, [shiftId]);
+      `select provider, sum(bills)::int as bills, sum(amount)::float as amount from (
+         select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, 1 as bills, digi_amount as amount
+           from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0
+         union all
+         select coalesce(nullif(btrim(provider), ''), 'OTHER'), 0, -amount from customer_due_entry where shift_id = $1 and kind = 'PAYMENT' and pay_mode = 'DIGITAL') x
+        group by 1 order by 1`, [shiftId]);
+    const [dues] = await this.manager.query(
+      `select coalesce((select sum(due_amount) from sale where shift_id = $1 and status = 'COMPLETE' and active = true), 0)::float as left_to_pay,
+              coalesce(sum(-amount) filter (where pay_mode = 'CASH'), 0)::float as collected_cash, coalesce(sum(-amount) filter (where pay_mode = 'DIGITAL'), 0)::float as collected_digital
+         from customer_due_entry where shift_id = $1 and kind = 'PAYMENT'`, [shiftId]);
     const expenses = await this.manager.query(
       `select id, trans_date, description, expense_category, withdraw::float as amount, (coalesce(trim(receipt_path), '') <> '') as has_receipt
          from store_cash_accounts where shift_id = $1 and category = 'EXPENSE' order by id`, [shiftId]);
@@ -1024,6 +1036,7 @@ export class StoreService {
       shift: { id: shift.id, name: shift.name, status: shift.status, storeid: shift.storeid, store: (shift as any).store?.location, assigneduserid: shift.assigneduserid,
                assigned: (shift as any).assigneduser?.fullname || null, openingcash: Number(shift.openingcash), expectedcash: stats.expectedcash, openedon: shift.openedon },
       bills: t.bills, total: t.total, cash: t.cash, digital: t.digital, storeCredit: t.store_credit, staffCredit: t.staff_credit,
+      dueLeft: dues?.left_to_pay ?? 0, duesCollectedCash: dues?.collected_cash ?? 0, duesCollectedDigital: dues?.collected_digital ?? 0,
       digitalByProvider: digital, expenses, expensesTotal: expenses.reduce((s: number, e: any) => s + e.amount, 0),
       refunds: out.refunds, deposits: out.deposits, expected: stats.expectedcash,
       checklists: await this.shiftChecklists(shiftId),
