@@ -3,7 +3,7 @@ import { ConfirmationService } from "primeng/api";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../../cash/cash.service";
-import { DenominationRow, suggestVaultDrop } from "src/app/shared/denominations";
+import { DenominationRow, denominationTotal, suggestVaultDrop } from "src/app/shared/denominations";
 import { EXPENSE_CATEGORIES } from "../../cash/expense-categories";
 
 @Component({
@@ -127,7 +127,10 @@ export class ShiftsComponent implements OnInit {
   get surplus(): number { return Math.max(0, this.countedTotal - Number(this.vault?.floatamount || 0)); }
   get dropOverCount(): boolean { return this.dropRows.some(r => Number(r.n) > (this.countedDenoms.find(c => c.d === r.d)?.n || 0)); }
   get dropNeedsConfirm(): boolean { return Number(this.vault?.confirmlimit || 0) > 0 && this.dropTotal > Number(this.vault.confirmlimit); }
-  fillDrop() { this.dropRows = suggestVaultDrop(this.countedDenoms, Number(this.vault?.floatamount || 0), this.vault?.floatdenominations); }
+  fillDrop() {
+    this.dropRows = suggestVaultDrop(this.countedDenoms, Number(this.vault?.floatamount || 0), this.vault?.floatdenominations);
+    this.dropTotal = denominationTotal(this.dropRows);   // the grid reports its total only when someone types in it
+  }
   get vaultReady(): boolean {
     if (!this.vaultOn || this.surplus <= 0) return true;
     if (this.dropTotal > 0) return !this.dropOverCount;

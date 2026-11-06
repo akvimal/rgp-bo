@@ -8,7 +8,7 @@ import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../store/cash/cash.service";
 import { EXPENSE_CATEGORIES } from "../store/cash/expense-categories";
-import { DenominationRow, suggestVaultDrop } from "src/app/shared/denominations";
+import { DenominationRow, denominationTotal, suggestVaultDrop } from "src/app/shared/denominations";
 import { CLOSING_CHECKLIST_ITEMS, ChecklistItem, HANDOVER_CHECKLIST_ITEMS, OPENING_CHECKLIST_ITEMS, OPENING_OPEN_STORE_CHECKLIST_ITEMS, freshChecklist } from "src/app/shared/shift-checklist";
 
 /**
@@ -219,7 +219,10 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     return this.dropRows.some(r => Number(r.n) > (this.denoms.find(c => c.d === r.d)?.n || 0));
   }
   get dropNeedsConfirm(): boolean { return Number(this.vault?.confirmlimit || 0) > 0 && this.dropTotal > Number(this.vault.confirmlimit); }
-  fillDrop() { this.dropRows = suggestVaultDrop(this.denoms, Number(this.vault?.floatamount || 0), this.vault?.floatdenominations); }
+  fillDrop() {
+    this.dropRows = suggestVaultDrop(this.denoms, Number(this.vault?.floatamount || 0), this.vault?.floatdenominations);
+    this.dropTotal = denominationTotal(this.dropRows);   // the grid reports its total only when someone types in it
+  }
   /** the close may go ahead as far as the vault is concerned */
   get vaultReady(): boolean {
     if (!this.vaultOn || this.surplus <= 0) return true;
