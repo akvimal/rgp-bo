@@ -3,6 +3,7 @@
 #
 #   clear-day.sh show  [--date YYYY-MM-DD] [--store N]               list what exists (no changes)
 #   clear-day.sh clear [--date YYYY-MM-DD] [--store N] [--expenses]  back up, preview, ask, then delete in ONE transaction
+#   clear-day.sh expenses [--date YYYY-MM-DD] [--store N]            delete only the day's expenses (shifts, bills and vault stay)
 #
 # --date      the day (default: today in India time)
 # --store N   only this store (default: every store)
@@ -38,7 +39,7 @@ while [ $# -gt 0 ]; do
 done
 [[ "$day" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "--date must be YYYY-MM-DD" >&2; exit 2; }
 [[ "$store" =~ ^[0-9]+$ ]] || { echo "--store must be a number" >&2; exit 2; }
-[ "$mode" = "show" ] || [ "$mode" = "clear" ] || { echo "usage: $0 show|clear [--date D] [--store N] [--expenses]" >&2; exit 2; }
+[ "$mode" = "show" ] || [ "$mode" = "clear" ] || [ "$mode" = "expenses" ] || { echo "usage: $0 show|clear|expenses [--date D] [--store N] [--expenses]" >&2; exit 2; }
 
 psqlq() { $PG_PREFIX psql -q -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -v d="$day" -v store="$store" -v exp="$expenses" "$@"; }
 
@@ -65,6 +66,40 @@ select count(*) as bills from sale where shift_id in (select id from clr);
 
 if [ "$mode" = "show" ]; then
   echo "$show_sql" | psqlq
+  exit 0
+fi
+
+# ---- expenses only: the Expenses-module records of the day, and the drawer cash paid out as an expense (the shift keeps its bills and vault)
+if [ "$mode" = "expenses" ]; then
+  EXP_SCOPE="create temp table ex_cash as select id, shift_id, deposit, withdraw from store_cash_accounts
+     where category = 'EXPENSE' and trans_date = :'d'::date and (:store = 0 or store_id = :store);"
+  echo "About to delete the expenses of $day$([ "$store" != 0 ] && echo " store $store" || echo " (all stores)"):"
+  echo "$EXP_SCOPE
+\echo == drawer cash paid out as an expense (cash book)
+select c.id, c.store_id, c.description, c.withdraw, c.shift_id from store_cash_accounts c where c.id in (select id from ex_cash) order by c.id;
+\echo == Expenses-module records
+select id, store_id, amount, pay_mode, status, payee, description from expense where expense_date = :'d'::date and (:store = 0 or store_id = :store) order by id;" | psqlq
+  if [ "$backup" = 1 ]; then
+    out="${HOME:-.}/before_expenses_${day}_$(date +%H%M%S).sql.gz"
+    echo "Backing up to $out ..."
+    $PG_PREFIX pg_dump -U "$PGUSER" "$PGDATABASE" | gzip > "$out"
+  fi
+  if [ "$yes" != 1 ]; then
+    read -r -p "Type the date ($day) to delete these expenses: " typed
+    [ "$typed" = "$day" ] || { echo "Not confirmed. Nothing changed."; exit 1; }
+  fi
+  echo "
+begin;
+$EXP_SCOPE
+-- the drawer gets the cash back: the shift's expected cash goes up by what was paid out, and a closed shift's variance is worked out again
+update store_shifts s set expected_cash = s.expected_cash + x.net,
+       variance = case when s.counted_cash is null then null else s.counted_cash - (s.expected_cash + x.net) end
+  from (select shift_id, sum(withdraw - deposit) as net from ex_cash where shift_id is not null group by shift_id) x where s.id = x.shift_id;
+delete from store_cash_accounts where id in (select id from ex_cash);
+delete from expense where expense_date = :'d'::date and (:store = 0 or store_id = :store);
+commit;
+" | psqlq
+  echo "Done. The expenses of $day are deleted."
   exit 0
 fi
 
