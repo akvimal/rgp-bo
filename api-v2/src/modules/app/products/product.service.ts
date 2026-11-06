@@ -162,11 +162,11 @@ export class ProductService {
       throw new BadRequestException('Enter a sale price above 0.');
     }
     const [lim] = await manager.query(
-      `select min(pii.mrp_cost) as mrp, max(pii.ptr_cost) as ptr, max(pii.ptr_value) as ptrex, public.gst_sale_rate($1::int4, max(coalesce(pii.tax_pcnt, 0))::double precision) as tax
-         from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
-        where pii.product_id = $1 and pii.mrp_cost > 0 and pii.ptr_cost > 0
-          and pi.invoice_date = (select max(pi2.invoice_date) from purchase_invoice_item pii2
-                                   join purchase_invoice pi2 on pi2.id = pii2.invoice_id where pii2.product_id = $1)`, [productid]);
+      // the MRP and cost of the product's newest VERIFIED purchase line (an unverified line sets no limit): the same line the Set the price dialog shows
+      `select pii.mrp_cost as mrp, pii.ptr_cost as ptr, pii.ptr_value as ptrex, public.gst_sale_rate($1::int4, coalesce(pii.tax_pcnt, 0)::double precision) as tax
+         from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.active and not pi.archive
+        where pii.status = 'VERIFIED' and pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_cost > 0 and pii.ptr_value > 0
+        order by pi.invoice_date desc, pii.id desc limit 1`, [productid]);
     const mrp = lim?.mrp != null ? Number(lim.mrp) : null;
     const ptr = lim?.ptr != null ? Number(lim.ptr) : null;
     // cost without GST, to compare with a price without GST
@@ -206,10 +206,10 @@ export class ProductService {
                           public.sale_gst(coalesce(pii.tax_pcnt, 0)::double precision)::float8 as sale_tax
                      from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id and pi.active and not pi.archive`;
     const [done] = await this.manager.query(
-      `${BASIS} and pi.status = 'COMPLETE' where pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
+      `${BASIS} where pii.status = 'VERIFIED' and pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
         order by pi.invoice_date desc, pii.id desc limit 1`, [productid]);
     const [open] = await this.manager.query(
-      `${BASIS} and pi.status <> 'COMPLETE' where pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
+      `${BASIS} where pii.status not in ('VERIFIED', 'REJECTED') and pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
         order by pi.invoice_date desc, pii.id desc limit 1`, [productid]);
     const row: any = { ...rows[0] };
     const ceilingOf = (mrp:number, saleTax:number) => Math.floor(mrp / (1 + saleTax / 100) * 100 + 1e-6) / 100;

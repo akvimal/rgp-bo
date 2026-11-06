@@ -185,7 +185,7 @@ export class PricingReader {
   }
 
   /**
-   * One product as the price policy sees it, from its latest completed purchase: its class and limits, current price and when it took effect.
+   * One product as the price policy sees it, from its newest verified purchase line: its class and limits, current price and when it took effect.
    * Null when the product has never been purchased (there is no cost or MRP to judge a price against).
    */
   async productContext(productid: number) {
@@ -193,9 +193,9 @@ export class PricingReader {
       `select pii.id, pii.product_id, pii.mrp_cost::float8 as mrp, pii.ptr_value::float8 as ptrvalue, pii.ptr_cost::float8 as ptrcost, coalesce(pii.disc_pcnt, 0)::float8 as disc,
               pii.qty, coalesce(pii.free_qty, 0) as free, coalesce(pii.tax_pcnt, 0)::float8 as taxbatch, p.title, p.pack
          from purchase_invoice_item pii
-         join purchase_invoice pi on pi.id = pii.invoice_id and pi.status = 'COMPLETE' and pi.active and not pi.archive
+         join purchase_invoice pi on pi.id = pii.invoice_id and pi.active and not pi.archive
          join product p on p.id = pii.product_id
-        where pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
+        where pii.status = 'VERIFIED' and pii.product_id = $1 and pii.active and not pii.archive and pii.mrp_cost > 0 and pii.ptr_value > 0
         order by pi.invoice_date desc, pii.id desc limit 1`, [productid]);
     if (!rows.length) return null;
     const r = rows[0];
