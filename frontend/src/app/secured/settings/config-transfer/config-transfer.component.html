@@ -1,0 +1,114 @@
+<div class="form-compact">
+<div class="card mt-3" style="max-width:62rem" data-testid="config-transfer">
+  <div class="card-body">
+    <h5 class="card-title d-flex justify-content-between align-items-center flex-wrap gap-2">Copy the business setup
+      <a class="btn btn-sm btn-outline-primary" routerLink="/secure/settings/business-profile/setup">Shop setup</a></h5>
+    <p class="small text-muted">Save the business details, stores (with their shifts) and staff logins to a file, and load them back into this or another installation, so a new or refreshed copy does not need setting up again by hand.
+      Products, stock, sales and history are not part of it, and neither are passwords. Loading a file never deletes anything.</p>
+
+    <div *ngIf="error" class="alert alert-danger py-2" data-testid="cfg-error">{{error}}
+      <ul class="mb-0 mt-1 small" *ngIf="problems.length"><li *ngFor="let p of problems">{{p}}</li></ul>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-lg-5">
+        <div class="border rounded p-3 h-100">
+          <h6>Save to a file</h6>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-primary" (click)="download('export', 'business-setup.json')" data-testid="cfg-export-json">Download JSON</button>
+            <button class="btn btn-sm btn-outline-primary" (click)="download('export.xlsx', 'business-setup.xlsx')" data-testid="cfg-export-xlsx">Download Excel</button>
+            <button class="btn btn-sm btn-outline-secondary" (click)="download('template.xlsx', 'business-setup-template.xlsx')" data-testid="cfg-template">Blank Excel template</button>
+          </div>
+          <div class="small text-muted mt-2">JSON holds everything exactly. Excel is the same thing laid out to read and type in; fill the blank template to set up a new business without keying each store and login in the app.</div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-7">
+        <div class="border rounded p-3 h-100">
+          <h6>Load from a file</h6>
+          <input type="file" class="form-control form-control-sm" accept=".json,.xlsx" (change)="onFile($event)" data-testid="cfg-file">
+          <div class="small text-muted mt-2">You will see what would change before anything is saved.</div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="busy" class="text-muted mt-3">Working...</div>
+
+    <!-- the preview -->
+    <div *ngIf="preview" class="mt-3" data-testid="cfg-preview">
+      <h6>{{fileName}}: what would change</h6>
+      <div class="alert alert-danger py-2" *ngIf="preview.blockers.length" data-testid="cfg-blockers">
+        <strong>This cannot be loaded yet.</strong>
+        <ul class="mb-0"><li *ngFor="let b of preview.blockers">{{b}}</li></ul>
+      </div>
+      <div class="alert alert-warning py-2 small" *ngIf="preview.warnings.length" data-testid="cfg-warnings">
+        <ul class="mb-0"><li *ngFor="let w of preview.warnings">{{w}}</li></ul>
+      </div>
+      <div class="alert alert-secondary py-2" *ngIf="!preview.changes && !preview.blockers.length" data-testid="cfg-nochange">Everything in this file is already set up this way. Nothing to load.</div>
+
+      <div class="small mb-2" *ngIf="preview.plan.business">
+        <strong>Business details</strong>
+        <ul class="mb-1"><li *ngFor="let c of preview.plan.business.changes">{{c.label}}: {{c.from}} &rarr; {{c.to}}</li></ul>
+      </div>
+
+      <div class="table-responsive" *ngIf="preview.plan.stores.length">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>Store</th><th style="width:7rem"></th><th>What changes</th></tr></thead>
+          <tbody>
+            <ng-container *ngFor="let s of preview.plan.stores">
+              <tr>
+                <td>{{s.name}}</td>
+                <td><span class="badge" [ngClass]="actionClass(s.action)">{{actionLabel(s.action)}}</span></td>
+                <td class="small"><span *ngIf="s.action === 'create'">A new store{{s.changes.length ? ' with ' + s.changes.length + ' settings' : ''}}</span><span *ngFor="let c of s.action === 'update' ? s.changes : []; let last = last">{{c.label}}: {{c.from}} &rarr; {{c.to}}{{last ? '' : '; '}}</span></td>
+              </tr>
+              <tr *ngFor="let sh of s.shifts">
+                <td class="ps-4 small text-muted">Shift {{sh.name}}</td>
+                <td><span class="badge" [ngClass]="actionClass(sh.action)">{{actionLabel(sh.action)}}</span></td>
+                <td class="small"><span *ngFor="let c of sh.changes; let last = last">{{c.label}}: {{c.from}} &rarr; {{c.to}}{{last ? '' : '; '}}</span></td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-responsive" *ngIf="preview.plan.staff.length">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>Login</th><th style="width:7rem"></th><th>What changes</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of preview.plan.staff">
+              <td>{{p.email}}</td>
+              <td><span class="badge" [ngClass]="actionClass(p.action)">{{actionLabel(p.action)}}</span></td>
+              <td class="small"><span *ngIf="p.reason" class="text-muted">{{p.reason}}</span><span *ngFor="let c of p.changes; let last = last">{{c.label}}: {{c.from}} &rarr; {{c.to}}{{last ? '' : '; '}}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="small text-muted mb-2" *ngIf="preview.plan.counts.staffCreated">{{preview.plan.counts.staffCreated}} new {{preview.plan.counts.staffCreated === 1 ? 'login' : 'logins'}} will get a temporary password, shown once after loading.</div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary btn-sm" [disabled]="!canApply" (click)="apply()" data-testid="cfg-apply">Load this setup</button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="reset()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- the result -->
+    <div *ngIf="result" class="mt-3" data-testid="cfg-result">
+      <div class="alert alert-success py-2">
+        Done. {{result.plan.counts.storesCreated}} stores added, {{result.plan.counts.storesUpdated}} changed; {{result.plan.counts.staffCreated}} logins added, {{result.plan.counts.staffUpdated}} changed, {{result.plan.counts.staffSkipped}} skipped; {{result.plan.counts.shiftsChanged}} shifts.
+      </div>
+      <div *ngIf="result.created.length" class="border border-warning rounded p-3" data-testid="cfg-passwords">
+        <h6>Temporary passwords for the new logins</h6>
+        <p class="small mb-2"><strong>These are shown only now and are not stored anywhere.</strong> Copy or download them before leaving this page, hand each person theirs, and ask them to change it from the sign-in page ("Change password").</p>
+        <table class="table table-sm mb-2">
+          <thead><tr><th>Login</th><th>Name</th><th>Role</th><th>Temporary password</th></tr></thead>
+          <tbody><tr *ngFor="let c of result.created"><td>{{c.email}}</td><td>{{c.fullName}}</td><td>{{c.role}}</td><td><code>{{c.password}}</code></td></tr></tbody>
+        </table>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-primary" (click)="copyPasswords()">Copy</button>
+          <button class="btn btn-sm btn-outline-primary" (click)="downloadPasswords()" data-testid="cfg-passwords-csv">Download CSV</button>
+        </div>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm mt-3" (click)="reset()">Load another file</button>
+    </div>
+  </div>
+</div>
+</div>

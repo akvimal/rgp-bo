@@ -48,6 +48,7 @@ import { InquiryModule } from './modules/app/inquiries/inquiry.module';
 import { VendorIssueModule } from './modules/app/vendor-issues/vendor-issue.module';
 import { StockAuditModule } from './modules/app/stock-audits/stock-audit.module';
 import { PaymentReconModule } from './modules/app/payment-recon/payment-recon.module';
+import { ConfigProfileModule } from './modules/app/config-profile/config-profile.module';
 import { HrModule } from './modules/app/hr/hr.module';
 import { StaffCreditModule } from './modules/app/staffcredit/staff-credit.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -112,6 +113,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     VendorIssueModule,
     StockAuditModule,
     PaymentReconModule,
+    ConfigProfileModule,
   ],
   controllers: [],
   providers: [

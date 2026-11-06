@@ -6,6 +6,7 @@ if (!global.crypto) {
 }
 
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
@@ -13,7 +14,12 @@ import { HttpExceptionFilter } from './core/http-exception.filter';
 import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Nest's own body parsers are switched off and set up again here, because a parser added by hand makes Nest skip its defaults.
+  // A business setup file (many stores and logins) is larger than the default 100 kb body: only that route takes more.
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use('/config-profile', json({ limit: '5mb' }));
+  app.use(json());
+  app.use(urlencoded({ extended: true }));
   const logger = new Logger('Bootstrap');
 
   // Enable CORS and allow the frontend to inspect response timing data.

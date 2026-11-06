@@ -28,6 +28,7 @@ import { StorePcsComponent } from "./store/store-pcs.component";
 import { BusinessesComponent } from "./businesses/businesses.component";
 import { BusinessProfileComponent } from "./business-profile/business-profile.component";
 import { ShopSetupComponent } from "./shop-setup/shop-setup.component";
+import { ConfigTransferComponent } from "./config-transfer/config-transfer.component";
 import { StaffDetailsFieldsComponent } from "./users/components/staff-details-fields.component";
 import { NotificationsComponent } from "./notifications/notifications.component";
 import { AlertRulesComponent } from "./alerts/alert-rules.component";
@@ -56,6 +57,7 @@ const routes: Routes = [
     ]},
     { path: 'businesses', component: BusinessesComponent },
     { path: 'business-profile/setup', component: ShopSetupComponent },
+    { path: 'business-profile/transfer', component: ConfigTransferComponent },
     { path: 'business-profile', component: BusinessProfileComponent },
     { path: 'store', component: StoreSettingsComponent },
     { path: 'notifications', component: NotificationsComponent },
@@ -83,6 +85,7 @@ const routes: Routes = [
       BusinessesComponent,
       BusinessProfileComponent,
       ShopSetupComponent,
+      ConfigTransferComponent,
       StaffDetailsFieldsComponent,
       NotificationsComponent,
       AlertRulesComponent,
