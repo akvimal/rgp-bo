@@ -99,6 +99,14 @@ export class PlatformService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** how many more stores or logins the plan allows (null when there is no limit), for a change that adds several at once */
+  async roomLeft(what: 'stores' | 'users'): Promise<number | null> {
+    const e = this.current;
+    if (!this.managed || !e) return null;
+    const used = (await this.usage())[what] as number;
+    return Math.max(0, e.limits[what] - used);
+  }
+
   private periodOf(kind: 'documents' | 'scans'): string { return kind === 'documents' ? 'all' : new Date().toISOString().slice(0, 7); }
 
   async counted(kind: 'documents' | 'scans'): Promise<number> {
