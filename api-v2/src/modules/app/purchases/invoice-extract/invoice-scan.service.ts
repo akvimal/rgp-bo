@@ -1,3 +1,4 @@
+import { messageOf } from 'src/core/db-error';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -137,7 +138,7 @@ export class InvoiceScanService {
     const failed: { id: number; message: string }[] = [];
     for (const r of rows) {
       if (this.shape(r, rates).missing.length) { skipped++; continue; }
-      try { await this.verify(invoiceId, Number(r.id), userId); verified++; } catch (e: any) { failed.push({ id: Number(r.id), message: e?.message || 'Could not check it.' }); }
+      try { await this.verify(invoiceId, Number(r.id), userId); verified++; } catch (e: any) { failed.push({ id: Number(r.id), message: messageOf(e, 'Could not check it.') }); }
     }
     await this.audit.record({ userId, action: 'purchase.scan_verified_all', entityType: 'purchase_invoice', entityId: invoiceId, summary: `${verified} scanned lines checked together on invoice ${invoiceId}`, details: { verified, skipped, failed: failed.length } });
     return { verified, skipped, failed, ...(await this.get(invoiceId)) };

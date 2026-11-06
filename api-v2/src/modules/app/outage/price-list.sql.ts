@@ -27,5 +27,5 @@ select p.id, p.title, p.pack, p.more_props->>'schedule' as sched,
        round(c.sale_price::numeric, 2)::float8 as price_ex, a.min_mrp::float8 as min_mrp, a.tmax::float8 as tmax
   from agg a
   join product p on p.id = a.product_id
-  join lateral (select sale_price from product_price2 where product_id = p.id and end_date > current_date and sale_price > 0 order by eff_date desc, id desc limit 1) c on true
+  join lateral (select sale_price from product_price2 where product_id = p.id and eff_date <= current_date and end_date > current_date and sale_price > 0 order by eff_date desc, id desc limit 1) c on true
  order by upper(p.title)`;

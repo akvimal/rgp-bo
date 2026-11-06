@@ -56,7 +56,7 @@ export class GstRatesService {
           order by pii.product_id, pi.invoice_date desc, pii.id desc),
        stock as (select id as product_id, sum(balance)::float8 as bal from product_items_view where expired = false and balance > 0 group by id),
        price as (select distinct on (product_id) product_id, sale_price::float8 as price from product_price2
-                  where end_date > current_date and sale_price > 0 order by product_id, eff_date desc, id desc)
+                  where eff_date <= current_date and end_date > current_date and sale_price > 0 order by product_id, eff_date desc, id desc)
        select p.id, p.title, p.category, nullif(btrim(p.hsn_code), '') as hsn, d.hsn as category_hsn, p.pack::float8 as pack,
               l.tax, l.mrp, coalesce(s.bal, 0) as stock, pr.price
          from product p join latest l on l.product_id = p.id

@@ -1,3 +1,4 @@
+import { userError } from 'src/core/db-error';
 import { assertStoreLicensed } from "../store/store-guard";
 import { assertVendorUsable } from "../vendors/vendor-guard";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
@@ -610,7 +611,7 @@ export class PurchaseInvoiceService {
               : /sale_item/.test(error.constraint ?? error.message) ? 'a sale' : 'another record';
             throw new BadRequestException(`This invoice cannot be deleted: ${what} refers to one of its lines. Remove or settle that first.`);
           }
-          throw new BadRequestException(`The invoice could not be deleted (${error?.detail || error?.message || 'unknown error'}).`);
+          throw userError(error, 'delete the invoice');
         }
       });
     }

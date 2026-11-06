@@ -13,7 +13,7 @@ with latest as (
    order by pii.product_id, pi.invoice_date desc, pii.id desc
 ), cur as (
   select distinct product_id from product_price2
-   where end_date > current_date and sale_price > 0 and ($1::int is null or product_id = $1)
+   where eff_date <= current_date and end_date > current_date and sale_price > 0 and ($1::int is null or product_id = $1)
 ), sold as (
   select purchase_item_id, sum(qty) as q from sale_item where status = 'Complete' and active and not archive group by 1
 ), adj as (

@@ -1,3 +1,4 @@
+import { friendlyDbMessage } from 'src/core/db-error';
 import {
   ExceptionFilter,
   Catch,
@@ -126,8 +127,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else if (exception instanceof QueryFailedError) {
       response.message = this.getSanitizedDatabaseError(exception);
     } else if (exception instanceof Error) {
-      // Generic error - sanitize message
-      response.message = this.sanitizeErrorMessage(exception.message);
+      // Generic error - sanitize message; database text that was passed on inside an ordinary Error is put into plain words
+      response.message = friendlyDbMessage(exception) ?? this.sanitizeErrorMessage(exception.message);
     }
 
     return response;
@@ -146,6 +147,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const errorCode = driverError.code;
     const constraint = driverError.constraint;
+
+    // plain words first (names what the person did); the generic fallbacks below are for what has no wording yet
+    const plain = friendlyDbMessage(error);
+    if (plain && ['23505', '23503', '23502', '23514', '22P02', '22001', '22003', '22007', '22008'].includes(errorCode)) return plain;
 
     switch (errorCode) {
       case '23505':

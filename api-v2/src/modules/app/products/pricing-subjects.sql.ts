@@ -18,7 +18,7 @@ with latest as (
    order by pii.product_id, pi.invoice_date desc, pii.id desc
 ), cur as (
   select distinct on (product_id) product_id, sale_price, eff_date from product_price2
-   where end_date > current_date and sale_price > 0 and ($1::int is null or product_id = $1)
+   where eff_date <= current_date and end_date > current_date and sale_price > 0 and ($1::int is null or product_id = $1)
    order by product_id, eff_date desc, id desc
 ), gp as (
   select si.product_id, sum(si.price::numeric * si.qty) as rev, sum(si.price::numeric * si.qty - (pii.ptr_value::numeric * (1 - coalesce(pii.disc_pcnt, 0)::numeric / 100) * pii.qty

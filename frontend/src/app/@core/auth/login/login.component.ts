@@ -122,9 +122,20 @@ export class LoginComponent {
                     },
                     error : err => {
                         this.form.controls['password'].reset();
-                        this.error = err.message;
+                        this.error = this.signInMessage(err);
                     }
                 });
+    }
+
+    /** what to tell the person when signing in fails: never the browser's "Http failure response for ..." */
+    private signInMessage(err:any): string {
+        if (err?.status === 0) return 'Cannot reach the server. Check the internet connection and try again.';
+        const m = err?.error?.message;
+        const server = Array.isArray(m) ? m.join(' ') : (typeof m === 'string' ? m : '');
+        if (err?.status === 401) return server && server !== 'Unauthorized' ? server : 'The email or password is not right.';
+        if (err?.status === 429) return 'Too many attempts. Wait a few minutes and try again.';
+        if (err?.status >= 500) return 'Something went wrong on our side. Please try again in a moment.';
+        return server || 'Could not sign in. Please try again.';
     }
 
     private finishLogin(token:string){
