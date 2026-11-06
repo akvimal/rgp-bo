@@ -81,7 +81,7 @@ export class PurchaseItemController {
     @Delete()
     async remove(@Body() input:{invoiceid:number, ids:number[]}, @User() currentUser: any) {
       await this.purchaseInvoiceService.removeItems(input.ids).then(async(data) => {
-        await this.purchaseInvoiceService.refreshTotal(input.invoiceid, currentUser.id, false);
+        await this.purchaseInvoiceService.refreshTotal(input.invoiceid, currentUser.id);
       })
       return { success: true, message: 'Items removed successfully' };
     }
