@@ -29,9 +29,11 @@ import { StockService } from "./stock/stock.service";
                 <li class="nav-item" *isNavAuth>
                     <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="shifts">Shifts</a>
                 </li>
-                <li class="nav-item" *isNavAuth>
-                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="transfers">Transfers</a>
-                </li>
+                <ng-container *ngIf="transfersOn">
+                    <li class="nav-item" *isNavAuth>
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="transfers" data-testid="store-tab-transfers">Transfers</a>
+                    </li>
+                </ng-container>
                 <li class="nav-item" *isNavAuth>
                     <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
                 </li>
@@ -58,11 +60,17 @@ export class StoreComponent implements OnInit, OnDestroy {
 
     /** the selected store keeps a vault: the Vault tab shows only then */
     vaultOn = false;
+    /** stock moves between stores: the Transfers tab shows only when the business has transfers switched on and more than one store to move between */
+    transfersOn = false;
     private subs = new Subscription();
 
     constructor(private intentService: PurchaseIntentService, private stockService: StockService, private router: Router, private storeContext: StoreContextService, private auth: AuthService) {}
 
     ngOnDestroy(): void { this.subs.unsubscribe(); }
+
+    private syncTransfers() {
+        this.transfersOn = this.storeContext.stores.length > 1 && this.auth.moduleOn('transfers');
+    }
 
     private syncVault() {
         const id = this.storeContext.effectiveStoreId();
@@ -71,7 +79,7 @@ export class StoreComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit(): void {
-        this.subs.add(this.storeContext.stores$.subscribe(() => this.syncVault()));
+        this.subs.add(this.storeContext.stores$.subscribe(() => { this.syncVault(); this.syncTransfers(); }));
         this.subs.add(this.storeContext.selectedStoreId$.subscribe(() => this.syncVault()));
         this.intentService.findSuggestions({}).subscribe((data: any) => {
             this.reorderCount = (data || []).filter((row: any) => +row.final_qty > 0).length;
