@@ -4,8 +4,9 @@ import { StoreContextService } from "src/app/@core/store-context.service";
 import { UsersService } from "../../settings/users/users.service";
 import { DenominationRow } from "src/app/shared/denominations";
 import { VaultService } from "./vault.service";
+import { CashService } from "../cash/cash.service";
 
-type Panel = "" | "opening" | "deposit" | "change" | "count" | "adjust";
+type Panel = "" | "opening" | "deposit" | "change" | "count" | "adjust" | "dropnow";
 
 const TYPE_LABEL: { [t: string]: string } = {
   OPENING: "Opening balance", DROP_IN: "Put in from a shift", BANK_DEPOSIT_OUT: "Banked", CHANGE_TO_DRAWER: "Change to a drawer", ADJUSTMENT: "Adjustment",
@@ -44,7 +45,11 @@ export class VaultComponent implements OnInit, OnDestroy {
 
   filterType = "";
 
-  constructor(private storeContext: StoreContextService, private vault: VaultService, private users: UsersService) {}
+  /** the open shifts whose drawer cash can go into the vault now */
+  openShifts: any[] = [];
+  dropShiftId: any = "";
+
+  constructor(private storeContext: StoreContextService, private vault: VaultService, private users: UsersService, private cash: CashService) {}
 
   ngOnInit(): void {
     this.users.getCurrentUser().subscribe((u: any) => this.me = u, () => this.me = null);
@@ -89,6 +94,13 @@ export class VaultComponent implements OnInit, OnDestroy {
   // ------------------------------------------------------------ actions
   open(p: Panel) {
     this.message = this.error = ""; this.countResult = null;
+    if (p === "dropnow") {
+      this.openShifts = []; this.dropShiftId = "";
+      this.cash.getShifts(this.storeId).subscribe((s: any) => {
+        this.openShifts = (s || []).filter((x: any) => x.status === "OPEN");
+        if (this.openShifts.length === 1) this.dropShiftId = this.openShifts[0].id;
+      }, () => this.openShifts = []);
+    }
     this.panel = p; this.rows = []; this.total = 0; this.referenceno = ""; this.notes = ""; this.reason = ""; this.direction = "OUT";
     this.transdate = new Date().toISOString().slice(0, 10);
   }
@@ -98,6 +110,7 @@ export class VaultComponent implements OnInit, OnDestroy {
     if (this.busy) return false;
     if (this.panel === "count") return true;               // an empty vault can be counted
     if (this.total <= 0) return false;
+    if (this.panel === "dropnow") return !!this.dropShiftId;
     if (this.panel === "adjust") return this.reason.trim().length > 0;
     return true;
   }
@@ -118,6 +131,8 @@ export class VaultComponent implements OnInit, OnDestroy {
       case "opening": this.vault.opening(id, this.rows, notes).subscribe({ next: done("Opening balance recorded."), error: fail }); break;
       case "deposit": this.vault.deposit(id, { denominations: this.rows, referenceno: this.referenceno.trim() || undefined, transdate: this.transdate || undefined, notes }).subscribe({
         next: (res: any) => done(res?.status === "PENDING" ? "Deposit recorded. A second person must confirm it before it counts." : "Deposit recorded in the cash book.")(res), error: fail }); break;
+      case "dropnow": this.vault.dropNow(id, Number(this.dropShiftId), this.rows, notes).subscribe({
+        next: (res: any) => done(res?.status === "PENDING" ? "Put in the vault. A second person must confirm it before it counts in the vault." : "Put in the vault. The drawer's expected cash is lower by the same amount.")(res), error: fail }); break;
       case "change": this.vault.change(id, this.rows, notes).subscribe({ next: done("Change given from the vault."), error: fail }); break;
       case "count": this.vault.count(id, this.rows, notes).subscribe({ next: done("Count recorded.", true), error: fail }); break;
       case "adjust": this.vault.adjust(id, { direction: this.direction, denominations: this.rows, reason: this.reason.trim(), notes }).subscribe({ next: done("Adjustment recorded."), error: fail }); break;

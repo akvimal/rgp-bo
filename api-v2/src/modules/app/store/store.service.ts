@@ -1306,8 +1306,9 @@ export class StoreService {
       sales: sum((r) => r.category === 'SALE', 'deposit'),
       voids: sum((r) => r.category === 'SALE_VOID', 'withdraw'),
       refunds: sum((r) => r.category === 'REFUND', 'withdraw'),
-      othercashin: sum((r) => r.category !== 'SALE', 'deposit'),
-      othercashout: sum((r) => r.category !== 'SALE_VOID' && r.category !== 'REFUND', 'withdraw'),
+      vaultdrops: Math.round((sum((r) => r.category === 'VAULT_DROP', 'withdraw') - sum((r) => r.category === 'VAULT_DROP', 'deposit')) * 100) / 100,
+      othercashin: sum((r) => r.category !== 'SALE' && r.category !== 'VAULT_DROP', 'deposit'),
+      othercashout: sum((r) => r.category !== 'SALE_VOID' && r.category !== 'REFUND' && r.category !== 'VAULT_DROP', 'withdraw'),
     };
 
     const [owner] = shift.accountableuserid ? await this.manager.query(`select full_name from app_user where id = $1`, [shift.accountableuserid]) : [];
