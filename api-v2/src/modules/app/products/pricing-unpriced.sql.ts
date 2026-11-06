@@ -8,7 +8,7 @@ with latest as (
          (pii.ptr_value * (1 - coalesce(pii.disc_pcnt, 0) / 100.0) * pii.qty / nullif(pii.qty + coalesce(pii.free_qty, 0), 0)) as cost,
          pii.ptr_cost
     from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id
-   where pi.status = 'COMPLETE' and pi.active and not pi.archive and pii.active and not pii.archive
+   where pii.status = 'VERIFIED' and pi.active and not pi.archive and pii.active and not pii.archive
      and pii.mrp_cost > 0 and pii.ptr_value > 0 and ($1::int is null or pii.product_id = $1)
    order by pii.product_id, pi.invoice_date desc, pii.id desc
 ), cur as (
