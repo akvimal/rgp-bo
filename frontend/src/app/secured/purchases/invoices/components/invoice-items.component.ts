@@ -22,6 +22,9 @@ export class InvoiceItemsComponent {
     taxtotal:number = 0;
     disctotal:number = 0;
     nettotal:number = 0;
+    /** returns the vendor credited on this invoice (they come off what it comes to) */
+    creditTotal:number = 0;
+    returnsReload:number = 0;
     outstandingBalance:number = 0;
     importFeedback:string = '';
     completeError:string = '';
@@ -53,7 +56,7 @@ export class InvoiceItemsComponent {
     get expectedTotal(): number {
         const goods = this.grosstotal - this.disctotal;
         const cd = +(this.invoice.cashdiscount || 0);
-        return cd > 0 && goods > cd ? this.nettotal * ((goods - cd) / goods) : this.nettotal;
+        return (cd > 0 && goods > cd ? this.nettotal * ((goods - cd) / goods) : this.nettotal) - this.creditTotal;
     }
     get printedDiff(): number | null {
         return this.invoice.printedtotal ? +(this.expectedTotal - +this.invoice.printedtotal).toFixed(2) : null;
