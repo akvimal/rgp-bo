@@ -29,7 +29,7 @@ export class CustomerCreditService {
     if (note.length < 5) throw new BadRequestException('Say why: at least 5 characters.');
     const [c] = await this.manager.query(`select id, name, mobile from customer where id = $1`, [customerId]);
     if (!c) throw new NotFoundException('Customer not found.');
-    if (!String(c.mobile || '').trim() || c.mobile === '0000000000') throw new BadRequestException('Store credit needs a named customer with a mobile number.');
+    if (c.mobile === '0000000000' || !String(c.name || '').trim()) throw new BadRequestException('Store credit needs a named customer: the walk-in placeholder cannot hold credit.');
     await this.manager.transaction(async tm => {
       await tm.query(`select id from customer where id = $1 for update`, [customerId]);
       const [b] = await tm.query(`select coalesce(sum(amount), 0)::float as balance from customer_credit_entry where customer_id = $1`, [customerId]);

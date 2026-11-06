@@ -79,3 +79,18 @@ export function likelySamePerson(a: string, b: string): boolean {
   if (x.startsWith(y) || y.startsWith(x)) return true;
   return Math.min(x.length, y.length) >= 6 && distance(x, y) <= 2;
 }
+
+/**
+ * Who a customer is when there is no mobile number: a name and a location together, so two people called the same can be told apart.
+ * With a mobile number the name alone is enough (the number tells them apart). Returns why a customer cannot be kept, or null.
+ */
+export function identityProblem(mobile: string | null, name: string | null, locality: string | null): string | null {
+  if (mobile) return null;
+  if (!name || name.trim().length < 3) return 'Enter the mobile number, or the name (at least 3 letters) and the location.';
+  if (!locality || !locality.trim()) return 'Enter the mobile number, or the location, so two people with the same name can be told apart.';
+  return null;
+}
+
+/** the same words whatever the case and spacing: how a name or a location is compared */
+export const sameWords = (a: unknown, b: unknown): boolean =>
+  String(a ?? '').trim().replace(/\s+/g, ' ').toLowerCase() === String(b ?? '').trim().replace(/\s+/g, ' ').toLowerCase();

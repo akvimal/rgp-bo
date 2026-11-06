@@ -9,17 +9,22 @@
                         <app-customer-select
                             (customerSelected)="selectCustomer($event,true)"
                             [inputText]="sale.customer.mobile"
+                            [placeholder]="noMobileMode ? 'Find by name' : 'Mobile'"
                             (onInput)="captureCustomerInfo($event)">
                         </app-customer-select>
                     </div>
-                    <ng-container *ngIf="sale.customer.mobile.length === 10">
-                        <input type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.name" placeholder="Customer name" data-testid="sale-cust-name">
+                    <ng-container *ngIf="sale.customer.mobile.length === 10 || noMobileMode">
+                        <input type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.name" placeholder="Customer name" maxlength="80" data-testid="sale-cust-name">
+                        <input *ngIf="noMobileMode" type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.locality" placeholder="Location" maxlength="60" data-testid="sale-cust-locality">
                         <input type="text" class="form-control form-control-sm w-auto" style="width:14rem !important" [(ngModel)]="sale.customer.email" placeholder="Email (optional)">
                     </ng-container>
+                    <a role="button" class="small" *ngIf="!noMobileMode && sale.customer.mobile.length !== 10" (click)="useNoMobile()" data-testid="sale-no-mobile">No mobile number?</a>
+                    <a role="button" class="small" *ngIf="noMobileMode" (click)="useMobile()" data-testid="sale-use-mobile">Use a mobile number</a>
                 </div>
+                <div class="small text-muted mt-1" *ngIf="noMobileMode && !sale.customer.existing" data-testid="sale-no-mobile-hint">No mobile: enter the name and location, or find an existing customer by name. Refill reminders and messages need a number.</div>
                 <div class="d-flex align-items-center gap-2" *ngIf="sale.customer.existing">
                     <i class="bi bi-person-check fs-5 text-success"></i>
-                    <strong>{{sale.customer?.name}}</strong> <span class="text-muted">{{sale.customer?.mobile}}</span>
+                    <strong>{{sale.customer?.name}}</strong> <span class="text-muted">{{sale.customer?.mobile || 'no mobile'}}<ng-container *ngIf="sale.customer?.locality"> &middot; {{sale.customer.locality}}</ng-container></span>
                     <a role="button" class="ms-1" (click)="showPrevSalesCopy()" title="Earlier bills of this customer"><i class="bi bi-files text-success"></i></a>
                     <a role="button" (click)="resetCustomer()" title="Choose another customer"><i class="bi bi-x-square text-danger"></i></a>
                 </div>
@@ -124,7 +129,7 @@
 </div>
 <div class="alert alert-warning py-2 mb-2 d-flex align-items-center gap-2" *ngIf="isDocumentRequiredOnSale() && !isDocumentProvided()" data-testid="sale-doc-pending">
     <input type="checkbox" class="form-check-input mt-0" id="docpending" [(ngModel)]="sale.docpending" style="width:1.2rem;height:1.2rem">
-    <label for="docpending" class="mb-0"><strong>{{missingDocsText}}</strong> not received yet. Tick to sell now and collect it later (needs the customer's mobile number).</label>
+    <label for="docpending" class="mb-0"><strong>{{missingDocsText}}</strong> not received yet. Tick to sell now and collect it later (needs the customer's mobile number, or their name and location).</label>
 </div>
 <div class="alert alert-warning py-2 mb-2" *ngIf="chronicMobileMissing || submitError" data-testid="sale-chronic-mobile">
     {{submitError || 'This bill has a chronic medicine: enter the customer mobile number before completing.'}}
@@ -160,7 +165,7 @@
 </div>
 
 <!-- Customer View -->
-<p-dialog [header]="this.sale?.customer?.name + ' (' + this.sale?.customer?.mobile + ')'"
+<p-dialog [header]="this.sale?.customer?.name + (this.sale?.customer?.mobile ? ' (' + this.sale?.customer?.mobile + ')' : this.sale?.customer?.locality ? ' (' + this.sale?.customer?.locality + ')' : '')"
         [(visible)]="showCustomerView" [style]="{ width: '75rem', height: '40rem' }" [modal]="true" [maximizable]="true">
     <app-customer-view *ngIf="sale.customer && sale.customer.id" [id]="sale.customer.id" (selected)="onCustomerData($event)"></app-customer-view>
 </p-dialog>

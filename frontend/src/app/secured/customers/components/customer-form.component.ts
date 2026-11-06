@@ -60,7 +60,7 @@ export class CustomerFormComponent implements AfterViewInit {
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
         name: new FormControl('',[requiredTrim, nameValidator]),
-        mobile: new FormControl('',[requiredTrim, mobileValidator]),
+        mobile: new FormControl('', mobileValidator),     // optional: with no number, the name and the location tell the customer apart
         altmobile: new FormControl('', mobileValidator),
         email: new FormControl('', Validators.email),
         address: new FormControl(''),
@@ -176,7 +176,7 @@ export class CustomerFormComponent implements AfterViewInit {
       if (!c.invalid || !(c.dirty || c.touched || this.attempted)) return '';
       const empty = !String(c.value ?? '').trim();
       if (name === 'name') return empty ? 'Name is required.' : 'Enter the customer name (at least 2 letters).';
-      return empty ? 'Mobile number is required.' : 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.';
+      return empty ? '' : 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.';
     }
 
     get altInvalid(): boolean {
@@ -207,8 +207,19 @@ export class CustomerFormComponent implements AfterViewInit {
       this.service.byMobile(n).subscribe(rows => this.sameNumber = (rows || []).filter(r => r.id !== myId), () => this.sameNumber = []);
     }
 
+    /** no mobile typed: the location is then needed (with a name of 3 letters) to tell this customer from another of the same name */
+    get noMobile(): boolean { return !String(this.form.controls['mobile'].value ?? '').trim(); }
+
+    /** what a customer without a mobile still needs, or '' */
+    get identityMissing(): string {
+      if (!this.noMobile) return '';
+      if (String(this.form.controls['name'].value ?? '').trim().length < 3) return 'Without a mobile number the name needs at least 3 letters.';
+      if (!String(this.form.controls['locality'].value ?? '').trim()) return 'Without a mobile number, enter the location so two people with the same name can be told apart.';
+      return '';
+    }
+
     get canSave(): boolean {
-      return this.form.valid && !this.altSameAsMobile && !this.saving && (!this.sameNumber.length || this.confirmDuplicate);
+      return this.form.valid && !this.identityMissing && !this.altSameAsMobile && !this.saving && (!this.sameNumber.length || this.confirmDuplicate);
     }
 
     /** why Save is off, in words */
@@ -216,10 +227,9 @@ export class CustomerFormComponent implements AfterViewInit {
       const f = this.form.controls;
       if (this.saving || this.canSave) return '';
       const noName = !String(f['name'].value ?? '').trim();
-      const noMobile = !String(f['mobile'].value ?? '').trim();
-      if (noName && noMobile) return 'The customer name and mobile number are required.';
       if (f['name'].invalid) return noName ? 'The customer name is required.' : 'Enter the customer name (at least 2 letters).';
-      if (f['mobile'].invalid) return noMobile ? 'The mobile number is required.' : 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.';
+      if (f['mobile'].invalid) return 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9, or leave it blank.';
+      if (this.identityMissing) return this.identityMissing;
       if (f['email'].invalid) return 'The email address is not valid.';
       if (f['altmobile'].invalid) return 'The alternate number must be a 10-digit mobile starting with 6, 7, 8 or 9, or left blank.';
       if (this.altSameAsMobile) return 'The alternate number is the same as the mobile number.';
