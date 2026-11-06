@@ -30,6 +30,8 @@ import { VendorPaymentController } from "./vendor-payment.controller";
 import { VendorPaymentService } from "./vendor-payment.service";
 import { PurchaseSuggestionController } from "./purchase-suggestion.controller";
 import { PurchaseDownloadController } from "./purchase-download.controller";
+import { VendorReturnController } from "./vendor-return.controller";
+import { VendorReturnService } from "./vendor-return.service";
 
 @Module({
     imports: [RoleModule, TypeOrmModule.forFeature([
@@ -52,8 +54,9 @@ import { PurchaseDownloadController } from "./purchase-download.controller";
       InvoiceScanController,
       PurchaseItemController,
       VendorPaymentController,
+      VendorReturnController,
       PurchaseDownloadController],
-    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,InvoiceViewService,InvoiceExtractService,
+    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,VendorReturnService,InvoiceViewService,InvoiceExtractService,
       InvoiceScanService,JwtService],
     exports: [PurchaseService,PurchaseInvoiceService,VendorPaymentService],
   })

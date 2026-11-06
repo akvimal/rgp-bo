@@ -216,6 +216,10 @@
                         <td colspan="13" class="text-end">Net total</td>
                         <td class="text-end inv-value text-primary">{{nettotal | number:'1.2-2'}}</td>
                     </tr>
+                    <tr *ngIf="creditTotal" data-testid="invoice-credit-total">
+                        <td colspan="13" class="text-end text-muted">Returns adjusted (see below)</td>
+                        <td class="text-end">&minus; {{creditTotal | number:'1.2-2'}}</td>
+                    </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage">
                     <tr><td colspan="14" class="text-center text-muted py-4" data-testid="invoice-no-items">No items yet.<span *ngIf="invoice.status === 'NEW'"> Add them above, or delete this draft if you do not need it.</span></td></tr>
@@ -299,6 +303,9 @@
     <span class="text-success" *ngIf="pricedNewMessage" data-testid="new-prices-message">{{pricedNewMessage}}</span>
     <div class="text-danger" *ngIf="pricedNewError" data-testid="new-prices-error">{{pricedNewError}}</div>
 </div>
+
+<app-invoice-returns *ngIf="invoice.id" [invoiceid]="invoice.id" [status]="invoice.status" [reload]="returnsReload"
+    (applied)="creditTotal = $event" (changed)="fetchItems(invoice.id); returnsReload = returnsReload + 1"></app-invoice-returns>
 
 <div class="alert alert-warning small mt-3 mb-0" *ngIf="invoice.status !== 'NEW' && !invoice.invoiceno" data-testid="invoice-awaiting-note">
     Received on challan {{invoice.challanno}} at the challan rates. Payment opens once the vendor's invoice number is entered

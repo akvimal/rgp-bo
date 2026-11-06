@@ -7,6 +7,8 @@ import { SharedModule } from "src/app/shared/shared.module";
 import { InvoiceFormComponent } from "./invoices/components/invoice-form.component";
 import { InvoiceItemsComponent } from "./invoices/components/invoice-items.component";
 import { InvoicePaymentComponent } from "./invoices/components/invoice-payment.component";
+import { InvoiceReturnsComponent } from "./invoices/components/invoice-returns.component";
+import { VendorReturnsComponent } from "./invoices/components/vendor-returns.component";
 import { InvoiceListComponent } from "./invoices/components/invoice-list.component";
 import { PayablesComponent } from "./invoices/components/payables.component";
 import { AutoCompleteModule } from 'primeng/autocomplete';
@@ -47,6 +49,7 @@ const routes: Routes = [
       { path: 'my-requests', component: PurchaseRequestComponent },
       { path: 'suggestions', component: PurchaseOrdersHomeComponent, data: { tab: 'reorder' } },
       { path: 'payables', redirectTo: 'invoices/by-vendor', pathMatch: 'full' },
+      { path: 'returns', component: VendorReturnsComponent },
       { path: 'gst', component: GstReconciliationComponent },
       { path: 'settings', component: PurchaseSettingsComponent },
       { path: 'invoices', 
@@ -84,6 +87,8 @@ const routes: Routes = [
       InvoiceItemsComponent,
       InvoiceItemFormComponent,
       InvoicePaymentComponent,
+      InvoiceReturnsComponent,
+      VendorReturnsComponent,
       PurchaseSettingsComponent
     ],
     imports: [

@@ -18,6 +18,7 @@ import { AuditService } from "src/core/audit/audit.service";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
 import { invoiceGstHeader, invoiceNet, lineGst, r2 } from "./purchase-totals";
+import { netAfterCredits } from "./vendor-return-rule";
 import { businessOfUser } from "src/core/business-of-user";
 import { taxRatesFor } from "./tax-rates";
 import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
@@ -212,6 +213,14 @@ export class PurchaseInvoiceService {
         const items = (await this.purchaseInvoiceItemRepository.find({ where: { invoiceid, isActive: true, isArchived: false } })).filter((i:any) => !['DISPUTED', 'REJECTED'].includes(i.status));
         // a cash discount at the foot comes off the goods before tax, so the taxable value and the GST fall with it, as the total does
         const header = invoiceGstHeader(items as any[], invoice.cashdiscount, invoice.total);
+        // returns adjusted on the invoice take their taxable value and GST off the header, as they take their amount off the total
+        const [cr] = await this.manager.query(`select coalesce(sum(taxable), 0)::float8 as taxable, coalesce(sum(tax), 0)::float8 as tax from purchase_invoice_credit where invoice_id = $1 and active`, [invoiceid]);
+        if(cr && (+cr.taxable || +cr.tax)){
+          header.taxablevalue = r2(header.taxablevalue - +cr.taxable);
+          if(invoice.supplytype === 'INTER'){ header.igstamount = r2(header.igstamount - +cr.tax); }
+          else { const half = r2(+cr.tax / 2); header.cgstamount = r2(header.cgstamount - half); header.sgstamount = r2(header.sgstamount - (+cr.tax - half)); }
+          header.roundoff = r2((Number(invoice.total) || 0) - (header.taxablevalue + header.cgstamount + header.sgstamount + header.igstamount));
+        }
         await this.purchaseInvoiceRepository.update(invoiceid, header);
     }
 
@@ -580,6 +589,10 @@ export class PurchaseInvoiceService {
              where purchase_item_id in (select id from purchase_invoice_item where invoice_id = $1)
                and sale_id in (select id from sale where status = 'VOID')`, [id]);
 
+          // Step 0b: returns adjusted on this draft go back to open, to be adjusted on another invoice
+          await transactionManager.query(`update vendor_return set status = 'OPEN', adjusted_invoice_id = null, adjusted_on = null where adjusted_invoice_id = $1 and status = 'ADJUSTED'`, [id]);
+          await transactionManager.query(`delete from purchase_invoice_credit where invoice_id = $1`, [id]);
+
           // Step 1: Delete related product prices
           await transactionManager.query(`
             delete from product_price where
@@ -837,7 +850,12 @@ export class PurchaseInvoiceService {
 
       /** sets the invoice total to what its live lines come to with GST (rounded to the rupee when asked) and refreshes the GST split */
       async refreshTotal(invoiceid:number, userid:number, round = true){
-        const { net } = await this.netLive(invoiceid);
+        const { net: bought } = await this.netLive(invoiceid);
+        // returns the vendor has credited on this invoice come off what was bought
+        const [c] = await this.manager.query(`select coalesce(sum(amount), 0)::float8 as t from purchase_invoice_credit where invoice_id = $1 and active`, [invoiceid]);
+        const after = netAfterCredits(bought, +(c?.t || 0));
+        if(after.problem) throw new BadRequestException(after.problem);
+        const net = after.net;
         await this.update([invoiceid], { total: round ? Math.round(net) : r2(net) }, userid);
       }
 
