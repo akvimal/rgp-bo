@@ -26,6 +26,8 @@ export class UserEditFormComponent {
   currentUserBusinessName = '';
   details:any = blankStaffDetails();
   detailsError = '';
+  /** why the save was refused (a role that cannot be given, a person outside your business...), shown on the form */
+  saveError = '';
 
   /** the registration is for someone who works at a pharmacy store: one of the stores ticked (or, with none ticked, any store of the business) is a pharmacy */
   get pharmacistApplies():boolean {
@@ -123,6 +125,7 @@ export class UserEditFormComponent {
         }
 
         const id = this.form.value.id;
+        this.saveError = '';
         this.service.update(id, obj).subscribe(data => {
           const body = this.showDetails ? staffDetailsBody(this.details, this.pharmacistApplies) : null;
           if (!body) { this.gotoList(); return; }
@@ -130,6 +133,9 @@ export class UserEditFormComponent {
             const m = err?.error?.message;
             this.detailsError = 'The user was saved, but the staff details were not: ' + (Array.isArray(m) ? m.join(' ') : (m || 'try again.'));
           });
+        }, (err:any) => {
+          const m = err?.error?.message;
+          this.saveError = Array.isArray(m) ? m.join(' ') : (m || (err?.status === 403 ? 'You are not allowed to make this change.' : 'The user could not be saved. Please try again.'));
         });
 
       }
