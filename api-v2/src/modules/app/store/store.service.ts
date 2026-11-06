@@ -1300,6 +1300,16 @@ export class StoreService {
       order: { transdate: 'ASC', id: 'ASC' },
     });
 
+    // the cash book by kind, so the lines of the report add up to the expected closing cash (a void is its own line, not "other cash out")
+    const sum = (f: (r: any) => boolean, k: 'deposit' | 'withdraw') => Math.round(ledger.filter(f).reduce((s, r: any) => s + Number(r[k] || 0), 0) * 100) / 100;
+    const cashbreakdown = {
+      sales: sum((r) => r.category === 'SALE', 'deposit'),
+      voids: sum((r) => r.category === 'SALE_VOID', 'withdraw'),
+      refunds: sum((r) => r.category === 'REFUND', 'withdraw'),
+      othercashin: sum((r) => r.category !== 'SALE', 'deposit'),
+      othercashout: sum((r) => r.category !== 'SALE_VOID' && r.category !== 'REFUND', 'withdraw'),
+    };
+
     const [owner] = shift.accountableuserid ? await this.manager.query(`select full_name from app_user where id = $1`, [shift.accountableuserid]) : [];
     return {
       shift: { ...shift, ...stats },
@@ -1308,6 +1318,7 @@ export class StoreService {
       returns: returnsRow,
       staff: staffBreakdown,
       ledger,
+      cashbreakdown,
       checklists: await this.shiftChecklists(shiftId),
     };
   }

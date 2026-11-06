@@ -118,15 +118,23 @@
         </tr>
         <tr>
           <td class="text-muted">Cash Sales ({{shiftReport.sales.bill_count}} bills)</td>
-          <td class="text-end text-success">+ ₹{{shiftReport.sales.cash_sales | number:'1.0-0'}}</td>
+          <td class="text-end text-success" data-testid="rep-sales">+ ₹{{(shiftReport.cashbreakdown ? shiftReport.cashbreakdown.sales : shiftReport.sales.cash_sales) | number:'1.0-0'}}</td>
         </tr>
-        <tr *ngIf="shiftReport.returns.return_count > 0">
-          <td class="text-muted">Cash Returns ({{shiftReport.returns.return_count}} items)</td>
-          <td class="text-end text-danger">− ₹{{shiftReport.returns.return_value | number:'1.0-0'}}</td>
+        <tr *ngIf="shiftReport.cashbreakdown?.voids > 0">
+          <td class="text-muted">Voided bills (cash taken back out)</td>
+          <td class="text-end text-danger" data-testid="rep-voids">− ₹{{shiftReport.cashbreakdown.voids | number:'1.0-0'}}</td>
         </tr>
-        <tr *ngIf="shiftReport.shift.withdraw > 0">
+        <tr *ngIf="shiftReport.cashbreakdown ? shiftReport.cashbreakdown.refunds > 0 : shiftReport.returns.return_count > 0">
+          <td class="text-muted">Cash Returns<span *ngIf="shiftReport.returns.return_count > 0"> ({{shiftReport.returns.return_count}} items)</span></td>
+          <td class="text-end text-danger" data-testid="rep-refunds">− ₹{{(shiftReport.cashbreakdown ? shiftReport.cashbreakdown.refunds : shiftReport.returns.return_value) | number:'1.0-0'}}</td>
+        </tr>
+        <tr *ngIf="shiftReport.cashbreakdown?.othercashin > 0">
+          <td class="text-muted">Other Cash In</td>
+          <td class="text-end text-success" data-testid="rep-cashin">+ ₹{{shiftReport.cashbreakdown.othercashin | number:'1.0-0'}}</td>
+        </tr>
+        <tr *ngIf="(shiftReport.cashbreakdown ? shiftReport.cashbreakdown.othercashout : shiftReport.shift.withdraw) > 0">
           <td class="text-muted">Other Cash Out</td>
-          <td class="text-end text-danger">− ₹{{shiftReport.shift.withdraw | number:'1.0-0'}}</td>
+          <td class="text-end text-danger" data-testid="rep-cashout">− ₹{{(shiftReport.cashbreakdown ? shiftReport.cashbreakdown.othercashout : shiftReport.shift.withdraw) | number:'1.0-0'}}</td>
         </tr>
         <tr class="border-top">
           <td class="fw-semibold">Expected Closing Cash</td>
