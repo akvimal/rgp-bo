@@ -21,7 +21,7 @@ export class InvoiceOutstandingComponent {
     ) {}
 
     ngOnInit(){
-        this.vendorService.findAll('all').subscribe((data:any) => this.vendors = data || []);
+        this.vendorService.options().subscribe((data:any) => this.vendors = data || []);
         this.fetchOutstanding();
     }
 

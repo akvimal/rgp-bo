@@ -273,7 +273,7 @@ export class FinanceService {
     return { rows, total: tot, vendors: await this.vendorList(), categories: (await this.manager.query(`select name from expense_category where active order by display_order, name`)).map((c: any) => c.name) };
   }
 
-  private vendorList() { return this.manager.query(`select id, business_name as name from vendor where active and not archive order by business_name`); }
+  private vendorList() { return this.manager.query(`select id, business_name as name from vendor where active and not archive order by lower(business_name)`); }
 
   /** say what a line is; optionally remember it, so the same kind of line is tagged next time (and the matching lines already there now) */
   async tagLine(user: any, id: number, b: any) {

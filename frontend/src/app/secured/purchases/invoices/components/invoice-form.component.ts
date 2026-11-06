@@ -114,7 +114,7 @@ export class InvoiceFormComponent implements OnInit {
         }
       });
 
-      this.vendorService.findUsable().subscribe((data:any) => {
+      this.vendorService.options(true).subscribe((data:any) => {
         this.vendors = data;
         this.setDue();
       });

@@ -90,7 +90,7 @@ export class PurchaseSuggestionComponent implements OnDestroy {
     ngOnDestroy(){ this.subs.unsubscribe(); }
 
     ngOnInit(){
-        this.vendorService.findUsable().subscribe((data:any) => this.vendors = data || []);
+        this.vendorService.options(true).subscribe((data:any) => this.vendors = data || []);
         this.storeid = this.storeContext.selectedStoreId;
         this.subs.add(this.storeContext.selectedStoreId$.subscribe((id:any) => {
             if(id !== this.storeid){ this.storeid = id; this.fetchSuggestions(); }

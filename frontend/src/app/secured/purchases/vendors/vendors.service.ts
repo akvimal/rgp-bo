@@ -1,5 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { map } from "rxjs/operators";
 import { Vendor } from "./vendor.model";
 import { environment } from "../../../../environments/environment";
 
@@ -15,6 +16,15 @@ export class VendorsService {
     /** status: active (default, blocked ones included) | usable | blocked | disabled | all */
     findAll(status?:string){
         return this.http.get<any[]>(this.apiurl, status ? { params: { status } } : {});
+    }
+
+    /**
+     * What a vendor dropdown offers: active vendors only (disabled ones are left out), A to Z. `usable` also leaves out blocked vendors, for
+     * the forms that start new business (requests, orders, invoices); a filter keeps blocked ones, who may still have invoices to find.
+     */
+    options(usable = false){
+        return this.findAll(usable ? 'usable' : 'active').pipe(
+            map((rows:any[]) => (rows || []).slice().sort((a:any, b:any) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))));
     }
 
     /** vendors a purchase form may offer: active and not blocked */
