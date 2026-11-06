@@ -523,6 +523,16 @@ export class PurchaseInvoiceService {
       if (inv.payments > 0) throw new BadRequestException('This invoice has payments recorded against it, so it cannot be deleted.');
       if (inv.issues > 0) throw new BadRequestException('A vendor issue is raised against this invoice, so it cannot be deleted.');
       if (inv.gst > 0) throw new BadRequestException('This invoice is matched in GST reconciliation, so it cannot be deleted.');
+      // a line sold on a bill that still stands cannot go: the bill must be voided first (a voided bill lets go of the line below)
+      const sold = await this.manager.query(
+        `select distinct s.id, coalesce(s.bill_no::text, '#' || s.id) as bill, p.title
+           from sale_item si join sale s on s.id = si.sale_id
+           join purchase_invoice_item pii on pii.id = si.purchase_item_id join product p on p.id = pii.product_id
+          where pii.invoice_id = $1 and coalesce(s.status, '') <> 'VOID' order by 2`, [id]);
+      if (sold.length) {
+        const bills = [...new Set<string>(sold.map((r:any) => r.bill))];
+        throw new BadRequestException(`This invoice cannot be deleted: ${sold.length === 1 ? 'a line' : 'lines'} (${[...new Set<string>(sold.map((r:any) => r.title))].slice(0, 3).join(', ')}${sold.length > 3 ? ', ...' : ''}) ${sold.length === 1 ? 'was' : 'were'} sold on bill ${bills.slice(0, 5).join(', ')}${bills.length > 5 ? ' and more' : ''}. Void ${bills.length === 1 ? 'that bill' : 'those bills'} first.`);
+      }
       const requestids = await this.requestsOnInvoices([id]);
       const result = await this.removeRows(id);
       await this.syncRequestFulfilment(requestids);               // what this invoice had received is no longer received
@@ -563,6 +573,12 @@ export class PurchaseInvoiceService {
       // Wrap multi-step delete in transaction to prevent orphaned data
       return await this.purchaseInvoiceRepository.manager.transaction('SERIALIZABLE', async (transactionManager) => {
         try {
+          // Step 0: a voided bill keeps its lines (product, batch text, quantity, price) but lets go of the purchase line that is going
+          await transactionManager.query(`
+            update sale_item set purchase_item_id = null
+             where purchase_item_id in (select id from purchase_invoice_item where invoice_id = $1)
+               and sale_id in (select id from sale where status = 'VOID')`, [id]);
+
           // Step 1: Delete related product prices
           await transactionManager.query(`
             delete from product_price where
@@ -583,9 +599,18 @@ export class PurchaseInvoiceService {
             .from(PurchaseInvoice)
             .where("id = :id", { id })
             .execute();
-        } catch (error) {
+        } catch (error: any) {
           // Transaction will automatically rollback on error
-          throw new Error(`Failed to delete purchase invoice: ${error.message}`);
+          if (error?.code === '23503') {
+            // a record elsewhere still points at one of the lines: say what in plain words, not the constraint
+            const what = /qtychange/.test(error.constraint ?? error.message) ? 'a stock quantity adjustment'
+              : /clearance/.test(error.constraint ?? error.message) ? 'a stock clearance'
+              : /issue/.test(error.constraint ?? error.message) ? 'a vendor issue'
+              : /audit/.test(error.constraint ?? error.message) ? 'a stock audit'
+              : /sale_item/.test(error.constraint ?? error.message) ? 'a sale' : 'another record';
+            throw new BadRequestException(`This invoice cannot be deleted: ${what} refers to one of its lines. Remove or settle that first.`);
+          }
+          throw new BadRequestException(`The invoice could not be deleted (${error?.detail || error?.message || 'unknown error'}).`);
         }
       });
     }
