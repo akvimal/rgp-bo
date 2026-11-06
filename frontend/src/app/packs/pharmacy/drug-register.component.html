@@ -37,7 +37,7 @@
   <div><label class="form-label mb-0 small">To</label><input type="date" class="form-control form-control-sm" [(ngModel)]="f.to" (change)="load()" data-testid="dr-to"></div>
   <div><label class="form-label mb-0 small">Schedule</label>
     <select class="form-select form-select-sm" [(ngModel)]="f.schedule" (change)="load()" data-testid="dr-schedule"><option value="">H, H1 and X</option><option value="H1">H1</option><option value="H">H</option><option value="X">X</option></select></div>
-  <div *ngIf="data && data.stores.length > 1"><label class="form-label mb-0 small">Store</label>
+  <div *ngIf="data && data.stores.length"><label class="form-label mb-0 small">Store</label>
     <select class="form-select form-select-sm" [(ngModel)]="f.storeid" (change)="load()"><option [ngValue]="null">All stores</option><option *ngFor="let s of data.stores" [ngValue]="s.id">{{s.location}}</option></select></div>
   <div><label class="form-label mb-0 small">Search</label><input class="form-control form-control-sm" [(ngModel)]="f.q" (keyup.enter)="load()" placeholder="patient, doctor, drug, batch, bill" data-testid="dr-search"></div>
   <div class="form-check mb-1"><input class="form-check-input" type="checkbox" id="dr-sup" [(ngModel)]="f.superseded" (change)="load()"><label class="form-check-label small" for="dr-sup">Include lines of bills that were changed</label></div>

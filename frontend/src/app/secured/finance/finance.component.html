@@ -28,7 +28,7 @@
     </div>
     <div><label class="form-label mb-0 small">From</label><input type="date" class="form-control form-control-sm" [(ngModel)]="from" (change)="loadOverview()" data-testid="fin-from"></div>
     <div><label class="form-label mb-0 small">To</label><input type="date" class="form-control form-control-sm" [(ngModel)]="to" (change)="loadOverview()" data-testid="fin-to"></div>
-    <div *ngIf="stores.length > 1"><label class="form-label mb-0 small">Store</label>
+    <div *ngIf="stores.length"><label class="form-label mb-0 small">Store</label>
       <select class="form-select form-select-sm" [(ngModel)]="ovStore" (change)="loadOverview()"><option [ngValue]="null">All stores</option><option *ngFor="let s of stores" [ngValue]="s.id">{{s.location}}</option></select></div>
     <div *ngIf="accounts.length"><label class="form-label mb-0 small">Bank account</label>
       <select class="form-select form-select-sm" [(ngModel)]="ovAccount" (change)="loadOverview()"><option [ngValue]="null">All accounts</option><option *ngFor="let a of accounts" [ngValue]="a.id">{{a.name}}</option></select></div>

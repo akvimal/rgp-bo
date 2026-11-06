@@ -14,7 +14,7 @@
         <span *ngIf="isSiteAdmin" class="badge bg-warning text-dark ms-2" data-testid="platform-badge">PLATFORM ADMIN</span>
       </div><!-- End Logo -->
 
-      <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin && !hideStoreSwitcher" data-testid="store-switcher-wrap">
+      <div class="ms-3 flex-grow-1" style="max-width: 320px;" *ngIf="!isSiteAdmin" data-testid="store-switcher-wrap">
         <span *ngIf="singleStore" class="form-control form-control-sm bg-light text-truncate" data-testid="store-label" title="Your store">{{singleStore.business?.name}} - {{singleStore.location}}</span>
         <select *ngIf="!singleStore" class="form-select form-select-sm" data-testid="store-switcher" [ngModel]="selectedStoreId === null ? '' : selectedStoreId" (change)="changeStore($event)" aria-label="Select store">
           <option value="">All stores</option>
