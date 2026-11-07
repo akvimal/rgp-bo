@@ -25,11 +25,11 @@ import { VendorsService } from "../../vendors/vendors.service";
       <div class="alert alert-danger py-2" *ngIf="error" data-testid="vr-error">{{error}}</div>
       <div class="table-responsive">
         <table class="table table-sm align-middle">
-          <thead><tr><th>#</th><th>Date</th><th>Vendor</th><th>Lines</th><th class="text-end">Credit due</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>Date</th><th>Vendor</th><th>From invoice</th><th>Lines</th><th class="text-end">Credit due</th><th>Status</th><th></th></tr></thead>
           <tbody>
             <tr *ngFor="let r of rows" data-testid="vr-row">
               <td>{{r.returnno || r.id}}<div class="small text-muted" *ngIf="r.reason">{{r.reason}}</div></td>
-              <td>{{r.returndate}}</td><td>{{r.vendor}}</td><td>{{r.lines}}</td>
+              <td>{{r.returndate}}</td><td>{{r.vendor}}</td><td class="small" data-testid="vr-from">{{r.frominvoices || '-'}}</td><td>{{r.lines}}</td>
               <td class="text-end">{{r.total | number:'1.2-2'}}</td>
               <td><span class="badge" [ngClass]="r.status === 'OPEN' ? 'bg-warning text-dark' : (r.status === 'ADJUSTED' ? 'bg-success' : 'bg-secondary')">{{r.status === 'ADJUSTED' ? 'Credited' : (r.status === 'OPEN' ? 'Open' : 'Cancelled')}}</span>
                 <span class="small text-muted ms-1" *ngIf="r.adjustedinvoiceno">on {{r.adjustedinvoiceno}}</span></td>
@@ -38,7 +38,7 @@ import { VendorsService } from "../../vendors/vendors.service";
                 <button type="button" class="btn btn-outline-danger btn-sm py-0" *ngIf="r.status === 'OPEN'" (click)="cancelling = r; note = ''" data-testid="vr-cancel">Cancel</button>
               </td>
             </tr>
-            <tr *ngIf="!rows.length"><td colspan="7" class="text-center text-muted py-3">No returns to vendors yet.</td></tr>
+            <tr *ngIf="!rows.length"><td colspan="8" class="text-center text-muted py-3">No returns to vendors yet.</td></tr>
           </tbody>
         </table>
       </div>
@@ -55,28 +55,32 @@ import { VendorsService } from "../../vendors/vendors.service";
         <div class="col-12"><label class="form-label">Why</label><input class="form-control" maxlength="200" [(ngModel)]="reason" placeholder="e.g. near expiry, damaged, wrong item" data-testid="vr-reason"></div>
       </div>
       <div class="input-group input-group-sm mb-2" *ngIf="vendorid">
-        <input class="form-control" [(ngModel)]="search" (keyup.enter)="find()" placeholder="Find the batch to send back: product name or batch" data-testid="vr-search">
+        <input class="form-control" [(ngModel)]="search" (keyup.enter)="find()" placeholder="Find the batch to send back: product, batch or the invoice number it came in on" data-testid="vr-search">
         <button type="button" class="btn btn-outline-primary" (click)="find()" data-testid="vr-find">Find</button>
+      </div>
+      <div class="d-flex justify-content-between align-items-center small mb-1" *ngIf="found.length">
+        <span class="text-muted">{{found.length}} batch{{found.length === 1 ? '' : 'es'}} in stock. Search by an invoice number to see what is left of it.</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm py-0" (click)="addAll()" data-testid="vr-add-all">Add all</button>
       </div>
       <div class="table-responsive mb-2" *ngIf="found.length" style="max-height:12rem;overflow:auto">
         <table class="table table-sm mb-0"><tbody>
           <tr *ngFor="let b of found" data-testid="vr-found">
-            <td>{{b.title}}</td><td>{{b.batch}}</td><td>{{b.expdate}}</td><td>in stock {{b.available}}</td>
+            <td>{{b.title}}</td><td>{{b.batch}}</td><td>{{b.expdate}}</td><td class="small" data-testid="vr-found-inv">{{b.invoiceno || '-'}}<span class="text-muted" *ngIf="b.invoicedate"> &middot; {{b.invoicedate}}</span></td><td>in stock {{b.available}}</td>
             <td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm py-0" (click)="addLine(b)" [disabled]="has(b)" data-testid="vr-add">Add</button></td>
           </tr></tbody></table>
       </div>
       <table class="table table-sm align-middle" *ngIf="lines.length" data-testid="vr-lines">
-        <thead><tr><th>Item</th><th>Batch</th><th style="width:6rem">Qty</th><th style="width:7rem">Credit rate</th><th>GST %</th><th class="text-end">Credit</th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>Batch</th><th>Invoice</th><th style="width:6rem">Qty</th><th style="width:7rem">Credit rate</th><th>GST %</th><th class="text-end">Credit</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let l of lines; let i = index">
-            <td>{{l.title}}<div class="small text-muted">in stock {{l.available}}</div></td><td>{{l.batch}}</td>
+            <td>{{l.title}}<div class="small text-muted">in stock {{l.available}}</div></td><td>{{l.batch}}</td><td class="small">{{l.invoiceno || '-'}}</td>
             <td><input type="number" min="1" [max]="l.available" class="form-control form-control-sm" [(ngModel)]="l.qty" data-testid="vr-qty"></td>
             <td><input type="number" min="0" step="0.0001" class="form-control form-control-sm" [(ngModel)]="l.rate" data-testid="vr-rate"></td>
             <td>{{l.taxpcnt}}</td><td class="text-end">{{lineTotal(l) | number:'1.2-2'}}</td>
             <td><button type="button" class="btn btn-link text-danger btn-sm py-0" (click)="lines.splice(i, 1)">Remove</button></td>
           </tr>
         </tbody>
-        <tfoot><tr class="fw-semibold"><td colspan="5" class="text-end">Credit due from the vendor</td><td class="text-end" data-testid="vr-total">{{total | number:'1.2-2'}}</td><td></td></tr></tfoot>
+        <tfoot><tr class="fw-semibold"><td colspan="6" class="text-end">Credit due from the vendor</td><td class="text-end" data-testid="vr-total">{{total | number:'1.2-2'}}</td><td></td></tr></tfoot>
       </table>
       <div class="small text-muted">The goods leave stock now. The return stays open until the vendor credits it on a later invoice; adjust it there.</div>
       <ng-template pTemplate="footer">
@@ -88,9 +92,9 @@ import { VendorsService } from "../../vendors/vendors.service";
     <p-dialog [header]="'Return ' + (viewing?.returnno || viewing?.id || '')" [visible]="!!viewing" (visibleChange)="!$event && (viewing = null)" [modal]="true" [style]="{width: '40rem'}" [draggable]="false">
       <div *ngIf="viewing" data-testid="vr-detail">
         <div class="small text-muted mb-2">{{viewing.vendor}} &middot; {{viewing.returndate}} <span *ngIf="viewing.reason">&middot; {{viewing.reason}}</span> <span *ngIf="viewing.cancelnote">&middot; cancelled: {{viewing.cancelnote}}</span></div>
-        <table class="table table-sm"><thead><tr><th>Item</th><th>Batch</th><th>Qty</th><th>Rate</th><th class="text-end">Credit</th></tr></thead>
-          <tbody><tr *ngFor="let i of viewing.items"><td>{{i.title}}</td><td>{{i.batch}}</td><td>{{i.qty}}</td><td>{{i.rate}}</td><td class="text-end">{{i.total * (1 + i.taxpcnt / 100) | number:'1.2-2'}}</td></tr></tbody>
-          <tfoot><tr class="fw-semibold"><td colspan="4" class="text-end">Credit due</td><td class="text-end">{{viewing.total | number:'1.2-2'}}</td></tr></tfoot></table>
+        <table class="table table-sm"><thead><tr><th>Item</th><th>Batch</th><th>From invoice</th><th>Qty</th><th>Rate</th><th class="text-end">Credit</th></tr></thead>
+          <tbody><tr *ngFor="let i of viewing.items"><td>{{i.title}}</td><td>{{i.batch}}</td><td class="small" data-testid="vr-detail-inv">{{i.invoiceno || '-'}}<span class="text-muted" *ngIf="i.invoicedate"> &middot; {{i.invoicedate}}</span></td><td>{{i.qty}}</td><td>{{i.rate}}</td><td class="text-end">{{i.total * (1 + i.taxpcnt / 100) | number:'1.2-2'}}</td></tr></tbody>
+          <tfoot><tr class="fw-semibold"><td colspan="5" class="text-end">Credit due</td><td class="text-end">{{viewing.total | number:'1.2-2'}}</td></tr></tfoot></table>
       </div>
     </p-dialog>
 
@@ -157,6 +161,7 @@ export class VendorReturnsComponent implements OnInit {
 
   has(b: any): boolean { return this.lines.some(l => l.itemid === b.itemid); }
   addLine(b: any) { if (!this.has(b)) this.lines.push({ ...b, qty: 1 }); }
+  addAll() { this.found.forEach(b => this.addLine(b)); }
   lineTotal(l: any): number { const t = (+l.qty || 0) * (+l.rate || 0); return Math.round(t * (1 + (+l.taxpcnt || 0) / 100) * 100) / 100; }
   get total(): number { return Math.round(this.lines.reduce((s, l) => s + this.lineTotal(l), 0) * 100) / 100; }
 
