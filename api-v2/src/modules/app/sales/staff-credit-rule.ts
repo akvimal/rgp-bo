@@ -12,7 +12,7 @@ export const currentPeriod = () => new Date().toISOString().slice(0, 7);
  * credit (this bill included) stays inside that cap. The cap is the Business Head's approval. Anything else with a
  * staff-credit amount is refused; a bill without one carries none.
  */
-export async function checkStaffCredit(manager: EntityManager, sale: any, saleId?: number | null) {
+export async function checkStaffCredit(manager: EntityManager, sale: any, saleId?: number | null, billStoreId?: number | null) {
   const none = { staffcreditamt: 0, staffcredituserid: null, staffcreditfor: null };
   if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return null;
   const amount = money(Number(sale?.staffcreditamt || 0));
@@ -21,6 +21,11 @@ export async function checkStaffCredit(manager: EntityManager, sale: any, saleId
   const total = money(Number(sale?.total || 0));
   if (Math.abs(amount - total) > 0.5 || Number(sale?.cashamt || 0) > 0 || Number(sale?.digiamt || 0) > 0 || Number(sale?.creditamt || 0) > 0) {
     throw new BadRequestException('Staff credit pays the whole bill: no cash or digital amount can be mixed with it.');
+  }
+  const storeId = Number(billStoreId || sale?.storeid || 0);
+  if (storeId) {
+    const [st] = await manager.query(`select location, staff_credit_allowed from stores where id = $1`, [storeId]);
+    if (st && st.staff_credit_allowed === false) throw new BadRequestException(`${String(st.location).trim()} does not give staff credit. Take cash or digital payment.`);
   }
   const userId = Number(sale?.staffcredituserid || 0);
   if (!userId) throw new BadRequestException('Choose the staff member the credit is for.');

@@ -4,7 +4,7 @@
         <div class="btn-group btn-group-sm" role="group" aria-label="How it is paid">
             <button type="button" class="btn" [ngClass]="cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(true)" data-testid="pos-pay-cash">Cash</button>
             <button type="button" class="btn" [ngClass]="!cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(false)" data-testid="pos-pay-digital">Digital / split</button>
-            <button type="button" *ngIf="staffOptions.length" class="btn" [ngClass]="payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useStaffCredit()" data-testid="pos-staff-credit" [attr.aria-pressed]="!!payment.staffcredit">Staff credit</button>
+            <button type="button" *ngIf="staffOptions.length && shiftContext.staffCreditAllowed" class="btn" [ngClass]="payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useStaffCredit()" data-testid="pos-staff-credit" [attr.aria-pressed]="!!payment.staffcredit">Staff credit</button>
             <button type="button" *ngIf="customerId" class="btn" [ngClass]="payment.latemode && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useLater()" data-testid="pos-pay-later" [attr.aria-pressed]="!!payment.latemode">Pay later</button>
         </div>
         <ng-container *ngIf="!cashonly && !payment.staffcredit">
@@ -42,7 +42,7 @@
     <div class="small text-danger" *ngIf="refMissing" data-testid="pos-digi-ref-msg">Enter the last 4 digits of the Paytm transaction id, or leave it blank.</div>
 
     <!-- staff credit / store credit -->
-    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="staffOptions.length && payment.staffcredit">
+    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="staffOptions.length && shiftContext.staffCreditAllowed && payment.staffcredit">
         <select class="form-select form-select-sm w-auto" aria-label="Staff member" data-testid="pos-staff-credit-user" [(ngModel)]="payment.staffcredituserid">
             <option [ngValue]="null">Choose staff member</option>
             <option *ngFor="let s of staffOptions" [ngValue]="s.id">{{s.name}} (&#8377;{{s.remaining | number:'1.0-0'}} left this month)</option>

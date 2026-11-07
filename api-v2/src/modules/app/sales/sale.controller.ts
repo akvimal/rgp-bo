@@ -121,7 +121,7 @@ export class SaleController {
         await this.hooks.check({ manager: this.manager, sale: createSaleDto, customer, storeId: await this.billStore(createSaleDto), userId: currentUser.id });
         const recordBatchOverride = await this.checkBatches(createSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, createSaleDto);
-        const staffCredit = await checkStaffCredit(this.manager, createSaleDto);
+        const staffCredit = await checkStaffCredit(this.manager, createSaleDto, null, await this.billStore(createSaleDto));
         const customerDue = await checkCustomerDue(this.manager, createSaleDto, customer, await this.isManagerUser(currentUser));
         const storeCredit = await checkStoreCredit(this.manager, createSaleDto, customer);
         await this.assertOperatorNamed(createSaleDto, currentUser);
@@ -143,7 +143,7 @@ export class SaleController {
         await this.hooks.check({ manager: this.manager, sale: updateSaleDto, customer, storeId: await this.billStore(updateSaleDto), userId: currentUser.id });
         const recordBatchOverride = await this.checkBatches(updateSaleDto, currentUser);
         const digital = await checkDigitalPayment(this.manager, updateSaleDto, updateSaleDto.id);
-        const staffCredit = await checkStaffCredit(this.manager, updateSaleDto, updateSaleDto.id);
+        const staffCredit = await checkStaffCredit(this.manager, updateSaleDto, updateSaleDto.id, await this.billStore(updateSaleDto));
         const customerDue = await checkCustomerDue(this.manager, updateSaleDto, customer, await this.isManagerUser(currentUser), updateSaleDto.id);
         const storeCredit = await checkStoreCredit(this.manager, updateSaleDto, customer, updateSaleDto.id);
         await this.assertOperatorNamed(updateSaleDto, currentUser);

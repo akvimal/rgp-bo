@@ -12,3 +12,12 @@ describe('store profile: returns', () => {
     expect(() => parseProfileInput({ returnsallowed: null })).toThrow(/true or false/);
   });
 });
+
+describe('staff credit by store', () => {
+  it('reads the switch as a boolean only', () => {
+    expect(parseProfileInput({ staffcreditallowed: false })).toEqual({ staff_credit_allowed: false });
+    expect(parseProfileInput({ staffcreditallowed: true })).toEqual({ staff_credit_allowed: true });
+    expect(() => parseProfileInput({ staffcreditallowed: 'no' })).toThrow();
+    expect(parseProfileInput({ shiftmode: 'time' })).not.toHaveProperty('staff_credit_allowed');
+  });
+});

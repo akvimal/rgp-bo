@@ -56,6 +56,7 @@ export const STORE_FIELDS: FieldSpec[] = [
   { key: 'operatorHoldMinutes', col: 'operator_hold_minutes', kind: 'int', label: 'Operator hold (minutes)' },
   { key: 'approvalMode', col: 'approval_mode', kind: 'text', label: 'Approval mode', hint: 'blank = business setting' },
   { key: 'returnsAllowed', col: 'returns_allowed', kind: 'bool', label: 'Returns allowed' },
+  { key: 'staffCreditAllowed', col: 'staff_credit_allowed', kind: 'bool', label: 'Staff credit allowed' },
   { key: 'cashRefundLimit', col: 'cash_refund_limit', kind: 'num', label: 'Cash refund limit' },
   { key: 'depositThreshold', col: 'deposit_threshold', kind: 'num', label: 'Deposit threshold' },
   { key: 'depositSchedule', col: 'deposit_schedule', kind: 'text', label: 'Deposit schedule', hint: 'none, daily, weekly or monthly' },
@@ -333,7 +334,7 @@ function diff(fields: FieldSpec[], current: Row, wanted: Row): { values: Row; ch
 }
 
 const defaultsOfStore: Row = {
-  type: 'pharmacy', shiftMode: 'time', operatorRequired: true, operatorHoldMinutes: 60, returnsAllowed: true, depositThreshold: 0,
+  type: 'pharmacy', shiftMode: 'time', operatorRequired: true, operatorHoldMinutes: 60, returnsAllowed: true, staffCreditAllowed: true, depositThreshold: 0,
   depositSchedule: 'none', depositWeekdays: [], depositMonthDays: [], vaultEnabled: false, floatAmount: 0, vaultDropConfirmLimit: 0, active: true,
 };
 

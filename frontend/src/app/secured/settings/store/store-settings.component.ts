@@ -161,6 +161,7 @@ export class StoreSettingsComponent implements OnInit {
       operatorrequired: !!p.operatorrequired, operatorholdminutes: Number(p.operatorholdminutes), approvalmode: p.approvalmodesetting,
       cashrefundlimit: p.cashrefundlimit === null || p.cashrefundlimit === '' || p.cashrefundlimit === undefined ? null : Number(p.cashrefundlimit),
       returnsallowed: p.returnsallowed !== false,
+      staffcreditallowed: p.staffcreditallowed !== false,
     }).subscribe((r:any) => { this.profileSaving = false; this.profile = r; this.profileMessage = 'Saved.'; },
       err => { this.profileSaving = false; this.profileError = err?.error?.message || 'Unable to save'; });
   }
