@@ -3,8 +3,12 @@
 
 <div class="d-flex justify-content-between align-items-baseline mt-3 mb-1">
   <h5 class="mb-0">Deliveries</h5>
-  <span class="small text-muted">This month &middot; {{currentMonthLabel}}</span>
+  <div>
+    <span class="small text-muted me-3">This month &middot; {{currentMonthLabel}}</span>
+    <button type="button" class="btn btn-sm btn-primary" (click)="showNew = true" data-testid="delivery-new"><i class="bi bi-plus-lg"></i> New delivery</button>
+  </div>
 </div>
+<app-sale-delivery-from-sale [open]="showNew" (closed)="showNew = false; $event && loadDeliveries()"></app-sale-delivery-from-sale>
 
 <!-- ── KPI band (dashboard-consistent) ──────────────────────────────── -->
 <div class="row g-3">

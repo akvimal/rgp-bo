@@ -93,31 +93,33 @@
                 <td class="text-end">{{s.cashamt | number:'1.2-2'}}</td>
                 <td class="text-end fw-semibold">{{s.total | number:'1.2-2'}}</td>
                 <td>{{s.staffname}}</td>
-                <td>
+                <td class="text-nowrap">
                   <h4 class="icon" *ngIf="isActionAllowed('Print',s)">
-                    <a [routerLink]="['../pos/view',s.id]" title="View"><i class="bi bi-eye"></i></a>
+                    <i class="bi bi-eye" title="View the bill, its payment and documents" (click)="detailSale = s" data-testid="bill-view"></i>
+                  </h4>
+                  <h4 class="icon" *ngIf="isActionAllowed('Print',s)">
+                    <a [routerLink]="['../pos/view',s.id]" title="Print"><i class="bi bi-printer"></i></a>
                   </h4>
                   <h4 class="icon" *ngIf="isActionAllowed('Edit',s)">
                     <a [routerLink]="['../pos/edit',s.id]" title="Edit"><i class="bi bi-pencil"></i></a>
                   </h4>
-                  <h4 class="icon" *ngIf="canChangeDelivery(s)" [title]="s.deliverytype === 'Delivery' ? 'Change to a counter sale' : 'Make this a delivery'">
-                    <i class="bi" [ngClass]="s.deliverytype === 'Delivery' ? 'bi-bag-check' : 'bi-truck'" (click)="modeSale = s" data-testid="bill-delivery-mode"></i>
-                  </h4>
-                  <h4 class="icon text-danger" *ngIf="canVoid(s)" title="Void: rung up by mistake">
-                    <i class="bi bi-x-octagon" (click)="openVoid(s)" data-testid="bill-void-row"></i>
-                  </h4>
-                  <h4 class="icon text-danger" *ngIf="canForceVoid(s)" title="Force void (Business Head): remove this bill from the books, kept on record as voided">
-                    <i class="bi bi-trash3" (click)="openVoid(s, true)" data-testid="bill-force-void-row"></i>
-                  </h4>
-                  <h4 class="icon" *ngIf="isActionAllowed('Return',s)">
-                    <i class="bi bi-arrow-return-left" title="Return" (click)="showReturn(s.id)"></i>
-                  </h4>
                   <h4 class="icon" *ngIf="s.digiamt > 0 && canVerifyDigital" title="Verify the digital payment was received">
                     <i class="bi bi-patch-check" (click)="openCheck(s)" data-testid="digi-verify"></i>
                   </h4>
-                  <h4 class="icon" *ngIf="s.props && s.props['documents'] && s.props['documents'].length > 0" title="Has documents">
-                    <i class="bi bi-files"></i>
+                  <h4 class="icon position-relative" *ngIf="docCount(s) > 0" [title]="docCount(s) + ' document(s): click to see them'">
+                    <i class="bi bi-paperclip" (click)="detailSale = s" data-testid="bill-docs"></i>
+                    <span class="badge bg-secondary rounded-pill" style="font-size:.6rem;vertical-align:top">{{docCount(s)}}</span>
                   </h4>
+                  <span class="position-relative d-inline-block" *ngIf="hasMore(s)">
+                    <h4 class="icon"><i class="bi bi-three-dots-vertical" title="More" (click)="toggleMenu(s, $event)" data-testid="bill-more"></i></h4>
+                    <div class="dropdown-menu dropdown-menu-end show shadow" style="min-width:13rem;right:0;left:auto" *ngIf="menuId === s.id" (click)="$event.stopPropagation()">
+                      <button type="button" class="dropdown-item" *ngIf="isActionAllowed('Return',s)" (click)="menuId = null; showReturn(s.id)" data-testid="bill-return"><i class="bi bi-arrow-return-left me-2"></i>Return</button>
+                      <button type="button" class="dropdown-item" *ngIf="canMakeDelivery(s)" (click)="menuId = null; modeSale = s" data-testid="bill-delivery-mode">
+                        <i class="bi me-2" [ngClass]="s.deliverytype === 'Delivery' ? 'bi-bag-check' : 'bi-truck'"></i>{{s.deliverytype === 'Delivery' ? 'Change to a counter sale' : 'Create a delivery'}}</button>
+                      <button type="button" class="dropdown-item text-danger" *ngIf="canVoid(s)" (click)="menuId = null; openVoid(s)" data-testid="bill-void-row"><i class="bi bi-x-octagon me-2"></i>Void: rung up by mistake</button>
+                      <button type="button" class="dropdown-item text-danger" *ngIf="canForceVoid(s)" (click)="menuId = null; openVoid(s, true)" data-testid="bill-force-void-row"><i class="bi bi-trash3 me-2"></i>Force void (Business Head)</button>
+                    </div>
+                  </span>
                 </td>
               </tr>
         </ng-template>
@@ -236,6 +238,10 @@
     <button type="button" class="btn btn-primary ms-2" (click)="saveCheck()" [disabled]="checkSaving" data-testid="digi-save">Save</button>
   </ng-template>
 </p-dialog>
+
+<app-sale-details [sale]="detailSale" [canEdit]="!!detailSale && isActionAllowed('Edit', detailSale)" [canReturn]="!!detailSale && isActionAllowed('Return', detailSale)"
+  [canChangeDelivery]="!!detailSale && canMakeDelivery(detailSale)" (closed)="detailSale = null"
+  (deliveryClick)="detailSale = null; modeSale = $event" (returnClick)="detailSale = null; showReturn($event.id)"></app-sale-details>
 
 <app-sale-delivery-mode [sale]="modeSale" (closed)="modeSale = null; $event && fetchSales()"></app-sale-delivery-mode>
 

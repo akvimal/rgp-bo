@@ -1,5 +1,5 @@
 import { ShiftContextService } from "src/app/@core/shift-context.service";
-import { Component, OnDestroy } from "@angular/core";
+import { Component, HostListener, OnDestroy } from "@angular/core";
 import { DateUtilService } from "../../date-util.service";
 import { Sale } from "../models/sale.model";
 import { canVoidBill, signedInUserId } from "../bill-void";
@@ -298,6 +298,30 @@ export class SalesListComponent implements OnDestroy {
       /** offered where a void would be (own bill in the open shift, or a manager): the server checks the same rules again */
       canChangeDelivery(sale:any):boolean{
         return `${sale?.status}`.toUpperCase() === 'COMPLETE' && (this.canVoid(sale) || this.canForceVoid(sale));
+      }
+
+      /** the bill shown in the side panel, and the row whose "more" menu is open */
+      detailSale:any = null;
+      menuId:number|null = null;
+
+      @HostListener('document:click')
+      closeMenu(){ this.menuId = null; }
+
+      toggleMenu(s:any, ev:Event){ ev.stopPropagation(); this.menuId = this.menuId === s.id ? null : s.id; }
+
+      docCount(s:any):number{ const d = s?.props?.documents; return Array.isArray(d) ? d.length : 0; }
+
+      /**
+       * A counter sale is offered a delivery only on the day it was rung (a later one is made from the Deliveries page); a delivery can always be
+       * changed back to a counter sale (the server refuses one already delivered). The server checks who may and when.
+       */
+      canMakeDelivery(s:any):boolean{
+        if(!this.canChangeDelivery(s)) return false;
+        return s.deliverytype === 'Delivery' || this.dateService.isSameDay(s.billdate);
+      }
+
+      hasMore(s:any):boolean{
+        return this.isActionAllowed('Return', s) || this.canMakeDelivery(s) || this.canVoid(s) || this.canForceVoid(s);
       }
 
       voidForce = false;
