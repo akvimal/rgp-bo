@@ -4,6 +4,8 @@ import { FormsModule } from "@angular/forms";
 import { RouterModule, Routes } from "@angular/router";
 import { AuthGuard } from "../../@core/auth/auth.guard";
 import { SharedModule } from "../../shared/shared.module";
+import { DialogModule } from "primeng/dialog";
+import { DocumentsModule } from "../documents/documents.module";
 import { TodosComponent } from "./todos.component";
 
 const routes: Routes = [{ path: "", component: TodosComponent, canActivate: [AuthGuard] }];
@@ -11,6 +13,6 @@ const routes: Routes = [{ path: "", component: TodosComponent, canActivate: [Aut
 /** The to-do list: your own, your store's pool and, for a manager, the ones given to others. Reminders come through the alerts. */
 @NgModule({
   declarations: [TodosComponent],
-  imports: [CommonModule, FormsModule, SharedModule, RouterModule.forChild(routes)],
+  imports: [CommonModule, FormsModule, DialogModule, SharedModule, DocumentsModule, RouterModule.forChild(routes)],
 })
 export class TodosModule {}

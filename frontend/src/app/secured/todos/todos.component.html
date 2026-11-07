@@ -16,10 +16,16 @@
   <li class="nav-item"><a class="nav-link" [class.active]="scope === 'team'" href="javascript:void(0)" (click)="setScope('team')" data-testid="todo-scope-team">My team's</a></li>
 </ul>
 
-<!-- add / change -->
-<div class="card mb-3" data-testid="todo-form">
+<!-- add / change: closed until asked for, so the list is what opens -->
+<div class="mb-3" *ngIf="!showForm" data-testid="todo-add-bar">
+  <button class="btn btn-primary btn-sm" (click)="openAdd()" data-testid="todo-add-open"><i class="bi bi-plus-lg"></i> Add a to-do</button>
+</div>
+<div class="card mb-3" data-testid="todo-form" *ngIf="showForm">
   <div class="card-body">
-    <div class="fw-bold mb-2">{{editing ? 'Change this to-do' : 'Add a to-do'}}</div>
+    <div class="d-flex justify-content-between align-items-start">
+      <div class="fw-bold mb-2">{{editing ? 'Change this to-do' : 'Add a to-do'}}</div>
+      <a href="javascript:void(0)" class="small" (click)="closeForm()" data-testid="todo-form-close">Close</a>
+    </div>
     <div class="row g-2 align-items-end">
       <div class="col-12 col-md-5">
         <label class="form-label small mb-0" for="td-title">What needs doing</label>
@@ -66,6 +72,11 @@
           <option value="high">High</option>
         </select>
       </div>
+    </div>
+
+    <div class="form-check mt-2">
+      <input class="form-check-input" type="checkbox" id="td-proof" [(ngModel)]="form.needsproof" data-testid="todo-needsproof">
+      <label class="form-check-label small" for="td-proof">Needs proof: it cannot be ticked without a comment or a photo or file</label>
     </div>
 
     <div class="mt-2" *ngIf="!editing && form.repeat === 'WEEKLY'" data-testid="todo-weekdays">
@@ -122,13 +133,14 @@
     <h6 [class]="'mb-1 ' + tone">{{title}} <span class="badge bg-secondary ms-1">{{list.length}}</span></h6>
     <ul class="list-group">
       <li class="list-group-item d-flex align-items-start gap-2" *ngFor="let i of list" [attr.data-testid]="'todo-row-' + i.id">
-        <input type="checkbox" class="form-check-input mt-1" [disabled]="!i.cantick" (change)="tick(i)" [attr.aria-label]="'Done: ' + i.title" [attr.data-testid]="'todo-tick-' + i.id">
+        <input type="checkbox" class="form-check-input mt-1" [disabled]="!i.cantick" (change)="$any($event.target).checked = false; tick(i)" [attr.aria-label]="'Done: ' + i.title" [attr.data-testid]="'todo-tick-' + i.id">
         <div class="flex-grow-1">
           <div>
             <span class="fw-semibold">{{i.title}}</span>
             <span class="badge bg-danger ms-1" *ngIf="i.priority === 'high'">High</span>
             <span class="badge ms-1" [ngClass]="stageClass(i)" *ngIf="stageLabel(i)" [attr.data-testid]="'todo-stage-' + i.id">{{stageLabel(i)}}</span>
             <span class="badge bg-light text-dark border ms-1" *ngIf="i.repeatrule" title="Repeating"><i class="bi bi-arrow-repeat"></i> {{repeatText(i.repeatrule)}}</span>
+            <span class="badge bg-info text-dark ms-1" *ngIf="i.needsproof" title="Needs a comment or a photo or file to be ticked" [attr.data-testid]="'todo-proof-' + i.id"><i class="bi bi-paperclip"></i> Needs proof</span>
           </div>
           <div class="small text-muted" *ngIf="i.notes">{{i.notes}}</div>
           <div class="small text-muted">
@@ -150,7 +162,7 @@
 <ng-container *ngTemplateOutlet="rows; context: { $implicit: dueToday, title: 'Today', tone: '', id: 'today' }"></ng-container>
 <ng-container *ngTemplateOutlet="rows; context: { $implicit: later, title: 'Coming up', tone: 'text-muted', id: 'later' }"></ng-container>
 
-<div class="text-muted" *ngIf="loaded && !items.length" data-testid="todo-empty">Nothing to do. Add a to-do above.</div>
+<div class="text-muted" *ngIf="loaded && !items.length" data-testid="todo-empty">Nothing to do. Use Add a to-do.</div>
 
 <!-- done lately -->
 <div class="mb-3" *ngIf="doneItems.length" data-testid="todo-section-done">
@@ -160,7 +172,10 @@
       <input type="checkbox" class="form-check-input" checked disabled>
       <div class="flex-grow-1"><s>{{i.title}}</s>
         <span class="small"> &middot; {{i.completedon | date:'d MMM, h:mm a'}}<span *ngIf="i.completedbyname"> by {{i.completedbyname}}</span></span>
-        <span class="small" *ngIf="i.donenote"> &middot; {{i.donenote}}</span>
+        <span class="small" *ngIf="i.donenote" [attr.data-testid]="'todo-donenote-' + i.id"> &middot; {{i.donenote}}</span>
+        <div class="small" *ngIf="i.donefiles?.length">
+          <a href="javascript:void(0)" class="me-2" *ngFor="let f of i.donefiles" (click)="viewFile(f)" [attr.data-testid]="'todo-file-' + i.id"><i class="bi bi-paperclip"></i> {{f.name}}</a>
+        </div>
       </div>
       <a href="javascript:void(0)" class="small" (click)="reopen(i)" [attr.data-testid]="'todo-reopen-' + i.id">Reopen</a>
     </li>
@@ -186,4 +201,35 @@
     </tbody>
   </table>
 </div>
+
+<!-- ticking: a comment, and a photo or file -->
+<p-dialog [header]="'Done: ' + (doneFor?.title || '')" [visible]="!!doneFor" (visibleChange)="!$event && closeDone()" [modal]="true" [style]="{width: '34rem', maxWidth: '96vw'}" [draggable]="false">
+  <div *ngIf="doneFor" data-testid="todo-done-dialog">
+    <div class="small text-warning mb-2" *ngIf="doneFor.needsproof"><i class="bi bi-paperclip"></i> This to-do needs proof: add a comment, or attach a photo or a file.</div>
+    <label class="form-label small mb-0" for="td-done-note">Comment (optional)</label>
+    <textarea id="td-done-note" class="form-control" rows="3" maxlength="300" [(ngModel)]="doneNote" placeholder="What was done, or what you found" data-testid="todo-done-note"></textarea>
+    <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+      <label class="btn btn-outline-secondary btn-sm mb-0"><i class="bi bi-paperclip"></i> Attach a file
+        <input type="file" class="d-none" accept="image/*,application/pdf" multiple (change)="addFiles($event)" data-testid="todo-done-file"></label>
+      <label class="btn btn-outline-secondary btn-sm mb-0"><i class="bi bi-camera"></i> Take a photo
+        <input type="file" class="d-none" accept="image/*" capture="environment" (change)="addFiles($event)" data-testid="todo-done-photo"></label>
+      <span class="small text-muted">Photos and PDFs, up to 5.</span>
+    </div>
+    <div class="mt-2" *ngIf="doneFiles.length" data-testid="todo-done-files">
+      <span class="badge bg-light text-dark border me-1 mb-1" *ngFor="let f of doneFiles; let n = index">{{f.name}}
+        <a href="javascript:void(0)" class="text-danger ms-1" (click)="doneFiles.splice(n, 1)" title="Remove"><i class="bi bi-x-circle"></i></a></span>
+    </div>
+    <div class="small text-muted mt-1" *ngIf="uploading">Uploading&hellip;</div>
+    <div class="text-danger small mt-2" *ngIf="doneError" data-testid="todo-done-error">{{doneError}}</div>
+  </div>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-link btn-sm me-auto" *ngIf="doneFor && !doneFor.needsproof" (click)="finishDone(true)" [disabled]="busy || uploading" data-testid="todo-done-plain">Done, no details</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="closeDone()">Cancel</button>
+    <button type="button" class="btn btn-primary ms-2" (click)="finishDone(false)" [disabled]="busy || uploading || !proofOk" data-testid="todo-done-save">Done</button>
+  </ng-template>
+</p-dialog>
+
+<p-dialog [header]="viewName || 'File'" [(visible)]="viewOpen" [modal]="true" [style]="{width: '60rem', maxWidth: '96vw'}" [dismissableMask]="true">
+  <app-document-viewer *ngIf="viewOpen" [path]="viewPath" [name]="viewName"></app-document-viewer>
+</p-dialog>
 </div>

@@ -1,4 +1,6 @@
 import { Component, OnInit } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
+import { FileUploadService } from "../documents/file-upload.service";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
 import { TodoService } from "./todos.service";
@@ -30,7 +32,21 @@ export class TodosComponent implements OnInit {
   editing: any = null;
   more = false;
 
-  constructor(private service: TodoService, private confirm: ConfirmService, private operator: OperatorContextService) {}
+  /** the add form stays shut until asked for (the list is what opens); the choice is remembered in this browser */
+  showForm = false;
+  private readonly formKey = 'rgp_todo_form_open';
+
+  // ticking with a comment and files
+  doneFor: any = null;
+  doneNote = '';
+  doneFiles: { path: string; name: string }[] = [];
+  doneError = '';
+  uploading = false;
+  viewOpen = false;
+  viewPath = '';
+  viewName = '';
+
+  constructor(private service: TodoService, private confirm: ConfirmService, private operator: OperatorContextService, private route: ActivatedRoute, private files: FileUploadService) {}
 
   ngOnInit() {
     this.service.options().subscribe({
@@ -38,11 +54,16 @@ export class TodosComponent implements OnInit {
       error: () => {}
     });
     this.load();
+    // "Add a to-do" from the floating button opens the form straight away
+    this.route.queryParamMap.subscribe((p) => { if (p.get('add')) this.openAdd(); });
   }
+
+  openAdd() { this.showForm = true; setTimeout(() => document.getElementById('td-title')?.focus(), 50); }
+  closeForm() { this.showForm = false; this.editing = null; this.form = { ...this.blank(), storeid: this.form.storeid, who: this.form.who }; this.more = false; }
 
   private blank() {
     return { title: '', notes: '', dueday: localDay(), duetime: '09:00', priority: 'normal', who: 'me', storeid: null,
-             repeat: '', days: [] as number[], day: 1, every: 7, endson: '', soondays: 1, escalatedays: 3 };
+             repeat: '', days: [] as number[], day: 1, every: 7, endson: '', soondays: 1, escalatedays: 3, needsproof: false };
   }
 
   private fail(err: any, fallback: string) {
@@ -106,7 +127,7 @@ export class TodosComponent implements OnInit {
   private body() {
     const f = this.form;
     const b: any = { title: String(f.title || '').trim(), notes: f.notes || null, dueday: f.dueday, duetime: f.duetime, priority: f.priority,
-                     soondays: f.soondays, escalatedays: f.escalatedays };
+                     soondays: f.soondays, escalatedays: f.escalatedays, needsproof: !!f.needsproof };
     if (this.options.canassign && String(f.who).startsWith('pool')) { b.pool = true; b.storeid = f.storeid; }
     else if (String(f.who).startsWith('u:')) b.assigneeuserid = +String(f.who).slice(2);
     if (!this.editing && f.repeat) {
@@ -127,6 +148,7 @@ export class TodosComponent implements OnInit {
         const keep = { storeid: this.form.storeid, who: this.form.who };
         this.form = { ...this.blank(), ...keep };
         this.more = false;
+        this.showForm = false;          // added: the list is what the person came for
         this.load();
       },
       error: (e) => this.fail(e, 'Could not save the to-do.')
@@ -139,22 +161,57 @@ export class TodosComponent implements OnInit {
     const t = new Date(i.dueon);
     this.form = { ...this.blank(), title: i.title, notes: i.notes || '', dueday: i.dueday, priority: i.priority, soondays: i.soondays, escalatedays: i.escalatedays,
                   duetime: `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`,
-                  who: i.pool ? 'pool' : (i.assigneeuserid === this.options.me ? 'me' : 'u:' + i.assigneeuserid), storeid: i.storeid || this.form.storeid };
+                  who: i.pool ? 'pool' : (i.assigneeuserid === this.options.me ? 'me' : 'u:' + i.assigneeuserid), storeid: i.storeid || this.form.storeid, needsproof: !!i.needsproof };
     this.more = true;
+    this.showForm = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  cancelEdit() { this.editing = null; this.form = { ...this.blank(), storeid: this.form.storeid }; this.more = false; }
+  cancelEdit() { this.closeForm(); }
 
-  // ---- ticking
+  // ---- ticking: a dialog for the comment and the photo or file (a to-do that needs proof cannot skip it)
   tick(i: any) {
     this.error = ''; this.message = '';
-    // at a shared counter login the tick is credited to the person serving
-    this.service.done(i.id, { actinguserid: this.operator.selectedOperatorId || undefined }).subscribe({
-      next: () => { this.message = `"${i.title}" is done.`; this.load(); },
-      error: (e) => this.fail(e, 'Could not tick it.')
+    this.doneFor = i; this.doneNote = ''; this.doneFiles = []; this.doneError = ''; this.uploading = false;
+  }
+
+  closeDone() { this.doneFor = null; }
+
+  get proofOk(): boolean {
+    return !this.doneFor?.needsproof || this.doneFiles.length > 0 || this.doneNote.trim().length >= 3;
+  }
+
+  /** each chosen file goes up to this to-do's folder; what comes back is kept with the tick */
+  addFiles(ev: any) {
+    const picked: File[] = Array.from(ev?.target?.files || []);
+    if (ev?.target) ev.target.value = '';
+    if (!picked.length || !this.doneFor) return;
+    this.doneError = '';
+    if (this.doneFiles.length + picked.length > 5) { this.doneError = 'Attach up to 5 files.'; return; }
+    this.uploading = true;
+    let left = picked.length;
+    picked.forEach((f) => {
+      this.files.upload(f, `todo=${this.doneFor.id}`).subscribe({
+        next: (r: any) => { if (r?.path) this.doneFiles.push({ path: r.path, name: r.originalname || f.name }); if (--left === 0) this.uploading = false; },
+        error: (e) => { this.doneError = e?.error?.message || `Could not upload ${f.name} (photos and PDFs only).`; if (--left === 0) this.uploading = false; }
+      });
     });
   }
+
+  finishDone(plain: boolean) {
+    const i = this.doneFor;
+    if (!i) return;
+    this.busy = true; this.doneError = '';
+    // at a shared counter login the tick is credited to the person serving
+    const body: any = { actinguserid: this.operator.selectedOperatorId || undefined };
+    if (!plain) { if (this.doneNote.trim()) body.note = this.doneNote.trim(); if (this.doneFiles.length) body.files = this.doneFiles; }
+    this.service.done(i.id, body).subscribe({
+      next: () => { this.busy = false; this.doneFor = null; this.message = `"${i.title}" is done.`; this.load(); },
+      error: (e) => { this.busy = false; const m = e?.error?.message; this.doneError = (Array.isArray(m) ? m.join(' ') : m) || 'Could not tick it.'; }
+    });
+  }
+
+  viewFile(f: any) { this.viewPath = f.path; this.viewName = f.name; this.viewOpen = true; }
 
   reopen(i: any) {
     this.error = ''; this.message = '';

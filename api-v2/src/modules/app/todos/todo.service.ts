@@ -5,6 +5,8 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser, BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { isOwnerRole, NOT_A_PERSON, ROLE } from 'src/core/roles';
+import { uploadedFilePath } from 'src/modules/app/files/upload-path';
+import { sep } from 'path';
 import { cleanTime, dayOf, dueInstant, firstOnOrAfter, istDay, makeOnOrAfter, nextAfter, Repeat, repeatProblem, RepeatRule, stageOf } from './todo-rules';
 
 const PRIORITIES = ['low', 'normal', 'high'];
@@ -87,6 +89,7 @@ export class TodoService {
       assignedby: r.assigned_by, assignedbyname: r.assigned_by_name || null, createdby: r.created_by,
       templateid: r.template_id, repeat: r.repeat || null, repeatrule: r.template_id ? { repeat: r.repeat, days: r.repeat_days, day: r.repeat_day, every: r.repeat_every, at: r.at_time } : null,
       completedby: r.completed_by, completedbyname: r.completed_by_name || null, completedon: r.completed_on, donenote: r.done_note,
+      needsproof: !!r.needs_proof, donefiles: Array.isArray(r.done_files) ? r.done_files : [],
       canmanage: manage, cantick: open && (mine || (r.pool && atMyStore) || manage),
     };
   }
@@ -173,7 +176,8 @@ export class TodoService {
     if (!Number.isInteger(soon) || soon < 0 || soon > 30) throw new BadRequestException('The heads-up is 0 to 30 days.');
     if (!Number.isInteger(esc) || esc < 1 || esc > 60) throw new BadRequestException('Tell the manager after 1 to 60 days late.');
     const notes = body?.notes ? String(body.notes).slice(0, 2000) : null;
-    return { title, priority, day, time, soon, esc, notes };
+    const needsproof = body?.needsproof === true || body?.needsproof === 'true';
+    return { title, priority, day, time, soon, esc, notes, needsproof };
   }
 
   async create(user: any, body: any) {
@@ -203,10 +207,10 @@ export class TodoService {
       const first = firstOnOrAfter(rule, f.day);
       const [tpl] = await this.manager.query(
         `insert into todo_template (business_id, store_id, title, notes, priority, assignee_user_id, pool, assigned_by, repeat, repeat_days, repeat_day, repeat_every,
-                                    at_time, starts_on, ends_on, skip_if_open, soon_days, escalate_days, next_due_on, created_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::int4[],$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) returning id`,
+                                    at_time, starts_on, ends_on, skip_if_open, soon_days, escalate_days, next_due_on, created_by, needs_proof)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::int4[],$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) returning id`,
         [me.business, t.storeid, f.title, f.notes, f.priority, t.assignee, t.pool, me.id, rule.repeat, rule.days?.length ? rule.days : null, rule.day ?? null, rule.every ?? null,
-          f.time, f.day, endsOn, body.repeat.skipifopen !== false, f.soon, f.esc, first, me.id]);
+          f.time, f.day, endsOn, body.repeat.skipifopen !== false, f.soon, f.esc, first, me.id, f.needsproof]);
       await this.generate(tpl.id);
       const [made] = await this.manager.query(`select id from todo_item where template_id = $1 order by id limit 1`, [tpl.id]);
       if (toOther) await this.audit.record({ userId: me.id, action: 'todo.assigned', entityType: 'todo_template', entityId: tpl.id, summary: `repeating to-do "${f.title}" given`, details: { ...t } });
@@ -214,9 +218,9 @@ export class TodoService {
     }
 
     const [row] = await this.manager.query(
-      `insert into todo_item (business_id, store_id, title, notes, priority, assignee_user_id, pool, assigned_by, due_on, soon_days, escalate_days, created_by)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
-      [me.business, t.storeid, f.title, f.notes, f.priority, t.assignee, t.pool, me.id, dueInstant(f.day, f.time), f.soon, f.esc, me.id]);
+      `insert into todo_item (business_id, store_id, title, notes, priority, assignee_user_id, pool, assigned_by, due_on, soon_days, escalate_days, created_by, needs_proof)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
+      [me.business, t.storeid, f.title, f.notes, f.priority, t.assignee, t.pool, me.id, dueInstant(f.day, f.time), f.soon, f.esc, me.id, f.needsproof]);
     if (toOther) await this.audit.record({ userId: me.id, action: 'todo.assigned', entityType: 'todo_item', entityId: Number(row.id), summary: `to-do "${f.title}" given`, details: { ...t } });
     return { id: Number(row.id) };
   }
@@ -226,13 +230,13 @@ export class TodoService {
     const r = await this.load(me, id);
     if (r.status !== 'OPEN') throw new BadRequestException('Only an open to-do can be changed.');
     if (!this.shape(r, me).canmanage) throw new ForbiddenException('Only the person who gave this to-do, or a manager, changes it.');
-    const f = this.fields({ ...{ title: r.title, notes: r.notes, priority: r.priority, dueday: dayOf(r.due_on), soondays: r.soon_days, escalatedays: r.escalate_days }, ...body,
+    const f = this.fields({ ...{ title: r.title, notes: r.notes, priority: r.priority, dueday: dayOf(r.due_on), soondays: r.soon_days, escalatedays: r.escalate_days, needsproof: r.needs_proof }, ...body,
       duetime: body?.duetime ?? new Date(r.due_on).toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) });
     let t = { assignee: r.assignee_user_id as number | null, pool: !!r.pool, storeid: r.store_id as number | null };
     if (body && ('assigneeuserid' in body || 'pool' in body)) t = await this.target(me, body);
     await this.manager.query(
-      `update todo_item set title = $2, notes = $3, priority = $4, due_on = $5, soon_days = $6, escalate_days = $7, assignee_user_id = $8, pool = $9, store_id = $10 where id = $1`,
-      [r.id, f.title, f.notes, f.priority, dueInstant(f.day, f.time), f.soon, f.esc, t.assignee, t.pool, t.storeid]);
+      `update todo_item set title = $2, notes = $3, priority = $4, due_on = $5, soon_days = $6, escalate_days = $7, assignee_user_id = $8, pool = $9, store_id = $10, needs_proof = $11 where id = $1`,
+      [r.id, f.title, f.notes, f.priority, dueInstant(f.day, f.time), f.soon, f.esc, t.assignee, t.pool, t.storeid, f.needsproof]);
     return { id: Number(r.id) };
   }
 
@@ -250,10 +254,30 @@ export class TodoService {
         `select u.id from app_user u join app_role ro on ro.id = u.role_id where u.id = $1 and u.active and not u.archive and ro.name <> all($2::text[]) and ${BUSINESS_OF_USER_SQL} = $3`, [acting, NOT_A_PERSON, me.business]);
       if (a) by = a.id;
     }
-    const note = body?.note ? String(body.note).slice(0, 300) : null;
-    await this.manager.query(`update todo_item set status = 'DONE', completed_by = $2, completed_on = now(), done_note = $3 where id = $1 and status = 'OPEN'`, [r.id, by, note]);
+    const note = body?.note ? String(body.note).trim().slice(0, 300) || null : null;
+    const files = this.cleanFiles(body?.files);
+    if (r.needs_proof && !files.length && (note || '').length < 3) {
+      throw new BadRequestException('This to-do needs proof: add a comment, or attach a photo or a file, before it is ticked.');
+    }
+    await this.manager.query(
+      `update todo_item set status = 'DONE', completed_by = $2, completed_on = now(), done_note = $3, done_files = $4::jsonb where id = $1 and status = 'OPEN'`,
+      [r.id, by, note, files.length ? JSON.stringify(files) : null]);
+    if (files.length) await this.audit.record({ userId: me.id, actingUserId: by !== me.id ? by : undefined, action: 'todo.done_with_files', entityType: 'todo_item', entityId: Number(r.id),
+      summary: `to-do "${r.title}" ticked with ${files.length} file${files.length === 1 ? '' : 's'}`, details: { files: files.map((f) => f.name) } });
     if (r.template_id) await this.afterDone(r.template_id);
     return { id: Number(r.id) };
+  }
+
+  /** what was attached when ticking: up to five files that were uploaded for to-dos (the upload folder's todo area), kept with their names */
+  private cleanFiles(raw: any): { path: string; name: string }[] {
+    const list = Array.isArray(raw) ? raw : [];
+    if (list.length > 5) throw new BadRequestException('Attach up to 5 files.');
+    return list.map((f: any) => {
+      const path = String(f?.path ?? '');
+      const full = uploadedFilePath(path);                                   // an existing file under the upload folder, nothing else
+      if (!full.includes(`${sep}todo${sep}`)) throw new BadRequestException('That file was not uploaded for a to-do.');
+      return { path, name: String(f?.name ?? '').replace(/[\r\n]/g, ' ').trim().slice(0, 120) || 'file' };
+    });
   }
 
   /** a repeat that follows completion makes its next to-do now */
@@ -271,7 +295,7 @@ export class TodoService {
     const r = await this.load(me, id);
     if (r.status === 'OPEN') return { id: Number(r.id) };
     if (!(this.shape(r, me).canmanage || r.completed_by === me.id)) throw new ForbiddenException('Only the person who ticked it, or a manager, reopens it.');
-    await this.manager.query(`update todo_item set status = 'OPEN', completed_by = null, completed_on = null, done_note = null where id = $1`, [r.id]);
+    await this.manager.query(`update todo_item set status = 'OPEN', completed_by = null, completed_on = null, done_note = null, done_files = null where id = $1`, [r.id]);
     return { id: Number(r.id) };
   }
 
@@ -340,10 +364,10 @@ export class TodoService {
           // an occurrence whose day went by while nothing was open (the system was off) is counted, not made late
           if (lock.skip_if_open && next < today) { missed++; next = nextAfter(rule, next); continue; }
           await tx.query(
-            `insert into todo_item (business_id, store_id, template_id, title, notes, priority, assignee_user_id, pool, assigned_by, due_on, soon_days, escalate_days, created_by)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+            `insert into todo_item (business_id, store_id, template_id, title, notes, priority, assignee_user_id, pool, assigned_by, due_on, soon_days, escalate_days, created_by, needs_proof)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
             [lock.business_id, lock.store_id, lock.id, lock.title, lock.notes, lock.priority, lock.assignee_user_id, lock.pool, lock.assigned_by, dueInstant(next, lock.at_time),
-              lock.soon_days, lock.escalate_days, lock.created_by]);
+              lock.soon_days, lock.escalate_days, lock.created_by, lock.needs_proof]);
           // a repeat that follows completion waits for the tick; a calendar repeat goes on to its next day
           next = lock.repeat === 'EVERY_N_DAYS_AFTER_DONE' ? null : nextAfter(rule, next);
         }

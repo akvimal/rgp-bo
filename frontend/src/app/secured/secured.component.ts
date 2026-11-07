@@ -14,6 +14,7 @@ import { ShiftContextService } from "../@core/shift-context.service";
 import { AuthService } from "../@core/auth/auth.service";
 import { ConfigService } from "../shared/config.service";
 import { MenuGroup, buildCounterMenu, buildMenu, isCounterRole } from "./menu";
+import { QuickAction, buildQuickActions } from "./quick-actions";
 
 @Component({
     templateUrl: 'secured.component.html'
@@ -118,6 +119,8 @@ export class SecuredComponent {
 
     private readonly menuAccess = { has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) };
     private counterGroups: MenuGroup[] = buildCounterMenu(this.menuAccess);
+    /** the floating button's list (each entry shows only for a role that may open it) */
+    quickActions: QuickAction[] = buildQuickActions(this.menuAccess);
 
     /** the counter roles always get the grouped menu; the other roles when the business has turned it on */
     get groupedMenu(): boolean { return this.newMenu || isCounterRole(this.user?.rolename); }
