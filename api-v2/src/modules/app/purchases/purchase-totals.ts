@@ -51,3 +51,20 @@ export function invoiceGstHeader(
   const taxablevalue = sum('taxablevalue'), cgstamount = sum('cgstamount'), sgstamount = sum('sgstamount'), igstamount = sum('igstamount');
   return { taxablevalue, cgstamount, sgstamount, igstamount, roundoff: r2((Number(total) || 0) - (taxablevalue + cgstamount + sgstamount + igstamount)) };
 }
+
+/** how far the lines may come from the net total printed on the vendor's invoice: the rounding at its foot and the paise on each line */
+export const PRINTED_TOLERANCE = 1;
+
+/** the lines agree with the printed net total (or no total was entered) */
+export function agreesWithPrinted(printed: any, billedNet: number): boolean {
+  const p = Number(printed) || 0;
+  return !(p > 0) || Math.abs(billedNet - p) <= PRINTED_TOLERANCE + 1e-9;
+}
+
+/**
+ * What is payable once the lines agree with the printed net total: exactly that total, less what came off it since (lines the vendor has
+ * agreed to drop, and credits for returns). With nothing taken off, the payable is the printed total to the paisa.
+ */
+export function payableFromPrinted(printed: number, billedNet: number, liveNet: number, credits: number): number {
+  return r2(Math.max(0, Number(printed) + (Number(liveNet) - Number(billedNet)) - Number(credits)));
+}

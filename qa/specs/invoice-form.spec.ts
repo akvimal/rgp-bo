@@ -80,7 +80,7 @@ test.describe('Purchase invoice header form @p1', () => {
 
   test('PINVF-3 a received invoice shows its lines and locks the header @edge', async ({ app, api }) => {
     const vendor = await vendorId(api);
-    const inv = await api.request('POST', '/purchases', { vendorid: vendor, invoiceno: `QA/R-${Date.now()}`, invoicedate: '2026-09-04', printedtotal: 112 }, MGR);
+    const inv = await api.request('POST', '/purchases', { vendorid: vendor, invoiceno: `QA/R-${Date.now()}`, invoicedate: '2026-09-04', printedtotal: 125.44 }, MGR);
     const stock = (await api.request('POST', '/stock/filter', { available: true, limit: 5 }, MGR)).body;
     const productid = stock[0]?.id;
     test.skip(!productid, 'no product to receive');
@@ -110,7 +110,7 @@ test.describe('Purchase invoice header form @p1', () => {
     const stock = (await api.request('POST', '/stock/filter', { available: true, limit: 5 }, MGR)).body;
     const productid = stock[0]?.id;
     test.skip(!productid, 'no product to receive');
-    const inv = await api.request('POST', '/purchases', { vendorid: vendor, invoiceno: `QA/T-${Date.now()}`, invoicedate: '2026-09-04', printedtotal: 112 }, MGR);
+    const inv = await api.request('POST', '/purchases', { vendorid: vendor, invoiceno: `QA/T-${Date.now()}`, invoicedate: '2026-09-04', printedtotal: 125.44 }, MGR);
     const it = await api.request('POST', '/purchaseitems', {
       invoiceid: inv.body.id, productid, qty: 5, ptrvalue: 20, ptrcost: 20, mrpcost: 30, taxpcnt: 12, total: 112, batch: `T${Date.now()}`.slice(0, 12), expdate: '2028-06-30', saleprice: 25,
     }, MGR);

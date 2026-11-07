@@ -18,7 +18,7 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
-import { invoiceGstHeader, invoiceNet, lineGst, r2 } from "./purchase-totals";
+import { agreesWithPrinted, invoiceGstHeader, invoiceNet, lineGst, payableFromPrinted, PRINTED_TOLERANCE, r2 } from "./purchase-totals";
 import { netAfterCredits } from "./vendor-return-rule";
 import { businessOfUser } from "src/core/business-of-user";
 import { taxRatesFor } from "./tax-rates";
@@ -793,6 +793,7 @@ export class PurchaseInvoiceService {
         if(values?.status === 'COMPLETE'){
           for(const id of ids) await this.assertReadyToComplete(id);
           for(const id of ids) await this.assertNoDisputes(id);
+          for(const id of ids) await this.assertPrintedAgrees(id);
           for(const id of ids) await this.assertPriceRules(id, userid);
         }
         if(ids.length === 1 && values && ('invoiceno' in values || 'challanno' in values || 'invoicedate' in values)){
@@ -809,7 +810,7 @@ export class PurchaseInvoiceService {
         }
 
         // a cash discount typed after the lines were added changes what the invoice comes to
-        if(values?.cashdiscount !== undefined && ids.length === 1 && values?.total === undefined){
+        if((values?.cashdiscount !== undefined || values?.printedtotal !== undefined) && ids.length === 1 && values?.total === undefined){
           await this.refreshTotal(ids[0], userid);
         }
 
@@ -867,8 +868,36 @@ export class PurchaseInvoiceService {
         const [c] = await this.manager.query(`select coalesce(sum(amount), 0)::float8 as t from purchase_invoice_credit where invoice_id = $1 and active`, [invoiceid]);
         const after = netAfterCredits(bought, +(c?.t || 0));
         if(after.problem) throw new BadRequestException(after.problem);
-        const net = after.net;
-        await this.update([invoiceid], { total: round ? Math.round(net) : r2(net) }, userid);
+        let total = round ? Math.round(after.net) : r2(after.net);
+        // the net total the user entered from the vendor's invoice: once the lines agree with it (within rounding) it IS the amount payable,
+        // to the paisa, so a payment of "the invoice total" is exactly the invoice total and not the lines rounded to the rupee
+        const [inv] = await this.manager.query(`select printed_total::float8 as printed from purchase_invoice where id = $1`, [invoiceid]);
+        if(inv?.printed > 0){
+          const billed = await this.billedNet(invoiceid);
+          if(agreesWithPrinted(inv.printed, billed)) total = payableFromPrinted(inv.printed, billed, bought, +(c?.t || 0));
+        }
+        await this.update([invoiceid], { total }, userid);
+      }
+
+      /** what the vendor billed on the lines still in play: a line the vendor agreed to drop counts at its original value, a line in dispute is left out */
+      async billedNet(invoiceid:number){
+        const lines = await this.manager.query(
+          `select (case when status = 'REJECTED' then coalesce(rejected_total, 0) else total end)::float8 as total, tax_pcnt::float8 as taxpcnt
+             from purchase_invoice_item where invoice_id = $1 and active and not archive and status <> 'DISPUTED'`, [invoiceid]);
+        const [inv] = await this.manager.query(`select coalesce(cash_discount, 0)::float8 as cd from purchase_invoice where id = $1`, [invoiceid]);
+        return invoiceNet(lines, inv?.cd || 0).net;
+      }
+
+      /** the lines must come to the net total entered from the vendor's invoice, within rounding, before the invoice is completed */
+      private async assertPrintedAgrees(invoiceid:number){
+        const [inv] = await this.manager.query(`select printed_total::float8 as printed from purchase_invoice where id = $1`, [invoiceid]);
+        if(!(inv?.printed > 0)) return;
+        const billed = await this.billedNet(invoiceid);
+        if(agreesWithPrinted(inv.printed, billed)) return;
+        const diff = r2(billed - inv.printed);
+        throw new BadRequestException(
+          `The lines come to Rs ${billed.toFixed(2)} but the net total of the invoice is Rs ${Number(inv.printed).toFixed(2)} (Rs ${Math.abs(diff).toFixed(2)} ${diff > 0 ? 'more' : 'less'}). `
+          + `Check for a missing, repeated or mistyped line, or correct the net total, before completing. A difference up to Rs ${PRINTED_TOLERANCE} is accepted as rounding.`);
       }
 
       private cleanNote(note:any, min:number, what:string){

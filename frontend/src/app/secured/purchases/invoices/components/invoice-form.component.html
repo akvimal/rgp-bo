@@ -28,11 +28,12 @@
           <input type="date" class="form-control" id="inv-date" formControlName="invoicedate" (change)="setDue()" data-testid="inv-f-date">
         </div>
         <div class="col-6 col-md-3 col-lg-2">
-          <label for="inv-total" class="form-label">Invoice total <span *ngIf="!id && hasInvoiceNo">*</span><span class="text-muted small" *ngIf="!hasInvoiceNo">(or challan total)</span></label>
+          <label for="inv-total" class="form-label">Net total of the invoice <span *ngIf="!id && hasInvoiceNo">*</span><span class="text-muted small" *ngIf="!hasInvoiceNo">(or challan total)</span></label>
           <div class="input-group">
             <span class="input-group-text">&#8377;</span>
             <input type="number" min="0" step="0.01" class="form-control" id="inv-total" formControlName="printedtotal" placeholder="As printed" data-testid="inv-f-total">
           </div>
+          <div class="form-text">The amount to pay. The lines must come to it (within Rs 1).</div>
         </div>
 
         <div class="col-12" *ngIf="duplicate" data-testid="inv-f-dup">
