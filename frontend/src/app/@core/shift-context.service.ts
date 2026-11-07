@@ -30,6 +30,11 @@ export class ShiftContextService {
     return this.profileSubject.value?.returnsallowed !== false;
   }
 
+  /** the selected store gives staff credit (the Staff credit button at the till; the server checks as well) */
+  get staffCreditAllowed(): boolean {
+    return this.profileSubject.value?.staffcreditallowed !== false;
+  }
+
   get staffBased(): boolean {
     return this.profileSubject.value?.shiftmode === "staff";
   }

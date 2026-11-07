@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "src/environments/environment";
+import { ShiftContextService } from "src/app/@core/shift-context.service";
 
 @Component({
     selector: 'app-sale-payment',
@@ -22,7 +23,7 @@ export class SalePaymentComponent {
     /** people with a monthly staff-credit limit, and what is left of it this month */
     staffOptions:any[] = [];
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient, public shiftContext: ShiftContextService) {}
     cashbal = 0;
     /** what the customer handed over, for working out the change; null until typed */
     tendered:number|null = null;
