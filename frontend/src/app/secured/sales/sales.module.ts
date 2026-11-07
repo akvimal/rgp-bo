@@ -26,6 +26,9 @@ import { SaleProductRequestComponent } from "./components/sale-product-request.c
 import { SaleReturnsComponent } from "./components/sale-returns.component";
 import { SaleDeliveryComponent } from "./components/sale-delivery.component";
 import { SaleDeliveryModeComponent } from "./components/sale-delivery-mode.component";
+import { SaleDetailsComponent } from "./components/sale-details.component";
+import { SaleDeliveryFromSaleComponent } from "./components/sale-delivery-from-sale.component";
+import { SidebarModule } from "primeng/sidebar";
 import { SalePaymentComponent } from "./components/sale-payment.component";
 import { SaleReturnAdjustFormComponent } from "./components/sale-return-adjust-form.component";
 import { SaleReturnFormComponent } from "./components/sale-return-form.component";
@@ -71,6 +74,8 @@ const routes: Routes = [
       SaleReturnFormComponent,
       SaleDeliveryComponent,
       SaleDeliveryModeComponent,
+      SaleDetailsComponent,
+      SaleDeliveryFromSaleComponent,
       SaleDeliveryFormComponent
     ],
     imports: [PharmacyUiModule, 
@@ -80,6 +85,7 @@ const routes: Routes = [
         AutoCompleteModule,
         CalendarModule,
         DialogModule,
+        SidebarModule,
         TabViewModule,
         InputNumberModule,
         TableModule,

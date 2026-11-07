@@ -12,6 +12,7 @@ export class SaleDeliveryComponent {
     deliveries:SaleDelivery[] = []
     editingDelivery:SaleDelivery = {}
     showEditor = false
+    showNew = false
     useSaleCustomer = false
     currentMonthLabel = ''
     summary = {

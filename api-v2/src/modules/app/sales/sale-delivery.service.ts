@@ -122,6 +122,29 @@ export class SaleDeliveryService {
         });
     }
 
+    /**
+     * Recent completed bills that are not deliveries yet, for "new delivery" on the Deliveries page. A Store Head / Business Head sees every bill of
+     * the store; anyone else sees only the bills they rang. Making one a delivery goes through changeMode, which checks the same rules again.
+     */
+    async candidates(query: any, user: { id: number; roleid?: number }) {
+        const days = Math.min(Math.max(Math.floor(Number(query?.days)) || 3, 1), 30);
+        const storeId = query?.storeid ? Number(query.storeid) : null;
+        const q = String(query?.q || '').trim();
+        const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
+        const manager = isManagerRole(role?.name);
+        return this.manager.query(
+            `select s.id, s.bill_no as billno, s.bill_date as billdate, s.total, s.order_type as ordertype, coalesce(s.delivery_type, 'Counter') as deliverytype,
+                    c.name as custname, c.mobile as custmobile
+               from sale s left join customer c on c.id = s.customer_id
+              where s.status = 'COMPLETE' and coalesce(s.delivery_type, 'Counter') <> 'Delivery'
+                and s.bill_date >= now() - ($1::int * interval '1 day')
+                and ($2::int is null or s.store_id = $2)
+                and ($3::boolean or s.created_by = $4 or s.acting_user_id = $4)
+                and ($5 = '' or s.bill_no::text = $5 or c.name ilike '%' || $5 || '%' or c.mobile like '%' || $5 || '%')
+              order by s.bill_date desc limit 100`,
+            [days, storeId, manager, user.id, q]);
+    }
+
     async findAll(query:any,userid:any){
         const qb = this.saleRepository.createQueryBuilder("sale")
                 .leftJoinAndSelect("sale.delivery", "delivery")
