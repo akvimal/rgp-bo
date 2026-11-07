@@ -259,6 +259,36 @@ export class VaultService {
     });
   }
 
+  /**
+   * Checks that a manager may take this float out of the vault now, and returns the cleaned request. Used before a shift is created so a shortfall
+   * is refused before anything is written; takeFloat checks again under the lock.
+   */
+  async checkFloat(storeid: number, denominations: any, userid: number) {
+    const c = await this.caller(userid);
+    this.needManager(c, 'take the opening float from the vault');
+    const r = this.request({ denominations }, 'opening float');
+    const s = await this.store(this.manager, storeid, c);
+    this.needVault(s);
+    this.needCover(r.denominations, await this.rows(this.manager, storeid));
+    return r;
+  }
+
+  /** the opening float of a shift, taken out of the vault: the notes and coins leave the vault at once and are the shift's opening cash */
+  async takeFloat(storeid: number, shiftid: number, denominations: any, userid: number, notes?: string) {
+    const c = await this.caller(userid);
+    this.needManager(c, 'take the opening float from the vault');
+    const r = this.request({ denominations }, 'opening float');
+    return this.manager.transaction(async (m) => {
+      const s = await this.store(m, storeid, c, { lock: true });
+      this.needVault(s);
+      this.needCover(r.denominations, await this.rows(m, storeid));
+      const id = await this.insertMovement(m, { storeid, shiftid, type: 'FLOAT_TO_DRAWER', direction: 'OUT', amount: r.amount, denominations: r.denominations, status: 'CONFIRMED', actor: c.id, reason: 'Opening float', notes: this.cleanText(notes, 500) });
+      await this.audit.record({ userId: c.id, action: 'vault.float_to_drawer', entityType: 'store_vault', entityId: storeid,
+        summary: `${String(s.location).trim()}: ${money(r.amount)} from the vault as the opening float of shift ${shiftid}`, details: { movement: id, shiftid, denominations: r.denominations } });
+      return { id, amount: r.amount };
+    });
+  }
+
   /** a second person confirms a waiting drop or deposit */
   async confirm(movementId: string, userid: number) {
     const c = await this.caller(userid);

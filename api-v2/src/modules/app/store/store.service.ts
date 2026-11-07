@@ -301,6 +301,7 @@ export class StoreService {
       out.floatamount = n;
       out.floatdenominations = null;
     }
+    if (body.draweremptied !== undefined) out.draweremptied = !!body.draweremptied;
     if (body.vaultdropconfirmlimit !== undefined) {
       const n = body.vaultdropconfirmlimit === null || body.vaultdropconfirmlimit === "" ? 0 : Number(body.vaultdropconfirmlimit);
       if (!Number.isFinite(n) || n < 0) throw new BadRequestException("The confirmation limit must be zero or more (zero means none).");
@@ -715,7 +716,17 @@ export class StoreService {
     // Opening float: prefer the denomination breakdown; fall back to a plain number. A silent
     // zero float used to be allowed - now it needs an explicit confirmation, same guard shape
     // as the empty-drawer-count check on close below.
-    const openingDenoms = normalizeDenominations(body.openingdenominations);
+    // the float can come out of the store's vault: only a manager, only when the drawer is not already in use today. The vault is checked now, before
+    // the shift exists; the cash leaves the vault once it does.
+    let floatFromVault: { denominations: Array<{ d: number; n: number }>; amount: number } | null = null;
+    if (body.floatfromvault) {
+      if (!(await this.isManager(userid))) throw new ForbiddenException("Only a Store Head or Business Head can take the opening float from the vault.");
+      if ((await this.openingContext({ storeid }, userid)).storealreadyopen) {
+        throw new BadRequestException("The store is already open today, so the drawer already holds cash. Count it instead of taking a new float from the vault.");
+      }
+      floatFromVault = await this.vault.checkFloat(storeid, body.floatfromvault.denominations, userid);
+    }
+    const openingDenoms = floatFromVault ? floatFromVault.denominations : normalizeDenominations(body.openingdenominations);
     const openingcash = openingDenoms ? denominationTotal(openingDenoms) : Number(body.openingcash || 0);
     if (openingcash <= 0 && body.allowZero !== true) {
       throw new BadRequestException("Enter the opening float before opening the shift.");
@@ -756,6 +767,14 @@ export class StoreService {
       openedby: userid ? { id: userid } as any : null,
     });
 
+    if (floatFromVault) {
+      try {
+        await this.vault.takeFloat(storeid, shift.id, floatFromVault.denominations, userid, body.floatfromvault.notes);
+      } catch (e) {
+        await this.shiftRepository.delete(shift.id);      // the vault could not give the cash: no shift without its float
+        throw e;
+      }
+    }
     if (Array.isArray(body.openingchecklist)) {
       await this.recordChecklist(shift.id, storeid, 'OPEN', openingKind, body.openingchecklist, body.openingchecklistat, userid, shift.assigneduserid ?? null);
     }
@@ -969,7 +988,7 @@ export class StoreService {
    * handover (the counted drawer goes to the next person) or in a store without a vault.
    */
   private async planVaultDrop(storeid: number, closeType: string, body: any, countedcash: number, countedDenoms: Array<{ d: number; n: number }> | null) {
-    const [s] = await this.manager.query(`select vault_enabled as enabled, float_amount::float as floatamount from stores where id = $1`, [storeid]);
+    const [s] = await this.manager.query(`select vault_enabled as enabled, case when drawer_emptied_at_close then 0 else float_amount::float end as floatamount from stores where id = $1`, [storeid]);
     const wants = body.vaultdrop !== undefined && body.vaultdrop !== null;
     const none = { drop: null as null | { denominations: Array<{ d: number; n: number }>; amount: number }, notes: null as string | null, skipReason: null as string | null, surplus: 0 };
     if (!s?.enabled) {
@@ -998,10 +1017,11 @@ export class StoreService {
 
   /** the vault as the person closing sees it: whether the store keeps one, the float to leave in the drawer and any drop this shift has made */
   private async vaultSummary(storeid: number, shiftId: number) {
-    const [s] = await this.manager.query(`select vault_enabled as enabled, float_amount::float as floatamount, float_denominations as floatdenominations, vault_drop_confirm_limit::float as confirmlimit from stores where id = $1`, [storeid]);
+    const [s] = await this.manager.query(`select vault_enabled as enabled, drawer_emptied_at_close as emptied, float_amount::float as floatamount, float_denominations as floatdenominations, vault_drop_confirm_limit::float as confirmlimit from stores where id = $1`, [storeid]);
     if (!s?.enabled) return { enabled: false };
+    const [fl] = await this.manager.query(`select amount::float as amount from store_vault_movements where shift_id = $1 and move_type = 'FLOAT_TO_DRAWER' and status <> 'REJECTED' limit 1`, [shiftId]);
     const [drop] = await this.manager.query(`select id::text as id, amount::float as amount, status from store_vault_movements where shift_id = $1 and move_type = 'DROP_IN' and status <> 'REJECTED' limit 1`, [shiftId]);
-    return { enabled: true, floatamount: s.floatamount || 0, floatdenominations: s.floatdenominations || [], confirmlimit: s.confirmlimit || 0, dropped: drop || null };
+    return { enabled: true, emptydrawer: !!s.emptied, floatamount: s.emptied ? 0 : (s.floatamount || 0), floatdenominations: s.emptied ? [] : (s.floatdenominations || []), confirmlimit: s.confirmlimit || 0, dropped: drop || null, floatfromvault: fl ? fl.amount : null };
   }
 
   /** What the person closing sees: takings by tender, the digital totals to match, and the cash drawer's expenses. */
