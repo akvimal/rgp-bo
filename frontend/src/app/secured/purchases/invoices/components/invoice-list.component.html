@@ -8,6 +8,7 @@
         <a class="btn btn-outline-primary"  data-testid="inv-tab-byvendor" [routerLink]="['/secure/purchases/invoices/by-vendor']">By vendor</a>
       </div>
       <div class="page-toolbar-actions">
+        <button *ngIf="approval.canmanage" type="button" class="btn btn-outline-secondary me-2" data-testid="inv-rule-open" (click)="openRule()" title="Should invoices be approved before they are paid?">Approval rule<span *ngIf="approval.enabled"> &middot; on</span></button>
         <a *isAuth="'purchases.add'" class="btn btn-primary" role="button" [routerLink]="['/secure/purchases/invoices/new']" data-testid="inv-add">Add New</a>
       </div>
     </div>
@@ -24,6 +25,8 @@
         <div class="small">Due in 7 days</div><div class="fs-6 fw-bold">&#8377;{{summary.due7.amount | number:'1.0-0'}}</div><div class="small">{{summary.due7.count}} invoice{{summary.due7.count === 1 ? '' : 's'}}</div></button></div>
       <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'hold' ? 'btn-warning' : 'btn-outline-warning'" data-testid="inv-chip-hold" (click)="setView('hold')">
         <div class="small">On hold</div><div class="fs-6 fw-bold">&#8377;{{summary.hold.amount | number:'1.0-0'}}</div><div class="small">{{summary.hold.count}} invoice{{summary.hold.count === 1 ? '' : 's'}}</div></button></div>
+      <div class="col-6 col-md-4 col-xl-2" *ngIf="approval.enabled"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'approval' ? 'btn-primary' : 'btn-outline-primary'" data-testid="inv-chip-approval" (click)="setView('approval')" title="Received and checked, waiting for a Business Head to clear them for payment">
+        <div class="small">Awaiting approval</div><div class="fs-6 fw-bold">&#8377;{{summary.approval?.amount | number:'1.0-0'}}</div><div class="small">{{summary.approval?.count}} invoice{{summary.approval?.count === 1 ? '' : 's'}}</div></button></div>
       <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'paid' ? 'btn-success' : 'btn-outline-success'" data-testid="inv-chip-paid" (click)="setView('paid')">
         <div class="small">Paid</div><div class="fs-6 fw-bold">&#8377;{{summary.paid.amount | number:'1.0-0'}}</div><div class="small">{{summary.paid.count}} invoice{{summary.paid.count === 1 ? '' : 's'}}</div></button></div>
       <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'draft' ? 'btn-secondary' : 'btn-outline-secondary'" data-testid="inv-chip-draft" (click)="setView('draft')" title="Entered but not received: nothing is owed on these yet">
@@ -84,13 +87,16 @@
             <td class="text-end">{{p.paid_amount | number:'1.2-2'}}<div class="small text-muted" *ngIf="p.last_payment">{{p.last_payment | date:'dd MMM'}}</div></td>
             <td class="text-end fw-semibold" data-testid="inv-balance" [class.text-danger]="p.days_overdue > 0">{{p.balance_amount | number:'1.2-2'}}</td>
             <td class="text-center"><span class="badge" [ngClass]="payClass(p.payment_status)" data-testid="inv-payment">{{p.payment_status}}</span>
-              <div class="small text-muted" *ngIf="p.on_hold" [title]="p.hold_reason">{{p.hold_reason}}</div></td>
+              <div class="small text-muted" *ngIf="p.on_hold" [title]="p.hold_reason">{{p.hold_reason}}</div>
+              <div class="small text-muted" *ngIf="approval.enabled && p.approved" data-testid="inv-approved-by">approved by {{p.approved_by}}</div></td>
             <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
             <td class="text-end text-nowrap">
               <div class="d-flex flex-wrap gap-1 justify-content-end" style="min-width:8rem">
               <a class="btn btn-primary btn-sm py-0" data-testid="inv-add-invoice" *ngIf="p.awaiting" [routerLink]="['../edit', p.id]" title="The vendor's invoice has come: enter its number, date and total">Add invoice no.</a>
               <button class="btn btn-primary btn-sm py-0" data-testid="inv-pay" *ngIf="canPay(p)" (click)="openPay(p)" title="Record a payment">Pay</button>
               <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-history" *ngIf="p.payments > 0" (click)="openHistory(p)" title="Payments recorded">Payments</button>
+              <button class="btn btn-success btn-sm py-0" data-testid="inv-approve" *ngIf="p.awaiting_approval && approval.canmanage" (click)="approveInv(p)" title="Clear this invoice for payment">Approve</button>
+              <button class="btn btn-outline-secondary btn-sm py-0" data-testid="inv-unapprove" *ngIf="p.approved && p.balance_amount > 0 && !p.payments && approval.canmanage" (click)="unapproveInv(p)" title="Take the approval back">Withdraw approval</button>
               <button class="btn btn-outline-warning btn-sm py-0" data-testid="inv-hold" *ngIf="p.status === 'COMPLETE' && p.balance_amount > 0 && !p.on_hold" (click)="openHold(p)" title="Hold: no payment until released">Hold</button>
               <button class="btn btn-warning btn-sm py-0" data-testid="inv-release" *ngIf="p.on_hold" (click)="release(p)">Release</button>
               <button class="btn btn-outline-danger btn-sm py-0" data-testid="inv-delete" *ngIf="p.status === 'NEW' && !p.payments" (click)="askDelete(p)" title="Delete this draft invoice"><i class="bi bi-trash"></i> Delete</button>
@@ -191,6 +197,22 @@
     <div class="mt-3 text-end">
       <button class="btn btn-outline-secondary btn-sm me-2" (click)="deleteInv = null">Keep it</button>
       <button class="btn btn-danger btn-sm" data-testid="inv-delete-confirm" (click)="confirmDelete()">Delete invoice</button>
+    </div>
+  </div>
+</p-dialog>
+
+<!-- approval rule -->
+<p-dialog header="Approval for payment" [visible]="ruleOpen" (visibleChange)="$event || (ruleOpen = false)" [modal]="true" [style]="{width:'32rem'}">
+  <div data-testid="inv-rule-dialog">
+    <div class="small text-muted mb-2">Completing an invoice says the goods and the bill agree. Approval is a second step: a Business Head clears the invoice before anyone can pay it.</div>
+    <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="rule-on" data-testid="inv-rule-on" [(ngModel)]="rule.enabled"><label class="form-check-label" for="rule-on">Invoices must be approved before they are paid</label></div>
+    <label class="form-label small mb-0">No approval needed up to (&#8377;)</label>
+    <input type="number" min="0" class="form-control form-control-sm" style="max-width:12rem" data-testid="inv-rule-limit" [(ngModel)]="rule.limit" [disabled]="!rule.enabled">
+    <div class="small text-muted">0 means every invoice needs approval. A bill at or below this amount can be paid straight away.</div>
+    <div class="text-danger small mt-1" *ngIf="ruleError" data-testid="inv-rule-error">{{ruleError}}</div>
+    <div class="mt-3 text-end">
+      <button class="btn btn-outline-secondary btn-sm me-2" (click)="ruleOpen = false">Cancel</button>
+      <button class="btn btn-primary btn-sm" data-testid="inv-rule-save" (click)="saveRule()">Save</button>
     </div>
   </div>
 </p-dialog>

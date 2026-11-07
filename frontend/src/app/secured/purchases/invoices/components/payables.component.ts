@@ -64,7 +64,7 @@ export class PayablesComponent {
         this.showPay = true;
         this.service.findOutstanding({ vendorid: vendor.vendor_id }).subscribe((rows: any) => {
             this.payInvoices = (rows || [])
-                .filter((r: any) => r.payment_status !== 'On Hold')
+                .filter((r: any) => r.payment_status !== 'On Hold' && !r.needs_approval)
                 .sort((a: any, b: any) => (a.due_date || '').localeCompare(b.due_date || ''))
                 .map((r: any) => ({ ...r, checked: false, payamount: 0 }));
         });

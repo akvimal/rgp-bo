@@ -1,9 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
+import { isOwnerRole, ROLE } from 'src/core/roles';
+import { ApprovalPolicy, loadApprovalPolicy } from './invoice-approval';
 
-export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting'] as const;
+export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting', 'approval'] as const;
 export type InvoiceView = typeof INVOICE_VIEWS[number];
 
 export interface InvoiceFilter { vendor?: number; from?: string; to?: string; q?: string; product?: string }
@@ -28,7 +30,7 @@ export class InvoiceViewService {
   ) {}
 
   /** Shared SELECT: one row per invoice with paid, balance and the derived flags. Filters are bound parameters. */
-  private base(f: InvoiceFilter) {
+  private base(f: InvoiceFilter, policy: ApprovalPolicy) {
     const where: string[] = ['i.active and not i.archive'];
     const args: any[] = [];
     const add = (sql: string, v: any) => { args.push(v); where.push(sql.split('?').join(`$${args.length}`)); };
@@ -48,10 +50,12 @@ export class InvoiceViewService {
              (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid <= 0.005) as is_paid,
              (w.status <> 'COMPLETE') as draft,
              (w.status = 'COMPLETE' and w.invoice_no is null) as awaiting,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.needs_appr) as awaiting_approval,
              case when w.status <> 'COMPLETE' then 'Draft'
                   when w.invoice_no is null then 'Awaiting invoice'
                   when w.total - w.paid <= 0.005 then 'Paid'
                   when w.stored_status = 'On Hold' then 'On Hold'
+                  when w.needs_appr then 'Awaiting approval'
                   when w.due_date < current_date then 'Overdue'
                   when w.paid > 0.005 then 'Part Paid'
                   else 'Unpaid' end as payment_status,
@@ -62,10 +66,13 @@ export class InvoiceViewService {
           select i.id, i.vendor_id, btrim(v.business_name) as business_name, i.invoice_no, i.challan_no, i.challan_date, i.invoice_date,
                  coalesce(i.due_date, i.invoice_date) as due_date, i.status, i.total::numeric as total,
                  coalesce(i.payment_status, 'Unpaid') as stored_status, i.gst_recon_status, i.gst_period,
-                 i.hold_reason, p.paid, p.last_payment, p.payments,
+                 i.hold_reason, i.approved_on, i.approval_note, ua.full_name as approved_by_name,
+                 (${policy.enabled ? 'true' : 'false'} and i.approved_on is null and (${Number(policy.limit) || 0} <= 0 or i.total::numeric > ${Number(policy.limit) || 0})) as needs_appr,
+                 p.paid, p.last_payment, p.payments,
                  (select count(*) from purchase_invoice_item x where x.invoice_id = i.id)::int as items
             from purchase_invoice i
             join vendor v on v.id = i.vendor_id
+            left join app_user ua on ua.id = i.approved_by
             left join lateral (select coalesce(sum(amount), 0)::numeric as paid, max(pay_date) filter (where amount > 0) as last_payment,
                                       (count(*) filter (where amount > 0))::int as payments
                                  from vendor_payment where invoice_id = i.id) p on true
@@ -83,15 +90,16 @@ export class InvoiceViewService {
       case 'paid': return 'is_paid';
       case 'draft': return 'draft';
       case 'awaiting': return 'awaiting';
+      case 'approval': return 'awaiting_approval';
       default: return 'true';
     }
   }
 
   async search(f: InvoiceFilter, view: string, sort: string | undefined, dir: string | undefined, page = 1, limit = 25) {
-    const { sql, args } = this.base(f);
+    const { sql, args } = this.base(f, await loadApprovalPolicy(this.manager));
     const v = (INVOICE_VIEWS as readonly string[]).includes(view) ? view : 'all';
     // unpaid views read best oldest-due first; the rest newest first
-    const defaultSort = ['pending', 'overdue', 'due7', 'hold'].includes(v) ? 'due_date asc' : v === 'awaiting' ? 'invoice_date asc' : 'invoice_date desc';
+    const defaultSort = ['pending', 'overdue', 'due7', 'hold', 'approval'].includes(v) ? 'due_date asc' : v === 'awaiting' ? 'invoice_date asc' : 'invoice_date desc';
     const col = sort && SORTS[sort] ? `${SORTS[sort]} ${dir === 'asc' ? 'asc' : 'desc'}, id desc` : `${defaultSort}, id desc`;
     const safeLimit = Math.min(100, Math.max(1, limit || 25));
     const safePage = Math.max(1, page || 1);
@@ -105,15 +113,17 @@ export class InvoiceViewService {
       items: r.items, total: +r.total, paid_amount: +r.paid, balance_amount: +r.balance, days_overdue: +r.days_overdue,
       last_payment: r.last_payment, payments: r.payments, on_hold: r.on_hold, hold_reason: r.hold_reason,
       gst_status: r.gst_recon_status, gst_period: r.gst_period,
+      awaiting_approval: r.awaiting_approval, approved: !!r.approved_on, approved_on: r.approved_on, approved_by: r.approved_by_name, approval_note: r.approval_note,
     }));
     return { data, total: rows[0]?.total_rows ?? 0, page: safePage, limit: safeLimit, view: v };
   }
 
   /** The chip totals above the list, for the same vendor / date / search filters (not for the chosen view). */
   async summary(f: InvoiceFilter) {
-    const { sql, args } = this.base(f);
+    const { sql, args } = this.base(f, await loadApprovalPolicy(this.manager));
     const [r] = await this.manager.query(
       `select count(*)::int as all_n,
+              count(*) filter (where awaiting_approval)::int as appr_n, coalesce(round(sum(balance) filter (where awaiting_approval), 2), 0) as appr_amt,
               count(*) filter (where pending)::int as pending_n, coalesce(round(sum(balance) filter (where pending), 2), 0) as pending_amt,
               count(*) filter (where overdue)::int as overdue_n, coalesce(round(sum(balance) filter (where overdue), 2), 0) as overdue_amt,
               count(*) filter (where due7)::int as due7_n, coalesce(round(sum(balance) filter (where due7), 2), 0) as due7_amt,
@@ -133,6 +143,7 @@ export class InvoiceViewService {
       paid: { count: n('paid_n'), amount: n('paid_amt') },
       draft: { count: n('draft_n'), amount: n('draft_amt') },
       awaiting: { count: n('awaiting_n'), amount: n('awaiting_amt'), oldest_days: n('awaiting_oldest') },
+      approval: { count: n('appr_n'), amount: n('appr_amt') },
     };
   }
 
@@ -164,6 +175,66 @@ export class InvoiceViewService {
     await this.audit.record({ userId: userid, action: 'invoice.held', entityType: 'purchases', entityId: invoiceId,
       summary: `invoice ${inv.invoice_no} put on hold: ${why}`, details: { reason: why } });
     return { id: invoiceId, on_hold: true };
+  }
+
+  /** only an owner role may clear invoices for payment or change the rule */
+  private async needOwner(userid: number, what: string) {
+    const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+    if (!isOwnerRole(r?.name) && r?.name !== ROLE.SITE_ADMIN) throw new ForbiddenException(`Only a Business Head can ${what}.`);
+  }
+
+  /** the rule, and whether the person asking may approve invoices and change the rule */
+  async approvalSettings(userid: number) {
+    const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
+    return { ...(await loadApprovalPolicy(this.manager)), canmanage: isOwnerRole(r?.name) || r?.name === ROLE.SITE_ADMIN };
+  }
+
+  async setApprovalSettings(body: any, userid: number) {
+    await this.needOwner(userid, 'change how invoices are approved for payment');
+    const limit = Number(body?.limit ?? 0);
+    if (!Number.isFinite(limit) || limit < 0 || limit > 100000000) throw new BadRequestException('The limit must be between 0 and 10,00,00,000.');
+    const before = await loadApprovalPolicy(this.manager);
+    const put = async (key: string, value: string, why: string) => {
+      const upd = await this.manager.query(`update app_setting set setting_value = $2, updated_on = now(), updated_by = $3 where setting_key = $1 returning id`, [key, value, userid]);
+      if (!upd.length) await this.manager.query(
+        `insert into app_setting (category, setting_key, setting_value, description, active, archive, created_by, updated_by) values ('purchasing', $1, $2, $4, true, false, $3, $3)`, [key, value, userid, why]);
+    };
+    await put('invoice_approval', body?.enabled ? 'on' : 'off', 'Purchase invoices must be approved for payment before they can be paid (on / off)');
+    await put('invoice_approval_limit', String(limit), 'Invoices up to this amount need no approval for payment (0 = every invoice needs approval)');
+    await this.audit.record({ userId: userid, action: 'invoice.approval_rule', entityType: 'app_setting', entityId: null,
+      summary: `Invoice approval for payment ${body?.enabled ? 'on' : 'off'}, no approval up to ${limit} (was ${before.enabled ? 'on' : 'off'}, ${before.limit})`, details: { from: before, to: { enabled: !!body?.enabled, limit } } });
+    return { enabled: !!body?.enabled, limit };
+  }
+
+  /** Clears a received invoice for payment. The person who approves is recorded, with an optional note. */
+  async approve(invoiceId: number, note: string | undefined, userid: number) {
+    await this.needOwner(userid, 'approve an invoice for payment');
+    const [inv] = await this.manager.query(
+      `select i.id, i.invoice_no, i.status, i.approved_on, i.total::numeric - coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as balance
+         from purchase_invoice i where i.id = $1 and i.active and not i.archive`, [invoiceId]);
+    if (!inv) throw new NotFoundException('Invoice not found.');
+    if (inv.status !== 'COMPLETE') throw new BadRequestException('Only a completed invoice can be approved for payment.');
+    if (!inv.invoice_no) throw new BadRequestException("Enter the vendor's invoice number before approving it for payment.");
+    if (+inv.balance <= 0.005) throw new BadRequestException('This invoice is already paid.');
+    if (inv.approved_on) return { id: invoiceId, approved: true };
+    const text = (note || '').trim().slice(0, 200) || null;
+    await this.manager.query(`update purchase_invoice set approved_by = $2, approved_on = now(), approval_note = $3, updated_on = now(), updated_by = $2 where id = $1`, [invoiceId, userid, text]);
+    await this.audit.record({ userId: userid, action: 'invoice.approved', entityType: 'purchases', entityId: invoiceId,
+      summary: `invoice ${inv.invoice_no} approved for payment${text ? `: ${text}` : ''}`, details: { note: text } });
+    return { id: invoiceId, approved: true };
+  }
+
+  /** Takes the approval back (before anything is paid on it): the invoice waits for approval again. */
+  async unapprove(invoiceId: number, userid: number) {
+    await this.needOwner(userid, 'withdraw an approval');
+    const [inv] = await this.manager.query(
+      `select i.id, i.invoice_no, i.approved_on, coalesce((select sum(amount) from vendor_payment where invoice_id = i.id), 0)::numeric as paid from purchase_invoice i where i.id = $1`, [invoiceId]);
+    if (!inv) throw new NotFoundException('Invoice not found.');
+    if (!inv.approved_on) return { id: invoiceId, approved: false };
+    if (+inv.paid > 0.005) throw new BadRequestException('A payment has been recorded against this invoice, so its approval stays.');
+    await this.manager.query(`update purchase_invoice set approved_by = null, approved_on = null, approval_note = null, updated_on = now(), updated_by = $2 where id = $1`, [invoiceId, userid]);
+    await this.audit.record({ userId: userid, action: 'invoice.unapproved', entityType: 'purchases', entityId: invoiceId, summary: `invoice ${inv.invoice_no}: approval for payment withdrawn`, details: {} });
+    return { id: invoiceId, approved: false };
   }
 
   async release(invoiceId: number, userid: number) {

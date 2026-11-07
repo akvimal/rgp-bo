@@ -57,6 +57,7 @@
           <td>
             {{v.vendor_name}}
             <span class="badge bg-warning text-dark ms-1" *ngIf="v.on_hold_count" title="Invoices on hold">{{v.on_hold_count}} on hold</span>
+            <span class="badge bg-primary ms-1" *ngIf="v.approval_count" title="Waiting for approval before they can be paid" data-testid="payables-approval">{{v.approval_count}} to approve</span>
           </td>
           <td class="text-end">{{v.invoice_count}}</td>
           <td class="text-end fw-semibold">{{v.total_outstanding | number:'1.2-2'}}</td>
