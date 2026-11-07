@@ -152,6 +152,8 @@ const routes: Routes = [
   ] }
 ];
 
+import { QuickActionsComponent } from "./quick-actions.component";
+
 @NgModule({
     declarations: [
       SecuredComponent,
@@ -162,7 +164,8 @@ const routes: Routes = [
       TeamRecognitionComponent,
       ProfileComponent,
       NotificationBellComponent,
-      NotificationsPageComponent
+      NotificationsPageComponent,
+      QuickActionsComponent
     ],
     imports: [
         RouterModule.forChild(routes),

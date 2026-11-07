@@ -9,7 +9,7 @@ const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /** stock still in a batch at a store, and the credit rate it was bought at (per sale unit, before tax) */
 const BATCH_SQL = `
-  pii.id as itemid, pii.product_id as productid, p.title, pii.batch, to_char(pii.exp_date, 'YYYY-MM-DD') as expdate, pi.invoice_no as invoiceno,
+  pii.id as itemid, pii.product_id as productid, p.title, pii.batch, to_char(pii.exp_date, 'YYYY-MM-DD') as expdate, pi.invoice_no as invoiceno, to_char(pi.invoice_date, 'YYYY-MM-DD') as invoicedate, pi.id as invoiceid,
   round((pii.ptr_value / coalesce(p.pack, 1) * (1 - coalesce(pii.disc_pcnt, 0) / 100))::numeric, 4)::float8 as rate, coalesce(pii.tax_pcnt, 0)::float8 as taxpcnt,
   ((pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1)
     - coalesce((select sum(si.qty) from sale_item si join sale s on s.id = si.sale_id where si.purchase_item_id = pii.id and si.active and not si.archive and s.store_id = $2), 0)
@@ -32,7 +32,9 @@ export class VendorReturnService {
     return this.manager.query(
       `select r.id, r.vendor_id as vendorid, v.business_name as vendor, r.store_id as storeid, r.return_no as returnno, to_char(r.return_date, 'YYYY-MM-DD') as returndate, r.reason, r.status,
               r.total::float8 as total, r.adjusted_invoice_id as adjustedinvoiceid, pi.invoice_no as adjustedinvoiceno,
-              (select count(*)::int from vendor_return_item i where i.return_id = r.id and i.active) as lines
+              (select count(*)::int from vendor_return_item i where i.return_id = r.id and i.active) as lines,
+              (select string_agg(distinct fp.invoice_no, ', ') from vendor_return_item fi join purchase_invoice_item fpi on fpi.id = fi.item_id join purchase_invoice fp on fp.id = fpi.invoice_id
+                where fi.return_id = r.id and fi.active) as frominvoices
          from vendor_return r join vendor v on v.id = r.vendor_id left join purchase_invoice pi on pi.id = r.adjusted_invoice_id
         where ${where.join(' and ')} order by r.id desc limit 300`, args);
   }
@@ -44,8 +46,11 @@ export class VendorReturnService {
          from vendor_return r join vendor v on v.id = r.vendor_id left join purchase_invoice pi on pi.id = r.adjusted_invoice_id where r.id = $1 and r.active`, [id]);
     if (!r) throw new NotFoundException('Return not found.');
     r.items = await this.manager.query(
-      `select i.id, i.item_id as itemid, i.product_id as productid, p.title, i.batch, i.qty, i.rate::float8 as rate, i.tax_pcnt::float8 as taxpcnt, i.total::float8 as total
-         from vendor_return_item i join product p on p.id = i.product_id where i.return_id = $1 and i.active order by i.id`, [id]);
+      `select i.id, i.item_id as itemid, i.product_id as productid, p.title, i.batch, i.qty, i.rate::float8 as rate, i.tax_pcnt::float8 as taxpcnt, i.total::float8 as total,
+              fp.invoice_no as invoiceno, to_char(fp.invoice_date, 'YYYY-MM-DD') as invoicedate
+         from vendor_return_item i join product p on p.id = i.product_id
+         left join purchase_invoice_item fpi on fpi.id = i.item_id left join purchase_invoice fp on fp.id = fpi.invoice_id
+        where i.return_id = $1 and i.active order by i.id`, [id]);
     return r;
   }
 
@@ -55,7 +60,7 @@ export class VendorReturnService {
     return this.manager.query(
       `select * from (select ${BATCH_SQL}
           where pi.vendor_id = $1 and pi.store_id = $2 and pi.status = 'COMPLETE' and pii.status = 'VERIFIED' and pii.active and not pii.archive and pi.active and not pi.archive
-            and ($3 = '' or p.title ilike '%' || $3 || '%' or pii.batch ilike '%' || $3 || '%')) x
+            and ($3 = '' or p.title ilike '%' || $3 || '%' or pii.batch ilike '%' || $3 || '%' or pi.invoice_no ilike '%' || $3 || '%')) x
         where x.available > 0 order by x.title, x.expdate limit 100`, [vendorid, storeid, t]);
   }
 
@@ -132,10 +137,14 @@ export class VendorReturnService {
     if (!inv) throw new NotFoundException('Invoice not found.');
     const applied = await this.manager.query(
       `select c.id, c.return_id as returnid, r.return_no as returnno, to_char(r.return_date, 'YYYY-MM-DD') as returndate, r.reason, c.amount::float8 as amount, r.total::float8 as returntotal,
+              (select string_agg(distinct fp.invoice_no, ', ') from vendor_return_item fi join purchase_invoice_item fpi on fpi.id = fi.item_id join purchase_invoice fp on fp.id = fpi.invoice_id
+                where fi.return_id = r.id and fi.active) as frominvoices,
               (select string_agg(p.title || ' x' || i.qty, ', ' order by i.id) from vendor_return_item i join product p on p.id = i.product_id where i.return_id = r.id and i.active) as summary
          from purchase_invoice_credit c join vendor_return r on r.id = c.return_id where c.invoice_id = $1 and c.active order by c.id`, [invoiceid]);
     const open = await this.manager.query(
       `select r.id, r.return_no as returnno, to_char(r.return_date, 'YYYY-MM-DD') as returndate, r.reason, r.total::float8 as total,
+              (select string_agg(distinct fp.invoice_no, ', ') from vendor_return_item fi join purchase_invoice_item fpi on fpi.id = fi.item_id join purchase_invoice fp on fp.id = fpi.invoice_id
+                where fi.return_id = r.id and fi.active) as frominvoices,
               (select string_agg(p.title || ' x' || i.qty, ', ' order by i.id) from vendor_return_item i join product p on p.id = i.product_id where i.return_id = r.id and i.active) as summary
          from vendor_return r where r.vendor_id = $1 and r.status = 'OPEN' and r.active order by r.id`, [inv.vendor_id]);
     return { applied, open, editable: inv.status === 'NEW' };

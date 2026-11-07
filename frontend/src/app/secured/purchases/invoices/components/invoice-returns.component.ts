@@ -17,7 +17,7 @@ import { environment } from "src/environments/environment";
           <thead><tr><th>Return</th><th>Date</th><th>Items</th><th class="text-end">Credited</th><th></th></tr></thead>
           <tbody>
             <tr *ngFor="let c of data.applied" data-testid="invoice-credit-row">
-              <td>#{{c.returnno || c.returnid}}<div class="small text-muted" *ngIf="c.reason">{{c.reason}}</div></td>
+              <td>#{{c.returnno || c.returnid}}<div class="small text-muted" *ngIf="c.reason">{{c.reason}}</div><div class="small text-muted" *ngIf="c.frominvoices" data-testid="invoice-credit-from">from invoice {{c.frominvoices}}</div></td>
               <td>{{c.returndate}}</td>
               <td class="small">{{c.summary}}</td>
               <td class="text-end">&minus; {{c.amount | number:'1.2-2'}}<div class="small text-muted" *ngIf="c.amount !== c.returntotal">returned worth {{c.returntotal | number:'1.2-2'}}</div></td>
@@ -29,7 +29,7 @@ import { environment } from "src/environments/environment";
         <ng-container *ngIf="data.editable && data.open.length">
           <div class="small text-muted mb-1">Open returns to this vendor, not yet credited on any invoice:</div>
           <div class="d-flex flex-wrap gap-2 align-items-center mb-1" *ngFor="let r of data.open" data-testid="invoice-open-return">
-            <span class="me-2">#{{r.returnno || r.id}} &middot; {{r.returndate}} &middot; <span class="small">{{r.summary}}</span> &middot; <b>{{r.total | number:'1.2-2'}}</b></span>
+            <span class="me-2">#{{r.returnno || r.id}} &middot; {{r.returndate}} &middot; <span class="small">{{r.summary}}</span><span class="small text-muted" *ngIf="r.frominvoices"> (from invoice {{r.frominvoices}})</span> &middot; <b>{{r.total | number:'1.2-2'}}</b></span>
             <input type="number" min="0" step="0.01" class="form-control form-control-sm" style="width:8rem" [(ngModel)]="amounts[r.id]" placeholder="credited" title="What the vendor credited for it, if different" data-testid="invoice-credit-amount">
             <button type="button" class="btn btn-outline-primary btn-sm" (click)="add(r)" [disabled]="busy" data-testid="invoice-credit-add">Adjust on this invoice</button>
           </div>
