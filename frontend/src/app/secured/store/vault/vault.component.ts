@@ -9,7 +9,7 @@ import { CashService } from "../cash/cash.service";
 type Panel = "" | "opening" | "deposit" | "change" | "count" | "adjust" | "dropnow";
 
 const TYPE_LABEL: { [t: string]: string } = {
-  OPENING: "Opening balance", DROP_IN: "Put in from a shift", BANK_DEPOSIT_OUT: "Banked", CHANGE_TO_DRAWER: "Change to a drawer", ADJUSTMENT: "Adjustment",
+  OPENING: "Opening balance", DROP_IN: "Put in from a shift", BANK_DEPOSIT_OUT: "Banked", CHANGE_TO_DRAWER: "Change to a drawer", FLOAT_TO_DRAWER: "Opening float to a drawer", ADJUSTMENT: "Adjustment",
 };
 
 /**

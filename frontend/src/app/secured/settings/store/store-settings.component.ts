@@ -434,7 +434,7 @@ export class StoreSettingsComponent implements OnInit {
     this.savingVault = true;
     this.cashService.updateStore(s.id, {
       vaultenabled: !!s.vaultenabled,
-      ...(s.vaultenabled ? { floatdenominations: s.floatrows || [], vaultdropconfirmlimit: Number(s.vaultdropconfirmlimit || 0) } : {}),
+      ...(s.vaultenabled ? { floatdenominations: s.floatrows || [], vaultdropconfirmlimit: Number(s.vaultdropconfirmlimit || 0), draweremptied: !!s.draweremptied } : {}),
     }).subscribe((store:any) => {
       this.savingVault = false;
       const index = this.stores.findIndex((row:any) => row.id === store.id);

@@ -7,6 +7,7 @@ import { StoreContextService } from "src/app/@core/store-context.service";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { CashService } from "../store/cash/cash.service";
+import { VaultService } from "../store/vault/vault.service";
 import { EXPENSE_CATEGORIES } from "../store/cash/expense-categories";
 import { DenominationRow, denominationTotal, suggestVaultDrop } from "src/app/shared/denominations";
 import { CLOSING_CHECKLIST_ITEMS, ChecklistItem, HANDOVER_CHECKLIST_ITEMS, OPENING_CHECKLIST_ITEMS, OPENING_OPEN_STORE_CHECKLIST_ITEMS, freshChecklist } from "src/app/shared/shift-checklist";
@@ -39,6 +40,9 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   checklist: ChecklistItem[] = [];
   /** how the store stands as a shift is opened: already open (a handover, a later shift) or being opened for the day */
   openingContext: any = null;
+  /** where the opening float comes from: the drawer as counted, or the store's vault (a manager only; the server refuses anyone else) */
+  openSource: "drawer" | "vault" = "drawer";
+  vaultState: any = null;
   /** the checklists in force for this store (its own, the business's or the standard); the built-in ones when they cannot be fetched */
   lists: any = null;
 
@@ -62,6 +66,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     private cash: CashService,
     private http: HttpClient,
     private confirmation: ConfirmationService,
+    private vaultApi: VaultService,
   ) {}
 
   ngOnInit(): void {
@@ -108,6 +113,9 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     const begin = (ctx: any) => {
       this.openingContext = ctx;
       this.mode = "open"; this.denoms = []; this.denomTotal = 0;
+      this.openSource = "drawer"; this.vaultState = null;
+      // only a manager can see the vault: for anyone else this fails and the option stays hidden
+      if (!ctx?.storealreadyopen && this.storeId) this.vaultApi.state(this.storeId).subscribe((v: any) => this.vaultState = v?.enabled ? v : null, () => this.vaultState = null);
       this.checklist = ctx?.storealreadyopen
         ? freshChecklist(this.itemsFor("OPENING_OPEN_STORE", OPENING_OPEN_STORE_CHECKLIST_ITEMS))
         : freshChecklist(this.itemsFor("OPENING", OPENING_CHECKLIST_ITEMS));
@@ -124,6 +132,22 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   private itemsFor(kind: string, fallback: { key: string; label: string }[]) {
     const items = this.lists?.[kind]?.items;
     return Array.isArray(items) ? items : fallback;
+  }
+
+  get canTakeFromVault(): boolean { return !!this.vaultState && !this.openingContext?.storealreadyopen; }
+
+  setOpenSource(s: "drawer" | "vault") { this.openSource = s; this.denoms = []; this.denomTotal = 0; }
+
+  /** the store's standard float, as its notes and coins */
+  fillStandardFloat() {
+    this.denoms = (this.vaultState?.float?.denominations || []).map((r: any) => ({ d: Number(r.d), n: Number(r.n) }));
+    this.denomTotal = denominationTotal(this.denoms);
+  }
+
+  /** more of a note or coin is asked for than the vault holds (the server checks again) */
+  get vaultShort(): boolean {
+    const held = new Map<number, number>((this.vaultState?.denominations || []).map((r: any) => [Number(r.d), Number(r.n)] as [number, number]));
+    return this.denoms.some(r => Number(r.n) > (held.get(Number(r.d)) || 0));
   }
 
   confirmOpen() {
@@ -161,6 +185,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     this.busy = true; this.error = "";
     this.cash.createShift({
       storeid: this.storeId, assigneduserid: this.operatorId, openingdenominations: this.denoms,
+      ...(this.openSource === "vault" ? { floatfromvault: { denominations: this.denoms } } : {}),
       openingchecklist: this.checklist.map(c => c.key), openingchecklistat: this.tickTimes(), allowZero, ...this.reasonsBody(),
     }).subscribe({
       next: () => { this.busy = false; this.mode = ""; this.gateItems = []; this.gateReasons = {}; this.message = "Shift opened."; this.shiftContext.reload(); },

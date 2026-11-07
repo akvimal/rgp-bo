@@ -43,8 +43,19 @@
           <span *ngIf="openingContext.reason === 'EARLIER_TODAY'">: a shift ran earlier today ({{openingContext.previous?.name}})</span>.
           The checklist is for taking up a shift, not for opening the store.
         </div>
-        <div class="fw-semibold small mb-2">Count the {{ openingContext?.storealreadyopen ? 'drawer you are taking over' : 'opening float' }}</div>
+        <div class="mb-2" *ngIf="canTakeFromVault" data-testid="shiftdesk-open-source">
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn" [ngClass]="openSource === 'drawer' ? 'btn-primary' : 'btn-outline-primary'" (click)="setOpenSource('drawer')" data-testid="shiftdesk-open-drawer">Count the drawer</button>
+            <button type="button" class="btn" [ngClass]="openSource === 'vault' ? 'btn-primary' : 'btn-outline-primary'" (click)="setOpenSource('vault')" data-testid="shiftdesk-open-vault">Take the float from the vault</button>
+          </div>
+          <div class="small text-muted mt-1" *ngIf="openSource === 'vault'">
+            The vault holds &#8377;{{ vaultState.balance | number:'1.0-0' }}. Enter the notes and coins you take out of it: they leave the vault and become this shift's opening float.
+          </div>
+        </div>
+        <div class="fw-semibold small mb-2">{{ openSource === 'vault' ? 'Notes and coins taken from the vault' : 'Count the ' + (openingContext?.storealreadyopen ? 'drawer you are taking over' : 'opening float') }}</div>
+        <button type="button" class="btn btn-sm btn-outline-secondary mb-2" *ngIf="openSource === 'vault' && vaultState?.float?.denominations?.length" (click)="fillStandardFloat()" data-testid="shiftdesk-open-standard">Fill the store's standard float (&#8377;{{ vaultState.float.amount | number:'1.0-0' }})</button>
         <app-denomination-grid [rows]="denoms" (rowsChange)="denoms = $event" (totalChange)="denomTotal = $event"></app-denomination-grid>
+        <div class="small text-danger mt-1" *ngIf="openSource === 'vault' && vaultShort" data-testid="shiftdesk-open-vault-short">The vault does not hold that many of one of these notes or coins.</div>
         <div class="small mt-3">
           <div class="fw-semibold mb-1">Opening checklist</div>
           <div class="form-check" *ngFor="let c of checklist">
@@ -53,7 +64,7 @@
           </div>
         </div>
         <div class="mt-3 d-flex gap-2">
-          <button class="btn btn-primary" type="button" [disabled]="busy || !checklistComplete" data-testid="shift-card-open-confirm" (click)="confirmOpen()">Open shift with &#8377;{{ denomTotal | number:'1.0-0' }}</button>
+          <button class="btn btn-primary" type="button" [disabled]="busy || !checklistComplete || (openSource === 'vault' && (vaultShort || denomTotal <= 0))" data-testid="shift-card-open-confirm" (click)="confirmOpen()">{{ openSource === 'vault' ? 'Take' : 'Open shift with' }} &#8377;{{ denomTotal | number:'1.0-0' }}{{ openSource === 'vault' ? ' from the vault and open' : '' }}</button>
           <button class="btn btn-outline-secondary" type="button" (click)="cancel()">Cancel</button>
         </div>
       </div>
@@ -82,7 +93,7 @@
         </div>
 
         <div class="row g-3 mb-3" *ngIf="summary" data-testid="shiftdesk-summary">
-          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Opening float</div><div class="fs-5">&#8377;{{ summary.shift.openingcash | number:'1.0-0' }}</div></div></div>
+          <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Opening float</div><div class="fs-5">&#8377;{{ summary.shift.openingcash | number:'1.0-0' }}</div><div class="small text-muted" *ngIf="summary.vault?.floatfromvault" data-testid="shiftdesk-float-vault">from the vault</div></div></div>
           <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Cash sales ({{ summary.bills }} bills)</div><div class="fs-5" data-testid="shiftdesk-cash">&#8377;{{ summary.cash | number:'1.0-0' }}</div></div></div>
           <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Digital</div><div class="fs-5" data-testid="shiftdesk-digital">&#8377;{{ summary.digital | number:'1.0-0' }}</div></div></div>
           <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Expected cash now</div><div class="fs-5" data-testid="shiftdesk-expected">&#8377;{{ summary.expected | number:'1.0-0' }}</div></div></div>
@@ -157,7 +168,7 @@
           <div class="mt-3" *ngIf="vaultOn" data-testid="shiftdesk-vault">
             <div class="fw-semibold small mb-1">Put the surplus in the vault</div>
             <div class="small text-muted mb-2" style="max-width:34rem">
-              The drawer keeps its float of &#8377;{{ vault.floatamount | number:'1.0-0' }}. It holds &#8377;{{ denomTotal | number:'1.0-0' }}, so &#8377;{{ surplus | number:'1.0-0' }} goes to the vault.
+              <ng-container *ngIf="vault.emptydrawer; else keepsFloat">This store empties the drawer into the vault at close.</ng-container><ng-template #keepsFloat>The drawer keeps its float of &#8377;{{ vault.floatamount | number:'1.0-0' }}.</ng-template> It holds &#8377;{{ denomTotal | number:'1.0-0' }}, so &#8377;{{ surplus | number:'1.0-0' }} goes to the vault.
               Take the notes out, then count them here.
             </div>
             <ng-container *ngIf="surplus > 0; else noSurplus">

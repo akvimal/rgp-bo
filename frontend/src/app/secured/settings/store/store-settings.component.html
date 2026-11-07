@@ -210,6 +210,11 @@
             <app-denomination-grid [rows]="selectedStore.floatrows" (rowsChange)="selectedStore.floatrows = $event" (totalChange)="floatTotal = $event"></app-denomination-grid>
             <small class="text-muted d-block mt-1">Float: &#8377;{{ floatTotal | number:'1.0-0' }}. The drawer keeps this at the end of the day.</small>
           </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="vault-empty" [(ngModel)]="selectedStore.draweremptied" data-testid="store-vault-emptied">
+            <label class="form-check-label" for="vault-empty">Empty the drawer into the vault at close</label>
+            <div class="form-text">The end-of-day close puts the whole drawer count in the vault, and the next shift's float is taken from the vault by a Store Head or Business Head when it opens. Off: each drawer keeps its float.</div>
+          </div>
           <div class="mb-3" style="max-width:22rem">
             <label class="form-label">A second person must confirm above</label>
             <input type="number" min="0" class="form-control" [(ngModel)]="selectedStore.vaultdropconfirmlimit" data-testid="store-vault-limit">

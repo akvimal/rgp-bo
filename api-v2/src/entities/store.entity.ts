@@ -100,6 +100,10 @@ import { UserStore } from "./user-store.entity";
   @Column("double precision", { name: "vault_drop_confirm_limit", precision: 53, default: 0 })
   vaultdropconfirmlimit: number;
 
+  /** the end-of-day close puts the whole drawer in the vault (no float stays); the next shift's float is then taken from the vault */
+  @Column({ name: "drawer_emptied_at_close", type: "boolean", default: false })
+  draweremptied: boolean;
+
   @Column({ name: "active", type: "boolean", default: true })
   isActive: boolean;
 
