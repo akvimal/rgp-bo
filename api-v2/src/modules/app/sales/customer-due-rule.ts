@@ -76,13 +76,18 @@ export async function dueRows(manager: EntityManager, customerId: number): Promi
  * A bill with part (or all) left to pay later: only for a named customer; within their limit and with nothing overdue unless a Store Head or
  * Business Head is billing; never more than the bill; never together with staff credit. The rest of the bill is paid by cash / digital as usual.
  */
-export async function checkCustomerDue(manager: EntityManager, sale: any, customer: any, isManager: boolean, saleId?: number | null) {
+export async function checkCustomerDue(manager: EntityManager, sale: any, customer: any, isManager: boolean, saleId?: number | null, billStoreId?: number | null) {
   const none = { dueamt: 0, duedate: null as string | null };
   if (String(sale?.status || '').toUpperCase() !== 'COMPLETE') return null;
   const amount = money(Number(sale?.dueamt || 0));
   if (!(amount > 0)) return none;
   if (Number(sale?.staffcreditamt || 0) > 0) throw new BadRequestException('A bill on staff credit cannot also be left to pay later.');
   if (amount > money(Number(sale?.total || 0)) + 0.005) throw new BadRequestException('The amount left to pay later is more than the bill.');
+  const storeId = Number(billStoreId || sale?.storeid || 0);
+  if (storeId) {
+    const [st] = await manager.query(`select location, pay_later_allowed from stores where id = $1`, [storeId]);
+    if (st && st.pay_later_allowed === false) throw new BadRequestException(`${String(st.location).trim()} does not allow pay later. Take the full payment now.`);
+  }
   const c = await namedCustomer(manager, customer?.id ?? sale?.customerid);
   if (!c) throw new BadRequestException('Paying later needs a named customer on the bill (not the walk-in).');
 

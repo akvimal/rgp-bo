@@ -21,3 +21,11 @@ describe('staff credit by store', () => {
     expect(parseProfileInput({ shiftmode: 'time' })).not.toHaveProperty('staff_credit_allowed');
   });
 });
+
+describe('pay later by store', () => {
+  it('is its own switch, apart from staff credit', () => {
+    expect(parseProfileInput({ paylaterallowed: false })).toEqual({ pay_later_allowed: false });
+    expect(parseProfileInput({ staffcreditallowed: false })).not.toHaveProperty('pay_later_allowed');
+    expect(() => parseProfileInput({ paylaterallowed: 'no' })).toThrow();
+  });
+});
