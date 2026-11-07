@@ -5,7 +5,7 @@
             <button type="button" class="btn" [ngClass]="cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(true)" data-testid="pos-pay-cash">Cash</button>
             <button type="button" class="btn" [ngClass]="!cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(false)" data-testid="pos-pay-digital">Digital / split</button>
             <button type="button" *ngIf="staffOptions.length && shiftContext.staffCreditAllowed" class="btn" [ngClass]="payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useStaffCredit()" data-testid="pos-staff-credit" [attr.aria-pressed]="!!payment.staffcredit">Staff credit</button>
-            <button type="button" *ngIf="customerId" class="btn" [ngClass]="payment.latemode && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useLater()" data-testid="pos-pay-later" [attr.aria-pressed]="!!payment.latemode">Pay later</button>
+            <button type="button" *ngIf="customerId && shiftContext.payLaterAllowed" class="btn" [ngClass]="payment.latemode && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useLater()" data-testid="pos-pay-later" [attr.aria-pressed]="!!payment.latemode">Pay later</button>
         </div>
         <ng-container *ngIf="!cashonly && !payment.staffcredit">
             <select class="form-select form-select-sm w-auto" [(ngModel)]="payment.digimode" (change)="digimodechange($event)" aria-label="Digital method">

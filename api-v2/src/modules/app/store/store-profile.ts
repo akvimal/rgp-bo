@@ -23,6 +23,7 @@ export interface StoreProfile {
   /** false: this store takes no returns (the business's switch is separate and comes first) */
   returnsallowed: boolean;
   staffcreditallowed: boolean;
+  paylaterallowed: boolean;
 }
 
 /** a store is a pharmacy or something else; anything else sent is refused, nothing sent means no change */
@@ -39,7 +40,7 @@ const ACCOUNTABLE = ['auto', 'store_head', 'business_head'];
 /** What a store's till rules are (OPERATING_MODES section 4). A store that does not exist reads as the time-based default. */
 export async function loadStoreProfile(manager: EntityManager, storeId: number | string): Promise<StoreProfile | null> {
   const [r] = await manager.query(
-    `select s.id, s.location, s.shift_mode, s.till, s.accountable_role, s.operator_required, s.operator_hold_minutes, s.approval_mode as store_mode, b.approval_mode as business_mode, s.cash_refund_limit::float as cash_limit, s.returns_allowed, s.staff_credit_allowed
+    `select s.id, s.location, s.shift_mode, s.till, s.accountable_role, s.operator_required, s.operator_hold_minutes, s.approval_mode as store_mode, b.approval_mode as business_mode, s.cash_refund_limit::float as cash_limit, s.returns_allowed, s.staff_credit_allowed, s.pay_later_allowed
        from stores s left join business b on b.id = s.business_id where s.id = $1`, [+storeId]);
   if (!r) return null;
   const mode: ShiftMode = r.shift_mode === 'staff' ? 'staff' : 'time';
@@ -51,6 +52,7 @@ export async function loadStoreProfile(manager: EntityManager, storeId: number |
     cashrefundlimit: r.cash_limit === null || r.cash_limit === undefined ? null : Number(r.cash_limit),
     returnsallowed: r.returns_allowed !== false,
     staffcreditallowed: r.staff_credit_allowed !== false,
+    paylaterallowed: r.pay_later_allowed !== false,
   };
 }
 
@@ -88,6 +90,10 @@ export function parseProfileInput(body: any): Record<string, any> {
   if (body.staffcreditallowed !== undefined) {
     if (typeof body.staffcreditallowed !== 'boolean') throw new BadRequestException('Staff credit allowed must be true or false.');
     out.staff_credit_allowed = body.staffcreditallowed;
+  }
+  if (body.paylaterallowed !== undefined) {
+    if (typeof body.paylaterallowed !== 'boolean') throw new BadRequestException('Pay later allowed must be true or false.');
+    out.pay_later_allowed = body.paylaterallowed;
   }
   if (body.operatorrequired !== undefined) out.operator_required = !!body.operatorrequired;
   if (body.operatorholdminutes !== undefined) {

@@ -35,6 +35,11 @@ export class ShiftContextService {
     return this.profileSubject.value?.staffcreditallowed !== false;
   }
 
+  /** the selected store lets a customer pay later (the Pay later button at the till; the server checks as well) */
+  get payLaterAllowed(): boolean {
+    return this.profileSubject.value?.paylaterallowed !== false;
+  }
+
   get staffBased(): boolean {
     return this.profileSubject.value?.shiftmode === "staff";
   }

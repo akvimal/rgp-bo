@@ -261,6 +261,11 @@
               <div class="form-text">Turn off where staff do not buy on credit: the Staff credit button is hidden at this till and a bill on staff credit is refused. Credit already given stays.</div>
             </div>
             <div class="col-12 col-lg-6">
+              <div class="form-check"><input class="form-check-input" type="checkbox" id="pf-paylater" [(ngModel)]="profile.paylaterallowed" data-testid="store-profile-paylater">
+                <label class="form-check-label" for="pf-paylater">This store lets customers pay later</label></div>
+              <div class="form-text">Turn off where every bill is paid in full at the counter: the Pay later button is hidden at this till and a bill with an amount left to pay later is refused. Dues already recorded stay and can still be collected.</div>
+            </div>
+            <div class="col-12 col-lg-6">
               <label class="form-label">Largest cash refund on one return</label>
               <input type="number" min="0" step="1" class="form-control" [(ngModel)]="profile.cashrefundlimit" placeholder="No limit" data-testid="store-profile-cashrefund">
               <div class="form-text">Leave blank for no limit. 0 means never cash: the customer gets store credit. A bigger refund than this is also given as store credit.</div>

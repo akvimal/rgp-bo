@@ -192,12 +192,13 @@ export class StoreService {
       ...(values.cash_refund_limit !== undefined ? { cashrefundlimit: values.cash_refund_limit } : {}),
       ...(values.returns_allowed !== undefined ? { returnsallowed: values.returns_allowed } : {}),
       ...(values.staff_credit_allowed !== undefined ? { staffcreditallowed: values.staff_credit_allowed } : {}),
+      ...(values.pay_later_allowed !== undefined ? { paylaterallowed: values.pay_later_allowed } : {}),
       ...(values.operator_hold_minutes !== undefined ? { operatorholdminutes: values.operator_hold_minutes } : {}),
     } as any);
     const after = await this.getProfile(id);
     await this.audit.record({
       userId: userid, action: "store.profile_updated", entityType: "stores", entityId: id,
-      summary: `${store.location.trim()}: ${after.shiftmode}-based shifts, ${after.till} till, operator ${after.operatorrequired ? "asked" : "not asked"}, returns ${after.returnsallowed ? "taken" : "not taken"}, staff credit ${after.staffcreditallowed ? "allowed" : "not allowed"}`,
+      summary: `${store.location.trim()}: ${after.shiftmode}-based shifts, ${after.till} till, operator ${after.operatorrequired ? "asked" : "not asked"}, returns ${after.returnsallowed ? "taken" : "not taken"}, staff credit ${after.staffcreditallowed ? "allowed" : "not allowed"}, pay later ${after.paylaterallowed ? "allowed" : "not allowed"}`,
       details: { before, after },
     });
     return after;

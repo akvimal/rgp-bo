@@ -75,6 +75,9 @@ import { UserStore } from "./user-store.entity";
   @Column({ name: "staff_credit_allowed", type: "boolean", default: true })
   staffcreditallowed: boolean;
 
+  @Column({ name: "pay_later_allowed", type: "boolean", default: true })
+  paylaterallowed: boolean;
+
   @Column({ name: "operator_required", type: "boolean", default: true })
   operatorrequired: boolean;
 
