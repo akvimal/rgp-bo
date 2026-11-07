@@ -130,6 +130,10 @@
       <div class="col-6"><label class="form-label small mb-0">Paid by</label>
         <select class="form-select form-select-sm" data-testid="inv-pay-mode" [(ngModel)]="pay.paymode"><option *ngFor="let m of modes" [value]="m">{{m}}</option></select></div>
       <div class="col-6"><label class="form-label small mb-0">Reference (UTR / cheque no.)</label><input class="form-control form-control-sm" maxlength="40" data-testid="inv-pay-ref" [(ngModel)]="pay.transref"></div>
+      <div class="col-6"><label class="form-label small mb-0">Vendor told (communication)</label>
+        <select class="form-select form-select-sm" data-testid="inv-pay-comm" [(ngModel)]="pay.communicationstatus"><option *ngFor="let s of commStatuses" [value]="s">{{s}}</option></select></div>
+      <div class="col-6"><label class="form-label small mb-0">Channel</label>
+        <select class="form-select form-select-sm" data-testid="inv-pay-channel" [(ngModel)]="pay.communicationchannel"><option value="">-</option><option *ngFor="let c of commChannels" [value]="c">{{c}}</option></select></div>
       <div class="col-12"><label class="form-label small mb-0">Remarks</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="pay.remarks"></div>
     </div>
     <div class="text-danger small mt-2" *ngIf="payError" data-testid="inv-pay-error">{{payError}}</div>
@@ -143,9 +147,9 @@
 <!-- payments of one invoice: correct the details, or reverse -->
 <p-dialog [header]="'Payments on ' + (histInv?.invoice_no || '')" [visible]="!!histInv" (visibleChange)="$event || (histInv = null)" [modal]="true" [style]="{width:'60rem'}">
   <div *ngIf="histInv" data-testid="inv-history-dialog">
-    <div class="small text-muted mb-2">{{histInv.business_name}} &middot; invoice &#8377;{{histInv.total | number:'1.2-2'}}. Reference, mode, date and remarks can be corrected. The amount cannot: reverse the payment and record the right one.</div>
+    <div class="small text-muted mb-2">{{histInv.business_name}} &middot; invoice &#8377;{{histInv.total | number:'1.2-2'}}. Reference, mode, date, remarks and the communication status can be corrected. The amount cannot: reverse the payment and record the right one.</div>
     <table class="table table-sm align-middle">
-      <thead class="table-light"><tr><th>Date</th><th class="text-end">Amount</th><th>Paid by</th><th>Reference</th><th>Remarks</th><th>Recorded by</th><th></th></tr></thead>
+      <thead class="table-light"><tr><th>Date</th><th class="text-end">Amount</th><th>Paid by</th><th>Reference</th><th>Communication</th><th>Remarks</th><th>Recorded by</th><th></th></tr></thead>
       <tbody>
         <ng-container *ngFor="let p of payments">
           <tr data-testid="inv-pay-row" [class.text-muted]="p.status === 'REVERSED'" [class.fst-italic]="p.reversesid">
@@ -154,6 +158,7 @@
               <td class="text-end">{{p.amount | number:'1.2-2'}}</td>
               <td>{{p.paymode}}</td>
               <td>{{p.transref}}</td>
+              <td class="small text-nowrap" data-testid="inv-pay-comm-cell">{{p.communicationstatus || 'Not Sent'}}<span class="text-muted" *ngIf="p.communicationchannel"> / {{p.communicationchannel}}</span></td>
               <td class="small">{{p.remarks}}<span *ngIf="p.status === 'REVERSED'" class="badge bg-secondary ms-1">reversed</span><span *ngIf="p.reversesid" class="badge bg-light text-dark border ms-1">reversal</span></td>
               <td class="small">{{p.createdby}}<div class="text-muted">{{p.createdon | date:'dd MMM, HH:mm'}}</div></td>
               <td class="text-end text-nowrap">
@@ -166,13 +171,17 @@
               <td class="text-end">{{p.amount | number:'1.2-2'}}</td>
               <td><select class="form-select form-select-sm" [(ngModel)]="edit.paymode"><option *ngFor="let m of modeOptions()" [value]="m">{{m}}</option></select></td>
               <td><input class="form-control form-control-sm" maxlength="40" data-testid="inv-edit-ref" [(ngModel)]="edit.transref"></td>
+              <td style="min-width:9rem">
+                <select class="form-select form-select-sm mb-1" data-testid="inv-edit-comm" [(ngModel)]="edit.communicationstatus"><option *ngFor="let s of commStatuses" [value]="s">{{s}}</option></select>
+                <select class="form-select form-select-sm" data-testid="inv-edit-channel" [(ngModel)]="edit.communicationchannel"><option value="">-</option><option *ngFor="let c of commChannels" [value]="c">{{c}}</option></select>
+              </td>
               <td><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="edit.remarks"></td>
               <td></td>
               <td class="text-end text-nowrap"><button class="btn btn-primary btn-sm py-0" data-testid="inv-edit-save" (click)="saveEdit()">Save</button> <button class="btn btn-outline-secondary btn-sm py-0 ms-1" (click)="editId = null">Cancel</button></td>
             </ng-template>
           </tr>
         </ng-container>
-        <tr *ngIf="!payments.length"><td colspan="7" class="text-center text-muted py-3">No payments recorded.</td></tr>
+        <tr *ngIf="!payments.length"><td colspan="8" class="text-center text-muted py-3">No payments recorded.</td></tr>
       </tbody>
     </table>
     <div class="text-danger small" *ngIf="editError" data-testid="inv-edit-error">{{editError}}</div>
