@@ -6,6 +6,8 @@ import { VendorsService } from "../../vendors/vendors.service";
 
 const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft", "awaiting", "approval"];
 const MODES = ["Cash", "Transfer", "Cheque", "UPI", "Card"];
+const COMM_STATUSES = ["Not Sent", "Sent", "Acknowledged", "Disputed"];
+const COMM_CHANNELS = ["WhatsApp", "SMS", "Email", "Call", "Other"];
 
 @Component({
     templateUrl: 'invoice-list.component.html'
@@ -37,7 +39,9 @@ export class InvoiceListComponent implements OnInit {
 
     // pay dialog
     payInv: any = null;
-    pay: any = { paydate: '', amount: null, paymode: 'Transfer', transref: '', remarks: '' };
+    pay: any = { paydate: '', amount: null, paymode: 'Transfer', transref: '', remarks: '', communicationstatus: 'Not Sent', communicationchannel: '' };
+    readonly commStatuses = COMM_STATUSES;
+    readonly commChannels = COMM_CHANNELS;
     payError = '';
     paying = false;
 
@@ -149,7 +153,7 @@ export class InvoiceListComponent implements OnInit {
 
     openPay(inv: any) {
         this.payInv = inv;
-        this.pay = { paydate: new Date().toISOString().slice(0, 10), amount: inv.balance_amount, paymode: 'Transfer', transref: '', remarks: '' };
+        this.pay = { paydate: new Date().toISOString().slice(0, 10), amount: inv.balance_amount, paymode: 'Transfer', transref: '', remarks: '', communicationstatus: 'Not Sent', communicationchannel: '' };
         this.payError = '';
     }
 
@@ -163,6 +167,7 @@ export class InvoiceListComponent implements OnInit {
         this.service.savePayment({
             vendorid: this.payInv.vendor_id, invoiceid: this.payInv.id, paydate: this.pay.paydate, amount,
             paymode: this.pay.paymode, transref: this.pay.transref, remarks: this.pay.remarks,
+            communicationstatus: this.pay.communicationstatus || 'Not Sent', communicationchannel: this.pay.communicationchannel || undefined,
         } as any).subscribe(
             () => { this.paying = false; this.message = `Payment of ${amount} recorded against ${this.payInv.invoice_no}.`; this.payInv = null; this.reload(); },
             err => { this.paying = false; this.payError = this.msg(err, 'Could not record the payment.'); });
@@ -185,7 +190,7 @@ export class InvoiceListComponent implements OnInit {
     startEdit(p: any) {
         this.editId = p.id;
         this.editError = '';
-        this.edit = { paymode: p.paymode, transref: p.transref || '', paydate: p.paydate, remarks: p.remarks || '' };
+        this.edit = { paymode: p.paymode, transref: p.transref || '', paydate: p.paydate, remarks: p.remarks || '', communicationstatus: p.communicationstatus || 'Not Sent', communicationchannel: p.communicationchannel || '' };
     }
 
     modeOptions(): string[] {

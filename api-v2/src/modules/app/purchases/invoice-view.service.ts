@@ -154,7 +154,7 @@ export class InvoiceViewService {
     return this.manager.query(
       `select p.id, to_char(p.pay_date, 'YYYY-MM-DD') as paydate, p.amount::numeric as amount, p.pay_mode as paymode, p.trans_ref as transref,
               p.status, p.reverses_id as reversesid, p.batch_ref as batchref, p.remarks, p.created_on as createdon,
-              u.full_name as createdby, p.communication_status as communicationstatus
+              u.full_name as createdby, p.communication_status as communicationstatus, p.communication_channel as communicationchannel
          from vendor_payment p left join app_user u on u.id = p.created_by
         where p.invoice_id = $1 order by p.pay_date, p.id`, [invoiceId]);
   }
