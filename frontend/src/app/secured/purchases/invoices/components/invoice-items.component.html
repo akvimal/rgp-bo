@@ -41,14 +41,14 @@
         <div class="row g-3 mt-1" data-testid="invoice-figures">
             <div class="col-6 col-md-2"><div class="inv-label">GRN</div><div class="inv-value text-success">{{invoice.grno || '-'}}</div></div>
             <div class="col-6 col-md-2"><div class="inv-label">Reference</div><div class="inv-value">{{invoice.referenceno || '-'}}</div></div>
-            <div class="col-6 col-md-2"><div class="inv-label">Invoice total</div><div class="inv-value">{{invoice.printedtotal ? (invoice.printedtotal | number:'1.2-2') : '-'}}</div></div>
+            <div class="col-6 col-md-2"><div class="inv-label">Net total of the invoice</div><div class="inv-value">{{invoice.printedtotal ? (invoice.printedtotal | number:'1.2-2') : '-'}}</div></div>
             <div class="col-6 col-md-2"><div class="inv-label">Lines total (with tax){{invoice.cashdiscount ? ', after cash discount' : ''}}</div><div class="inv-value">{{expectedTotal | number:'1.2-2'}}</div></div>
             <div class="col-6 col-md-2" *ngIf="invoice.status !== 'NEW'"><div class="inv-label">Paid</div><div class="inv-value">{{(invoice.paidamount || 0) | number:'1.2-2'}}</div></div>
             <div class="col-6 col-md-2" *ngIf="invoice.status !== 'NEW'"><div class="inv-label">Balance</div><div class="inv-value">{{(invoice.balanceamount || 0) | number:'1.2-2'}}</div></div>
         </div>
         <div class="mt-2 small" *ngIf="invoice.printedtotal" data-testid="invoice-check">
-            <span *ngIf="totalsAgree" class="text-success fw-semibold" data-testid="invoice-check-ok"><i class="bi bi-check-circle"></i> Lines match the invoice total</span>
-            <span *ngIf="!totalsAgree" class="text-danger fw-semibold" data-testid="invoice-check-diff"><i class="bi bi-exclamation-triangle"></i> Lines are {{(printedDiff || 0) > 0 ? 'more' : 'less'}} than the invoice total by &#8377;{{(printedDiff || 0) | number:'1.2-2'}} (a line may be missing or mistyped)</span>
+            <span *ngIf="totalsAgree" class="text-success fw-semibold" data-testid="invoice-check-ok"><i class="bi bi-check-circle"></i> Lines match the net total<span *ngIf="invoice.total"> &middot; payable {{invoice.total | number:'1.2-2'}}</span></span>
+            <span *ngIf="!totalsAgree" class="text-danger fw-semibold" data-testid="invoice-check-diff"><i class="bi bi-exclamation-triangle"></i> Lines are {{(printedDiff || 0) > 0 ? 'more' : 'less'}} than the invoice total by &#8377;{{(printedDiff || 0) | number:'1.2-2'}} (a line may be missing or mistyped). The invoice cannot be completed until they agree to within &#8377;1.</span>
         </div>
         <div class="text-danger small mt-2" *ngIf="deleteError" data-testid="invoice-delete-error">{{deleteError}}</div>
         <div class="mt-2 small" *ngIf="invoice.notes">

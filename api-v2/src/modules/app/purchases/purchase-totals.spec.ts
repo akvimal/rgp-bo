@@ -1,4 +1,4 @@
-import { cashFactor, invoiceGstHeader, invoiceNet, lineGst } from './purchase-totals';
+import { agreesWithPrinted, cashFactor, invoiceGstHeader, invoiceNet, lineGst, payableFromPrinted } from './purchase-totals';
 
 describe('the GST of a line whose total is before tax', () => {
   it('is worked out on top of it, not taken out of it', () => {
@@ -58,5 +58,26 @@ describe('the GST figures on the invoice header', () => {
   });
   it('an invoice with no lines has nothing', () => {
     expect(invoiceGstHeader([], 0, 0)).toEqual({ taxablevalue: 0, cgstamount: 0, sgstamount: 0, igstamount: 0, roundoff: 0 });
+  });
+});
+
+describe('the printed net total of a vendor invoice', () => {
+  it('agrees within a rupee of rounding, or when none was entered', () => {
+    expect(agreesWithPrinted(null, 500)).toBe(true);
+    expect(agreesWithPrinted(0, 500)).toBe(true);
+    expect(agreesWithPrinted(1000, 1000.6)).toBe(true);
+    expect(agreesWithPrinted(1000, 999.0)).toBe(true);
+    expect(agreesWithPrinted(1000, 1001.5)).toBe(false);
+    expect(agreesWithPrinted(1000, 998)).toBe(false);
+  });
+
+  it('is exactly what is payable when nothing came off it', () => {
+    expect(payableFromPrinted(1234.56, 1234.2, 1234.2, 0)).toBe(1234.56);
+  });
+
+  it('less a line the vendor dropped and the credits for returns', () => {
+    // billed 1000 on all lines, 200 of it rejected (live 800), a credit of 50 for a return
+    expect(payableFromPrinted(1000, 1000, 800, 50)).toBe(750);
+    expect(payableFromPrinted(100, 100, 0, 500)).toBe(0);
   });
 });
