@@ -50,6 +50,27 @@ export class PurchaseInvoiceController {
       return this.view.hold(id, body.reason, currentUser.id);
     }
 
+    /** Approval for payment: the rule (on/off and the limit), and approving or withdrawing an approval. */
+    @Get('/approval-settings')
+    async approvalSettings(@User() currentUser:any) {
+      return this.view.approvalSettings(currentUser.id);
+    }
+
+    @Put('/approval-settings')
+    async setApprovalSettings(@Body() body:any, @User() currentUser:any) {
+      return this.view.setApprovalSettings(body, currentUser.id);
+    }
+
+    @Post('/:id/approve')
+    async approve(@Param('id', ParseIntPipe) id:number, @Body() body:any, @User() currentUser:any) {
+      return this.view.approve(id, body?.note, currentUser.id);
+    }
+
+    @Post('/:id/unapprove')
+    async unapprove(@Param('id', ParseIntPipe) id:number, @User() currentUser:any) {
+      return this.view.unapprove(id, currentUser.id);
+    }
+
     @Post('/:id/release')
     async release(@Param('id', ParseIntPipe) id:number, @User() currentUser:any) {
       return this.view.release(id, currentUser.id);

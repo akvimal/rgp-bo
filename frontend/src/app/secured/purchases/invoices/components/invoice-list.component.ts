@@ -4,7 +4,7 @@ import { combineLatest } from "rxjs";
 import { InvoiceService } from "../invoices.service";
 import { VendorsService } from "../../vendors/vendors.service";
 
-const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft", "awaiting"];
+const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft", "awaiting", "approval"];
 const MODES = ["Cash", "Transfer", "Cheque", "UPI", "Card"];
 
 @Component({
@@ -50,6 +50,12 @@ export class InvoiceListComponent implements OnInit {
     reversing: any = null;
     reverseReason = '';
 
+    // approval for payment (off unless the business switches it on)
+    approval: any = { enabled: false, limit: 0, canmanage: false };
+    ruleOpen = false;
+    rule: any = { enabled: false, limit: 0 };
+    ruleError = '';
+
     // hold dialog
     holdInv: any = null;
     deleteInv: any = null;
@@ -60,6 +66,7 @@ export class InvoiceListComponent implements OnInit {
     constructor(private service: InvoiceService, private route: ActivatedRoute, private router: Router, private vendorsService: VendorsService) {}
 
     ngOnInit() {
+        this.loadApproval();
         this.vendorsService.options().subscribe(v => this.vendors = v, () => {});
         combineLatest([this.route.url, this.route.queryParamMap]).subscribe(([segments, q]) => {
             this.isOutstanding = segments?.[0]?.path === 'outstanding';
@@ -200,6 +207,33 @@ export class InvoiceListComponent implements OnInit {
             err => { this.editError = this.msg(err, 'Could not reverse the payment.'); });
     }
 
+    // ---------------------------------------------------------------- approval for payment
+    loadApproval() { this.service.approvalSettings().subscribe(a => this.approval = a, () => {}); }
+
+    approveInv(inv: any) {
+        this.error = '';
+        this.service.approve(inv.id).subscribe(
+            () => { this.message = `${inv.invoice_no} approved for payment.`; this.reload(); },
+            err => { this.error = this.msg(err, 'Could not approve the invoice.'); });
+    }
+
+    unapproveInv(inv: any) {
+        this.error = '';
+        this.service.unapprove(inv.id).subscribe(
+            () => { this.message = `Approval of ${inv.invoice_no} withdrawn.`; this.reload(); },
+            err => { this.error = this.msg(err, 'Could not withdraw the approval.'); });
+    }
+
+    openRule() { this.rule = { enabled: !!this.approval.enabled, limit: this.approval.limit || 0 }; this.ruleError = ''; this.ruleOpen = true; }
+
+    saveRule() {
+        const limit = Number(this.rule.limit || 0);
+        if (!Number.isFinite(limit) || limit < 0) { this.ruleError = 'The limit cannot be negative.'; return; }
+        this.service.setApprovalSettings({ enabled: !!this.rule.enabled, limit }).subscribe(
+            () => { this.ruleOpen = false; this.message = this.rule.enabled ? 'Invoices now need approval before they can be paid.' : 'Approval for payment is off.'; this.loadApproval(); this.reload(); },
+            err => { this.ruleError = this.msg(err, 'Could not save the rule.'); });
+    }
+
     // ---------------------------------------------------------------- hold
     openHold(inv: any) { this.holdInv = inv; this.holdReason = ''; this.holdError = ''; }
 
@@ -228,7 +262,7 @@ export class InvoiceListComponent implements OnInit {
     // ---------------------------------------------------------------- presentation
     payClass(s: string): string {
         return s === 'Paid' ? 'bg-success' : s === 'Part Paid' ? 'bg-info text-dark' : s === 'Overdue' ? 'bg-danger'
-            : s === 'On Hold' ? 'bg-warning text-dark' : s === 'Awaiting invoice' ? 'bg-dark' : s === 'Draft' ? 'bg-light text-dark border' : 'bg-secondary';
+            : s === 'On Hold' ? 'bg-warning text-dark' : s === 'Awaiting approval' ? 'bg-primary' : s === 'Awaiting invoice' ? 'bg-dark' : s === 'Draft' ? 'bg-light text-dark border' : 'bg-secondary';
     }
 
     gstLabel(s: string | null): string {

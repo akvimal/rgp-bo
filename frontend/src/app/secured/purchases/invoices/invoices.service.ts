@@ -96,6 +96,23 @@ export class InvoiceService {
         return this.http.post(`${this.apiurl}/purchases/${invoiceid}/hold`, { reason });
     }
 
+    /** approval for payment: the rule (and whether this person may approve), approve, withdraw */
+    approvalSettings(){
+        return this.http.get<any>(`${this.apiurl}/purchases/approval-settings`);
+    }
+
+    setApprovalSettings(body:{enabled:boolean, limit:number}){
+        return this.http.put<any>(`${this.apiurl}/purchases/approval-settings`, body);
+    }
+
+    approve(invoiceid:number, note?:string){
+        return this.http.post(`${this.apiurl}/purchases/${invoiceid}/approve`, { note });
+    }
+
+    unapprove(invoiceid:number){
+        return this.http.post(`${this.apiurl}/purchases/${invoiceid}/unapprove`, {});
+    }
+
     release(invoiceid:number){
         return this.http.post(`${this.apiurl}/purchases/${invoiceid}/release`, {});
     }

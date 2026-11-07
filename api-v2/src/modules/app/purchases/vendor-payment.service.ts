@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { loadApprovalPolicy, needsApproval } from './invoice-approval';
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { VendorPayment } from "src/entities/vendor-payment.entity";
@@ -177,6 +178,10 @@ export class VendorPaymentService {
         }
         if (invoice.paymentstatus === 'On Hold') {
             throw new BadRequestException(`${invoice.invoiceno} is on hold - clear the hold before paying it.`);
+        }
+        const [appr] = await tm.query(`select approved_on from purchase_invoice where id = $1`, [invoice.id]);
+        if (needsApproval(await loadApprovalPolicy(tm), invoice.total, appr?.approved_on)) {
+            throw new BadRequestException(`${invoice.invoiceno} has not been approved for payment yet. A Business Head approves it from the invoice list.`);
         }
 
         const paid = await this.sumActivePayments(tm, invoice.id);

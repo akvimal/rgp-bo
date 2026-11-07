@@ -1,4 +1,5 @@
 import { userError } from 'src/core/db-error';
+import { loadApprovalPolicy, needsApproval } from './invoice-approval';
 import { assertStoreLicensed } from "../store/store-guard";
 import { assertVendorUsable } from "../vendors/vendor-guard";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
@@ -392,10 +393,19 @@ export class PurchaseInvoiceService {
     }
 
     const invoices = await qb.getMany();
+    // invoices that still need approval for payment (only when the business has switched that on)
+    const m = this.purchaseInvoiceRepository.manager;
+    const policy = await loadApprovalPolicy(m);
+    const approvedOn = new Map<number, any>();
+    if (policy.enabled && invoices.length) {
+      const rows = await m.query(`select id, approved_on from purchase_invoice where id = any($1::int[])`, [invoices.map((i: any) => i.id)]);
+      rows.forEach((r: any) => approvedOn.set(r.id, r.approved_on));
+    }
     return invoices
       .map((invoice: any) => this.mapInvoice(invoice))
       .filter((inv: any) => +(inv.balanceamount || 0) > 0)
       .map((mapped: any) => ({
+        needs_approval: needsApproval(policy, mapped.total, approvedOn.get(mapped.id)),
         id: mapped.id,
         vendor_id: mapped.vendorid,
         invoice_no: mapped.invoiceno,
@@ -431,6 +441,7 @@ export class PurchaseInvoiceService {
           total_outstanding: 0,
           total_overdue: 0,
           on_hold_count: 0,
+          approval_count: 0,
           oldest_due_date: null as string | null,
           ageing: { d0_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0 },
         });
@@ -446,6 +457,7 @@ export class PurchaseInvoiceService {
       if (inv.payment_status === 'On Hold') {
         row.on_hold_count += 1;
       }
+      if (inv.needs_approval && inv.payment_status !== 'On Hold') row.approval_count += 1;
       if (inv.due_date && (!row.oldest_due_date || inv.due_date < row.oldest_due_date)) {
         row.oldest_due_date = inv.due_date;
       }
