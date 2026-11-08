@@ -1,3 +1,5 @@
+import { DomSanitizer, SafeUrl } from "@angular/platform-browser";
+import { ActivatedRoute } from "@angular/router";
 import { Component, OnDestroy, OnInit } from "@angular/core";
 import { AttendanceApi } from "../attendance/attendance.service";
 
@@ -14,15 +16,16 @@ import { AttendanceApi } from "../attendance/attendance.service";
         <li class="nav-item"><a class="nav-link" [class.active]="tab === 'days'" role="button" (click)="tab = 'days'" data-testid="ar-tab-days">Days
           <span class="badge bg-danger ms-1" *ngIf="pending + missing">{{pending + missing}}</span></a></li>
         <li class="nav-item"><a class="nav-link" [class.active]="tab === 'pins'" role="button" (click)="openPins()" data-testid="ar-tab-pins">Who punches (PINs)</a></li>
+        <li class="nav-item"><a class="nav-link" [class.active]="tab === 'rules'" role="button" (click)="openRules()" data-testid="ar-tab-rules">Rules</a></li>
       </ul>
       <div *ngIf="message" class="alert alert-success py-2" data-testid="ar-message">{{message}}</div>
       <div *ngIf="error" class="alert alert-danger py-2" data-testid="ar-error">{{error}}</div>
 
       <ng-container *ngIf="tab === 'days'">
         <div class="row g-2 align-items-end mb-3">
-          <div class="col-auto"><label class="form-label mb-0">Month</label><input type="month" class="form-control form-control-sm" [(ngModel)]="period" (change)="load()" data-testid="ar-period"></div>
+          <div class="col-auto"><label class="form-label mb-0">Month</label><input type="month" class="form-control form-control-sm" [ngModel]="period" (ngModelChange)="period = $event; load()" data-testid="ar-period"></div>
           <div class="col-auto"><label class="form-label mb-0">Show</label>
-            <select class="form-select form-select-sm" [(ngModel)]="status" (change)="load()" data-testid="ar-status"><option value="pending">Needs review</option><option value="all">All days</option></select></div>
+            <select class="form-select form-select-sm" [ngModel]="status" (ngModelChange)="status = $event; load()" data-testid="ar-status"><option value="pending">Needs review</option><option value="all">All days</option></select></div>
           <div class="col text-muted small">{{pending}} to approve, {{missing}} with no punch. Payroll waits until these are done.</div>
         </div>
         <div class="text-muted" *ngIf="!items.length" data-testid="ar-empty">Nothing to review.</div>
@@ -77,6 +80,20 @@ import { AttendanceApi } from "../attendance/attendance.service";
         </div>
       </ng-container>
 
+      <ng-container *ngIf="tab === 'rules' && rules">
+        <p class="text-muted small">How the punch screen treats the day. Each person's shift times are set on their staff record.</p>
+        <div class="row g-3" style="max-width:640px">
+          <div class="col-sm-6"><label class="form-label mb-0">Days to keep photos</label>
+            <input type="number" class="form-control form-control-sm" [(ngModel)]="rules.photo_days" [min]="rules.limits.photo_days.min" [max]="rules.limits.photo_days.max" [disabled]="!rules.can_edit" data-testid="ar-rule-photo">
+            <div class="form-text">{{rules.limits.photo_days.min}} to {{rules.limits.photo_days.max}}. After this the photo file is deleted every night; the punch times stay.</div></div>
+          <div class="col-sm-6"><label class="form-label mb-0">Grace minutes</label>
+            <input type="number" class="form-control form-control-sm" [(ngModel)]="rules.grace_minutes" [min]="rules.limits.grace_minutes.min" [max]="rules.limits.grace_minutes.max" [disabled]="!rules.can_edit" data-testid="ar-rule-grace">
+            <div class="form-text">{{rules.limits.grace_minutes.min}} to {{rules.limits.grace_minutes.max}}. An In this many minutes after the shift start is not marked Late, and an Out this many minutes before the end is not marked Early out.</div></div>
+        </div>
+        <div class="mt-3" *ngIf="rules.can_edit"><button class="btn btn-primary btn-sm" type="button" (click)="saveRules()" data-testid="ar-rule-save">Save</button></div>
+        <div class="text-muted small mt-3" *ngIf="!rules.can_edit">Only the Business Head can change these.</div>
+      </ng-container>
+
       <ng-container *ngIf="tab === 'pins'">
         <div class="alert alert-info py-2" *ngIf="newPin" data-testid="ar-newpin">PIN for <strong>{{newPin.name}}</strong>: <strong class="fs-5">{{newPin.pin}}</strong>. Tell them privately; it is not shown again.</div>
         <p class="text-muted small">Only people switched on here appear on the store PC&#39;s attendance screen. A PIN is 4 to 6 digits. Five wrong tries lock it for 10 minutes.</p>
@@ -107,7 +124,8 @@ import { AttendanceApi } from "../attendance/attendance.service";
     </div></div>`,
 })
 export class AttendanceReviewComponent implements OnInit, OnDestroy {
-  tab: "days" | "pins" = "days";
+  tab: "days" | "pins" | "rules" = "days";
+  rules: any = null;
   period = new Date().toISOString().slice(0, 7);
   status = "pending";
   items: any[] = [];
@@ -116,16 +134,22 @@ export class AttendanceReviewComponent implements OnInit, OnDestroy {
   message = "";
   error = "";
   editing: any = null;
-  photoUrl: { [id: number]: string } = {};
+  photoUrl: { [id: number]: SafeUrl } = {};
+  private photoRaw: string[] = [];
   people: any[] = [];
   pinFor: number | null = null;
   pinValue = "";
   newPin: { name: string; pin: string } | null = null;
 
-  constructor(private api: AttendanceApi) {}
+  constructor(private api: AttendanceApi, private route: ActivatedRoute, private safe: DomSanitizer) {}
 
-  ngOnInit() { this.load(); }
-  ngOnDestroy() { Object.values(this.photoUrl).forEach(u => URL.revokeObjectURL(u)); }
+  ngOnInit() {
+    // the payroll page links here with the month it is held back for
+    const p = this.route.snapshot.queryParamMap.get("period");
+    if (p && /^\d{4}-\d{2}$/.test(p)) this.period = p;
+    this.load();
+  }
+  ngOnDestroy() { this.photoRaw.forEach(u => URL.revokeObjectURL(u)); }
 
   label(s: string) { return s === "PRESENT" ? "Present" : s === "ABSENT" ? "Absent" : s === "HALF_DAY" ? "Half day" : s; }
 
@@ -141,7 +165,7 @@ export class AttendanceReviewComponent implements OnInit, OnDestroy {
     if (!i.showPhotos) return;
     for (const p of i.punches) {
       if (!p.photo || this.photoUrl[p.id]) continue;
-      this.api.photo(p.id).subscribe(b => (this.photoUrl[p.id] = URL.createObjectURL(b)), () => (p.photo = false));
+      this.api.photo(p.id).subscribe(b => { const u = URL.createObjectURL(b); this.photoRaw.push(u); this.photoUrl[p.id] = this.safe.bypassSecurityTrustUrl(u); }, () => (p.photo = false));
     }
   }
 
@@ -159,6 +183,14 @@ export class AttendanceReviewComponent implements OnInit, OnDestroy {
     this.api.day(body).subscribe(
       () => { this.message = e.action === "APPROVE" ? "Approved." : "Saved."; this.load(); },
       err => (this.error = this.api.msg(err)));
+  }
+
+  // ---------------------------------------------------------------- rules
+  openRules() { this.tab = "rules"; this.message = this.error = ""; this.api.rules().subscribe(r => (this.rules = r), e => (this.error = this.api.msg(e))); }
+  saveRules() {
+    this.message = this.error = "";
+    this.api.saveRules({ photo_days: Number(this.rules.photo_days), grace_minutes: Number(this.rules.grace_minutes) }).subscribe(
+      r => { this.rules = r; this.message = "Saved."; }, e => (this.error = this.api.msg(e)));
   }
 
   // ---------------------------------------------------------------- PINs

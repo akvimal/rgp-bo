@@ -201,7 +201,7 @@ export class HrAssistantComponent implements OnInit {
 
   makeTodos() {
     this.run(this.hr.post("kpi/todos", { position_id: this.sel.id, weekday: this.weekday }), (r: any) => {
-      this.message = `${r.created} weekly reminder${r.created === 1 ? "" : "s"} created${r.already ? `, ${r.already} already had one` : ""}${r.rating_todo ? ", and your monthly ratings reminder" : ""}.`;
+      this.message = `${r.created} weekly reminder${r.created === 1 ? "" : "s"} created${r.already ? `, ${r.already} already had one` : ""}${r.rating_todo ? ", and your monthly ratings reminder" : ""}.${r.skipped ? ` ${r.skipped} login${r.skipped === 1 ? " is" : "s are"} not in a store you look after, so ${r.skipped === 1 ? "it was" : "they were"} left out.` : ""}`;
     });
   }
 }

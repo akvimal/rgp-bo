@@ -10,6 +10,7 @@ export class HrPayrollComponent implements OnInit {
   run: any = null;
   runs: any[] = [];
   warnings: string[] = [];
+  hold: any = null;            // attendance days still to review for this month
   message = "";
   error = "";
   busy = false;
@@ -33,7 +34,13 @@ export class HrPayrollComponent implements OnInit {
     this.stub = null; this.edit = null;
     this.hr.get(`payroll/${this.period}`).subscribe(r => this.run = r || null, e => this.error = this.hr.msg(e));
     this.hr.get("payroll").subscribe(r => this.runs = r);
+    this.hold = null;
+    const asked = this.period;
+    this.hr.get(`payroll/${asked}/attendance-hold`).subscribe(h => { if (asked === this.period) this.hold = h; }, () => (this.hold = null));
   }
+
+  /** the month cannot be worked out or approved while attendance days wait */
+  get held(): boolean { return !!this.hold && this.hold.days > 0 && this.run?.status !== "APPROVED"; }
 
   pick(p: string) { this.period = p; this.warnings = []; this.message = ""; this.load(); }
 

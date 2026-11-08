@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { TodoService } from '../todos/todo.service';
@@ -36,15 +36,20 @@ export class HrKpiTodoService {
     const rows = await this.engine.draft(period, (e: any) => !!e.user_id && (!positionId || e.position_id === positionId));
     const existing = await this.manager.query(`select assignee_user_id from todo_template where title = $1 and active and not archive`, [WEEKLY_TITLE]);
     const has = new Set<number>(existing.map((x: any) => Number(x.assignee_user_id)));
-    let created = 0, already = 0, noKpi = 0;
+    let created = 0, already = 0, noKpi = 0, skipped = 0;
     for (const r of rows) {
       if (!r.items.length) { noKpi += 1; continue; }
       if (has.has(r.user_id)) { already += 1; continue; }
-      await this.todos.create(user, {
-        title: WEEKLY_TITLE, notes: kpiNotes(r.items), dueday: this.nextWeekday(weekday), duetime: '09:00', assigneeuserid: r.user_id, priority: 'normal',
-        soondays: 0, escalatedays: 7, repeat: { repeat: 'WEEKLY', days: [weekday] },
-      });
-      created += 1;
+      try {
+        await this.todos.create(user, {
+          title: WEEKLY_TITLE, notes: kpiNotes(r.items), dueday: this.nextWeekday(weekday), duetime: '09:00', assigneeuserid: r.user_id, priority: 'normal',
+          soondays: 0, escalatedays: 7, repeat: { repeat: 'WEEKLY', days: [weekday] },
+        });
+        created += 1;
+      } catch (e) {
+        // a login that is not one of this person's people (no store in common) is left out, and the rest go ahead
+        if (e instanceof ForbiddenException) skipped += 1; else throw e;
+      }
     }
     // the ratings a manager must give each month, for the person asking
     let rating = false;
@@ -57,6 +62,6 @@ export class HrKpiTodoService {
       });
       rating = true;
     }
-    return { created, already, no_kpi: noKpi, rating_todo: rating };
+    return { created, already, no_kpi: noKpi, skipped, rating_todo: rating };
   }
 }

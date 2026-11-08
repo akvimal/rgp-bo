@@ -21,6 +21,8 @@ export class AttendanceApi {
   punch(body: any): Observable<any> { return this.http.post(this.punchUrl, body, { headers: this.deviceHeaders() }); }
 
   list(period: string, status: string): Observable<any> { return this.http.get(this.reviewUrl, { params: { period, status } }); }
+  rules(): Observable<any> { return this.http.get(`${this.reviewUrl}/rules`); }
+  saveRules(body: any): Observable<any> { return this.http.put(`${this.reviewUrl}/rules`, body); }
   people(): Observable<any[]> { return this.http.get<any[]>(`${this.reviewUrl}/people`); }
   day(body: any): Observable<any> { return this.http.post(`${this.reviewUrl}/day`, body); }
   setPin(id: number, body: any): Observable<any> { return this.http.put(`${this.reviewUrl}/people/${id}/pin`, body); }

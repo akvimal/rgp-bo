@@ -218,7 +218,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-attendance-review', group: 'people', title: 'Attendance review', route: '/secure/attendance-review',
     purpose: 'Check the days staff clocked, look at the photos and fix what is wrong, before payroll.',
-    tasks: ['Days tab: choose the month. Needs review shows days waiting for you, and working days with no punch.', 'Press Approve if a day is right, or Change (Mark for a day with no punch) to set the status and times, with a note of at least three letters.', 'Press Photos to see who clocked In and Out.', 'Who punches (PINs) tab: switch a person on, give a new PIN or unlock them, or set a PIN yourself (4 to 6 digits).'],
+    tasks: ['Days tab: choose the month. Needs review shows days waiting for you, and working days with no punch.', 'Press Approve if a day is right, or Change (Mark for a day with no punch) to set the status and times, with a note of at least three letters.', 'Press Photos to see who clocked In and Out.', 'Who punches (PINs) tab: switch a person on, give a new PIN or unlock them, or set a PIN yourself (4 to 6 digits).', 'Rules tab: how many days photos are kept (7 to 365) and the grace minutes before Late or Early out. Only the Business Head can change them.'],
     who: 'Store heads and the owner.', watch: ['Payroll cannot be worked out or approved while a Pending or Missing day is left for staff who clock in.', 'Photos are deleted after 60 days.'], keywords: 'attendance review approve correct photo pin missing payroll',
   },
   {
@@ -230,7 +230,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-hr', group: 'people', title: 'Staff and HR', route: '/secure/hr',
     purpose: 'The people who work for the shop: their pay, attendance, leave and payroll.',
-    tasks: ['Staff: add your team to HR and give each a start date and pay.', 'Setup: pay, job roles, leave, holidays and KPI.', 'Role assistant: the AI drafts a job role, its KPIs and incentive amounts for you to approve.', 'Attendance: mark absences and half days.', 'Payroll waits for the attendance review of staff who clock in at the counter.', 'Payroll: work out and approve the month\'s pay; add bonuses.'],
+    tasks: ['Staff: add your team to HR and give each a start date and pay.', 'Setup: pay, job roles, leave, holidays and KPI.', 'Role assistant: the AI drafts a job role, its KPIs and incentive amounts for you to approve.', 'Attendance: mark absences and half days.', 'Payroll waits for the attendance review of staff who clock in at the counter: the Payroll tab lists the days still to review and who they belong to, with a link to the review.', 'Payroll: work out and approve the month\'s pay; add bonuses.'],
     who: 'The Business Head and the owner.', watch: ['An approved month is locked.'], keywords: 'staff payroll attendance holiday bonus salary job role assistant ai incentive',
   },
   {
