@@ -32,6 +32,7 @@ import { AlertsService } from "./alerts.service";
       <div class="d-flex flex-wrap align-items-center gap-2">
         <i class="bi bi-telegram fs-5 text-primary"></i>
         <span class="fw-semibold">Alerts on Telegram</span>
+        <a class="small" routerLink="/secure/help/telegram" data-testid="np-tg-help"><i class="bi bi-question-circle me-1"></i>Help</a>
         <span class="badge bg-success" *ngIf="tg.linked" data-testid="np-tg-connected">Connected<span *ngIf="tg.handle"> as @{{tg.handle}}</span></span>
         <span class="badge bg-secondary" *ngIf="!tg.linked && tg.status === 'STOPPED'">Stopped</span>
         <span class="badge bg-danger" *ngIf="tg.status === 'BLOCKED'" title="Telegram refused the last message: the bot was blocked">Blocked</span>

@@ -254,6 +254,8 @@ export class AuthService {
     if (url === '/secure/notifications') return true;
     // the app guide is for everyone signed in; what it shows follows their login
     if (url.split('?')[0] === '/secure/app-guide') return true;
+    // the help pages are for everyone signed in
+    if (url === '/secure/help' || url.startsWith('/secure/help/')) return true;
     // the weekly knowledge check is each person's own
     if (url.split('?')[0] === '/secure/knowledge') return true;
     // the pharmacy guide is for everyone who works in a pharmacy business, whatever their role

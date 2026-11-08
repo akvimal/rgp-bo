@@ -1,0 +1,109 @@
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+  <div>
+    <h1 class="m-0">Help: Telegram alerts</h1>
+    <div class="text-muted">Get the shop's alerts on your phone, and send the daily digest to a store group.</div>
+  </div>
+  <button type="button" class="btn btn-outline-secondary btn-sm no-print" (click)="print()" data-testid="th-print"><i class="bi bi-printer me-1"></i>Print this page</button>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-3 no-print">
+    <div class="card"><div class="card-body toc small" data-testid="th-toc">
+      <div class="fw-semibold mb-1">On this page</div>
+      <a href="javascript:void(0)" (click)="scroll('th-what')">What you get</a>
+      <a href="javascript:void(0)" (click)="scroll('th-bot')">1. Create the bot</a>
+      <a href="javascript:void(0)" (click)="scroll('th-app')">2. Add the bot in the app</a>
+      <a href="javascript:void(0)" (click)="scroll('th-staff')">3. Connect your Telegram</a>
+      <a href="javascript:void(0)" (click)="scroll('th-digest')">4. Daily digest to a group</a>
+      <a href="javascript:void(0)" (click)="scroll('th-fix')">If something does not work</a>
+      <a href="javascript:void(0)" (click)="scroll('th-more')">Changing the bot or phone</a>
+    </div></div>
+    <div class="d-grid gap-2 mt-2">
+      <a class="btn btn-sm btn-outline-primary" routerLink="/secure/settings/alerts" *ngIf="canAlerts" data-testid="th-open-alerts">Open Settings &gt; Alerts</a>
+      <a class="btn btn-sm btn-outline-primary" routerLink="/secure/notifications" data-testid="th-open-notifications">Open my Notifications</a>
+      <a class="btn btn-sm btn-outline-secondary" routerLink="/secure/app-guide">Back to the app guide</a>
+    </div>
+  </div>
+
+  <div class="col-lg-9">
+    <div class="card mb-3" id="th-what"><div class="card-body">
+      <h5 class="card-title">What you get</h5>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-2">
+        <thead><tr><th>Feature</th><th>Who gets it</th><th>Switched on in</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Alerts</strong> (bank deposit due, low stock, licence ending ...)</td><td>Each person who connects their own Telegram</td><td>Settings &gt; Alerts</td></tr>
+          <tr><td><strong>Daily digest</strong> (sales and purchase totals; never cash or margin)</td><td>A store's Telegram group</td><td>Settings &gt; Notifications</td></tr>
+        </tbody>
+      </table></div>
+      <div class="small text-muted">Both use the one bot of the shop. Customers are not on Telegram. Only the Business Head does steps 1 and 2, once. Everyone who wants alerts does step 3.</div>
+    </div></div>
+
+    <div class="card mb-3" id="th-bot"><div class="card-body">
+      <h5 class="card-title">1. Create the bot <span class="badge bg-secondary ms-1">Business Head, once, about 2 minutes</span></h5>
+      <div class="step"><span class="step-no">1</span><div class="step-body">On your phone or computer open Telegram and search for <strong>&#64;BotFather</strong> (the one with the blue tick). Press <strong>Start</strong>.</div></div>
+      <div class="step"><span class="step-no">2</span><div class="step-body">Send <span class="sample">/newbot</span>.</div></div>
+      <div class="step"><span class="step-no">3</span><div class="step-body">BotFather asks for a <strong>name</strong>, which people see in their chats (for example <em>RGP Alerts</em>).</div></div>
+      <div class="step"><span class="step-no">4</span><div class="step-body">It then asks for a <strong>username</strong>. It must end in <span class="sample">bot</span> and not be taken, for example <span class="sample">rgp_shop_alerts_bot</span>.</div></div>
+      <div class="step"><span class="step-no">5</span><div class="step-body">BotFather replies with a <strong>token</strong> that looks like <span class="sample">123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw</span>. Copy all of it.
+        <div class="alert alert-warning py-2 mt-2 mb-0"><i class="bi bi-shield-exclamation me-1"></i>Keep the token private. Anyone who has it can send messages as your bot. Never post it in a chat or a screenshot. If it leaks, send <span class="sample">/revoke</span> to BotFather, pick the bot, and paste the new token into the app.</div></div></div>
+      <div class="small text-muted mt-2">Optional: <span class="sample">/setuserpic</span> gives the bot a logo and <span class="sample">/setdescription</span> a line such as "Alerts from the shop". Leave <span class="sample">/setprivacy</span> as it is.</div>
+    </div></div>
+
+    <div class="card mb-3" id="th-app"><div class="card-body">
+      <h5 class="card-title">2. Add the bot in the app <span class="badge bg-secondary ms-1">Business Head, once</span></h5>
+      <div class="step"><span class="step-no">1</span><div class="step-body">Sign in as the Business Head and open <strong>Settings &gt; Alerts</strong>. <a routerLink="/secure/settings/alerts" *ngIf="canAlerts" class="no-print ms-1">Open it now</a></div></div>
+      <div class="step"><span class="step-no">2</span><div class="step-body">In the <strong>Alerts on Telegram</strong> box press <strong>Add the bot</strong>.</div></div>
+      <div class="step"><span class="step-no">3</span><div class="step-body">Paste the <strong>token</strong> from BotFather.</div></div>
+      <div class="step"><span class="step-no">4</span><div class="step-body"><strong>App address</strong> (optional): the address people type to open the app, starting with <span class="sample">https://</span>, for example <span class="sample">https://ops.myrgp.in</span>. Messages use it to add a link to the right page. Leave it empty for messages without links. An <span class="sample">http://</span> address is refused.</div></div>
+      <div class="step"><span class="step-no">5</span><div class="step-body">Press <strong>Check and save</strong>. The app asks Telegram whether the token is real. If it is, the bot's name appears in the box (<em>Bot: &#64;rgp_shop_alerts_bot</em>) and the token is stored <strong>encrypted</strong>; only its last four characters are ever shown again. If it is not, you see the reason and nothing is saved.</div></div>
+      <div class="step"><span class="step-no">6</span><div class="step-body">Tick <strong>Send alerts to staff on Telegram</strong> in the same box. Alerts now go to every person who connects in step 3.</div></div>
+    </div></div>
+
+    <div class="card mb-3" id="th-staff"><div class="card-body">
+      <h5 class="card-title">3. Connect your Telegram <span class="badge bg-secondary ms-1">Everyone who wants alerts</span></h5>
+      <div class="small text-muted mb-1">A bot can only write to a person who pressed Start, so each person connects once, themselves. You need the Telegram app on your phone and to be signed in to it.</div>
+      <div class="step"><span class="step-no">1</span><div class="step-body">In the app open the bell, then <strong>Notifications</strong>. <a routerLink="/secure/notifications" class="no-print ms-1">Open it now</a></div></div>
+      <div class="step"><span class="step-no">2</span><div class="step-body">In <strong>Alerts on Telegram</strong> press <strong>Connect Telegram</strong>, then <strong>Open Telegram</strong>.</div></div>
+      <div class="step"><span class="step-no">3</span><div class="step-body">In the chat that opens press <strong>Start</strong>. The page changes to <span class="badge bg-success">Connected</span> within a few seconds. (The link works once and for 15 minutes.)</div></div>
+      <div class="step"><span class="step-no">4</span><div class="step-body">Choose the <strong>level</strong> you want (everything, warnings and up, or critical only) and your <strong>quiet hours</strong>, then press <strong>Save</strong>. Press <strong>Send a test</strong> to check it reaches you.</div></div>
+      <h6 class="mt-3">What you will receive</h6>
+      <ul class="small mb-2">
+        <li>Only the alerts you are allowed to see in the app, for your stores.</li>
+        <li>At or above the level you chose. <strong>Critical alerts come at any hour.</strong> The others wait until your quiet hours end (22:00 to 07:00 India time unless you change it).</li>
+        <li>No more than 12 an hour below critical, so a burst does not flood your phone.</li>
+        <li>A message that fails to send is tried again after 1, 5, 30, 120 and 360 minutes.</li>
+        <li>Counts, amounts, store names and a link. Never customer names or prescription details.</li>
+      </ul>
+      <h6>Commands in the bot chat</h6>
+      <div class="small"><span class="sample">/status</span> shows your settings &nbsp; <span class="sample">/stop</span> stops alerts (press Reconnect in the app to start again) &nbsp; <span class="sample">/start</span> with no link explains how to connect.</div>
+    </div></div>
+
+    <div class="card mb-3" id="th-digest"><div class="card-body">
+      <h5 class="card-title">4. Daily digest to a store group <span class="badge bg-secondary ms-1">Optional, Business Head</span></h5>
+      <div class="step"><span class="step-no">1</span><div class="step-body">Create a Telegram group for the store and add the people who should see the digest.</div></div>
+      <div class="step"><span class="step-no">2</span><div class="step-body">Add your bot to the group as a member.</div></div>
+      <div class="step"><span class="step-no">3</span><div class="step-body">In the group send <span class="sample">/chatid</span>. The bot replies with the group's <strong>chat ID</strong>, a number that usually starts with <span class="sample">-</span>.</div></div>
+      <div class="step"><span class="step-no">4</span><div class="step-body">Open <strong>Settings &gt; Notifications</strong>, paste the chat ID against the store, keep the switch on, and press <strong>Send test</strong>. <a routerLink="/secure/settings/notifications" *ngIf="canDigest" class="no-print ms-1">Open it now</a></div></div>
+      <div class="small text-muted mt-2">A store with no chat ID, or switched off, gets no digest. The digest never includes cash or margin figures.</div>
+    </div></div>
+
+    <div class="card mb-3" id="th-fix"><div class="card-body">
+      <h5 class="card-title">If something does not work</h5>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0" data-testid="th-problems">
+        <thead><tr><th style="width:36%">You see or notice</th><th>What to do</th></tr></thead>
+        <tbody><tr *ngFor="let p of problems"><td><strong>{{p.said}}</strong></td><td>{{p.fix}}</td></tr></tbody>
+      </table></div>
+    </div></div>
+
+    <div class="card mb-3" id="th-more"><div class="card-body">
+      <h5 class="card-title">Changing the bot, a phone or a person</h5>
+      <ul class="small mb-2">
+        <li><strong>A new bot:</strong> press <em>Add the bot</em> again and paste the new token. Everyone must press Connect Telegram again, because chats belong to a bot. <em>Remove from the app</em> takes the saved bot away and alerts stop.</li>
+        <li><strong>A new phone:</strong> install Telegram and sign in, then press <em>Disconnect</em> and <em>Connect Telegram</em> on your Notifications page.</li>
+        <li><strong>Someone leaves:</strong> switch them off in Settings &gt; Users. They stop receiving alerts as soon as their login is off.</li>
+        <li><strong>A test or demo copy of the app:</strong> use a second bot from BotFather. Two copies of the app using the same token take each other's messages, and test alerts could reach real staff.</li>
+      </ul>
+      <div class="small text-muted">For whoever hosts the app: the bot can also be set in the server's environment (<span class="sample">TELEGRAM_BOT_TOKEN</span>, <span class="sample">TELEGRAM_BOT_USERNAME</span>, <span class="sample">APP_BASE_URL</span>), but a bot saved in the app wins. The server needs outgoing HTTPS to <span class="sample">api.telegram.org</span>; no public address or open port is needed for Telegram.</div>
+    </div></div>
+  </div>
+</div>

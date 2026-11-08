@@ -174,3 +174,54 @@ html[data-theme="dark"] .apexcharts-text, html[data-theme="dark"] .apexcharts-le
 html[data-theme="dark"] .apexcharts-gridline { stroke: var(--rgp-line); }
 html[data-theme="dark"] .ngx-charts text { fill: var(--rgp-muted); }
 html[data-theme="dark"] .ngx-charts .gridline-path { stroke: var(--rgp-line); }
+
+/* ---------------------------------------------------------------- the POS and other screens whose own styles use light fills */
+/* the product, customer and stock boxes carry an inline light background (inputStyle), so this needs !important */
+html[data-theme="dark"] .p-inputtext, html[data-theme="dark"] .p-autocomplete-input, html[data-theme="dark"] .p-inputnumber-input,
+html[data-theme="dark"] .p-dropdown, html[data-theme="dark"] .p-multiselect, html[data-theme="dark"] .p-calendar .p-inputtext {
+  background-color: var(--dk-input) !important; color: var(--rgp-text) !important; border-color: #3a4560;
+}
+html[data-theme="dark"] .p-inputtext::placeholder { color: #7a859d !important; }
+html[data-theme="dark"] .p-dropdown .p-dropdown-label, html[data-theme="dark"] .p-dropdown .p-dropdown-trigger { color: var(--rgp-text); }
+html[data-theme="dark"] .p-autocomplete-panel, html[data-theme="dark"] .p-dropdown-panel, html[data-theme="dark"] .p-multiselect-panel { background: var(--dk-surface-2); border-color: var(--rgp-line); }
+html[data-theme="dark"] .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item,
+html[data-theme="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item { color: var(--rgp-text); }
+html[data-theme="dark"] .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item:hover,
+html[data-theme="dark"] .p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover { background: var(--rgp-hover-bg); color: var(--rgp-navy); }
+html[data-theme="dark"] .stock-select-panel { background: var(--dk-surface-2); }
+
+html[data-theme="dark"] .sale-actions, html[data-theme="dark"] .inv-table th, html[data-theme="dark"] .inv-entry .inv-total,
+html[data-theme="dark"] .p-datatable.inv-table .p-datatable-thead > tr > th, html[data-theme="dark"] .p-datatable.inv-table .p-datatable-tfoot > tr > td,
+html[data-theme="dark"] .bill-items th, html[data-theme="dark"] .reo-step { background: var(--dk-surface-2); color: var(--rgp-text); }
+html[data-theme="dark"] .reo-step-final { background: #12301f; }
+html[data-theme="dark"] .sale-history-item:hover, html[data-theme="dark"] .row-hover:hover { background: var(--rgp-hover-bg); }
+html[data-theme="dark"] .expired { background: #3a1a1f; }
+html[data-theme="dark"] .low { background: #3a2f12; }
+html[data-theme="dark"] .checkmark { background-color: var(--dk-input); }
+html[data-theme="dark"] .shift-pill-open { background: #12301f; color: #b6e8c8; }
+html[data-theme="dark"] .shift-pill-none { background: #3a2f12; color: #f1d98f; }
+html[data-theme="dark"] .sidebar-rail .sidebar:not(:hover) .sidebar-nav .nav-heading { background: var(--dk-surface-2); }
+html[data-theme="dark"] .sv-ring-in { background: var(--dk-surface); }
+html[data-theme="dark"] .sv-usual, html[data-theme="dark"] .sv-key-usual { background: var(--dk-surface-2); color: var(--rgp-text); }
+html[data-theme="dark"] .reorder-tile { background: #3a2f12; color: #f1d98f; } html[data-theme="dark"] .reorder-tile:hover { background: #4a3c16; }
+html[data-theme="dark"] .expiry-tile { background: #3a1a1f; color: #f5c2c7; } html[data-theme="dark"] .expiry-tile:hover { background: #4a2128; }
+html[data-theme="dark"] .needs-bad { background: #3a2f12; } html[data-theme="dark"] .needs-warn { background: #332b14; } html[data-theme="dark"] .needs-info { background: #1f2747; }
+html[data-theme="dark"] .p-tabview-nav-link .badge, html[data-theme="dark"] .nav-link .badge { color: #fff; }
+
+/* ---------------------------------------------------------------- badges: bright fills with dark text, so they stand out on dark surfaces */
+html[data-theme="dark"] .badge.bg-primary,   html[data-theme="dark"] .badge.text-bg-primary   { background-color: #8e9bff !important; color: #0b1030 !important; }
+html[data-theme="dark"] .badge.bg-secondary, html[data-theme="dark"] .badge.text-bg-secondary { background-color: #a3aec6 !important; color: #10141d !important; }
+html[data-theme="dark"] .badge.bg-success,   html[data-theme="dark"] .badge.text-bg-success   { background-color: #3ddc84 !important; color: #04210f !important; }
+html[data-theme="dark"] .badge.bg-danger,    html[data-theme="dark"] .badge.text-bg-danger    { background-color: #ff6b78 !important; color: #2a0509 !important; }
+html[data-theme="dark"] .badge.bg-warning,   html[data-theme="dark"] .badge.text-bg-warning   { background-color: #ffc83d !important; color: #2b1f00 !important; }
+html[data-theme="dark"] .badge.bg-info,      html[data-theme="dark"] .badge.text-bg-info      { background-color: #5ad1e6 !important; color: #04222a !important; }
+html[data-theme="dark"] .badge.bg-dark,      html[data-theme="dark"] .badge.text-bg-dark      { background-color: #3a4560 !important; color: #fff !important; }
+html[data-theme="dark"] .badge.bg-light { background-color: var(--dk-surface-2) !important; color: var(--rgp-text) !important; border-color: #4a5675 !important; }
+html[data-theme="dark"] .badge.text-dark { color: inherit; }
+html[data-theme="dark"] .badge.bg-warning.text-dark, html[data-theme="dark"] .badge.bg-info.text-dark { color: #1a1300 !important; }
+html[data-theme="dark"] .header-nav .badge-number { background-color: #ff6b78 !important; color: #2a0509 !important; }
+
+/* inline pale fills set from templates: the POS total, out-of-stock rows in the product list, soft blue marks */
+html[data-theme="dark"] [style*="background:#d9f7d6"], html[data-theme="dark"] [style*="background: #d9f7d6"] { background: #12301f !important; color: #7ee2a3 !important; }
+html[data-theme="dark"] [data-testid="stock-option"][style*="rgb(255, 192, 192)"], html[data-theme="dark"] [style*="background-color: rgb(255, 192, 192)"] { background-color: #3a1a1f !important; }
+html[data-theme="dark"] [style*="background-color: rgb(184, 219, 254)"] { background-color: #1e3a5f !important; color: #cfe5ff !important; }
