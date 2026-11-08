@@ -42,6 +42,9 @@ export class AlertsController {
   @Get('ai')
   ai(@User() user: any) { return this.service.aiConfig(user); }
 
+  @Get('ai/report')
+  aiReport(@User() user: any) { return this.aiSettings.report(user); }
+
   @Get('ai/usage')
   aiUsage(@User() user: any) { return this.aiSettings.usage(user); }
 

@@ -4,7 +4,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { isOwnerRole } from 'src/core/roles';
 import { AiProvider, ProviderName, setAiUsageHooks, setStoredAiKey, storedAiKey } from './ai-provider';
-import { featureLabel, limitState, parseLimit, UsageRecord, validLimit } from './ai-usage';
+import { AI_AREAS, areaOf, featureLabel, limitState, parseLimit, percent, UsageRecord, validLimit } from './ai-usage';
 import { resolveModel } from './ai-models';
 import { cleanKey, decryptKey, encryptKey, keyHint } from './ai-key';
 
@@ -66,6 +66,55 @@ export class AiSettingsService implements OnModuleInit {
     return {
       month: m.month, limit, used, state: limitState(used, limit), last_month: last?.n ?? 0,
       by_feature: rows.map((r: any) => ({ ...r, label: featureLabel(r.feature) })),
+    };
+  }
+
+  /**
+   * Where the assistant is used and how much: every area of the app that asks a model for something (also those never used yet), this month against last
+   * month, failures, how long a request takes, tokens, which models served it, and a day-by-day count for the last 30 days. Numbers only, never any text.
+   */
+  async report(user: any) {
+    await this.owner(user);
+    const MS = AiSettingsService.MONTH_START;
+    const rows = await this.manager.query(
+      `select feature,
+              count(*) filter (where used_on >= ${MS})::int as month,
+              count(*) filter (where used_on >= ${MS} - interval '1 month' and used_on < ${MS})::int as last_month,
+              count(*)::int as total,
+              count(*) filter (where used_on >= ${MS} and not ok)::int as failed,
+              coalesce(round(avg(ms) filter (where used_on >= ${MS})), 0)::int as avg_ms,
+              coalesce(sum(input_tokens) filter (where used_on >= ${MS}), 0)::int as input_tokens,
+              coalesce(sum(output_tokens) filter (where used_on >= ${MS}), 0)::int as output_tokens,
+              to_char(max(used_on) at time zone 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') as last_used,
+              array_remove(array_agg(distinct model) filter (where used_on >= ${MS}), '') as models
+         from ai_usage group by feature`);
+    const features = [...AI_AREAS.map((a) => a.feature), ...rows.map((r: any) => r.feature).filter((f: string) => !AI_AREAS.some((a) => a.feature === f))];
+    const areas = features.map((f) => {
+      const r = rows.find((x: any) => x.feature === f);
+      const a = areaOf(f);
+      return {
+        feature: f, label: a.label, what: a.what, where: a.where, route: a.route,
+        month: r?.month ?? 0, last_month: r?.last_month ?? 0, total: r?.total ?? 0, failed: r?.failed ?? 0, failed_pct: percent(r?.failed ?? 0, r?.month ?? 0),
+        avg_ms: r?.avg_ms ?? 0, input_tokens: r?.input_tokens ?? 0, output_tokens: r?.output_tokens ?? 0, last_used: r?.last_used ?? null, models: r?.models ?? [],
+      };
+    }).sort((a, b) => b.month - a.month || b.total - a.total || a.label.localeCompare(b.label));
+    const daily = await this.manager.query(
+      `select to_char(g.d, 'YYYY-MM-DD') as day, coalesce(c.calls, 0)::int as calls, coalesce(c.failed, 0)::int as failed
+         from generate_series((now() at time zone 'Asia/Kolkata')::date - 29, (now() at time zone 'Asia/Kolkata')::date, interval '1 day') g(d)
+         left join (select (used_on at time zone 'Asia/Kolkata')::date as day, count(*) as calls, count(*) filter (where not ok) as failed from ai_usage
+                     where used_on >= now() - interval '32 days' group by 1) c on c.day = g.d::date order by g.d`);
+    const byModel = await this.manager.query(
+      `select coalesce(nullif(model, ''), 'unknown') as model, count(*)::int as calls, count(*) filter (where not ok)::int as failed,
+              coalesce(sum(input_tokens), 0)::int as input_tokens, coalesce(sum(output_tokens), 0)::int as output_tokens
+         from ai_usage where used_on >= ${MS} group by 1 order by calls desc`);
+    const month = areas.reduce((n, a) => n + a.month, 0);
+    const failed = areas.reduce((n, a) => n + a.failed, 0);
+    const [t] = await this.manager.query(`select coalesce(round(avg(ms)), 0)::int as avg_ms from ai_usage where used_on >= ${MS}`);
+    const limit = await this.limit();
+    return {
+      limit, used: month, state: limitState(month, limit), failed, success_pct: percent(month - failed, month), avg_ms: t?.avg_ms ?? 0,
+      input_tokens: areas.reduce((n, a) => n + a.input_tokens, 0), output_tokens: areas.reduce((n, a) => n + a.output_tokens, 0),
+      busiest: month ? areas[0].label : null, areas, daily, by_model: byModel, never_used: areas.filter((a) => !a.total).length,
     };
   }
 

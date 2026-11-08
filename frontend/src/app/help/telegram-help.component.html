@@ -15,6 +15,7 @@
       <a href="javascript:void(0)" (click)="scroll('th-app')">2. Add the bot in the app</a>
       <a href="javascript:void(0)" (click)="scroll('th-staff')">3. Connect your Telegram</a>
       <a href="javascript:void(0)" (click)="scroll('th-digest')">4. Daily digest to a group</a>
+      <a href="javascript:void(0)" (click)="scroll('th-shift')">5. Shift open and close messages</a>
       <a href="javascript:void(0)" (click)="scroll('th-fix')">If something does not work</a>
       <a href="javascript:void(0)" (click)="scroll('th-more')">Changing the bot or phone</a>
     </div></div>
@@ -85,6 +86,22 @@
       <div class="step"><span class="step-no">3</span><div class="step-body">In the group send <span class="sample">/chatid</span>. The bot replies with the group's <strong>chat ID</strong>, a number that usually starts with <span class="sample">-</span>.</div></div>
       <div class="step"><span class="step-no">4</span><div class="step-body">Open <strong>Settings &gt; Notifications</strong>, paste the chat ID against the store, keep the switch on, and press <strong>Send test</strong>. <a routerLink="/secure/settings/notifications" *ngIf="canDigest" class="no-print ms-1">Open it now</a></div></div>
       <div class="small text-muted mt-2">A store with no chat ID, or switched off, gets no digest. The digest never includes cash or margin figures.</div>
+    </div></div>
+
+    <div class="card mb-3" id="th-shift"><div class="card-body">
+      <h5 class="card-title">5. Shift open and close messages <span class="badge bg-secondary ms-1">Automatic</span></h5>
+      <div class="small text-muted mb-2">Every time a shift opens or closes (including a handover) the shop is told. Nothing to set up beyond steps 1 to 3. The Business Head can switch each message off, or choose to send the full version to the store group, under <strong>Settings &gt; Alerts &gt; Shift messages</strong>.</div>
+      <div class="row g-3">
+        <div class="col-md-6"><div class="border rounded p-2 h-100">
+          <div class="fw-semibold small mb-1">When a shift opens, owners and store heads get</div>
+          <ul class="small mb-0"><li>the store, shift name, hours and the time it was opened</li><li>who opened it and whose drawer it is</li><li>the opening float, and whether it came from the vault</li><li>for a handover, which shift it took over from</li></ul>
+        </div></div>
+        <div class="col-md-6"><div class="border rounded p-2 h-100">
+          <div class="fw-semibold small mb-1">When a shift closes, owners and store heads get</div>
+          <ul class="small mb-0"><li>bills, items and total sales</li><li><strong>bills and sales by each staff member</strong></li><li><strong>cash against UPI/card</strong> with the share of each, and UPI/card by app</li><li><strong>deliveries</strong>: how many, delivered, waiting, failed</li><li><strong>expenses</strong> with the biggest items</li><li>the drawer count, terminal totals, refunds and money banked, and whether it all matches</li></ul>
+        </div></div>
+      </div>
+      <div class="small mt-2"><strong>Who gets what:</strong> owners and the store heads of that store, if they connected Telegram in step 3 (their quiet hours hold the message until morning). The store's Telegram group (step 4) gets a short version: bills, takings and whether it matches, with <em>no staff names and no cash amounts</em>, because everyone in the group can read it. Tick <em>Send the full version to the store group too</em> if you want the group to see everything.</div>
     </div></div>
 
     <div class="card mb-3" id="th-fix"><div class="card-body">

@@ -31,6 +31,14 @@ export interface ShiftFacts {
   expensesTotal: number;
   refunds: number;
   deposits: number;
+  /** bills and sales by the person who served them (the full version only) */
+  byStaff?: { name: string; bills: number; sales: number }[];
+  /** UPI/card taken, by terminal or app */
+  digitalByProvider?: { provider: string; bills: number; amount: number }[];
+  /** bills that go out for delivery, and how those stand now */
+  deliveries?: { total: number; delivered: number; pending: number; failed: number };
+  /** what was paid out as expenses: each with its category and amount, biggest first */
+  expenseLines?: { label: string; amount: number }[];
 }
 
 /** rupees for reading: whole rupees, paise only when there are some */
@@ -50,7 +58,7 @@ export const reconciled = (f: ShiftFacts): boolean => {
   return (v === null || Math.abs(v) <= TOLERANCE) && digitalOff(f).length === 0;
 };
 
-const hours = (f: ShiftFacts) => (f.start && f.end ? ` (${f.start}-${f.end})` : '');
+const hours = (f: { start: string | null; end: string | null }) => (f.start && f.end ? ` (${f.start}-${f.end})` : '');
 
 /** the facts both versions share */
 function body(f: ShiftFacts): string[] {
@@ -68,8 +76,37 @@ function body(f: ShiftFacts): string[] {
   return out;
 }
 
-/** for the store group: no cash amounts, no differences, no names */
-export function formatShiftGroup(f: ShiftFacts): string {
+/** the sections only the full version carries: who served how much, cash against UPI/card, deliveries, expenses */
+function detail(f: ShiftFacts): string[] {
+  const out: string[] = [];
+  const staff = (f.byStaff ?? []).filter((x) => x.bills > 0);
+  if (staff.length) {
+    out.push('', 'Bills by staff:');
+    for (const x of staff) out.push(`• ${x.name}: ${x.bills} bill${x.bills === 1 ? '' : 's'} · ${rupees(x.sales)}`);
+  }
+  const total = f.cashSales + f.digitalSales + f.creditSales;
+  if (total > 0) {
+    const pc = (n: number) => `${Math.round((n / total) * 100)}%`;
+    out.push('', `Cash ${rupees(f.cashSales)} (${pc(f.cashSales)}) · UPI/card ${rupees(f.digitalSales)} (${pc(f.digitalSales)})${f.creditSales > 0 ? ` · credit ${rupees(f.creditSales)} (${pc(f.creditSales)})` : ''}`);
+    const prov = (f.digitalByProvider ?? []).filter((d) => d.amount > 0);
+    if (prov.length > 1 || (prov.length === 1 && prov[0].provider !== 'OTHER')) out.push(`UPI/card by app: ${prov.map((d) => `${d.provider} ${rupees(d.amount)} (${d.bills})`).join(' · ')}`);
+  }
+  const d = f.deliveries;
+  if (d && d.total > 0) {
+    const parts = [d.delivered ? `${d.delivered} delivered` : '', d.pending ? `${d.pending} waiting` : '', d.failed ? `${d.failed} failed` : ''].filter(Boolean);
+    out.push(`Deliveries: ${d.total}${parts.length ? ` (${parts.join(', ')})` : ''}`);
+  }
+  const lines = f.expenseLines ?? [];
+  if (f.expensesCount) {
+    const shown = lines.slice(0, 5).map((l) => `${l.label} ${rupees(l.amount)}`).join(', ');
+    out.push(`Expenses: ${rupees(f.expensesTotal)} (${f.expensesCount})${shown ? ` — ${shown}${lines.length > 5 ? ', ...' : ''}` : ''}`);
+  }
+  return out;
+}
+
+/** for the store group: no cash amounts, no differences, no names (unless the owner chose the full version for the group) */
+export function formatShiftGroup(f: ShiftFacts, full = false): string {
+  if (full) return formatShiftManager(f);
   return [
     `\u{1F3EA} ${f.store} — ${f.shiftName}${hours(f)} ${f.handover ? 'handed over' : 'closed'}`,
     ...body(f),
@@ -85,15 +122,48 @@ export function formatShiftManager(f: ShiftFacts): string {
   const lines = [
     `\u{1F3EA} ${f.store} — ${f.shiftName}${hours(f)} ${f.handover ? 'handed over' : 'closed'}${f.closedBy ? ` by ${f.closedBy}` : ''}`,
     ...body(f),
+    ...detail(f),
     '',
     `Drawer: expected ${rupees(f.expectedCash)}, counted ${f.countedCash === null ? 'not counted' : rupees(f.countedCash)}${v === null ? '' : ` — ${signed(v)}`}`,
   ];
   for (const d of f.digital) lines.push(`${d.provider}: system ${rupees(d.system)}, terminal ${rupees(d.counted)} — ${signed(d.variance)}`);
   const moved: string[] = [];
-  if (f.expensesCount) moved.push(`expenses ${rupees(f.expensesTotal)} (${f.expensesCount})`);
+  if (f.expensesCount && !(f.expenseLines ?? []).length) moved.push(`expenses ${rupees(f.expensesTotal)} (${f.expensesCount})`);
   if (f.refunds) moved.push(`refunds ${rupees(f.refunds)}`);
   if (f.deposits) moved.push(`banked ${rupees(f.deposits)}`);
   if (moved.length) lines.push(`Paid from the drawer: ${moved.join(' · ')}`);
   lines.push(reconciled(f) ? '✅ Reconciled' : '⚠️ Not reconciled: check the shift in the app');
   return lines.join('\n').slice(0, 4000);
+}
+
+// ------------------------------------------------------------------------------------------------ opening a shift
+export interface OpenFacts {
+  store: string;
+  shiftName: string;
+  start: string | null;
+  end: string | null;
+  /** the time it was opened, India time, such as 09:05 */
+  openedAt: string;
+  openedBy: string | null;
+  /** whose drawer it is, when that is somebody other than the opener */
+  drawerOf: string | null;
+  openingCash: number;
+  fromVault: boolean;
+  /** the shift this one took over from, when it is a handover */
+  handoverFrom: string | null;
+}
+
+/** for the store group: that the shop is open, with no names and no cash (unless the owner chose the full version) */
+export function formatOpenGroup(f: OpenFacts, full = false): string {
+  if (full) return formatOpenManager(f);
+  return `\u{1F7E2} ${f.store} — ${f.shiftName}${hours(f)} opened at ${f.openedAt}${f.handoverFrom ? ' (handover)' : ''}`;
+}
+
+/** for the people who run the shop: who opened it, whose drawer, and the opening float */
+export function formatOpenManager(f: OpenFacts): string {
+  const lines = [`\u{1F7E2} ${f.store} — ${f.shiftName}${hours(f)} opened at ${f.openedAt}${f.openedBy ? ` by ${f.openedBy}` : ''}`];
+  if (f.handoverFrom) lines.push(`Handed over from ${f.handoverFrom}`);
+  if (f.drawerOf && f.drawerOf !== f.openedBy) lines.push(`Drawer of ${f.drawerOf}`);
+  lines.push(`Opening float ${rupees(f.openingCash)}${f.fromVault ? ' (taken from the vault)' : ''}`);
+  return lines.join('\n');
 }

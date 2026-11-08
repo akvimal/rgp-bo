@@ -36,6 +36,9 @@ export class MessagingController {
   @Get('overview')
   overview(@User() user: any) { return this.service.overview(user); }
 
+  @Put('overview/shift')
+  shift(@Body() body: any, @User() user: any) { return this.service.saveShiftSwitches(user, body); }
+
   @Put('overview/enabled')
   enabled(@Body() body: any, @User() user: any) { return this.service.setEnabled(user, body?.on !== false && body?.on !== 'off'); }
 }

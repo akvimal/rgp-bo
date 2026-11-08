@@ -69,6 +69,12 @@ export class AlertRulesComponent implements OnInit {
     }, { entity: 'bot', verb: 'Remove', consequence: 'Alerts stop going to Telegram unless the server has its own bot set.', reversible: true });
   }
 
+  /** the shift opening and closing messages, and whether the store group gets the full version */
+  setShift(field: 'open' | 'close' | 'group_full', on: boolean) {
+    this.clearMessages();
+    this.alerts.tgShift({ [field]: on }).subscribe((d) => { this.delivery = d; this.message = 'Shift messages updated.'; }, (e) => this.error = this.msg(e));
+  }
+
   setDelivery(on: boolean) {
     this.alerts.tgEnabled(on).subscribe((d) => { this.delivery = d; this.message = on ? 'Alerts will also go to staff who connected Telegram.' : 'Alerts stay in the app only.'; }, (e) => this.error = this.msg(e));
   }

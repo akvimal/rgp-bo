@@ -1,4 +1,4 @@
-﻿import { ShiftFacts, formatShiftGroup, formatShiftManager, reconciled, rupees } from './shift-digest-rules';
+﻿import { OpenFacts, ShiftFacts, formatOpenGroup, formatOpenManager, formatShiftGroup, formatShiftManager, reconciled, rupees } from './shift-digest-rules';
 
 const facts = (over: Partial<ShiftFacts> = {}): ShiftFacts => ({
   store: 'Main Store', shiftName: 'Shift 2', start: '14:00', end: '22:00', handover: false, closedBy: 'Asha K',
@@ -61,5 +61,58 @@ describe('the shift-close message', () => {
     expect(text).toContain('No customers on record');
     expect(text).not.toContain('Scheduled-drug');
     expect(formatShiftManager(none)).not.toContain('Paid from the drawer');
+  });
+});
+
+describe('the full sales summary in the shift-close message', () => {
+  const full = (over: Partial<ShiftFacts> = {}) => facts({
+    byStaff: [{ name: 'Asha K', bills: 30, sales: 12000.5 }, { name: 'Ravi S', bills: 12, sales: 6450 }, { name: 'Idle', bills: 0, sales: 0 }],
+    digitalByProvider: [{ provider: 'PAYTM', bills: 10, amount: 5000.5 }, { provider: 'PHONEPE', bills: 6, amount: 3650 }],
+    deliveries: { total: 4, delivered: 2, pending: 1, failed: 1 },
+    expenseLines: [{ label: 'Tea', amount: 120 }, { label: 'Cleaning', amount: 231 }], ...over,
+  });
+
+  it('lists bills by staff, cash against UPI/card, deliveries and expenses for the people who run the shop', () => {
+    const text = formatShiftManager(full());
+    expect(text).toContain('Bills by staff:');
+    expect(text).toContain('• Asha K: 30 bills · ₹12,000.50');
+    expect(text).toContain('• Ravi S: 12 bills · ₹6,450');
+    expect(text).not.toContain('Idle');
+    expect(text).toContain('Cash ₹9,200 (50%) · UPI/card ₹8,650.50 (47%) · credit ₹600 (3%)');
+    expect(text).toContain('UPI/card by app: PAYTM ₹5,000.50 (10) · PHONEPE ₹3,650 (6)');
+    expect(text).toContain('Deliveries: 4 (2 delivered, 1 waiting, 1 failed)');
+    expect(text).toContain('Expenses: ₹351 (2) — Tea ₹120, Cleaning ₹231');
+    expect(text.length).toBeLessThan(4000);
+  });
+
+  it('keeps names and amounts out of the group message unless the full version is chosen for it', () => {
+    expect(formatShiftGroup(full())).not.toMatch(/Asha|Ravi|Bills by staff|Deliveries|Expenses/);
+    expect(formatShiftGroup(full(), true)).toContain('• Asha K: 30 bills');
+  });
+
+  it('says nothing about deliveries when there were none, and works without the extra facts', () => {
+    expect(formatShiftManager(full({ deliveries: { total: 0, delivered: 0, pending: 0, failed: 0 } }))).not.toContain('Deliveries');
+    expect(formatShiftManager(facts())).toContain('Paid from the drawer: expenses ₹351 (2)');
+  });
+});
+
+describe('the shift-open message', () => {
+  const open = (over: Partial<OpenFacts> = {}): OpenFacts => ({
+    store: 'Main Store', shiftName: 'Morning', start: '09:00', end: '18:00', openedAt: '09:05', openedBy: 'Asha K', drawerOf: null, openingCash: 2000, fromVault: false, handoverFrom: null, ...over,
+  });
+
+  it('tells the group the shop is open, without a name or an amount', () => {
+    const t = formatOpenGroup(open());
+    expect(t).toContain('Main Store — Morning (09:00-18:00) opened at 09:05');
+    expect(t).not.toMatch(/Asha|2,000/);
+  });
+
+  it('tells the people who run the shop who opened it, whose drawer and the float', () => {
+    const t = formatOpenManager(open({ drawerOf: 'Ravi S', fromVault: true, handoverFrom: 'Shift 1' }));
+    expect(t).toContain('opened at 09:05 by Asha K');
+    expect(t).toContain('Handed over from Shift 1');
+    expect(t).toContain('Drawer of Ravi S');
+    expect(t).toContain('Opening float ₹2,000 (taken from the vault)');
+    expect(formatOpenGroup(open(), true)).toContain('Opening float ₹2,000');
   });
 });

@@ -78,7 +78,18 @@ You see who is connected, who is blocked or stopped, and how many messages were 
 
 A store with no chat ID, or switched off, gets no digest. The digest never includes cash or margin figures.
 
-## 5. Moving to a different bot or phone
+## 5. Shift open and close messages (automatic)
+
+Every time a shift opens or closes (a handover counts as both), the shop is told. Nothing more to set up once the bot is added and people have connected.
+
+| | Owners and the store's heads (personal message) | The store's group (if its chat ID is set) |
+|---|---|---|
+| **Opened** | store, shift, hours, time opened, who opened it, whose drawer, opening float (and if it came from the vault), the shift it took over from | store, shift, hours, time opened |
+| **Closed** | bills, items, sales; **bills and sales by staff**; **cash against UPI/card** with percentages and UPI/card by app; **deliveries** (total, delivered, waiting, failed); **expenses** with the biggest items; drawer expected, counted and difference; terminal totals; refunds and money banked; reconciled or not | bills, items, sales; cash, UPI/card and credit totals; customers; whether it matches. No staff names, no drawer figures |
+
+Settings > Alerts > **Shift messages** has three switches: message when a shift opens, message when a shift closes, and **send the full version to the store group too** (off by default, because everyone in the group can read it). The whole feature also stops if **Send alerts to staff on Telegram** is off. Each shift sends each message once, even if the close is pressed again.
+
+## 6. Moving to a different bot or phone
 
 - A new bot: add it again in the app (section 2). People must press Connect Telegram again, because chats belong to a bot.
 - A person's new phone: they install Telegram, sign in, and press Disconnect then Connect Telegram on the Notifications page.

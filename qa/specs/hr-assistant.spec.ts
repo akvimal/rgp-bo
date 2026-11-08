@@ -233,4 +233,17 @@ test.describe('AI key, usage and the Role assistant @p1', () => {
       await api.request('PUT', '/alerts/ai/limit', { limit: usage.limit }, MGR);
     }
   });
+  test('AIA-7 the usage report lists every place the assistant is used, for the Business Head alone', async ({ api }) => {
+    for (const who of [STOREHEAD, COUNTER]) expect((await api.request('GET', '/alerts/ai/report', undefined, who)).status).toBe(403);
+    const res = await api.request('GET', '/alerts/ai/report', undefined, MGR);
+    expect(res.status).toBe(200);
+    const r = res.body;
+    const features = r.areas.map((a: any) => a.feature);
+    for (const f of ['propose_alert_rule', 'propose_checklist_items', 'propose_role', 'propose_kpis', 'propose_bands', 'reply']) expect(features, `${f} is listed even before its first use`).toContain(f);
+    expect(r.daily).toHaveLength(30);
+    expect(r.areas.reduce((n: number, a: any) => n + a.month, 0), 'the areas add up to the month').toBe(r.used);
+    for (const a of r.areas) expect(a.where, `${a.feature} says where it is found`).toBeTruthy();
+    // the report holds numbers, never any text that was asked or answered
+    expect(JSON.stringify(r)).not.toMatch(/instruction|prompt|"text"/i);
+  });
 });

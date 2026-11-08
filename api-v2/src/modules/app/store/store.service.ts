@@ -779,6 +779,8 @@ export class StoreService {
       await this.recordChecklist(shift.id, storeid, 'OPEN', openingKind, body.openingchecklist, body.openingchecklistat, userid, shift.assigneduserid ?? null);
     }
     await this.syncShiftTotals(shift.id);
+    // the shop is told the shift has opened: never holds up or fails the opening
+    this.shiftDigest.notifyOpened(shift.id);
     return this.shiftRepository.findOne({
       where: { id: shift.id },
       relations: ["store", "template", "assigneduser", "openedby", "closedby"],
@@ -969,6 +971,7 @@ export class StoreService {
       } as any);
       nextShiftId = (next as any).id;
       await this.syncShiftTotals(nextShiftId as number);
+      this.shiftDigest.notifyOpened(nextShiftId as number);
     }
     if (Array.isArray(body.closingchecklist)) {
       await this.recordChecklist(id, shift.storeid, 'CLOSE', closeType === 'HANDOVER' ? 'HANDOVER' : 'CLOSING', body.closingchecklist, body.closingchecklistat, userid, closedOperatorId);
