@@ -145,6 +145,8 @@ const RESOURCES: Record<string, (m: ModuleState) => boolean> = {
   hr: (m) => m.hr,
   myhr: (m) => m.hr,
   leaveapprove: (m) => m.hr,
+  attendpunch: (m) => m.hr,
+  attendreview: (m) => m.hr,
   kpirate: (m) => m.hr,
   mykpi: (m) => m.hr,
   purchases: (m) => m.purchasing !== 'off',

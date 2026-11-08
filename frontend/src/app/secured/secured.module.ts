@@ -67,6 +67,14 @@ const routes: Routes = [
       loadChildren: () => import('./my-hr/my-hr.module').then(m => m.MyHrModule)
     },
     {
+      path: 'attendance-punch', canActivate:[AuthGuard],
+      loadChildren: () => import('./attendance-punch/attendance-punch.module').then(m => m.AttendancePunchModule)
+    },
+    {
+      path: 'attendance-review', canActivate:[AuthGuard],
+      loadChildren: () => import('./attendance-review/attendance-review.module').then(m => m.AttendanceReviewModule)
+    },
+    {
       path: 'leave-approvals', canActivate:[AuthGuard],
       loadChildren: () => import('./leave-approvals/leave-approvals.module').then(m => m.LeaveApprovalsModule)
     },

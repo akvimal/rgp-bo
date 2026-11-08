@@ -4,6 +4,7 @@ import { EntityManager } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { AuditService } from 'src/core/audit/audit.service';
 import { capIncentive, effectiveCap } from './hr-variable-pay';
+import { AttendanceReviewService } from './hr-punch.service';
 
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const PAY_DAYS = 30;                       // a fixed 30-day pay month
@@ -20,7 +21,13 @@ const iso = (d: any) => (d instanceof Date ? d.toISOString() : String(d)).slice(
  */
 @Injectable()
 export class HrPayrollService {
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly review: AttendanceReviewService) {}
+
+  /** days of people who punch that no manager has reviewed hold the month back */
+  private async needReview(period: string) {
+    const n = await this.review.unresolved(period);
+    if (n) throw new BadRequestException(`${n} attendance day${n === 1 ? ' is' : 's are'} not reviewed yet. Review them under Attendance review first.`);
+  }
 
   async runs() {
     return this.manager.query(
@@ -49,6 +56,7 @@ export class HrPayrollService {
     if (!PERIOD.test(period || '')) throw new BadRequestException('A month (YYYY-MM) is required.');
     const [existing] = await this.manager.query(`select id, status from hr_payroll_run where period = $1`, [period]);
     if (existing?.status === 'APPROVED') throw new BadRequestException('This month is approved. Reopen it to work it out again.');
+    await this.needReview(period);
     const start = period + '-01';
     const dim = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5)), 0)).getUTCDate();
     const end = `${period}-${String(dim).padStart(2, '0')}`;
@@ -215,6 +223,7 @@ export class HrPayrollService {
     const run = await this.get(period);
     if (!run) throw new NotFoundException('Work out the month first.');
     if (run.status === 'APPROVED') throw new BadRequestException('Already approved.');
+    await this.needReview(period);
     if (!run.lines.length) throw new BadRequestException('The run has no staff.');
     await this.manager.transaction(async tm => {
       for (const l of run.lines) {

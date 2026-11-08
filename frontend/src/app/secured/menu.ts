@@ -46,6 +46,8 @@ export function buildMenu(a: MenuAccess): MenuGroup[] {
       item('nav-kpi-mine', 'My KPI', 'kpi/mine', 'bi-graph-up-arrow', any('mykpi.view')),
       item('nav-hr', 'Staff and HR', 'hr', 'bi-people', any('hr.view')),
       item('nav-leave-approvals', 'Leave requests', 'leave-approvals', 'bi-calendar2-check', any('leaveapprove.decide')),
+      item('nav-attendance-punch', 'Mark attendance', 'attendance-punch', 'bi-camera-video', any('attendpunch.use')),
+      item('nav-attendance-review', 'Attendance review', 'attendance-review', 'bi-camera', any('attendreview.view')),
       item('nav-kpi-rate', 'Rate staff', 'kpi/rate', 'bi-clipboard-check', any('kpirate.rate')),
     ] },
     { key: 'oversight', label: 'Oversight', items: [
@@ -78,7 +80,7 @@ const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
   { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-refills', 'nav-inquiries', 'nav-price-changes', 'nav-shift'] },
   { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-outage', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance'] },
-  { key: 'people', label: 'Me', ids: ['nav-my-hr', 'nav-kpi-mine', 'nav-hr', 'nav-leave-approvals', 'nav-kpi-rate'] },
+  { key: 'people', label: 'Me', ids: ['nav-my-hr', 'nav-kpi-mine', 'nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate'] },
   { key: 'learn', label: 'Learn', ids: ['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge'] },
 ];
 

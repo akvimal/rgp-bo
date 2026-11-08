@@ -26,6 +26,6 @@ import { DeviceService } from './device.service';
   ],
   controllers: [AuthController],
   providers: [AuthHelper, AuthService, MfaService, DeviceService, UserService, AuthGuard],
-  exports: [AuthHelper, AuthGuard, JwtModule, MfaService]
+  exports: [AuthHelper, AuthGuard, JwtModule, MfaService, DeviceService]
 })
 export class AuthModule {}

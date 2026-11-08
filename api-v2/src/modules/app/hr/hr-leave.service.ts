@@ -358,7 +358,8 @@ export class HrLeaveService {
       if (!ATT_STATUSES.includes(b.status)) throw new BadRequestException('Not a valid attendance status.');
       await this.manager.query(
         `insert into hr_attendance (employee_id, att_date, status, note, created_by) values ($1,$2,$3,$4,$5)
-         on conflict (employee_id, att_date) do update set status = excluded.status, note = excluded.note, created_by = excluded.created_by, created_on = now()`,
+         on conflict (employee_id, att_date) do update set status = excluded.status, note = excluded.note, created_by = excluded.created_by, created_on = now(),
+           verification_status = case when hr_attendance.verification_status = 'PENDING' then 'CORRECTED' else hr_attendance.verification_status end`,
         [emp.id, b.date, b.status, String(b.note || '').trim().slice(0, 200) || null, by.id]);
     }
     await this.audit.record({ userId: by.id, action: 'hr.attendance_marked', entityType: 'hr_attendance', entityId: emp.id,
