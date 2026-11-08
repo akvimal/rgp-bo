@@ -60,4 +60,23 @@ test.describe('Theme switch @p2', () => {
     expect(await theme(page)).toBeNull();
     await page.evaluate(() => { localStorage.removeItem('rgp_theme:last'); Object.keys(localStorage).filter((k) => k.startsWith('rgp_theme:')).forEach((k) => localStorage.removeItem(k)); });
   });
+  test('THM-4 in dark the POS boxes and the bottom bar are dark, and badges are bright with dark text', async ({ app }) => {
+    const { page } = await app.open(MGR, '/secure/sales/pos');
+    await menu(page);
+    await page.getByTestId('theme-dark').click();
+    await expect.poll(() => theme(page)).toBe('dark');
+    const lum = (css: string) => { const m = css.match(/\d+/g)!.map(Number); return (m[0] + m[1] + m[2]) / 3; };
+    const search = page.getByRole('searchbox', { name: 'Name / Composition' });
+    await expect(search).toBeVisible({ timeout: 15_000 });
+    await expect.poll(async () => lum(await search.evaluate((e: any) => getComputedStyle(e).backgroundColor)), { message: 'product box is dark' }).toBeLessThan(60);
+    await expect.poll(async () => lum(await page.locator('.sale-actions').first().evaluate((e: any) => getComputedStyle(e).backgroundColor)), { message: 'bottom bar is dark' }).toBeLessThan(60);
+    // a badge: build one in the page so the check does not depend on data
+    const [fill, ink] = await page.evaluate(() => {
+      const b = document.createElement('span'); b.className = 'badge bg-success'; b.textContent = 'x'; document.body.appendChild(b);
+      const cs = getComputedStyle(b); const out = [cs.backgroundColor, cs.color]; b.remove(); return out;
+    });
+    expect(lum(fill)).toBeGreaterThan(120);
+    expect(lum(ink)).toBeLessThan(80);
+    await page.getByTestId('theme-light').click();
+  });
 });
