@@ -23,6 +23,21 @@ export const FEATURE_LABELS: Record<string, string> = {
 
 export const featureLabel = (feature: string): string => FEATURE_LABELS[feature] || feature;
 
+/** every place in the app that asks the model for something: what it does and where a person finds it (shown even before it is first used) */
+export interface AreaInfo { feature: string; label: string; what: string; where: string; route: string }
+export const AI_AREAS: AreaInfo[] = [
+  { feature: 'propose_alert_rule', label: 'Alert drafts', what: 'Turns a sentence such as "tell the store heads when a shift stays open 12 hours" into an alert rule to review.', where: 'Settings > Alerts, Describe an alert', route: '/secure/settings/alerts' },
+  { feature: 'propose_checklist_items', label: 'Checklist suggestions', what: 'Suggests opening and closing checklist items from the last 30 days or from a description of the shop.', where: 'Settings > Store, Checklists', route: '/secure/settings/store' },
+  { feature: 'propose_role', label: 'Job role drafts', what: 'Drafts a job role description from a position and what the person does.', where: 'HR > Role assistant', route: '/secure/hr' },
+  { feature: 'propose_kpis', label: 'KPI drafts', what: 'Chooses measures, rules and targets for a role from the shop history.', where: 'HR > Role assistant', route: '/secure/hr' },
+  { feature: 'propose_bands', label: 'Incentive band drafts', what: 'Proposes incentive amounts for performance bands of a role.', where: 'HR > Role assistant', route: '/secure/hr' },
+  { feature: 'reply', label: 'Connection tests', what: 'One small request to check that the key and model work.', where: 'Settings > AI assistant, Test', route: '/secure/settings/business-profile/ai' },
+];
+export const areaOf = (feature: string): AreaInfo => AI_AREAS.find((a) => a.feature === feature) || { feature, label: featureLabel(feature), what: '', where: '', route: '' };
+
+/** a share as a whole percentage; none when there is nothing to divide */
+export const percent = (part: number, whole: number): number | null => (whole > 0 ? Math.round((part / whole) * 100) : null);
+
 export const DEFAULT_MONTHLY_LIMIT = 300;
 export const MAX_MONTHLY_LIMIT = 100000;
 

@@ -34,6 +34,7 @@ import { NotificationsComponent } from "./notifications/notifications.component"
 import { AlertRulesComponent } from "./alerts/alert-rules.component";
 import { AiKeyCardComponent } from "./alerts/ai-key-card.component";
 import { AiAssistantSettingsComponent } from "./ai-assistant/ai-assistant-settings.component";
+import { AiUsageReportComponent } from "./ai-assistant/ai-usage-report.component";
 import { DashboardSetupComponent } from "./dashboard-setup/dashboard-setup.component";
 
 const routes: Routes = [
@@ -94,6 +95,7 @@ const routes: Routes = [
       AlertRulesComponent,
       AiKeyCardComponent,
       AiAssistantSettingsComponent,
+      AiUsageReportComponent,
       DashboardSetupComponent
     ],
     imports: [

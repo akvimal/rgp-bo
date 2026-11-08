@@ -11,6 +11,7 @@ import { AlertsService } from "../../alerts/alerts.service";
     <div class="form-compact">
       <div class="small text-muted mb-1">One assistant for the whole app: it drafts alert rules, checklists, job roles, KPIs and incentive proposals. Only the Business Head sets it up.</div>
       <app2-ai-key-card (changed)="load()"></app2-ai-key-card>
+      <app2-ai-usage-report *ngIf="cfg && cfg.configured && !cfg.off"></app2-ai-usage-report>
 
       <div class="card mt-3" *ngIf="cfg && cfg.configured && !cfg.off" data-testid="aim-card">
         <div class="card-body">
