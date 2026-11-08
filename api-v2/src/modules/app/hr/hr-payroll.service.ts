@@ -29,6 +29,12 @@ export class HrPayrollService {
     if (n) throw new BadRequestException(`${n} attendance day${n === 1 ? ' is' : 's are'} not reviewed yet. Review them under Attendance review first.`);
   }
 
+  /** for the payroll page: how many attendance days hold the month back, and whose */
+  async attendanceHold(period: string) {
+    if (!PERIOD.test(period || '')) throw new BadRequestException('A month (YYYY-MM) is required.');
+    return this.review.holdBack(period);
+  }
+
   async runs() {
     return this.manager.query(
       `select r.id, r.period, r.status, r.total_earnings::float as total_earnings, r.total_deductions::float as total_deductions, r.total_net::float as total_net,

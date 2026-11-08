@@ -29,6 +29,8 @@ export class AttendanceReviewController {
   constructor(private readonly service: AttendanceReviewService) {}
 
   @Get() @Needs('attendreview', 'view') list(@Query() q: any, @User() u: any) { return this.service.list(q, u); }
+  @Get('rules') @Needs('attendreview', 'view') rules(@User() u: any) { return this.service.rules(u); }
+  @Put('rules') @Needs('attendreview', 'decide') saveRules(@Body() b: any, @User() u: any) { return this.service.saveRules(b, u); }
   @Get('people') @Needs('attendreview', 'view') people(@User() u: any) { return this.service.people(u); }
   @Post('day') @Needs('attendreview', 'decide') day(@Body() b: any, @User() u: any) { return this.service.resolveDay(b, u); }
   @Put('people/:id/pin') @Needs('attendreview', 'decide') pin(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.service.setPin(id, b, u); }

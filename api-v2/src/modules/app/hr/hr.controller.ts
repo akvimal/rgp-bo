@@ -7,6 +7,7 @@ import { User } from 'src/core/decorator/user.decorator';
 import { HrStaffService } from './hr-staff.service';
 import { HrLeaveService } from './hr-leave.service';
 import { HrPayrollService } from './hr-payroll.service';
+import { AttendanceReviewService } from './hr-punch.service';
 import { HrBonusService } from './hr-bonus.service';
 import { HrKpiService } from './hr-kpi.service';
 import { HrKpiEngine } from './hr-kpi-engine.service';
@@ -39,6 +40,7 @@ export class HrController {
     private readonly engine: HrKpiEngine,
     private readonly ai: HrAiService,
     private readonly kpiTodos: HrKpiTodoService,
+    private readonly review: AttendanceReviewService,
   ) {}
 
   // ---------------------------------------------------------------- staff
@@ -116,6 +118,8 @@ export class HrController {
   @Get('payroll') runs() { return this.payroll.runs(); }
   @Get('payroll/stub/:lineId') stub(@Param('lineId', ParseIntPipe) lineId: number) { return this.payroll.stub(lineId); }
   @Put('payroll/lines/:id') editLine(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.payroll.editLine(id, b, u); }
+  /** attendance days still waiting for a review: they hold the month's payroll back */
+  @Get('payroll/:period/attendance-hold') hold(@Param('period') period: string) { return this.payroll.attendanceHold(period); }
   @Get('payroll/:period') run(@Param('period') period: string) { return this.payroll.get(period); }
   @Get('payroll/:period/export') async export(@Param('period') period: string, @Res() res: any) {
     const buf = await this.payroll.exportXlsx(period);

@@ -22,6 +22,11 @@ const isOffDay = (d: string, emp: { weekly_off: string; work_days?: string[] | n
   return emp.work_days?.length ? !emp.work_days.includes(day) : day === emp.weekly_off;
 };
 
+const RULE_LIMITS = {
+  photo_days: { min: 7, max: 365, label: 'Days to keep photos' },
+  grace_minutes: { min: 0, max: 60, label: 'Grace minutes' },
+};
+
 const uploadRoot = () => resolve(process.env.FILEUPLOAD_LOCATION || './upload');
 
 /** the punch screen on a registered store PC: staff pick their name, enter a PIN, and a photo is taken */
@@ -243,11 +248,53 @@ export class AttendanceReviewService {
     return { period: month, pending: todo.filter(i => i.type === 'PENDING').length, missing: todo.filter(i => i.type === 'MISSING').length, items: shown.slice(0, 400) };
   }
 
-  /** days of a month (before today) that wait for a review: they hold payroll back */
-  async unresolved(period: string): Promise<number> {
+  /** days of a month (before today) that wait for a review, and whose they are: they hold payroll back */
+  async holdBack(period: string) {
     const to = new Date(Date.UTC(+period.slice(0, 4), +period.slice(5), 0)).toISOString().slice(0, 10);
     const { items } = await this.compute(period + '-01', to);
-    return items.filter(i => i.type === 'PENDING' || i.type === 'MISSING').length;
+    const people = new Map<number, { employee_id: number; name: string; store: string; pending: number; missing: number }>();
+    for (const i of items) {
+      if (i.type !== 'PENDING' && i.type !== 'MISSING') continue;
+      const p = people.get(i.employee_id) || { employee_id: i.employee_id, name: i.name, store: i.store, pending: 0, missing: 0 };
+      if (i.type === 'PENDING') p.pending++; else p.missing++;
+      people.set(i.employee_id, p);
+    }
+    const list = [...people.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return { period, days: list.reduce((n, p) => n + p.pending + p.missing, 0), people: list };
+  }
+
+  async unresolved(period: string): Promise<number> {
+    return (await this.holdBack(period)).days;
+  }
+
+  // ---------------------------------------------------------------- the rules (photo retention, grace)
+  private async number(key: string, fallback: number): Promise<number> {
+    const [r] = await this.manager.query(`select setting_value from app_setting where setting_key = $1 and active and not archive`, [key]);
+    const n = Number(r?.setting_value);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+  }
+
+  /** what the Rules tab shows; only the Business Head may change it */
+  async rules(user: any) {
+    const c = await this.ctx(user);
+    return { photo_days: await this.number('attendance_photo_days', 60), grace_minutes: await this.number('attendance_grace_minutes', 10), can_edit: c.all, limits: RULE_LIMITS };
+  }
+
+  async saveRules(b: any, user: any) {
+    const c = await this.ctx(user);
+    if (!c.all) throw new ForbiddenException('Only the Business Head can change these.');
+    const out: Record<string, number> = {};
+    for (const [field, key] of [['photo_days', 'attendance_photo_days'], ['grace_minutes', 'attendance_grace_minutes']] as const) {
+      const lim = RULE_LIMITS[field];
+      const n = Number(b?.[field]);
+      if (!Number.isInteger(n) || n < lim.min || n > lim.max) throw new BadRequestException(`${lim.label} must be a whole number from ${lim.min} to ${lim.max}.`);
+      out[field] = n;
+      await this.manager.query(
+        `insert into app_setting (category, setting_key, setting_value, created_by, updated_by) values ('hr', $1, $2, $3, $3)
+         on conflict (setting_key) do update set setting_value = excluded.setting_value, active = true, archive = false, updated_on = now(), updated_by = excluded.updated_by`, [key, String(n), user.id]);
+    }
+    await this.audit.record({ userId: user.id, action: 'hr.attendance_rules', summary: `attendance rules: photos kept ${out.photo_days} days, grace ${out.grace_minutes} minutes`, details: out });
+    return this.rules(user);
   }
 
   private async person(c: any, id: number) {

@@ -11,11 +11,17 @@
       <div class="page-toolbar-actions">
         <button class="btn btn-outline-secondary" type="button" *ngIf="run" (click)="download()" data-testid="hr-pay-export">Bank sheet (Excel)</button>
         <button class="btn btn-outline-secondary" type="button" *ngIf="run?.status === 'APPROVED'" (click)="reopening = !reopening" data-testid="hr-pay-reopen">Reopen</button>
-        <button class="btn btn-outline-primary" type="button" *ngIf="!run || run.status === 'DRAFT'" [disabled]="busy" (click)="generate()" data-testid="hr-pay-generate">{{run ? 'Work out again' : 'Work out ' + period}}</button>
-        <button class="btn btn-primary" type="button" *ngIf="run?.status === 'DRAFT'" (click)="approve()" data-testid="hr-pay-approve">Approve</button>
+        <button class="btn btn-outline-primary" type="button" *ngIf="!run || run.status === 'DRAFT'" [disabled]="busy || held" (click)="generate()" data-testid="hr-pay-generate">{{run ? 'Work out again' : 'Work out ' + period}}</button>
+        <button class="btn btn-primary" type="button" *ngIf="run?.status === 'DRAFT'" [disabled]="held" (click)="approve()" data-testid="hr-pay-approve">Approve</button>
       </div>
     </div>
 
+    <div *ngIf="held" class="alert alert-warning py-2" data-testid="hr-pay-hold">
+      <strong>{{hold.days}} attendance day{{hold.days === 1 ? '' : 's'}} still to review</strong> for {{hold.people.length}} {{hold.people.length === 1 ? 'person' : 'people'}}. Payroll for {{period}} cannot be worked out or approved until they are done.
+      <ul class="mb-1 mt-1"><li *ngFor="let p of hold.people" data-testid="hr-pay-hold-person">{{p.name}}<span class="text-muted" *ngIf="p.store"> ({{p.store}})</span>:
+        <span *ngIf="p.pending">{{p.pending}} to approve</span><span *ngIf="p.pending && p.missing">, </span><span *ngIf="p.missing">{{p.missing}} with no punch</span></li></ul>
+      <a class="btn btn-sm btn-outline-dark" [routerLink]="['/secure/attendance-review']" [queryParams]="{ period: period }" data-testid="hr-pay-hold-link">Go to Attendance review</a>
+    </div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="hr-error">{{error}}</div>
     <div *ngFor="let w of warnings" class="alert alert-warning py-2">{{w}}</div>

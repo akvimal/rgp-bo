@@ -248,6 +248,8 @@ export class AuthService {
   }
 
   public isUrlAuthorized(url:string):boolean{
+    // a query string or fragment (a link such as /secure/attendance-review?period=2026-10) is not part of the page
+    url = url.split(/[?#]/)[0];
     // everyone signed in has their own notifications; what shows in them is decided by the server
     if (url === '/secure/notifications') return true;
     // the app guide is for everyone signed in; what it shows follows their login
