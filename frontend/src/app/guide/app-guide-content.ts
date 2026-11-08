@@ -206,31 +206,43 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-my-hr', group: 'people', title: 'My HR', route: '/secure/my-hr',
     purpose: 'Your own pay, attendance and leave.',
-    tasks: ['See your pay structure and pay slips.', 'See your attendance and leave balance.', 'Apply for leave.'],
+    tasks: ['See your pay structure and pay slips.', 'See your attendance and leave balance.', 'Apply for leave. The leave type shows any advice, such as the days of the month to prefer.'],
     who: 'Every member of staff with a staff record.', watch: ['Bank, PAN and Aadhaar are shown in part. Ask the Business Head to change them.'], keywords: 'pay slip leave attendance salary',
+  },
+  {
+    id: 'nav-attendance-punch', group: 'people', title: 'Mark attendance', route: '/secure/attendance-punch',
+    purpose: 'Clock in and out at the counter with your PIN and a photo.',
+    tasks: ['Pick your name, enter your PIN and press In when you start.', 'Press Out when you finish. The camera takes a photo each time.'],
+    who: 'Counter staff, on a registered store PC.', watch: ['It works only on a store PC the manager has registered.', 'Five wrong PINs lock you out for 10 minutes. Ask your manager for a new PIN.', 'One In and one Out a day. A second tap within a minute is ignored.'], keywords: 'attendance punch clock in out pin photo webcam',
+  },
+  {
+    id: 'nav-attendance-review', group: 'people', title: 'Attendance review', route: '/secure/attendance-review',
+    purpose: 'Check the days staff clocked, look at the photos and fix what is wrong, before payroll.',
+    tasks: ['Days tab: choose the month. Needs review shows days waiting for you, and working days with no punch.', 'Press Approve if a day is right, or Change (Mark for a day with no punch) to set the status and times, with a note of at least three letters.', 'Press Photos to see who clocked In and Out.', 'Who punches (PINs) tab: switch a person on, give a new PIN or unlock them, or set a PIN yourself (4 to 6 digits).'],
+    who: 'Store heads and the owner.', watch: ['Payroll cannot be worked out or approved while a Pending or Missing day is left for staff who clock in.', 'Photos are deleted after 60 days.'], keywords: 'attendance review approve correct photo pin missing payroll',
   },
   {
     id: 'nav-kpi-mine', group: 'people', title: 'My KPI', route: '/secure/kpi/mine',
     purpose: 'How your month is scored, and the evidence behind each score.',
-    tasks: ['See each measure and your score.', 'Open one to see the sales, shifts and other records it comes from.'],
+    tasks: ['See each measure and your score.', 'Open one to see the sales, shifts and other records it comes from.', 'See the incentive your band pays: a fixed amount, paid in proportion to the days you worked.'],
     who: 'Staff on a KPI plan.', keywords: 'kpi score incentive',
   },
   {
     id: 'nav-hr', group: 'people', title: 'Staff and HR', route: '/secure/hr',
     purpose: 'The people who work for the shop: their pay, attendance, leave and payroll.',
-    tasks: ['Staff: add your team to HR and give each a start date and pay.', 'Setup: pay, job roles, leave, holidays and KPI.', 'Attendance: mark absences and half days.', 'Payroll: work out and approve the month\'s pay; add bonuses.'],
-    who: 'The Business Head and the owner.', watch: ['An approved month is locked.'], keywords: 'staff payroll attendance holiday bonus salary job role',
+    tasks: ['Staff: add your team to HR and give each a start date and pay.', 'Setup: pay, job roles, leave, holidays and KPI.', 'Role assistant: the AI drafts a job role, its KPIs and incentive amounts for you to approve.', 'Attendance: mark absences and half days.', 'Payroll waits for the attendance review of staff who clock in at the counter.', 'Payroll: work out and approve the month\'s pay; add bonuses.'],
+    who: 'The Business Head and the owner.', watch: ['An approved month is locked.'], keywords: 'staff payroll attendance holiday bonus salary job role assistant ai incentive',
   },
   {
     id: 'nav-leave-approvals', group: 'people', title: 'Leave requests', route: '/secure/leave-approvals',
     purpose: 'Leave staff have asked for, waiting for a decision.',
-    tasks: ['Read the request and approve or decline it.'],
+    tasks: ['Read the request and approve or decline it.', 'Leave types can carry advice (for example, in a pharmacy, store staff are advised to take casual leave between the 11th and 25th and not on a Saturday or Sunday). Staff see it when they apply; it advises and does not block.'],
     who: 'Store heads and the owner.', keywords: 'leave approve decline',
   },
   {
     id: 'nav-kpi-rate', group: 'people', title: 'Rate staff', route: '/secure/kpi/rate',
     purpose: 'Scoring the measures the system cannot work out itself.',
-    tasks: ['Choose a person and a month and give each measure a rating.', 'Finalise the month so payroll can use it.'],
+    tasks: ['Choose a person and a month and give each measure a rating.', 'Finalise the month so payroll can use it.', 'The bell reminds you when last month\'s ratings are due, and when a person is behind pace.'],
     who: 'Store heads and the owner.', keywords: 'kpi rating review staff',
   },
 
@@ -307,8 +319,8 @@ export const PAGES: PageGuide[] = [
   {
     id: 'setup-alerts', group: 'setup', title: 'Alerts', route: '/secure/settings/alerts', needs: ['alerts.manage'],
     purpose: 'What the shop is told about, who is told and how loudly, and whether alerts also go to staff on Telegram.',
-    tasks: ['Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence.', 'See who has connected Telegram and how the messages went.'],
-    who: 'The Business Head.', keywords: 'alert rule telegram notification',
+    tasks: ['AI assistant: the Business Head pastes the key here (OpenRouter or Anthropic), presses Test, and picks a model for OpenRouter. The key is kept encrypted and never shown again.', 'Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence.', 'See who has connected Telegram and how the messages went.'],
+    who: 'The Business Head.', keywords: 'alert rule telegram notification ai key assistant openrouter anthropic',
   },
   {
     id: 'setup-dashboards', group: 'setup', title: 'Dashboards', route: '/secure/settings/dashboards', needs: ['dashsetup.view'],
@@ -408,7 +420,22 @@ export const WALKTHROUGHS: Walkthrough[] = [
   {
     id: 'w-leave', title: 'Approve leave', from: 'nav-leave-approvals',
     steps: ['Open Leave requests.', 'Read the request: who, which days and why.', 'Approve or decline, with a note if you decline.'],
-    keywords: 'leave approve decline',
+    tips: ['The leave advice is shown to the person applying (My HR). The decision stays with you.'], keywords: 'leave approve decline policy advice',
+  },
+  {
+    id: 'w-punch', title: 'Mark your attendance', from: 'nav-attendance-punch',
+    steps: ['Open Mark attendance on the store PC and allow the camera.', 'Choose your name and enter your PIN.', 'Press In. Look at the camera; the photo is taken.', 'At the end of the day open it again and press Out.'],
+    tips: ['Forgot to press Out? Tell your store head: they correct the day in Attendance review.', 'Locked out after wrong PINs? Wait 10 minutes or ask your manager for a new PIN.'], keywords: 'attendance punch clock in out pin',
+  },
+  {
+    id: 'w-att-review', title: 'Review attendance before payroll', from: 'nav-attendance-review',
+    steps: ['Open Attendance review and choose the month.', 'Go through the days that need review. Press Photos if you doubt one.', 'Press Approve if the day is right, or Change and set the status and times, and write the reason.', 'When it says nothing to review, payroll can be worked out.'],
+    tips: ['Leave, holidays and weekly offs are not shown as Missing.', 'Set or reset a person\'s PIN on the Who punches (PINs) tab.'], keywords: 'attendance review approve correct missing payroll pin',
+  },
+  {
+    id: 'w-ai-role', title: 'Draft a job role, KPIs and incentives with the assistant', from: 'nav-hr',
+    steps: ['Open Staff and HR, then Role assistant. Choose a role and press Set up (or Set up all roles).', 'Description: press Draft with AI, edit the purpose and responsibilities, then Approve and save.', 'KPIs: press Draft KPIs with AI. The weights total 100 and the targets come from your own past figures. Remove any you do not want, then press Add these KPIs.', 'Incentives: press Draft incentive bands with AI. Each band is a fixed amount. Press Check the cost, then Use these bands.', 'Reminders: press Create the reminders to give each person in the role a weekly and monthly to-do.'],
+    tips: ['Nothing is used until you approve it.', 'Only anonymous totals go to the AI, never names, salaries or bills.', 'It needs the key under Settings > Alerts. Bands are refused if the worst-case cost goes over the incentive ceiling at the top of the page.'], keywords: 'ai assistant job role kpi incentive band draft',
   },
   {
     id: 'w-knowledge', title: 'Take the weekly knowledge check', from: 'nav-knowledge',
@@ -427,23 +454,23 @@ export const DAYS: DayPlan[] = [
   {
     kind: 'counter', label: 'Counter',
     intro: 'Your work is the counter: the bill, the customer and the shift.',
-    daily: ['Open your shift (My shift) before the first bill.', 'Bill customers (Sales and billing). Check the medicine, batch and expiry each time.', 'For a scheduled drug, fill the patient and prescriber panel.', 'Call the refills that are due (Refills or Customers > Contact today).', 'Close your shift: count the cash and enter the card and UPI totals.'],
+    daily: ['Mark attendance (In) when you arrive, and Out when you leave.', 'Open your shift (My shift) before the first bill.', 'Bill customers (Sales and billing). Check the medicine, batch and expiry each time.', 'For a scheduled drug, fill the patient and prescriber panel.', 'Call the refills that are due (Refills or Customers > Contact today).', 'Close your shift: count the cash and enter the card and UPI totals.'],
     weekly: ['Take the weekly Knowledge check (five questions).', 'Look at your KPI (My KPI) and your leave (My HR).', 'Read the part of the Pharmacy guide you are least sure of.'],
     monthly: ['Check your pay slip in My HR.'],
   },
   {
     kind: 'storehead', label: 'Store Head',
     intro: 'You run the store: the stock, the people at the counter and the money at the end of the day.',
-    daily: ['Look at the bell: approvals and anything late.', 'Settle stock adjustments waiting for approval (Stock > Adjustments).', 'Check the shifts that closed with a difference.', 'Receive deliveries and complete invoices (Purchase).', 'Check expiry (Stock > Expiry) and bank the cash when the alert says.'],
+    daily: ['Look at the bell: approvals and anything late.', 'Check Attendance review: approve or correct yesterday\'s days and fill in a forgotten Out.', 'Settle stock adjustments waiting for approval (Stock > Adjustments).', 'Check the shifts that closed with a difference.', 'Receive deliveries and complete invoices (Purchase).', 'Check expiry (Stock > Expiry) and bank the cash when the alert says.'],
     weekly: ['Take the weekly Knowledge check and look at the team\'s results (Knowledge check > Team).', 'Do the stock counts and audits that are due (Stock audits).', 'Do the weekly review.', 'Print the outage price list and check the kit.', 'Approve leave and rate staff (People).'],
-    monthly: ['Check the Drug register is complete and print it.', 'Look at payables and vendor issues.', 'Close the month\'s KPI ratings.'],
+    monthly: ['Check the Drug register is complete and print it.', 'Look at payables and vendor issues.', 'Close the month\'s KPI ratings.', 'Clear Attendance review (nothing Pending or Missing) so payroll can run.'],
   },
   {
     kind: 'owner', label: 'Business Head / Owner',
     intro: 'You see the whole business: what to look at each day, week and month.',
     daily: ['Open the Dashboard and the bell: what needs you.', 'Check cash and deposits, and anything escalated in Compliance.', 'Look at approvals waiting for you (large stock differences, price rises, adjustments).'],
     weekly: ['Do the Weekly review.', 'Look at Knowledge check > Team: who has done it, and which topics need coaching.', 'Look at Compliance: late and escalated duties.', 'Look at Contact today and Refills with your staff.', 'Check Digital payments against the statements.'],
-    monthly: ['Close the GST month and check the registers.', 'Approve payroll and KPI.', 'Reconcile the bank (Finance) and check the Records.', 'Look at stock audits done and certified, and the Drug register coverage.'],
+    monthly: ['Close the GST month and check the registers.', 'Approve payroll and KPI (attendance review must be clear first).', 'Use the Role assistant when a role changes or a new one is added.', 'Reconcile the bank (Finance) and check the Records.', 'Look at stock audits done and certified, and the Drug register coverage.'],
   },
   {
     kind: 'other', label: 'Your role',
