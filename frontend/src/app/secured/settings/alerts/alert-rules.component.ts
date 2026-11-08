@@ -40,6 +40,8 @@ export class AlertRulesComponent implements OnInit {
 
   constructor(private alerts: AlertsService, private cash: CashService, private confirm: ConfirmService) {}
 
+  reloadAssistant() { this.alerts.kinds().subscribe((k) => { this.assistant = k.assistant; if (k.assistant) this.loadAi(); else this.ai = null; }); }
+
   ngOnInit() {
     this.alerts.kinds().subscribe((k) => { this.kinds = k.kinds; this.assistant = k.assistant; if (k.assistant) this.loadAi(); });
     this.cash.getStores().subscribe((s: any) => this.stores = (s || []).filter((x: any) => x.isActive !== false && !x.isArchived));

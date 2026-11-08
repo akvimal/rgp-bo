@@ -3,7 +3,7 @@
  * The job role is what a person does; the login role is what they may do on screen. HR rules follow the job role first and fall back to the
  * login role and the default, so nothing set up before job roles existed stops working.
  */
-export interface BandRow { role_name?: string | null; position_id?: number | null; min: number; pct: number; label: string }
+export interface BandRow { role_name?: string | null; position_id?: number | null; min: number; pct: number; label: string; amt?: number | null }
 
 /** the band set that applies: the person's job role's own, else their login role's own, else the default set (the rows with neither) */
 export function pickBands<T extends { role_name?: string | null; position_id?: number | null }>(all: T[], positionId: number | null | undefined, roleName: string | null | undefined): T[] {

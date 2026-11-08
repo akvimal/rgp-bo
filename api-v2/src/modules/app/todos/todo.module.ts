@@ -7,5 +7,6 @@ import { TodoService } from './todo.service';
   imports: [AuthModule],
   controllers: [TodoController],
   providers: [TodoService],
+  exports: [TodoService],
 })
 export class TodoModule {}

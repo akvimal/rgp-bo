@@ -86,7 +86,7 @@ export class HrKpiEngine {
   }
 
   /** a raw figure for one person, or null when it cannot be judged (no login, no activity) */
-  private async raw(key: string, e: any, start: string, minActivity: number): Promise<{ raw: number; evidence: string } | { na: string }> {
+  async raw(key: string, e: any, start: string, minActivity: number): Promise<{ raw: number; evidence: string } | { na: string }> {
     const needsLogin = key !== 'ABSENT_DAYS';
     if (needsLogin && !e.user_id) return { na: 'No login, so the system has nothing to measure' };
     // every login the person uses (their own, plus a counter or sales login linked to the same record)
@@ -160,6 +160,29 @@ export class HrKpiEngine {
     return { na: 'Unknown measure' };
   }
 
+  /**
+   * The figures of each system measure, one per person and month, for people of a job role over the last full months (everyone when no role is
+   * given). Only the figures are returned, never who they belong to: they are for setting targets from what really happens.
+   */
+  async history(positionId: number | null, months = 3): Promise<{ staff: number; months: number; figures: Record<string, number[]> }> {
+    const emps = await this.manager.query(
+      `select e.id, e.user_id, e.emp_type, e.designation, e.position_id, array(select a.user_id from hr_employee_account a where a.employee_id = e.id) as linked_user_ids
+         from hr_employee e where e.on_payroll and e.status = 'ACTIVE' and ($1::int is null or e.position_id = $1)`, [positionId]);
+    const figures: Record<string, number[]> = {};
+    const now = new Date();
+    for (let i = 1; i <= months; i++) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const start = d.toISOString().slice(0, 10);
+      for (const e of emps) {
+        for (const m of SYSTEM_MEASURES) {
+          const r: any = await this.raw(m.key, e, start, 0);
+          if (r && typeof r.raw === 'number') (figures[m.key] ||= []).push(r2(r.raw));
+        }
+      }
+    }
+    return { staff: emps.length, months, figures };
+  }
+
   private applies(m: any, e: any) {
     if (!appliesToPosition(m.applies_positions, e.position_id)) return false;
     if (m.applies_roles?.length && !m.applies_roles.some((x: string) => x === e.role_name)) return false;
@@ -192,7 +215,7 @@ export class HrKpiEngine {
     const ratings = await this.manager.query(
       `select employee_id, metric_id, rating::float as rating, override_points::float as override_points, override_reason, note from hr_kpi_rating where period = $1`, [period]);
     const reviews = await this.manager.query(`select * from hr_kpi_review where period = $1`, [period]);
-    const allBands = await this.manager.query(`select role_name, position_id, label, min_percent::float as min, incentive_percent::float as pct from hr_kpi_band order by min_percent desc`);
+    const allBands = await this.manager.query(`select role_name, position_id, label, min_percent::float as min, incentive_percent::float as pct, incentive_amount::float as amt from hr_kpi_band order by min_percent desc`);
     /** the job role's own band set if it has one, else the login role's, else the default set */
     const bandsFor = (positionId: number | null, role: string | null) => pickBands<BandRow>(allBands, positionId, role);
     const locked = await this.payrollLocked(period);
@@ -207,7 +230,7 @@ export class HrKpiEngine {
         const rt = ratings.find((r: any) => r.employee_id === e.id && r.metric_id === m.id);
         const item: any = {
           metric_id: m.id, name: m.name, description: m.description, max: m.max, source: m.source, system_key: m.system_key,
-          unit: MEASURE(m.system_key)?.unit || null, scale: m.rating_scale,
+          unit: MEASURE(m.system_key)?.unit || null, scale: m.rating_scale, rule: m.rule ?? null, direction: MEASURE(m.system_key)?.direction ?? null,
           rating: rt?.rating ?? null, note: rt?.note ?? null, override_points: rt?.override_points ?? null, override_reason: rt?.override_reason ?? null,
           state: 'SCORED', na_reason: null, raw: null, evidence: null, points: null, final_points: null,
         };
@@ -232,10 +255,10 @@ export class HrKpiEngine {
       out.push({
         employee_id: e.id, user_id: e.user_id, role_name: e.role_name, position_id: e.position_id, name: e.name, designation: e.designation, emp_type: e.emp_type, store_id: e.store_id, store_ids: e.store_ids,
         items, pending: items.filter(i => i.state === 'PENDING').map(i => i.name),
-        draft: { total, max, percent, band_label: band?.label ?? null, incentive_percent: band?.pct ?? 0 },
+        draft: { total, max, percent, band_label: band?.label ?? null, incentive_percent: band?.pct ?? 0, incentive_amount: band?.amt ?? null },
         finalised: !!review, review: review && {
           id: review.id, total_points: +review.total_points, max_points: +review.max_points, percent: +review.percent, band_label: review.band_label,
-          incentive_percent: +review.incentive_percent, scores: review.scores, note: review.note, scored_on: review.scored_on,
+          incentive_percent: +review.incentive_percent, incentive_amount: review.incentive_amount === null || review.incentive_amount === undefined ? null : +review.incentive_amount, scores: review.scores, note: review.note, scored_on: review.scored_on,
         },
         locked: !!review || locked, payroll_locked: locked,
       });
@@ -312,12 +335,12 @@ export class HrKpiEngine {
         rating: i.rating, scale: i.source === 'MANUAL' ? i.scale : null, computed: i.points, overridden: i.override_points !== null, override_reason: i.override_reason, note: i.note,
       }));
       await this.manager.query(
-        `insert into hr_kpi_review (employee_id, period, scores, total_points, max_points, percent, band_label, incentive_percent, note, scored_by)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        `insert into hr_kpi_review (employee_id, period, scores, total_points, max_points, percent, band_label, incentive_percent, incentive_amount, note, scored_by)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$11,$9,$10)
          on conflict (employee_id, period) do update set scores = excluded.scores, total_points = excluded.total_points, max_points = excluded.max_points,
-           percent = excluded.percent, band_label = excluded.band_label, incentive_percent = excluded.incentive_percent, note = excluded.note, scored_by = excluded.scored_by, scored_on = now()`,
+           percent = excluded.percent, band_label = excluded.band_label, incentive_percent = excluded.incentive_percent, incentive_amount = excluded.incentive_amount, note = excluded.note, scored_by = excluded.scored_by, scored_on = now()`,
         [d.employee_id, b.period, JSON.stringify(scores), d.draft.total, d.draft.max, d.draft.percent, d.draft.band_label, d.draft.incentive_percent,
-          String(b.note || '').trim().slice(0, 200) || null, by.id]);
+          String(b.note || '').trim().slice(0, 200) || null, by.id, d.draft.incentive_amount]);
       await this.audit.record({ userId: by.id, action: 'hr.kpi_finalised', entityType: 'hr_kpi_review', entityId: d.employee_id,
         summary: `${d.name} ${b.period}: KPI ${d.draft.percent}% ${d.draft.band_label ?? ''} finalised`, details: { total: d.draft.total, max: d.draft.max } });
       done++;
@@ -339,7 +362,7 @@ export class HrKpiEngine {
     const [emp] = await this.manager.query(`select id from hr_employee where user_id = $1 or id = (select employee_id from hr_employee_account where user_id = $1)`, [user?.id || 0]);
     if (!emp) return { staff: false, months: [] };
     const months = await this.manager.query(
-      `select period, percent::float as percent, band_label, incentive_percent::float as incentive_percent, total_points::float as total_points, max_points::float as max_points,
+      `select period, percent::float as percent, band_label, incentive_percent::float as incentive_percent, incentive_amount::float as incentive_amount, total_points::float as total_points, max_points::float as max_points,
               scores, note from hr_kpi_review where employee_id = $1 order by period desc limit 24`, [emp.id]);
     return { staff: true, months };
   }

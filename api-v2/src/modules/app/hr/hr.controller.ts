@@ -10,6 +10,8 @@ import { HrPayrollService } from './hr-payroll.service';
 import { HrBonusService } from './hr-bonus.service';
 import { HrKpiService } from './hr-kpi.service';
 import { HrKpiEngine } from './hr-kpi-engine.service';
+import { HrAiService } from './hr-ai.service';
+import { HrKpiTodoService } from './hr-kpi-todo.service';
 
 /** Salaries, bank details and attendance: the Business Head only. */
 @Injectable()
@@ -35,6 +37,8 @@ export class HrController {
     private readonly bonus: HrBonusService,
     private readonly kpi: HrKpiService,
     private readonly engine: HrKpiEngine,
+    private readonly ai: HrAiService,
+    private readonly kpiTodos: HrKpiTodoService,
   ) {}
 
   // ---------------------------------------------------------------- staff
@@ -118,6 +122,19 @@ export class HrController {
     res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="payroll-${period}.xlsx"` });
     res.send(buf);
   }
+  // ---------------------------------------------------------------- the assistant: job roles, KPIs, incentives (it drafts, the Business Head approves)
+  @Post('kpi/todos') kpiTodo(@Body() b: any, @User() u: any) { return this.kpiTodos.generate(b, u); }
+  @Get('ai/status') aiStatus() { return this.ai.status(); }
+  @Get('ai/roles') aiRoles() { return this.ai.roles(); }
+  @Put('ai/ceiling') aiCeiling(@Body() b: any, @User() u: any) { return this.ai.setCeiling(b?.pct, u); }
+  @Post('ai/role/draft') aiRoleDraft(@Body() b: any, @User() u: any) { return this.ai.draftRole(b, u); }
+  @Post('ai/role/save') aiRoleSave(@Body() b: any, @User() u: any) { return this.ai.saveRole(b, u); }
+  @Post('ai/kpis/draft') aiKpisDraft(@Body() b: any, @User() u: any) { return this.ai.draftKpis(b, u); }
+  @Post('ai/kpis/apply') aiKpisApply(@Body() b: any, @User() u: any) { return this.ai.applyKpis(b, u); }
+  @Post('ai/bands/draft') aiBandsDraft(@Body() b: any, @User() u: any) { return this.ai.draftBands(b, u); }
+  @Post('ai/bands/simulate') aiBandsSimulate(@Body() b: any) { return this.ai.simulate(b); }
+  @Post('ai/bands/apply') aiBandsApply(@Body() b: any, @User() u: any) { return this.ai.applyBands(b, u); }
+
   @Post('payroll/:period/generate') generate(@Param('period') period: string, @User() u: any) { return this.payroll.generate(period, u); }
   @Post('payroll/:period/approve') approve(@Param('period') period: string, @User() u: any) { return this.payroll.approve(period, u); }
   @Post('payroll/:period/reopen') reopen(@Param('period') period: string, @Body() b: any, @User() u: any) { return this.payroll.reopen(period, b, u); }

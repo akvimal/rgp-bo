@@ -1,3 +1,5 @@
+import { HrKpiEngine } from '../hr/hr-kpi-engine.service';
+import { paceStatus } from '../hr/hr-kpi-pace';
 import { EntityManager } from 'typeorm';
 import { StoreService } from '../store/store.service';
 import { PricingReader } from '../products/pricing-reader';
@@ -24,6 +26,8 @@ export interface Finding {
 }
 
 export interface Ctx {
+  /** the KPI engine, for the alerts about staff KPIs */
+  kpi?: HrKpiEngine;
   manager: EntityManager;
   stores: StoreService;
   businessId: number;
@@ -497,6 +501,56 @@ export const KINDS: AlertKind[] = [
       return out;
     },
   },
+  {
+    kind: 'kpi_behind_pace',
+    label: 'KPI behind pace',
+    description: 'Part-way through the month, a staff member is behind on a KPI the system measures (sales behind the pace needed for full marks, or a "lower is better" figure that has already cost half its points). They are told once for each measure each month.',
+    params: [
+      { key: 'from_day', label: 'Start checking from day', min: 3, max: 28, default: 10, unit: 'of the month' },
+      { key: 'pace_pct', label: 'Count as behind below', min: 30, max: 95, default: 70, unit: '% of the pace' },
+    ],
+    defaultSeverity: 'info',
+    async evaluate(ctx, p) {
+      if (!ctx.kpi) return [];
+      const day = Number(ctx.today.slice(8, 10));
+      if (day < p.from_day) return [];
+      const period = ctx.today.slice(0, 7);
+      const dim = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0)).getUTCDate();
+      const rows = await ctx.kpi.draft(period);
+      const out: Finding[] = [];
+      for (const r of rows) {
+        if (!r.user_id || r.finalised) continue;
+        for (const i of r.items) {
+          if (i.source !== 'SYSTEM' || i.state !== 'SCORED' || i.raw === null) continue;
+          const s = paceStatus({ rule: i.rule, direction: i.direction, raw: i.raw }, day, dim, p.pace_pct);
+          if (!s.behind) continue;
+          out.push({ key: `kpi:${r.employee_id}:${i.metric_id}:${period}`, storeid: r.store_id ?? null, code: 'kpi_behind',
+            params: { measure: i.name, evidence: i.evidence || '', progress: s.progress ?? 0, name: r.name }, link: '/secure/kpi/mine',
+            recipients: { roles: [], userids: [r.user_id] }, severity: 'info' });
+        }
+      }
+      return out;
+    },
+  },
+  {
+    kind: 'kpi_rating_due',
+    label: 'KPI ratings to give',
+    description: 'The KPI ratings for last month that only a manager can give are still missing, and payroll for that month is not approved yet. The owners and managers are told.',
+    params: [{ key: 'from_day', label: 'Start telling from day', min: 1, max: 28, default: 3, unit: 'of the month' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      if (!ctx.kpi || Number(ctx.today.slice(8, 10)) < p.from_day) return [];
+      const d = new Date(Date.parse(ctx.today + 'T00:00:00Z'));
+      const period = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+      const [paid] = await ctx.manager.query(`select 1 as x from hr_payroll_run where period = $1 and status = 'APPROVED'`, [period]);
+      if (paid) return [];
+      const rows = await ctx.kpi.draft(period);
+      const missing = rows.filter((r) => !r.finalised && r.pending.length).reduce((t, r) => t + r.pending.length, 0);
+      if (!missing) return [];
+      return [{ key: `kpi_rating:${period}`, storeid: null, code: 'kpi_rating_due', params: { count: missing, period }, link: '/secure/kpi/rate',
+        recipients: { roles: ['owners', 'managers'], userids: [] }, severity: 'warning' }];
+    },
+  },
 ];
 
 export const kindOf = (kind: string): AlertKind | undefined => KINDS.find((k) => k.kind === kind);
@@ -535,4 +589,6 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'customer_request_arrived', name: 'Customer request arrived', severity: 'info', recipients: { roles: ['owners', 'managers', 'staff'], userids: [] } },
   { kind: 'customer_data_taken', name: 'Customer lists downloaded or printed', severity: 'warning' },
   { kind: 'todo_due', name: 'To-dos coming due', severity: 'info' },
+  { kind: 'kpi_behind_pace', name: 'KPI behind pace', severity: 'info' },
+  { kind: 'kpi_rating_due', name: 'KPI ratings to give', severity: 'warning' },
 ];

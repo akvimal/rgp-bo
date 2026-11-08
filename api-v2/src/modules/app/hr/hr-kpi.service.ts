@@ -82,7 +82,7 @@ export class HrKpiService {
   }
 
   bands() {
-    return this.manager.query(`select id, role_name, position_id, min_percent::float as min_percent, label, incentive_percent::float as incentive_percent from hr_kpi_band order by position_id nulls first, role_name nulls first, min_percent desc`);
+    return this.manager.query(`select id, role_name, position_id, min_percent::float as min_percent, label, incentive_percent::float as incentive_percent, incentive_amount::float as incentive_amount from hr_kpi_band order by position_id nulls first, role_name nulls first, min_percent desc`);
   }
 
   /** one role's band set (or the default set when role_name is empty) is replaced in one go; an empty set removes a role's own bands */
@@ -95,7 +95,8 @@ export class HrKpiService {
     const rows: any[] = Array.isArray(b?.bands) ? b.bands : [];
     const seen = new Set<number>();
     for (const x of rows) {
-      const m = Number(x.min_percent), p = Number(x.incentive_percent);
+      const m = Number(x.min_percent), p = Number(x.incentive_percent ?? 0);
+      if (x.incentive_amount !== undefined && x.incentive_amount !== null && x.incentive_amount !== '' && (!Number.isFinite(Number(x.incentive_amount)) || Number(x.incentive_amount) < 0 || Number(x.incentive_amount) > 10000000)) throw new BadRequestException('An incentive amount is zero or more.');
       if (!Number.isFinite(m) || m < 0 || m > 100) throw new BadRequestException('A band starts between 0 and 100 per cent.');
       if (!Number.isFinite(p) || p < 0 || p > 100) throw new BadRequestException('An incentive is between 0 and 100 per cent.');
       if (!String(x.label || '').trim()) throw new BadRequestException('Every band needs a label.');
@@ -104,7 +105,7 @@ export class HrKpiService {
     }
     await this.manager.transaction(async tm => {
       await tm.query(`delete from hr_kpi_band where role_name is not distinct from $1 and position_id is not distinct from $2`, [role, positionId]);
-      for (const x of rows) await tm.query(`insert into hr_kpi_band (role_name, position_id, min_percent, label, incentive_percent) values ($1,$2,$3,$4,$5)`, [role, positionId, Number(x.min_percent), String(x.label).trim().slice(0, 30), Number(x.incentive_percent)]);
+      for (const x of rows) await tm.query(`insert into hr_kpi_band (role_name, position_id, min_percent, label, incentive_percent, incentive_amount) values ($1,$2,$3,$4,$5,$6)`, [role, positionId, Number(x.min_percent), String(x.label).trim().slice(0, 30), Number(x.incentive_percent ?? 0), x.incentive_amount === undefined || x.incentive_amount === null || x.incentive_amount === '' ? null : Number(x.incentive_amount)]);
     });
     await this.audit.record({ userId: by.id, action: 'hr.kpi_bands_saved', entityType: 'hr_kpi_band', entityId: null, summary: `KPI bands saved for ${positionId ? 'job role #' + positionId : (role ?? 'the default set')} (${rows.length})`, details: { role, positionId, rows } });
     return { count: rows.length };
@@ -121,7 +122,7 @@ export class HrKpiService {
       return {
         employee_id: d.employee_id, name: d.name, designation: d.designation, role: d.role_name,
         review_id: d.review?.id ?? null, scores: d.review?.scores ?? null, total_points: d.review?.total_points ?? null, max_points: d.review?.max_points ?? null,
-        percent: d.review?.percent ?? null, band_label: d.review?.band_label ?? null, incentive_percent: d.review?.incentive_percent ?? null, note: d.review?.note ?? null,
+        percent: d.review?.percent ?? null, band_label: d.review?.band_label ?? null, incentive_percent: d.review?.incentive_percent ?? null, incentive_amount: d.review?.incentive_amount ?? null, note: d.review?.note ?? null,
         bills: t?.bills ?? 0, sales_value: t?.value ?? 0,
         items: d.items, pending: d.pending, draft: d.draft, finalised: d.finalised, locked: d.locked, payroll_locked: d.payroll_locked,
       };
@@ -147,15 +148,15 @@ export class HrKpiService {
     const total = r1(scores.reduce((t: number, s: any) => t + s.points, 0));
     const max = r1(scores.reduce((t: number, s: any) => t + s.max, 0));
     const percent = r1(max > 0 ? total * 100 / max : 0);
-    const allBands = await this.manager.query(`select role_name, position_id, label, min_percent::float as min, incentive_percent::float as pct from hr_kpi_band`);
+    const allBands = await this.manager.query(`select role_name, position_id, label, min_percent::float as min, incentive_percent::float as pct, incentive_amount::float as amt from hr_kpi_band`);
     const band = bandFor(pickBands<BandRow>(allBands, emp.position_id, emp.role_name), percent);
     await this.manager.query(
-      `insert into hr_kpi_review (employee_id, period, scores, total_points, max_points, percent, band_label, incentive_percent, note, scored_by)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      `insert into hr_kpi_review (employee_id, period, scores, total_points, max_points, percent, band_label, incentive_percent, incentive_amount, note, scored_by)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$11,$9,$10)
        on conflict (employee_id, period) do update set scores = excluded.scores, total_points = excluded.total_points, max_points = excluded.max_points, percent = excluded.percent,
-         band_label = excluded.band_label, incentive_percent = excluded.incentive_percent, note = excluded.note, scored_by = excluded.scored_by, scored_on = now()`,
-      [emp.id, b.period, JSON.stringify(scores), total, max, percent, band?.label ?? null, band?.pct ?? 0, String(b.note || '').trim().slice(0, 200) || null, by.id]);
+         band_label = excluded.band_label, incentive_percent = excluded.incentive_percent, incentive_amount = excluded.incentive_amount, note = excluded.note, scored_by = excluded.scored_by, scored_on = now()`,
+      [emp.id, b.period, JSON.stringify(scores), total, max, percent, band?.label ?? null, band?.pct ?? 0, String(b.note || '').trim().slice(0, 200) || null, by.id, band?.amt ?? null]);
     await this.audit.record({ userId: by.id, action: 'hr.kpi_scored', entityType: 'hr_kpi_review', entityId: emp.id, summary: `${emp.full_name} ${b.period}: KPI ${percent}% ${band?.label ?? ''}`, details: { total, max } });
-    return { percent, band: band?.label ?? null, incentive_percent: band?.pct ?? 0 };
+    return { percent, band: band?.label ?? null, incentive_percent: band?.pct ?? 0, incentive_amount: band?.amt ?? null };
   }
 }

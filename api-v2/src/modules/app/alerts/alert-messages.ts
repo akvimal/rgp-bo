@@ -121,6 +121,14 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'To-do {days} days late: {title}', body: '{person} has not done it yet. It was due on {date}.' },
     ta: { title: 'செய்ய வேண்டியது {days} நாட்கள் தாமதம்: {title}', body: '{person} இன்னும் செய்யவில்லை. {date} அன்று செய்திருக்க வேண்டும்.' },
   },
+  kpi_behind: {
+    en: { title: 'KPI behind pace: {measure}', body: '{evidence}. At this point in the month you are at {progress}% of the pace needed. Have a look at My KPI to see what to do.' },
+    ta: { title: 'KPI பின்தங்கியுள்ளது: {measure}', body: '{evidence}. மாதத்தின் இந்த நிலையில் தேவையான வேகத்தில் {progress}% மட்டுமே உள்ளது. என் KPI பக்கத்தில் பார்க்கவும்.' },
+  },
+  kpi_rating_due: {
+    en: { title: 'KPI ratings to give for {period}: {count}', body: '{count} ratings that only a manager can give are still missing, and payroll is waiting. Open Rate staff.' },
+    ta: { title: '{period} க்கான KPI மதிப்பீடுகள்: {count}', body: 'மேலாளர் மட்டுமே கொடுக்கக்கூடிய {count} மதிப்பீடுகள் இன்னும் இல்லை; சம்பளம் காத்திருக்கிறது. ஊழியர் மதிப்பீடு பக்கத்தைத் திறக்கவும்.' },
+  },
   outage_kit_overdue: {
     en: { title: 'Outage kit not checked for {days} days: {store}', body: 'Last checked on {date}. Tick off the weekly checklist on the Outage kit page and print a fresh price list.' },
     ta: { title: 'மின்தடை தயார்நிலை {days} நாட்களாகச் சரிபார்க்கப்படவில்லை: {store}', body: 'கடைசியாகச் சரிபார்த்தது {date}. மின்தடை தயார்நிலைப் பக்கத்தில் வாராந்திரப் பட்டியலைச் சரிபார்த்து புதிய விலைப் பட்டியலை அச்சிடவும்.' },
