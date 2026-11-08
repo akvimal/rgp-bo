@@ -169,6 +169,8 @@ a.btn, a.nav-link, .sidebar a, .page-menu a, .grid-actions a, .dropdown-item, .p
 .form-check-input:focus { border-color: var(--rgp-brand); box-shadow: 0 0 0 .2rem rgba(65, 84, 241, .15); }
 /* a few templates size their checkboxes inline (25px): one size everywhere */
 #main input[type=checkbox] { width: 1.1rem !important; height: 1.1rem !important; }
+/* a switch is wider than a tick box: the rule above would squeeze it into a circle */
+#main .form-switch .form-check-input[type=checkbox] { width: 2em !important; height: 1.1rem !important; }
 .invalid-feedback, .form-text { font-size: .8rem; }
 
 /* ------------------------------------------------------------------ compact forms

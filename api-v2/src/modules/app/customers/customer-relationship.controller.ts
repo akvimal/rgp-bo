@@ -4,6 +4,7 @@ import { User } from 'src/core/decorator/user.decorator';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { CustomerRelationshipService } from './customer-relationship.service';
 import { CustomerPrivacyService } from './customer-privacy.service';
+import { CustomerFollowupService } from './customer-followup.service';
 import { buildAudienceCsv } from './customer-export';
 
 /** Segments, audiences, the daily contact list and the contact log. A separate path from /customers so ":id" never swallows these. */
@@ -12,12 +13,25 @@ import { buildAudienceCsv } from './customer-export';
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class CustomerRelationshipController {
-  constructor(private readonly relations: CustomerRelationshipService, private readonly privacy: CustomerPrivacyService) {}
+  constructor(private readonly relations: CustomerRelationshipService, private readonly privacy: CustomerPrivacyService, private readonly followup: CustomerFollowupService) {}
 
   /** the audiences list whole numbers and feed the CSV: only those who may read all contact details */
   private async needAll(user: any) {
     if (!(await this.privacy.canRevealAll(user))) throw new ForbiddenException('Audiences list full contact details: ask a manager.');
   }
+
+  /** the wording of the messages staff send from the contact list */
+  @Get('followup-templates')
+  templates() { return this.followup.templates(); }
+
+  @Put('followup-templates')
+  saveTemplates(@Body() body: any, @User() user: any) { return this.followup.save(user, body); }
+
+  @Post('followup-templates/reset')
+  resetTemplates(@User() user: any) { return this.followup.reset(user); }
+
+  @Post('followup-templates/draft')
+  draftTemplates(@User() user: any) { return this.followup.draft(user); }
 
   @Get('summary')
   summary() { return this.relations.summary(); }

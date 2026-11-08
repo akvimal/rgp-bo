@@ -92,8 +92,8 @@ export const PAGES: PageGuide[] = [
   },
   {
     id: 'nav-reports', group: 'home', title: 'Reports', route: '/secure/reports',
-    purpose: 'Sales reports for a period, which can be downloaded to Excel.',
-    tasks: ['Choose the dates and the store, and run the report.', 'Download it to Excel for your accountant.'],
+    purpose: 'Sales reports for a period, a box where you ask the shop a question in plain words, and a weekly summary of how the shop did.',
+    tasks: ['Sales report: choose the dates and the store, and run the report; download it to Excel for your accountant.', 'Ask the shop: type a question such as top 10 products last month, or press a report button (sales by staff, profit by product, who owes money, stock that will not sell in time and more).', 'Weekly summary: last week in a few lines, what went well, what to watch and what to do first. It is made every Monday morning and can be sent to your Telegram.'],
     who: 'Managers and the owner.', keywords: 'excel download sales report',
   },
 
@@ -242,7 +242,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-hr', group: 'people', title: 'Staff and HR', route: '/secure/hr',
     purpose: 'The people who work for the shop: their pay, attendance, leave and payroll.',
-    tasks: ['Staff: add your team to HR and give each a start date and pay.', 'Setup: pay, job roles, leave, holidays and KPI.', 'Role assistant: the AI drafts a job role, its KPIs and incentive amounts for you to approve.', 'Attendance: mark absences and half days.', 'Payroll waits for the attendance review of staff who clock in at the counter: the Payroll tab lists the days still to review and who they belong to, with a link to the review.', 'Payroll: work out and approve the month\'s pay; add bonuses.'],
+    tasks: ['Coaching: for each person and month, a note to talk through with them (what went well, where to focus, a tip), written from their KPI, attendance and sales. You edit it and choose whether they see it.', 'Staff: add your team to HR and give each a start date and pay.', 'Setup: pay, job roles, leave, holidays and KPI.', 'Role assistant: the AI drafts a job role, its KPIs and incentive amounts for you to approve.', 'Attendance: mark absences and half days.', 'Payroll waits for the attendance review of staff who clock in at the counter: the Payroll tab lists the days still to review and who they belong to, with a link to the review.', 'Payroll: work out and approve the month\'s pay; add bonuses.'],
     who: 'The Business Head and the owner.', watch: ['An approved month is locked.'], keywords: 'staff payroll attendance holiday bonus salary job role assistant ai incentive',
   },
   {
@@ -412,7 +412,7 @@ export const WALKTHROUGHS: Walkthrough[] = [
   },
   {
     id: 'w-contact', title: 'Call your regular customers', from: 'nav-customers',
-    steps: ['Open Customers, then Contact today.', 'Each row says why: due back, slipping away or new.', 'Press Show number if it is masked, then call or WhatsApp.', 'Choose what came of it and press Log. They leave the list for the contact gap.', 'Not today? Press Postpone a day and give the reason.'],
+    steps: ['Open Customers, then Contact today.', 'Each row says why: owes money, due back, slipping away or new. Customers who owe money come first, with the amount.', 'Choose English or Tamil for the message; Change the message wording to edit it, or have the assistant write a first version.', 'Press Show number if it is masked, then call or WhatsApp.', 'Choose what came of it and press Log. They leave the list for the contact gap.', 'Not today? Press Postpone a day and give the reason.'],
     tips: ['Prescriptions to collect appear at the top: open the customer, upload the prescription and the item closes by itself.'], keywords: 'contact worklist refill call whatsapp',
   },
   {
@@ -464,6 +464,21 @@ export const WALKTHROUGHS: Walkthrough[] = [
     id: 'w-telegram', title: 'Get alerts on Telegram', from: 'bell',
     steps: ['Open the bell, then Notifications. Press Connect Telegram.', 'Press Open Telegram and then Start in the chat. This page shows Connected.', 'Choose which level you want and your quiet hours, and press Save.', 'Press Send a test to check.'],
     tips: ['Critical alerts come at any hour; the others wait until quiet hours end.', 'Send /stop to the bot to stop them.'], keywords: 'telegram alerts phone',
+  },
+  {
+    id: 'w-ask-shop', title: 'Ask the shop a question', from: 'nav-reports',
+    steps: ['Open Reports, then the Ask the shop tab.', 'Type your question in your own words, for example who sold the most this month, or what stock will not sell before it expires. Press Ask.', 'Read the line that says how it was understood, then the table. If it picked the wrong report or period, press a report button and choose the period yourself.', 'Without the assistant the report buttons still work.'],
+    tips: ['The answer comes from your own records. The assistant only chooses which report to run; it never sees the numbers and never makes one up.', 'A Store Head sees only their own stores, and not profit or customer dues.'], keywords: 'ask question report ai margin profit top products',
+  },
+  {
+    id: 'w-weekly-summary', title: 'Read the weekly summary', from: 'nav-reports',
+    steps: ['Open Reports, then the Weekly summary tab. Last week is made every Monday at 8 in the morning.', 'Read the headline, then Went well, Watch and Do first.', 'Press Send to Telegram now to send it to your phone, or switch Send to my Telegram on to get it every Monday.', 'Press Refresh last week to make it again from the latest figures.'],
+    tips: ['It covers Monday to Sunday and compares with the week before.', 'Staff names are never sent to the assistant.'], keywords: 'weekly summary monday owner telegram',
+  },
+  {
+    id: 'w-coaching', title: 'Write a coaching note for a staff member', from: 'nav-hr',
+    steps: ['Open Staff and HR, then the Coaching tab. Choose the month.', 'Pick a person. Their KPI, days present, bills served and leave are shown.', 'Press Write the note. Read each part and change what you like.', 'Tick Share if you want the person to see the first three parts under My KPI, then press Save.', 'Use the part For you to say in the conversation to open the talk kindly.'],
+    tips: ['Nothing is shown to the person until you share it. Writing the note again stops the sharing.', 'No names or pay figures are sent to the assistant, only the numbers.'], keywords: 'coaching feedback staff talk kpi attendance',
   },
   {
     id: 'w-telegram-setup', title: 'Set up the Telegram bot for the shop (Business Head, once)', from: 'setup-alerts',
