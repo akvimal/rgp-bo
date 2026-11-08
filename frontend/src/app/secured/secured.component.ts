@@ -15,6 +15,7 @@ import { AuthService } from "../@core/auth/auth.service";
 import { ConfigService } from "../shared/config.service";
 import { MenuGroup, buildCounterMenu, buildMenu, isCounterRole } from "./menu";
 import { QuickAction, buildQuickActions } from "./quick-actions";
+import { ThemeService } from "../shared/theme.service";
 
 @Component({
     templateUrl: 'secured.component.html'
@@ -99,7 +100,8 @@ export class SecuredComponent {
       public shiftContext: ShiftContextService,
       private authService: AuthService,
       private propsService: PropsService,
-      private config: ConfigService){
+      private config: ConfigService,
+      public theme: ThemeService){
         this.state$ = this.appStateService.state;
         this.readRailChoice();
     }
@@ -160,11 +162,15 @@ export class SecuredComponent {
         : (this.authService.isUrlAuthorized('/secure/store/shifts') ? '/secure/store/shifts' : '/secure/sales/pos');
     }
     
+    ngOnDestroy() { this.theme.release(); }
+
     ngOnInit(){
+        this.theme.open();
         this.loadMenuChoice();
       this.userService.getCurrentUser().subscribe(data => {
         this.titleService.setTitle(`${data['platform'] ? (data['businessname'] || 'Back office') : 'RGP'} - ${data['fullname']}`)
         this.user = data;
+        this.theme.open(data['id']);
         this.setFavicon(data['businesslogo']);
         // Permissions are cached at sign-in; pick up role changes made since (new screens, revoked access).
         this.authService.setModules(data['modules']);
