@@ -337,7 +337,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'setup-alerts', group: 'setup', title: 'Alerts', route: '/secure/settings/alerts', needs: ['alerts.manage'],
     purpose: 'What the shop is told about, who is told and how loudly, and whether alerts also go to staff on Telegram.',
-    tasks: ['Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence (the assistant drafts it once its key is added under Settings > AI assistant).', 'See who has connected Telegram and how the messages went.'],
+    tasks: ['Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence (the assistant drafts it once its key is added under Settings > AI assistant).', 'Add the Telegram bot of the shop (Add the bot) and see who has connected and how the messages went.'],
     who: 'The Business Head.', keywords: 'alert rule telegram notification',
   },
   {
@@ -464,6 +464,28 @@ export const WALKTHROUGHS: Walkthrough[] = [
     id: 'w-telegram', title: 'Get alerts on Telegram', from: 'bell',
     steps: ['Open the bell, then Notifications. Press Connect Telegram.', 'Press Open Telegram and then Start in the chat. This page shows Connected.', 'Choose which level you want and your quiet hours, and press Save.', 'Press Send a test to check.'],
     tips: ['Critical alerts come at any hour; the others wait until quiet hours end.', 'Send /stop to the bot to stop them.'], keywords: 'telegram alerts phone',
+  },
+  {
+    id: 'w-telegram-setup', title: 'Set up the Telegram bot for the shop (Business Head, once)', from: 'setup-alerts',
+    steps: [
+      'On your phone or computer, open Telegram and search for @BotFather (the one with the blue tick). Press Start.',
+      'Send /newbot. BotFather asks for a name (shown in chats, for example "RGP Alerts") and then a username. The username must end in bot, for example rgp_shop_alerts_bot, and must not be taken.',
+      'BotFather replies with a long token that looks like 123456789:AAH... Copy the whole token. Anyone who has it can use the bot, so do not post it in a chat or a screenshot.',
+      'In the app open Settings > Alerts. In the Alerts on Telegram box press Add the bot.',
+      'Paste the token. In App address type the web address people use to open this app, starting with https:// (for example https://ops.myrgp.in). Messages use it to link back to the right page. Leave it empty if you do not want links.',
+      'Press Check and save. The app asks Telegram whether the token is real and shows the name of the bot. A wrong or half-copied token is refused and nothing is saved.',
+      'Switch on Send alerts to staff on Telegram in the same box.',
+      'Tell staff to open the bell, then Notifications, press Connect Telegram, and press Start in the chat. Their name then appears under Connected in your box.',
+      'Optional: for the daily digest to a store group, create a Telegram group, add the bot to it, type /chatid in the group, and the bot replies with the chat ID. Paste that under Settings > Notifications against the store and press Send test.',
+    ],
+    tips: [
+      'Each person gets only the alerts they can see in the app, at the level they choose. Critical alerts come at any hour; the rest wait until their quiet hours end (22:00 to 07:00 unless they change it). Nobody gets more than 12 a hour below critical.',
+      'A bot can only message someone who pressed Start, so people must connect themselves. If someone blocks the bot or presses /stop, their row shows Blocked or Stopped and they can reconnect from Notifications.',
+      'Use a separate bot for a test copy of the app. Two copies using the same token take messages from each other.',
+      'To change the bot, press Add the bot again and paste the new token. Remove from the app takes the saved bot away.',
+      'If Check and save says Telegram could not be reached, the server has no route to the internet or Telegram is blocked from it. Ask whoever hosts the app.',
+    ],
+    keywords: 'telegram bot botfather token setup alerts digest',
   },
 ];
 
