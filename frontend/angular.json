@@ -37,7 +37,9 @@
               "node_modules/primeicons/primeicons.css",
               "node_modules/primeng/resources/themes/saga-blue/theme.css",
               "node_modules/primeng/resources/primeng.min.css",
-              "src/theme.css"
+              "src/theme.css",
+              "src/dark.css",
+              { "input": "node_modules/primeng/resources/themes/arya-blue/theme.css", "bundleName": "prime-dark", "inject": false }
             ],
             "scripts": [ ]
           },

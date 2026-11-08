@@ -6,6 +6,9 @@ import { EntityManager } from 'typeorm';
 import { BUSINESS_OF_USER_SQL, businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole } from 'src/core/roles';
 import { canSee } from '../alerts/alert-access';
+import { AuditService } from 'src/core/audit/audit.service';
+import { decryptKey, encryptKey } from '../alerts/ai-key';
+import { cleanAppUrl, cleanBotToken, setStoredTelegram, storedTelegram, telegramAppUrl, telegramSource, tokenHint } from './telegram-config';
 import { LANGUAGES, Lang, render } from '../alerts/alert-messages';
 import { ChannelError, TelegramAdapter } from './telegram.adapter';
 import { Command, SEVERITIES, TOKEN_MINUTES, formatAlert, inQuiet, istMinute, overCap, parseUpdate, passesSeverity, quietEnds, retryAfterMinutes, toMinutes } from './messaging-rules';
@@ -29,21 +32,92 @@ export class MessagingService implements OnApplicationBootstrap, OnApplicationSh
   private polling = false;
   private stopped = false;
   private working = false;
+  private loopId = 0;
 
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly telegram: TelegramAdapter) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly telegram: TelegramAdapter, private readonly audit: AuditService) {}
 
   // ------------------------------------------------------------------------------------------------ polling for what people type to the bot
-  onApplicationBootstrap() {
-    if (!this.telegram.configured || process.env.TELEGRAM_POLL === 'off') return;
+  async onApplicationBootstrap() {
+    try { await this.loadConfig(); } catch (e: any) { this.log.warn(`Telegram settings not loaded: ${e?.message}`); }
+    this.startPolling();
+  }
+
+  private startPolling() {
+    if (this.polling || !this.telegram.configured || process.env.TELEGRAM_POLL === 'off') return;
+    const id = ++this.loopId;
     this.polling = true;
-    void this.pollLoop();
+    void this.pollLoop(id).finally(() => { if (this.loopId === id) this.polling = false; });
+  }
+
+  // ------------------------------------------------------------------------------------------------ the bot's settings (saved in the app)
+  private async loadConfig() {
+    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('telegram.token', 'telegram.bot', 'telegram.app_url') and active and not archive`);
+    const get = (k: string): string | null => rows.find((r: any) => r.setting_key === k)?.setting_value ?? null;
+    setStoredTelegram({ token: decryptKey(get('telegram.token')), username: get('telegram.bot'), appUrl: get('telegram.app_url') });
+  }
+
+  private async putSetting(key: string, value: string | null, by: number) {
+    if (value === null) { await this.manager.query(`update app_setting set active = false, archive = true, setting_value = null, updated_on = now() where setting_key = $1`, [key]); return; }
+    await this.manager.query(
+      `insert into app_setting (category, setting_key, setting_value, created_by, updated_by) values ('alerts', $1, $2, $3, $3)
+       on conflict (setting_key) do update set setting_value = excluded.setting_value, active = true, archive = false, updated_on = now(), updated_by = excluded.updated_by`, [key, value, by]);
+  }
+
+  /** what the settings card shows: where the bot comes from, never the token itself */
+  private configState() {
+    const s = storedTelegram();
+    return { source: telegramSource(), token_hint: s.token ? tokenHint(s.token) : null, app_url: telegramAppUrl() || null };
+  }
+
+  /** the owner saves the bot's token (checked with Telegram first) and, if wanted, the app's public address */
+  async saveConfig(user: any, body: any) {
+    const w = await this.whoami(user);
+    if (!w.owner) throw new ForbiddenException('Only the owner can set up the Telegram bot.');
+    const cur = storedTelegram();
+    let url: string | null = cur.appUrl;
+    if (body?.app_url !== undefined) {
+      const u = cleanAppUrl(body.app_url);
+      if (u === undefined) throw new BadRequestException('The app address must start with https://, such as https://ops.myrgp.in (or leave it empty).');
+      url = u;
+    }
+    let token = cur.token, username = cur.username, changed = false;
+    if (body?.token !== undefined && String(body.token).trim() !== '') {
+      const t = cleanBotToken(body.token);
+      if (!t) throw new BadRequestException('Paste the whole token from BotFather, like 123456789:AAH... (no spaces).');
+      try { username = await this.telegram.check(t); } catch (e: any) { throw new BadRequestException(e instanceof ChannelError ? e.message : 'Telegram could not be reached.'); }
+      token = t; changed = t !== cur.token;
+    } else if (!token) {
+      throw new BadRequestException('Paste the bot token from BotFather.');
+    }
+    await this.putSetting('telegram.token', encryptKey(token!), user.id);
+    await this.putSetting('telegram.bot', username, user.id);
+    await this.putSetting('telegram.app_url', url, user.id);
+    setStoredTelegram({ token, username, appUrl: url });
+    this.telegram.reset();
+    if (changed) await this.manager.query(`delete from app_setting where setting_key = 'telegram.offset'`);   // a new bot starts its own count
+    this.startPolling();
+    await this.audit.record({ userId: user.id, action: 'telegram.bot_saved', summary: `Telegram bot saved (@${username})`, details: { bot: username, token_changed: changed } });
+    return this.overview(user);
+  }
+
+  /** removes the bot saved in the app (the server's own setting, if any, takes over) */
+  async clearConfig(user: any) {
+    const w = await this.whoami(user);
+    if (!w.owner) throw new ForbiddenException('Only the owner can set up the Telegram bot.');
+    for (const k of ['telegram.token', 'telegram.bot', 'telegram.app_url', 'telegram.offset']) await this.putSetting(k, null, user.id);
+    setStoredTelegram({ token: null, username: null, appUrl: null });
+    this.telegram.reset();
+    this.polling = false;                                           // an old loop ends after its current wait
+    this.startPolling();
+    await this.audit.record({ userId: user.id, action: 'telegram.bot_removed', summary: 'Telegram bot removed from the app', details: {} });
+    return this.overview(user);
   }
 
   onApplicationShutdown() { this.stopped = true; }
 
-  private async pollLoop() {
+  private async pollLoop(id: number) {
     let backoff = 2000;
-    while (!this.stopped && this.polling) {
+    while (!this.stopped && this.polling && this.loopId === id) {
       try {
         const offset = await this.offset();
         const updates = await this.telegram.updates(offset, 25);
@@ -192,7 +266,7 @@ export class MessagingService implements OnApplicationBootstrap, OnApplicationSh
       `select count(*) filter (where status = 'SENT')::int as sent, count(*) filter (where status = 'PENDING')::int as pending,
               count(*) filter (where status = 'FAILED')::int as failed, count(*) filter (where status = 'SKIPPED')::int as skipped
          from message_outbox where business_id = $1 and channel = $2 and created_on > now() - interval '7 days'`, [businessId, CHANNEL]);
-    return { configured: this.telegram.configured, enabled: await this.enabledFor(businessId), bot: this.telegram.configured ? await this.telegram.username() : null, staff, recent, week: n };
+    return { configured: this.telegram.configured, enabled: await this.enabledFor(businessId), bot: this.telegram.configured ? await this.telegram.username() : null, config: this.configState(), staff, recent, week: n };
   }
 
   async setEnabled(user: any, on: boolean) {

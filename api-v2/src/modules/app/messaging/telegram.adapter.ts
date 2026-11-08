@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { telegramApiBase, telegramAppUrl, telegramToken, telegramUsername } from './telegram-config';
 
 /** a send that failed: permanent (the person blocked the bot, the chat is gone) or worth trying again */
 export class ChannelError extends Error {
@@ -6,29 +7,32 @@ export class ChannelError extends Error {
 }
 
 /**
- * Telegram's Bot API, the only place the app talks to it. The bot belongs to the shop (a token from BotFather in TELEGRAM_BOT_TOKEN, and the bot's
- * @name in TELEGRAM_BOT_USERNAME). A bot can only write to someone who pressed Start, so the app links each person through a one-time link.
+ * Telegram's Bot API, the only place the app talks to it. The bot belongs to the shop (a token from BotFather, saved in the app under Settings > Alerts or, failing that, in
+ * TELEGRAM_BOT_TOKEN, with the bot's @name beside it). A bot can only write to someone who pressed Start, so the app links each person through a one-time link.
  * TELEGRAM_API_BASE points at another address (a stand-in for tests). The token is never returned or logged.
  */
 @Injectable()
 export class TelegramAdapter {
   private nameCache: string | null = null;
 
-  get configured(): boolean { return !!process.env.TELEGRAM_BOT_TOKEN; }
+  get configured(): boolean { return !!telegramToken(); }
+
+  /** forget the cached bot name (the token was changed) */
+  reset() { this.nameCache = null; }
 
   /** the public address of the app, used for "open it" links in messages (only https links are sent) */
-  get baseUrl(): string { return process.env.APP_BASE_URL || ''; }
+  get baseUrl(): string { return telegramAppUrl(); }
 
-  private url(method: string): string {
-    return `${(process.env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/$/, '')}/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`;
+  private url(method: string, token: string | null): string {
+    return `${telegramApiBase()}/bot${token}/${method}`;
   }
 
-  private async call(method: string, body: any, timeoutMs = 15000): Promise<any> {
+  private async call(method: string, body: any, timeoutMs = 15000, token: string | null = telegramToken()): Promise<any> {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), timeoutMs);
     let res: Response;
     try {
-      res = await fetch(this.url(method), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
+      res = await fetch(this.url(method, token), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
     } catch (e: any) {
       throw new ChannelError(e?.name === 'AbortError' ? 'Telegram did not answer in time.' : `Telegram could not be reached: ${e?.message ?? e}`, false);
     } finally { clearTimeout(timer); }
@@ -46,10 +50,18 @@ export class TelegramAdapter {
 
   /** the bot's @name: from the settings, else asked of Telegram once */
   async username(): Promise<string | null> {
-    if (process.env.TELEGRAM_BOT_USERNAME) return process.env.TELEGRAM_BOT_USERNAME.replace(/^@/, '');
+    const named = telegramUsername();
+    if (named) return named;
     if (this.nameCache) return this.nameCache;
     try { this.nameCache = (await this.call('getMe', {}))?.username ?? null; } catch { /* the page says the bot is not reachable */ }
     return this.nameCache;
+  }
+
+  /** asks Telegram who a token belongs to (before it is saved); throws a ChannelError when it is not accepted or Telegram cannot be reached */
+  async check(token: string): Promise<string> {
+    const me = await this.call('getMe', {}, 15000, token);
+    if (!me?.username) throw new ChannelError('Telegram did not say whose bot this is.', true);
+    return String(me.username);
   }
 
   /** sends text to a chat; returns Telegram's message id */

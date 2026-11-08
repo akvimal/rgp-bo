@@ -25,7 +25,32 @@
           <label class="form-check-label small" for="al-tg-on">Send alerts to staff on Telegram</label>
         </div>
       </div>
-      <div class="small text-muted mt-1" *ngIf="!delivery.configured">The shop's Telegram bot is added by your administrator (a bot token from BotFather). Until then alerts show in the app only.</div>
+      <div class="small text-muted mt-1" *ngIf="!delivery.configured">Add the shop's Telegram bot below (a token from BotFather). Until then alerts show in the app only.</div>
+
+      <!-- the bot: its token and the app's address, kept in the app -->
+      <div class="mt-2">
+        <button class="btn btn-sm btn-link p-0" type="button" (click)="botOpen = !botOpen" data-testid="al-bot-toggle">{{botOpen ? 'Hide bot settings' : (delivery.configured ? 'Bot settings' : 'Add the bot')}}</button>
+        <span class="small text-muted ms-2" *ngIf="delivery.config?.source === 'server'">set on the server</span>
+        <span class="small text-muted ms-2" *ngIf="delivery.config?.source === 'app'">saved in the app, token {{delivery.config.token_hint}}</span>
+      </div>
+      <div class="border rounded p-2 mt-2" *ngIf="botOpen" data-testid="al-bot">
+        <ol class="small text-muted ps-3 mb-2">
+          <li>In Telegram, message <strong>&#64;BotFather</strong> and send <code>/newbot</code>. Pick a name and a username that ends in <code>bot</code>.</li>
+          <li>BotFather replies with a token. Paste it here and save. The app checks it with Telegram and learns the bot's name itself.</li>
+          <li>Use one bot for one app: a second app polling with the same token would take messages from this one.</li>
+        </ol>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-6"><label class="form-label mb-0" for="al-bot-token">Bot token</label>
+            <input id="al-bot-token" class="form-control form-control-sm" type="password" autocomplete="off" [(ngModel)]="bot.token" [placeholder]="delivery.config?.token_hint ? 'Saved (' + delivery.config.token_hint + '). Paste a new one to replace it.' : '123456789:AA...'" data-testid="al-bot-token"></div>
+          <div class="col-md-6"><label class="form-label mb-0" for="al-bot-url">App address (for the links in messages)</label>
+            <input id="al-bot-url" class="form-control form-control-sm" [(ngModel)]="bot.url" placeholder="https://ops.myrgp.in" data-testid="al-bot-url"></div>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-sm btn-primary" type="button" [disabled]="botBusy || (!bot.token.trim() && !delivery.configured)" (click)="saveBot()" data-testid="al-bot-save">Check and save</button>
+          <button class="btn btn-sm btn-outline-danger ms-2" type="button" *ngIf="delivery.config?.source === 'app'" [disabled]="botBusy" (click)="removeBot()" data-testid="al-bot-remove">Remove from the app</button>
+          <span class="small text-danger ms-2" *ngIf="botError" data-testid="al-bot-error">{{botError}}</span>
+        </div>
+      </div>
       <ng-container *ngIf="delivery.configured">
         <div class="small text-muted mt-1">Each person connects their own Telegram on the Notifications page. Only what they can see in the app is sent, at the level they choose, and critical alerts reach them at any hour.</div>
         <div class="row g-3 mt-1">

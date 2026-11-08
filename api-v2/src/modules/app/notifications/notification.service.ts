@@ -61,7 +61,7 @@ export class NotificationService {
   async runDaily(opts: { date?: string; storeid?: number; force?: boolean; preview?: boolean; auto?: boolean } = {}): Promise<DigestResult[]> {
     const date = opts.date ?? this.nowInZone().date;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException("date must be YYYY-MM-DD");
-    if (!opts.preview && !this.telegram.configured) throw new BadRequestException("TELEGRAM_BOT_TOKEN is not set");
+    if (!opts.preview && !this.telegram.configured) throw new BadRequestException("The Telegram bot is not set up (Settings > Alerts)");
 
     const stores: { id: number; location: string; telegramchatid: string | null; enabled: boolean; businessid: number | null }[] = await this.manager.query(`
       select id, location, telegram_chat_id as telegramchatid, telegram_digest_enabled as enabled, business_id as businessid
@@ -138,7 +138,7 @@ export class NotificationService {
   }
 
   async sendTest(chatId: string) {
-    if (!this.telegram.configured) throw new BadRequestException("TELEGRAM_BOT_TOKEN is not set");
+    if (!this.telegram.configured) throw new BadRequestException("The Telegram bot is not set up (Settings > Alerts)");
     try {
       await this.telegram.send(chatId, "✅ RGP Back Office: Telegram notifications are connected to this chat.");
       return { ok: true };

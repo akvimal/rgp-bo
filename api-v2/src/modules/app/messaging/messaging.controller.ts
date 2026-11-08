@@ -27,6 +27,12 @@ export class MessagingController {
   @Post('telegram/test')
   test(@User() user: any) { return this.service.test(user); }
 
+  @Put('telegram/config')
+  saveConfig(@Body() body: any, @User() user: any) { return this.service.saveConfig(user, body); }
+
+  @Delete('telegram/config')
+  clearConfig(@User() user: any) { return this.service.clearConfig(user); }
+
   @Get('overview')
   overview(@User() user: any) { return this.service.overview(user); }
 

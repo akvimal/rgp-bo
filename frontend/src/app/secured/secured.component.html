@@ -33,6 +33,13 @@
       <nav class="header-nav ms-auto">
         <ul class="d-flex align-items-center">
 
+          <li class="nav-item pe-2" data-testid="header-theme">
+            <a class="nav-link nav-icon" href="javascript:void(0)" (click)="theme.toggle()" data-testid="theme-toggle"
+               [attr.title]="theme.dark ? 'Switch to the light theme' : 'Switch to the dark theme'" [attr.aria-label]="theme.dark ? 'Switch to the light theme' : 'Switch to the dark theme'">
+              <i class="bi" [ngClass]="theme.dark ? 'bi-sun' : 'bi-moon-stars'"></i>
+            </a>
+          </li>
+
           <li app2-notification-bell class="nav-item dropdown pe-2" data-testid="header-bell"></li>
 
           <li class="nav-item pe-3" *ngIf="platformChip as chip" data-testid="platform-banner">
@@ -80,6 +87,15 @@
                 <a class="dropdown-item d-flex align-items-center" routerLink="/changepassword" data-testid="user-menu-changepw" (click)="closeUserMenu()">
                   <i class="bi bi-shield-lock me-2"></i><span>Change Password</span>
                 </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li class="px-3 py-1" data-testid="theme-choice">
+                <div class="small text-muted mb-1">Theme</div>
+                <div class="btn-group btn-group-sm w-100" role="group" aria-label="Theme">
+                  <button type="button" class="btn" [ngClass]="theme.choice === 'light' ? 'btn-primary' : 'btn-outline-secondary'" (click)="theme.set('light')" data-testid="theme-light">Light</button>
+                  <button type="button" class="btn" [ngClass]="theme.choice === 'dark' ? 'btn-primary' : 'btn-outline-secondary'" (click)="theme.set('dark')" data-testid="theme-dark">Dark</button>
+                  <button type="button" class="btn" [ngClass]="theme.choice === 'auto' ? 'btn-primary' : 'btn-outline-secondary'" (click)="theme.set('auto')" data-testid="theme-auto" title="Match this device">Auto</button>
+                </div>
               </li>
               <li><hr class="dropdown-divider"></li>
               <li>
