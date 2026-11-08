@@ -27,6 +27,7 @@ export class SettingsComponent {
         const parts = (url || '').split('?')[0].split('/').filter(Boolean);
         const seg = parts[2];
         if (seg === 'business-profile' && parts[3] === 'setup') { this.title = 'Settings · Shop setup'; return; }
+        if (seg === 'business-profile' && parts[3] === 'ai') { this.title = 'Settings · AI assistant'; return; }
         this.title = TITLES[seg] ? `Settings \u00b7 ${TITLES[seg]}` : 'Settings';
     }
 }

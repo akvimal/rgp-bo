@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, ServiceUnavailableException } from '@n
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AiProvider } from '../alerts/ai-provider';
+import { resolveModel } from '../alerts/ai-models';
 import { CHECKLIST_KINDS, ChecklistKind } from './shift-checklist';
 
 /**
@@ -190,10 +191,9 @@ export class ChecklistAssistant {
   /** for tests: replace the call to the model */
   useCompletion(fn: Complete) { this.complete = fn; }
 
-  /** the model the owner chose for the assistant (the same choice the alerts assistant uses), else the server's default */
+  /** the model for checklist suggestions: its own, its level's, or the default the Business Head chose (Settings > AI assistant), else the server's */
   async model(): Promise<string> {
-    const [row] = await this.manager.query(`select setting_value from app_setting where setting_key = 'ai.model' and active and not archive`);
-    return row?.setting_value || this.ai.defaultModel;
+    return resolveModel(this.manager, this.ai, 'propose_checklist_items');
   }
 
   /** at most 20 requests an hour per business, so a loop cannot run up a bill */
@@ -239,7 +239,7 @@ export class ChecklistAssistant {
   async fromSituation(opts: { businessId: number; existing: Existing; instruction: string }) {
     if (!this.configured) throw new ServiceUnavailableException('The assistant is not switched on for this account. Add the items by hand.');
     const model = await this.model();
-    if (!model) throw new BadRequestException('Choose a model for the assistant first (Settings > Alerts, under "Describe an alert").');
+    if (!model) throw new BadRequestException('Choose a model for the assistant first (Settings > AI assistant).');
     const text = String(opts.instruction || '').trim();
     if (text.length < 5) throw new BadRequestException('Say what you want to guard against.');
     if (text.length > 500) throw new BadRequestException('Keep it to a sentence or two (500 characters).');

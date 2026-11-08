@@ -1,4 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { AiUsageHooks, tokensOf, UsageRecord } from './ai-usage';
 
 export type ProviderName = 'openrouter' | 'anthropic';
 
@@ -16,6 +17,18 @@ let STORED: { provider: ProviderName; key: string } | null = null;
 export const setStoredAiKey = (v: { provider: ProviderName; key: string } | null) => { STORED = v; };
 export const storedAiKey = () => STORED;
 const MODELS_TTL_MS = 3600000;
+
+/** the models a direct Anthropic key offers to choose from (OpenRouter lists its own) */
+export const ANTHROPIC_MODELS = [
+  { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5 (fast, low cost)' },
+  { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5 (balanced)' },
+  { id: 'claude-opus-5-5', name: 'Claude Opus 5.5 (most capable)' },
+  { id: 'claude-fable-5-1', name: 'Claude Fable 5.1' },
+];
+
+/** the usage log and monthly limit, set once by the settings service (it holds the database): asked before each request, told after it */
+let HOOKS: AiUsageHooks | null = null;
+export const setAiUsageHooks = (h: AiUsageHooks | null) => { HOOKS = h; };
 
 /** does a model id match an allowed entry: the id itself, or a prefix ending in * ("anthropic/*") */
 export function matchesAllowed(id: string, allowed: string[]): boolean {
@@ -82,7 +95,13 @@ export class AiProvider {
 
   /** the models an owner may choose: those OpenRouter offers that can call tools (and are allowed), or just the one for a direct key */
   async models(): Promise<ModelInfo[]> {
-    if (this.provider !== 'openrouter') return this.defaultModel ? [{ id: this.defaultModel, name: this.defaultModel, context: null, promptPer1M: null, completionPer1M: null }] : [];
+    if (this.provider === 'anthropic') {
+      // a direct Anthropic key can use any of these: the server's default first, then the family (within the allow list)
+      const listed = [...(this.defaultModel && !ANTHROPIC_MODELS.some((m) => m.id === this.defaultModel) ? [{ id: this.defaultModel, name: this.defaultModel }] : []), ...ANTHROPIC_MODELS]
+        .filter((m) => matchesAllowed(m.id, this.allowed));
+      return listed.map((m) => ({ id: m.id, name: m.name, context: null, promptPer1M: null, completionPer1M: null }));
+    }
+    if (this.provider !== 'openrouter') return [];
     if (!this.cache || Date.now() - this.cache.at > MODELS_TTL_MS) {
       try {
         const res = await fetch(`${this.base('openrouter')}/models`, { signal: AbortSignal.timeout(15000) });
@@ -104,12 +123,30 @@ export class AiProvider {
     return (await this.models()).some((m) => m.id === model);
   }
 
-  /** one request: the model is made to call `tool`, and the arguments of that call come back */
+  /** one request: the model is made to call `tool`, and the arguments of that call come back. Counted against the monthly limit and logged. */
   async call(system: string, instruction: string, tool: Tool, model: string, maxTokens = 800): Promise<any> {
     const p = this.provider;
     if (!p) throw new ServiceUnavailableException('The assistant is not switched on for this account.');
+    await HOOKS?.before();                       // refuses when the month's limit is reached
+    const started = Date.now();
+    const rec: UsageRecord = { provider: p, model, feature: tool.name, ok: false, status: null, inputTokens: null, outputTokens: null, ms: 0 };
+    try {
+      const out = await this.send(p, system, instruction, tool, model, maxTokens, rec);
+      rec.ok = out !== undefined;
+      return out;
+    } finally {
+      rec.ms = Date.now() - started;
+      try { await HOOKS?.after(rec); } catch { /* the log must never break a request */ }
+    }
+  }
+
+  private async send(p: ProviderName, system: string, instruction: string, tool: Tool, model: string, maxTokens: number, rec: UsageRecord): Promise<any> {
     const refused = () => new ServiceUnavailableException('The assistant could not be reached just now. Try again, or use the form.');
     const content = `<instruction>${instruction}</instruction>`;
+    const note = (res: any, body?: any) => {
+      rec.status = res.status ?? null;
+      if (body) { const t = tokensOf(p, body); rec.inputTokens = t.input; rec.outputTokens = t.output; }
+    };
     try {
       if (p === 'anthropic') {
         const res = await fetch(`${this.base(p)}/v1/messages`, {
@@ -118,8 +155,11 @@ export class AiProvider {
           body: JSON.stringify({ model, max_tokens: maxTokens, system, tools: [tool], tool_choice: { type: 'tool', name: tool.name }, messages: [{ role: 'user', content }] }),
           signal: AbortSignal.timeout(maxTokens > 800 ? 90000 : 25000),
         });
+        note(res);
         if (!res.ok) throw refused();
-        return ((await res.json() as any).content || []).find((c: any) => c.type === 'tool_use')?.input;
+        const body: any = await res.json();
+        note(res, body);
+        return (body.content || []).find((c: any) => c.type === 'tool_use')?.input;
       }
       const send = (forced: boolean) => fetch(`${this.base(p)}/chat/completions`, {
         method: 'POST',
@@ -135,9 +175,12 @@ export class AiProvider {
       let res = await send(true);
       // not every model accepts a forced tool choice: ask again and let it choose
       if (res.status === 400 || res.status === 404) res = await send(false);
-      if (res.status === 401 || res.status === 402) throw new ServiceUnavailableException('The assistant\'s key was refused or its credit has run out. Tell whoever looks after this account.');
+      note(res);
+      if (res.status === 401 || res.status === 402) throw new ServiceUnavailableException("The assistant's key was refused or its credit has run out. Tell whoever looks after this account.");
       if (!res.ok) throw refused();
-      return toolArguments(await res.json());
+      const body: any = await res.json();
+      note(res, body);
+      return toolArguments(body);
     } catch (e: any) {
       if (e?.getStatus) throw e;
       throw refused();

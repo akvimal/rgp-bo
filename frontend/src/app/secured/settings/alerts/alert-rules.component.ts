@@ -15,9 +15,6 @@ export class AlertRulesComponent implements OnInit {
   kinds: any[] = [];
   assistant = false;
   ai: any = null;
-  modelInput = '';
-  modelMessage = '';
-  modelError = '';
   rules: any[] = [];
   stores: any[] = [];
   message = '';
@@ -40,8 +37,6 @@ export class AlertRulesComponent implements OnInit {
 
   constructor(private alerts: AlertsService, private cash: CashService, private confirm: ConfirmService) {}
 
-  reloadAssistant() { this.alerts.kinds().subscribe((k) => { this.assistant = k.assistant; if (k.assistant) this.loadAi(); else this.ai = null; }); }
-
   ngOnInit() {
     this.alerts.kinds().subscribe((k) => { this.kinds = k.kinds; this.assistant = k.assistant; if (k.assistant) this.loadAi(); });
     this.cash.getStores().subscribe((s: any) => this.stores = (s || []).filter((x: any) => x.isActive !== false && !x.isArchived));
@@ -63,21 +58,11 @@ export class AlertRulesComponent implements OnInit {
   }
 
   private loadAi() {
-    this.alerts.ai().subscribe((a) => { this.ai = a; this.modelInput = a.model || ''; }, () => this.ai = null);
+    this.alerts.ai().subscribe((a) => { this.ai = a; }, () => this.ai = null);
   }
 
-  /** "Name - $0.50 / $1.50 per 1M tokens" for the list of models */
-  modelLabel(m: any) {
-    const price = m.promptPer1M !== null && m.completionPer1M !== null ? ` - $${m.promptPer1M} in / $${m.completionPer1M} out per 1M tokens` : '';
-    return `${m.name}${price}`;
-  }
-
-  get modelChanged() { return !!this.modelInput && this.modelInput !== this.ai?.model; }
-
-  saveModel() {
-    this.modelMessage = this.modelError = '';
-    this.alerts.saveAi(this.modelInput.trim()).subscribe((a) => { this.ai = a; this.modelInput = a.model; this.modelMessage = 'Model saved.'; }, (e) => this.modelError = this.msg(e));
-  }
+  /** the model that drafts alerts (chosen under Settings > AI assistant) */
+  get aiUses(): string { return this.ai?.tasks?.find((t: any) => t.task === 'propose_alert_rule')?.uses || ''; }
 
   kind(key: string) { return this.kinds.find((k) => k.kind === key); }
 

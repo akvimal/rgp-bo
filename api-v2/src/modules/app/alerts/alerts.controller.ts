@@ -42,6 +42,12 @@ export class AlertsController {
   @Get('ai')
   ai(@User() user: any) { return this.service.aiConfig(user); }
 
+  @Get('ai/usage')
+  aiUsage(@User() user: any) { return this.aiSettings.usage(user); }
+
+  @Put('ai/limit')
+  saveAiLimit(@Body() body: any, @User() user: any) { return this.aiSettings.saveLimit(user, body); }
+
   @Put('ai/key')
   saveAiKey(@Body() body: any, @User() user: any) { return this.aiSettings.save(user, body); }
 
@@ -49,7 +55,10 @@ export class AlertsController {
   clearAiKey(@User() user: any) { return this.aiSettings.clear(user); }
 
   @Post('ai/test')
-  async testAi(@User() user: any) { return this.aiSettings.test(user, (await this.service.aiConfig(user)).model); }
+  async testAi(@User() user: any) { return this.aiSettings.test(user); }
+
+  @Put('ai/models')
+  saveAiModels(@Body() body: any, @User() user: any) { return this.service.saveAiModels(user, body); }
 
   @Put('ai')
   saveAi(@Body() body: any, @User() user: any) { return this.service.saveAiModel(user, body); }

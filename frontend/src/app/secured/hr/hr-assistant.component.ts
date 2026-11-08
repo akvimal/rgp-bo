@@ -9,7 +9,7 @@ import { HrService } from "./hr.service";
   selector: "app-hr-assistant",
   template: `
     <div class="alert alert-warning py-2" *ngIf="status && !status.configured" data-testid="as-off">
-      The assistant has no key yet. Add it under <a routerLink="/secure/settings/alerts">Settings &gt; Alerts</a> (AI assistant). You can still read and edit everything here.
+      The assistant has no key yet. Add it under <a routerLink="/secure/settings/business-profile/ai">Settings &gt; AI assistant</a>. You can still read and edit everything here.
     </div>
     <div class="alert alert-success py-2" *ngIf="message" data-testid="as-message">{{message}}</div>
     <div class="alert alert-danger py-2" *ngIf="error" data-testid="as-error">{{error}}</div>

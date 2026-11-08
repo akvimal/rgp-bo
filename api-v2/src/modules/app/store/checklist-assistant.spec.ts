@@ -76,7 +76,7 @@ describe('the prompts', () => {
 
 describe('the assistant end to end, with a stand-in model', () => {
   const rows = (sql: string) => {
-    if (sql.includes('app_setting')) return [{ setting_value: 'test/model' }];
+    if (sql.includes('app_setting')) return [{ setting_key: 'ai.model', setting_value: 'test/model' }];
     if (sql.includes('from store_shifts')) return [{ off: 6, closed: 20, total: 300, short: 4, over: 2, biggest: 90 }];
     if (sql.includes('from payment_check')) return [{ nf: 0, nfa: 0, mm: 0, mma: 0 }];
     if (sql.includes("s.status = 'COMPLETE'")) return [{ n: 0, amt: 0 }];
