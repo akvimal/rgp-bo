@@ -275,6 +275,25 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     actions: [{ key: 'decide', label: 'Approve or decline leave' }],
   },
   {
+    key: 'attendpunch',
+    label: 'Mark attendance',
+    description: 'The attendance screen of a registered store PC: staff mark In and Out with a PIN and a webcam photo.',
+    group: 'Staff & Quality',
+    path: '/secure/attendance-punch',
+    actions: [{ key: 'use', label: 'Open the attendance screen' }],
+  },
+  {
+    key: 'attendreview',
+    label: 'Attendance review',
+    description: 'Check the punches and photos of each day for the staff of their own stores (never their own), correct days, and choose who punches. Payroll waits for this review.',
+    group: 'Staff & Quality',
+    path: '/secure/attendance-review',
+    actions: [
+      { key: 'view', label: 'See the days and photos' },
+      { key: 'decide', label: 'Approve or change days, and set PINs' },
+    ],
+  },
+  {
     key: 'inquiries',
     label: 'Customer inquiries',
     description: 'Record what customers ask for, follow it up and close it; counts towards KPI.',

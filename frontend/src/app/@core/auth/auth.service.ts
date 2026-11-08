@@ -196,7 +196,7 @@ export class AuthService {
   public resourceAvailable(key:string):boolean{
     switch (key) {
       case 'businesses': return !this.hosted;
-      case 'hr': case 'myhr': case 'leaveapprove': case 'kpirate': case 'mykpi': return this.moduleOn('hr');
+      case 'hr': case 'myhr': case 'leaveapprove': case 'attendpunch': case 'attendreview': case 'kpirate': case 'mykpi': return this.moduleOn('hr');
       case 'purchases': case 'vendorissues': return this.moduleOn('purchasing');
       case 'purchaseorders': return this.purchasingFull;
       case 'expenses': return this.moduleOn('expenses');
