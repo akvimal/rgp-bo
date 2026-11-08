@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
 import { AlertsService } from './alerts.service';
+import { AiSettingsService } from './ai-settings.service';
 
 /** The notification list and the language are every person's own; setting up the rules is the owner's (checked in the service). */
 @ApiTags('Alerts')
@@ -10,7 +11,7 @@ import { AlertsService } from './alerts.service';
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class AlertsController {
-  constructor(private readonly service: AlertsService) {}
+  constructor(private readonly service: AlertsService, private readonly aiSettings: AiSettingsService) {}
 
   @Get('notifications')
   notifications(@Query('status') status: string, @Query('limit') limit: string, @User() user: any) {
@@ -40,6 +41,15 @@ export class AlertsController {
 
   @Get('ai')
   ai(@User() user: any) { return this.service.aiConfig(user); }
+
+  @Put('ai/key')
+  saveAiKey(@Body() body: any, @User() user: any) { return this.aiSettings.save(user, body); }
+
+  @Delete('ai/key')
+  clearAiKey(@User() user: any) { return this.aiSettings.clear(user); }
+
+  @Post('ai/test')
+  async testAi(@User() user: any) { return this.aiSettings.test(user, (await this.service.aiConfig(user)).model); }
 
   @Put('ai')
   saveAi(@Body() body: any, @User() user: any) { return this.service.saveAiModel(user, body); }

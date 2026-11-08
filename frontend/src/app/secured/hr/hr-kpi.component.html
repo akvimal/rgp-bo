@@ -17,7 +17,7 @@
             <td>{{r.name}}<div class="small text-muted">{{r.designation}}<span *ngIf="r.role"> · {{r.role}}</span></div></td>
             <td class="text-end">{{r.bills}}</td><td class="text-end">{{r.sales_value | number:'1.0-0'}}</td>
             <td class="text-end">{{r.items.length || r.finalised ? (percentOf(r) + '%') : '-'}}</td>
-            <td>{{bandOf(r)}}</td><td class="text-end">{{(r.items.length || r.finalised) ? (incentiveOf(r) + '%') : ''}}</td>
+            <td>{{bandOf(r)}}</td><td class="text-end">{{(r.items.length || r.finalised) ? incentiveOf(r) : ''}}</td>
             <td>
               <span class="badge bg-success" *ngIf="r.finalised">Finalised</span>
               <span class="badge bg-warning text-dark" *ngIf="!r.finalised && r.pending.length" [title]="r.pending.join(', ')">Awaiting ratings</span>
@@ -63,8 +63,8 @@
           <tr *ngIf="!open.items.length"><td colspan="5" class="text-center text-muted py-2">No measures apply to this person's role, type or designation.</td></tr>
         </tbody>
       </table>
-      <div class="small mt-2" *ngIf="open.finalised">Finalised: {{open.percent}}% ({{open.total_points}}/{{open.max_points}}) {{open.band_label}}, incentive {{open.incentive_percent}}%.</div>
-      <div class="small mt-2" *ngIf="!open.finalised">Draft: {{open.draft.percent}}% ({{open.draft.total}}/{{open.draft.max}}) {{open.draft.band_label}}, incentive {{open.draft.incentive_percent}}%.</div>
+      <div class="small mt-2" *ngIf="open.finalised">Finalised: {{open.percent}}% ({{open.total_points}}/{{open.max_points}}) {{open.band_label}}, incentive {{incentiveText(open)}}.</div>
+      <div class="small mt-2" *ngIf="!open.finalised">Draft: {{open.draft.percent}}% ({{open.draft.total}}/{{open.draft.max}}) {{open.draft.band_label}}, incentive {{incentiveText(open.draft)}}.</div>
     </div>
   </div>
 </div>

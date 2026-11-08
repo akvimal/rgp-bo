@@ -36,7 +36,9 @@ export class HrKpiComponent implements OnInit {
 
   percentOf(r: any) { return r.finalised ? r.percent : r.draft.percent; }
   bandOf(r: any) { return r.finalised ? r.band_label : r.draft.band_label; }
-  incentiveOf(r: any) { return r.finalised ? r.incentive_percent : r.draft.incentive_percent; }
+  incentiveOf(r: any) { return this.incentiveText(r.finalised ? r : r.draft); }
+  /** a band pays a fixed amount or a percent of the month's earnings */
+  incentiveText(x: any): string { return x.incentive_amount !== null && x.incentive_amount !== undefined ? `Rs ${x.incentive_amount}` : `${x.incentive_percent}%`; }
 
   stateText(i: any): string {
     if (i.state === "PENDING") return "Not rated yet";

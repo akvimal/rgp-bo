@@ -13,7 +13,7 @@ import { KpiApi } from "./kpi.service";
         <div class="d-flex justify-content-between flex-wrap gap-2">
           <h6 class="mb-2">{{m.period}}</h6>
           <div><span class="fs-5">{{m.percent}}%</span> <span class="badge bg-primary ms-1">{{m.band_label}}</span>
-            <span class="small text-muted ms-2" *ngIf="m.incentive_percent">incentive {{m.incentive_percent}}%</span></div>
+            <span class="small text-muted ms-2" *ngIf="m.incentive_amount !== null && m.incentive_amount !== undefined || m.incentive_percent">incentive {{m.incentive_amount !== null && m.incentive_amount !== undefined ? 'Rs ' + m.incentive_amount : m.incentive_percent + '%'}}</span></div>
         </div>
         <table class="table table-sm align-middle mb-0">
           <thead><tr><th>Measure</th><th>What was measured</th><th class="text-end">Points</th></tr></thead>

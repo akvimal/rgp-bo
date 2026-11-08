@@ -6,6 +6,8 @@ import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { ROLE, isOwnerRole } from 'src/core/roles';
 import { StoreService } from '../store/store.service';
 import { AiProvider } from './ai-provider';
+import { AiSettingsService } from './ai-settings.service';
+import { HrKpiEngine } from '../hr/hr-kpi-engine.service';
 import { AlertDrafter, Draft, RECIPIENT_ROLES } from './alert-drafter';
 import { DEFAULT_RULES, Finding, KINDS, SEVERITIES, cleanParams, kindOf } from './alert-kinds';
 import { canSee } from './alert-access';
@@ -29,6 +31,8 @@ export class AlertsService {
     private readonly stores: StoreService,
     private readonly drafter: AlertDrafter,
     private readonly ai: AiProvider,
+    private readonly aiSettings: AiSettingsService,
+    private readonly kpi: HrKpiEngine,
     private readonly modules: ModulesService,
     private readonly messaging: MessagingService,
   ) {}
@@ -87,7 +91,7 @@ export class AlertsService {
   async run(businessId: number) {
     await this.ensureDefaults(businessId);
     const rules = await this.manager.query(`select * from alert_rule where business_id = $1 and not archive`, [businessId]);
-    const ctx = { manager: this.manager, stores: this.stores, businessId, today: this.today() };
+    const ctx = { manager: this.manager, stores: this.stores, businessId, today: this.today(), kpi: this.kpi };
     const packOn = new Map<string, boolean>();
     for (const rule of rules) {
       const kind = kindOf(rule.kind);
@@ -325,7 +329,7 @@ export class AlertsService {
     const w = await this.owner(user);
     const v = await this.validated(w, body);
     const lang = await this.language(user.id);
-    const found = (await kindOf(v.kind)!.evaluate({ manager: this.manager, stores: this.stores, businessId: w.businessId, today: this.today() }, v.params))
+    const found = (await kindOf(v.kind)!.evaluate({ manager: this.manager, stores: this.stores, businessId: w.businessId, today: this.today(), kpi: this.kpi }, v.params))
       .filter((f) => !v.storeid || f.storeid === v.storeid);
     return {
       count: found.length,
@@ -344,6 +348,7 @@ export class AlertsService {
       model: row?.setting_value || this.ai.defaultModel,
       chosen: !!row?.setting_value,
       models: this.ai.provider === 'openrouter' ? await this.ai.models() : [],
+      ...this.aiSettings.state(),
     };
   }
 

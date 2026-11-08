@@ -12,11 +12,16 @@ import { KpiPeopleController, KpiPeopleGuard } from './kpi-people.controller';
 import { HrSelfController, HrSelfGuard, LeaveApprovalController } from './hr-self.controller';
 import { HrSelfService, LeaveApprovalService } from './hr-self.service';
 import { AttendanceReviewService, PunchService } from './hr-punch.service';
+import { HrAiService } from './hr-ai.service';
+import { HrKpiTodoService } from './hr-kpi-todo.service';
+import { TodoModule } from '../todos/todo.module';
+import { AiProvider } from '../alerts/ai-provider';
 import { AttendanceReviewController, PunchController } from './hr-punch.controller';
 
 @Module({
-  imports: [AuthModule, RoleModule],
+  imports: [AuthModule, RoleModule, TodoModule],
   controllers: [HrController, KpiPeopleController, HrSelfController, LeaveApprovalController, PunchController, AttendanceReviewController],
-  providers: [PunchService, AttendanceReviewService, HrGuard, KpiPeopleGuard, HrSelfGuard, HrSelfService, LeaveApprovalService, HrStaffService, HrLeaveService, HrPayrollService, HrBonusService, HrKpiService, HrKpiEngine],
+  providers: [HrKpiTodoService, HrAiService, AiProvider, PunchService, AttendanceReviewService, HrGuard, KpiPeopleGuard, HrSelfGuard, HrSelfService, LeaveApprovalService, HrStaffService, HrLeaveService, HrPayrollService, HrBonusService, HrKpiService, HrKpiEngine],
+  exports: [HrKpiEngine],
 })
 export class HrModule {}

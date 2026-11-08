@@ -7,6 +7,14 @@ export interface ModelInfo { id: string; name: string; context: number | null; p
 export interface Tool { name: string; description: string; input_schema: any; }
 
 const OPENROUTER = 'https://openrouter.ai/api/v1';
+
+/**
+ * A key the Business Head saved in the app. It is kept here (loaded at start-up and when saved) so every part of the server that holds its own
+ * AiProvider sees the same key. It wins over the server's environment keys, but AI_PROVIDER=off still switches everything off.
+ */
+let STORED: { provider: ProviderName; key: string } | null = null;
+export const setStoredAiKey = (v: { provider: ProviderName; key: string } | null) => { STORED = v; };
+export const storedAiKey = () => STORED;
 const MODELS_TTL_MS = 3600000;
 
 /** does a model id match an allowed entry: the id itself, or a prefix ending in * ("anthropic/*") */
@@ -39,6 +47,7 @@ export class AiProvider {
   get provider(): ProviderName | null {
     const forced = process.env.AI_PROVIDER;
     if (forced === 'off') return null;        // switched off for this customer, whatever keys are around
+    if (STORED) return STORED.provider;
     if (forced === 'openrouter' && process.env.OPENROUTER_API_KEY) return 'openrouter';
     if (forced === 'anthropic' && process.env.ANTHROPIC_API_KEY) return 'anthropic';
     if (process.env.OPENROUTER_API_KEY) return 'openrouter';
@@ -47,6 +56,17 @@ export class AiProvider {
   }
 
   get configured(): boolean { return !!this.provider; }
+
+  /** where the key in use comes from: saved in the app, or the server's environment */
+  get keySource(): 'app' | 'server' | null {
+    if (!this.provider) return null;
+    return STORED && STORED.provider === this.provider ? 'app' : 'server';
+  }
+
+  private keyOf(p: ProviderName): string {
+    if (STORED && STORED.provider === p) return STORED.key;
+    return String(p === 'openrouter' ? process.env.OPENROUTER_API_KEY : process.env.ANTHROPIC_API_KEY);
+  }
 
   get defaultModel(): string {
     return process.env.AI_MODEL || process.env.ALERT_DRAFT_MODEL || (this.provider === 'anthropic' ? 'claude-haiku-5-5' : '');
@@ -85,7 +105,7 @@ export class AiProvider {
   }
 
   /** one request: the model is made to call `tool`, and the arguments of that call come back */
-  async call(system: string, instruction: string, tool: Tool, model: string): Promise<any> {
+  async call(system: string, instruction: string, tool: Tool, model: string, maxTokens = 800): Promise<any> {
     const p = this.provider;
     if (!p) throw new ServiceUnavailableException('The assistant is not switched on for this account.');
     const refused = () => new ServiceUnavailableException('The assistant could not be reached just now. Try again, or use the form.');
@@ -94,23 +114,23 @@ export class AiProvider {
       if (p === 'anthropic') {
         const res = await fetch(`${this.base(p)}/v1/messages`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-api-key': String(process.env.ANTHROPIC_API_KEY), 'anthropic-version': '2023-06-01' },
-          body: JSON.stringify({ model, max_tokens: 800, system, tools: [tool], tool_choice: { type: 'tool', name: tool.name }, messages: [{ role: 'user', content }] }),
-          signal: AbortSignal.timeout(25000),
+          headers: { 'content-type': 'application/json', 'x-api-key': this.keyOf('anthropic'), 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model, max_tokens: maxTokens, system, tools: [tool], tool_choice: { type: 'tool', name: tool.name }, messages: [{ role: 'user', content }] }),
+          signal: AbortSignal.timeout(maxTokens > 800 ? 90000 : 25000),
         });
         if (!res.ok) throw refused();
         return ((await res.json() as any).content || []).find((c: any) => c.type === 'tool_use')?.input;
       }
       const send = (forced: boolean) => fetch(`${this.base(p)}/chat/completions`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'x-title': 'RGP Back Office' },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${this.keyOf('openrouter')}`, 'x-title': 'RGP Back Office' },
         body: JSON.stringify({
-          model, max_tokens: 800,
+          model, max_tokens: maxTokens,
           messages: [{ role: 'system', content: system }, { role: 'user', content }],
           tools: [{ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.input_schema } }],
           ...(forced ? { tool_choice: { type: 'function', function: { name: tool.name } } } : {}),
         }),
-        signal: AbortSignal.timeout(40000),
+        signal: AbortSignal.timeout(maxTokens > 800 ? 120000 : 40000),
       });
       let res = await send(true);
       // not every model accepts a forced tool choice: ask again and let it choose

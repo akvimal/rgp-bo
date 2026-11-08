@@ -373,12 +373,12 @@ export class HrSetupComponent implements OnInit, OnDestroy {
     const job = this.bandJob;
     return this.allBands.filter(b => job ? b.position_id === job : (!b.position_id && (b.role_name || "") === this.bandRole));
   }
-  private snapOf(list: any[]): string { return JSON.stringify(list.map(b => [b.min_percent, b.label, b.incentive_percent])); }
+  private snapOf(list: any[]): string { return JSON.stringify(list.map(b => [b.min_percent, b.label, b.incentive_percent, b.incentive_amount ?? null])); }
   showBands() { this.bands = this.bandsOf().map(b => ({ ...b })); this.bandsSnap = this.snapOf(this.bands); }
   get bandsDirty(): boolean { return this.snapOf(this.bands) !== this.bandsSnap; }
   get hasOwnBands(): boolean { return !this.bandRole || this.bandsOf().length > 0; }
   get bandLabel(): string { return this.bandJob ? (this.positions.find(p => p.id === this.bandJob)?.name || "this job role") : (this.bandRole || "the default set"); }
-  addBand() { this.bands = [...this.bands, { min_percent: 0, label: "", incentive_percent: 0 }]; }
+  addBand() { this.bands = [...this.bands, { min_percent: 0, label: "", incentive_percent: 0, incentive_amount: null }]; }
   removeBand(i: number) { this.bands = this.bands.filter((_, k) => k !== i); }
 
   /** choose another role's bands; with unsaved changes on screen, ask what to do with them first */
@@ -399,7 +399,7 @@ export class HrSetupComponent implements OnInit, OnDestroy {
     this.hr.put("kpi/bands", { role_name: job ? null : (this.bandRole || null), position_id: job, bands: this.bands })
       .subscribe(() => { this.bandsSnap = this.snapOf(this.bands); if (then) then(); this.done(text)(); }, this.fail());
   }
-  startOwnBands() { this.bands = this.allBands.filter(b => !b.role_name && !b.position_id).map(b => ({ min_percent: b.min_percent, label: b.label, incentive_percent: b.incentive_percent })); }
+  startOwnBands() { this.bands = this.allBands.filter(b => !b.role_name && !b.position_id).map(b => ({ min_percent: b.min_percent, label: b.label, incentive_percent: b.incentive_percent, incentive_amount: b.incentive_amount ?? null })); }
 
   // ------------------------------------------------------------ leaving with unsaved changes
   get hasUnsaved(): boolean { return this.bandsDirty || this.panelDirty; }

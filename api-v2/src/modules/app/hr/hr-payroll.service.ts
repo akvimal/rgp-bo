@@ -102,9 +102,10 @@ export class HrPayrollService {
       const earningsPaid = r2(earnings.reduce((t: number, x: any) => t + x.paid, 0));
       const fixedDed = r2(deductions.reduce((t: number, x: any) => t + x.amount, 0));
 
-      const [kpi] = await this.manager.query(`select incentive_percent::float as pct from hr_kpi_review where employee_id = $1 and period = $2`, [e.id, period]);
+      const [kpi] = await this.manager.query(`select incentive_percent::float as pct, incentive_amount::float as amt from hr_kpi_review where employee_id = $1 and period = $2`, [e.id, period]);
       const cap = effectiveCap(e.own_cap, e.role_cap);
-      const uncapped = kpi ? r2(earningsPaid * kpi.pct / 100) : 0;
+      // a band can pay a fixed amount (reduced for days not paid, as earnings are) or a percent of the month's earnings
+      const uncapped = !kpi ? 0 : kpi.amt !== null && kpi.amt !== undefined ? r2(kpi.amt * payable / PAY_DAYS) : r2(earningsPaid * kpi.pct / 100);
       const kpiIncentive = capIncentive(uncapped, cap).amount;
 
       const bonusItems = await this.manager.query(

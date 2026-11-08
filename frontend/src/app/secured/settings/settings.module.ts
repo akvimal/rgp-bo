@@ -32,6 +32,7 @@ import { ConfigTransferComponent } from "./config-transfer/config-transfer.compo
 import { StaffDetailsFieldsComponent } from "./users/components/staff-details-fields.component";
 import { NotificationsComponent } from "./notifications/notifications.component";
 import { AlertRulesComponent } from "./alerts/alert-rules.component";
+import { AiKeyCardComponent } from "./alerts/ai-key-card.component";
 import { DashboardSetupComponent } from "./dashboard-setup/dashboard-setup.component";
 
 const routes: Routes = [
@@ -89,6 +90,7 @@ const routes: Routes = [
       StaffDetailsFieldsComponent,
       NotificationsComponent,
       AlertRulesComponent,
+      AiKeyCardComponent,
       DashboardSetupComponent
     ],
     imports: [
