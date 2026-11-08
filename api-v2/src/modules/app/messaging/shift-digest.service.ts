@@ -5,15 +5,17 @@ import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
 import { inQuiet, istMinute, quietEnds } from './messaging-rules';
 import { MessagingService } from './messaging.service';
-import { ShiftFacts, formatShiftGroup, formatShiftManager } from './shift-digest-rules';
+import { OpenFacts, ShiftFacts, formatOpenGroup, formatOpenManager, formatShiftGroup, formatShiftManager } from './shift-digest-rules';
 import { TelegramAdapter } from './telegram.adapter';
 
 const CHANNEL = 'TELEGRAM';
 const KIND = 'SHIFT_CLOSE';
+const OPEN_KIND = 'SHIFT_OPEN';
 
 /**
- * Tells the shop a shift has closed. The store's group (the chat id kept for its daily digest) gets the shift's bills and takings, with no cash amounts and no
- * names; each person who runs the shop and has connected Telegram gets a personal message with the drawer, the terminals and what was paid out. It never
+ * Tells the shop a shift has opened or closed. The store's group (the chat id kept for its daily digest) gets the plain version (bills and takings, no cash amounts
+ * and no names) unless the owner chose the full version for it; each person who runs the shop and has connected Telegram gets a personal message with the full
+ * sales summary: bills by staff, cash against UPI/card, deliveries, expenses, the drawer, the terminals and what was paid out. It never
  * holds up or fails the close: anything that goes wrong is logged and the close stands. One message per shift and recipient, so a repeat does nothing.
  */
 @Injectable()
@@ -27,24 +29,45 @@ export class ShiftDigestService {
     void this.run(shiftId).catch((e) => this.log.warn(`Shift close message for shift ${shiftId} failed: ${e?.message}`));
   }
 
+  /** called after a shift opens; does not wait and never throws */
+  notifyOpened(shiftId: number): void {
+    void this.runOpen(shiftId).catch((e) => this.log.warn(`Shift open message for shift ${shiftId} failed: ${e?.message}`));
+  }
+
   /** public so a test can run it and wait */
   async run(shiftId: number): Promise<{ group: boolean; direct: number }> {
     if (!this.telegram.configured) return { group: false, direct: 0 };
     const facts = await this.facts(shiftId);
     if (!facts) return { group: false, direct: 0 };
     const { businessId, storeId } = facts.ids;
-    if (!(await this.on(businessId))) return { group: false, direct: 0 };
-    const group = await this.toGroup(shiftId, storeId, facts.facts);
+    const sw = await this.switches(businessId);
+    if (!sw.on || !sw.close) return { group: false, direct: 0 };
+    const group = await this.toGroup(KIND, shiftId, storeId, formatShiftGroup(facts.facts, sw.groupFull));
     const direct = await this.toManagers(shiftId, businessId, storeId, facts.facts);
     return { group, direct };
   }
 
-  /** on unless the owner switched the shop's Telegram alerts off (the same switch as the alerts) or this message off on its own */
-  private async on(businessId: number | null): Promise<boolean> {
-    if (!businessId) return false;
-    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('alerts_telegram', 'shift_close_message') and active and not archive`);
-    const get = (k: string) => String(rows.find((r: any) => r.setting_key === k)?.setting_value ?? 'on').toLowerCase();
-    return get('alerts_telegram') !== 'off' && get('shift_close_message') !== 'off';
+  async runOpen(shiftId: number): Promise<{ group: boolean; direct: number }> {
+    if (!this.telegram.configured) return { group: false, direct: 0 };
+    const o = await this.openFacts(shiftId);
+    if (!o) return { group: false, direct: 0 };
+    const sw = await this.switches(o.ids.businessId);
+    if (!sw.on || !sw.open) return { group: false, direct: 0 };
+    const group = await this.toGroup(OPEN_KIND, shiftId, o.ids.storeId, formatOpenGroup(o.facts, sw.groupFull));
+    const [title, ...rest] = formatOpenManager(o.facts).split('\n');
+    const direct = await this.queueToManagers({ businessId: o.ids.businessId, storeId: o.ids.storeId, kind: OPEN_KIND, refType: 'shift', refId: shiftId, title: title.replace(/^\S+\s/, ''), body: rest.join('\n').trim() });
+    return { group, direct };
+  }
+
+  /**
+   * The owner's switches, all kept in app_setting: Telegram alerts as a whole (alerts_telegram), the shift-close message (shift_close_message) and the shift-open
+   * message (shift_open_message) are on unless set to off; the full version for the store group (shift_group_full) is off unless set to on.
+   */
+  async switches(businessId: number | null): Promise<{ on: boolean; close: boolean; open: boolean; groupFull: boolean }> {
+    if (!businessId) return { on: false, close: false, open: false, groupFull: false };
+    const rows = await this.manager.query(`select setting_key, setting_value from app_setting where setting_key in ('alerts_telegram', 'shift_close_message', 'shift_open_message', 'shift_group_full') and active and not archive`);
+    const get = (k: string, dflt: string) => String(rows.find((r: any) => r.setting_key === k)?.setting_value ?? dflt).toLowerCase();
+    return { on: get('alerts_telegram', 'on') !== 'off', close: get('shift_close_message', 'on') !== 'off', open: get('shift_open_message', 'on') !== 'off', groupFull: get('shift_group_full', 'off') === 'on' };
   }
 
   private async facts(shiftId: number): Promise<{ facts: ShiftFacts; ids: { businessId: number | null; storeId: number } } | null> {
@@ -78,6 +101,22 @@ export class ShiftDigestService {
       const [x] = await this.manager.query(`select count(*)::int as n from schedule_register where sale_id in (select id from sale where shift_id = $1) and superseded_on is null`, [shiftId]);
       scheduled = x?.n || null;
     } catch { scheduled = null; }
+    // who served the bills (the person at the counter, else the login), UPI/card by app, deliveries and the expenses by name
+    const byStaff = await this.manager.query(
+      `select coalesce(nullif(btrim(u.full_name), ''), 'Unknown') as name, count(*)::int as bills, coalesce(sum(sa.total), 0)::float as sales
+         from sale sa left join app_user u on u.id = coalesce(sa.acting_user_id, sa.created_by)
+        where sa.shift_id = $1 and sa.status = 'COMPLETE' and sa.active = true group by 1 order by sales desc, name`, [shiftId]);
+    const digitalByProvider = await this.manager.query(
+      `select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, count(*)::int as bills, coalesce(sum(digi_amount), 0)::float as amount
+         from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0 group by 1 order by amount desc`, [shiftId]);
+    const [dv] = await this.manager.query(
+      `select count(*)::int as total, count(*) filter (where d.status = 'Delivered')::int as delivered, count(*) filter (where d.status = 'Failed')::int as failed,
+              count(*) filter (where coalesce(d.status, 'Pending') = 'Pending')::int as pending
+         from sale sa left join sale_deliveries d on d."saleId" = sa.id
+        where sa.shift_id = $1 and sa.status = 'COMPLETE' and sa.active = true and sa.delivery_type = 'Delivery'`, [shiftId]);
+    const expenseLines = await this.manager.query(
+      `select coalesce(nullif(btrim(expense_category), ''), nullif(btrim(description), ''), 'Expense') as label, sum(withdraw)::float as amount
+         from store_cash_accounts where shift_id = $1 and category = 'EXPENSE' group by 1 order by amount desc`, [shiftId]);
     const digital = (Array.isArray(s.closing_digital) ? s.closing_digital : []).map((d: any) => ({ provider: String(d.provider), system: Number(d.system) || 0, counted: Number(d.counted) || 0, variance: Number(d.variance) || 0 }));
     return {
       ids: { businessId: s.business_id ?? null, storeId: s.store_id },
@@ -86,27 +125,45 @@ export class ShiftDigestService {
         bills: t.bills, items: i.items, sales: t.sales, cashSales: t.cash, digitalSales: t.digital, creditSales: t.credit, returns: r.n,
         customersNew: c.new_c, customersReturning: c.known - c.new_c, billsWithoutCustomer: t.no_customer, scheduledEntries: scheduled,
         expectedCash: s.expected ?? 0, countedCash: s.counted ?? null, digital, expensesCount: e.exp_count, expensesTotal: e.exp_total, refunds: e.refunds, deposits: e.deposits,
+        byStaff, digitalByProvider, deliveries: { total: dv?.total ?? 0, delivered: dv?.delivered ?? 0, pending: dv?.pending ?? 0, failed: dv?.failed ?? 0 }, expenseLines,
       },
     };
   }
 
+  private async openFacts(shiftId: number): Promise<{ facts: OpenFacts; ids: { businessId: number | null; storeId: number } } | null> {
+    const [s] = await this.manager.query(
+      `select sh.id, sh.store_id, sh.name, sh.start_time, sh.end_time, sh.status, sh.opening_cash::float as cash, st.location, st.business_id,
+              to_char(sh.opened_on at time zone 'Asia/Kolkata', 'HH24:MI') as opened_at,
+              nullif(btrim(ou.full_name), '') as opened_by, nullif(btrim(au.full_name), '') as assigned, nullif(btrim(pr.name), '') as from_name,
+              exists (select 1 from store_vault_movements m where m.shift_id = sh.id and m.move_type = 'FLOAT_TO_DRAWER') as from_vault
+         from store_shifts sh join stores st on st.id = sh.store_id
+         left join app_user ou on ou.id = sh.opened_by left join app_user au on au.id = sh.assigned_user_id left join store_shifts pr on pr.id = sh.handover_from_shift_id
+        where sh.id = $1`, [shiftId]);
+    if (!s || s.status !== 'OPEN') return null;
+    return {
+      ids: { businessId: s.business_id ?? null, storeId: s.store_id },
+      facts: { store: s.location, shiftName: s.name, start: s.start_time ?? null, end: s.end_time ?? null, openedAt: s.opened_at ?? '', openedBy: s.opened_by ?? null, drawerOf: s.assigned ?? null,
+               openingCash: s.cash ?? 0, fromVault: !!s.from_vault, handoverFrom: s.from_name ?? null },
+    };
+  }
+
   /** the store's group, once per shift (the digest log keeps the guard, and a failed send can be tried again) */
-  private async toGroup(shiftId: number, storeId: number, facts: ShiftFacts): Promise<boolean> {
+  private async toGroup(kind: string, shiftId: number, storeId: number, text: string): Promise<boolean> {
     const [st] = await this.manager.query(`select telegram_chat_id, telegram_digest_enabled from stores where id = $1`, [storeId]);
     const chat = String(st?.telegram_chat_id ?? '').trim();
     if (!chat || st?.telegram_digest_enabled === false) return false;
     const scope = `store:${storeId}`;
     const claimed = await this.manager.query(
-      `insert into notification_log (kind, period_key, scope, status) values ($1, $2, $3, 'PENDING') on conflict (kind, period_key, scope) do nothing returning id`, [KIND, String(shiftId), scope]);
+      `insert into notification_log (kind, period_key, scope, status) values ($1, $2, $3, 'PENDING') on conflict (kind, period_key, scope) do nothing returning id`, [kind, String(shiftId), scope]);
     if (!claimed.length) return false;
     try {
-      await this.telegram.send(chat, formatShiftGroup(facts));
-      await this.manager.query(`update notification_log set status = 'SENT', sent_on = now() where kind = $1 and period_key = $2 and scope = $3`, [KIND, String(shiftId), scope]);
+      await this.telegram.send(chat, text);
+      await this.manager.query(`update notification_log set status = 'SENT', sent_on = now() where kind = $1 and period_key = $2 and scope = $3`, [kind, String(shiftId), scope]);
       return true;
     } catch (e: any) {
       // let a later try (the close pressed again, or a re-run) send it
-      await this.manager.query(`delete from notification_log where kind = $1 and period_key = $2 and scope = $3`, [KIND, String(shiftId), scope]);
-      this.log.warn(`Shift ${shiftId} group message not sent: ${e?.message}`);
+      await this.manager.query(`delete from notification_log where kind = $1 and period_key = $2 and scope = $3`, [kind, String(shiftId), scope]);
+      this.log.warn(`Shift ${shiftId} group message (${kind}) not sent: ${e?.message}`);
       return false;
     }
   }

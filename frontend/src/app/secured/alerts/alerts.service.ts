@@ -38,12 +38,14 @@ export class AlertsService {
   tgSaveConfig(body: any) { return this.http.put<any>(`${this.msg}/telegram/config`, body); }
   tgClearConfig() { return this.http.delete<any>(`${this.msg}/telegram/config`); }
   tgOverview() { return this.http.get<any>(`${this.msg}/overview`); }
+  tgShift(body: any) { return this.http.put<any>(`${this.msg}/overview/shift`, body); }
   tgEnabled(on: boolean) { return this.http.put<any>(`${this.msg}/overview/enabled`, { on }); }
 
   ai() { return this.http.get<any>(`${this.api}/ai`); }
   saveAiKey(provider: string, key: string) { return this.http.put<any>(`${this.api}/ai/key`, { provider, key }); }
   clearAiKey() { return this.http.delete<any>(`${this.api}/ai/key`); }
   testAi() { return this.http.post<any>(`${this.api}/ai/test`, {}); }
+  aiReport() { return this.http.get<any>(`${this.api}/ai/report`); }
   aiUsage() { return this.http.get<any>(`${this.api}/ai/usage`); }
   saveAiLimit(limit: number) { return this.http.put<any>(`${this.api}/ai/limit`, { limit }); }
   saveAi(model: string) { return this.http.put<any>(`${this.api}/ai`, { model }); }
