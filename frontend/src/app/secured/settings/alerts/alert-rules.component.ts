@@ -47,7 +47,27 @@ export class AlertRulesComponent implements OnInit {
   // ------------------------------------------------------------ how alerts leave the app (Telegram)
   delivery: any = null;
 
-  loadDelivery() { this.alerts.tgOverview().subscribe((d) => this.delivery = d, () => this.delivery = null); }
+  loadDelivery() { this.alerts.tgOverview().subscribe((d) => { this.delivery = d; this.bot.url = d.config?.app_url || ''; }, () => this.delivery = null); }
+
+  // the bot's token and the app's address (kept in the app, the token encrypted)
+  botOpen = false;
+  botBusy = false;
+  botError = '';
+  bot = { token: '', url: '' };
+
+  saveBot() {
+    this.botBusy = true; this.botError = ''; this.clearMessages();
+    this.alerts.tgSaveConfig({ token: this.bot.token.trim(), app_url: this.bot.url.trim() }).subscribe(
+      (d) => { this.botBusy = false; this.delivery = d; this.bot = { token: '', url: d.config?.app_url || '' }; this.botOpen = false; this.message = `Telegram bot saved (@${d.bot || 'unknown'}). Staff can now connect on the Notifications page.`; },
+      (e) => { this.botBusy = false; this.botError = this.msg(e); });
+  }
+
+  removeBot() {
+    this.confirm.confirmDelete('the Telegram bot', () => {
+      this.botBusy = true; this.botError = '';
+      this.alerts.tgClearConfig().subscribe((d) => { this.botBusy = false; this.delivery = d; this.bot = { token: '', url: d.config?.app_url || '' }; this.message = 'The Telegram bot was removed.'; }, (e) => { this.botBusy = false; this.botError = this.msg(e); });
+    }, { entity: 'bot', verb: 'Remove', consequence: 'Alerts stop going to Telegram unless the server has its own bot set.', reversible: true });
+  }
 
   setDelivery(on: boolean) {
     this.alerts.tgEnabled(on).subscribe((d) => { this.delivery = d; this.message = on ? 'Alerts will also go to staff who connected Telegram.' : 'Alerts stay in the app only.'; }, (e) => this.error = this.msg(e));

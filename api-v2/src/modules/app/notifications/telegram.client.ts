@@ -1,15 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { telegramApiBase, telegramToken } from "../messaging/telegram-config";
 
 const MAX_LEN = 4096;
-// Overridable so tests (and proxies) can stand in for api.telegram.org.
-const apiBase = () => (process.env.TELEGRAM_API_BASE || "https://api.telegram.org").replace(/\/$/, "");
+const apiBase = telegramApiBase;
 
 @Injectable()
 export class TelegramClient {
   private readonly logger = new Logger(TelegramClient.name);
 
   get configured(): boolean {
-    return !!process.env.TELEGRAM_BOT_TOKEN;
+    return !!telegramToken();
   }
 
   /** Sends HTML text, splitting on line boundaries when over Telegram's 4096-char limit. Throws on failure. */
@@ -35,8 +35,8 @@ export class TelegramClient {
   }
 
   private async post(chatId: string, text: string, attempt = 1): Promise<void> {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not set");
+    const token = telegramToken();
+    if (!token) throw new Error("The Telegram bot is not set up");
 
     const res = await fetch(`${apiBase()}/bot${token}/sendMessage`, {
       method: "POST",

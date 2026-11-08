@@ -35,6 +35,8 @@ export class AlertsService {
   tgSave(body: any) { return this.http.put<any>(`${this.msg}/telegram/me`, body); }
   tgUnlink() { return this.http.delete<any>(`${this.msg}/telegram/me`); }
   tgTest() { return this.http.post<any>(`${this.msg}/telegram/test`, {}); }
+  tgSaveConfig(body: any) { return this.http.put<any>(`${this.msg}/telegram/config`, body); }
+  tgClearConfig() { return this.http.delete<any>(`${this.msg}/telegram/config`); }
   tgOverview() { return this.http.get<any>(`${this.msg}/overview`); }
   tgEnabled(on: boolean) { return this.http.put<any>(`${this.msg}/overview/enabled`, { on }); }
 
