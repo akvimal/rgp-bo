@@ -17,6 +17,7 @@ import { MyHrApi } from "../my-hr/my-hr.service";
       <div *ngIf="deciding" class="border rounded p-2 mb-3" data-testid="la-decide-form">
         <div class="row g-2 align-items-end">
           <div class="col-md-8"><label class="form-label">{{deciding.action === 'reject' ? 'Why is it declined? *' : 'Note (optional)'}}</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="deciding.note" data-testid="la-note"></div>
+          <div class="col-12" *ngIf="needOverride"><label class="form-label">Why more days together are allowed *</label><input class="form-control form-control-sm" maxlength="200" [(ngModel)]="overrideReason" data-testid="la-override" placeholder="e.g. agreed with the store head"></div>
           <div class="col-md-4"><button class="btn btn-sm" [ngClass]="deciding.action === 'reject' ? 'btn-danger' : 'btn-success'" type="button" (click)="confirm()" data-testid="la-confirm">{{deciding.action === 'reject' ? 'Decline' : 'Approve'}}</button>
             <button class="btn btn-outline-secondary btn-sm ms-1" type="button" (click)="deciding = null">Cancel</button></div>
         </div>
@@ -28,7 +29,9 @@ import { MyHrApi } from "../my-hr/my-hr.service";
             <td>{{r.name}}<div class="small text-muted">{{r.designation}}</div></td>
             <td>{{r.type}}{{r.paid ? '' : ' (unpaid)'}}<div class="small text-muted">{{r.from_date | date:'dd MMM'}}<span *ngIf="r.to_date !== r.from_date"> - {{r.to_date | date:'dd MMM yyyy'}}</span><span *ngIf="r.half_day"> · half day</span></div></td>
             <td class="text-end">{{r.days}}<div class="small text-muted" *ngIf="r.left_days !== null">{{r.left_days}} left</div></td>
-            <td>{{r.reason}}<div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div></td>
+            <td>{{r.reason}}<div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div>
+              <div class="small text-warning" *ngIf="r.policy_note" data-testid="la-policy-note"><i class="bi bi-exclamation-triangle"></i> {{r.policy_note}}</div>
+              <div class="small text-info" *ngIf="r.override_reason">Allowed beyond the limit: {{r.override_reason}}</div></td>
             <td class="text-end text-nowrap">
               <ng-container *ngIf="r.status === 'PENDING'">
                 <button class="btn btn-success btn-sm" type="button" (click)="start(r, 'approve')" data-testid="la-approve">Approve</button>
@@ -60,12 +63,16 @@ export class LeaveApprovalsComponent implements OnInit {
   }
 
   setStatus(s: string) { this.status = s; this.deciding = null; this.load(); }
-  start(r: any, action: string) { this.message = this.error = ""; this.deciding = { id: r.id, action, note: "" }; }
+  start(r: any, action: string) { this.message = this.error = ""; this.needOverride = false; this.overrideReason = ""; this.deciding = { id: r.id, action, note: "" }; }
+
+  /** the leave breaks the limit on days together: a reason is asked for, to allow it */
+  needOverride = false;
+  overrideReason = "";
 
   confirm() {
     const d = this.deciding!;
-    this.api.decide(d.id, { action: d.action, note: d.note }).subscribe(
-      () => { this.message = d.action === "approve" ? "Approved." : "Declined."; this.deciding = null; this.load(); },
-      e => this.error = this.api.msg(e));
+    this.api.decide(d.id, { action: d.action, note: d.note, override_reason: this.needOverride ? this.overrideReason : undefined }).subscribe(
+      () => { this.message = d.action === "approve" ? "Approved." : "Declined."; this.deciding = null; this.needOverride = false; this.overrideReason = ""; this.load(); },
+      e => { this.error = this.api.msg(e); if (d.action === "approve" && /days together/.test(this.error)) this.needOverride = true; });
   }
 }

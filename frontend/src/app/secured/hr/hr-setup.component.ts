@@ -248,8 +248,28 @@ export class HrSetupComponent implements OnInit, OnDestroy {
   // ------------------------------------------------------------ leave types
   openType(t?: any) {
     this.openPanel("type", t ? "Edit leave type" : "New leave type",
-      t ? { ...t, applies_roles: t.applies_roles ? [...t.applies_roles] : null, position_names: t.position_names ? [...t.position_names] : null }
-        : { id: 0, name: "", paid: true, annual_days: 0, applies_roles: null, position_names: null, active: true });
+      t ? { ...t, applies_roles: t.applies_roles ? [...t.applies_roles] : null, position_names: t.position_names ? [...t.position_names] : null,
+            advice_roles: t.advice_roles ? [...t.advice_roles] : null, advice_avoid_weekdays: t.advice_avoid_weekdays ? [...t.advice_avoid_weekdays] : [] }
+        : { id: 0, name: "", paid: true, annual_days: 0, applies_roles: null, position_names: null, active: true, accrual_mode: "YEARLY", wait_months: 0, max_consecutive: null,
+            stretch_counts_offs: true, advice_from_day: null, advice_to_day: null, advice_avoid_weekdays: [], advice_roles: null });
+  }
+
+  avoids(d: number): boolean { return (this.panel?.model?.advice_avoid_weekdays || []).includes(d); }
+  toggleAvoid(d: number) {
+    const a: number[] = this.panel!.model.advice_avoid_weekdays || (this.panel!.model.advice_avoid_weekdays = []);
+    const i = a.indexOf(d);
+    if (i >= 0) a.splice(i, 1); else a.push(d);
+  }
+
+  /** a leave type's rules in a line, for the list */
+  rulesText(t: any): string {
+    if (!t.paid) return "";
+    const bits: string[] = [t.accrual_mode === "MONTHLY" ? "Builds up monthly" : "All at once"];
+    if (t.wait_months > 0) bits.push(`after ${t.wait_months} month${t.wait_months === 1 ? "" : "s"} from joining`);
+    if (t.max_consecutive) bits.push(`at most ${t.max_consecutive} day${t.max_consecutive === 1 ? "" : "s"} together`);
+    if (t.advice_from_day && t.advice_to_day) bits.push(`advised ${t.advice_from_day}th-${t.advice_to_day}th`);
+    if (t.advice_avoid_weekdays?.length) bits.push("advised not " + t.advice_avoid_weekdays.map((d: number) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join("/"));
+    return bits.join("; ");
   }
   private saveType() {
     const t = this.panel!.model; this.busy = true;

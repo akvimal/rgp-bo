@@ -8,6 +8,7 @@ import { HrPayrollService } from './hr-payroll.service';
 import { payHistory } from './hr-pay-history';
 
 import { isOwnerRole } from 'src/core/roles';
+import { creditedDays } from './hr-leave-policy';
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 const PHONE = /^[0-9+\-\s]{7,20}$/;
 const text = (v: any, max: number) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
@@ -136,7 +137,7 @@ export class HrSelfService {
     const balances = (await this.leave.balances(y)).filter((b: any) => b.employee_id === e.id);
     const requests = await this.leave.requests({ employee: e.id });
     const holidays = await this.leave.holidays(y);
-    return { staff: true, year: y, types, balances, requests, holidays };
+    return { staff: true, year: y, role: e.role_name || null, types, balances, requests, holidays };
   }
 
   async applyLeave(b: any, user: any) {
@@ -212,14 +213,17 @@ export class LeaveApprovalService {
     const where = [this.scope(c, args)];
     const status = String(q?.status || 'PENDING').toUpperCase();
     if (['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].includes(status)) { args.push(status); where.push(`r.status = $${args.length}`); }
-    return this.manager.query(
+    const rows = await this.manager.query(
       `select r.id, r.employee_id, coalesce(e.full_name, u.full_name) as name, e.designation, t.name as type, t.paid,
               to_char(r.from_date, 'YYYY-MM-DD') as from_date, to_char(r.to_date, 'YYYY-MM-DD') as to_date, r.days::float as days, r.half_day, r.reason, r.status, r.decision_note,
-              d.full_name as decided_by_name, r.decided_on, r.created_on,
-              case when t.paid then greatest(t.annual_days - coalesce((select sum(x.days) from hr_leave_request x where x.employee_id = r.employee_id and x.leave_type_id = r.leave_type_id
-                    and x.status = 'APPROVED' and extract(year from x.from_date) = extract(year from r.from_date)), 0), 0)::float end as left_days
+              d.full_name as decided_by_name, r.decided_on, r.created_on, r.policy_note, r.override_reason,
+              to_char(e.join_date, 'YYYY-MM-DD') as join_date, t.annual_days::float as annual, t.accrual_mode,
+              coalesce((select sum(x.days) from hr_leave_request x where x.employee_id = r.employee_id and x.leave_type_id = r.leave_type_id
+                    and x.status = 'APPROVED' and extract(year from x.from_date) = extract(year from r.from_date)), 0)::float as taken
          from hr_leave_request r join hr_employee e on e.id = r.employee_id left join app_user u on u.id = e.user_id join hr_leave_type t on t.id = r.leave_type_id left join app_user d on d.id = r.decided_by
         where ${where.join(' and ')} order by (r.status = 'PENDING') desc, r.from_date, r.id limit 200`, args);
+    // what is left is what has been credited by the leave's month (a monthly type builds up), less what was taken that year
+    return rows.map((r: any) => ({ ...r, left_days: r.paid ? Math.max(Math.round((creditedDays({ annual: r.annual, accrual: r.accrual_mode }, r.join_date, r.from_date) - r.taken) * 100) / 100, 0) : null }));
   }
 
   async pendingCount(user: any) {

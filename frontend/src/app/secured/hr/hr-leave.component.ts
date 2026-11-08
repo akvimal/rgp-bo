@@ -13,6 +13,9 @@ export class HrLeaveComponent implements OnInit {
   error = "";
 
   form: any = null;
+  /** the request that broke the limit on days together: asks the manager for a reason to allow it ('form' = the one being recorded) */
+  needOverride: 'form' | number | null = null;
+  overrideReason = "";
   deciding: { id: number; action: string; note: string } | null = null;
 
   /** leave types open to the chosen person's role */
@@ -36,21 +39,29 @@ export class HrLeaveComponent implements OnInit {
 
   add() {
     this.message = this.error = "";
-    this.form = { employee_id: null, leave_type_id: null, from_date: this.hr.today(), to_date: this.hr.today(), half_day: false, reason: "" };
+    this.needOverride = null;
+    this.form = { employee_id: null, leave_type_id: null, from_date: this.hr.today(), to_date: this.hr.today(), half_day: false, reason: "", override_reason: "" };
   }
 
   save() {
     this.message = this.error = "";
-    this.hr.post("leave/requests", this.form).subscribe(r => { this.message = `Leave recorded (${r.days} days), waiting for approval.`; this.form = null; this.load(); }, e => this.error = this.hr.msg(e));
+    this.hr.post("leave/requests", this.form).subscribe(r => {
+      this.message = `Leave recorded (${r.days} days), waiting for approval.` + (r.notes?.length ? ` Note: ${r.notes.join(" ")}` : "");
+      this.form = null; this.needOverride = null; this.load();
+    }, e => { this.error = this.hr.msg(e); if (/days together/.test(this.error)) this.needOverride = "form"; });
   }
 
   decide(id: number, action: string) {
     this.message = this.error = "";
     if (action === "reject" && !this.deciding) { this.deciding = { id, action, note: "" }; return; }
     const note = this.deciding?.note || "";
-    this.hr.post(`leave/requests/${id}/decision`, { action, note }).subscribe(() => { this.deciding = null; this.message = `Leave ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "cancelled"}.`; this.load(); },
-      e => this.error = this.hr.msg(e));
+    this.hr.post(`leave/requests/${id}/decision`, { action, note, override_reason: this.needOverride === id ? this.overrideReason : undefined }).subscribe(() => {
+      this.deciding = null; this.needOverride = null; this.overrideReason = "";
+      this.message = `Leave ${action === "approve" ? "approved" : action === "reject" ? "rejected" : "cancelled"}.`; this.load();
+    }, e => { this.error = this.hr.msg(e); if (action === "approve" && /days together/.test(this.error)) { this.needOverride = id; this.overrideReason = ""; } });
   }
+
+  approveWithReason() { if (typeof this.needOverride === "number") this.decide(this.needOverride, "approve"); }
 
   /** balances grouped per person */
   get people(): any[] {

@@ -71,13 +71,26 @@ export class MyHrComponent implements OnInit {
   sendLeave() {
     this.error = this.message = "";
     this.api.post("leave", this.leaveForm).subscribe(r => {
-      this.message = `Asked for ${r.days} day${r.days === 1 ? "" : "s"}. Your manager will decide.`;
+      this.message = `Asked for ${r.days} day${r.days === 1 ? "" : "s"}. Your manager will decide.` + (r.notes?.length ? ` Note: ${r.notes.join(" ")}` : "");
       this.leaveForm = null; this.loadLeave();
       this.api.get("summary").subscribe(s => this.summary = s);
     }, e => this.error = this.api.msg(e));
   }
   withdraw(r: any) { this.api.post(`leave/${r.id}/cancel`).subscribe(() => { this.message = "Request withdrawn."; this.loadLeave(); }, e => this.error = this.api.msg(e)); }
-  balanceLeft(b: any) { return Math.max(0, b.entitled - b.used); }
+  balanceLeft(b: any) { return b.available !== undefined ? b.available : Math.max(0, b.entitled - b.used); }
+
+  /** what to know about a leave type before asking: how its days build up, when it can first be taken, the stretch limit and the advised days */
+  typeHint(t: any): string {
+    if (!t || !t.paid) return "";
+    const bits: string[] = [];
+    if (t.accrual_mode === "MONTHLY") bits.push("Days build up month by month.");
+    if (t.max_consecutive) bits.push(`At most ${t.max_consecutive} day${t.max_consecutive === 1 ? "" : "s"} together${t.stretch_counts_offs !== false ? " (weekly offs and holidays in between count)" : ""}.`);
+    const mine = !t.advice_roles?.length || (this.leave?.role && t.advice_roles.includes(this.leave.role));
+    if (mine && t.advice_from_day && t.advice_to_day) bits.push(`Advised between the ${t.advice_from_day}th and the ${t.advice_to_day}th of the month.`);
+    if (mine && t.advice_avoid_weekdays?.length) bits.push("Advised not on " + t.advice_avoid_weekdays.map((d: number) => ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"][d]).join(" or ") + ".");
+    return bits.join(" ");
+  }
+  get chosenType(): any { return (this.leave?.types || []).find((t: any) => t.id === this.leaveForm?.leave_type_id) || null; }
 
   // ------------------------------------------------------------ attendance
   loadAttendance() { this.api.get("attendance", { period: this.period }).subscribe(a => this.attendance = a); }
