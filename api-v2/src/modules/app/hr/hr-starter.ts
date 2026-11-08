@@ -18,6 +18,8 @@ export interface StarterItem {
   /** leave only */
   paid?: boolean;
   annual_days?: number;
+  accrual_mode?: 'YEARLY' | 'MONTHLY';
+  max_consecutive?: number;
   /** one line the owner reads before adding */
   note?: string;
   /** offered only to this kind of business */
@@ -57,8 +59,8 @@ const ITEMS: StarterItem[] = [
   { code: 'ESI', name: 'ESI (employee share)', kind: 'DEDUCTION', note: 'Applies to staff below the wage ceiling. You enter the amount for each person.' },
   { code: 'PT', name: 'Professional tax', kind: 'DEDUCTION', note: 'A state rule: some states have none. You enter the amount.' },
   { code: 'TDS', name: 'TDS on salary', kind: 'DEDUCTION', note: 'Only for staff whose pay is taxable at source.' },
-  { code: 'CL', name: 'Casual leave', kind: 'LEAVE', paid: true, annual_days: 12 },
-  { code: 'SL', name: 'Sick leave', kind: 'LEAVE', paid: true, annual_days: 6 },
+  { code: 'CL', name: 'Casual leave', kind: 'LEAVE', paid: true, annual_days: 12, accrual_mode: 'MONTHLY', max_consecutive: 2 },
+  { code: 'SL', name: 'Sick leave', kind: 'LEAVE', paid: true, annual_days: 6, accrual_mode: 'MONTHLY' },
   { code: 'EL', name: 'Earned leave', kind: 'LEAVE', paid: true, annual_days: 12 },
   { code: 'LWP', name: 'Leave without pay', kind: 'LEAVE', paid: false, annual_days: 0 },
   { code: 'ML', name: 'Maternity leave', kind: 'LEAVE', paid: true, annual_days: 182, note: 'Check the entitlement that applies to you before relying on the days.' },

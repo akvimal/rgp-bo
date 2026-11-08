@@ -1,0 +1,12 @@
+ALTER TABLE public.hr_leave_request DROP COLUMN IF EXISTS policy_note;
+ALTER TABLE public.hr_leave_type DROP CONSTRAINT IF EXISTS hr_leave_type_advice_chk;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS advice_roles;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS advice_avoid_weekdays;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS advice_to_day;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS advice_from_day;
+ALTER TABLE public.hr_leave_request DROP COLUMN IF EXISTS override_reason;
+ALTER TABLE public.hr_leave_type DROP CONSTRAINT IF EXISTS hr_leave_type_policy_chk;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS stretch_counts_offs;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS max_consecutive;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS wait_months;
+ALTER TABLE public.hr_leave_type DROP COLUMN IF EXISTS accrual_mode;

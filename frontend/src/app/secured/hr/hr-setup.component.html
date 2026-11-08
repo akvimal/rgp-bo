@@ -89,17 +89,18 @@
       </div>
       <div class="table-responsive">
       <table class="table table-sm align-middle" data-testid="hr-set-types">
-        <thead><tr><th>Name</th><th>Paid</th><th class="text-end">Days a year</th><th>Applies to</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Paid</th><th class="text-end">Days a year</th><th>Rules</th><th>Applies to</th><th>Status</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let t of shownTypes; trackBy: trackId" data-testid="hr-set-type-row" [attr.data-type]="t.code">
             <td>{{t.name}}</td>
             <td>{{t.paid ? 'Paid' : 'Unpaid'}}</td>
             <td class="text-end">{{t.paid ? t.annual_days : '-'}}</td>
+            <td class="small" data-testid="hr-set-type-rules">{{rulesText(t)}}</td>
             <td>{{roleSummary(t.applies_roles)}}<span class="small text-muted d-block" *ngIf="t.position_names?.length">Job roles: {{t.position_names.join(', ')}}</span></td>
             <td><span class="badge" [ngClass]="t.active ? 'bg-success' : 'bg-secondary'">{{t.active ? 'Active' : 'Inactive'}}</span></td>
             <td class="text-end"><button class="btn btn-outline-primary btn-sm" type="button" (click)="openType(t)" data-testid="hr-set-type-edit">Edit</button></td>
           </tr>
-          <tr *ngIf="!shownTypes.length"><td colspan="6" class="text-center text-muted py-3">{{leaveTypes.length ? 'No leave type matches.' : 'No leave types yet.'}}</td></tr>
+          <tr *ngIf="!shownTypes.length"><td colspan="7" class="text-center text-muted py-3">{{leaveTypes.length ? 'No leave type matches.' : 'No leave types yet.'}}</td></tr>
         </tbody>
       </table>
       </div>
@@ -269,6 +270,26 @@
         <select class="form-select" [(ngModel)]="pn.model.paid" [disabled]="!!pn.model.id" data-testid="hr-set-type-paid"><option [ngValue]="true">Paid</option><option [ngValue]="false">Unpaid</option></select>
         <div class="form-text" *ngIf="pn.model.id">Paid or unpaid cannot be changed; add a new type.</div></div>
       <div class="col-6"><label class="form-label">Days a year</label><input type="number" min="0" class="form-control" [(ngModel)]="pn.model.annual_days" [disabled]="!pn.model.paid" data-testid="hr-set-type-days"></div>
+      <ng-container *ngIf="pn.model.paid">
+        <div class="col-12"><div class="form-section">Rules</div></div>
+        <div class="col-12 col-md-6"><label class="form-label">How the days build up</label>
+          <select class="form-select" [(ngModel)]="pn.model.accrual_mode" data-testid="hr-set-type-accrual">
+            <option value="YEARLY">All at once, from 1 January</option>
+            <option value="MONTHLY">A twelfth each month, from the month of joining</option>
+          </select>
+          <div class="form-text" *ngIf="pn.model.accrual_mode === 'MONTHLY'">Joined on or before the 15th: that month counts; after it, the next month. Unused days lapse on 31 December.</div></div>
+        <div class="col-6 col-md-3"><label class="form-label">Can be taken after (months)</label><input type="number" min="0" max="60" class="form-control" [(ngModel)]="pn.model.wait_months" data-testid="hr-set-type-wait"><div class="form-text">From the date of joining. 0 = no wait.</div></div>
+        <div class="col-6 col-md-3"><label class="form-label">Most days together</label><input type="number" min="1" max="60" class="form-control" [(ngModel)]="pn.model.max_consecutive" placeholder="No limit" data-testid="hr-set-type-together"></div>
+        <div class="col-12" *ngIf="pn.model.max_consecutive"><div class="form-check"><input class="form-check-input" type="checkbox" id="lt-offs" [(ngModel)]="pn.model.stretch_counts_offs" data-testid="hr-set-type-offs"><label class="form-check-label" for="lt-offs">Weekly offs and holidays between the leave days count as part of the stretch</label></div>
+          <div class="form-text">So Friday and Monday with a weekend between is 4 days together. A manager can allow more, with a reason.</div></div>
+        <div class="col-12"><div class="form-section">Advised days <span class="text-muted small">(advice only: the leave is still recorded, with a note for the person who approves)</span></div></div>
+        <div class="col-6 col-md-3"><label class="form-label">From day of the month</label><input type="number" min="1" max="31" class="form-control" [(ngModel)]="pn.model.advice_from_day" placeholder="Any" data-testid="hr-set-type-advfrom"></div>
+        <div class="col-6 col-md-3"><label class="form-label">To day of the month</label><input type="number" min="1" max="31" class="form-control" [(ngModel)]="pn.model.advice_to_day" placeholder="Any" data-testid="hr-set-type-advto"></div>
+        <div class="col-12 col-md-6"><label class="form-label d-block">Advised to avoid</label>
+          <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="lt-sat" [checked]="avoids(6)" (change)="toggleAvoid(6)" data-testid="hr-set-type-avoid-sat"><label class="form-check-label" for="lt-sat">Saturdays</label></div>
+          <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="lt-sun" [checked]="avoids(0)" (change)="toggleAvoid(0)" data-testid="hr-set-type-avoid-sun"><label class="form-check-label" for="lt-sun">Sundays</label></div></div>
+        <div class="col-12"><label class="form-label">The advice is for login roles <span class="text-muted small">(none chosen = everyone this type applies to)</span></label><app-hr-roles [roles]="roles" [(value)]="pn.model.advice_roles"></app-hr-roles></div>
+      </ng-container>
       <div class="col-12"><label class="form-label">Applies to login roles</label><app-hr-roles [roles]="roles" [(value)]="pn.model.applies_roles"></app-hr-roles></div>
       <div class="col-12"><label class="form-label">Applies to job roles</label><app-hr-roles [roles]="positionNames" [(value)]="pn.model.position_names"></app-hr-roles></div>
       <div class="col-12" *ngIf="pn.model.id"><div class="form-check"><input class="form-check-input" type="checkbox" id="lt-active" [(ngModel)]="pn.model.active"><label class="form-check-label" for="lt-active">Active</label></div></div>

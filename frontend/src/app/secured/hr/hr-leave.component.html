@@ -2,7 +2,7 @@
 <div class="card">
   <div class="card-body pt-3">
     <div class="page-toolbar">
-      <div class="page-toolbar-main"><div class="small text-muted">Paid leave counts against the yearly entitlement; unpaid leave and absences reduce pay. Weekly offs and holidays are not counted as leave.</div></div>
+      <div class="page-toolbar-main"><div class="small text-muted">Paid leave counts against the days credited so far this year (each leave type says how its days build up); unpaid leave and absences reduce pay. Weekly offs and holidays are not counted as leave.</div></div>
       <div class="page-toolbar-actions"><button class="btn btn-primary" type="button" (click)="add()" data-testid="hr-leave-add">Record leave</button></div>
     </div>
     <div *ngIf="message" class="alert alert-success py-2" data-testid="hr-message">{{message}}</div>
@@ -18,8 +18,14 @@
         <div class="col-6 col-md-3 col-lg-2"><label class="form-label">To *</label><input type="date" class="form-control" [(ngModel)]="form.to_date" data-testid="hr-l-to"></div>
         <div class="col-6 col-md-3 col-lg-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="half" [(ngModel)]="form.half_day"><label class="form-check-label" for="half">Half day</label></div></div>
         <div class="col-md-9"><label class="form-label">Reason</label><input class="form-control" maxlength="200" [(ngModel)]="form.reason"></div>
+        <div class="col-12" *ngIf="needOverride === 'form'"><label class="form-label">Why more days together are allowed *</label><input class="form-control" maxlength="200" [(ngModel)]="form.override_reason" data-testid="hr-l-override" placeholder="e.g. a family function, agreed with the store head"></div>
         <div class="col-md-6 col-lg-3 d-flex align-items-end"><button class="btn btn-primary" type="button" (click)="save()" data-testid="hr-l-save">Save</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="form = null">Cancel</button></div>
       </div>
+    </div>
+
+    <div *ngIf="needOverride && needOverride !== 'form'" class="row g-2 align-items-end mb-3" data-testid="hr-l-override-box">
+      <div class="col-md-8"><label class="form-label">Why more days together are allowed *</label><input class="form-control" maxlength="200" [(ngModel)]="overrideReason" data-testid="hr-l-approve-override"></div>
+      <div class="col-md-4"><button class="btn btn-success" type="button" (click)="approveWithReason()" data-testid="hr-l-approve-go">Approve anyway</button><button class="btn btn-outline-secondary ms-2" type="button" (click)="needOverride = null">Cancel</button></div>
     </div>
 
     <div *ngIf="deciding" class="row g-2 align-items-end mb-3">
@@ -34,7 +40,9 @@
           <tr *ngFor="let r of requests" data-testid="hr-leave-row" [attr.data-status]="r.status">
             <td>{{r.name}}</td><td>{{r.type}} <span class="small text-muted">{{r.paid ? 'paid' : 'unpaid'}}</span></td>
             <td>{{r.from_date | date:'dd MMM yyyy'}}</td><td>{{r.to_date | date:'dd MMM yyyy'}}</td><td class="text-end">{{r.days}}</td>
-            <td>{{r.reason}}<div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div></td>
+            <td>{{r.reason}}<div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div>
+              <div class="small text-warning" *ngIf="r.policy_note" data-testid="hr-l-note-policy"><i class="bi bi-exclamation-triangle"></i> {{r.policy_note}}</div>
+              <div class="small text-info" *ngIf="r.override_reason" data-testid="hr-l-note-override">Allowed beyond the limit: {{r.override_reason}}</div></td>
             <td><span class="badge" [ngClass]="badge(r.status)">{{r.status | titlecase}}</span></td>
             <td class="text-end text-nowrap">
               <ng-container *ngIf="r.status === 'PENDING'">
@@ -57,7 +65,7 @@
           <strong>{{p.name}}</strong>
           <table class="table table-sm mb-0"><tbody>
             <tr *ngFor="let b of p.rows"><td>{{b.type}}</td>
-              <td class="text-end"><span *ngIf="b.paid">{{b.used}} used of {{b.entitled}}<span *ngIf="b.pending"> (+{{b.pending}} pending)</span></span><span *ngIf="!b.paid">{{b.used}} taken</span></td></tr>
+              <td class="text-end"><span *ngIf="b.paid"><strong>{{b.available}}</strong> available<span class="small text-muted"> · {{b.used}} used, {{b.credited}} of {{b.entitled}} credited<span *ngIf="b.pending"> · {{b.pending}} pending</span></span><span class="small text-muted d-block" *ngIf="b.eligible_from">can be taken from {{b.eligible_from | date:'dd MMM yyyy'}}</span></span><span *ngIf="!b.paid">{{b.used}} taken</span></td></tr>
           </tbody></table>
         </div>
       </div>

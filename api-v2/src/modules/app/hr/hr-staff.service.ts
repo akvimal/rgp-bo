@@ -574,7 +574,7 @@ export class HrStaffService {
     const have = await this.haveCodes();
     const items = itemsToAdd(await this.businessTypeOf(by.id), { starter: !!b?.starter, codes: Array.isArray(b?.codes) ? b.codes : [] }, have.comps, have.leave, payrollMode(await this.legalFormOf(by.id)));
     for (const i of items) {
-      if (i.kind === 'LEAVE') await this.saveLeaveType({ code: i.code, name: i.name, paid: i.paid, annual_days: i.annual_days }, by);
+      if (i.kind === 'LEAVE') await this.saveLeaveType({ code: i.code, name: i.name, paid: i.paid, annual_days: i.annual_days, accrual_mode: i.accrual_mode, max_consecutive: i.max_consecutive }, by);
       else await this.saveComponent(null, { code: i.code, name: i.name, kind: i.kind, display_order: i.kind === 'EARNING' ? 10 : 90 }, by);
     }
     let roles: string[] = [];
@@ -594,7 +594,8 @@ export class HrStaffService {
 
   /** inserted here rather than through the leave service, so the staff service has no dependency on it; the rules are the same */
   private async saveLeaveType(b: any, by: any) {
-    const [r] = await this.manager.query(`insert into hr_leave_type (code, name, paid, annual_days) values ($1,$2,$3,$4) on conflict (code) do nothing returning id`, [b.code, b.name, b.paid !== false, b.annual_days || 0]);
+    const [r] = await this.manager.query(`insert into hr_leave_type (code, name, paid, annual_days, accrual_mode, max_consecutive) values ($1,$2,$3,$4,$5,$6) on conflict (code) do nothing returning id`,
+      [b.code, b.name, b.paid !== false, b.annual_days || 0, b.accrual_mode === 'MONTHLY' ? 'MONTHLY' : 'YEARLY', b.max_consecutive || null]);
     if (r) await this.audit.record({ userId: by.id, action: 'hr.leave_type_saved', entityType: 'hr_leave_type', entityId: r.id, summary: `Leave type ${b.name} saved`, details: {} });
   }
 

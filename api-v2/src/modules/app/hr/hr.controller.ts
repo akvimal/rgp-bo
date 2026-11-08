@@ -76,7 +76,7 @@ export class HrController {
   @Get('leave/requests') requests(@Query('period') period: string, @Query('status') status: string, @Query('employee') employee: string) {
     return this.leave.requests({ period, status, employee: employee ? Number(employee) : undefined });
   }
-  @Post('leave/requests') createLeave(@Body() b: any, @User() u: any) { return this.leave.create(b, u); }
+  @Post('leave/requests') createLeave(@Body() b: any, @User() u: any) { return this.leave.create(b, u, { canOverride: true }); }
   @Post('leave/requests/:id/decision') decide(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.leave.decide(id, b, u); }
   @Get('holidays') holidays(@Query('year') year: string) { return this.leave.holidays(Number(year) || new Date().getFullYear()); }
   @Post('holidays') addHoliday(@Body() b: any, @User() u: any) { return this.leave.addHoliday(b, u); }
