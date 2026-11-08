@@ -62,6 +62,18 @@ describe('AiProvider', () => {
     expect(await ai.isChoosable('openai/gpt-a')).toBe(true);
   });
 
+  it('offers the Claude family for a direct Anthropic key, the server default first if it is another, within the allow list', async () => {
+    env({ ANTHROPIC_API_KEY: 'a', AI_MODEL: 'claude-haiku-5-5' });
+    const all = (await new AiProvider().models()).map((m) => m.id);
+    expect(all).toEqual(expect.arrayContaining(['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5']));
+    env({ ANTHROPIC_API_KEY: 'a', AI_MODEL: 'claude-custom-1' });
+    expect((await new AiProvider().models())[0].id).toBe('claude-custom-1');
+    env({ ANTHROPIC_API_KEY: 'a', AI_MODEL: 'claude-haiku-5-5', AI_ALLOWED_MODELS: 'claude-haiku-5-5,claude-sonnet-5-5' });
+    const ai = new AiProvider();
+    expect((await ai.models()).map((m) => m.id)).toEqual(['claude-haiku-5-5', 'claude-sonnet-5-5']);
+    expect(await ai.isChoosable('claude-opus-5-5')).toBe(false);
+  });
+
   it('calls OpenRouter with the chosen model and the forced tool, and asks again without the forced choice if refused', async () => {
     env({ OPENROUTER_API_KEY: 'o' });
     const spy = jest.spyOn(global, 'fetch')

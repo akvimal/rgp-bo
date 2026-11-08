@@ -6,6 +6,7 @@ import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
 import { ROLE, isOwnerRole } from 'src/core/roles';
 import { StoreService } from '../store/store.service';
 import { AiProvider } from './ai-provider';
+import { DEFAULT_KEY, TASKS, TIERS, Tier, loadChoices, parseChanges, pickModel, resolveModel, taskKey, tierKey } from './ai-models';
 import { AiSettingsService } from './ai-settings.service';
 import { HrKpiEngine } from '../hr/hr-kpi-engine.service';
 import { AlertDrafter, Draft, RECIPIENT_ROLES } from './alert-drafter';
@@ -337,38 +338,64 @@ export class AlertsService {
     };
   }
 
-  // ------------------------------------------------------------------------------------------------ the assistant's model
-  /** which model drafts the rules: the owner's choice if there is one, else the server's default */
+  // ------------------------------------------------------------------------------------------------ the assistant's models
+  /** which model each assistant uses: the owner's choices (a default, a model per level of difficulty, a model per assistant), else the server's default */
   async aiConfig(user: any) {
     await this.owner(user);
-    const [row] = await this.manager.query(`select setting_value from app_setting where setting_key = 'ai.model' and active and not archive`);
+    const choices = await loadChoices(this.manager);
     return {
       provider: this.ai.provider,
       configured: this.ai.configured,
-      model: row?.setting_value || this.ai.defaultModel,
-      chosen: !!row?.setting_value,
-      models: this.ai.provider === 'openrouter' ? await this.ai.models() : [],
+      model: choices.default || this.ai.defaultModel,
+      chosen: !!choices.default,
+      models: await this.ai.models(),
+      tiers: TIERS.map((t) => ({ ...t, model: choices.tiers[t.tier] || '' })),
+      tasks: TASKS.map((t) => { const p = pickModel(choices, t.task, this.ai.defaultModel); return { ...t, model: choices.tasks[t.task] || '', uses: p.model, source: p.source }; }),
       ...this.aiSettings.state(),
     };
   }
 
-  async saveAiModel(user: any, body: any) {
+  /** the default model, the model of each level, the model of each assistant: an empty value clears a choice */
+  async saveAiModels(user: any, body: any) {
     await this.owner(user);
-    if (this.ai.provider !== 'openrouter') throw new BadRequestException('Models can be chosen when the assistant runs through OpenRouter.');
-    const model = String(body?.model || '').trim();
-    if (!(await this.ai.isChoosable(model))) throw new BadRequestException('That model is not one of the choices (it must be able to call tools, and be allowed on this server).');
-    await this.manager.query(
-      `insert into app_setting (category, setting_key, setting_value, created_by, updated_by) values ('ai', 'ai.model', $1, $2, $2)
-       on conflict (setting_key) do update set setting_value = excluded.setting_value, active = true, archive = false, updated_on = now(), updated_by = excluded.updated_by`,
-      [model, user.id]);
+    const parsed = parseChanges(body);
+    if ('error' in parsed) throw new BadRequestException(parsed.error);
+    const { changes } = parsed;
+    const writes: [string, string][] = [];
+    if (changes.default !== undefined) writes.push([DEFAULT_KEY, changes.default]);
+    for (const [t, m] of Object.entries(changes.tiers)) writes.push([tierKey(t as Tier), m as string]);
+    for (const [t, m] of Object.entries(changes.tasks)) writes.push([taskKey(t), m as string]);
+    const wanted = [...new Set(writes.map((w) => w[1]).filter(Boolean))];
+    if (wanted.length) {
+      if (!this.ai.configured) throw new BadRequestException("Add the assistant's key first, then choose its models.");
+      const choosable = new Set((await this.ai.models()).map((m) => m.id));
+      const bad = wanted.find((m) => !choosable.has(m));
+      if (bad) throw new BadRequestException(`${bad} is not one of the choices (it must be able to call tools, and be allowed on this server).`);
+    }
+    for (const [key, model] of writes) {
+      if (model) {
+        await this.manager.query(
+          `insert into app_setting (category, setting_key, setting_value, created_by, updated_by) values ('ai', $1, $2, $3, $3)
+           on conflict (setting_key) do update set setting_value = excluded.setting_value, active = true, archive = false, updated_on = now(), updated_by = excluded.updated_by`,
+          [key, model, user.id]);
+      } else {
+        await this.manager.query(`update app_setting set active = false, archive = true, setting_value = null, updated_on = now(), updated_by = $2 where setting_key = $1`, [key, user.id]);
+      }
+    }
+    if (writes.length) await this.aiSettings.recordModels(user, writes.length, changes);
     return this.aiConfig(user);
+  }
+
+  /** the one default model (kept for the older call) */
+  async saveAiModel(user: any, body: any) {
+    return this.saveAiModels(user, { default: String(body?.model || '').trim() });
   }
 
   /** the assistant's draft of a rule from a sentence; nothing is saved until the owner confirms it */
   async draft(user: any, body: any): Promise<{ draft: Draft; preview: any }> {
     const w = await this.owner(user);
     const stores = await this.manager.query(`select id, location from stores where business_id = $1 and active and not archive order by id`, [w.businessId]);
-    const { model } = await this.aiConfig(user);
+    const model = await resolveModel(this.manager, this.ai, 'propose_alert_rule');
     const draft = await this.drafter.draft(body?.instruction, stores.map((s: any) => ({ id: s.id, location: String(s.location).trim() })), w.businessId, model);
     return { draft, preview: await this.preview(user, draft) };
   }

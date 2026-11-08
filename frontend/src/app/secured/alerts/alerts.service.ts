@@ -42,7 +42,10 @@ export class AlertsService {
   saveAiKey(provider: string, key: string) { return this.http.put<any>(`${this.api}/ai/key`, { provider, key }); }
   clearAiKey() { return this.http.delete<any>(`${this.api}/ai/key`); }
   testAi() { return this.http.post<any>(`${this.api}/ai/test`, {}); }
+  aiUsage() { return this.http.get<any>(`${this.api}/ai/usage`); }
+  saveAiLimit(limit: number) { return this.http.put<any>(`${this.api}/ai/limit`, { limit }); }
   saveAi(model: string) { return this.http.put<any>(`${this.api}/ai`, { model }); }
+  saveAiModels(body: any) { return this.http.put<any>(`${this.api}/ai/models`, body); }
 
   kinds() { return this.http.get<any>(`${this.api}/kinds`); }
   rules() { return this.http.get<any[]>(`${this.api}/rules`); }

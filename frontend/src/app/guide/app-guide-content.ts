@@ -64,6 +64,12 @@ export const GUIDE_META = {
 export const PAGES: PageGuide[] = [
   // ---- home
   {
+    id: 'nav-todos', group: 'home', title: 'To-dos', route: '/secure/todos',
+    purpose: 'Jobs you have to do, with a day and time, a reminder, and a note of what you did when you finish.',
+    tasks: ['Mine: add a to-do with the day, the time and a priority, and mark it Done.', 'Make it repeat every day, every week on chosen days, or every month, or have the next one made some days after it is done.', 'My team\'s: managers give a to-do to a person, or to a store\'s staff, and see what is Done lately or Missed.', 'To-dos made by the KPI assistant appear here too, for the people in the role.'],
+    who: 'Everyone. Managers can give to-dos to the people and stores they look after.', watch: ['A to-do left undone can be raised to the manager after the number of days set on it.'], keywords: 'todo to-do reminder task repeat assign',
+  },
+  {
     id: 'nav-dashboard', group: 'home', title: 'Dashboard', route: '/secure/dashboard',
     purpose: 'Today at a glance, for the work your role does: sales, cash, and what needs attention.',
     tasks: ['See today\'s and this month\'s figures for your stores.', 'Open a number or an alert to go to the page behind it.', 'Change the period or the store where the page offers it.'],
@@ -111,6 +117,12 @@ export const PAGES: PageGuide[] = [
     purpose: 'Regular customers whose chronic medicine is about to run out, so they can be called before they do.',
     tasks: ['See who is due, with what and when.', 'Call or message them and record what came of it.'],
     who: 'Counter staff.', keywords: 'chronic refill call reminder',
+  },
+  {
+    id: 'nav-price-changes', group: 'sell', title: 'Price changes', route: '/secure/price-changes',
+    purpose: 'What changed in the shop\'s selling prices, for the counter, so you can tell a customer why a price moved.',
+    tasks: ['Choose the days (7 or 14 days, this month or last month, or your own dates).', 'Hide small moves with "Changed by at least %", or find one product by name.', 'Print the sheet and keep it beside the till.'],
+    who: 'Everyone who serves at the counter. It shows selling prices only, never cost.', keywords: 'price change increase decrease mrp sheet print',
   },
   {
     id: 'nav-inquiries', group: 'sell', title: 'Requests and inquiries', route: '/secure/inquiries',
@@ -317,10 +329,16 @@ export const PAGES: PageGuide[] = [
     tasks: ['Add or edit a delivery partner.'], who: 'Store heads.', keywords: 'delivery courier',
   },
   {
+    id: 'setup-ai-assistant', group: 'setup', title: 'AI assistant', route: '/secure/settings/business-profile/ai', needs: ['businessprofile'],
+    purpose: 'The key the assistants use, how much they may be used each month, and which model does which job.',
+    tasks: ['Key: the Business Head pastes it (OpenRouter or Anthropic), presses Save key, then Test. It is kept encrypted and never shown again.', 'Use: see the requests made this month against a monthly limit (300 to start; 0 means no limit), and what they went on. When the limit is reached every assistant stops until next month or until you raise it.', 'Models: choose a default model, then optionally a model for each level of difficulty (Simple, Standard, Complex) or for a single assistant. A job uses its own model, else the one for its level, else the default.', 'Suggest a spread (a direct Anthropic key) fills a small, a mid and a large model for the three levels.'],
+    who: 'The Business Head.', watch: ['Only anonymous totals leave the server to the model, never names, salaries or bills.', 'A cheaper model saves money on short jobs; give KPI drafts the most capable one.'], keywords: 'ai assistant key model openrouter anthropic limit usage cost haiku sonnet opus complexity',
+  },
+  {
     id: 'setup-alerts', group: 'setup', title: 'Alerts', route: '/secure/settings/alerts', needs: ['alerts.manage'],
     purpose: 'What the shop is told about, who is told and how loudly, and whether alerts also go to staff on Telegram.',
-    tasks: ['AI assistant: the Business Head pastes the key here (OpenRouter or Anthropic), presses Test, and picks a model for OpenRouter. The key is kept encrypted and never shown again.', 'Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence.', 'See who has connected Telegram and how the messages went.'],
-    who: 'The Business Head.', keywords: 'alert rule telegram notification ai key assistant openrouter anthropic',
+    tasks: ['Switch a built-in alert on or off and change its numbers.', 'Add your own alert, or describe it in a sentence (the assistant drafts it once its key is added under Settings > AI assistant).', 'See who has connected Telegram and how the messages went.'],
+    who: 'The Business Head.', keywords: 'alert rule telegram notification',
   },
   {
     id: 'setup-dashboards', group: 'setup', title: 'Dashboards', route: '/secure/settings/dashboards', needs: ['dashsetup.view'],
@@ -435,7 +453,7 @@ export const WALKTHROUGHS: Walkthrough[] = [
   {
     id: 'w-ai-role', title: 'Draft a job role, KPIs and incentives with the assistant', from: 'nav-hr',
     steps: ['Open Staff and HR, then Role assistant. Choose a role and press Set up (or Set up all roles).', 'Description: press Draft with AI, edit the purpose and responsibilities, then Approve and save.', 'KPIs: press Draft KPIs with AI. The weights total 100 and the targets come from your own past figures. Remove any you do not want, then press Add these KPIs.', 'Incentives: press Draft incentive bands with AI. Each band is a fixed amount. Press Check the cost, then Use these bands.', 'Reminders: press Create the reminders to give each person in the role a weekly and monthly to-do.'],
-    tips: ['Nothing is used until you approve it.', 'Only anonymous totals go to the AI, never names, salaries or bills.', 'It needs the key under Settings > Alerts. Bands are refused if the worst-case cost goes over the incentive ceiling at the top of the page.'], keywords: 'ai assistant job role kpi incentive band draft',
+    tips: ['Nothing is used until you approve it.', 'Only anonymous totals go to the AI, never names, salaries or bills.', 'It needs the key under Settings > AI assistant. Bands are refused if the worst-case cost goes over the incentive ceiling at the top of the page.'], keywords: 'ai assistant job role kpi incentive band draft',
   },
   {
     id: 'w-knowledge', title: 'Take the weekly knowledge check', from: 'nav-knowledge',

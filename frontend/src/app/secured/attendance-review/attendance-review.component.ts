@@ -153,11 +153,15 @@ export class AttendanceReviewComponent implements OnInit, OnDestroy {
 
   label(s: string) { return s === "PRESENT" ? "Present" : s === "ABSENT" ? "Absent" : s === "HALF_DAY" ? "Half day" : s; }
 
+  private seq = 0;
+
   load() {
     this.error = "";
+    // only the newest request may fill the list: an older one that finishes later is ignored
+    const mine = ++this.seq;
     this.api.list(this.period, this.status).subscribe(
-      (r: any) => { this.items = r.items; this.pending = r.pending; this.missing = r.missing; this.editing = null; },
-      e => (this.error = this.api.msg(e)));
+      (r: any) => { if (mine !== this.seq) return; this.items = r.items; this.pending = r.pending; this.missing = r.missing; this.editing = null; },
+      e => { if (mine === this.seq) this.error = this.api.msg(e); });
   }
 
   togglePhotos(i: any) {

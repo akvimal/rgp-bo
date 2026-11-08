@@ -77,3 +77,15 @@ Not a bug (recorded as behaviour): duplicate vendor name/GST is blocked with HTT
 ## Settings the suite expects
 
 `pricing/sale_mrp_guard` and `pricing/sale_gst_guard` are `off` on the QA database: many specs and the seed post bills at the batch's own GST rate, which the GST guard (migration 149) would send back. `gst-sale-rate.spec.ts` (GSTS-1..4) and `price-policy.spec.ts` switch the guard they test on for themselves and put it back.
+
+## Running specs against a scratch stack (without wiping the dev volume)
+
+The specs read `QA_BASE_URL` (the frontend), `QA_API_URL` and `QA_ADMIN_PASS`, so they can run against any stack that has the seed logins, for example a scratch database with the API on 3000 and `ng serve` on 4200:
+
+```bash
+QA_BASE_URL=http://localhost:4200 QA_API_URL=http://localhost:3000 QA_ADMIN_PASS=<the password of those logins> npx playwright test specs/attendance-punch.spec.ts specs/hr-assistant.spec.ts
+```
+
+- `attendance-punch.spec.ts` (ATT-1..10) runs the punch screen in Chromium with a fake webcam. A person has one In and one Out a day, so a second run on the same day needs `hr_punch`/`hr_attendance` rows for `sales1`/`sales2` cleared first (or a fresh seed).
+- `hr-assistant.spec.ts` (AIA-1..5): AIA-1..3 need no model. AIA-4 and AIA-5 need the stand-in model: start `node qa/support/ai-standin.mjs`, start the API with `AI_PROVIDER=anthropic ANTHROPIC_API_KEY=server-env-key-0000000000000000 ANTHROPIC_BASE_URL=http://localhost:3911 AI_MODEL=claude-haiku-5-5`, and set `QA_AI_STANDIN=1`.
+- The guide spec APPG-1 expects the seeded Counter role; on a database where Counter has been given other permissions (for example `purchases.request`) its "counter sees no Setup page" check fails for that reason alone.

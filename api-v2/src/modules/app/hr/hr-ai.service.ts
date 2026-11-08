@@ -3,6 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { AiProvider } from '../alerts/ai-provider';
+import { loadChoices, resolveModel } from '../alerts/ai-models';
 import { HrKpiEngine, SYSTEM_MEASURES } from './hr-kpi-engine.service';
 import { HrKpiService } from './hr-kpi.service';
 import { checkCeiling, cleanBands, cleanKpis, cleanRole, simulateBands, summarise } from './hr-ai-draft';
@@ -80,21 +81,21 @@ export class HrAiService {
     private readonly kpi: HrKpiService,
   ) {}
 
-  private async model(): Promise<string> {
-    const [row] = await this.manager.query(`select setting_value from app_setting where setting_key = 'ai.model' and active and not archive`);
-    return row?.setting_value || this.ai.defaultModel;
+  /** the model for a job: its own, its level's, or the default (Settings > AI assistant) */
+  private model(task: string): Promise<string> {
+    return resolveModel(this.manager, this.ai, task);
   }
 
-  private async ready(): Promise<string> {
-    if (!this.ai.configured) throw new ServiceUnavailableException('The assistant is not switched on. The Business Head can add its key under Settings > Alerts.');
-    const m = await this.model();
-    if (!m) throw new ServiceUnavailableException('Choose the assistant\'s model under Settings > Alerts first.');
+  private async ready(task: string): Promise<string> {
+    if (!this.ai.configured) throw new ServiceUnavailableException('The assistant is not switched on. The Business Head can add its key under Settings > AI assistant.');
+    const m = await this.model(task);
+    if (!m) throw new ServiceUnavailableException('Choose the assistant\'s model under Settings > AI assistant first.');
     return m;
   }
 
   async status() {
     const [c] = await this.manager.query(`select setting_value from app_setting where setting_key = $1 and active and not archive`, [CEILING_KEY]);
-    return { configured: this.ai.configured, model: await this.model(), ceiling_pct: c?.setting_value === undefined || c?.setting_value === null ? null : Number(c.setting_value) };
+    return { configured: this.ai.configured, model: (await loadChoices(this.manager)).default || this.ai.defaultModel, ceiling_pct: c?.setting_value === undefined || c?.setting_value === null ? null : Number(c.setting_value) };
   }
 
   async setCeiling(pct: any, by: any) {
@@ -136,7 +137,7 @@ export class HrAiService {
 
   // ------------------------------------------------------------------------------------------------ 1. the job role
   async draftRole(b: any, user: any) {
-    const model = await this.ready();
+    const model = await this.ready('propose_role');
     const p = await this.position(b?.position_id);
     const biz = await this.business();
     const notes = clip(b?.notes, 300);
@@ -166,7 +167,7 @@ export class HrAiService {
 
   // ------------------------------------------------------------------------------------------------ 2. the KPIs
   async draftKpis(b: any, user: any) {
-    const model = await this.ready();
+    const model = await this.ready('propose_kpis');
     const p = await this.position(b?.position_id);
     if (!p.responsibilities?.length) throw new BadRequestException('Write and approve the job description first: the KPIs come from the responsibilities.');
     const biz = await this.business();
@@ -236,7 +237,7 @@ export class HrAiService {
   }
 
   async draftBands(b: any, user: any) {
-    const model = await this.ready();
+    const model = await this.ready('propose_bands');
     const p = await this.position(b?.position_id);
     if (!p.staff) throw new BadRequestException('No one holds this job role yet.');
     const metrics = await this.manager.query(`select name, max_points::float as max from hr_kpi_metric where active and applies_positions @> array[$1]::int[] order by display_order`, [p.id]);

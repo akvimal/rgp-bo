@@ -33,6 +33,7 @@ import { StaffDetailsFieldsComponent } from "./users/components/staff-details-fi
 import { NotificationsComponent } from "./notifications/notifications.component";
 import { AlertRulesComponent } from "./alerts/alert-rules.component";
 import { AiKeyCardComponent } from "./alerts/ai-key-card.component";
+import { AiAssistantSettingsComponent } from "./ai-assistant/ai-assistant-settings.component";
 import { DashboardSetupComponent } from "./dashboard-setup/dashboard-setup.component";
 
 const routes: Routes = [
@@ -59,6 +60,7 @@ const routes: Routes = [
     { path: 'businesses', component: BusinessesComponent },
     { path: 'business-profile/setup', component: ShopSetupComponent },
     { path: 'business-profile/transfer', component: ConfigTransferComponent },
+    { path: 'business-profile/ai', component: AiAssistantSettingsComponent },
     { path: 'business-profile', component: BusinessProfileComponent },
     { path: 'store', component: StoreSettingsComponent },
     { path: 'notifications', component: NotificationsComponent },
@@ -91,6 +93,7 @@ const routes: Routes = [
       NotificationsComponent,
       AlertRulesComponent,
       AiKeyCardComponent,
+      AiAssistantSettingsComponent,
       DashboardSetupComponent
     ],
     imports: [
