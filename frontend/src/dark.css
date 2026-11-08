@@ -194,9 +194,11 @@ html[data-theme="dark"] .sale-actions, html[data-theme="dark"] .inv-table th, ht
 html[data-theme="dark"] .p-datatable.inv-table .p-datatable-thead > tr > th, html[data-theme="dark"] .p-datatable.inv-table .p-datatable-tfoot > tr > td,
 html[data-theme="dark"] .bill-items th, html[data-theme="dark"] .reo-step { background: var(--dk-surface-2); color: var(--rgp-text); }
 html[data-theme="dark"] .reo-step-final { background: #12301f; }
-html[data-theme="dark"] .sale-history-item:hover, html[data-theme="dark"] .row-hover:hover { background: var(--rgp-hover-bg); }
-html[data-theme="dark"] .expired { background: #3a1a1f; }
-html[data-theme="dark"] .low { background: #3a2f12; }
+html[data-theme="dark"] .sale-history-item:hover { background: var(--rgp-hover-bg); }
+/* styles.css marks these rows with !important, so the dark colours need it too (stock list: negative or low stock, expired batches) */
+html[data-theme="dark"] .expired, html[data-theme="dark"] tr.expired > td { background: #2b3046 !important; color: var(--rgp-text) !important; }
+html[data-theme="dark"] .low, html[data-theme="dark"] tr.low > td { background: #4a1d24 !important; color: #f5c2c7 !important; }
+html[data-theme="dark"] .row-hover:hover { background: #2a3350 !important; }
 html[data-theme="dark"] .checkmark { background-color: var(--dk-input); }
 html[data-theme="dark"] .shift-pill-open { background: #12301f; color: #b6e8c8; }
 html[data-theme="dark"] .shift-pill-none { background: #3a2f12; color: #f1d98f; }
