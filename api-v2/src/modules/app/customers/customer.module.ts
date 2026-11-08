@@ -8,6 +8,8 @@ import { CustomerDueService } from "./customer-due.service";
 import { CustomerDueController } from "./customer-due.controller";
 import { CustomerRelationshipService } from "./customer-relationship.service";
 import { CustomerPrivacyService } from "./customer-privacy.service";
+import { CustomerFollowupService } from "./customer-followup.service";
+import { AiProvider } from "../alerts/ai-provider";
 import { CustomerRelationshipController } from "./customer-relationship.controller";
 import { Customer } from "src/entities/customer.entity";
 import { CustomerCreditAccount } from "src/entities/customer-credit-account.entity";
@@ -17,7 +19,7 @@ import { JwtService } from "@nestjs/jwt";
 @Module({
     imports: [TypeOrmModule.forFeature([Customer,CustomerCreditAccount,Sale]),AuthModule],
     controllers: [CustomerController, CustomerRelationshipController, CustomerDueController],
-    providers: [CustomerService,CustomerCreditService,CustomerDueService,CustomerRelationshipService,CustomerPrivacyService,JwtService],
+    providers: [CustomerService,CustomerCreditService,CustomerDueService,CustomerRelationshipService,CustomerPrivacyService,CustomerFollowupService,AiProvider,JwtService],
     exports: [CustomerService],
   })
   export class CustomerModule {}

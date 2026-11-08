@@ -232,6 +232,27 @@ export class CustomerRelationshipService {
           reason: p.reason, spend12: Math.round(r.spend12), preferredChannel: r.preferredChannel, consent: r.consent });
       }
     }
+    // customers who owe money on credit come first: they are few, and the reminder is about money
+    const owing = await this.manager.query(
+      `select e.customer_id as id, sum(e.amount)::float8 as bal, min(e.entry_date) filter (where e.amount > 0) as since, current_date - min(e.entry_date) filter (where e.amount > 0) as days
+         from customer_due_entry e group by e.customer_id having sum(e.amount) >= 1 order by sum(e.amount) desc`);
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const dues: any[] = [];
+    for (const o of owing) {
+      const r = byId.get(o.id);
+      if (!r || !contactable(r, false).ok || this.recentlyContacted(r, contactCapDays)) continue;
+      const p = profiles.get(r.id)!;
+      const days = o.days === null || o.days === undefined ? null : Number(o.days);
+      dues.push({ id: r.id, name: r.name, mobile: r.mobile, locality: r.locality, audience: 'dues', audienceLabel: 'Unpaid dues', segment: p.segment, tier: p.tier,
+        reason: `Owes Rs ${Math.round(o.bal).toLocaleString('en-IN')}${days !== null ? `, the oldest entry ${days} day${days === 1 ? '' : 's'} ago` : ''}`, amount: Math.round(o.bal), spend12: Math.round(r.spend12),
+        preferredChannel: r.preferredChannel, consent: r.consent });
+      if (dues.length >= 15) break;
+    }
+    // a customer who owes money is listed once, as owing, even if they also fit another audience
+    const owingIds = new Set(dues.map((d) => d.id));
+    const rest = picked.filter((p) => !owingIds.has(p.id));
+    picked.length = 0;
+    picked.push(...dues, ...rest);
     // a customer postponed to a later day is left off until then and listed apart, with the reason
     const postponed = await this.activeSnoozes();
     const shown = picked.filter((p) => !postponed.has(p.id));

@@ -11,6 +11,7 @@ import { Component } from "@angular/core";
       <li class="nav-item"><a class="nav-link" routerLink="kpi" routerLinkActive="active" data-testid="hr-tab-kpi">KPI</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="bonus" routerLinkActive="active" data-testid="hr-tab-bonus">Bonus</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="payroll" routerLinkActive="active" data-testid="hr-tab-payroll">Payroll</a></li>
+      <li class="nav-item"><a class="nav-link" routerLink="coaching" routerLinkActive="active" data-testid="hr-tab-coaching">Coaching</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="assistant" routerLinkActive="active" data-testid="hr-tab-assistant">Role assistant</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="setup" routerLinkActive="active" data-testid="hr-tab-setup">Setup</a></li>
     </ul>

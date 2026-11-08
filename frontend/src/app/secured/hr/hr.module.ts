@@ -17,6 +17,7 @@ import { HrPeopleComponent } from "./hr-people.component";
 import { HrRolesComponent } from "./hr-roles.component";
 import { HrStartComponent } from "./hr-start.component";
 import { HrAssistantComponent } from "./hr-assistant.component";
+import { HrCoachingComponent } from "./hr-coaching.component";
 
 const routes: Routes = [
   { path: "", component: HrShellComponent, children: [
@@ -28,13 +29,14 @@ const routes: Routes = [
     { path: "bonus", component: HrBonusComponent, canActivate: [AuthGuard] },
     { path: "payroll", component: HrPayrollComponent, canActivate: [AuthGuard] },
     { path: "assistant", component: HrAssistantComponent, canActivate: [AuthGuard] },
+    { path: "coaching", component: HrCoachingComponent, canActivate: [AuthGuard] },
     { path: "setup", component: HrSetupComponent, canActivate: [AuthGuard], canDeactivate: [HrSetupLeaveGuard] },
   ]},
 ];
 
 /** Mini HR for the Business Head: staff, salary, leave, attendance, KPI and payroll. */
 @NgModule({
-  declarations: [HrShellComponent, HrStaffComponent, HrAttendanceComponent, HrLeaveComponent, HrKpiComponent, HrPayrollComponent, HrBonusComponent, HrSetupComponent, HrSidePanelComponent, HrPeopleComponent, HrRolesComponent, HrStartComponent, HrAssistantComponent],
+  declarations: [HrShellComponent, HrStaffComponent, HrAttendanceComponent, HrLeaveComponent, HrKpiComponent, HrPayrollComponent, HrBonusComponent, HrSetupComponent, HrSidePanelComponent, HrPeopleComponent, HrRolesComponent, HrStartComponent, HrAssistantComponent, HrCoachingComponent],
   imports: [CommonModule, FormsModule, SharedModule, RouterModule.forChild(routes)],
 })
 export class HrModule {}

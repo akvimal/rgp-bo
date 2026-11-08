@@ -10,6 +10,8 @@ import { PageHeaderComponent } from "./components/page-header.component";
 import { NeedsStripComponent } from "./components/needs-strip.component";
 import { DashHeaderComponent } from "./components/dash-header.component";
 import { LookupComponent } from "./components/lookup.component";
+import { InsightTableComponent } from "./components/insight-table.component";
+import { BuyingBriefComponent } from "./components/buying-brief.component";
 import { ProductSelectComponent } from "./components/product-select.component";
 import { PropsPrintComponent } from "./components/props-print.component";
 import { StockSelectComponent } from "./components/stock-select.component";
@@ -32,7 +34,9 @@ import { TermPipe } from "./label.service";
       DenominationGridComponent,
       PageHeaderComponent,
       NeedsStripComponent,
-      DashHeaderComponent
+      DashHeaderComponent,
+      InsightTableComponent,
+      BuyingBriefComponent
     ],
     imports: [
         FormsModule,
@@ -52,7 +56,9 @@ import { TermPipe } from "./label.service";
       DenominationGridComponent,
       PageHeaderComponent,
       NeedsStripComponent,
-      DashHeaderComponent
+      DashHeaderComponent,
+      InsightTableComponent,
+      BuyingBriefComponent
     ]
   })
 export class SharedModule{}

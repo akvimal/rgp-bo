@@ -18,6 +18,11 @@ export const FEATURE_LABELS: Record<string, string> = {
   propose_role: 'Job role drafts',
   propose_kpis: 'KPI drafts',
   propose_bands: 'Incentive band drafts',
+  draft_followup_messages: 'Follow-up messages',
+  write_buying_brief: 'Buying briefs',
+  answer_question: 'Shop questions',
+  write_weekly_summary: 'Weekly owner summary',
+  write_coaching_note: 'Staff coaching notes',
   reply: 'Connection tests',
 };
 
@@ -31,6 +36,11 @@ export const AI_AREAS: AreaInfo[] = [
   { feature: 'propose_role', label: 'Job role drafts', what: 'Drafts a job role description from a position and what the person does.', where: 'HR > Role assistant', route: '/secure/hr' },
   { feature: 'propose_kpis', label: 'KPI drafts', what: 'Chooses measures, rules and targets for a role from the shop history.', where: 'HR > Role assistant', route: '/secure/hr' },
   { feature: 'propose_bands', label: 'Incentive band drafts', what: 'Proposes incentive amounts for performance bands of a role.', where: 'HR > Role assistant', route: '/secure/hr' },
+  { feature: 'draft_followup_messages', label: 'Follow-up messages', what: 'Writes the wording of the reminder messages staff send to customers who are due back, lapsed, new or owe money, in English and Tamil.', where: 'Customers > Contact today, Message wording', route: '/secure/customers/cust/worklist' },
+  { feature: 'write_buying_brief', label: 'Buying briefs', what: 'Reads the reorder list and the stock that will not sell in time, and says what to buy first and what to clear.', where: 'Purchases > Reorder, Buying brief', route: '/secure/purchases/suggestions' },
+  { feature: 'answer_question', label: 'Shop questions', what: 'Understands a question typed in plain words and picks the right report and period. The answer is worked out here, never by the model.', where: 'Reports > Ask the shop', route: '/secure/reports/ask' },
+  { feature: 'write_weekly_summary', label: 'Weekly owner summary', what: 'Writes the short Monday summary of last week from the shop figures.', where: 'Reports > Weekly summary', route: '/secure/reports/weekly' },
+  { feature: 'write_coaching_note', label: 'Staff coaching notes', what: 'Writes a note for a manager to talk through with a person: what went well, where to focus, a tip for each.', where: 'HR > Coaching', route: '/secure/hr' },
   { feature: 'reply', label: 'Connection tests', what: 'One small request to check that the key and model work.', where: 'Settings > AI assistant, Test', route: '/secure/settings/business-profile/ai' },
 ];
 export const areaOf = (feature: string): AreaInfo => AI_AREAS.find((a) => a.feature === feature) || { feature, label: featureLabel(feature), what: '', where: '', route: '' };

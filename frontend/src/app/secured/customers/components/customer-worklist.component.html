@@ -8,6 +8,38 @@
 
 <app-rx-followups></app-rx-followups>
 
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2" data-testid="wl-lang">
+  <span class="small text-muted">Message language</span>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Message language">
+    <button type="button" class="btn" [ngClass]="lang === 'en' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setLang('en')" data-testid="wl-lang-en">English</button>
+    <button type="button" class="btn" [ngClass]="lang === 'ta' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setLang('ta')" data-testid="wl-lang-ta">தமிழ்</button>
+  </div>
+  <button type="button" class="btn btn-sm btn-link ms-auto" (click)="openWording()" *ngIf="tpl" data-testid="wl-wording-toggle">{{wordingOpen ? 'Hide' : 'Change'}} the message wording</button>
+</div>
+
+<div class="card mb-3" *ngIf="wordingOpen && wording" data-testid="wl-wording">
+  <div class="card-body">
+    <h5 class="card-title mb-1">Message wording</h5>
+    <div class="small text-muted mb-2">What staff send from this list. <code>{{ '{' }}name{{ '}' }}</code> becomes the customer's name, <code>{{ '{' }}store{{ '}' }}</code> your shop's name ({{tpl.store}}), and <code>{{ '{' }}amount{{ '}' }}</code> what is owed. Keep each message short and kind, and never mention a medicine.</div>
+    <div class="row g-3">
+      <div class="col-lg-6" *ngFor="let a of tpl.audiences">
+        <div class="fw-semibold small">{{a.label}}</div>
+        <label class="form-label small mb-0" [attr.for]="'wl-w-' + a.key + '-en'">English</label>
+        <textarea class="form-control form-control-sm mb-1" rows="3" maxlength="500" [(ngModel)]="wording[a.key].en" [id]="'wl-w-' + a.key + '-en'" [attr.data-testid]="'wl-w-' + a.key + '-en'"></textarea>
+        <label class="form-label small mb-0" [attr.for]="'wl-w-' + a.key + '-ta'">தமிழ்</label>
+        <textarea class="form-control form-control-sm" rows="3" maxlength="500" [(ngModel)]="wording[a.key].ta" [id]="'wl-w-' + a.key + '-ta'" [attr.data-testid]="'wl-w-' + a.key + '-ta'"></textarea>
+      </div>
+    </div>
+    <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+      <button type="button" class="btn btn-sm btn-primary" (click)="saveWording()" [disabled]="wordingBusy" data-testid="wl-wording-save">Save</button>
+      <button type="button" class="btn btn-sm btn-outline-primary" (click)="draftWording()" [disabled]="wordingBusy" data-testid="wl-wording-draft"><i class="bi bi-stars me-1"></i>Write a first version with the assistant</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="resetWording()" [disabled]="wordingBusy" data-testid="wl-wording-reset">Back to the standard wording</button>
+      <span class="small text-success" *ngIf="wordingMessage" data-testid="wl-wording-message">{{wordingMessage}}</span>
+      <span class="small text-danger" *ngIf="wordingError" data-testid="wl-wording-error">{{wordingError}}</span>
+    </div>
+  </div>
+</div>
+
 <div *ngIf="message" class="alert alert-success py-2" data-testid="wl-message">{{message}}</div>
 <div *ngIf="error" class="alert alert-danger py-2" data-testid="wl-error">{{error}}</div>
 
@@ -24,6 +56,7 @@
         <span class="badge bg-info text-dark ms-2" *ngIf="r.audience === 'due_back'">Due back</span>
         <span class="badge bg-warning text-dark ms-2" *ngIf="r.audience === 'at_risk'">At risk</span>
         <span class="badge bg-light text-dark border ms-2" *ngIf="r.audience === 'new_second_visit'">New</span>
+        <span class="badge bg-danger ms-2" *ngIf="r.audience === 'dues'" data-testid="wl-dues-badge">Owes &#8377;{{r.amount | number:'1.0-0'}}</span>
         <span class="badge bg-light text-muted border ms-1" *ngIf="r.tier">{{r.tier}}</span>
         <div class="small text-muted">{{r.reason}} · {{r.spend12 | number:'1.0-0'}} spent in 12 months<span *ngIf="r.locality"> · {{r.locality}}</span></div>
       </div>

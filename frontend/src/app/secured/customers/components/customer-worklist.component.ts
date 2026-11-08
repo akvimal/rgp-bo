@@ -50,6 +50,8 @@ export class CustomerWorklistComponent implements OnInit {
     constructor(private service:CustomersService){}
 
     ngOnInit(){
+        try { const l = localStorage.getItem('rgp_followup_lang'); if(l === 'en' || l === 'ta') this.lang = l; } catch { /* a private window */ }
+        this.loadWording();
         this.service.privacy().subscribe(p => this.privacy = p, () => this.privacy = null);
         this.load();
     }
@@ -81,8 +83,60 @@ export class CustomerWorklistComponent implements OnInit {
         }, err => { this.loading = false; this.error = this.say(err, 'Could not load the list.'); });
     }
 
+    /** the message for this customer, in the language chosen, from the shop's wording (the standard wording when it cannot be loaded) */
+    textFor(r:any):string{
+        const t = this.tpl?.templates?.[r.audience]?.[this.lang] || REMINDERS[r.audience] || '';
+        const amount = r.amount === null || r.amount === undefined ? '' : `Rs ${Math.round(r.amount).toLocaleString('en-IN')}`;
+        return t.replace(/\{name\}/g, greetingName(r.name)).replace(/\{store\}/g, this.tpl?.store || 'our shop').replace(/\{amount\}/g, amount).replace(/\s+/g, ' ').trim();
+    }
+
     whatsapp(r:any):string{
-        return `https://wa.me/91${r.mobile}?text=${encodeURIComponent((REMINDERS[r.audience] || '').replace(/\{name\}/g, greetingName(r.name)))}`;
+        return `https://wa.me/91${r.mobile}?text=${encodeURIComponent(this.textFor(r))}`;
+    }
+
+    // ------------------------------------------------------------ the wording of the messages
+    lang:'en'|'ta' = 'en';
+    tpl:any = null;
+    wording:any = null;
+    wordingOpen = false;
+    wordingBusy = false;
+    wordingError = '';
+    wordingMessage = '';
+
+    setLang(l:'en'|'ta'){
+        this.lang = l;
+        try { localStorage.setItem('rgp_followup_lang', l); } catch { /* it just will not be remembered */ }
+    }
+
+    loadWording(){
+        this.service.followupTemplates().subscribe(t => { this.tpl = t; }, () => { this.tpl = null; });
+    }
+
+    openWording(){
+        this.wordingOpen = !this.wordingOpen;
+        this.wordingError = this.wordingMessage = '';
+        if(this.wordingOpen && this.tpl) this.wording = JSON.parse(JSON.stringify(this.tpl.templates));
+    }
+
+    saveWording(){
+        this.wordingBusy = true; this.wordingError = this.wordingMessage = '';
+        this.service.saveFollowupTemplates(this.wording).subscribe(t => {
+            this.wordingBusy = false; this.tpl = t; this.wording = JSON.parse(JSON.stringify(t.templates)); this.wordingMessage = 'The wording is saved. New messages use it.';
+        }, err => { this.wordingBusy = false; this.wordingError = this.say(err, 'Could not save the wording.'); });
+    }
+
+    resetWording(){
+        this.wordingBusy = true; this.wordingError = this.wordingMessage = '';
+        this.service.resetFollowupTemplates().subscribe(t => {
+            this.wordingBusy = false; this.tpl = t; this.wording = JSON.parse(JSON.stringify(t.templates)); this.wordingMessage = 'Back to the standard wording.';
+        }, err => { this.wordingBusy = false; this.wordingError = this.say(err, 'Could not reset the wording.'); });
+    }
+
+    draftWording(){
+        this.wordingBusy = true; this.wordingError = this.wordingMessage = '';
+        this.service.draftFollowupTemplates().subscribe(d => {
+            this.wordingBusy = false; this.wording = d.templates; this.wordingMessage = 'The assistant wrote a first version. Read it, change what you like, and press Save.';
+        }, err => { this.wordingBusy = false; this.wordingError = this.say(err, 'The assistant could not write the wording.'); });
     }
 
     /** opens the postpone panel on a row: a reason (and a few words for "Other"), then it goes until tomorrow */

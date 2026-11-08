@@ -98,6 +98,12 @@ export class CustomersService {
         return this.http.get<any>(`${this.relurl}/worklist`);
     }
 
+    // ---- the wording of the follow-up messages (English and Tamil)
+    followupTemplates(){ return this.http.get<any>(`${this.relurl}/followup-templates`); }
+    saveFollowupTemplates(templates:any){ return this.http.put<any>(`${this.relurl}/followup-templates`, { templates }); }
+    resetFollowupTemplates(){ return this.http.post<any>(`${this.relurl}/followup-templates/reset`, {}); }
+    draftFollowupTemplates(){ return this.http.post<any>(`${this.relurl}/followup-templates/draft`, {}); }
+
     profile(id:number){
         return this.http.get<any>(`${this.relurl}/${id}/profile`);
     }

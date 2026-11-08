@@ -24,6 +24,11 @@ export const TASKS: TaskInfo[] = [
   { task: 'reply', label: 'Connection test', tier: 'simple' },
   { task: 'propose_role', label: 'Job role drafts', tier: 'standard' },
   { task: 'propose_bands', label: 'Incentive band drafts', tier: 'standard' },
+  { task: 'draft_followup_messages', label: 'Follow-up messages', tier: 'simple' },
+  { task: 'write_buying_brief', label: 'Buying briefs', tier: 'simple' },
+  { task: 'answer_question', label: 'Shop questions', tier: 'standard' },
+  { task: 'write_weekly_summary', label: 'Weekly owner summary', tier: 'standard' },
+  { task: 'write_coaching_note', label: 'Staff coaching notes', tier: 'standard' },
   { task: 'propose_kpis', label: 'KPI drafts', tier: 'complex' },
 ];
 
