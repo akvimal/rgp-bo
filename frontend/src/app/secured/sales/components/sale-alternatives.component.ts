@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from "@angular/core";
+import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "src/environments/environment";
 import { StoreContextService } from "src/app/@core/store-context.service";
@@ -14,10 +14,10 @@ import { dosageFormLabel } from "../../products/dosage-forms";
 @Component({
   selector: "app-sale-alternatives",
   template: `
-    <button type="button" class="btn btn-sm btn-link text-decoration-none" (click)="open()" data-testid="alt-open">
+    <button *ngIf="showTrigger" type="button" class="btn btn-sm btn-link text-decoration-none" (click)="open()" data-testid="alt-open">
       <i class="bi bi-arrow-left-right"></i> Find alternatives
     </button>
-    <p-dialog header="Find alternatives" [(visible)]="show" [modal]="true" [style]="{width:'46rem', maxWidth:'96vw'}" [contentStyle]="{'min-height':'26rem'}" [draggable]="false" (onHide)="clear()">
+    <p-dialog header="Check brand / find alternatives" [(visible)]="show" [modal]="true" [style]="{width:'46rem', maxWidth:'96vw'}" [contentStyle]="{'min-height':'26rem'}" [draggable]="false" (onHide)="clear()">
       <div class="small text-muted mb-2">Type the brand the customer asked for to see its generic composition, and what we stock with the same composition, strength and form.</div>
 
       <!-- any brand: the brand dictionary gives its composition -->
@@ -123,6 +123,8 @@ import { dosageFormLabel } from "../../products/dosage-forms";
     </p-dialog>`,
 })
 export class SaleAlternativesComponent {
+  /** the link that opens the dialog; a screen with its own button (the POS "Check brand") turns it off and calls open() itself */
+  @Input() showTrigger = true;
   @Output() pick = new EventEmitter<any>();
   show = false;
   loading = false;

@@ -28,9 +28,12 @@ test.describe('Brand dictionary in the POS', () => {
     const search = page.locator('app-stock-select input');
     await search.click();
     await search.pressSequentially('telma 40', { delay: 40 });
+    // one way in: the button beside the search (the separate "Find alternatives" link is gone)
+    await expect(page.getByTestId('alt-open')).toHaveCount(0);
     await page.getByTestId('brand-check').click();
     // the dialog opens with what was typed, focused, and already searching
     await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('dialog')).toContainText('Check brand / find alternatives');
     await expect(page.getByTestId('alt-brand')).toHaveValue('telma 40');
     await expect(page.getByTestId('alt-brand')).toBeFocused();
     const pick = page.getByTestId('alt-brand-pick').first();
