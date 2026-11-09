@@ -11,7 +11,7 @@ export class SalePaymentComponent {
   
     @Input() total = 0;
     
-    @Input() payment:{digimode?:string,digiamt?:number,
+    @Input() payment:{modechosen?:boolean,modemissing?:boolean,digimode?:string,digiamt?:number,
         digirefno?:string,cashamt?:number,valid?:boolean,staffcredit?:boolean,staffcredituserid?:number|null,staffcreditfor?:string|null,familybuying?:boolean,latemode?:boolean,dueamt?:number|null,duedate?:string,usecredit?:boolean,creditbalance?:number}={};
 
     /** the customer on the bill (a named customer may hold store credit) */
@@ -35,6 +35,16 @@ export class SalePaymentComponent {
             && !!ref && !/^[A-Za-z0-9][A-Za-z0-9\-_\/]{3,39}$/.test(ref);
     }
     cashonly = false;
+
+    /**
+     * No way of paying is chosen until the person presses one (Cash, Digital / split, Staff credit or Pay later): the amounts are kept as all cash underneath,
+     * but the bill cannot be completed, and neither Cash nor Digital is lit, until then. A bill reopened from the saved ones counts as chosen.
+     */
+    get modeMissing(): boolean {
+        if(!(this.total > 0)) return false;                                       // nothing on the bill yet
+        if(this.payment.staffcredit || this.payment.modechosen) return false;
+        return this.total - this.creditUse - this.dueUse > 0.005;                 // store credit and pay later may already take all of it
+    }
 
     @Output() updated:EventEmitter<any> = new EventEmitter();
 
@@ -136,6 +146,7 @@ export class SalePaymentComponent {
     }
 
     ngDoCheck(){
+        this.payment.modemissing = this.modeMissing;
         this.updated.emit(this.payment);
     }
 
@@ -184,6 +195,7 @@ export class SalePaymentComponent {
             this.payment.staffcreditfor = null;
         }
         this.cashonly = cash;
+        this.payment.modechosen = true;
         this.changeToCash({target:{checked:cash}});
     }
 

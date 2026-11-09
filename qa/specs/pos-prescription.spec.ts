@@ -143,6 +143,7 @@ test.describe('Prescription upload on the bill @p1', () => {
     await expect(page.getByTestId('sd-rx-doc')).toHaveCount(1);
     await expect(page.getByTestId('sd-basis-attached')).toBeVisible();
     await expect(page.getByTestId('sale-document')).toHaveCount(1);                       // on the bill with its other documents
+    await page.getByTestId('pos-pay-cash').click();                                          // no way of paying is chosen until one is pressed
     await expect(page.getByTestId('sale-complete')).toBeEnabled();
 
     const posted = page.waitForResponse((r) => r.url().endsWith('/sales') && r.request().method() === 'POST');
@@ -221,6 +222,7 @@ test.describe('Prescription upload on the bill @p1', () => {
     await page.getByTestId('sd-rx-save').click();
     await expect(page.getByTestId('sd-rx-done')).toContainText('Add the customer to keep it with their record');
     await expect(page.getByTestId('sd-basis-attached')).toBeVisible();
+    await page.getByTestId('pos-pay-cash').click();                                          // no way of paying is chosen until one is pressed
     await expect(page.getByTestId('sale-complete')).toBeEnabled();
 
     const posted = page.waitForResponse((r) => r.url().endsWith('/sales') && r.request().method() === 'POST');

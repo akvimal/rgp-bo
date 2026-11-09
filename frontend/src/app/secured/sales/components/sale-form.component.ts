@@ -112,6 +112,7 @@ export class SaleFormComponent {
             this.payment['digimode'] = this.sale['digimethod'];
             this.payment['digiamt'] = this.sale['digiamt'];
             this.payment['digirefno'] = this.sale['digirefno'];
+            this.payment['modechosen'] = true;          // a saved bill already says how it is paid
             this.sale['docpending'] = result['docpending'];
             // console.log(this.sale['docpending']);
             this.recalculateTotal()
@@ -531,7 +532,7 @@ export class SaleFormComponent {
 
     return (this.doctypes.length == 0 || 
       (this.isDocumentProvided() || (this.customerIdentified && this.sale.docpending)))
-      && customerValid && this.digitalValid();
+      && customerValid && this.digitalValid() && !this.payment?.['modemissing'];
   }
 
   /** what is left for the customer to pay later: the whole of what store credit leaves, or the part typed (0 unless Pay later is chosen) */

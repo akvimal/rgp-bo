@@ -38,6 +38,7 @@ test.describe('Long supply warning on the bill @p1', () => {
       await page.getByTestId('sale-cust-name').fill('QA Supply Customer');
       await units.fill(String(days(line) + 5));
       await expect(page.getByTestId('sale-supply-row')).toHaveCount(0);
+      await page.getByTestId('pos-pay-cash').click();
       await page.getByTestId('sale-complete').click();
       const warn = page.getByTestId('sale-batch-warnings');
       await expect(warn).toBeVisible();

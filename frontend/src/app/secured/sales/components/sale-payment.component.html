@@ -2,12 +2,13 @@
     <!-- how it is paid -->
     <div class="d-flex flex-wrap align-items-center gap-2">
         <div class="btn-group btn-group-sm" role="group" aria-label="How it is paid">
-            <button type="button" class="btn" [ngClass]="cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(true)" data-testid="pos-pay-cash">Cash</button>
-            <button type="button" class="btn" [ngClass]="!cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(false)" data-testid="pos-pay-digital">Digital / split</button>
+            <button type="button" class="btn" [ngClass]="payment.modechosen && cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(true)" data-testid="pos-pay-cash">Cash</button>
+            <button type="button" class="btn" [ngClass]="payment.modechosen && !cashonly && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="setCashMode(false)" data-testid="pos-pay-digital">Digital / split</button>
             <button type="button" *ngIf="staffOptions.length && shiftContext.staffCreditAllowed" class="btn" [ngClass]="payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useStaffCredit()" data-testid="pos-staff-credit" [attr.aria-pressed]="!!payment.staffcredit">Staff credit</button>
             <button type="button" *ngIf="customerId && shiftContext.payLaterAllowed" class="btn" [ngClass]="payment.latemode && !payment.staffcredit ? 'btn-primary' : 'btn-outline-secondary'" (click)="useLater()" data-testid="pos-pay-later" [attr.aria-pressed]="!!payment.latemode">Pay later</button>
         </div>
-        <ng-container *ngIf="!cashonly && !payment.staffcredit">
+        <span class="small text-danger" *ngIf="modeMissing" data-testid="pos-pay-missing">Choose how it is paid</span>
+        <ng-container *ngIf="payment.modechosen && !cashonly && !payment.staffcredit">
             <select class="form-select form-select-sm w-auto" [(ngModel)]="payment.digimode" (change)="digimodechange($event)" aria-label="Digital method">
                 <option value="UPI">UPI</option>
                 <option value="Card">Card</option>
@@ -64,7 +65,7 @@
     </div>
 
     <!-- change to give -->
-    <div class="d-flex align-items-center gap-2" *ngIf="(cashonly || (payment.cashamt || 0) > 0) && (total - creditUse - dueUse) > 0">
+    <div class="d-flex align-items-center gap-2" *ngIf="(payment.modechosen || payment.staffcredit) && (cashonly || (payment.cashamt || 0) > 0) && (total - creditUse - dueUse) > 0">
         <div class="input-group input-group-sm w-auto">
             <span class="input-group-text">Cash given &#8377;</span>
             <input type="number" class="form-control" style="width:7rem" (input)="tenderBal($event)" aria-label="Cash given by the customer" data-testid="pos-tender">

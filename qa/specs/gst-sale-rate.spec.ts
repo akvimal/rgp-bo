@@ -97,6 +97,7 @@ test.describe('GST on a sale line @p1', () => {
     await expect(page.getByTestId('sale-total')).toContainText('84');          // 80 + 5%, not 80 + 12% = 90
 
     const posted = page.waitForResponse((r) => /\/sales$/.test(r.url()) && ['POST', 'PUT'].includes(r.request().method()));
+    await page.getByTestId('pos-pay-cash').click();                            // no way of paying is chosen until one is pressed
     await page.getByTestId('sale-complete').click();
     const res = await posted;
     expect(res.status(), await res.text()).toBeLessThan(300);
@@ -126,11 +127,13 @@ test.describe('GST on a sale line @p1', () => {
       }
       return route.continue();
     });
+    await page.getByTestId('pos-pay-cash').click();
     await page.getByTestId('sale-complete').click();
     await expect(page.getByTestId('sale-chronic-mobile')).toContainText('GST rate has changed');
     await expect(page.getByTestId('sale-line').first()).toContainText('5%');
 
     const posted = page.waitForResponse((r) => /\/sales$/.test(r.url()) && r.request().method() === 'POST');
+    await page.getByTestId('pos-pay-cash').click();
     await page.getByTestId('sale-complete').click();
     const res = await posted;
     expect(res.status(), await res.text()).toBeLessThan(300);
