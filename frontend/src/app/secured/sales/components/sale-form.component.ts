@@ -121,20 +121,43 @@ export class SaleFormComponent {
       });
     }
 
+    /** a new customer typed at the counter (a mobile and a name, or a name and a location) that can be saved now */
+    get canSaveCustomer(): boolean {
+      const c = this.sale.customer;
+      if (!c || c.existing) return false;
+      if (this.noMobileMode) return this.noMobileReady;
+      return String(c.mobile ?? '').length === 10 && String(c.name ?? '').trim().length > 2;
+    }
+
+    /** saving the typed customer is under way, and what went wrong with the last try */
+    savingCustomer = false;
+    customerError = '';
+
+    /**
+     * Saves the customer typed at the counter, so the bill is for a customer on record: pay later, a prescription to follow and the customer's history
+     * all need one. Saving is not required to bill; a customer left unsaved is still saved with the bill as before.
+     */
     saveCustomer(){
+      if (!this.canSaveCustomer || this.savingCustomer) return;
+      this.customerError = '';
+      this.savingCustomer = true;
+      const c = this.sale.customer;
       // at the counter a second person on a known number is normal (family), so the duplicate warning is pre-confirmed
-      this.customerService.save({name:this.sale.customer.name,
-        mobile:this.sale.customer.mobile,
-        email:this.sale.customer.email, confirmduplicate: true} as any).subscribe(data => {
-          // console.log('customer saved',data);
-          this.sale.customer = {...data, existing: true};
+      this.customerService.save({name: String(c.name ?? '').trim(),
+        mobile: this.noMobileMode ? '' : c.mobile,
+        locality: this.noMobileMode ? String(c.locality ?? '').trim() : undefined,
+        email: c.email, confirmduplicate: true} as any).subscribe(data => {
+          this.savingCustomer = false;
+          this.sale.customer = {...data, existing: true, mobile: (data as any)?.mobile ?? ''};
         }, err => {
+          this.savingCustomer = false;
           const m = err?.error?.message;
-          this.submitError = Array.isArray(m) ? m.join(' ') : (m || 'Could not save the customer.');
+          this.customerError = Array.isArray(m) ? m.join(' ') : (m || 'Could not save the customer.');
         });
     }
 
     resetCustomer(){
+      this.customerError = '';
       this.sale.customer['existing'] = false;
       this.sale.customer['mobile'] = '';
       this.sale.customer['name'] = '';
@@ -144,11 +167,13 @@ export class SaleFormComponent {
     }
 
     useNoMobile(){
+      this.customerError = '';
       this.noMobileMode = true;
       this.sale.customer = {existing:false, mobile:'', name:'', locality:'', email:''};
     }
 
     useMobile(){
+      this.customerError = '';
       this.noMobileMode = false;
       this.sale.customer = {existing:false, mobile:'', name:'', locality:''};
     }
@@ -490,6 +515,7 @@ export class SaleFormComponent {
   captureCustomerInfo(event:any){
     // with no mobile the box is only a search by name: what is typed in it is not a number
     if (this.noMobileMode) return;
+    this.customerError = '';
     this.sale.customer = {...event, locality: ''};
   }
 

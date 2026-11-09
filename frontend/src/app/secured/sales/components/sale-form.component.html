@@ -17,10 +17,15 @@
                         <input type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.name" placeholder="Customer name" maxlength="80" data-testid="sale-cust-name">
                         <input *ngIf="noMobileMode" type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.locality" placeholder="Location" maxlength="60" data-testid="sale-cust-locality">
                         <input type="text" class="form-control form-control-sm w-auto" style="width:14rem !important" [(ngModel)]="sale.customer.email" placeholder="Email (optional)">
+                        <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="!canSaveCustomer || savingCustomer" (click)="saveCustomer()"
+                            title="Save this customer now: Pay later, a prescription to follow and their history need a customer on record" data-testid="sale-cust-save">
+                            <i class="bi bi-person-plus"></i> Save customer
+                        </button>
                     </ng-container>
                     <a role="button" class="small" *ngIf="!noMobileMode && sale.customer.mobile.length !== 10" (click)="useNoMobile()" data-testid="sale-no-mobile">No mobile number?</a>
                     <a role="button" class="small" *ngIf="noMobileMode" (click)="useMobile()" data-testid="sale-use-mobile">Use a mobile number</a>
                 </div>
+                <div class="small text-danger mt-1" *ngIf="customerError && !sale.customer.existing" data-testid="sale-cust-error">{{customerError}}</div>
                 <div class="small text-muted mt-1" *ngIf="noMobileMode && !sale.customer.existing" data-testid="sale-no-mobile-hint">No mobile: enter the name and location, or find an existing customer by name. Refill reminders and messages need a number.</div>
                 <div class="d-flex align-items-center gap-2" *ngIf="sale.customer.existing">
                     <i class="bi bi-person-check fs-5 text-success"></i>
