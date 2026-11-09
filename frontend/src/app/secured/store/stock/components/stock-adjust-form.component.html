@@ -1,4 +1,4 @@
-<div class="form-compact">
+<div class="form-compact" data-testid="adj-form">
 <form [formGroup]="qtyAdjustForm" (ngSubmit)="onQtyAdjSubmit()">
     <div class="container">
         <div class="row">
@@ -7,58 +7,80 @@
                 <p class="batch">{{item?.batch}} / {{item?.exp_date | date: 'MMM-yy'}}</p>
             </div>
         </div>
-        <div class="row">
-            <!-- <div class="col-6 col-md-3 col-lg-2 m-0 p-0">
-                <label class="adj-label" for="purchase">Purchase</label><br>
-                    {{(+selectedItem?.purchase_qty * selectedItem?.pack)}}
-            </div> -->
-            <div class="col-6 col-md-3 col-lg-2 m-0 p-0">
-                <label class="adj-label" for="price">Current</label><br>
-                    {{item?.balance}}
-            </div>
-            <div class="col-6 col-md-3 col-lg-2 m-0 p-0">
-                <label class="adj-label" for="qty">Adjust</label>
-                    <input type="number" class="form-control" id="qty" [min]="minAllowed"
-                    formControlName="qty" (input)="onQtyChange($event)">
-            </div>
-                    <!-- </div> -->
-                <!-- </div>
-            </div> -->
-            <!-- </div>
-            <div class="row mt-4"> -->
-            <div class="col-6 col-md-3 col-lg-2">
-                <label class="adj-label" for="newqty">Final</label><br>
-                {{finalqty}}
-                <!-- <input type="text" class="form-control" id="price" 
-                formControlName="price" (input)="limitMRP($event)"> -->
-            </div>
-            <div class="col-md-6 col-lg-3 m-0 p-0">
-                <label class="adj-label" for="reason">Reason</label>
-                <select class="form-control" formControlName="reason">
-                    <option value="">Select</option>
-                    <option *ngFor="let c of qtyChangeReasons" [value]="c.value">{{c.label}}</option>
-                </select> 
-            </div>
-            <div class="col-md-12 col-lg-6 m-0 p-0 mb-2" *ngIf="audits.length">
-                <label class="adj-label" for="auditid">Event: for an audit (optional)</label>
-                <select class="form-control" id="auditid" formControlName="auditid" data-testid="adj-audit">
-                    <option [ngValue]="null">None: a plain adjustment</option>
-                    <option *ngFor="let a of audits" [ngValue]="a.id">Audit {{auditNo(a.audit_no)}} · {{a.category || 'all stock'}}</option>
-                </select>
-            </div>
-            <div class="col-md-12 p-0">
-                <label class="adj-label" for="comments">Comments</label>
-                <textarea class="form-control" id="comments" placeholder="Explain the reason for adjustment" 
-                formControlName="comments"></textarea>
+
+        <!-- 1. what is happening to the stock -->
+        <div class="row mb-2">
+            <div class="col-12 p-0">
+                <div class="adj-step">1. What is happening to this stock?</div>
+                <div class="btn-group w-100" role="group" aria-label="Remove or add stock">
+                    <button type="button" class="btn" [ngClass]="direction === 'REMOVE' ? 'btn-danger' : 'btn-outline-danger'" (click)="setDirection('REMOVE')" [attr.aria-pressed]="direction === 'REMOVE'" data-testid="adj-dir-remove">
+                        <i class="bi bi-dash-circle"></i> Remove stock<br><small>lost, damaged, expired, sent back</small>
+                    </button>
+                    <button type="button" class="btn" [ngClass]="direction === 'ADD' ? 'btn-success' : 'btn-outline-success'" (click)="setDirection('ADD')" [attr.aria-pressed]="direction === 'ADD'" data-testid="adj-dir-add">
+                        <i class="bi bi-plus-circle"></i> Add stock<br><small>found, or received and not entered</small>
+                    </button>
+                </div>
             </div>
         </div>
-        <!-- <div class="row"> -->
-           
-        <!-- </div> -->
-        <div class="row mt-3">
+
+        <!-- 2. how many, and what it comes to -->
+        <div class="row mb-2" *ngIf="direction">
+            <div class="col-12 p-0">
+                <div class="adj-step">2. How many units {{direction === 'REMOVE' ? 'are being removed' : 'are being added'}}?</div>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <input type="number" min="1" step="1" class="form-control" style="max-width:8rem" id="qty" formControlName="qty" (input)="onQtyChange()" aria-label="Number of units" data-testid="adj-qty">
+                    <span class="text-muted">units (in stock now: <b data-testid="adj-current">{{item?.balance}}</b>)</span>
+                </div>
+                <div class="adj-effect mt-2" *ngIf="plan.signed" [ngClass]="direction === 'REMOVE' ? 'text-danger' : 'text-success'" data-testid="adj-effect">
+                    {{item?.balance}} <i class="bi bi-arrow-right"></i> <b>{{plan.after}}</b> units
+                    <span>({{direction === 'REMOVE' ? 'removing' : 'adding'}} {{absQty}})</span>
+                </div>
+                <div class="small text-danger mt-1" *ngIf="qtyTouched && plan.problem" data-testid="adj-problem">{{plan.problem}}</div>
+            </div>
+        </div>
+
+        <!-- 3. why -->
+        <div class="row mb-2" *ngIf="direction">
+            <div class="col-md-8 p-0">
+                <div class="adj-step"><label for="reason">3. Why?</label></div>
+                <select class="form-control" id="reason" formControlName="reason" data-testid="adj-reason">
+                    <option value="">Choose a reason</option>
+                    <option *ngFor="let c of reasons" [value]="c.value">{{c.label}}</option>
+                </select>
+            </div>
+            <div class="col-12 p-0 mt-2">
+                <label class="adj-label" for="comments">Comments{{commentRequired ? ' (required for this reason)' : ' (optional)'}}</label>
+                <textarea class="form-control" id="comments" rows="2" [placeholder]="commentRequired ? 'Say in a few words what happened' : 'Anything worth remembering'"
+                    formControlName="comments" data-testid="adj-comments"></textarea>
+            </div>
+            <div class="col-12 p-0 mt-2" *ngIf="audits.length">
+                <a role="button" class="small" (click)="moreOpen = !moreOpen" data-testid="adj-more">{{moreOpen ? 'Fewer options' : 'More: link this to a stock audit'}}</a>
+                <div *ngIf="moreOpen || qtyAdjustForm.value.auditid" class="mt-1">
+                    <label class="adj-label" for="auditid">Event: for an audit (optional)</label>
+                    <select class="form-control" id="auditid" formControlName="auditid" data-testid="adj-audit">
+                        <option [ngValue]="null">None: a plain adjustment</option>
+                        <option *ngFor="let a of audits" [ngValue]="a.id">Audit {{auditNo(a.audit_no)}} · {{a.category || 'all stock'}}</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- what saving will do, in a sentence -->
+        <div class="row mt-2" *ngIf="direction">
+            <div class="col-12 p-0">
+                <div class="alert py-2 mb-2" [ngClass]="direction === 'REMOVE' ? 'alert-danger' : 'alert-success'" *ngIf="ready" data-testid="adj-review">
+                    You are <b>{{direction === 'REMOVE' ? 'removing' : 'adding'}} {{absQty}} unit{{absQty === 1 ? '' : 's'}}</b> of {{item?.title}} (batch {{item?.batch}}).
+                    Stock goes from {{item?.balance}} to {{plan.after}}.<span *ngIf="reasonText"> Reason: {{reasonText}}.</span>
+                </div>
+                <div class="small text-muted mb-2">A large adjustment may wait for approval. Stock does not change until it is approved, and the Adjustments list shows which.</div>
+            </div>
+        </div>
+
+        <div class="row mt-1">
             <div class="col-md-12 p-0">
-                <button type="submit" class="btn btn-primary" 
-                [disabled]="!qtyAdjustForm.valid">Save</button>
+                <button type="submit" class="btn" [ngClass]="direction === 'ADD' ? 'btn-success' : direction === 'REMOVE' ? 'btn-danger' : 'btn-primary'" [disabled]="!ready || saving" data-testid="adj-save">
+                    {{saveLabel}}
+                </button>
             </div>
         </div>
     </div>

@@ -3,7 +3,7 @@ import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { StockService } from "../stock.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
-import { STOCK_ADJUSTMENT_REASONS } from "../reason-codes";
+import { STOCK_ADJUSTMENT_REASONS, directionOfQty, reasonLabel, reasonsFor } from "../reason-codes";
 
 @Component({
     templateUrl: './stock-adjust.component.html',
@@ -17,9 +17,10 @@ export class StockAdjustComponent {
 
     quantities:any[] = [];
     reasonOptions = STOCK_ADJUSTMENT_REASONS;
+    readonly reasonLabel = reasonLabel;
 
     displayEditDialog = false;
-    editForm:any = { id: null, qty: 0, reasoncode: '', comments: '' };
+    editForm:any = { id: null, direction: 'REMOVE', qty: 0, reasoncode: '', comments: '' };
     message = '';
 
     /** the audit whose adjustments are shown (from the Done list), if any */
@@ -50,6 +51,8 @@ export class StockAdjustComponent {
     settle:any = null;
     settleError = '';
     readonly settleReasons = STOCK_ADJUSTMENT_REASONS;
+    /** a count difference is explained with reasons that fit it: a shortage with the loss reasons, a surplus with the gain reasons */
+    settleReasonsFor(item:any){ const d = directionOfQty(item?.qty); return d ? reasonsFor(d) : this.settleReasons; }
 
     /** a difference found by a count is approved with the reason it arose; any other adjustment already carries its reason */
     private askSettle(item:any, action:'APPROVE'|'REJECT'|'DELETE'){
@@ -98,16 +101,30 @@ export class StockAdjustComponent {
         this.message = '';
         this.editForm = {
             id: item.id,
-            qty: item.qty,
+            direction: directionOfQty(item.qty) || 'REMOVE',
+            qty: Math.abs(Number(item.qty) || 0),
             reasoncode: item.reasoncode || item.reason || '',
             comments: item.comments || ''
         };
         this.displayEditDialog = true;
     }
 
+    /** the reasons for the direction being edited; a stored reason that is not one of them (a transfer, a count) is kept as it is */
+    get editReasons(){ return reasonsFor(this.editForm.direction); }
+    get editReasonExtra():boolean { const c = this.editForm.reasoncode; return !!c && !this.editReasons.some(r => r.value === c); }
+
+    setEditDirection(d:'REMOVE'|'ADD'){
+        this.editForm.direction = d;
+        // a reason of the other direction is cleared, so it cannot contradict the change
+        if(this.editForm.reasoncode && !this.editReasons.some(r => r.value === this.editForm.reasoncode) && ['DAMAGED','EXPIRED','RETURNED_TO_VENDOR','SHRINKAGE','FOUND','NOT_ENTERED','CUSTOMER_RETURN'].includes(this.editForm.reasoncode)) this.editForm.reasoncode = '';
+    }
+
     saveEdit(){
         this.message = '';
-        this.stockService.updateQtyAdjustment(this.editForm.id, this.editForm).subscribe(() => {
+        const n = Number(this.editForm.qty);
+        if(!(n > 0) || !Number.isInteger(n)){ this.message = 'Enter how many units, as a whole number.'; return; }
+        const body = { ...this.editForm, qty: this.editForm.direction === 'REMOVE' ? -n : n };
+        this.stockService.updateQtyAdjustment(this.editForm.id, body).subscribe(() => {
             this.displayEditDialog = false;
             this.fetchAdjustments();
         }, (err:any) => this.message = err?.error?.message || 'Unable to update this adjustment.');

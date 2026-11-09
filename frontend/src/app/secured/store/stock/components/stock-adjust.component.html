@@ -14,7 +14,7 @@
                     <tr>
                       <!-- <th pSortableColumn="itemid"><div class="th-bar"><span class="th-label">ID</span><p-columnFilter type="text" field="itemid" display="menu"></p-columnFilter><p-sortIcon field="itemid"></p-sortIcon></div></th> -->
                       <th pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
-                      <th pSortableColumn="qty"><div class="th-bar"><span class="th-label">Qty</span><p-sortIcon field="qty"></p-sortIcon></div></th>
+                      <th pSortableColumn="qty"><div class="th-bar"><span class="th-label">Change</span><p-sortIcon field="qty"></p-sortIcon></div></th>
                     <!-- <th pSortableColumn="price"><div class="th-bar"><span class="th-label">Price</span><p-sortIcon field="price"></p-sortIcon></div></th> -->
                     <th pSortableColumn="date"><div class="th-bar"><span class="th-label">Date</span><p-columnFilter type="date" field="date" display="menu"></p-columnFilter><p-sortIcon field="date"></p-sortIcon></div></th>
   
@@ -32,10 +32,14 @@
                             <span class="batch">{{i.batch}}/{{i.expdate | date :'MMM-yy'}}</span>
 
                         </td>
-                        <td>{{i.qty}}</td>
+                        <td data-testid="adj-change">
+                          <span class="badge bg-danger" *ngIf="i.qty < 0" data-testid="adj-removed">&minus; {{-i.qty}} removed</span>
+                          <span class="badge bg-success" *ngIf="i.qty > 0" data-testid="adj-added">+ {{i.qty}} added</span>
+                          <div class="small text-muted" *ngIf="i.status === 'PENDING'">stock has not changed yet</div>
+                        </td>
                         <!-- <td style="text-align: right;">{{i.price}}</td> -->
                         <td>{{i.date | date : 'dd MMM yyyy'}}</td>
-                        <td>{{i.reasoncode || i.reason}}
+                        <td>{{reasonLabel(i.reasoncode || i.reason)}}
                           <span class="badge bg-danger ms-1" *ngIf="i.discarded" data-testid="adj-discarded" title="Left the shelf as waste">Discarded</span>
                           <span class="badge bg-secondary ms-1" *ngIf="isCounting(i)" data-testid="adj-counting" title="This batch is in a count that is open now">Counting now</span>
                           <span class="badge bg-info text-dark ms-1" *ngIf="i.escalated && i.status === 'PENDING'" data-testid="adj-escalated" title="A large count difference: only the Business Head can approve or reject it">Business Head</span>
@@ -82,7 +86,7 @@
       <label class="col-form-label">Why did it differ? *</label>
       <select class="form-select" [(ngModel)]="settle.reasoncode" data-testid="adj-settle-reason">
         <option value="">Select</option>
-        <option *ngFor="let r of settleReasons" [value]="r.value">{{r.label}}</option>
+        <option *ngFor="let r of settleReasonsFor(settle.item)" [value]="r.value">{{r.label}}</option>
       </select>
     </div>
     <div class="mb-2">
@@ -98,8 +102,12 @@
 <p-dialog header="Edit Stock Adjustment" [(visible)]="displayEditDialog" [modal]="true" [style]="{width: '30vw'}">
   <div class="row mt-2">
     <div class="col-12">
-      <label class="col-form-label">Quantity</label>
-      <input type="number" class="form-control" [(ngModel)]="editForm.qty">
+      <div class="btn-group w-100 mb-2" role="group" aria-label="Remove or add stock">
+        <button type="button" class="btn" [ngClass]="editForm.direction === 'REMOVE' ? 'btn-danger' : 'btn-outline-danger'" (click)="setEditDirection('REMOVE')" data-testid="adj-edit-remove">Remove stock</button>
+        <button type="button" class="btn" [ngClass]="editForm.direction === 'ADD' ? 'btn-success' : 'btn-outline-success'" (click)="setEditDirection('ADD')" data-testid="adj-edit-add">Add stock</button>
+      </div>
+      <label class="col-form-label">How many units {{editForm.direction === 'ADD' ? 'are added' : 'are removed'}}</label>
+      <input type="number" min="1" step="1" class="form-control" [(ngModel)]="editForm.qty" data-testid="adj-edit-qty">
     </div>
   </div>
   <div class="row mt-2">
@@ -107,7 +115,8 @@
       <label class="col-form-label">Reason</label>
       <select class="form-select" [(ngModel)]="editForm.reasoncode">
         <option value="">Select</option>
-        <option *ngFor="let r of reasonOptions" [value]="r.value">{{r.label}}</option>
+        <option *ngIf="editReasonExtra" [value]="editForm.reasoncode">{{reasonLabel(editForm.reasoncode)}}</option>
+        <option *ngFor="let r of editReasons" [value]="r.value">{{r.label}}</option>
       </select>
     </div>
   </div>

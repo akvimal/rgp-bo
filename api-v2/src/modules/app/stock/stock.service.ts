@@ -9,7 +9,7 @@ import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
 import { approvalModeFor } from "src/core/approval-mode";
-import { isDiscard, USER_REASON_CODES } from "./reason-codes";
+import { isDiscard, reasonDirectionProblem, USER_REASON_CODES } from "./reason-codes";
 import { AuditService } from "src/core/audit/audit.service";
 import { DEFAULT_ESCALATION_VALUE, escalatedProducts, maySettleEscalated } from "./count-rules";
 import { EXPIRING_DAYS, FAST_MOVERS, escalateAll, recountProblem } from "../stock-audits/audit-rules";
@@ -398,6 +398,8 @@ export class StockService {
         }
         const storeid = dto.storeid ?? await this.resolveHomeStoreId(dto.itemid);
         const reasoncode = dto.reasoncode || (dto as any).reason || null;
+        const directionProblem = reasonDirectionProblem(reasoncode, dto.qty);
+        if (directionProblem) throw new BadRequestException(directionProblem);
         // `reason` is NOT NULL in the DB; older callers always sent it, but a reasoncode-only
         // caller (any new integration) must still satisfy that constraint.
         const reason = (dto as any).reason || dto.reasoncode;
@@ -435,6 +437,11 @@ export class StockService {
             throw new BadRequestException('Quantity must be a non-zero number.');
         }
         const reasoncode = dto.reasoncode || dto.reason || existing.reasoncode;
+        // a reason that no longer fits the direction is refused only when the person changed the quantity or the reason (an old row is not blocked from an unrelated edit)
+        if (dto.qty !== undefined || dto.reasoncode || dto.reason) {
+            const directionProblem = reasonDirectionProblem(reasoncode, qty);
+            if (directionProblem) throw new BadRequestException(directionProblem);
+        }
         // a count line marked as a large difference is settled only by the Business Head, and only after the second count: changing it here is no way round that
         if (existing.escalated) await this.assertMaySettle(id, userid, String(dto.status || '').toUpperCase() === 'APPROVED');
         const status = await this.resolveAdjustmentStatus(dto.status, existing.itemid, qty, existing.storeid, userid);
@@ -506,6 +513,8 @@ export class StockService {
         if (row.countid) {
             const code = String(body?.reasoncode ?? '').toUpperCase();
             if (!(USER_REASON_CODES as readonly string[]).includes(code)) throw new BadRequestException('Say why the count differed (shrinkage, damaged, expired, correction ...) before approving it.');
+            const directionProblem = reasonDirectionProblem(code, row.qty);
+            if (directionProblem) throw new BadRequestException(directionProblem);
             if (code === 'OTHER' && !this.settleText(body?.note, 3)) throw new BadRequestException('Say in a few words what the difference was.');
             patch.reasoncode = code; patch.reason = code; patch.discarded = isDiscard(code, row.qty);
         }
