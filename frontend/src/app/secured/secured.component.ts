@@ -13,7 +13,7 @@ import { OperatorContextService } from "../@core/operator-context.service";
 import { ShiftContextService } from "../@core/shift-context.service";
 import { AuthService } from "../@core/auth/auth.service";
 import { ConfigService } from "../shared/config.service";
-import { MenuGroup, buildCounterMenu, buildMenu, isCounterRole } from "./menu";
+import { MenuGroup, MenuItem, buildCounterMenu, buildMenu, buildMyMenu, isCounterRole } from "./menu";
 import { QuickAction, buildQuickActions } from "./quick-actions";
 import { ThemeService } from "../shared/theme.service";
 
@@ -121,6 +121,9 @@ export class SecuredComponent {
 
     readonly menuAccess = { has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) };
     private counterGroups: MenuGroup[] = buildCounterMenu(this.menuAccess);
+    /** the person's own pages (My shift, My HR, My KPI), shown in the profile menu at the top right */
+    readonly myItems: MenuItem[] = buildMyMenu(this.menuAccess);
+    get myItemsShown(): boolean { return this.myItems.some((m) => m.show()); }
     /** the floating button's list (each entry shows only for a role that may open it) */
     quickActions: QuickAction[] = buildQuickActions(this.menuAccess);
 

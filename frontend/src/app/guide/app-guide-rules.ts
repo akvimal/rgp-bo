@@ -2,13 +2,14 @@
  * What the app guide shows to a login. Pure (no Angular): a page is shown when the same menu the person navigates by shows it, so the guide follows
  * the role's permissions, the business's modules and the pharmacy pack with nothing to keep in step. A walk-through is shown when its first page is.
  */
-import { MenuAccess, buildMenu, isCounterRole } from '../secured/menu';
+import { MenuAccess, buildMenu, buildMyMenu, isCounterRole } from '../secured/menu';
 import { DAYS, DayKind, DayPlan, GROUP_ORDER, GuideGroup, PAGES, PageGuide, WALKTHROUGHS, Walkthrough } from './app-guide-content';
 
 /** the pages of the guide this login may use */
 export function visiblePages(a: MenuAccess, pages: PageGuide[] = PAGES): PageGuide[] {
   const inMenu = new Set<string>();
   buildMenu(a).forEach((g) => g.items.forEach((i) => { if (i.show()) inMenu.add(i.id); }));
+  buildMyMenu(a).forEach((i) => { if (i.show()) inMenu.add(i.id); });     // My shift, My HR, My KPI sit in the profile menu
   return pages.filter((p) => p.always || (p.id.startsWith('nav-') ? inMenu.has(p.id) : (p.needs || []).some((k) => a.has(k))));
 }
 

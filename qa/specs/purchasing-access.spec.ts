@@ -70,11 +70,11 @@ test.describe('Purchasing access and menu @p0', () => {
       });
       return out;
     });
-    expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-shift', 'nav-outage']);
+    expect(groups.sell).toEqual(['nav-sales', 'nav-customers', 'nav-inquiries', 'nav-outage']);
     expect(groups.stock).toEqual(['nav-store', 'nav-products', 'nav-stock-audits', 'nav-schedule-register', 'nav-review']);
     expect(groups.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge']);                       // the guides sit at the very bottom, below Admin
     expect(groups.buy).toEqual(['nav-purchases', 'nav-vendor-issues', 'nav-expenses', 'nav-gst-filing', 'nav-finance']);
-    expect(groups.people).toEqual(['nav-my-hr', 'nav-leave-approvals', 'nav-kpi-rate', 'nav-kpi-mine', 'nav-hr']);
+    expect(groups.people).toEqual(['nav-leave-approvals', 'nav-kpi-rate', 'nav-hr']);               // the person's own pages are in the profile menu
     expect(groups.oversight).toEqual(['nav-reports', 'nav-compliance', 'nav-quality', 'nav-digital-payments']);
     await expect(bh.page.getByTestId('nav-vendors')).toHaveCount(0);    // Vendors is a tab of Purchase now
     await bh.page.getByTestId('nav-purchases').click();

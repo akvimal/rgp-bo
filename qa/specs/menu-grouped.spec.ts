@@ -54,7 +54,7 @@ test.describe.serial('Grouped menu', () => {
     });
     expect(Object.keys(groups)).toEqual(['home', 'sell', 'stock', 'buy', 'accounts', 'people', 'oversight', 'admin', 'learn']);
     expect(groups.learn).toEqual(['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge', 'nav-feedback']);                       // the guides sit at the very bottom, below Setup
-    expect(groups.home).toEqual(['nav-dashboard', 'nav-shift', 'nav-todos', 'nav-calendar', 'nav-reports']);
+    expect(groups.home).toEqual(['nav-dashboard', 'nav-todos', 'nav-calendar', 'nav-reports']);        // My shift, My HR and My KPI are in the profile menu now
     expect(groups.accounts).toEqual(['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance']);
     expect(groups.oversight).toEqual(['nav-compliance', 'nav-review', 'nav-quality']);
     await expect(page.getByTestId('nav-section-admin')).toHaveText('Setup');

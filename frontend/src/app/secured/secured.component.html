@@ -71,6 +71,16 @@
                 <span class="small text-muted">{{user.rolename}}</span>
               </li>
               <li><hr class="dropdown-divider"></li>
+              <ng-container *ngIf="myItemsShown">
+                <ng-container *ngFor="let m of myItems">
+                  <li *ngIf="m.show()">
+                    <a class="dropdown-item d-flex align-items-center" [routerLink]="m.route" [attr.data-testid]="'user-menu-' + m.id.replace('nav-', '')" (click)="closeUserMenu()">
+                      <i class="bi me-2" [ngClass]="m.icon"></i><span>{{m.label}}</span>
+                    </a>
+                  </li>
+                </ng-container>
+                <li><hr class="dropdown-divider"></li>
+              </ng-container>
               <li>
                 <a class="dropdown-item d-flex align-items-center" routerLink="/secure/profile" data-testid="user-menu-profile" (click)="closeUserMenu()">
                   <i class="bi bi-person me-2"></i><span>My Profile</span>
@@ -127,7 +137,7 @@
             <span>Calendar</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('sales','customers.read','shiftdesk.view','inquiries.view')" data-testid="nav-section-sell">Sell</li>
+        <li class="nav-heading" *ngIf="has('sales','customers.read','inquiries.view')" data-testid="nav-section-sell">Sell</li>
         <li class="nav-item" *isAuth="'sales'">
           <a class="nav-link collapsed" routerLink="sales" data-testid="nav-sales" title="Sales" aria-label="Sales">
             <i class="bi bi-cash-coin"></i>
@@ -150,12 +160,6 @@
           <a class="nav-link collapsed" routerLink="price-changes" data-testid="nav-price-changes" title="Price changes" aria-label="Price changes">
             <i class="bi bi-tag"></i>
             <span>Price changes</span>
-          </a>
-        </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'shiftdesk.view'">
-          <a class="nav-link collapsed" routerLink="shift" data-testid="nav-shift" title="My shift" aria-label="My shift">
-            <i class="bi bi-cash-stack"></i>
-            <span>My shift</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'outage.view'">
@@ -238,13 +242,7 @@
             <span>Finance</span>
           </a>
         </li>
-        <li class="nav-heading" *ngIf="has('hr.view','kpirate.rate','mykpi.view','myhr.view','leaveapprove.decide')" data-testid="nav-section-people">People</li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'myhr.view'">
-          <a class="nav-link collapsed" routerLink="my-hr" data-testid="nav-my-hr" title="My HR" aria-label="My HR">
-            <i class="bi bi-person-badge"></i>
-            <span>My HR</span>
-          </a>
-        </li>
+        <li class="nav-heading" *ngIf="has('hr.view','kpirate.rate','leaveapprove.decide')" data-testid="nav-section-people">People</li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'leaveapprove.decide'">
           <a class="nav-link collapsed" routerLink="leave-approvals" data-testid="nav-leave-approvals" title="Leave requests" aria-label="Leave requests">
             <i class="bi bi-calendar2-check"></i>
@@ -255,12 +253,6 @@
           <a class="nav-link collapsed" routerLink="kpi/rate" data-testid="nav-kpi-rate" title="Rate staff" aria-label="Rate staff KPI">
             <i class="bi bi-clipboard-check"></i>
             <span>Rate staff</span>
-          </a>
-        </li>
-        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'mykpi.view'">
-          <a class="nav-link collapsed" routerLink="kpi/mine" data-testid="nav-kpi-mine" title="My KPI" aria-label="My KPI">
-            <i class="bi bi-graph-up-arrow"></i>
-            <span>My KPI</span>
           </a>
         </li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'hr.view'">

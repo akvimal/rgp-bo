@@ -129,7 +129,9 @@ test.describe('Customer inquiries @p1', () => {
     await expect(page.getByTestId('inq-row').filter({ hasText: 'QA UI: asked for the 40 mg strip' })).toContainText('Not available');
 
     // the KPI pages are in the menu for the people they are for
-    await expect(page.getByTestId('nav-kpi-mine')).toBeVisible();
+    await page.getByTestId('user-menu').click();                                  // My KPI is in the profile menu
+    await expect(page.getByTestId('user-menu-kpi-mine')).toBeVisible();
+    await expect(page.getByTestId('nav-kpi-mine')).toHaveCount(0);
     await expect(page.getByTestId('nav-kpi-rate')).toHaveCount(0);
     const mgr = await app.open(MGR, '/secure/kpi/rate');
     await expectShell(mgr.page);

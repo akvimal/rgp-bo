@@ -110,9 +110,11 @@ test.describe('My shift page @p1', () => {
     await expect(page.getByTestId('shift-card')).toHaveCount(0);                          // no shift strip on the POS ...
     await expect(page.getByTestId('shift-card-close')).toHaveCount(0);                    // ... and no open / close forms
     await expect(page.getByTestId('header-shift')).toBeVisible();                         // the header pill says whether a shift is open
-    await expect(page.getByTestId('nav-shift')).toBeVisible();
+    await expect(page.getByTestId('nav-shift')).toHaveCount(0);                           // My shift is in the profile menu, not the sidebar
+    await page.getByTestId('user-menu').click();
+    await expect(page.getByTestId('user-menu-shift')).toBeVisible();
 
-    await page.getByTestId('nav-shift').click();
+    await page.getByTestId('user-menu-shift').click();
     await page.waitForURL(/\/secure\/shift/);
     await expect(page.getByTestId('shiftdesk-summary')).toBeVisible();
     await expect(page.getByTestId('shiftdesk-expenses')).toBeVisible();
@@ -135,7 +137,8 @@ test.describe('My shift page @p1', () => {
   test('SD-3 when the counter has forgotten who is serving, the page asks for it right there, and then closing goes on @edge', async ({ api, app }) => {
     expect((await api.request('POST', '/sales', digitalBill(10, 0), CASHIER)).status).toBeLessThan(300);        // makes sure a shift is open
     const { page } = await app.open(CASHIER, '/secure/sales/pos');
-    await page.getByTestId('nav-shift').click();
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('user-menu-shift').click();
     await page.waitForURL(/\/secure\/shift/);
     // the choice kept from earlier has gone stale (older than the hold time): the counter forgets it on the next load
     await page.evaluate(() => localStorage.setItem('selected_operator_at', String(Date.now() - 3 * 3600 * 1000)));

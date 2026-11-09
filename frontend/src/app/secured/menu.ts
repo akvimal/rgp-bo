@@ -6,7 +6,25 @@ export interface MenuItem { id: string; label: string; route: string; icon: stri
 export interface MenuGroup { key: string; label: string; items: MenuItem[]; }
 export interface MenuAccess { has: (...keys: string[]) => boolean; canOpen: (url: string) => boolean; pack?: (name: string) => boolean; }
 
+/**
+ * The "My ..." pages (My shift, My HR, My KPI) are about the signed-in person, not about the shop's work: they live in the profile menu at the top right
+ * (buildMyMenu), not in the sidebar. buildMenu leaves them out; they are still defined here, once, with the same ids and permissions.
+ */
+export const MY_MENU_IDS = ['nav-shift', 'nav-my-hr', 'nav-kpi-mine'];
+
+/** the signed-in person's own pages, for the profile menu, in this order */
+export function buildMyMenu(a: MenuAccess): MenuItem[] {
+  const all: MenuItem[] = [];
+  allMenuGroups(a).forEach((g) => g.items.forEach((i) => all.push(i)));
+  return MY_MENU_IDS.map((id) => all.find((i) => i.id === id)).filter((i): i is MenuItem => !!i);
+}
+
+/** the sidebar's groups: every page except the person's own (those are in the profile menu) */
 export function buildMenu(a: MenuAccess): MenuGroup[] {
+  return allMenuGroups(a).map((g) => ({ ...g, items: g.items.filter((i) => !MY_MENU_IDS.includes(i.id)) }));
+}
+
+function allMenuGroups(a: MenuAccess): MenuGroup[] {
   const item = (id: string, label: string, route: string, icon: string, show: () => boolean): MenuItem => ({ id, label, route: '/secure/' + route, icon, show });
   const any = (...keys: string[]) => () => a.has(...keys);
   return [
@@ -79,10 +97,10 @@ export function isCounterRole(roleName: string | null | undefined): boolean {
 /** Few headings, the selling work first. The Dashboard stands alone at the top (its group has no heading). */
 const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
   { key: 'home', label: '', ids: ['nav-dashboard', 'nav-todos', 'nav-calendar'] },
-  { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-refills', 'nav-inquiries', 'nav-price-changes', 'nav-shift'] },
+  { key: 'sell', label: 'Sell', ids: ['nav-sales', 'nav-customers', 'nav-refills', 'nav-inquiries', 'nav-price-changes'] },
   { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-outage', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance'] },
-  { key: 'people', label: 'Me', ids: ['nav-my-hr', 'nav-kpi-mine', 'nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate'] },
+  { key: 'people', label: 'People', ids: ['nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate'] },
   { key: 'learn', label: 'Learn', ids: ['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge', 'nav-feedback'] },
 ];
 

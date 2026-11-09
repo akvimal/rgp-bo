@@ -141,7 +141,10 @@ test.describe('My HR @p1', () => {
 
     const { page } = await app.open(mine, '/secure/my-hr');
     await expectShell(page);
-    await expect(page.getByTestId('nav-my-hr')).toBeVisible();
+    await page.getByTestId('user-menu').click();                                  // My HR is in the profile menu
+    await expect(page.getByTestId('user-menu-my-hr')).toBeVisible();
+    await expect(page.getByTestId('nav-my-hr')).toHaveCount(0);
+    await page.getByTestId('user-menu').click();
     await expect(page.getByTestId('nav-leave-approvals')).toHaveCount(0);
     await expect(page.getByTestId('myhr-home')).toBeVisible();
     await page.getByTestId('myhr-tab-profile').click();
