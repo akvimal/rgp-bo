@@ -13,6 +13,14 @@ const STANDIN = !!process.env.QA_AI_STANDIN;
 
 test.describe.configure({ mode: 'serial' });
 
+/** the assistant's answer cache and its refresh limits have their own spec (ai-cache.spec.ts); these specs ask the assistant every time, as before */
+async function cacheMode(api: any, mode: string) {
+  const s = (await api.request('GET', '/settings?key=ai.cache_mode', undefined, MGR)).body[0];
+  if (s) await api.request('PUT', `/settings/${s.id}`, { value: mode }, MGR);
+}
+test.beforeAll(async ({ api }) => { await cacheMode(api, 'off'); });
+test.afterAll(async ({ api }) => { await cacheMode(api, 'on'); });
+
 test.describe('Insights @p1', () => {
   test('INS-1 the reports are for owners and store heads; a store head does not see owner-only reports @negative', async ({ api }) => {
     expect((await api.request('GET', '/insights/ask/reports', undefined, COUNTER)).status).toBe(403);
@@ -173,8 +181,15 @@ test.describe('Insights @p1', () => {
     expect(saved.body.shared).toBe(true);
     const after = await api.request('GET', `/insights/coaching/${withKpi.id}?period=2026-09`, undefined, MGR);
     expect(after.body.note.strengths).toEqual(['Accurate billing.']);
-    // writing it again stops the sharing
-    const again = await api.request('POST', `/insights/coaching/${withKpi.id}/draft`, { period: '2026-09' }, MGR);
+    // a shared note is not replaced unless the manager confirms; the same figures give the note back as it is
+    const kept = await api.request('POST', `/insights/coaching/${withKpi.id}/draft`, { period: '2026-09' }, MGR);
+    expect(kept.status).toBe(200);
+    expect(kept.body.note.shared, 'nothing is lost by pressing the button twice').toBe(true);
+    expect(kept.body.note.strengths).toEqual(['Accurate billing.']);
+    expect((await api.request('POST', `/insights/coaching/${withKpi.id}/draft`, { period: '2026-09', rewrite: true }, MGR)).status, 'writing it again needs a confirmation').toBe(409);
+    // writing it again, confirmed, stops the sharing
+    const again = await api.request('POST', `/insights/coaching/${withKpi.id}/draft`, { period: '2026-09', rewrite: true, confirm: true }, MGR);
+    expect(again.status).toBe(200);
     expect(again.body.note.shared).toBe(false);
     await api.request('PUT', `/insights/coaching/${withKpi.id}`, { period: '2026-09', strengths: ['x'], focus: ['y'], tips: [], talk_points: [], shared: false }, MGR);
   });

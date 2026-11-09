@@ -16,7 +16,7 @@ export class InsightsService {
 
   // ---- buying
   expiryRisk(days = 180) { return this.http.get<any>(`${this.api}/expiry-risk`, { params: { days: String(days) } }); }
-  buyingBrief(reorder: any[]) { return this.http.post<any>(`${this.api}/buying-brief`, { reorder }); }
+  buyingBrief(reorder: any[], refresh = false) { return this.http.post<any>(`${this.api}/buying-brief`, { reorder, refresh }); }
 
   // ---- the weekly summary
   weekly() { return this.http.get<any>(`${this.api}/weekly`); }
@@ -27,7 +27,7 @@ export class InsightsService {
   // ---- coaching
   coachingPeople(period?: string) { return this.http.get<any>(`${this.api}/coaching`, { params: period ? { period } : {} }); }
   coaching(id: number, period?: string) { return this.http.get<any>(`${this.api}/coaching/${id}`, { params: period ? { period } : {} }); }
-  draftCoaching(id: number, period: string) { return this.http.post<any>(`${this.api}/coaching/${id}/draft`, { period }); }
+  draftCoaching(id: number, period: string, opts: { rewrite?: boolean; confirm?: boolean } = {}) { return this.http.post<any>(`${this.api}/coaching/${id}/draft`, { period, ...opts }); }
   saveCoaching(id: number, body: any) { return this.http.put<any>(`${this.api}/coaching/${id}`, body); }
   myCoaching() { return this.http.get<any>(`${this.api}/coaching/mine`); }
 }

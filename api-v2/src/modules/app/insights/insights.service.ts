@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
@@ -6,6 +6,8 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser } from 'src/core/business-of-user';
 import { AiProvider } from '../alerts/ai-provider';
 import { resolveModel } from '../alerts/ai-models';
+import { AiCacheService, scopeOf } from '../alerts/ai-cache.service';
+import { briefFingerprint, fingerprint, questionFingerprint } from '../alerts/ai-cache-rules';
 import { ShiftDigestService } from '../messaging/shift-digest.service';
 import { InsightsData, REPORT_INFO, REPORT_KEYS, StoreScope } from './insights-data.service';
 import {
@@ -93,6 +95,7 @@ export class InsightsService {
     private readonly ai: AiProvider,
     private readonly audit: AuditService,
     private readonly digest: ShiftDigestService,
+    private readonly cache: AiCacheService,
   ) {}
 
   /** the model for a job when the assistant is switched on and has a model, else null (the plain version is used) */
@@ -138,9 +141,12 @@ export class InsightsService {
     if (!model) throw new ServiceUnavailableException('Typing a question needs the assistant, which the Business Head switches on under Settings > AI assistant. You can still use the report buttons.');
     const today = await this.data.today();
     const catalogue = REPORT_KEYS.filter((k) => sc.owner || !REPORT_INFO[k].ownerOnly).map((k) => `- ${k}: ${REPORT_INFO[k].what}${REPORT_INFO[k].periodic ? ' (takes a period)' : ' (takes days)'}`).join('\n');
-    const out = await this.ai.call(
+    // the same question on the same day is answered from what was kept, and a person may not make more than a few a minute
+    const askRes = await this.cache.run({ feature: 'answer_question', scope: `ask:${sc.owner ? 'owner' : 'store'}`, fingerprint: questionFingerprint(q, today, sc.owner), userId: user?.id ?? null, what: 'answer', model },
+      () => this.ai.call(
       `${SYSTEM_BASE}\nYou do not answer questions yourself. You choose which report answers the question and for which period; the shop then runs it.\nToday is ${today} (India). Weeks run Monday to Sunday.\nReports:\n${catalogue}\nIf no report can answer, choose none.`,
-      `Question: ${q}`, ASK_TOOL, model, 400);
+      `Question: ${q}`, ASK_TOOL, model, 400));
+    const out = askRes.value;
     const report = String(out?.report || 'none');
     const understood = clip(out?.understood, 200);
     if (report === 'none' || !(REPORT_KEYS as readonly string[]).includes(report) || (REPORT_INFO[report].ownerOnly && !sc.owner)) {
@@ -163,14 +169,22 @@ export class InsightsService {
     const model = await this.modelFor('write_buying_brief');
     if (!model || (!reorder.length && !riskLines.length)) return { ...plain, source: 'plain', risk: risk.rows.slice(0, 12), riskTotal: risk.totalValue };
     let brief: Brief = plain;
+    let cache: any = null;
     try {
-      const out = await this.ai.call(
+      // kept until a new purchase is added or a new product comes onto either list; the quantities and days left drift daily and do not count
+      const res = await this.cache.run({ feature: 'write_buying_brief', scope: scopeOf('brief', sc.stores), userId: user?.id ?? null, refresh: body?.refresh === true, what: 'brief', model,
+        fingerprint: briefFingerprint(reorder.map((r) => r.title), riskLines.map((r) => r.product), await this.data.purchaseMarker(sc.stores)) },
+        () => this.ai.call(
         `${SYSTEM_BASE}\nYou write a buying brief: which products to order first, and which stock to return to the vendor or discount before it expires. Name products as given.`,
         `Reorder list (qty to order, days of stock left, reasons):\n${JSON.stringify(reorder)}\n\nStock that will not sell before it expires (units that will be left, value at cost, days left, suggested action):\n${JSON.stringify(riskLines)}`,
-        BRIEF_TOOL, model, 900);
-      brief = cleanBrief(out, plain);
-    } catch (e: any) { this.log.warn(`Buying brief by the assistant failed: ${e?.message}`); }
-    return { ...brief, source: brief === plain ? 'plain' : 'assistant', risk: risk.rows.slice(0, 12), riskTotal: risk.totalValue };
+        BRIEF_TOOL, model, 900));
+      brief = cleanBrief(res.value, plain);
+      cache = { fromCache: res.fromCache, generatedAt: res.generatedAt, refreshesLeft: res.refreshesLeft, canRefresh: res.canRefresh, refreshReason: res.refreshReason };
+    } catch (e: any) {
+      if (e instanceof HttpException && e.getStatus() === 429) throw e;       // a refusal is told to the person, not hidden behind the plain brief
+      this.log.warn(`Buying brief by the assistant failed: ${e?.message}`);
+    }
+    return { ...brief, source: brief === plain ? 'plain' : 'assistant', risk: risk.rows.slice(0, 12), riskTotal: risk.totalValue, cache };
   }
 
   async expiryRisk(user: any, q: any) {
@@ -223,12 +237,17 @@ export class InsightsService {
       try {
         // no staff names leave the server: only the figures
         const { topStaff, ...safe } = facts as any;
-        const out = await this.ai.call(
+        // making it again once a day at most; the Monday timer never forces
+        const res = await this.cache.run({ feature: 'write_weekly_summary', scope: `week:${w.start}`, fingerprint: fingerprint(safe), userId: user?.id ?? null, refresh: !!(have && opts.force), what: 'summary', model },
+          () => this.ai.call(
           `${SYSTEM_BASE}\nYou write the weekly summary the owner reads on Monday morning: how the week went, what went well, what needs attention, and what to do first. Mention a figure with each point. Do not repeat the same point twice.`,
-          `The shop's figures for the week ${facts.week.start} to ${facts.week.end} (money in rupees; "prev" is the week before):\n${JSON.stringify({ ...safe, staffServed: topStaff.length })}`, WEEKLY_TOOL, model, 900);
-        n = cleanNarrative(out, plain);
+          `The shop's figures for the week ${facts.week.start} to ${facts.week.end} (money in rupees; "prev" is the week before):\n${JSON.stringify({ ...safe, staffServed: topStaff.length })}`, WEEKLY_TOOL, model, 900));
+        n = cleanNarrative(res.value, plain);
         source = n === plain ? 'plain' : 'assistant';
-      } catch (e: any) { this.log.warn(`Weekly summary by the assistant failed: ${e?.message}`); }
+      } catch (e: any) {
+        if (e instanceof HttpException && e.getStatus() === 429) throw e;
+        this.log.warn(`Weekly summary by the assistant failed: ${e?.message}`);
+      }
     }
     const [row] = await this.manager.query(
       `insert into weekly_summary (week_start, week_end, facts, headline, wins, watch, do_first, source, created_by) values ($1::date, $2::date, $3::jsonb, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9)
@@ -353,6 +372,19 @@ export class InsightsService {
     const e = await this.employeeIn(sc, employeeId);
     const period = this.period(body?.period, await this.data.today());
     const facts = await this.coachingFacts(e, period);
+    const [have] = await this.manager.query(`select * from hr_coaching_note where employee_id = $1 and period = $2`, [e.id, period]);
+    const factsKey = fingerprint(facts);
+    // the same figures as when the note was written: it is returned as it is, with no request, and nothing the manager edited is lost
+    if (have && body?.rewrite !== true && fingerprint(have.facts) === factsKey) {
+      return {
+        employee: { id: e.id, name: e.name, role: e.role }, period, facts, note: this.noteShape(have), assistant: !!(await this.modelFor('write_coaching_note')),
+        cache: { fromCache: true, generatedAt: have.updated_on ?? have.created_on ?? null, refreshesLeft: null, canRefresh: true, refreshReason: null },
+      };
+    }
+    // writing it again replaces what the manager edited and takes the note back to unshared: only when they confirm
+    if (have && (have.shared || have.source === 'edited') && body?.confirm !== true) {
+      throw new ConflictException('This note was edited or shared. Writing it again replaces your edits and makes it unshared again. Confirm to go ahead.');
+    }
     const plain = plainCoaching(facts);
     let c = plain;
     let source = 'plain';
@@ -360,12 +392,16 @@ export class InsightsService {
     if (model && (facts.kpi || facts.sales || facts.attendance.present)) {
       try {
         // no name or number of the person leaves the server: the role and the figures only
-        const out = await this.ai.call(
+        const res = await this.cache.run({ feature: 'write_coaching_note', scope: `emp:${e.id}:${period}`, fingerprint: factsKey, userId: user?.id ?? null, refresh: !!have, what: 'note', model },
+          () => this.ai.call(
           `${SYSTEM_BASE}\nYou write a coaching note for a shop manager to talk through with one staff member. Be kind, specific and fair: start from what went well, name one or two things to work on, give one small practical thing to try for each, and suggest how to open the conversation. Never blame; never mention pay or dismissal; never guess at the person's reasons or life.`,
-          `Figures for one ${facts.role || 'staff member'} for ${period} ("prev" is the month before; "team" is the average of the others in the same role):\n${JSON.stringify(facts)}`, COACH_TOOL, model, 900);
-        c = cleanCoaching(out, plain);
+          `Figures for one ${facts.role || 'staff member'} for ${period} ("prev" is the month before; "team" is the average of the others in the same role):\n${JSON.stringify(facts)}`, COACH_TOOL, model, 900));
+        c = cleanCoaching(res.value, plain);
         source = c === plain ? 'plain' : 'assistant';
-      } catch (err: any) { this.log.warn(`Coaching note by the assistant failed: ${err?.message}`); }
+      } catch (err: any) {
+        if (err instanceof HttpException && err.getStatus() === 429) throw err;
+        this.log.warn(`Coaching note by the assistant failed: ${err?.message}`);
+      }
     }
     const [row] = await this.manager.query(
       `insert into hr_coaching_note (employee_id, period, facts, strengths, focus, tips, talk_points, source, shared, created_by, updated_by) values ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6::jsonb, $7::jsonb, $8, false, $9, $9)

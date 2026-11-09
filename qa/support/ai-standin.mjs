@@ -7,6 +7,8 @@
 //   QA_AI_STANDIN=1 npx playwright test specs/hr-assistant.spec.ts
 import http from 'node:http';
 let last = null;
+// how many requests each tool has been asked for since the stand-in started (GET /stats; GET /stats?reset=1 starts the count again), so a spec can show a request was NOT made
+let counts = {};
 const answers = {
   reply: () => ({ ok: true }),
   propose_role: () => ({
@@ -74,12 +76,14 @@ const answers = {
   }),
 };
 http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url.startsWith('/stats')) { const out = { ...counts }; if (req.url.includes('reset=1')) counts = {}; res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(out)); }
   if (req.method === 'GET' && req.url === '/last') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(last)); }
   let body = '';
   req.on('data', (c) => (body += c));
   req.on('end', () => {
     const b = JSON.parse(body || '{}');
     const name = b.tools?.[0]?.name;
+    counts[name] = (counts[name] || 0) + 1;
     last = { key: req.headers['x-api-key'], model: b.model, tool: name, max_tokens: b.max_tokens, instruction: b.messages?.[0]?.content, system: b.system };
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ content: [{ type: 'tool_use', name, input: (answers[name] || (() => ({})))(b) }], usage: { input_tokens: 111, output_tokens: 22 } }));

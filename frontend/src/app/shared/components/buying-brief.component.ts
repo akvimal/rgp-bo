@@ -13,7 +13,13 @@ import { InsightsService } from "../insights.service";
         <div class="d-flex flex-wrap align-items-center gap-2">
           <strong><i class="bi bi-lightbulb me-1"></i>Buying brief</strong>
           <span class="small text-muted">What to buy first, and stock that will not sell before it expires.</span>
-          <button class="btn btn-sm btn-outline-primary ms-auto" type="button" (click)="make()" [disabled]="busy" data-testid="bb-make">{{busy ? 'Working...' : brief ? 'Refresh the brief' : 'Write the brief'}}</button>
+          <button class="btn btn-sm btn-outline-primary ms-auto" type="button" (click)="make(!!brief)" [disabled]="busy || (!!brief && !!cache && !cache.canRefresh)" [attr.title]="brief && cache && !cache.canRefresh ? cache.refreshReason : null" data-testid="bb-make">{{busy ? 'Working...' : brief ? 'Refresh the brief' : 'Write the brief'}}</button>
+        </div>
+        <!-- an answer is kept until something new is bought, so the same brief is not asked for again and again -->
+        <div class="small text-muted mt-1" *ngIf="brief && cache" data-testid="bb-cache">
+          Written {{cache.generatedAt | date:'d MMM, h:mm a'}}<span *ngIf="cache.fromCache"> (kept from earlier)</span>.
+          <span *ngIf="!cache.canRefresh && cache.refreshReason" data-testid="bb-why">{{cache.refreshReason}}</span>
+          <span *ngIf="cache.canRefresh && cache.refreshesLeft !== null" data-testid="bb-left">{{cache.refreshesLeft}} refresh{{cache.refreshesLeft === 1 ? '' : 'es'}} left today.</span>
         </div>
         <div class="small text-danger mt-1" *ngIf="error" data-testid="bb-error">{{error}}</div>
         <div *ngIf="brief" class="mt-2" data-testid="bb-brief">
@@ -35,6 +41,8 @@ export class BuyingBriefComponent {
   /** the rows of the Reorder screen: the most urgent are sent (names and numbers only) */
   @Input() suggestions: any[] = [];
   brief: any = null;
+  /** when it was written, whether it was kept from earlier, and whether it may be written again */
+  cache: any = null;
   busy = false;
   error = "";
 
@@ -45,12 +53,12 @@ export class BuyingBriefComponent {
 
   constructor(private insights: InsightsService) {}
 
-  make() {
+  make(refresh = false) {
     this.busy = true; this.error = "";
     const top = (this.suggestions || []).filter((s: any) => +s.final_qty > 0 || (s.reasons || []).length).slice(0, 40)
       .map((s: any) => ({ title: s.title, final_qty: s.final_qty, stock_days_left: s.stock_days_left, reasons: s.reasons || [] }));
-    this.insights.buyingBrief(top).subscribe(
-      (b) => { this.brief = b; this.busy = false; },
+    this.insights.buyingBrief(top, refresh).subscribe(
+      (b) => { this.brief = b; this.cache = b.cache || null; this.busy = false; },
       (e) => { this.busy = false; const m = e?.error?.message; this.error = Array.isArray(m) ? m.join(" ") : (m || "The brief could not be written."); });
   }
 }

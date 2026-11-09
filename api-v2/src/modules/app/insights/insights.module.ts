@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from 'src/modules/auth/auth.module';
+import { AiCacheService } from '../alerts/ai-cache.service';
 import { AiProvider } from '../alerts/ai-provider';
 import { MessagingModule } from '../messaging/messaging.module';
 import { InsightsController } from './insights.controller';
@@ -10,6 +11,6 @@ import { InsightsService } from './insights.service';
 @Module({
   imports: [AuthModule, MessagingModule],
   controllers: [InsightsController],
-  providers: [InsightsService, InsightsData, AiProvider],
+  providers: [InsightsService, InsightsData, AiProvider, AiCacheService],
 })
 export class InsightsModule {}

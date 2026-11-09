@@ -38,6 +38,15 @@ export class InsightsData {
     return { role, owner: false, stores: mine.map((m: any) => m.store_id) };
   }
 
+  /** the newest verified purchase line at the stores in scope, and how many there are: what a buying brief is kept until (a new purchase changes it) */
+  async purchaseMarker(stores: StoreScope): Promise<string> {
+    const [r] = await this.manager.query(
+      `select coalesce(to_char(max(greatest(pii.created_on, coalesce(pii.updated_on, pii.created_on))) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS'), 'none') as latest, count(*)::int as n
+         from purchase_invoice_item pii join purchase_invoice i on i.id = pii.invoice_id
+        where pii.status = 'VERIFIED' and pii.active and ($1::int[] is null or i.store_id = any($1::int[]))`, [stores]);
+    return `${r?.latest ?? 'none'}|${r?.n ?? 0}`;
+  }
+
   // ------------------------------------------------------------------------------------------------ stock that will not sell before it expires
   async expiryRisk(stores: StoreScope, horizonDays = 180, limit = 200): Promise<{ rows: any[]; totalValue: number; batches: number }> {
     const rows = await this.manager.query(

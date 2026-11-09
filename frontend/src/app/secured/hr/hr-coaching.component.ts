@@ -50,6 +50,14 @@ import { InsightsService } from "src/app/shared/insights.service";
                 <button type="button" class="btn btn-sm btn-primary" (click)="draft()" [disabled]="busy" data-testid="co-draft">{{busy ? 'Working...' : current.note ? 'Write it again' : 'Write the note'}}</button>
                 <span class="small text-muted align-self-center" *ngIf="current.note">{{sourceText(current.note.source)}}. Writing it again replaces what is here and stops sharing it.</span>
               </div>
+              <!-- an edited or shared note is only replaced when the manager says so -->
+              <div class="alert alert-warning small py-2" *ngIf="needsConfirm" data-testid="co-confirm">
+                {{needsConfirm}}
+                <div class="mt-2 d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-warning" (click)="draft(true)" [disabled]="busy" data-testid="co-confirm-yes">Replace my note</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="needsConfirm = ''" data-testid="co-confirm-no">Keep my note</button>
+                </div>
+              </div>
 
               <div *ngIf="current.note" data-testid="co-note">
                 <div class="mb-2"><label class="form-label small fw-semibold mb-0" for="co-strengths">What went well <span class="fw-normal text-muted">(one point on each line)</span></label>
@@ -106,10 +114,20 @@ export class HrCoachingComponent implements OnInit {
     this.insights.coaching(id, this.period).subscribe((d) => this.take(d), (e) => (this.error = this.msg(e, "That person could not be opened.")));
   }
 
-  draft() {
-    this.busy = true; this.message = ""; this.error = "";
-    this.insights.draftCoaching(this.current.employee.id, this.period).subscribe((d) => { this.busy = false; this.take(d); this.refreshList(); this.message = "The note is written. Read it, change what you like, and press Save."; },
-      (e) => { this.busy = false; this.error = this.msg(e, "The note could not be written."); });
+  /** set when writing it again would replace a note the manager edited or shared: the reason, until they confirm or keep the note */
+  needsConfirm = "";
+
+  draft(confirm = false) {
+    this.busy = true; this.message = ""; this.error = ""; this.needsConfirm = "";
+    // a note that exists is being written again (a limited number of times a month); an edited or shared one needs the manager to confirm
+    this.insights.draftCoaching(this.current.employee.id, this.period, { rewrite: !!this.current.note, confirm }).subscribe((d) => {
+      this.busy = false; this.take(d); this.refreshList();
+      this.message = d.cache?.fromCache ? "The figures have not changed since this note was written, so it is shown as it was." : "The note is written. Read it, change what you like, and press Save.";
+    }, (e) => {
+      this.busy = false;
+      if (e?.status === 409) this.needsConfirm = this.msg(e, "Writing it again replaces your edits.");
+      else this.error = this.msg(e, "The note could not be written.");
+    });
   }
 
   private lines(s: string) { return (s || "").split("\n").map((x) => x.trim()).filter(Boolean); }
