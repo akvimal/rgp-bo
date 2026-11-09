@@ -1,3 +1,4 @@
+import { classifyForm } from '../dictionary/dosage-form';
 import { userError, messageOf } from 'src/core/db-error';
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
@@ -340,6 +341,24 @@ export class ProductService {
       });
     }
     
+    /**
+     * Fills the dosage form of the products that have none, from their titles ("EZENTIB 10MG TAB 10'S" is a tablet, "BICIPHAGE 500MG SR TAB" a sustained-release
+     * tablet). A title that does not say is left empty, never guessed. Without `apply` it only counts and shows a sample.
+     */
+    async fillDosageForms(apply: boolean, userid: number) {
+      const rows = await this.productRepository.query(`select id, title from product where active and not archive and dosage_form is null`);
+      const found = rows.map((r: any) => ({ id: Number(r.id), title: String(r.title), form: classifyForm(r.title) }));
+      const counts: Record<string, number> = {};
+      found.forEach((f: any) => { const k = f.form ?? '(not known)'; counts[k] = (counts[k] || 0) + 1; });
+      const todo = found.filter((f: any) => f.form);
+      if (apply) {
+        for (const f of todo) {
+          await this.productRepository.query(`update product set dosage_form = $2, updated_by = $3, updated_on = now() where id = $1 and dosage_form is null`, [f.id, f.form, userid]);
+        }
+      }
+      return { withoutForm: rows.length, filled: apply ? todo.length : 0, wouldFill: todo.length, notKnown: found.length - todo.length, counts, sample: todo.slice(0, 12).map((f: any) => ({ title: f.title, form: f.form })), applied: apply };
+    }
+
     async update(id:any, values:any, userid){
       if (values && 'title' in values) {
         const title = (values.title ?? '').toString().trim();

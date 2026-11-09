@@ -95,6 +95,13 @@ export class ProductController {
         return this.productService.updatePrice(id, dto, currentUser.id);
     }
 
+    /** fill the dosage form of products that have none from their titles; ?apply=1 writes it, otherwise a preview */
+    @Post('/dosage-forms/fill')
+    async fillDosageForms(@Query('apply') apply: string, @User() currentUser: any) {
+      await this.assertProductEditAccess(currentUser);
+      return this.productService.fillDosageForms(apply === '1' || apply === 'true', currentUser.id);
+    }
+
     @Put(':id')
     async update(@Param('id') id: string, @Body() updateDto: UpdateProductDto, @User() currentUser: any) {
       await this.assertProductEditAccess(currentUser);

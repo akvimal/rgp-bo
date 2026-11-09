@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
-import { compositionKey, needsPrescription } from './composition-match';
+import { CompositionKey, compositionKey, needsPrescription } from './composition-match';
+import { formRelation } from '../dictionary/dosage-form';
 
 /** a pair has to have been bought together on at least this many bills before it is worth saying */
 const MIN_TOGETHER = 2;
@@ -42,54 +43,64 @@ export class SaleSuggestionService {
        where x.available > 0 ${withRestricted ? '' : "and coalesce(x.more_props->>'schedule', '') <> 'H1'"}`, [productIds, storeId]);
   }
 
-  /** every product's cleaned composition, kept for a minute so a lookup at the counter does not rescan the catalogue */
-  private compCache: { at: number; rows: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean }[] } | null = null;
+  /** every product's cleaned composition and dosage form, kept for a minute so a lookup at the counter does not rescan the catalogue */
+  private compCache: { at: number; rows: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean; form: string | null }[] } | null = null;
 
   private async compositions() {
     if (this.compCache && Date.now() - this.compCache.at < 60_000) return this.compCache.rows;
-    const rows = await this.manager.query(`select id, title, more_props->>'composition' as comp from product where active and not archive and nullif(btrim(more_props->>'composition'), '') is not null`);
-    const out: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean }[] = [];
+    const rows = await this.manager.query(`select id, title, more_props->>'composition' as comp, dosage_form as form from product where active and not archive and nullif(btrim(more_props->>'composition'), '') is not null`);
+    const out: { id: number; title: string; comp: string; key: string; salts: string; hasStrength: boolean; form: string | null }[] = [];
     for (const r of rows) {
       const k = compositionKey(r.comp);
-      if (k) out.push({ id: Number(r.id), title: r.title, comp: String(r.comp).trim(), ...k });
+      if (k) out.push({ id: Number(r.id), title: r.title, comp: String(r.comp).trim(), form: r.form || null, ...k });
     }
     this.compCache = { at: Date.now(), rows: out };
     return out;
   }
 
   /**
-   * A customer asks for a brand: what has the same composition and strength, and is in stock? Medicines with the same ingredients in
-   * another strength are listed apart. Medicines that need a prescription are marked, not hidden. Medicines with no strength recorded
-   * are not matched, because the match could not be trusted. The pharmacist decides on any substitution.
+   * What the shop has for a composition: the same composition and strength in the same dosage form (or a form not recorded, said so), the same ingredients in
+   * other strengths, and the same composition in another known form (a sustained-release tablet is not a plain tablet) kept apart. `askedProductId` is the
+   * product the customer asked for, when it is one of ours: it is left out of the lists and gives the price to compare against.
    */
-  async alternatives(productId: number, storeId: number | null) {
-    const [asked] = await this.manager.query(`select id, title, mfr, more_props from product where id = $1 and active and not archive`, [productId]);
-    if (!asked) throw new BadRequestException('Product not found.');
-    const mk = compositionKey(asked.more_props?.composition);
-    const base = { asked: { id: Number(asked.id), title: asked.title, composition: asked.more_props?.composition?.trim() || null, schedule: asked.more_props?.schedule || null } };
-    if (!mk) return { ...base, status: 'NO_COMPOSITION', same: [], otherStrengths: [], notStocked: [] };
-    if (!mk.hasStrength) return { ...base, status: 'NO_STRENGTH', same: [], otherStrengths: [], notStocked: [] };
-
+  async matches(mk: CompositionKey, askedForm: string | null, storeId: number | null, askedProductId: number | null) {
     const all = await this.compositions();
-    const sameIds = all.filter((c) => c.id !== productId && c.key === mk.key).map((c) => c.id);
-    const otherIds = all.filter((c) => c.id !== productId && c.key !== mk.key && c.salts === mk.salts && c.hasStrength).map((c) => c.id);
-    const live = await this.liveBatches([productId, ...sameIds, ...otherIds], storeId, true);
+    const rel = (c: { form: string | null }) => formRelation(askedForm, c.form);
+    const keyed = all.filter((c) => c.id !== askedProductId && c.key === mk.key);
+    const sameIds = keyed.filter((c) => rel(c) !== 'different').map((c) => c.id);
+    const formIds = keyed.filter((c) => rel(c) === 'different').map((c) => c.id);
+    const otherIds = all.filter((c) => c.id !== askedProductId && c.key !== mk.key && c.salts === mk.salts && c.hasStrength).map((c) => c.id);
+    const live = await this.liveBatches([...(askedProductId ? [askedProductId] : []), ...sameIds, ...formIds, ...otherIds], storeId, true);
     const liveBy = new Map<number, any>(live.map((l: any) => [Number(l.product_id), l]));
-    const mine = liveBy.get(productId);
+    const mine = askedProductId ? liveBy.get(askedProductId) : undefined;
+    const formOf = new Map<number, string | null>(all.map((c) => [c.id, c.form]));
     const unit = (l: any) => (l.pack > 0 ? l.price / l.pack : l.price);
     const detail = (l: any) => ({
       productid: Number(l.product_id), title: l.title, composition: String(l.more_props?.composition || '').trim(), mfr: (l.mfr || '').trim() || null,
       generic: l.more_props?.generic === true || l.more_props?.generic === 'true',
       schedule: l.more_props?.schedule || null, prescription: needsPrescription(l.more_props?.schedule),
+      form: formOf.get(Number(l.product_id)) ?? null, formRelation: rel({ form: formOf.get(Number(l.product_id)) ?? null }),
       batch: l.batch, exp_date: l.exp_date, mrp: l.mrp, price: l.price, pack: l.pack, available: l.available,
       cheaperPct: mine && unit(mine) > 0 ? Math.round(((unit(mine) - unit(l)) / unit(mine)) * 1000) / 10 : null,
     });
-    const byPrice = (a: any, b: any) => (a.cheaperPct === null || b.cheaperPct === null ? 0 : b.cheaperPct - a.cheaperPct);
+    const byPrice = (x: any, y: any) => (x.cheaperPct === null || y.cheaperPct === null ? 0 : y.cheaperPct - x.cheaperPct);
     const same = sameIds.filter((id) => liveBy.has(id)).map((id) => detail(liveBy.get(id))).sort(byPrice);
-    const otherStrengths = otherIds.filter((id) => liveBy.has(id)).map((id) => detail(liveBy.get(id))).sort((a: any, b: any) => a.composition.localeCompare(b.composition));
+    const otherForms = formIds.filter((id) => liveBy.has(id)).map((id) => detail(liveBy.get(id))).sort(byPrice);
+    const otherStrengths = otherIds.filter((id) => liveBy.has(id)).map((id) => detail(liveBy.get(id))).sort((x: any, y: any) => x.composition.localeCompare(y.composition));
     // the same medicine the shop knows but does not have now: the starting point for asking a vendor
-    const notStocked = all.filter((c) => c.key === mk.key && (c.id === productId ? !mine : !liveBy.has(c.id))).slice(0, 8).map((c) => ({ productid: c.id, title: c.title }));
-    return { ...base, status: 'OK', askedInStock: !!mine, askedAvailable: mine?.available ?? 0, same, otherStrengths, notStocked };
+    const notStocked = all.filter((c) => c.key === mk.key && rel(c) !== 'different' && (c.id === askedProductId ? !mine : !liveBy.has(c.id))).slice(0, 8).map((c) => ({ productid: c.id, title: c.title }));
+    return { mine, same, otherForms, otherStrengths, notStocked };
+  }
+
+  async alternatives(productId: number, storeId: number | null) {
+    const [asked] = await this.manager.query(`select id, title, mfr, more_props, dosage_form from product where id = $1 and active and not archive`, [productId]);
+    if (!asked) throw new BadRequestException('Product not found.');
+    const mk = compositionKey(asked.more_props?.composition);
+    const base = { asked: { id: Number(asked.id), title: asked.title, composition: asked.more_props?.composition?.trim() || null, schedule: asked.more_props?.schedule || null, form: asked.dosage_form || null } };
+    if (!mk) return { ...base, status: 'NO_COMPOSITION', same: [], otherStrengths: [], otherForms: [], notStocked: [] };
+    if (!mk.hasStrength) return { ...base, status: 'NO_STRENGTH', same: [], otherStrengths: [], otherForms: [], notStocked: [] };
+    const m = await this.matches(mk, asked.dosage_form || null, storeId, productId);
+    return { ...base, status: 'OK', askedInStock: !!m.mine, askedAvailable: m.mine?.available ?? 0, same: m.same, otherStrengths: m.otherStrengths, otherForms: m.otherForms, notStocked: m.notStocked };
   }
 
   private marginPct(price: number, cost: number, pack: number) {

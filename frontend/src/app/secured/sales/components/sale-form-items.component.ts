@@ -1,5 +1,6 @@
 import { AuthService } from "src/app/@core/auth/auth.service";
-import { Component, ElementRef, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
+import { Component, ElementRef, EventEmitter, Input, Output, SimpleChanges, ViewChild } from "@angular/core";
+import { SaleAlternativesComponent } from "./sale-alternatives.component";
 import { StockService } from "../../store/stock/stock.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { Offer } from "../models/offer.model";
@@ -15,7 +16,12 @@ import { monthlyUnits } from "../supply-rule";
 export class SaleFormItemsComponent{
 
   @Input() items:any;
-  
+
+  /** what is typed in the product search, handed to the brand check so the customer's brand need not be typed twice */
+  typedText = '';
+  @ViewChild(SaleAlternativesComponent) alternatives?: SaleAlternativesComponent;
+  openBrandCheck(){ this.alternatives?.open(this.typedText); }
+
   offers:Offer[] = [];
   offer:Offer = {};
 

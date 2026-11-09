@@ -6,6 +6,7 @@ import { ProductsService } from "../../products.service";
 import { MessageService } from 'primeng/api';
 import { PropsService } from "src/app/shared/props.service";
 import { Observable } from "rxjs";
+import { DOSAGE_FORMS } from "../../dosage-forms";
 import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 
 @Component({
@@ -14,6 +15,7 @@ import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-int
 export class ProductFormComponent {
 
     productProps$?:Observable<any>;
+    dosageForms = DOSAGE_FORMS;
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
@@ -25,6 +27,7 @@ export class ProductFormComponent {
         mfr: new FormControl(''),
         brand: new FormControl(''),
         binlocation: new FormControl(''),
+        dosageform: new FormControl(''),
         minstock: new FormControl(null),
         returnrule: new FormControl(''),
         description: new FormControl(''),
@@ -80,6 +83,7 @@ export class ProductFormComponent {
           this.form.controls['mfr'].setValue(data.mfr);
           this.form.controls['brand'].setValue(data.brand);
           this.form.controls['binlocation'].setValue(data.binlocation);
+          this.form.controls['dosageform'].setValue(data.dosageform || '');
           this.form.controls['minstock'].setValue(data.minstock ?? null);
           this.form.controls['returnrule'].setValue(data.returnrule || '');
           this.form.controls['description'].setValue(data.description);
@@ -175,6 +179,7 @@ export class ProductFormComponent {
           mfr:this.form.value.mfr.trim(),
           brand:this.form.value.brand?.trim(),
           binlocation: this.form.value.binlocation?.trim() || null,
+          dosageform: this.form.value.dosageform || null,
           minstock: this.form.value.minstock === null || this.form.value.minstock === '' || this.form.value.minstock === undefined ? null : Math.max(0, Math.floor(+this.form.value.minstock)),
           returnrule: this.form.value.returnrule || null,
           description: this.form.value.description?.trim() }

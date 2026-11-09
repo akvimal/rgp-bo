@@ -37,6 +37,9 @@ export class ProductsService {
     }
 
     /** recent purchases, stock and sales of one product on the pack check list */
+    /** fills the dosage form of products that have none from their titles; without apply it is a preview */
+    fillDosageForms(apply:boolean){ return this.http.post<any>(`${this.apiurl}/dosage-forms/fill`, {}, { params: apply ? { apply: '1' } : {} }); }
+
     packEvidence(id:number){ return this.http.get<any>(`${this.apiurl}/pack-check/${id}`); }
 
     /** what changing the pack would do to the stock */

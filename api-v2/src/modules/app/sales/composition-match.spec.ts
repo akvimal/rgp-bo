@@ -45,3 +45,34 @@ describe('composition match', () => {
     expect(needsPrescription(undefined)).toBe(false);
   });
 });
+
+describe('composition match: names from the official list', () => {
+  const k = (t: string) => compositionKey(t)!.key;
+
+  it('treats the salt a medicine comes as as the same medicine', () => {
+    expect(k('Metformin hydrochloride 500 mg')).toBe(k('Metformin (500mg)'));
+    expect(k('Pantoprazole (as pantoprazole sodium) 40 mg')).toBe(k('Pantoprazole 40mg'));
+    expect(k('Atorvastatin calcium 10 mg')).toBe(k('Atorvastatin (10mg)'));
+    expect(k('Bisacodyl IP 5mg')).toBe(k('Bisacodyl 5mg'));
+    expect(k('Salbutamol sulphate 2 mg')).toBe(k('Salbutamol 2mg'));
+  });
+
+  it('reads a combination written with "and" and with the brackets of the official list', () => {
+    expect(k('Amoxicillin 500 mg and clavulanic acid (as clavulanate potassium) 125 mg')).toBe(k('Clavulanic Acid (125mg) + Amoxycillin (500mg)'));
+    expect(k('Aspirin 75 mg and atorvastatin (as Atorvastatin calcium) 10 mg')).toBe(k('Atorvastatin 10mg + Aspirin 75mg'));
+  });
+
+  it('maps the international names and units to the ones used here', () => {
+    expect(k('Acetaminophen 650 mg')).toBe(k('Paracetamol (650mg)'));
+    expect(k('Amoxicillin 500 mg')).toBe(k('Amoxycillin 500mg'));
+    expect(k('Levothyroxine sodium 50 microgram')).toBe(k('Thyroxine (50mcg)'));
+    expect(k('Paracetamol 250 mg/5 mL')).toBe(k('Paracetamol (250mg/5ml)'));
+  });
+
+  it('still keeps different medicines, strengths and release forms apart', () => {
+    expect(k('Metformin hydrochloride 500 mg')).not.toBe(k('Metformin 850mg'));
+    expect(k('Sodium chloride 0.9 %')).not.toBe(k('Potassium chloride 0.9 %'));
+    expect(k('Gliclazide ER 60mg')).not.toBe(k('Gliclazide hydrochloride 60mg'));
+    expect(compositionKey('Pantoprazole sodium 40mg')!.salts).toBe('pantoprazole');
+  });
+});

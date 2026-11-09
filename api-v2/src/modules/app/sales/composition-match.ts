@@ -14,23 +14,47 @@ export interface CompositionKey {
   hasStrength: boolean;
 }
 
+/** words that only say which salt of the ingredient it is, or which pharmacopoeia: "Metformin hydrochloride", "Pantoprazole sodium", "Bisacodyl IP" are the ingredient itself */
+const SALT_WORDS = new Set(['hydrochloride', 'hcl', 'hydrobromide', 'besilate', 'besylate', 'mesylate', 'maleate', 'sodium', 'potassium', 'calcium', 'sulphate', 'sulfate',
+  'bisulfate', 'dihydrate', 'monohydrate', 'trihydrate', 'anhydrous', 'ip', 'bp', 'usp']);
+/** the same ingredient under another name (the official list uses the international names, the counter uses the Indian ones) */
+const SYNONYMS: Record<string, string> = {
+  acetaminophen: 'paracetamol', amoxycillin: 'amoxicillin', lignocaine: 'lidocaine', adrenaline: 'epinephrine', frusemide: 'furosemide', albuterol: 'salbutamol',
+  thyroxine: 'levothyroxine', thyroxinesodium: 'levothyroxine', cetrizine: 'cetirizine',
+};
+
 function clean(part: string): string {
   return part.toLowerCase().replace(/[^a-z0-9.%/]/g, '');
+}
+
+/**
+ * One ingredient with its strength, cleaned: "(as clavulanate potassium)" and salt words after the name are dropped ("Metformin hydrochloride 500 mg" and
+ * "Metformin (500mg)" are the same), the name is mapped to the one used here, and "microgram" is "mcg". Strength stays part of it.
+ */
+function normalisePart(raw: string): { name: string; text: string } {
+  const t = raw.replace(/\(\s*as\b[^)]*\)/gi, ' ').replace(/\bmicrograms?\b/gi, 'mcg').replace(/\bmilligrams?\b/gi, 'mg');
+  const at = t.search(/[0-9]/);
+  const namePart = at < 0 ? t : t.slice(0, at);
+  const rest = at < 0 ? '' : t.slice(at);
+  const words = (namePart.toLowerCase().match(/[a-z]+/g) || []).slice();
+  while (words.length > 1 && SALT_WORDS.has(words[words.length - 1])) words.pop();
+  const joined = words.join('');
+  const name = SYNONYMS[joined] ?? joined;
+  return { name, text: name + clean(rest) };
 }
 
 /** null when there is no composition to compare */
 export function compositionKey(text: unknown): CompositionKey | null {
   const raw = String(text ?? '').trim();
   if (!raw) return null;
-  const parts = raw.split(/\+|&/).map(clean).filter(Boolean);
+  const parts = raw.split(/\+|&|\sand\s/i).map(normalisePart).filter((p) => p.text);
   if (!parts.length) return null;
-  parts.sort();
-  // the ingredient is the text before its strength starts
-  const salts = parts.map((p) => p.split(/[0-9]/)[0]).sort();
+  parts.sort((a, b) => (a.text < b.text ? -1 : a.text > b.text ? 1 : 0));
   return {
-    key: parts.join('+'),
-    salts: salts.join('+'),
-    hasStrength: parts.every((p) => /[0-9]/.test(p)),
+    key: parts.map((p) => p.text).join('+'),
+    // the ingredient is the text before its strength starts
+    salts: parts.map((p) => p.name).sort().join('+'),
+    hasStrength: parts.every((p) => /[0-9]/.test(p.text)),
   };
 }
 

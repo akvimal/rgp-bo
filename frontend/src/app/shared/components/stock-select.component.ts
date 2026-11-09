@@ -6,7 +6,7 @@ import { StoreContextService } from "src/app/@core/store-context.service";
 
 @Component({
     selector: 'app-stock-select',
-    template: `<span class="p-fluid"><p-autoComplete
+    template: `<span class="p-fluid" (input)="typed.emit($any($event.target).value || '')"><p-autoComplete
                     (onSelect)="selected($event)"
                     field="''"
                     placeholder="Name / Composition"
@@ -33,6 +33,8 @@ export class StockSelectComponent {
 
     @Input() excludeItems = [];
     @Output() stockSelected = new EventEmitter();
+    /** what has been typed in the box, so a screen can offer to look it up elsewhere (for example the brand dictionary) */
+    @Output() typed = new EventEmitter<string>();
 
     selectedStock: any;
     filteredStock: any[] = [];
@@ -91,6 +93,7 @@ export class StockSelectComponent {
 
     filterStock(event:any) {
         let filtered : any[] = [];
+        this.typed.emit(String(event.query || '').trim());
         
         // scoped to the store being billed from, so "left" matches what the save check allows
         this.stockService.filterByCriteria({title:event.query, excludeItems:this.excludeItems,

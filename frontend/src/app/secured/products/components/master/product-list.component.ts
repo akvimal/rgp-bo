@@ -11,6 +11,28 @@ export class ProductListComponent {
     loading = false;
     criteria:any = {active:true, title: ''};
 
+    /** fill the dosage form of products that have none from their titles: a preview, then the owner applies it */
+    formsPanel = false;
+    forms:any = null;
+    formsBusy = false;
+    formsMessage = '';
+    formsError = '';
+
+    openForms(){
+        this.formsPanel = true; this.formsMessage = this.formsError = ''; this.forms = null; this.formsBusy = true;
+        this.service.fillDosageForms(false).subscribe({
+            next: r => { this.forms = r; this.formsBusy = false; },
+            error: e => { this.formsBusy = false; this.formsError = e?.error?.message || 'The preview could not be made.'; }
+        });
+    }
+    applyForms(){
+        this.formsBusy = true; this.formsError = '';
+        this.service.fillDosageForms(true).subscribe({
+            next: r => { this.formsBusy = false; this.formsMessage = `Filled the dosage form of ${r.filled} products.`; this.forms = null; this.fetchList(); },
+            error: e => { this.formsBusy = false; this.formsError = e?.error?.message || 'Could not fill the dosage forms.'; }
+        });
+    }
+
     constructor(
         private service:ProductsService,
         private confirm:ConfirmService){}

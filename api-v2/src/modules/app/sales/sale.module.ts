@@ -12,6 +12,7 @@ import { SaleService } from "./sale.service";
 import { SaleSuggestionController } from "./sale-suggestion.controller";
 import { SaleAlternativesController } from "./sale-alternatives.controller";
 import { SaleSuggestionService } from "./sale-suggestion.service";
+import { DrugRefService } from "./drug-ref.service";
 import { SaleItem } from "src/entities/sale-item.entity";
 import { Sale } from "src/entities/sale.entity";
 import { SaleDelivery } from "src/entities/sale-delivery.entity";
@@ -29,7 +30,7 @@ import { AuthModule } from "src/modules/auth/auth.module";
 @Module({
     imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule],
     controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController],
-    providers: [SaleService,SaleSuggestionService,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
+    providers: [SaleService,SaleSuggestionService,DrugRefService,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],
   })
   export class SaleModule {}

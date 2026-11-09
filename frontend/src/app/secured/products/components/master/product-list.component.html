@@ -15,7 +15,22 @@
             </div>
         </div>
         <div class="page-toolbar-actions">
+            <button *isAuth="'products.add'" type="button" class="btn btn-outline-secondary me-2" (click)="openForms()" title="Fill the dosage form of products from their names" data-testid="prod-forms-open">Dosage forms</button>
             <a *isAuth="'products.add'" class="btn btn-primary" role="button" [routerLink]="['../new']" data-testid="prod-add">Add New</a>
+        </div>
+    </div>
+    <div class="card mt-2" *ngIf="formsPanel" data-testid="prod-forms-panel">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between"><strong>Fill dosage forms from product names</strong><a href="javascript:void(0)" class="small" (click)="formsPanel = false" data-testid="prod-forms-close">Close</a></div>
+            <div class="small text-muted mb-1">A name that says TAB, CAP, SYP, INJ, SR and so on gives the form. A name that does not say is left empty, never guessed. A form you have already set is not changed.</div>
+            <div class="alert alert-danger py-1 small" *ngIf="formsError">{{formsError}}</div>
+            <div class="alert alert-success py-1 small" *ngIf="formsMessage" data-testid="prod-forms-message">{{formsMessage}}</div>
+            <div class="small text-muted" *ngIf="formsBusy">Working...</div>
+            <ng-container *ngIf="forms">
+                <div class="small" data-testid="prod-forms-preview"><strong>{{forms.withoutForm}}</strong> products have no dosage form. <strong>{{forms.wouldFill}}</strong> can be filled from their names; <strong>{{forms.notKnown}}</strong> cannot and stay empty.</div>
+                <div class="small text-muted mt-1" *ngFor="let s of forms.sample">{{s.title}} &rarr; {{s.form}}</div>
+                <button type="button" class="btn btn-primary btn-sm mt-2" [disabled]="formsBusy || !forms.wouldFill" (click)="applyForms()" data-testid="prod-forms-apply">Fill {{forms.wouldFill}} products</button>
+            </ng-container>
         </div>
     </div>
     <div class="row">

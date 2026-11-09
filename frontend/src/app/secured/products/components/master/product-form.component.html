@@ -31,6 +31,14 @@
             <label for="mfr" class="form-label">Manufacturer</label>
             <app-lookup [default]="form.value.mfr" [entity]="'product'" [property]="'mfr'" (update)="onLookupInput($event, 'mfr')"></app-lookup>
           </div>
+          <div class="col-md-6 col-lg-3">
+            <label for="dosageform" class="form-label">Dosage form</label>
+            <select formControlName="dosageform" class="form-select" id="dosageform" data-testid="prod-dosageform">
+              <option value="">Not recorded</option>
+              <option *ngFor="let f of dosageForms" [value]="f.key">{{f.label}}</option>
+            </select>
+            <div class="form-text">Used to find alternatives: a sustained-release tablet is not a plain tablet.</div>
+          </div>
           <div class="col-6 col-md-3 col-lg-2">
             <label for="pack" class="form-label">Pack <span class="required">*</span></label>
             <input type="number" min="1" step="1" class="form-control" id="pack" formControlName="pack" data-testid="prod-pack" [class.is-invalid]="form.controls['pack'].invalid && form.controls['pack'].touched">

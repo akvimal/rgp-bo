@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsInt, IsObject, IsOptional, Min } from 'class-validator';
+import { DOSAGE_FORM_KEYS } from '../../dictionary/dosage-form';
 
 export class CreateProductDto {
 
@@ -48,6 +49,11 @@ export class CreateProductDto {
     @IsInt()
     @Min(0)
     readonly minstock: number | null;
+
+    @ApiPropertyOptional({ description: 'dosage form: tablet, tablet_sr, tablet_dt, capsule, capsule_sr, syrup, drops, injection, topical, powder, inhaler, other; blank when not known', example: 'tablet' })
+    @IsOptional()
+    @IsIn(DOSAGE_FORM_KEYS)
+    readonly dosageform: string | null;
 
     @ApiPropertyOptional({ description: 'what this product does on return: FREE, INSPECT or NONE; blank follows its category', example: 'NONE' })
     @IsOptional()

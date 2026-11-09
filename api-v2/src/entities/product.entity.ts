@@ -59,6 +59,10 @@ import { SaleItem } from "./sale-item.entity";
     @Column("integer", { name: "min_stock", nullable: true })
     minstock: number | null;
 
+    /** tablet, tablet_sr, capsule, syrup ... (modules/app/dictionary/dosage-form.ts); empty when not known. Alternatives are matched on it. */
+    @Column("character varying", { name: "dosage_form", length: 20, nullable: true })
+    dosageform: string | null;
+
 
     @OneToMany(
       () => ProductPrice2,
