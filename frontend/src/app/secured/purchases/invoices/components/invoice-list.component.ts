@@ -4,7 +4,7 @@ import { combineLatest } from "rxjs";
 import { InvoiceService } from "../invoices.service";
 import { VendorsService } from "../../vendors/vendors.service";
 
-const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft", "awaiting", "approval"];
+const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft", "awaiting", "approval", "ready", "ready_overdue", "ready_due7", "ready_later"];
 const MODES = ["Cash", "Transfer", "Cheque", "UPI", "Card"];
 const COMM_STATUSES = ["Not Sent", "Sent", "Acknowledged", "Disputed"];
 const COMM_CHANNELS = ["WhatsApp", "SMS", "Email", "Call", "Other"];
@@ -34,6 +34,16 @@ export class InvoiceListComponent implements OnInit {
     sortDir: 'asc' | 'desc' = 'desc';
     loading = false;
     summary: any = null;
+
+    /** the Ready to pay card is the current view (it, or one of its three parts; everything owed is also shown against it) */
+    get readyView(): boolean { return this.view === 'pending' || this.view.startsWith('ready'); }
+    /** the Held up card is the current view */
+    get heldView(): boolean { return ['hold', 'approval', 'awaiting'].includes(this.view); }
+    /** how many invoices are held up: on hold, waiting for approval (when that is on), or waiting for the vendor's invoice */
+    get heldCount(): number {
+        const s = this.summary;
+        return s ? (s.hold?.count || 0) + (this.approval.enabled ? (s.approval?.count || 0) : 0) + (s.awaiting?.count || 0) : 0;
+    }
     message = '';
     error = '';
 

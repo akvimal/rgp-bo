@@ -14,26 +14,51 @@
     </div>
   </div>
 
-  <!-- what is pending: one button per view, with live totals -->
+  <!-- what is owed, in four cards that do not overlap: what can be paid now (by when it falls due), what is held up and needs a decision, what is not received yet, and what is paid -->
   <div class="col-12 mt-3" data-testid="inv-chips" *ngIf="summary">
     <div class="row g-2">
-      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'pending' ? 'btn-primary' : 'btn-outline-primary'" data-testid="inv-chip-pending" (click)="setView('pending')">
-        <div class="small">Pending</div><div class="fs-6 fw-bold">&#8377;{{summary.pending.amount | number:'1.0-0'}}</div><div class="small">{{summary.pending.count}} invoice{{summary.pending.count === 1 ? '' : 's'}}</div></button></div>
-      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'overdue' ? 'btn-danger' : 'btn-outline-danger'" data-testid="inv-chip-overdue" (click)="setView('overdue')">
-        <div class="small">Overdue</div><div class="fs-6 fw-bold">&#8377;{{summary.overdue.amount | number:'1.0-0'}}</div><div class="small">{{summary.overdue.count}} invoice{{summary.overdue.count === 1 ? '' : 's'}}</div></button></div>
-      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'due7' ? 'btn-info' : 'btn-outline-info'" data-testid="inv-chip-due7" (click)="setView('due7')">
-        <div class="small">Due in 7 days</div><div class="fs-6 fw-bold">&#8377;{{summary.due7.amount | number:'1.0-0'}}</div><div class="small">{{summary.due7.count}} invoice{{summary.due7.count === 1 ? '' : 's'}}</div></button></div>
-      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'hold' ? 'btn-warning' : 'btn-outline-warning'" data-testid="inv-chip-hold" (click)="setView('hold')">
-        <div class="small">On hold</div><div class="fs-6 fw-bold">&#8377;{{summary.hold.amount | number:'1.0-0'}}</div><div class="small">{{summary.hold.count}} invoice{{summary.hold.count === 1 ? '' : 's'}}</div></button></div>
-      <div class="col-6 col-md-4 col-xl-2" *ngIf="approval.enabled"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'approval' ? 'btn-primary' : 'btn-outline-primary'" data-testid="inv-chip-approval" (click)="setView('approval')" title="Received and checked, waiting for a Business Head to clear them for payment">
-        <div class="small">Awaiting approval</div><div class="fs-6 fw-bold">&#8377;{{summary.approval?.amount | number:'1.0-0'}}</div><div class="small">{{summary.approval?.count}} invoice{{summary.approval?.count === 1 ? '' : 's'}}</div></button></div>
-      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'paid' ? 'btn-success' : 'btn-outline-success'" data-testid="inv-chip-paid" (click)="setView('paid')">
-        <div class="small">Paid</div><div class="fs-6 fw-bold">&#8377;{{summary.paid.amount | number:'1.0-0'}}</div><div class="small">{{summary.paid.count}} invoice{{summary.paid.count === 1 ? '' : 's'}}</div></button></div>
-      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'draft' ? 'btn-secondary' : 'btn-outline-secondary'" data-testid="inv-chip-draft" (click)="setView('draft')" title="Entered but not received: nothing is owed on these yet">
-        <div class="small">Drafts</div><div class="fs-6 fw-bold">&#8377;{{summary.draft.amount | number:'1.0-0'}}</div><div class="small">{{summary.draft.count}} not received</div></button></div>
-      <div class="col-6 col-md-4 col-xl-2"><button type="button" class="btn w-100 text-start" [ngClass]="view === 'awaiting' ? 'btn-dark' : 'btn-outline-dark'" data-testid="inv-chip-awaiting" (click)="setView('awaiting')" title="Goods received on a challan, the vendor's invoice not yet entered: in stock, not yet payable">
-        <div class="small">Awaiting invoice</div><div class="fs-6 fw-bold">&#8377;{{summary.awaiting?.amount | number:'1.0-0'}}</div><div class="small">{{summary.awaiting?.count}} received<span *ngIf="summary.awaiting?.oldest_days"> &middot; oldest {{summary.awaiting.oldest_days}}d</span></div></button></div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100" [class.border-primary]="readyView" data-testid="inv-card-ready">
+          <div class="card-body p-2">
+            <button type="button" class="btn btn-link p-0 text-start text-decoration-none w-100" (click)="setView('ready')" data-testid="inv-card-ready-open" title="Owed, and nothing stops it being paid">
+              <div class="small text-muted">Ready to pay</div>
+              <div class="fs-5 fw-bold text-primary">&#8377;{{summary.ready?.amount | number:'1.0-0'}}</div>
+              <div class="small text-muted">{{summary.ready?.count}} invoice{{summary.ready?.count === 1 ? '' : 's'}}</div>
+            </button>
+            <div class="small mt-1 d-flex flex-wrap gap-x-3 gap-2" data-testid="inv-ready-split">
+              <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'ready_overdue'" [class.text-danger]="summary.ready_overdue?.count" (click)="setView('ready_overdue')" data-testid="inv-line-ready_overdue">Overdue &#8377;{{summary.ready_overdue?.amount | number:'1.0-0'}} <span class="text-muted">({{summary.ready_overdue?.count}})</span></a>
+              <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'ready_due7'" (click)="setView('ready_due7')" data-testid="inv-line-ready_due7">Due in 7 days &#8377;{{summary.ready_due7?.amount | number:'1.0-0'}} <span class="text-muted">({{summary.ready_due7?.count}})</span></a>
+              <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'ready_later'" (click)="setView('ready_later')" data-testid="inv-line-ready_later">Later &#8377;{{summary.ready_later?.amount | number:'1.0-0'}} <span class="text-muted">({{summary.ready_later?.count}})</span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100" [class.border-warning]="heldView" data-testid="inv-card-held">
+          <div class="card-body p-2">
+            <div class="small text-muted" title="These cannot be paid yet: someone has to act">Held up</div>
+            <div class="fs-5 fw-bold" data-testid="inv-held-count">{{heldCount}} invoice{{heldCount === 1 ? '' : 's'}}</div>
+            <div class="small mt-1 d-flex flex-column" data-testid="inv-held-lines">
+              <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'hold'" (click)="setView('hold')" data-testid="inv-line-hold">On hold <span class="text-muted">{{summary.hold.count}} &middot; &#8377;{{summary.hold.amount | number:'1.0-0'}}</span></a>
+              <a *ngIf="approval.enabled" role="button" class="text-decoration-none" [class.fw-bold]="view === 'approval'" (click)="setView('approval')" data-testid="inv-line-approval" title="Received and checked, waiting for a Business Head to clear them for payment">Awaiting approval <span class="text-muted">{{summary.approval?.count}} &middot; &#8377;{{summary.approval?.amount | number:'1.0-0'}}</span></a>
+              <a role="button" class="text-decoration-none" [class.fw-bold]="view === 'awaiting'" (click)="setView('awaiting')" data-testid="inv-line-awaiting" title="Goods received on a challan, the vendor's invoice not yet entered: in stock, not yet payable">Awaiting invoice <span class="text-muted">{{summary.awaiting?.count}} received<span *ngIf="summary.awaiting?.oldest_days"> &middot; oldest {{summary.awaiting.oldest_days}}d</span></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-xl-2">
+        <button type="button" class="btn w-100 text-start h-100" [ngClass]="view === 'draft' ? 'btn-secondary' : 'btn-outline-secondary'" data-testid="inv-chip-draft" (click)="setView('draft')" title="Entered but not received: nothing is owed on these yet">
+          <div class="small">Not received</div><div class="fs-6 fw-bold">&#8377;{{summary.draft.amount | number:'1.0-0'}}</div><div class="small">{{summary.draft.count}} draft{{summary.draft.count === 1 ? '' : 's'}}</div></button>
+      </div>
+      <div class="col-6 col-xl-2">
+        <button type="button" class="btn w-100 text-start h-100" [ngClass]="view === 'paid' ? 'btn-success' : 'btn-outline-success'" data-testid="inv-chip-paid" (click)="setView('paid')">
+          <div class="small">Paid</div><div class="fs-6 fw-bold">&#8377;{{summary.paid.amount | number:'1.0-0'}}</div><div class="small">{{summary.paid.count}} invoice{{summary.paid.count === 1 ? '' : 's'}}</div></button>
+      </div>
     </div>
+    <div class="small mt-1" *ngIf="view === 'pending'" data-testid="inv-view-pending">Showing everything owed, including what is held up.
+      <a role="button" (click)="setView('ready')">Show only what is ready to pay</a></div>
   </div>
 
   <!-- filters -->

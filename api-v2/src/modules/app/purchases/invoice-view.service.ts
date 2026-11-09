@@ -5,7 +5,7 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { isOwnerRole, ROLE } from 'src/core/roles';
 import { ApprovalPolicy, loadApprovalPolicy } from './invoice-approval';
 
-export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting', 'approval'] as const;
+export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'] as const;
 export type InvoiceView = typeof INVOICE_VIEWS[number];
 
 export interface InvoiceFilter { vendor?: number; from?: string; to?: string; q?: string; product?: string }
@@ -51,6 +51,11 @@ export class InvoiceViewService {
              (w.status <> 'COMPLETE') as draft,
              (w.status = 'COMPLETE' and w.invoice_no is null) as awaiting,
              (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and w.needs_appr) as awaiting_approval,
+             -- what can be paid now: owed, not on hold and not waiting for approval; split by when it falls due, so every one of them is counted once
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr) as ready,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.due_date < current_date) as ready_overdue,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.due_date >= current_date and w.due_date <= current_date + 7) as ready_due7,
+             (w.status = 'COMPLETE' and w.invoice_no is not null and w.total - w.paid > 0.005 and w.stored_status <> 'On Hold' and not w.needs_appr and w.due_date > current_date + 7) as ready_later,
              case when w.status <> 'COMPLETE' then 'Draft'
                   when w.invoice_no is null then 'Awaiting invoice'
                   when w.total - w.paid <= 0.005 then 'Paid'
@@ -91,6 +96,10 @@ export class InvoiceViewService {
       case 'draft': return 'draft';
       case 'awaiting': return 'awaiting';
       case 'approval': return 'awaiting_approval';
+      case 'ready': return 'ready';
+      case 'ready_overdue': return 'ready_overdue';
+      case 'ready_due7': return 'ready_due7';
+      case 'ready_later': return 'ready_later';
       default: return 'true';
     }
   }
@@ -99,7 +108,7 @@ export class InvoiceViewService {
     const { sql, args } = this.base(f, await loadApprovalPolicy(this.manager));
     const v = (INVOICE_VIEWS as readonly string[]).includes(view) ? view : 'all';
     // unpaid views read best oldest-due first; the rest newest first
-    const defaultSort = ['pending', 'overdue', 'due7', 'hold', 'approval'].includes(v) ? 'due_date asc' : v === 'awaiting' ? 'invoice_date asc' : 'invoice_date desc';
+    const defaultSort = ['pending', 'overdue', 'due7', 'hold', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'].includes(v) ? 'due_date asc' : v === 'awaiting' ? 'invoice_date asc' : 'invoice_date desc';
     const col = sort && SORTS[sort] ? `${SORTS[sort]} ${dir === 'asc' ? 'asc' : 'desc'}, id desc` : `${defaultSort}, id desc`;
     const safeLimit = Math.min(100, Math.max(1, limit || 25));
     const safePage = Math.max(1, page || 1);
@@ -131,7 +140,11 @@ export class InvoiceViewService {
               count(*) filter (where is_paid)::int as paid_n, coalesce(round(sum(total) filter (where is_paid), 2), 0) as paid_amt,
               count(*) filter (where draft)::int as draft_n, coalesce(round(sum(total) filter (where draft), 2), 0) as draft_amt,
               count(*) filter (where awaiting)::int as awaiting_n, coalesce(round(sum(total) filter (where awaiting), 2), 0) as awaiting_amt,
-              coalesce(max(days_waiting) filter (where awaiting), 0)::int as awaiting_oldest
+              coalesce(max(days_waiting) filter (where awaiting), 0)::int as awaiting_oldest,
+              count(*) filter (where ready)::int as ready_n, coalesce(round(sum(balance) filter (where ready), 2), 0) as ready_amt,
+              count(*) filter (where ready_overdue)::int as ready_overdue_n, coalesce(round(sum(balance) filter (where ready_overdue), 2), 0) as ready_overdue_amt,
+              count(*) filter (where ready_due7)::int as ready_due7_n, coalesce(round(sum(balance) filter (where ready_due7), 2), 0) as ready_due7_amt,
+              count(*) filter (where ready_later)::int as ready_later_n, coalesce(round(sum(balance) filter (where ready_later), 2), 0) as ready_later_amt
          from (${sql}) x`, args);
     const n = (k: string) => +r[k];
     return {
@@ -144,6 +157,11 @@ export class InvoiceViewService {
       draft: { count: n('draft_n'), amount: n('draft_amt') },
       awaiting: { count: n('awaiting_n'), amount: n('awaiting_amt'), oldest_days: n('awaiting_oldest') },
       approval: { count: n('appr_n'), amount: n('appr_amt') },
+      // what can be paid now, and when it falls due: the three parts add up to the whole, and none of it is on hold or waiting for approval
+      ready: { count: n('ready_n'), amount: n('ready_amt') },
+      ready_overdue: { count: n('ready_overdue_n'), amount: n('ready_overdue_amt') },
+      ready_due7: { count: n('ready_due7_n'), amount: n('ready_due7_amt') },
+      ready_later: { count: n('ready_later_n'), amount: n('ready_later_amt') },
     };
   }
 

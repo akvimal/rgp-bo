@@ -11,7 +11,7 @@ const PAGE = '/secure/purchases/invoices/list';
 
 /** the first received invoice that still has a balance worth paying against */
 async function pendingInvoice(api: any, min = 20) {
-  const r = await api.request('GET', '/purchases/search?view=pending&limit=100&sort=balance_amount&dir=desc', undefined, MGR);
+  const r = await api.request('GET', '/purchases/search?view=ready&limit=100&sort=balance_amount&dir=desc', undefined, MGR);        // owed, and nothing stops it being paid
   expect(r.status).toBe(200);
   return r.body.data.find((i: any) => i.balance_amount >= min && i.payment_status !== 'On Hold') ?? null;
 }
@@ -19,17 +19,49 @@ async function pendingInvoice(api: any, min = 20) {
 test.describe('Purchase invoices — pending view @p1', () => {
   test('PINV-1 the chip totals match what each view lists @integration', async ({ api }) => {
     const sum = (await api.request('GET', '/purchases/summary', undefined, MGR)).body;
-    for (const [view, key] of [['pending', 'pending'], ['overdue', 'overdue'], ['due7', 'due7'], ['hold', 'hold'], ['paid', 'paid'], ['draft', 'draft']] as const) {
+    for (const [view, key] of [['pending', 'pending'], ['overdue', 'overdue'], ['due7', 'due7'], ['hold', 'hold'], ['paid', 'paid'], ['draft', 'draft'], ['ready', 'ready'], ['ready_overdue', 'ready_overdue'], ['ready_due7', 'ready_due7'], ['ready_later', 'ready_later']] as const) {
       const list = await api.request('GET', `/purchases/search?view=${view}&limit=100`, undefined, MGR);
       expect(list.status).toBe(200);
       expect(list.body.total, `count for ${view}`).toBe(sum[key].count);
-      if (list.body.total <= 100 && ['pending', 'overdue', 'due7', 'hold'].includes(view)) {
+      if (list.body.total <= 100 && ['pending', 'overdue', 'due7', 'hold', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'].includes(view)) {
         const owed = list.body.data.reduce((t: number, r: any) => t + r.balance_amount, 0);
         expect(Math.abs(owed - sum[key].amount), `amount for ${view}`).toBeLessThan(1);
       }
     }
     // overdue, due-in-7-days and hold are parts of pending
     expect(sum.overdue.count + sum.due7.count + sum.hold.count).toBeLessThanOrEqual(sum.pending.count);
+  });
+
+  test('PINV-7 the cards do not overlap: what is ready to pay, what is held up, by when it falls due @integration', async ({ api, app }) => {
+    const sum = (await api.request('GET', '/purchases/summary', undefined, MGR)).body;
+    // everything owed is ready to pay, on hold, or waiting for approval, once
+    expect(sum.ready.count + sum.hold.count + sum.approval.count, 'owed = ready + on hold + awaiting approval').toBe(sum.pending.count);
+    expect(Math.abs(sum.ready.amount + sum.hold.amount + sum.approval.amount - sum.pending.amount)).toBeLessThan(1);
+    // and what is ready is overdue, due in 7 days, or later, once
+    expect(sum.ready_overdue.count + sum.ready_due7.count + sum.ready_later.count, 'ready = overdue + due in 7 days + later').toBe(sum.ready.count);
+    expect(Math.abs(sum.ready_overdue.amount + sum.ready_due7.amount + sum.ready_later.amount - sum.ready.amount)).toBeLessThan(1);
+    // nothing ready is on hold or awaiting approval
+    const ready = await api.request('GET', '/purchases/search?view=ready&limit=100', undefined, MGR);
+    for (const r of ready.body.data) expect(['On Hold', 'Awaiting approval', 'Draft', 'Awaiting invoice', 'Paid'], `${r.invoice_no} is payable now`).not.toContain(r.payment_status);
+
+    // on the screen: the four cards, the three parts of "Ready to pay" and the held-up lines, each a filter with the same count
+    const { page } = await app.open(MGR, PAGE);
+    await expectShell(page);
+    await expect(page.getByTestId('inv-card-ready')).toContainText('Ready to pay');
+    await expect(page.getByTestId('inv-card-held')).toContainText('Held up');
+    await expect(page.getByTestId('inv-held-count')).toContainText(String(sum.hold.count + sum.awaiting.count + (await page.getByTestId('inv-line-approval').count() ? sum.approval.count : 0)));
+    for (const part of ['ready_overdue', 'ready_due7', 'ready_later'] as const) {
+      await page.getByTestId(`inv-line-${part}`).click();
+      await expect(page.getByTestId('inv-count')).toContainText(String(sum[part].count), { timeout: 15_000 });
+    }
+    await page.getByTestId('inv-line-hold').click();
+    await expect(page.getByTestId('inv-count')).toContainText(String(sum.hold.count), { timeout: 15_000 });
+    await page.getByTestId('inv-line-awaiting').click();
+    await expect(page.getByTestId('inv-count')).toContainText(String(sum.awaiting.count), { timeout: 15_000 });
+    await page.getByTestId('inv-chip-draft').click();
+    await expect(page.getByTestId('inv-count')).toContainText(String(sum.draft.count), { timeout: 15_000 });
+    // the eight old cards are gone
+    for (const gone of ['inv-chip-pending', 'inv-chip-overdue', 'inv-chip-due7', 'inv-chip-hold', 'inv-chip-approval', 'inv-chip-awaiting']) await expect(page.getByTestId(gone)).toHaveCount(0);
   });
 
   test('PINV-2 a draft invoice is never owed, never in Outstanding, and cannot be paid @edge', async ({ api }) => {
@@ -129,12 +161,12 @@ test.describe('Purchase invoices — pending view @p1', () => {
     test.skip(!inv, 'no pending invoice with a balance in this data set');
     const { page } = await app.open(MGR, PAGE);
     await expectShell(page);
-    for (const c of ['pending', 'overdue', 'due7', 'hold', 'paid', 'draft']) await expect(page.getByTestId(`inv-chip-${c}`)).toBeVisible();
+    for (const c of ['inv-card-ready', 'inv-card-held', 'inv-chip-draft', 'inv-chip-paid']) await expect(page.getByTestId(c)).toBeVisible();
 
-    await page.getByTestId('inv-chip-pending').click();
+    await page.getByTestId('inv-card-ready-open').click();
     await expect(page.getByTestId('inv-row').first()).toBeVisible();
     const sum = (await api.request('GET', '/purchases/summary', undefined, MGR)).body;
-    await expect(page.getByTestId('inv-count')).toContainText(String(sum.pending.count));
+    await expect(page.getByTestId('inv-count')).toContainText(String(sum.ready.count));
 
     await page.getByTestId('inv-search').fill(inv.invoice_no);
     await page.getByTestId('inv-search').press('Enter');

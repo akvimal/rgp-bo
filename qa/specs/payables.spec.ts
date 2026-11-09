@@ -38,7 +38,7 @@ test.describe('Vendor Payables @p1', () => {
     await expect(page.getByTestId('payables-row').first()).toBeVisible();
     await expect(page.getByTestId('nav-payables')).toHaveCount(0);           // no separate tab any more
     await page.getByTestId('inv-tab-outstanding').click();                   // and the toggle leads back to the invoice view
-    await expect(page.getByTestId('inv-chip-pending')).toBeVisible();
+    await expect(page.getByTestId('inv-card-ready')).toBeVisible();
     await page.getByTestId('inv-tab-byvendor').click();
     await expect(page.getByTestId('payables-row').first()).toBeVisible();
   });
