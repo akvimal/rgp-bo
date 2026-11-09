@@ -4,7 +4,8 @@ import { DateUtilService } from "../../date-util.service";
 import { Sale } from "../models/sale.model";
 import { canVoidBill, signedInUserId } from "../bill-void";
 import { SaleService } from "../sales.service";
-import { Subscription } from "rxjs";
+import { Observable, Subscription, of } from "rxjs";
+import { switchMap } from "rxjs/operators";
 import { OperatorContextService } from "src/app/@core/operator-context.service";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { AuthService } from "src/app/@core/auth/auth.service";
@@ -143,8 +144,8 @@ export class SalesListComponent implements OnDestroy {
     }
 
     fetchSales(filter:any = {}){
-        this.service.findAll({...this.buildCriteria(filter),status:'COMPLETE'}).subscribe((result:any) => {
-          const data: any[] = result?.data ?? (Array.isArray(result) ? result : []);
+        // every bill of the day, however many pages the server gives them in: the footer totals add up what is loaded, so a first page alone would leave out the rest
+        this.fetchAllPages({...this.buildCriteria(filter),status:'COMPLETE'}, 1, []).subscribe((data:any[]) => {
           data.forEach((sale:any) => {
             if(sale['customer']){
               sale['custinfo'] = `${sale['customer']['name']} (${sale['customer']['mobile']})`
@@ -169,6 +170,19 @@ export class SalesListComponent implements OnDestroy {
           this.applyFilters();
           this.loadChecks();
         });
+    }
+
+    /** the pages of the list one after the other (200 bills at a time) until all of them are in */
+    private fetchAllPages(criteria:any, page:number, loaded:any[]): Observable<any[]> {
+      return this.service.findAll({...criteria, page, limit: 200}).pipe(
+        switchMap((result:any) => {
+          const rows: any[] = result?.data ?? (Array.isArray(result) ? result : []);
+          const all = loaded.concat(rows);
+          const total = Number(result?.total);
+          const more = rows.length > 0 && Number.isFinite(total) && all.length < total && page < 100;
+          return more ? this.fetchAllPages(criteria, page + 1, all) : of(all);
+        })
+      );
     }
 
     /** the staff and payment filters, over the bills of the day; the totals follow what is shown */

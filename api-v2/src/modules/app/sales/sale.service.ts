@@ -562,7 +562,8 @@ export class SaleService {
             qb.andWhere(`sale.status = :st`, { st: query.status });
         }
 
-        qb.orderBy('sale.updatedon', 'DESC').skip((page - 1) * limit).take(limit);
+        // the id breaks ties, so a bill is never skipped or repeated from one page to the next
+        qb.orderBy('sale.updatedon', 'DESC').addOrderBy('sale.id', 'DESC').skip((page - 1) * limit).take(limit);
         const [data, total] = await qb.getManyAndCount();
         return { data, total, page, limit };
     }
