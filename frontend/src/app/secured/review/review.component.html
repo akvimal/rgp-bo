@@ -76,6 +76,66 @@
       </tbody>
     </table>
   </div>
+  <h6 class="text-primary mt-3">Margin and mix</h6>
+  <p class="small text-muted mb-1" data-testid="review-mix-note">
+    Margin is what the items sold for against what they cost, before GST, on items whose purchase cost is known; returns are not taken off. Compared in percentage points with the same days of the month.
+  </p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-mix">
+      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Usual for these days</th><th class="text-end">Against usual</th></tr></thead>
+      <tbody>
+        <tr data-testid="review-row-margin"><td>Margin</td><td class="text-end">{{rate(data.actual.rates.marginPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.marginPct, '%')}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.margin, 'below')">{{label(data.verdicts.margin)}}</span></td></tr>
+        <tr data-testid="review-row-generic"><td>Generic products, share of items billed</td><td class="text-end">{{rate(data.actual.rates.genericPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.genericPct, '%')}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.generic, 'none')">{{label(data.verdicts.generic)}}</span></td></tr>
+        <tr data-testid="review-row-named"><td>Bills with a named customer</td><td class="text-end">{{rate(data.actual.rates.namedPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.namedPct, '%')}}</td><td></td></tr>
+        <tr data-testid="review-row-newcust"><td>New customers (first bill in this week)</td><td class="text-end">{{data.actual.raw.newCust}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.newCust | number:'1.0-0') : ''}}</td><td></td></tr>
+        <tr data-testid="review-row-unmet"><td>Requests we could not meet, per 100 bills</td><td class="text-end">{{data.actual.raw.unmet}} of {{data.actual.raw.inquiries}} <span class="small text-muted">({{rate(data.actual.rates.unmetPer100Bills)}})</span></td><td class="text-end text-muted">{{rate(data.usual.rates?.unmetPer100Bills)}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.unmet, 'above')">{{label(data.verdicts.unmet)}}</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-container *ngIf="data.more.cash">
+    <h6 class="text-primary mt-3">Cash drawer</h6>
+    <p class="small mb-1" data-testid="review-cash-summary">
+      <b>{{data.more.cash.closed}}</b> shift{{data.more.cash.closed === 1 ? '' : 's'}} closed;
+      <span *ngIf="data.more.cash.off === 0">every drawer was within &#8377;1 of the book.</span>
+      <span *ngIf="data.more.cash.off > 0"><b>{{data.more.cash.off}}</b> out by more than &#8377;1: {{data.more.cash.short}} short ({{data.more.cash.shortTotal | number:'1.0-0'}} in all), {{data.more.cash.over}} over ({{data.more.cash.overTotal | number:'1.0-0'}}); the biggest difference {{data.more.cash.biggest | number:'1.0-0'}}.</span>
+      <span *ngIf="data.more.cash.unclosed" class="text-warning-emphasis" data-testid="review-cash-unclosed">&ensp;<b>{{data.more.cash.unclosed}}</b> shift{{data.more.cash.unclosed === 1 ? ' was' : 's were'}} opened and never closed.</span>
+    </p>
+    <div class="table-responsive" *ngIf="data.more.cash.offList.length || data.more.cash.unclosedList.length">
+      <table class="table table-sm align-middle" data-testid="review-cash">
+        <thead><tr><th>Day</th><th>Shift</th><th>Store</th><th>Accountable</th><th class="text-end">Expected</th><th class="text-end">Counted</th><th class="text-end">Difference</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of data.more.cash.offList" class="table-warning" data-testid="review-cash-row">
+            <td class="text-nowrap">{{r.shift_date | date:'EEE d MMM'}}</td><td>{{r.name}}</td><td>{{r.store}}</td><td>{{r.who}}</td>
+            <td class="text-end">{{r.expected | number:'1.0-0'}}</td><td class="text-end">{{r.counted | number:'1.0-0'}}</td><td class="text-end">{{r.variance | number:'1.0-2'}}</td>
+          </tr>
+          <tr *ngFor="let r of data.more.cash.unclosedList" data-testid="review-cash-unclosed-row">
+            <td class="text-nowrap">{{r.shift_date | date:'EEE d MMM'}}</td><td>{{r.name}}</td><td>{{r.store}}</td><td>{{r.who}}</td><td colspan="3" class="text-muted">Opened, not closed</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="data.more.dues">
+    <h6 class="text-primary mt-3">Pay later</h6>
+    <p class="small mb-1" data-testid="review-dues">
+      Given this week <b>{{data.more.dues.given | number:'1.0-0'}}</b>, collected <b>{{data.more.dues.collected | number:'1.0-0'}}</b>.
+      At the end of the week <b>{{data.more.dues.owing}}</b> customer{{data.more.dues.owing === 1 ? ' owes' : 's owe'}} <b>{{data.more.dues.outstanding | number:'1.0-0'}}</b> in all.
+    </p>
+  </ng-container>
+
+  <ng-container *ngIf="data.more.asked">
+    <h6 class="text-primary mt-3">Asked for and not available</h6>
+    <p class="small mb-1" data-testid="review-asked">
+      <b>{{data.more.asked.raised}}</b> request{{data.more.asked.raised === 1 ? '' : 's'}} raised: {{data.more.asked.unmet}} not available, {{data.more.asked.ordered}} ordered, {{data.more.asked.sold}} sold.
+      <span *ngIf="data.more.asked.overdue" class="text-warning-emphasis">&ensp;{{data.more.asked.overdue}} still open past the promised day.</span>
+    </p>
+    <div class="small" *ngIf="data.more.asked.top.length" data-testid="review-asked-top">
+      Most asked for and not available: <span *ngFor="let t of data.more.asked.top; let last = last">{{t.name}} ({{t.count}}){{last ? '' : ', '}}</span>.
+    </div>
+  </ng-container>
+
   <h6 class="text-primary mt-3">The same dates a year ago</h6>
   <ng-container *ngIf="data.yearAgo.available; else noYear">
     <p class="small text-muted mb-1" data-testid="review-year-range">

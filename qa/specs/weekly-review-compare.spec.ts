@@ -23,7 +23,7 @@ test.describe('Weekly review comparison @p1', () => {
     // the figures for the week: raw totals, rates, a verdict for each line, and no "week before"
     expect(peak.body.before).toBeUndefined();
     expect(Object.keys(peak.body.actual.rates)).toEqual(expect.arrayContaining(['discountPct', 'belowPer100Lines', 'voidsPer100Bills', 'editsPer100Bills', 'returnsPer100Bills', 'avgBill']));
-    expect(Object.keys(peak.body.verdicts).sort()).toEqual(['below', 'bills', 'discount', 'edits', 'returns', 'sales', 'voids']);
+    expect(Object.keys(peak.body.verdicts).sort()).toEqual(['below', 'bills', 'discount', 'edits', 'generic', 'margin', 'returns', 'sales', 'unmet', 'voids']);
     expect(peak.body.actual.raw.bills).toBe(peak.body.summary.bills);          // the same bills as the lists are built from
 
     // usual is either worked out from earlier months, or absent with the reason and no verdicts
@@ -32,7 +32,7 @@ test.describe('Weekly review comparison @p1', () => {
       expect(peak.body.usual.months.every((m: string) => m < '2026-06')).toBe(true);
     } else {
       expect(peak.body.usual.reason).toMatch(/earlier months/);
-      expect(Object.values(peak.body.verdicts)).toEqual(Array(7).fill('unknown'));
+      expect(Object.values(peak.body.verdicts)).toEqual(Array(10).fill('unknown'));
     }
 
     // month to date against the same dates last month
@@ -69,6 +69,35 @@ test.describe('Weekly review comparison @p1', () => {
     expect(r.body.peerRules.minBills).toBeGreaterThan(0);
   });
 
+  test('REVIEW-8 margin and mix, the cash drawer, pay-later dues and unmet requests are part of the week @happy', async ({ api }) => {
+    const r = await week(api, '2026-06-01');
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    const rates = r.body.actual.rates;
+    for (const k of ['marginPct', 'genericPct', 'namedPct', 'newCustPer100Bills', 'unmetPer100Bills']) expect(rates).toHaveProperty(k);
+    expect(r.body.actual.raw.costedSales).toBeGreaterThanOrEqual(0);
+    if (rates.marginPct !== null) expect(rates.marginPct).toBeLessThan(100);
+    expect(r.body.actual.raw.named).toBeLessThanOrEqual(r.body.actual.raw.bills);
+    expect(r.body.actual.raw.unmet).toBeLessThanOrEqual(r.body.actual.raw.inquiries);
+
+    // week-level extras: each is an object, or null when the database has no such table (the review still loads)
+    const { cash, dues, asked } = r.body.more;
+    if (cash) {
+      expect(cash.closed).toBeLessThanOrEqual(cash.shifts);
+      expect(cash.off).toBe(cash.short + cash.over);
+      expect(cash.shortTotal).toBeGreaterThanOrEqual(0);
+      for (const row of cash.offList) expect(Math.abs(row.variance)).toBeGreaterThan(1);
+    }
+    if (dues) {
+      expect(dues.given).toBeGreaterThanOrEqual(0);
+      expect(dues.collected).toBeGreaterThanOrEqual(0);
+      expect(dues.outstanding).toBeGreaterThanOrEqual(0);
+    }
+    if (asked) {
+      expect(asked.unmet + asked.ordered + asked.sold).toBeLessThanOrEqual(asked.raised);
+      expect(Array.isArray(asked.top)).toBe(true);
+    }
+  });
+
   test('REVIEW-6 the screen shows the comparison with usual, the rates and the month to date, not the week before @happy', async ({ browser }) => {
     const ctx = await browser.newContext();
     const { page } = await openAs(ctx, MGR, '/secure/review');
@@ -85,6 +114,11 @@ test.describe('Weekly review comparison @p1', () => {
     await expect(page.getByTestId('review-year').or(page.getByTestId('review-year-none'))).toBeVisible();
     await expect(page.getByTestId('review-people')).toBeVisible();
     await expect(page.getByTestId('review-people-note')).toContainText('well over');
+    // margin and mix, and the week-level sections (each shown when the database has what it needs)
+    await expect(page.getByTestId('review-mix')).toBeVisible();
+    for (const row of ['review-row-margin', 'review-row-generic', 'review-row-named', 'review-row-newcust', 'review-row-unmet']) await expect(page.getByTestId(row)).toBeVisible();
+    await expect(page.getByTestId('review-cash-summary')).toBeVisible();
+    await expect(page.getByTestId('review-asked')).toBeVisible();
     // either the basis of "usual" or the reason there is none
     await expect(page.getByTestId('review-usual-basis').or(page.getByTestId('review-usual-none'))).toBeVisible();
     await expect(page.getByText('Week before')).toHaveCount(0);

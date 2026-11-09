@@ -32,11 +32,21 @@ export const phaseOf = (day: string): Phase => {
 export interface Raw {
   bills: number; sales: number; disc: number; discBills: number; lines: number;
   below: number; voids: number; edits: number; returns: number; returnValue: number;
+  /** step 3: cost of what was sold (on lines whose purchase cost is known) and what those lines sold for, both before GST */
+  cost: number; costedSales: number;
+  /** billed items of generic products, bills with a named customer, customers whose first bill was that day */
+  genericLines: number; named: number; newCust: number;
+  /** requests and inquiries raised, and those that could not be met (outcome "not available") */
+  inquiries: number; unmet: number;
 }
 export interface Daily extends Raw { day: string }
 
-const RAW_KEYS: (keyof Raw)[] = ['bills', 'sales', 'disc', 'discBills', 'lines', 'below', 'voids', 'edits', 'returns', 'returnValue'];
-export const zeroRaw = (): Raw => ({ bills: 0, sales: 0, disc: 0, discBills: 0, lines: 0, below: 0, voids: 0, edits: 0, returns: 0, returnValue: 0 });
+const RAW_KEYS: (keyof Raw)[] = ['bills', 'sales', 'disc', 'discBills', 'lines', 'below', 'voids', 'edits', 'returns', 'returnValue',
+  'cost', 'costedSales', 'genericLines', 'named', 'newCust', 'inquiries', 'unmet'];
+export const zeroRaw = (): Raw => ({
+  bills: 0, sales: 0, disc: 0, discBills: 0, lines: 0, below: 0, voids: 0, edits: 0, returns: 0, returnValue: 0,
+  cost: 0, costedSales: 0, genericLines: 0, named: 0, newCust: 0, inquiries: 0, unmet: 0,
+});
 export const addRaw = (a: Raw, b: Raw): Raw => { const o = zeroRaw(); for (const k of RAW_KEYS) o[k] = a[k] + b[k]; return o; };
 const scaleRaw = (a: Raw, f: number): Raw => { const o = zeroRaw(); for (const k of RAW_KEYS) o[k] = a[k] * f; return o; };
 export const roundRaw = (a: Raw): Raw => { const o = zeroRaw(); for (const k of RAW_KEYS) o[k] = Math.round(a[k] * 100) / 100; return o; };
@@ -69,6 +79,7 @@ const per100 = (a: number, b: number): number | null => (b > 0 ? Math.round((a /
 export interface Rates {
   discountPct: number | null; belowPer100Lines: number | null; voidsPer100Bills: number | null;
   editsPer100Bills: number | null; returnsPer100Bills: number | null; returnValuePct: number | null; avgBill: number | null;
+  marginPct: number | null; genericPct: number | null; namedPct: number | null; newCustPer100Bills: number | null; unmetPer100Bills: number | null;
 }
 export const ratesOf = (r: Raw): Rates => ({
   discountPct: pct(r.disc, r.sales + r.disc),
@@ -78,6 +89,11 @@ export const ratesOf = (r: Raw): Rates => ({
   returnsPer100Bills: per100(r.returns, r.bills),
   returnValuePct: pct(r.returnValue, r.sales),
   avgBill: r.bills > 0 ? Math.round((r.sales / r.bills) * 100) / 100 : null,
+  marginPct: pct(r.costedSales - r.cost, r.costedSales),
+  genericPct: pct(r.genericLines, r.lines),
+  namedPct: pct(r.named, r.bills),
+  newCustPer100Bills: per100(r.newCust, r.bills),
+  unmetPer100Bills: per100(r.unmet, r.bills),
 });
 
 /**
@@ -137,9 +153,21 @@ export const judgeVolume = (actual: number, usual: number | null): Verdict => {
   return r >= 1 + VOLUME_TOLERANCE ? 'above' : r <= 1 - VOLUME_TOLERANCE ? 'below' : 'usual';
 };
 
-export interface Verdicts { bills: Verdict; sales: Verdict; discount: Verdict; below: Verdict; voids: Verdict; edits: Verdict; returns: Verdict }
+export interface Verdicts {
+  bills: Verdict; sales: Verdict; discount: Verdict; below: Verdict; voids: Verdict; edits: Verdict; returns: Verdict;
+  margin: Verdict; generic: Verdict; unmet: Verdict;
+}
+/** margin and the generic share are percentages: a difference of this many points or more is worth a word */
+export const MARGIN_POINTS = 3;
+export const GENERIC_POINTS = 5;
+/** a share against the usual share, in percentage points; no verdict without something to compare */
+export const judgePoints = (now: number | null, usual: number | null, points: number): Verdict => {
+  if (now === null || usual === null) return 'unknown';
+  return now >= usual + points ? 'above' : now <= usual - points ? 'below' : 'usual';
+};
+
 export const verdictsOf = (actual: Raw, usual: Raw | null): Verdicts => {
-  if (!usual) return { bills: 'unknown', sales: 'unknown', discount: 'unknown', below: 'unknown', voids: 'unknown', edits: 'unknown', returns: 'unknown' };
+  if (!usual) return { bills: 'unknown', sales: 'unknown', discount: 'unknown', below: 'unknown', voids: 'unknown', edits: 'unknown', returns: 'unknown', margin: 'unknown', generic: 'unknown', unmet: 'unknown' };
   const a = ratesOf(actual), u = ratesOf(usual);
   return {
     bills: judgeVolume(actual.bills, usual.bills), sales: judgeVolume(actual.sales, usual.sales),
@@ -148,6 +176,9 @@ export const verdictsOf = (actual: Raw, usual: Raw | null): Verdicts => {
     voids: judgeRate(a.voidsPer100Bills, u.voidsPer100Bills, actual.voids, usual.voids),
     edits: judgeRate(a.editsPer100Bills, u.editsPer100Bills, actual.edits, usual.edits),
     returns: judgeRate(a.returnsPer100Bills, u.returnsPer100Bills, actual.returns, usual.returns),
+    margin: judgePoints(a.marginPct, u.marginPct, MARGIN_POINTS),
+    generic: judgePoints(a.genericPct, u.genericPct, GENERIC_POINTS),
+    unmet: judgeRate(a.unmetPer100Bills, u.unmetPer100Bills, actual.unmet, usual.unmet),
   };
 };
 

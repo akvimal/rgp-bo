@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { cashSummary, topAsked } from './review-extras';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
@@ -20,6 +21,7 @@ const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOSt
  */
 @Injectable()
 export class ReviewService {
+  private readonly log = new Logger('WeeklyReview');
   constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
 
   /** the stores this reader may review: every store of the business for an owner, their own stores for a Store Head */
@@ -112,14 +114,19 @@ export class ReviewService {
     const day = (col: string) => `to_char((${col})::date, 'YYYY-MM-DD')`;
     const ist = (col: string) => `to_char((${col} at time zone 'Asia/Kolkata')::date, 'YYYY-MM-DD')`;
     const inIst = (col: string) => `(${col} at time zone 'Asia/Kolkata')::date >= $2::date and (${col} at time zone 'Asia/Kolkata')::date < $3::date`;
-    const [sales, lines, below, voids, edits, returns] = await Promise.all([
+    const [sales, lines, below, voids, edits, returns, firsts, inquiries] = await Promise.all([
       this.manager.query(
         `select ${day('s.bill_date')} as day, count(*)::int as bills, coalesce(sum(s.total), 0)::float as sales,
-                coalesce(sum(s.disc_amount), 0)::float as disc, count(*) filter (where s.disc_amount > 0)::int as disc_bills
+                coalesce(sum(s.disc_amount), 0)::float as disc, count(*) filter (where s.disc_amount > 0)::int as disc_bills,
+                count(*) filter (where s.customer_id is not null)::int as named
            from sale s where s.status = 'COMPLETE' and s.store_id = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < $3::date group by 1`, a),
       this.manager.query(
-        `select ${day('s.bill_date')} as day, count(*)::int as n
-           from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE'
+        `select ${day('s.bill_date')} as day, count(*)::int as n,
+                coalesce(sum(si.price * si.qty) filter (where pii.ptr_cost > 0), 0)::float as costed_sales,
+                coalesce(sum(pii.ptr_cost / greatest(p.pack, 1) * si.qty) filter (where pii.ptr_cost > 0), 0)::float as cost,
+                count(*) filter (where p.more_props->>'generic' = 'true')::int as generic
+           from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id
+                left join purchase_invoice_item pii on pii.id = si.purchase_item_id
           where si.status = 'Complete' and si.active and s.store_id = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < $3::date group by 1`, a),
       this.manager.query(
         `select day, count(*)::int as n from (
@@ -139,11 +146,23 @@ export class ReviewService {
                 coalesce(sum(round(coalesce(sri.refund_amount, si.price * sri.qty * (1 + coalesce(si.tax_pcnt, 0) / 100.0))::numeric, 2)), 0)::float as value
            from sale_return_item sri join sale_item si on si.id = sri.sale_item_id join sale s on s.id = si.sale_id
           where sri.active and not sri.archive and s.store_id = any($1::int[]) and ${inIst('sri.created_on')} group by 1`, a),
+      // customers whose first bill at these stores fell on the day
+      this.manager.query(
+        `select to_char(first_day, 'YYYY-MM-DD') as day, count(*)::int as n from (
+           select s.customer_id, min(s.bill_date::date) as first_day from sale s
+            where s.status = 'COMPLETE' and s.customer_id is not null and s.store_id = any($1::int[]) group by 1) f
+          where first_day >= $2::date and first_day < $3::date group by 1`, a),
+      // requests and inquiries raised, and those closed as not available
+      this.manager.query(
+        `select ${ist('q.raised_on')} as day, count(*)::int as n, count(*) filter (where q.outcome = 'NOT_AVAILABLE')::int as unmet
+           from customer_inquiry q where q.store_id = any($1::int[]) and ${inIst('q.raised_on')} group by 1`, a),
     ]);
     const m = new Map<string, Daily>();
     const at = (d: string) => { let r = m.get(d); if (!r) { r = { ...zeroRaw(), day: d }; m.set(d, r); } return r; };
-    for (const r of sales) { const o = at(r.day); o.bills = r.bills; o.sales = r.sales; o.disc = r.disc; o.discBills = r.disc_bills; }
-    for (const r of lines) at(r.day).lines = r.n;
+    for (const r of sales) { const o = at(r.day); o.bills = r.bills; o.sales = r.sales; o.disc = r.disc; o.discBills = r.disc_bills; o.named = r.named; }
+    for (const r of lines) { const o = at(r.day); o.lines = r.n; o.costedSales = r.costed_sales; o.cost = r.cost; o.genericLines = r.generic; }
+    for (const r of firsts) at(r.day).newCust = r.n;
+    for (const r of inquiries) { const o = at(r.day); o.inquiries = r.n; o.unmet = r.unmet; }
     for (const r of below) at(r.day).below = r.n;
     for (const r of voids) at(r.day).voids = r.n;
     for (const r of edits) at(r.day).edits = r.n;
@@ -198,6 +217,46 @@ export class ReviewService {
     return [...m.values()];
   }
 
+  /** an extra that depends on a table an older database may not have: when it fails the section is left out, not the whole review */
+  private async safe<T>(what: string, f: () => Promise<T>): Promise<T | null> {
+    try { return await f(); } catch (e: any) { this.log.warn(`weekly review: ${what} left out (${e?.message ?? e})`); return null; }
+  }
+
+  /** the cash drawer by shift, pay-later dues, and what customers asked for that could not be supplied, for the week */
+  private async extras(ids: number[], start: string, next: string, today: string) {
+    if (!ids.length) return { cash: null, dues: null, asked: null };
+    const a = [ids, start, next];
+    const cash = await this.safe('cash', async () => {
+      const rows = await this.manager.query(
+        `select sh.id, to_char(sh.shift_date, 'YYYY-MM-DD') as shift_date, sh.name, st.location as store, sh.status, sh.expected_cash::float as expected, sh.counted_cash::float as counted,
+                sh.variance::float as variance, u.full_name as who
+           from store_shifts sh join stores st on st.id = sh.store_id left join app_user u on u.id = coalesce(sh.accountable_user_id, sh.assigned_user_id)
+          where sh.store_id = any($1::int[]) and sh.shift_date >= $2::date and sh.shift_date < $3::date and not sh.archive order by sh.shift_date, sh.id`, a);
+      return cashSummary(rows.map((r: any) => ({ ...r, store: String(r.store).trim() })), today);
+    });
+    const dues = await this.safe('dues', async () => {
+      const [wk] = await this.manager.query(
+        `select coalesce(sum(amount) filter (where kind = 'DUE'), 0)::float as given, coalesce(-sum(amount) filter (where kind = 'PAYMENT'), 0)::float as collected
+           from customer_due_entry where store_id = any($1::int[]) and entry_date >= $2::date and entry_date < $3::date`, a);
+      const [bal] = await this.manager.query(
+        `select count(*) filter (where b > 0)::int as owing, coalesce(sum(b) filter (where b > 0), 0)::float as outstanding from (
+           select customer_id, sum(amount) as b from customer_due_entry where store_id = any($1::int[]) and entry_date < $2::date group by 1) x`, [ids, next]);
+      return { given: wk.given, collected: wk.collected, owing: bal.owing, outstanding: bal.outstanding };
+    });
+    const asked = await this.safe('asked', async () => {
+      const [t] = await this.manager.query(
+        `select count(*)::int as raised, count(*) filter (where outcome = 'NOT_AVAILABLE')::int as unmet, count(*) filter (where outcome = 'ORDERED')::int as ordered,
+                count(*) filter (where outcome = 'SOLD')::int as sold
+           from customer_inquiry where store_id = any($1::int[]) and (raised_on at time zone 'Asia/Kolkata')::date >= $2::date and (raised_on at time zone 'Asia/Kolkata')::date < $3::date`, a);
+      const [od] = await this.manager.query(`select count(*)::int as n from customer_inquiry where store_id = any($1::int[]) and status = 'OPEN' and due_on < $2::date`, [ids, today]);
+      const products = await this.manager.query(
+        `select product_text from customer_inquiry where store_id = any($1::int[]) and outcome = 'NOT_AVAILABLE' and product_text is not null
+            and (raised_on at time zone 'Asia/Kolkata')::date >= $2::date and (raised_on at time zone 'Asia/Kolkata')::date < $3::date`, a);
+      return { ...t, overdue: od.n, top: topAsked(products) };
+    });
+    return { cash, dues, asked };
+  }
+
   async week(user: any, q: { storeid?: number | null; weekstart?: string }) {
     const { businessId, owner, stores } = await this.scope(user);
     const ids = this.pick(stores, q.storeid);
@@ -219,6 +278,7 @@ export class ReviewService {
     const mtd = mtdCompare(history, range.end, today);
     const yearHistory = await this.daily(ids, yearFrom(start, mtd.from), addDays(yearAgo(range.end), 1));
     const peers = comparePeople(await this.people(ids, start, range.next));
+    const more = await this.extras(ids, start, range.next, today);
     const signoffs = ids.length ? await this.manager.query(
       `select w.store_id, st.location, w.reviewed_on, w.note, u.full_name as by_name
          from weekly_review w join stores st on st.id = w.store_id join app_user u on u.id = w.reviewed_by
@@ -236,6 +296,7 @@ export class ReviewService {
       mtd,
       yearAgo: yearCompare(yearHistory, start, mtd),
       people: peers,
+      more,
       peerRules: { minBills: MIN_PEER_BILLS, tolerance: PEER_TOLERANCE }, limits: { belowList: BELOW_LIST_PCT, bigDiscount: BIG_DISCOUNT_PCT, lateReturnDays: LATE_RETURN_DAYS, lateVoidHours: LATE_VOID_HOURS, listLimit: LIST_LIMIT },
       discounts: cur.discounts, below: cur.below, voids: cur.voids, edits: cur.edits, returns: cur.returns,
       returnsByReason: groupReturns(cur.returns, (r) => r.reason), returnsByPerson: groupReturns(cur.returns, (r) => r.by_name),

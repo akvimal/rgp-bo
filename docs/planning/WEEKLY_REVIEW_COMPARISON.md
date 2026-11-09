@@ -1,6 +1,6 @@
 # Weekly review: fair comparison for a month with a peak (1st to 10th)
 
-Status: designed; **step 1 built and committed 2026-11-09 (fffa6d79d); step 2 built 2026-11-09 (uncommitted)**. Step 3 not built.
+Status: designed; **step 1 built and committed 2026-11-09 (fffa6d79d); step 2 committed 2026-11-09 (436143783); step 3 built 2026-11-09 (uncommitted)**.
 
 ## Problem
 
@@ -44,10 +44,29 @@ The weekly review (`/secure/review`, `api-v2/src/modules/app/review/`) set each 
 - API additions to `GET /review/week`: `yearAgo` (`available`, `week`, `mtd`, each with raw totals and rates), `people` (raw totals, rates, `peerRates`, `verdicts`; most sales first) and `peerRules`.
 - Checked: 25 unit tests of the rules; Playwright `REVIEW-5/6/7`; on the production-data copy the week of 5 Oct 2026 against 6 Oct 2025 showed sales +19% and bills -3% (average bill +24%), and month to date -4% on sales. That store has one biller, so the person comparison was only shown with one row; the rule is covered by the unit tests, not by real multi-person data.
 
-## Not built (step 3)
+## Step 3 (built)
 
-New lines: unmet demand (requests and "not in stock" lookups), refill capture (customers due vs served), margin %, generic substitution rate, cash short or over per shift, new vs repeat customers and dues collected, stock health.
+Added to the same screen and API. The first group is worked out per day, so it is set against "usual for these days" like the rest; the second group is for the week only.
+
+**Margin and mix** (per day, in `daily()`, so each has a usual):
+- **Margin %**: items sold for, less their purchase cost, on lines whose purchase cost is known (`purchase_invoice_item.ptr_cost` per pack, divided by the pack, times units), before GST. Returns are not taken off. Marked **below usual** when 3 percentage points or more under (above usual is only noted).
+- **Generic share** of items billed (`more_props.generic`): noted when 5 points or more from usual, neither direction a warning.
+- **Bills with a named customer**, and **new customers** (customers whose first bill at these stores fell in the week): shown, not marked.
+- **Requests we could not meet** per 100 bills (customer inquiries raised in the week and closed "not available"): marked **above usual** by the same rule as the other rates (25% over and 3 more cases).
+
+**Week only** (`more` in the API; each is `null` when its table is missing in an older database, so the review still loads):
+- **Cash drawer**: shifts closed, how many were out by more than Rs 1 (the same tolerance as the checklist assistant), short and over with totals and the biggest, the shifts listed with who was accountable; and shifts opened and never closed by the end of their day.
+- **Pay later**: dues given and collected in the week, and the number of customers owing and the total at the end of the week.
+- **Asked for and not available**: inquiries raised, how many ended not available / ordered / sold, how many are open past the promised day, and the most-asked-for products that were not available (the same product typed differently is counted once).
+
+Checked: 31 unit tests of the rules; Playwright `REVIEW-5` to `REVIEW-8`; on the production-data copy the week of 5 Oct 2026 showed margin 49.9% against a usual 52.7%, generic share 65.2% (66.1%), and with seeded shifts, inquiries and dues the cash, asked-for and pay-later sections matched the seeded figures (a Rs 0.50 difference correctly ignored, an open shift listed, "Telma 40" typed two ways counted twice). The review answers in about 1.1 s. The production copy had no pay-later table, which showed the section being left out cleanly.
+
+### Not built, and why
+- **Refill capture** (customers due vs served): "due" is a rule over each customer's buying gap, so the question is who was due on which day, and history cannot be rebuilt reliably after the fact. It needs a daily snapshot of the worklist first. The dashboard already counts refill calls.
+- **Stock health** (near-expiry value, negative stock, count variance): a state, not a weekly flow, and the alerts already raise it.
+- **Margin by person or by product class**, **unmet demand from "not in stock" lookups** in Check brand (not logged yet), **cash short or over per person over time**: possible next.
+- **Margin limits**: purchase cost is taken from the batch sold; a missing cost leaves the line out (shown on production data: every sold line had one). Discounts are inside the selling price, returns are not deducted, and GST is excluded.
 
 ## Open questions
 - Are the peak days the same in every store?
-- Is purchase cost reliable enough to show margin %?
+- Margin % is shown with its limits stated; confirm the owner is happy with margin before GST and before returns.

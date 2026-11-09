@@ -66,6 +66,13 @@ export class ReviewComponent implements OnInit {
         return v === 'usual' ? 'As usual' : '';
     }
 
+    /** a measure where one side is the worry (margin below usual, unmet requests above usual): that side is a warning, the other only noted; 'none' notes both */
+    badgeBad(v: string, bad: string): string {
+        if (v === 'usual') return 'badge bg-light text-dark border';
+        if (v === 'unknown') return '';
+        return v === bad ? 'badge bg-warning text-dark' : 'badge bg-info text-dark';
+    }
+
     /** an exception above usual is a warning; a volume above or below usual is only noted */
     badge(v: string, volume = false): string {
         if (v === 'above') return volume ? 'badge bg-info text-dark' : 'badge bg-warning text-dark';
