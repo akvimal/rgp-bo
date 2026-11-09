@@ -49,10 +49,28 @@ export class ReviewComponent implements OnInit {
 
     get thisWeek(): boolean { return !!this.data && !this.data.over; }
 
-    /** the change from the week before, for the summary table */
-    delta(now: number, before: number): string {
-        const d = Math.round((now - before) * 100) / 100;
-        return d === 0 ? '' : (d > 0 ? '+' : '') + d;
+    /** the change from the usual figure, as a signed percentage ('' when there is nothing to compare with) */
+    change(now: number | null | undefined, usual: number | null | undefined): string {
+        if (now === null || now === undefined || usual === null || usual === undefined || usual <= 0) return '';
+        const p = Math.round(((now - usual) / usual) * 100);
+        return p === 0 ? '0%' : (p > 0 ? '+' : '') + p + '%';
+    }
+
+    /** a rate for display ('' when it cannot be worked out, for example no bills) */
+    rate(v: number | null | undefined, unit = ''): string { return v === null || v === undefined ? '' : v + unit; }
+
+    /** the words for a verdict: bills and sales are higher or lower, the exceptions above or below usual */
+    label(v: string, volume = false): string {
+        if (v === 'above') return volume ? 'Higher than usual' : 'Above usual';
+        if (v === 'below') return volume ? 'Lower than usual' : 'Below usual';
+        return v === 'usual' ? 'As usual' : '';
+    }
+
+    /** an exception above usual is a warning; a volume above or below usual is only noted */
+    badge(v: string, volume = false): string {
+        if (v === 'above') return volume ? 'badge bg-info text-dark' : 'badge bg-warning text-dark';
+        if (v === 'below') return volume ? 'badge bg-info text-dark' : 'badge bg-secondary';
+        return v === 'usual' ? 'badge bg-light text-dark border' : '';
     }
 
     /** what an edit changed, in words */

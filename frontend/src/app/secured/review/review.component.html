@@ -29,18 +29,50 @@
     </div>
   </div>
 
-  <h6 class="text-primary">This week and the week before</h6>
+  <!-- the week beside what is usual for the same days of the month: the first ten days are the peak, so the week before is not a fair comparison -->
+  <h6 class="text-primary">This week against what is usual for these days</h6>
+  <p class="small text-muted mb-2" data-testid="review-phases">
+    This week has <span *ngIf="data.phases.mix.peak"><b>{{data.phases.mix.peak}}</b> peak day{{data.phases.mix.peak > 1 ? 's' : ''}} (1st to 10th)</span><span *ngIf="data.phases.mix.peak && (data.phases.mix.mid || data.phases.mix.tail)">, </span><span *ngIf="data.phases.mix.mid"><b>{{data.phases.mix.mid}}</b> middle day{{data.phases.mix.mid > 1 ? 's' : ''}} (11th to 20th)</span><span *ngIf="data.phases.mix.mid && data.phases.mix.tail">, </span><span *ngIf="data.phases.mix.tail"><b>{{data.phases.mix.tail}}</b> late day{{data.phases.mix.tail > 1 ? 's' : ''}} (21st on)</span>.
+    <span *ngIf="data.usual.raw" data-testid="review-usual-basis">Usual is the same days of the month over earlier months ({{data.usual.months.join(', ')}}).</span>
+    <span *ngIf="!data.usual.raw" class="text-warning-emphasis" data-testid="review-usual-none">{{data.usual.reason}} Only this week figures are shown.</span>
+  </p>
   <div class="table-responsive">
     <table class="table table-sm align-middle" data-testid="review-summary">
-      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Week before</th><th class="text-end">Change</th></tr></thead>
+      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Usual for these days</th><th class="text-end">Against usual</th></tr></thead>
       <tbody>
-        <tr><td>Bills</td><td class="text-end">{{data.summary.bills}}</td><td class="text-end text-muted">{{data.before.bills}}</td><td class="text-end small text-muted">{{delta(data.summary.bills, data.before.bills)}}</td></tr>
-        <tr><td>Sales</td><td class="text-end">{{data.summary.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.before.sales | number:'1.0-0'}}</td><td class="text-end small text-muted">{{delta(data.summary.sales, data.before.sales) | number:'1.0-0'}}</td></tr>
-        <tr data-testid="review-row-discounts"><td>Bills with a discount</td><td class="text-end">{{data.summary.discountBills}} <span class="small text-muted" *ngIf="data.summary.discountBills">({{data.summary.discountValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.discountBills}}</td><td class="text-end small text-muted">{{delta(data.summary.discountBills, data.before.discountBills)}}</td></tr>
-        <tr data-testid="review-row-below"><td>Items billed below the list price</td><td class="text-end">{{data.summary.belowList}} <span class="small text-muted" *ngIf="data.summary.belowList">({{data.summary.belowListValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.belowList}}</td><td class="text-end small text-muted">{{delta(data.summary.belowList, data.before.belowList)}}</td></tr>
-        <tr data-testid="review-row-voids"><td>Held bills discarded</td><td class="text-end">{{data.summary.voids}} <span class="small text-muted" *ngIf="data.summary.voids">({{data.summary.voidValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.voids}}</td><td class="text-end small text-muted">{{delta(data.summary.voids, data.before.voids)}}</td></tr>
-        <tr data-testid="review-row-edits"><td>Bills edited after billing</td><td class="text-end">{{data.summary.edits}} <span class="small text-muted" *ngIf="data.summary.editReduced">(total lowered by {{data.summary.editReduced | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.edits}}</td><td class="text-end small text-muted">{{delta(data.summary.edits, data.before.edits)}}</td></tr>
-        <tr data-testid="review-row-returns"><td>Returns</td><td class="text-end">{{data.summary.returns}} <span class="small text-muted" *ngIf="data.summary.returns">({{data.summary.returnValue | number:'1.0-0'}})</span></td><td class="text-end text-muted">{{data.before.returns}}</td><td class="text-end small text-muted">{{delta(data.summary.returns, data.before.returns)}}</td></tr>
+        <tr data-testid="review-row-bills"><td>Bills</td><td class="text-end">{{data.actual.raw.bills}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.bills | number:'1.0-0') : ''}}</td><td class="text-end small"><span [ngClass]="badge(data.verdicts.bills, true)">{{label(data.verdicts.bills, true)}}</span> <span class="text-muted">{{change(data.actual.raw.bills, data.usual.raw?.bills)}}</span></td></tr>
+        <tr data-testid="review-row-sales"><td>Sales</td><td class="text-end">{{data.actual.raw.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.sales | number:'1.0-0') : ''}}</td><td class="text-end small"><span [ngClass]="badge(data.verdicts.sales, true)">{{label(data.verdicts.sales, true)}}</span> <span class="text-muted">{{change(data.actual.raw.sales, data.usual.raw?.sales)}}</span></td></tr>
+        <tr data-testid="review-row-avgbill"><td>Average bill</td><td class="text-end">{{data.actual.rates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.usual.rates ? (data.usual.rates.avgBill | number:'1.0-0') : ''}}</td><td class="text-end small text-muted">{{change(data.actual.rates.avgBill, data.usual.rates?.avgBill)}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="text-primary mt-3">Exceptions as rates</h6>
+  <p class="small text-muted mb-1">A busy week brings more of everything, so these are judged per bill, per item or per rupee, not as counts. A rate is marked only when it is clearly above usual <i>and</i> there are several more cases than usual.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-rates">
+      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Rate</th><th class="text-end">Usual rate</th><th class="text-end">Against usual</th></tr></thead>
+      <tbody>
+        <tr data-testid="review-row-discounts"><td>Discount given, as % of sales</td><td class="text-end">{{data.summary.discountBills}} bill{{data.summary.discountBills === 1 ? '' : 's'}} <span class="small text-muted" *ngIf="data.summary.discountBills">({{data.summary.discountValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.discountPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.discountPct, '%')}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.discount)">{{label(data.verdicts.discount)}}</span></td></tr>
+        <tr data-testid="review-row-below"><td>Items billed below the list price, per 100 items</td><td class="text-end">{{data.summary.belowList}} <span class="small text-muted" *ngIf="data.summary.belowList">({{data.summary.belowListValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.belowPer100Lines)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.belowPer100Lines)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.below)">{{label(data.verdicts.below)}}</span></td></tr>
+        <tr data-testid="review-row-voids"><td>Held bills discarded, per 100 bills</td><td class="text-end">{{data.summary.voids}} <span class="small text-muted" *ngIf="data.summary.voids">({{data.summary.voidValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.voidsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.voidsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.voids)">{{label(data.verdicts.voids)}}</span></td></tr>
+        <tr data-testid="review-row-edits"><td>Bills edited after billing, per 100 bills</td><td class="text-end">{{data.summary.edits}} <span class="small text-muted" *ngIf="data.summary.editReduced">(total lowered by {{data.summary.editReduced | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.editsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.editsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.edits)">{{label(data.verdicts.edits)}}</span></td></tr>
+        <tr data-testid="review-row-returns"><td>Returns, per 100 bills</td><td class="text-end">{{data.summary.returns}} <span class="small text-muted" *ngIf="data.summary.returns">({{data.summary.returnValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.returnsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.returnsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.returns)">{{label(data.verdicts.returns)}}</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="text-primary mt-3">Month to date, against the same dates last month</h6>
+  <p class="small text-muted mb-1" data-testid="review-mtd-range">{{data.mtd.from | date:'d MMM'}} to {{data.mtd.to | date:'d MMM yyyy'}} against {{data.mtd.prevFrom | date:'d MMM'}} to {{data.mtd.prevTo | date:'d MMM yyyy'}}.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-mtd">
+      <thead><tr><th></th><th class="text-end">This month</th><th class="text-end">Last month</th><th class="text-end">Change</th></tr></thead>
+      <tbody>
+        <tr><td>Bills</td><td class="text-end">{{data.mtd.current.bills}}</td><td class="text-end text-muted">{{data.mtd.previous.bills}}</td><td class="text-end small text-muted">{{change(data.mtd.current.bills, data.mtd.previous.bills)}}</td></tr>
+        <tr><td>Sales</td><td class="text-end">{{data.mtd.current.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.mtd.previous.sales | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.current.sales, data.mtd.previous.sales)}}</td></tr>
+        <tr><td>Average bill</td><td class="text-end">{{data.mtd.currentRates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.mtd.previousRates.avgBill | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.currentRates.avgBill, data.mtd.previousRates.avgBill)}}</td></tr>
+        <tr><td>Discount, as % of sales</td><td class="text-end">{{rate(data.mtd.currentRates.discountPct, '%')}}</td><td class="text-end text-muted">{{rate(data.mtd.previousRates.discountPct, '%')}}</td><td></td></tr>
+        <tr><td>Returns, per 100 bills</td><td class="text-end">{{rate(data.mtd.currentRates.returnsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.mtd.previousRates.returnsPer100Bills)}}</td><td></td></tr>
       </tbody>
     </table>
   </div>
