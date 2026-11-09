@@ -77,7 +77,9 @@ test.describe('Manage Delivery screen @p1', () => {
     await page.getByTestId('dm-cost').fill('45');
     await expect(page.getByTestId('dm-cost-unsaid')).toBeVisible();                              // an amount and no way yet: it asks
     await page.getByTestId('dm-way-CASH').check();
-    await expect(page.getByTestId('dm-cash-note')).toContainText('cash drawer of the shift that is open now');
+    await expect(page.getByTestId('dm-cash-shift'), 'the drawer that pays is named').toContainText(shift.name);
+    await expect(page.getByTestId('dm-cash-note')).toContainText('cash expected goes down');
+    await expect(page.getByTestId('dm-shift-choice'), 'counter staff are not offered a choice').toHaveCount(0);
     await expect(page.getByTestId('dm-cost-unsaid')).toHaveCount(0);
     await page.getByTestId('dm-save').click();
     await expect(page.getByTestId('delivery-editor')).toHaveCount(0);

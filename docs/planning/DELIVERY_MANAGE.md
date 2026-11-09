@@ -1,6 +1,6 @@
 # Manage Delivery: fewer fields, who confirmed it, and what the delivery cost
 
-Built 2026-11-09 (uncommitted). Screen: Sales > Deliveries > Manage (`sale-delivery.component`); API `PUT /deliveries/:saleid` (`sale-delivery.service.ts`); migration `179_delivery_cost.sql`.
+Built 2026-11-09 (committed bde89a3bf; the shift choice below added after, uncommitted). Screen: Sales > Deliveries > Manage (`sale-delivery.component`); API `PUT /deliveries/:saleid` (`sale-delivery.service.ts`); migration `179_delivery_cost.sql`.
 
 ## What it was
 About 19 inputs: status, method, scheduled date, assigned to, courier partner, delivered at, failure reason, a "use sale customer" checkbox and three receiver boxes, delivery charge, actual cost, payment mode, collection status, confirmed (yes/no), confirmed by, confirmed at, remarks. The cost was only a number: nothing said who paid it or how, so the money left no trace on the cash or expense side. The time boxes were filled in UTC (5½ hours off).
@@ -22,6 +22,8 @@ About 19 inputs: status, method, scheduled date, assigned to, courier partner, d
 | Not paid yet | nothing is posted; the list shows "Cost unpaid". |
 | No cost | the cost becomes 0. |
 
+**Which drawer pays (cash):** the screen names it ("Paid from Morning, opened by Asha") from `GET /deliveries/:saleid/cash-shifts`. It is the person's own open shift (the store's one open shift where shifts are by time). A Store Head or above, where there is something to choose (several drawers open, or none of their own), gets a "Pay from the drawer of" list of the store's open shifts; the choice is sent as `costpaid.shiftid` and the server checks it is open at that store and that the person may (anyone else naming another person's shift is refused). The entry records the person who posted it as well as the drawer.
+
 Saving twice posts nothing twice. A changed cost updates the same entry while it can still change (cash: its shift is open; expense: still pending). When it can no longer change (a closed shift, an approved expense) it is refused with the reason and pointed to the Cash or Expenses screen. Switching the way takes the old entry back first when it can be. A failed, cancelled or delivered delivery can all carry a cost.
 
 ## Costs and expenses that were already recorded separately (the VPS)
@@ -40,6 +42,6 @@ Migration 179, additive: `sale_deliveries.cost_paid_via` (CASH, DIGITAL, UNPAID,
 
 ## Not built / to decide
 - **Not paid yet** is a flag and a label, not a courier payables list.
-- Who may pay cash out: anyone who can save a delivery can post the cost, on their own open shift and under the Expenses approval rules; an owner-only rule is a small change.
+- Anyone who can save a delivery can post the cost from their own open shift (under the Expenses approval rules); only a Store Head or above can pay from another shift.
 - A cost posted in cash to a shift that is later reopened is treated as editable while that shift is open.
 - The server stores times as typed (the shop's wall clock); a server that did not run on UTC would shift the display.

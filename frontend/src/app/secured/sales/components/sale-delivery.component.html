@@ -242,7 +242,20 @@
             <label class="form-check-label" [for]="'dm-way-' + w.key">{{w.label}}</label>
           </div>
         </div>
-        <div class="small text-muted mb-2" *ngIf="costChoice.via === 'CASH'" data-testid="dm-cash-note">Paid from the cash drawer of the shift that is open now: it is recorded as an expense there, and the cash expected goes down by this amount.</div>
+        <div class="small text-muted mb-2" *ngIf="costChoice.via === 'CASH'" data-testid="dm-cash-note">
+          <span *ngIf="otherShifts.length; else ownShift">Paid from the cash drawer of the shift chosen below: it is recorded as an expense there, and the cash expected goes down by this amount.</span>
+          <ng-template #ownShift>
+            <span *ngIf="cashShift" data-testid="dm-cash-shift">Paid from <b>{{cashShift.name}}</b><span *ngIf="cashShift.openedby">, opened by {{cashShift.openedby}}</span>: it is recorded as an expense there, and the cash expected goes down by this amount.</span>
+            <span *ngIf="!cashShift" class="text-danger" data-testid="dm-cash-noshift">No shift is open for you at this store, so cash cannot be paid out. Open a shift, or choose another way.</span>
+          </ng-template>
+        </div>
+        <div class="mb-2" *ngIf="costChoice.via === 'CASH' && otherShifts.length" data-testid="dm-shift-choice">
+          <label class="form-label small mb-0" for="dm-shift">Pay from the drawer of</label>
+          <select id="dm-shift" class="form-select" [(ngModel)]="costChoice.shiftId" data-testid="dm-shift">
+            <option *ngIf="cashShift" [ngValue]="null">{{cashShift.name}}{{cashShift.openedby ? ', opened by ' + cashShift.openedby : ''}} (yours)</option>
+            <ng-container *ngFor="let sh of otherShifts"><option *ngIf="!sh.mine" [ngValue]="sh.id">{{sh.name}}{{sh.openedby ? ', opened by ' + sh.openedby : ''}}</option></ng-container>
+          </select>
+        </div>
         <div class="row g-2 mb-2" *ngIf="costChoice.via === 'DIGITAL'">
           <div class="col-md-5">
             <select class="form-select" [(ngModel)]="costChoice.mode" aria-label="How it was paid" data-testid="dm-mode">

@@ -30,13 +30,14 @@ export const DIGITAL_MODES: { key: string; label: string }[] = [
   { key: "UPI", label: "UPI" }, { key: "BANK", label: "Bank transfer" }, { key: "CARD", label: "Card" }, { key: "CHEQUE", label: "Cheque" },
 ];
 
-export interface CostChoice { via: string; mode: string; ref: string; linkKind: string; linkId: number | null; adopt: boolean }
+export interface CostChoice { via: string; mode: string; ref: string; linkKind: string; linkId: number | null; adopt: boolean; shiftId?: number | null }
 
 /** what to send as costpaid: nothing when no way was chosen (the cost is left as it is), else the way with what it needs */
 export const buildCostPaid = (c: CostChoice): any | undefined => {
   if (!c.via) return undefined;
   if (c.via === "LINK") return c.linkId ? { link: { kind: c.linkKind, id: c.linkId }, adopt: !!c.adopt } : undefined;
   if (c.via === "DIGITAL") return { via: "DIGITAL", mode: c.mode, ref: (c.ref || "").trim() || undefined };
+  if (c.via === "CASH") return c.shiftId ? { via: "CASH", shiftid: c.shiftId } : { via: "CASH" };
   return { via: c.via };
 };
 

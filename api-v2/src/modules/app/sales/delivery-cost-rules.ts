@@ -13,7 +13,8 @@ export const EXPENSE_CATEGORY_NAME = 'Transport and courier';
 
 /** an entry that was already there (an expense entered separately, before this) and is being linked to the delivery instead of posting a new one */
 export interface CostLink { kind: 'CASH' | 'DIGITAL'; id: number }
-export interface CostRequest { via: CostVia; mode: string | null; ref: string | null; amount: number; link: CostLink | null }
+/** shiftId: for cash, the open shift whose drawer pays (a Store Head or above choosing one; null = the person's own) */
+export interface CostRequest { via: CostVia; mode: string | null; ref: string | null; amount: number; link: CostLink | null; shiftId: number | null }
 
 const text = (v: any, max: number): string | null => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim().slice(0, max));
 
@@ -27,7 +28,7 @@ export const cleanCostRequest = (raw: any, amount: any): { ok: true; req: CostRe
     if (kind !== 'CASH' && kind !== 'DIGITAL') return { ok: false, message: 'Say whether the entry to link is a cash entry or an expense.' };
     if (!Number.isInteger(id) || id <= 0) return { ok: false, message: 'Choose the entry to link.' };
     const n = Math.round((Number(amount) || 0) * 100) / 100;
-    return { ok: true, req: { via: kind, mode: null, ref: null, amount: n >= 0 ? n : 0, link: { kind, id } } };
+    return { ok: true, req: { via: kind, mode: null, ref: null, amount: n >= 0 ? n : 0, link: { kind, id }, shiftId: null } };
   }
   const via = String(raw.via).toUpperCase();
   if (!(COST_VIA as readonly string[]).includes(via)) return { ok: false, message: 'Choose how the delivery cost was paid: cash from the counter, digital, not paid yet, or no cost.' };
@@ -40,7 +41,9 @@ export const cleanCostRequest = (raw: any, amount: any): { ok: true; req: CostRe
     mode = String(raw.mode ?? '').toUpperCase();
     if (!(DIGITAL_MODES as readonly string[]).includes(mode)) return { ok: false, message: 'Choose how it was paid: UPI, bank transfer, card or cheque.' };
   }
-  return { ok: true, req: { via: via as CostVia, mode, ref: via === 'DIGITAL' ? text(raw.ref, 60) : null, amount: via === 'NONE' ? 0 : n, link: null } };
+  const shift = Number(raw.shiftid);
+  const shiftId = via === 'CASH' && Number.isInteger(shift) && shift > 0 ? shift : null;
+  return { ok: true, req: { via: via as CostVia, mode, ref: via === 'DIGITAL' ? text(raw.ref, 60) : null, amount: via === 'NONE' ? 0 : n, link: null, shiftId } };
 };
 
 /** what the delivery already has: the entry it made, and whether that entry can still be changed or taken back */

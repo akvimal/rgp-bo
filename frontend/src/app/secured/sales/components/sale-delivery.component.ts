@@ -51,6 +51,9 @@ export class SaleDeliveryComponent {
     costChoice: CostChoice = { via: '', mode: '', ref: '', linkKind: '', linkId: null, adopt: false }
     /** the entries already recorded that could be this delivery's cost */
     candidates: any[] = []
+    /** the drawer a cash payment comes from (the person's own), and the other open shifts a Store Head or above can choose */
+    cashShift: any = null
+    otherShifts: any[] = []
     /** the person at the counter, for who confirmed it */
     operatorName = ''
     readonly costWays = COST_WAYS
@@ -187,9 +190,12 @@ export class SaleDeliveryComponent {
         this.saveError = '';
         this.costChoice = { via: choiceOf(delivery), mode: delivery.costpaidmode || '', ref: delivery.costpaidref || '', linkKind: '', linkId: null, adopt: false };
         this.candidates = [];
+        this.cashShift = null;
+        this.otherShifts = [];
         this.staff = [];
         this.showEditor = true;
         if(delivery.storeid) this.service.storeStaff(+delivery.storeid).subscribe((u: any) => this.staff = u || [], () => this.staff = []);
+        if(delivery.saleid) this.service.cashShifts(+delivery.saleid).subscribe((r: any) => { this.cashShift = r?.shift || null; this.otherShifts = r?.shifts || []; this.costChoice.shiftId = this.cashShift ? null : (this.otherShifts.length ? this.otherShifts[0].id : null); }, () => { this.cashShift = null; this.otherShifts = []; });
         if(delivery.saleid) this.service.costCandidates(+delivery.saleid).subscribe((r: any) => this.candidates = r?.candidates || [], () => this.candidates = []);
     }
 

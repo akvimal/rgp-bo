@@ -1,5 +1,5 @@
 /**
- * What a delivery cost, and how it was paid - DELCOST-1..7
+ * What a delivery cost, and how it was paid - DELCOST-1..8
  * The Manage Delivery screen saves the cost with how it was paid: cash from the counter (an entry on the open shift's cash ledger, so the expected cash falls),
  * digitally (an expense), not yet, or no cost. It is posted once and a later change updates the same entry. Costs and expenses that were already recorded
  * separately are linked to their deliveries instead of being posted again, so nothing is counted twice. The person logged in is who confirmed the delivery.
@@ -214,5 +214,32 @@ test.describe('Delivery cost @p1', () => {
     expect(r.body.costwarning).toMatch(/already 1 recorded expense/);
     // nothing is blocked: it is posted, and the person has been told
     expect((await deliveryOf(api, b.saleid)).costpaidvia).toBe('CASH');
+  });
+  test('DELCOST-8 the drawer cash comes from is named, a Store Head or above can choose another open shift, and others cannot @happy', async ({ api }) => {
+    const b = await deliveryBill(api);
+    const shift = await openShift(api, b.storeid);
+    test.skip(!shift, 'no shift is open at the store');
+    // the screen is told which drawer pays
+    const own = (await api.request('GET', `/deliveries/${b.saleid}/cash-shifts`, undefined, COUNTER)).body;
+    expect(own.shift?.id, JSON.stringify(own)).toBeTruthy();
+    expect(own.shift.name).toBeTruthy();
+    expect(own.canChoose, 'counter staff are not offered a choice').toBe(false);
+    expect(own.shifts).toEqual([]);
+
+    // counter staff naming a shift that is not open at the store are refused
+    const bad = await manage(api, b.saleid, { status: 'Delivered', actualcost: 33, costpaid: { via: 'CASH', shiftid: 99999999 } });
+    expect(bad.status).toBe(400);
+    expect(JSON.stringify(bad.body)).toContain('not open at this store');
+    expect((await ledgerFor(api, b.storeid, `Delivery #${b.billno}`)).length, 'nothing was posted').toBe(0);
+
+    // a Store Head or above is offered the open shifts, and the entry lands on the one chosen
+    const mgr = (await api.request('GET', `/deliveries/${b.saleid}/cash-shifts`, undefined, MGR)).body;
+    if (mgr.canChoose) expect(mgr.shifts.map((x: any) => x.id)).toContain(shift.id);
+    const ok = await manage(api, b.saleid, { status: 'Delivered', actualcost: 45, costpaid: { via: 'CASH', shiftid: shift.id } }, MGR);
+    expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+    const entries = await ledgerFor(api, b.storeid, `Delivery #${b.billno}`);
+    expect(entries.length).toBe(1);
+    expect(entries[0]).toMatchObject({ withdraw: 45 });
+    expect(Number(entries[0].shiftid)).toBe(Number(shift.id));
   });
 });

@@ -295,6 +295,27 @@ export class SaleDeliveryService {
                to_char(coalesce(d.delivered_at::date, d.delivery_date, d.booked_date, s.bill_date::date), 'YYYY-MM-DD') as day
           from sale_deliveries d join sale s on s.id = d."saleId" left join customer c on c.id = s.customer_id`;
 
+    /**
+     * Which drawer a cash payment would come from: the person's own open shift (or the store's one open shift), shown on the Manage screen; and, for a Store Head or
+     * above, the store's other open shifts to choose from (only where there is something to choose: several drawers open, or none of their own).
+     */
+    async cashShifts(saleid:number, user:any){
+        const scope = await this.scopeOf(user);
+        const [sale] = await this.manager.query(`select s.id, s.store_id from sale s where s.id = $1`, [saleid]);
+        if(!sale) throw new NotFoundException('That bill was not found.');
+        if(sale.store_id === null) return { shift: null, shifts: [], canChoose: false };
+        this.assertStore(scope, +sale.store_id);
+        const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
+        const shifts = await this.manager.query(
+            `select sh.id, sh.name, sh.opened_on, to_char(sh.shift_date, 'YYYY-MM-DD') as shift_date, ob.full_name as opened_by, ac.full_name as accountable
+               from store_shifts sh left join app_user ob on ob.id = sh.opened_by left join app_user ac on ac.id = coalesce(sh.accountable_user_id, sh.assigned_user_id)
+              where sh.store_id = $1 and sh.status = 'OPEN' and not sh.archive order by sh.id`, [sale.store_id]);
+        const own = await this.store.findOpenShiftFor(+sale.store_id, user.id);
+        const rows = shifts.map((r:any) => ({ id: +r.id, name: r.name, openedon: r.opened_on, shiftdate: r.shift_date, openedby: r.opened_by || null, accountable: r.accountable || null, mine: !!own && +own.id === +r.id }));
+        const canChoose = isManagerRole(role?.name) && rows.length > 0 && (rows.length > 1 || !own);
+        return { shift: rows.find((r:any) => r.mine) || null, shifts: canChoose ? rows : [], canChoose };
+    }
+
     /** the entries a delivery's cost could be: around its day at its store, the exact amounts first (for the Manage screen, to link instead of paying again) */
     async costCandidates(saleid:number, user:any){
         const scope = await this.scopeOf(user);
@@ -464,7 +485,18 @@ export class SaleDeliveryService {
                 linked = false;
             } else if(step.do === 'post' && step.via === 'CASH'){
                 if(sale.store_id === null) throw new BadRequestException('This bill has no store, so the cost cannot go on a shift.');
-                const shift = await this.store.findOpenShiftFor(+sale.store_id, user.id);
+                let shift:any = null;
+                if(req.shiftId){
+                    // a Store Head or above may pay from another open shift at the store; anybody else pays from their own
+                    const [role] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
+                    const [chosen] = await this.manager.query(`select id, assigned_user_id from store_shifts where id = $1 and store_id = $2 and status = 'OPEN' and not archive`, [req.shiftId, sale.store_id]);
+                    if(!chosen) throw new BadRequestException('That shift is not open at this store.');
+                    const own = await this.store.findOpenShiftFor(+sale.store_id, user.id);
+                    if(!isManagerRole(role?.name) && !(own && +own.id === +chosen.id)) throw new ForbiddenException('Only a Store Head or above can pay from another shift.');
+                    shift = chosen;
+                } else {
+                    shift = await this.store.findOpenShiftFor(+sale.store_id, user.id);
+                }
                 if(!shift) throw new BadRequestException('No shift is open at this store for you. Open a shift first, or choose another way to pay.');
                 const maybe = await this.possibleDuplicates(sale, amount, payload);
                 const rec:any = await this.store.saveLedger({ storeid: +sale.store_id, shiftid: shift.id, category: 'EXPENSE', expensecategory: CASH_EXPENSE_CATEGORY, withdraw: amount, description, transdate: this.istToday() }, user.id);

@@ -5,16 +5,16 @@ import { COST_VIA, CostRequest, CostState, DIGITAL_MODES, LINKED_MESSAGE, LOCKED
 const none: CostState = { via: null, amount: null, mode: null, cashEntryId: null, expenseId: null, cashEditable: false, expenseEditable: false, linked: false };
 const cash = (o: Partial<CostState> = {}): CostState => ({ ...none, via: 'CASH', amount: 60, cashEntryId: 7, cashEditable: true, ...o });
 const digital = (o: Partial<CostState> = {}): CostState => ({ ...none, via: 'DIGITAL', amount: 60, mode: 'UPI', expenseId: 9, expenseEditable: true, ...o });
-const req = (o: Partial<CostRequest> = {}): CostRequest => ({ via: 'CASH', mode: null, ref: null, amount: 60, link: null, ...o });
+const req = (o: Partial<CostRequest> = {}): CostRequest => ({ via: 'CASH', mode: null, ref: null, amount: 60, link: null, shiftId: null, ...o });
 
 describe('delivery cost rules', () => {
   it('checks what the screen sent', () => {
     expect(cleanCostRequest(undefined, 60)).toEqual({ ok: true, req: null });                         // the cost is not being touched
     expect(cleanCostRequest({}, 60)).toEqual({ ok: true, req: null });
-    expect(cleanCostRequest({ via: 'cash' }, 60)).toEqual({ ok: true, req: { via: 'CASH', mode: null, ref: null, amount: 60, link: null } });
-    expect(cleanCostRequest({ via: 'UNPAID' }, 60)).toEqual({ ok: true, req: { via: 'UNPAID', mode: null, ref: null, amount: 60, link: null } });
-    expect(cleanCostRequest({ via: 'NONE' }, 60)).toEqual({ ok: true, req: { via: 'NONE', mode: null, ref: null, amount: 0, link: null } });   // no cost is no amount
-    expect(cleanCostRequest({ via: 'DIGITAL', mode: 'upi', ref: ' 123 ABC ' }, 60)).toEqual({ ok: true, req: { via: 'DIGITAL', mode: 'UPI', ref: '123 ABC', amount: 60, link: null } });
+    expect(cleanCostRequest({ via: 'cash' }, 60)).toEqual({ ok: true, req: { via: 'CASH', mode: null, ref: null, amount: 60, link: null, shiftId: null } });
+    expect(cleanCostRequest({ via: 'UNPAID' }, 60)).toEqual({ ok: true, req: { via: 'UNPAID', mode: null, ref: null, amount: 60, link: null, shiftId: null } });
+    expect(cleanCostRequest({ via: 'NONE' }, 60)).toEqual({ ok: true, req: { via: 'NONE', mode: null, ref: null, amount: 0, link: null, shiftId: null } });   // no cost is no amount
+    expect(cleanCostRequest({ via: 'DIGITAL', mode: 'upi', ref: ' 123 ABC ' }, 60)).toEqual({ ok: true, req: { via: 'DIGITAL', mode: 'UPI', ref: '123 ABC', amount: 60, link: null, shiftId: null } });
   });
 
   it('refuses what cannot be right', () => {
@@ -28,6 +28,15 @@ describe('delivery cost rules', () => {
     expect(bad({ via: 'CASH' }, 5000000)).toMatch(/too large/);
     expect(COST_VIA).toEqual(['CASH', 'DIGITAL', 'UNPAID', 'NONE']);
     expect(DIGITAL_MODES).toEqual(['UPI', 'BANK', 'CARD', 'CHEQUE']);
+  });
+
+  it('takes the shift to pay from, for cash only', () => {
+    expect(cleanCostRequest({ via: 'CASH', shiftid: 12 }, 60)).toMatchObject({ ok: true, req: { via: 'CASH', shiftId: 12 } });
+    expect(cleanCostRequest({ via: 'CASH', shiftid: '12' }, 60)).toMatchObject({ req: { shiftId: 12 } });
+    expect(cleanCostRequest({ via: 'CASH', shiftid: 'x' }, 60)).toMatchObject({ req: { shiftId: null } });
+    expect(cleanCostRequest({ via: 'CASH' }, 60)).toMatchObject({ req: { shiftId: null } });
+    expect(cleanCostRequest({ via: 'DIGITAL', mode: 'UPI', shiftid: 12 }, 60)).toMatchObject({ req: { shiftId: null } });   // a shift means nothing for a digital payment
+    expect(cleanCostRequest({ via: 'UNPAID', shiftid: 12 }, 60)).toMatchObject({ req: { shiftId: null } });
   });
 
   it('with nothing sent, nothing is done', () => {
@@ -64,7 +73,7 @@ describe('delivery cost rules', () => {
 
   it('links an entry that was already there, instead of posting a new one', () => {
     const asked = cleanCostRequest({ link: { kind: 'cash', id: 12 } }, 60);
-    expect(asked).toEqual({ ok: true, req: { via: 'CASH', mode: null, ref: null, amount: 60, link: { kind: 'CASH', id: 12 } } });
+    expect(asked).toEqual({ ok: true, req: { via: 'CASH', mode: null, ref: null, amount: 60, link: { kind: 'CASH', id: 12 }, shiftId: null } });
     expect((cleanCostRequest({ link: { kind: 'bank', id: 1 } }, 60) as any).message).toMatch(/cash entry or an expense/);
     expect((cleanCostRequest({ link: { kind: 'CASH', id: 0 } }, 60) as any).message).toMatch(/Choose the entry/);
     expect(cleanCostRequest({ link: { kind: 'DIGITAL', id: 3 } }, 0)).toMatchObject({ ok: true });         // the entry's own amount counts, so none is needed

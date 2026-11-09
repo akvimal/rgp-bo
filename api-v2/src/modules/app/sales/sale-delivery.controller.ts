@@ -44,6 +44,12 @@ export class SaleDeliveryController {
       return this.service.costCandidates(+saleid, currentUser);
     }
 
+    /** which drawer a cash payment would come from, and the other open shifts a Store Head or above may choose */
+    @Get(':saleid/cash-shifts')
+    async cashShifts(@Param('saleid') saleid: string, @User() currentUser: any) {
+      return this.service.cashShifts(+saleid, currentUser);
+    }
+
     /** deliveries whose cost is not linked to an expense, and the pairs that can be linked in one go: ?days=120 */
     @Get('cost-links/suggestions')
     async costSuggestions(@Query() query: any, @User() currentUser: any) {

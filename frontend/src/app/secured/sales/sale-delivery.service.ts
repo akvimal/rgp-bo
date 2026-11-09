@@ -24,6 +24,11 @@ export class SaleDeliveryService {
         return this.http.get(`${this.apiurl}`);
     }
 
+    /** which drawer a cash payment would come from, and the other open shifts a Store Head or above may choose */
+    cashShifts(saleid:number){
+        return this.http.get<any>(`${this.apiurl}/${saleid}/cash-shifts`);
+    }
+
     /** the entries already recorded that could be this delivery's cost (to link instead of paying again) */
     costCandidates(saleid:number){
         return this.http.get<any>(`${this.apiurl}/${saleid}/cost-candidates`);

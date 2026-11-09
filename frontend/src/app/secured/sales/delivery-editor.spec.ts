@@ -34,6 +34,8 @@ describe('delivery editor helpers', () => {
 
   it('sends the way with what it needs', () => {
     expect(buildCostPaid(choice({ via: 'CASH' }))).toEqual({ via: 'CASH' });
+    expect(buildCostPaid(choice({ via: 'CASH', shiftId: 7 }))).toEqual({ via: 'CASH', shiftid: 7 });      // a Store Head paying from another drawer
+    expect(buildCostPaid(choice({ via: 'UNPAID', shiftId: 7 }))).toEqual({ via: 'UNPAID' });
     expect(buildCostPaid(choice({ via: 'UNPAID' }))).toEqual({ via: 'UNPAID' });
     expect(buildCostPaid(choice({ via: 'NONE' }))).toEqual({ via: 'NONE' });
     expect(buildCostPaid(choice({ via: 'DIGITAL', mode: 'UPI', ref: ' 123 ' }))).toEqual({ via: 'DIGITAL', mode: 'UPI', ref: '123' });
