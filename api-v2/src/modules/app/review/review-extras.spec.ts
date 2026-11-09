@@ -1,4 +1,5 @@
-import { CASH_TOLERANCE, ShiftRow, cashSummary, topAsked } from './review-extras';
+import { CASH_TOLERANCE, ShiftRow, cashSummary, topAsked, topLookups } from './review-extras';
+import { comparePeople } from './review-compare';
 import { MARGIN_POINTS, judgePoints, ratesOf, verdictsOf, zeroRaw } from './review-compare';
 
 const shift = (id: number, status: string, variance: number | null, day = '2026-11-03', who = 'Asha'): ShiftRow =>
@@ -52,5 +53,38 @@ describe('weekly review extras', () => {
     expect(thin.margin).toBe('below');
     const unmet = verdictsOf({ ...peak, unmet: 40 }, usual);                    // far more unmet requests per bill, and many more of them
     expect(unmet.unmet).toBe('above');
+  });
+});
+
+describe('weekly review step 4', () => {
+  it('brand checks with no match: the same brand typed two ways counts once, with its composition, most often first', () => {
+    const t = topLookups([
+      { text: 'Telma 40', composition: null }, { text: ' telma  40', composition: 'Telmisartan 40 mg' }, { text: 'Dolo 650', composition: 'Paracetamol 650 mg' },
+      { text: 'TELMA 40', composition: 'x' }, { text: '', composition: null }, { text: null, composition: null },
+    ]);
+    expect(t).toEqual([{ name: 'Telma 40', composition: 'Telmisartan 40 mg', count: 3 }, { name: 'Dolo 650', composition: 'Paracetamol 650 mg', count: 1 }]);
+  });
+
+  it('no match per 100 bills is a rate with a usual, and marked above usual by the same rule', () => {
+    const usual = { ...zeroRaw(), bills: 400, lookups: 20, noMatch: 8 };
+    const calm = verdictsOf({ ...zeroRaw(), bills: 600, lookups: 30, noMatch: 12 }, usual);
+    expect(calm.lookups).toBe('usual');
+    const more = verdictsOf({ ...zeroRaw(), bills: 400, lookups: 40, noMatch: 30 }, usual);
+    expect(more.lookups).toBe('above');
+    expect(ratesOf({ ...zeroRaw(), bills: 200, noMatch: 5 }).noMatchPer100Bills).toBe(2.5);
+  });
+
+  it('a person whose margin is well under the others is marked, once there is enough sold to say', () => {
+    const p = (userid: number, name: string, costedSales: number, cost: number) => ({ ...zeroRaw(), userid, name, bills: 100, lines: 300, sales: costedSales, costedSales, cost });
+    const team = [p(1, 'Asha', 20000, 10000), p(2, 'Bala', 20000, 14000), p(3, 'Chitra', 20000, 10000)];     // 50%, 30%, 50%
+    const v = comparePeople(team);
+    expect(v.find((x) => x.name === 'Bala')!.verdicts.margin).toBe('below');
+    expect(v.find((x) => x.name === 'Asha')!.verdicts.margin).toBe('usual');
+    // a margin well above the others is not a worry
+    const high = comparePeople([p(1, 'Asha', 20000, 4000), p(2, 'Bala', 20000, 10000), p(3, 'Chitra', 20000, 10000)]);
+    expect(high.find((x) => x.name === 'Asha')!.verdicts.margin).toBe('usual');
+    // too little sold on costed lines: no verdict
+    const thin = comparePeople([p(1, 'Asha', 500, 400), p(2, 'Bala', 20000, 10000), p(3, 'Chitra', 20000, 10000)]);
+    expect(thin.find((x) => x.name === 'Asha')!.verdicts.margin).toBe('unknown');
   });
 });

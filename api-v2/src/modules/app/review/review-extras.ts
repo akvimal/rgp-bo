@@ -34,6 +34,21 @@ export const cashSummary = (rows: ShiftRow[], today: string) => {
 
 const norm = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
 
+/** the brands checked at the counter with no match in stock, most often first; the same brand typed differently is counted once, with its composition */
+export const topLookups = (rows: { text: string | null; composition: string | null }[], limit = 8) => {
+  const m = new Map<string, { name: string; composition: string | null; count: number }>();
+  for (const r of rows) {
+    const raw = (r.text || '').replace(/\s+/g, ' ').trim();
+    if (raw.length < 2) continue;
+    const k = norm(raw);
+    const g = m.get(k) ?? { name: raw, composition: r.composition || null, count: 0 };
+    if (!g.composition && r.composition) g.composition = r.composition;
+    g.count += 1;
+    m.set(k, g);
+  }
+  return [...m.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, limit);
+};
+
 /** what was asked for most often, with the spelling first seen; empty and one-letter entries are left out */
 export const topAsked = (rows: { product_text: string | null }[], limit = 8) => {
   const m = new Map<string, { name: string; count: number }>();

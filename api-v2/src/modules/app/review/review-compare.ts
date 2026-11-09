@@ -38,14 +38,16 @@ export interface Raw {
   genericLines: number; named: number; newCust: number;
   /** requests and inquiries raised, and those that could not be met (outcome "not available") */
   inquiries: number; unmet: number;
+  /** step 4: brand checks at the counter, and those with no match in stock */
+  lookups: number; noMatch: number;
 }
 export interface Daily extends Raw { day: string }
 
 const RAW_KEYS: (keyof Raw)[] = ['bills', 'sales', 'disc', 'discBills', 'lines', 'below', 'voids', 'edits', 'returns', 'returnValue',
-  'cost', 'costedSales', 'genericLines', 'named', 'newCust', 'inquiries', 'unmet'];
+  'cost', 'costedSales', 'genericLines', 'named', 'newCust', 'inquiries', 'unmet', 'lookups', 'noMatch'];
 export const zeroRaw = (): Raw => ({
   bills: 0, sales: 0, disc: 0, discBills: 0, lines: 0, below: 0, voids: 0, edits: 0, returns: 0, returnValue: 0,
-  cost: 0, costedSales: 0, genericLines: 0, named: 0, newCust: 0, inquiries: 0, unmet: 0,
+  cost: 0, costedSales: 0, genericLines: 0, named: 0, newCust: 0, inquiries: 0, unmet: 0, lookups: 0, noMatch: 0,
 });
 export const addRaw = (a: Raw, b: Raw): Raw => { const o = zeroRaw(); for (const k of RAW_KEYS) o[k] = a[k] + b[k]; return o; };
 const scaleRaw = (a: Raw, f: number): Raw => { const o = zeroRaw(); for (const k of RAW_KEYS) o[k] = a[k] * f; return o; };
@@ -80,6 +82,7 @@ export interface Rates {
   discountPct: number | null; belowPer100Lines: number | null; voidsPer100Bills: number | null;
   editsPer100Bills: number | null; returnsPer100Bills: number | null; returnValuePct: number | null; avgBill: number | null;
   marginPct: number | null; genericPct: number | null; namedPct: number | null; newCustPer100Bills: number | null; unmetPer100Bills: number | null;
+  noMatchPer100Bills: number | null;
 }
 export const ratesOf = (r: Raw): Rates => ({
   discountPct: pct(r.disc, r.sales + r.disc),
@@ -94,6 +97,7 @@ export const ratesOf = (r: Raw): Rates => ({
   namedPct: pct(r.named, r.bills),
   newCustPer100Bills: per100(r.newCust, r.bills),
   unmetPer100Bills: per100(r.unmet, r.bills),
+  noMatchPer100Bills: per100(r.noMatch, r.bills),
 });
 
 /**
@@ -155,7 +159,7 @@ export const judgeVolume = (actual: number, usual: number | null): Verdict => {
 
 export interface Verdicts {
   bills: Verdict; sales: Verdict; discount: Verdict; below: Verdict; voids: Verdict; edits: Verdict; returns: Verdict;
-  margin: Verdict; generic: Verdict; unmet: Verdict;
+  margin: Verdict; generic: Verdict; unmet: Verdict; lookups: Verdict;
 }
 /** margin and the generic share are percentages: a difference of this many points or more is worth a word */
 export const MARGIN_POINTS = 3;
@@ -167,7 +171,7 @@ export const judgePoints = (now: number | null, usual: number | null, points: nu
 };
 
 export const verdictsOf = (actual: Raw, usual: Raw | null): Verdicts => {
-  if (!usual) return { bills: 'unknown', sales: 'unknown', discount: 'unknown', below: 'unknown', voids: 'unknown', edits: 'unknown', returns: 'unknown', margin: 'unknown', generic: 'unknown', unmet: 'unknown' };
+  if (!usual) return { bills: 'unknown', sales: 'unknown', discount: 'unknown', below: 'unknown', voids: 'unknown', edits: 'unknown', returns: 'unknown', margin: 'unknown', generic: 'unknown', unmet: 'unknown', lookups: 'unknown' };
   const a = ratesOf(actual), u = ratesOf(usual);
   return {
     bills: judgeVolume(actual.bills, usual.bills), sales: judgeVolume(actual.sales, usual.sales),
@@ -179,6 +183,7 @@ export const verdictsOf = (actual: Raw, usual: Raw | null): Verdicts => {
     margin: judgePoints(a.marginPct, u.marginPct, MARGIN_POINTS),
     generic: judgePoints(a.genericPct, u.genericPct, GENERIC_POINTS),
     unmet: judgeRate(a.unmetPer100Bills, u.unmetPer100Bills, actual.unmet, usual.unmet),
+    lookups: judgeRate(a.noMatchPer100Bills, u.noMatchPer100Bills, actual.noMatch, usual.noMatch),
   };
 };
 
@@ -238,7 +243,11 @@ export const PEER_TOLERANCE = 1.5;
 export const MIN_PEER_BILLS = 20;
 
 export interface Person extends Raw { userid: number; name: string }
-export interface PeerVerdicts { discount: Verdict; below: Verdict; voids: Verdict; edits: Verdict; returns: Verdict }
+export interface PeerVerdicts { discount: Verdict; below: Verdict; voids: Verdict; edits: Verdict; returns: Verdict; margin: Verdict }
+/** a person's margin this many points under everyone else's is marked (the worry is a low margin, so only that side) */
+export const PEER_MARGIN_POINTS = 5;
+/** and what that person sold on costed lines must be at least this much, so a handful of items does not decide it */
+export const MIN_PEER_COSTED_SALES = 2000;
 export interface PersonView extends Person { rates: Rates; peerRates: Rates | null; verdicts: PeerVerdicts }
 
 /** above the others only when the rate is well over theirs and there are several more cases than their rate would give for this person's volume */
@@ -253,7 +262,7 @@ const judgePeer = (rate: number | null, peer: number | null, count: number, expe
  */
 export const comparePeople = (people: Person[]): PersonView[] => {
   const total = people.reduce((a, p) => addRaw(a, p), zeroRaw());
-  const none: PeerVerdicts = { discount: 'unknown', below: 'unknown', voids: 'unknown', edits: 'unknown', returns: 'unknown' };
+  const none: PeerVerdicts = { discount: 'unknown', below: 'unknown', voids: 'unknown', edits: 'unknown', returns: 'unknown', margin: 'unknown' };
   return people.map((p) => {
     const others = zeroRaw();
     for (const k of RAW_KEYS) others[k] = total[k] - p[k];
@@ -268,6 +277,8 @@ export const comparePeople = (people: Person[]): PersonView[] => {
         voids: judgePeer(rates.voidsPer100Bills, peerRates.voidsPer100Bills, p.voids, exp(others.voids, others.bills, p.bills)),
         edits: judgePeer(rates.editsPer100Bills, peerRates.editsPer100Bills, p.edits, exp(others.edits, others.bills, p.bills)),
         returns: judgePeer(rates.returnsPer100Bills, peerRates.returnsPer100Bills, p.returns, exp(others.returns, others.bills, p.bills)),
+        margin: p.costedSales >= MIN_PEER_COSTED_SALES && others.costedSales >= MIN_PEER_COSTED_SALES
+          ? ((judgePoints(rates.marginPct, peerRates.marginPct, PEER_MARGIN_POINTS) === 'below' ? 'below' : 'usual') as Verdict) : ('unknown' as Verdict),
       },
     };
   }).sort((a, b) => b.sales - a.sales || b.bills - a.bills);

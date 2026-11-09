@@ -1,6 +1,6 @@
 # Weekly review: fair comparison for a month with a peak (1st to 10th)
 
-Status: designed; **step 1 built and committed 2026-11-09 (fffa6d79d); step 2 committed 2026-11-09 (436143783); step 3 built 2026-11-09 (uncommitted)**.
+Status: designed; **step 1 built and committed 2026-11-09 (fffa6d79d); step 2 committed 2026-11-09 (436143783); step 3 committed 2026-11-09 (1498ad204); step 4 built 2026-11-09 (uncommitted)**.
 
 ## Problem
 
@@ -66,6 +66,16 @@ Checked: 31 unit tests of the rules; Playwright `REVIEW-5` to `REVIEW-8`; on the
 - **Stock health** (near-expiry value, negative stock, count variance): a state, not a weekly flow, and the alerts already raise it.
 - **Margin by person or by product class**, **unmet demand from "not in stock" lookups** in Check brand (not logged yet), **cash short or over per person over time**: possible next.
 - **Margin limits**: purchase cost is taken from the batch sold; a missing cost leaves the line out (shown on production data: every sold line had one). Discounts are inside the selling price, returns are not deducted, and GST is excluded.
+
+## Step 4 (built)
+
+The plan ended at step 3, so step 4 is the "possible next" items from step 3 that were small and had the data. Refill capture stays out (it needs its own design).
+
+- **Brand checks at the counter are kept** (migration 177, table `brand_lookup_event`; re-runnable, with a rollback). When staff pick a brand from the dictionary, pick a product from our own list, or type a brand that nothing matches and close the dialog without choosing anything else, the dialog sends `POST /sale-alternatives/lookup-log`. The **server** works out the outcome from the same lookup the screen used (not from the screen): in stock (same composition, strength and form, or the product itself), only another form, nothing in stock, no composition to match on, or typed and not found. Name, composition and form are copied at the time, since the dictionary may be replaced by a newer release. A failure to log never affects the counter.
+- **In the weekly review**: "brand checks with no match in stock, per 100 bills" (only another form, nothing in stock, or not found) in the margin and mix table with a usual for these days and the same *above usual* rule (25% over and 3 more cases); and a "Brands checked at the counter" section with the number of checks, how many had a match, and the brands checked most often with no match (the same brand typed two ways counted once, with its composition), as a prompt to consider stocking them. If migration 177 has not been run, the figure counts as none and the section is left out; the review still loads.
+- **Margin per person** in the by-person table, beside the rest of the team's margin. It is shaded only when the margin is 5 or more points *under* the others' (a high margin is not a worry) and the person sold at least Rs 2,000 on costed lines, so a few items do not decide it.
+- Checked: 40 related backend unit tests (including that the migration's allowed kinds and outcomes match the code), 37 frontend tests (the dialog logs a picked brand and product, a typed miss only when closed with nothing else chosen, and never fails the counter), Playwright `REVIEW-9` and `BD-5` with real clicks (a picked brand and a typed miss both reach the review's counts), the migration applied, rolled back and re-applied, on a copy of the production data with the real brand list imported.
+- Not built: logging a check by who made it (only the login is kept), a screen to see the log itself, and the daily snapshot that refill capture needs.
 
 ## Open questions
 - Are the peak days the same in every store?

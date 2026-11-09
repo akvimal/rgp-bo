@@ -47,6 +47,37 @@ test.describe('Brand dictionary in the POS', () => {
     await ctx.close();
   });
 
+  test('BD-5 the check is kept: picking a brand, or closing after a brand nothing matched, is counted in the weekly review @happy', async ({ browser }) => {
+    const monday = (() => { const d = new Date(Date.now() + 5.5 * 3600000); const dow = (d.getUTCDay() + 6) % 7; return new Date(d.getTime() - dow * 86400000).toISOString().slice(0, 10); })();
+    const lookups = async () => (await api('GET', `/review/week?weekstart=${monday}`)).body?.more?.lookups;
+    const before = await lookups();
+    test.skip(!before, 'this database has no brand check log (migration 177)');
+    const ctx = await browser.newContext();
+    const { page } = await openAs(ctx, COUNTER, '/secure/sales/pos/new', { storeId: 1 });
+    const search = page.locator('app-stock-select input');
+    await search.click();
+    await search.pressSequentially('telma 40', { delay: 30 });
+    await page.getByTestId('brand-check').click();
+    await page.getByTestId('alt-brand-pick').first().click();
+    await expect(page.getByTestId('alt-from-dict')).toBeVisible();
+    // the pick was kept (the log is sent right after the answer shows)
+    await expect.poll(async () => (await lookups()).total).toBe(before.total + 1);
+    // a brand that nothing matches, then the dialog is closed without choosing anything
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTestId('brand-check').click();
+    await page.getByTestId('alt-brand').fill('');
+    await page.getByTestId('alt-brand').pressSequentially('qzxvbnmq', { delay: 30 });
+    await expect(page.getByTestId('alt-brand-none')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect.poll(async () => (await lookups()).total).toBe(before.total + 2);
+    const after = await lookups();
+    expect(after.noMatch).toBeGreaterThanOrEqual(before.noMatch + 1);                       // the typed brand is a miss
+    expect(after.top.some((t: any) => /qzxvbnmq/i.test(t.name))).toBe(true);
+    await ctx.close();
+  });
+
   test('BD-2 a short or unknown name says so, and the box can be typed in again', async ({ browser }) => {
     const ctx = await browser.newContext();
     const { page } = await openAs(ctx, COUNTER, '/secure/sales/pos/new', { storeId: 1 });
@@ -81,15 +112,20 @@ test.describe('Brand dictionary in the POS', () => {
   });
 
   test('BD-4 the product form has a dosage form, and the product list can fill them from names', async ({ browser }) => {
+    // any product in stock: give it a dosage form, then see the form on its edit page
+    const stock = (await api('POST', '/stock/filter', { available: true, limit: 20, storeid: 1 })).body.find((x: any) => Number(x.balance) > 0);
+    expect(stock).toBeTruthy();
+    expect((await api('PUT', `/products/${stock.id}`, { dosageform: 'tablet' })).status).toBe(200);
     const ctx = await browser.newContext();
-    const { page } = await openAs(ctx, MGR, '/secure/products/master/edit/969');
+    const { page } = await openAs(ctx, MGR, `/secure/products/master/edit/${stock.id}`);
     await expect(page.getByTestId('prod-dosageform')).toHaveValue('tablet');
     await page.getByTestId('prod-dosageform').selectOption('capsule');
     await expect(page.getByTestId('prod-dosageform')).toHaveValue('capsule');
     await page.goto('/secure/products/master/list');
+    await expect(page.getByTestId('prod-add')).toBeVisible();                 // the page is ready
     await page.getByTestId('prod-forms-open').click();
     await expect(page.getByTestId('prod-forms-panel')).toBeVisible();
-    await expect(page.getByTestId('prod-forms-preview')).toContainText('have no dosage form');
+    await expect(page.getByTestId('prod-forms-preview')).toContainText('have no dosage form', { timeout: 20000 });
     await page.getByTestId('prod-forms-close').click();
     await expect(page.getByTestId('prod-forms-panel')).toHaveCount(0);
     await ctx.close();

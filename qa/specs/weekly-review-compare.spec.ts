@@ -23,7 +23,7 @@ test.describe('Weekly review comparison @p1', () => {
     // the figures for the week: raw totals, rates, a verdict for each line, and no "week before"
     expect(peak.body.before).toBeUndefined();
     expect(Object.keys(peak.body.actual.rates)).toEqual(expect.arrayContaining(['discountPct', 'belowPer100Lines', 'voidsPer100Bills', 'editsPer100Bills', 'returnsPer100Bills', 'avgBill']));
-    expect(Object.keys(peak.body.verdicts).sort()).toEqual(['below', 'bills', 'discount', 'edits', 'generic', 'margin', 'returns', 'sales', 'unmet', 'voids']);
+    expect(Object.keys(peak.body.verdicts).sort()).toEqual(['below', 'bills', 'discount', 'edits', 'generic', 'lookups', 'margin', 'returns', 'sales', 'unmet', 'voids']);
     expect(peak.body.actual.raw.bills).toBe(peak.body.summary.bills);          // the same bills as the lists are built from
 
     // usual is either worked out from earlier months, or absent with the reason and no verdicts
@@ -32,7 +32,7 @@ test.describe('Weekly review comparison @p1', () => {
       expect(peak.body.usual.months.every((m: string) => m < '2026-06')).toBe(true);
     } else {
       expect(peak.body.usual.reason).toMatch(/earlier months/);
-      expect(Object.values(peak.body.verdicts)).toEqual(Array(10).fill('unknown'));
+      expect(Object.values(peak.body.verdicts)).toEqual(Array(11).fill('unknown'));
     }
 
     // month to date against the same dates last month
@@ -63,8 +63,8 @@ test.describe('Weekly review comparison @p1', () => {
     expect(people.map((p) => p.sales)).toEqual([...people.map((p) => p.sales)].sort((a, b) => b - a));
     for (const p of people) {
       expect(p.name).toBeTruthy();
-      expect(Object.keys(p.verdicts).sort()).toEqual(['below', 'discount', 'edits', 'returns', 'voids']);
-      if (p.bills < r.body.peerRules.minBills) expect(Object.values(p.verdicts)).toEqual(Array(5).fill('unknown'));
+      expect(Object.keys(p.verdicts).sort()).toEqual(['below', 'discount', 'edits', 'margin', 'returns', 'voids']);
+      if (p.bills < r.body.peerRules.minBills) expect(Object.values(p.verdicts)).toEqual(Array(6).fill('unknown'));
     }
     expect(r.body.peerRules.minBills).toBeGreaterThan(0);
   });
@@ -98,6 +98,38 @@ test.describe('Weekly review comparison @p1', () => {
     }
   });
 
+  test('REVIEW-9 a brand check at the counter is kept, and the weekly review counts the ones with no match @happy', async ({ api }) => {
+    const monday = (() => { const d = new Date(Date.now() + 5.5 * 3600000); const dow = (d.getUTCDay() + 6) % 7; return new Date(d.getTime() - dow * 86400000).toISOString().slice(0, 10); })();
+    const before = (await week(api, monday)).body;
+    test.skip(!before.more?.lookups, 'this database has no brand check log (migration 177)');
+    const log = (body: any) => api.request('POST', '/sale-alternatives/lookup-log', { storeid: 1, ...body }, MGR);
+
+    // validation: a kind is needed, typed text needs three letters, a brand or product needs an id
+    expect((await log({ kind: 'NOPE' })).status).toBe(400);
+    expect((await log({ kind: 'TYPED', text: 'ab' })).status).toBe(400);
+    expect((await log({ kind: 'BRAND' })).status).toBe(400);
+    expect((await log({ kind: 'PRODUCT' })).status).toBe(400);
+
+    // a brand typed that nothing matched is a miss; a product that is in stock is a hit
+    const name = `QA-NOBRAND-${Date.now()}`;
+    const miss = await log({ kind: 'TYPED', text: `  ${name}  ` });
+    expect(miss.status, JSON.stringify(miss.body)).toBeLessThan(300);
+    expect(miss.body.outcome).toBe('NOT_FOUND');
+    const stock = (await api.request('POST', '/stock/filter', { available: true, limit: 50, storeid: 1 }, MGR)).body.find((x: any) => x.status === 'VERIFIED' && Number(x.balance) > 0);
+    expect(stock).toBeTruthy();
+    const hit = await log({ kind: 'PRODUCT', productid: stock.id });
+    expect(hit.status, JSON.stringify(hit.body)).toBeLessThan(300);
+    expect(['IN_STOCK', 'NO_COMP', 'OTHER_FORM', 'NOT_STOCKED']).toContain(hit.body.outcome);
+
+    const after = (await week(api, monday)).body;
+    expect(after.more.lookups.total).toBe(before.more.lookups.total + 2);
+    expect(after.more.lookups.noMatch).toBeGreaterThanOrEqual(before.more.lookups.noMatch + 1);
+    expect(after.more.lookups.top.some((t: any) => t.name === name)).toBe(true);
+    expect(after.actual.raw.lookups).toBe(before.actual.raw.lookups + 2);
+    expect(after.actual.raw.noMatch).toBeGreaterThanOrEqual(before.actual.raw.noMatch + 1);
+    expect(after.verdicts).toHaveProperty('lookups');
+  });
+
   test('REVIEW-6 the screen shows the comparison with usual, the rates and the month to date, not the week before @happy', async ({ browser }) => {
     const ctx = await browser.newContext();
     const { page } = await openAs(ctx, MGR, '/secure/review');
@@ -117,6 +149,8 @@ test.describe('Weekly review comparison @p1', () => {
     // margin and mix, and the week-level sections (each shown when the database has what it needs)
     await expect(page.getByTestId('review-mix')).toBeVisible();
     for (const row of ['review-row-margin', 'review-row-generic', 'review-row-named', 'review-row-newcust', 'review-row-unmet']) await expect(page.getByTestId(row)).toBeVisible();
+    await expect(page.getByTestId('review-row-lookups')).toBeVisible();
+    await expect(page.getByTestId('review-people')).toContainText('Margin %');
     await expect(page.getByTestId('review-cash-summary')).toBeVisible();
     await expect(page.getByTestId('review-asked')).toBeVisible();
     // either the basis of "usual" or the reason there is none

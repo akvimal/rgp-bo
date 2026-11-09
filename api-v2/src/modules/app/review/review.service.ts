@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { cashSummary, topAsked } from './review-extras';
+import { cashSummary, topAsked, topLookups } from './review-extras';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
@@ -114,7 +114,7 @@ export class ReviewService {
     const day = (col: string) => `to_char((${col})::date, 'YYYY-MM-DD')`;
     const ist = (col: string) => `to_char((${col} at time zone 'Asia/Kolkata')::date, 'YYYY-MM-DD')`;
     const inIst = (col: string) => `(${col} at time zone 'Asia/Kolkata')::date >= $2::date and (${col} at time zone 'Asia/Kolkata')::date < $3::date`;
-    const [sales, lines, below, voids, edits, returns, firsts, inquiries] = await Promise.all([
+    const [sales, lines, below, voids, edits, returns, firsts, inquiries, lookups] = await Promise.all([
       this.manager.query(
         `select ${day('s.bill_date')} as day, count(*)::int as bills, coalesce(sum(s.total), 0)::float as sales,
                 coalesce(sum(s.disc_amount), 0)::float as disc, count(*) filter (where s.disc_amount > 0)::int as disc_bills,
@@ -156,6 +156,10 @@ export class ReviewService {
       this.manager.query(
         `select ${ist('q.raised_on')} as day, count(*)::int as n, count(*) filter (where q.outcome = 'NOT_AVAILABLE')::int as unmet
            from customer_inquiry q where q.store_id = any($1::int[]) and ${inIst('q.raised_on')} group by 1`, a),
+      // brand checks at the counter, and those with no match in stock (the table comes with migration 177)
+      this.safe('brand checks', () => this.manager.query(
+        `select ${ist('b.created_on')} as day, count(*)::int as n, count(*) filter (where b.outcome in ('OTHER_FORM', 'NOT_STOCKED', 'NOT_FOUND'))::int as no_match
+           from brand_lookup_event b where b.store_id = any($1::int[]) and ${inIst('b.created_on')} group by 1`, a)),
     ]);
     const m = new Map<string, Daily>();
     const at = (d: string) => { let r = m.get(d); if (!r) { r = { ...zeroRaw(), day: d }; m.set(d, r); } return r; };
@@ -163,6 +167,7 @@ export class ReviewService {
     for (const r of lines) { const o = at(r.day); o.lines = r.n; o.costedSales = r.costed_sales; o.cost = r.cost; o.genericLines = r.generic; }
     for (const r of firsts) at(r.day).newCust = r.n;
     for (const r of inquiries) { const o = at(r.day); o.inquiries = r.n; o.unmet = r.unmet; }
+    for (const r of lookups ?? []) { const o = at(r.day); o.lookups = r.n; o.noMatch = r.no_match; }
     for (const r of below) at(r.day).below = r.n;
     for (const r of voids) at(r.day).voids = r.n;
     for (const r of edits) at(r.day).edits = r.n;
@@ -182,7 +187,11 @@ export class ReviewService {
                 count(*) filter (where s.disc_amount > 0)::int as disc_bills
            from sale s where s.status = 'COMPLETE' and s.store_id = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < $3::date group by 1`, a),
       this.manager.query(
-        `select ${who} as uid, count(*)::int as n from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE'
+        `select ${who} as uid, count(*)::int as n,
+                coalesce(sum(si.price * si.qty) filter (where pii.ptr_cost > 0), 0)::float as costed_sales,
+                coalesce(sum(pii.ptr_cost / greatest(p.pack, 1) * si.qty) filter (where pii.ptr_cost > 0), 0)::float as cost
+           from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id
+                left join purchase_invoice_item pii on pii.id = si.purchase_item_id
           where si.status = 'Complete' and si.active and s.store_id = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < $3::date group by 1`, a),
       this.manager.query(
         `select uid, count(*)::int as n from (
@@ -206,7 +215,7 @@ export class ReviewService {
     const m = new Map<number, Person>();
     const at = (uid: any) => { const k = Number(uid) || 0; let r = m.get(k); if (!r) { r = { ...zeroRaw(), userid: k, name: '' }; m.set(k, r); } return r; };
     for (const r of sales) { const o = at(r.uid); o.bills = r.bills; o.sales = r.sales; o.disc = r.disc; o.discBills = r.disc_bills; }
-    for (const r of lines) at(r.uid).lines = r.n;
+    for (const r of lines) { const o = at(r.uid); o.lines = r.n; o.costedSales = r.costed_sales; o.cost = r.cost; }
     for (const r of below) at(r.uid).below = r.n;
     for (const r of voids) at(r.uid).voids = r.n;
     for (const r of edits) at(r.uid).edits = r.n;
@@ -224,7 +233,7 @@ export class ReviewService {
 
   /** the cash drawer by shift, pay-later dues, and what customers asked for that could not be supplied, for the week */
   private async extras(ids: number[], start: string, next: string, today: string) {
-    if (!ids.length) return { cash: null, dues: null, asked: null };
+    if (!ids.length) return { cash: null, dues: null, asked: null, lookups: null };
     const a = [ids, start, next];
     const cash = await this.safe('cash', async () => {
       const rows = await this.manager.query(
@@ -254,7 +263,18 @@ export class ReviewService {
             and (raised_on at time zone 'Asia/Kolkata')::date >= $2::date and (raised_on at time zone 'Asia/Kolkata')::date < $3::date`, a);
       return { ...t, overdue: od.n, top: topAsked(products) };
     });
-    return { cash, dues, asked };
+    // brand checks at the counter: how many, how many had no match in stock, and which brands were checked most often with no match
+    const lookups = await this.safe('brand checks', async () => {
+      const [t] = await this.manager.query(
+        `select count(*)::int as total, count(*) filter (where outcome = 'IN_STOCK')::int as in_stock,
+                count(*) filter (where outcome in ('OTHER_FORM', 'NOT_STOCKED', 'NOT_FOUND'))::int as no_match
+           from brand_lookup_event where store_id = any($1::int[]) and (created_on at time zone 'Asia/Kolkata')::date >= $2::date and (created_on at time zone 'Asia/Kolkata')::date < $3::date`, a);
+      const rows = await this.manager.query(
+        `select text, composition, outcome from brand_lookup_event where store_id = any($1::int[]) and outcome in ('OTHER_FORM', 'NOT_STOCKED', 'NOT_FOUND')
+            and (created_on at time zone 'Asia/Kolkata')::date >= $2::date and (created_on at time zone 'Asia/Kolkata')::date < $3::date`, a);
+      return { total: t.total, inStock: t.in_stock, noMatch: t.no_match, top: topLookups(rows) };
+    });
+    return { cash, dues, asked, lookups };
   }
 
   async week(user: any, q: { storeid?: number | null; weekstart?: string }) {

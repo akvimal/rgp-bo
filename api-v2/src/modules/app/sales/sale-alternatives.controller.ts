@@ -1,4 +1,5 @@
-import { Controller, Get, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { User } from 'src/core/decorator/user.decorator';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { DrugRefService } from './drug-ref.service';
@@ -18,5 +19,8 @@ export class SaleAlternativesController {
   @Get('brands') brands(@Query('q') q: string) { return this.dictionary.search(q ?? ''); }
 
   /** a brand picked from the dictionary: its composition and form, and what the shop has (or other brands to order) */
+  /** keeps what a brand check found (in stock, only another form, nothing), for the weekly review's unmet-demand figures */
+  @Post('lookup-log') async lookupLog(@Body() body: any, @User() user: any) { return this.dictionary.logLookup(user.id, Number(body?.storeid) || null, body); }
+
   @Get('brand') brand(@Query('brandid', ParseIntPipe) brandid: number, @Query('storeid') storeid: string) { return this.dictionary.forBrand(brandid, Number(storeid) || null); }
 }

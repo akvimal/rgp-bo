@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { LOOKUP_KINDS, LookupOutcome, cleanTyped, outcomeOf } from './lookup-log';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { dosageFormLabel } from '../dictionary/dosage-form';
@@ -44,6 +45,36 @@ export class DrugRefService {
       rows = rows.concat(more);
     }
     return { ...st, results: rows.map((r: any) => this.shape(r)) };
+  }
+
+  /**
+   * Keeps what a brand check found: a brand picked from the dictionary, a product picked from our own list, or a brand typed that nothing matched.
+   * The outcome is worked out here from the same lookup the screen used, not taken from the screen.
+   */
+  async logLookup(userId: number, storeId: number | null, b: any) {
+    const kind = String(b?.kind);
+    if (!(LOOKUP_KINDS as readonly string[]).includes(kind)) throw new BadRequestException('Say what was looked up.');
+    let text: string | null, composition: string | null = null, form: string | null = null, outcome: LookupOutcome;
+    let brandId: number | null = null, productId: number | null = null;
+    if (kind === 'TYPED') {
+      text = cleanTyped(b?.text);
+      if (!text) throw new BadRequestException('Nothing to keep: type at least three letters.');
+      outcome = 'NOT_FOUND';
+    } else if (kind === 'BRAND') {
+      brandId = Number(b?.brandid) || null;
+      if (!brandId) throw new BadRequestException('Say which brand.');
+      const r: any = await this.forBrand(brandId, storeId);
+      text = r.asked.title; composition = r.asked.composition ?? null; form = r.asked.form ?? null; outcome = outcomeOf(r);
+    } else {
+      productId = Number(b?.productid) || null;
+      if (!productId) throw new BadRequestException('Say which product.');
+      const r: any = await this.suggestions.alternatives(productId, storeId);
+      text = r.asked.title; composition = r.asked.composition ?? null; form = r.asked.form ?? null; outcome = outcomeOf(r);
+    }
+    await this.manager.query(
+      `insert into brand_lookup_event (store_id, user_id, kind, text, composition, form, brand_id, product_id, outcome) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [storeId, userId || null, kind, String(text).slice(0, 160), composition ? String(composition).slice(0, 300) : null, form, brandId, productId, outcome]);
+    return { outcome };
   }
 
   async forBrand(brandId: number, storeId: number | null) {

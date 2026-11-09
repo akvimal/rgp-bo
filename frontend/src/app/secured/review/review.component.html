@@ -89,6 +89,7 @@
         <tr data-testid="review-row-named"><td>Bills with a named customer</td><td class="text-end">{{rate(data.actual.rates.namedPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.namedPct, '%')}}</td><td></td></tr>
         <tr data-testid="review-row-newcust"><td>New customers (first bill in this week)</td><td class="text-end">{{data.actual.raw.newCust}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.newCust | number:'1.0-0') : ''}}</td><td></td></tr>
         <tr data-testid="review-row-unmet"><td>Requests we could not meet, per 100 bills</td><td class="text-end">{{data.actual.raw.unmet}} of {{data.actual.raw.inquiries}} <span class="small text-muted">({{rate(data.actual.rates.unmetPer100Bills)}})</span></td><td class="text-end text-muted">{{rate(data.usual.rates?.unmetPer100Bills)}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.unmet, 'above')">{{label(data.verdicts.unmet)}}</span></td></tr>
+        <tr data-testid="review-row-lookups"><td>Brand checks at the counter with no match in stock, per 100 bills</td><td class="text-end">{{data.actual.raw.noMatch}} of {{data.actual.raw.lookups}} <span class="small text-muted">({{rate(data.actual.rates.noMatchPer100Bills)}})</span></td><td class="text-end text-muted">{{rate(data.usual.rates?.noMatchPer100Bills)}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.lookups, 'above')">{{label(data.verdicts.lookups)}}</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -123,6 +124,17 @@
       Given this week <b>{{data.more.dues.given | number:'1.0-0'}}</b>, collected <b>{{data.more.dues.collected | number:'1.0-0'}}</b>.
       At the end of the week <b>{{data.more.dues.owing}}</b> customer{{data.more.dues.owing === 1 ? ' owes' : 's owe'}} <b>{{data.more.dues.outstanding | number:'1.0-0'}}</b> in all.
     </p>
+  </ng-container>
+
+  <ng-container *ngIf="data.more.lookups">
+    <h6 class="text-primary mt-3">Brands checked at the counter</h6>
+    <p class="small mb-1" data-testid="review-lookups">
+      <b>{{data.more.lookups.total}}</b> check{{data.more.lookups.total === 1 ? '' : 's'}}: {{data.more.lookups.inStock}} had a match in stock, <b>{{data.more.lookups.noMatch}}</b> had none (nothing in the same form, or the brand was not found).
+    </p>
+    <div class="small" *ngIf="data.more.lookups.top.length" data-testid="review-lookups-top">
+      Checked most often with no match, to consider stocking:
+      <span *ngFor="let t of data.more.lookups.top; let last = last">{{t.name}}<span class="text-muted" *ngIf="t.composition"> ({{t.composition}})</span> &times;{{t.count}}{{last ? '' : '; '}}</span>.
+    </div>
   </ng-container>
 
   <ng-container *ngIf="data.more.asked">
@@ -164,21 +176,22 @@
   <h6 class="text-primary mt-3">By person, against the others this week</h6>
   <p class="small text-muted mb-1" data-testid="review-people-note">
     Bills are credited to the person at the counter; discards, edits and returns to the person who did them. A rate is marked only when it is well over (at least {{data.peerRules.tolerance}} times) what the rest of the team does <i>and</i> there are several more cases than that would give.
-    A person needs {{data.peerRules.minBills}} bills, and so do the others together, to be compared. This is a prompt to ask, not a finding: a counter that serves the repeat customers will differ.
+    A person needs {{data.peerRules.minBills}} bills, and so do the others together, to be compared. Margin is marked when it is well under the others' (it is the low side that matters). This is a prompt to ask, not a finding: a counter that serves the repeat customers will differ.
   </p>
   <div class="table-responsive">
     <table class="table table-sm align-middle" data-testid="review-people">
-      <thead><tr><th>Person</th><th class="text-end">Bills</th><th class="text-end">Sales</th><th class="text-end">Average bill</th><th class="text-end">Discount %</th><th class="text-end">Below list /100 items</th><th class="text-end">Discards</th><th class="text-end">Edits</th><th class="text-end">Returns</th></tr></thead>
+      <thead><tr><th>Person</th><th class="text-end">Bills</th><th class="text-end">Sales</th><th class="text-end">Average bill</th><th class="text-end">Margin %</th><th class="text-end">Discount %</th><th class="text-end">Below list /100 items</th><th class="text-end">Discards</th><th class="text-end">Edits</th><th class="text-end">Returns</th></tr></thead>
       <tbody>
         <tr *ngFor="let p of data.people" data-testid="review-person-row" [attr.data-user]="p.userid">
           <td>{{p.name}}</td><td class="text-end">{{p.bills}}</td><td class="text-end">{{p.sales | number:'1.0-0'}}</td><td class="text-end">{{p.rates.avgBill | number:'1.0-0'}}</td>
+          <td class="text-end" [class.table-warning]="p.verdicts.margin === 'below'" data-testid="review-person-margin">{{rate(p.rates.marginPct, '%')}}<span class="small text-muted" *ngIf="p.peerRates"> ({{rate(p.peerRates.marginPct, '%')}})</span></td>
           <td class="text-end" [class.table-warning]="p.verdicts.discount === 'above'">{{rate(p.rates.discountPct, '%')}}<span class="small text-muted" *ngIf="p.peerRates"> ({{rate(p.peerRates.discountPct, '%')}})</span></td>
           <td class="text-end" [class.table-warning]="p.verdicts.below === 'above'">{{rate(p.rates.belowPer100Lines)}}<span class="small text-muted" *ngIf="p.peerRates"> ({{rate(p.peerRates.belowPer100Lines)}})</span></td>
           <td class="text-end" [class.table-warning]="p.verdicts.voids === 'above'">{{p.voids}}</td>
           <td class="text-end" [class.table-warning]="p.verdicts.edits === 'above'">{{p.edits}}</td>
           <td class="text-end" [class.table-warning]="p.verdicts.returns === 'above'">{{p.returns}}</td>
         </tr>
-        <tr *ngIf="!data.people.length"><td colspan="9" class="text-center text-muted py-2">No bills this week.</td></tr>
+        <tr *ngIf="!data.people.length"><td colspan="10" class="text-center text-muted py-2">No bills this week.</td></tr>
       </tbody>
     </table>
   </div>

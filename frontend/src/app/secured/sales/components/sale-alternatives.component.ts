@@ -172,7 +172,7 @@ export class SaleAlternativesComponent {
     if (!id) return;
     this.loading = true; this.error = ""; this.r = null;
     this.http.get<any>(`${environment.apiHost}/sale-alternatives`, { params: { productid: String(id), storeid: String(this.storeContext.selectedStoreId || "") } }).subscribe({
-      next: d => { this.r = d; this.loading = false; },
+      next: d => { this.r = d; this.loading = false; this.keep({ kind: "PRODUCT", productid: id }); },
       error: e => { this.loading = false; this.error = e?.error?.message || "Could not look up alternatives."; },
     });
   }
@@ -195,7 +195,7 @@ export class SaleAlternativesComponent {
   pickBrand(b: any) {
     this.loading = true; this.error = ""; this.r = null; this.brandResults = []; this.brandSearched = false;
     this.http.get<any>(`${environment.apiHost}/sale-alternatives/brand`, { params: { brandid: String(b.id), storeid: String(this.storeContext.selectedStoreId || "") } }).subscribe({
-      next: d => { this.r = d; this.loading = false; },
+      next: d => { this.r = d; this.loading = false; this.keep({ kind: "BRAND", brandid: b.id }); },
       error: e => { this.loading = false; this.error = e?.error?.message || "Could not look up that brand."; },
     });
   }
@@ -205,7 +205,17 @@ export class SaleAlternativesComponent {
     this.show = false;
   }
 
+  /**
+   * Keeps what the check found (in stock, only another form, nothing in stock) so the weekly review can count the checks with no match. The server works out
+   * the outcome itself; a failure here must never get in the way of the counter, so it is ignored.
+   */
+  private keep(body: any) {
+    this.http.post(`${environment.apiHost}/sale-alternatives/lookup-log`, { ...body, storeid: this.storeContext.selectedStoreId || null }).subscribe({ error: () => {} });
+  }
+
   clear() {
+    // a brand typed that nothing matched, and the dialog closed without choosing anything else: that is a request we could not meet
+    if (this.dictionary && this.brandSearched && !this.brandResults.length && !this.r && this.brandText.trim().length >= 3) this.keep({ kind: "TYPED", text: this.brandText.trim() });
     this.r = null; this.error = ""; this.loading = false;
     this.brandText = ""; this.brandResults = []; this.brandSearched = false; clearTimeout(this.timer);
     this.resetBox = true; setTimeout(() => this.resetBox = false);

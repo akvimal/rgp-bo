@@ -5,9 +5,13 @@ import { SaleAlternativesComponent } from './sale-alternatives.component';
 /** the dialog's logic without a screen: a fake HttpClient records what was asked and answers from a table */
 function make(answers: (url: string, params: any) => any) {
   const calls: { url: string; params: any }[] = [];
-  const http: any = { get: (url: string, o: any) => { calls.push({ url, params: o?.params }); return answers(url, o?.params); } };
+  const posts: { url: string; body: any }[] = [];
+  const http: any = {
+    get: (url: string, o: any) => { calls.push({ url, params: o?.params }); return answers(url, o?.params); },
+    post: (url: string, body: any) => { posts.push({ url, body }); return of({}); },
+  };
   const c = new SaleAlternativesComponent(http, { selectedStoreId: 1 } as any);
-  return { c, calls };
+  return { c, calls, posts };
 }
 
 describe('SaleAlternativesComponent: brand dictionary', () => {
@@ -100,6 +104,35 @@ describe('SaleAlternativesComponent: brand dictionary', () => {
     expect(c.brandResults).toEqual([]);
     expect(c.r).toBeNull();
     expect(c.error).toBe('');
+  });
+
+  it('keeps what a picked brand or product found, with the store, and never lets a failure get in the way', () => {
+    const { c, posts } = make(() => of({ status: 'OK', asked: { title: 'X' }, same: [], otherForms: [], orderIdeas: [] }));
+    c.pickBrand({ id: 5 });
+    expect(posts).toEqual([{ url: jasmine.stringMatching(/\/sale-alternatives\/lookup-log$/), body: { kind: 'BRAND', brandid: 5, storeid: 1 } }]);
+    c.pickAsked({ id: 9 });
+    expect(posts[1].body).toEqual({ kind: 'PRODUCT', productid: 9, storeid: 1 });
+    const failing: any = { get: () => of({ status: 'OK', asked: {}, same: [], otherForms: [] }), post: () => throwError({ status: 500 }) };
+    const f = new SaleAlternativesComponent(failing, { selectedStoreId: 1 } as any);
+    expect(() => f.pickBrand({ id: 1 })).not.toThrow();
+    expect(f.r).not.toBeNull();
+  });
+
+  it('a typed brand that nothing matched is kept when the dialog closes without another choice, and only then', () => {
+    const { c, posts } = make(() => of({ available: true, results: [] }));
+    c.dictionary = true; c.brandText = ' telma  40 '; c.brandSearched = true; c.brandResults = [];
+    c.clear();
+    expect(posts.map((p) => p.body)).toEqual([{ kind: 'TYPED', text: 'telma  40', storeid: 1 }]);
+    const again = make(() => of({}));
+    again.c.dictionary = true; again.c.brandText = 'telma'; again.c.brandSearched = true; again.c.brandResults = [{ id: 1 }];   // there were results: not a miss
+    again.c.clear();
+    const chose = make(() => of({}));
+    chose.c.dictionary = true; chose.c.brandText = 'telma'; chose.c.brandSearched = true; chose.c.r = { x: 1 };               // a product was chosen instead
+    chose.c.clear();
+    const short = make(() => of({}));
+    short.c.dictionary = true; short.c.brandText = 'te'; short.c.brandSearched = true;
+    short.c.clear();
+    expect(again.posts.length + chose.posts.length + short.posts.length).toBe(0);
   });
 
   it('names a form, and says when it is not recorded', () => {
