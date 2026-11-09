@@ -1,0 +1,158 @@
+<div class="form-compact">
+<div class="pagetitle d-flex align-items-center justify-content-between">
+  <h1>Help and feedback</h1>
+  <button class="btn btn-primary btn-sm" type="button" (click)="newReport()" data-testid="fb-new"><i class="bi bi-plus-lg"></i> Report or suggest</button>
+</div>
+
+<p class="small text-muted mb-2" data-testid="fb-intro">
+  Tell us when something is wrong, ask a question, or suggest a feature, and read the answer here. You can also start from the round button at the bottom right of any screen.
+</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="fb-page-error">{{error}}</div>
+<div class="alert alert-success py-2" *ngIf="message" data-testid="fb-page-message">{{message}}</div>
+
+<ul class="nav nav-tabs mb-3" *ngIf="options.manage && !open" data-testid="fb-tabs">
+  <li class="nav-item"><a class="nav-link" [class.active]="tab === 'mine'" href="javascript:void(0)" (click)="setTab('mine')" data-testid="fb-tab-mine">My reports<span class="badge bg-danger ms-1" *ngIf="mine.unread">{{mine.unread}}</span></a></li>
+  <li class="nav-item"><a class="nav-link" [class.active]="tab === 'inbox'" href="javascript:void(0)" (click)="setTab('inbox')" data-testid="fb-tab-inbox">Inbox<span class="badge bg-danger ms-1" *ngIf="inbox.counts.awaiting">{{inbox.counts.awaiting}}</span></a></li>
+</ul>
+
+<!-- one report -->
+<div *ngIf="open" data-testid="fb-detail">
+  <a href="javascript:void(0)" class="small" (click)="back()" data-testid="fb-back"><i class="bi bi-arrow-left"></i> Back to the list</a>
+  <div class="card mt-2 mb-3">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+        <span class="badge bg-light text-dark border">{{open.kind_label}}</span>
+        <span class="badge" [ngClass]="'bg-' + tone(open.status)" data-testid="fb-status">{{open.status_label}}</span>
+        <span class="small text-muted">#{{open.id}} &middot; {{open.module_title}}<span *ngIf="open.feature"> &rsaquo; {{open.feature}}</span></span>
+      </div>
+      <h5 class="mb-1" data-testid="fb-title-view">{{open.title}}</h5>
+      <div class="small text-muted mb-2">From {{open.reporter_name}} &middot; {{open.created_on | date:'dd MMM yyyy, h:mm a'}}<span *ngIf="open.assignee_name"> &middot; with {{open.assignee_name}}</span><span *ngIf="open.impact === 'blocks'" class="text-danger"> &middot; blocks their work</span><span *ngIf="open.impact === 'workaround'"> &middot; has a workaround</span></div>
+      <dl class="mb-2" data-testid="fb-details">
+        <ng-container *ngIf="open.details.what"><dt class="small text-muted">{{open.kind === 'question' ? 'Question' : 'What happened'}}</dt><dd style="white-space: pre-wrap">{{open.details.what}}</dd></ng-container>
+        <ng-container *ngIf="open.details.expected"><dt class="small text-muted">What was expected</dt><dd style="white-space: pre-wrap">{{open.details.expected}}</dd></ng-container>
+        <ng-container *ngIf="open.details.goal"><dt class="small text-muted">What they are trying to do</dt><dd style="white-space: pre-wrap">{{open.details.goal}}</dd></ng-container>
+        <ng-container *ngIf="open.details.benefit"><dt class="small text-muted">How it would help</dt><dd style="white-space: pre-wrap">{{open.details.benefit}}</dd></ng-container>
+      </dl>
+      <div class="small mb-1" *ngFor="let f of open.files"><i class="bi bi-paperclip"></i> <a href="javascript:void(0)" (click)="viewFile(f)">{{f.name}}</a></div>
+      <div class="small text-muted" *ngIf="open.can.manage && open.context && open.context.route">Sent from {{open.context.route}}</div>
+    </div>
+  </div>
+
+  <!-- the thread -->
+  <div data-testid="fb-thread">
+    <div *ngFor="let n of open.notes" class="mb-2">
+      <div *ngIf="n.kind === 'STATUS'" class="small text-muted text-center" data-testid="fb-note-status">{{n.body}} &middot; {{n.created_on | date:'dd MMM, h:mm a'}}</div>
+      <div *ngIf="n.kind !== 'STATUS'" class="border rounded p-2" [ngClass]="n.kind === 'INTERNAL' ? 'border-warning' : (n.by_staff ? 'bg-light' : '')" [attr.data-testid]="n.kind === 'INTERNAL' ? 'fb-note-internal' : 'fb-note-reply'">
+        <div class="small text-muted"><strong>{{n.author}}</strong><span *ngIf="n.by_staff"> (answering)</span><span *ngIf="n.kind === 'INTERNAL'" class="badge bg-warning text-dark ms-1">Internal note, the reporter cannot see this</span> &middot; {{n.created_on | date:'dd MMM, h:mm a'}}</div>
+        <div style="white-space: pre-wrap">{{n.body}}</div>
+        <div class="small" *ngFor="let f of n.files"><i class="bi bi-paperclip"></i> <a href="javascript:void(0)" (click)="viewFile(f)">{{f.name}}</a></div>
+      </div>
+    </div>
+    <div class="text-muted small" *ngIf="!open.notes.length" data-testid="fb-no-replies">No reply yet. We will tell you here, and with an alert, when there is one.</div>
+  </div>
+
+  <!-- the reporter: solved or reopen -->
+  <div class="my-3" *ngIf="open.can.close || open.can.reopen" data-testid="fb-reporter-actions">
+    <button class="btn btn-success btn-sm me-2" type="button" *ngIf="open.can.close" [disabled]="busy" (click)="solved()" data-testid="fb-solved"><i class="bi bi-check2"></i> This solved it</button>
+    <button class="btn btn-outline-secondary btn-sm" type="button" *ngIf="open.can.reopen && !reopening" (click)="reopening = true" data-testid="fb-reopen-open">It is not solved</button>
+    <div *ngIf="reopening" class="mt-2">
+      <label class="form-label small mb-0" for="fb-reopen-msg">What is still not right</label>
+      <textarea id="fb-reopen-msg" class="form-control" rows="2" maxlength="2000" [(ngModel)]="reopenMessage" data-testid="fb-reopen-msg"></textarea>
+      <button class="btn btn-primary btn-sm mt-1" type="button" [disabled]="busy || !reopenMessage.trim()" (click)="sendReopen()" data-testid="fb-reopen-send">Send back</button>
+      <button class="btn btn-link btn-sm mt-1" type="button" (click)="reopening = false">Cancel</button>
+    </div>
+  </div>
+
+  <!-- reply -->
+  <div class="card mb-3" *ngIf="open.can.reply" data-testid="fb-reply-box">
+    <div class="card-body">
+      <label class="form-label small mb-0" for="fb-reply">{{open.can.manage ? (reply.internal ? 'Internal note' : 'Reply to ' + open.reporter_name) : 'Write back'}}</label>
+      <textarea id="fb-reply" class="form-control" rows="3" maxlength="2000" [(ngModel)]="reply.message" data-testid="fb-reply"></textarea>
+      <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
+        <input type="file" class="form-control form-control-sm w-auto" accept="image/*,application/pdf" multiple (change)="onFiles($event)" [disabled]="replyFiles.length >= 3 || uploading" aria-label="Attach a file" data-testid="fb-reply-file">
+        <span class="small" *ngFor="let f of replyFiles; let i = index">{{f.name}} <a href="javascript:void(0)" (click)="replyFiles.splice(i, 1)">remove</a></span>
+        <div class="form-check" *ngIf="open.can.manage"><input class="form-check-input" type="checkbox" id="fb-wait" [(ngModel)]="reply.wait" [disabled]="reply.internal" data-testid="fb-wait"><label class="form-check-label small" for="fb-wait">Wait for their reply</label></div>
+        <div class="form-check" *ngIf="open.can.manage"><input class="form-check-input" type="checkbox" id="fb-internal" [(ngModel)]="reply.internal" data-testid="fb-internal"><label class="form-check-label small" for="fb-internal">Internal note</label></div>
+        <button class="btn btn-primary btn-sm ms-auto" type="button" [disabled]="busy || uploading || !reply.message.trim()" (click)="sendReply()" data-testid="fb-reply-send">{{reply.internal ? 'Save note' : 'Send'}}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- the managers: status and assignee -->
+  <div class="card mb-3" *ngIf="open.can.manage" data-testid="fb-manage">
+    <div class="card-body">
+      <div class="fw-bold mb-2">Status</div>
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+          <select class="form-select" [(ngModel)]="setting.status" aria-label="Status" data-testid="fb-set-status">
+            <option *ngFor="let s of statusChoices" [value]="s.key">{{s.label}}</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-3" *ngIf="needsDuplicate"><input type="number" class="form-control" placeholder="Report number it repeats" [(ngModel)]="setting.duplicate_of" aria-label="Report number" data-testid="fb-set-dup"></div>
+        <div class="col-12" *ngIf="needsText">
+          <label class="form-label small mb-0" for="fb-res">{{setting.status === 'ANSWERED' ? 'The answer the reporter reads' : 'Why it is not planned'}}</label>
+          <textarea id="fb-res" class="form-control" rows="2" maxlength="2000" [(ngModel)]="setting.resolution" data-testid="fb-set-resolution"></textarea>
+        </div>
+        <div class="col-auto"><button class="btn btn-outline-primary btn-sm" type="button" [disabled]="busy" (click)="saveStatus()" data-testid="fb-set-save">Save status</button></div>
+        <div class="col-12 col-md-4 ms-md-auto">
+          <select class="form-select form-select-sm" [ngModel]="open.assignee_user_id || ''" (ngModelChange)="assign($event)" aria-label="Assign to" data-testid="fb-assign">
+            <option value="">Not assigned</option>
+            <option *ngFor="let p of options.staff" [value]="p.id">{{p.name}}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- My reports -->
+<div *ngIf="!open && tab === 'mine'" data-testid="fb-mine">
+  <div class="text-muted" *ngIf="loaded && !mine.items.length" data-testid="fb-mine-empty">You have not sent anything yet. Use "Report or suggest" to start.</div>
+  <div class="list-group">
+    <a href="javascript:void(0)" class="list-group-item list-group-item-action" *ngFor="let r of mine.items" (click)="openReport(r.id)" [attr.data-testid]="'fb-mine-' + r.id">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge rounded-pill bg-danger" *ngIf="r.reporter_unread" title="A new reply" data-testid="fb-unread">new</span>
+        <strong class="me-auto">{{r.title}}</strong>
+        <span class="badge" [ngClass]="'bg-' + tone(r.status)">{{r.status_label}}</span>
+      </div>
+      <div class="small text-muted">{{r.kind_label}} &middot; {{r.module_title}}<span *ngIf="r.feature"> &rsaquo; {{r.feature}}</span> &middot; {{r.last_activity_on | date:'dd MMM yyyy'}}</div>
+    </a>
+  </div>
+</div>
+
+<!-- Inbox -->
+<div *ngIf="!open && tab === 'inbox'" data-testid="fb-inbox">
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Which reports">
+      <button class="btn" [ngClass]="view === 'awaiting' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setView('awaiting')" data-testid="fb-view-awaiting">Waiting for me ({{inbox.counts.awaiting}})</button>
+      <button class="btn" [ngClass]="view === 'open' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setView('open')" data-testid="fb-view-open">Open ({{inbox.counts.open}})</button>
+      <button class="btn" [ngClass]="view === 'done' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setView('done')" data-testid="fb-view-done">Done</button>
+      <button class="btn" [ngClass]="view === 'all' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setView('all')" data-testid="fb-view-all">All</button>
+    </div>
+    <select class="form-select form-select-sm w-auto" [(ngModel)]="kind" (ngModelChange)="loadInbox()" aria-label="Kind" data-testid="fb-filter-kind">
+      <option value="">Every kind</option><option value="problem">Something is wrong</option><option value="question">Questions</option><option value="suggestion">Suggestions</option><option value="data">Wrong data</option>
+    </select>
+    <select class="form-select form-select-sm w-auto" [(ngModel)]="module" (ngModelChange)="loadInbox()" aria-label="Module" data-testid="fb-filter-module">
+      <option value="">Every module</option><option *ngFor="let m of modules" [value]="m.id">{{m.title}}</option>
+    </select>
+    <input class="form-control form-control-sm w-auto" placeholder="Search" [(ngModel)]="search" (keydown.enter)="loadInbox()" aria-label="Search" data-testid="fb-search">
+  </div>
+  <div class="text-muted" *ngIf="loaded && !inbox.items.length" data-testid="fb-inbox-empty">Nothing here.</div>
+  <div class="list-group">
+    <a href="javascript:void(0)" class="list-group-item list-group-item-action" *ngFor="let r of inbox.items" (click)="openReport(r.id)" [attr.data-testid]="'fb-inbox-' + r.id">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-warning text-dark" *ngIf="r.awaiting_staff" title="Waiting for a reply">reply</span>
+        <span class="badge bg-danger" *ngIf="r.impact === 'blocks'" title="Blocks their work">blocks</span>
+        <strong class="me-auto">{{r.title}}</strong>
+        <span class="badge" [ngClass]="'bg-' + tone(r.status)">{{r.status_label}}</span>
+      </div>
+      <div class="small text-muted">#{{r.id}} &middot; {{r.kind_label}} &middot; {{r.module_title}}<span *ngIf="r.feature"> &rsaquo; {{r.feature}}</span> &middot; {{r.reporter_name}} &middot; {{r.last_activity_on | date:'dd MMM yyyy'}}<span *ngIf="r.assignee_name"> &middot; with {{r.assignee_name}}</span></div>
+    </a>
+  </div>
+</div>
+
+<p-dialog [header]="viewName || 'File'" [(visible)]="viewOpen" [modal]="true" [style]="{width: '60rem', maxWidth: '96vw'}" [dismissableMask]="true">
+  <app-document-viewer *ngIf="viewOpen" [path]="viewPath" [name]="viewName"></app-document-viewer>
+</p-dialog>
+</div>

@@ -110,6 +110,10 @@ const routes: Routes = [
       loadChildren: () => import('./todos/todos.module').then(m => m.TodosModule)
     },
     {
+      path: 'feedback', canActivate:[AuthGuard],
+      loadChildren: () => import('./feedback/feedback.module').then(m => m.FeedbackModule)
+    },
+    {
       path: 'calendar', canActivate:[AuthGuard],
       loadChildren: () => import('./calendar/calendar.module').then(m => m.CalendarModule)
     },
@@ -169,6 +173,7 @@ const routes: Routes = [
 ];
 
 import { QuickActionsComponent } from "./quick-actions.component";
+import { FeedbackDialogComponent } from "./feedback/feedback-dialog.component";
 
 @NgModule({
     declarations: [
@@ -181,7 +186,8 @@ import { QuickActionsComponent } from "./quick-actions.component";
       ProfileComponent,
       NotificationBellComponent,
       NotificationsPageComponent,
-      QuickActionsComponent
+      QuickActionsComponent,
+      FeedbackDialogComponent
     ],
     imports: [
         RouterModule.forChild(routes),

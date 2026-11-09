@@ -256,6 +256,17 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     actions: [{ key: 'view', label: 'Open the calendar' }],
   },
   {
+    key: 'feedback',
+    label: 'Help and feedback',
+    description: 'Report something wrong, ask a question or suggest a feature, naming the module and feature, and read the answer. Managers also answer from an inbox.',
+    group: 'Sales & Store Operations',
+    path: '/secure/feedback',
+    actions: [
+      { key: 'add', label: 'Send reports, questions and suggestions and read the answers to your own' },
+      { key: 'manage', label: 'See everyone\'s reports, reply, leave internal notes, set the status and assign' },
+    ],
+  },
+  {
     key: 'shiftdesk',
     label: 'My shift page',
     description: 'The page where staff open and close their shift; opening and closing themselves are still the store shift permissions.',

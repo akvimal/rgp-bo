@@ -7,6 +7,7 @@ import { BATCH_BALANCE_SQL } from './stock-audit-alerts';
 import { lastFullWeek, reviewLate } from '../review/review-rules';
 import { BUSINESS_OF_USER_SQL } from '../../../core/business-of-user';
 import { stageOf } from '../todos/todo-rules';
+import { NOT_A_PERSON } from '../../../core/roles';
 
 export type Severity = 'info' | 'warning' | 'critical';
 export const SEVERITIES: Severity[] = ['info', 'warning', 'critical'];
@@ -502,6 +503,47 @@ export const KINDS: AlertKind[] = [
     },
   },
   {
+    kind: 'feedback_reply',
+    label: 'Reply to your report',
+    description: 'Someone answered a report or question a person sent from Help and feedback, or changed its status. Only the person who sent it is told, until they open it.',
+    params: [],
+    defaultSeverity: 'info',
+    async evaluate(ctx) {
+      const rows = await ctx.manager.query(
+        `select f.id, f.title, f.status, f.reporter_user_id from app_feedback f where f.business_id = $1 and not f.archive and f.reporter_unread`, [ctx.businessId]);
+      return rows.map((r: any) => ({
+        key: `feedback:${r.id}:reply`, storeid: null, code: 'feedback_reply',
+        params: { title: String(r.title), status: String(r.status).toLowerCase().replace(/_/g, ' ') }, link: '/secure/feedback',
+        recipients: { roles: [] as string[], userids: [r.reporter_user_id] as number[] },
+      }));
+    },
+  },
+  {
+    kind: 'feedback_waiting',
+    label: 'Report waiting for an answer',
+    description: 'A report, question or suggestion sent from Help and feedback is new, or the person wrote back, and is waiting for a reply. Told to the people whose role may answer reports (the Inbox), until someone replies.',
+    params: [],
+    defaultSeverity: 'info',
+    async evaluate(ctx) {
+      const people = await ctx.manager.query(
+        `select u.id from app_user u join app_role r on r.id = u.role_id
+          where u.active and not u.archive and ${BUSINESS_OF_USER_SQL} = $1 and r.name <> all($2::text[])
+            and exists (select 1 from json_array_elements(r.permissions) e, json_array_elements(e->'policies') p where e->>'resource' = 'feedback' and p->>'action' = 'manage')`,
+        [ctx.businessId, NOT_A_PERSON]);
+      if (!people.length) return [];
+      const rows = await ctx.manager.query(
+        `select f.id, f.title, f.kind, f.module_title, ru.full_name as reporter
+           from app_feedback f join app_user ru on ru.id = f.reporter_user_id
+          where f.business_id = $1 and not f.archive and f.awaiting_staff and f.status <> 'CLOSED'`, [ctx.businessId]);
+      const userids = people.map((p: any) => p.id as number);
+      return rows.map((r: any) => ({
+        key: `feedback:${r.id}:waiting`, storeid: null, code: 'feedback_waiting',
+        params: { title: String(r.title), person: String(r.reporter).trim(), module: String(r.module_title), kind: String(r.kind) }, link: '/secure/feedback',
+        recipients: { roles: [] as string[], userids },
+      }));
+    },
+  },
+  {
     kind: 'kpi_behind_pace',
     label: 'KPI behind pace',
     description: 'Part-way through the month, a staff member is behind on a KPI the system measures (sales behind the pace needed for full marks, or a "lower is better" figure that has already cost half its points). They are told once for each measure each month.',
@@ -589,6 +631,8 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'customer_request_arrived', name: 'Customer request arrived', severity: 'info', recipients: { roles: ['owners', 'managers', 'staff'], userids: [] } },
   { kind: 'customer_data_taken', name: 'Customer lists downloaded or printed', severity: 'warning' },
   { kind: 'todo_due', name: 'To-dos coming due', severity: 'info' },
+  { kind: 'feedback_reply', name: 'Reply to your report', severity: 'info' },
+  { kind: 'feedback_waiting', name: 'Report waiting for an answer', severity: 'info' },
   { kind: 'kpi_behind_pace', name: 'KPI behind pace', severity: 'info' },
   { kind: 'kpi_rating_due', name: 'KPI ratings to give', severity: 'warning' },
 ];

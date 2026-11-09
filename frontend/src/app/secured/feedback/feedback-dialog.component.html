@@ -1,0 +1,91 @@
+<p-dialog header="Report or suggest" [(visible)]="visible" [modal]="true" [style]="{width: '40rem', maxWidth: '96vw'}" [draggable]="false" data-testid="fb-dialog">
+  <div *ngIf="form && !sentId" class="form-compact" data-testid="fb-form">
+    <div class="d-flex flex-wrap gap-1 mb-3" role="group" aria-label="What is this">
+      <button *ngFor="let k of kinds" type="button" class="btn btn-sm" [ngClass]="form.kind === k.key ? 'btn-primary' : 'btn-outline-secondary'" (click)="form.kind = k.key" [attr.data-testid]="'fb-kind-' + k.key">
+        <i class="bi" [ngClass]="k.icon"></i> {{k.label}}
+      </button>
+    </div>
+
+    <div class="alert alert-danger py-2" *ngIf="error" data-testid="fb-error">{{error}}</div>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-6">
+        <label class="form-label small mb-0" for="fb-module">Where in the app</label>
+        <select id="fb-module" class="form-select" [(ngModel)]="form.module_id" (ngModelChange)="moduleChanged()" data-testid="fb-module">
+          <option value="">Not sure / the whole app</option>
+          <optgroup *ngFor="let g of groups" [label]="g.group">
+            <option *ngFor="let a of g.areas" [value]="a.id">{{a.title}}</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label small mb-0" for="fb-feature">What part</label>
+        <select id="fb-feature" class="form-select" [(ngModel)]="form.feature" [disabled]="!features.length" data-testid="fb-feature">
+          <option value="">{{features.length ? 'Choose' : 'Choose the place first'}}</option>
+          <option *ngFor="let f of features" [value]="f">{{f}}</option>
+        </select>
+      </div>
+      <div class="col-12" *ngIf="form.feature === somethingElse">
+        <input class="form-control" maxlength="100" placeholder="Which part? (a few words)" [(ngModel)]="form.feature_other" aria-label="Which part" data-testid="fb-feature-other">
+      </div>
+      <div class="col-12">
+        <label class="form-label small mb-0" for="fb-title">Short title</label>
+        <input id="fb-title" class="form-control" maxlength="120" [(ngModel)]="form.title" placeholder="e.g. The bill total is 10 rupees less" data-testid="fb-title">
+      </div>
+
+      <ng-container *ngIf="!isSuggestion">
+        <div class="col-12">
+          <label class="form-label small mb-0" for="fb-what">{{isQuestion ? 'Your question' : 'What happened'}}</label>
+          <textarea id="fb-what" class="form-control" rows="3" maxlength="1500" [(ngModel)]="form.what" data-testid="fb-what"></textarea>
+        </div>
+        <div class="col-12" *ngIf="!isQuestion">
+          <label class="form-label small mb-0" for="fb-expected">What did you expect</label>
+          <textarea id="fb-expected" class="form-control" rows="2" maxlength="1000" [(ngModel)]="form.expected" data-testid="fb-expected"></textarea>
+        </div>
+      </ng-container>
+      <ng-container *ngIf="isSuggestion">
+        <div class="col-12">
+          <label class="form-label small mb-0" for="fb-goal">What are you trying to do</label>
+          <textarea id="fb-goal" class="form-control" rows="3" maxlength="1500" [(ngModel)]="form.goal" data-testid="fb-goal"></textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-0" for="fb-benefit">How would it help</label>
+          <textarea id="fb-benefit" class="form-control" rows="2" maxlength="1000" [(ngModel)]="form.benefit" data-testid="fb-benefit"></textarea>
+        </div>
+      </ng-container>
+
+      <div class="col-12" *ngIf="hasImpact">
+        <div class="small mb-1">How much does it hurt</div>
+        <div class="d-flex flex-wrap gap-3">
+          <div class="form-check"><input class="form-check-input" type="radio" name="fb-impact" id="fb-i1" value="blocks" [(ngModel)]="form.impact" data-testid="fb-impact-blocks"><label class="form-check-label" for="fb-i1">I cannot do my work</label></div>
+          <div class="form-check"><input class="form-check-input" type="radio" name="fb-impact" id="fb-i2" value="workaround" [(ngModel)]="form.impact" data-testid="fb-impact-workaround"><label class="form-check-label" for="fb-i2">I can work around it</label></div>
+          <div class="form-check"><input class="form-check-input" type="radio" name="fb-impact" id="fb-i3" value="minor" [(ngModel)]="form.impact" data-testid="fb-impact-minor"><label class="form-check-label" for="fb-i3">A small thing</label></div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label small mb-0" for="fb-file">A screenshot (optional, up to 3)</label>
+        <input id="fb-file" type="file" class="form-control form-control-sm" accept="image/*,application/pdf" multiple (change)="onFiles($event)" [disabled]="files.length >= 3 || uploading" data-testid="fb-file">
+        <div class="small mt-1" *ngFor="let f of files; let i = index">{{f.name}} <a href="javascript:void(0)" (click)="removeFile(i)" class="ms-1">remove</a></div>
+        <div class="small text-muted" *ngIf="uploading">Uploading&hellip;</div>
+      </div>
+      <div class="col-12 small text-muted"><i class="bi bi-shield-exclamation"></i> Please do not put customer names, phone numbers or patient details in the text or the screenshot.</div>
+    </div>
+  </div>
+
+  <div *ngIf="sentId" class="text-center py-3" data-testid="fb-sent">
+    <div class="fs-1 text-success"><i class="bi bi-check-circle"></i></div>
+    <div class="fw-bold">Sent. Thank you.</div>
+    <div class="small text-muted mb-3">Your report is number {{sentId}}. The answer will come to you as an alert, and you can read it under Help and feedback.</div>
+    <button class="btn btn-primary btn-sm me-2" type="button" (click)="viewMine()" data-testid="fb-view-mine">See my reports</button>
+    <button class="btn btn-outline-secondary btn-sm me-2" type="button" (click)="another()" data-testid="fb-another">Send another</button>
+    <button class="btn btn-link btn-sm" type="button" (click)="close()" data-testid="fb-done">Close</button>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <ng-container *ngIf="!sentId">
+      <button class="btn btn-outline-secondary btn-sm" type="button" (click)="close()" data-testid="fb-cancel">Cancel</button>
+      <button class="btn btn-primary btn-sm ms-2" type="button" [disabled]="busy || uploading" (click)="send()" data-testid="fb-send">Send</button>
+    </ng-container>
+  </ng-template>
+</p-dialog>

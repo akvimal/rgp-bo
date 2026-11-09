@@ -299,6 +299,15 @@ export const PAGES: PageGuide[] = [
     who: 'Everyone, for the pages their login opens.', keywords: 'help how to guide',
   },
 
+  {
+    id: 'nav-feedback', group: 'learn', title: 'Help and feedback', route: '/secure/feedback',
+    purpose: 'Tell us when something in the app is wrong, ask a question, or suggest a feature, and read the answer.',
+    tasks: ['Report or suggest: choose what it is, the module and the part of the app, say what happened or what you want, and attach a screenshot if it helps.', 'My reports: see each report, its status and the replies; write back when asked, say "this solved it", or reopen it.', 'Inbox: for the people who answer. Reply, leave an internal note, set the status (answered, planned, not planned, already reported) and assign a report.'],
+    who: 'Everyone can send and read their own reports. Owners answer from the Inbox.',
+    watch: ['Do not put customer names, phone numbers or patient details in a report or a screenshot.', 'The round button at the bottom right of any screen opens the form over the screen you are on.'],
+    keywords: 'help feedback report issue bug problem suggestion suggest feature question support',
+  },
+
   // ---- setup
   {
     id: 'setup-business-profile', group: 'setup', title: 'Business details', route: '/secure/settings/business-profile', needs: ['businessprofile'],

@@ -10,6 +10,7 @@ import { OutageModule } from './modules/app/outage/outage.module';
 import { ReviewModule } from './modules/app/review/review.module';
 import { TodoModule } from './modules/app/todos/todo.module';
 import { CalendarModule } from './modules/app/calendar/calendar.module';
+import { FeedbackModule } from './modules/app/feedback/feedback.module';
 import { PriceChangesModule } from './modules/app/price-changes/price-changes.module';
 import { FinanceModule } from './modules/app/finance/finance.module';
 import { SaleHooksModule } from './core/sale-hooks/sale-hooks';
@@ -75,6 +76,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     ReviewModule,
     TodoModule,
     CalendarModule,
+    FeedbackModule,
     PriceChangesModule,
     FinanceModule,
     SaleHooksModule,

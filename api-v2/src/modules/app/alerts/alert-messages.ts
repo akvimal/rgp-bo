@@ -121,6 +121,14 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'To-do {days} days late: {title}', body: '{person} has not done it yet. It was due on {date}.' },
     ta: { title: 'செய்ய வேண்டியது {days} நாட்கள் தாமதம்: {title}', body: '{person} இன்னும் செய்யவில்லை. {date} அன்று செய்திருக்க வேண்டும்.' },
   },
+  feedback_reply: {
+    en: { title: 'Reply to your report: {title}', body: 'There is a reply or a change of status ({status}). Open Help and feedback to read it.' },
+    ta: { title: 'உங்கள் அறிக்கைக்குப் பதில்: {title}', body: 'ஒரு பதில் அல்லது நிலை மாற்றம் ({status}) உள்ளது. படிக்க உதவி மற்றும் கருத்து பக்கத்தைத் திறக்கவும்.' },
+  },
+  feedback_waiting: {
+    en: { title: 'Report waiting for an answer: {title}', body: '{person} sent a {kind} about {module}. Open the Inbox in Help and feedback to reply.' },
+    ta: { title: 'பதிலுக்காகக் காத்திருக்கும் அறிக்கை: {title}', body: '{person} {module} பற்றி ஒரு {kind} அனுப்பினார். பதில் அளிக்க உதவி மற்றும் கருத்து பக்கத்தின் பெட்டியைத் திறக்கவும்.' },
+  },
   kpi_behind: {
     en: { title: 'KPI behind pace: {measure}', body: '{evidence}. At this point in the month you are at {progress}% of the pace needed. Have a look at My KPI to see what to do.' },
     ta: { title: 'KPI பின்தங்கியுள்ளது: {measure}', body: '{evidence}. மாதத்தின் இந்த நிலையில் தேவையான வேகத்தில் {progress}% மட்டுமே உள்ளது. என் KPI பக்கத்தில் பார்க்கவும்.' },

@@ -119,7 +119,7 @@ export class SecuredComponent {
     newMenu = false;
     menuGroups: MenuGroup[] = buildMenu({ has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) });
 
-    private readonly menuAccess = { has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) };
+    readonly menuAccess = { has: (...k: string[]) => this.has(...k), canOpen: (u: string) => this.canOpen(u), pack: (n: string) => this.authService.packOn(n) };
     private counterGroups: MenuGroup[] = buildCounterMenu(this.menuAccess);
     /** the floating button's list (each entry shows only for a role that may open it) */
     quickActions: QuickAction[] = buildQuickActions(this.menuAccess);

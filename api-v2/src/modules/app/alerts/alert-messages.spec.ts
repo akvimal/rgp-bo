@@ -51,6 +51,8 @@ describe('alert messages', () => {
       customer_lookups_many: ['customer_lookups_many'],
       customer_data_taken: ['customer_data_taken'],
       todo_due: ['todo_soon', 'todo_due', 'todo_overdue', 'todo_escalated'],
+      feedback_reply: ['feedback_reply'],
+      feedback_waiting: ['feedback_waiting'],
       kpi_behind_pace: ['kpi_behind'],
       kpi_rating_due: ['kpi_rating_due'],
     };

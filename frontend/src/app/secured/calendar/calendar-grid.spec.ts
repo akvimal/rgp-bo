@@ -19,7 +19,7 @@ describe('calendar grid', () => {
 
   it('draws a month as six whole weeks that contain it', () => {
     const days = monthDays('2026-11-09');
-    expect(days).toHaveLength(42);
+    expect(days.length).toBe(42);
     expect(days).toContain('2026-11-30');
     expect(days[0] <= '2026-11-01').toBeTrue();
     expect(new Date(days[0] + 'T00:00:00Z').getUTCDay()).toBe(0);
@@ -27,7 +27,7 @@ describe('calendar grid', () => {
 
   it('asks for the days a view draws', () => {
     expect(daysOf('day', '2026-11-09')).toEqual(['2026-11-09']);
-    expect(daysOf('week', '2026-11-09')).toHaveLength(7);
+    expect(daysOf('week', '2026-11-09').length).toBe(7);
     expect(step('week', '2026-11-09', 1)).toBe('2026-11-16');
     expect(step('month', '2026-11-09', -1)).toBe('2026-10-09');
   });

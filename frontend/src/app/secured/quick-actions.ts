@@ -4,7 +4,9 @@ import { MenuAccess } from "./menu";
  * The things people do most, offered from the floating button at the bottom right of every screen. Each shows only for a role that may open it
  * (the same permission keys as the menu), so a counter login sees a short list. Pure of Angular so it can be unit tested.
  */
-export interface QuickAction { id: string; label: string; route: string; query?: { [k: string]: any }; icon: string; show: () => boolean; badge?: boolean; }
+export interface QuickAction { id: string; label: string; route: string; query?: { [k: string]: any }; icon: string; show: () => boolean; badge?: boolean;
+  /** opens something over the current screen instead of going to a page */
+  action?: 'feedback'; }
 
 export function buildQuickActions(a: MenuAccess): QuickAction[] {
   const any = (...keys: string[]) => () => a.has(...keys);
@@ -15,6 +17,7 @@ export function buildQuickActions(a: MenuAccess): QuickAction[] {
     { id: 'qa-purchase', label: 'New purchase invoice', route: '/secure/purchases/invoices/new', icon: 'bi-bag-check', show: any('purchases.add') },
     { id: 'qa-audit', label: 'Stock audits', route: '/secure/stock-audits', icon: 'bi-clipboard-data', show: any('stockaudit.view') },
     { id: 'qa-expense', label: 'Expenses', route: '/secure/expenses', icon: 'bi-wallet2', show: any('expenses.view') },
+    { id: 'qa-feedback', label: 'Report or suggest', route: '/secure/feedback', icon: 'bi-chat-left-dots', show: any('feedback.add'), action: 'feedback' },
   ];
 }
 

@@ -4,6 +4,7 @@ import { Subscription } from "rxjs";
 import { filter } from "rxjs/operators";
 import { QuickAction, quickActionsHidden } from "./quick-actions";
 import { TodoService } from "./todos/todos.service";
+import { FeedbackDialogService } from "./feedback/feedback.service";
 
 const localDay = (d: Date = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -46,7 +47,7 @@ export class QuickActionsComponent implements OnInit, OnDestroy {
   private timer: any = null;
   private lastFetch = 0;
 
-  constructor(private router: Router, private todos: TodoService, private host: ElementRef) {}
+  constructor(private router: Router, private todos: TodoService, private host: ElementRef, private feedback: FeedbackDialogService) {}
 
   get shown(): QuickAction[] { return this.actions.filter((a) => a.show()); }
 
@@ -76,6 +77,7 @@ export class QuickActionsComponent implements OnInit, OnDestroy {
 
   go(a: QuickAction) {
     this.open = false;
+    if (a.action === 'feedback') { this.feedback.open(this.router.url); return; }
     this.router.navigate([a.route], a.query ? { queryParams: a.query } : undefined);
   }
 

@@ -61,6 +61,7 @@ export function buildMenu(a: MenuAccess): MenuGroup[] {
       item('nav-pharmacy-guide', 'Pharmacy guide', 'pharmacy-guide', 'bi-mortarboard', () => !!a.pack && a.pack('pharmacy')),
       item('nav-app-guide', 'App guide', 'app-guide', 'bi-question-circle', () => true),
       item('nav-knowledge', 'Knowledge check', 'knowledge', 'bi-patch-check', () => true),
+      item('nav-feedback', 'Help and feedback', 'feedback', 'bi-chat-left-dots', any('feedback.add')),
     ] },
   ];
 }
@@ -82,7 +83,7 @@ const COUNTER_LAYOUT: { key: string; label: string; ids: string[] }[] = [
   { key: 'stock', label: 'Stock and buying', ids: ['nav-store', 'nav-products', 'nav-outage', 'nav-schedule-register', 'nav-stock-audits', 'nav-purchases', 'nav-purchase-requests', 'nav-vendor-issues'] },
   { key: 'accounts', label: 'Money', ids: ['nav-expenses', 'nav-digital-payments', 'nav-gst-filing', 'nav-finance'] },
   { key: 'people', label: 'Me', ids: ['nav-my-hr', 'nav-kpi-mine', 'nav-hr', 'nav-leave-approvals', 'nav-attendance-punch', 'nav-attendance-review', 'nav-kpi-rate'] },
-  { key: 'learn', label: 'Learn', ids: ['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge'] },
+  { key: 'learn', label: 'Learn', ids: ['nav-pharmacy-guide', 'nav-app-guide', 'nav-knowledge', 'nav-feedback'] },
 ];
 
 /**
