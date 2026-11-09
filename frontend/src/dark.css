@@ -161,6 +161,10 @@ html[data-theme="dark"] .p-dialog .p-dialog-title { color: var(--rgp-navy); }
 
 /* ---------------------------------------------------------------- screens with their own light blocks */
 html[data-theme="dark"] .hist-card, html[data-theme="dark"] .hist-preview { background: var(--dk-surface); }
+/* the customer history popup (orders, store credit, dues, documents): a bill's item rows and a document card are white in the light theme */
+html[data-theme="dark"] .hist-bill, html[data-theme="dark"] .hist-doc { background: var(--dk-surface); }
+html[data-theme="dark"] .hist-doc.active { background: var(--rgp-brand-soft); }
+html[data-theme="dark"] .hist-card-head { color: var(--rgp-text); }
 html[data-theme="dark"] .dashboard .card-icon { background: var(--dk-surface-2) !important; }
 html[data-theme="dark"] .iconslist .icon { background-color: var(--dk-surface); }
 html[data-theme="dark"] .shift-pill { background: var(--dk-surface-2); }
