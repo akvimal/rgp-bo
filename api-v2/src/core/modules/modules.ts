@@ -38,9 +38,11 @@ export interface ModuleState {
   refills: boolean;
   /** the business takes sale returns (a store can still turn them off for itself) */
   returns: boolean;
+  /** Help and feedback: staff report a problem, ask a question or suggest a feature and read the answer. Off until the business switches it on. */
+  feedback: boolean;
 }
 
-export const MODULE_KEYS = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register', 'refills', 'returns'] as const;
+export const MODULE_KEYS = ['hr', 'purchasing', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register', 'refills', 'returns', 'feedback'] as const;
 export type ModuleKey = typeof MODULE_KEYS[number];
 
 export const MODULE_LABELS: Record<ModuleKey, string> = {
@@ -54,10 +56,11 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   drug_register: 'Drug register (Schedule H, H1, X)',
   refills: 'Refill follow-up (chronic medicines)',
   returns: 'Sale returns',
+  feedback: 'Help and feedback',
 };
 
-/** Everything on: what a business that never chose gets. */
-export const ALL_ON: ModuleState = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true, drug_register: true, refills: true, returns: true };
+/** What a business that never chose gets: everything on, except Help and feedback, which a business switches on for itself. */
+export const ALL_ON: ModuleState = { hr: true, purchasing: 'full', gst: true, expenses: true, payment_recon: true, stock_audits: true, transfers: true, drug_register: true, refills: true, returns: true, feedback: false };
 
 const asBool = (v: any, dflt: boolean) => (v === undefined || v === null ? dflt : v === true || v === 'true');
 
@@ -80,6 +83,7 @@ export function resolveModules(raw: any, businessType: string | null | undefined
     drug_register: asBool(r.drug_register, packModules.has('drug_register')),
     refills: asBool(r.refills, packModules.has('refills')),
     returns: asBool(r.returns, true),
+    feedback: asBool(r.feedback, false),
   };
 }
 
@@ -119,6 +123,7 @@ const ROUTES: Array<[RegExp, Gate]> = [
   [/^\/schedule(\/|$)/, { key: 'drug_register' }],
   [/^\/(refills|sale-suggestions)(\/|$)/, { key: 'refills' }],
   [/^\/(salereturns|sales\/returns)(\/|$)/, { key: 'returns' }],
+  [/^\/feedback(\/|$)/, { key: 'feedback' }],
 ];
 
 /** Whether a path belongs to a switchable module at all (so most requests skip the lookup). */
@@ -158,6 +163,7 @@ const RESOURCES: Record<string, (m: ModuleState) => boolean> = {
   scheduleregister: (m) => m.drug_register,
   refills: (m) => m.refills,
   returns: (m) => m.returns,
+  feedback: (m) => m.feedback,
 };
 
 /** Single screens inside a shared resource. */

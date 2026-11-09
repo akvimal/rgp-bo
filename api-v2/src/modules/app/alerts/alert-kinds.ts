@@ -8,6 +8,7 @@ import { lastFullWeek, reviewLate } from '../review/review-rules';
 import { BUSINESS_OF_USER_SQL } from '../../../core/business-of-user';
 import { stageOf } from '../todos/todo-rules';
 import { NOT_A_PERSON } from '../../../core/roles';
+import { ModuleKey } from '../../../core/modules/modules';
 
 export type Severity = 'info' | 'warning' | 'critical';
 export const SEVERITIES: Severity[] = ['info', 'warning', 'critical'];
@@ -43,6 +44,8 @@ export interface AlertKind {
   defaultSeverity: Severity;
   /** a kind of a business pack: watched only for a business that has the pack */
   pack?: string;
+  /** the business module this alert belongs to: the rule is not run (or shown) while the module is off */
+  module?: ModuleKey;
   evaluate(ctx: Ctx, params: Record<string, number>): Promise<Finding[]>;
 }
 
@@ -504,6 +507,7 @@ export const KINDS: AlertKind[] = [
   },
   {
     kind: 'feedback_reply',
+    module: 'feedback',
     label: 'Reply to your report',
     description: 'Someone answered a report or question a person sent from Help and feedback, or changed its status. Only the person who sent it is told, until they open it.',
     params: [],
@@ -520,6 +524,7 @@ export const KINDS: AlertKind[] = [
   },
   {
     kind: 'feedback_waiting',
+    module: 'feedback',
     label: 'Report waiting for an answer',
     description: 'A report, question or suggestion sent from Help and feedback is new, or the person wrote back, and is waiting for a reply. Told to the people whose role may answer reports (the Inbox), until someone replies.',
     params: [],

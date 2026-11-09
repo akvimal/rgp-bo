@@ -205,6 +205,7 @@ export class AuthService {
       case 'refills': return this.moduleOn('refills');
       case 'returns': return this.moduleOn('returns');
       case 'scheduleregister': return this.moduleOn('drug_register');
+      case 'feedback': return this.modules?.feedback === true;   // off unless the business switched it on
       default: return true;
     }
   }

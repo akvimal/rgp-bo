@@ -58,6 +58,8 @@ export function clampModules(chosen: ModuleState, allowed: ModuleState): ModuleS
     drug_register: chosen.drug_register && allowed.drug_register,
     refills: chosen.refills && allowed.refills,
     returns: chosen.returns && allowed.returns,
+    // the control plane's plans do not list it: a plan holds it back only by saying false
+    feedback: chosen.feedback && allowed.feedback !== false,
   };
 }
 
@@ -66,5 +68,6 @@ export function lockedModules(allowed: ModuleState): string[] {
   const out: string[] = [];
   for (const k of ['hr', 'gst', 'expenses', 'payment_recon', 'stock_audits', 'transfers', 'drug_register', 'refills', 'returns'] as const) if (!allowed[k]) out.push(k);
   if (allowed.purchasing !== 'full') out.push('purchasing');
+  if (allowed.feedback === false) out.push('feedback');
   return out;
 }

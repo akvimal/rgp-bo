@@ -111,4 +111,27 @@ describe('modules', () => {
     expect(perms[1].path.length).toBe(2);                                    // the input is not mutated
     expect(filterPermissions(perms, ALL_ON)).toEqual(perms);
   });
+
+  it('Help and feedback is off until the business switches it on, and then it is on', () => {
+    expect(resolveModules({}).feedback).toBe(false);
+    expect(resolveModules(null).feedback).toBe(false);
+    expect(ALL_ON.feedback).toBe(false);
+    expect(resolveModules({ feedback: true }).feedback).toBe(true);
+    expect(resolveModules({ feedback: true }, 'general').feedback).toBe(true);
+    expect(resolveModules({ feedback: false }).feedback).toBe(false);
+    expect(parseModulesInput({ feedback: true }).value).toEqual({ feedback: true });
+    expect(parseModulesInput({ feedback: 'yes' }).error).toMatch(/Help and feedback/);
+  });
+
+  it('while Help and feedback is off its endpoints answer 403 and its permission is dropped', () => {
+    expect(gatedPath('/feedback')).toBe(true);
+    expect(gatedPath('/feedback/12/reply')).toBe(true);
+    expect(gatedPath('/feedbackish')).toBe(false);
+    expect(blockedBy('/feedback/mine', resolveModules({}))).toMatch(/Help and feedback is switched off/);
+    expect(blockedBy('/feedback/mine', resolveModules({ feedback: true }))).toBeNull();
+    const perms = [{ resource: 'feedback', path: '/secure/feedback', policies: [{ action: 'add' }] }, { resource: 'sales', path: ['/secure/sales'], policies: [{ action: 'read' }] }];
+    expect(filterPermissions(perms, resolveModules({})).map((p) => p.resource)).toEqual(['sales']);
+    expect(filterPermissions(perms, resolveModules({ feedback: true })).map((p) => p.resource)).toEqual(['feedback', 'sales']);
+    expect(perms.length).toBe(2);                                          // the stored role is not changed: switching it on restores access at once
+  });
 });

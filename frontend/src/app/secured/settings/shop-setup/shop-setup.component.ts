@@ -61,6 +61,7 @@ export class ShopSetupComponent implements OnInit {
     { key: 'stock_audits', label: 'Stock audits', hint: 'Planned cycle counts by category and store.' },
     { key: 'transfers', label: 'Stock transfers', hint: 'Moving stock between your stores.' },
     { key: 'returns', label: 'Sale returns', hint: 'Taking goods back from customers. Switch off if this business takes no returns; a store can also turn it off for itself under Settings > Store.' },
+    { key: 'feedback', label: 'Help and feedback', hint: 'Lets staff report a problem, ask a question or suggest a feature from the round button, and read the answer. Off until you switch it on; owners answer from Help and feedback.' },
     { key: 'gst', label: 'GST reconciliation', hint: 'Matching purchase invoices to GSTR-2A/2B. Needs purchasing.' },
   ];
 

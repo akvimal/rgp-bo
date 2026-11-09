@@ -41,7 +41,17 @@ describe('clampModules', () => {
   });
 
   it('names what the plan leaves out', () => {
-    expect(lockedModules({ ...ALL_ON, hr: false, purchasing: 'simple' }).sort()).toEqual(['hr', 'purchasing']);
-    expect(lockedModules(ALL_ON)).toEqual([]);
+    const full = { ...ALL_ON, feedback: true };      // ALL_ON is the business default (Help and feedback off); a plan that allows everything says true
+    expect(lockedModules({ ...full, hr: false, purchasing: 'simple' }).sort()).toEqual(['hr', 'purchasing']);
+    expect(lockedModules(full)).toEqual([]);
+    expect(lockedModules({ ...full, feedback: false })).toEqual(['feedback']);
+  });
+
+  it('a plan that does not mention Help and feedback does not hold it back; one that says false does', () => {
+    const fromPlan: any = { ...ALL_ON }; delete fromPlan.feedback;                                       // what a token from the control plane carries
+    expect(clampModules({ ...ALL_ON, feedback: true }, fromPlan).feedback).toBe(true);
+    expect(clampModules({ ...ALL_ON, feedback: false }, fromPlan).feedback).toBe(false);                  // the owner's own switch still decides
+    expect(clampModules({ ...ALL_ON, feedback: true }, { ...ALL_ON, feedback: false }).feedback).toBe(false);     // a plan that says false holds it back
+    expect(lockedModules(fromPlan)).toEqual([]);
   });
 });
