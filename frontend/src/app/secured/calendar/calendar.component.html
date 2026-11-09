@@ -1,0 +1,73 @@
+<div class="form-compact">
+<div class="pagetitle">
+  <h1>Calendar</h1>
+</div>
+
+<p class="small text-muted mb-2" data-testid="cal-intro">
+  What is dated across the shop: leave, holidays, to-dos, licence expiries, stock audits and prescription follow-ups. Click an entry to open the screen it belongs to.
+</p>
+
+<div class="alert alert-danger py-2" *ngIf="error" data-testid="cal-error">{{error}}</div>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2" data-testid="cal-bar">
+  <div class="btn-group btn-group-sm">
+    <button class="btn btn-outline-secondary" (click)="go(-1)" aria-label="Previous" data-testid="cal-prev"><i class="bi bi-chevron-left"></i></button>
+    <button class="btn btn-outline-secondary" (click)="goToday()" data-testid="cal-today">Today</button>
+    <button class="btn btn-outline-secondary" (click)="go(1)" aria-label="Next" data-testid="cal-next"><i class="bi bi-chevron-right"></i></button>
+  </div>
+  <div class="fw-bold" data-testid="cal-title">{{title}}</div>
+  <span class="spinner-border spinner-border-sm" *ngIf="busy" role="status" aria-label="Loading"></span>
+  <div class="ms-auto d-flex gap-2 align-items-center">
+    <select class="form-select form-select-sm w-auto" *ngIf="options.stores.length > 1" [ngModel]="store" (ngModelChange)="setStore($event)" aria-label="Store" data-testid="cal-store">
+      <option [ngValue]="0">All stores</option>
+      <option *ngFor="let s of options.stores" [ngValue]="s.id">{{s.name}}</option>
+    </select>
+    <div class="btn-group btn-group-sm" role="group" aria-label="View">
+      <button class="btn" [ngClass]="view === 'month' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setView('month')" data-testid="cal-view-month">Month</button>
+      <button class="btn" [ngClass]="view === 'week' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setView('week')" data-testid="cal-view-week">Week</button>
+      <button class="btn" [ngClass]="view === 'day' ? 'btn-primary' : 'btn-outline-secondary'" (click)="setView('day')" data-testid="cal-view-day">Day</button>
+    </div>
+  </div>
+</div>
+
+<!-- the kinds: tick off what you do not want to see -->
+<div class="d-flex flex-wrap gap-1 mb-2" data-testid="cal-kinds">
+  <button *ngFor="let k of kinds" type="button" class="btn btn-sm" [ngClass]="isHidden(k.key) ? 'btn-outline-secondary opacity-50 text-decoration-line-through' : 'btn-secondary'"
+          [attr.aria-pressed]="!isHidden(k.key)" (click)="toggle(k.key)" [attr.data-testid]="'cal-kind-' + k.key">
+    <i class="bi" [ngClass]="k.icon"></i> {{k.label}}
+  </button>
+</div>
+
+<!-- month and week: a grid of days -->
+<div class="cal-grid" [class.is-week]="view === 'week'" *ngIf="view !== 'day'" data-testid="cal-grid">
+  <div class="cal-head" *ngFor="let w of weekdays">{{w}}</div>
+  <div class="cal-cell" *ngFor="let d of days" [class.week]="view === 'week'" [class.out]="outOfMonth(d)" [class.today]="d === today" [class.picked]="d === picked"
+       (click)="pick(d)" (dblclick)="openDay(d)" [attr.data-testid]="'cal-day-' + d">
+    <span class="cal-num">{{dayNum(d)}}</span>
+    <span class="small text-muted d-md-none ms-1" *ngIf="view === 'week'">{{pretty(d, true)}}</span>
+    <a *ngFor="let e of shown(d)" class="cal-chip" [ngClass]="'tone-' + e.tone" href="javascript:void(0)" (click)="open(e, $event)" [title]="e.title + (e.store ? ' (' + e.store + ')' : '')">
+      <i class="bi" [ngClass]="icon(e.type)"></i> <span *ngIf="e.time">{{e.time}} </span>{{e.title}}
+    </a>
+    <a class="cal-more d-block mt-1" href="javascript:void(0)" *ngIf="more(d) > 0" (click)="openDay(d, $event)">+{{more(d)}} more</a>
+  </div>
+</div>
+
+<!-- the picked day (month view) or the day itself (day view): the full list -->
+<div class="card mt-3" *ngIf="view !== 'week'" data-testid="cal-detail">
+  <div class="card-body">
+    <div class="fw-bold mb-2">{{pretty(view === 'day' ? cursor : picked, true)}}</div>
+    <div class="text-muted small" *ngIf="loaded && !(view === 'day' ? (byDay[cursor] || []).length : pickedEntries.length)" data-testid="cal-empty">Nothing dated on this day.</div>
+    <div class="cal-row" *ngFor="let e of (view === 'day' ? (byDay[cursor] || []) : pickedEntries)" [ngClass]="'tone-' + e.tone" [attr.data-testid]="'cal-entry-' + e.id">
+      <i class="bi mt-1" [ngClass]="icon(e.type)"></i>
+      <div class="flex-grow-1 cal-text">
+        <div><span *ngIf="e.time" class="fw-bold">{{e.time}} </span>{{e.title}}</div>
+        <div class="small text-muted">
+          {{label(e.type)}}<span *ngIf="e.store"> - {{e.store}}</span><span *ngIf="e.who && e.type !== 'leave'"> - {{e.who}}</span><span *ngIf="e.note"> - {{e.note}}</span>
+          <span *ngIf="e.start !== e.end"> - {{pretty(e.start)}} to {{pretty(e.end)}}</span>
+        </div>
+      </div>
+      <a *ngIf="e.link" href="javascript:void(0)" class="small" (click)="open(e, $event)">Open</a>
+    </div>
+  </div>
+</div>
+</div>

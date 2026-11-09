@@ -128,6 +128,12 @@
             <span>To-dos</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'calendar.view'">
+          <a class="nav-link collapsed" routerLink="calendar" data-testid="nav-calendar" title="Calendar" aria-label="Calendar">
+            <i class="bi bi-calendar3"></i>
+            <span>Calendar</span>
+          </a>
+        </li>
         <li class="nav-heading" *ngIf="has('sales','customers.read','shiftdesk.view','inquiries.view')" data-testid="nav-section-sell">Sell</li>
         <li class="nav-item" *isAuth="'sales'">
           <a class="nav-link collapsed" routerLink="sales" data-testid="nav-sales" title="Sales" aria-label="Sales">

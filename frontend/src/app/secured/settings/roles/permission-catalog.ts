@@ -248,6 +248,14 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'calendar',
+    label: 'Calendar',
+    description: 'A month, week and day view of what is dated: leave, holidays, to-dos, licence expiries, stock audits, prescription follow-ups and your own attendance. It only shows what the role may already see elsewhere.',
+    group: 'Sales & Store Operations',
+    path: '/secure/calendar',
+    actions: [{ key: 'view', label: 'Open the calendar' }],
+  },
+  {
     key: 'shiftdesk',
     label: 'My shift page',
     description: 'The page where staff open and close their shift; opening and closing themselves are still the store shift permissions.',

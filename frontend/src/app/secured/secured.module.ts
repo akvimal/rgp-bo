@@ -110,6 +110,10 @@ const routes: Routes = [
       loadChildren: () => import('./todos/todos.module').then(m => m.TodosModule)
     },
     {
+      path: 'calendar', canActivate:[AuthGuard],
+      loadChildren: () => import('./calendar/calendar.module').then(m => m.CalendarModule)
+    },
+    {
       path: 'review', canActivate:[AuthGuard],
       loadChildren: () => import('./review/review.module').then(m => m.ReviewModule)
     },
