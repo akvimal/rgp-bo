@@ -311,6 +311,14 @@ export class InvoiceItemsComponent {
         this.fetchItems(event);
     }
 
+    /** the product whose earlier purchases are shown in the dialog (null = closed) */
+    historyProduct: { id: number; title: string } | null = null;
+
+    openHistory(item:any){
+        const id = +(item?.productid ?? item?.product?.id);
+        if(id) this.historyProduct = { id, title: item?.product?.title || 'Product' };
+    }
+
     showItemEdit(itemid:any){
         this.itemid = itemid;
         this.displayEditItem = true;

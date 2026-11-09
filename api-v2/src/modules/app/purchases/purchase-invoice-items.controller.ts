@@ -25,6 +25,12 @@ export class PurchaseItemController {
       return this.purchaseInvoiceService.findItemsByProduct(id);
     }
 
+    /** the earlier purchases of a product (received invoices), newest first, with the last, lowest and highest net rate; `exclude` leaves out the invoice being looked at */
+    @Get('/history/:productid')
+    async history(@Param('productid') productid: string, @Query('exclude') exclude: string) {
+      return this.purchaseInvoiceService.purchaseHistory(+productid, /^\d+$/.test(exclude ?? '') ? +exclude : null);
+    }
+
     /** the tax rates a line offers (the business's own list, else the usual rates of its type of business) */
     @Get('/tax-rates')
     async taxRates(@User() currentUser: any) {

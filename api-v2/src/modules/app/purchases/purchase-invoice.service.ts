@@ -22,6 +22,7 @@ import { agreesWithPrinted, invoiceGstHeader, invoiceNet, lineGst, payableFromPr
 import { netAfterCredits } from "./vendor-return-rule";
 import { businessOfUser } from "src/core/business-of-user";
 import { taxRatesFor } from "./tax-rates";
+import { HISTORY_LIMIT, summariseHistory, toHistoryLine } from "./purchase-history";
 import { classifyChange, DEFAULT_PRICE_APPROVAL_PCT, DEFAULT_PRICE_TOLERANCE_PCT, netRate, percentSetting, unitJump } from "./price-rules";
 
 @Injectable()
@@ -662,6 +663,25 @@ export class PurchaseInvoiceService {
       .where("status = :status",{status:criteria.status||'NEW'})
       .getMany();
     }
+
+   /**
+    * The earlier purchases of a product (received invoices only, newest first), for the history dialog on an invoice line: date, the invoice or challan number,
+    * vendor, batch, expiry, quantity, free, MRP, rate, discount and tax, with the net rate and the last, lowest and highest paid. The invoice being looked at is left out.
+    */
+   async purchaseHistory(productId:number, excludeInvoiceId:number|null){
+      if(!Number.isInteger(productId) || productId <= 0) throw new BadRequestException('Say which product.');
+      const [current] = excludeInvoiceId ? await this.manager.query(`select vendor_id from purchase_invoice where id = $1`, [excludeInvoiceId]) : [null];
+      const rows = await this.manager.query(
+        `select pii.id, to_char(pi.invoice_date, 'YYYY-MM-DD') as invoice_date, pi.invoice_no, pi.challan_no, pi.vendor_id, v.business_name as vendor, pii.batch,
+                to_char(pii.exp_date, 'YYYY-MM-DD') as exp_date, pii.qty, pii.free_qty, pii.mrp_cost, pii.ptr_value, pii.disc_pcnt, pii.tax_pcnt
+           from purchase_invoice_item pii join purchase_invoice pi on pi.id = pii.invoice_id left join vendor v on v.id = pi.vendor_id
+          where pii.product_id = $1 and ($2::int is null or pi.id <> $2) and pi.status = 'COMPLETE' and pi.active and not pi.archive
+            and pii.active and not pii.archive and pii.status <> 'REJECTED'
+          order by pi.invoice_date desc, pii.created_on desc limit ${HISTORY_LIMIT}`, [productId, excludeInvoiceId]);
+      const num = (v:any) => v === null || v === undefined ? null : +v;
+      const lines = rows.map((r:any) => toHistoryLine({ ...r, ptr_value: num(r.ptr_value), mrp_cost: num(r.mrp_cost), disc_pcnt: num(r.disc_pcnt), tax_pcnt: num(r.tax_pcnt) }, current?.vendor_id ?? null));
+      return { lines, summary: summariseHistory(lines), limit: HISTORY_LIMIT };
+   }
 
    async findItemsByProduct(id:number){
       return this.purchaseInvoiceItemRepository.createQueryBuilder('i')

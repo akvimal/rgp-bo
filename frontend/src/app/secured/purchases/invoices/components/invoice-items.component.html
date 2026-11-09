@@ -140,6 +140,8 @@
                         </td>
                         <td>
                             <span [class.text-decoration-line-through]="i.status === 'REJECTED'">{{i.product?.title}}</span>
+                            <!-- the earlier purchases of this product: date, invoice, vendor, batch, quantity, rate, discount and tax -->
+                            <a role="button" class="ms-1" (click)="openHistory(i)" title="Purchase history of this product" aria-label="Purchase history of this product" [attr.data-testid]="'item-history-' + i.id"><i class="bi bi-clock-history text-primary"></i></a>
                             <span class="badge bg-warning text-dark ms-1" *ngIf="i.status === 'DISPUTED'" data-testid="item-disputed">In dispute</span>
                             <span class="badge bg-secondary ms-1" *ngIf="i.status === 'REJECTED'" data-testid="item-rejected">Rejected</span>
                             <div class="small" *ngIf="i.status === 'DISPUTED' && i.disputenote" data-testid="item-dispute-note">{{i.disputenote}}</div>
@@ -320,6 +322,8 @@
     [balanceamount]="invoice.balanceamount"
     [paymentstatus]="invoice.paymentstatus"
     (payUpdated)="onPaid($event)"></app-invoice-payment>
+
+<app-purchase-history [product]="historyProduct" [invoiceId]="invoice.id" (closed)="historyProduct = null"></app-purchase-history>
 
 <p-dialog [header]="'Edit Item'" (onHide)="closeEditItem()" [(visible)]="displayEditItem" [modal]="true">
     <app-invoice-item-form [mode]="'edit'" [invoiceid]="invoice.id" [itemid]="itemid"
