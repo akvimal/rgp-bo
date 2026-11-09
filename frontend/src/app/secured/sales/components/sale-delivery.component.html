@@ -10,6 +10,19 @@
 </div>
 <app-sale-delivery-from-sale [open]="showNew" (closed)="showNew = false; $event && loadDeliveries()"></app-sale-delivery-from-sale>
 
+<div class="alert alert-info py-2 mt-2 d-flex flex-wrap align-items-center gap-2" *ngIf="notice" data-testid="delivery-notice">
+  <span class="flex-grow-1">{{notice}}</span>
+  <button type="button" class="btn btn-sm btn-outline-secondary py-0" (click)="notice = ''">Close</button>
+</div>
+<div class="alert alert-warning py-2 mt-2 d-flex flex-wrap align-items-center gap-2" *ngIf="suggestions?.unlinked" data-testid="delivery-unlinked">
+  <span class="flex-grow-1">
+    <b>{{suggestions.unlinked}}</b> deliver{{suggestions.unlinked === 1 ? 'y has' : 'ies have'}} a cost that is not linked to an expense.
+    <span *ngIf="suggestions.pairs?.length"><b>{{suggestions.pairs.length}}</b> can be matched to expenses already recorded.</span>
+    <span *ngIf="suggestions.undecided" class="text-muted">Open Manage on the others to link or record them.</span>
+  </span>
+  <button type="button" class="btn btn-sm btn-warning" *ngIf="suggestions.pairs?.length" (click)="showSuggestions = true" data-testid="delivery-review-links">Review matches</button>
+</div>
+
 <!-- ── KPI band (dashboard-consistent) ──────────────────────────────── -->
 <div class="row g-3">
   <div class="col-6 col-xl-3">
@@ -110,7 +123,9 @@
           </td>
           <td class="text-nowrap">{{ i.deliverydate ? (i.deliverydate | date:'dd MMM yyyy') : '-' }}</td>
           <td class="text-end">{{i.charges || 0 | number:'1.2-2'}}</td>
-          <td class="text-end">{{i.actualcost || 0 | number:'1.2-2'}}</td>
+          <td class="text-end">{{i.actualcost || 0 | number:'1.2-2'}}
+            <div><small [class.text-danger]="i.costpaidvia === 'UNPAID'" [class.text-muted]="i.costpaidvia !== 'UNPAID'" data-testid="delivery-cost-label">{{costLabel(i.costpaidvia)}}</small></div>
+          </td>
           <td>
             <div>{{i.paymentmode || '-'}}</div>
             <small class="text-muted">{{i.collectionstatus || '-'}}</small>
@@ -133,50 +148,26 @@
   </div>
 </div>
 
-<!-- ── Manage delivery ─────────────────────────────────────────────── -->
-<p-dialog [header]="'Manage Delivery — #' + (editingDelivery.sale?.billno || '')" [(visible)]="showEditor" [modal]="true" [style]="{ width: '58rem' }">
-  <div class="row g-3" *ngIf="editingDelivery.saleid">
+<!-- ── Manage delivery: the few things most deliveries need ─────────── -->
+<p-dialog [header]="'Manage Delivery — #' + (editingDelivery.sale?.billno || '')" [(visible)]="showEditor" [modal]="true" [style]="{ width: '44rem', maxWidth: '96vw' }" (onHide)="closeEditor()">
+  <div *ngIf="editingDelivery.saleid" data-testid="delivery-editor">
 
-    <div class="col-12"><div class="fw-semibold text-muted small text-uppercase">Status &amp; schedule</div></div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Status</label>
-      <select class="form-select" [(ngModel)]="editingDelivery.status" (ngModelChange)="onStatusChange()">
+    <!-- status, and the two quick answers -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+      <label class="form-label mb-0" for="dm-status">Status</label>
+      <select id="dm-status" class="form-select w-auto" [(ngModel)]="editingDelivery.status" (ngModelChange)="onStatusChange()" data-testid="dm-status">
         <option value="Pending">Pending</option>
         <option value="Assigned">Assigned</option>
         <option value="Delivered">Delivered</option>
         <option value="Failed">Failed</option>
         <option value="Cancelled">Cancelled</option>
       </select>
+      <button type="button" class="btn btn-success btn-sm ms-auto" (click)="markDelivered()" [disabled]="editingDelivery.status === 'Delivered'" data-testid="dm-mark-delivered"><i class="bi bi-check2-circle"></i> Mark delivered</button>
+      <button type="button" class="btn btn-outline-danger btn-sm" (click)="markFailed()" [disabled]="editingDelivery.status === 'Failed'" data-testid="dm-mark-failed">Failed</button>
     </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Method</label>
-      <select class="form-select" [(ngModel)]="editingDelivery.deliverymethod">
-        <option value="Staff Delivery">Staff Delivery</option>
-        <option value="Courier">Courier</option>
-      </select>
-    </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Scheduled date</label>
-      <input class="form-control" type="date" [(ngModel)]="editingDelivery.deliverydate">
-    </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Assigned to</label>
-      <input class="form-control" [(ngModel)]="editingDelivery.deliveryby">
-    </div>
-    <div class="col-md-6 col-lg-4" *ngIf="editingDelivery.deliverymethod === 'Courier'">
-      <label class="form-label">Courier partner</label>
-      <select class="form-select" [(ngModel)]="editingDelivery.courierpartner">
-        <option value="">Select partner</option>
-        <option *ngFor="let partner of deliveryPartners" [value]="partner.name">{{partner.name}}</option>
-      </select>
-    </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Delivered at</label>
-      <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.deliveredat">
-    </div>
-    <div class="col-md-6" *ngIf="editingDelivery.status === 'Failed'">
-      <label class="form-label">Failure reason</label>
-      <select class="form-select" [(ngModel)]="editingDelivery.failurereason">
+    <div class="mb-3" *ngIf="editingDelivery.status === 'Failed'">
+      <label class="form-label" for="dm-failure">Why</label>
+      <select id="dm-failure" class="form-select" [(ngModel)]="editingDelivery.failurereason" data-testid="dm-failure">
         <option value="Customer unavailable">Customer unavailable</option>
         <option value="Wrong address">Wrong address</option>
         <option value="Phone unreachable">Phone unreachable</option>
@@ -185,79 +176,171 @@
       </select>
     </div>
 
-    <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Receiver</div></div>
-    <div class="col-12">
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" id="useSaleCustomer"
-          [(ngModel)]="useSaleCustomer" (ngModelChange)="onUseSaleCustomerChange()">
-        <label class="form-check-label" for="useSaleCustomer">Use sale customer details</label>
+    <!-- who delivers: one choice instead of three boxes -->
+    <div class="mb-3">
+      <div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+        <span class="form-label mb-0">Delivered by</span>
+        <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="radio" id="dm-by-staff" [checked]="deliveredByKind === 'staff'" (change)="setDeliveredBy('staff')" data-testid="dm-by-staff"><label class="form-check-label" for="dm-by-staff">Our staff</label></div>
+        <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="radio" id="dm-by-courier" [checked]="deliveredByKind === 'courier'" (change)="setDeliveredBy('courier')" data-testid="dm-by-courier"><label class="form-check-label" for="dm-by-courier">Courier</label></div>
+      </div>
+      <div class="row g-2">
+        <div class="col-md-7" *ngIf="deliveredByKind === 'staff'">
+          <select *ngIf="staff.length; else staffText" class="form-select" [(ngModel)]="editingDelivery.deliveryby" aria-label="Staff member" data-testid="dm-staff">
+            <option value="">Choose who</option>
+            <option *ngIf="editingDelivery.deliveryby && !staffHas(editingDelivery.deliveryby)" [value]="editingDelivery.deliveryby">{{editingDelivery.deliveryby}}</option>
+            <option *ngFor="let u of staff" [value]="u.fullname">{{u.fullname}}</option>
+          </select>
+          <ng-template #staffText><input class="form-control" [(ngModel)]="editingDelivery.deliveryby" placeholder="Who is delivering" aria-label="Staff member" data-testid="dm-staff"></ng-template>
+        </div>
+        <div class="col-md-7" *ngIf="deliveredByKind === 'courier'">
+          <select class="form-select" [(ngModel)]="editingDelivery.courierpartner" aria-label="Courier partner" data-testid="dm-partner">
+            <option value="">Choose the courier</option>
+            <option *ngFor="let partner of deliveryPartners" [value]="partner.name">{{partner.name}}</option>
+          </select>
+        </div>
+        <div class="col-md-5" *ngIf="editingDelivery.status !== 'Delivered'">
+          <input class="form-control" type="date" [(ngModel)]="editingDelivery.deliverydate" aria-label="Day to deliver" data-testid="dm-date">
+        </div>
       </div>
     </div>
-    <div class="col-md-6">
-      <label class="form-label">Receiver name</label>
-      <input class="form-control" [(ngModel)]="editingDelivery.receivername" [disabled]="useSaleCustomer">
-    </div>
-    <div class="col-md-6">
-      <label class="form-label">Receiver phone</label>
-      <input class="form-control" [(ngModel)]="editingDelivery.receiverphone" [disabled]="useSaleCustomer">
-    </div>
-    <div class="col-md-12">
-      <label class="form-label">Receiver address</label>
-      <textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.receiveraddress" [disabled]="useSaleCustomer"></textarea>
-      <small class="text-muted" *ngIf="editingDelivery.sale?.customer?.address">On file: {{editingDelivery.sale?.customer?.address}}</small>
+
+    <!-- the receiver: what is on the bill, in one line -->
+    <div class="mb-3 small" data-testid="dm-receiver">
+      <ng-container *ngIf="!receiverOpen">
+        <span class="text-muted me-1">To</span><span data-testid="dm-receiver-line">{{receiverSummary(editingDelivery) || 'No receiver on the bill'}}</span>
+        <a role="button" class="ms-2" (click)="receiverOpen = true" data-testid="dm-receiver-change">Change</a>
+      </ng-container>
+      <div class="row g-2" *ngIf="receiverOpen">
+        <div class="col-md-6"><input class="form-control" [(ngModel)]="editingDelivery.receivername" placeholder="Receiver name" aria-label="Receiver name"></div>
+        <div class="col-md-6"><input class="form-control" [(ngModel)]="editingDelivery.receiverphone" placeholder="Receiver phone" aria-label="Receiver phone"></div>
+        <div class="col-12"><textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.receiveraddress" placeholder="Receiver address" aria-label="Receiver address"></textarea></div>
+      </div>
     </div>
 
-    <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Payment</div></div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Delivery charge</label>
-      <input class="form-control" type="number" [(ngModel)]="editingDelivery.charges">
-    </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Actual cost</label>
-      <input class="form-control" type="number" [(ngModel)]="editingDelivery.actualcost">
-    </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Payment mode</label>
-      <select class="form-select" [(ngModel)]="editingDelivery.paymentmode">
-        <option value="Prepaid">Prepaid</option>
-        <option value="COD">COD</option>
-        <option value="Collect by Courier">Collect by Courier</option>
-      </select>
-    </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Collection status</label>
-      <select class="form-select" [(ngModel)]="editingDelivery.collectionstatus">
-        <option value="Pending">Pending</option>
-        <option value="Collected">Collected</option>
-        <option value="Not Collected">Not Collected</option>
-      </select>
+    <!-- what it cost, and how it was paid -->
+    <div class="border rounded p-2 mb-3" data-testid="dm-cost-box">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <label class="form-label mb-0" for="dm-cost">Cost of delivery</label>
+        <div class="input-group w-auto">
+          <span class="input-group-text">&#8377;</span>
+          <input id="dm-cost" class="form-control" style="max-width:8rem" type="number" min="0" [(ngModel)]="editingDelivery.actualcost" [disabled]="!!editingDelivery.costlocked" data-testid="dm-cost">
+        </div>
+        <span class="small text-warning-emphasis" *ngIf="costUnsaid" data-testid="dm-cost-unsaid">How was it paid?</span>
+      </div>
+
+      <!-- recorded already, and no longer to be changed from here -->
+      <div class="alert alert-secondary py-2 small mb-2" *ngIf="editingDelivery.costlocked" data-testid="dm-locked">
+        <div><b>{{costLabel(editingDelivery.costpaidvia) || 'Recorded'}}</b>: {{editingDelivery.costentry}}</div>
+        <div class="text-muted">{{editingDelivery.costlockreason}}</div>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" *ngIf="editingDelivery.costlinked" (click)="unlinkCost()" data-testid="dm-unlink">Unlink (the expense stays where it is)</button>
+      </div>
+
+      <div *ngIf="!editingDelivery.costlocked">
+        <div class="d-flex flex-wrap gap-3 mb-2" data-testid="dm-ways">
+          <div class="form-check mb-0" *ngFor="let w of costWays">
+            <input class="form-check-input" type="radio" name="dm-way" [id]="'dm-way-' + w.key" [checked]="costChoice.via === w.key" (change)="pickCostWay(w.key)" [attr.data-testid]="'dm-way-' + w.key">
+            <label class="form-check-label" [for]="'dm-way-' + w.key">{{w.label}}</label>
+          </div>
+        </div>
+        <div class="small text-muted mb-2" *ngIf="costChoice.via === 'CASH'" data-testid="dm-cash-note">Paid from the cash drawer of the shift that is open now: it is recorded as an expense there, and the cash expected goes down by this amount.</div>
+        <div class="row g-2 mb-2" *ngIf="costChoice.via === 'DIGITAL'">
+          <div class="col-md-5">
+            <select class="form-select" [(ngModel)]="costChoice.mode" aria-label="How it was paid" data-testid="dm-mode">
+              <option *ngFor="let m of digitalModes" [value]="m.key">{{m.label}}</option>
+            </select>
+          </div>
+          <div class="col-md-7"><input class="form-control" [(ngModel)]="costChoice.ref" maxlength="60" placeholder="Reference (optional)" aria-label="Reference" data-testid="dm-ref"></div>
+          <div class="col-12 small text-muted">Recorded as an expense under Transport and courier, with the approval the Expenses screen asks for.</div>
+        </div>
+
+        <!-- an expense like this one is already recorded: link it instead of paying again -->
+        <div class="alert alert-warning py-2 small mb-2" *ngIf="likelyMatches.length" data-testid="dm-likely">
+          An expense of this amount is already recorded around this date. Link it instead, so the cost is not counted twice:
+          <div class="mt-1" *ngFor="let c of likelyMatches.slice(0, 3)">
+            {{c.label}}, {{c.day | date:'dd MMM'}}<span *ngIf="c.text"> &middot; {{c.text}}</span>
+            <button type="button" class="btn btn-sm btn-warning py-0 ms-2" (click)="chooseCandidate(c)" [attr.data-testid]="'dm-link-instead-' + c.id">Link this</button>
+          </div>
+        </div>
+
+        <div *ngIf="costChoice.via === 'LINK'" data-testid="dm-link-list">
+          <div class="small text-muted mb-1" *ngIf="!candidates.length" data-testid="dm-no-candidates">No unlinked expense was found around this date at this store.</div>
+          <div class="form-check small" *ngFor="let c of candidates">
+            <input class="form-check-input" type="radio" name="dm-cand" [id]="'dm-cand-' + c.kind + c.id" [checked]="costChoice.linkId === c.id && costChoice.linkKind === c.kind" (change)="chooseCandidate(c)" [attr.data-testid]="'dm-candidate-' + c.id">
+            <label class="form-check-label" [for]="'dm-cand-' + c.kind + c.id">
+              &#8377;{{c.amount | number:'1.2-2'}} &middot; {{c.day | date:'dd MMM'}} &middot; {{c.label}}<span *ngIf="c.text"> &middot; {{c.text}}</span>
+              <span class="badge bg-success ms-1" *ngIf="c.level === 'sure'">likely</span><span class="badge bg-secondary ms-1" *ngIf="c.exact && c.level !== 'sure'">same amount</span>
+            </label>
+          </div>
+          <div class="small text-warning-emphasis mt-1" *ngIf="costChoice.adopt" data-testid="dm-adopt">The cost becomes the entry's amount.</div>
+        </div>
+      </div>
     </div>
 
-    <div class="col-12 mt-2"><div class="fw-semibold text-muted small text-uppercase">Confirmation</div></div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Confirmed</label>
-      <select class="form-select" [(ngModel)]="editingDelivery.confirmed" (ngModelChange)="onConfirmedChange()">
-        <option [ngValue]="false">No</option>
-        <option [ngValue]="true">Yes</option>
-      </select>
+    <!-- who confirmed it: the person logged in, unless changed -->
+    <div class="mb-3 small" data-testid="dm-confirmed">
+      <span data-testid="dm-confirmed-line">{{confirmedLine}}</span>
+      <a role="button" class="ms-2" (click)="confirmOpen = !confirmOpen" data-testid="dm-confirm-change">{{confirmOpen ? 'Done' : 'Change'}}</a>
+      <div class="row g-2 mt-1" *ngIf="confirmOpen">
+        <div class="col-md-5"><input class="form-control" [(ngModel)]="editingDelivery.confirmedby" placeholder="Confirmed by (blank: you)" aria-label="Confirmed by"></div>
+        <div class="col-md-4"><input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.confirmedat" aria-label="Confirmed at"></div>
+        <div class="col-md-3"><input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.deliveredat" aria-label="Delivered at"></div>
+      </div>
     </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Confirmed by</label>
-      <input class="form-control" [(ngModel)]="editingDelivery.confirmedby" [disabled]="!editingDelivery.confirmed">
+
+    <!-- the rest, out of the way -->
+    <div class="mb-1">
+      <a role="button" class="small" (click)="moreOpen = !moreOpen" data-testid="dm-more">{{moreOpen ? 'Fewer details' : 'More: charge to customer, cash on delivery, remarks'}}</a>
     </div>
-    <div class="col-md-6 col-lg-4">
-      <label class="form-label">Confirmed at</label>
-      <input class="form-control" type="datetime-local" [(ngModel)]="editingDelivery.confirmedat" [disabled]="!editingDelivery.confirmed">
+    <div class="row g-2" *ngIf="moreOpen">
+      <div class="col-md-4"><label class="form-label small mb-0">Charge to customer</label><input class="form-control" type="number" min="0" [(ngModel)]="editingDelivery.charges"></div>
+      <div class="col-md-4">
+        <label class="form-label small mb-0">Payment mode</label>
+        <select class="form-select" [(ngModel)]="editingDelivery.paymentmode">
+          <option value="Prepaid">Prepaid</option><option value="COD">COD</option><option value="Collect by Courier">Collect by Courier</option>
+        </select>
+      </div>
+      <div class="col-md-4" *ngIf="editingDelivery.paymentmode !== 'Prepaid'">
+        <label class="form-label small mb-0">Money at the door</label>
+        <select class="form-select" [(ngModel)]="editingDelivery.collectionstatus">
+          <option value="Pending">Pending</option><option value="Collected">Collected</option><option value="Not Collected">Not Collected</option>
+        </select>
+      </div>
+      <div class="col-12"><label class="form-label small mb-0">Remarks</label><textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.comments"></textarea></div>
     </div>
-    <div class="col-md-12">
-      <label class="form-label">Remarks</label>
-      <textarea class="form-control" rows="2" [(ngModel)]="editingDelivery.comments"></textarea>
-    </div>
+
+    <div class="alert alert-danger py-2 small mt-3 mb-0" *ngIf="saveError" data-testid="dm-error">{{saveError}}</div>
   </div>
 
   <ng-template pTemplate="footer">
     <button class="btn btn-outline-secondary me-2" (click)="closeEditor()">Close</button>
-    <button class="btn btn-primary" (click)="saveDelivery()">Save</button>
+    <button class="btn btn-primary" (click)="saveDelivery()" [disabled]="saving" data-testid="dm-save">{{saving ? 'Saving...' : 'Save'}}</button>
+  </ng-template>
+</p-dialog>
+
+<!-- ── Costs already recorded, linked to their deliveries ───────────── -->
+<p-dialog header="Link costs to expenses already recorded" [(visible)]="showSuggestions" [modal]="true" [style]="{ width: '62rem', maxWidth: '96vw' }">
+  <div data-testid="delivery-link-review" *ngIf="suggestions">
+    <p class="small text-muted">Each delivery below has a cost, and an expense of exactly the same amount, at the same store, within three days, that says it is about a delivery. Linking changes no money: the expense stays as it is, and the delivery stops showing its cost as unlinked.
+      Matches that are not clear are left for you to decide on the delivery itself.</p>
+    <div class="alert alert-success py-2 small" *ngIf="linkMessage" data-testid="delivery-link-message">{{linkMessage}}</div>
+    <table class="table table-sm align-middle">
+      <thead><tr><th></th><th>Bill</th><th>Delivery</th><th class="text-end">Cost</th><th>Expense</th><th>Why it matches</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let p of suggestions.pairs" data-testid="delivery-link-row">
+          <td><input type="checkbox" [(ngModel)]="picked[pairKey(p)]" [attr.aria-label]="'Link bill ' + p.billno"></td>
+          <td>#{{p.billno}}<div class="small text-muted">{{p.receiver}}</div></td>
+          <td class="text-nowrap">{{p.deliveryday | date:'dd MMM yyyy'}}</td>
+          <td class="text-end">{{p.cost | number:'1.2-2'}}</td>
+          <td>{{p.entrylabel}}<div class="small text-muted">{{p.entryday | date:'dd MMM yyyy'}}<span *ngIf="p.entrytext"> &middot; {{p.entrytext}}</span></div></td>
+          <td class="small">{{p.reasons.join(', ')}}<span class="text-muted" *ngIf="p.daysapart"> &middot; {{p.daysapart}} day{{p.daysapart === 1 ? '' : 's'}} apart</span></td>
+        </tr>
+        <tr *ngIf="!suggestions.pairs.length"><td colspan="6" class="text-center text-muted py-3">Nothing left to match here.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ng-template pTemplate="footer">
+    <button class="btn btn-outline-secondary me-2" (click)="showSuggestions = false">Close</button>
+    <button class="btn btn-primary" (click)="linkSelected()" [disabled]="linking || !pickedCount" data-testid="delivery-link-selected">Link {{pickedCount}} selected</button>
   </ng-template>
 </p-dialog>
 </div>

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsPositive, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateSaleDeliveryDto {
 
@@ -121,4 +121,14 @@ export class CreateSaleDeliveryDto {
     @IsString()
     @MaxLength(1000)
     readonly comments: string;
+
+    @ApiProperty({ description: 'how the cost was paid: { via: CASH | DIGITAL | UNPAID | NONE, mode?, ref? }, or { link: { kind: CASH | DIGITAL, id } } for an entry already recorded', required: false })
+    @IsOptional()
+    @IsObject()
+    readonly costpaid: any;
+
+    @ApiProperty({ description: 'who confirmed the delivery, as a user', required: false })
+    @IsOptional()
+    @IsNumber()
+    readonly confirmedbyuser: number;
 }

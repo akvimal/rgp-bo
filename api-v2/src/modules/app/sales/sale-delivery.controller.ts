@@ -38,9 +38,27 @@ export class SaleDeliveryController {
       return this.service.changeMode(+saleid, body, currentUser);
     }
 
+    /** the entries already recorded that could be this delivery's cost, to link instead of paying again */
+    @Get(':saleid/cost-candidates')
+    async costCandidates(@Param('saleid') saleid: string, @User() currentUser: any) {
+      return this.service.costCandidates(+saleid, currentUser);
+    }
+
+    /** deliveries whose cost is not linked to an expense, and the pairs that can be linked in one go: ?days=120 */
+    @Get('cost-links/suggestions')
+    async costSuggestions(@Query() query: any, @User() currentUser: any) {
+      return this.service.costSuggestions(query, currentUser);
+    }
+
+    /** links expenses already recorded to deliveries: { links: [{ saleid, kind: CASH | DIGITAL, entryid }] } */
+    @Post('cost-links')
+    async linkCosts(@Body() body: any, @User() currentUser: any) {
+      return this.service.linkCosts(body, currentUser);
+    }
+
     @Put(':saleid')
     async update(@Param('saleid') saleid: string, @Body() dto: UpdateSaleDeliveryDto, @User() currentUser: any) {
-      return this.service.save({ ...dto, saleid: +saleid }, currentUser.id);
+      return this.service.update({ ...dto, saleid: +saleid }, currentUser);
     }
 
     @Delete(':id')

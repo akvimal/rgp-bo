@@ -1141,6 +1141,37 @@ export class StoreService {
     });
   }
 
+  /** a cash ledger entry: its amount, and whether its shift is still open (so it can still change); null when there is none */
+  async ledgerEntryState(id: number) {
+    const [r] = await this.manager.query(
+      `select l.id, l.store_id, l.shift_id, l.withdraw::float as amount, sh.status as shift_status
+         from store_cash_accounts l left join store_shifts sh on sh.id = l.shift_id where l.id = $1`, [id]);
+    return r ? { id: +r.id, storeid: r.store_id === null ? null : +r.store_id, shiftid: r.shift_id === null ? null : +r.shift_id, amount: +r.amount, shiftOpen: r.shift_status === 'OPEN' } : null;
+  }
+
+  /** changes the amount and words of an entry whose shift is open, and brings the shift's expected cash up to date */
+  async changeLedgerAmount(id: number, amount: number, description: string) {
+    const st = await this.ledgerEntryState(id);
+    if (!st) throw new NotFoundException("That cash entry was not found.");
+    if (!st.shiftOpen) throw new BadRequestException("That cash entry belongs to a shift that is closed.");
+    await this.manager.query(`update store_cash_accounts set withdraw = $2, description = $3 where id = $1`, [id, amount, String(description || "").slice(0, 500)]);
+    if (st.shiftid) await this.syncShiftTotals(st.shiftid);
+  }
+
+  /** takes back an entry whose shift is open */
+  async removeLedger(id: number) {
+    const st = await this.ledgerEntryState(id);
+    if (!st) return;
+    if (!st.shiftOpen) throw new BadRequestException("That cash entry belongs to a shift that is closed.");
+    await this.manager.query(`delete from store_cash_accounts where id = $1`, [id]);
+    if (st.shiftid) await this.syncShiftTotals(st.shiftid);
+  }
+
+  /** what the drawer of a shift is expected to hold now */
+  async shiftExpectedCash(shiftid: number): Promise<number> {
+    return (await this.getShiftStats(shiftid)).expectedcash;
+  }
+
   /** WS-2: expense-by-category rollup for the Cash screen. Defaults to the current calendar month. */
   async getExpenseSummary(query: any) {
     const storeid = await this.resolveStoreId(query.storeid);

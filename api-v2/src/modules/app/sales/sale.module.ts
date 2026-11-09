@@ -4,6 +4,8 @@ import { CustomerService } from "../customers/customer.service";
 import { CustomerRelationshipService } from "../customers/customer-relationship.service";
 import { CustomerPrivacyService } from "../customers/customer-privacy.service";
 import { StockService } from "../stock/stock.service";
+import { StoreModule } from "../store/store.module";
+import { ExpenseModule } from "../expenses/expense.module";
 import { SaleDeliveryController } from "./sale-delivery.controller";
 import { SaleDeliveryService } from "./sale-delivery.service";
 
@@ -28,7 +30,7 @@ import { JwtService } from "@nestjs/jwt";
 import { AuthModule } from "src/modules/auth/auth.module";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule],
+    imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule,StoreModule,ExpenseModule],
     controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController],
     providers: [SaleService,SaleSuggestionService,DrugRefService,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],

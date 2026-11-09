@@ -8,5 +8,6 @@ import { ExpenseService } from './expense.service';
   imports: [AuthModule, RoleModule],
   controllers: [ExpenseController],
   providers: [ExpenseGuard, ExpenseService],
+  exports: [ExpenseService],
 })
 export class ExpenseModule {}

@@ -22,5 +22,18 @@ export interface SaleDelivery {
     collectionstatus?: string,
     failurereason?: string,
     status?: string,
-    comments?: string
+    comments?: string,
+    storeid?: number | null,
+    // what the delivery cost and how it was paid
+    costpaidvia?: string,
+    costpaidmode?: string,
+    costpaidref?: string,
+    cashentryid?: number | null,
+    expenseid?: number | null,
+    costlinked?: boolean,
+    costentry?: string,
+    costlocked?: boolean,
+    costlockreason?: string | null,
+    expensestatus?: string | null,
+    confirmedbyuser?: number | null
 }

@@ -5,5 +5,6 @@ export const EXPENSE_CATEGORIES: { value: string; label: string }[] = [
     { value: 'STAFF_ADVANCE', label: 'Staff Advance' },
     { value: 'CLEANING', label: 'Cleaning' },
     { value: 'MAINTENANCE', label: 'Maintenance' },
+    { value: 'LOGISTICS', label: 'Transport and courier' },
     { value: 'MISC', label: 'Miscellaneous' },
 ];

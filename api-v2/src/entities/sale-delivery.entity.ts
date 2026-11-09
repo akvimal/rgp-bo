@@ -64,6 +64,26 @@ export class SaleDelivery extends BaseEntity {
   @Column("character varying", { name: "comments", nullable: true })
   comments: string | null;
 
+  // what the delivery cost and how it was paid (migration 179)
+  @Column("character varying", { name: "cost_paid_via", nullable: true })
+  costpaidvia: string | null;
+  @Column("character varying", { name: "cost_paid_mode", nullable: true })
+  costpaidmode: string | null;
+  @Column("character varying", { name: "cost_paid_ref", nullable: true })
+  costpaidref: string | null;
+  @Column("timestamp with time zone", { name: "cost_paid_on", nullable: true })
+  costpaidon: Date | null;
+  @Column("integer", { name: "cost_paid_by", nullable: true })
+  costpaidby: number | null;
+  @Column("integer", { name: "cash_entry_id", nullable: true })
+  cashentryid: number | null;
+  @Column("integer", { name: "expense_id", nullable: true })
+  expenseid: number | null;
+  @Column("boolean", { name: "cost_linked", default: false })
+  costlinked: boolean;
+  @Column("integer", { name: "confirmed_by_user", nullable: true })
+  confirmedbyuser: number | null;
+
   // @ManyToOne(() => Sale, (sale) => sale.deliveries, { onDelete: 'CASCADE' })
   // @JoinColumn([{ name: "sale_id", referencedColumnName: "id" }])
   // sale: Sale;
