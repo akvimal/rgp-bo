@@ -3,7 +3,7 @@ import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { PurchaseInvoiceService } from './purchase-invoice.service';
-import { returnLineProblem, returnLineValue, returnValue } from './vendor-return-rule';
+import { creditsEditable, returnLineProblem, returnLineValue, returnValue } from './vendor-return-rule';
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -147,14 +147,16 @@ export class VendorReturnService {
                 where fi.return_id = r.id and fi.active) as frominvoices,
               (select string_agg(p.title || ' x' || i.qty, ', ' order by i.id) from vendor_return_item i join product p on p.id = i.product_id where i.return_id = r.id and i.active) as summary
          from vendor_return r where r.vendor_id = $1 and r.status = 'OPEN' and r.active order by r.id`, [inv.vendor_id]);
-    return { applied, open, editable: inv.status === 'NEW' };
+    const { editable, reason } = creditsEditable(inv.status, await this.paidOn(invoiceid));
+    return { applied, open, editable, reason, completed: inv.status === 'COMPLETE' };
   }
 
   /** the vendor credited this return on this invoice: `amount` is what the vendor actually took off (defaults to the value of the return) */
   async addCredit(invoiceid: number, returnid: number, amount: any, userid: number) {
     const [inv] = await this.manager.query(`select id, vendor_id, status from purchase_invoice where id = $1 and active and not archive`, [invoiceid]);
     if (!inv) throw new NotFoundException('Invoice not found.');
-    if (inv.status !== 'NEW') throw new BadRequestException('Returns can be adjusted only while the invoice is a draft.');
+    const can = creditsEditable(inv.status, await this.paidOn(invoiceid));
+    if (!can.editable) throw new BadRequestException(can.reason);
     const [r] = await this.manager.query(`select id, vendor_id, status, total::float8 as total from vendor_return where id = $1 and active`, [returnid]);
     if (!r) throw new NotFoundException('Return not found.');
     if (+r.vendor_id !== +inv.vendor_id) throw new BadRequestException('That return is to a different vendor.');
@@ -174,17 +176,33 @@ export class VendorReturnService {
       await this.manager.query(`update vendor_return set status = 'OPEN', adjusted_invoice_id = null, adjusted_on = null where id = $1`, [returnid]);
       throw e;
     }
-    return { ok: true };
+    return { ok: true, warning: await this.reconWarning(invoiceid, inv.status) };
+  }
+
+  /** what has been paid on the invoice, as the invoice list counts it (a payment that was reversed nets to nothing) */
+  private async paidOn(invoiceid: number): Promise<number> {
+    const [p] = await this.manager.query(`select coalesce(sum(amount), 0)::float8 as paid from vendor_payment where invoice_id = $1`, [invoiceid]);
+    return +(p?.paid || 0);
+  }
+
+  /** a completed invoice already matched against the vendor's GSTR-2B no longer agrees with it once its total changes */
+  private async reconWarning(invoiceid: number, status: string): Promise<string | null> {
+    if (status !== 'COMPLETE') return null;
+    const [i] = await this.manager.query(`select gst_recon_status as s from purchase_invoice where id = $1`, [invoiceid]);
+    return i && i.s && i.s !== 'UNRECONCILED'
+      ? 'This invoice was already reconciled with GSTR-2B. Its total and tax have come down by the return, so check it again against the credit note from the vendor.'
+      : null;
   }
 
   async removeCredit(invoiceid: number, creditid: number, userid: number) {
     const [c] = await this.manager.query(
       `select c.id, c.return_id, v.status from purchase_invoice_credit c join purchase_invoice v on v.id = c.invoice_id where c.id = $1 and c.invoice_id = $2 and c.active`, [creditid, invoiceid]);
     if (!c) throw new NotFoundException('That return is not adjusted on this invoice.');
-    if (c.status !== 'NEW') throw new BadRequestException('Returns can be taken off only while the invoice is a draft.');
+    const can = creditsEditable(c.status, await this.paidOn(invoiceid));
+    if (!can.editable) throw new BadRequestException(can.reason.replace('adjusted on', 'taken off'));
     await this.manager.query(`delete from purchase_invoice_credit where id = $1`, [creditid]);
     await this.manager.query(`update vendor_return set status = 'OPEN', adjusted_invoice_id = null, adjusted_on = null, updated_by = $2, updated_on = now() where id = $1`, [c.return_id, userid]);
     await this.invoices.refreshTotal(invoiceid, userid);
-    return { ok: true };
+    return { ok: true, warning: await this.reconWarning(invoiceid, c.status) };
   }
 }

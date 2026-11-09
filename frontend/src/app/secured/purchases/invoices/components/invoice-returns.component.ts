@@ -13,6 +13,8 @@ import { environment } from "src/environments/environment";
       <div class="card-body">
         <h6 class="mb-2">Returns the vendor credited on this invoice</h6>
         <div class="alert alert-danger py-2" *ngIf="error" data-testid="invoice-returns-error">{{error}}</div>
+        <div class="alert alert-warning py-2 small" *ngIf="warning" data-testid="invoice-returns-warning">{{warning}}</div>
+        <div class="small text-muted mb-2" *ngIf="data.completed && data.editable" data-testid="invoice-returns-completed">This invoice is completed and nothing has been paid on it, so a return adjusted here lowers the amount payable.</div>
         <table class="table table-sm align-middle mb-2" *ngIf="data.applied.length">
           <thead><tr><th>Return</th><th>Date</th><th>Items</th><th class="text-end">Credited</th><th></th></tr></thead>
           <tbody>
@@ -26,6 +28,7 @@ import { environment } from "src/environments/environment";
           </tbody>
           <tfoot><tr class="fw-semibold"><td colspan="3" class="text-end">Returns adjusted</td><td class="text-end">&minus; {{appliedTotal | number:'1.2-2'}}</td><td></td></tr></tfoot>
         </table>
+        <div class="small text-muted" *ngIf="!data.editable && data.reason && data.open.length" data-testid="invoice-returns-locked">{{data.reason}}</div>
         <ng-container *ngIf="data.editable && data.open.length">
           <div class="small text-muted mb-1">Open returns to this vendor, not yet credited on any invoice:</div>
           <div class="d-flex flex-wrap gap-2 align-items-center mb-1" *ngFor="let r of data.open" data-testid="invoice-open-return">
@@ -48,6 +51,8 @@ export class InvoiceReturnsComponent implements OnChanges {
   data: any = null;
   amounts: { [id: number]: any } = {};
   error = "";
+  /** a note after a change that the person should see (an invoice already reconciled with GSTR-2B) */
+  warning = "";
   busy = false;
 
   constructor(private http: HttpClient) {}
@@ -64,15 +69,15 @@ export class InvoiceReturnsComponent implements OnChanges {
   private failed(e: any, fallback: string) { const m = e?.error?.message; this.error = Array.isArray(m) ? m.join(" ") : (m || fallback); this.busy = false; }
 
   add(r: any) {
-    this.error = ""; this.busy = true;
+    this.error = ""; this.warning = ""; this.busy = true;
     const amt = this.amounts[r.id];
     this.http.post(`${environment.apiHost}/vendor-returns/invoice/${this.invoiceid}`, { returnid: r.id, amount: amt === undefined || amt === null || amt === "" ? undefined : +amt }).subscribe(
-      () => { this.busy = false; delete this.amounts[r.id]; this.load(); this.changed.emit(); }, e => this.failed(e, "Could not adjust the return."));
+      (res: any) => { this.busy = false; delete this.amounts[r.id]; this.warning = res?.warning || ""; this.load(); this.changed.emit(); }, e => this.failed(e, "Could not adjust the return."));
   }
 
   remove(c: any) {
     this.error = "";
     this.http.delete(`${environment.apiHost}/vendor-returns/invoice/${this.invoiceid}/${c.id}`).subscribe(
-      () => { this.load(); this.changed.emit(); }, e => this.failed(e, "Could not take the return off."));
+      (res: any) => { this.warning = res?.warning || ""; this.load(); this.changed.emit(); }, e => this.failed(e, "Could not take the return off."));
   }
 }

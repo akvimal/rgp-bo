@@ -26,6 +26,17 @@ export function returnLineProblem(l: { qty: any; rate: any }, available: number,
   return '';
 }
 
+/**
+ * Whether returns can be adjusted on (or taken off) an invoice: while it is a draft, and also once it is completed as long as nothing has been paid on it
+ * (the amount payable simply comes down). A payment recorded against it fixes the amount, so a credit can no longer move it.
+ */
+export function creditsEditable(status: string, paid: number): { editable: boolean; reason: string } {
+  if (status === 'NEW') return { editable: true, reason: '' };
+  if (status !== 'COMPLETE') return { editable: false, reason: 'Returns can be adjusted only on a draft or a completed invoice.' };
+  if (Math.abs(Number(paid) || 0) > 0.005) return { editable: false, reason: 'A payment has been recorded on this invoice, so a return can no longer be adjusted on it. Adjust it on the next invoice from this vendor.' };
+  return { editable: true, reason: '' };
+}
+
 /** the invoice total after returns: what was bought (with GST) less the credits; a credit bigger than the purchase is refused */
 export function netAfterCredits(net: number, credits: number): { net: number; problem: string } {
   const left = r2(net - credits);
