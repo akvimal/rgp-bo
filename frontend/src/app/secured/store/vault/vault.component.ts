@@ -158,8 +158,8 @@ export class VaultComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** "3 x 500, 20 x 100" */
+  /** "3 x ₹500, 20 x ₹100": how many of each note or coin, with the rupee sign on the denomination */
   words(rows: DenominationRow[] | null | undefined): string {
-    return (rows || []).map(r => `${r.n} x ${r.d}`).join(", ");
+    return (rows || []).map(r => `${r.n} x ₹${r.d}`).join(", ");
   }
 }
