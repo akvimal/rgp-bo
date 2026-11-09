@@ -201,8 +201,11 @@
       <td class="text-end">{{item.forecast_qty}}</td>
       <td class="text-end">{{item.trend_qty}}</td>
       <td class="text-end">{{item.adhoc_qty}}</td>
-      <td class="text-end" style="min-width:7.5rem;">
-        <input class="form-control text-end" type="number" [(ngModel)]="item.final_qty">
+      <td class="text-end" style="min-width:9.5rem;">
+        <div class="d-flex align-items-center gap-2">
+          <input class="form-control text-end" type="number" [(ngModel)]="item.final_qty" [attr.aria-label]="'Quantity to order of ' + item.title">
+          <button type="button" class="btn btn-link btn-sm p-0 text-nowrap" (click)="showHistory(item)" [attr.title]="'Stock history of ' + item.title" [attr.aria-label]="'Stock history of ' + item.title" data-testid="reo-history"><i class="bi bi-clock-history"></i></button>
+        </div>
       </td>
       <td>
         <span *ngFor="let r of item.reasons" class="badge me-1 mb-1" [ngClass]="reasonClass(r)">{{r}}</span>
@@ -211,4 +214,7 @@
     </tr>
   </ng-template>
 </p-table>
+
+<!-- a product's purchase, sale and customer history, in a dialog -->
+<app-product-stock-history [product]="historyProduct" (closed)="historyProduct = null"></app-product-stock-history>
 </div>

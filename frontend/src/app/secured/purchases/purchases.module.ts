@@ -29,6 +29,7 @@ import { TabViewModule } from "primeng/tabview";
 import { PurchaseOrderComponent } from "./requests/components/purchase-order.component";
 import { PurchaseOrderViewComponent } from "./requests/components/purchase-order-view.component";
 import { PurchaseRequestComponent } from "./requests/components/purchase-request.component";
+import { ProductStockHistoryComponent } from "./requests/components/product-stock-history.component";
 import { PurchaseSuggestionComponent } from "./requests/components/purchase-suggestion.component";
 import { PurchaseOrdersHomeComponent } from "./requests/components/purchase-orders-home.component";
 import { GstReconciliationComponent } from "./gst/components/gst-reconciliation.component";
@@ -80,6 +81,7 @@ const routes: Routes = [
       PurchaseOrderViewComponent,
       PurchaseRequestComponent,
       PurchaseSuggestionComponent,
+      ProductStockHistoryComponent,
       InvoiceListComponent,
       PayablesComponent,
       GstReconciliationComponent,

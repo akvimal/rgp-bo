@@ -18,6 +18,8 @@ import { VendorsService } from "../../vendors/vendors.service";
 })
 export class PurchaseSuggestionComponent implements OnDestroy {
     suggestions:any[] = [];
+    /** the product whose stock history is open in the panel on the right (null = closed) */
+    historyProduct:{id:number,title:string} | null = null;
     vendors:any[] = [];
     vendorid:string = '';
     days:number = 30;
@@ -85,6 +87,10 @@ export class PurchaseSuggestionComponent implements OnDestroy {
     get storeName(): string {
         const s = this.storeContext.stores.find((x:any) => Number(x.id) === Number(this.storeid));
         return this.storeid && s ? (s.name || s.location || `Store ${this.storeid}`) : 'All stores';
+    }
+
+    showHistory(item:any){
+        this.historyProduct = item.product_id ? { id: item.product_id, title: item.title } : null;
     }
 
     ngOnDestroy(){ this.subs.unsubscribe(); }
