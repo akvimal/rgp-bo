@@ -1,6 +1,6 @@
 # Weekly review: fair comparison for a month with a peak (1st to 10th)
 
-Status: designed and **step 1 built 2026-11-09** (uncommitted). Steps 2 and 3 not built.
+Status: designed; **step 1 built and committed 2026-11-09 (fffa6d79d); step 2 built 2026-11-09 (uncommitted)**. Step 3 not built.
 
 ## Problem
 
@@ -37,10 +37,16 @@ The weekly review (`/secure/review`, `api-v2/src/modules/app/review/`) set each 
 - Festival and seasonal weeks (monsoon fever season, Diwali) are not separated; a same-month-last-year comparison would be step 2.
 - The discard, edit and return dates follow the date of the event, not the bill, as the lists already do.
 
-## Not built (steps 2 and 3)
+## Step 2 (built)
 
-2. A same-week-last-year line and a person-against-person view (discount rate and below-list lines by cashier within the week).
-3. New lines: unmet demand (requests and "not in stock" lookups), refill capture (customers due vs served), average bill and items per bill, margin %, generic substitution rate, cash short or over per shift, new vs repeat customers and dues collected, stock health.
+- **The same dates a year ago**: the week against the week 52 weeks earlier (so a Monday meets a Monday), and the month to date against its dates shifted the same 52 weeks. Bills, sales and average bill, with the change. No verdict is given: a festival or the season moving between years changes the week, so the figures are for reading. If the stores had no bills then (a new store) the screen says so.
+- **By person, against the others**: bills are credited to the person at the counter (`acting_user_id` when someone else is logged in, otherwise the maker); discards, edits and returns to the person who did them. For each person: bills, sales, average bill, discount % and below-list per 100 items (each shown beside the rate of everyone else), discards, edits and returns. A cell is shaded only when the rate is at least 1.5 times the others' **and** there are 3 or more cases beyond what the others' rate would give for that person's volume. A person needs 20 bills, and so do the others together; with one biller there is nothing to compare, so no verdict. This does not depend on the part of the month, because everyone is in the same week. It is a prompt to ask, not a finding.
+- API additions to `GET /review/week`: `yearAgo` (`available`, `week`, `mtd`, each with raw totals and rates), `people` (raw totals, rates, `peerRates`, `verdicts`; most sales first) and `peerRules`.
+- Checked: 25 unit tests of the rules; Playwright `REVIEW-5/6/7`; on the production-data copy the week of 5 Oct 2026 against 6 Oct 2025 showed sales +19% and bills -3% (average bill +24%), and month to date -4% on sales. That store has one biller, so the person comparison was only shown with one row; the rule is covered by the unit tests, not by real multi-person data.
+
+## Not built (step 3)
+
+New lines: unmet demand (requests and "not in stock" lookups), refill capture (customers due vs served), margin %, generic substitution rate, cash short or over per shift, new vs repeat customers and dues collected, stock health.
 
 ## Open questions
 - Are the peak days the same in every store?

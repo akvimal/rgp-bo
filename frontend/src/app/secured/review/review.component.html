@@ -76,6 +76,54 @@
       </tbody>
     </table>
   </div>
+  <h6 class="text-primary mt-3">The same dates a year ago</h6>
+  <ng-container *ngIf="data.yearAgo.available; else noYear">
+    <p class="small text-muted mb-1" data-testid="review-year-range">
+      The week against {{data.yearAgo.week.from | date:'d MMM yyyy'}} to {{data.yearAgo.week.to | date:'d MMM yyyy'}} (52 weeks earlier, so Monday meets Monday); the month to date against {{data.yearAgo.mtd.from | date:'d MMM'}} to {{data.yearAgo.mtd.to | date:'d MMM yyyy'}}.
+      Festivals and the season move between years, so these are figures to read, not marked.
+    </p>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="review-year">
+        <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">A year ago</th><th class="text-end">Change</th><th class="text-end ps-4">Month to date</th><th class="text-end">A year ago</th><th class="text-end">Change</th></tr></thead>
+        <tbody>
+          <tr><td>Bills</td>
+            <td class="text-end">{{data.actual.raw.bills}}</td><td class="text-end text-muted">{{data.yearAgo.week.raw.bills}}</td><td class="text-end small text-muted">{{change(data.actual.raw.bills, data.yearAgo.week.raw.bills)}}</td>
+            <td class="text-end ps-4">{{data.mtd.current.bills}}</td><td class="text-end text-muted">{{data.yearAgo.mtd.raw.bills}}</td><td class="text-end small text-muted">{{change(data.mtd.current.bills, data.yearAgo.mtd.raw.bills)}}</td></tr>
+          <tr><td>Sales</td>
+            <td class="text-end">{{data.actual.raw.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.yearAgo.week.raw.sales | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.actual.raw.sales, data.yearAgo.week.raw.sales)}}</td>
+            <td class="text-end ps-4">{{data.mtd.current.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.yearAgo.mtd.raw.sales | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.current.sales, data.yearAgo.mtd.raw.sales)}}</td></tr>
+          <tr><td>Average bill</td>
+            <td class="text-end">{{data.actual.rates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.yearAgo.week.rates.avgBill | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.actual.rates.avgBill, data.yearAgo.week.rates.avgBill)}}</td>
+            <td class="text-end ps-4">{{data.mtd.currentRates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.yearAgo.mtd.rates.avgBill | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.currentRates.avgBill, data.yearAgo.mtd.rates.avgBill)}}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+  <ng-template #noYear><p class="small text-muted" data-testid="review-year-none">There were no bills in these stores on the same dates a year ago.</p></ng-template>
+
+  <h6 class="text-primary mt-3">By person, against the others this week</h6>
+  <p class="small text-muted mb-1" data-testid="review-people-note">
+    Bills are credited to the person at the counter; discards, edits and returns to the person who did them. A rate is marked only when it is well over (at least {{data.peerRules.tolerance}} times) what the rest of the team does <i>and</i> there are several more cases than that would give.
+    A person needs {{data.peerRules.minBills}} bills, and so do the others together, to be compared. This is a prompt to ask, not a finding: a counter that serves the repeat customers will differ.
+  </p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-people">
+      <thead><tr><th>Person</th><th class="text-end">Bills</th><th class="text-end">Sales</th><th class="text-end">Average bill</th><th class="text-end">Discount %</th><th class="text-end">Below list /100 items</th><th class="text-end">Discards</th><th class="text-end">Edits</th><th class="text-end">Returns</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let p of data.people" data-testid="review-person-row" [attr.data-user]="p.userid">
+          <td>{{p.name}}</td><td class="text-end">{{p.bills}}</td><td class="text-end">{{p.sales | number:'1.0-0'}}</td><td class="text-end">{{p.rates.avgBill | number:'1.0-0'}}</td>
+          <td class="text-end" [class.table-warning]="p.verdicts.discount === 'above'">{{rate(p.rates.discountPct, '%')}}<span class="small text-muted" *ngIf="p.peerRates"> ({{rate(p.peerRates.discountPct, '%')}})</span></td>
+          <td class="text-end" [class.table-warning]="p.verdicts.below === 'above'">{{rate(p.rates.belowPer100Lines)}}<span class="small text-muted" *ngIf="p.peerRates"> ({{rate(p.peerRates.belowPer100Lines)}})</span></td>
+          <td class="text-end" [class.table-warning]="p.verdicts.voids === 'above'">{{p.voids}}</td>
+          <td class="text-end" [class.table-warning]="p.verdicts.edits === 'above'">{{p.edits}}</td>
+          <td class="text-end" [class.table-warning]="p.verdicts.returns === 'above'">{{p.returns}}</td>
+        </tr>
+        <tr *ngIf="!data.people.length"><td colspan="9" class="text-center text-muted py-2">No bills this week.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-muted" *ngIf="data.people.length">The figure in brackets is the rate of everyone else. <span class="table-warning px-1" data-testid="review-person-legend">Shaded</span> is above the others by the rule above.</p>
+
   <p class="small text-muted" *ngIf="data.marked.bigDiscounts || data.marked.lateVoids || data.marked.flaggedEdits || data.marked.lateReturns" data-testid="review-marked">
     To look at closely:
     <span *ngIf="data.marked.bigDiscounts">{{data.marked.bigDiscounts}} bill discount{{data.marked.bigDiscounts > 1 ? 's' : ''}} of {{data.limits.bigDiscount}}% or more. </span>

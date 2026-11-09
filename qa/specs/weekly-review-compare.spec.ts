@@ -48,6 +48,27 @@ test.describe('Weekly review comparison @p1', () => {
     expect(short.mtd.to).toBe('2026-08-30');
   });
 
+  test('REVIEW-7 the same dates a year ago line up by weekday, and each person is set against the others @happy', async ({ api }) => {
+    const r = await week(api, '2026-06-01');                                    // Monday 1 June 2026
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    // 52 weeks earlier is a Monday too
+    expect(r.body.yearAgo.week).toMatchObject({ from: '2025-06-02', to: '2025-06-08' });
+    expect(new Date('2025-06-02T00:00:00Z').getUTCDay()).toBe(1);
+    expect(r.body.yearAgo.mtd).toMatchObject({ from: '2025-06-02', to: '2025-06-08' });
+    expect(typeof r.body.yearAgo.available).toBe('boolean');
+    expect(r.body.yearAgo.week.raw).toHaveProperty('sales');
+    // people: the bills of the people add up to the week's bills, most sales first, each with a verdict for the five exceptions
+    const people = r.body.people as any[];
+    expect(people.reduce((a, p) => a + p.bills, 0)).toBe(r.body.actual.raw.bills);
+    expect(people.map((p) => p.sales)).toEqual([...people.map((p) => p.sales)].sort((a, b) => b - a));
+    for (const p of people) {
+      expect(p.name).toBeTruthy();
+      expect(Object.keys(p.verdicts).sort()).toEqual(['below', 'discount', 'edits', 'returns', 'voids']);
+      if (p.bills < r.body.peerRules.minBills) expect(Object.values(p.verdicts)).toEqual(Array(5).fill('unknown'));
+    }
+    expect(r.body.peerRules.minBills).toBeGreaterThan(0);
+  });
+
   test('REVIEW-6 the screen shows the comparison with usual, the rates and the month to date, not the week before @happy', async ({ browser }) => {
     const ctx = await browser.newContext();
     const { page } = await openAs(ctx, MGR, '/secure/review');
@@ -60,6 +81,10 @@ test.describe('Weekly review comparison @p1', () => {
     }
     await expect(page.getByTestId('review-mtd')).toBeVisible();
     await expect(page.getByTestId('review-mtd-range')).toContainText('against');
+    // a year ago (or the note that there was nothing), and each person against the others
+    await expect(page.getByTestId('review-year').or(page.getByTestId('review-year-none'))).toBeVisible();
+    await expect(page.getByTestId('review-people')).toBeVisible();
+    await expect(page.getByTestId('review-people-note')).toContainText('well over');
     // either the basis of "usual" or the reason there is none
     await expect(page.getByTestId('review-usual-basis').or(page.getByTestId('review-usual-none'))).toBeVisible();
     await expect(page.getByText('Week before')).toHaveCount(0);

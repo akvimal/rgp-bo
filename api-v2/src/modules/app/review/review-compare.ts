@@ -177,3 +177,67 @@ export const weekDays = (start: string): string[] => Array.from({ length: 7 }, (
 
 /** the first day of history a week needs: the first of the earliest month that can count as usual */
 export const historyFrom = (start: string): string => firstOfMonth(monthsBefore(monthOf(start), USUAL_MONTHS)[USUAL_MONTHS - 1]);
+
+/* ------------------------------------------------------------------------------------------------------------------------------------------
+ * Step 2: the same week a year ago, and each person against the others.
+ * ------------------------------------------------------------------------------------------------------------------------------------------ */
+
+/** a year ago is 52 weeks back, so the days of the week line up (a Monday is set beside a Monday) */
+export const YEAR_DAYS = 364;
+export const yearAgo = (day: string): string => addDays(day, -YEAR_DAYS);
+
+/**
+ * The week, and the month to date, beside the same dates 52 weeks earlier. Only volume and the basket are compared: a festival that moved
+ * between years changes the week, so no verdict is given, just the figures. `daily` must cover the year-ago dates.
+ */
+export const yearCompare = (daily: Daily[], weekStart: string, mtd: { from: string; to: string }) => {
+  const map = index(daily);
+  const range = (from: string, to: string) => ({ from, to, raw: roundRaw(sumDays(map, from, to)), rates: ratesOf(sumDays(map, from, to)) });
+  const week = range(yearAgo(weekStart), yearAgo(addDays(weekStart, 6)));
+  const month = range(yearAgo(mtd.from), yearAgo(mtd.to));
+  return { available: week.raw.bills > 0, week, mtd: month };
+};
+
+/** the days of history needed to look back a year: from the earliest of the week and the month to date, to the end of the week */
+export const yearFrom = (weekStart: string, mtdFrom: string): string => yearAgo(weekStart < mtdFrom ? weekStart : mtdFrom);
+
+/** how a person's figures are set against everyone else's */
+export const PEER_TOLERANCE = 1.5;
+/** a person needs this many bills (and the others together too) to be compared */
+export const MIN_PEER_BILLS = 20;
+
+export interface Person extends Raw { userid: number; name: string }
+export interface PeerVerdicts { discount: Verdict; below: Verdict; voids: Verdict; edits: Verdict; returns: Verdict }
+export interface PersonView extends Person { rates: Rates; peerRates: Rates | null; verdicts: PeerVerdicts }
+
+/** above the others only when the rate is well over theirs and there are several more cases than their rate would give for this person's volume */
+const judgePeer = (rate: number | null, peer: number | null, count: number, expected: number): Verdict => {
+  if (rate === null || peer === null) return 'unknown';
+  return rate > peer * PEER_TOLERANCE && count - expected >= MIN_EXTRA ? 'above' : 'usual';
+};
+
+/**
+ * Each person's rates beside the rates of everyone else in the same week: a rate is marked "above" only when it is well over what the rest of the
+ * team does, which does not depend on the part of the month. People with few bills, or no one else with enough, get no verdict.
+ */
+export const comparePeople = (people: Person[]): PersonView[] => {
+  const total = people.reduce((a, p) => addRaw(a, p), zeroRaw());
+  const none: PeerVerdicts = { discount: 'unknown', below: 'unknown', voids: 'unknown', edits: 'unknown', returns: 'unknown' };
+  return people.map((p) => {
+    const others = zeroRaw();
+    for (const k of RAW_KEYS) others[k] = total[k] - p[k];
+    const rates = ratesOf(p), peerRates = ratesOf(others);
+    if (p.bills < MIN_PEER_BILLS || others.bills < MIN_PEER_BILLS) return { ...p, rates, peerRates: others.bills > 0 ? peerRates : null, verdicts: none };
+    const exp = (othersCount: number, base: number, mine: number) => (base > 0 ? (othersCount / base) * mine : 0);
+    return {
+      ...p, rates, peerRates,
+      verdicts: {
+        discount: judgePeer(rates.discountPct, peerRates.discountPct, p.discBills, exp(others.discBills, others.bills, p.bills)),
+        below: judgePeer(rates.belowPer100Lines, peerRates.belowPer100Lines, p.below, exp(others.below, others.lines, p.lines)),
+        voids: judgePeer(rates.voidsPer100Bills, peerRates.voidsPer100Bills, p.voids, exp(others.voids, others.bills, p.bills)),
+        edits: judgePeer(rates.editsPer100Bills, peerRates.editsPer100Bills, p.edits, exp(others.edits, others.bills, p.bills)),
+        returns: judgePeer(rates.returnsPer100Bills, peerRates.returnsPer100Bills, p.returns, exp(others.returns, others.bills, p.bills)),
+      },
+    };
+  }).sort((a, b) => b.sales - a.sales || b.bills - a.bills);
+};

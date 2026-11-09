@@ -4,7 +4,9 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole } from 'src/core/roles';
-import { Daily, addRaw, historyFrom, mtdCompare, phasesOf, ratesOf, roundRaw, usualWeek, verdictsOf, weekDays, zeroRaw } from './review-compare';
+import {
+  Daily, MIN_PEER_BILLS, PEER_TOLERANCE, Person, addRaw, comparePeople, historyFrom, mtdCompare, phasesOf, ratesOf, roundRaw, usualWeek, verdictsOf, weekDays, yearAgo, yearCompare, yearFrom, zeroRaw,
+} from './review-compare';
 import {
   BELOW_LIST_PCT, BIG_DISCOUNT_PCT, LATE_RETURN_DAYS, LATE_VOID_HOURS, LIST_LIMIT,
   addDays, billDiscountPct, groupReturns, isMonday, isOver, isValidDay, lastFullWeek, marked, pctOff, readEdit, summarise, weekRange,
@@ -149,6 +151,53 @@ export class ReviewService {
     return [...m.values()];
   }
 
+  /** the week's totals for each person: bills by who made them (the person at the counter, when someone else is logged in), discards, edits and returns by who did them */
+  private async people(ids: number[], from: string, to: string): Promise<Person[]> {
+    if (!ids.length) return [];
+    const a = [ids, from, to];
+    const who = `coalesce(s.acting_user_id, s.created_by)`;
+    const inIst = (col: string) => `(${col} at time zone 'Asia/Kolkata')::date >= $2::date and (${col} at time zone 'Asia/Kolkata')::date < $3::date`;
+    const [sales, lines, below, voids, edits, returns] = await Promise.all([
+      this.manager.query(
+        `select ${who} as uid, count(*)::int as bills, coalesce(sum(s.total), 0)::float as sales, coalesce(sum(s.disc_amount), 0)::float as disc,
+                count(*) filter (where s.disc_amount > 0)::int as disc_bills
+           from sale s where s.status = 'COMPLETE' and s.store_id = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < $3::date group by 1`, a),
+      this.manager.query(
+        `select ${who} as uid, count(*)::int as n from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE'
+          where si.status = 'Complete' and si.active and s.store_id = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < $3::date group by 1`, a),
+      this.manager.query(
+        `select uid, count(*)::int as n from (
+           select ${who} as uid, round((si.price * p.pack)::numeric, 2) as billed,
+                  (select round(pp.sale_price::numeric, 2) from product_price2 pp where pp.product_id = si.product_id and pp.eff_date <= s.bill_date::date order by pp.eff_date desc, pp.id desc limit 1) as list
+             from sale_item si join sale s on s.id = si.sale_id and s.status = 'COMPLETE' join product p on p.id = si.product_id
+            where si.status = 'Complete' and si.active and p.pack > 0 and s.store_id = any($1::int[]) and s.bill_date >= $2::date and s.bill_date < $3::date) x
+          where list > 0 and billed < list * (1 - ${BELOW_LIST_PCT} / 100.0) group by uid`, a),
+      this.manager.query(
+        `select s.updated_by as uid, count(*)::int as n from sale s
+          where s.status = 'DISCARDED' and s.store_id = any($1::int[]) and ${inIst('s.updated_on')} group by 1`, a),
+      this.manager.query(
+        `select coalesce(a.acting_user_id, a.user_id) as uid, count(*)::int as n from audit_event a join sale s on s.id::text = a.entity_id
+          where a.action = 'sale.edit' and s.store_id = any($1::int[]) and ${inIst('a.occurred_on')} group by 1`, a),
+      this.manager.query(
+        `select sri.created_by as uid, count(*)::int as n,
+                coalesce(sum(round(coalesce(sri.refund_amount, si.price * sri.qty * (1 + coalesce(si.tax_pcnt, 0) / 100.0))::numeric, 2)), 0)::float as value
+           from sale_return_item sri join sale_item si on si.id = sri.sale_item_id join sale s on s.id = si.sale_id
+          where sri.active and not sri.archive and s.store_id = any($1::int[]) and ${inIst('sri.created_on')} group by 1`, a),
+    ]);
+    const m = new Map<number, Person>();
+    const at = (uid: any) => { const k = Number(uid) || 0; let r = m.get(k); if (!r) { r = { ...zeroRaw(), userid: k, name: '' }; m.set(k, r); } return r; };
+    for (const r of sales) { const o = at(r.uid); o.bills = r.bills; o.sales = r.sales; o.disc = r.disc; o.discBills = r.disc_bills; }
+    for (const r of lines) at(r.uid).lines = r.n;
+    for (const r of below) at(r.uid).below = r.n;
+    for (const r of voids) at(r.uid).voids = r.n;
+    for (const r of edits) at(r.uid).edits = r.n;
+    for (const r of returns) { const o = at(r.uid); o.returns = r.n; o.returnValue = r.value; }
+    const uids = [...m.keys()].filter((k) => k > 0);
+    const names = uids.length ? await this.manager.query(`select id, full_name from app_user where id = any($1::int[])`, [uids]) : [];
+    for (const p of m.values()) p.name = names.find((n: any) => +n.id === p.userid)?.full_name || (p.userid ? `User ${p.userid}` : '(not recorded)');
+    return [...m.values()];
+  }
+
   async week(user: any, q: { storeid?: number | null; weekstart?: string }) {
     const { businessId, owner, stores } = await this.scope(user);
     const ids = this.pick(stores, q.storeid);
@@ -166,6 +215,10 @@ export class ReviewService {
     const usual = usualWeek(days, history);
     const usualRaw = usual.raw;
     const phases = phasesOf(days);
+    // the same dates a year ago (52 weeks back, so the days of the week line up), and each person against the others this week
+    const mtd = mtdCompare(history, range.end, today);
+    const yearHistory = await this.daily(ids, yearFrom(start, mtd.from), addDays(yearAgo(range.end), 1));
+    const peers = comparePeople(await this.people(ids, start, range.next));
     const signoffs = ids.length ? await this.manager.query(
       `select w.store_id, st.location, w.reviewed_on, w.note, u.full_name as by_name
          from weekly_review w join stores st on st.id = w.store_id join app_user u on u.id = w.reviewed_by
@@ -180,7 +233,10 @@ export class ReviewService {
       actual: { raw: actualRaw, rates: ratesOf(actualRaw) },
       usual: usualRaw ? { raw: usualRaw, rates: ratesOf(usualRaw), months: (usual as any).months } : { raw: null, rates: null, reason: (usual as any).reason },
       verdicts: verdictsOf(actualRaw, usualRaw),
-      mtd: mtdCompare(history, range.end, today), limits: { belowList: BELOW_LIST_PCT, bigDiscount: BIG_DISCOUNT_PCT, lateReturnDays: LATE_RETURN_DAYS, lateVoidHours: LATE_VOID_HOURS, listLimit: LIST_LIMIT },
+      mtd,
+      yearAgo: yearCompare(yearHistory, start, mtd),
+      people: peers,
+      peerRules: { minBills: MIN_PEER_BILLS, tolerance: PEER_TOLERANCE }, limits: { belowList: BELOW_LIST_PCT, bigDiscount: BIG_DISCOUNT_PCT, lateReturnDays: LATE_RETURN_DAYS, lateVoidHours: LATE_VOID_HOURS, listLimit: LIST_LIMIT },
       discounts: cur.discounts, below: cur.below, voids: cur.voids, edits: cur.edits, returns: cur.returns,
       returnsByReason: groupReturns(cur.returns, (r) => r.reason), returnsByPerson: groupReturns(cur.returns, (r) => r.by_name),
       owner, businessId,

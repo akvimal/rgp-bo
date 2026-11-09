@@ -1,5 +1,5 @@
 import {
-  Daily, MIN_ACTIVE_DAYS, historyFrom, judgeRate, judgeVolume, monthsBefore, mtdCompare, mtdRanges, phaseOf, phasesOf, ratesOf, usualWeek, verdictsOf, weekDays, zeroRaw,
+  Daily, MIN_ACTIVE_DAYS, comparePeople, historyFrom, yearAgo, yearCompare, yearFrom, judgeRate, judgeVolume, monthsBefore, mtdCompare, mtdRanges, phaseOf, phasesOf, ratesOf, usualWeek, verdictsOf, weekDays, zeroRaw,
 } from './review-compare';
 
 /** a month of days, the first ten busier, so there is history to compare with */
@@ -93,6 +93,56 @@ describe('comparing a week fairly', () => {
     const c = mtdCompare([...month('2026-10', 100, 40), ...month('2026-11', 120, 50)], '2026-11-15', '2026-11-20');
     expect(c.current.bills).toBe(10 * 120 + 5 * 50);
     expect(c.previous.bills).toBe(10 * 100 + 5 * 40);
+  });
+
+  it('a year ago is 52 weeks back so a Monday is set beside a Monday', () => {
+    expect(yearAgo('2026-11-09')).toBe('2025-11-10');
+    expect(new Date('2025-11-10T00:00:00Z').getUTCDay()).toBe(new Date('2026-11-09T00:00:00Z').getUTCDay());
+    const daily = [...month('2025-11', 100, 40), ...month('2025-10', 90, 30)];
+    const c = yearCompare(daily, '2026-11-09', { from: '2026-11-01', to: '2026-11-15' });
+    expect(c.week).toMatchObject({ from: '2025-11-10', to: '2025-11-16' });
+    expect(c.week.raw.bills).toBe(100 + 6 * 40);                // 10 to 16 Nov 2025: the 10th is a peak day (100), the 11th to 16th are middle days (40)
+    expect(c.available).toBe(true);
+    expect(c.mtd).toMatchObject({ from: '2025-11-02', to: '2025-11-16' });
+    expect(yearCompare([], '2026-11-09', { from: '2026-11-01', to: '2026-11-15' }).available).toBe(false);   // a new store has no year ago
+    expect(yearFrom('2026-11-09', '2026-11-01')).toBe('2025-11-02');
+    expect(yearFrom('2026-11-02', '2026-11-01')).toBe('2025-11-02');
+  });
+
+  it('sets each person against everyone else, not against a part of the month', () => {
+    const p = (userid: number, name: string, o: Partial<Daily>) => ({ ...zeroRaw(), userid, name, ...o });
+    const team = [
+      p(1, 'Asha', { bills: 200, sales: 40000, disc: 400, discBills: 20, lines: 600, below: 6, voids: 2, edits: 2, returns: 4 }),
+      p(2, 'Bala', { bills: 200, sales: 40000, disc: 4000, discBills: 90, lines: 600, below: 5, voids: 2, edits: 2, returns: 4 }),   // gives far more discount
+      p(3, 'Chitra', { bills: 200, sales: 40000, disc: 400, discBills: 20, lines: 600, below: 6, voids: 2, edits: 2, returns: 4 }),
+    ];
+    const v = comparePeople(team);
+    const bala = v.find((x) => x.name === 'Bala')!;
+    expect(bala.verdicts.discount).toBe('above');
+    expect(bala.verdicts.below).toBe('usual');
+    expect(v.find((x) => x.name === 'Asha')!.verdicts.discount).toBe('usual');
+    expect(v.map((x) => x.name).length).toBe(3);
+    // a peak week lifts everyone alike: the same ratios, three times the volume, nobody is marked
+    const busy = comparePeople(team.map((x) => ({ ...x, ...Object.fromEntries((['bills', 'sales', 'disc', 'discBills', 'lines', 'below', 'voids', 'edits', 'returns'] as const).map((k) => [k, x[k] * 3])) })));
+    expect(busy.find((x) => x.name === 'Bala')!.verdicts.discount).toBe('above');           // still the outlier
+    expect(busy.find((x) => x.name === 'Asha')!.verdicts.discount).toBe('usual');
+  });
+
+  it('gives no verdict to a person with few bills, or when there is no one to compare with', () => {
+    const p = (userid: number, o: Partial<Daily>) => ({ ...zeroRaw(), userid, name: 'P' + userid, ...o });
+    const few = comparePeople([p(1, { bills: 200, sales: 1, discBills: 20, disc: 10 }), p(2, { bills: 5, sales: 1, discBills: 5, disc: 100 })]);
+    expect(few.find((x) => x.userid === 2)!.verdicts.discount).toBe('unknown');
+    const alone = comparePeople([p(1, { bills: 300, sales: 1, discBills: 100, disc: 500 })]);
+    expect(alone[0].verdicts.discount).toBe('unknown');
+    expect(alone[0].peerRates).toBeNull();
+    // a rate well over the others but only a couple of cases more: noise
+    const small = comparePeople([p(1, { bills: 20, sales: 100, discBills: 3, disc: 10 }), p(2, { bills: 100, sales: 500, discBills: 5, disc: 10 })]);
+    expect(small.find((x) => x.userid === 1)!.verdicts.discount).toBe('usual');
+  });
+
+  it('lists the person with the most sales first', () => {
+    const p = (userid: number, sales: number) => ({ ...zeroRaw(), userid, name: 'P' + userid, bills: 30, sales });
+    expect(comparePeople([p(1, 10), p(2, 30), p(3, 20)]).map((x) => x.userid)).toEqual([2, 3, 1]);
   });
 
   it('asks for the history from the first of the earliest month that can count', () => {
