@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { cashSummary, topAsked, topLookups } from './review-extras';
+import { GRACE_DAYS, LAPSED_DAYS, MIN_EVENTS, USUAL_WEEKS, callEffect, compareCohort, expectations, pick, refillHistoryFrom, summarise as summariseCohort } from './review-refill';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
@@ -277,6 +278,42 @@ export class ReviewService {
     return { cash, dues, asked, lookups };
   }
 
+  /**
+   * Refill capture: of the customers whose refill fell due in the week before, and in the week itself, how many came back in time; against the weeks before
+   * them; and whether a call made a difference. Worked out from the bills as of today (see review-refill.ts). Null when there is nothing to report.
+   */
+  private async refill(ids: number[], start: string, today: string) {
+    if (!ids.length) return null;
+    return this.safe('refill capture', async () => {
+      const from = refillHistoryFrom(start);
+      const visits = (await this.manager.query(
+        `select s.customer_id, to_char(s.bill_date::date, 'YYYY-MM-DD') as d, max(s.store_id) as store_id, coalesce(sum(si.total), 0)::float as val
+           from sale s join sale_item si on si.sale_id = s.id join product p on p.id = si.product_id join customer c on c.id = s.customer_id
+          where s.status = 'COMPLETE' and p.more_props->>'chronic' = 'true' and c.mobile ~ '^[0-9]{10}$' and c.mobile <> '0000000000'
+            and s.bill_date >= $1::date and s.bill_date < ($2::date + 1)
+          group by s.customer_id, s.bill_date::date`, [from, today]))
+        .map((r: any) => ({ customerId: +r.customer_id, day: r.d, storeId: r.store_id === null ? null : +r.store_id, value: r.val }));
+      const exps = expectations(visits, today);
+      const prevFrom = addDays(start, -7), prevTo = addDays(start, -1);
+      const usualFrom = addDays(prevFrom, -7 * USUAL_WEEKS), usualTo = addDays(prevFrom, -1);
+      const week = pick(exps, start, addDays(start, 6), ids), prev = pick(exps, prevFrom, prevTo, ids), usualRows = pick(exps, usualFrom, usualTo, ids);
+      if (!week.length && !prev.length && !usualRows.length) return null;
+      const usual = summariseCohort(usualRows, usualFrom, usualTo);
+      const prevSum = summariseCohort(prev, prevFrom, prevTo);
+      const followups = (await this.manager.query(
+        `select customer_id, to_char((created_on at time zone 'Asia/Kolkata')::date, 'YYYY-MM-DD') as d, outcome from refill_followup
+          where (created_on at time zone 'Asia/Kolkata')::date >= $1::date - 7`, [usualFrom]))
+        .map((r: any) => ({ customerId: +r.customer_id, day: r.d, outcome: r.outcome }));
+      return {
+        prev: { ...prevSum, ...compareCohort(prevSum, usual) },
+        thisWeek: summariseCohort(week, start, addDays(start, 6)),
+        usual,
+        calls: callEffect(usualRows.concat(prev), followups, today),
+        rules: { graceDays: GRACE_DAYS, lapsedDays: LAPSED_DAYS, usualWeeks: USUAL_WEEKS, minEvents: MIN_EVENTS },
+      };
+    });
+  }
+
   async week(user: any, q: { storeid?: number | null; weekstart?: string }) {
     const { businessId, owner, stores } = await this.scope(user);
     const ids = this.pick(stores, q.storeid);
@@ -299,6 +336,7 @@ export class ReviewService {
     const yearHistory = await this.daily(ids, yearFrom(start, mtd.from), addDays(yearAgo(range.end), 1));
     const peers = comparePeople(await this.people(ids, start, range.next));
     const more = await this.extras(ids, start, range.next, today);
+    const refill = await this.refill(ids, start, today);
     const signoffs = ids.length ? await this.manager.query(
       `select w.store_id, st.location, w.reviewed_on, w.note, u.full_name as by_name
          from weekly_review w join stores st on st.id = w.store_id join app_user u on u.id = w.reviewed_by
@@ -317,6 +355,7 @@ export class ReviewService {
       yearAgo: yearCompare(yearHistory, start, mtd),
       people: peers,
       more,
+      refill,
       peerRules: { minBills: MIN_PEER_BILLS, tolerance: PEER_TOLERANCE }, limits: { belowList: BELOW_LIST_PCT, bigDiscount: BIG_DISCOUNT_PCT, lateReturnDays: LATE_RETURN_DAYS, lateVoidHours: LATE_VOID_HOURS, listLimit: LIST_LIMIT },
       discounts: cur.discounts, below: cur.below, voids: cur.voids, edits: cur.edits, returns: cur.returns,
       returnsByReason: groupReturns(cur.returns, (r) => r.reason), returnsByPerson: groupReturns(cur.returns, (r) => r.by_name),

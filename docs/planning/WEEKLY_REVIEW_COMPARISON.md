@@ -77,6 +77,28 @@ The plan ended at step 3, so step 4 is the "possible next" items from step 3 tha
 - Checked: 40 related backend unit tests (including that the migration's allowed kinds and outcomes match the code), 37 frontend tests (the dialog logs a picked brand and product, a typed miss only when closed with nothing else chosen, and never fails the counter), Playwright `REVIEW-9` and `BD-5` with real clicks (a picked brand and a typed miss both reach the review's counts), the migration applied, rolled back and re-applied, on a copy of the production data with the real brand list imported.
 - Not built: logging a check by who made it (only the login is kept), a screen to see the log itself, and the daily snapshot that refill capture needs.
 
+## Step 5: refill capture (designed 2026-11-09; built, uncommitted)
+
+**What it answers:** of the customers who were due for a chronic refill in a week, how many came back in time, and are the calls helping? The 1st to 10th peak is mostly refills, so this is the measure closest to the cause of the peak.
+
+**How, without a snapshot.** Step 3 said this needed a daily snapshot of the Refills list. That was too strong: bills do not change, so the "due" cohort of any past week can be rebuilt from them, with two years of history on day one. (A snapshot would still give an immutable record if one is wanted for audit or incentives; it is not needed for the measure.) The Refills screen keeps its own live query; the cohort measure has its own pure rules in `review-refill.ts`, which follow the same ideas and say where they differ.
+
+**Rules**
+- A *refill event* is a day the customer bought a chronic item (`more_props.chronic`), with a real 10-digit mobile. Purchases less than 7 days after an event's first day belong to the same event (a top-up is not a refill).
+- From the third event on, the expected next refill is `event day + usual gap`, the usual gap being the median of the gaps between that customer's events **up to that event** (what was known then), at most 150 days, as the Refills list.
+- Outcome, as of today, with a grace of 7 days: **on time** (next event on or before expected + 7), **came back late** (after), **not back yet** (nothing, expected + 7 to + 45 days), **lapsed** (nothing, more than 45 days: the Refills list's limit), **still within the grace period** (not yet decided).
+- **Capture rate** = on time / (all except those still within grace). A cohort is the customers whose expected date fell in a week, counted at the store of the event that set the date.
+- Two cohorts are shown for the reviewed week: the week before (mostly decided) and the week itself (mostly still open; shown for information).
+- **Usual** = the same rule pooled over the 13 weeks before that. Marked *worse than usual* by the existing rate rule on the share not on time (25% more and 3 or more extra cases).
+- **Calls**: over the same 13 weeks, capture rate where a follow-up call was recorded (any outcome but no answer) between 7 days before the due date and the return, against none. Staff call the customers who look most at risk, so this is a prompt, not proof.
+- Also shown: the typical value of those not back yet or lapsed.
+
+**Limits stated on the screen**: only items flagged chronic; customers need three refill events; "bought elsewhere" is known only when a call recorded it; a miss may be a stock-out (see unmet requests and brand checks); a customer who changed their mobile or merged records is as the database has them now.
+
+**Checked (built 2026-11-09, uncommitted)**: 9 unit tests of the rules (`review-refill.spec.ts`); Playwright `REVIEW-10` (every customer is in exactly one group, rates match the counts, the cohort dates) and the screen in `REVIEW-6`. On the production-data copy (about 60 customers a week, one store, answered in about 1.3 s): capture about 70 to 75% in a normal week, and the week of 19 to 25 Oct came out at 64% against a usual 74%, marked *more missed than usual* (15 not back yet). Cross-check with the live Refills list: it had 59 overdue customers more than 7 days late and the cohort rules found 56 not back yet, 50 on both lists (the differences come from merging top-ups and from using the usual gap known at the time). The production copy has no recorded calls, so some were seeded: the call counts were re-derived independently and matched exactly (121 called, 71 of them on time).
+
+**Not built**: the nightly snapshot (not needed for the measure), a per-caller view, a list of the actual customers behind "not back yet" on this screen (the Refills screen already lists who is overdue).
+
 ## Open questions
 - Are the peak days the same in every store?
 - Margin % is shown with its limits stated; confirm the owner is happy with margin before GST and before returns.

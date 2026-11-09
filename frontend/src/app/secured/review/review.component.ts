@@ -66,6 +66,13 @@ export class ReviewComponent implements OnInit {
         return v === 'usual' ? 'As usual' : '';
     }
 
+    /** refill capture: "above" is a bigger share not back in time than usual, which is the worry */
+    refillLabel(v: string): string {
+        if (v === 'above') return 'More missed than usual';
+        if (v === 'below') return 'Fewer missed than usual';
+        return v === 'usual' ? 'As usual' : '';
+    }
+
     /** a measure where one side is the worry (margin below usual, unmet requests above usual): that side is a warning, the other only noted; 'none' notes both */
     badgeBad(v: string, bad: string): string {
         if (v === 'usual') return 'badge bg-light text-dark border';

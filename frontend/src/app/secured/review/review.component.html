@@ -148,6 +148,43 @@
     </div>
   </ng-container>
 
+  <ng-container *ngIf="data.refill">
+    <h6 class="text-primary mt-3">Refill capture</h6>
+    <p class="small text-muted mb-1" data-testid="review-refill-note">
+      Of the regular customers (three or more refills of a chronic medicine) whose next refill fell due in a week, how many came back. <b>On time</b> is within {{data.refill.rules.graceDays}} days of the expected date;
+      <b>back late</b> is after that; <b>not back yet</b> has not come for up to {{data.refill.rules.lapsedDays}} days; <b>lapsed</b> is longer. The week before is mostly settled; this week is still open.
+      Usual is the {{data.refill.rules.usualWeeks}} weeks before.
+    </p>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-testid="review-refill">
+        <thead><tr><th>Fell due</th><th class="text-end">Customers</th><th class="text-end">On time</th><th class="text-end">Back late</th><th class="text-end">Not back yet</th><th class="text-end">Lapsed</th><th class="text-end">Still in grace</th><th class="text-end">Capture</th><th class="text-end">Usual</th><th class="text-end">Against usual</th></tr></thead>
+        <tbody>
+          <tr data-testid="review-refill-prev">
+            <td class="text-nowrap">The week before <span class="small text-muted">({{data.refill.prev.from | date:'d MMM'}} to {{data.refill.prev.to | date:'d MMM'}})</span></td>
+            <td class="text-end">{{data.refill.prev.due}}</td><td class="text-end">{{data.refill.prev.onTime}}</td><td class="text-end">{{data.refill.prev.late}}</td><td class="text-end">{{data.refill.prev.notBack}}</td><td class="text-end">{{data.refill.prev.lapsed}}</td><td class="text-end text-muted">{{data.refill.prev.open}}</td>
+            <td class="text-end fw-semibold">{{rate(data.refill.prev.captureRate, '%')}}</td><td class="text-end text-muted">{{rate(data.refill.usual.captureRate, '%')}}</td>
+            <td class="text-end"><span [ngClass]="badgeBad(data.refill.prev.verdict, 'above')">{{refillLabel(data.refill.prev.verdict)}}</span></td>
+          </tr>
+          <tr data-testid="review-refill-week">
+            <td class="text-nowrap">This week, so far <span class="small text-muted">({{data.refill.thisWeek.from | date:'d MMM'}} to {{data.refill.thisWeek.to | date:'d MMM'}})</span></td>
+            <td class="text-end">{{data.refill.thisWeek.due}}</td><td class="text-end">{{data.refill.thisWeek.onTime}}</td><td class="text-end">{{data.refill.thisWeek.late}}</td><td class="text-end">{{data.refill.thisWeek.notBack}}</td><td class="text-end">{{data.refill.thisWeek.lapsed}}</td><td class="text-end text-muted">{{data.refill.thisWeek.open}}</td>
+            <td class="text-end">{{rate(data.refill.thisWeek.captureRate, '%')}}</td><td class="text-end text-muted">{{rate(data.refill.usual.captureRate, '%')}}</td><td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small mb-1" data-testid="review-refill-risk">
+      Not back yet or lapsed from the week before: about <b>&#8377;{{data.refill.prev.valueAtRisk | number:'1.0-0'}}</b> of usual refill value.
+      <span *ngIf="data.refill.calls.called.n || data.refill.calls.notCalled.n" data-testid="review-refill-calls">
+        Over the last {{data.refill.rules.usualWeeks + 1}} weeks, {{rate(data.refill.calls.called.rate, '%')}} came back on time where a call was recorded ({{data.refill.calls.called.n}}) against {{rate(data.refill.calls.notCalled.rate, '%')}} where none was ({{data.refill.calls.notCalled.n}}).
+        Staff call the customers who look most at risk, so this is a prompt to look, not proof the calls work or fail.
+      </span>
+    </p>
+    <p class="small text-muted" data-testid="review-refill-limits">
+      Only items marked chronic count, and a customer needs {{data.refill.rules.minEvents}} refills to have a rhythm. Where they bought elsewhere is known only when a call recorded it, and a miss can be a stock-out: see the requests and brand checks above.
+    </p>
+  </ng-container>
+
   <h6 class="text-primary mt-3">The same dates a year ago</h6>
   <ng-container *ngIf="data.yearAgo.available; else noYear">
     <p class="small text-muted mb-1" data-testid="review-year-range">

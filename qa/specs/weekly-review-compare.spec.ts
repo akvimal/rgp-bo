@@ -130,7 +130,31 @@ test.describe('Weekly review comparison @p1', () => {
     expect(after.verdicts).toHaveProperty('lookups');
   });
 
-  test('REVIEW-6 the screen shows the comparison with usual, the rates and the month to date, not the week before @happy', async ({ browser }) => {
+  test('REVIEW-10 refill capture: the week before and this week are counted from the bills, against the weeks before @happy', async ({ api }) => {
+    // Monday 1 June 2026: the cohorts are 25 to 31 May and 1 to 7 June
+    const r = await week(api, '2026-06-01');
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    const f = r.body.refill;                                            // null when the database has no regular chronic customers
+    if (!f) return;
+    expect(f.prev).toMatchObject({ from: '2026-05-25', to: '2026-05-31' });
+    expect(f.thisWeek).toMatchObject({ from: '2026-06-01', to: '2026-06-07' });
+    expect(f.usual.to).toBe('2026-05-24');
+    expect(f.rules).toMatchObject({ graceDays: 7, lapsedDays: 45, usualWeeks: 13, minEvents: 3 });
+    for (const c of [f.prev, f.thisWeek, f.usual]) {
+      expect(c.onTime + c.late + c.notBack + c.lapsed + c.open).toBe(c.due);            // every customer is in exactly one group
+      expect(c.decided).toBe(c.due - c.open);                                          // those still within the grace period are left out of the rate
+      expect(c.missed).toBe(c.late + c.notBack + c.lapsed);
+      if (c.decided > 0) expect(c.captureRate).toBeCloseTo((c.onTime / c.decided) * 100, 0);
+      else expect(c.captureRate).toBeNull();
+    }
+    expect(['above', 'usual', 'below', 'unknown']).toContain(f.prev.verdict);
+    // a week long gone has nothing left within its grace period
+    expect(f.prev.open).toBe(0);
+    expect(f.calls.called.n + f.calls.notCalled.n).toBeGreaterThanOrEqual(0);
+    expect(f.calls.called.onTime).toBeLessThanOrEqual(f.calls.called.n);
+  });
+
+  test('REVIEW-6 the screen shows the comparison with usual, the rates and the month to date, not the week before @happy', async ({ browser, api }) => {
     const ctx = await browser.newContext();
     const { page } = await openAs(ctx, MGR, '/secure/review');
     await expect(page.getByTestId('review-summary')).toBeVisible();
@@ -152,10 +176,13 @@ test.describe('Weekly review comparison @p1', () => {
     await expect(page.getByTestId('review-row-lookups')).toBeVisible();
     await expect(page.getByTestId('review-people')).toContainText('Margin %');
     await expect(page.getByTestId('review-cash-summary')).toBeVisible();
+    // refill capture is shown when the database has regular chronic customers (the API says so for the same week)
+    const shown = !!(await api.request('GET', '/review/week', undefined, MGR)).body?.refill;
+    if (shown) { await expect(page.getByTestId('review-refill')).toBeVisible(); await expect(page.getByTestId('review-refill-note')).toContainText('On time'); }
     await expect(page.getByTestId('review-asked')).toBeVisible();
     // either the basis of "usual" or the reason there is none
     await expect(page.getByTestId('review-usual-basis').or(page.getByTestId('review-usual-none'))).toBeVisible();
-    await expect(page.getByText('Week before')).toHaveCount(0);
+    await expect(page.getByRole('columnheader', { name: 'Week before', exact: true })).toHaveCount(0);       // the old comparison column is gone
     // moving to an earlier week reloads the comparison
     const range = await page.getByTestId('review-week').innerText();
     await page.getByTestId('review-prev').click();
