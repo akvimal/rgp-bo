@@ -83,3 +83,42 @@
     cursor: pointer;
   }
 }
+
+/* Dark theme (html[data-theme="dark"], src/dark.css): the cards and lines above are light colours, so they are redrawn from the theme's own colours. */
+:host-context(html[data-theme="dark"]) .role-form {
+  .permission-group-title {
+    color: var(--rgp-muted);
+    border-bottom-color: var(--rgp-line);
+  }
+
+  .permission-resource {
+    background: var(--dk-surface);
+    border-color: var(--rgp-line);
+    color: var(--rgp-text);
+
+    &:has(.form-check-input:checked) {
+      background: var(--rgp-brand-soft);
+      border-color: var(--rgp-brand);
+    }
+  }
+
+  .permission-pages,
+  .permission-actions {
+    border-top-color: var(--rgp-line);
+  }
+
+  .permission-properties {
+    border-left-color: var(--rgp-line);
+  }
+
+  .form-check-label,
+  .form-check-label strong {
+    color: var(--rgp-text);
+  }
+
+  .form-check-input:not(:checked) {
+    background-color: var(--dk-input);
+    border-color: #55607d;
+  }
+}
+
