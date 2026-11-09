@@ -33,13 +33,6 @@
       <nav class="header-nav ms-auto">
         <ul class="d-flex align-items-center">
 
-          <li class="nav-item pe-2" data-testid="header-theme">
-            <a class="nav-link nav-icon" href="javascript:void(0)" (click)="theme.toggle()" data-testid="theme-toggle"
-               [attr.title]="theme.dark ? 'Switch to the light theme' : 'Switch to the dark theme'" [attr.aria-label]="theme.dark ? 'Switch to the light theme' : 'Switch to the dark theme'">
-              <i class="bi" [ngClass]="theme.dark ? 'bi-sun' : 'bi-moon-stars'"></i>
-            </a>
-          </li>
-
           <li app2-notification-bell class="nav-item dropdown pe-2" data-testid="header-bell"></li>
 
           <li class="nav-item pe-3" *ngIf="platformChip as chip" data-testid="platform-banner">

@@ -1,6 +1,6 @@
 /**
  * The light / dark theme switch — THM-1..3.
- * The header button and the user-menu choice change the theme, the choice is remembered for the person, and the login page stays light.
+ * The user-menu choice (Light / Dark / Auto) changes the theme, the choice is remembered for the person, and the login page stays light. There is no theme button in the header.
  */
 import { test, expect } from '../fixtures/index.js';
 import { expectShell } from '../support/assert.js';
@@ -15,7 +15,7 @@ const menu = async (page: any) => { if (!(await page.getByTestId('theme-choice')
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Theme switch @p2', () => {
-  test('THM-1 the header button switches to dark and back, and PrimeNG follows', async ({ app }) => {
+  test('THM-1 the user menu switches to dark and back, and PrimeNG follows, and the header has no theme button', async ({ app }) => {
     const { page } = await app.open(MGR, '/secure/dashboard');
     await expectShell(page);
     await page.evaluate(() => { localStorage.removeItem('rgp_theme:last'); });
@@ -23,11 +23,13 @@ test.describe('Theme switch @p2', () => {
     await page.getByTestId('theme-light').click();
     expect(await theme(page)).toBe('light');
     const light = await bodyBg(page);
-    await page.getByTestId('theme-toggle').click();
+    await expect(page.getByTestId('header-theme')).toHaveCount(0);
+    await expect(page.getByTestId('theme-toggle')).toHaveCount(0);
+    await page.getByTestId('theme-dark').click();
     await expect.poll(() => theme(page)).toBe('dark');
     await expect(page.locator('#prime-dark-theme')).toHaveCount(1);
     expect(await bodyBg(page)).not.toBe(light);
-    await page.getByTestId('theme-toggle').click();
+    await page.getByTestId('theme-light').click();
     await expect.poll(() => theme(page)).toBe('light');
     await expect(page.locator('#prime-dark-theme')).toHaveCount(0);
   });
