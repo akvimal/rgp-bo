@@ -15,6 +15,8 @@ export interface CalendarEntry {
   who?: string | null;
   /** a short extra line (a leave reason), only for those who may read it */
   note?: string | null;
+  /** the entry is the signed-in person's own (their leave), so they may withdraw it while it waits */
+  mine?: boolean;
   status?: string | null;
   /** the screen that owns the thing, for the click-through */
   link?: string | null;
@@ -56,4 +58,15 @@ const RANK: Record<CalendarType, number> = { holiday: 0, leave: 1, licence: 2, t
 export function sortEntries(list: CalendarEntry[]): CalendarEntry[] {
   return [...list].sort((a, b) =>
     a.start.localeCompare(b.start) || (a.time ?? '').localeCompare(b.time ?? '') || RANK[a.type] - RANK[b.type] || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+}
+
+/**
+ * How many of a store's people would be away on a day if one more asked for leave: `off` already away (approved) plus `pending` still waiting, out of `team`.
+ * none = nobody left to serve, tight = more than half away, ok = otherwise. Counts the person asking, so a one-person store is always none.
+ */
+export type CoverLevel = 'ok' | 'tight' | 'none';
+export function coverLevel(off: number, pending: number, team: number): CoverLevel {
+  const away = off + pending + 1;
+  if (team <= 0 || away >= team) return 'none';
+  return away * 2 > team ? 'tight' : 'ok';
 }

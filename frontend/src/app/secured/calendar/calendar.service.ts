@@ -8,6 +8,7 @@ export class CalendarService {
 
     constructor(private http: HttpClient) {}
 
+    leaveCover(from: string, to: string) { return this.http.get<any>(`${this.api}/leave-cover`, { params: { from, to } }); }
     options() { return this.http.get<any>(`${this.api}/options`); }
     entries(from: string, to: string, store?: number | null, types?: string[]) {
         const params: any = { from, to };

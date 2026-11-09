@@ -1,6 +1,8 @@
 import { Component, OnInit } from "@angular/core";
 import { Router } from "@angular/router";
 import { CalendarService } from "./calendar.service";
+import { MyHrApi } from "../my-hr/my-hr.service";
+import { leaveTypeHint } from "../my-hr/leave-hint";
 import { CalendarView, daysOf, groupByDay, localToday, sameMonth, step } from "./calendar-grid";
 
 const TYPES: { key: string; label: string; icon: string }[] = [
@@ -26,6 +28,7 @@ const SAVE_KEY = 'rgp_calendar_view';
     .cal-cell.week { min-height: 220px; }
     .cal-cell.out { opacity: .45; }
     .cal-cell.today .cal-num { background: var(--bs-primary, #4154f1); color: #fff; border-radius: 50%; }
+    .cal-cell.in-range { background: rgba(65, 84, 241, .12); }
     .cal-cell.picked { box-shadow: inset 0 0 0 2px var(--bs-primary, #4154f1); }
     .cal-num { display: inline-block; min-width: 1.5rem; text-align: center; font-size: .78rem; }
     .cal-chip { display: block; margin-top: 2px; padding: 1px 5px; border-radius: 4px; font-size: .72rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid currentColor; }
@@ -75,7 +78,18 @@ export class CalendarComponent implements OnInit {
   weekdays = WEEKDAYS;
   private seq = 0;
 
-  constructor(private service: CalendarService, private router: Router) {}
+  // ---- ask for leave from the calendar (the server's leave rules decide; this only gathers the dates and shows the cover)
+  leaveForm: any = null;
+  leaveInfo: any = null;
+  /** the first day is chosen and the next click on the grid sets the last day */
+  pickingEnd = false;
+  cover: any = { team: 0, days: [] };
+  leaveBusy = false;
+  leaveError = '';
+  message = '';
+  private coverSeq = 0;
+
+  constructor(private service: CalendarService, private router: Router, private hr: MyHrApi) {}
 
   ngOnInit() {
     try {
@@ -123,9 +137,97 @@ export class CalendarComponent implements OnInit {
   }
 
   pick(day: string) {
+    if (this.leaveForm) this.pickLeaveDay(day);
     this.picked = day;
     if (this.view === 'month' && !sameMonth(day, this.cursor)) { this.cursor = day; this.load(); }
   }
+  // ------------------------------------------------------------ leave
+  get chosenType(): any { return (this.leaveInfo?.types || []).find((t: any) => t.id === this.leaveForm?.leave_type_id) || null; }
+  get chosenBalance(): any { return (this.leaveInfo?.balances || []).find((b: any) => b.type_id === this.leaveForm?.leave_type_id) || null; }
+  typeHint(t: any) { return leaveTypeHint(t, this.leaveInfo?.role); }
+  inRange(day: string) { return !!this.leaveForm && day >= this.leaveForm.from_date && day <= this.leaveForm.to_date; }
+  canWithdraw(e: any) { return e.type === 'leave' && e.mine && e.status === 'PENDING'; }
+
+  startLeave() {
+    this.message = this.leaveError = '';
+    const open = () => {
+      this.leaveForm = { leave_type_id: null, from_date: this.picked, to_date: this.picked, half_day: false, reason: '' };
+      this.pickingEnd = true;
+      this.loadCover();
+    };
+    if (this.leaveInfo) return open();
+    this.hr.get('leave').subscribe({
+      next: (l) => {
+        if (!l?.staff) { this.leaveError = 'You have no staff record to ask for leave on.'; return; }
+        this.leaveInfo = l;
+        open();
+      },
+      error: (e) => this.leaveError = this.hr.msg(e, 'Leave could not be opened.')
+    });
+  }
+  closeLeave() { this.leaveForm = null; this.pickingEnd = false; this.leaveError = ''; }
+
+  /** the first click sets the first day, the second the last (a day before the first starts again) */
+  private pickLeaveDay(day: string) {
+    const f = this.leaveForm;
+    if (this.pickingEnd && day >= f.from_date) { f.to_date = day; this.pickingEnd = false; }
+    else { f.from_date = f.to_date = day; this.pickingEnd = true; }
+    this.datesChanged();
+  }
+  datesChanged() {
+    const f = this.leaveForm;
+    if (!f) return;
+    if (f.to_date < f.from_date) f.to_date = f.from_date;
+    if (f.half_day) f.to_date = f.from_date; // a half day is one day
+    this.loadCover();
+  }
+  private loadCover() {
+    const f = this.leaveForm;
+    if (!f || !f.from_date || !f.to_date) return;
+    const mine = ++this.coverSeq;
+    this.service.leaveCover(f.from_date, f.to_date).subscribe({
+      next: (c) => { if (mine === this.coverSeq) this.cover = c; },
+      error: () => { if (mine === this.coverSeq) this.cover = { team: 0, days: [] }; }
+    });
+  }
+  /** the days with someone already away, worst first, in words */
+  get coverLines(): { text: string; level: string }[] {
+    const t = this.cover?.team || 0;
+    const rank: any = { none: 0, tight: 1, ok: 2 };
+    return (this.cover?.days || []).map((d: any) => {
+      const away = d.off + d.pending + 1;
+      const who = d.names?.length ? ` (${d.names.join(', ')}${d.pending ? ' and ' + d.pending + ' waiting' : ''})` : d.pending ? ` (${d.pending} waiting)` : '';
+      return { level: d.level, text: `${this.pretty(d.day, true)}: ${away} of ${t} would be away${who}` };
+    }).sort((a: any, b: any) => rank[a.level] - rank[b.level]).slice(0, 6);
+  }
+
+  sendLeave() {
+    const f = this.leaveForm;
+    this.leaveError = this.message = '';
+    if (!f.leave_type_id) { this.leaveError = 'Choose the leave type.'; return; }
+    this.leaveBusy = true;
+    this.hr.post('leave', f).subscribe({
+      next: (r) => {
+        this.leaveBusy = false;
+        this.message = `Asked for ${r.days} day${r.days === 1 ? '' : 's'}. Your manager will decide.` + (r.notes?.length ? ` Note: ${r.notes.join(' ')}` : '');
+        this.closeLeave();
+        this.leaveInfo = null; // balances changed
+        this.load();
+      },
+      error: (e) => { this.leaveBusy = false; this.leaveError = this.hr.msg(e); }
+    });
+  }
+
+  withdraw(e: any, ev?: Event) {
+    ev?.stopPropagation();
+    const id = +String(e.id).replace('leave-', '');
+    this.leaveError = this.message = '';
+    this.hr.post(`leave/${id}/cancel`).subscribe({
+      next: () => { this.message = 'Request withdrawn.'; this.leaveInfo = null; this.load(); },
+      error: (er) => this.leaveError = this.hr.msg(er)
+    });
+  }
+
   openDay(day: string, ev?: Event) { ev?.stopPropagation(); this.cursor = this.picked = day; this.setView('day'); }
 
   open(e: any, ev?: Event) {

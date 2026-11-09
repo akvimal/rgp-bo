@@ -22,6 +22,12 @@ export class CalendarController {
     return this.calendar.options(user);
   }
 
+  @Get('leave-cover')
+  async leaveCover(@Query('from') from: string, @Query('to') to: string, @User() user: any) {
+    await this.need(user);
+    return this.calendar.leaveCover(user, { from, to });
+  }
+
   @Get()
   async entries(@Query('from') from: string, @Query('to') to: string, @Query('store') store: string, @Query('types') types: string, @User() user: any) {
     await this.need(user);

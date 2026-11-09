@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { MyHrApi } from "./my-hr.service";
 import { printPayslip } from "../hr/payslip-print";
+import { leaveTypeHint } from "./leave-hint";
 
 type Tab = "home" | "profile" | "pay" | "payslips" | "leave" | "attendance" | "credit";
 
@@ -80,16 +81,7 @@ export class MyHrComponent implements OnInit {
   balanceLeft(b: any) { return b.available !== undefined ? b.available : Math.max(0, b.entitled - b.used); }
 
   /** what to know about a leave type before asking: how its days build up, when it can first be taken, the stretch limit and the advised days */
-  typeHint(t: any): string {
-    if (!t || !t.paid) return "";
-    const bits: string[] = [];
-    if (t.accrual_mode === "MONTHLY") bits.push("Days build up month by month.");
-    if (t.max_consecutive) bits.push(`At most ${t.max_consecutive} day${t.max_consecutive === 1 ? "" : "s"} together${t.stretch_counts_offs !== false ? " (weekly offs and holidays in between count)" : ""}.`);
-    const mine = !t.advice_roles?.length || (this.leave?.role && t.advice_roles.includes(this.leave.role));
-    if (mine && t.advice_from_day && t.advice_to_day) bits.push(`Advised between the ${t.advice_from_day}th and the ${t.advice_to_day}th of the month.`);
-    if (mine && t.advice_avoid_weekdays?.length) bits.push("Advised not on " + t.advice_avoid_weekdays.map((d: number) => ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"][d]).join(" or ") + ".");
-    return bits.join(" ");
-  }
+  typeHint(t: any): string { return leaveTypeHint(t, this.leave?.role); }
   get chosenType(): any { return (this.leave?.types || []).find((t: any) => t.id === this.leaveForm?.leave_type_id) || null; }
 
   // ------------------------------------------------------------ attendance

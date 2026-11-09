@@ -1,6 +1,6 @@
 # Calendar view: events, leave, roster, planning
 
-Status: evaluated 2026-11-09. **Phase 1 built and verified 2026-11-09 (scratch DB and browser), uncommitted.** Phases 2-4 not built; roster waits on how stores plan shifts today.
+Status: evaluated 2026-11-09. **Phase 1 built, verified and committed 2026-11-09 (ba8e4f7fc). Phase 2 built and browser-verified 2026-11-09, committed after.** Phases 3-4 not built; roster waits on how stores plan shifts today.
 
 ## Phase 1 as built
 
@@ -33,6 +33,15 @@ Worth building. About 70% of the data already exists, so the first release is a 
 | Audit log | `audit_event` | Past events |
 
 Missing: a staff roster / shift-assignment table, and a free-form event table. Shift open/close exists only as a record of what happened.
+
+## Phase 2 as built (ask for leave from the calendar)
+
+- The calendar does not hold leave rules. It calls the existing `GET /my-hr/leave` (types, balances, role), `POST /my-hr/leave` (apply; back-date limit, stretch limit, balance, holiday and overlap checks, policy notes all come from the server) and `POST /my-hr/leave/:id/cancel` (withdraw while pending). Needs `myhr.apply` and an active staff record; `GET /calendar/options` returns `canApply`.
+- New `GET /calendar/leave-cover?from&to`: for the asker's store, per day, who is already away (approved, named) and how many are waiting (counted, not named), the team size, and a level (`ok` / `tight` more than half away / `none` nobody left) from the pure `coverLevel` (tested). Informational only; it never blocks.
+- Screen: an "Ask for leave" button opens a form above the grid. Dates come from two clicks on the grid (first day, then last day; a day before the first starts again) or the date boxes; the range is shaded. Shows the type hint (shared with My HR through `my-hr/leave-hint.ts`), the balance, and the cover lines. Server errors (for example the "at most 2 days together" rule) show in the form. Your own waiting request in the day list has Withdraw. Leave entries carry `mine`.
+- Chosen over drag: click-click works on touch and with the keyboard; drag-select can be added later.
+- Verified in the browser as Sales Staff on the scratch database: open form, click-click range, hint and balance, cover line, server rule error, a valid request (counted 1 day because the 20th is a holiday), the entry shown as waiting, Withdraw (row CANCELLED). Leave entries now use the staff record name first, as the leave service does.
+- Not done: a manager approving from the calendar (use Leave requests), leave for someone else, drag-select, a Playwright spec for the calendar.
 
 ## Design
 

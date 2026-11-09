@@ -1,4 +1,4 @@
-import { CalendarEntry, clipToWindow, sortEntries, typesAsked, windowProblem } from './calendar-rules';
+import { CalendarEntry, clipToWindow, coverLevel, sortEntries, typesAsked, windowProblem } from './calendar-rules';
 
 describe('calendar rules', () => {
   it('accepts a normal window and refuses bad ones', () => {
@@ -35,5 +35,16 @@ describe('calendar rules', () => {
     const e = (id: string, type: any): CalendarEntry => ({ id, type, title: 'x', start: '2026-11-08', end: '2026-11-08', tone: 'info' });
     const out = sortEntries([e('a', 'attendance'), e('f', 'followup'), e('t', 'todo'), e('l', 'leave'), e('h', 'holiday')]);
     expect(out.map((x) => x.type)).toEqual(['holiday', 'leave', 'todo', 'followup', 'attendance']);
+  });
+
+  it('says how thin the cover would be', () => {
+    expect(coverLevel(0, 0, 4)).toBe('ok');        // 1 of 4 away
+    expect(coverLevel(1, 0, 4)).toBe('ok');        // 2 of 4 is half, not more than half
+    expect(coverLevel(1, 1, 4)).toBe('tight');     // 3 of 4
+    expect(coverLevel(2, 1, 4)).toBe('none');      // everyone away
+    expect(coverLevel(0, 0, 1)).toBe('none');      // a one-person store
+    expect(coverLevel(0, 0, 0)).toBe('none');      // no team on record
+    expect(coverLevel(0, 0, 3)).toBe('ok');
+    expect(coverLevel(1, 0, 3)).toBe('tight');     // 2 of 3
   });
 });

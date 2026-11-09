@@ -4,7 +4,7 @@ import { EntityManager } from 'typeorm';
 import { businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole, ROLE } from 'src/core/roles';
 import { istDay } from 'src/modules/app/todos/todo-rules';
-import { CalendarEntry, CalendarType, clipToWindow, sortEntries, typesAsked, windowProblem } from './calendar-rules';
+import { CalendarEntry, CalendarType, clipToWindow, coverLevel, sortEntries, typesAsked, windowProblem } from './calendar-rules';
 
 /** the licence kinds as people say them (the same words as the vendor list) */
 const LICENCE_NAME: Record<string, string> = {
@@ -54,6 +54,40 @@ export class CalendarService {
       stores: [...me.storeNames].map(([id, name]) => ({ id, name })),
       manager: me.owner || me.head,
       types: await this.typesFor(me),
+      /** may this person ask for leave from here: the permission, and a staff record to ask it for */
+      canApply: (await this.can(me.roleId, 'myhr', 'apply')) && !!(await this.employeeOf(me.id)),
+    };
+  }
+
+  private async employeeOf(userId: number): Promise<{ id: number; store_id: number | null } | null> {
+    const [e] = await this.manager.query(`select id, store_id from hr_employee where user_id = $1 and status = 'ACTIVE'`, [userId]);
+    return e ?? null;
+  }
+
+  /**
+   * Who else of the person's store is away over some days, so they can see the cover before asking. Names only for approved leave (already visible on the calendar);
+   * a request still waiting is only counted. Informational: the leave rules themselves are the server's leave service.
+   */
+  async leaveCover(user: any, q: { from: string; to: string }) {
+    const problem = windowProblem(q.from, q.to);
+    if (problem) throw new BadRequestException(problem);
+    const me = await this.me(user);
+    const emp = await this.employeeOf(me.id);
+    if (!emp || !emp.store_id) return { team: 0, days: [] };
+    const [{ n }] = await this.manager.query(`select count(*)::int as n from hr_employee where store_id = $1 and status = 'ACTIVE'`, [emp.store_id]);
+    const rows = await this.manager.query(
+      `select to_char(d, 'YYYY-MM-DD') as day,
+              count(*) filter (where r.status = 'APPROVED')::int as approved,
+              count(*) filter (where r.status = 'PENDING')::int as pending,
+              coalesce(array_agg(distinct coalesce(e.full_name, u.full_name)) filter (where r.status = 'APPROVED'), '{}') as names
+         from generate_series($2::date, $3::date, interval '1 day') d
+         join hr_leave_request r on r.from_date <= d::date and r.to_date >= d::date and r.status in ('APPROVED', 'PENDING')
+         join hr_employee e on e.id = r.employee_id and e.store_id = $1 and e.id <> $4
+         left join app_user u on u.id = e.user_id
+        group by d order by d`, [emp.store_id, q.from, q.to, emp.id]);
+    return {
+      team: n,
+      days: rows.map((r: any) => ({ day: r.day, off: r.approved, pending: r.pending, names: r.names, level: coverLevel(r.approved, r.pending, n) })),
     };
   }
 
@@ -100,7 +134,7 @@ export class CalendarService {
 
   private async leave(me: Me, stores: number[], storeId: number | null, w: { from: string; to: string }): Promise<CalendarEntry[]> {
     const rows = await this.manager.query(
-      `select r.id, r.from_date::text as f, r.to_date::text as t, r.half_day, r.status, r.reason, e.user_id, u.full_name, e.store_id, lt.name as leave_type
+      `select r.id, r.from_date::text as f, r.to_date::text as t, r.half_day, r.status, r.reason, e.user_id, coalesce(e.full_name, u.full_name) as full_name, e.store_id, lt.name as leave_type
          from hr_leave_request r
          join hr_employee e on e.id = r.employee_id
          join hr_leave_type lt on lt.id = r.leave_type_id
@@ -121,7 +155,7 @@ export class CalendarService {
         title: `${r.full_name || 'Staff'} - ${r.leave_type}${r.half_day ? ' (half day)' : ''}${pending ? ' - waiting' : ''}`,
         who: r.full_name, storeId: r.store_id, store: me.storeNames.get(r.store_id) ?? null, status: r.status,
         link: manager ? '/secure/leave-approvals' : mine ? '/secure/my-hr' : null, tone: pending ? 'warn' : 'info',
-        note: manager || mine ? r.reason : null,
+        note: manager || mine ? r.reason : null, mine,
       });
     }
     return out;
