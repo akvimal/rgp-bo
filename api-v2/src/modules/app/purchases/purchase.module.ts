@@ -2,6 +2,9 @@ import { RoleModule } from "../roles/role.module";
 import { InvoiceViewService } from "./invoice-view.service";
 import { InvoiceExtractController } from "./invoice-extract/invoice-extract.controller";
 import { InvoiceExtractService } from "./invoice-extract/invoice-extract.service";
+import { InvoiceAiService } from './invoice-extract/invoice-ai.service';
+import { AiProvider } from '../alerts/ai-provider';
+import { AiCacheService } from '../alerts/ai-cache.service';
 import { InvoiceScanController } from "./invoice-extract/invoice-scan.controller";
 import { InvoiceScanService } from "./invoice-extract/invoice-scan.service";
 import { Module } from "@nestjs/common";
@@ -56,7 +59,7 @@ import { VendorReturnService } from "./vendor-return.service";
       VendorPaymentController,
       VendorReturnController,
       PurchaseDownloadController],
-    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,VendorReturnService,InvoiceViewService,InvoiceExtractService,
+    providers: [PurchaseService,PurchaseInvoiceService,VendorPaymentService,VendorReturnService,InvoiceViewService,InvoiceExtractService,InvoiceAiService,AiProvider,AiCacheService,
       InvoiceScanService,JwtService],
     exports: [PurchaseService,PurchaseInvoiceService,VendorPaymentService],
   })

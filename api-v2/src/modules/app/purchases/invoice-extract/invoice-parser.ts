@@ -177,6 +177,13 @@ export function repairGstin(token: string, known: string[] = []): string | null 
 }
 
 // ---------------------------------------------------------------------------------------------------------- the header
+/** a name read from a line that also holds the next column ("... LIMITED Code : 224", "... CUS CODE: 1681 To: RAMESH ..."): it ends where the other label begins */
+export function cleanName(s: string): string {
+  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
+  const cut = t.search(/\s+(?:cus(?:t(?:omer)?)?\.?\s*code|code|to|ph(?:one)?(?:\s*no)?|gstin|dl\s*no)\s*[:.]/i);
+  return (cut > 3 ? t.slice(0, cut) : t).trim().slice(0, 100);
+}
+
 const NOT_VALUE = /^(date|dt|no|number|dated|of|the|and|gstin|gst|to|from|bill|invoice)$/i;
 
 function readHeader(lines: TextLine[], ownGstin?: string | null, known: string[] = []): ExtractedHeader {
@@ -195,17 +202,24 @@ function readHeader(lines: TextLine[], ownGstin?: string | null, known: string[]
     const m = l.text.match(/\bfor\s+([A-Za-z0-9][^\n]{3,80}?\b(?:ltd|limited|llp)\b\.?)/i);
     if (m) signed = m[1];
   }
-  if (signed) h.suppliername = signed.replace(/\s+/g, ' ').trim().slice(0, 100);
+  if (signed) h.suppliername = cleanName(signed);
   else {
     const first = lines.slice(0, 6).find((l) => /[A-Za-z]{3,}/.test(l.text) && !/invoice|gstin|tax|original|duplicate|page|cash|credit/i.test(l.text));
-    if (first) h.suppliername = first.text.replace(/\s+/g, ' ').trim().slice(0, 100);
+    if (first) h.suppliername = cleanName(first.text);
   }
 
   for (const l of lines) {
     const t = l.text;
     if (!h.invoiceno) {
-      const m = t.match(/(?:invoice|inv\.?|bill|cash\s*memo)\s*(?:no|number|num|#)\.?\s*[:\-.]?\s*([A-Za-z0-9][A-Za-z0-9\/\-._]{1,29})/i);
-      if (m && !NOT_VALUE.test(m[1])) h.invoiceno = m[1].replace(/[.\-_/]+$/, '').toUpperCase();
+      // every "Invoice No" on the line is tried: on a scan two columns share a line, and "TAX INVOICE" can sit before the buyer's "NO:1/256,FIRST BLOCK..."
+      const re = /(?:invoice|inv\.?|bill|cash\s*memo)\s*(?:no|number|num|#)\.?\s*[:\-.]?\s*([A-Za-z0-9][A-Za-z0-9\/\-._]{1,29})/gi;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(t))) {
+        if (NOT_VALUE.test(m[1])) continue;
+        if (/^\s*,\s*[A-Za-z]/.test(t.slice(m.index + m[0].length))) continue;        // a number followed by ",FIRST BLOCK": part of an address
+        h.invoiceno = m[1].replace(/[.\-_/]+$/, '').toUpperCase();
+        break;
+      }
     }
     if (!h.invoicedate) {
       const re = /((?:invoice|inv|bill)?\s*)\bdate(?:d)?\b\s*[:\-.]?\s*(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{1,2}[\s\-,]+[A-Za-z]{3,9}[\s\-,.]+\d{2,4})/gi;

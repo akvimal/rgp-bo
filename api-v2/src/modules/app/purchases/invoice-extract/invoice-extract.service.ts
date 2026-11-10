@@ -2,11 +2,15 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { readFileSync } from 'fs';
+import { createHash } from 'crypto';
 import { dirname, extname, join } from 'path';
 import { uploadedFilePath } from '../../files/upload-path';
 import { ExtractedLine, ParsedInvoice, TextLine, Word, cashFactor, linesTotalWithTax, parseInvoice, readDate, toLines } from './invoice-parser';
 import { tieOut } from './invoice-tieout';
 import { prepare } from './image-prep';
+import { AiImage } from '../../alerts/ai-provider';
+import { better, fillHeader, judge, needsAssistant } from './invoice-ai';
+import { AiStep, InvoiceAiService } from './invoice-ai.service';
 
 const IMAGE_EXT = ['.jpg', '.jpeg', '.png'];
 
@@ -63,7 +67,7 @@ export class InvoiceExtractService {
   private readonly log = new Logger(InvoiceExtractService.name);
   private products: { version: string; rows: any[] } = { version: '', rows: [] };
 
-  constructor(@InjectEntityManager() private readonly manager: EntityManager) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly assistant: InvoiceAiService) {}
 
   // ---------------------------------------------------------------------------------------------- reading the file
   private async openPdf(buf: Buffer) {
@@ -174,6 +178,22 @@ export class InvoiceExtractService {
     } finally { await worker.terminate(); }
   }
 
+  /** the pages as JPEG pictures for the assistant: the page as it is (no cleaning), at most 3 pages, the longer side at most 2000 pixels */
+  private async aiImages(ext: string, buf: Buffer): Promise<AiImage[]> {
+    const nc = nodeCanvas();
+    let pics: any[];
+    if (ext === '.pdf') {
+      const doc = await this.openPdf(buf);
+      try { pics = (await this.pdfPictures(doc, false)).slice(0, 3); } finally { try { await doc.destroy(); } catch { /* ignore */ } }
+    } else pics = [await this.photoPicture(buf, false)];
+    return pics.map((p) => {
+      const k = Math.min(1, 2000 / Math.max(p.width, p.height));
+      const c = k < 1 ? nc.createCanvas(Math.round(p.width * k), Math.round(p.height * k)) : p;
+      if (k < 1) { const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(p, 0, 0, c.width, c.height); }
+      return { mediaType: 'image/jpeg' as const, base64: c.toBuffer('image/jpeg', 82).toString('base64') };
+    });
+  }
+
   // ---------------------------------------------------------------------------------------------- matching
   /** the product list, reloaded when a product is added or changed (a cheap count and last-changed check on every read) */
   private async catalog() {
@@ -206,7 +226,7 @@ export class InvoiceExtractService {
   }
 
   // ---------------------------------------------------------------------------------------------- the whole read
-  async extract(path: string) {
+  async extract(path: string, opts: { userId?: number | null; ai?: boolean } = {}) {
     const file = uploadedFilePath(path);
     const ext = extname(file).toLowerCase();
     const buf = readFileSync(file);
@@ -265,15 +285,54 @@ export class InvoiceExtractService {
       throw new BadRequestException('The invoice copy could not be read. Enter the invoice by hand, or try a clearer photo.');
     }
 
+    // ---- the assistant, when the plain reading does not agree with the invoice (or the person asked for it): the words first, then the pictures if the setting allows
+    const pick: { source: 'pdf' | 'pdf-ocr' | 'ocr' | 'ai-text' | 'ai-image' } = { source: method };
+    const ai: any = { mode: 'off', available: false, used: false, step: null, model: null, tried: [], fromCache: false, note: null };
+    const local = judge(parsed);
+    try {
+      const st = await this.assistant.status();
+      ai.mode = st.mode; ai.available = st.ready; ai.model = st.model;
+      if (st.ready && (opts.ai || needsAssistant(local))) {
+        const hash = createHash('sha256').update(buf).digest('hex');
+        const ownGstin: string | null = biz?.gstin || null;
+        let best = local;
+        const take = (step: 'text' | 'image', r: AiStep) => {
+          ai.tried.push(step);
+          if (r.fromCache) ai.fromCache = true;
+          if (!r.read) return;
+          // the plain reader sometimes finds a header field the model did not (never the invoice number or the name: those are where it goes wrong)
+          const header = fillHeader(r.read.parsed.header, parsed.header, ['suppliergstin', 'printedtotal', 'goodsvalue', 'invoicedate']);
+          const cand = judge({ ...r.read.parsed, header });
+          const chosen = opts.ai ? better(cand, best) : better(best, cand);
+          if (chosen === cand) { best = cand; ai.step = step; pick.source = step === 'text' ? 'ai-text' : 'ai-image'; }
+        };
+        try { take('text', await this.assistant.readText(textLines.map((l) => l.text).join('\n'), ownGstin, hash, st.model as string, opts.userId ?? null)); }
+        catch (e: any) { ai.note = String(e?.message || 'The assistant could not read it.').slice(0, 200); this.log.warn(`assistant (text) could not read the invoice: ${e?.message}`); }
+        if (best.tie.status !== 'RECONCILED' && st.mode === 'full' && st.vision !== false) {
+          try { take('image', await this.assistant.readPictures(await this.aiImages(ext, buf), ownGstin, hash, st.model as string, opts.userId ?? null)); }
+          catch (e: any) { ai.note = String(e?.message || 'The assistant could not read the pictures.').slice(0, 200); this.log.warn(`assistant (pictures) could not read the invoice: ${e?.message}`); }
+        }
+        if (ai.step) { parsed = best.parsed; ai.used = true; }
+      }
+    } catch (e: any) {
+      ai.note = String(e?.message || 'The assistant could not be used.').slice(0, 200);
+      this.log.warn(`assistant not used: ${e?.message}`);
+    }
+
     const suggestions = await this.suggest(parsed.lines);
     const vendor = this.matchVendor(vendors, parsed.header.suppliergstin, parsed.header.suppliername);
     const warnings = [...parsed.warnings];
-    if (method !== 'pdf') warnings.unshift(method === 'pdf-ocr' ? 'This PDF is a scan, so it was read as a picture: check every number against the invoice.' : 'Read from a photo: check every number against the invoice.');
+    if (pick.source === 'ai-text') warnings.unshift('Read by the assistant from the text of the scan: check every number against the invoice.');
+    else if (pick.source === 'ai-image') warnings.unshift('Read by the assistant from the pictures of the pages: check every number against the invoice.');
+    else if (pick.source !== 'pdf') warnings.unshift(pick.source === 'pdf-ocr' ? 'This PDF is a scan, so it was read as a picture: check every number against the invoice.' : 'Read from a photo: check every number against the invoice.');
+    if (ai.note && !ai.used) warnings.push(`The assistant could not help with this invoice: ${ai.note}`);
     if (parsed.tableFound && !parsed.header.invoiceno) warnings.push('The invoice number was not found.');
     if (parsed.header.cashdiscount) warnings.push(`A cash discount of ${parsed.header.cashdiscount.pct ? parsed.header.cashdiscount.pct + '% = ' : ''}${parsed.header.cashdiscount.amount.toFixed(2)} is printed under the goods value. It is not a line, so the lines come to more than the invoice total by that much (before tax).`);
 
     return {
-      method,
+      method: pick.source,
+      localMethod: method,
+      ai,
       ms: Date.now() - started,
       text: textLines.map((l) => l.text).join('\n'),
       header: parsed.header,

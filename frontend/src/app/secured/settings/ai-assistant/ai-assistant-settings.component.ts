@@ -13,6 +13,20 @@ import { AlertsService } from "../../alerts/alerts.service";
       <app2-ai-key-card (changed)="load()"></app2-ai-key-card>
       <app2-ai-usage-report *ngIf="cfg && cfg.configured && !cfg.off"></app2-ai-usage-report>
 
+      <div class="card mt-3" *ngIf="cfg && cfg.configured && !cfg.off && inv" data-testid="air-card">
+        <div class="card-body">
+          <h5 class="card-title m-0 p-0 mt-3">Reading invoice copies</h5>
+          <div class="small text-muted mb-2">When a scanned or photographed purchase invoice is attached, the plain reader tries first. If what it read does not add up to the invoice total, it can ask the assistant. The assistant only reads: the result is checked against the invoice total, and a person checks every line.</div>
+          <div class="form-check"><input class="form-check-input" type="radio" name="air" id="air-off" value="off" [(ngModel)]="invMode" data-testid="air-off"><label class="form-check-label" for="air-off"><b>Off</b>: only the plain reader is used.</label></div>
+          <div class="form-check"><input class="form-check-input" type="radio" name="air" id="air-text" value="text" [(ngModel)]="invMode" data-testid="air-text"><label class="form-check-label" for="air-text"><b>Words</b>: the text read from the scan is sent to the assistant. Cheap and usually enough. No picture leaves the server.</label></div>
+          <div class="form-check"><input class="form-check-input" type="radio" name="air" id="air-full" value="full" [(ngModel)]="invMode" data-testid="air-full"><label class="form-check-label" for="air-full"><b>Words, then pictures</b>: if the words are not enough, the pages are sent as pictures. Most accurate, costs more. The model chosen for Invoice reading below must be able to read pictures.</label></div>
+          <div class="small text-muted mt-2">Invoices show vendor names, products and prices, not patient details. Switch it on only if you are happy for invoice copies to go to {{cfg.provider === 'openrouter' ? 'OpenRouter and the model you chose' : 'Anthropic'}}.</div>
+          <button class="btn btn-sm btn-primary mt-2" type="button" [disabled]="invBusy || invMode === inv.mode" (click)="saveInvoiceMode()" data-testid="air-save">Save</button>
+          <span class="small text-success ms-2" *ngIf="invMessage" data-testid="air-message">{{invMessage}}</span>
+          <span class="small text-danger ms-2" *ngIf="invError" data-testid="air-error">{{invError}}</span>
+        </div>
+      </div>
+
       <div class="card mt-3" *ngIf="cfg && cfg.configured && !cfg.off" data-testid="aim-card">
         <div class="card-body">
           <h5 class="card-title m-0 p-0 mt-3">Which model does which job</h5>
@@ -55,6 +69,12 @@ import { AlertsService } from "../../alerts/alerts.service";
 })
 export class AiAssistantSettingsComponent implements OnInit {
   cfg: any = null;
+  /** how scanned purchase invoices are read: what is saved, and what is chosen */
+  inv: any = null;
+  invMode = "off";
+  invBusy = false;
+  invMessage = "";
+  invError = "";
   draft: { default: string; tiers: { [k: string]: string }; tasks: { [k: string]: string } } = { default: "", tiers: {}, tasks: {} };
   busy = false;
   message = "";
@@ -66,6 +86,14 @@ export class AiAssistantSettingsComponent implements OnInit {
 
   load() {
     this.alerts.ai().subscribe((c) => { this.cfg = c; this.reset(c); }, () => (this.cfg = null));
+    this.alerts.invoiceReading().subscribe((r) => { this.inv = r; this.invMode = r.mode; }, () => (this.inv = null));
+  }
+
+  saveInvoiceMode() {
+    this.invBusy = true; this.invMessage = this.invError = "";
+    this.alerts.saveInvoiceReading(this.invMode).subscribe(
+      (r) => { this.invBusy = false; this.inv = r; this.invMode = r.mode; this.invMessage = "Saved."; },
+      (e) => { this.invBusy = false; this.invError = this.msg(e); });
   }
 
   private reset(c: any) {

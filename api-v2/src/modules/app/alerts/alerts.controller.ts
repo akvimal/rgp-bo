@@ -60,6 +60,12 @@ export class AlertsController {
   @Post('ai/test')
   async testAi(@User() user: any) { return this.aiSettings.test(user); }
 
+  @Get('ai/invoice-reading')
+  invoiceReading(@User() user: any) { return this.aiSettings.invoiceReading(user); }
+
+  @Put('ai/invoice-reading')
+  saveInvoiceReading(@Body() body: any, @User() user: any) { return this.aiSettings.saveInvoiceReading(user, body); }
+
   @Put('ai/models')
   saveAiModels(@Body() body: any, @User() user: any) { return this.service.saveAiModels(user, body); }
 

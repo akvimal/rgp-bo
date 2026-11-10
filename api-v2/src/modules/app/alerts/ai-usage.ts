@@ -23,6 +23,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   answer_question: 'Shop questions',
   write_weekly_summary: 'Weekly owner summary',
   write_coaching_note: 'Staff coaching notes',
+  read_invoice: 'Invoice reading',
   reply: 'Connection tests',
 };
 
@@ -41,6 +42,7 @@ export const AI_AREAS: AreaInfo[] = [
   { feature: 'answer_question', label: 'Shop questions', what: 'Understands a question typed in plain words and picks the right report and period. The answer is worked out here, never by the model.', where: 'Reports > Ask the shop', route: '/secure/reports/ask' },
   { feature: 'write_weekly_summary', label: 'Weekly owner summary', what: 'Writes the short Monday summary of last week from the shop figures.', where: 'Reports > Weekly summary', route: '/secure/reports/weekly' },
   { feature: 'write_coaching_note', label: 'Staff coaching notes', what: 'Writes a note for a manager to talk through with a person: what went well, where to focus, a tip for each.', where: 'HR > Coaching', route: '/secure/hr' },
+  { feature: 'read_invoice', label: 'Invoice reading', what: 'Reads a scanned or photographed purchase invoice that the plain reader could not make sense of: the header and every line. What it reads is checked against the invoice total and a person checks every line.', where: 'Purchase > Invoice, attach the invoice copy', route: '/secure/purchases/invoices' },
   { feature: 'reply', label: 'Connection tests', what: 'One small request to check that the key and model work.', where: 'Settings > AI assistant, Test', route: '/secure/settings/business-profile/ai' },
 ];
 export const areaOf = (feature: string): AreaInfo => AI_AREAS.find((a) => a.feature === feature) || { feature, label: featureLabel(feature), what: '', where: '', route: '' };

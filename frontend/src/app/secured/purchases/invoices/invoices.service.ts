@@ -172,8 +172,9 @@ export class InvoiceService {
     restoreScanLine(id:any, lineId:any){ return this.http.post<any>(`${this.apiurl}/purchases/${id}/scan/lines/${lineId}/restore`, {}); }
     verifyAllScan(id:any){ return this.http.post<any>(`${this.apiurl}/purchases/${id}/scan/verify-all`, {}); }
 
-    extract(path:string){
-        return this.http.post<any>(`${this.apiurl}/purchases/extract`, { path });
+    /** `ai`: the person asks for the assistant to read the copy, whatever the plain reading made of it */
+    extract(path:string, ai = false){
+        return this.http.post<any>(`${this.apiurl}/purchases/extract`, ai ? { path, ai: true } : { path });
     }
 
     importOrderItems(invoiceid:any){

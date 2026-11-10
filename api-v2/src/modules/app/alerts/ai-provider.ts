@@ -3,7 +3,10 @@ import { AiUsageHooks, tokensOf, UsageRecord } from './ai-usage';
 
 export type ProviderName = 'openrouter' | 'anthropic';
 
-export interface ModelInfo { id: string; name: string; context: number | null; promptPer1M: number | null; completionPer1M: number | null; }
+export interface ModelInfo { id: string; name: string; context: number | null; promptPer1M: number | null; completionPer1M: number | null; /** can read pictures: true, false, or null when not known */ vision?: boolean | null; }
+
+/** a picture sent with a request (for example one page of an invoice), as base64 */
+export interface AiImage { mediaType: 'image/jpeg' | 'image/png'; base64: string; }
 
 export interface Tool { name: string; description: string; input_schema: any; }
 
@@ -99,7 +102,7 @@ export class AiProvider {
       // a direct Anthropic key can use any of these: the server's default first, then the family (within the allow list)
       const listed = [...(this.defaultModel && !ANTHROPIC_MODELS.some((m) => m.id === this.defaultModel) ? [{ id: this.defaultModel, name: this.defaultModel }] : []), ...ANTHROPIC_MODELS]
         .filter((m) => matchesAllowed(m.id, this.allowed));
-      return listed.map((m) => ({ id: m.id, name: m.name, context: null, promptPer1M: null, completionPer1M: null }));
+      return listed.map((m) => ({ id: m.id, name: m.name, context: null, promptPer1M: null, completionPer1M: null, vision: true }));
     }
     if (this.provider !== 'openrouter') return [];
     if (!this.cache || Date.now() - this.cache.at > MODELS_TTL_MS) {
@@ -109,7 +112,8 @@ export class AiProvider {
         const per1M = (v: any) => (Number.isFinite(parseFloat(v)) ? Math.round(parseFloat(v) * 1e6 * 1000) / 1000 : null);
         const models: ModelInfo[] = (body.data || [])
           .filter((m: any) => Array.isArray(m.supported_parameters) && m.supported_parameters.includes('tools'))
-          .map((m: any) => ({ id: m.id, name: m.name || m.id, context: m.context_length ?? null, promptPer1M: per1M(m.pricing?.prompt), completionPer1M: per1M(m.pricing?.completion) }))
+          .map((m: any) => ({ id: m.id, name: m.name || m.id, context: m.context_length ?? null, promptPer1M: per1M(m.pricing?.prompt), completionPer1M: per1M(m.pricing?.completion),
+            vision: Array.isArray(m.architecture?.input_modalities) ? m.architecture.input_modalities.includes('image') : null }))
           .sort((a: ModelInfo, b: ModelInfo) => a.name.localeCompare(b.name));
         if (models.length) this.cache = { at: Date.now(), models };
       } catch { /* keep the last list, or fall back to the allowed names below */ }
@@ -124,14 +128,14 @@ export class AiProvider {
   }
 
   /** one request: the model is made to call `tool`, and the arguments of that call come back. Counted against the monthly limit and logged. */
-  async call(system: string, instruction: string, tool: Tool, model: string, maxTokens = 800): Promise<any> {
+  async call(system: string, instruction: string, tool: Tool, model: string, maxTokens = 800, images: AiImage[] = []): Promise<any> {
     const p = this.provider;
     if (!p) throw new ServiceUnavailableException('The assistant is not switched on for this account.');
     await HOOKS?.before();                       // refuses when the month's limit is reached
     const started = Date.now();
     const rec: UsageRecord = { provider: p, model, feature: tool.name, ok: false, status: null, inputTokens: null, outputTokens: null, ms: 0 };
     try {
-      const out = await this.send(p, system, instruction, tool, model, maxTokens, rec);
+      const out = await this.send(p, system, instruction, tool, model, maxTokens, rec, images);
       rec.ok = out !== undefined;
       return out;
     } finally {
@@ -140,9 +144,16 @@ export class AiProvider {
     }
   }
 
-  private async send(p: ProviderName, system: string, instruction: string, tool: Tool, model: string, maxTokens: number, rec: UsageRecord): Promise<any> {
+  private async send(p: ProviderName, system: string, instruction: string, tool: Tool, model: string, maxTokens: number, rec: UsageRecord, images: AiImage[] = []): Promise<any> {
     const refused = () => new ServiceUnavailableException('The assistant could not be reached just now. Try again, or use the form.');
-    const content = `<instruction>${instruction}</instruction>`;
+    const text = `<instruction>${instruction}</instruction>`;
+    // with pictures the message is a list of parts (the pictures first, then the words); without, it is the plain text as before
+    const anthropicContent: any = images.length
+      ? [...images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.base64 } })), { type: 'text', text }]
+      : text;
+    const openRouterContent: any = images.length
+      ? [{ type: 'text', text }, ...images.map((i) => ({ type: 'image_url', image_url: { url: `data:${i.mediaType};base64,${i.base64}` } }))]
+      : text;
     const note = (res: any, body?: any) => {
       rec.status = res.status ?? null;
       if (body) { const t = tokensOf(p, body); rec.inputTokens = t.input; rec.outputTokens = t.output; }
@@ -152,7 +163,7 @@ export class AiProvider {
         const res = await fetch(`${this.base(p)}/v1/messages`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-api-key': this.keyOf('anthropic'), 'anthropic-version': '2023-06-01' },
-          body: JSON.stringify({ model, max_tokens: maxTokens, system, tools: [tool], tool_choice: { type: 'tool', name: tool.name }, messages: [{ role: 'user', content }] }),
+          body: JSON.stringify({ model, max_tokens: maxTokens, system, tools: [tool], tool_choice: { type: 'tool', name: tool.name }, messages: [{ role: 'user', content: anthropicContent }] }),
           signal: AbortSignal.timeout(maxTokens > 800 ? 90000 : 25000),
         });
         note(res);
@@ -166,7 +177,7 @@ export class AiProvider {
         headers: { 'content-type': 'application/json', authorization: `Bearer ${this.keyOf('openrouter')}`, 'x-title': 'RGP Back Office' },
         body: JSON.stringify({
           model, max_tokens: maxTokens,
-          messages: [{ role: 'system', content: system }, { role: 'user', content }],
+          messages: [{ role: 'system', content: system }, { role: 'user', content: openRouterContent }],
           tools: [{ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.input_schema } }],
           ...(forced ? { tool_choice: { type: 'function', function: { name: tool.name } } } : {}),
         }),

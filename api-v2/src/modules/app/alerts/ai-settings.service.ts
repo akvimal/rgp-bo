@@ -7,6 +7,7 @@ import { AiProvider, ProviderName, setAiUsageHooks, setStoredAiKey, storedAiKey 
 import { AI_AREAS, areaOf, featureLabel, limitState, parseLimit, percent, UsageRecord, validLimit } from './ai-usage';
 import { resolveModel } from './ai-models';
 import { cleanKey, decryptKey, encryptKey, keyHint } from './ai-key';
+import { parseMode } from '../purchases/invoice-extract/invoice-ai';
 
 const PROVIDERS: ProviderName[] = ['openrouter', 'anthropic'];
 const TEST_TOOL = { name: 'reply', description: 'Reply to the check.', input_schema: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] } };
@@ -175,6 +176,21 @@ export class AiSettingsService implements OnModuleInit {
     setStoredAiKey(null);
     await this.audit.record({ userId: user.id, action: 'ai.key_cleared', summary: 'assistant key removed', details: {} });
     return this.state();
+  }
+
+  /** how scanned purchase invoices are read: off, text (the words the plain reader found go to the assistant) or full (then the pictures too) */
+  async invoiceReading(user: any) {
+    const [s] = await this.manager.query(`select setting_value from app_setting where setting_key = 'ai.invoice_read' and active and not archive`);
+    return { mode: parseMode(s?.setting_value), configured: this.ai.configured, off: process.env.AI_PROVIDER === 'off' };
+  }
+
+  async saveInvoiceReading(user: any, body: any) {
+    await this.owner(user);
+    const raw = String(body?.mode ?? '').trim().toLowerCase();
+    if (!['off', 'text', 'full'].includes(raw)) throw new BadRequestException('Choose off, text or full.');
+    await this.put('ai.invoice_read', raw, user.id);
+    await this.audit.record({ userId: user.id, action: 'ai.invoice_reading_set', summary: `invoice reading set to ${raw}`, details: { mode: raw } });
+    return this.invoiceReading(user);
   }
 
   /** one small request, to see that the key and the model work */

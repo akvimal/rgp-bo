@@ -94,3 +94,32 @@ describe('AiProvider', () => {
     await expect(new AiProvider().call('s', 'i', TOOL, 'm')).rejects.toThrow(/credit has run out/);
   });
 });
+
+describe('sending pictures with a request', () => {
+  const PIC = [{ mediaType: 'image/jpeg' as const, base64: 'QUJD' }];
+  afterEach(() => jest.restoreAllMocks());
+
+  it('sends them to Anthropic as image parts before the words, and nothing changes without pictures', async () => {
+    env({ ANTHROPIC_API_KEY: 'a' });
+    const spy = jest.spyOn(global, 'fetch').mockResolvedValue(reply({ content: [{ type: 'tool_use', input: { ok: true } }] }));
+    await new AiProvider().call('sys', 'read it', TOOL, 'claude-x', 800, PIC);
+    const withPic = JSON.parse((spy.mock.calls[0][1] as any).body);
+    expect(withPic.messages[0].content).toEqual([
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'QUJD' } },
+      { type: 'text', text: '<instruction>read it</instruction>' },
+    ]);
+    await new AiProvider().call('sys', 'read it', TOOL, 'claude-x');
+    expect(JSON.parse((spy.mock.calls[1][1] as any).body).messages[0].content).toBe('<instruction>read it</instruction>');
+  });
+
+  it('sends them to OpenRouter as data URLs after the words', async () => {
+    env({ OPENROUTER_API_KEY: 'o' });
+    const spy = jest.spyOn(global, 'fetch').mockResolvedValue(reply({ choices: [{ message: { tool_calls: [{ function: { arguments: '{"ok":true}' } }] } }] }));
+    await new AiProvider().call('sys', 'read it', TOOL, 'google/gemini', 800, PIC);
+    const body = JSON.parse((spy.mock.calls[0][1] as any).body);
+    expect(body.messages[1].content).toEqual([
+      { type: 'text', text: '<instruction>read it</instruction>' },
+      { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,QUJD' } },
+    ]);
+  });
+});

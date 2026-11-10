@@ -42,6 +42,8 @@ export class AlertsService {
   tgEnabled(on: boolean) { return this.http.put<any>(`${this.msg}/overview/enabled`, { on }); }
 
   ai() { return this.http.get<any>(`${this.api}/ai`); }
+  invoiceReading() { return this.http.get<any>(`${this.api}/ai/invoice-reading`); }
+  saveInvoiceReading(mode: string) { return this.http.put<any>(`${this.api}/ai/invoice-reading`, { mode }); }
   saveAiKey(provider: string, key: string) { return this.http.put<any>(`${this.api}/ai/key`, { provider, key }); }
   clearAiKey() { return this.http.delete<any>(`${this.api}/ai/key`); }
   testAi() { return this.http.post<any>(`${this.api}/ai/test`, {}); }

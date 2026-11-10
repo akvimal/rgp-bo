@@ -1,4 +1,4 @@
-import { cashFactor, isGstin, linesTotalWithTax, parseInvoice, readDate, readExpiry, repairGstin, toLines, Word } from './invoice-parser';
+import { cashFactor, cleanName, isGstin, linesTotalWithTax, parseInvoice, readDate, readExpiry, repairGstin, toLines, Word } from './invoice-parser';
 
 const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /** a GSTIN with a correct check character */
@@ -250,5 +250,32 @@ describe('an invoice-level cash discount', () => {
     expect(header('Less CD 4.00 % 48.94')).toEqual({ pct: 4, amount: 48.94 });
     expect(header('Cash Disc 112.50 2998.99 5%')).toEqual({ pct: null, amount: 112.5 });
     expect(header('Cash Discount 3 % 112.50')).toEqual({ pct: 3, amount: 112.5 });
+  });
+});
+
+describe('header fields on a scan where two columns share a line', () => {
+  const lines = (rows: string[]) => toLines(rows.flatMap((t, i) => row(20 + i * 14, [[20, t]])));
+
+  it('takes the invoice number from its own label, not from the buyer address next to TAX INVOICE', () => {
+    const p = parseInvoice(lines([
+      'PALEPU PHARMA DISTRIBUTORS PRIVATE LIMITED Code : 224',
+      'Phone 26560599 TAX INVOICE NO:1/256,FIRST BLOCK,SHOP NO:3,GROUND FLOOR,',
+      'DL No. 198/Z1V/20B Inv. No MG-26-182741 THIRUVALLUR , CHENNAI',
+      'Inv.Date 10/11/2026 600037',
+    ]));
+    expect(p.header.invoiceno).toBe('MG-26-182741');
+    expect(p.header.invoicedate).toBe('2026-11-10');
+  });
+
+  it('still reads an ordinary invoice number, including one followed by other words', () => {
+    expect(parseInvoice(lines(['INVOICE NO: 26-27D9056 1/256,FIRST BLOCK, GROUND FLOOR'])).header.invoiceno).toBe('26-27D9056');
+    expect(parseInvoice(lines(['Invoice No : SD/24-25/0456    Invoice Date : 12/09/2026'])).header.invoiceno).toBe('SD/24-25/0456');
+  });
+
+  it('ends the supplier name where the label of the next column begins', () => {
+    expect(cleanName('PALEPU PHARMA DISTRIBUTORS PRIVATE LIMITED Code : 224')).toBe('PALEPU PHARMA DISTRIBUTORS PRIVATE LIMITED');
+    expect(cleanName('SHRI KANDAN PHARMACEUTICALS CUS CODE: 1681 To: RAMESH GENERIC PHARMACY')).toBe('SHRI KANDAN PHARMACEUTICALS');
+    expect(cleanName('Code Pharma Traders')).toBe('Code Pharma Traders');
+    expect(cleanName('  SAMPLE  DISTRIBUTORS ')).toBe('SAMPLE DISTRIBUTORS');
   });
 });

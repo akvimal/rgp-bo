@@ -95,7 +95,7 @@
           <input type="file" class="form-control" id="inv-file" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)" [disabled]="uploading" data-testid="inv-f-file">
           <div class="small mt-1" *ngIf="form.value.documentpath" data-testid="inv-f-file-ok"><i class="bi bi-paperclip"></i> Attached
             <a role="button" (click)="viewDocument()">view</a> &middot; <a role="button" class="text-danger" (click)="removeDocument()">remove</a></div>
-          <div class="small text-muted mt-1" *ngIf="extracting" data-testid="inv-x-busy"><span class="spinner-border spinner-border-sm me-1"></span>Reading the invoice&hellip; a photo can take 10 to 20 seconds.</div>
+          <div class="small text-muted mt-1" *ngIf="extracting" data-testid="inv-x-busy"><span class="spinner-border spinner-border-sm me-1"></span>Reading the invoice&hellip; a photo can take 10 to 20 seconds, and up to a minute when the assistant helps.</div>
           <div class="small text-danger mt-1" *ngIf="extractError" data-testid="inv-x-error">{{extractError}}</div>
         </div>
         <div class="col-md-6 d-flex align-items-end">
@@ -148,8 +148,9 @@
           <div class="border rounded p-2 p-md-3">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
               <h6 class="inv-title mb-0">{{extracted.resumed ? 'Lines of the invoice copy' : 'Read from the invoice copy'}}
-                <span class="badge bg-light text-dark border ms-1" *ngIf="extracted.method" data-testid="inv-x-method">{{extracted.method === 'pdf' ? 'text of the PDF' : (extracted.method === 'pdf-ocr' ? 'scanned PDF (OCR)' : 'photo (OCR)')}}</span></h6>
+                <span class="badge bg-light text-dark border ms-1" *ngIf="extracted.method" data-testid="inv-x-method">{{methodLabel(extracted.method)}}</span></h6>
               <div class="d-flex gap-2" *ngIf="!extracted.resumed">
+                <button type="button" class="btn btn-outline-success btn-sm" *ngIf="canAskAssistant" (click)="readWithAssistant()" data-testid="inv-x-ai" title="Send what was read from this copy to the assistant, which reads the table again; the result is checked against the invoice total"><i class="bi bi-stars"></i> Read with the assistant</button>
                 <button type="button" class="btn btn-outline-primary btn-sm" (click)="applyHeader(true)" data-testid="inv-x-fill">Use all read values</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm" (click)="showText = !showText" data-testid="inv-x-text-toggle">{{showText ? 'Hide' : 'Show'}} text read</button>
               </div>

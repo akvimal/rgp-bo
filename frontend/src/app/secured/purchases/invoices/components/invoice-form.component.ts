@@ -233,11 +233,29 @@ export class InvoiceFormComponent implements OnInit {
       this.form.controls['challanpath'].setValue('');
     }
 
+    /** the copy last read, so the assistant can be asked to read it again */
+    private readPath = '';
+
+    /** how the copy was read, in words */
+    methodLabel(m:string): string {
+      return m === 'pdf' ? 'text of the PDF' : m === 'pdf-ocr' ? 'scanned PDF (OCR)' : m === 'ai-text' ? 'scan, read by the assistant' : m === 'ai-image' ? 'pictures, read by the assistant' : 'photo (OCR)';
+    }
+
+    /** the assistant is on for invoices and has not read this copy yet */
+    get canAskAssistant(): boolean {
+      const a = this.extracted && this.extracted.ai;
+      return !!a && a.available && !a.used && !this.extracted.resumed && !!this.readPath && !this.extracting;
+    }
+
+    /** read the copy again with the assistant (words first, the pictures if that setting allows and the words are not enough) */
+    readWithAssistant(){ this.read(this.readPath, true); }
+
     /** read the attached copy: show what was found and fill the empty fields of the form */
-    read(path:string){
+    read(path:string, ai = false){
       if(!path) return;
+      this.readPath = path;
       this.extracting = true; this.extractError = ''; this.extracted = null; this.lines = []; this.filled = []; this.showText = false;
-      this.service.extract(path).subscribe(
+      this.service.extract(path, ai).subscribe(
         (r:any) => {
           this.extracting = false;
           this.extracted = r;

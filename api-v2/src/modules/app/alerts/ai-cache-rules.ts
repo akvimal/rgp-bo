@@ -22,6 +22,8 @@ export const POLICIES: Record<string, AiPolicy> = {
   write_buying_brief: { ttlHours: 72, refresh: { max: 2, perHours: 24 }, refreshWhenUnchanged: false, calls: null },
   answer_question: { ttlHours: 24, refresh: null, refreshWhenUnchanged: false, calls: { max: 20, perHours: 1 } },
   write_coaching_note: { ttlHours: 24 * 35, refresh: { max: 3, perHours: 24 * 30 }, refreshWhenUnchanged: true, calls: null },
+  // a scanned invoice read once is kept: attaching the same file again costs nothing
+  read_invoice: { ttlHours: 24 * 60, refresh: null, refreshWhenUnchanged: true, calls: { max: 60, perHours: 1 } },
   write_weekly_summary: { ttlHours: 24 * 8, refresh: { max: 1, perHours: 24 }, refreshWhenUnchanged: true, calls: null },
 };
 export const policyOf = (feature: string): AiPolicy | null => POLICIES[feature] ?? null;
