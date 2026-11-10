@@ -681,10 +681,17 @@ export class StoreService {
     }
 
     const shifts = await qb.orderBy("shift.shift_date", "DESC").addOrderBy("shift.id", "DESC").getMany();
+    // how many bills each shift made and how much of it was paid digitally (one query for the whole list; the same figures as the shift report)
+    const ids = shifts.map((s) => s.id);
+    const sums = ids.length ? await this.manager.query(
+      `select shift_id, count(*)::int as bills, coalesce(sum(digi_amount), 0)::float as digital
+         from sale where shift_id = any($1::int[]) and status = 'COMPLETE' and active = true group by shift_id`, [ids]) : [];
+    const sumOf = new Map<number, { bills: number; digital: number }>(sums.map((r: any) => [Number(r.shift_id), { bills: r.bills, digital: r.digital }]));
     const items: any[] = [];
     for (const shift of shifts) {
       const stats = await this.getShiftStats(shift.id);
-      items.push({ ...shift, ...stats });
+      const s = sumOf.get(shift.id);
+      items.push({ ...shift, ...stats, bills: s?.bills ?? 0, digital: s?.digital ?? 0 });
     }
     return items;
   }

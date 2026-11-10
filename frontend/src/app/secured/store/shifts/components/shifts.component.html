@@ -67,9 +67,9 @@
                 <option *ngFor="let user of users" [value]="user.id">{{user.fullname}}</option>
               </select>
             </td>
-            <td class="text-end text-muted small">—</td>
+            <td class="text-end" data-testid="shift-bills">{{shift.bills ?? '—'}}</td>
             <td class="text-end">{{shift.salescash | number:'1.0-0'}}</td>
-            <td class="text-end text-muted">—</td>
+            <td class="text-end" data-testid="shift-digital">{{shift.digital !== undefined && shift.digital !== null ? (shift.digital | number:'1.0-0') : '—'}}</td>
             <td class="text-end">{{shift.expectedcash | number:'1.0-0'}}</td>
             <td class="text-end">{{shift.countedcash !== null ? (shift.countedcash | number:'1.0-0') : '—'}}</td>
             <td class="text-end" [class.text-danger]="shift.variance < 0" [class.text-success]="shift.variance > 0">
