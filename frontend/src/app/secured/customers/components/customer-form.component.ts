@@ -70,6 +70,7 @@ export class CustomerFormComponent implements AfterViewInit {
         srcdesc: new FormControl(''),
         consent: new FormControl(''),
         preferredchannel: new FormControl(''),
+        messagelanguage: new FormControl(''),
         donotcontact: new FormControl(false),
         reviewoptout: new FormControl(false)
     });
@@ -139,6 +140,7 @@ export class CustomerFormComponent implements AfterViewInit {
             this.form.controls['srcdesc'].setValue(data.srcdesc);
             this.form.controls['consent'].setValue(data.consent || '');
             this.form.controls['preferredchannel'].setValue(data.preferredChannel || '');
+            this.form.controls['messagelanguage'].setValue(data.messageLanguage || '');
             this.form.controls['donotcontact'].setValue(!!data.doNotContact);
             this.form.controls['reviewoptout'].setValue(!!data.reviewOptOut);
             this.baseline = { ...this.form.getRawValue() };
@@ -254,6 +256,7 @@ export class CustomerFormComponent implements AfterViewInit {
           srcdesc: v.srcdesc,
           consent: v.consent || '',
           preferredchannel: v.preferredchannel || '',
+          messagelanguage: v.messagelanguage || '',
           donotcontact: !!v.donotcontact,
           reviewoptout: !!v.reviewoptout,
           confirmduplicate: this.confirmDuplicate
@@ -283,7 +286,7 @@ export class CustomerFormComponent implements AfterViewInit {
     /** what differs from the saved record, in words */
     private changes(now:any): string[] {
       const labels: Record<string, string> = { name: 'Name', mobile: 'Mobile', altmobile: 'Alternate number', email: 'Email', address: 'Address', locality: 'Location',
-        srctype: 'How they found us', srcdesc: 'Referral details', consent: 'Offers consent', preferredchannel: 'Preferred channel', donotcontact: 'Do not contact', reviewoptout: 'No review invitations' };
+        srctype: 'How they found us', srcdesc: 'Referral details', consent: 'Offers consent', preferredchannel: 'Preferred channel', messagelanguage: 'Message language', donotcontact: 'Do not contact', reviewoptout: 'No review invitations' };
       const show = (k: string, x: any) => (k === 'donotcontact' || k === 'reviewoptout') ? (x ? 'yes' : 'no') : (String(x ?? '').trim() || '(blank)');
       return Object.keys(labels)
         .filter(k => !(this.masked && this.contactFields.includes(k)))
@@ -299,7 +302,7 @@ export class CustomerFormComponent implements AfterViewInit {
             this.saving = false;
             this.saved.emit(data);
             if (addAnother && !id) {
-              this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '', consent: '', preferredchannel: '', donotcontact: false, reviewoptout: false });
+              this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '', consent: '', preferredchannel: '', messagelanguage: '', donotcontact: false, reviewoptout: false });
               this.sameNumber = [];
               this.confirmDuplicate = false;
               this.attempted = false;

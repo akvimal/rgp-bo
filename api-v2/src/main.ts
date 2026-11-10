@@ -18,6 +18,8 @@ async function bootstrap() {
   // A business setup file (many stores and logins) is larger than the default 100 kb body: only that route takes more.
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.use('/config-profile', json({ limit: '5mb' }));
+  // WhatsApp (Meta) signs the exact bytes it sends, so that one route keeps the raw body beside the parsed one
+  app.use('/whatsapp/webhook', json({ verify: (req: any, _res: any, buf: Buffer) => { req.rawBody = buf; } }));
   app.use(json());
   app.use(urlencoded({ extended: true }));
   const logger = new Logger('Bootstrap');

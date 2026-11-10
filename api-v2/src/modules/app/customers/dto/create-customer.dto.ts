@@ -31,6 +31,8 @@ export class CreateCustomerDto {
     readonly reviewoptout?: boolean;
     @ApiProperty({ description: 'CALL, WHATSAPP or SMS', required: false })
     readonly preferredchannel?: string;
+    @ApiProperty({ description: 'en or ta: language of WhatsApp messages', required: false })
+    readonly messagelanguage?: string;
 
     @ApiProperty({ description: 'confirm a different person on a mobile another customer already has', required: false })
     readonly confirmduplicate?: boolean;

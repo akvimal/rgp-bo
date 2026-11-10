@@ -203,6 +203,18 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     ],
   },
   {
+    key: 'whatsapp',
+    label: 'WhatsApp',
+    description: 'Send bill copies to customers on WhatsApp, from the number of each store, and see what was sent.',
+    group: 'Sales & Store Operations',
+    path: '/secure/whatsapp',
+    actions: [
+      { key: 'view', label: 'View the WhatsApp log and bill status' },
+      { key: 'send', label: 'Send a bill copy to a customer' },
+      { key: 'settings', label: 'Set the store number and token, switch sending on' },
+    ],
+  },
+  {
     key: 'vendorissues',
     label: 'Vendor issues',
     description: 'Invoice corrections and defective goods raised with vendors, tracked to a settlement.',

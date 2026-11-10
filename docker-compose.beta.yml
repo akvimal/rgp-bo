@@ -50,6 +50,8 @@ services:
       GST_RATES: ${GST_RATES:-0,5,12,18}
       # Nothing leaves the beta unless these are set: no Telegram, no AI. A copy of live data must not alert the real staff twice.
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       APP_BASE_URL: ${APP_BASE_URL:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}

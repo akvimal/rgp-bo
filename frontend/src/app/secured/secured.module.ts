@@ -83,6 +83,10 @@ const routes: Routes = [
       loadChildren: () => import('./vendor-issues/vendor-issues.module').then(m => m.VendorIssuesModule)
     },
     {
+      path: 'whatsapp', canActivate:[AuthGuard],
+      loadChildren: () => import('./whatsapp/whatsapp.module').then(m => m.WhatsappModule)
+    },
+    {
       path: 'digital-payments', canActivate:[AuthGuard],
       loadChildren: () => import('./digital-payments/digital-payments.module').then(m => m.DigitalPaymentsModule)
     },{
