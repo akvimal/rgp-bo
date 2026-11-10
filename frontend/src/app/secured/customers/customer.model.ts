@@ -16,6 +16,7 @@ export interface Customer {
     consent?:string|null,
     doNotContact?:boolean,
     preferredChannel?:string|null,
+    messageLanguage?:string|null,
 
     createdon?:string
 }

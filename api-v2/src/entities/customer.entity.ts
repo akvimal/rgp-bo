@@ -51,6 +51,9 @@ export class Customer extends BaseEntity {
   doNotContact: boolean;
   @Column("text", { name: "preferred_channel", nullable: true })
   preferredChannel: string | null;
+  /** en or ta: the language of the WhatsApp templates this customer is sent (null = English) */
+  @Column("character varying", { name: "message_language", length: 2, nullable: true })
+  messageLanguage: string | null;
   /** asked not to be invited to review the store (does not stop other messages) */
   @Column("boolean", { name: "review_optout", default: false })
   reviewOptOut: boolean;

@@ -19,6 +19,7 @@ import { AuditService } from "src/core/audit/audit.service";
 import { loadStoreProfile } from "../store/store-profile";
 import { RETURN_RULES } from "./return-rule";
 import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
 
 import { isManagerRole, NOT_A_PERSON } from 'src/core/roles';
 @ApiTags('Sales')
@@ -31,6 +32,7 @@ export class SaleController {
       private custService:CustomerService,
       private audit:AuditService,
       private hooks:SaleHooks,
+      private whatsapp:WhatsAppService,
       @InjectEntityManager() private manager:EntityManager){}
 
       /**
@@ -128,6 +130,7 @@ export class SaleController {
         const actingUserId = await this.resolveActingUser(createSaleDto.actinguserid, currentUser, undefined, await this.billStore(createSaleDto));
         const created = await this.saleService.create({...createSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(customerDue || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await recordBatchOverride((created as any)?.id ?? null);
+        void this.whatsapp.autoSendBill(currentUser, (created as any)?.id);
         return created;
       }
 
@@ -151,6 +154,7 @@ export class SaleController {
         const saved = await this.saleService.updateSale({...updateSaleDto, ...(digital || {}), ...(staffCredit || {}), ...(customerDue || {}), ...(storeCredit || {}), customer}, currentUser.id, actingUserId);
         await this.recordSaleEdit(sale, updateSaleDto, currentUser.id, actingUserId);
         await recordBatchOverride(updateSaleDto.id ?? null);
+        void this.whatsapp.autoSendBill(currentUser, updateSaleDto.id);
         return saved;
       }
 

@@ -113,6 +113,17 @@
         </div>
     </div>
 </div>
+<div class="non-print card mb-3" *ngIf="canSendWhatsapp" data-testid="bill-wa-card">
+  <div class="card-body py-2">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span>Send this bill to <strong>{{sale.customer?.name}}</strong> on WhatsApp as a PDF.</span>
+      <button type="button" class="btn btn-sm btn-success" [disabled]="waBusy || (waLast && waLast.status !== 'FAILED')" (click)="sendWhatsapp()" data-testid="bill-wa-send">Send on WhatsApp</button>
+      <a href="javascript:void(0)" class="small" (click)="previewWhatsappPdf()" data-testid="bill-wa-preview">Preview the PDF</a>
+      <span class="small ms-auto" *ngIf="waLast" [class.text-danger]="waLast.status === 'FAILED'" data-testid="bill-wa-status">{{waLabel}}<span *ngIf="waLast.last_error"> &middot; {{waLast.last_error}}</span></span>
+    </div>
+    <div class="small text-danger mt-1" *ngIf="waError" data-testid="bill-wa-error">{{waError}}</div>
+  </div>
+</div>
 <div class="non-print card mb-3" *ngIf="invite && (invite.eligible || invite.note || inviteSent || optedOut)" data-testid="bill-invite-card">
   <div class="card-body py-2" *ngIf="invite.eligible && !inviteSent && !optedOut; else inviteState">
     <div class="d-flex flex-wrap align-items-center gap-2">

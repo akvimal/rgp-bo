@@ -28,9 +28,10 @@ import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
 import { JwtService } from "@nestjs/jwt";
 import { AuthModule } from "src/modules/auth/auth.module";
+import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule,StoreModule,ExpenseModule],
+    imports: [TypeOrmModule.forFeature([Sale,SaleItem,SaleDelivery,SaleReturnItem,Customer,AppRole,ProductPriceChange,ProductQtyChange,Setting,StockCount]),AuthModule,StoreModule,ExpenseModule,WhatsAppModule],
     controllers: [SaleController,SaleDeliveryController,SaleSuggestionController, SaleAlternativesController],
     providers: [SaleService,SaleSuggestionService,DrugRefService,SaleDeliveryService,CustomerService,CustomerRelationshipService,CustomerPrivacyService,RoleService,StockService,JwtService],
     exports: [SaleService,SaleDeliveryService],

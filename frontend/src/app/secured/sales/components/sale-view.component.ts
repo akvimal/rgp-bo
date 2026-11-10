@@ -9,6 +9,7 @@ import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
 import { SaleService } from "../sales.service";
 import { canVoidBill, signedInUserId } from "../bill-void";
+import { WhatsappService } from "../../whatsapp/whatsapp.service";
 
 const LICENCE_LABELS: {[type:string]:string} = {
     RETAIL_20_21: 'DL No.', WHOLESALE_20B_21B: 'Wholesale DL No.', FSSAI: 'FSSAI', OTHER: 'Licence'
@@ -110,12 +111,14 @@ export class SaleViewComponent {
       private dateUtilService: DateUtilService,
       private prodUtilService: ProductUtilService,
       public auth: AuthService,
-      public shiftContext: ShiftContextService){}
+      public shiftContext: ShiftContextService,
+      private whatsapp: WhatsappService){}
 
     ngOnInit(){
       const saleId = this.route.snapshot.paramMap.get('id');
       this.saleIdNum = Number(saleId);
       this.customersService.reviewInvite(this.saleIdNum).subscribe(i => this.invite = i, () => this.invite = null);
+      this.loadWhatsapp();
       this.service.billHeader(saleId).subscribe((h:any) => this.setHeader(h), () => {});
       this.service.find(saleId).subscribe((data:any) => this.setSale(data));
     }
@@ -216,6 +219,37 @@ export class SaleViewComponent {
       this.loaded = true;
     }
 
+
+    // ---- the bill copy on WhatsApp (sent from the store's own number, through the queue)
+    waSent: any[] = [];
+    waBusy = false;
+    waError = '';
+
+    /** the bill can be sent: completed, the customer has a mobile, and the person may send */
+    get canSendWhatsapp(): boolean {
+      return this.sale?.status === 'COMPLETE' && !!this.sale?.customer?.mobile && this.auth.isActionAuthorized('whatsapp.send');
+    }
+    get waLast(): any { return this.waSent.length ? this.waSent[0] : null; }
+    get waLabel(): string {
+      const s = this.waLast?.status;
+      return s === 'PENDING' ? 'Waiting to be sent' : s === 'SENT' ? 'Sent' : s === 'DELIVERED' ? 'Delivered' : s === 'READ' ? 'Read by the customer' : s === 'FAILED' ? 'Not sent' : '';
+    }
+
+    loadWhatsapp(){
+      if(!this.auth.isActionAuthorized('whatsapp.view')) return;
+      this.whatsapp.forSale(this.saleIdNum).subscribe(r => this.waSent = r, () => this.waSent = []);
+    }
+
+    sendWhatsapp(){
+      this.waBusy = true; this.waError = '';
+      this.whatsapp.sendBill(this.saleIdNum).subscribe(() => { this.waBusy = false; this.loadWhatsapp(); },
+        err => { this.waBusy = false; this.waError = err?.error?.message || 'The bill could not be queued.'; });
+    }
+
+    previewWhatsappPdf(){
+      this.whatsapp.billPdf(this.saleIdNum).subscribe(b => window.open(URL.createObjectURL(b), '_blank', 'noopener'),
+        err => { this.waError = 'The PDF could not be made.'; });
+    }
 
     /** opens WhatsApp with the message ready and keeps a record, so the same customer is not asked again soon */
     sendInvite(){

@@ -324,7 +324,7 @@ export class CustomerRelationshipService {
   }
 
   /** consent and the stop switch, set from the customer screen */
-  async setConsent(customerId: number, body: { consent?: string | null; doNotContact?: boolean; preferredChannel?: string | null; reviewOptOut?: boolean }, user: any) {
+  async setConsent(customerId: number, body: { consent?: string | null; doNotContact?: boolean; preferredChannel?: string | null; reviewOptOut?: boolean; messageLanguage?: string | null }, user: any) {
     const [c] = await this.manager.query(`select id from customer where id = $1`, [customerId]);
     if (!c) throw new NotFoundException('Customer not found.');
     const values = this.consentValues(body, user.id);
@@ -336,7 +336,7 @@ export class CustomerRelationshipService {
   }
 
   /** validated column values for the consent fields that were sent (shared with the customer save) */
-  consentValues(body: { consent?: any; doNotContact?: any; preferredChannel?: any; reviewOptOut?: any }, userId: number): Record<string, any> {
+  consentValues(body: { consent?: any; doNotContact?: any; preferredChannel?: any; reviewOptOut?: any; messageLanguage?: any }, userId: number): Record<string, any> {
     const v: Record<string, any> = {};
     if (body?.consent !== undefined) {
       const c = body.consent === null || body.consent === '' ? null : String(body.consent).toUpperCase();
@@ -352,12 +352,17 @@ export class CustomerRelationshipService {
       if (ch !== null && !['CALL', 'WHATSAPP', 'SMS'].includes(ch)) throw new BadRequestException('Choose Call, WhatsApp or SMS.');
       v.preferred_channel = ch;
     }
+    if (body?.messageLanguage !== undefined) {
+      const l = body.messageLanguage === null || body.messageLanguage === '' ? null : String(body.messageLanguage).toLowerCase();
+      if (l !== null && !['en', 'ta'].includes(l)) throw new BadRequestException('Choose English or Tamil.');
+      v.message_language = l;
+    }
     return v;
   }
 
   private async consentOf(customerId: number) {
     const [r] = await this.manager.query(
-      `select contact_consent as consent, consent_on, do_not_contact as "doNotContact", preferred_channel as "preferredChannel", review_optout as "reviewOptOut" from customer where id = $1`, [customerId]);
+      `select contact_consent as consent, consent_on, do_not_contact as "doNotContact", preferred_channel as "preferredChannel", review_optout as "reviewOptOut", message_language as "messageLanguage" from customer where id = $1`, [customerId]);
     return r;
   }
 

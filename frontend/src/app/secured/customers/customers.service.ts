@@ -116,7 +116,7 @@ export class CustomersService {
         return this.http.post<any>(`${this.relurl}/${id}/contacts`, body);
     }
 
-    setConsent(id:number, body:{consent?:string|null, doNotContact?:boolean, preferredChannel?:string|null, reviewOptOut?:boolean}){
+    setConsent(id:number, body:{consent?:string|null, doNotContact?:boolean, preferredChannel?:string|null, reviewOptOut?:boolean, messageLanguage?:string|null}){
         return this.http.put<any>(`${this.relurl}/${id}/consent`, body);
     }
 

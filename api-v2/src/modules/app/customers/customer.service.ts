@@ -87,13 +87,14 @@ export class CustomerService {
         if (dto.srctype !== undefined) values.srctype = cleanText(dto.srctype, 30, 'The source');
         if (dto.srcdesc !== undefined) values.srcdesc = cleanText(dto.srcdesc, 120, 'The source text');
         // consent is stamped (when, by whom) only when it actually changes, so the date means "since they said so"
-        const cv = this.relationships.consentValues({ consent: dto.consent, doNotContact: dto.donotcontact, preferredChannel: dto.preferredchannel, reviewOptOut: dto.reviewoptout }, userId);
+        const cv = this.relationships.consentValues({ consent: dto.consent, doNotContact: dto.donotcontact, preferredChannel: dto.preferredchannel, reviewOptOut: dto.reviewoptout, messageLanguage: dto.messagelanguage }, userId);
         if ('contact_consent' in cv && cv.contact_consent !== (existing?.consent ?? null)) {
             values.consent = cv.contact_consent; values.consentOn = cv.consent_on; values.consentBy = cv.consent_by;
         }
         if ('do_not_contact' in cv) values.doNotContact = cv.do_not_contact;
         if ('review_optout' in cv) values.reviewOptOut = cv.review_optout;
         if ('preferred_channel' in cv) values.preferredChannel = cv.preferred_channel;
+        if ('message_language' in cv) values.messageLanguage = cv.message_language;
         try {
             return await this.customerRepository.save(existing ? { ...existing, ...values } : values);
         } catch (e: any) {
