@@ -1,28 +1,28 @@
 import { Component, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "src/environments/environment";
+import { AuthService } from "../../@core/auth/auth.service";
 import { StoreContextService } from "../../@core/store-context.service";
 
 const STATUS_LABEL: { [k: string]: string } = { PENDING: "Waiting", SENT: "Sent", DELIVERED: "Delivered", READ: "Read", FAILED: "Failed", SKIPPED: "Skipped" };
 const KIND_LABEL: { [k: string]: string } = { BILL: "Bill copy", REFILL: "Refill reminder", DUES: "Dues reminder", DELIVERY: "Delivery update", REVIEW: "Review invitation" };
 
-/** One store's WhatsApp number (Meta Cloud API), a test message, and the log of what was sent to customers. */
+/** Sell > WhatsApp: what was sent to customers from a store, and whether it arrived. The number, token and switches are under Settings > WhatsApp. */
 @Component({ selector: "app-whatsapp", templateUrl: "./whatsapp.component.html" })
 export class WhatsappComponent implements OnInit {
   private readonly api = `${environment.apiHost}/whatsapp`;
 
   stores: any[] = [];
   storeId: number | null = null;
+  /** the store's setting as the server returns it (no secrets): whether sending is on, the mode and the limit */
   s: any = null;
-  /** what is typed in the form; the token is only sent when something is typed */
-  form: any = { mode: "MOCK", enabled: false, auto_send_bill: false, monthly_cap: 1000, phone_number_id: "", waba_id: "", display_number: "", token: "" };
   log: any = { messages: [], this_month: 0 };
-  testMobile = "";
-  message = "";
   error = "";
-  busy = false;
 
-  constructor(private http: HttpClient, private storeContext: StoreContextService) {}
+  constructor(private http: HttpClient, private storeContext: StoreContextService, private auth: AuthService) {}
+
+  /** may open Settings > WhatsApp */
+  get canSetup(): boolean { return this.auth.isActionAuthorized('whatsappsettings.manage'); }
 
   ngOnInit() {
     this.stores = this.storeContext.stores;
@@ -43,42 +43,14 @@ export class WhatsappComponent implements OnInit {
 
   load() {
     if (!this.storeId) return;
-    this.error = ""; this.message = "";
-    this.http.get<any>(`${this.api}/settings`, { params: { store_id: String(this.storeId) } }).subscribe(r => {
-      this.s = r;
-      this.form = { mode: r.mode, enabled: r.enabled, auto_send_bill: r.auto_send_bill, monthly_cap: r.monthly_cap, phone_number_id: r.phone_number_id || "", waba_id: r.waba_id || "", display_number: r.display_number || "", token: "" };
-    }, e => { this.s = null; this.error = this.msg(e); });
+    this.error = "";
+    this.http.get<any>(`${this.api}/settings`, { params: { store_id: String(this.storeId) } }).subscribe(r => this.s = r, e => { this.s = null; this.error = this.msg(e); });
     this.loadLog();
   }
 
   loadLog() {
     if (!this.storeId) return;
     this.http.get<any>(`${this.api}/log`, { params: { store_id: String(this.storeId) } }).subscribe(r => this.log = r, () => this.log = { messages: [], this_month: 0 });
-  }
-
-  save() {
-    if (!this.storeId) return;
-    this.busy = true; this.error = ""; this.message = "";
-    const body: any = { ...this.form, monthly_cap: Number(this.form.monthly_cap) };
-    if (!String(body.token || "").trim()) delete body.token;
-    this.http.put<any>(`${this.api}/settings/${this.storeId}`, body).subscribe(r => {
-      this.busy = false; this.s = r; this.form.token = "";
-      this.message = "Saved.";
-    }, e => { this.busy = false; this.error = this.msg(e); });
-  }
-
-  clearToken() {
-    if (!this.storeId) return;
-    this.http.put<any>(`${this.api}/settings/${this.storeId}`, { mode: "MOCK", enabled: false, clear_token: true }).subscribe(r => { this.s = r; this.load(); this.message = "Token removed and sending switched off."; }, e => this.error = this.msg(e));
-  }
-
-  sendTest() {
-    if (!this.storeId) return;
-    this.busy = true; this.error = ""; this.message = "";
-    this.http.post<any>(`${this.api}/test/${this.storeId}`, { mobile: this.testMobile }).subscribe(r => {
-      this.busy = false;
-      this.message = r.mode === "MOCK" ? "Test mode: nothing was sent to WhatsApp (the message was only recorded as a trial)." : "Test message sent.";
-    }, e => { this.busy = false; this.error = this.msg(e); });
   }
 
   private msg(e: any): string {

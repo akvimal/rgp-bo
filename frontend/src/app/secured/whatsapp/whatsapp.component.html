@@ -2,7 +2,7 @@
 <div class="pagetitle"><h1>WhatsApp</h1></div>
 <div class="card">
   <div class="card-body pt-3">
-    <p class="small text-muted mb-3">Each store sends from its own WhatsApp Business number. A bill copy goes to the customer as a PDF, in English or Tamil as set on the customer. Only completed bills go, and never to a customer who has asked not to be contacted.</p>
+    <p class="small text-muted mb-3">Bill copies sent to customers from the WhatsApp number of each store, and whether they arrived. A bill is sent from the bill itself (Sales, open a completed bill).</p>
 
     <div class="row g-2 align-items-end mb-3" *ngIf="stores.length > 1">
       <div class="col-12 col-md-4">
@@ -13,67 +13,22 @@
       </div>
     </div>
 
-    <div *ngIf="message" class="alert alert-success py-2" data-testid="wa-message">{{message}}</div>
     <div *ngIf="error" class="alert alert-danger py-2" data-testid="wa-error">{{error}}</div>
 
     <ng-container *ngIf="s">
-      <div class="alert alert-warning py-2 small" *ngIf="s.mode === 'MOCK'" data-testid="wa-mock-note">
-        <b>Test mode.</b> Nothing is sent to customers. Bills are recorded as sent so you can try the screens. Switch to Live once the number and token from Meta are saved.
+      <div class="alert alert-secondary py-2 small d-flex flex-wrap align-items-center gap-2" *ngIf="!s.enabled" data-testid="wa-off-note">
+        <span>WhatsApp is <b>not switched on</b> for this store, so bills cannot be sent.</span>
+        <a *ngIf="canSetup" routerLink="/secure/settings/whatsapp" data-testid="wa-go-settings">Set it up in Settings &gt; WhatsApp</a>
+        <span class="text-muted" *ngIf="!canSetup">Ask the Business Head to set it up.</span>
       </div>
-      <div class="alert alert-info py-2 small" *ngIf="s.mode === 'LIVE' && s.enabled" data-testid="wa-live-note">
-        <b>Live.</b> Bills are sent to customers' WhatsApp from {{s.display_number || 'this store\'s number'}}.
-      </div>
-
-      <div *isAuth="'whatsapp.settings'" class="border rounded p-3 mb-3" data-testid="wa-settings">
-        <div class="row g-3">
-          <div class="col-6 col-md-3">
-            <label class="form-label">Mode</label>
-            <select class="form-select form-select-sm" [(ngModel)]="form.mode" data-testid="wa-mode">
-              <option value="MOCK">Test (sends nothing)</option>
-              <option value="LIVE">Live</option>
-            </select>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label">Number shown to customers</label>
-            <input class="form-control form-control-sm" [(ngModel)]="form.display_number" maxlength="20" placeholder="+91 98765 43210" data-testid="wa-display">
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label">Phone number id (from Meta)</label>
-            <input class="form-control form-control-sm" [(ngModel)]="form.phone_number_id" maxlength="25" inputmode="numeric" data-testid="wa-phone-id">
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label">WhatsApp account id (from Meta)</label>
-            <input class="form-control form-control-sm" [(ngModel)]="form.waba_id" maxlength="25" inputmode="numeric" data-testid="wa-waba">
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label">Access token <span class="text-muted" *ngIf="s.has_token">(saved, ends {{s.token_hint}}; type a new one to replace it)</span></label>
-            <div class="input-group input-group-sm">
-              <input class="form-control" type="password" autocomplete="off" [(ngModel)]="form.token" placeholder="{{s.has_token ? 'Leave empty to keep the saved token' : 'Paste the token from Meta'}}" data-testid="wa-token">
-              <button class="btn btn-outline-danger" type="button" *ngIf="s.has_token" (click)="clearToken()" data-testid="wa-token-clear">Remove</button>
-            </div>
-            <div class="form-text">The token is stored encrypted and is never shown again.</div>
-          </div>
-          <div class="col-6 col-md-2">
-            <label class="form-label">Monthly limit</label>
-            <input class="form-control form-control-sm" type="number" min="0" max="100000" [(ngModel)]="form.monthly_cap" data-testid="wa-cap">
-            <div class="form-text">Messages a month</div>
-          </div>
-          <div class="col-6 col-md-4 pt-md-4">
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="waOn" [(ngModel)]="form.enabled" data-testid="wa-enabled"><label class="form-check-label" for="waOn">Send WhatsApp messages from this store</label></div>
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="waAuto" [(ngModel)]="form.auto_send_bill" data-testid="wa-auto"><label class="form-check-label" for="waAuto">Send the bill automatically when it is completed</label></div>
-          </div>
-        </div>
-        <div class="mt-3 d-flex flex-wrap gap-2 align-items-center">
-          <button class="btn btn-primary btn-sm" type="button" [disabled]="busy" (click)="save()" data-testid="wa-save">Save</button>
-          <span class="ms-3 small text-muted">Try it:</span>
-          <input class="form-control form-control-sm w-auto" [(ngModel)]="testMobile" placeholder="10-digit mobile" maxlength="15" data-testid="wa-test-mobile">
-          <button class="btn btn-outline-primary btn-sm" type="button" [disabled]="busy || !testMobile" (click)="sendTest()" data-testid="wa-test">Send test message</button>
-        </div>
+      <div class="alert alert-warning py-2 small" *ngIf="s.enabled && s.mode === 'MOCK'" data-testid="wa-mock-note">
+        <b>Test mode.</b> Nothing is sent to customers: bills are only recorded as sent.
       </div>
 
       <div class="d-flex align-items-baseline gap-3 mb-1">
         <h2 class="h6 mb-0">Sent to customers</h2>
         <span class="small text-muted" data-testid="wa-month">{{log.this_month}} this month<span *ngIf="s.monthly_cap"> of {{s.monthly_cap}}</span></span>
+        <a *ngIf="canSetup" routerLink="/secure/settings/whatsapp" class="small" data-testid="wa-settings-link">Settings</a>
         <a role="button" class="small ms-auto" (click)="loadLog()" data-testid="wa-refresh">Refresh</a>
       </div>
       <div class="table-responsive">

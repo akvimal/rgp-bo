@@ -47,8 +47,10 @@ Refill due, dues reminder, delivery update, review invite. Driven from the exist
 
 Set-up in Meta: webhook callback URL `https://<your domain>/api/whatsapp/webhook` (the app's nginx sends `/api/` to the API and strips the prefix), the same verify token as `WHATSAPP_VERIFY_TOKEN`, subscribe to the `messages` field. The API host must be reachable from the internet over HTTPS. The Meta app secret goes in `WHATSAPP_APP_SECRET`. Not done: a reply to the customer confirming the stop, and a team inbox for other replies.
 
-### 7. Screens
-Settings > WhatsApp per store (number id, token, test send, template status), message log with status, send button and status chip on the bill, consent shown in the customer form (already there).
+### 7. Screens (split 2026-11-10)
+- **Settings > WhatsApp** (`/secure/settings/whatsapp`, permission `whatsappsettings.manage`, migration 181): per store the mode, number id, account id, token, monthly limit, the two switches and a test message.
+- **Sell > WhatsApp** (`/secure/whatsapp`, permission `whatsapp.view`): the log of what was sent and its status, with a note and a link to Settings when the store is not switched on.
+- The bill page keeps the send button and status (`whatsapp.send`). Consent and message language are on the customer form.
 
 ## Templates to submit to Meta (en + ta each)
 1. `bill_copy`: utility. Header document, body: "Hi {{1}}, thank you for shopping at {{2}}. Your bill {{3}} for Rs {{4}} is attached."

@@ -15,7 +15,9 @@ export class WhatsAppGuard implements CanActivate {
   async canActivate(ctx: ExecutionContext) {
     const action = this.reflector.get<string>('whatsapp.action', ctx.getHandler()) || 'view';
     const req = ctx.switchToHttp().getRequest();
-    if (!(await this.permissions.can(req.user?.roleid, 'whatsapp', action))) throw new ForbiddenException('You are not allowed to do that with WhatsApp.');
+    // the number, token and switches are setup: they have their own permission (Settings > WhatsApp), apart from sending and reading the log
+    const [resource, act] = action === 'settings' ? ['whatsappsettings', 'manage'] : ['whatsapp', action];
+    if (!(await this.permissions.can(req.user?.roleid, resource, act))) throw new ForbiddenException('You are not allowed to do that with WhatsApp.');
     return true;
   }
 }

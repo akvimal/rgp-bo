@@ -211,7 +211,19 @@ export const PERMISSION_CATALOG: PermissionResource[] = [
     actions: [
       { key: 'view', label: 'View the WhatsApp log and bill status' },
       { key: 'send', label: 'Send a bill copy to a customer' },
-      { key: 'settings', label: 'Set the store number and token, switch sending on' },
+    ],
+  },
+  {
+    key: 'whatsappsettings',
+    label: 'WhatsApp settings',
+    description: 'Set the WhatsApp number and token of each store, the monthly limit, switch sending and automatic bills on, and send a test.',
+    group: 'Administration',
+    path: '/secure/settings/whatsapp',
+    settingsPath: true,
+    bundle: true,
+    bundleLabel: 'Can manage WhatsApp settings',
+    actions: [
+      { key: 'manage', label: 'Manage' },
     ],
   },
   {

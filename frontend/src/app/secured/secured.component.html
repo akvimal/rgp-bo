@@ -363,6 +363,11 @@
                 <i class="bi bi-circle"></i><span>Alerts</span>
               </a>
             </li>
+            <li *isAuth="'whatsappsettings.manage'">
+              <a [routerLinkActive]="['active']" routerLink="/secure/settings/whatsapp" data-testid="nav-settings-whatsapp">
+                <i class="bi bi-circle"></i><span>WhatsApp</span>
+              </a>
+            </li>
             <li *isAuth="'dashsetup.view'">
               <a [routerLinkActive]="['active']" routerLink="/secure/settings/dashboards" data-testid="nav-settings-dashboards">
                 <i class="bi bi-circle"></i><span>Dashboards and compliance</span>

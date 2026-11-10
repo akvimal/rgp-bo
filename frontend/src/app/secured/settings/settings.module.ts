@@ -32,6 +32,7 @@ import { ConfigTransferComponent } from "./config-transfer/config-transfer.compo
 import { StaffDetailsFieldsComponent } from "./users/components/staff-details-fields.component";
 import { NotificationsComponent } from "./notifications/notifications.component";
 import { AlertRulesComponent } from "./alerts/alert-rules.component";
+import { WhatsappSettingsComponent } from "./whatsapp/whatsapp-settings.component";
 import { AiKeyCardComponent } from "./alerts/ai-key-card.component";
 import { AiAssistantSettingsComponent } from "./ai-assistant/ai-assistant-settings.component";
 import { AiUsageReportComponent } from "./ai-assistant/ai-usage-report.component";
@@ -66,6 +67,7 @@ const routes: Routes = [
     { path: 'store', component: StoreSettingsComponent },
     { path: 'notifications', component: NotificationsComponent },
     { path: 'alerts', component: AlertRulesComponent },
+    { path: 'whatsapp', component: WhatsappSettingsComponent },
     { path: 'dashboards', component: DashboardSetupComponent }
   ]},
 ];
@@ -93,6 +95,7 @@ const routes: Routes = [
       StaffDetailsFieldsComponent,
       NotificationsComponent,
       AlertRulesComponent,
+      WhatsappSettingsComponent,
       AiKeyCardComponent,
       AiAssistantSettingsComponent,
       AiUsageReportComponent,
