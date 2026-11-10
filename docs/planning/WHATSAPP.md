@@ -45,7 +45,7 @@ Refill due, dues reminder, delivery update, review invite. Driven from the exist
 - moves a bill's message forward only (Sent, Delivered, Read) with Meta's own timestamps, or to Failed with Meta's reason; late or repeated receipts change nothing;
 - an inbound STOP (or the Tamil word) sent to one of our store numbers sets `do_not_contact`, cancels that customer's waiting messages and writes an audit event.
 
-Set-up in Meta: webhook callback URL `https://<api host>/whatsapp/webhook`, the same verify token as `WHATSAPP_VERIFY_TOKEN`, subscribe to the `messages` field. The API host must be reachable from the internet over HTTPS. The Meta app secret goes in `WHATSAPP_APP_SECRET`. Not done: a reply to the customer confirming the stop, and a team inbox for other replies.
+Set-up in Meta: webhook callback URL `https://<your domain>/api/whatsapp/webhook` (the app's nginx sends `/api/` to the API and strips the prefix), the same verify token as `WHATSAPP_VERIFY_TOKEN`, subscribe to the `messages` field. The API host must be reachable from the internet over HTTPS. The Meta app secret goes in `WHATSAPP_APP_SECRET`. Not done: a reply to the customer confirming the stop, and a team inbox for other replies.
 
 ### 7. Screens
 Settings > WhatsApp per store (number id, token, test send, template status), message log with status, send button and status chip on the bill, consent shown in the customer form (already there).
