@@ -364,6 +364,29 @@ export class HrKpiEngine {
     const months = await this.manager.query(
       `select period, percent::float as percent, band_label, incentive_percent::float as incentive_percent, incentive_amount::float as incentive_amount, total_points::float as total_points, max_points::float as max_points,
               scores, note from hr_kpi_review where employee_id = $1 order by period desc limit 24`, [emp.id]);
-    return { staff: true, months };
+    return { staff: true, months, current: await this.currentSetup(emp.id) };
+  }
+
+  /**
+   * What this person's KPI is made of this month, for them to see: the measures that apply to them, how each turns into points, the bands, and how the system
+   * measures stand so far. A measure a manager rates is shown without any rating (it is given at the month end), and nothing of anyone else is returned.
+   */
+  private async currentSetup(employeeId: number) {
+    const period = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 7);
+    const [row] = await this.draft(period, (e) => e.id === employeeId);
+    if (!row) return null;
+    const bands = await this.manager.query(
+      `select role_name, position_id, label, min_percent::float as min, incentive_percent::float as pct, incentive_amount::float as amt from hr_kpi_band order by min_percent desc`);
+    return {
+      period, finalised: row.finalised,
+      items: row.items.map((i: any) => ({
+        name: i.name, description: i.description, max: i.max, source: i.source, unit: i.unit, direction: i.direction, rule: i.rule, scale: i.scale,
+        // only what the system measured is shown as it stands; a manual rating stays with the manager until the month is finalised
+        state: i.source === 'SYSTEM' ? i.state : 'MANUAL', na_reason: i.source === 'SYSTEM' ? i.na_reason : null,
+        evidence: i.source === 'SYSTEM' ? i.evidence : null, points: i.source === 'SYSTEM' ? i.final_points : null,
+      })),
+      so_far: { percent: row.draft.percent, band_label: row.draft.band_label },
+      bands: pickBands<BandRow>(bands, row.position_id, row.role_name).map((b: any) => ({ label: b.label, min: b.min, incentive_percent: b.pct, incentive_amount: b.amt })),
+    };
   }
 }
