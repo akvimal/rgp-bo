@@ -8,7 +8,8 @@ import { ApprovalPolicy, loadApprovalPolicy } from './invoice-approval';
 export const INVOICE_VIEWS = ['all', 'pending', 'overdue', 'due7', 'hold', 'paid', 'draft', 'awaiting', 'approval', 'ready', 'ready_overdue', 'ready_due7', 'ready_later'] as const;
 export type InvoiceView = typeof INVOICE_VIEWS[number];
 
-export interface InvoiceFilter { vendor?: number; from?: string; to?: string; q?: string; product?: string }
+/** `since`: the usual window (for example the last year): invoices dated before it are left out unless something is still owed on them or they are not received yet */
+export interface InvoiceFilter { vendor?: number; from?: string; to?: string; since?: string; q?: string; product?: string }
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // sortable columns -> SQL (all from the wrapped query below)
@@ -29,6 +30,26 @@ export class InvoiceViewService {
     private readonly audit: AuditService,
   ) {}
 
+  /** recent, or still to be dealt with: an old invoice stays in the list while something is owed on it, or while it is a draft or waiting for the vendor's invoice */
+  private sinceSql(): string {
+    return `(i.invoice_date >= ?::date or i.status <> 'COMPLETE' or i.invoice_no is null
+             or i.total::numeric - coalesce((select sum(vp.amount) from vendor_payment vp where vp.invoice_id = i.id), 0)::numeric > 0.005)`;
+  }
+
+  /** the vendors that have an invoice in the same date window (not narrowed by the vendor, the search words or the view), for the vendor filter */
+  async vendors(f: InvoiceFilter) {
+    const where: string[] = ['i.active and not i.archive'];
+    const args: any[] = [];
+    const add = (sql: string, v: any) => { args.push(v); where.push(sql.split('?').join(`$${args.length}`)); };
+    if (f.from && DATE.test(f.from)) add('i.invoice_date >= ?::date', f.from);
+    if (f.to && DATE.test(f.to)) add('i.invoice_date <= ?::date', f.to);
+    if (f.since && DATE.test(f.since)) add(this.sinceSql(), f.since);
+    return this.manager.query(
+      `select v.id, v.business_name as name, case when not v.active then 'DISABLED' when v.blocked then 'BLOCKED' else 'ACTIVE' end as status
+         from vendor v where v.id in (select i.vendor_id from purchase_invoice i where ${where.join(' and ')})
+        order by lower(v.business_name)`, args);
+  }
+
   /** Shared SELECT: one row per invoice with paid, balance and the derived flags. Filters are bound parameters. */
   private base(f: InvoiceFilter, policy: ApprovalPolicy) {
     const where: string[] = ['i.active and not i.archive'];
@@ -37,6 +58,7 @@ export class InvoiceViewService {
     if (f.vendor) add('i.vendor_id = ?', f.vendor);
     if (f.from && DATE.test(f.from)) add('i.invoice_date >= ?::date', f.from);
     if (f.to && DATE.test(f.to)) add('i.invoice_date <= ?::date', f.to);
+    if (f.since && DATE.test(f.since)) add(this.sinceSql(), f.since);
     if (f.q && f.q.trim()) add(`(i.invoice_no ilike ? or i.challan_no ilike ?)`, `%${f.q.trim()}%`);
     // invoices that have a line for a product whose name contains the text
     if (f.product && f.product.trim()) add(`exists (select 1 from purchase_invoice_item x join product p on p.id = x.product_id where x.invoice_id = i.id and x.active and not x.archive and p.title ilike ?)`, `%${f.product.trim()}%`);

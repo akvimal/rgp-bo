@@ -18,13 +18,19 @@ export class PurchaseInvoiceController {
     constructor(private purchaseInvoiceService:PurchaseInvoiceService, private view:InvoiceViewService, private products:ProductService){}
 
     private filterOf(q:any){
-      return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, q: q.q, product: typeof q.product === 'string' ? q.product : undefined };
+      return { vendor: /^[0-9]+$/.test(String(q.vendor ?? '')) ? +q.vendor : undefined, from: q.from, to: q.to, since: q.since, q: q.q, product: typeof q.product === 'string' ? q.product : undefined };
     }
 
     /** The invoice list: view = all | pending | overdue | due7 | hold | paid | draft, with vendor / date / invoice-no filters and paging. */
     @Get('/search')
     async search(@Query() q:any) {
       return this.view.search(this.filterOf(q), q.view, q.sort, q.dir, q.page ? +q.page : 1, q.limit ? +q.limit : 25);
+    }
+
+    /** The vendors that have invoices in the date window, for the vendor filter (so it does not list every vendor ever). */
+    @Get('/vendors')
+    async vendorsInWindow(@Query() q:any) {
+      return this.view.vendors(this.filterOf(q));
     }
 
     /** Totals for the chips above the list. */

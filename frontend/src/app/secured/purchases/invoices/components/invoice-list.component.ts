@@ -4,6 +4,13 @@ import { combineLatest } from "rxjs";
 import { InvoiceService } from "../invoices.service";
 import { VendorsService } from "../../vendors/vendors.service";
 
+/** the invoice date a year back: what the list shows by default (unpaid invoices stay in the list whatever their date) */
+export function yearAgo(today: Date = new Date()): string {
+    const d = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 const VIEWS = ["all", "pending", "overdue", "due7", "hold", "paid", "draft", "awaiting", "approval", "ready", "ready_overdue", "ready_due7", "ready_later"];
 const MODES = ["Cash", "Transfer", "Cheque", "UPI", "Card"];
 const COMM_STATUSES = ["Not Sent", "Sent", "Acknowledged", "Disputed"];
@@ -23,6 +30,9 @@ export class InvoiceListComponent implements OnInit {
     vendors: any[] = [];
     from = '';
     to = '';
+    /** off: invoices of the last year, and any older one that is still owed; on: every year */
+    allYears = false;
+    private vendorsLoaded = false;
     q = '';
     product = '';
 
@@ -81,7 +91,6 @@ export class InvoiceListComponent implements OnInit {
 
     ngOnInit() {
         this.loadApproval();
-        this.vendorsService.options().subscribe(v => this.vendors = v, () => {});
         combineLatest([this.route.url, this.route.queryParamMap]).subscribe(([segments, q]) => {
             this.isOutstanding = segments?.[0]?.path === 'outstanding';
             const v = q.get('vendor');
@@ -89,16 +98,37 @@ export class InvoiceListComponent implements OnInit {
             const view = q.get('view');
             this.view = view && VIEWS.includes(view) ? view : (this.isOutstanding ? 'pending' : 'all');
             this.page = 1;
+            if (!this.vendorsLoaded) { this.vendorsLoaded = true; this.loadVendors(); }
             this.reload();
         });
     }
 
+    /** only the vendors that have invoices in the window being looked at, so the dropdown (and what is fetched) stays short */
+    private loadVendors(retry = true) {
+        this.service.vendorsIn(this.windowParams()).subscribe(v => {
+            this.vendors = v || [];
+            // a vendor chosen from elsewhere (a link, an old bookmark) whose invoices are all older: widen to every year rather than show an empty choice
+            if (retry && this.vendorId && !this.allYears && !this.vendors.some((x: any) => x.id === this.vendorId)) {
+                this.allYears = true;
+                this.loadVendors(false);
+                this.reload();
+            }
+        }, () => {});
+    }
+
     // ---------------------------------------------------------------- loading
-    private filterParams(): any {
+    /** the date window: the dates typed, else the last year unless every year is asked for */
+    private windowParams(): any {
         const p: any = {};
-        if (this.vendorId) p.vendor = String(this.vendorId);
         if (this.from) p.from = this.from;
         if (this.to) p.to = this.to;
+        if (!this.from && !this.allYears) p.since = yearAgo();
+        return p;
+    }
+
+    private filterParams(): any {
+        const p: any = this.windowParams();
+        if (this.vendorId) p.vendor = String(this.vendorId);
         if ((this.q || '').trim()) p.q = this.q.trim();
         if ((this.product || '').trim()) p.product = this.product.trim();
         return p;
@@ -125,14 +155,17 @@ export class InvoiceListComponent implements OnInit {
         this.router.navigate([], { relativeTo: this.route, queryParams: { vendor: id ? id : null }, queryParamsHandling: 'merge' });
     }
 
-    applyFilters() { this.page = 1; this.reload(); }
+    applyFilters() { this.page = 1; this.loadVendors(); this.reload(); }
+
+    /** the "Show all years" box */
+    setAllYears(on: boolean) { this.allYears = on; this.applyFilters(); }
 
     clearFilters() {
-        this.from = ''; this.to = ''; this.q = ''; this.product = '';
+        this.from = ''; this.to = ''; this.q = ''; this.product = ''; this.allYears = false;
         this.router.navigate([], { relativeTo: this.route, queryParams: { vendor: null, view: null }, queryParamsHandling: 'merge' });
     }
 
-    get hasFilters(): boolean { return !!(this.vendorId || this.from || this.to || this.q || this.product); }
+    get hasFilters(): boolean { return !!(this.vendorId || this.from || this.to || this.q || this.product || this.allYears); }
 
     sortBy(field: string) {
         if (this.sortField === field) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';

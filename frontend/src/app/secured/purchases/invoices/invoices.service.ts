@@ -83,6 +83,11 @@ export class InvoiceService {
     }
 
     /** totals for the chips above the list (same filters, not the view) */
+    /** the vendors that have invoices in the date window (for the list's vendor filter) */
+    vendorsIn(params:any){
+        return this.http.get<any[]>(`${this.apiurl}/purchases/vendors`, { params });
+    }
+
     summary(params:any){
         return this.http.get<any>(`${this.apiurl}/purchases/summary`, { params });
     }
