@@ -1,7 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { saveAs } from "file-saver";
 import { DrugRegisterService } from "./drug-register.service";
-import { detailProblems, RX_LABELS, rxProblems } from "./drug-register-rules";
+import { detailProblems, prescriberProblems, RX_LABELS, rxProblems } from "./drug-register-rules";
 
 const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
@@ -43,6 +43,7 @@ export class DrugRegisterComponent implements OnInit {
 
     load() {
         this.error = ''; this.loading = true;
+        this.loadGaps();
         this.service.coverageReport({ from: this.f.from, to: this.f.to, storeid: this.f.storeid }).subscribe((c: any) => this.report = c, () => this.report = null);
         this.service.register(this.query()).subscribe((r: any) => { this.data = r; this.bills = this.group(r?.coverage?.items || []); this.loading = false; }, (e: any) => { this.loading = false; this.error = this.msg(e, 'Could not load the register.'); });
     }
@@ -65,6 +66,21 @@ export class DrugRegisterComponent implements OnInit {
     pct(n: number, of: number): string { return of ? Math.round((n / of) * 100) + '%' : '-'; }
 
     titles(b: any): string { return b.drugs.map((d: any) => `${d.title} (${d.more_props.schedule})`).join(', '); }
+
+    // ---- supplies made with no prescription in hand: they have no prescriber until the prescription arrives
+    gaps: any[] = [];
+    gapEdit: any = null;
+    loadGaps() { this.service.prescriberGaps().subscribe((r: any) => this.gaps = r?.rows || [], () => this.gaps = []); }
+    openGap(g: any) { this.gapEdit = { bill: g, detail: { prescriber_name: '', prescriber_reg_no: '', prescriber_address: '', rx_date: '' }, busy: false, error: '' }; }
+    closeGap() { this.gapEdit = null; }
+    get gapProblems(): string[] { return this.gapEdit ? prescriberProblems(this.gapEdit.detail) : []; }
+    saveGap() {
+        if (!this.gapEdit || this.gapProblems.length) return;
+        this.gapEdit.busy = true; this.gapEdit.error = '';
+        this.service.addPrescriber(this.gapEdit.bill.sale_id, this.gapEdit.detail).subscribe(
+            () => { this.gapEdit = null; this.loadGaps(); this.load(); },
+            (e: any) => { this.gapEdit.busy = false; this.gapEdit.error = this.msg(e, 'Could not add the prescriber.'); });
+    }
 
     openLater(b: any) { this.later = { bill: b, detail: {}, busy: false, error: '' }; }
     closeLater() { this.later = null; }

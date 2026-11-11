@@ -43,5 +43,7 @@ export class DrugRegisterController {
   /** how the scheduled supplies of a period were covered, by schedule and by the person who made the sale */
   @Get('coverage-report') async coverageReport(@Query() q: any, @User() u: any) { await this.assertReader(u); return this.register.coverageReport(u, q); }
   /** the patient and the prescriber for a bill that was completed without them */
+  @Get('prescriber-gaps') async prescriberGaps(@User() u: any) { await this.assertReader(u); return this.register.prescriberGaps(u); }
+  @Post('sales/:id/prescriber') async addPrescriber(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { await this.assertReader(u); return this.register.addPrescriber(u, id, b); }
   @Post('sales/:id/details') async addDetails(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { await this.assertReader(u); return this.register.addDetails(u, id, b); }
 }

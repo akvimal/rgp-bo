@@ -11,16 +11,33 @@ export interface ScheduleDetail {
 
 const t = (v: any) => String(v ?? '').replace(/\s+/g, ' ').trim();
 
-/** what is still missing: the patient's name and address, the prescriber's name, and the prescriber's registration number or address */
-export function detailProblems(d: ScheduleDetail | null | undefined, today: string = new Date().toISOString().slice(0, 10)): string[] {
+/** no prescription in hand (it will come later, the customer could not provide one, another reason): there is no prescriber to record, so none is asked for */
+export const NO_PRESCRIPTION_BASES = ['LATER', 'COULD_NOT', 'OTHER'];
+export const withoutPrescription = (basis: string | null | undefined): boolean => NO_PRESCRIPTION_BASES.indexOf(t(basis)) >= 0;
+
+const dateProblem = (d: ScheduleDetail | null | undefined, today: string): string[] => {
+    const rx = t(d?.rx_date);
+    return rx && (!/^\d{4}-\d{2}-\d{2}$/.test(rx) || rx > today) ? ['a valid prescription date (not in the future)'] : [];
+};
+
+/** what is still missing of the prescriber: the name, and the registration number or an address; and a valid date when one is given */
+export function prescriberProblems(d: ScheduleDetail | null | undefined, today: string = new Date().toISOString().slice(0, 10)): string[] {
+    const out: string[] = [];
+    if (t(d?.prescriber_name).length < 3) out.push("the prescriber's name");
+    if (!t(d?.prescriber_reg_no) && t(d?.prescriber_address).length < 5) out.push("the prescriber's registration number or address");
+    return [...out, ...dateProblem(d, today)];
+}
+
+/**
+ * What is still missing: the patient's name and address and, unless there is no prescription in hand, the prescriber's name and registration number or
+ * address. `hasPrescription` is a prescription attached to the bill (which makes the status "attached" whatever was chosen).
+ */
+export function detailProblems(d: ScheduleDetail | null | undefined, today: string = new Date().toISOString().slice(0, 10), hasPrescription = false): string[] {
     const out: string[] = [];
     if (t(d?.patient_name).length < 2) out.push("the patient's name");
     if (t(d?.patient_address).length < 5) out.push("the patient's address");
-    if (t(d?.prescriber_name).length < 3) out.push("the prescriber's name");
-    if (!t(d?.prescriber_reg_no) && t(d?.prescriber_address).length < 5) out.push("the prescriber's registration number or address");
-    const rx = t(d?.rx_date);
-    if (rx && (!/^\d{4}-\d{2}-\d{2}$/.test(rx) || rx > today)) out.push('a valid prescription date (not in the future)');
-    return out;
+    if (!withoutPrescription(hasPrescription ? 'ATTACHED' : d?.rx_basis)) out.push(...prescriberProblems(d, today).filter((p) => p.indexOf('a valid') !== 0));
+    return [...out, ...dateProblem(d, today)];
 }
 
 /** how a supply stands with its prescription; the three marked auto are set by the panel when a prescription is used, attached or uploaded */
@@ -43,6 +60,7 @@ export function rxProblems(d: ScheduleDetail | null | undefined, hasPrescription
     if (hasPrescription) return out;
     const b = t(d?.rx_basis);
     if (b === 'OTHER' && t(d?.rx_note).length < 3) out.push('a few words on why there is no prescription');
+    if (b === 'COULD_NOT' && t(d?.rx_note).length < 3) out.push('a few words on why the customer could not provide one');
     if (b === 'LATER') {
         if (!customerOnRecord) out.push('a customer on record to ask for it (add the customer to the bill)');
         const due = t(d?.rx_due);

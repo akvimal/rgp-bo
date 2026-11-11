@@ -29,14 +29,34 @@ export function normaliseDetail(d: any): Detail {
   };
 }
 
-/** what is still missing: the patient's name and address, the prescriber's name, and the prescriber's registration number or address */
-export function detailProblems(raw: any, today: string = new Date().toISOString().slice(0, 10)): string[] {
+/**
+ * When no prescription is in hand (it will be brought later, the customer could not provide one, or another reason is given) there is no prescriber to record:
+ * asking for one would only make a name up. The register line then carries the reason, and the prescriber is added if a prescription arrives.
+ */
+export const NO_PRESCRIPTION_BASES = ['LATER', 'COULD_NOT', 'OTHER'] as const;
+export const withoutPrescription = (basis: string | null | undefined): boolean => (NO_PRESCRIPTION_BASES as readonly string[]).includes(String(basis ?? ''));
+
+/** what is still missing of the prescriber: the name, and the registration number or address; and a prescription date that is valid when one is given */
+export function prescriberProblems(raw: any, today: string = new Date().toISOString().slice(0, 10)): string[] {
+  const d = normaliseDetail(raw);
+  const out: string[] = [];
+  if (d.prescriber_name.length < 3) out.push("the prescriber's name");
+  if (!d.prescriber_reg_no && d.prescriber_address.length < 5) out.push("the prescriber's registration number or address");
+  const given = clean(raw?.rx_date, 10);
+  if (given && (d.rx_date === null || d.rx_date > today)) out.push('a valid prescription date (not in the future)');
+  return out;
+}
+
+/**
+ * What is still missing: the patient's name and address, and (unless no prescription is in hand, see `basis`) the prescriber's name and the prescriber's
+ * registration number or address. A prescription date, when given, must be valid either way.
+ */
+export function detailProblems(raw: any, today: string = new Date().toISOString().slice(0, 10), basis: string | null = null): string[] {
   const d = normaliseDetail(raw);
   const out: string[] = [];
   if (d.patient_name.length < 2) out.push("the patient's name");
   if (d.patient_address.length < 5) out.push("the patient's address");
-  if (d.prescriber_name.length < 3) out.push("the prescriber's name");
-  if (!d.prescriber_reg_no && d.prescriber_address.length < 5) out.push("the prescriber's registration number or address");
+  if (!withoutPrescription(basis)) out.push(...prescriberProblems(raw, today).filter((p) => !p.startsWith('a valid')));
   const given = clean(raw?.rx_date, 10);
   if (given && (d.rx_date === null || d.rx_date > today)) out.push('a valid prescription date (not in the future)');
   return out;
@@ -113,6 +133,7 @@ export function rxProblems(raw: any, docs: any = [], today: string = new Date().
   const rx = normaliseRx(raw, docs);
   const out: string[] = [];
   if (rx.basis === 'OTHER' && rx.note.length < 3) out.push('a few words on why there is no prescription');
+  if (rx.basis === 'COULD_NOT' && rx.note.length < 3) out.push('a few words on why the customer could not provide one');
   if (rx.basis === 'LATER' && (!rx.due || rx.due < today || rx.due > plusDays(today, LATER_MAX_DAYS))) out.push(`the day the prescription will be brought (within ${LATER_MAX_DAYS} days)`);
   return out;
 }

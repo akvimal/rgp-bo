@@ -1,4 +1,4 @@
-import { detailProblems, distinctPatients, distinctPrescribers, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel, normaliseRx, parseStandingMonths, rxProblems, standingState, validUntil } from './drug-register-rules';
+import { prescriberProblems, withoutPrescription, detailProblems, distinctPatients, distinctPrescribers, draftEntries, normaliseDetail, parseRequired, requiredLines, scheduledLines, schedulesOf, serialLabel, normaliseRx, parseStandingMonths, rxProblems, standingState, validUntil } from './drug-register-rules';
 
 const good = { patient_name: 'A Patient', patient_address: '12 Main Road, Town', prescriber_name: 'Dr B Doctor', prescriber_reg_no: 'TN12345' };
 
@@ -114,6 +114,47 @@ describe('people offered for copying on the counter', () => {
     expect(distinctPatients(many, 3)).toHaveLength(3);
     expect(distinctPrescribers(many)).toHaveLength(5);
     expect(distinctPatients(undefined as any)).toEqual([]);
+  });
+});
+
+describe('no prescription in hand: the prescriber is not asked for', () => {
+  const patientOnly = { patient_name: 'A Patient', patient_address: '12 Main Road, Town' };
+
+  it('knows which statuses mean there is no prescription', () => {
+    for (const b of ['LATER', 'COULD_NOT', 'OTHER']) expect(withoutPrescription(b)).toBe(true);
+    for (const b of ['ATTACHED', 'ON_FILE', 'LAST_SUPPLY', 'SEEN', 'REGULAR', null, undefined, '']) expect(withoutPrescription(b as any)).toBe(false);
+  });
+
+  it('asks for the patient but not the prescriber when there is no prescription', () => {
+    for (const b of ['LATER', 'COULD_NOT', 'OTHER']) expect(detailProblems(patientOnly, undefined, b)).toEqual([]);
+    expect(detailProblems({}, undefined, 'COULD_NOT')).toEqual(["the patient's name", "the patient's address"]);
+  });
+
+  it('still asks for the prescriber whenever a prescription exists, or when nothing is said', () => {
+    for (const b of ['ATTACHED', 'ON_FILE', 'LAST_SUPPLY', 'SEEN', 'REGULAR', null]) {
+      expect(detailProblems(patientOnly, undefined, b as any)).toEqual(["the prescriber's name", "the prescriber's registration number or address"]);
+    }
+    expect(detailProblems(patientOnly)).toEqual(["the prescriber's name", "the prescriber's registration number or address"]);
+  });
+
+  it('keeps checking a prescription date that is given, whatever the status', () => {
+    expect(detailProblems({ ...patientOnly, rx_date: '2999-01-01' }, '2026-11-11', 'COULD_NOT')).toEqual(['a valid prescription date (not in the future)']);
+    expect(detailProblems({ ...good, rx_date: '2999-01-01' }, '2026-11-11', 'ATTACHED')).toEqual(['a valid prescription date (not in the future)']);
+    expect(detailProblems({ ...patientOnly, rx_date: '2026-11-01' }, '2026-11-11', 'COULD_NOT')).toEqual([]);
+  });
+
+  it('checks the prescriber alone (when it is added after the prescription arrives)', () => {
+    expect(prescriberProblems({})).toEqual(["the prescriber's name", "the prescriber's registration number or address"]);
+    expect(prescriberProblems({ prescriber_name: 'Dr B Doctor', prescriber_address: 'Clinic, 4 High Street' })).toEqual([]);
+    expect(prescriberProblems({ prescriber_name: 'Dr B Doctor', prescriber_reg_no: 'TN1', rx_date: '2999-01-01' }, '2026-11-11')).toEqual(['a valid prescription date (not in the future)']);
+  });
+
+  it('wants a few words when the customer could not provide a prescription', () => {
+    expect(rxProblems({ rx_basis: 'COULD_NOT' })).toEqual(['a few words on why the customer could not provide one']);
+    expect(rxProblems({ rx_basis: 'COULD_NOT', rx_note: 'ok' })).toEqual(['a few words on why the customer could not provide one']);
+    expect(rxProblems({ rx_basis: 'COULD_NOT', rx_note: 'Pharmacist advised a topical cream' })).toEqual([]);
+    expect(rxProblems({ rx_basis: 'OTHER' })).toEqual(['a few words on why there is no prescription']);
+    expect(rxProblems({ rx_basis: 'SEEN' })).toEqual([]);
   });
 });
 

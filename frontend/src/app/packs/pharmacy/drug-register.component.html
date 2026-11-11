@@ -49,6 +49,41 @@
   <span *ngFor="let s of ['H1','H','X']" class="me-3">Schedule {{s}}: <b>{{data.totals[s].lines}}</b> line{{data.totals[s].lines === 1 ? '' : 's'}}, {{data.totals[s].units}} unit{{data.totals[s].units === 1 ? '' : 's'}}</span>
 </div>
 
+<div class="card mb-3 border-warning" *ngIf="gaps.length" data-testid="dr-gaps">
+  <div class="card-body py-2">
+    <div class="fw-semibold">Supplied with no prescriber on record <span class="badge bg-warning text-dark ms-1">{{gaps.length}}</span></div>
+    <div class="small text-muted mb-2">These were supplied with no prescription in hand, so there was no prescriber to record. When a prescription has been attached to the bill, add the prescriber here.</div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0 small">
+        <thead><tr><th>Bill</th><th>Date</th><th>Drugs</th><th>Patient</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let g of gaps" data-testid="dr-gap">
+            <td>{{g.bill_no}}</td><td>{{g.day | date:'dd MMM yyyy'}}</td><td>{{g.drugs}}</td><td>{{g.patient_name}}</td>
+            <td>{{g.rx_label}}<span class="text-muted" *ngIf="g.rx_note">: {{g.rx_note}}</span></td>
+            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary" *ngIf="g.can_add" (click)="openGap(g)" data-testid="dr-gap-add">Add prescriber</button>
+              <span class="text-muted" *ngIf="!g.can_add">Waiting for a prescription</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="border rounded p-2 mt-2" *ngIf="gapEdit" data-testid="dr-gap-form">
+      <div class="small fw-semibold mb-1">Prescriber for bill {{gapEdit.bill.bill_no}}</div>
+      <div class="row g-2">
+        <div class="col-md-4"><input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Doctor name *" [(ngModel)]="gapEdit.detail.prescriber_name" data-testid="dr-gap-name"></div>
+        <div class="col-md-3"><input type="text" class="form-control form-control-sm" maxlength="40" placeholder="Registration no" [(ngModel)]="gapEdit.detail.prescriber_reg_no" data-testid="dr-gap-reg"></div>
+        <div class="col-md-3"><input type="text" class="form-control form-control-sm" maxlength="200" placeholder="Clinic or address" [(ngModel)]="gapEdit.detail.prescriber_address" data-testid="dr-gap-address"></div>
+        <div class="col-md-2"><input type="date" class="form-control form-control-sm" title="Date on the prescription" [(ngModel)]="gapEdit.detail.rx_date" data-testid="dr-gap-date"></div>
+      </div>
+      <div class="small text-danger mt-1" *ngIf="gapProblems.length" data-testid="dr-gap-problems">Give {{gapProblems.join(', ')}}.</div>
+      <div class="small text-danger mt-1" *ngIf="gapEdit.error" data-testid="dr-gap-error">{{gapEdit.error}}</div>
+      <div class="mt-2">
+        <button type="button" class="btn btn-sm btn-primary me-2" [disabled]="gapEdit.busy || gapProblems.length" (click)="saveGap()" data-testid="dr-gap-save">Save</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeGap()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="card mb-3" *ngIf="report && report.totals.supplies" data-testid="dr-coverage">
   <div class="card-body py-2">
     <div class="fw-semibold small mb-1">How the scheduled supplies were covered

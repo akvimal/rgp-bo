@@ -7,7 +7,7 @@ import { businessOfUser } from 'src/core/business-of-user';
 import { isOwnerRole } from 'src/core/roles';
 import { SaleContext, SavedSaleContext } from 'src/core/sale-hooks/sale-hooks';
 import {
-  Rx, RX_LABELS, Schedule, SCHEDULES, ScheduledProduct, detailProblems, distinctPatients, distinctPrescribers, draftEntries, normaliseDetail, normaliseRx, parseRequired, parseStandingMonths, requiredLines, rxProblems, scheduledLines, schedulesOf, serialLabel, standingState,
+  Rx, RX_LABELS, Schedule, SCHEDULES, ScheduledProduct, detailProblems, prescriberProblems, withoutPrescription, distinctPatients, distinctPrescribers, draftEntries, normaliseDetail, normaliseRx, parseRequired, parseStandingMonths, requiredLines, rxProblems, scheduledLines, schedulesOf, serialLabel, standingState,
 } from './drug-register-rules';
 import { NIL_MOBILE } from 'src/modules/app/customers/customer-rules';
 import { buildRegisterPdf } from './drug-register-pdf';
@@ -85,7 +85,8 @@ export class DrugRegisterService {
     const enforced = await this.enforced(ctx.manager);
     const need = covered.filter((n) => enforced.includes(n.product.schedule));
     if (!need.length) return;
-    const problems = detailProblems(ctx.sale?.props?.scheduledetail, istDay());
+    const basisNow = normaliseRx(ctx.sale?.props?.scheduledetail, ctx.sale?.props?.documents).basis;
+    const problems = detailProblems(ctx.sale?.props?.scheduledetail, istDay(), basisNow);
     if (!problems.length) return;
     const names = [...new Set(need.map((n) => n.product.title))].slice(0, 3).join(', ');
     throw new BadRequestException(`This bill has a scheduled drug (Schedule ${schedulesOf(need).join(', ')}: ${names}). Give ${problems.join(', ')} before completing it.`);
@@ -114,7 +115,7 @@ export class DrugRegisterService {
     const rx = scheduled.length ? normaliseRx(raw, ctx.sale?.props?.documents) : normaliseRx(null);
     await this.syncFollowup(m, { storeId, saleId, customerId: ctx.saved?.customerid ?? 0, rx, userId: ctx.userId });
     if (!scheduled.length) return;
-    if (detailProblems(raw, istDay()).length) return;          // only drugs the setting does not cover, and no details given: nothing to record
+    if (detailProblems(raw, istDay(), rx.basis).length) return;          // only drugs the setting does not cover, and no details given: nothing to record
     const d = normaliseDetail(raw);
 
     await this.writeEntries(m, { storeId, saleId, billNo: ctx.saved?.billno ?? null, billDate: ctx.saved?.billdate ? new Date(ctx.saved.billdate) : new Date(), scheduled, d, rx, userId: ctx.userId, by });
@@ -145,7 +146,8 @@ export class DrugRegisterService {
     const [st] = storeId ? await m.query(`select business_id from stores where id = $1`, [storeId]) : [null];
     if (!st) return;
     const businessId = +st.business_id;
-    const prescriberId = await this.prescriberId(m, businessId, d, a.userId);
+    // no prescription in hand: no prescriber to record, so no prescriber row is made (the register line says why)
+    const prescriberId = d.prescriber_name.length >= 3 ? await this.prescriberId(m, businessId, d, a.userId) : null;
     const drafts = draftEntries(scheduled);
     const expiry = drafts.length ? await m.query(`select id, exp_date from purchase_invoice_item where id = any($1::int[])`, [drafts.map((x) => x.itemid).filter(Boolean)]) : [];
     const expOf = new Map<number, string | null>(expiry.map((e: any) => [+e.id, e.exp_date]));
@@ -179,14 +181,14 @@ export class DrugRegisterService {
     const [sale] = await this.manager.query(`select id, store_id, bill_no, bill_date, status, customer_id, more_props from sale where id = $1 and active and not archive`, [Number(saleId) || 0]);
     if (!sale || !sc.stores.some((s) => s.id === +sale.store_id)) throw new NotFoundException('Bill not found.');
     if (String(sale.status).toUpperCase() !== 'COMPLETE') throw new BadRequestException('Only a completed bill has register lines.');
-    const problems = detailProblems(raw, istDay());
-    if (problems.length) throw new BadRequestException(`Give ${problems.join(', ')}.`);
-    const d = normaliseDetail(raw);
     const kept = typeof sale.more_props === 'string' ? JSON.parse(sale.more_props || '{}') : sale.more_props || {};
     const source = raw?.rx_basis ? raw : kept.scheduledetail;
+    const rx = normaliseRx(source, kept.documents);
+    const problems = detailProblems(raw, istDay(), rx.basis);
+    if (problems.length) throw new BadRequestException(`Give ${problems.join(', ')}.`);
+    const d = normaliseDetail(raw);
     const rxIssues = rxProblems(source, kept.documents, istDay());
     if (rxIssues.length) throw new BadRequestException(`Give ${rxIssues.join(', ')}.`);
-    const rx = normaliseRx(source, kept.documents);
     const rows = await this.manager.query(
       `select si.id, si.purchase_item_id as itemid, si.product_id as productid, si.batch, si.qty from sale_item si
         where si.sale_id = $1 and si.status = 'Complete' and si.active and not si.archive`, [sale.id]);
@@ -201,6 +203,50 @@ export class DrugRegisterService {
     });
     await this.audit.record({ userId: user.id, action: 'drug_register.details_added', entityType: 'sale', entityId: +sale.id, summary: `Register details added to bill ${sale.bill_no}`, details: { patient: d.patient_name, prescriber: d.prescriber_name } });
     return { sale_id: +sale.id };
+  }
+
+  // ------------------------------------------------------------------ supplies with no prescriber yet
+  /**
+   * The supplies whose register line has no prescriber: made with no prescription in hand. Each says how it stands (the reason, or "attached" once the
+   * prescription has arrived, when the prescriber can be added). Bills of the stores the person can see, newest first.
+   */
+  async prescriberGaps(user: any) {
+    const sc = await this.scope(user);
+    const ids = sc.stores.map((s) => s.id);
+    if (!ids.length) return { rows: [] };
+    const rows = await this.manager.query(
+      `select r.sale_id, r.bill_no, to_char(min(r.entry_on at time zone 'Asia/Kolkata'), 'YYYY-MM-DD') as day, st.location as store,
+              string_agg(distinct r.drug_name, ', ') as drugs, count(*)::int as lines, max(r.patient_name) as patient_name,
+              max(r.rx_basis) as rx_basis, max(r.rx_note) as rx_note
+         from schedule_register r left join stores st on st.id = r.store_id
+        where r.business_id = $1 and r.store_id = any($2::int[]) and r.superseded_on is null and length(btrim(r.prescriber_name)) < 3
+        group by r.sale_id, r.bill_no, st.location order by min(r.entry_on) desc limit 200`, [sc.businessId, ids]);
+    return { rows: rows.map((r: any) => ({ ...r, rx_label: r.rx_basis ? (RX_LABELS as any)[r.rx_basis] ?? r.rx_basis : '', can_add: !withoutPrescription(r.rx_basis) })) };
+  }
+
+  /** the prescriber of a supply made without one, once the prescription has arrived: the register lines of the bill are completed (and audited) */
+  async addPrescriber(user: any, saleId: number, raw: any) {
+    const sc = await this.scope(user);
+    const [sale] = await this.manager.query(`select id, store_id from sale where id = $1 and active and not archive`, [Number(saleId) || 0]);
+    if (!sale || !sc.stores.some((s) => s.id === +sale.store_id)) throw new NotFoundException('Bill not found.');
+    const lines = await this.manager.query(
+      `select id, rx_basis from schedule_register where sale_id = $1 and superseded_on is null and length(btrim(prescriber_name)) < 3`, [sale.id]);
+    if (!lines.length) throw new BadRequestException('This bill has no register line without a prescriber.');
+    const stuck = lines.find((l: any) => withoutPrescription(l.rx_basis));
+    if (stuck) throw new BadRequestException(`There is no prescription on this bill yet (${(RX_LABELS as any)[stuck.rx_basis] ?? stuck.rx_basis}). Attach the prescription to the bill first, then add the prescriber.`);
+    const problems = prescriberProblems(raw, istDay());
+    if (problems.length) throw new BadRequestException(`Give ${problems.join(', ')}.`);
+    const d = normaliseDetail(raw);
+    await this.manager.transaction(async (m) => {
+      const pid = await this.prescriberId(m, sc.businessId, d, user.id);
+      await m.query(
+        `update schedule_register set prescriber_id = $2, prescriber_name = $3, prescriber_reg_no = $4, prescriber_address = $5, rx_date = coalesce($6::date, rx_date)
+          where sale_id = $1 and superseded_on is null and length(btrim(prescriber_name)) < 3`,
+        [sale.id, pid, d.prescriber_name, d.prescriber_reg_no || null, d.prescriber_address || null, d.rx_date]);
+      await this.audit.record({ userId: user.id, action: 'drug_register.prescriber_added', entityType: 'sale', entityId: +sale.id, summary: `Prescriber added to the register lines of sale ${sale.id}`,
+        details: { lines: lines.length, prescriber: d.prescriber_name } });
+    });
+    return { sale_id: +sale.id, lines: lines.length };
   }
 
   // ------------------------------------------------------------------ what is already on record for a customer (for the counter)

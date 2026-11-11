@@ -26,6 +26,10 @@ export class DrugRegisterService {
     /** the prescriptions promised for later and not yet brought */
     followups() { return this.http.get<{ rows: any[] }>(`${this.api}/followups`); }
     waiveFollowup(id: number, note: string) { return this.http.post<any>(`${this.api}/followups/${id}/waive`, { note }); }
+    /** the supplies made with no prescription in hand, which have no prescriber yet */
+    prescriberGaps() { return this.http.get<{ rows: any[] }>(`${this.api}/prescriber-gaps`); }
+    /** the prescriber of such a supply, once the prescription has arrived */
+    addPrescriber(saleId: number, detail: any) { return this.http.post<any>(`${this.api}/sales/${saleId}/prescriber`, detail); }
     /** the patient and the prescriber for a bill that was completed without them */
     addDetails(saleId: number, detail: any) { return this.http.post<any>(`${this.api}/sales/${saleId}/details`, detail); }
 }

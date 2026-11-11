@@ -55,7 +55,7 @@
                 </div>
                 <div class="row g-2">
                     <div class="col-7 position-relative">
-                        <input type="text" class="form-control form-control-sm" maxlength="100" placeholder="Doctor's name *" [(ngModel)]="detail.prescriber_name" (ngModelChange)="prescriberTyped()" (input)="search()" autocomplete="off" data-testid="sd-prescriber-name">
+                        <input type="text" class="form-control form-control-sm" maxlength="100" [attr.placeholder]="prescriberOptional ? 'Doctor name (optional)' : 'Doctor name *'" [(ngModel)]="detail.prescriber_name" (ngModelChange)="prescriberTyped()" (input)="search()" autocomplete="off" data-testid="sd-prescriber-name">
                         <div class="list-group position-absolute w-100 shadow-sm" style="z-index:20" *ngIf="suggestions.length" data-testid="sd-suggestions">
                             <button type="button" class="list-group-item list-group-item-action py-1 small" *ngFor="let p of suggestions" (click)="pick(p)">{{p.name}}<span class="text-muted" *ngIf="p.reg_no"> &middot; {{p.reg_no}}</span></button>
                         </div>
@@ -90,6 +90,7 @@
                            [placeholder]="detail.rx_basis === 'OTHER' ? 'Why? (required)' : 'Note (optional)'" [(ngModel)]="detail.rx_note" data-testid="sd-basis-note">
                 </ng-container>
             </div>
+            <div class="small text-muted mt-1" *ngIf="prescriberOptional" data-testid="sd-prescriber-optional"><i class="bi bi-info-circle"></i> No prescription yet, so the prescriber is not asked for. Add it from the Drug register when the prescription arrives.</div>
             <div class="small text-muted mt-1" *ngIf="detail.rx_basis === 'LATER' && !hasPrescription" data-testid="sd-basis-later">It will show in the customer worklist until a prescription is uploaded for {{customerName || 'the customer'}}.</div>
             <div class="small text-danger mt-1" *ngIf="rxIssues.length" data-testid="sd-basis-needs">Needs {{rxIssues.join(', ')}}.</div>
         </div>

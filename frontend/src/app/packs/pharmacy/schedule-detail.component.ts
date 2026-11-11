@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
 import { DrugRegisterService } from "./drug-register.service";
-import { detailProblems, laterDefault, laterLast, RX_CHOICES, RX_LABELS, rxProblems, ScheduleDetail } from "./drug-register-rules";
+import { detailProblems, laterDefault, laterLast, RX_CHOICES, RX_LABELS, rxProblems, ScheduleDetail, withoutPrescription } from "./drug-register-rules";
 import { FileUploadService } from "src/app/secured/documents/file-upload.service";
 import { DocumentsService } from "src/app/secured/documents/documents.service";
 import { CustomersService } from "src/app/secured/customers/customers.service";
@@ -61,7 +61,9 @@ export class ScheduleDetailComponent implements OnChanges {
         }
     }
 
-    get problems(): string[] { return detailProblems(this.detail); }
+    get problems(): string[] { return detailProblems(this.detail, undefined, this.hasPrescription); }
+    /** no prescription is in hand, so the prescriber is not asked for (it can be added when the prescription arrives) */
+    get prescriberOptional(): boolean { return !this.hasPrescription && withoutPrescription(this.detail.rx_basis); }
 
     // ------------------------------------------------------------ how the prescription stands
     choices = RX_CHOICES;

@@ -267,14 +267,18 @@ export class SaleFormComponent {
 
   /** the bill cannot be completed until the register has what it needs (only when the shop holds bills back; otherwise the details can follow) */
   get scheduleMissing(): boolean {
-    return (this.enforcedHere && detailProblems(this.scheduleDetail).length > 0) || this.scheduleRxMissing;
+    return (this.enforcedHere && detailProblems(this.scheduleDetail, undefined, this.scheduleHasRx).length > 0) || this.scheduleRxMissing;
   }
 
   /** the prescription status is incomplete: "Other" without words, or "Will bring it later" without a day or a customer on record */
   get scheduleRxMissing(): boolean {
     if (!this.scheduledItems.length) return false;
-    const hasRx = (this.documents || []).some((d:any) => String(d.category || '').toLowerCase() === 'prescription');
-    return rxProblems(this.scheduleDetail, hasRx, !!(this.sale.customer?.existing && this.sale.customer?.id)).length > 0;
+    return rxProblems(this.scheduleDetail, this.scheduleHasRx, !!(this.sale.customer?.existing && this.sale.customer?.id)).length > 0;
+  }
+
+  /** a prescription is attached to the bill */
+  get scheduleHasRx(): boolean {
+    return (this.documents || []).some((d:any) => String(d.category || '').toLowerCase() === 'prescription');
   }
 
   /** a drug on this bill is of a schedule the shop holds bills back for */
