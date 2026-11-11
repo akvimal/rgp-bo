@@ -55,11 +55,11 @@ Each statement carries a **confidence line** (section 8): the known gaps in the 
 
 ## 5. Chart of accounts (starting point **[CA]**)
 
-- **Assets**: Cash in till (per store); Cash in vault; Cash in transit (deposits); Bank (per account); Payment gateway clearing (per provider); Customer dues; Staff advances and credit; Vendor advances and debit notes due; Input GST credit; Stock at cost; Prepaid and deposits; Fixed assets (by class) and accumulated depreciation; Inter-branch (stores).
+- **Assets**: Cash in till (per store); Cash in vault; Cash in transit (deposits); Bank (per account); Payment gateway clearing (per provider); Customer dues; Staff advances and credit; Vendor advances and debit notes due; Input GST credit; Stock at cost; Prepaid; **Investments (fixed deposits and others, per party)**; **Deposits and advances given (rent, utility, vendor and other, per party)**; **Employee loans and advances (per employee)**; Interest accrued; TDS receivable; Fixed assets (by class) and accumulated depreciation; Inter-branch (stores).
 - **Liabilities**: Vendor payables; Output GST payable; Other taxes and TDS payable; Salary and statutory dues payable; Customer store credit and advances; Loans.
 - **Equity** (proprietorship): Capital; Drawings; Current-year profit.
-- **Income**: Sales (by store, by schedule of drug if wanted); Sales returns (contra); Discounts allowed (contra); Other income.
-- **Cost and expenses**: Cost of goods sold; Stock loss (shortage and expiry); Purchase discounts; Salaries; Rent; Electricity; Telephone and internet; Bank charges; Payment gateway fees; Delivery cost; Repairs; Other expenses by category; Cash short and excess; Depreciation; Interest.
+- **Income**: Sales (by store, by schedule of drug if wanted); Sales returns (contra); Discounts allowed (contra); Other income; **Interest income**.
+- **Cost and expenses**: Cost of goods sold; Stock loss (shortage and expiry); Purchase discounts; Salaries; Rent; Electricity; Telephone and internet; Bank charges; Payment gateway fees; Delivery cost; Repairs; Other expenses by category; Cash short and excess; Depreciation; Interest; **Staff loans written off**.
 
 ## 6. How each event posts
 
@@ -79,7 +79,10 @@ Each statement carries a **confidence line** (section 8): the known gaps in the 
 | **Stock transfer between stores** | Dr Inter-branch (receiving store) and Cr Inter-branch (sending store) at cost, with the stock moving |
 | **Stock adjustment / audit result / expiry write-off** | Dr Stock loss; Cr Stock (or the reverse for excess) |
 | **GST payment** | Dr Output GST, Cr Input GST, Dr or Cr the difference to Bank |
-| **Capital, drawings, loans, fixed assets, depreciation, provisions** | Manual journal |
+| **Fixed deposit placed, interest, TDS, maturity** (section 15.1) | Dr Investments, Cr Bank; interest Dr Interest accrued (or Bank), Cr Interest income; TDS Dr TDS receivable; maturity Dr Bank, Cr Investments and Interest accrued |
+| **Deposit or advance given, adjusted, refunded, forfeited** (15.2) | Dr Deposits and advances given, Cr Bank or Cash; adjusted against rent Dr Rent, Cr Deposit; refund Dr Bank, Cr Deposit; forfeited Dr Expense, Cr Deposit |
+| **Employee loan or advance paid, recovered in payroll, settled** (15.3) | Dr Employee loans, Cr Cash or Bank; each payroll Dr Salaries (gross), Cr Employee loans (the instalment), Cr Salary payable (net); on exit the balance is taken from the final settlement |
+| **Capital, drawings, borrowings, fixed assets, depreciation, provisions** | Manual journal |
 
 ## 7. Prerequisites: what must be fixed before the numbers can be trusted
 
@@ -143,6 +146,7 @@ Total roughly 6 to 10 weeks of build plus a shadow quarter; the order lets the o
 8. GST registration type and whether any credit is blocked or reversed (for example on expired stock written off).
 9. Fixed assets: a simple register in the app, or only journals from the CA.
 10. How long to run in shadow before the CA relies on it.
+11. The questions in section 15.5 (fixed deposits, deposits with landlords and institutions, employee loans).
 
 ## 13. Risks
 
@@ -156,6 +160,83 @@ Total roughly 6 to 10 weeks of build plus a shadow quarter; the order lets the o
 
 Statutory financial statements and audit reports; income-tax computation and filing; GST return filing (covered by its own plan in `GST_END_TO_END.md`); payroll statutory returns; budgeting; multi-currency.
 
-## 15. Related
+## 15. Investments, deposits and advances, and employee loans (added 2026-11-11)
+
+These are **balance-sheet items with their own histories**: not bills, not expenses, and not cash. Each needs a small register with a counterparty, terms, a schedule and events, posting to a control account that the register must always equal (section 8). They are the same pattern three times, so they share one design.
+
+### 15.0 Shared design
+
+- **Parties.** A light register of counterparties that are not vendors, customers or employees: banks and institutions, landlords (individuals), the electricity board, and so on. Kind, name, contact, PAN or GSTIN where relevant, documents (the lease, the FD receipt, the sanction letter) using the app's existing document attachments. Vendors, customers and employees keep their own records and are linked, not duplicated.
+- **Arrangement and events.** Every item is one arrangement (a fixed deposit, a deposit with a landlord, a loan to an employee) with a schedule and a list of events (given, interest, adjusted, recovered, refunded, closed). Each event posts through the rules of section 6 and is audited.
+- **Store dimension.** Fixed deposits belong to the **head office**. A **deposit** belongs to the store whose premises or connection it secures. An **employee loan** sits with the employee's store (or the head office, owner's choice **[CA]**); it does not move when the employee does.
+- **Owner's own money.** If "the shop owner" means the **proprietor of this business**, money drawn is **drawings** (equity), not a receivable, because a proprietorship has no separate person to lend to **[CA]**. The registers below are for *other* people and institutions.
+- **Schedules for the CA.** One report lists all three registers by party with amount, rate, dates, interest, TDS and expected recovery, which is the schedule the CA attaches to the balance sheet.
+
+### 15.1 Fixed deposits and other investments (banks and institutions)
+
+- **Register**: institution, deposit number, kind (fixed, recurring, other), principal, rate, start and maturity dates, payout (monthly, quarterly, at maturity or cumulative), auto-renewal, the bank account it was funded from and will mature into, lien or pledge note (for example held as security), TDS on interest, status, documents.
+- **Lifecycle**:
+  1. *Placed*: Dr Investments, Cr Bank. On the bank reconciliation the debit is tagged as a **transfer to investments**, not an expense.
+  2. *Interest*: accrued each month (for cumulative deposits) or each payout date, Dr Interest accrued, Cr Interest income, with the year-end accrual so the income lands in the right year. A payout that arrives Dr Bank, Cr Interest accrued. **TDS** deducted by the bank is Dr TDS receivable (checked against the tax statement the owner downloads **[CA]**).
+  3. *Renewed*: closes the old deposit and opens a new one; interest added to principal if compounded.
+  4. *Matured or closed early*: Dr Bank, Cr Investments and accrued interest; an early-closure penalty is an expense.
+- **Whose deposit is it.** A fixed deposit in the proprietor's own name from personal funds is not a business item; one funded from the business is **[CA]** to classify (business investment, or drawings followed by a personal deposit). Record the owner's decision per deposit.
+- **Statements**: *balance sheet* shows current investments (maturing within 12 months) and non-current; *income statement* shows interest income (other income); *cash flow* shows placing and maturity as investing, interest as investing or operating **[CA]**. For **liquidity** the owner's view shows investments **separately from cash**, as a maturity ladder with the cost of breaking each early; "can we pay this week" counts only cash and bank.
+- **Alerts** (using the existing alerts engine): maturity in 30 days, renewal due, interest not received on the expected date, tax certificate not yet recorded.
+
+### 15.2 Deposits and advances given to individuals and institutions
+
+Examples: the **rent advance held by the shop's owner (landlord)**, the electricity or telephone security deposit, a franchise or licence deposit, an advance to a vendor.
+
+- **Register**: party, kind, store, amount and date, terms (refundable at the end of the lease or on a date, **adjustable against rent** in instalments, forfeitable for stated reasons), whether interest is paid, the lease or receipt attached, expected refund date, status.
+- **Lifecycle**:
+  1. *Given*: Dr Deposits and advances given, Cr Cash or Bank.
+  2. *Adjusted against rent* (when the lease says so): each month Dr Rent, Cr Deposit for the adjusted part; otherwise rent is paid separately as an ordinary recurring expense.
+  3. *Refunded*: Dr Bank, Cr Deposit. *Deducted* by the landlord for damage or arrears: Dr the expense, Cr Deposit. *Irrecoverable*: written off with an approval and a reason.
+- **Vendor advances** are shown in the **payables** screens against that vendor (they reduce what is owed), and in the same control account.
+- **Classification**: current if due back within 12 months, otherwise non-current. Interest-free deposits are carried at the amount paid unless the CA requires otherwise **[CA]**.
+- **Rent itself** is an expense on the store's income statement (a recurring expense already exists). **TDS on rent and GST on rent depend on the landlord, the amount and whether the business is subject to tax audit, so the rule is set by the CA and recorded per lease [CA].**
+- **Alerts**: lease or deposit refund date approaching, deposit adjusted fully, refund overdue.
+
+### 15.3 Employee loans and advances, recovered in salary instalments
+
+Four things that look alike and must not be mixed:
+
+| Kind | What it is | Recovered by | Where it lives |
+|---|---|---|---|
+| **Salary advance** | A small sum against this month's pay | The next payroll, in one go | Employee loans and advances |
+| **Loan** | A larger sum with a fixed number of monthly instalments | Payroll, instalment each month | Employee loans and advances |
+| **Staff credit** | Goods bought on credit at the store (already built) | Payroll, existing recovery | Its own receivable, same recovery step |
+| **Expense advance** | Cash given to spend for the business | Settled by bills, not salary | Employee advances (imprest), cleared on settlement |
+
+- **Loan record**: employee, kind, principal, date and from where it was paid (cash, vault or bank, and the store), purpose, approval (a limit above which the Business Head must approve), number of instalments and amount, first month, interest (none by default; if charged, the rate), generated schedule, running balance, status (active, paused, settled, written off), signed acknowledgement attached.
+- **Recovery in payroll** (extends the existing staff-credit recovery and the earlier design, which is on record: instalment each payroll, deferral when pay is short, pause or skip, part payment, approval above an amount, settlement on exit): each payroll run adds a **Loan instalment** deduction line automatically.
+  - Recovery order: **statutory deductions first, then the loan, then staff credit, then other deductions**.
+  - **Limits**: total deductions from a month's pay stay within the legal cap (commonly **half of the wages [CA, labour law]**) and net pay never falls below a floor the owner sets. A shortfall is carried as **arrears**, visible on the register and the pay slip, never silently dropped.
+  - **Skip or pause** a month, or **part-pay**, only with a reason and an approver; **extra repayment** in cash is allowed and posts to the loan.
+  - **Exit**: the full and final settlement takes the balance from final dues; anything left stays a receivable under recovery, or is **written off** with approval (Dr Staff loans written off).
+- **Postings**: as in section 6. The payroll entry credits the loan account for the instalment, so the employee's net pay falls and the receivable falls by the same amount.
+- **Tax**: an interest-free or low-interest loan above a threshold can create a **taxable perquisite** for the employee **[CA]**; the register keeps the rate and balance so the CA can compute it.
+- **Visibility**: the employee sees their own loan, schedule, instalments paid and balance in My HR and on the pay slip ("balance after this instalment"); the owner sees outstanding by employee, due this month, arrears, total exposure as a share of payroll, and loans on employees who are leaving.
+- **Alerts**: instalment skipped or short, notice given with a balance outstanding, loan ending, exposure above a limit.
+- **Controls**: the register equals the control account; no loan without the required approval; locked payroll months are not changed (as for payroll today).
+
+### 15.4 Where these sit in the plan
+
+- **Phase 1 (ledger core)** adds the parties register and the three control accounts.
+- **Employee loans** belong with **payroll posting** (Phase 1), because the instalment is part of every pay run; they were deferred earlier by the owner and would resume here.
+- **Deposits and fixed deposits** belong before the balance sheet (**Phase 4**), with their schedule report.
+- **Opening balances (Phase 0)** must list every fixed deposit, every deposit and advance held by others, and every employee's loan balance at the opening date, agreed with the CA.
+
+### 15.5 Open questions
+
+1. **Fixed deposits**: how many, with which banks; are they in the business's or the proprietor's name; payout type; who tracks the tax statements?
+2. **Deposits and advances**: list the landlords and institutions holding money, the amounts, and the lease terms (refund date, adjustment against rent, conditions for forfeit). Is the landlord GST-registered, and is TDS deducted on rent today?
+3. **Employee loan policy**: maximum amount, maximum instalments, interest (none?), the deduction cap and net-pay floor, who approves and above what amount, and what happens at exit.
+4. Do **salary advances** and **loans** share one monthly deduction limit with **staff credit**?
+5. Should loans and deposits be shown **per store** or only for the business (section 15.0)?
+6. The CA's position on each **[CA]** point above (own-name deposits, interest-free deposits, perquisite tax, TDS and GST on rent, classification and cash-flow placement).
+
+## 16. Related
 
 `PURCHASING_PAYABLES_GST_PROGRAM.md` (payables and GST reconciliation), `GST_END_TO_END.md`, the finance module (bank import and reconciliation, `finance-bank-records`), the expenses, HR payroll, stock audit and shift cash modules.
