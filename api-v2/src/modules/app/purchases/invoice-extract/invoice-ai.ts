@@ -7,7 +7,7 @@ import { TieOut, tieOut } from './invoice-tieout';
  * result is checked against the invoice's own total before a person sees it. Pure, so it is tested without a model.
  * Bump PROMPT_VERSION when the instructions change: it is part of what a kept answer is based on.
  */
-export const PROMPT_VERSION = 'v1';
+export const PROMPT_VERSION = 'v2';
 
 /** the setting ai.invoice_read: off (the default), text (the words the plain reader found), or full (those, then the pictures when the words are not enough) */
 export type InvoiceReadMode = 'off' | 'text' | 'full';
@@ -38,7 +38,7 @@ export const READ_INVOICE_TOOL: Tool = {
         items: {
           type: 'object',
           properties: {
-            description: { type: 'string', description: 'The product name as printed.' },
+            description: { type: 'string', description: 'The product name as printed, without the pack column (for example 1\'s or 10x10), manufacturer, rack or HSN.' },
             hsn: { ...STR, description: 'HSN code, digits only.' },
             batch: { ...STR, description: 'Batch number as printed.' },
             expiry: { ...STR, description: 'Expiry as printed, for example 04/29 or APR-29.' },
@@ -63,7 +63,7 @@ export const SYSTEM_PROMPT = [
   'You read purchase invoices of Indian pharmacy suppliers and record exactly what is printed.',
   'The invoice is addressed to a pharmacy (the buyer); the details you record are the seller\'s.',
   'Record only what you can see. Never invent a value and never calculate one: when something is not printed or not legible, leave it null.',
-  'Do not mix columns: Pack is not Qty, MRP is not Rate, the discount column is not the rate.',
+  'Do not mix columns: Pack is not Qty, MRP is not Rate, the discount column is not the rate, and the pack is not part of the product name.',
   'Include every item row and nothing else (no totals, tax summaries or bank details).',
   'Call the tool read_invoice with the result.',
 ].join(' ');
@@ -155,20 +155,21 @@ export function fromAi(out: any): AiRead | null {
   for (const r of rows) {
     const description = text(r?.description, 200);
     if (!description) continue;
-    const warnings: string[] = ['Read by the assistant: check it against the invoice.'];
+    const warnings: string[] = [];          // the panel says the whole reading is the assistant's: a line only carries what is special about it
     const tax = pos(r?.gst_percent);
     const rate = pos(r?.rate);
     const amountRead = pos(r?.amount);
     let qty = pos(r?.qty);
+    let derivedHere = false;
     if (qty === null || qty === 0) {
       const q = quantityFromAmount(rate, tax, amountRead);
-      if (q !== null) { qty = q; derived++; warnings.push(`The quantity was not read: ${q} is worked out from the amount and the rate. Check it.`); }
+      if (q !== null) { qty = q; derived++; derivedHere = true; warnings.push(`The quantity was not read: ${q} is worked out from the amount and the rate. Check it.`); }
     }
     const disc = impliedDiscount(qty, rate, tax, amountRead, pos(r?.discount_percent));
     const exp = text(r?.expiry, 20);
     const expdate = exp ? readExpiry(exp) : null;
     if (exp && !expdate) warnings.push(`The expiry "${exp}" could not be understood.`);
-    const unsure: string[] = Array.isArray(r?.unsure) ? r.unsure.map((x: any) => String(x).slice(0, 30)).filter(Boolean).slice(0, 6) : [];
+    const unsure: string[] = Array.isArray(r?.unsure) ? r.unsure.map((x: any) => String(x).slice(0, 30)).filter(Boolean).filter((x: string) => !(derivedHere && /^qty|quantity/i.test(x))).slice(0, 6) : [];
     if (unsure.length) warnings.push(`Hard to read: ${unsure.join(', ')}.`);
     const hsn = String(r?.hsn ?? '').replace(/\D/g, '');
     const amount = qty !== null && rate !== null ? r2(qty * rate * (1 - (disc ?? 0) / 100)) : null;

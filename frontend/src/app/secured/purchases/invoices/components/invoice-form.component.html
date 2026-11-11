@@ -251,8 +251,8 @@
               </table>
               <div class="small" data-testid="inv-x-summary">
                 Lines with tax<span *ngIf="cashFactor < 1" data-testid="inv-x-cd"> and the cash discount</span> come to <b>{{linesNet | number:'1.2-2'}}</b><span *ngIf="form.value.printedtotal"> against the invoice total {{form.value.printedtotal | number:'1.2-2'}}:
-                <span [class.text-success]="linesAgree" [class.text-danger]="!linesAgree" data-testid="inv-x-total-check">{{linesAgree ? 'they agree' : 'they differ, so a line may be missing or misread'}}</span></span>.
-                <span class="text-muted" *ngIf="openCount">Lines still to check are counted when they are complete.</span>
+                <span [class.text-success]="linesAgree" [class.text-danger]="!linesAgree && !incompleteCount" [class.text-muted]="!linesAgree && incompleteCount" data-testid="inv-x-total-check">{{linesAgree ? 'they agree' : (incompleteCount ? 'not every line is counted yet' : 'they differ, so a line may be missing or misread')}}</span></span>.
+                <span class="text-muted" *ngIf="incompleteCount">{{incompleteCount}} line{{incompleteCount === 1 ? '' : 's'}} still need{{incompleteCount === 1 ? 's' : ''}} a product or a detail, and {{incompleteCount === 1 ? 'is' : 'are'}} counted once complete.</span>
               </div>
             </div>
           </div>

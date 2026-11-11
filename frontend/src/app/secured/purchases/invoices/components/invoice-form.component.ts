@@ -409,6 +409,8 @@ export class InvoiceFormComponent implements OnInit {
     /** the lines that count towards the invoice total: the ones checked, and the open ones that are complete */
     get readyLines(): any[] { return this.lines.filter(l => l.state === 'VERIFIED' || (l.state === 'OPEN' && this.ready(l))); }
     get openCount(): number { return this.lines.filter(l => l.state === 'OPEN').length; }
+    /** lines that cannot be counted yet because something is missing (a product, a quantity): they explain why the lines may not match the invoice total */
+    get incompleteCount(): number { return this.lines.filter(l => l.state === 'OPEN' && !this.ready(l)).length; }
     get verifiedCount(): number { return this.lines.filter(l => l.state === 'VERIFIED').length; }
     get discardedCount(): number { return this.lines.filter(l => l.state === 'DISCARDED').length; }
     get completeOpenCount(): number { return this.lines.filter(l => l.state === 'OPEN' && l.lineid && this.ready(l)).length; }
