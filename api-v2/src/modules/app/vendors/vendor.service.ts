@@ -41,7 +41,7 @@ export class VendorService {
             name: "name", legalname: "legalname", vendortype: "vendortype", registrationtype: "registrationtype", pan: "pan",
             statecode: "statecode", address: "address", city: "city", pincode: "pincode", contactname: "contactname",
             contactphone: "contactphone", mobile: "mobile", email: "email", repname: "repname", repphone: "repphone",
-            paymenttermsdays: "paymenttermsdays", creditlimit: "creditlimit", discountpcnt: "discountpcnt", bankname: "bankname",
+            paymenttermsdays: "paymenttermsdays", takesback: "takesback", takebackdays: "takebackdays", creditlimit: "creditlimit", discountpcnt: "discountpcnt", bankname: "bankname",
             bankaccount: "bankaccount", bankifsc: "bankifsc", upiid: "upiid", comments: "comments", props: "props",
         };
         for (const k of Object.keys(map)) {

@@ -37,6 +37,8 @@ export interface Vendor {
     gstn?:string,
     pan?:string|null,
     paymenttermsdays?:number,
+    takesback?:string,
+    takebackdays?:number|null,
     creditlimit?:number|null,
     discountpcnt?:number|null,
     bankname?:string|null,

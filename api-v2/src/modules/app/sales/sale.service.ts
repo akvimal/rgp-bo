@@ -350,7 +350,7 @@ export class SaleService {
                         + coalesce((select sum(pq.qty) from product_qtychange pq
                                     where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED'
                                       and pq.active = true and pq.archive = false
-                                      and pq.store_id = $2), 0)
+                                      and pq.store_id = $2), 0) - coalesce((select sum(l.qty) from disposal_pass_line l inner join disposal_pass dp on dp.id = l.pass_id where l.item_id = pii.id and dp.status = 'APPROVED' and dp.store_id = $2), 0)
                         as available
                      from purchase_invoice_item pii
                      inner join purchase_invoice i on i.id = pii.invoice_id

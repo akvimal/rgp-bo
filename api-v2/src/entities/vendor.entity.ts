@@ -43,6 +43,14 @@ import { VendorPayment } from "./vendor-payment.entity";
     @Column("integer", { name: "payment_terms_days", default: 0 })
     paymenttermsdays: number;
 
+    /** whether this vendor takes back expired / near-expiry goods: NONE, NEAR_EXPIRY, EXPIRED or BOTH */
+    @Column("character varying", { name: "takes_back", length: 12, default: "NONE" })
+    takesback: string;
+
+    /** how many days either side of the expiry the vendor accepts a return (null: no limit) */
+    @Column("integer", { name: "takeback_days", nullable: true })
+    takebackdays: number | null;
+
     @Column("character varying", { name: "legal_name", length: 120, nullable: true })
     legalname: string | null;
 

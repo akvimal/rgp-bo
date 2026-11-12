@@ -114,6 +114,16 @@
             <input type="number" min="0" max="365" class="form-control" id="paymenttermsdays" data-testid="vendor-f-terms" formControlName="paymenttermsdays">
           </div>
           <div class="col-md-6 col-lg-3">
+            <label for="takesback" class="form-label">Takes back expired goods</label>
+            <select class="form-select" id="takesback" data-testid="vendor-f-takesback" formControlName="takesback">
+              <option value="NONE">No</option><option value="NEAR_EXPIRY">Near expiry only</option><option value="EXPIRED">Expired only</option><option value="BOTH">Near expiry and expired</option>
+            </select>
+          </div>
+          <div class="col-md-6 col-lg-3" *ngIf="form.value.takesback !== 'NONE'">
+            <label for="takebackdays" class="form-label">Within (days of expiry)</label>
+            <input type="number" min="0" max="720" class="form-control" id="takebackdays" data-testid="vendor-f-takebackdays" formControlName="takebackdays" placeholder="No limit">
+          </div>
+          <div class="col-md-6 col-lg-3">
             <label for="creditlimit" class="form-label">Credit limit (Rs)</label>
             <input type="number" min="0" class="form-control" id="creditlimit" data-testid="vendor-f-credit" formControlName="creditlimit">
           </div>

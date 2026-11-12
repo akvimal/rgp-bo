@@ -21,14 +21,16 @@ import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
 import { StoreStockTransferController } from "./store-stock-transfer.controller";
 import { StoreStockTransferService } from "./store-stock-transfer.service";
+import { DisposalController } from "./disposal.controller";
+import { DisposalService } from "./disposal.service";
 import { JwtService } from "@nestjs/jwt";
 import { AuthModule } from "src/modules/auth/auth.module";
 import { RoleModule } from "../roles/role.module";
 
 @Module({
     imports: [TypeOrmModule.forFeature([Product, ProductPriceChange, ProductQtyChange, PurchaseInvoice, PurchaseInvoiceItem, PurchaseOrder, PurchaseRequest, VendorPayment, Vendor, Business, Store, StoreStockTransfer, Setting, StockCount]),AuthModule,RoleModule],
-    controllers: [StockController,Stock2Controller,StoreStockTransferController],
-    providers: [StockService,Stock2Service,PurchaseInvoiceService,StoreStockTransferService,JwtService],
+    controllers: [StockController,Stock2Controller,StoreStockTransferController,DisposalController],
+    providers: [StockService,Stock2Service,PurchaseInvoiceService,StoreStockTransferService,DisposalService,JwtService],
     exports: [StockService, PurchaseInvoiceService, StoreStockTransferService],
   })
   export class StockModule {}

@@ -35,7 +35,7 @@ export class SaleSuggestionService {
                  - coalesce((select sum(si.qty) from sale_item si inner join sale s on s.id = si.sale_id
                               where si.purchase_item_id = pii.id and si.active = true and si.archive = false and s.store_id = $2), 0)
                  + coalesce((select sum(pq.qty) from product_qtychange pq
-                              where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED' and pq.active = true and pq.archive = false and pq.store_id = $2), 0))::int as available
+                              where pq.item_id = pii.id and coalesce(pq.status, 'APPROVED') = 'APPROVED' and pq.active = true and pq.archive = false and pq.store_id = $2), 0) - coalesce((select sum(l.qty) from disposal_pass_line l inner join disposal_pass dp on dp.id = l.pass_id where l.item_id = pii.id and dp.status = 'APPROVED' and dp.store_id = $2), 0))::int as available
            from purchase_invoice_item pii join purchase_invoice i on i.id = pii.invoice_id join product p on p.id = pii.product_id
           where pii.product_id = any($1::int[]) and pii.status = 'VERIFIED' and pii.active = true and pii.archive = false and p.active = true and p.archive = false
             and (pii.exp_date is null or public.expiry_end(pii.exp_date) >= current_date + ${MIN_SHELF_DAYS})

@@ -46,6 +46,8 @@ export class VendorFormComponent{
         repname: new FormControl(''),
         repphone: new FormControl('', Validators.pattern(/^\s*(\+?91[\s-]?|0)?[6-9][0-9]{9}\s*$|^$/)),
         paymenttermsdays: new FormControl(0, [Validators.min(0), Validators.max(365)]),
+        takesback: new FormControl('NONE'),
+        takebackdays: new FormControl(null, [Validators.min(0), Validators.max(720)]),
         creditlimit: new FormControl(null, Validators.min(0)),
         discountpcnt: new FormControl(null, [Validators.min(0), Validators.max(100)]),
         bankname: new FormControl(''),
@@ -93,7 +95,7 @@ export class VendorFormComponent{
             address: data.address, city: data.city, pincode: data.pincode,
             contactname: data.contactname, contactphone: data.contactphone, mobile: data.mobile, email: data.email,
             repname: data.repname, repphone: data.repphone,
-            paymenttermsdays: data.paymenttermsdays || 0, creditlimit: data.creditlimit, discountpcnt: data.discountpcnt,
+            paymenttermsdays: data.paymenttermsdays || 0, takesback: data.takesback || 'NONE', takebackdays: data.takebackdays ?? null, creditlimit: data.creditlimit, discountpcnt: data.discountpcnt,
             bankname: data.bankname, bankaccount: data.bankaccount, bankifsc: data.bankifsc, upiid: data.upiid,
             comments: data.comments,
           });
@@ -150,7 +152,7 @@ export class VendorFormComponent{
           address: f.address, city: f.city, pincode: f.pincode,
           contactname: f.contactname, contactphone: f.contactphone, mobile: f.mobile, email: f.email,
           repname: f.repname, repphone: f.repphone,
-          paymenttermsdays: +(f.paymenttermsdays || 0), creditlimit: this.num(f.creditlimit), discountpcnt: this.num(f.discountpcnt),
+          paymenttermsdays: +(f.paymenttermsdays || 0), takesback: f.takesback || 'NONE', takebackdays: this.num(f.takebackdays), creditlimit: this.num(f.creditlimit), discountpcnt: this.num(f.discountpcnt),
           bankname: f.bankname, bankaccount: f.bankaccount, bankifsc: f.bankifsc, upiid: f.upiid,
           comments: f.comments,
           licenses: (f.licenses || []).map((l:any) => ({
@@ -176,7 +178,7 @@ export class VendorFormComponent{
       }
 
       reset(){
-        this.form.reset({ registrationtype: 'UNKNOWN', vendortype: '', paymenttermsdays: 0 });
+        this.form.reset({ registrationtype: 'UNKNOWN', vendortype: '', paymenttermsdays: 0, takesback: 'NONE', takebackdays: null });
         this.licenses.clear();
         this.error = '';
       }

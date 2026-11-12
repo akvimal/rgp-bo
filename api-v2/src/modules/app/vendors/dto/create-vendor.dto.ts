@@ -58,6 +58,12 @@ export class CreateVendorDto {
   @ApiPropertyOptional({ description: 'payment terms in days, used to default an invoice due date', example: 0 })
   @IsOptional() @IsInt() @Min(0) @Max(365)
   readonly paymenttermsdays?: number;
+  @ApiPropertyOptional({ description: 'whether the vendor takes back expired or near-expiry goods', enum: ['NONE', 'NEAR_EXPIRY', 'EXPIRED', 'BOTH'] })
+  @IsOptional() @IsIn(['NONE', 'NEAR_EXPIRY', 'EXPIRED', 'BOTH'])
+  readonly takesback?: string;
+  @ApiPropertyOptional({ description: 'days either side of the expiry that the vendor accepts a return; empty = no limit' })
+  @IsOptional() @IsInt() @Min(0) @Max(720)
+  readonly takebackdays?: number | null;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) readonly creditlimit?: number | null;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(100) readonly discountpcnt?: number | null;
 
