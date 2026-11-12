@@ -14,9 +14,12 @@ const run = Date.now().toString().slice(-7);
 const thisMonth = () => { const d = new Date(); d.setUTCDate(1); return d.toISOString().slice(0, 10); };   // good until the end of this month: within 30 days
 const lastMonth = () => { const d = new Date(); d.setUTCMonth(d.getUTCMonth() - 1, 1); return d.toISOString().slice(0, 10); };
 
+let lastLocation = '';
 async function freshStore(api: any) {
-  const s = await api.request('POST', '/stores', { location: `Disp ${Date.now()}.${Math.random().toString(36).slice(2, 5)}`, depositthreshold: 9000, isActive: true }, MGR);
+  const location = `Disp ${Date.now()}.${Math.random().toString(36).slice(2, 5)}`;
+  const s = await api.request('POST', '/stores', { location, depositthreshold: 9000, isActive: true }, MGR);
   expect(s.status).toBeLessThan(300);
+  lastLocation = location;
   return s.body.id as number;
 }
 async function vendor(api: any) {
@@ -180,5 +183,39 @@ test.describe('Out-pass and the expiry list @p1', () => {
     expect(conf.body.witness_id).toBe(staff[0].id);
     expect(conf.body.lines[0].reg_serial).toBeGreaterThan(0);
     expect(row(await expiryOf(api, sid), b.itemid)).toMatchObject({ balance: 4, held: 0 });
+  });
+
+  test('DISP-7 the Expiry screen: bands with counts, Discard makes an out-pass, approve then confirm on the pass; the Held column shows in between @happy', async ({ app, api }) => {
+    const sid = await freshStore(api);
+    const b = await batch(api, sid, 8, lastMonth());
+    const location = lastLocation;
+    const { page } = await app.open(MGR, '/secure/store/stock/expiry');
+    await expect(page.getByTestId('expiry-need-store')).toBeVisible();                           // a Business Head starts on "All stores": the list needs one
+    const picker = page.getByRole('combobox', { name: 'Select store' });
+    await picker.selectOption(String(sid));
+    await expect(page.getByTestId('expiry-screen')).toBeVisible();
+    await expect(page.getByTestId('expiry-band-EXPIRED')).toContainText('1');
+    const line = page.getByTestId('expiry-row').filter({ hasText: b.title });
+    await expect(line).toHaveCount(1);
+    await expect(line.getByTestId('expiry-return')).toHaveCount(0);                               // this vendor does not take expired goods back
+
+    await line.getByTestId('expiry-discard').click();
+    await expect(page.getByTestId('pass-form')).toBeVisible();
+    await page.getByTestId('pass-qty').fill('3');
+    await page.getByTestId('pass-save').click();
+
+    await expect(page.getByTestId('pass-detail')).toBeVisible();
+    await expect(page.getByTestId('pass-status')).toContainText('Waiting for approval');
+    await page.getByTestId('pass-approve').click();
+    await expect(page.getByTestId('pass-status')).toContainText('goods not handed over');
+    await expect(page.getByTestId('pass-confirm-box')).toBeVisible();
+
+    // approved: held 3, still 8 on the books
+    await page.getByRole('link', { name: 'Expiry', exact: true }).click();
+    await expect(page.getByTestId('expiry-row').filter({ hasText: b.title }).getByTestId('expiry-held')).toHaveText('3');
+    await page.goBack();
+    await page.getByTestId('pass-confirm').click();
+    await expect(page.getByTestId('pass-status')).toContainText('Handed over');
+    expect(row(await expiryOf(api, sid), b.itemid)).toMatchObject({ balance: 5, held: 0 });
   });
 });

@@ -26,6 +26,7 @@
                             <th>Sel</th>
                             <th>Adj</th>
                             <th>Bal</th>
+                            <th title="In an approved out-pass, not yet handed over: on the books, not saleable">Held</th>
                             <th></th>
                         </tr>
                     </ng-template>
@@ -39,6 +40,7 @@
                         <td style="text-align:right">{{i.sold}}</td>
                         <td style="text-align:right">{{i.adjusted}}</td>
                         <td style="text-align:right">{{i.balance}}</td>
+                        <td style="text-align:right" data-testid="stk-held"><span *ngIf="i.held" class="badge bg-warning text-dark">{{i.held}}</span></td>
                         <td>
                             <h5 class="icon">
                                 <a href="javascript:void(0)" (click)="showQtyDialog(i)" title="Adjust stock" data-testid="stk-adjust-open">

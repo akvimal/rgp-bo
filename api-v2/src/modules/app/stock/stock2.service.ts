@@ -152,7 +152,10 @@ export class Stock2Service {
     }
 
     async findProductItemsById(id:number) {
-        const purchases = await this.manager.query(`select * from product_items_view where id = ${id} order by invoice_date desc`);
+        // held: the quantity of a batch in an approved out-pass whose goods have not been handed over yet (on the books, not saleable)
+        const purchases = await this.manager.query(`select v.*, coalesce((select sum(l.qty) from disposal_pass_line l inner join disposal_pass dp on dp.id = l.pass_id
+                                                                         where l.item_id = v.item_id and dp.status = 'APPROVED'), 0)::int as held
+                                                      from product_items_view v where v.id = ${id} order by v.invoice_date desc`);
         const sales = await this.manager.query(`select * from product_sale_monthly_view where product_id = ${id} order by sale_month desc`);
         const customers = await this.manager.query(`
         select c.id, c."name", c.mobile, date(DATE_TRUNC('month', s.bill_date)) as sale_month, 

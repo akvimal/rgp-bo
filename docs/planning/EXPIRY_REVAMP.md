@@ -43,3 +43,12 @@ States: DRAFT -> APPROVED (held, not saleable) -> HANDED OVER / DESTROYED (stock
 
 ## Open points
 - The witness rule above (reading of the owner's answer).
+
+## Build status: step 1 (2026-11-12)
+Built and tested locally, committed. Migration 185 (applied to the local dev database only).
+- Vendor `takes_back` / `takeback_days` (vendor form: "Takes back expired goods", "Within (days of expiry)").
+- Out-pass: draft -> approved (held: on the books, not saleable) -> confirmed (stock drops, one adjustment per line linked to the pass); reject, cancel; numbering OP-YYYY-NNNN per business; printable PDF; approval by a Store Head or Business Head (own pass only for owners or "maker may approve" stores); witness for H/H1/X lines confirmed by a non-manager; scheduled lines go in `schedule_disposal_register`.
+- Held is subtracted in billing validation, batch suggestions and store transfers; a Held column shows on Stock > Products (batch table) and on the Expiry screen.
+- Stock > Expiry: bands (Expired / 30 / 31-90 / 91-180 days) with counts, per-row Return to vendor (only where the vendor takes back), Move (links to Transfers), Discard; select several for one out-pass. Stock > Out-passes: list and detail with approve, reject, cancel, confirm, print.
+- Specs: `disposal-rules.spec.ts` (8), QA `disposal-pass.spec.ts` DISP-1..7.
+Not built in step 1: the alert for an approved pass not confirmed after N days; a Disposals tab on the Drug register screen (the register lines are stored and shown on the pass); Move does not preselect the batch on the Transfers screen; Return to vendor still goes through the adjustment form, not a pass.
