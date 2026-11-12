@@ -134,6 +134,17 @@ import { PurchaseRequest } from "./purchase-request.entity";
     @Column("timestamptz", { name: "price_approved_on", nullable: true })
     priceapprovedon: Date | null;
 
+    /** what the purchase order led us to expect for this line (qty still to come, rate, mrp, disc, tax): null when there was no order or no history to expect from */
+    @Column("jsonb", { name: "po_expect", nullable: true })
+    poexpect: any | null;
+
+    /** received although it was not on the purchase order */
+    @Column("boolean", { name: "off_po", default: false })
+    offpo: boolean;
+
+    @Column("character varying", { name: "off_po_reason", length: 200, nullable: true })
+    offporeason: string | null;
+
     @ManyToOne(
       () => PurchaseInvoice,
       (purchaseInvoice) => purchaseInvoice.items

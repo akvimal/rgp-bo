@@ -57,7 +57,7 @@
   </div>
 </div>
 
-  <p-dialog [header]="form.controls['id'].value ? 'Edit Request' : 'Add Request'" [(visible)]="displayForm" [modal]="true" [style]="{width: '50rem'}">
+  <p-dialog [header]="form.controls['id'].value ? 'Edit Purchase Request' : 'New Purchase Request'" [(visible)]="displayForm" [modal]="true" [style]="{width: '50rem'}">
   <form [formGroup]="form" (ngSubmit)="onSave()">
     <div class="row g-3">
       <div class="col-12" *ngIf="errorMessage">
@@ -68,6 +68,7 @@
         <ng-container *ngIf="!typed">
           <div *ngIf="selectedProduct" class="mb-2 fw-semibold" data-testid="req-product-name">{{selectedProduct.title}}</div>
           <app-product-select [reset]="productReset" (selected)="onProductSelect($event)"></app-product-select>
+          <app-product-stock-summary class="d-block mt-2" *ngIf="selectedProduct?.id" [productId]="selectedProduct.id" (history)="historyProduct = {id: selectedProduct.id, title: selectedProduct.title}"></app-product-stock-summary>
           <a role="button" class="small d-inline-block mt-1" *ngIf="!selectedProduct" (click)="useTyped()" data-testid="req-type-name"><i class="bi bi-pencil me-1"></i>Not in the product list? Type its name instead</a>
         </ng-container>
         <ng-container *ngIf="typed">
@@ -161,3 +162,6 @@
   </ng-template>
 </p-dialog>
 </div>
+
+<!-- a product's purchase, sale and customer history, in a dialog -->
+<app-product-stock-history [product]="historyProduct" (closed)="historyProduct = null"></app-product-stock-history>

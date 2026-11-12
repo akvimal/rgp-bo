@@ -159,6 +159,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);              // the page has finished loading
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-panel')).toBeVisible();
@@ -202,6 +203,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);              // the page has finished loading
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-row-1')).toBeVisible();
@@ -228,6 +230,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-row-0')).toBeVisible();
@@ -260,6 +263,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-row-1')).toBeVisible();
@@ -308,6 +312,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-row-0')).toBeVisible();
@@ -357,6 +362,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pad(3));                                                                         // the web server used to refuse anything over 1 MB
     await expect(page.getByTestId('inv-x-row-1')).toBeVisible();
@@ -416,6 +422,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-row-1')).toBeVisible();
@@ -445,6 +452,7 @@ test.describe('Read an invoice copy @p1', () => {
 
     const { page } = await app.open(MGR, '/secure/purchases/invoices/new');
     await expect(page.getByTestId('inv-f-vendor').locator('option')).not.toHaveCount(1);
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');           // not against a purchase order
     await page.waitForLoadState('networkidle');
     await attach(page, pdf);
     await expect(page.getByTestId('inv-x-row-1')).toBeVisible();

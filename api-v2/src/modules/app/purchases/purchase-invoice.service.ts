@@ -127,7 +127,7 @@ export class PurchaseInvoiceService {
 
         const gst = await this.deriveInvoiceGstContext(vendor, { ...dto, invoiceno, invoicedate }, storeid);
 
-        return this.purchaseInvoiceRepository.save({
+        const saved: any = await this.purchaseInvoiceRepository.save({
           ...dto,
           invoiceno,
           challanno,
@@ -138,6 +138,43 @@ export class PurchaseInvoiceService {
           ...gst,
           createdby:userid
         });
+        // an invoice against a purchase order starts with the order's lines (what is still to come); it never stops the invoice being saved
+        if(saved?.purchaseorderid){
+          try { await this.importOrderItems(saved.id, userid); } catch(e) { /* the lines can still be brought in from the items page */ }
+        }
+        return saved;
+    }
+
+    /**
+     * A line read from the vendor's copy for a product that is already on the order's lines: the order's line takes the copy's figures (its expectation stays,
+     * so the differences show) instead of a second line being made. Returns the line, or null when there is none to take it (no order, or not on the order).
+     */
+    async applyScanToPoItem(invoiceid:number, l:any, userid:any){
+      const [inv] = await this.manager.query(`select purchase_order_id from purchase_invoice where id = $1`, [invoiceid]);
+      if(!inv?.purchase_order_id || !l.productid) return null;
+      const [row] = await this.manager.query(`
+        select pii.id from purchase_invoice_item pii
+         where pii.invoice_id = $1 and pii.product_id = $2 and pii.request_id is not null and pii.po_expect is not null
+           and pii.active = true and pii.archive = false and pii.status <> 'VERIFIED'
+           and not exists (select 1 from purchase_invoice_scan_line s where s.item_id = pii.id)
+         order by pii.id limit 1`, [invoiceid, l.productid]);
+      if(!row) return null;
+      const rate = Number(l.rate), tax = Number(l.tax) || 0, disc = Number(l.disc) || 0;
+      const total = r2(Number(l.qty) * rate * (1 - disc / 100));
+      const gstLine = this.computeLineGst(total, tax, (await this.purchaseInvoiceRepository.findOne({ where: { id: invoiceid } }))?.supplytype || 'INTRA');
+      await this.purchaseInvoiceItemRepository.update(row.id, {
+        batch: String(l.batch).trim().toUpperCase(), ...(l.exp ? { expdate: `${l.exp}-01` } : {}),
+        mrpcost: Number(l.mrp), qty: Number(l.qty), freeqty: Number(l.free) || 0, ptrvalue: rate, ptrcost: r2(rate * (1 + tax / 100)),
+        discpcnt: disc, taxpcnt: tax, total, ...gstLine, ...(l.hsn ? { hsn: l.hsn } : {}), status: 'VERIFIED', verifiedby: userid, updatedby: userid
+      } as any);
+      await this.recomputeInvoiceGstTotals(invoiceid);
+      return await this.purchaseInvoiceItemRepository.findOne({ where: { id: row.id } });
+    }
+
+    /** whether this invoice is against a purchase order (a line the order did not list is then marked as received off the order) */
+    async isAgainstOrder(invoiceid:number): Promise<boolean> {
+      const [inv] = await this.manager.query(`select purchase_order_id from purchase_invoice where id = $1`, [invoiceid]);
+      return !!inv?.purchase_order_id;
     }
 
     async createItem(dto: CreatePurchaseInvoiceItemDto, userid:any) {
@@ -157,7 +194,13 @@ export class PurchaseInvoiceService {
           const [own] = await this.manager.query(`select nullif(btrim(hsn_code), '') as hsn from product where id = $1`, [+dto.productid]);
           hsn = own?.hsn ?? null;
         }
-        const saved = await this.purchaseInvoiceItemRepository.save({...dto, hsn, ...gstLine, createdby:userid});
+        // a line added by hand to an invoice against a purchase order, for a product the order did not list, is received but marked as off the order
+        const extra: any = {};
+        if(invoice?.purchaseorderid && !(dto as any).requestid && !(dto as any).offpo){
+          const [onOrder] = await this.manager.query(`select 1 from purchase_invoice_item where invoice_id = $1 and product_id = $2 and request_id is not null and active = true and archive = false limit 1`, [+dto.invoiceid, +dto.productid]);
+          if(!onOrder){ extra.offpo = true; extra.offporeason = 'Added to the invoice, not on the order'; }
+        }
+        const saved = await this.purchaseInvoiceItemRepository.save({...dto, ...extra, hsn, ...gstLine, createdby:userid});
         await this.recomputeInvoiceGstTotals(+dto.invoiceid);
         return saved;
     }
@@ -279,6 +322,19 @@ export class PurchaseInvoiceService {
         }
       }
 
+      // what other invoices have already taken of each line: an order can be invoiced in parts, so this invoice starts with what is left
+      const taken = new Map<number, number>();
+      const reqIds = allRequests.map((r:any) => r.id).filter(Boolean);
+      if(reqIds.length > 0){
+        const rows = await this.manager.query(`
+          select pii.request_id, sum(pii.qty)::float8 as qty
+            from purchase_invoice_item pii inner join purchase_invoice pi on pi.id = pii.invoice_id
+           where pii.request_id = any($1::int[]) and pii.invoice_id <> $2
+             and pii.active = true and pii.archive = false and pi.active = true and pi.archive = false
+           group by pii.request_id`, [reqIds, invoiceid]);
+        rows.forEach((r:any) => taken.set(+r.request_id, +r.qty));
+      }
+
       let imported = 0;
       let skipped = 0;
 
@@ -296,7 +352,9 @@ export class PurchaseInvoiceService {
 
         const product = request.product;
         const defaults = latestDefaults.get(request.productid) || {};
-        const qty = +(request.orderedqty || request.qty || 0);
+        const ordered = +(request.orderedqty || request.qty || 0);
+        const qty = ordered - (taken.get(request.id) || 0);
+        if(qty <= 0){ skipped++; continue; }                          // the whole line is already on other invoices
         const ptrvalue = +(defaults.ptr_value ?? 0);
         const discpcnt = +(defaults.disc_pcnt ?? 0);
         const taxpcnt = +(defaults.tax_pcnt ?? product?.taxpcnt ?? 0);
@@ -325,6 +383,8 @@ export class PurchaseInvoiceService {
           total,
           ...gstLine,
           comments: request.comments || `Imported from PO #${order.id}`,
+          // what the order led us to expect; rate, MRP, discount and GST are only expected when this product was bought before
+          poexpect: { ordered, qty, rate: defaults.ptr_value != null ? ptrvalue : null, mrp: defaults.mrp_cost != null ? mrpcost : null, disc: defaults.disc_pcnt != null ? discpcnt : null, tax: taxpcnt },
           status: 'NEW',
           createdby: userid,
           updatedby: userid

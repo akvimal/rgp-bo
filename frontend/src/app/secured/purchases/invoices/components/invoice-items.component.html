@@ -101,6 +101,10 @@
                 <button type="button" class="btn btn-outline-primary btn-sm" (click)="importOrderItems()">Import PO Items</button>
             </div>
             <div class="text-success small mt-2" *ngIf="importFeedback">{{importFeedback}}</div>
+            <div class="alert alert-warning py-2 small mt-2 mb-0" *ngIf="invoice.purchaseorderid && (orderDiffCount || offOrderCount)" data-testid="order-diff-note">
+                <span *ngIf="orderDiffCount"><b>{{orderDiffCount}}</b> line{{orderDiffCount === 1 ? '' : 's'}} differ{{orderDiffCount === 1 ? 's' : ''}} from the purchase order (shown under the product).</span>
+                <span *ngIf="offOrderCount"> <b>{{offOrderCount}}</b> line{{offOrderCount === 1 ? ' was' : 's were'}} not on the order. For review only: none of this stops the invoice being completed.</span>
+            </div>
 
             <app-invoice-item-form [invoiceid]="invoice.id" (added)="onItemAdd($event)"></app-invoice-item-form>
         </div>
@@ -142,6 +146,10 @@
                             <span [class.text-decoration-line-through]="i.status === 'REJECTED'">{{i.product?.title}}</span>
                             <!-- the earlier purchases of this product: date, invoice, vendor, batch, quantity, rate, discount and tax -->
                             <a role="button" class="ms-1" (click)="openHistory(i)" title="Purchase history of this product" aria-label="Purchase history of this product" [attr.data-testid]="'item-history-' + i.id"><i class="bi bi-clock-history text-primary"></i></a>
+                            <span class="badge bg-info text-dark ms-1" *ngIf="i.offpo" [attr.title]="i.offporeason || ''" [attr.data-testid]="'item-offpo-' + i.id">Not on order</span>
+                            <div class="small text-danger" *ngIf="orderFlags(i).length" [attr.data-testid]="'item-orderflags-' + i.id">
+                                <span class="me-2" *ngFor="let f of orderFlags(i)"><i class="bi bi-exclamation-triangle"></i> {{f.label}} <span class="text-muted">order</span> {{f.was | number:'1.0-2'}} <span class="text-muted">invoice</span> {{f.now | number:'1.0-2'}}</span>
+                            </div>
                             <span class="badge bg-warning text-dark ms-1" *ngIf="i.status === 'DISPUTED'" data-testid="item-disputed">In dispute</span>
                             <span class="badge bg-secondary ms-1" *ngIf="i.status === 'REJECTED'" data-testid="item-rejected">Rejected</span>
                             <div class="small" *ngIf="i.status === 'DISPUTED' && i.disputenote" data-testid="item-dispute-note">{{i.disputenote}}</div>
@@ -281,7 +289,7 @@
         <p class="small text-muted mb-2">The prices below follow your pricing rules{{newPrices.basis === 'incl' ? ' and include GST' : ' and are before GST'}}. Change any of them, then set them.</p>
         <div class="table-responsive">
             <table class="table table-sm align-middle w-auto mb-2">
-                <thead><tr><th>Product</th><th class="text-end">Cost</th><th class="text-end">MRP</th><th class="text-end">Sale price{{newPrices.basis === 'incl' ? ' (with GST)' : ''}}</th></tr></thead>
+                <thead><tr><th>Product</th><th class="text-end">Cost</th><th class="text-end">MRP</th><th class="text-end">Sale price{{newPrices.basis === 'incl' ? ' (with GST)' : ''}}</th><th *ngIf="newPrices.canprice"></th></tr></thead>
                 <tbody>
                     <tr *ngFor="let p of newPrices.products" [attr.data-testid]="'new-price-row-' + p.productid">
                         <td class="small">{{p.title}}</td>
@@ -293,11 +301,14 @@
                             <span *ngIf="!p.packsuspect && !p.suggestion" class="small text-danger">Check the cost: it is above what the MRP allows</span>
                             <span *ngIf="p.suggestion && !p.packsuspect && !newPrices.canprice" class="small text-muted">{{p.shown | number:'1.2-2'}} suggested; a Store Head sets it</span>
                         </td>
+                        <td *ngIf="newPrices.canprice">
+                            <button *ngIf="p.suggestion && !p.packsuspect" type="button" class="btn btn-outline-primary btn-sm" [disabled]="pricingNew" (click)="setNewPrices(p.productid)" [attr.data-testid]="'new-price-set-' + p.productid">Set price</button>
+                        </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" *ngIf="newPrices.canprice" [disabled]="pricingNew" (click)="setNewPrices()" data-testid="new-prices-set">Set these prices</button>
+        <button type="button" class="btn btn-primary btn-sm" *ngIf="newPrices.canprice" [disabled]="pricingNew" (click)="setNewPrices()" data-testid="new-prices-set">Set all these prices</button>
     </div>
 </div>
 

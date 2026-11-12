@@ -12,6 +12,16 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="off">
       <div class="row g-3">
+        <div class="col-md-12 col-lg-8" *ngIf="!id">
+          <label for="inv-po-first" class="form-label">Purchase order *</label>
+          <select class="form-select" id="inv-po-first" [ngModel]="poChoice" (ngModelChange)="poChoice = $event; choosePo()" [ngModelOptions]="{standalone: true}" data-testid="inv-f-po-first">
+            <option value="">Choose the order this invoice is against</option>
+            <option *ngFor="let o of allOrders" [value]="o.id">{{o.vendor?.name || ''}} · {{poLabel(o)}}</option>
+            <option value="NONE">No purchase order</option>
+          </select>
+          <div class="form-text" *ngIf="vendorFromOrder">The vendor and the order's lines come from the order. Lines still to be invoiced are brought in when you save.</div>
+          <div class="form-text" *ngIf="poChoice === 'NONE'">Not against an order: choose the vendor and add the items yourself.</div>
+        </div>
         <div class="col-md-6 col-lg-4">
           <label for="inv-vendor" class="form-label">Vendor *</label>
           <select class="form-select" id="inv-vendor" formControlName="vendorid" (change)="vendorChanged()" data-testid="inv-f-vendor">
@@ -49,7 +59,7 @@
             <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
           </select>
         </div>
-        <div class="col-md-5">
+        <div class="col-md-5" *ngIf="id">
           <label for="inv-po" class="form-label">Purchase order <span class="text-muted small">(optional)</span></label>
           <select class="form-select" id="inv-po" formControlName="purchaseorderid" [attr.disabled]="!form.value.vendorid ? '' : null" data-testid="inv-f-po">
             <option value="">{{orders.length ? 'Not against a purchase order' : (form.value.vendorid ? 'No approved orders for this vendor' : 'Choose a vendor first')}}</option>
@@ -93,8 +103,16 @@
         <div class="col-md-6">
           <label for="inv-file" class="form-label">Invoice copy <span class="text-muted small">(PDF or photo, optional)</span></label>
           <input type="file" class="form-control" id="inv-file" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)" [disabled]="uploading" data-testid="inv-f-file">
+          <div class="form-check mt-1" *ngIf="!locked">
+            <input class="form-check-input" type="checkbox" id="inv-read-on" [(ngModel)]="readOnUpload" [ngModelOptions]="{standalone: true}" data-testid="inv-f-read-on">
+            <label class="form-check-label small" for="inv-read-on">Read the copy for me when it is attached <span class="text-muted">(leave off to type the lines yourself)</span></label>
+          </div>
           <div class="small mt-1" *ngIf="form.value.documentpath" data-testid="inv-f-file-ok"><i class="bi bi-paperclip"></i> Attached
-            <a role="button" (click)="viewDocument()">view</a> &middot; <a role="button" class="text-danger" (click)="removeDocument()">remove</a></div>
+            <a role="button" (click)="viewDocument()">view</a> &middot; <a role="button" class="text-danger" (click)="removeDocument()">remove</a>
+            <ng-container *ngIf="!locked && !extracting">
+              &middot; <a role="button" (click)="read(form.value.documentpath)" data-testid="inv-f-read-copy">{{extracted ? 'Read it again' : 'Read this copy'}}</a>
+            </ng-container>
+            <div class="text-muted" *ngIf="!locked">To use another copy, choose the file again: it replaces this one.<span *ngIf="lines.length"> Lines still to check are replaced by the new reading; lines already checked stay.</span></div></div>
           <div class="small text-muted mt-1" *ngIf="extracting" data-testid="inv-x-busy"><span class="spinner-border spinner-border-sm me-1"></span>Reading the invoice&hellip; a photo can take 10 to 20 seconds, and up to a minute when the assistant helps.</div>
           <div class="small text-danger mt-1" *ngIf="extractError" data-testid="inv-x-error">{{extractError}}</div>
         </div>

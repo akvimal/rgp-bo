@@ -119,7 +119,12 @@ export class InvoiceScanService {
     if (!claimed.length) throw new BadRequestException('Someone has just changed this line. Reload and look again.');
     try {
       const line: ScanLine = { productid: r.product_id, batch: r.batch, exp: r.exp_ym ?? '', mrp: r.mrp, qty: r.qty, free: r.free_qty, rate: r.rate, disc: r.disc_pcnt, tax: r.tax_pcnt, hsn: r.hsn };
-      const item = await this.invoices.createItem(itemFromLine(invoiceId, line, userId) as any, userId);
+      // against a purchase order: the order's own line takes the copy's figures; a product the order did not list is received, marked as off the order
+      let item: any = await this.invoices.applyScanToPoItem(invoiceId, line, userId);
+      if (!item) {
+        const off = await this.invoices.isAgainstOrder(invoiceId);
+        item = await this.invoices.createItem({ ...itemFromLine(invoiceId, line, userId), ...(off ? { offpo: true, offporeason: "On the vendor's invoice, not on the order" } : {}) } as any, userId);
+      }
       await this.invoices.refreshTotal(invoiceId, userId);
       await this.manager.query(`update purchase_invoice_scan_line set item_id = $2 where id = $1`, [lineId, (item as any).id]);
     } catch (e) {

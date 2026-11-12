@@ -147,7 +147,8 @@ export class PricingController {
   async invoicePriceNew(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() user: any) {
     await this.assertPricing(user);
     const prices = body?.prices && typeof body.prices === 'object' ? body.prices : undefined;
-    return this.products.priceNewFromInvoice(id, user.id, prices);
+    const only = Array.isArray(body?.only) ? body.only.map((n:any) => Number(n)).filter((n:number) => Number.isFinite(n)) : undefined;
+    return this.products.priceNewFromInvoice(id, user.id, prices, only);
   }
 
   /** What the prices already in place look like, and which way of pricing fits them. Read-only. */

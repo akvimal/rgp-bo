@@ -72,7 +72,8 @@
     </ng-template>
     <ng-template pTemplate="body" let-req>
       <tr data-testid="po-fulfilment-row">
-        <td>{{req.product?.title}}</td>
+        <td>{{req.product?.title}}
+          <button *ngIf="req.product?.id" type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="historyProduct = {id: req.product.id, title: req.product.title}" [attr.title]="'Stock history of ' + req.product.title" [attr.aria-label]="'Stock history of ' + req.product.title" data-testid="po-history"><i class="bi bi-clock-history"></i></button></td>
         <td class="text-end">{{req.product?.pack || '-'}}</td>
         <td class="text-end">{{req.unitcost ? (req.unitcost | number:'1.2-2') : '-'}}</td>
         <td class="text-end">
@@ -102,25 +103,42 @@
   </p-table>
 </div>
 
-<p-dialog header="Add items" [(visible)]="displayForm" [modal]="true" [style]="{width: '34rem'}">
-  <form [formGroup]="form" (ngSubmit)="onSave()">
-    <div class="container px-0">
-      <div class="row g-3">
-        <div class="col-12">
-          <label for="req" class="form-label">Request</label>
-          <select class="form-select" id="req" formControlName="requestid" data-testid="po-request-select">
-            <option value="">Select</option>
-            <option *ngFor="let ar of availrequests" [value]="ar?.id">{{ar?.product?.title}} | {{ar?.qty}}</option>
-          </select>
-          <div class="form-text" *ngIf="!availrequests.length" data-testid="po-no-requests">Nothing waiting. Mark a request as reviewed in Requests, and it can be added here.</div>
-        </div>
-        <div class="col-12 text-end">
-          <button type="button" class="btn btn-outline-secondary me-2" (click)="displayForm = false">Cancel</button>
-          <button type="submit" class="btn btn-primary" [disabled]="!form.valid">Add</button>
-        </div>
-      </div>
+<p-dialog header="Add items" [(visible)]="displayForm" [modal]="true" [style]="{width: '62rem', maxWidth: '96vw'}">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <input class="form-control form-control-sm w-auto" type="search" [(ngModel)]="pickFilter" placeholder="Search product or customer" aria-label="Search requests" data-testid="po-pick-filter">
+    <span class="small text-muted">Reviewed requests that can be added. This vendor's come first.</span>
+  </div>
+  <div class="form-text" *ngIf="!availrequests.length" data-testid="po-no-requests">Nothing waiting. Mark a request as reviewed in Requests, and it can be added here.</div>
+  <div class="table-responsive" *ngIf="availrequests.length" style="max-height:55vh">
+    <table class="table table-sm table-hover align-middle mb-0" data-testid="po-pick-table">
+      <thead class="table-light" style="position:sticky;top:0">
+        <tr>
+          <th style="width:2.5em"><input type="checkbox" [checked]="allPicked" (change)="pickAll($any($event.target).checked)" aria-label="Select all" data-testid="po-pick-all"></th>
+          <th>Product</th><th class="text-end">Qty</th><th>Type</th><th>Priority</th><th>Needed by</th><th>For</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let ar of pickable" [class.table-active]="picked[ar.id]" (click)="picked[ar.id] = !picked[ar.id]" style="cursor:pointer" data-testid="po-pick-row">
+          <td (click)="$event.stopPropagation()"><input type="checkbox" [(ngModel)]="picked[ar.id]" [attr.aria-label]="'Add ' + ar.product?.title" data-testid="po-pick-check"></td>
+          <td>{{ar.product?.title}} <span class="badge bg-warning text-dark" *ngIf="otherVendor(ar)" title="This request names a different vendor">other vendor</span></td>
+          <td class="text-end">{{ar.qty}}</td>
+          <td class="small">{{ar.requesttype}}</td>
+          <td class="small">{{ar.priority}}</td>
+          <td class="small text-nowrap">{{ar.neededby ? (ar.neededby | date:'dd MMM yyyy') : '-'}}</td>
+          <td class="small">{{ar.customername ? ar.customername : (ar.source || '')}}</td>
+          <td (click)="$event.stopPropagation()"><button type="button" class="btn btn-link btn-sm p-0" (click)="historyProduct = {id: ar.product.id, title: ar.product.title}" [attr.title]="'Stock history of ' + ar.product?.title" [attr.aria-label]="'Stock history of ' + ar.product?.title"><i class="bi bi-clock-history"></i></button></td>
+        </tr>
+        <tr *ngIf="!pickable.length"><td colspan="8" class="text-center text-muted py-3">No request matches.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <span class="small text-muted" data-testid="po-pick-count">{{pickedIds.length}} of {{availrequests.length}} selected</span>
+    <div>
+      <button type="button" class="btn btn-outline-secondary me-2" (click)="displayForm = false">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="!pickedIds.length || adding" (click)="onSave()" data-testid="po-pick-add">Add {{pickedIds.length || ''}} item{{pickedIds.length === 1 ? '' : 's'}}</button>
     </div>
-  </form>
+  </div>
 </p-dialog>
 
 <p-dialog header="Edit order" [(visible)]="displayEdit" [modal]="true" [style]="{width: '34rem'}">
@@ -153,3 +171,5 @@
   </div>
 </p-dialog>
 </div>
+
+<app-product-stock-history [product]="historyProduct" (closed)="historyProduct = null"></app-product-stock-history>

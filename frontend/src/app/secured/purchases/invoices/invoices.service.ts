@@ -27,8 +27,8 @@ export class InvoiceService {
         return this.http.get<any>(`${this.apiurl}/pricing/invoice/${id}/new-prices`);
     }
 
-    priceNew(id:any, prices?:any){
-        return this.http.post<any>(`${this.apiurl}/pricing/invoice/${id}/price-new`, { prices });
+    priceNew(id:any, prices?:any, only?:number[]){
+        return this.http.post<any>(`${this.apiurl}/pricing/invoice/${id}/price-new`, { prices, only });
     }
 
     priceCheck(id:any){

@@ -2,6 +2,7 @@ import { Component } from "@angular/core";
 import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { map } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { saveAs as importedSaveAs } from "file-saver";
 
 import { AuthService } from "src/app/@core/auth/auth.service";
@@ -15,6 +16,7 @@ import { poStatus } from "../po-status";
     templateUrl: 'purchase-order-view.component.html'
 })
 export class PurchaseOrderViewComponent {
+    historyProduct:{id:number,title:string} | null = null;
 
     order:any;
     availrequests:any[] = [];
@@ -24,9 +26,10 @@ export class PurchaseOrderViewComponent {
     rejectReason:string = '';
     error:string = '';
 
-    form:FormGroup = new FormGroup({
-        requestid: new FormControl('',Validators.required),
-    });
+    /** the requests ticked in the Add items table */
+    picked:{[id:number]:boolean} = {};
+    pickFilter = '';
+    adding = false;
 
     editForm:FormGroup = new FormGroup({
         expecteddate: new FormControl(''),
@@ -72,7 +75,7 @@ export class PurchaseOrderViewComponent {
     }
 
     onAdd() {
-        this.form.reset({ requestid: '' });
+        this.picked = {}; this.pickFilter = ''; this.adding = false;
         this.fetchAvailRequests();
         this.displayForm = true;
     }
@@ -102,13 +105,31 @@ export class PurchaseOrderViewComponent {
         this.reqService.removeOrder(id).subscribe(() => this.changed());
     }
 
+    /** the requests that can be added, this vendor's first, narrowed by what was typed */
+    get pickable():any[] {
+        const f = this.pickFilter.trim().toLowerCase();
+        const vid = this.order?.vendorid;
+        const own = (r:any) => (vid && r.vendorid && String(r.vendorid) === String(vid)) ? 0 : (r.vendorid ? 2 : 1);   // this vendor, then no vendor named, then another vendor
+        return this.availrequests
+            .filter((r:any) => !f || `${r.product?.title || ''} ${r.customername || ''}`.toLowerCase().includes(f))
+            .sort((a:any, b:any) => own(a) - own(b));
+    }
+
+    get pickedIds():number[] { return this.availrequests.filter((r:any) => this.picked[r.id]).map((r:any) => r.id); }
+
+    otherVendor(r:any):boolean { return !!(r.vendorid && this.order?.vendorid && String(r.vendorid) !== String(this.order.vendorid)); }
+
+    get allPicked():boolean { const l = this.pickable; return l.length > 0 && l.every((r:any) => this.picked[r.id]); }
+
+    pickAll(on:boolean){ this.pickable.forEach((r:any) => this.picked[r.id] = on); }
+
     onSave() {
-        this.reqService.update(this.form.value.requestid, {
-            status: 'Ordered',
-            orderid: this.order.id
-        }).subscribe({
-            next: () => { this.displayForm = false; this.changed(); },
-            error: (e) => { this.displayForm = false; this.failed(e, 'The item could not be added.'); }
+        const ids = this.pickedIds;
+        if(!ids.length) return;
+        this.adding = true;
+        forkJoin(ids.map(id => this.reqService.update(id, { status: 'Ordered', orderid: this.order.id }))).subscribe({
+            next: () => { this.adding = false; this.displayForm = false; this.changed(); },
+            error: (e) => { this.adding = false; this.displayForm = false; this.failed(e, 'The items could not all be added.'); this.changed(); }
         });
     }
 

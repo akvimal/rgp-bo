@@ -23,6 +23,10 @@ export class InvoiceFormComponent implements OnInit {
 
     invoice:Invoice = {}
     orders:any[] = [];
+    /** every approved order, for choosing the one a new invoice is against (the first thing asked) */
+    allOrders:any[] = [];
+    /** '' = not chosen yet, 'NONE' = no purchase order, else the id of the order the invoice is against */
+    poChoice:string = '';
     vendors:any[] = [];
     stores:any[] = [];
     errorMessage:string = '';
@@ -119,6 +123,7 @@ export class InvoiceFormComponent implements OnInit {
         this.setDue();
       });
 
+      if(!this.id) this.poService.findAllByCriteria({status:'SUBMITTED', approvalstatus:'Approved'}).subscribe((data:any) => this.allOrders = data || []);
       const id = this.id;
       id && this.service.find(id).subscribe((data:any) => {
         this.invoice = data;
@@ -165,8 +170,31 @@ export class InvoiceFormComponent implements OnInit {
         + (this.terms ? ` (${this.terms}-day terms)` : ' (no payment terms set for this vendor)');
     }
 
+    /** the order (or "no purchase order") a new invoice is against: an order fixes the vendor */
+    choosePo(){
+      const c = this.poChoice;
+      const vendor = this.form.controls['vendorid'];
+      if(c && c !== 'NONE'){
+        const o = this.allOrders.find(x => String(x.id) === String(c));
+        this.form.controls['purchaseorderid'].setValue(String(c));
+        vendor.setValue(o?.vendorid ? String(o.vendorid) : '');
+        vendor.disable();
+        this.setDue();
+        this.loadOrders(vendor.value);
+        this.checkDuplicate();
+      } else {
+        this.form.controls['purchaseorderid'].setValue('');
+        vendor.enable();
+        if(!c) vendor.setValue('');
+        this.vendorChanged();
+      }
+    }
+
+    /** the vendor comes from the order: it cannot be changed while the invoice is against one */
+    get vendorFromOrder(): boolean { return !this.id && !!this.poChoice && this.poChoice !== 'NONE'; }
+
     vendorChanged(){
-      this.form.controls['purchaseorderid'].setValue('');
+      if(!this.vendorFromOrder) this.form.controls['purchaseorderid'].setValue('');
       this.setDue();
       this.loadOrders(this.form.value.vendorid);
       this.checkDuplicate();
@@ -202,7 +230,7 @@ export class InvoiceFormComponent implements OnInit {
       if(!file) return;
       this.uploading = true;
       this.files.upload(file, `invoice=${this.form.value.vendorid || 'new'}-${Date.now()}`).subscribe(
-        (res:any) => { this.form.controls['documentpath'].setValue(res?.path || ''); this.uploading = false; this.read(res?.path); },
+        (res:any) => { this.form.controls['documentpath'].setValue(res?.path || ''); this.uploading = false; if(this.readOnUpload) this.read(res?.path); },
         (err:any) => {
           this.uploading = false;
           const m = err?.error?.message;
@@ -233,6 +261,12 @@ export class InvoiceFormComponent implements OnInit {
       this.form.controls['challanpath'].setValue('');
     }
 
+    /** whether an attached copy is read for its lines at once (a short invoice is often easier to type) */
+    readOnUpload = true;
+
+    /** a copy is attached and has not been read (or was read, and a reading is on screen) */
+    get copyAttached(): boolean { return !!this.form.value.documentpath; }
+
     /** the copy last read, so the assistant can be asked to read it again */
     private readPath = '';
 
@@ -254,13 +288,16 @@ export class InvoiceFormComponent implements OnInit {
     read(path:string, ai = false){
       if(!path) return;
       this.readPath = path;
-      this.extracting = true; this.extractError = ''; this.extracted = null; this.lines = []; this.filled = []; this.showText = false;
+      this.extracting = true; this.extractError = ''; this.extracted = null; this.filled = []; this.showText = false;
+      // lines already checked or discarded stay; what is still open is replaced by this reading
+      const kept = this.lines.filter((l:any) => l.lineid && l.state !== 'OPEN');
+      this.lines = kept;
       this.service.extract(path, ai).subscribe(
         (r:any) => {
           this.extracting = false;
           this.extracted = r;
           this.showChecks = !!r?.tieout && r.tieout.status !== 'RECONCILED';
-          this.lines = (r.lines || []).map((l:any) => this.toRow(l));
+          this.lines = kept.concat((r.lines || []).map((l:any) => this.toRow(l)));
           this.applyHeader(false);
         },
         (err:any) => {
@@ -535,6 +572,7 @@ export class InvoiceFormComponent implements OnInit {
     get missingDraft(): string[] {
       const v = this.form.getRawValue();
       const out: string[] = [];
+      if(!this.id && !this.poChoice) out.push('purchase order (or "No purchase order")');
       if(!v.vendorid) out.push('vendor');
       if(!v.storeid) out.push('receiving store');
       if(this.gstinBad) out.push('a valid supplier GSTIN');
@@ -571,7 +609,7 @@ export class InvoiceFormComponent implements OnInit {
         control.markAsDirty();
         this.filled.push(label);
       };
-      if(v?.id && !this.id && (overwrite || !raw.vendorid)){
+      if(v?.id && !this.id && !this.vendorFromOrder && (overwrite || !raw.vendorid)){
         f.controls['vendorid'].setValue(String(v.id));
         this.filled.push('vendor');
         this.vendorChanged();
@@ -607,6 +645,7 @@ export class InvoiceFormComponent implements OnInit {
     get missing(): string[] {
       const v = this.form.getRawValue();
       const out: string[] = [];
+      if(!this.id && !this.poChoice) out.push('purchase order (or "No purchase order")');
       if(!v.vendorid) out.push('vendor');
       const hasInv = !!String(v.invoiceno || '').trim();
       const hasChallan = !!String(v.challanno || '').trim();

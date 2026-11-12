@@ -16,6 +16,7 @@ export class PurchaseRequestComponent {
     displayForm:boolean = false;
     productReset:boolean = false;
     errorMessage:string = '';
+    historyProduct:{id:number,title:string} | null = null;
 
     sources = ['Customer', 'Staff', 'Doctor', 'System'];
     requestTypes = ['Ad Hoc', 'Refill', 'Stockout', 'Special Order'];
@@ -77,13 +78,19 @@ export class PurchaseRequestComponent {
             priority: 'Normal',
             customername: '',
             customerphone: '',
-            neededby: '',
+            neededby: this.twoDaysAhead(),
             status: 'Open',
             comments: '',
             sourceref: ''
         });
         this.typed = false;
         setTimeout(() => this.productReset = false);
+    }
+
+    /** a new request is needed in two days unless the buyer says otherwise (yyyy-mm-dd, as the date box wants) */
+    private twoDaysAhead(): string {
+        const d = new Date(); d.setDate(d.getDate() + 2);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
     edit(request:any){

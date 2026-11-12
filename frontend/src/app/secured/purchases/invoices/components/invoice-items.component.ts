@@ -132,6 +132,24 @@ export class InvoiceItemsComponent {
     scanChecked = 0;
 
     /** how many of the lines still part of the invoice are verified */
+    /** how a line differs from what the purchase order led us to expect (any difference counts); empty when it agrees or there was no order */
+    orderFlags(i:any): {label:string, was:any, now:any, over?:boolean}[] {
+        const e = i?.poexpect;
+        if(!e || this.outside(i)) return [];
+        const out:{label:string, was:any, now:any, over?:boolean}[] = [];
+        const differs = (a:any, b:any) => a !== null && a !== undefined && Math.abs(Number(a) - Number(b)) > 0.0049;
+        if(differs(e.qty, i.qty)) out.push({ label: Number(i.qty) > Number(e.qty) ? 'More than ordered' : 'Qty', was: e.qty, now: i.qty, over: Number(i.qty) > Number(e.qty) });
+        if(differs(e.rate, i.ptrvalue)) out.push({ label: 'Rate', was: e.rate, now: i.ptrvalue });
+        if(differs(e.mrp, i.mrpcost)) out.push({ label: 'MRP', was: e.mrp, now: i.mrpcost });
+        if(differs(e.disc, i.discpcnt)) out.push({ label: 'Disc %', was: e.disc, now: i.discpcnt });
+        if(differs(e.tax, i.taxpcnt)) out.push({ label: 'GST %', was: e.tax, now: i.taxpcnt });
+        return out;
+    }
+
+    /** the lines that differ from the order, and the ones received off it, for the note above the table */
+    get orderDiffCount(): number { return (this.items || []).filter((i:any) => this.orderFlags(i).length).length; }
+    get offOrderCount(): number { return (this.items || []).filter((i:any) => i.offpo && !this.outside(i)).length; }
+
     get liveCount(): number { return (this.items || []).filter((i:any) => !this.outside(i)).length; }
     get verifiedLiveCount(): number { return (this.items || []).filter((i:any) => !this.outside(i) && i.status === 'VERIFIED').length; }
 
@@ -266,9 +284,10 @@ export class InvoiceItemsComponent {
         }, () => this.newPrices = null);
     }
 
-    setNewPrices(){
+    /** `only` sets the price of that one product; without it every product in the list is priced */
+    setNewPrices(only?:number){
         this.pricedNewError = ''; this.pricedNewMessage = ''; this.pricingNew = true;
-        this.invService.priceNew(this.invoice.id, this.typedPrices).subscribe((r:any) => {
+        this.invService.priceNew(this.invoice.id, this.typedPrices, only ? [only] : undefined).subscribe((r:any) => {
             this.pricingNew = false;
             this.pricedNewMessage = `${r.applied} product${r.applied === 1 ? '' : 's'} priced.`;
             if(r.failed && r.failed.length) this.pricedNewError = r.failed.map((f:any) => `${f.title}: ${f.message}`).join(' ');

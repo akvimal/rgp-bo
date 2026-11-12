@@ -397,8 +397,10 @@ export class ProductService {
      * person typed, in the way the business shows prices) that price is used and checked against the rules like any other price change.
      * A product the user may not price, or whose cost or pack looks wrong, is reported and left for someone who can.
      */
-    async priceNewFromInvoice(invoiceid:number, userid:number, prices?:{[productid:number]:number}){
-      const { basis, products } = await this.pricing.newPricesForInvoice(invoiceid);
+    async priceNewFromInvoice(invoiceid:number, userid:number, prices?:{[productid:number]:number}, only?:number[]){
+      const all = await this.pricing.newPricesForInvoice(invoiceid);
+      const basis = all.basis;
+      const products = only && only.length ? all.products.filter((u:any) => only.includes(Number(u.productid))) : all.products;   // one product's price can be set on its own
       const done:any[] = [];
       const failed:any[] = [];
       for(const u of products){

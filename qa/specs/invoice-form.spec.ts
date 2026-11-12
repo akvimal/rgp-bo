@@ -44,6 +44,7 @@ test.describe('Purchase invoice header form @p1', () => {
     await expect(page.getByTestId('inv-f-hint')).toContainText('vendor');
     await expect(page.getByTestId('inv-f-save')).toBeDisabled();
 
+    await page.getByTestId('inv-f-po-first').selectOption('NONE');
     await page.getByTestId('inv-f-vendor').selectOption(String(vendor));
     await page.getByTestId('inv-f-no').fill(taken);
     await page.getByTestId('inv-f-no').blur();
