@@ -347,6 +347,24 @@ export const KINDS: AlertKind[] = [
     },
   },
   {
+    kind: 'disposal_unconfirmed',
+    label: 'Out-pass approved, goods not handed over',
+    description: 'An out-pass for expired or damaged goods was approved but nobody has confirmed the goods were handed over or destroyed. Until then the quantity stays held (on the books, not saleable).',
+    params: [{ key: 'days', label: 'Warn when an approved out-pass has waited for', min: 0, max: 60, default: 3, unit: 'days' }],
+    defaultSeverity: 'warning',
+    async evaluate(ctx, p) {
+      const rows = await ctx.manager.query(
+        `select dp.id, dp.pass_no, dp.store_id, s.location, (current_date - dp.approved_on::date)::int as days,
+                (select coalesce(sum(l.qty), 0) from disposal_pass_line l where l.pass_id = dp.id)::int as qty
+           from disposal_pass dp inner join stores s on s.id = dp.store_id
+          where dp.business_id = $1 and dp.status = 'APPROVED' and dp.approved_on <= now() - ($2::int * interval '1 day') order by dp.id`, [ctx.businessId, p.days]);
+      return rows.map((r: any) => ({
+        key: `disposal:${r.id}`, storeid: r.store_id, code: 'disposal_unconfirmed',
+        params: { pass: r.pass_no, store: String(r.location).trim(), days: r.days, qty: r.qty }, link: `/secure/store/stock/passes/${r.id}`,
+      }));
+    },
+  },
+  {
     kind: 'adjustment_other',
     label: 'Unexplained write-offs',
     description: 'Stock adjustments in the last 30 days given the reason "Other" (or none), valued at cost. Each should carry a proper reason: damaged, expired, missing or returned.',
@@ -628,6 +646,7 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'stock_count_overdue', name: 'Stock count overdue', severity: 'warning' },
   { kind: 'negative_stock', name: 'Negative stock', severity: 'warning' },
   { kind: 'expired_stock', name: 'Expired stock on the shelf', severity: 'warning' },
+  { kind: 'disposal_unconfirmed', name: 'Out-pass approved, goods not handed over', severity: 'warning' },
   { kind: 'adjustment_other', name: 'Unexplained write-offs', severity: 'warning' },
   { kind: 'weekly_review', name: 'Weekly review not signed', severity: 'warning' },
   { kind: 'compliance_late', name: 'Compliance item gone unattended', severity: 'critical' },

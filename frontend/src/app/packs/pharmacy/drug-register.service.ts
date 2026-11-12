@@ -20,6 +20,8 @@ export class DrugRegisterService {
     }
     register(q: any) { return this.http.get<any>(`${this.api}/register`, { params: this.params(q) }); }
     file(kind: 'pdf' | 'xlsx', q: any) { return this.http.get(`${this.api}/register/${kind}`, { params: this.params(q), responseType: 'blob' }); }
+    /** scheduled drugs that left through a confirmed out-pass (expired, damaged), in their own numbering */
+    disposals(q: any) { return this.http.get<any>(`${this.api}/disposals`, { params: this.params(q) }); }
     coverage() { return this.http.get<any>(`${this.api}/coverage`); }
     /** how the scheduled supplies of a period were covered, by schedule and by the person who made the sale */
     coverageReport(q: any) { return this.http.get<any>(`${this.api}/coverage-report`, { params: this.params(q) }); }

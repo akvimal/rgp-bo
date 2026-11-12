@@ -37,7 +37,7 @@
           <td class="small"><span *ngIf="i.canreturn" class="text-success">Yes</span><span *ngIf="!i.canreturn" class="text-muted">No</span></td>
           <td class="text-end text-nowrap">
             <button *ngIf="i.canreturn" type="button" class="btn btn-outline-secondary btn-sm" (click)="startReturn(i)" data-testid="expiry-return">Return to vendor</button>
-            <a class="btn btn-outline-secondary btn-sm ms-1" routerLink="/secure/store/transfers" title="Move it to a store that will sell it">Move</a>
+            <a class="btn btn-outline-secondary btn-sm ms-1" routerLink="/secure/store/transfers" [queryParams]="{itemid: i.itemid, productid: i.productid, title: i.title, qty: i.sellable}" title="Move it to a store that will sell it" data-testid="expiry-move">Move</a>
             <button type="button" class="btn btn-outline-danger btn-sm ms-1" [disabled]="!i.sellable" (click)="startPass([i])" data-testid="expiry-discard">Discard</button>
           </td>
         </tr>

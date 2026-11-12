@@ -37,6 +37,8 @@ export class DrugRegisterController {
   @Post('followups/:id/waive') async waive(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { await this.assertReader(u); return this.register.waiveFollowup(u, id, b?.note); }
 
   @Get('register') async list(@Query() q: any, @User() u: any) { await this.assertReader(u); return this.register.register(u, q); }
+  /** the disposal side: scheduled drugs that left through a confirmed out-pass */
+  @Get('disposals') async disposals(@Query() q: any, @User() u: any) { await this.assertReader(u); return this.register.disposals(u, q); }
   @Get('register/pdf') async pdf(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.pdf(u, q)); }
   @Get('register/xlsx') async xlsx(@Query() q: any, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertReader(u); return this.file(res, await this.register.xlsx(u, q)); }
   @Get('coverage') async coverage(@User() u: any) { await this.assertReader(u); return this.register.coverage(u); }

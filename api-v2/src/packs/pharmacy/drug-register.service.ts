@@ -463,6 +463,35 @@ export class DrugRegisterService {
     return { from, to, rows, totals, stores: sc.stores, ...(await this.config()), coverage: await this.coverage(user) };
   }
 
+  /**
+   * The disposal side of the register: Schedule H, H1 and X lines of confirmed out-passes (expired or damaged stock that left the shop), numbered in their own series
+   * (D-H1-0001). A sale goes in the supplies register; goods destroyed or handed to a disposal agency go here.
+   */
+  async disposals(user: any, q: any) {
+    const sc = await this.scope(user);
+    const storeId = Number(q?.storeid) || null;
+    if (storeId && !sc.stores.some((s) => s.id === storeId)) throw new BadRequestException('That store is not one you can see.');
+    const ids = storeId ? [storeId] : sc.stores.map((s) => s.id);
+    const to = isDay(q?.to) ? q.to : istDay();
+    const from = isDay(q?.from) ? q.from : addDays(to, -29);
+    if (from > to) throw new BadRequestException('The period starts after it ends.');
+    const args: any[] = [sc.businessId, ids, from, to];
+    let sch = '';
+    const want = String(q?.schedule || '').toUpperCase();
+    if ((SCHEDULES as readonly string[]).includes(want)) { args.push(want); sch = ` and r.schedule = $${args.length}`; }
+    const rows = ids.length ? await this.manager.query(
+      `select r.id, r.schedule, r.serial_no, to_char(r.handed_on, 'YYYY-MM-DD') as handed_on, r.drug_name, r.batch, to_char(r.exp_date, 'YYYY-MM-DD') as exp_date, r.qty, r.reason, r.method, r.agency,
+              dp.pass_no, dp.id as pass_id, dp.legacy, st.location as store, cu.full_name as confirmed_by, wu.full_name as witness
+         from schedule_disposal_register r inner join disposal_pass dp on dp.id = r.pass_id left join stores st on st.id = r.store_id
+         left join app_user cu on cu.id = r.confirmed_by left join app_user wu on wu.id = r.witness_id
+        where r.business_id = $1 and r.store_id = any($2::int[]) and r.handed_on between $3::date and $4::date${sch}
+        order by r.schedule, r.serial_no limit 2000`, args) : [];
+    const totals: Record<string, { lines: number; units: number }> = {};
+    for (const s of SCHEDULES) totals[s] = { lines: 0, units: 0 };
+    rows.forEach((r: any) => { totals[r.schedule].lines += 1; totals[r.schedule].units += r.qty; });
+    return { from, to, rows: rows.map((r: any) => ({ ...r, label: `D-${serialLabel(r.schedule, r.serial_no)}` })), totals, stores: sc.stores };
+  }
+
   /** scheduled drugs sold since the register began that have no register line: the bill was made some other way, or before the details were asked for */
   async coverage(user: any) {
     const sc = await this.scope(user);

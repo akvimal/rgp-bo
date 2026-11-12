@@ -50,6 +50,7 @@
   <div class="row mt-2">
     <div class="col-12">
       <label class="col-form-label">Product</label>
+      <div *ngIf="selectedProduct && form.purchaseitemid" class="fw-semibold mb-1" data-testid="transfer-product">{{selectedProduct.title}}</div>
       <app-product-select (selected)="selectProduct($event)"></app-product-select>
     </div>
   </div>

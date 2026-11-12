@@ -1,4 +1,5 @@
 import { Component, OnInit } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import { StoreContextService } from "src/app/@core/store-context.service";
 import { InvoiceService } from "src/app/secured/purchases/invoices/invoices.service";
 import { TransferService } from "../transfer.service";
@@ -27,20 +28,28 @@ export class TransfersComponent implements OnInit {
         notes: ''
     };
     selectedProduct: any = null;
+    /** a batch sent here from the Expiry screen ("Move"): the transfer opens with it chosen */
+    private preselect: { itemid: number; productid: number; title: string; qty: number } | null = null;
 
     constructor(
         private service: TransferService,
         private invoiceService: InvoiceService,
         private storeContext: StoreContextService,
+        private route: ActivatedRoute,
     ) {}
 
     ngOnInit(): void {
+        const q = this.route.snapshot.queryParamMap;
+        if (+(q.get('itemid') || 0) > 0 && +(q.get('productid') || 0) > 0) {
+            this.preselect = { itemid: +(q.get('itemid') as string), productid: +(q.get('productid') as string), title: q.get('title') || '', qty: Math.max(0, +(q.get('qty') || 0)) };
+        }
         this.storeContext.stores$.subscribe((stores: any) => {
             this.stores = stores || [];
         });
         this.storeContext.selectedStoreId$.subscribe((selected: any) => {
             this.selectedStoreId = selected;
             this.refresh();
+            this.applyPreselect();
         });
     }
 
@@ -69,6 +78,21 @@ export class TransfersComponent implements OnInit {
             notes: ''
         };
         this.displayDialog = true;
+    }
+
+    /** opens the new transfer with the batch chosen on the Expiry screen, from the store selected in the header */
+    private applyPreselect() {
+        const p = this.preselect;
+        if (!p) return;
+        this.preselect = null;
+        this.openDialog();
+        this.selectedProduct = { id: p.productid, title: p.title };
+        this.invoiceService.findItemsByProduct(p.productid).subscribe((items: any) => {
+            this.batches = items || [];
+            this.form.purchaseitemid = String(p.itemid);
+            this.form.qty = p.qty;
+            this.onBatchOrStoreChange();
+        });
     }
 
     selectProduct(event: any) {

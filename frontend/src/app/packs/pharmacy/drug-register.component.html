@@ -1,6 +1,13 @@
 <div class="form-compact">
 <div class="pagetitle"><h1>Drug register</h1></div>
 
+<ul class="nav nav-pills mb-2">
+  <li class="nav-item"><a class="nav-link py-1" role="button" [class.active]="tab === 'supplies'" (click)="showTab('supplies')" data-testid="dr-tab-supplies">Supplies</a></li>
+  <li class="nav-item"><a class="nav-link py-1" role="button" [class.active]="tab === 'disposals'" (click)="showTab('disposals')" data-testid="dr-tab-disposals">Disposals</a></li>
+</ul>
+
+<ng-container *ngIf="tab === 'supplies'">
+
 <p class="small text-muted mb-2" data-testid="dr-intro">
   Every Schedule H, H1 and X drug supplied, with the patient and the prescriber, numbered in the register's own order. The counter writes it through the bill. The details are optional
   when completing a bill; a sale completed without them is listed below until a manager adds them. Print it for an inspector, or download it to Excel.
@@ -128,5 +135,37 @@
       <tr *ngIf="!data.rows.length"><td colspan="10" class="text-center text-muted py-3" data-testid="dr-empty">No scheduled drug was supplied in this period.</td></tr>
     </tbody>
   </table>
+</div>
+</ng-container>
+
+<div *ngIf="tab === 'disposals'" data-testid="dr-disposals">
+  <p class="small text-muted mb-2">Scheduled drugs (H, H1 and X) that left the shop as waste through a confirmed out-pass: expired or damaged stock that was destroyed, handed to a disposal agency or returned. They are numbered in their own series (D-H1-0001) and each links to its out-pass. Supplies to patients are on the Supplies tab.</p>
+  <div class="alert alert-danger py-2" *ngIf="error">{{error}}</div>
+  <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+    <div><label class="form-label mb-0 small">From</label><input type="date" class="form-control form-control-sm" [(ngModel)]="f.from" (change)="loadDisposals()" data-testid="dr-d-from"></div>
+    <div><label class="form-label mb-0 small">To</label><input type="date" class="form-control form-control-sm" [(ngModel)]="f.to" (change)="loadDisposals()"></div>
+    <div><label class="form-label mb-0 small">Schedule</label>
+      <select class="form-select form-select-sm" [(ngModel)]="f.schedule" (change)="loadDisposals()"><option value="">H, H1 and X</option><option value="H1">H1</option><option value="H">H</option><option value="X">X</option></select></div>
+  </div>
+  <div class="small text-muted mb-2" *ngIf="disp" data-testid="dr-d-totals">
+    <span *ngFor="let s of ['H1','H','X']" class="me-3">Schedule {{s}}: <b>{{disp.totals[s].lines}}</b> line{{disp.totals[s].lines === 1 ? '' : 's'}}, {{disp.totals[s].units}} unit{{disp.totals[s].units === 1 ? '' : 's'}}</span>
+  </div>
+  <div class="table-responsive" *ngIf="disp">
+    <table class="table table-sm align-middle" data-testid="dr-d-table">
+      <thead><tr><th>Register no</th><th>Day</th><th>Store</th><th>Drug</th><th>Batch</th><th class="text-end">Units</th><th>Why / how</th><th>Confirmed by</th><th>Witness</th><th>Out-pass</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of disp.rows" data-testid="dr-d-row">
+          <td class="text-nowrap fw-semibold">{{r.label}}</td><td class="text-nowrap small">{{r.handed_on | date:'dd MMM yyyy'}}</td><td class="small">{{r.store}}</td>
+          <td>{{r.drug_name}} <span class="badge bg-light text-dark border">{{r.schedule}}</span></td>
+          <td class="small">{{r.batch}}<div class="text-muted" *ngIf="r.exp_date">{{r.exp_date | date:'MMM yy'}}</div></td>
+          <td class="text-end fw-semibold">{{r.qty}}</td>
+          <td class="small">{{r.reason === 'DAMAGED' ? 'Damaged' : (r.reason === 'NEAR_EXPIRY' ? 'Near expiry' : 'Expired')}}, {{r.method === 'DESTROYED' ? 'destroyed on site' : (r.method === 'AGENCY' ? 'handed to ' + (r.agency || 'an agency') : (r.method === 'VENDOR' ? 'returned to the vendor' : 'other'))}}</td>
+          <td class="small">{{r.confirmed_by}}</td><td class="small">{{r.witness || '-'}}</td>
+          <td class="small"><a [routerLink]="['/secure/store/stock/passes', r.pass_id]" data-testid="dr-d-pass">{{r.pass_no}}</a><span class="badge bg-light text-dark border ms-1" *ngIf="r.legacy">disposed earlier</span></td>
+        </tr>
+        <tr *ngIf="!disp.rows.length"><td colspan="10" class="text-center text-muted py-3" data-testid="dr-d-empty">No scheduled drug left through an out-pass in this period.</td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 </div>

@@ -25,6 +25,17 @@ export class DrugRegisterComponent implements OnInit {
     /** the bill whose patient and prescriber are being added */
     later: any = null;
 
+    /** the supplies register (the sales), or the disposals of scheduled drugs that left through an out-pass */
+    tab: 'supplies' | 'disposals' = 'supplies';
+    disp: any = null;
+
+    showTab(t: 'supplies' | 'disposals') { this.tab = t; if (t === 'disposals') this.loadDisposals(); }
+
+    loadDisposals() {
+        this.error = '';
+        this.service.disposals({ from: this.f.from, to: this.f.to, schedule: this.f.schedule, storeid: this.f.storeid }).subscribe((r: any) => this.disp = r, (e: any) => this.error = this.msg(e, 'Could not load the disposals.'));
+    }
+
     constructor(private service: DrugRegisterService) {}
 
     ngOnInit() {

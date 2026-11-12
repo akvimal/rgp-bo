@@ -42,6 +42,7 @@ describe('alert messages', () => {
       customer_request_arrived: ['customer_request_arrived'],
       negative_stock: ['negative_stock'],
       expired_stock: ['expired_stock'],
+      disposal_unconfirmed: ['disposal_unconfirmed'],
       adjustment_other: ['adjustment_other'],
       weekly_review: ['weekly_review_unsigned'],
       gst_rate_change: ['gst_rate_change_soon'],

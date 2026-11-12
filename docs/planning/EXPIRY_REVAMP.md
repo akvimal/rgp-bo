@@ -61,3 +61,11 @@ Built and tested locally, committed. Migration 186 (applied to the local dev dat
 - Specs: rules (11), QA `expiry-legacy.spec.ts` LEG-1..5.
 Not built: the alert for an approved pass not confirmed after N days; a Disposals tab on the Drug register screen; Move preselecting the batch on Transfers. Step 3 (audit integration) and step 4 (tax value to GST, printable register) remain.
 
+## Build status: the three small items (2026-11-12)
+Built and tested locally, committed. No migration.
+- **Alert** `disposal_unconfirmed`: an out-pass approved and not confirmed for N days (default 3, 0 to 60) raises a warning for owners and managers, per store, linking to the pass; it clears when the pass is confirmed or cancelled. English and Tamil text.
+- **Drug register, Disposals tab:** scheduled drugs (H, H1, X) that left through a confirmed out-pass, numbered in their own series (D-H1-0001), with why and how, who confirmed, the witness, and a link to the out-pass; `GET /schedule/disposals`.
+- **Move:** the Move button on the Expiry screen opens a transfer from the store in the header with the batch and its sellable quantity chosen.
+- Specs: QA `expiry-extras.spec.ts` EXX-1..3; the built-in alert list in `alerts.spec.ts` ALRT-1 brought up to date.
+Remaining: step 3 (audit integration), step 4 (tax value to the GST module, printable register).
+

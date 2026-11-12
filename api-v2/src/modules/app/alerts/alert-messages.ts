@@ -101,6 +101,10 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: 'Expired stock on the shelf: {value}', body: '{batches} batches are past their expiry date and still count as stock. Pull them and return or write them off.' },
     ta: { title: 'அலமாரியில் காலாவதியான இருப்பு: {value}', body: '{batches} தொகுதிகள் காலாவதி தேதியைத் தாண்டியும் இருப்பில் உள்ளன. அவற்றை எடுத்து திருப்பி அனுப்பவும் அல்லது கழிக்கவும்.' },
   },
+  disposal_unconfirmed: {
+    en: { title: 'Out-pass {pass} approved {days} days ago: goods not confirmed gone ({store})', body: '{qty} units are held: still on the books, not saleable. Hand the goods over or destroy them, then confirm the out-pass so the stock drops (or cancel it if it will not go ahead).' },
+    ta: { title: 'வெளியேற்ற அனுமதி {pass} {days} நாட்களுக்கு முன் ஒப்புதல்: பொருட்கள் வெளியேறியதாக உறுதிப்படுத்தவில்லை ({store})', body: '{qty} அலகுகள் நிறுத்தி வைக்கப்பட்டுள்ளன: கணக்கில் உள்ளன, விற்க முடியாது. பொருட்களை ஒப்படைத்து அல்லது அழித்து, பின் அனுமதியை உறுதிப்படுத்தவும் (நடக்காவிட்டால் ரத்து செய்யவும்).' },
+  },
   adjustment_other: {
     en: { title: 'Unexplained write-offs: {value} in 30 days', body: '{count} adjustments were given the reason "Other". Ask for the proper reason on each.' },
     ta: { title: 'விளக்கமில்லாத கழிவுகள்: 30 நாட்களில் {value}', body: '{count} மாற்றங்களுக்கு "Other" என்ற காரணம் கொடுக்கப்பட்டுள்ளது. ஒவ்வொன்றிற்கும் சரியான காரணத்தைக் கேட்கவும்.' },
