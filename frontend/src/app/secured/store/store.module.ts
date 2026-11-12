@@ -30,6 +30,7 @@ import { StockComponent } from "./stock/components/stock.component";
 import { StockExpiryComponent } from "./stock/components/stock-expiry.component";
 import { DisposalListComponent } from "./stock/components/disposal-list.component";
 import { DisposalDetailComponent } from "./stock/components/disposal-detail.component";
+import { WriteoffsComponent } from "./stock/components/writeoffs.component";
 import { StockCountComponent } from "./stock/components/stock-count.component";
 import { TransfersComponent } from "./transfers/components/transfers.component";
 import { VaultComponent } from "./vault/vault.component";
@@ -45,6 +46,7 @@ const routes: Routes = [
         { path: 'expiry', component: StockExpiryComponent },
         { path: 'passes', component: DisposalListComponent },
         { path: 'passes/:id', component: DisposalDetailComponent },
+        { path: 'writeoffs', component: WriteoffsComponent },
         { path: 'adjust', component: StockAdjustComponent },
         { path: 'count', component: StockCountComponent }
       ] },
@@ -69,6 +71,7 @@ const routes: Routes = [
       StockExpiryComponent,
       DisposalListComponent,
       DisposalDetailComponent,
+      WriteoffsComponent,
       StockProductItemsComponent,
       StockAdjustFormComponent,
       StockCountComponent,

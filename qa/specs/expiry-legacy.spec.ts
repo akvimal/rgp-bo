@@ -136,4 +136,42 @@ test.describe('Expiry: backlog, old write-offs, statement @p1', () => {
     expect(buf.subarray(0, 2).toString()).toBe('PK');                                          // an xlsx is a zip
     expect(buf.length).toBeGreaterThan(2000);
   });
+
+  test('LEG-5 the screens: record the backlog from Expiry, review an old write-off, read the statement @happy', async ({ app, api }) => {
+    const sid = await freshStore(api);
+    const old = await batch(api, sid, 6, longAgo());
+    await api.request('POST', '/stock/adjust/qty', { itemid: old.itemid, qty: -2, storeid: sid, reason: 'Breakage', reasoncode: 'SHRINKAGE' }, MGR);
+    const { page } = await app.open(MGR, '/secure/store/stock/expiry');
+    await page.getByRole('combobox', { name: 'Select store' }).selectOption(String(sid));
+    await expect(page.getByTestId('expiry-screen')).toBeVisible();
+
+    // the four expired units still on the books go on one pass, disposed earlier
+    await page.getByTestId('expiry-backlog').click();
+    await expect(page.getByTestId('backlog-form')).toBeVisible();
+    await page.getByTestId('backlog-date').fill(day(-20));
+    await page.getByTestId('backlog-save').click();
+    await expect(page.getByTestId('pass-detail')).toBeVisible();
+    await expect(page.getByTestId('pass-legacy')).toBeVisible();
+    await expect(page.getByTestId('pass-status')).toContainText('Handed over');
+
+    // the old breakage write-off is in the review, and confirming it moves it to "expiry"
+    await page.getByTestId('stock-tab-writeoffs').click();
+    await expect(page.getByTestId('writeoffs-screen')).toBeVisible();
+    const line = page.getByTestId('wo-row').filter({ hasText: old.title });
+    await expect(line).toHaveCount(1);
+    await expect(line).toContainText('had already expired');
+    await line.getByTestId('wo-check').check();
+    await page.getByTestId('wo-tag-expiry').click();
+    await expect(page.getByTestId('wo-message')).toContainText('1 confirmed as expiry');
+    await expect(page.getByTestId('wo-row').filter({ hasText: old.title })).toHaveCount(0);        // reviewed: no longer in "not reviewed yet"
+
+    // the statement counts the pass and the confirmed write-off
+    await page.getByTestId('wo-tab-statement').click();
+    await page.getByTestId('wo-from').fill('2000-01-01');
+    await page.getByTestId('wo-show').click();
+    await expect(page.getByTestId('wo-st-row')).toHaveCount(2);
+    await expect(page.getByTestId('wo-st-table')).toContainText('Recorded as disposed earlier');
+    await expect(page.getByTestId('wo-st-table')).toContainText('Old write-offs confirmed as expiry');
+    await expect(page.getByTestId('wo-st-years')).toContainText('Total: 6 units');
+  });
 });

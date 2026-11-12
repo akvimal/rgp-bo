@@ -14,6 +14,9 @@ import { Component } from "@angular/core";
                 <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="passes" data-testid="stock-tab-passes">Out-passes</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="writeoffs" data-testid="stock-tab-writeoffs">Write-offs</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="adjust">Adjustments</a>
             </li>
             <li class="nav-item">

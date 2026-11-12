@@ -11,6 +11,7 @@
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
       <button type="button" class="btn btn-primary btn-sm" [disabled]="!selectedItems.length" (click)="startPass(selectedItems)" data-testid="expiry-make-pass">Create an out-pass for the {{selectedItems.length}} selected</button>
       <a routerLink="../passes" class="btn btn-outline-secondary btn-sm" data-testid="expiry-passes-link">Out-passes</a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" *ngIf="band === 'EXPIRED' && backlogItems.length" (click)="startBacklog()" data-testid="expiry-backlog" title="Expired stock that was thrown away long ago but is still on the books">Record as disposed earlier ({{backlogItems.length}})</button>
       <span class="small text-muted">Discard writes goods off through an out-pass: the quantity is held once it is approved, and the stock drops when the goods are handed over.</span>
     </div>
 
@@ -74,6 +75,25 @@
         <button type="button" class="btn btn-primary" [disabled]="passBusy" (click)="savePass()" data-testid="pass-save">Make the out-pass</button>
       </div>
       <div class="col-12 small text-muted">It then waits for a Store Head or the Business Head to approve it.</div>
+    </div>
+  </div>
+</p-dialog>
+
+<p-dialog header="Record expired stock as disposed earlier" [(visible)]="displayBacklog" [modal]="true" [style]="{width: '36rem', maxWidth: '96vw'}">
+  <div *ngIf="backlog" data-testid="backlog-form">
+    <div class="alert alert-danger py-2" *ngIf="backlogError" data-testid="backlog-error">{{backlogError}}</div>
+    <p class="small">These expired batches were thrown away earlier but the books still hold them. One out-pass is made and confirmed now, marked <b>disposed earlier, recorded now</b>. No witness or evidence is asked for. Only a Store Head or Business Head can do this.</p>
+    <div class="small mb-2"><b>{{backlogItems.length}}</b> batch{{backlogItems.length === 1 ? '' : 'es'}}, <b>{{backlogUnits}}</b> units, about <b>{{backlogValue | number:'1.2-2'}}</b> at cost.<span *ngIf="selectedItems.length"> (Only the ticked ones.)</span></div>
+    <div class="row g-2">
+      <div class="col-md-5"><label class="form-label small mb-0">The day they were disposed of *</label><input type="date" class="form-control form-control-sm" [max]="today" [(ngModel)]="backlog.handed_on" data-testid="backlog-date"></div>
+      <div class="col-md-7"><label class="form-label small mb-0">How</label>
+        <select class="form-select form-select-sm" [(ngModel)]="backlog.method" data-testid="backlog-method"><option value="OTHER">Not known</option><option value="DESTROYED">Destroyed on site</option><option value="AGENCY">Handed to a disposal agency</option><option value="VENDOR">Returned to the vendor</option></select></div>
+      <div class="col-12" *ngIf="backlog.method === 'AGENCY'"><label class="form-label small mb-0">Disposal agency *</label><input class="form-control form-control-sm" maxlength="120" [(ngModel)]="backlog.agency"></div>
+      <div class="col-12"><label class="form-label small mb-0">Notes</label><input class="form-control form-control-sm" maxlength="300" [(ngModel)]="backlog.notes" placeholder="Disposed earlier, recorded now"></div>
+      <div class="col-12 text-end">
+        <button type="button" class="btn btn-outline-secondary btn-sm me-2" (click)="displayBacklog = false">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="backlogBusy || !backlog.handed_on" (click)="saveBacklog()" data-testid="backlog-save">Record</button>
+      </div>
     </div>
   </div>
 </p-dialog>

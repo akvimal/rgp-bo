@@ -52,3 +52,12 @@ Built and tested locally, committed. Migration 185 (applied to the local dev dat
 - Stock > Expiry: bands (Expired / 30 / 31-90 / 91-180 days) with counts, per-row Return to vendor (only where the vendor takes back), Move (links to Transfers), Discard; select several for one out-pass. Stock > Out-passes: list and detail with approve, reject, cancel, confirm, print.
 - Specs: `disposal-rules.spec.ts` (8), QA `disposal-pass.spec.ts` DISP-1..7.
 Not built in step 1: the alert for an approved pass not confirmed after N days; a Disposals tab on the Drug register screen (the register lines are stored and shown on the pass); Move does not preselect the batch on the Transfers screen; Return to vendor still goes through the adjustment form, not a pass.
+
+## Build status: step 2 (2026-11-12)
+Built and tested locally, committed. Migration 186 (applied to the local dev database only).
+- **Backlog:** Stock > Expiry, Expired band: "Record as disposed earlier" makes and confirms one out-pass (marked `legacy`, "disposed earlier, recorded now") for the ticked expired batches, or all of them; a Store Head or Business Head, for a day not in the future; no witness or evidence.
+- **Review of old write-offs:** Stock > Write-offs > Review lists old adjustments (negative, approved, no out-pass, not a transfer or return) that look like expiry: reason Expired, the batch had expired or was within 30 days of expiry on the day, or the words ("expir", "out of date", "breakage", "wastage", "discard" ...). A manager confirms them as expiry or not (or clears the choice). Tag `product_qtychange.expiry_tag`; the adjustment never changes.
+- **Statement:** Stock > Write-offs > Statement (and Excel): by month and financial year (April to March): out-passes (expired / near expiry, not returns to the vendor), disposed-earlier passes, old write-offs confirmed as expiry; at cost before GST plus the GST paid on that cost.
+- Specs: rules (11), QA `expiry-legacy.spec.ts` LEG-1..5.
+Not built: the alert for an approved pass not confirmed after N days; a Disposals tab on the Drug register screen; Move preselecting the batch on Transfers. Step 3 (audit integration) and step 4 (tax value to GST, printable register) remain.
+

@@ -20,5 +20,10 @@ export class DisposalService {
     cancel(id: number, note = ''): Observable<any> { return this.http.post(`${this.api}/${id}/cancel`, { note }); }
     confirm(id: number, body: any): Observable<any> { return this.http.post(`${this.api}/${id}/confirm`, body); }
     pdf(id: number): Observable<Blob> { return this.http.get(`${this.api}/${id}/pdf`, { responseType: 'blob' }); }
+    backlog(body: any): Observable<any> { return this.http.post(`${this.api}/backlog`, body); }
+    legacy(params: any = {}): Observable<any> { return this.http.get(`${this.api}/legacy`, { params }); }
+    tagLegacy(ids: number[], tag: string | null): Observable<any> { return this.http.post(`${this.api}/legacy/tag`, { ids, tag }); }
+    statement(params: any = {}): Observable<any> { return this.http.get(`${this.api}/statement`, { params }); }
+    statementXlsx(params: any = {}): Observable<Blob> { return this.http.get(`${this.api}/statement.xlsx`, { params, responseType: 'blob' }); }
     msg(err: any, fallback = 'Something went wrong.'): string { const m = err?.error?.message; return Array.isArray(m) ? m.join(' ') : (m || fallback); }
 }

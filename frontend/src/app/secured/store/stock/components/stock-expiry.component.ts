@@ -70,6 +70,32 @@ export class StockExpiryComponent implements OnInit, OnDestroy {
         this.displayPass = true;
     }
 
+    // ------------------------------------------------------------ the backlog: expired stock the books still hold
+    displayBacklog = false;
+    backlog: any = null;
+    backlogError = '';
+    backlogBusy = false;
+    readonly today = new Date().toISOString().slice(0, 10);
+
+    /** what goes on the backlog pass: the ticked expired batches, else every expired batch that still has stock */
+    get backlogItems(): any[] {
+        const expired = (this.data?.items || []).filter((i: any) => i.band === 'EXPIRED' && i.sellable > 0);
+        const ticked = expired.filter((i: any) => this.picked[i.itemid]);
+        return ticked.length ? ticked : expired;
+    }
+    get backlogUnits(): number { return this.backlogItems.reduce((t: number, i: any) => t + i.sellable, 0); }
+    get backlogValue(): number { return this.backlogItems.reduce((t: number, i: any) => t + (i.balance ? i.value * i.sellable / i.balance : 0), 0); }
+
+    startBacklog() { this.backlogError = ''; this.backlog = { handed_on: '', method: 'OTHER', agency: '', notes: '' }; this.displayBacklog = true; }
+
+    saveBacklog() {
+        this.backlogBusy = true; this.backlogError = '';
+        const body: any = { storeid: this.data.storeid, handed_on: this.backlog.handed_on, method: this.backlog.method, agency: this.backlog.agency, notes: this.backlog.notes,
+            lines: this.backlogItems.map((i: any) => ({ itemid: i.itemid, qty: i.sellable })) };
+        this.service.backlog(body).subscribe((p: any) => { this.backlogBusy = false; this.displayBacklog = false; this.router.navigate(['/secure/store/stock/passes', p.id]); },
+            (e: any) => { this.backlogBusy = false; this.backlogError = this.service.msg(e, 'It could not be recorded.'); });
+    }
+
     uploadEvidence(event: any) {
         const file = event?.target?.files?.[0];
         if (!file) return;
