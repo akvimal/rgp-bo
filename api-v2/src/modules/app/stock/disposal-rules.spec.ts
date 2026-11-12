@@ -1,4 +1,4 @@
-import { adjustmentReason, approverProblem, bandOf, canReturnToVendor, daysToExpiry, expiryEnd, lineValues, needsWitness, passNumber } from './disposal-rules';
+import { adjustmentReason, approverProblem, bandOf, canReturnToVendor, daysToExpiry, expiryEnd, financialYear, legacySignals, lineValues, needsWitness, passNumber } from './disposal-rules';
 
 describe('the out-pass rules', () => {
   it('numbers passes per business and year', () => {
@@ -66,5 +66,30 @@ describe('the out-pass rules', () => {
     expect(approverProblem({ ...base, isMaker: true })).toMatch(/your own/);
     expect(approverProblem({ ...base, isMaker: true, selfMode: true })).toBeNull();                      // "the maker may approve"
     expect(approverProblem({ ...base, isOwner: true, storeIsMine: false, isMaker: true })).toBeNull();   // an owner approves anything, even their own
+  });
+
+  it('spots an old write-off that looks like expiry, by its reason, its batch and its words', () => {
+    const base = { qty: -5, adjustedOn: '2026-03-10', reasonCode: null as any, reason: '', comments: '', expDate: null as any };
+    expect(legacySignals({ ...base, reasonCode: 'EXPIRED' })).toEqual(['REASON_EXPIRED']);
+    expect(legacySignals({ ...base, reasonCode: 'SHRINKAGE', expDate: '2026-01-01' })).toEqual(['WAS_EXPIRED']);       // ended 31 Jan
+    expect(legacySignals({ ...base, reasonCode: 'SHRINKAGE', expDate: '2026-03-01' })).toEqual(['WAS_NEAR_EXPIRY']);   // ends 31 Mar: 21 days left
+    expect(legacySignals({ ...base, reasonCode: 'SHRINKAGE', expDate: '2027-03-01' })).toEqual([]);                    // plenty of life left
+    expect(legacySignals({ ...base, reason: 'Breakage', reasonCode: null })).toEqual(['WORDS']);
+    expect(legacySignals({ ...base, comments: 'out of date stock cleared' })).toEqual(['WORDS']);
+    expect(legacySignals({ ...base, reasonCode: 'EXPIRED', expDate: '2026-01-01', comments: 'expired' })).toEqual(['REASON_EXPIRED', 'WAS_EXPIRED', 'WORDS']);
+  });
+
+  it('does not take a transfer, a return or a gain for a write-off', () => {
+    const base = { adjustedOn: '2026-03-10', expDate: '2026-01-01', reason: 'expired' };
+    expect(legacySignals({ ...base, qty: -5, reasonCode: 'TRANSFER_OUT' })).toEqual([]);
+    expect(legacySignals({ ...base, qty: -5, reasonCode: 'RETURNED_TO_VENDOR' })).toEqual([]);
+    expect(legacySignals({ ...base, qty: 5, reasonCode: 'EXPIRED' })).toEqual([]);          // stock added
+  });
+
+  it('names the financial year, April to March', () => {
+    expect(financialYear('2026-03-31')).toBe('2025-26');
+    expect(financialYear('2026-04-01')).toBe('2026-27');
+    expect(financialYear('2026-11-12')).toBe('2026-27');
+    expect(financialYear('2099-12-31')).toBe('2099-00');
   });
 });

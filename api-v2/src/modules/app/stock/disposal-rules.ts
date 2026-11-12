@@ -92,3 +92,44 @@ export function approverProblem(a: { role: string; isOwner: boolean; isManager: 
   if (a.isMaker && !a.isOwner && !a.selfMode) return 'You cannot approve your own out-pass. Another Store Head or the Business Head approves it.';
   return null;
 }
+
+// ---------------------------------------------------------------------------------------------------- the old write-offs
+/** adjustment reason codes that are not waste at all: a transfer, a return, a count that is settled elsewhere */
+export const NOT_WASTE_CODES = ['TRANSFER_OUT', 'TRANSFER_IN', 'TRANSFER_IN_SHORT', 'TRANSFER_CANCELLED', 'RETURNED', 'RETURN_DISCARD', 'RETURNED_TO_VENDOR', 'CUSTOMER_RETURN', 'FOUND', 'NOT_ENTERED'];
+
+export type LegacySignal = 'REASON_EXPIRED' | 'WAS_EXPIRED' | 'WAS_NEAR_EXPIRY' | 'WORDS';
+export const SIGNAL_LABEL: Record<LegacySignal, string> = {
+  REASON_EXPIRED: 'The reason says expired',
+  WAS_EXPIRED: 'The batch had already expired',
+  WAS_NEAR_EXPIRY: 'The batch was within 30 days of expiry',
+  WORDS: 'The words suggest expiry or breakage',
+};
+
+const WORDS = /expir|out of date|date[ -]?over|dated|breakage|wast(e|age)|discard/i;
+
+/**
+ * Why an old stock adjustment looks like an expiry write-off, though nothing says so for certain: its reason code is Expired, the batch had expired (or was
+ * within 30 days of expiry) on the day it was adjusted, or the words typed with it speak of expiry or breakage. An empty list means it does not look like one.
+ * History is never rewritten: the review only tags what a person confirms.
+ */
+export function legacySignals(a: { qty: number; reasonCode?: string | null; reason?: string | null; comments?: string | null; expDate?: string | null; adjustedOn: string }): LegacySignal[] {
+  if (!(Number(a.qty) < 0)) return [];
+  const code = String(a.reasonCode || '').toUpperCase();
+  if (NOT_WASTE_CODES.includes(code)) return [];
+  const out: LegacySignal[] = [];
+  if (code === 'EXPIRED') out.push('REASON_EXPIRED');
+  if (a.expDate) {
+    const left = dayNo(expiryEnd(a.expDate)) - dayNo(a.adjustedOn);
+    if (left < 0) out.push('WAS_EXPIRED');
+    else if (left <= 30) out.push('WAS_NEAR_EXPIRY');
+  }
+  if (WORDS.test(`${a.reason || ''} ${a.comments || ''}`)) out.push('WORDS');
+  return out;
+}
+
+/** the Indian financial year (April to March) a day falls in: "2025-26" */
+export function financialYear(isoDay: string): string {
+  const y = +isoDay.slice(0, 4), m = +isoDay.slice(5, 7);
+  const start = m >= 4 ? y : y - 1;
+  return `${start}-${String((start + 1) % 100).padStart(2, '0')}`;
+}

@@ -5,8 +5,9 @@ import { AuditService } from 'src/core/audit/audit.service';
 import { approvalModeFor } from 'src/core/approval-mode';
 import { isManagerRole, isOwnerRole } from 'src/core/roles';
 import {
-  adjustmentReason, approverProblem, bandOf, canReturnToVendor, ExpiryBand, lineValues, METHOD_LABEL, needsWitness, passNumber, PASS_METHODS, PASS_REASONS, REASON_LABEL, SCHEDULES,
+  adjustmentReason, approverProblem, bandOf, canReturnToVendor, ExpiryBand, financialYear, legacySignals, lineValues, METHOD_LABEL, NOT_WASTE_CODES, needsWitness, passNumber, PASS_METHODS, PASS_REASONS, REASON_LABEL, SCHEDULES, SIGNAL_LABEL,
 } from './disposal-rules';
+import * as ExcelJS from 'exceljs';
 import { buildDisposalPdf } from './disposal-pdf';
 
 type Ctx = { id: number; role: string; stores: number[]; isOwner: boolean; isManager: boolean };
@@ -257,21 +258,7 @@ export class DisposalService {
       }
       // the books must still hold what is going (this pass's own hold is not counted against it)
       await this.priceLines(m, +p.store_id, lines.map((l: any) => ({ itemid: l.item_id, qty: l.qty })), id);
-      const code = adjustmentReason(p.reason, p.method);
-      for (const l of lines) {
-        const [adj] = await m.query(
-          `insert into product_qtychange (item_id, qty, reason, reason_code, status, comments, store_id, discarded, created_by, disposal_pass_id)
-           values ($1, $2, $3, $4, 'APPROVED', $5, $6, $7, $8, $9) returning id`,
-          [l.item_id, -l.qty, code, code, `Out-pass ${p.pass_no}: ${REASON_LABEL[p.reason]}, ${METHOD_LABEL[p.method]}`, +p.store_id, code !== 'RETURNED_TO_VENDOR', c.id, id]);
-        await m.query(`update disposal_pass_line set qtychange_id = $2 where id = $1`, [l.id, adj.id]);
-        if (l.schedule) {
-          const [{ serial }] = await m.query(`select coalesce(max(serial_no), 0) + 1 as serial from schedule_disposal_register where business_id = $1 and schedule = $2`, [+p.business_id, l.schedule]);
-          await m.query(
-            `insert into schedule_disposal_register (business_id, store_id, schedule, serial_no, pass_id, pass_line_id, handed_on, drug_name, batch, exp_date, qty, reason, method, agency, confirmed_by, witness_id)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-            [+p.business_id, +p.store_id, l.schedule, serial, id, l.id, handedOn, l.title, l.batch, l.exp_date, l.qty, p.reason, p.method, p.agency, c.id, witnessId]);
-        }
-      }
+      await this.postLines(m, p, lines, c.id, handedOn, witnessId);
       await m.query(
         `update disposal_pass set status = 'CONFIRMED', confirmed_by = $2, confirmed_on = now(), handed_on = $3, witness_id = $4, evidence_path = coalesce($5, evidence_path) where id = $1`,
         [id, c.id, handedOn, witnessId, evidence]);
@@ -279,6 +266,171 @@ export class DisposalService {
     const p = await this.load(id);
     await this.audit.record({ userId: c.id, action: 'disposal.confirmed', entityType: 'disposal_pass', entityId: id, summary: `Out-pass ${p.pass_no} confirmed: goods handed over, stock reduced`, details: { handedOn } });
     return this.get(id, user);
+  }
+
+  /** the stock adjustment for each line of a pass whose goods are gone (linked to the pass), and the disposal register entry of a scheduled drug */
+  private async postLines(m: EntityManager, p: any, lines: any[], userId: number, handedOn: string, witnessId: number | null) {
+    const code = adjustmentReason(p.reason, p.method);
+    for (const l of lines) {
+      const [adj] = await m.query(
+        `insert into product_qtychange (item_id, qty, reason, reason_code, status, comments, store_id, discarded, created_by, disposal_pass_id)
+         values ($1, $2, $3, $4, 'APPROVED', $5, $6, $7, $8, $9) returning id`,
+        [l.item_id, -l.qty, code, code, `Out-pass ${p.pass_no}: ${REASON_LABEL[p.reason]}, ${METHOD_LABEL[p.method]}${p.legacy ? ' (disposed earlier, recorded now)' : ''}`, +p.store_id, code !== 'RETURNED_TO_VENDOR', userId, p.id]);
+      await m.query(`update disposal_pass_line set qtychange_id = $2 where id = $1`, [l.id, adj.id]);
+      if (l.schedule) {
+        const [{ serial }] = await m.query(`select coalesce(max(serial_no), 0) + 1 as serial from schedule_disposal_register where business_id = $1 and schedule = $2`, [+p.business_id, l.schedule]);
+        await m.query(
+          `insert into schedule_disposal_register (business_id, store_id, schedule, serial_no, pass_id, pass_line_id, handed_on, drug_name, batch, exp_date, qty, reason, method, agency, confirmed_by, witness_id)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+          [+p.business_id, +p.store_id, l.schedule, serial, p.id, l.id, handedOn, l.title, l.batch, l.exp_date, l.qty, p.reason, p.method, p.agency, userId, witnessId]);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ the backlog: expired stock the books still hold
+  /**
+   * Expired stock that was thrown away long ago but is still on the books: one out-pass, marked "disposed earlier, recorded now", made and confirmed in one step
+   * by a Store Head or Business Head. The day the goods left is given (it cannot be in the future); no witness or evidence is asked for. With no lines named, every
+   * expired batch of the store that still has stock goes on it.
+   */
+  async backlog(b: any, user: any) {
+    const c = await this.ctx(user);
+    if (!c.isManager) throw new ForbiddenException('Only a Store Head or a Business Head can record goods disposed earlier.');
+    const storeId = Number(b?.storeid);
+    if (!(storeId > 0)) throw new BadRequestException('Choose the store.');
+    this.assertStore(c, storeId);
+    const handedOn = String(b?.handed_on || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(handedOn) || handedOn > today()) throw new BadRequestException('Give the day the goods were disposed of (not in the future).');
+    const f = this.fields({ reason: b?.reason || 'EXPIRED', method: b?.method || 'OTHER', agency: b?.agency, notes: b?.notes, evidence_path: null });
+    const businessId = await this.business(storeId);
+    const id = await this.manager.transaction(async (m) => {
+      await m.query(`select pg_advisory_xact_lock($1)`, [businessId]);
+      let asked = Array.isArray(b?.lines) ? b.lines : null;
+      if (!asked) {
+        const all = await this.expiry({ storeid: storeId, band: 'EXPIRED' }, user);
+        asked = all.items.filter((i: any) => i.sellable > 0).map((i: any) => ({ itemid: i.itemid, qty: i.sellable }));
+      }
+      if (!asked.length) throw new BadRequestException('There is no expired stock on the books to record.');
+      const lines = await this.priceLines(m, storeId, asked, 0);
+      const year = new Date().getFullYear();
+      const [{ seq }] = await m.query(`select coalesce(max(seq), 0) + 1 as seq from disposal_pass where business_id = $1 and pass_year = $2`, [businessId, year]);
+      const [p] = await m.query(
+        `insert into disposal_pass (business_id, store_id, pass_year, seq, pass_no, status, reason, method, agency, notes, prepared_by, approved_by, approved_on, confirmed_by, confirmed_on, handed_on, legacy)
+         values ($1,$2,$3,$4,$5,'CONFIRMED',$6,$7,$8,$9,$10,$10,now(),$10,now(),$11,true) returning *`,
+        [businessId, storeId, year, seq, passNumber(year, +seq), f.reason, f.method, f.agency, f.notes || 'Disposed earlier, recorded now', c.id, handedOn]);
+      await this.insertLines(m, p.id, lines);
+      const saved = await m.query(`select * from disposal_pass_line where pass_id = $1 order by id`, [p.id]);
+      await this.postLines(m, p, saved, c.id, handedOn, null);
+      return p.id as number;
+    });
+    await this.audit.record({ userId: c.id, action: 'disposal.backlog', entityType: 'disposal_pass', entityId: id, summary: `Expired stock recorded as disposed earlier (${handedOn})`, details: { storeId } });
+    return this.get(id, user);
+  }
+
+  // ------------------------------------------------------------------ the old write-offs
+  /** the stores a person may look at: an owner the business's, anyone else their own */
+  private async scopeStores(c: Ctx, storeId: number | null): Promise<number[]> {
+    let stores: number[];
+    if (c.isOwner) stores = (await this.manager.query(`select id from stores where business_id = $1`, [await this.ownBusiness(c.id)])).map((r: any) => +r.id);
+    else stores = c.stores;
+    if (storeId) { if (!stores.includes(storeId)) throw new ForbiddenException('That store is not yours to work in.'); return [storeId]; }
+    return stores;
+  }
+
+  /**
+   * Adjustments made before out-passes existed that look like expiry write-offs (by their reason, their batch's expiry on the day, or their words), with whether a
+   * person has confirmed them as expiry or not. Reading only: tagging is a separate step.
+   */
+  async legacyList(q: any, user: any) {
+    const c = await this.ctx(user);
+    const storeId = Number(q?.storeid) > 0 ? Number(q.storeid) : null;
+    const stores = await this.scopeStores(c, storeId);
+    if (!stores.length) return { rows: [], counts: { UNREVIEWED: 0, EXPIRY: 0, NOT_EXPIRY: 0 } };
+    const rows = await this.manager.query(
+      `select q.id, to_char(q.created_on, 'YYYY-MM-DD') as adjusted_on, q.store_id, s.location as store, q.item_id, (-q.qty)::int as qty, q.reason, q.reason_code, q.comments, q.expiry_tag,
+              pii.batch, to_char(pii.exp_date, 'YYYY-MM-DD') as exp_date, p.title, coalesce(p.pack, 1) as pack, pii.ptr_value::float as ptr_value, coalesce(pii.tax_pcnt, 0)::float as tax_pcnt
+         from product_qtychange q inner join purchase_invoice_item pii on pii.id = q.item_id inner join product p on p.id = pii.product_id left join stores s on s.id = q.store_id
+        where q.qty < 0 and coalesce(q.status, 'APPROVED') = 'APPROVED' and q.active = true and q.archive = false and q.disposal_pass_id is null and q.store_id = any($1::int[])
+          and coalesce(upper(q.reason_code), '') <> all($2::text[])
+        order by q.created_on desc limit 5000`, [stores, NOT_WASTE_CODES]);
+    const all = rows.map((r: any) => {
+      const signals = legacySignals({ qty: -r.qty, reasonCode: r.reason_code, reason: r.reason, comments: r.comments, expDate: r.exp_date, adjustedOn: r.adjusted_on });
+      const v = lineValues(r.qty, r.pack, r.ptr_value, r.tax_pcnt, 0);
+      return { id: r.id, adjustedon: r.adjusted_on, storeid: r.store_id, store: r.store, title: r.title, batch: r.batch, expdate: r.exp_date, qty: r.qty, reason: r.reason_code || r.reason, comments: r.comments, tag: r.expiry_tag || null,
+        signals, signaltext: signals.map((x) => SIGNAL_LABEL[x]), cost: v.cost, tax: v.tax };
+    }).filter((r: any) => r.signals.length);
+    const counts = { UNREVIEWED: all.filter((r: any) => !r.tag).length, EXPIRY: all.filter((r: any) => r.tag === 'EXPIRY').length, NOT_EXPIRY: all.filter((r: any) => r.tag === 'NOT_EXPIRY').length };
+    const want = String(q?.status || '').toUpperCase();
+    const shown = want === 'UNREVIEWED' ? all.filter((r: any) => !r.tag) : want === 'EXPIRY' || want === 'NOT_EXPIRY' ? all.filter((r: any) => r.tag === want) : all;
+    return { rows: shown.slice(0, 1000), counts };
+  }
+
+  /** a Store Head or Business Head confirms old adjustments as expiry write-offs, or says they are not (or clears the tag): the adjustment itself never changes */
+  async legacyTag(b: any, user: any) {
+    const c = await this.ctx(user);
+    if (!c.isManager) throw new ForbiddenException('Only a Store Head or a Business Head can review old write-offs.');
+    const ids = (Array.isArray(b?.ids) ? b.ids : []).map((n: any) => Number(n)).filter((n: number) => n > 0);
+    if (!ids.length) throw new BadRequestException('Choose the adjustments first.');
+    const tag = b?.tag === null || b?.tag === '' || b?.tag === undefined ? null : String(b.tag).toUpperCase();
+    if (tag !== null && tag !== 'EXPIRY' && tag !== 'NOT_EXPIRY') throw new BadRequestException('Say whether they are expiry, or not.');
+    const stores = await this.scopeStores(c, null);
+    const res: any = await this.manager.query(
+      `update product_qtychange set expiry_tag = $2::varchar, expiry_tagged_by = $3, expiry_tagged_on = case when $2::varchar is null then null else now() end
+        where id = any($1::int[]) and qty < 0 and disposal_pass_id is null and store_id = any($4::int[]) returning id`, [ids, tag, c.id, stores]);
+    const done: any[] = Array.isArray(res?.[0]) ? res[0] : res;                       // an UPDATE ... RETURNING answers [rows, count]
+    await this.audit.record({ userId: c.id, action: 'disposal.legacy_tag', entityType: 'product_qtychange', entityId: ids[0], summary: `${done.length} old write-off${done.length === 1 ? '' : 's'} ${tag ? `marked ${tag === 'EXPIRY' ? 'as expiry' : 'as not expiry'}` : 'cleared'}`, details: { count: done.length, tag } });
+    return { tagged: done.length, tag };
+  }
+
+  // ------------------------------------------------------------------ the statement
+  /**
+   * What was written off as expired, by month and financial year, for the audit and the CA: confirmed out-passes (the goods left through a pass), out-passes recorded
+   * as disposed earlier, and old adjustments a person confirmed as expiry. Value at cost before GST, with the GST paid on that cost.
+   */
+  async statement(q: any, user: any) {
+    const c = await this.ctx(user);
+    const storeId = Number(q?.storeid) > 0 ? Number(q.storeid) : null;
+    const stores = await this.scopeStores(c, storeId);
+    const from = /^\d{4}-\d{2}-\d{2}$/.test(String(q?.from || '')) ? String(q.from) : '1970-01-01';
+    const to = /^\d{4}-\d{2}-\d{2}$/.test(String(q?.to || '')) ? String(q.to) : today();
+    const rows = stores.length ? await this.manager.query(
+      `select to_char(day, 'YYYY-MM') as month, source, count(*)::int as lines, sum(qty)::int as qty, round(sum(cost)::numeric, 2)::float as cost, round(sum(tax)::numeric, 2)::float as tax, min(to_char(day, 'YYYY-MM-DD')) as first_day from (
+         select dp.handed_on as day, case when dp.legacy then 'LEGACY_PASS' else 'PASS' end as source, l.qty, l.cost_value as cost, l.tax_value as tax
+           from disposal_pass_line l inner join disposal_pass dp on dp.id = l.pass_id
+          where dp.status = 'CONFIRMED' and dp.reason in ('EXPIRED', 'NEAR_EXPIRY') and dp.method <> 'VENDOR' and dp.store_id = any($1::int[]) and dp.handed_on between $2::date and $3::date
+         union all
+         select q.created_on::date as day, 'TAGGED' as source, (-q.qty) as qty,
+                (-q.qty) * pii.ptr_value / greatest(coalesce(p.pack, 1), 1) as cost, (-q.qty) * pii.ptr_value / greatest(coalesce(p.pack, 1), 1) * coalesce(pii.tax_pcnt, 0) / 100 as tax
+           from product_qtychange q inner join purchase_invoice_item pii on pii.id = q.item_id inner join product p on p.id = pii.product_id
+          where q.expiry_tag = 'EXPIRY' and q.qty < 0 and q.disposal_pass_id is null and q.store_id = any($1::int[]) and q.created_on::date between $2::date and $3::date) t
+       group by 1, 2 order by 1, 2`, [stores, from, to]) : [];
+    const label: Record<string, string> = { PASS: 'Out-passes', LEGACY_PASS: 'Recorded as disposed earlier', TAGGED: 'Old write-offs confirmed as expiry' };
+    const lines = rows.map((r: any) => ({ month: r.month, fy: financialYear(r.first_day), source: r.source, sourcelabel: label[r.source], lines: r.lines, qty: r.qty, cost: r.cost, tax: r.tax }));
+    const fy = new Map<string, { fy: string; qty: number; cost: number; tax: number }>();
+    for (const l of lines) {
+      const x = fy.get(l.fy) || { fy: l.fy, qty: 0, cost: 0, tax: 0 };
+      x.qty += l.qty; x.cost = Math.round((x.cost + l.cost) * 100) / 100; x.tax = Math.round((x.tax + l.tax) * 100) / 100;
+      fy.set(l.fy, x);
+    }
+    const total = lines.reduce((t: any, l: any) => ({ qty: t.qty + l.qty, cost: Math.round((t.cost + l.cost) * 100) / 100, tax: Math.round((t.tax + l.tax) * 100) / 100 }), { qty: 0, cost: 0, tax: 0 });
+    return { from, to, rows: lines, byYear: Array.from(fy.values()).sort((a, b) => a.fy.localeCompare(b.fy)), total };
+  }
+
+  async statementXlsx(q: any, user: any): Promise<Buffer> {
+    const st = await this.statement(q, user);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Expiry write-offs');
+    ws.addRow([`Expiry write-off statement, ${st.from} to ${st.to}`]).font = { bold: true };
+    ws.addRow(['Value at cost before GST; GST is the tax paid on that cost.']);
+    ws.addRow([]);
+    ws.addRow(['Financial year', 'Month', 'Source', 'Lines', 'Units', 'At cost', 'GST on cost']).font = { bold: true };
+    st.rows.forEach((r: any) => ws.addRow([r.fy, r.month, r.sourcelabel, r.lines, r.qty, r.cost, r.tax]));
+    ws.addRow([]);
+    ws.addRow(['By financial year']).font = { bold: true };
+    st.byYear.forEach((y: any) => ws.addRow([y.fy, '', '', '', y.qty, y.cost, y.tax]));
+    ws.addRow(['Total', '', '', '', st.total.qty, st.total.cost, st.total.tax]).font = { bold: true };
+    [14, 10, 36, 8, 8, 14, 14].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    return Buffer.from(await wb.xlsx.writeBuffer());
   }
 
   // ------------------------------------------------------------------ reading

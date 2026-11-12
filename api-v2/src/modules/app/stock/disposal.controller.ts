@@ -17,6 +17,21 @@ export class DisposalController {
   @Get('expiry') expiry(@Query() q: any, @User() u: any) { return this.service.expiry(q, u); }
   @Get('witnesses') witnesses(@Query() q: any, @User() u: any) { return this.service.witnesses(q, u); }
 
+  /** old adjustments that look like expiry write-offs, for review */
+  @Get('legacy') legacy(@Query() q: any, @User() u: any) { return this.service.legacyList(q, u); }
+  @Post('legacy/tag') legacyTag(@Body() b: any, @User() u: any) { return this.service.legacyTag(b, u); }
+  /** expired stock thrown away long ago but still on the books: one out-pass, recorded as disposed earlier */
+  @Post('backlog') backlog(@Body() b: any, @User() u: any) { return this.service.backlog(b, u); }
+
+  @Get('statement') statement(@Query() q: any, @User() u: any) { return this.service.statement(q, u); }
+  @Get('statement.xlsx')
+  async statementXlsx(@Query() q: any, @User() u: any, @Res() res: Response) {
+    const buf = await this.service.statementXlsx(q, u);
+    res.setHeader('Content-Disposition', 'attachment; filename=expiry-write-offs.xlsx');
+    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    return res.send(buf);
+  }
+
   @Get() list(@Query() q: any, @User() u: any) { return this.service.list(q, u); }
   @Post() create(@Body() b: any, @User() u: any) { return this.service.create(b, u); }
 
