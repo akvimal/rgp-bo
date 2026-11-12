@@ -41,12 +41,6 @@ export class StoreController {
     return this.service.updateProfile(Number(id), body, currentUser?.id);
   }
 
-  /** the foot of the bill as it would print for a template being written */
-  @Post("footer-preview")
-  previewFooter(@Body() body: any, @User() currentUser: any) {
-    return this.service.previewFooter(body, currentUser?.id);
-  }
-
   @Put(":id/licenses")
   saveLicenses(@Param("id") id: string, @Body() body: any, @User() currentUser: any) {
     return this.service.saveLicenses(Number(id), body, currentUser?.id);

@@ -49,10 +49,6 @@ import { UserStore } from "./user-store.entity";
   @Column("character varying", { name: "phone", length: 60, nullable: true })
   phone: string | null;
 
-  /** the foot of this store's bill (a template); empty means the business's */
-  @Column("text", { name: "bill_footer", nullable: true })
-  billfooter: string | null;
-
   /** the store's Google "write a review" link: bills carry a QR code for it */
   @Column("text", { name: "google_review_url", nullable: true })
   reviewurl: string | null;

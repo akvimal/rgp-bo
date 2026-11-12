@@ -21,7 +21,6 @@ import { DepositRule, checkDepositRule, describeDepositRule, evaluateDeposit, pa
 import { ChecklistAssistant } from "./checklist-assistant";
 import { DEFAULT_TOLERANCE_MINUTES, minutesOf, suggestTemplate } from "./shift-template-rules";
 import { cashPosition } from "./cash-position";
-import { cleanFooter, renderFooter } from "src/core/bill-footer";
 import { ChecklistKind, CHECKLIST_KINDS, DEFAULT_CHECKLISTS, effectiveChecklist, isChecklistKind, normalizeChecklistItems, requiredChecklistKeys, validateChecklist } from "./shift-checklist";
 
 import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
@@ -96,23 +95,7 @@ export class StoreService {
       `select id, license_type as licensetype, number, valid_from::text as validfrom, valid_to::text as validto, notes
          from store_license where store_id = $1 order by license_type, valid_to desc nulls first, id`, [id]);
     const st = this.licenseStatus(licenses.map((l: any) => ({ license_type: l.licensetype, valid_to: l.validto })));
-    return { id, location: store.location, address: store.address, pincode: store.pincode, phone: store.phone, reviewurl: store.reviewurl ?? '', billfooter: store.billfooter ?? '', licenses, licensestatus: st.status, licensenextexpiry: st.nextexpiry };
-  }
-
-  /** the foot of the bill as it would print, from a template being written (a store's, or the business's when no store is given): the same renderer the bill uses */
-  async previewFooter(body: any, userid: number) {
-    const storeid = Number(body?.storeid) > 0 ? Number(body.storeid) : null;
-    const [s] = await this.manager.query(
-      `select st.location, st.phone, st.business_id, b.name, b.name_suffix, b.phone as bphone, b.website, b.grievance_phone, st.bill_footer, b.bill_footer as business_footer
-         from stores st join business b on b.id = st.business_id
-        where ${storeid ? 'st.id = $1' : 'st.business_id = (select business_id from stores where id in (select store_id from user_stores where user_id = $1 and active) order by id limit 1)'} and st.active order by st.id limit 1`, [storeid ?? userid]);
-    const template = body?.template !== undefined ? String(body.template) : (s?.bill_footer || s?.business_footer);
-    const lines = renderFooter(template, {
-      store_name: String(s?.location ?? 'Main store').trim(), business_name: `${s?.name ?? 'Your business'}${s?.name_suffix ?? ''}`, store_phone: s?.phone || s?.bphone,
-      business_phone: s?.bphone, grievance_phone: s?.grievance_phone, website: s?.website, bill_no: 'B-1024',
-      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-    });
-    return { lines };
+    return { id, location: store.location, address: store.address, pincode: store.pincode, phone: store.phone, reviewurl: store.reviewurl ?? '', licenses, licensestatus: st.status, licensenextexpiry: st.nextexpiry };
   }
 
   /** Replaces the store's ship-to details and licences (the list sent is the whole list), checked and audited. */
@@ -135,11 +118,6 @@ export class StoreService {
       const p = text(body.pincode, 10, "The pincode");
       if (p && !/^[0-9]{6}$/.test(p)) throw new BadRequestException("The pincode must be 6 digits.");
       fields.pincode = p;
-    }
-    if (body.billfooter !== undefined) {
-      const f = cleanFooter(body.billfooter);
-      if (!f.ok) throw new BadRequestException(f.error);
-      fields.billfooter = f.value;
     }
     if (body.reviewurl !== undefined) {
       const u = text(body.reviewurl, 300, "The Google review link");

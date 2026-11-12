@@ -144,19 +144,6 @@
               <input class="form-control" maxlength="300" [(ngModel)]="lic.reviewurl" placeholder="https://g.page/r/.../review" data-testid="store-lic-reviewurl">
               <div class="form-text">The "write a review" link from the store's Google Business profile. Bills carry a QR code for it, and larger bills offer the cashier a WhatsApp invitation.</div>
             </div>
-            <div class="col-12">
-              <label class="form-label">Foot of this store's bill</label>
-              <textarea class="form-control" rows="5" maxlength="1200" [(ngModel)]="lic.billfooter" (input)="footerPreview = []" data-testid="store-lic-footer"
-                placeholder="Leave empty to use the business's standard foot (Settings > Business profile)."></textarea>
-              <div class="form-text">
-                One line each. Fields: {{ '{store_name} {business_name} {store_phone} {business_phone} {grievance_phone} {website} {bill_no} {date}' }}.
-                Phone layout: {{ '{store_phone|spaced}' }} 98765 43210, {{ '{store_phone|intl}' }} +91 98765 43210. Text: **bold**, _italic_; start a line with [c] centre, [l] left or [r] right.
-              </div>
-              <button type="button" class="btn btn-outline-secondary btn-sm mt-1" (click)="previewFooter()" data-testid="store-footer-preview-btn">Preview</button>
-              <div class="border rounded p-2 mt-2 small" *ngIf="footerPreview.length" data-testid="store-footer-preview">
-                <div *ngFor="let l of footerPreview" [style.text-align]="l.align === 'c' ? 'center' : (l.align === 'r' ? 'right' : 'left')"><ng-container *ngFor="let p of l.parts"><b *ngIf="p.bold && !p.italic">{{p.text}}</b><i *ngIf="p.italic && !p.bold">{{p.text}}</i><b *ngIf="p.bold && p.italic"><i>{{p.text}}</i></b><span *ngIf="!p.bold && !p.italic">{{p.text}}</span></ng-container></div>
-              </div>
-            </div>
           </div>
           <div class="table-responsive mt-3">
             <table class="table table-sm align-middle">

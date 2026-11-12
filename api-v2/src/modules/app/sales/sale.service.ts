@@ -721,10 +721,10 @@ export class SaleService {
 
     async getSales(){
         return await this.manager.query(`   
-        select s.id, s.bill_date, s.status , s.customer_id, case when c.id is null or c.mobile = '0000000000' then 'Walk-in' else c.name end as name, case when c.mobile = '0000000000' then null else c.mobile end as mobile, ss.itemcount, ss.total 
+        select s.id, s.bill_date, s.status , s.customer_id, c.name, c.mobile, ss.itemcount, ss.total 
         from sale s inner join 
         (select sale_id, count(*) as itemcount, sum(qty * price) as total from sale_item group by sale_id) ss on ss.sale_id = s.id
-        left join customer c on c.id = s.customer_id `);
+        inner join customer c on c.id = s.customer_id `);
     }
 
     async getReturns(){

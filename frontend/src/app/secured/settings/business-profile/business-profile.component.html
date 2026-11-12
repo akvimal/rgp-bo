@@ -83,27 +83,6 @@
           <div class="form-text">The MRP is off unless you choose it. Without it the grid shows the quantity, rate, GST and amount.</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Sign after the business name</label>
-          <select class="form-select" name="namesuffix" [(ngModel)]="form.namesuffix" data-testid="biz-name-suffix">
-            <option value="">None</option><option value="&#174;">&#174; (registered)</option><option value="&#8482;">&#8482; (trade mark)</option>
-          </select>
-          <div class="form-text">Printed after the name at the top of the bill and of the WhatsApp copy.</div>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Foot of the bill (the business's standard)</label>
-          <textarea class="form-control" rows="5" maxlength="1200" name="billfooter" [(ngModel)]="form.billfooter" (input)="footerPreview = []" data-testid="biz-bill-footer"
-            placeholder="Leave empty for the standard foot. One line each. For example:&#10;For refill and complaints call or WhatsApp: **{store_phone|spaced}**&#10;[c]Thank you for choosing us. Wishing you good health."></textarea>
-          <div class="form-text">
-            Used by every store that has not written its own (Settings &gt; Store). Fields: {{ '{store_name} {business_name} {store_phone} {business_phone} {grievance_phone} {website} {bill_no} {date}' }}.
-            Phone layout: {{ '{store_phone|spaced}' }} 98765 43210, {{ '{store_phone|intl}' }} +91 98765 43210, {{ '{store_phone|plain}' }} 9876543210. Text: **bold**, _italic_; start a line with [c] centre, [l] left or [r] right.
-            A line whose fields are all empty is left out.
-          </div>
-          <button type="button" class="btn btn-outline-secondary btn-sm mt-1" (click)="previewFooter()" data-testid="biz-footer-preview-btn">Preview</button>
-          <div class="border rounded p-2 mt-2 small" *ngIf="footerPreview.length" data-testid="biz-footer-preview">
-            <div *ngFor="let l of footerPreview" [style.text-align]="l.align === 'c' ? 'center' : (l.align === 'r' ? 'right' : 'left')"><ng-container *ngFor="let p of l.parts"><b *ngIf="p.bold && !p.italic">{{p.text}}</b><i *ngIf="p.italic && !p.bold">{{p.text}}</i><b *ngIf="p.bold && p.italic"><i>{{p.text}}</i></b><span *ngIf="!p.bold && !p.italic">{{p.text}}</span></ng-container></div>
-          </div>
-        </div>
-        <div class="col-md-6">
           <label class="form-label d-block">Sign-in page</label>
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="biz-show-changepw" name="showchangepasswordlink" [(ngModel)]="form.showchangepasswordlink" data-testid="biz-show-changepw">

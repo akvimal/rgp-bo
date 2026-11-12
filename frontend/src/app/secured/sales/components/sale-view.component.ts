@@ -64,12 +64,6 @@ export class SaleViewComponent {
     saleStaff:string = '';
     words = '';
 
-    /** the foot of the bill as the server rendered it from the store's template (or the business's, or the standard one) */
-    footerLines: { align: string; parts: { text: string; bold?: boolean; italic?: boolean }[] }[] = [];
-
-    /** a bill with no customer, or the old shared "Nil" one: printed as a walk-in, never with 0000000000 */
-    get walkIn(): boolean { return !this.sale?.customer || this.sale.customer.mobile === '0000000000'; }
-
     /** who the bill is from: the store's own details, with the business's as the fallback */
     from:any = { name: '', logo: '', website: '', grievancephone: '', showmrp: false, showsaving: true, showreturnnote: true, returnnote: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
     payments:{label:string, amount:number}[] = [];
@@ -140,11 +134,9 @@ export class SaleViewComponent {
       const byType:{[t:string]:string[]} = {};
       (h.licences || []).forEach((l:any) => { (byType[l.type] = byType[l.type] || []).push(l.number); });
       this.reviewQr = s.reviewurl ? qrPath(s.reviewurl) : null;
-      this.footerLines = h.footerlines || [];
       this.from = {
         // the shop's own name; the registered (legal) name is not printed
         name: b.name || b.legalname || '',
-        namesuffix: b.namesuffix || '',
         logo: b.logo || '',
         website: b.website || '',
         grievancephone: b.grievancephone || '',

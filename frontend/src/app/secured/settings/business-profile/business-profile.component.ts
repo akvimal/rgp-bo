@@ -1,13 +1,12 @@
 import { Component, OnInit } from "@angular/core";
 import { BusinessesService } from "../businesses/businesses.service";
-import { CashService } from "src/app/secured/store/cash/cash.service";
 
 @Component({
     templateUrl: './business-profile.component.html'
 })
 export class BusinessProfileComponent implements OnInit {
 
-    form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '', phone: '', grievancephone: '', website: '', showmrp: false, showsaving: true, showreturnnote: true, returnnote: '', showchangepasswordlink: true, namesuffix: '', billfooter: '' };
+    form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '', phone: '', grievancephone: '', website: '', showmrp: false, showsaving: true, showreturnnote: true, returnnote: '', showchangepasswordlink: true };
     logo: string | null = null;        // the logo as shown (the saved one, or a new pick)
     logoChanged = false;
     logoError = '';
@@ -16,12 +15,7 @@ export class BusinessProfileComponent implements OnInit {
     message = '';
     error = '';
 
-    footerPreview: any[] = [];
-
-    constructor(private service: BusinessesService, private cash: CashService) {}
-
-    /** the foot of the bill as the template would print it, drawn by the server's own renderer */
-    previewFooter() { this.cash.previewFooter({ template: this.form.billfooter || '' }).subscribe((r: any) => this.footerPreview = r.lines || [], () => this.footerPreview = []); }
+    constructor(private service: BusinessesService) {}
 
     ngOnInit() {
         this.service.getMine().subscribe((b: any) => this.fill(b), err => { this.loaded = true; this.error = this.msg(err, 'Could not load the business details.'); });
@@ -32,7 +26,7 @@ export class BusinessProfileComponent implements OnInit {
             name: b.name || '', legalname: b.legalname || '', gstin: b.gstin || '',
             statecode: b.statecode || '', address: b.address || '', pincode: b.pincode || '', phone: b.phone || '', grievancephone: b.grievancephone || '', website: b.website || '',
             showmrp: !!b.showmrp, showsaving: b.showsaving !== false, showreturnnote: b.showreturnnote !== false, returnnote: b.returnnote || '',
-            showchangepasswordlink: b.showchangepasswordlink !== false, namesuffix: b.namesuffix || '', billfooter: b.billfooter || '',
+            showchangepasswordlink: b.showchangepasswordlink !== false,
         };
         this.logo = b.logo || null;
         this.logoChanged = false;

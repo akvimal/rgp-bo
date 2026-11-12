@@ -324,16 +324,12 @@ export class StoreSettingsComponent implements OnInit {
     this.lic.licenses.splice(i, 1);
   }
 
-  /** the foot of this store's bill as the template would print it, drawn by the server's own renderer */
-  footerPreview: any[] = [];
-  previewFooter() { this.cashService.previewFooter({ storeid: this.licStoreId, template: this.lic?.billfooter || '' }).subscribe((r:any) => this.footerPreview = r.lines || [], () => this.footerPreview = []); }
-
   saveLicences() {
     this.licMessage = '';
     this.licError = '';
     this.licSaving = true;
     const body = {
-      address: this.lic.address || '', pincode: this.lic.pincode || '', phone: this.lic.phone || '', reviewurl: this.lic.reviewurl || '', billfooter: this.lic.billfooter || '',
+      address: this.lic.address || '', pincode: this.lic.pincode || '', phone: this.lic.phone || '', reviewurl: this.lic.reviewurl || '',
       licenses: this.lic.licenses.map((l:any) => ({ licensetype: l.licensetype, number: l.number, validfrom: l.validfrom || null, validto: l.validto || null, notes: l.notes || '' })),
     };
     this.cashService.saveStoreLicenses(this.licStoreId, body).subscribe(

@@ -71,14 +71,17 @@ test.describe('Bill at the MRP @p1', () => {
       await expect(page.getByTestId('bill-saved')).toHaveCount(0);
       await expect(page.getByTestId('bill-net')).toHaveText(`₹${net.toFixed(2)}`);
       const roundOff = r2(net - sum);
-      // one Net total line; "and rounded" is in its label only when a round off exists
-      await expect(page.getByTestId('bill-net-label')).toHaveText(Math.abs(roundOff) > 0.004 ? 'Net total (GST included and rounded)' : 'Net total (GST included)');
-      await expect(page.getByTestId('bill-total')).toHaveCount(0);
+      if (Math.abs(roundOff) > 0.004) {
+        await expect(page.getByTestId('bill-total')).toContainText(sum.toFixed(2));
+        await expect(page.locator('.bill-totals')).toContainText(Math.abs(roundOff).toFixed(2));
+      }
+      if (await page.getByTestId('bill-total').count()) await expect(page.getByTestId('bill-total')).toContainText('Total (GST included)');
       const shown = await page.locator('.bill-totals tr').evaluateAll((trs) => trs.map((tr) => (tr.textContent || '').replace(/\s+/g, ' ').trim()));
       expect(shown.some((x) => x.startsWith('GST included')), 'no separate GST line: the total says it is GST included').toBe(false);
-      expect(shown.some((x) => x.startsWith('Round off')), 'no separate round off line').toBe(false);
-      if (await page.getByTestId('bill-kind').textContent().then((t) => /Tax Invoice/.test(t || ''))) await expect(page.getByTestId('bill-words')).toContainText('Rupees');
-      else await expect(page.getByTestId('bill-words')).toHaveCount(0);
+      const total = num(shown.find((s) => s.startsWith('Total'))?.replace('Total (GST included)', '') ?? String(net));
+      const round = num((shown.find((s) => s.startsWith('Round off')) ?? 'Round off 0').replace('Round off', '').replace('−', '-'));
+      expect(r2(total + round)).toBe(net);                                                          // Total + round off = Net total
+      await expect(page.getByTestId('bill-words')).toContainText('Rupees');
 
       // columns still line up with the extra MRP column, and nothing overflows the page
       for (const c2 of [3, 4, 5, 6, 7]) {

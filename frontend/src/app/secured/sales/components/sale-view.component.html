@@ -3,9 +3,9 @@
         <div class="bill" data-testid="bill">
 
             <header class="bill-head">
-                <div class="bill-logo-box" *ngIf="from.logo"><img [src]="from.logo" alt="" class="bill-logo" data-testid="bill-logo"></div>
+                <img *ngIf="from.logo" [src]="from.logo" alt="" class="bill-logo" data-testid="bill-logo">
                 <div class="bill-from">
-                    <h1 data-testid="bill-from-name">{{from.name}}<sup class="bill-suffix" *ngIf="from.namesuffix" data-testid="bill-name-suffix">{{from.namesuffix}}</sup><small *ngIf="from.branch"> &middot; {{from.branch}}</small></h1>
+                    <h1 data-testid="bill-from-name">{{from.name}}<small *ngIf="from.branch"> &middot; {{from.branch}}</small></h1>
                     <div *ngIf="from.address" data-testid="bill-from-address">{{from.address}}</div>
                     <div *ngFor="let l of from.licences" data-testid="bill-licence">{{l.label}}: {{l.numbers}}</div>
                     <div *ngIf="from.gstin">GSTIN: <strong>{{from.gstin}}</strong></div>
@@ -24,8 +24,8 @@
             <section class="bill-party">
                 <div>
                     <span class="bill-label">Billed to</span>
-                    <strong data-testid="bill-customer">{{walkIn ? 'Walk-in customer' : (sale.customer?.name || 'Walk-in customer')}}</strong>
-                    <span *ngIf="!walkIn && sale.customer?.mobile"> &middot; {{sale.customer.mobile}}</span>
+                    <strong data-testid="bill-customer">{{sale.customer?.name || 'Walk-in customer'}}</strong>
+                    <span *ngIf="sale.customer?.mobile"> &middot; {{sale.customer.mobile}}</span>
                     <div *ngIf="sale.customer?.address" class="bill-sub">{{sale.customer.address}}</div>
                     <div *ngIf="sale.buyergstin" class="bill-sub" data-testid="bill-buyer-gstin">GSTIN: <strong>{{sale.buyergstin}}</strong></div>
                     <div *ngIf="sale.gstinvoiceno && placeName" class="bill-sub" data-testid="bill-place">Place of supply: {{placeName}}</div>
@@ -42,10 +42,10 @@
                         <th class="c-no">#</th>
                         <th class="c-name">Product</th>
                         <th class="c-batch">Batch / Exp</th>
-                        <th class="c-num c-qty">Qty</th>
+                        <th class="c-num">Qty</th>
                         <th class="c-num" *ngIf="from.showmrp" data-testid="bill-mrp-col">MRP</th>
                         <th class="c-num">Rate</th>
-                        <th class="c-num c-gst">GST</th>
+                        <th class="c-num">GST</th>
                         <th class="c-num">Amount</th>
                     </tr>
                 </thead>
@@ -57,10 +57,10 @@
                             <div class="bill-sub" *ngIf="i.props?.composition">{{i.props.composition}}</div>
                         </td>
                         <td class="c-batch">{{i.batch}}<span *ngIf="i.expdate"> / {{i.expdate | date : 'MMM-yy'}}</span></td>
-                        <td class="c-num c-qty">{{i.qty}}</td>
+                        <td class="c-num">{{i.qty}}</td>
                         <td class="c-num" *ngIf="from.showmrp">{{i.mrp > 0 ? (i.mrp | number : '1.2-2') : '-'}}</td>
                         <td class="c-num">{{i.price | number : '1.2-2'}}</td>
-                        <td class="c-num c-gst">{{i.taxpcnt}}%</td>
+                        <td class="c-num">{{i.taxpcnt}}%</td>
                         <td class="c-num">{{i.total | number : '1.2-2'}}</td>
                     </tr>
                 </tbody>
@@ -69,13 +69,15 @@
             <section class="bill-summary">
                 <div class="bill-notes">
                     <div><span class="bill-label">Items</span> <strong>{{itemsCount}}</strong> &middot; <span class="bill-label">Units</span> <strong>{{unitsCount}}</strong></div>
-                    <div class="bill-words" *ngIf="sale.gstinvoiceno" data-testid="bill-words"><span class="bill-label">Amount in words</span> Rupees {{words}} only</div>
+                    <div class="bill-words" data-testid="bill-words"><span class="bill-label">Amount in words</span> Rupees {{words}} only</div>
                     <div class="bill-refill" *ngIf="refillDue && auth.moduleOn('refills')" data-testid="bill-refill"><span class="bill-label">Next refill</span> about <strong>{{refillDue | date:'dd MMM yyyy'}}</strong></div>
                     <div class="bill-saved" *ngIf="savedAmount > 0 && from.showsaving" data-testid="bill-saved">You saved &#8377;{{savedAmount | number:'1.0-0'}} ({{saving}}%) on MRP</div>
                 </div>
                 <table class="bill-totals">
-                    <tr *ngIf="sale.discamount > 0" data-testid="bill-discount"><td>Discount<span *ngIf="sale.disccode"> ({{sale.disccode}})</span></td><td>&minus;{{sale.discamount | number:'1.2-2'}}</td></tr>
-                    <tr class="bill-net"><td data-testid="bill-net-label">Net total (GST included{{roundOff !== 0 ? ' and rounded' : ''}})</td><td data-testid="bill-net">&#8377;{{finalAmt | number:'1.2-2'}}</td></tr>
+                    <tr *ngIf="itemsTotal > 0 && (sale.discamount > 0 || roundOff !== 0)" data-testid="bill-total"><td>Total (GST included)</td><td>{{itemsTotal | number:'1.2-2'}}</td></tr>
+                    <tr *ngIf="sale.discamount > 0"><td>Discount<span *ngIf="sale.disccode"> ({{sale.disccode}})</span></td><td>&minus;{{sale.discamount | number:'1.2-2'}}</td></tr>
+                    <tr *ngIf="roundOff !== 0"><td>Round off</td><td>{{roundOff | number:'1.2-2'}}</td></tr>
+                    <tr class="bill-net"><td>Net total</td><td data-testid="bill-net">&#8377;{{finalAmt | number:'1.2-2'}}</td></tr>
                 </table>
             </section>
 
@@ -98,16 +100,15 @@
                 <div class="bill-strip-text">
                     <div *ngIf="auth.moduleOn('returns') && shiftContext.returnsAllowed && from.showreturnnote" data-testid="bill-keep-note">{{ from.returnnote || ('Please keep this bill for any return or exchange. ' + ('Goods' | term) + ' once sold are taken back only as the law and our policy allow.') }}</div>
                     <div *ngIf="!(auth.moduleOn('returns') && shiftContext.returnsAllowed)" data-testid="bill-no-returns">{{ 'Goods' | term }} once sold are not taken back or exchanged.</div>
+                    <div *ngIf="from.phone" data-testid="bill-from-phone">For refill and complaints call or WhatsApp: <strong>{{from.phone}}</strong></div>
+                    <div *ngIf="from.grievancephone" data-testid="bill-grievance">For grievances call or WhatsApp: <strong>{{from.grievancephone}}</strong></div>
+                    <div *ngIf="from.website" data-testid="bill-website">{{from.website}}</div>
+                    <div class="bill-thanks">Thank you for choosing us. Wishing you good health.</div>
                 </div>
                 <div class="bill-review" *ngIf="reviewQr" data-testid="bill-review">
-                    <div class="bill-review-text">Happy with us? Scan to review us on Google.</div>
                     <svg class="bill-review-qr" [attr.viewBox]="'-4 -4 ' + (reviewQr.size + 8) + ' ' + (reviewQr.size + 8)" role="img" aria-label="QR code to review us on Google" shape-rendering="crispEdges"><path [attr.d]="reviewQr.d" fill="#000"/></svg>
+                    <div class="bill-review-text">Happy with us? Scan to review us on Google.</div>
                 </div>
-            </div>
-
-            <!-- the very foot: the template the store (or the business) wrote, under a rule -->
-            <div class="bill-foot" *ngIf="footerLines.length" data-testid="bill-footer">
-                <div *ngFor="let l of footerLines" class="bill-foot-line" [ngClass]="'ta-' + l.align" data-testid="bill-footer-line"><ng-container *ngFor="let p of l.parts"><b *ngIf="p.bold && !p.italic">{{p.text}}</b><i *ngIf="p.italic && !p.bold">{{p.text}}</i><b *ngIf="p.bold && p.italic"><i>{{p.text}}</i></b><span *ngIf="!p.bold && !p.italic">{{p.text}}</span></ng-container></div>
             </div>
         </div>
     </div>

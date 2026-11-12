@@ -1,4 +1,3 @@
-import { cleanFooter } from "src/core/bill-footer";
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
@@ -188,15 +187,6 @@ export class BusinessService {
       fields.grievancephone = p.value;
     }
     if (body.returnnote !== undefined) fields.returnnote = clean(body.returnnote, 300, "The return note");
-    if (body.namesuffix !== undefined) {
-      if (!["", "\u00AE", "\u2122"].includes(String(body.namesuffix))) throw new BadRequestException("Choose none, the registered sign or the trade-mark sign.");
-      fields.namesuffix = String(body.namesuffix);
-    }
-    if (body.billfooter !== undefined) {
-      const f = cleanFooter(body.billfooter);
-      if (!f.ok) throw new BadRequestException(f.error);
-      fields.billfooter = f.value;
-    }
     for (const key of ["showmrp", "showsaving", "showreturnnote", "showchangepasswordlink"]) {
       if (body[key] !== undefined) {
         if (typeof body[key] !== "boolean") throw new BadRequestException("Choose yes or no for what the bill prints.");
