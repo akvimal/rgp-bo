@@ -27,6 +27,7 @@
                 </div>
                 <div class="small text-danger mt-1" *ngIf="customerError && !sale.customer.existing" data-testid="sale-cust-error">{{customerError}}</div>
                 <div class="small text-muted mt-1" *ngIf="noMobileMode && !sale.customer.existing" data-testid="sale-no-mobile-hint">No mobile: enter the name and location, or find an existing customer by name. Refill reminders and messages need a number.</div>
+                <div class="small text-muted mt-1" *ngIf="!noMobileMode && !sale.customer.existing && !sale.customer.mobile" data-testid="sale-walkin-hint">Leave the mobile empty to skip the customer: the bill is saved as a walk-in (no WhatsApp copy, refill reminder or points).</div>
                 <div class="d-flex align-items-center gap-2" *ngIf="sale.customer.existing">
                     <i class="bi bi-person-check fs-5 text-success"></i>
                     <strong>{{sale.customer?.name}}</strong> <span class="text-muted">{{sale.customer?.mobile || 'no mobile'}}<ng-container *ngIf="sale.customer?.locality"> &middot; {{sale.customer.locality}}</ng-container></span>

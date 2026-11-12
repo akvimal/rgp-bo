@@ -58,6 +58,14 @@ import { Store } from "./store.entity";
     @Column("character varying", { name: "grievance_phone", length: 60, nullable: true })
     grievancephone: string | null;
 
+    /** a registered or trade-mark sign after the business name wherever it is printed as a title ('' none) */
+    @Column("character varying", { name: "name_suffix", length: 2, default: "" })
+    namesuffix: string;
+
+    /** the business's foot of the bill (a template; a store's own overrides it); empty means the standard foot */
+    @Column("text", { name: "bill_footer", nullable: true })
+    billfooter: string | null;
+
     /** what the bill prints: the MRP column (off by default) and the "You saved" box (on) */
     @Column("boolean", { name: "bill_show_mrp", default: false })
     showmrp: boolean;

@@ -28,6 +28,11 @@ export class CashService {
         return this.http.get(`${this.apiurl}/stores/${id}/licenses`);
     }
 
+    /** the foot of the bill as it would print for a template being written (a store's, or the business's when no store is given) */
+    previewFooter(body:any): Observable<any> {
+        return this.http.post(`${this.apiurl}/stores/footer-preview`, body);
+    }
+
     saveStoreLicenses(id:any, body:any): Observable<any> {
         return this.http.put(`${this.apiurl}/stores/${id}/licenses`, body);
     }

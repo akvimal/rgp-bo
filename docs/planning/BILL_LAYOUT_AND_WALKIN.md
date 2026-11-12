@@ -1,4 +1,4 @@
-# Bill print, WhatsApp copy, walk-in customer (planned 2026-11-12, not built)
+# Bill print, WhatsApp copy, walk-in customer (planned 2026-11-12, built 2026-11-12, uncommitted)
 
 Plan only. Sources: the owner's list of changes to the printed bill, the WhatsApp copy, the counter and the sales report.
 

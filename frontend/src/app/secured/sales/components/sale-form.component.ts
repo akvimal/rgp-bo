@@ -428,12 +428,10 @@ export class SaleFormComponent {
 
     const keepsCustomer = !!this.sale.customer && (!!this.sale.customer.mobile || !!this.sale.customer.existing || (this.noMobileMode && this.noMobileReady));
     if(!keepsCustomer){
+        // a skipped customer is stored as no customer (the shared "Nil" record is no longer used); bills and reports show it as a walk-in
         obj['customer'] = null;
-        if(this.sale.status == 'COMPLETE'){
-          //setting default nil customer
-          this.sale.customerid = +(localStorage.getItem('nil') || 0);
-          obj['customerid'] = this.sale.customerid;
-        }
+        this.sale.customerid = null as any;
+        obj['customerid'] = null;
     }
     else{
         this.sale.customer['name'] = String(this.sale.customer['name'] || '').toUpperCase();

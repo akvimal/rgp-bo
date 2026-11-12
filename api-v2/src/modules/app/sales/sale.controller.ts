@@ -1,3 +1,4 @@
+import { renderFooter } from 'src/core/bill-footer';
 import { SaleService } from "./sale.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, Put, Query, UseGuards, NotFoundException } from "@nestjs/common";
@@ -307,21 +308,27 @@ export class SaleController {
      */
     @Get('/:id/bill')
     async billHeader(@Param('id') id: number) {
-      const [sale] = await this.manager.query(`select store_id from sale where id = $1`, [Number(id)]);
+      const [sale] = await this.manager.query(`select store_id, bill_no, gst_invoice_no, bill_date from sale where id = $1`, [Number(id)]);
       if (!sale) throw new NotFoundException('Bill not found.');
       const [store] = await this.manager.query(
         `select st.id, st.location, st.address, st.pincode, st.phone, st.google_review_url, st.business_id,
-                b.name as business_name, b.legal_name, b.gstin, b.state_code, b.address as business_address, b.pincode as business_pincode, b.phone as business_phone, b.logo as business_logo, b.website as business_website, b.grievance_phone as business_grievance_phone, b.bill_show_mrp as business_show_mrp, b.bill_show_saving as business_show_saving, b.bill_show_return_note as business_show_return_note, b.bill_return_note as business_return_note,
+                b.name as business_name, b.legal_name, b.gstin, b.state_code, b.address as business_address, b.pincode as business_pincode, b.phone as business_phone, b.logo as business_logo, b.website as business_website, b.grievance_phone as business_grievance_phone, b.name_suffix as business_name_suffix, b.bill_footer as business_footer, st.bill_footer as store_footer, b.bill_show_mrp as business_show_mrp, b.bill_show_saving as business_show_saving, b.bill_show_return_note as business_show_return_note, b.bill_return_note as business_return_note,
                 (select count(*) from stores s2 where s2.business_id = st.business_id and s2.active = true and s2.archive = false)::int as store_count
            from stores st join business b on b.id = st.business_id where st.id = $1`, [sale.store_id]);
       if (!store) return { store: null, business: null, licences: [] };
       const licences = await this.manager.query(
         `select license_type as type, number, valid_to as validto from store_license where store_id = $1 order by id`, [store.id]);
       return {
-        business: { name: store.business_name, legalname: store.legal_name, gstin: store.gstin, statecode: store.state_code, address: store.business_address, pincode: store.business_pincode, phone: store.business_phone, logo: store.business_logo, website: store.business_website, grievancephone: store.business_grievance_phone, showmrp: !!store.business_show_mrp, showsaving: store.business_show_saving !== false, showreturnnote: store.business_show_return_note !== false, returnnote: store.business_return_note || null },
-        store: { name: store.location, address: store.address, pincode: store.pincode, phone: store.phone, reviewurl: store.google_review_url || null },
+        business: { name: store.business_name, legalname: store.legal_name, gstin: store.gstin, statecode: store.state_code, address: store.business_address, pincode: store.business_pincode, phone: store.business_phone, logo: store.business_logo, website: store.business_website, grievancephone: store.business_grievance_phone, showmrp: !!store.business_show_mrp, showsaving: store.business_show_saving !== false, showreturnnote: store.business_show_return_note !== false, returnnote: store.business_return_note || null, namesuffix: store.business_name_suffix || '', footer: store.business_footer || null },
+        store: { name: store.location, address: store.address, pincode: store.pincode, phone: store.phone, reviewurl: store.google_review_url || null, footer: store.store_footer || null },
         multistore: Number(store.store_count) > 1,
         licences,
+        // the foot of the bill, rendered here so the printed bill and the WhatsApp copy are the same
+        footerlines: renderFooter(store.store_footer || store.business_footer, {
+          store_name: String(store.location || '').trim(), business_name: `${store.business_name || ''}${store.business_name_suffix || ''}`, store_phone: store.phone || store.business_phone,
+          business_phone: store.business_phone, grievance_phone: store.business_grievance_phone, website: store.business_website,
+          bill_no: String(sale.gst_invoice_no || sale.bill_no || ''), date: sale.bill_date ? new Date(sale.bill_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        }),
       };
     }
 

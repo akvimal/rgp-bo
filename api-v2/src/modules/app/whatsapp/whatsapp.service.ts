@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
+import { renderFooter } from 'src/core/bill-footer';
 import { isOwnerRole } from 'src/core/roles';
 import { cleanKey, decryptKey, encryptKey, keyHint } from '../alerts/ai-key';
 import { BillData, buildBillPdf } from './bill-pdf';
@@ -94,8 +95,8 @@ export class WhatsAppService {
     const [s] = await this.manager.query(
       `select s.id, s.bill_no, s.gst_invoice_no, s.bill_date, s.status, s.total, s.disc_amount, s.cash_amount, s.digi_amount, s.digi_method, s.due_amount, s.expreturn_days, s.store_id, s.customer_id,
               c.name as customer_name, c.mobile, c.do_not_contact, c.contact_consent, c.message_language,
-              st.location as store_name, st.address as store_address, st.phone as store_phone, st.business_id,
-              b.legal_name, b.gstin
+              st.location as store_name, st.address as store_address, st.phone as store_phone, st.business_id, st.google_review_url, st.bill_footer as store_footer,
+              b.legal_name, b.gstin, b.name as business_name, b.name_suffix, b.website, b.phone as business_phone, b.grievance_phone, b.bill_footer as business_footer
          from sale s join customer c on c.id = s.customer_id left join stores st on st.id = s.store_id left join business b on b.id = st.business_id
         where s.id = $1 and s.active and not s.archive`, [saleId]);
     if (!s) throw new NotFoundException('Bill not found.');
@@ -108,11 +109,16 @@ export class WhatsAppService {
 
   private billData(s: any, items: any[]): BillData {
     return {
-      shop: { name: s.store_name || 'Store', address: s.store_address, phone: s.store_phone, legalName: s.legal_name, gstin: s.gstin },
+      shop: { name: s.business_name || s.store_name || 'Store', suffix: s.name_suffix || '', branch: s.store_name, address: s.store_address, phone: s.store_phone || s.business_phone, legalName: s.legal_name, gstin: s.gstin, reviewUrl: s.google_review_url || null },
       label: billLabel({ gstinvoiceno: s.gst_invoice_no, billno: s.bill_no, id: s.id }), taxInvoice: !!s.gst_invoice_no,
       date: new Date(s.bill_date), customer: s.customer_name, mobile: s.mobile,
       lines: items.map((i) => ({ title: i.title, batch: i.batch, expDate: i.exp_date ? String(i.exp_date).slice(0, 10) : null, qty: Number(i.qty), mrp: i.mrp_cost, price: Number(i.price), taxPcnt: i.tax_pcnt, total: Number(i.total ?? Number(i.price) * Number(i.qty)) })),
-      discount: round2(s.disc_amount), total: round2(s.total), cash: round2(s.cash_amount), digital: round2(s.digi_amount), digitalMethod: s.digi_method, due: round2(s.due_amount), returnDays: s.expreturn_days,
+      discount: round2(s.disc_amount), total: round2(s.total), cash: round2(s.cash_amount), digital: round2(s.digi_amount), digitalMethod: s.digi_method, due: round2(s.due_amount),
+      footer: renderFooter(s.store_footer || s.business_footer, {
+        store_name: String(s.store_name || '').trim(), business_name: `${s.business_name || ''}${s.name_suffix || ''}`, store_phone: s.store_phone || s.business_phone, business_phone: s.business_phone,
+        grievance_phone: s.grievance_phone, website: s.website, bill_no: billLabel({ gstinvoiceno: s.gst_invoice_no, billno: s.bill_no, id: s.id }),
+        date: new Date(s.bill_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      }),
     };
   }
 

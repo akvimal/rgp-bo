@@ -52,13 +52,13 @@ test.describe('Customer bill @p1', () => {
 
     // from the store, not from the code
     await expect(page.getByTestId('bill-from-name')).toContainText(String(biz.name));                      // the shop's own name; the legal name is not printed
-    await expect(page.getByTestId('bill-from-phone')).toContainText('98400 11223, 044 2345 6789');         // every number the store lists
+    await expect(page.getByTestId('bill-footer')).toContainText('98400 11223, 044 2345 6789');             // every number the store lists, in the foot
     await expect(page.getByTestId('bill-from-address')).toContainText('12 QA Main Road, Testville, 600001');
     await expect(page.getByTestId('bill-licence')).toContainText('DL No.: QA-20-0001 | QA-21-0001');
     await expect(page.getByTestId('bill')).not.toContainText('Ramesh');
     // the end of the bill: a separate number for complaints, and the website
-    await expect(page.getByTestId('bill-grievance')).toContainText('98400 99999');
-    await expect(page.getByTestId('bill-website')).toContainText('www.qashop.in');
+    await expect(page.getByTestId('bill-footer')).toContainText('For grievances call or WhatsApp: 98400 99999');
+    await expect(page.getByTestId('bill-footer')).toContainText('www.qashop.in');
     await api.request('PUT', '/businesses/mine', { grievancephone: biz.grievancephone ?? '', website: biz.website ?? '', showmrp: biz.showmrp ?? false, showsaving: biz.showsaving ?? true }, MGR);
     await expect(page.getByTestId('bill-kind')).toHaveText(issued ? 'Tax Invoice' : 'Cash Bill');
 
@@ -73,7 +73,8 @@ test.describe('Customer bill @p1', () => {
 
     // the total, in numbers and in words, and the earliest refill date for a medicine supplied for a month
     await expect(page.getByTestId('bill-net')).toHaveText('₹190.00');
-    await expect(page.getByTestId('bill-words')).toContainText('Rupees One Hundred Ninety only');
+    if (issued) await expect(page.getByTestId('bill-words')).toContainText('Rupees One Hundred Ninety only');
+    else await expect(page.getByTestId('bill-words')).toHaveCount(0);                               // the words are for a tax invoice only
     await expect(page.getByTestId('bill-refill')).toHaveCount(1);                                      // one line: the earliest refill date
     await expect(page.getByTestId('bill-refill')).toContainText('Next refill');
     if (issued) await expect(page.getByTestId('bill-gst')).toBeVisible();
@@ -131,7 +132,7 @@ test.describe('Customer bill @p1', () => {
       await page.reload();
       await expect(page.getByTestId('bill-line')).toHaveCount(2);
       await expect(note).toHaveCount(0);
-      await expect(page.getByTestId('bill-contact')).toBeVisible();                                    // the rest of the foot stays
+      await expect(page.getByTestId('bill-footer')).toBeVisible();                                     // the rest of the foot stays
       if (shown) {
         await api.request('PUT', '/businesses/mine', { showreturnnote: true }, MGR);
         await page.reload();

@@ -1,6 +1,18 @@
 import PDFDocument = require('pdfkit');
+import * as QRCode from 'qrcode';
+import { FooterLine } from '../../../core/bill-footer';
 
-export interface BillShop { name: string; address?: string | null; phone?: string | null; legalName?: string | null; gstin?: string | null }
+export interface BillShop {
+  /** the business's name: the title of the copy */
+  name: string;
+  /** a registered or trade-mark sign after the name ('' none) */
+  suffix?: string | null;
+  /** the store, printed under the title when it differs from the business name */
+  branch?: string | null;
+  address?: string | null; phone?: string | null; legalName?: string | null; gstin?: string | null;
+  /** the store's Google review link: the copy carries a QR code for it */
+  reviewUrl?: string | null;
+}
 export interface BillLine { title: string; batch?: string | null; expDate?: string | null; qty: number; mrp?: number | null; price: number; taxPcnt?: number | null; total: number }
 export interface BillData {
   shop: BillShop;
@@ -16,7 +28,8 @@ export interface BillData {
   digital: number;
   digitalMethod?: string | null;
   due: number;
-  returnDays?: number | null;
+  /** the foot of the bill, rendered from the store's template (the same lines as the printed bill) */
+  footer?: FooterLine[];
 }
 
 const NAVY = '#012970';
@@ -33,7 +46,8 @@ const fmtDate = (d: Date) => {
  * A customer's copy of a bill, as a one-or-more page PDF (A5). The page uses the standard fonts, which cannot draw Tamil, so product and shop names are
  * printed as they are stored; anything outside the Latin range is replaced by a question mark rather than breaking the file.
  */
-export function buildBillPdf(b: BillData): Promise<Buffer> {
+export async function buildBillPdf(b: BillData): Promise<Buffer> {
+  const qr = b.shop.reviewUrl ? await QRCode.toBuffer(b.shop.reviewUrl, { margin: 1, width: 240, errorCorrectionLevel: 'M' }).catch(() => null) : null;
   const safe = (s: any) => String(s ?? '').replace(/[^\x20-\x7e -ÿ₹]/g, '?').replace('₹', 'Rs ');
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A5', margin: 28, info: { Title: `Bill ${safe(b.label)}`, Author: safe(b.shop.name) } });
@@ -46,8 +60,9 @@ export function buildBillPdf(b: BillData): Promise<Buffer> {
     const right = doc.page.width - doc.page.margins.right;
     const width = right - left;
 
-    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(14).text(safe(b.shop.name), left, doc.y, { width, align: 'center' });
+    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(14).text(safe(`${b.shop.name}${b.shop.suffix || ''}`), left, doc.y, { width, align: 'center' });
     doc.fillColor(GREY).font('Helvetica').fontSize(8);
+    if (b.shop.branch && b.shop.branch !== b.shop.name) doc.text(safe(b.shop.branch), { width, align: 'center' });
     if (b.shop.legalName && b.shop.legalName !== b.shop.name) doc.text(safe(b.shop.legalName), { width, align: 'center' });
     if (b.shop.address) doc.text(safe(b.shop.address), { width, align: 'center' });
     const contact = [b.shop.phone ? `Phone ${b.shop.phone}` : '', b.shop.gstin ? `GSTIN ${b.shop.gstin}` : ''].filter(Boolean).join('   ');
@@ -107,9 +122,31 @@ export function buildBillPdf(b: BillData): Promise<Buffer> {
     if (b.digital > 0) row(`Paid${b.digitalMethod ? ' (' + safe(b.digitalMethod) + ')' : ' digitally'}`, money(b.digital));
     if (b.due > 0) row('Balance due', money(b.due));
 
-    doc.moveDown(0.8).font('Helvetica').fontSize(7.5).fillColor(GREY);
-    if (b.returnDays) doc.text(`Returns accepted within ${b.returnDays} days with this bill.`, left, doc.y, { width, align: 'center' });
-    doc.text('Thank you for shopping with us.', left, doc.y, { width, align: 'center' });
+    // the review: the words on the left, the code on the right
+    if (qr) {
+      if (doc.y > doc.page.height - doc.page.margins.bottom - 110) doc.addPage();
+      doc.moveDown(0.8);
+      const y = doc.y, box = 62;
+      doc.font('Helvetica').fontSize(8.5).fillColor('#000').text('Happy with us? Scan to review us on Google.', left, y + 18, { width: width - box - 12, align: 'right' });
+      doc.image(qr, right - box, y, { width: box, height: box });
+      doc.y = y + box + 2;
+    }
+
+    // the foot the store wrote, under a rule
+    const foot = (b.footer || []).filter((l) => l.parts.some((p) => p.text.trim()));
+    if (foot.length) {
+      if (doc.y > doc.page.height - doc.page.margins.bottom - 20 - foot.length * 11) doc.addPage();
+      doc.moveDown(0.6);
+      doc.moveTo(left, doc.y).lineTo(right, doc.y).strokeColor(NAVY).lineWidth(0.8).stroke();
+      doc.moveDown(0.4);
+      for (const l of foot) {
+        const align = l.align === 'r' ? 'right' : l.align === 'l' ? 'left' : 'center';
+        l.parts.forEach((p, k) => {
+          doc.font(p.bold && p.italic ? 'Helvetica-BoldOblique' : p.bold ? 'Helvetica-Bold' : p.italic ? 'Helvetica-Oblique' : 'Helvetica').fontSize(7.5).fillColor(p.bold ? NAVY : GREY);
+          doc.text(safe(p.text), k === 0 ? left : undefined, k === 0 ? doc.y : undefined, { width, align, continued: k < l.parts.length - 1 });
+        });
+      }
+    }
     doc.end();
   });
 }
