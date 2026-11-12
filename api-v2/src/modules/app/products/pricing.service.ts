@@ -220,10 +220,10 @@ export class PricingService extends PricingReader {
     const onInvoice = new Set<number>(rows.map((r: any) => +r.product_id));
     const products = (await this.unpriced()).filter((u) => onInvoice.has(u.productid)).map((u) => ({
       productid: u.productid, title: u.title, pack: u.pack, classkey: u.classkey, cost: u.cost, mrp: u.mrp, tax: u.tax, packsuspect: u.packsuspect,
-      suggestion: u.suggestion,
+      suggestion: u.suggestion, lower: u.lower,
       shown: u.suggestion ? (mode.basis === 'incl' ? priceWithGst(u.suggestion.price, u.tax, u.mrp) : u.suggestion.price) : null,
     }));
-    return { mode: mode.mode, basis: mode.basis, products };
+    return { mode: mode.mode, basis: mode.basis, quick: { step: mode.quickStepPct, max: mode.quickMaxChoices }, products };
   }
 
   /** What each line of a purchase invoice means for the product's current price (the receiving screen's "Sale price" column). */
@@ -338,6 +338,8 @@ export class PricingService extends PricingReader {
       [MODE_KEYS.discountPct, String(after.discountPct), 'DISCOUNT mode: the usual discount off the MRP for a first price'],
       [MODE_KEYS.maxDiscountPct, String(after.maxDiscountPct), 'DISCOUNT mode: the deepest discount any price may have'],
       [MODE_KEYS.minMarginPct, String(after.minMarginPct), 'DISCOUNT mode: the lowest markup on cost'],
+      [MODE_KEYS.quickStepPct, String(after.quickStepPct), 'Quick price pick: the step between choices, percent off the MRP'],
+      [MODE_KEYS.quickMaxChoices, String(after.quickMaxChoices), 'Quick price pick: how many steps are offered'],
     ];
     for (const [key, value, label] of rows) {
       await this.manager.query(

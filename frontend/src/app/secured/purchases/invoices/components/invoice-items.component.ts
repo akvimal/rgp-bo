@@ -1,3 +1,4 @@
+import { quickPrices } from "../../../products/quick-price";
 import { Component } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { Invoice } from "../invoice.model";
@@ -283,6 +284,15 @@ export class InvoiceItemsComponent {
             (r.products || []).forEach((p:any) => this.typedPrices[p.productid] = p.shown);
         }, () => this.newPrices = null);
     }
+
+    /** the quick pick for one new product: the MRP and each step off it, those under the class's lowest price left out of reach */
+    quickFor(p:any){
+        const q = this.newPrices?.quick || { step: 5, max: 4 };
+        const l = quickPrices({ mrp: +p.mrp, tax: +p.tax, lower: p.lower !== null && p.lower !== undefined ? +p.lower : null, step: +q.step, max: +q.max, basis: this.newPrices?.basis === 'incl' ? 'incl' : 'excl' });
+        return l;
+    }
+
+    pickQuickPrice(p:any, shown:any){ if(shown !== '' && shown !== null) this.typedPrices[p.productid] = +shown; }
 
     /** `only` sets the price of that one product; without it every product in the list is priced */
     setNewPrices(only?:number){

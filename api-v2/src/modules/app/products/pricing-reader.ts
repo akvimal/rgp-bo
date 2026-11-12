@@ -4,7 +4,7 @@ import { PRICING_UNPRICED_SQL } from './pricing-unpriced.sql';
 import { analysePrices } from './pricing-check';
 import { effectivePolicy, effectiveSteps, ModeSettings, readModeSettings } from './pricing-mode';
 import { mrpRatio, bestMarkupPct } from './receiving-check';
-import { Abc, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Subject, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
+import { Abc, boundsOf, classKey, ClassPolicy, DEFAULT_SETTINGS, evaluate, Evaluation, Level, lineImpact, LineStatus, PolicySettings, Subject, Suggestion, suggestPrice, tradeBand, Violation } from './price-policy';
 
 export interface PricingItem {
   productid: number; title: string; pack: number; classkey: string; abc: Abc;
@@ -25,6 +25,8 @@ export const today = () => new Date().toISOString().slice(0, 10);
 export interface UnpricedItem {
   productid: number; title: string; pack: number; classkey: string; abc: Abc;
   cost: number; mrp: number; tax: number; units: number; packsuspect: boolean; suggestion: Suggestion | null;
+  /** the lowest price the class allows (before GST); null when the cost needs checking first */
+  lower: number | null;
 }
 
 export interface LineIn { itemid: number; productid: number; mrp: number; ptrvalue: number; ptrcost: number | null; disc: number; qty: number; free: number; taxbatch: number }
@@ -123,7 +125,8 @@ export class PricingReader {
       const policy = policies.get(key) ?? { floorMarkupPct: 8, maxDiscountPct: 20, usualDiscountPct: 5 };
       const suggestion = r.pack_suspect ? null : suggestPrice({ price: null, cost: r.cost, mrp: r.mrp, tax: r.tax, abc: r.abc, lastChange: null, today: today0 }, policy);
       void st;
-      return { productid: +r.product_id, title: r.title, pack: +r.pack, classkey: key, abc: r.abc, cost: r.cost, mrp: r.mrp, tax: r.tax, units: Number(r.units), packsuspect: !!r.pack_suspect, suggestion };
+      const bounds = boundsOf({ price: null, cost: r.cost, mrp: r.mrp, tax: r.tax, abc: r.abc, lastChange: null, today: today0 }, policy);
+      return { lower: r.pack_suspect || bounds.conflict ? null : bounds.lower, productid: +r.product_id, title: r.title, pack: +r.pack, classkey: key, abc: r.abc, cost: r.cost, mrp: r.mrp, tax: r.tax, units: Number(r.units), packsuspect: !!r.pack_suspect, suggestion };
     });
   }
 

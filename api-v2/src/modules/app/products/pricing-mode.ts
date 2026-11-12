@@ -18,13 +18,15 @@ export interface ModeSettings {
   discountPct: number;       // DISCOUNT: the usual discount off the MRP, for a product's first price
   maxDiscountPct: number;    // DISCOUNT: the deepest discount any price may have
   minMarginPct: number;      // DISCOUNT: the lowest markup on cost
+  quickStepPct: number;      // the quick price pick: the step between choices, in percent off the MRP
+  quickMaxChoices: number;   // the quick price pick: how many steps are offered
 }
 
 export const MODES: PricingMode[] = ['MRP', 'DISCOUNT', 'SMART'];
-export const MODE_DEFAULTS: ModeSettings = { mode: 'SMART', basis: 'excl', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0 };
+export const MODE_DEFAULTS: ModeSettings = { mode: 'SMART', basis: 'excl', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0, quickStepPct: 5, quickMaxChoices: 4 };
 
 /** the keys under category 'pricing' in app_setting */
-export const MODE_KEYS = { mode: 'pricing_mode', basis: 'price_basis', discountPct: 'mode_discount_pct', maxDiscountPct: 'mode_max_discount_pct', minMarginPct: 'mode_min_margin_pct' } as const;
+export const MODE_KEYS = { mode: 'pricing_mode', basis: 'price_basis', discountPct: 'mode_discount_pct', maxDiscountPct: 'mode_max_discount_pct', minMarginPct: 'mode_min_margin_pct', quickStepPct: 'quick_step_pct', quickMaxChoices: 'quick_max_choices' } as const;
 
 const num = (rows: Array<{ setting_key: string; setting_value: any }>, key: string, d: number) => {
   const raw = rows.find((r) => r.setting_key === key)?.setting_value;
@@ -42,6 +44,8 @@ export function readModeSettings(rows: Array<{ setting_key: string; setting_valu
     discountPct: num(rows, MODE_KEYS.discountPct, MODE_DEFAULTS.discountPct),
     maxDiscountPct: num(rows, MODE_KEYS.maxDiscountPct, MODE_DEFAULTS.maxDiscountPct),
     minMarginPct: num(rows, MODE_KEYS.minMarginPct, MODE_DEFAULTS.minMarginPct),
+    quickStepPct: Math.min(50, Math.max(0.5, num(rows, MODE_KEYS.quickStepPct, MODE_DEFAULTS.quickStepPct))),
+    quickMaxChoices: Math.min(10, Math.max(1, Math.round(num(rows, MODE_KEYS.quickMaxChoices, MODE_DEFAULTS.quickMaxChoices)))),
   };
 }
 
@@ -79,6 +83,16 @@ export function validateModeSettings(body: any, current: ModeSettings): { value?
     const r = pct(body[k], label, max);
     if (typeof r === 'string') return { error: r };
     (next as any)[k] = r;
+  }
+  if (body?.quickStepPct !== undefined) {
+    const n = Number(body.quickStepPct);
+    if (body.quickStepPct === '' || !Number.isFinite(n) || n < 0.5 || n > 50) return { error: 'The step between quick price choices must be a number from 0.5 to 50.' };
+    next.quickStepPct = Math.round(n * 100) / 100;
+  }
+  if (body?.quickMaxChoices !== undefined) {
+    const n = Number(body.quickMaxChoices);
+    if (body.quickMaxChoices === '' || !Number.isInteger(n) || n < 1 || n > 10) return { error: 'The number of quick price choices must be a whole number from 1 to 10.' };
+    next.quickMaxChoices = n;
   }
   if (next.discountPct > next.maxDiscountPct) return { error: 'The usual discount cannot be deeper than the deepest discount allowed.' };
   return { value: next };

@@ -53,6 +53,21 @@
           <option *ngFor="let r of reasons" [value]="r.value">{{r.label}}</option>
         </select>
       </div>
+      <div class="col-12" *ngIf="ladder as q" data-testid="price-quick">
+        <div class="small text-muted mb-1">Quick pick <span class="fw-normal">(off the MRP of {{mrp | number:'1.2-2'}}; {{basis === 'incl' ? 'with GST' : 'before GST'}}; step {{quick.step}}%)</span></div>
+        <div class="d-flex flex-wrap gap-2">
+          <ng-container *ngFor="let r of q.rungs">
+            <button type="button" class="btn btn-sm" [ngClass]="isPicked(r.shown) ? 'btn-primary' : 'btn-outline-primary'" [disabled]="!r.allowed" (click)="pickQuick(r.shown)"
+                    [attr.title]="r.allowed ? '' : 'Below the lowest price for this product (' + (show(policy.lower) | number:'1.2-2') + ')'" [attr.data-testid]="'price-quick-' + r.pct">
+              {{r.pct === 0 ? 'MRP' : (r.pct + '% off')}} <b>{{r.shown | number:'1.2-2'}}</b>
+            </button>
+          </ng-container>
+          <button type="button" class="btn btn-sm" *ngIf="q.deepest as d" [ngClass]="isPicked(d.shown) ? 'btn-success' : 'btn-outline-success'" (click)="pickQuick(d.shown)" data-testid="price-quick-deepest">
+            Deepest allowed ({{d.pct | number:'1.0-1'}}% off) <b>{{d.shown | number:'1.2-2'}}</b>
+          </button>
+        </div>
+        <div class="form-text">A choice only fills the price above: nothing is saved until you save. Prices lower than the greyed ones can still be typed, with the approval the policy asks for.</div>
+      </div>
       <div class="col-12 form-text mt-1" *ngIf="lastEffective">A price applies from the date given. The last change started on {{lastEffective | date:'dd MMM yyyy'}}; a new price cannot start before that, and one that starts on the same day replaces it at once.</div>
     </div>
 

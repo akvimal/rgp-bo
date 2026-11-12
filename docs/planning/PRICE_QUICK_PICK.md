@@ -26,3 +26,7 @@
 3. Quick pick row in `product-price-change.component`.
 4. Dropdown on the invoice new-price rows and the Needs a price table.
 5. QA specs: ladder stops at the class limit; picking fills the box; rungs below the limit disabled; setting changes the ladder.
+
+## Build status (2026-11-12)
+Built, tested locally, committed. Settings `quick_step_pct` / `quick_max_choices` (pricing mode screen), ladder helper (api-v2 `quick-prices.ts` with specs, frontend copy `secured/products/quick-price.ts`), Quick pick row in the Set the price dialog, Quick pick dropdown on the invoice's new-product rows (the lowest price now comes with each row), QA specs QUICK-1..2.
+Not built: a dropdown in the Needs a price table under Pricing policy (it only applies the suggested price, there is no typed price there).

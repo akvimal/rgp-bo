@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnDestroy, Output, SimpleChanges } from
 import { DateUtilService } from "src/app/secured/date-util.service";
 import { ProductsService } from "../../products.service";
 import { priceBeforeGst, priceWithGst } from "../../price-basis";
+import { quickPrices, QuickLadder } from "../../quick-price";
 
 const MARGIN_WARN = 300;     // above this the price is saved with a warning
 const MARGIN_LIMIT = 1000;   // above this it is refused as a typing mistake
@@ -42,6 +43,21 @@ export class ProductPriceChangeComponent implements OnDestroy {
     /** prices are shown and typed with GST included (what the customer pays) or before GST: stored prices are always before GST */
     basis: 'incl' | 'excl' = 'excl';
     error = '';
+    /** the quick price pick: the step between choices and how many are offered (set under Pricing rules) */
+    quick = { step: 5, max: 4 };
+
+    /** the choices: the MRP and each step off it, the ones below the class's lowest price marked not allowed, and the deepest allowed price itself */
+    get ladder(): QuickLadder | null {
+        if(!(this.mrp > 0)) return null;
+        const lower = this.policy && this.policy.lower !== null && this.policy.lower !== undefined && !this.policy.conflict ? +this.policy.lower : null;
+        const l = quickPrices({ mrp: this.mrp, tax: this.saleTax, lower, step: this.quick.step, max: this.quick.max, basis: this.basis });
+        return l.rungs.length ? l : null;
+    }
+
+    /** a choice only fills the price box: the live policy check runs on it as on a typed price, and nothing is saved */
+    pickQuick(shown:number){ this.onPriceInput(shown); }
+    isPicked(shown:number): boolean { return Math.abs((+this.price.sale || 0) - shown) < 0.005; }
+
     /** the price breaks the pricing policy and this user may approve it: a reason is asked for */
     needsOverride = false;
     private timer:any = null;
@@ -55,7 +71,7 @@ export class ProductPriceChangeComponent implements OnDestroy {
             this.check = null;
             this.needsOverride = false;
             const id = changes.productid.currentValue;
-            this.service.pricingMode().subscribe((m:any) => this.basis = m?.settings?.basis === 'incl' ? 'incl' : 'excl', () => this.basis = 'excl');
+            this.service.pricingMode().subscribe((m:any) => { this.basis = m?.settings?.basis === 'incl' ? 'incl' : 'excl'; this.quick = { step: +(m?.settings?.quickStepPct) || 5, max: +(m?.settings?.quickMaxChoices) || 4 }; }, () => { this.basis = 'excl'; });
             this.service.findPricesById(id).subscribe((data:any) => {
                 this.current = data || {};
                 const ex = data?.price?.price ?? '';

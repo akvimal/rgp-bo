@@ -20,7 +20,7 @@ export class PricingRulesComponent implements OnInit {
     classes: any[] = [];
 
     // how the business prices: the mode, the GST basis, the numbers for a discount, and a worked example
-    modeForm: any = { mode: 'SMART', basis: 'excl', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0 };
+    modeForm: any = { mode: 'SMART', basis: 'excl', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0, quickStepPct: 5, quickMaxChoices: 4 };
     private modeOriginal = '';
     example = { mrp: 100, cost: 70, tax: 5 };
     preview: any = null;

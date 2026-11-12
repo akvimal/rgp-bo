@@ -70,6 +70,15 @@
         </div>
       </div>
 
+      <div class="border rounded p-3 mt-3" data-testid="mode-quick">
+        <div class="fw-semibold">Quick price pick</div>
+        <div class="small text-muted mb-2">When a price is being set, buttons offer the MRP and each step off it, down to the lowest price the product's class allows.</div>
+        <div class="d-flex flex-wrap gap-3">
+          <div><label class="form-label small mb-0">Step between choices</label><div class="input-group input-group-sm" style="width:9rem"><input type="number" min="0.5" max="50" step="any" class="form-control text-end" [(ngModel)]="modeForm.quickStepPct" [disabled]="!canedit" data-testid="mode-quick-step"><span class="input-group-text">% off</span></div></div>
+          <div><label class="form-label small mb-0">Steps offered</label><div class="input-group input-group-sm" style="width:9rem"><input type="number" min="1" max="10" step="1" class="form-control text-end" [(ngModel)]="modeForm.quickMaxChoices" [disabled]="!canedit" data-testid="mode-quick-max"></div></div>
+        </div>
+      </div>
+
       <div class="alert alert-light border mt-3 mb-2 py-2" *ngIf="modeForm.mode !== 'SMART'" data-testid="mode-example">
         <div class="d-flex flex-wrap align-items-center gap-2 small mb-1">An example product: MRP
           <input type="number" class="form-control form-control-sm text-end" style="width:6rem" [(ngModel)]="example.mrp" (ngModelChange)="refreshPreview()" data-testid="mode-ex-mrp" aria-label="Example MRP">

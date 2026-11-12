@@ -7,7 +7,7 @@ const row = (k: string, v: any) => ({ setting_key: k, setting_value: v });
 
 describe('how a business prices', () => {
   it('reads the stored settings, and falls back to how the app always worked when none are stored', () => {
-    expect(readModeSettings([])).toEqual({ mode: 'SMART', basis: 'excl', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0 });
+    expect(readModeSettings([])).toEqual({ mode: 'SMART', basis: 'excl', discountPct: 10, maxDiscountPct: 15, minMarginPct: 0, quickStepPct: 5, quickMaxChoices: 4 });
     expect(readModeSettings([row('pricing_mode', 'mrp'), row('price_basis', 'incl'), row('mode_discount_pct', '12.5')])).toMatchObject({ mode: 'MRP', basis: 'incl', discountPct: 12.5 });
     expect(readModeSettings([row('pricing_mode', 'nonsense')]).mode).toBe('SMART');
   });

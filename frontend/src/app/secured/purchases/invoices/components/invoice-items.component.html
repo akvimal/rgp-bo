@@ -297,6 +297,11 @@
                         <td class="text-end small">{{p.mrp | number:'1.2-2'}}</td>
                         <td class="text-end">
                             <input *ngIf="p.suggestion && !p.packsuspect && newPrices.canprice" type="number" min="0" step="0.01" class="form-control form-control-sm text-end" style="width:7rem" [(ngModel)]="typedPrices[p.productid]" [attr.data-testid]="'new-price-' + p.productid">
+                            <select *ngIf="p.suggestion && !p.packsuspect && newPrices.canprice && quickFor(p) as q" class="form-select form-select-sm mt-1" style="width:11rem" aria-label="Quick pick" (change)="pickQuickPrice(p, $any($event.target).value); $any($event.target).value = ''" [attr.data-testid]="'new-price-quick-' + p.productid">
+                                <option value="">Quick pick</option>
+                                <option *ngFor="let r of q.rungs" [value]="r.shown" [disabled]="!r.allowed">{{r.pct === 0 ? 'MRP' : (r.pct + '% off')}} &middot; {{r.shown | number:'1.2-2'}}{{r.allowed ? '' : ' (too low)'}}</option>
+                                <option *ngIf="q.deepest as d" [value]="d.shown">Deepest allowed ({{d.pct | number:'1.0-1'}}% off) &middot; {{d.shown | number:'1.2-2'}}</option>
+                            </select>
                             <span *ngIf="p.packsuspect" class="small text-danger">Check the pack size first</span>
                             <span *ngIf="!p.packsuspect && !p.suggestion" class="small text-danger">Check the cost: it is above what the MRP allows</span>
                             <span *ngIf="p.suggestion && !p.packsuspect && !newPrices.canprice" class="small text-muted">{{p.shown | number:'1.2-2'}} suggested; a Store Head sets it</span>
