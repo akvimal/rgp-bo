@@ -227,8 +227,9 @@
       <input id="ds-amt" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="checkForm.amount_seen" data-testid="digi-amount">
     </div>
     <div class="mt-2" *ngIf="checkForm.status !== 'VERIFIED'">
-      <label class="form-label" for="ds-note">What you found</label>
-      <input id="ds-note" class="form-control" maxlength="300" [(ngModel)]="checkForm.note" data-testid="digi-note">
+      <label class="form-label" for="ds-note">What does the statement show? (required)</label>
+      <input id="ds-note" class="form-control" maxlength="300" [(ngModel)]="checkForm.note" data-testid="digi-note"
+        [placeholder]="checkForm.status === 'MISMATCH' ? 'For example: statement shows 450, bill says 540' : 'For example: no credit for this amount on the statement today'">
     </div>
     <p class="small text-muted mt-3 mb-0">This is the same check as on the Digital payments page, so it shows there too.</p>
   </div>

@@ -238,7 +238,7 @@ export class SalesListComponent implements OnDestroy {
       const s = this.checkSale, f = this.checkForm;
       if (!s) return;
       this.checkError = '';
-      if (f.status !== 'VERIFIED' && !String(f.note || '').trim()) { this.checkError = 'Add a note saying what you found.'; return; }
+      if (f.status !== 'VERIFIED' && !String(f.note || '').trim()) { this.checkError = 'Add a note saying what the statement shows.'; return; }
       if (f.status === 'MISMATCH' && (f.amount_seen === null || f.amount_seen === '')) { this.checkError = 'Enter the amount that was actually received.'; return; }
       this.checkSaving = true;
       this.service.recordDigital(s.id, { status: f.status, note: f.status === 'VERIFIED' ? '' : f.note, amount_seen: f.status === 'MISMATCH' ? f.amount_seen : undefined }).subscribe({
