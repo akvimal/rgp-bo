@@ -107,6 +107,14 @@ describe('the shift-open message', () => {
     expect(t).not.toMatch(/Asha|2,000/);
   });
 
+  it('says how far from the plan it was opened only when that is 15 minutes or more, and only to the people who run the shop', () => {
+    expect(formatOpenManager(open({ openedAt: '09:42' }))).toContain('opened at 09:42 (planned 09:00, 42 min late) by Asha K');
+    expect(formatOpenManager(open({ openedAt: '07:30' }))).toContain('(planned 09:00, 1 h 30 min early)');
+    expect(formatOpenManager(open({ openedAt: '09:14' }))).not.toContain('planned');             // within 15 minutes: nothing said
+    expect(formatOpenManager(open({ start: '', end: '', openedAt: '09:42' }))).not.toContain('planned');   // no plan, nothing to compare with
+    expect(formatOpenGroup(open({ openedAt: '09:42' }))).not.toContain('late');
+  });
+
   it('tells the people who run the shop who opened it, whose drawer and the float', () => {
     const t = formatOpenManager(open({ drawerOf: 'Ravi S', fromVault: true, handoverFrom: 'Shift 1' }));
     expect(t).toContain('opened at 09:05 by Asha K');

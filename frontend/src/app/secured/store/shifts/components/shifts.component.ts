@@ -64,7 +64,11 @@ export class ShiftsComponent implements OnInit {
   refresh() {
     this.syncForms();
     this.cashService.getTemplates(this.selectedStoreId).subscribe((templates:any) => {
-      this.templates = templates || [];
+      this.templates = (templates || []).filter((t:any) => t.active !== false);
+      // the template that fits the time of day is picked for them; "Custom" is still there
+      if(!this.shiftForm.templateid && this.templates.length){
+        this.cashService.suggestTemplate(this.selectedStoreId).subscribe((s:any) => { if(s?.template && !this.shiftForm.templateid) this.shiftForm.templateid = String(s.template.id); }, () => {});
+      }
     });
     this.cashService.getShifts(this.selectedStoreId).subscribe((shifts:any) => {
       this.shifts = shifts || [];

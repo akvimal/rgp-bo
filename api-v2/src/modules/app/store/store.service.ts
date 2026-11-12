@@ -19,6 +19,7 @@ import { dropExceedsCount, readRequest } from "./vault-math";
 import { findAccountableUser, loadStoreProfile, parseProfileInput, parseStoreType } from "./store-profile";
 import { DepositRule, checkDepositRule, describeDepositRule, evaluateDeposit, parseDepositInput } from "./deposit-rule";
 import { ChecklistAssistant } from "./checklist-assistant";
+import { DEFAULT_TOLERANCE_MINUTES, minutesOf, suggestTemplate } from "./shift-template-rules";
 import { ChecklistKind, CHECKLIST_KINDS, DEFAULT_CHECKLISTS, effectiveChecklist, isChecklistKind, normalizeChecklistItems, requiredChecklistKeys, validateChecklist } from "./shift-checklist";
 
 import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
@@ -498,6 +499,27 @@ export class StoreService {
     })));
   }
 
+  /**
+   * The shift template that fits the time of day (India time), for the shift being opened: the one whose window is nearest, within the store's tolerance
+   * (setting shift_template_tolerance_min, 2 hours unless set). People open and close when the shop does, so the times are a plan: the one offered can be changed.
+   * Only a time-based store uses templates; a staff-based store (the drawer is the opener's) gets none.
+   */
+  async suggestTemplate(query: any, now: Date = new Date()) {
+    const storeid = await this.resolveStoreId(query.storeid);
+    if (!storeid) return { template: null, within: false, tolerance: DEFAULT_TOLERANCE_MINUTES };
+    const profile = await loadStoreProfile(this.manager, storeid);
+    const [s] = await this.manager.query(`select setting_value from app_setting where setting_key = 'shift_template_tolerance_min' and active and not archive limit 1`);
+    const tol = Number(s?.setting_value);
+    const tolerance = Number.isFinite(tol) && tol >= 0 && tol <= 720 ? tol : DEFAULT_TOLERANCE_MINUTES;
+    if (profile?.shiftmode === "staff") return { template: null, within: false, tolerance };
+    const templates = (await this.findTemplates({ storeid })).filter((t: any) => t.active);
+    const hhmm = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
+    const pick = suggestTemplate(templates as any[], minutesOf(hhmm) ?? 0, tolerance);
+    if (!pick) return { template: null, within: false, tolerance };
+    const t: any = pick.template;
+    return { template: { id: t.id, name: t.name, starttime: t.starttime, endtime: t.endtime, assigneduserid: t.assigneduserid, assigneestatus: t.assigneestatus }, within: pick.within, tolerance, now: hhmm };
+  }
+
   /** a template's default opener (or a shift's): an active person who works at the store, an owner (who works at all of them), never the shared counter login */
   private async canOpenFor(storeid: number, userid: number | null | undefined): Promise<boolean> {
     if (!userid) return false;
@@ -756,8 +778,9 @@ export class StoreService {
       assigneduserid: staffBased ? assigneduserid : (assigneduserid || ((await this.canOpenFor(storeid, template?.assigneduserid)) ? template!.assigneduserid : null)),
       shiftdate: body.shiftdate || this.today(),
       name: body.name || template?.name || "Shift",
-      starttime: body.starttime || template?.starttime || "09:00",
-      endtime: body.endtime || template?.endtime || "18:00",
+      // the planned times come from the template; with none they stay empty (the real times are the shift's opened and closed moments)
+      starttime: body.starttime || template?.starttime || "",
+      endtime: body.endtime || template?.endtime || "",
       status: "OPEN",
       openingcash,
       expectedcash: openingcash,

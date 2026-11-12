@@ -20,6 +20,12 @@ export class StoreCashController {
     return this.service.findTemplates(query);
   }
 
+  /** the template that fits the time of day for the store: the nearest window, and whether it is within the tolerance */
+  @Get("templates/suggest")
+  suggestTemplate(@Query() query: any) {
+    return this.service.suggestTemplate(query);
+  }
+
   @Post("templates")
   createTemplate(@Body() body: any, @User() currentUser: any) {
     return this.service.saveTemplate(body, currentUser?.id);

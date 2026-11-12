@@ -36,6 +36,19 @@
       <!-- opening -->
       <div *ngIf="mode === 'open'" data-testid="shiftdesk-open-form">
         <h6>Open the shift - {{ operatorName || 'choose staff above' }}</h6>
+        <div class="mb-2" *ngIf="shiftTemplates.length" data-testid="shiftdesk-template">
+          <label class="form-label small mb-0" for="shiftdesk-template-select">Shift</label>
+          <select id="shiftdesk-template-select" class="form-select form-select-sm w-auto" [(ngModel)]="templateId" data-testid="shiftdesk-template-select">
+            <option value="">No shift (just open)</option>
+            <option *ngFor="let t of shiftTemplates" [value]="t.id">{{t.name}} (planned {{t.starttime}}-{{t.endtime}})</option>
+          </select>
+          <div class="form-text" data-testid="shiftdesk-template-note">
+            <ng-container *ngIf="suggestedPicked">
+              Picked for {{templateSuggestion.now}}<span *ngIf="!templateSuggestion.within">: this is not close to any shift's planned hours</span>. Change it if it is wrong.
+            </ng-container>
+            The times are a plan: the shift is recorded as opened now.
+          </div>
+        </div>
         <div class="small text-muted mb-2" *ngIf="openingContext?.storealreadyopen" data-testid="shiftdesk-open-continuing">
           The store is already open
           <span *ngIf="openingContext.reason === 'HANDOVER'">: the last shift was handed over<span *ngIf="openingContext.previous?.handoverto"> to {{openingContext.previous.handoverto}}</span></span>

@@ -48,6 +48,11 @@ export class CashService {
         return this.http.get(`${this.apiurl}/store-cash/dashboard`, { params: { storeid: storeid || '' } });
     }
 
+    /** the shift template that fits the time of day (the nearest window, and whether it is within the tolerance) */
+    suggestTemplate(storeid:any): Observable<any> {
+        return this.http.get(`${this.apiurl}/store-cash/templates/suggest`, { params: { storeid: storeid || '' } });
+    }
+
     getTemplates(storeid:any): Observable<any> {
         return this.http.get(`${this.apiurl}/store-cash/templates`, { params: { storeid: storeid || '' } });
     }

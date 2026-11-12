@@ -58,6 +58,18 @@ export const reconciled = (f: ShiftFacts): boolean => {
   return (v === null || Math.abs(v) <= TOLERANCE) && digitalOff(f).length === 0;
 };
 
+/** how far from the planned start it was opened, when that is worth a word (15 minutes or more); the plan is a plan, so this is only said, never judged */
+export function startNote(f: { start: string | null; openedAt: string }): string {
+  const m = (t: string) => { const x = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return x ? +x[1] * 60 + +x[2] : null; };
+  const planned = m(f.start || ''), actual = m(f.openedAt);
+  if (planned === null || actual === null) return '';
+  let d = actual - planned;
+  if (d > 720) d -= 1440; else if (d < -720) d += 1440;
+  if (Math.abs(d) < 15) return '';
+  const mins = Math.abs(d), text = mins >= 60 ? `${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ''}` : `${mins} min`;
+  return ` (planned ${f.start}, ${text} ${d > 0 ? 'late' : 'early'})`;
+}
+
 const hours = (f: { start: string | null; end: string | null }) => (f.start && f.end ? ` (${f.start}-${f.end})` : '');
 
 /** the facts both versions share */
@@ -161,7 +173,7 @@ export function formatOpenGroup(f: OpenFacts, full = false): string {
 
 /** for the people who run the shop: who opened it, whose drawer, and the opening float */
 export function formatOpenManager(f: OpenFacts): string {
-  const lines = [`\u{1F7E2} ${f.store} — ${f.shiftName}${hours(f)} opened at ${f.openedAt}${f.openedBy ? ` by ${f.openedBy}` : ''}`];
+  const lines = [`\u{1F7E2} ${f.store} — ${f.shiftName}${hours(f)} opened at ${f.openedAt}${startNote(f)}${f.openedBy ? ` by ${f.openedBy}` : ''}`];
   if (f.handoverFrom) lines.push(`Handed over from ${f.handoverFrom}`);
   if (f.drawerOf && f.drawerOf !== f.openedBy) lines.push(`Drawer of ${f.drawerOf}`);
   lines.push(`Opening float ${rupees(f.openingCash)}${f.fromVault ? ' (taken from the vault)' : ''}`);

@@ -42,6 +42,10 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   openingContext: any = null;
   /** where the opening float comes from: the drawer as counted, or the store's vault (a manager only; the server refuses anyone else) */
   openSource: "drawer" | "vault" = "drawer";
+  /** the shift templates of the store and the one that fits the time of day (people open when the shop does, so it is offered, not forced) */
+  shiftTemplates: any[] = [];
+  templateId: any = "";
+  templateSuggestion: any = null;
   vaultState: any = null;
   /** the checklists in force for this store (its own, the business's or the standard); the built-in ones when they cannot be fetched */
   lists: any = null;
@@ -114,6 +118,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
       this.openingContext = ctx;
       this.mode = "open"; this.denoms = []; this.denomTotal = 0;
       this.openSource = "drawer"; this.vaultState = null;
+      this.loadTemplates();
       // only a manager can see the vault: for anyone else this fails and the option stays hidden
       if (!ctx?.storealreadyopen && this.storeId) this.vaultApi.state(this.storeId).subscribe((v: any) => this.vaultState = v?.enabled ? v : null, () => this.vaultState = null);
       this.checklist = ctx?.storealreadyopen
@@ -123,6 +128,24 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     // if the store cannot say, the full list is the safe one
     this.fetchLists(() => this.http.get(`${environment.apiHost}/store-cash/opening-context`, { params: { storeid: String(this.storeId) } }).subscribe((c: any) => begin(c), () => begin(null)));
   }
+
+  private loadTemplates() {
+    this.shiftTemplates = []; this.templateId = ""; this.templateSuggestion = null;
+    if (!this.storeId) return;
+    this.cash.suggestTemplate(this.storeId).subscribe((s: any) => {
+      this.templateSuggestion = s || null;
+      if (!s?.template) return;                          // a staff-based store, or no templates: nothing to choose
+      this.cash.getTemplates(this.storeId).subscribe((all: any) => {
+        this.shiftTemplates = (all || []).filter((t: any) => t.active);
+        this.templateId = String(s.template.id);
+      }, () => this.shiftTemplates = []);
+    }, () => this.templateSuggestion = null);
+  }
+
+  /** the shift chosen is the one offered for the time of day */
+  get suggestedPicked(): boolean { return !!this.templateSuggestion?.template && String(this.templateId) === String(this.templateSuggestion.template.id); }
+
+  get chosenTemplate(): any { return this.shiftTemplates.find((t: any) => String(t.id) === String(this.templateId)) || null; }
 
   private fetchLists(then: () => void) {
     this.http.get(`${environment.apiHost}/store-cash/checklists`, { params: { storeid: String(this.storeId) } }).subscribe((l: any) => { this.lists = l; then(); }, () => { this.lists = null; then(); });
@@ -185,6 +208,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     this.busy = true; this.error = "";
     this.cash.createShift({
       storeid: this.storeId, assigneduserid: this.operatorId, openingdenominations: this.denoms,
+      ...(this.templateId ? { templateid: this.templateId } : {}),
       ...(this.openSource === "vault" ? { floatfromvault: { denominations: this.denoms } } : {}),
       openingchecklist: this.checklist.map(c => c.key), openingchecklistat: this.tickTimes(), allowZero, ...this.reasonsBody(),
     }).subscribe({
