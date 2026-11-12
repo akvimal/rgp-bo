@@ -17,7 +17,8 @@ import { StoreContextService } from "src/app/@core/store-context.service";
                         <div [ngStyle]="{backgroundColor:stock.balance < 1?'#ffc0c0':'inherit'}" data-testid="stock-option">
                             <div class="d-flex justify-content-between align-items-baseline gap-3">
                                 <span class="fw-bold text-truncate">{{stock.title}}</span>
-                                <span class="text-nowrap">&#8377;{{stock.sale_price||'None'}}</span>
+                                <span class="text-nowrap" data-testid="stock-option-price">&#8377;{{listPrice(stock) || 'None'}}
+                                    <span class="badge bg-warning text-dark ms-1" *ngIf="isCapped(stock)" title="The stored price is above the MRP once GST is added, so the bill charges the MRP" data-testid="stock-option-capped">MRP cap</span></span>
                             </div>
                             <div class="d-flex justify-content-between align-items-baseline gap-3 small">
                                 <span class="text-muted fst-italic text-truncate">{{stock['more_props'] ? stock['more_props']['composition'] : ''}}</span>
@@ -56,6 +57,22 @@ export class StockSelectComponent {
                 });
             }
         });
+    }
+
+    /** the unit price before GST the bill will charge: the stored price, never above the ceiling (the MRP less GST) the server sends; the same as the sale line's rate */
+    private unitPrice(stock:any): number {
+        const pack = +stock.pack > 0 ? +stock.pack : 1;
+        return (+stock.sale_price || 0) / pack;
+    }
+    isCapped(stock:any): boolean {
+        const ceiling = +stock.price_ceiling;
+        return ceiling > 0 && this.unitPrice(stock) > ceiling;
+    }
+    listPrice(stock:any): string | null {
+        if (!(+stock.sale_price > 0)) { return null; }
+        const ceiling = +stock.price_ceiling;
+        const p = this.isCapped(stock) ? ceiling : this.unitPrice(stock);
+        return p.toFixed(2);
     }
 
     selected(stockitem:any){
