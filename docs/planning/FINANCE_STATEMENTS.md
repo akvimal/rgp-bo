@@ -55,7 +55,7 @@ Each statement carries a **confidence line** (section 8): the known gaps in the 
 
 ## 5. Chart of accounts (starting point **[CA]**)
 
-- **Assets**: Cash in till (per store); Cash in vault; Cash in transit (deposits); Bank (per account); Payment gateway clearing (per provider); Customer dues; Staff advances and credit; Vendor advances and debit notes due; Input GST credit; Stock at cost; Prepaid; **Investments (fixed deposits and others, per party)**; **Deposits and advances given (rent, utility, vendor and other, per party)**; **Employee loans and advances (per employee)**; Interest accrued; TDS receivable; Fixed assets (by class) and accumulated depreciation; Inter-branch (stores).
+- **Assets**: Cash in till (per store); Cash in vault; Cash in transit (deposits); Bank (per account); Payment gateway clearing (per provider); **Direct receipts clearing** (customer payments straight to the bank); Customer dues; Staff advances and credit; Vendor advances and debit notes due; Input GST credit; Stock at cost; Prepaid; **Investments (fixed deposits and others, per party)**; **Deposits and advances given (rent, utility, vendor and other, per party)**; **Employee loans and advances (per employee)**; Interest accrued; TDS receivable; Fixed assets (by class) and accumulated depreciation; Inter-branch (stores).
 - **Liabilities**: Vendor payables; Output GST payable; Other taxes and TDS payable; Salary and statutory dues payable; Customer store credit and advances; Loans.
 - **Equity** (proprietorship): Capital; Drawings; Current-year profit.
 - **Income**: Sales (by store, by schedule of drug if wanted); Sales returns (contra); Discounts allowed (contra); Other income; **Interest income**.
@@ -75,6 +75,7 @@ Each statement carries a **confidence line** (section 8): the known gaps in the 
 | **Shift close** | Cash short or excess to its account; cash counted becomes the till balance |
 | **Cash deposit to bank** | Dr Bank (or Cash in transit until it clears); Cr Cash in till or vault |
 | **Gateway settlement** | Dr Bank; Dr Gateway fees and Input GST on the fee; Cr Gateway clearing |
+| **Customer payment direct to the bank** (section 16) | At billing: Dr Direct receipts clearing, Cr Sales and Output GST (as for any bill). When the bank credit matches the bill: Dr Bank, Cr Direct receipts clearing. A credit customer's payment: Dr Bank, Cr Customer dues. |
 | **Bank line not otherwise matched** | Tagged by the existing bank reconciliation, then posts to the tagged account (charges, interest, GST payment, owner drawings) |
 | **Stock transfer between stores** | Dr Inter-branch (receiving store) and Cr Inter-branch (sending store) at cost, with the stock moving |
 | **Stock adjustment / audit result / expiry write-off** | Dr Stock loss; Cr Stock (or the reverse for excess) |
@@ -147,6 +148,7 @@ Total roughly 6 to 10 weeks of build plus a shadow quarter; the order lets the o
 9. Fixed assets: a simple register in the app, or only journals from the CA.
 10. How long to run in shadow before the CA relies on it.
 11. The questions in section 15.5 (fixed deposits, deposits with landlords and institutions, employee loans).
+12. The questions in section 16.6 (customer payments direct to the bank).
 
 ## 13. Risks
 
@@ -237,6 +239,65 @@ Four things that look alike and must not be mixed:
 5. Should loans and deposits be shown **per store** or only for the business (section 15.0)?
 6. The CA's position on each **[CA]** point above (own-name deposits, interest-free deposits, perquisite tax, TDS and GST on rent, classification and cash-flow placement).
 
-## 16. Related
+## 16. Customer payments received directly in the bank (added 2026-11-11)
+
+Some customers pay the pharmacy **straight into the bank account** (UPI to the bank's own QR or id, IMPS, NEFT), not through the Paytm gateway. These are sales income and must be classified and matched as such.
+
+### 16.1 How it stands today (checked in the code on 2026-11-11)
+
+- The bank line tags for money coming in are only **Card / UPI settlement**, **Cash deposit** and **Other income** (`finance-rules.ts`). There is **no tag for a direct customer payment**. A UPI, IMPS or NEFT credit with a person's name is left untagged, or tagged **Other income**, which means non-sales income and would take real sales out of the sales and GST figures.
+- The till has **one digital provider** (`DIGITAL_PROVIDER`, default Paytm, in `digital-payment.ts`). Every bill paid digitally is recorded as Paytm, with the last digits of the reference.
+- The monthly reconciliation compares the books' **digital sales** (the digital part of the bills) with the bank credits tagged **Card / UPI settlement**. A direct payment is in the books (the bill says digital) but never appears as a settlement, so the digital line shows the books higher than the bank.
+- **Likely, not yet confirmed:** this is one of the causes of the September 2026 gap (books digital 2.14 lakh against Paytm settlements 1.69 lakh, about Rs 44,700). The other causes are the gateway's fee and fee GST (settlements are net) and the day's delay. Confirm by tagging the September direct credits and re-running the month.
+
+### 16.2 What to do today, with what exists
+
+Tag these credits as **Card / UPI settlement** (the nearest tag), using a user rule on the payer's name so it repeats. The digital line then compares all digital sales with everything that came into the bank by card or UPI. A payment that was never billed appears as a difference. This loses the distinction between Paytm and direct receipts, which is why 16.3 is wanted.
+
+### 16.3 The proper treatment
+
+1. **A tag of its own**: **Customer payment direct to bank**, an income tag counted in the **digital channel** of the reconciliation but shown on its own line, so the Paytm settlements (net of fees, a day late) and the direct receipts (exact, same day) are compared separately. Direct receipts should agree to the rupee.
+2. **Suggest, then confirm.** A credit by UPI, IMPS or NEFT whose payer is a person, and which is not a known vendor, the gateway, the owner, a transfer or a loan, is shown as a **probable customer payment** with the reason. The owner confirms it, or makes a rule on that payer ("same for lines like this", as the tagging already works). Not every credit from a person is a sale: it can be the owner's money, a loan or a refund, so nothing is tagged as a sale without a person confirming it the first time.
+3. **Match each credit to what it pays for**:
+
+   | What it is | How it matches | What happens |
+   |---|---|---|
+   | A bill billed as digital at the till | The reference (see 4), or the same amount on the same or next day with the payer's name or mobile | Matched; nothing more to do |
+   | A credit customer paying their dues | The customer's recorded digital payment on their dues | Matched to that entry |
+   | **Money received with no bill** | Nothing | **Flagged: the sale must be billed**, or the dues payment recorded. It is never left as other income. |
+
+4. **The till says how the customer paid.** The payment step offers the provider **Paytm** or **Direct to bank**, with the reference typed in the same way as the last digits of a Paytm transaction today. A bank's UPI narration normally carries a 12-digit reference, so the direct credit can match its bill automatically. (The exact narration format is to be confirmed against the owner's statement; the HDFC sample already imported reads the payer's name.)
+5. **Regular payers learn.** Once a payer is confirmed (for example a credit customer who pays by UPI), a rule links that payer to the customer, so later credits classify and match themselves.
+6. **Cheques and other direct receipts** are the same pattern: a cheque deposited by a customer is a customer receipt matched to a bill or dues, not an unnamed credit.
+
+### 16.4 In the statements
+
+- **Income statement**: the sale is recognised when it is billed, however it is paid; the receipt does not change the income. The direct-to-bank tag changes only where the money is shown.
+- **Ledger**: at billing, Dr **Direct receipts clearing**, Cr Sales and Output GST; when the bank credit matches, Dr Bank, Cr Direct receipts clearing. A credit customer's payment is Dr Bank, Cr Customer dues. Anything left in the clearing account at month end is a sale not yet seen in the bank, and any unmatched direct credit is a receipt not yet billed: both are listed.
+- **Cash flow**: receipts from customers (direct) are shown beside cash and gateway receipts.
+- **Balance sheet**: the clearing account is a current asset (or nil when everything is matched).
+
+### 16.5 Controls and the confidence line
+
+- Direct credits **tagged but unmatched** to a bill or dues entry, by age.
+- Direct credits **not yet tagged** (the owner has not confirmed them).
+- Bills paid "direct to bank" with **no credit in the bank** after a few days.
+- A bill, a credit and a dues payment are matched one to one: no credit pays two bills, and no bill is matched twice.
+- The month cannot be signed off with unexplained direct credits above the accepted difference.
+
+### 16.6 Open questions
+
+1. How do customers pay directly today: the bank's own QR or UPI id, IMPS or NEFT, cheque? Roughly how many a month?
+2. Is a payment to the **owner's personal** UPI id ever received for the shop? (It is not in the bank account, but it is the owner's drawings or a sale to be billed, and the CA should say which.)
+3. Should the till ask for the reference on every direct payment, or only the last four digits, as for Paytm?
+4. Do you want a **separate bank QR** printed at the counter for direct payments, so the provider choice at the till is always clear?
+5. Which payers are regular credit customers, so rules can be set up first?
+6. The CA's view on receipts with no bill (billing them late, and the GST on them).
+
+### 16.7 Where it fits
+
+It extends the **bank tagging and reconciliation that already exist** (small), and the till's provider choice (small). The clearing account and the postings arrive with the ledger (Phase 3, cash, bank and gateway). The tag and the matching could be built earlier, on their own, because they improve the monthly reconciliation today.
+
+## 17. Related
 
 `PURCHASING_PAYABLES_GST_PROGRAM.md` (payables and GST reconciliation), `GST_END_TO_END.md`, the finance module (bank import and reconciliation, `finance-bank-records`), the expenses, HR payroll, stock audit and shift cash modules.
