@@ -38,6 +38,12 @@ export class ExpenseController {
   @Put('recurring/:id') @Needs('manage') saveRecurring(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.service.saveRecurring(id, b, u); }
   @Post('recurring/generate') @Needs('manage') generate(@Body() b: any, @User() u: any) { return this.service.generate(b?.period, u); }
 
+  /** the open shifts of a store whose drawer can pay a cash expense */
+  @Get('open-shifts') @Needs('add') openShifts(@Query() q: any, @User() u: any) { return this.service.openShifts(q, u); }
+
+  /** the bank accounts an expense can be paid from */
+  @Get('bank-accounts') @Needs('add') bankAccounts(@Query() q: any, @User() u: any) { return this.service.bankAccounts(q, u); }
+
   @Get('report') @Needs('approve') report(@Query() q: any, @User() u: any) { return this.service.report(q, u); }
 
   @Get() @Needs('view') list(@Query() q: any, @User() u: any) { return this.service.list(q, u); }

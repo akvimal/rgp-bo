@@ -35,7 +35,7 @@ maybe('expense categories against PostgreSQL', () => {
 
   beforeAll(async () => {
     pool = new Pool({ connectionString: url });
-    svc = new ExpenseService({ query: q } as any, audit as any);
+    svc = new ExpenseService({ query: q } as any, audit as any, { refreshShiftTotals: async () => undefined } as any);
     [{ id: store, business_id: business }] = await q(`select id, business_id from stores where active and not archive order by id limit 1`);
     await clean();
     owner = await person('exp-it-owner@example.com', 'Business Head', []);

@@ -187,7 +187,7 @@ export class FinanceService {
         if (r.debit > 0) {
           if (!vendorId) vendorId = vendorMatch(c.counterparty, vendors);
           if (!tag && vendorId) { tag = 'VENDOR_PAYMENT'; status = 'TAGGED'; reason = 'The payee matches a vendor'; }
-          const hit = await this.matchBooks(m, businessId, r, tol, used, tag === 'VENDOR_PAYMENT' || !tag ? vendorId : null);
+          const hit = await this.matchBooks(m, businessId, r, tol, used, tag === 'VENDOR_PAYMENT' || !tag ? vendorId : null, a.id);
           if (hit) { matchKind = hit.kind; matchId = hit.id; status = 'MATCHED'; tag = hit.tag; vendorId = hit.vendorId ?? vendorId; category = hit.category ?? category; reason = hit.reason; used.add(hit.kind + ':' + hit.id); }
         } else if (r.credit > 0 && r.ref) {
           const [px] = await m.query(`select id from payment_txn where upper(utr) = upper($1) limit 1`, [r.ref]);
@@ -218,7 +218,7 @@ export class FinanceService {
   }
 
   /** a payment out, matched to a vendor payment (by its reference, or by amount and date) or to a non-cash expense */
-  private async matchBooks(m: EntityManager, businessId: number, r: { date: string; debit: number; ref: string }, tol: number, used: Set<string>, vendorId: number | null) {
+  private async matchBooks(m: EntityManager, businessId: number, r: { date: string; debit: number; ref: string }, tol: number, used: Set<string>, vendorId: number | null, accountId: number | null = null) {
     const sids: number[] = (await m.query(`select id from stores where business_id = $1`, [businessId])).map((x: any) => +x.id);
     const ref = String(r.ref || '').trim();
     const usable = ref && !/^0+$/.test(ref);
@@ -231,11 +231,22 @@ export class FinanceService {
       `select id, vendor_id from vendor_payment where active and not archive and pay_date between $1::date - 7 and $1::date + 7 and abs(amount - $2) <= $3 and ($4::int is null or vendor_id = $4) and ${this.vpScope('$5')}`,
       [r.date, r.debit, tol, vendorId, sids])).filter((x: any) => !used.has('VENDOR_PAY:' + x.id));
     if (vp.length === 1) return { kind: 'VENDOR_PAY', id: vp[0].id, tag: 'VENDOR_PAYMENT', vendorId: vp[0].vendor_id, category: null, reason: 'Matches a vendor payment of this amount and week' };
+    // an expense that carries the payment's reference (UTR or cheque number) is matched by it, from the account it was paid from
+    if (usable) {
+      const byRef = (await m.query(
+        `select e.id, c.name as category from expense e join expense_category c on c.id = e.category_id
+          where e.status = 'APPROVED' and upper(e.pay_mode) <> 'CASH' and upper(e.reference) = upper($1) and abs(e.amount - $2) <= $3 and ($6::int is null or e.bank_account_id is null or e.bank_account_id = $6) and ${this.expScope('e', '$4', '$5')}`,
+        [ref, r.debit, tol, sids, businessId, accountId])).filter((x: any) => !used.has('EXPENSE:' + x.id));
+      if (byRef.length >= 1) return { kind: 'EXPENSE', id: byRef[0].id, tag: 'EXPENSE', vendorId: null, category: byRef[0].category, reason: 'Matches an expense by its payment reference' };
+    }
     const ex = (await m.query(
-      `select e.id, c.name as category from expense e join expense_category c on c.id = e.category_id
-        where e.status = 'APPROVED' and upper(e.pay_mode) <> 'CASH' and e.expense_date between $1::date - 7 and $1::date + 7 and abs(e.amount - $2) <= $3 and ${this.expScope('e', '$4', '$5')}`,
-      [r.date, r.debit, tol, sids, businessId])).filter((x: any) => !used.has('EXPENSE:' + x.id));
+      `select e.id, c.name as category, e.bank_account_id from expense e join expense_category c on c.id = e.category_id
+        where e.status = 'APPROVED' and upper(e.pay_mode) <> 'CASH' and e.expense_date between $1::date - 7 and $1::date + 7 and abs(e.amount - $2) <= $3 and ($6::int is null or e.bank_account_id is null or e.bank_account_id = $6) and ${this.expScope('e', '$4', '$5')}`,
+      [r.date, r.debit, tol, sids, businessId, accountId])).filter((x: any) => !used.has('EXPENSE:' + x.id));
     if (ex.length === 1) return { kind: 'EXPENSE', id: ex[0].id, tag: 'EXPENSE', vendorId: null, category: ex[0].category, reason: 'Matches an expense of this amount and week' };
+    // two of the same amount that week: the one paid from this very account is the one
+    const own = ex.filter((x: any) => accountId && x.bank_account_id === accountId);
+    if (ex.length > 1 && own.length === 1) return { kind: 'EXPENSE', id: own[0].id, tag: 'EXPENSE', vendorId: null, category: own[0].category, reason: 'Matches an expense of this amount and week paid from this account' };
     return null;
   }
 

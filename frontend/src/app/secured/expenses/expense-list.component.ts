@@ -14,6 +14,59 @@ export class ExpenseListComponent implements OnInit {
   /** a category that does not fit the new store is dropped, so it is chosen again */
   storeChanged() {
     if (this.form?.category_id && !this.categoryChoices.some((c: any) => c.id === this.form.category_id)) this.form.category_id = null;
+    this.loadPayChoices();
+  }
+
+  /** the open shifts whose drawer can pay a cash expense, and the bank accounts a non-cash one can be paid from (for the store chosen) */
+  openShifts: any[] = [];
+  bankAccounts: any[] = [];
+
+  /** what "paid by" asks next: cash says where the cash came from; anything else says which account it left and under what reference */
+  payChanged() {
+    if (!this.form) return;
+    this.loadPayChoices();
+  }
+
+  private loadPayChoices() {
+    const f = this.form;
+    this.openShifts = []; this.bankAccounts = [];
+    if (!f) return;
+    if (f.pay_mode === "CASH") {
+      f.bank_account_id = null; f.reference = "";
+      if (!f.store_id) { f.cash_source = "OUTSIDE"; f.shift_id = null; return; }
+      const store = f.store_id;
+      this.api.get("open-shifts", { store }).subscribe((r: any[]) => {
+        if (this.form?.store_id !== store || this.form?.pay_mode !== "CASH") return;
+        this.openShifts = r || [];
+        // the drawer of the open shift is the usual source: it is chosen unless the person says otherwise or there is no open shift
+        if (this.form.cash_source !== "OUTSIDE" || !this.form.id) {
+          const keep = this.openShifts.find((s: any) => s.id === this.form.shift_id);
+          this.form.shift_id = keep ? keep.id : (this.openShifts[0]?.id ?? null);
+          this.form.cash_source = this.form.shift_id ? "DRAWER" : "OUTSIDE";
+        }
+      }, () => { this.openShifts = []; this.form.cash_source = "OUTSIDE"; this.form.shift_id = null; });
+    } else {
+      f.cash_source = null; f.shift_id = null;
+      this.api.get("bank-accounts", f.store_id ? { store: f.store_id } : {}).subscribe((r: any[]) => {
+        if (!this.form || this.form.pay_mode === "CASH") return;
+        this.bankAccounts = r || [];
+        if (!this.bankAccounts.some((a: any) => a.id === this.form.bank_account_id)) this.form.bank_account_id = this.bankAccounts.length === 1 ? this.bankAccounts[0].id : null;
+      }, () => this.bankAccounts = []);
+    }
+  }
+
+  setCashSource(src: string) {
+    if (!this.form) return;
+    this.form.cash_source = src;
+    if (src === "DRAWER" && !this.form.shift_id) this.form.shift_id = this.openShifts[0]?.id ?? null;
+  }
+
+  /** the lines the bank has not shown for a week or more: paid by bank, UPI, card or cheque, approved, and not matched to a statement line */
+  onlyUnmatched = false;
+  get shownRows(): any[] {
+    if (!this.onlyUnmatched) return this.rows;
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    return this.rows.filter((r: any) => r.bankable && !r.bank_matched && r.expense_date <= weekAgo);
   }
   stores: any[] = [];
   role = "";
@@ -46,12 +99,14 @@ export class ExpenseListComponent implements OnInit {
 
   add() {
     this.message = this.error = "";
-    this.form = { id: 0, expense_date: this.api.today(), store_id: this.stores.length === 1 ? this.stores[0].id : null, category_id: null, amount: null, gst_amount: 0, payee: "", bill_no: "", pay_mode: "BANK", description: "", receipt_path: "" };
+    this.form = { id: 0, expense_date: this.api.today(), store_id: this.stores.length === 1 ? this.stores[0].id : null, category_id: null, amount: null, gst_amount: 0, payee: "", bill_no: "", pay_mode: "CASH", cash_source: "OUTSIDE", shift_id: null, bank_account_id: null, reference: "", description: "", receipt_path: "" };
+    this.loadPayChoices();
   }
 
   edit(r: any) {
     this.message = this.error = "";
-    this.form = { ...r };
+    this.form = { ...r, cash_source: r.cash_source || (r.pay_mode === "CASH" ? "OUTSIDE" : null), reference: r.reference || "" };
+    this.loadPayChoices();
   }
 
   willNeedApproval(): string {
@@ -65,6 +120,7 @@ export class ExpenseListComponent implements OnInit {
   save() {
     this.message = this.error = "";
     const body = { ...this.form };
+    if (body.pay_mode !== "CASH" && body.pay_mode !== "UPI" && this.bankAccounts.length && !body.bank_account_id) { this.error = "Choose the bank account it was paid from."; return; }
     const call = body.id ? this.api.put(`${body.id}`, body) : this.api.post("", body);
     call.subscribe((r: any) => {
       this.message = body.id ? "Expense updated." : (r.status === "APPROVED" ? "Expense recorded and approved." : "Expense recorded, waiting for approval.");

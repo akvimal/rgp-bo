@@ -5,6 +5,7 @@ import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
 
 import { isOwnerRole } from 'src/core/roles';
+import { StoreService } from '../store/store.service';
 import { cleanCategoryKind, EVERY_MONTHS, fallsIn, levelProblem, rollUpByGroup } from './expense-category-rules';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -22,7 +23,7 @@ type Ctx = { id: number; role: string; stores: number[]; limit: number; self: (s
  */
 @Injectable()
 export class ExpenseService {
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly stores: StoreService) {}
 
   private async ctx(user: any): Promise<Ctx> {
     const [r] = await this.manager.query(`select name from app_role where id = $1`, [user?.roleid || 0]);
@@ -115,7 +116,33 @@ export class ExpenseService {
     }
     const fit = levelProblem(cat.name, cat.level, store);
     if (fit) throw new BadRequestException(fit);
+    // cash: from the drawer of an open shift of the store, or from outside the till (what older callers send: nothing changes for them)
+    let cash_source: string | null = null, shift_id: number | null = null;
+    if (b.pay_mode === 'CASH') {
+      cash_source = b.cash_source === 'DRAWER' ? 'DRAWER' : 'OUTSIDE';
+      if (cash_source === 'DRAWER') {
+        if (!store) throw new BadRequestException('A drawer belongs to a store: choose the store, or say the cash was not from the till.');
+        const [sh] = await this.manager.query(`select id, to_char(shift_date, 'YYYY-MM-DD') as shift_date from store_shifts where id = $1 and store_id = $2 and status = 'OPEN'`, [Number(b.shift_id) || 0, store]);
+        if (!sh) throw new BadRequestException('Choose an open shift of this store, or say the cash was not from the till.');
+        const today = new Date().toISOString().slice(0, 10);
+        if (b.expense_date !== sh.shift_date && b.expense_date !== today) throw new BadRequestException('An expense from the drawer is dated the day of its shift. For an earlier day, say the cash was not from the till.');
+        shift_id = sh.id;
+      }
+    }
+    // not cash: the bank account it was paid from (the form asks for it when the business has bank accounts; it is optional here, so callers that send none still work) and the payment's reference
+    let bank_account_id: number | null = null;
+    if (b.pay_mode !== 'CASH') {
+      const biz = await this.businessOf(store, c);
+      const accounts = biz ? await this.manager.query(`select id, store_id from bank_account where business_id = $1 and active`, [biz]) : [];
+      if (b.bank_account_id) {
+        const a = accounts.find((x: any) => x.id === Number(b.bank_account_id));
+        if (!a) throw new BadRequestException('That bank account was not found for this business.');
+        if (a.store_id && store && a.store_id !== store) throw new BadRequestException('That bank account belongs to another store.');
+        bank_account_id = a.id;
+      }   // the form asks for it (bank, card, cheque); the server takes none from callers that do not send one, and the bank match then goes by amount and week
+    }
     return {
+      cash_source, shift_id, category_name: cat.name, bank_account_id, reference: b.pay_mode === 'CASH' ? null : text(b.reference, 40),
       expense_date: b.expense_date, store_id: store, category_id: cat.id, amount, gst_amount: gst, pay_mode: b.pay_mode,
       payee: text(b.payee, 100), bill_no: text(b.bill_no, 40), description: text(b.description, 300), receipt_path: text(b.receipt_path, 300),
     };
@@ -128,10 +155,12 @@ export class ExpenseService {
     if (isOwnerRole(c.role)) { status = 'APPROVED'; note = 'Raised by the Business Head'; }
     else if (c.role === 'Store Head' && f.amount <= c.limit) { status = 'APPROVED'; note = 'Within the store limit'; }
     const [r] = await this.manager.query(
-      `insert into expense (expense_date, store_id, category_id, amount, gst_amount, payee, bill_no, pay_mode, description, receipt_path, status, raised_by, decided_by, decided_on, decision_note)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id`,
+      `insert into expense (expense_date, store_id, category_id, amount, gst_amount, payee, bill_no, pay_mode, description, receipt_path, status, raised_by, decided_by, decided_on, decision_note, cash_source, shift_id, bank_account_id, reference)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) returning id`,
       [f.expense_date, f.store_id, f.category_id, f.amount, f.gst_amount, f.payee, f.bill_no, f.pay_mode, f.description, f.receipt_path, status, user.id,
-        status === 'APPROVED' ? user.id : null, status === 'APPROVED' ? new Date() : null, note]);
+        status === 'APPROVED' ? user.id : null, status === 'APPROVED' ? new Date() : null, note, f.cash_source, f.shift_id, f.bank_account_id, f.reference]);
+    // the cash left the drawer when it was paid: the shift's drawer shows it now, whether or not the expense has been approved yet
+    if (f.cash_source === 'DRAWER') await this.postToDrawer(r.id, f);
     await this.audit.record({ userId: user.id, action: 'expense.raised', entityType: 'expense', entityId: r.id,
       summary: `Expense ${f.amount} ${f.payee ? 'to ' + f.payee : ''} (${status.toLowerCase()})`, details: { storeId: f.store_id, categoryId: f.category_id } });
     return { id: r.id, status };
@@ -153,9 +182,11 @@ export class ExpenseService {
     const rows = await this.manager.query(
       `select e.id, to_char(e.expense_date, 'YYYY-MM-DD') as expense_date, e.store_id, s.location as store, e.category_id, k.name as category, e.amount::float as amount, e.gst_amount::float as gst_amount,
               e.payee, e.bill_no, e.pay_mode, e.description, e.receipt_path, e.status, e.raised_by, u.full_name as raised_by_name, d.full_name as decided_by_name, e.decided_on, e.decision_note,
-              e.recurring_id
+              e.recurring_id, e.cash_source, e.shift_id, sh.name as shift_name, e.bank_account_id, ba.name as bank_account, e.reference,
+              (upper(e.pay_mode) <> 'CASH' and e.status = 'APPROVED') as bankable,
+              exists (select 1 from bank_txn t where t.match_kind = 'EXPENSE' and t.match_id = e.id) as bank_matched
          from expense e join expense_category k on k.id = e.category_id left join stores s on s.id = e.store_id
-         left join app_user u on u.id = e.raised_by left join app_user d on d.id = e.decided_by
+         left join app_user u on u.id = e.raised_by left join app_user d on d.id = e.decided_by left join store_shifts sh on sh.id = e.shift_id left join bank_account ba on ba.id = e.bank_account_id
         ${where.length ? 'where ' + where.join(' and ') : ''} order by (e.status = 'PENDING') desc, e.expense_date desc, e.id desc limit 500`, args);
     const out = rows.map((r: any) => ({ ...r, can_decide: this.canDecide(c, r), can_edit: r.status === 'PENDING' && (isOwnerRole(c.role) || r.raised_by === c.id) }));
     return { rows: out, pending_for_me: out.filter((r: any) => r.can_decide).length, limit: c.limit };
@@ -173,9 +204,11 @@ export class ExpenseService {
     if (e.status !== 'PENDING') throw new BadRequestException('Only a pending expense can be changed.');
     if (!isOwnerRole(c.role) && e.raised_by !== c.id) throw new ForbiddenException('You can change only the expenses you raised.');
     const f = await this.validate(b, c);
+    await this.unpostFromDrawer(id);
     await this.manager.query(
-      `update expense set expense_date=$2, store_id=$3, category_id=$4, amount=$5, gst_amount=$6, payee=$7, bill_no=$8, pay_mode=$9, description=$10, receipt_path=$11 where id=$1`,
-      [id, f.expense_date, f.store_id, f.category_id, f.amount, f.gst_amount, f.payee, f.bill_no, f.pay_mode, f.description, f.receipt_path]);
+      `update expense set expense_date=$2, store_id=$3, category_id=$4, amount=$5, gst_amount=$6, payee=$7, bill_no=$8, pay_mode=$9, description=$10, receipt_path=$11, cash_source=$12, shift_id=$13, bank_account_id=$14, reference=$15 where id=$1`,
+      [id, f.expense_date, f.store_id, f.category_id, f.amount, f.gst_amount, f.payee, f.bill_no, f.pay_mode, f.description, f.receipt_path, f.cash_source, f.shift_id, f.bank_account_id, f.reference]);
+    if (f.cash_source === 'DRAWER') await this.postToDrawer(id, f);
     await this.audit.record({ userId: user.id, action: 'expense.updated', entityType: 'expense', entityId: id, summary: `Expense ${id} changed to ${f.amount}`, details: {} });
     return { id };
   }
@@ -185,6 +218,7 @@ export class ExpenseService {
     const e = await this.load(id);
     if (e.status !== 'PENDING') throw new BadRequestException('Only a pending expense can be removed.');
     if (!isOwnerRole(c.role) && e.raised_by !== c.id) throw new ForbiddenException('You can remove only the expenses you raised.');
+    await this.unpostFromDrawer(id);
     await this.manager.query(`delete from expense where id = $1`, [id]);
     await this.audit.record({ userId: user.id, action: 'expense.removed', entityType: 'expense', entityId: id, summary: `Pending expense ${id} (${e.amount}) removed`, details: {} });
     return { id };
@@ -204,9 +238,70 @@ export class ExpenseService {
     }
     const note = text(b?.note, 200);
     if (action === 'reject' && (!note || note.length < 3)) throw new BadRequestException('Say why it is rejected.');
+    if (action === 'reject') await this.unpostFromDrawer(id);
     await this.manager.query(`update expense set status = $2, decided_by = $3, decided_on = now(), decision_note = $4 where id = $1`, [id, action === 'approve' ? 'APPROVED' : 'REJECTED', user.id, note]);
     await this.audit.record({ userId: user.id, action: `expense.${action}d`, entityType: 'expense', entityId: id, summary: `Expense ${id} (${e.amount}) ${action}d`, details: { note } });
     return { id };
+  }
+
+  // ------------------------------------------------------------------ the bank
+  /** the business an expense belongs to: its store's, or (no store) the person's */
+  private async businessOf(store: number | null, c: Ctx): Promise<number | null> {
+    if (store) return (await this.manager.query(`select business_id from stores where id = $1`, [store]))[0]?.business_id ?? null;
+    return (await this.manager.query(`select ${BUSINESS_OF_USER_SQL} as business_id from app_user u where u.id = $1`, [c.id]))[0]?.business_id ?? null;
+  }
+
+  /** the bank accounts an expense can be paid from (names only: the balances and statements are the Business Head's, under Finance) */
+  async bankAccounts(q: any, user: any) {
+    const c = await this.ctx(user);
+    const store = Number(q?.store) > 0 ? Number(q.store) : null;
+    if (store && !isOwnerRole(c.role) && !c.stores.includes(store)) return [];
+    const biz = await this.businessOf(store, c);
+    if (!biz) return [];
+    return this.manager.query(
+      `select id, name, bank_name, last4, store_id from bank_account where business_id = $1 and active and ($2::int is null or store_id is null or store_id = $2) order by name`, [biz, store]);
+  }
+
+  // ------------------------------------------------------------------ the drawer
+  /** the till's own codes for the expense kinds it knows; anything else is Other */
+  private static readonly TILL_KIND: Record<string, string> = {
+    'Rent': 'RENT', 'Electricity': 'ELECTRICITY', 'Cleaning': 'CLEANING', 'Repairs and maintenance': 'MAINTENANCE', 'Stationery and printing': 'OFFICE', 'Transport and courier': 'LOGISTICS',
+  };
+
+  /** the open shifts of a store whose drawer can pay an expense: a manager sees them all, anyone else the one they work (their own drawer, or the store's single shift) */
+  async openShifts(q: any, user: any) {
+    const c = await this.ctx(user);
+    const store = Number(q?.store);
+    if (!(store > 0)) return [];
+    if (!isOwnerRole(c.role) && !c.stores.includes(store)) return [];
+    const rows = await this.manager.query(
+      `select sh.id, sh.name, to_char(sh.shift_date, 'YYYY-MM-DD') as shift_date, sh.assigned_user_id, u.full_name as assigned
+         from store_shifts sh left join app_user u on u.id = sh.assigned_user_id
+        where sh.store_id = $1 and sh.status = 'OPEN' order by sh.id desc`, [store]);
+    const staffBased = (await this.manager.query(`select shift_mode from stores where id = $1`, [store]))[0]?.shift_mode === 'staff';
+    const sees = isOwnerRole(c.role) || c.role === 'Store Head' || !staffBased;
+    return rows.filter((r: any) => sees || r.assigned_user_id === c.id).map((r: any) => ({ id: r.id, name: r.name, shiftdate: r.shift_date, assigned: r.assigned || null }));
+  }
+
+  /** the drawer row for a cash expense: the shift's expected cash goes down by it (the same row the Cash screen writes for a till expense) */
+  private async postToDrawer(expenseId: number, f: any) {
+    const kind = ExpenseService.TILL_KIND[f.category_name] || 'OTHER';
+    const desc = [f.payee, f.description].filter(Boolean).join(' - ').slice(0, 480) || f.category_name;
+    await this.manager.query(
+      `insert into store_cash_accounts (trans_date, category, description, deposit, withdraw, holder, expense_category, receipt_path, store_id, shift_id, expense_id)
+       values ($1, 'EXPENSE', $2, 0, $3, 'DRAWER', $4, $5, $6, $7, $8)`,
+      [f.expense_date, desc, f.amount, kind, f.receipt_path ? String(f.receipt_path).slice(0, 255) : null, f.store_id, f.shift_id, expenseId]);
+    await this.stores.refreshShiftTotals(f.shift_id);
+  }
+
+  /** takes the drawer row of an expense back (the expense is edited, removed or rejected); refused once its shift has closed, because the count was made without it */
+  private async unpostFromDrawer(expenseId: number) {
+    const rows = await this.manager.query(
+      `select l.id, l.shift_id, sh.status as shift_status from store_cash_accounts l left join store_shifts sh on sh.id = l.shift_id where l.expense_id = $1`, [expenseId]);
+    if (!rows.length) return;
+    if (rows.some((r: any) => r.shift_status !== 'OPEN')) throw new BadRequestException('This cash left the drawer of a shift that has closed, so it cannot be changed, removed or rejected now. Ask a Store Head or Business Head.');
+    await this.manager.query(`delete from store_cash_accounts where expense_id = $1`, [expenseId]);
+    for (const sid of new Set<number>(rows.map((r: any) => +r.shift_id))) await this.stores.refreshShiftTotals(sid);
   }
 
   // ------------------------------------------------------------------ recurring
@@ -295,7 +390,7 @@ export class ExpenseService {
                      when 'OFFICE' then 'Stationery and printing' when 'LOGISTICS' then 'Transport and courier' else 'Other' end,
                 l.withdraw::numeric, 0, 'Cash drawer'
            from store_cash_accounts l left join stores s on s.id = l.store_id
-          where l.category = 'EXPENSE' and l.trans_date between $1 and $2 ${scopeT}
+          where l.category = 'EXPENSE' and l.expense_id is null and l.trans_date between $1 and $2 ${scopeT}
        ) t order by d`, args);
     const groupOf = new Map<string, string>((await this.manager.query(`select name, cost_group from expense_category`)).map((k: any) => [k.name, k.cost_group]));
     rows.forEach((r: any) => { r.group = groupOf.get(r.category) || 'Other'; });

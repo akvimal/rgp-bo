@@ -1433,6 +1433,9 @@ export class StoreService {
     return { deposit, withdraw, salescash, outcash, expectedcash, variance };
   }
 
+  /** a shift's expected cash and variance, brought up to date after a row was posted to its drawer from outside this service */
+  async refreshShiftTotals(shiftid: number) { return this.syncShiftTotals(shiftid); }
+
   private async syncShiftTotals(shiftid: number) {
     const stats = await this.getShiftStats(shiftid);
     await this.shiftRepository.update(shiftid, {

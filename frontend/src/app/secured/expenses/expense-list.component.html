@@ -10,6 +10,7 @@
           <select class="form-select" [(ngModel)]="filter.store" (change)="load()"><option value="">All</option><option *ngIf="isBusinessHead" value="business">Business level</option><option *ngFor="let s of stores" [value]="s.id">{{s.name}}</option></select></div>
         <div><label class="form-label">Category</label>
           <select class="form-select" [(ngModel)]="filter.category" (change)="load()"><option value="">All</option><option *ngFor="let c of categories" [value]="c.id">{{c.name}}</option></select></div>
+        <div class="form-check mb-2 align-self-end"><input class="form-check-input" type="checkbox" id="exp-f-unmatched" [(ngModel)]="onlyUnmatched" data-testid="exp-f-unmatched"><label class="form-check-label small" for="exp-f-unmatched">Not seen in the bank for a week</label></div>
         <span *ngIf="pendingForMe" class="badge bg-warning text-dark mb-2" data-testid="exp-pending-badge">{{pendingForMe}} waiting for you</span>
       </div>
       <div class="page-toolbar-actions"><button class="btn btn-primary" type="button" (click)="add()" data-testid="exp-add">Add expense</button></div>
@@ -30,7 +31,26 @@
         <div class="col-md-6 col-lg-3"><label class="form-label">Paid to</label><input class="form-control" maxlength="100" [(ngModel)]="form.payee" data-testid="exp-d-payee"></div>
         <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Bill no.</label><input class="form-control" maxlength="40" [(ngModel)]="form.bill_no"></div>
         <div class="col-6 col-md-3 col-lg-2"><label class="form-label">Paid by *</label>
-          <select class="form-select" [(ngModel)]="form.pay_mode" data-testid="exp-d-mode"><option *ngFor="let m of modes" [value]="m[0]">{{m[1]}}</option></select></div>
+          <select class="form-select" [(ngModel)]="form.pay_mode" (ngModelChange)="payChanged()" data-testid="exp-d-mode"><option *ngFor="let m of modes" [value]="m[0]">{{m[1]}}</option></select></div>
+        <div class="col-md-12" *ngIf="form.pay_mode === 'CASH' && form.store_id" data-testid="exp-d-cash">
+          <label class="form-label mb-1">Where the cash came from</label>
+          <div class="d-flex flex-wrap gap-3 align-items-center">
+            <div class="form-check"><input class="form-check-input" type="radio" name="cashsrc" id="exp-src-drawer" [checked]="form.cash_source === 'DRAWER'" [disabled]="!openShifts.length" (change)="setCashSource('DRAWER')" data-testid="exp-d-src-drawer"><label class="form-check-label" for="exp-src-drawer">The drawer of an open shift</label></div>
+            <select class="form-select form-select-sm w-auto" *ngIf="form.cash_source === 'DRAWER'" [(ngModel)]="form.shift_id" data-testid="exp-d-shift">
+              <option *ngFor="let s of openShifts" [ngValue]="s.id">{{s.name}}{{s.assigned ? ' - ' + s.assigned : ''}}</option>
+            </select>
+            <div class="form-check"><input class="form-check-input" type="radio" name="cashsrc" id="exp-src-out" [checked]="form.cash_source !== 'DRAWER'" (change)="setCashSource('OUTSIDE')" data-testid="exp-d-src-outside"><label class="form-check-label" for="exp-src-out">Not from the till <span class="text-muted">(own pocket, petty cash kept elsewhere)</span></label></div>
+          </div>
+          <div class="form-text" *ngIf="!openShifts.length" data-testid="exp-d-noshift">This store has no open shift, so the drawer cannot be used.</div>
+          <div class="form-text" *ngIf="form.cash_source === 'DRAWER'">The shift's expected cash goes down by this amount, so its count agrees. Dated the day of the shift.</div>
+        </div>
+        <ng-container *ngIf="form.pay_mode !== 'CASH'">
+          <div class="col-md-6 col-lg-4" *ngIf="bankAccounts.length" data-testid="exp-d-bank">
+            <label class="form-label">Bank account <span *ngIf="form.pay_mode !== 'UPI'">*</span></label>
+            <select class="form-select" [(ngModel)]="form.bank_account_id" data-testid="exp-d-bank-account"><option [ngValue]="null">{{form.pay_mode === 'UPI' ? 'Not from a bank account' : 'Choose'}}</option><option *ngFor="let a of bankAccounts" [ngValue]="a.id">{{a.name}}{{a.last4 ? ' ...' + a.last4 : ''}}</option></select>
+          </div>
+          <div class="col-md-6 col-lg-3"><label class="form-label">Reference <span class="text-muted small">(UTR / cheque no.)</span></label><input class="form-control" maxlength="40" [(ngModel)]="form.reference" data-testid="exp-d-reference"></div>
+        </ng-container>
         <div class="col-md-5"><label class="form-label">What for</label><input class="form-control" maxlength="300" [(ngModel)]="form.description" data-testid="exp-d-desc"></div>
         <div class="col-md-6 col-lg-4"><label class="form-label">Receipt / bill copy</label><input type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" (change)="upload($event)"><div class="small text-success" *ngIf="form.receipt_path">Attached</div></div>
         <div class="col-md-8 small text-muted align-self-end" data-testid="exp-d-hint">{{willNeedApproval()}}</div>
@@ -47,10 +67,15 @@
       <table class="table table-sm align-middle" data-testid="exp-table">
         <thead><tr><th>Date</th><th>Category</th><th>Store</th><th>Paid to / for</th><th>Paid by</th><th class="text-end">Amount</th><th>Status</th><th></th></tr></thead>
         <tbody>
-          <tr *ngFor="let r of rows" data-testid="exp-row" [attr.data-status]="r.status">
+          <tr *ngFor="let r of shownRows" data-testid="exp-row" [attr.data-status]="r.status">
             <td>{{r.expense_date | date:'dd MMM yyyy'}}</td><td>{{r.category}}</td><td>{{r.store || 'Business'}}</td>
             <td>{{r.payee}}<div class="small text-muted">{{r.description}} <span *ngIf="r.bill_no">&middot; bill {{r.bill_no}}</span> <span *ngIf="r.recurring_id">&middot; recurring</span></div></td>
-            <td>{{mode(r.pay_mode)}}</td>
+            <td>{{mode(r.pay_mode)}}
+              <div class="small text-muted" *ngIf="r.cash_source === 'DRAWER'" data-testid="exp-row-drawer">Drawer: {{r.shift_name || 'shift'}}</div>
+              <div class="small text-muted" *ngIf="r.cash_source === 'OUTSIDE'">Not from the till</div>
+              <div class="small text-muted" *ngIf="r.bank_account">{{r.bank_account}}<span *ngIf="r.reference"> &middot; {{r.reference}}</span></div>
+              <span class="badge bg-success" *ngIf="r.bankable && r.bank_matched" data-testid="exp-row-matched">In the bank</span>
+              <span class="badge bg-light text-muted border" *ngIf="r.bankable && !r.bank_matched" data-testid="exp-row-unmatched">Not seen in the bank</span></td>
             <td class="text-end">{{r.amount | number:'1.2-2'}}<div class="small text-muted" *ngIf="r.gst_amount">GST {{r.gst_amount | number:'1.2-2'}}</div></td>
             <td><span class="badge" [ngClass]="badge(r.status)">{{r.status | titlecase}}</span><div class="small text-muted">{{r.raised_by_name}}<span *ngIf="r.decided_by_name"> &rarr; {{r.decided_by_name}}</span></div><div class="small text-muted" *ngIf="r.decision_note">{{r.decision_note}}</div></td>
             <td class="text-end text-nowrap">
@@ -61,7 +86,7 @@
               <button *ngIf="r.can_edit" class="btn btn-outline-danger btn-sm ms-1" type="button" (click)="remove(r)" data-testid="exp-remove">Remove</button>
             </td>
           </tr>
-          <tr *ngIf="!rows.length"><td colspan="8" class="text-center text-muted py-3">No expenses for these filters.</td></tr>
+          <tr *ngIf="!shownRows.length"><td colspan="8" class="text-center text-muted py-3">No expenses for these filters.</td></tr>
         </tbody>
       </table>
     </div>

@@ -41,6 +41,10 @@ import { StoreShift } from "./store-shift.entity";
     @Column("character varying", { name: "expense_category", length: 30, nullable: true })
     expensecategory: string | null;
 
+    /** the Expenses-ledger expense this drawer row was posted for (null for an expense typed on the Cash screen) */
+    @Column("integer", { name: "expense_id", nullable: true })
+    expenseid: number | null;
+
     @Column("character varying", { name: "receipt_path", length: 255, nullable: true })
     receiptpath: string | null;
 
