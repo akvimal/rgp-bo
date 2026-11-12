@@ -6,7 +6,7 @@ Plan only. Nothing is built. Builds on the customer store-credit ledger (migrati
 | # | Decision |
 |---|---|
 | 1 | Earn **1%** of what the customer pays. **Schedule H, H1 and X earn nothing.** |
-| 2 | **1 point = Rs 1.** Minimum to redeem and cap per bill: suggested below (50 points, 20% of the bill). |
+| 2 | **1 point = Rs 1.** Minimum to redeem **50 points**; cap per bill **20% of the bill** (both adjustable in settings; owner took the suggested defaults, 2026-11-12). |
 | 3 | Points **expire 12 months** after they are earned. |
 | 4 | Change kept goes to the customer's **wallet** (rupees, no expiry), for change up to **Rs 10**. |
 | 5 | Wallet and points are **usable at every store**. |
@@ -80,7 +80,13 @@ Worked example: bill Rs 347 (Rs 60 of it an H1 drug), paid Rs 347 cash. Eligible
 - Abuse: points redeemed by the wrong person without OTP; the operator confirmation, the message to the customer and the weekly review are the controls. OTP can be added later.
 - The cap (20%) and minimum (50) are suggestions; at 1% earn, Rs 100 of points is Rs 10,000 of purchases.
 
-## 11. Open points
-- Cap and minimum: confirm 20% and 50 points.
-- Whether redeemed points may be used when paying dues (this plan says no).
-- Whether a tier scheme is wanted at launch.
+## 11. Defaults taken (owner, 2026-11-12: "go with default")
+- Minimum to redeem 50 points; cap 20% of the bill.
+- Points cannot be redeemed when paying customer dues.
+- No tiers at launch (spend-based tiers and bonuses stay in build step 5, later).
+- Points before wallet; redemption applies to the whole bill including Schedule drugs; operator confirmation, no OTP (OTP can be added later).
+- Redeemed points restored on a return keep their original expiry, or get 30 days if that has passed.
+
+## 12. Still to confirm outside the app
+- GST and accounting treatment of redeemed points and of change kept (the CA).
+- The Schedule H, H1 and X rule (the pharmacist): no earning is the default.
