@@ -5,6 +5,7 @@ import * as ExcelJS from 'exceljs';
 import { AuditService } from 'src/core/audit/audit.service';
 import { businessOfUser } from 'src/core/business-of-user';
 import { StockAuditService } from './stock-audit.service';
+import { AuditExpiryService } from './audit-expiry.service';
 import { ModulesService } from 'src/core/modules/modules.service';
 import { auditNo, financialYear, matchRate, mayCertify, SCOPE_LABEL, standardPlans, variance } from './audit-rules';
 import { AuditHead, buildCertificatePdf, buildCountSheetPdf, buildVariancePdf, SheetLine, Totals } from './audit-pdf';
@@ -18,7 +19,7 @@ const text = (v: any, max: number): string | null => { const s = String(v ?? '')
  */
 @Injectable()
 export class AuditRecordsService {
-  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly audits: StockAuditService, private readonly modules: ModulesService) {}
+  constructor(@InjectEntityManager() private readonly manager: EntityManager, private readonly audit: AuditService, private readonly audits: StockAuditService, private readonly modules: ModulesService, private readonly expiry: AuditExpiryService) {}
 
   private async head(a: any): Promise<AuditHead> {
     const [b] = await this.manager.query(`select name, address, gstin from business where id = $1`, [a.business_id]);
@@ -85,6 +86,9 @@ export class AuditRecordsService {
     if (a.certified_on) throw new BadRequestException('This audit is already certified.');
     const [pend] = await this.manager.query(`select count(*)::int as n from product_qtychange q where q.count_id = $1 and coalesce(q.status, 'PENDING') = 'PENDING'`, [a.count_id]);
     if (pend.n) throw new BadRequestException(`${pend.n} adjustment${pend.n === 1 ? ' is' : 's are'} still waiting for approval. Settle them first.`);
+    // expired and near-expiry batches the count covered: each needs an out-pass in hand or a stated reason before the audit is signed off
+    const ex = await this.expiry.compute(a);
+    if (ex.open) throw new BadRequestException(`${ex.open} expired or near-expiry batch${ex.open === 1 ? ' needs' : 'es need'} an out-pass or an explanation before this audit can be signed off. Open the audit's Expiry list.`);
     const [role] = await this.manager.query(`select name from app_role where id = $1`, [user.roleid || 0]);
     const who = mayCertify(a.completed_by ?? null, user.id, role?.name);
     if (!who.ok) throw new ForbiddenException('A different person from the one who counted must verify and approve the audit.');
@@ -100,6 +104,7 @@ export class AuditRecordsService {
     const buffer = await buildCertificatePdf({ ...head, generatedAt: certifiedOn }, {
       totals: this.totals(lines), approved: st.approved, rejected: st.rejected, pending: 0, escalated: st.escalated, recounted: st.recounted,
       countedBy: head.counter ?? '', certifiedBy: me?.full_name ?? '', certifiedOn, note, alone: who.alone,
+      expiry: { covered: ex.rows.length, onBooks: ex.onBooks, unrecorded: ex.unrecorded, unrecordedValue: ex.unrecordedValue, explained: ex.explained, passes: ex.passes.map((p: any) => ({ no: p.pass_no, status: p.status, qty: p.qty })) },
     });
     const done = await this.manager.query(`update stock_audit set certified_on = $2, certified_by = $3, certified_note = $4 where id = $1 and certified_on is null returning id`, [id, certifiedOn, user.id, note]);
     if (!done.length) throw new BadRequestException('This audit is already certified.');

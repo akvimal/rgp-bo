@@ -181,6 +181,8 @@ export interface Certificate {
   totals: Totals;
   approved: number; rejected: number; pending: number; escalated: number; recounted: number;
   countedBy: string; certifiedBy: string; certifiedOn: Date; note: string | null; alone: boolean;
+  /** expired or near-expiry batches the count covered, and how they stand */
+  expiry?: { covered: number; onBooks: number; unrecorded: number; unrecordedValue: number; explained: number; passes: { no: string; status: string; qty: number }[] };
 }
 
 /** the one page that is signed and filed: what was covered, what was found, how the differences were settled, and two signature lines */
@@ -209,6 +211,17 @@ export function buildCertificatePdf(h: AuditHead, c: Certificate): Promise<Buffe
   kv('Adjustments rejected', String(c.rejected));
   kv('Large differences', `${c.escalated}, of which counted again: ${c.recounted}`);
   if (c.note) kv('Note', c.note);
+  if (c.expiry && c.expiry.covered) {
+    const e = c.expiry;
+    doc.moveDown(0.5);
+    doc.font('B').fontSize(11).fillColor('#1d4ed8').text('Expired and near-expiry batches', L, doc.y, { width: W });
+    doc.moveDown(0.25);
+    kv('Batches covered (expired or within 30 days)', String(e.covered));
+    kv('Written off by the count with no out-pass', e.unrecorded ? `${e.unrecorded} (${money(e.unrecordedValue)} at cost); explained: ${e.explained}` : 'None');
+    const label: Record<string, string> = { DRAFT: 'waiting for approval', APPROVED: 'approved, goods not yet handed over', CONFIRMED: 'goods handed over' };
+    e.passes.slice(0, 8).forEach((p) => kv(`Out-pass ${p.no}`, `${plural(p.qty, 'unit', 'units')}, ${label[p.status] || p.status}`));
+    if (e.passes.length > 8) kv('', `and ${e.passes.length - 8} more`);
+  }
   doc.moveDown(0.8);
   doc.font('R').fontSize(9.5).fillColor('#111827').text(
     `We confirm that the stock listed on count sheet ${h.no} was physically counted on the dates shown, that the book quantities were as recorded when counting started, that sales and other stock movements between the start and the end of counting were taken into account, and that the differences were dealt with as stated above.`,

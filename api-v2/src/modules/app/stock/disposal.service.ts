@@ -16,7 +16,7 @@ const text = (v: any, max: number) => (v === undefined || v === null || String(v
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** what the store holds of a batch on its books: received here, less sold here, plus the approved adjustments and transfers posted here (the same sum billing uses) */
-const bookSql = (store: string) => `(
+export const bookSql = (store: string) => `(
     (case when i.store_id = ${store} then (pii.qty + coalesce(pii.free_qty, 0)) * coalesce(p.pack, 1) else 0 end)
     - coalesce((select sum(si.qty) from sale_item si inner join sale s on s.id = si.sale_id
                  where si.purchase_item_id = pii.id and si.active = true and si.archive = false and s.store_id = ${store}), 0)
@@ -133,15 +133,22 @@ export class DisposalService {
     this.assertStore(c, storeId);
     const f = this.fields(b);
     const businessId = await this.business(storeId);
+    // a pass made from a stock audit names it: the audit must be one of this store's
+    let auditId: number | null = null;
+    if (Number(b?.auditid) > 0) {
+      const [au] = await this.manager.query(`select id from stock_audit where id = $1 and store_id = $2`, [Number(b.auditid), storeId]);
+      if (!au) throw new BadRequestException('That audit is not one of this store\'s.');
+      auditId = au.id;
+    }
     const id = await this.manager.transaction(async (m) => {
       await m.query(`select pg_advisory_xact_lock($1)`, [businessId]);
       const lines = await this.priceLines(m, storeId, b?.lines, 0);
       const year = new Date().getFullYear();
       const [{ seq }] = await m.query(`select coalesce(max(seq), 0) + 1 as seq from disposal_pass where business_id = $1 and pass_year = $2`, [businessId, year]);
       const [p] = await m.query(
-        `insert into disposal_pass (business_id, store_id, pass_year, seq, pass_no, status, reason, method, agency, notes, evidence_path, prepared_by)
-         values ($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10,$11) returning id`,
-        [businessId, storeId, year, seq, passNumber(year, +seq), f.reason, f.method, f.agency, f.notes, f.evidence, c.id]);
+        `insert into disposal_pass (business_id, store_id, pass_year, seq, pass_no, status, reason, method, agency, notes, evidence_path, prepared_by, audit_id)
+         values ($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9,$10,$11,$12) returning id`,
+        [businessId, storeId, year, seq, passNumber(year, +seq), f.reason, f.method, f.agency, f.notes, f.evidence, c.id, auditId]);
       await this.insertLines(m, p.id, lines);
       return p.id as number;
     });
@@ -468,6 +475,7 @@ export class DisposalService {
     const names = await this.manager.query(`select id, full_name from app_user where id = any($1::int[])`, [[p.prepared_by, p.approved_by, p.confirmed_by, p.witness_id].filter(Boolean)]);
     const nameOf = (uid: number | null) => (uid ? names.find((n: any) => n.id === uid)?.full_name || null : null);
     const [store] = await this.manager.query(`select location from stores where id = $1`, [p.store_id]);
+    const [aud] = p.audit_id ? await this.manager.query(`select audit_no from stock_audit where id = $1`, [p.audit_id]) : [null];
     const lines = await this.manager.query(
       `select l.id, l.item_id, l.product_id, l.title, l.batch, to_char(l.exp_date, 'YYYY-MM-DD') as exp_date, l.schedule, l.qty, l.cost_value::float as cost_value, l.tax_value::float as tax_value, l.mrp_value::float as mrp_value,
               l.qtychange_id, r.schedule as reg_schedule, r.serial_no as reg_serial
@@ -475,7 +483,7 @@ export class DisposalService {
     const sum = (k: string) => Math.round(lines.reduce((t: number, l: any) => t + Number(l[k] || 0), 0) * 100) / 100;
     const canManage = c.isManager && (c.isOwner || c.stores.includes(+p.store_id));
     return {
-      ...p, store: store?.location || null, prepared_by_name: nameOf(p.prepared_by), approved_by_name: nameOf(p.approved_by), confirmed_by_name: nameOf(p.confirmed_by), witness_name: nameOf(p.witness_id),
+      ...p, store: store?.location || null, audit_no: aud ? `SA-${String(aud.audit_no).padStart(4, '0')}` : null, prepared_by_name: nameOf(p.prepared_by), approved_by_name: nameOf(p.approved_by), confirmed_by_name: nameOf(p.confirmed_by), witness_name: nameOf(p.witness_id),
       reason_label: REASON_LABEL[p.reason], method_label: METHOD_LABEL[p.method], lines,
       totals: { qty: lines.reduce((t: number, l: any) => t + l.qty, 0), cost: sum('cost_value'), tax: sum('tax_value'), mrp: sum('mrp_value') },
       witness_needed: needsWitness(lines, c.isManager),

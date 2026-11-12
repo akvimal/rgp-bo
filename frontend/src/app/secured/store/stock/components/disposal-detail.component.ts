@@ -16,6 +16,7 @@ import { DisposalService } from "../disposal.service";
         <span class="badge" [ngClass]="badge(p.status)" data-testid="pass-status">{{statusText(p.status)}}</span>
         <span class="small text-muted">{{p.store}}</span>
         <span class="badge bg-light text-dark border" *ngIf="p.legacy" data-testid="pass-legacy">Disposed earlier, recorded now</span>
+        <a class="small" *ngIf="p.audit_no" routerLink="/secure/stock-audits" data-testid="pass-audit">From audit {{p.audit_no}}</a>
         <span class="ms-auto"><button type="button" class="btn btn-outline-secondary btn-sm" (click)="print()" data-testid="pass-print"><i class="bi bi-printer me-1"></i>Print</button>
           <a routerLink=".." class="btn btn-outline-secondary btn-sm ms-1">All out-passes</a></span>
       </div>

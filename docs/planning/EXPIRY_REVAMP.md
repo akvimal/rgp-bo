@@ -69,3 +69,12 @@ Built and tested locally, committed. No migration.
 - Specs: QA `expiry-extras.spec.ts` EXX-1..3; the built-in alert list in `alerts.spec.ts` ALRT-1 brought up to date.
 Remaining: step 3 (audit integration), step 4 (tax value to the GST module, printable register).
 
+
+## Build status: step 3, audit integration (2026-11-12)
+Built and tested locally, committed. Migration 187 (applied to the local dev database only).
+- **Expiry in an audit:** of the batches the audit's count covered, those expired or within 30 days of expiry that (a) still sit on the books, or (b) were written off by the count itself (an approved shortage) with no out-pass, are listed on the audit's Expiry button (Stock audits, counted audits) and `GET /stock-audits/:id/expiry`. Each needs an out-pass (any waiting, approved or confirmed pass for the batch at that store since the count began, or made from the audit) or a short explanation (`stock_audit_expiry_note`, `POST /stock-audits/:id/expiry/explain`). Class (b) is the "unrecorded disposal".
+- **Sign-off gate:** `certify` refuses while any are open ("N expired or near-expiry batches need an out-pass or an explanation"); the Sign off button is disabled and the row says how many.
+- **Out-pass from the audit:** the panel selects batches and makes one pass naming the audit (`disposal_pass.audit_id`; the pass shows "From audit SA-nnnn").
+- **Certificate:** an expiry section (batches covered, written off by the count with no out-pass and their value, each linked out-pass and its state).
+- Audit guide text updated. Specs: QA `audit-expiry.spec.ts` AUDX-1..3.
+Remaining: step 4 (tax value to the GST module, printable register).

@@ -41,6 +41,47 @@
         <div class="col-md-6"><button class="btn btn-primary btn-sm" type="button" (click)="confirmAssign()" data-testid="sa-assign-save">Assign</button> <button class="btn btn-outline-secondary btn-sm" type="button" (click)="assigning = null">Cancel</button></div></div>
     </div>
 
+    <div class="card border-warning mb-3" *ngIf="expiryAudit" data-testid="sa-expiry-panel">
+      <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <div class="fw-semibold">Expired and near-expiry batches: {{no(expiryAudit.audit_no)}} <span class="text-muted fw-normal">{{expiryAudit.store}}</span></div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeExpiry()" data-testid="sa-expiry-close">Close</button>
+        </div>
+        <div class="small text-muted mb-2">Batches this audit's count covered that are expired or within 30 days of expiry. Expired stock still on the books needs an out-pass; a shortage the count wrote off with no out-pass behind it is an unrecorded disposal and needs a short explanation (who, when, how). The audit cannot be signed off until each one has one or the other.</div>
+        <div class="alert alert-danger py-2" *ngIf="expiryError" data-testid="sa-expiry-error">{{expiryError}}</div>
+        <ng-container *ngIf="expiry">
+          <div class="small mb-2" *ngIf="!expiry.rows.length" data-testid="sa-expiry-none">Nothing expired or near expiry in this count.</div>
+          <div class="table-responsive" *ngIf="expiry.rows.length">
+            <table class="table table-sm align-middle mb-2" data-testid="sa-expiry-table">
+              <thead><tr><th style="width:2.5em"></th><th>Product</th><th>Batch</th><th>Expiry</th><th class="text-end">Counted</th><th class="text-end">On books</th><th>Why it is listed</th><th>State</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let r of expiry.rows" data-testid="sa-expiry-row">
+                  <td><input type="checkbox" *ngIf="!r.passid && r.sellable > 0" [(ngModel)]="expiryPick[r.itemid]" [attr.aria-label]="'Select ' + r.title" data-testid="sa-expiry-check"></td>
+                  <td>{{r.title}} <span class="badge bg-danger" *ngIf="r.schedule">{{r.schedule}}</span></td><td>{{r.batch}}</td><td>{{r.expdate | date:'MMM-yy'}}</td>
+                  <td class="text-end">{{r.counted ?? '-'}}</td><td class="text-end">{{r.balance}}</td>
+                  <td class="small"><div *ngIf="r.kind !== 'UNRECORDED'">Expired stock still on the books</div><div *ngIf="r.kind !== 'ON_BOOKS' && !r.passid">Written off by the count ({{-r.adjusted}} unit{{r.adjusted === -1 ? '' : 's'}}): unrecorded disposal</div></td>
+                  <td class="small">
+                    <a *ngIf="r.passid" [routerLink]="['/secure/store/stock/passes', r.passid]" data-testid="sa-expiry-pass">{{r.passno}}</a><span *ngIf="r.passid" class="text-muted"> ({{r.passstatus === 'CONFIRMED' ? 'handed over' : (r.passstatus === 'APPROVED' ? 'approved' : 'waiting for approval')}})</span>
+                    <ng-container *ngIf="!r.passid && !expiryAudit.certified_on">
+                      <div class="input-group input-group-sm"><input class="form-control" maxlength="300" placeholder="Who, when, how" [ngModel]="expiryNote[r.itemid] ?? r.note ?? ''" (ngModelChange)="expiryNote[r.itemid] = $event" data-testid="sa-expiry-note">
+                        <button type="button" class="btn btn-outline-primary" (click)="saveExpiryNote(r)" data-testid="sa-expiry-note-save">Explain</button></div>
+                      <span class="text-success" *ngIf="r.note" data-testid="sa-expiry-explained">Explained</span>
+                    </ng-container>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="d-flex flex-wrap align-items-end gap-2" *ngIf="expiryPickable.length">
+            <div><label class="form-label small mb-0">Why</label><select class="form-select form-select-sm" [(ngModel)]="expiryPass.reason"><option value="EXPIRED">Expired</option><option value="NEAR_EXPIRY">Near expiry</option><option value="DAMAGED">Damaged</option></select></div>
+            <div><label class="form-label small mb-0">How</label><select class="form-select form-select-sm" [(ngModel)]="expiryPass.method"><option value="DESTROYED">Destroyed on site</option><option value="AGENCY">Handed to a disposal agency</option><option value="VENDOR">Returned to the vendor</option><option value="OTHER">Other</option></select></div>
+            <div *ngIf="expiryPass.method === 'AGENCY'"><label class="form-label small mb-0">Agency</label><input class="form-control form-control-sm" maxlength="120" [(ngModel)]="expiryPass.agency"></div>
+            <button type="button" class="btn btn-primary btn-sm" [disabled]="!expiryPicked.length || expiryBusy" (click)="makeExpiryPass()" data-testid="sa-expiry-make-pass">Create an out-pass for the {{expiryPicked.length}} selected</button>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
     <div class="table-responsive" *ngIf="tab !== 'PLANS' && tab !== 'REGISTER'">
       <table class="table table-sm align-middle" data-testid="sa-table">
         <thead><tr><th>{{multiStore ? 'Store' : 'Audit'}}</th><th>Covers</th><th>Due</th><th>Who</th><th>Status / result</th><th></th></tr></thead>
@@ -60,7 +101,8 @@
               <div class="small text-muted" *ngIf="a.status === 'SKIPPED'">{{a.note}}</div>
               <div class="small text-success" *ngIf="a.certified_on" data-testid="sa-certified">Certified by {{a.certified_name}} on {{a.certified_on | date:'dd MMM yyyy'}}</div>
               <div class="small text-warning" *ngIf="a.status === 'DONE' && !a.certified_on && a.pending_lines" data-testid="sa-waiting">{{a.pending_lines}} adjustment{{a.pending_lines === 1 ? '' : 's'}} to settle with a reason, then it can be signed off</div>
-              <div class="small text-muted" *ngIf="a.status === 'DONE' && !a.certified_on && !a.pending_lines" data-testid="sa-ready">All differences settled: ready to sign off</div>
+              <div class="small text-danger" *ngIf="a.expiry_open" data-testid="sa-expiry-open">{{a.expiry_open}} expired or near-expiry batch{{a.expiry_open === 1 ? '' : 'es'}} still need{{a.expiry_open === 1 ? 's' : ''}} an out-pass or an explanation before sign-off</div>
+              <div class="small text-muted" *ngIf="a.status === 'DONE' && !a.certified_on && !a.pending_lines && !a.expiry_open" data-testid="sa-ready">All differences settled: ready to sign off</div>
             </td>
             <td class="text-end text-nowrap">
               <ng-container *ngIf="a.status === 'IN_PROGRESS' && a.count_id">
@@ -70,8 +112,9 @@
                 <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openDoc(a.id + '/sheet')" data-testid="sa-sheet">Count sheet</button>
                 <button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openDoc(a.id + '/variance')" data-testid="sa-variance">Variance</button>
                 <button *ngIf="a.adjustments" class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="showAdjustments(a)" data-testid="sa-adjustments">Adjustments ({{a.adjustments}})</button>
+                <button *ngIf="!a.certified_on" class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="openExpiry(a)" data-testid="sa-expiry">Expiry<span *ngIf="a.expiry_open"> ({{a.expiry_open}})</span></button>
                 <button *ngIf="a.certified_on" class="btn btn-outline-success btn-sm" type="button" (click)="openDoc(a.id + '/certificate')" data-testid="sa-certificate">Certificate</button>
-                <ng-container *ngIf="!a.certified_on && !a.pending_lines"><button *isAuth="'stockaudit.perform'" class="btn btn-primary btn-sm" type="button" (click)="certifying = { id: a.id, note: '' }" data-testid="sa-certify">Sign off</button></ng-container>
+                <ng-container *ngIf="!a.certified_on && !a.pending_lines"><button *isAuth="'stockaudit.perform'" class="btn btn-primary btn-sm" type="button" [disabled]="a.expiry_open > 0" [attr.title]="a.expiry_open ? 'Settle the expired batches first' : ''" (click)="certifying = { id: a.id, note: '' }" data-testid="sa-certify">Sign off</button></ng-container>
               </ng-container>
               <ng-container *ngIf="a.status === 'PLANNED' || a.status === 'IN_PROGRESS'">
                 <button class="btn btn-primary btn-sm" type="button" (click)="doAudit(a)" *isAuth="'stockaudit.perform'" data-testid="sa-do">{{a.status === 'IN_PROGRESS' ? 'Continue' : 'Do the audit'}}</button>

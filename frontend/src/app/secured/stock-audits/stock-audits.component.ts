@@ -5,6 +5,7 @@ import { Router } from "@angular/router";
 import { saveAs } from "file-saver";
 import { environment } from "src/environments/environment";
 import { StoreContextService } from "src/app/@core/store-context.service";
+import { DisposalService } from "src/app/secured/store/stock/disposal.service";
 
 /** Routine stock audits: what is due, who does it, and what each found; plans (Business Head) make them recur. */
 @Component({ selector: "app-stock-audits", templateUrl: "./stock-audits.component.html" })
@@ -34,7 +35,43 @@ export class StockAuditsComponent implements OnInit {
   asof = new Date().toISOString().slice(0, 10);
   valuation: any = null;
 
-  constructor(private http: HttpClient, private router: Router, private storeContext: StoreContextService, public auth: AuthService) {}
+  // ------------------------------------------------------------ expiry inside the audit
+  /** the expired and near-expiry batches the audit's count covered: each needs an out-pass or a short explanation before sign-off */
+  expiry: any = null;
+  expiryAudit: any = null;
+  expiryPick: { [itemid: number]: boolean } = {};
+  expiryNote: { [itemid: number]: string } = {};
+  expiryPass = { reason: "EXPIRED", method: "DESTROYED", agency: "" };
+  expiryError = "";
+  expiryBusy = false;
+
+  openExpiry(a: any) {
+    this.expiryAudit = a; this.expiryError = ""; this.expiryPick = {}; this.expiryNote = {};
+    this.loadExpiry();
+  }
+  closeExpiry() { this.expiry = null; this.expiryAudit = null; }
+
+  private loadExpiry() {
+    this.http.get<any>(`${this.api}/${this.expiryAudit.id}/expiry`).subscribe(r => { this.expiry = r; this.expiryPick = {}; }, e => this.expiryError = this.msg(e));
+  }
+
+  /** the rows that can go on an out-pass: expired stock still on the books that has no pass yet */
+  get expiryPickable(): any[] { return (this.expiry?.rows || []).filter((r: any) => !r.passid && r.sellable > 0); }
+  get expiryPicked(): any[] { return this.expiryPickable.filter((r: any) => this.expiryPick[r.itemid]); }
+
+  saveExpiryNote(r: any) {
+    this.expiryError = "";
+    this.http.post<any>(`${this.api}/${this.expiryAudit.id}/expiry/explain`, { itemid: r.itemid, note: this.expiryNote[r.itemid] ?? r.note ?? "" }).subscribe(x => { this.expiry = x; this.expiryNote = {}; this.load(); }, e => this.expiryError = this.msg(e));
+  }
+
+  makeExpiryPass() {
+    this.expiryBusy = true; this.expiryError = "";
+    const body = { storeid: this.expiryAudit.store_id, auditid: this.expiryAudit.id, reason: this.expiryPass.reason, method: this.expiryPass.method, agency: this.expiryPass.agency,
+      lines: this.expiryPicked.map((r: any) => ({ itemid: r.itemid, qty: r.sellable })) };
+    this.disposal.create(body).subscribe((p: any) => { this.expiryBusy = false; this.router.navigate(["/secure/store/stock/passes", p.id]); }, (e: any) => { this.expiryBusy = false; this.expiryError = this.disposal.msg(e); });
+  }
+
+  constructor(private http: HttpClient, private router: Router, private storeContext: StoreContextService, public auth: AuthService, private disposal: DisposalService) {}
 
   ngOnInit() {
     this.http.get(`${this.api}/options`).subscribe(o => this.opts = o);

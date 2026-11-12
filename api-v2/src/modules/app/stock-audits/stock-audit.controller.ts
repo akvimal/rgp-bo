@@ -7,6 +7,7 @@ import { PermissionService } from '../roles/permission.service';
 import type { Response } from 'express';
 import { StockAuditService } from './stock-audit.service';
 import { AuditRecordsService } from './audit-records.service';
+import { AuditExpiryService } from './audit-expiry.service';
 
 /** the `stockaudit` action a handler needs (view / perform / manage), checked against the role's permissions */
 const Needs = (action: string) => SetMetadata('stockaudit.action', action);
@@ -27,7 +28,7 @@ export class StockAuditGuard implements CanActivate {
 @ApiBearerAuth()
 @UseGuards(AuthGuard, StockAuditGuard)
 export class StockAuditController {
-  constructor(private readonly service: StockAuditService, private readonly records: AuditRecordsService) {}
+  constructor(private readonly service: StockAuditService, private readonly records: AuditRecordsService, private readonly expiry: AuditExpiryService) {}
 
   private file(res: Response, f: { buffer?: Buffer; file?: Buffer; filename: string; contentType?: string }) {
     const xlsx = f.filename.endsWith('.xlsx');
@@ -50,7 +51,14 @@ export class StockAuditController {
     return r.file ? this.file(res, r) : r;
   }
   @Post('generate') @Needs('manage') generate(@User() u: any) { return this.service.generate(u.id); }
-  @Get() @Needs('view') list(@Query() q: any, @User() u: any) { return this.service.list(q, u); }
+  @Get() @Needs('view') async list(@Query() q: any, @User() u: any) {
+    const rows: any[] = await this.service.list(q, u);
+    // an audit counted but not yet signed off says how many expired or near-expiry batches still need an out-pass or an explanation
+    for (const r of rows) if (r.count_id && !r.certified_on && ['IN_PROGRESS', 'DONE'].includes(r.status)) r.expiry_open = await this.expiry.openCount(r);
+    return rows;
+  }
+  @Get(':id/expiry') @Needs('view') expiryReview(@Param('id', ParseIntPipe) id: number, @User() u: any) { return this.expiry.review(id, u); }
+  @Post(':id/expiry/explain') @Needs('perform') expiryExplain(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { return this.expiry.explain(id, b, u); }
   @Get(':id/sheet') @Needs('view') async sheet(@Param('id', ParseIntPipe) id: number, @User() u: any, @Res({ passthrough: true }) res: Response) { return this.file(res, await this.records.sheet(id, u)); }
   @Get(':id/variance') @Needs('view') async variance(@Param('id', ParseIntPipe) id: number, @User() u: any, @Res({ passthrough: true }) res: Response) { return this.file(res, await this.records.variance(id, u)); }
   @Get(':id/certificate') @Needs('view') async certificate(@Param('id', ParseIntPipe) id: number, @User() u: any, @Res({ passthrough: true }) res: Response) { return this.file(res, await this.records.certificate(id, u)); }
