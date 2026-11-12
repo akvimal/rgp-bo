@@ -20,6 +20,7 @@ import { findAccountableUser, loadStoreProfile, parseProfileInput, parseStoreTyp
 import { DepositRule, checkDepositRule, describeDepositRule, evaluateDeposit, parseDepositInput } from "./deposit-rule";
 import { ChecklistAssistant } from "./checklist-assistant";
 import { DEFAULT_TOLERANCE_MINUTES, minutesOf, suggestTemplate } from "./shift-template-rules";
+import { cashPosition } from "./cash-position";
 import { ChecklistKind, CHECKLIST_KINDS, DEFAULT_CHECKLISTS, effectiveChecklist, isChecklistKind, normalizeChecklistItems, requiredChecklistKeys, validateChecklist } from "./shift-checklist";
 
 import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
@@ -1244,7 +1245,12 @@ export class StoreService {
       balanceQb.where("ledger.store_id = :storeid", { storeid });
     }
     const balanceRaw = await balanceQb.getRawOne();
-    const cashbalance = Number(balanceRaw?.deposit || 0) - Number(balanceRaw?.withdraw || 0);
+    const cashbook = Number(balanceRaw?.deposit || 0) - Number(balanceRaw?.withdraw || 0);
+    // what the store holds: drawers + vault for a store with a vault (the vault page and this card agree), the cash book for one without
+    const position = await cashPosition(this.manager, storeid ? [storeid] : null);
+    const cashbalance = position.total;
+    // a store with a vault banks from the vault: the deposit rule reads the vault's confirmed balance, as the dashboard does
+    const depositbalance = storeid && position.vaultStores > 0 ? position.vault : cashbalance;
     const depositthreshold = Number(store?.depositthreshold || 0);
     const lastDepositQb = this.cashAccountRepository.createQueryBuilder("ledger")
       .where("ledger.category = 'BANK_DEPOSIT'")
@@ -1256,7 +1262,7 @@ export class StoreService {
     const lastDeposit = await lastDepositQb.getOne();
     // due by the amount or by a deposit day, whichever came first
     const rule = this.ruleOf(store);
-    const deposit = storeid ? evaluateDeposit(rule, cashbalance, lastDeposit ? (typeof lastDeposit.transdate === "string" ? lastDeposit.transdate : new Date(lastDeposit.transdate as any).toISOString()).slice(0, 10) : null, this.today()) : null;
+    const deposit = storeid ? evaluateDeposit(rule, depositbalance, lastDeposit ? (typeof lastDeposit.transdate === "string" ? lastDeposit.transdate : new Date(lastDeposit.transdate as any).toISOString()).slice(0, 10) : null, this.today()) : null;
     const depositdue = !!deposit?.due;
     const depositexcess = deposit?.excess ?? 0;
     return {
@@ -1268,6 +1274,9 @@ export class StoreService {
       ledger,
       templates: await this.findTemplates({ storeid }),
       cashbalance,
+      cashbook,
+      depositbalance,
+      position: { vaultstores: position.vaultStores, drawers: position.drawers, vault: position.vault, waiting: position.waiting, otherstores: position.otherStores },
       depositthreshold,
       depositdue,
       depositexcess,

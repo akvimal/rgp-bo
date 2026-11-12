@@ -41,7 +41,7 @@ test.describe('Cross-cutting @p2', () => {
   test('XCUT-3 two cashiers on the same store keep the ledger consistent @edge', async ({ api }) => {
     const t1 = await api.token('sales1@local.test');
     const t2 = await api.token('sales2@local.test');
-    const before = (await api.request('GET', '/store-cash/dashboard?storeid=1', undefined, MGR)).body.cashbalance;
+    const before = (await api.request('GET', '/store-cash/dashboard?storeid=1', undefined, MGR)).body.cashbook;
 
     // 20 concurrent ledger deposits of 10, split across the two cashiers
     const posts = Array.from({ length: 20 }, (_, i) => {
@@ -54,7 +54,7 @@ test.describe('Cross-cutting @p2', () => {
     const statuses = await Promise.all(posts);
     const ok = statuses.filter((s) => s < 400).length;
 
-    const after = (await api.request('GET', '/store-cash/dashboard?storeid=1', undefined, MGR)).body.cashbalance;
+    const after = (await api.request('GET', '/store-cash/dashboard?storeid=1', undefined, MGR)).body.cashbook;
     // balance moved by exactly (successful writes x 10) - no lost updates
     expect(Math.abs((Number(after) - Number(before)) - ok * 10)).toBeLessThan(0.5);
   });

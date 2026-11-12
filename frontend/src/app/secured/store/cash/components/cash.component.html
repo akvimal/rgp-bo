@@ -8,6 +8,9 @@
             <div>
               <div class="small text-muted">Store cash balance</div>
               <div class="fw-bold" data-testid="cash-balance">{{currentCashBalance() | number:'1.2-2'}}</div>
+              <div class="small text-muted" *ngIf="dashboard?.position?.vaultstores" data-testid="cash-split">
+                In the drawer {{dashboard.position.drawers | number:'1.2-2'}} &middot; In the vault {{dashboard.position.vault | number:'1.2-2'}}<span *ngIf="dashboard.position.waiting"> &middot; Waiting for confirmation {{dashboard.position.waiting | number:'1.2-2'}}</span>
+              </div>
             </div>
             <span class="badge" data-testid="cash-deposit-badge" [ngClass]="depositDue() ? 'bg-danger' : 'bg-secondary'">
               {{depositDue() ? 'Deposit due' : 'OK'}}

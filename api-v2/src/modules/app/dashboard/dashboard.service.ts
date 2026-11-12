@@ -1,3 +1,4 @@
+import { cashPosition } from '../store/cash-position';
 import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
@@ -215,6 +216,8 @@ export class DashboardService {
         cash_in_vault: cashSnapshot.vaultbalance,
         vault_pending: cashSnapshot.vaultpending,
         cash_in_drawers: cashSnapshot.drawercash,
+        cash_in_vault_waiting: cashSnapshot.vaultwaiting,
+        cash_other_stores: cashSnapshot.cashotherstores,
         deposit_threshold: cashSnapshot.depositthreshold,
         deposit_due: cashSnapshot.depositdue,
         deposit_reason: cashSnapshot.depositreason,
@@ -438,7 +441,10 @@ export class DashboardService {
       lastDeposit = last?.d ?? null;
     }
 
-    const cashbalance = (+row?.[0]?.deposit || 0) - (+row?.[0]?.withdraw || 0);
+    // the cash the stores in view hold, in one definition with the Store > Cash card: drawers + vault (+ waiting) for a store with a vault, the cash book for the others
+    const pos = await cashPosition(this.manager, stores);
+    const cashbook = (+row?.[0]?.deposit || 0) - (+row?.[0]?.withdraw || 0);
+    const cashbalance = pos.total;
 
     // cash in the vaults of the stores in view, and in the drawers of their open shifts: kept apart, never netted
     const [vault] = await this.manager.query(`
@@ -459,11 +465,14 @@ export class DashboardService {
 
     return {
       cashbalance,
+      cashbook,
       depositbalance,
       vaultstores: vault?.stores || 0,
-      vaultbalance: vault?.balance || 0,
+      vaultbalance: pos.vault,
+      vaultwaiting: pos.waiting,
+      cashotherstores: pos.otherStores,
       vaultpending: vault?.pending || 0,
-      drawercash: drawers?.cash || 0,
+      drawercash: pos.drawers,
       depositthreshold: rule.threshold,
       depositdue: !!status?.due,
       depositexcess: status?.excess ?? 0,
