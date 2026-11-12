@@ -3,6 +3,7 @@
  * New feature, not part of the original 120-case manual-test-plan.html.
  */
 import { test, expect, data } from '../fixtures/index.js';
+import { setSeededCap } from '../fixtures/gst-cap.js';
 import { expectShell } from '../support/assert.js';
 
 const MGR = 'businesshead@local.test';
@@ -34,6 +35,10 @@ async function completedInvoice(api: any, tag: string, opts: { taxpcnt?: number;
 }
 
 test.describe('GST data model @p1', () => {
+
+  // these cases are about the GST 2.0 cap (the seeded "all products at most 5%" change), so it is put in force for them and taken out after
+  test.beforeAll(() => setSeededCap(true));
+  test.afterAll(() => setSeededCap(false));
   test('GST-1 a completed invoice gets a supplier GSTIN, period and INTRA/INTER classification @happy', async ({ api }) => {
     const vendor = (await api.request('GET', '/vendors', undefined, MGR)).body[0];
     const inv = await completedInvoice(api, 'ctx');

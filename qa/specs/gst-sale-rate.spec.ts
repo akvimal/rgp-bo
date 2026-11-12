@@ -6,6 +6,7 @@
  * The suite normally runs with pricing/sale_gst_guard off (like sale_mrp_guard): these cases switch it on for themselves and put it back.
  */
 import { test, expect } from '../fixtures/index.js';
+import { setSeededCap } from '../fixtures/gst-cap.js';
 
 const MGR = 'businesshead@local.test';
 const COUNTER = 'sales1@local.test';
@@ -56,6 +57,10 @@ async function guardValue(api: any) {
 }
 
 test.describe('GST on a sale line @p1', () => {
+
+  // these cases are about the GST 2.0 cap (the seeded "all products at most 5%" change), so it is put in force for them and taken out after
+  test.beforeAll(() => setSeededCap(true));
+  test.afterAll(() => setSeededCap(false));
   let before = 'off';
   test.beforeEach(async ({ api }) => { before = await guardValue(api); await setting(api, 'sale_gst_guard', 'on'); });
   test.afterEach(async ({ api }) => { await setting(api, 'sale_gst_guard', before); });

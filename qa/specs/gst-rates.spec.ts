@@ -6,6 +6,7 @@
  * Each test makes its own product (and category), so a change left in force touches nothing else.
  */
 import { test, expect } from '../fixtures/index.js';
+import { setSeededCap } from '../fixtures/gst-cap.js';
 
 const MGR = 'businesshead@local.test';
 const SALES = 'sales1@local.test';
@@ -37,12 +38,16 @@ async function billed(api: any, id: number): Promise<number> {
 const change = (over: any = {}) => ({ scope_type: 'all', scope_value: '', mode: 'cap', rate: 5, effective_from: day(0), note: `QA ${run}`, ...over });
 
 test.describe('GST rate changes and HSN @p1', () => {
+
+  // these cases are about the GST 2.0 cap (the seeded "all products at most 5%" change), so it is put in force for them and taken out after
+  test.beforeAll(() => setSeededCap(true));
+  test.afterAll(() => setSeededCap(false));
   test.describe.configure({ mode: 'serial' });
 
-  test('GR-1 the GST 2.0 cap is a dated change, and the till bills a 12% batch at 5% @happy', async ({ api }) => {
+  test('GR-1 with the GST 2.0 cap in force the till bills a 12% batch at 5% @happy', async ({ api }) => {
     const list = (await api.request('GET', '/gst/rate-changes', undefined, MGR)).body;
     const cap = list.changes.find((c: any) => c.scope_type === 'all' && c.mode === 'cap' && c.effective_from === '2025-09-22' && !c.cancelled);
-    expect(cap, 'the old setting became a dated change').toBeTruthy();
+    expect(cap, 'the cap is a dated change').toBeTruthy();
     expect(cap.rate).toBe(5);
     expect(cap.state).toBe('in force');
     const p = await product(api, `a${run}`);
