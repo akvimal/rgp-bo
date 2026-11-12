@@ -20,6 +20,26 @@
             <option value="NONE">No purchase order</option>
           </select>
           <div class="form-text" *ngIf="vendorFromOrder">The vendor and the order's lines come from the order. Lines still to be invoiced are brought in when you save.</div>
+          <div class="mt-2" *ngIf="vendorFromOrder" data-testid="inv-f-po-lines">
+            <div class="small text-muted" *ngIf="poLinesBusy">Loading the order's lines&hellip;</div>
+            <div class="small text-danger" *ngIf="poLinesError">{{poLinesError}}</div>
+            <ng-container *ngIf="poLines.length">
+              <div class="small fw-semibold mb-1">Lines of this order <span class="fw-normal text-muted">&mdash; {{poLinesToCome}} still to come; they become this invoice's lines when you save</span></div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 w-auto" data-testid="inv-f-po-lines-table">
+                  <thead class="table-light"><tr><th>Product</th><th class="text-end">Ordered</th><th class="text-end">Already invoiced</th><th class="text-end">On this invoice</th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let l of poLines" [class.text-muted]="!l.remaining" data-testid="inv-f-po-line">
+                      <td>{{l.title}}<span *ngIf="l.pack" class="text-muted"> ({{l.pack}})</span></td>
+                      <td class="text-end">{{l.ordered}}</td><td class="text-end">{{l.invoiced || '-'}}</td>
+                      <td class="text-end fw-semibold">{{l.remaining || 'none left'}}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </ng-container>
+            <div class="small text-muted" *ngIf="!poLinesBusy && !poLinesError && !poLines.length">This order has no lines yet.</div>
+          </div>
           <div class="form-text" *ngIf="poChoice === 'NONE'">Not against an order: choose the vendor and add the items yourself.</div>
         </div>
         <div class="col-md-6 col-lg-4">

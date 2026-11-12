@@ -11,7 +11,7 @@ const MGR = 'businesshead@local.test';
 
 async function vendorId(api: any) { return (await api.request('GET', '/vendors', undefined, MGR)).body[0].id; }
 async function products(api: any, n: number): Promise<number[]> {
-  const rows = (await api.request('POST', '/stock/filter', { available: true, limit: 60 }, MGR)).body;
+  const rows = (await api.request('POST', '/stock/filter', { available: true, limit: 1000 }, MGR)).body;
   return ([...new Set(rows.filter((x: any) => x.status === 'VERIFIED').map((x: any) => x.id))] as number[]).slice(0, n);
 }
 /** a submitted (approved) PO with one line per quantity given */
@@ -42,12 +42,13 @@ test.describe('Purchase invoice from a purchase order @p1', () => {
     items.forEach((i: any) => { expect(i.offpo).toBe(false); expect(i.poexpect).toBeTruthy(); expect(+i.poexpect.qty).toBe(+i.qty); });
 
     // a product the order did not list, added by hand, is received but marked
-    const extra = po.prods[2];
+    const extra = (await products(api, 12)).find((id) => !po.prods.slice(0, 2).includes(id)) as number;
+    expect(extra).toBeTruthy();
     const add = await api.request('POST', '/purchaseitems', {
       invoiceid: inv.body.id, productid: extra, qty: 3, ptrvalue: 20, ptrcost: 20, mrpcost: 30, taxpcnt: 12, total: 60,
       batch: `E${Date.now()}`.slice(0, 12), expdate: '2028-06-30', saleprice: 25,
     }, MGR);
-    expect(add.status).toBeLessThan(300);
+    expect(add.status, JSON.stringify(add.body)).toBeLessThan(300);
     const after = await itemsOf(api, inv.body.id);
     expect(after.length).toBe(3);
     const off = after.find((i: any) => i.productid === extra);
@@ -81,9 +82,12 @@ test.describe('Purchase invoice from a purchase order @p1', () => {
     await choose.selectOption(String(po.id));
     await expect(page.getByTestId('inv-f-vendor')).toBeDisabled();
     await expect(page.getByTestId('inv-f-vendor')).toHaveValue(String(po.vendor));
+    await expect(page.getByTestId('inv-f-po-line')).toHaveCount(1);                              // the order's lines show on the form at once, with what is still to come
+    await expect(page.getByTestId('inv-f-po-lines')).toContainText('1 still to come');
 
     await choose.selectOption('NONE');
     await expect(page.getByTestId('inv-f-vendor')).toBeEnabled();
+    await expect(page.getByTestId('inv-f-po-lines')).toHaveCount(0);                              // no order: no lines to show
   });
 
   test('POINV-4 a line that differs from the order shows what the order said @happy', async ({ app, api }) => {

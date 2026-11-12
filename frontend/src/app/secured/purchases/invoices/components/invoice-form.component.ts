@@ -27,6 +27,10 @@ export class InvoiceFormComponent implements OnInit {
     allOrders:any[] = [];
     /** '' = not chosen yet, 'NONE' = no purchase order, else the id of the order the invoice is against */
     poChoice:string = '';
+    /** the lines of the order chosen, with what is still to come (shown on the form before the invoice is saved; they become the invoice's lines on save) */
+    poLines:any[] = [];
+    poLinesBusy = false;
+    poLinesError = '';
     vendors:any[] = [];
     stores:any[] = [];
     errorMessage:string = '';
@@ -176,6 +180,7 @@ export class InvoiceFormComponent implements OnInit {
       const vendor = this.form.controls['vendorid'];
       if(c && c !== 'NONE'){
         const o = this.allOrders.find(x => String(x.id) === String(c));
+        this.loadPoLines(c);
         this.form.controls['purchaseorderid'].setValue(String(c));
         vendor.setValue(o?.vendorid ? String(o.vendorid) : '');
         vendor.disable();
@@ -183,12 +188,28 @@ export class InvoiceFormComponent implements OnInit {
         this.loadOrders(vendor.value);
         this.checkDuplicate();
       } else {
+        this.poLines = []; this.poLinesError = '';
         this.form.controls['purchaseorderid'].setValue('');
         vendor.enable();
         if(!c) vendor.setValue('');
         this.vendorChanged();
       }
     }
+
+    /** what the order lists and how much of each is still to be invoiced */
+    private loadPoLines(orderId:any){
+      this.poLines = []; this.poLinesError = ''; this.poLinesBusy = true;
+      this.poService.findById(+orderId).subscribe((o:any) => {
+        if(String(this.poChoice) !== String(orderId)) return;
+        this.poLinesBusy = false;
+        this.poLines = (o?.requests || []).filter((r:any) => !!r.product).map((r:any) => {
+          const ordered = +(r.orderedqty ?? r.qty) || 0, invoiced = +(r.invoicedqty) || 0;
+          return { title: r.product.title, pack: r.product.pack, ordered, invoiced, remaining: Math.max(0, ordered - invoiced) };
+        });
+      }, () => { this.poLinesBusy = false; this.poLinesError = 'The lines of this order could not be loaded.'; });
+    }
+
+    get poLinesToCome(): number { return this.poLines.filter(l => l.remaining > 0).length; }
 
     /** the vendor comes from the order: it cannot be changed while the invoice is against one */
     get vendorFromOrder(): boolean { return !this.id && !!this.poChoice && this.poChoice !== 'NONE'; }
