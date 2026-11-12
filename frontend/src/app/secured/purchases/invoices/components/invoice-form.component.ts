@@ -526,6 +526,15 @@ export class InvoiceFormComponent implements OnInit {
       }).toPromise().then(() => { l.snap = this.snapOf(l); return true; }, (err:any) => { l.rowError = this.fail(err, 'The change could not be saved.'); return false; });
     }
 
+    /** a checked line is already an item of the invoice (read-only here): taking it back is a deliberate step, and the server refuses it once the item was changed on the items page */
+    async undoCheck(l:any){
+      if(l.busy || l.state !== 'VERIFIED') return;
+      l.busy = true; l.rowError = ''; this.scanMessage = '';
+      try { this.applyLine(l, await this.service.unverifyScanLine(this.invoiceId(), l.lineid).toPromise()); }
+      catch(err:any){ l.rowError = this.fail(err, 'The line could not be unchecked.'); }
+      finally { l.busy = false; }
+    }
+
     /** ticking "Checked" says the line agrees with the invoice copy: it becomes a verified item of the invoice now */
     async toggleCheck(l:any, ev:any){
       const want = !!ev.target.checked;

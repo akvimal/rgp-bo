@@ -243,11 +243,12 @@
                 </tr></thead>
                 <tbody>
                   <tr *ngFor="let l of shownLines; let i = index" (focusout)="lineBlur(l)" [class.table-success]="l.state === 'VERIFIED'" [class.text-muted]="l.state === 'DISCARDED'" [attr.data-testid]="'inv-x-row-' + i" [attr.data-state]="l.state">
-                    <td class="text-center"><input type="checkbox" [checked]="l.state === 'VERIFIED'" (change)="toggleCheck(l, $event)" [disabled]="!l.lineid || l.busy || l.state === 'DISCARDED' || (l.state === 'OPEN' && !ready(l))" [attr.title]="!l.lineid ? 'Save the draft first' : (l.state === 'OPEN' && !ready(l) ? 'Complete the line first' : 'Agrees with the invoice copy')" [attr.data-testid]="'inv-x-check-' + i" aria-label="Checked against the invoice copy"></td>
+                    <td class="text-center"><i *ngIf="l.state === 'VERIFIED'" class="bi bi-lock-fill text-success" title="Moved to the invoice items: read-only here" [attr.data-testid]="'inv-x-locked-' + i"></i>
+                      <input *ngIf="l.state !== 'VERIFIED'" type="checkbox" [checked]="false" (change)="toggleCheck(l, $event)" [disabled]="!l.lineid || l.busy || l.state === 'DISCARDED' || (l.state === 'OPEN' && !ready(l))" [attr.title]="!l.lineid ? 'Save the draft first' : (l.state === 'OPEN' && !ready(l) ? 'Complete the line first' : 'Agrees with the invoice copy')" [attr.data-testid]="'inv-x-check-' + i" aria-label="Checked against the invoice copy"></td>
                     <td class="small">{{l.description}}
                       <div class="text-danger" *ngFor="let w of l.warnings">{{w}}</div>
                       <div class="text-warning" *ngIf="l.state === 'OPEN' && !ready(l)">Needs: {{missingFor(l)}}</div>
-                      <div class="text-success" *ngIf="l.state === 'VERIFIED'" [attr.data-testid]="'inv-x-by-' + i"><i class="bi bi-check2"></i> checked<span *ngIf="l.verifiedbyname"> by {{l.verifiedbyname}}</span></div>
+                      <div class="text-success" *ngIf="l.state === 'VERIFIED'" [attr.data-testid]="'inv-x-by-' + i"><i class="bi bi-check2"></i> in the invoice items (read-only)<span *ngIf="l.verifiedbyname"> &middot; checked by {{l.verifiedbyname}}</span> &middot; <a role="button" class="text-muted" (click)="undoCheck(l)" title="Take it back out of the invoice items to correct it" [attr.data-testid]="'inv-x-undo-' + i">undo</a></div>
                       <div *ngIf="l.state === 'DISCARDED'" [attr.data-testid]="'inv-x-discarded-' + i">Discarded: {{l.discardreason}} &middot; <a role="button" (click)="restoreLine(l)" [attr.data-testid]="'inv-x-restore-' + i">restore</a></div>
                       <div *ngIf="l.state === 'OPEN' && l.lineid"><a role="button" class="text-danger" (click)="openDiscard(l)" [attr.data-testid]="'inv-x-discard-' + i">not on the invoice</a></div>
                       <div class="text-danger" *ngIf="l.rowError" [attr.data-testid]="'inv-x-rowerr-' + i">{{l.rowError}}</div></td>
@@ -302,7 +303,9 @@
 
         <div class="col-12 d-flex flex-wrap align-items-center gap-2">
           <button type="submit" class="btn btn-primary" [disabled]="headerNeeded.length > 0 || saving" data-testid="inv-f-save">{{id || form.value.id ? 'Save changes' : (lines.length ? 'Save draft' : 'Save and add items')}}</button>
-          <button type="button" *ngIf="form.value.id && lines.length" class="btn btn-outline-primary" (click)="gotoEdit(form.value.id)" data-testid="inv-f-items">Go to the invoice items</button>
+          <button type="button" *ngIf="form.value.id && lines.length" class="btn" [ngClass]="openCount === 0 ? 'btn-success' : 'btn-outline-primary'" (click)="gotoEdit(form.value.id)"
+            [title]="openCount === 0 ? 'Every line is dealt with: review the items and complete the invoice' : 'The checked lines are already items of the invoice, available for sale'" data-testid="inv-f-items">
+            {{openCount === 0 ? 'Review the items and complete the invoice' : (verifiedCount ? 'View the ' + verifiedCount + ' checked item' + (verifiedCount === 1 ? '' : 's') + ' in the invoice' : 'Go to the invoice items')}}</button>
           <span class="small text-success" *ngIf="savedNote" data-testid="inv-f-saved">{{savedNote}}</span>
           <button type="button" (click)="cancel()" class="btn btn-outline-secondary" data-testid="inv-f-cancel">Cancel</button>
           <span class="small text-muted" *ngIf="headerNeeded.length" data-testid="inv-f-hint">Still needed: {{headerNeeded.join(', ')}}.</span>
