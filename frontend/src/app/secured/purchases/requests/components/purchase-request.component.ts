@@ -4,6 +4,7 @@ import { FormControl, FormGroup, Validators } from "@angular/forms";
 import { PurchaseIntentService } from "src/app/secured/store/intent/purchase-intent.service";
 import { VendorsService } from "../../vendors/vendors.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
+import { StoreContextService } from "src/app/@core/store-context.service";
 
 @Component({
     selector: 'app-purchase-request',
@@ -17,6 +18,16 @@ export class PurchaseRequestComponent {
     productReset:boolean = false;
     errorMessage:string = '';
     historyProduct:{id:number,title:string} | null = null;
+
+    /** the products collected for a new request (several can be asked for together), and the store that is asking */
+    lines:any[] = [];
+    stores:any[] = [];
+    storeid:any = '';
+    /** the slip that more products are being added to (the shared fields are the slip's own) */
+    addingTo:number | null = null;
+    /** the list can be narrowed to one store or one slip */
+    storeFilter:any = '';
+    slipFilter:number | null = null;
 
     sources = ['Customer', 'Staff', 'Doctor', 'System'];
     requestTypes = ['Ad Hoc', 'Refill', 'Stockout', 'Special Order'];
@@ -44,6 +55,7 @@ export class PurchaseRequestComponent {
         private requestService: PurchaseIntentService,
         private vendorService: VendorsService,
         private confirm: ConfirmService,
+        private storeContext: StoreContextService,
         private route: ActivatedRoute,
         private router: Router
     ) {}
@@ -57,7 +69,22 @@ export class PurchaseRequestComponent {
             this.form.patchValue({ customername: q.get('cname') || '', customerphone: q.get('cphone') || '', source: 'Customer' });
         }
         this.vendorService.options(true).subscribe((data:any) => this.vendors = data || []);
+        this.storeContext.stores$.subscribe((stores:any) => this.stores = stores || []);
     }
+
+    get multiStore(): boolean { return this.stores.length > 1; }
+
+    /** the requests on show: all, or one store's, or one slip's */
+    get shown(): any[] {
+        return this.requests.filter(r =>
+            (!this.storeFilter || (this.storeFilter === 'none' ? !r.storeid : r.storeid === +this.storeFilter)) &&
+            (!this.slipFilter || r.groupid === this.slipFilter));
+    }
+
+    /** how many of the requests on show belong to the same slip as this one */
+    slipSize(request:any): number { return request.groupid ? this.requests.filter(r => r.groupid === request.groupid).length : 0; }
+
+    showSlip(groupid:number | null){ this.slipFilter = groupid; }
 
     fetchRequests(){
         this.requestService.findAll().subscribe((data:any) => this.requests = data || []);
@@ -65,6 +92,10 @@ export class PurchaseRequestComponent {
 
     add(){
         this.displayForm = true;
+        this.lines = [];
+        this.addingTo = null;
+        this.errorMessage = '';
+        this.storeid = this.storeContext.effectiveStoreId() ?? (this.stores.length === 1 ? this.stores[0].id : '');
         this.selectedProduct = null;
         this.productReset = true;
         this.form.reset({
@@ -93,7 +124,16 @@ export class PurchaseRequestComponent {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    /** more products for a slip that is still open: its shared fields are not asked again */
+    addMore(request:any){
+        this.add();
+        this.addingTo = request.groupid;
+        this.storeid = request.storeid || this.storeid;
+    }
+
     edit(request:any){
+        this.lines = [];
+        this.addingTo = null;
         this.displayForm = true;
         this.selectedProduct = request.product;
         // one that was typed for a product not in the list opens as a typed name; the search box is cleared of whatever was looked at last
@@ -125,6 +165,36 @@ export class PurchaseRequestComponent {
     useList(){ this.typed = false; }
 
     get fromCustomer(): boolean { return this.form.value.source === 'Customer'; }
+
+    /** something is typed or chosen in the product box and has not been added to the list yet */
+    get hasEntry(): boolean { return !!this.form.value.productid || !!(this.form.value.requestedname || '').trim(); }
+
+    /** puts the product in the box (with the quantity) on the list and clears the box for the next one */
+    addLine(): boolean {
+        const typedName = (this.form.value.requestedname || '').trim();
+        const qty = Number(this.form.value.qty);
+        if(!this.form.value.productid && !typedName){
+            this.errorMessage = 'Choose the product, or type its name if it is not in the product list.';
+            return false;
+        }
+        if(!Number.isInteger(qty) || qty < 1){
+            this.errorMessage = 'The quantity must be a whole number, at least 1.';
+            return false;
+        }
+        this.errorMessage = '';
+        const productid = this.form.value.productid ? +this.form.value.productid : null;
+        const same = this.lines.find(l => productid ? l.productid === productid : (!l.productid && (l.requestedname || '').toLowerCase() === typedName.toLowerCase()));
+        if(same) same.qty += qty;
+        else this.lines.push({ productid, requestedname: productid ? null : typedName, title: productid ? this.selectedProduct?.title : typedName, qty });
+        this.selectedProduct = null;
+        this.productReset = true;
+        this.typed = false;
+        this.form.patchValue({ productid: '', requestedname: '', qty: 1 });
+        setTimeout(() => this.productReset = false);
+        return true;
+    }
+
+    removeLine(i:number){ this.lines.splice(i, 1); }
 
     onProductSelect(event:any){
         this.selectedProduct = event;
@@ -182,11 +252,17 @@ export class PurchaseRequestComponent {
             this.errorMessage = 'Complete the required fields before saving.';
             return;
         }
-        const typedName = (this.form.value.requestedname || '').trim();
-        if(!this.form.value.productid && !typedName){
+        const editing = !!this.form.value.id;
+        // a new request is the list of products; what is still in the box goes on the list first
+        if(!editing){
+            if(this.hasEntry || this.lines.length === 0){
+                if(!this.addLine()) return;
+            }
+        } else if(!this.form.value.productid && !(this.form.value.requestedname || '').trim()){
             this.errorMessage = 'Choose the product, or type its name if it is not in the product list.';
             return;
         }
+        const typedName = (this.form.value.requestedname || '').trim();
 
         const neededby = this.form.value.neededby || null;
         // the customer's name and number are only asked for when the request is a customer's
@@ -207,6 +283,23 @@ export class PurchaseRequestComponent {
             comments
         };
         const id = payload.id;
+        if(!id){
+            const done = {
+                next: () => { this.errorMessage = ''; this.displayForm = false; this.lines = []; this.fetchRequests(); },
+                error: (err:any) => { this.errorMessage = err?.error?.message || 'Unable to save purchase request.'; }
+            };
+            const lines = this.lines.map(l => ({ productid: l.productid || undefined, requestedname: l.productid ? undefined : l.requestedname, qty: l.qty }));
+            if(this.addingTo){
+                this.requestService.addToSlip(this.addingTo, lines).subscribe(done);
+            } else if(lines.length === 1){
+                // one product is an ordinary request
+                this.requestService.save({ ...payload, ...lines[0], productid: lines[0].productid ?? null, requestedname: lines[0].requestedname ?? null, qty: lines[0].qty, storeid: this.storeid ? +this.storeid : undefined }).subscribe(done);
+            } else {
+                const { id: _i, productid: _p, requestedname: _r, qty: _q, status: _s, ...shared } = payload;
+                this.requestService.saveSlip({ ...shared, storeid: this.storeid ? +this.storeid : undefined, lines }).subscribe(done);
+            }
+            return;
+        }
         if(id){
             this.requestService.update(id, payload).subscribe({
                 next: () => {

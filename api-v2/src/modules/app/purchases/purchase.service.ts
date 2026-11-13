@@ -10,6 +10,12 @@ import { AppRole } from "src/entities/approle.entity";
 import { Setting } from "src/entities/setting.entity";
 import { Vendor } from "src/entities/vendor.entity";
 import { approvalModeFor } from "src/core/approval-mode";
+import { businessOfUser } from "src/core/business-of-user";
+import { AddSlipLinesDto, CreatePurchaseRequestSlipDto } from "./dto/create-request-slip.dto";
+import { canSeeRequest, cleanSlipLines, forRequesterView, lineComment } from "./request-slip-rules";
+
+/** what a request-only role may see: its own requests and every request of the store(s) it works in */
+export interface RequestScope { userId: number; storeIds: number[] }
 
 const UNLISTED_NOT_ORDERABLE = 'This request is for a product that is not in the product list yet. Link it to a product (or create the product) before it is ordered.';
 
@@ -23,64 +29,74 @@ export class PurchaseService {
             @InjectRepository(Vendor) private readonly vendorRepository: Repository<Vendor>,
             @InjectEntityManager() private manager: EntityManager) { }
 
-    /** what a request-only role (Sales Staff) is allowed to see of a request: no vendor, no internal notes */
-    private forRequester(rows: any[]) {
-        return rows.map((r) => ({ ...r, vendor: null, vendorid: null, notes: null }));
+    /** the stores a person works in (their assignments), primary first */
+    async storesOfUser(userId: number): Promise<number[]> {
+        const rows = await this.manager.query(
+            `select us.store_id from user_stores us join stores s on s.id = us.store_id
+              where us.user_id = $1 and us.active and not us.archive and s.active and not s.archive order by us.is_primary desc, us.store_id`, [userId]);
+        return rows.map((r: any) => +r.store_id);
     }
 
-    async findAllRequests(query: { status?: string; source?: string; priority?: string; vendorid?: number | string }, ownerId?: number) {
+    /** the stores a request can be raised for: a request-only role, its own; the buying side, every store of the business */
+    private async storesFor(userid: number, requestOnly: boolean): Promise<number[]> {
+        const own = await this.storesOfUser(userid);
+        if (requestOnly) return own;
+        const biz = await businessOfUser(this.manager, userid);
+        if (!biz) return own;
+        const rows = await this.manager.query(`select id from stores where business_id = $1 and active and not archive order by id`, [biz]);
+        return [...new Set<number>([...own, ...rows.map((r: any) => +r.id)])];
+    }
+
+    /** the store a new request is for: the one asked for (it must be one the person may use), else their primary store, else the business's only store */
+    private async resolveRequestStore(asked: any, userid: number, requestOnly: boolean): Promise<number | null> {
+        const allowed = await this.storesFor(userid, requestOnly);
+        if (asked) {
+            if (!allowed.includes(+asked)) throw new BadRequestException('You cannot raise a request for that store.');
+            return +asked;
+        }
+        const own = await this.storesOfUser(userid);
+        if (own.length) return own[0];
+        return allowed.length === 1 ? allowed[0] : null;
+    }
+
+    /** adds the asking store (id and name) to each request, in one query */
+    private async attachStores(rows: any[]) {
+        const ids = [...new Set(rows.map((r: any) => r.storeid).filter((x: any) => !!x))];
+        if (!ids.length) return rows.map((r: any) => ({ ...r, store: null }));
+        const stores = await this.manager.query(`select id, location from stores where id = any($1::int[])`, [ids]);
+        const by = new Map<number, any>(stores.map((s: any) => [+s.id, { id: +s.id, location: String(s.location).trim() }]));
+        return rows.map((r: any) => ({ ...r, store: r.storeid ? by.get(+r.storeid) ?? null : null }));
+    }
+
+    private requestQuery(criteria: { status?: string; source?: string; priority?: string; vendorid?: number | string; storeid?: number | string; groupid?: number | string }, scope?: RequestScope) {
         const qb = this.requestRepository.createQueryBuilder('req')
         .leftJoinAndSelect("req.product", "product")
         .leftJoinAndSelect("req.vendor", "vendor")
         .leftJoinAndSelect("req.po", "po")
         .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
         .where('req.isActive = :flag', { flag: true });
+        if(criteria.status) qb.andWhere('req.status = :status', { status: criteria.status });
+        if(criteria.source) qb.andWhere('req.source = :source', { source: criteria.source });
+        if(criteria.priority) qb.andWhere('req.priority = :priority', { priority: criteria.priority });
+        if(criteria.vendorid) qb.andWhere('req.vendorid = :vendorid', { vendorid: criteria.vendorid });
+        if(criteria.groupid) qb.andWhere('req.groupid = :groupid', { groupid: +criteria.groupid });
+        if(criteria.storeid === 'none') qb.andWhere('req.storeid is null');
+        else if(criteria.storeid) qb.andWhere('req.storeid = :storeid', { storeid: +criteria.storeid });
+        if(scope){
+            if(scope.storeIds.length) qb.andWhere('(req.createdby = :uid or req.storeid in (:...sids))', { uid: scope.userId, sids: scope.storeIds });
+            else qb.andWhere('req.createdby = :uid', { uid: scope.userId });
+        }
+        return qb.orderBy('req.createdon', 'DESC');
+    }
 
-        if(query.status){
-            qb.andWhere('req.status = :status', { status: query.status });
-        }
-        if(query.source){
-            qb.andWhere('req.source = :source', { source: query.source });
-        }
-        if(query.priority){
-            qb.andWhere('req.priority = :priority', { priority: query.priority });
-        }
-        if(query.vendorid){
-            qb.andWhere('req.vendorid = :vendorid', { vendorid: query.vendorid });
-        }
-        if(ownerId){
-            qb.andWhere('req.createdby = :ownerId', { ownerId });
-        }
-        const rows = await qb.orderBy('req.createdon', 'DESC').getMany();
-        return ownerId ? this.forRequester(rows) : rows;
-    }    
+    async findAllRequests(query: { status?: string; source?: string; priority?: string; vendorid?: number | string; storeid?: number | string; groupid?: number | string }, scope?: RequestScope) {
+        const rows = await this.requestQuery(query, scope).getMany();
+        return this.attachStores(scope ? forRequesterView(rows, scope.userId) : rows);
+    }
 
-    async findAllRequestsByCriteria(criteria: { status?: string; source?: string; priority?: string; vendorid?: number | string }, ownerId?: number) {
-        let whereclause = 'req.isActive = :flag'
-        if(ownerId){
-            whereclause += ' and req.createdby = :ownerId'
-        }
-        if(criteria.status){
-            whereclause += ' and req.status = :status'
-        }
-        if(criteria.source){
-            whereclause += ' and req.source = :source'
-        }
-        if(criteria.priority){
-            whereclause += ' and req.priority = :priority'
-        }
-        if(criteria.vendorid){
-            whereclause += ' and req.vendorid = :vendorid'
-        }
-        const rows = await this.requestRepository.createQueryBuilder('req')
-        .leftJoinAndSelect("req.product", "product")
-        .leftJoinAndSelect("req.vendor", "vendor")
-        .leftJoinAndSelect("req.po", "po")
-        .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
-        .where(whereclause, {...criteria, flag: true, ownerId })
-        .orderBy('req.createdon', 'DESC')
-        .getMany();
-        return ownerId ? this.forRequester(rows) : rows;
+    async findAllRequestsByCriteria(criteria: { status?: string; source?: string; priority?: string; vendorid?: number | string; storeid?: number | string; groupid?: number | string }, scope?: RequestScope) {
+        const rows = await this.requestQuery(criteria || {}, scope).getMany();
+        return this.attachStores(scope ? forRequesterView(rows, scope.userId) : rows);
     }
 
     async findAllOrdersByCriteria(criteria: { status?: string; approvalstatus?: string; vendorid?: number | string }) {
@@ -184,13 +200,14 @@ export class PurchaseService {
      * A request-only role (Sales Staff) states what is needed and why. Everything the buying side decides (vendor, status,
      * ordered and fulfilled quantities, internal notes) is ignored for them: a new request is always Open.
      */
-    async createRequest(dto: CreatePurchaseRequestDto, userid: number, requestOnly = false) {
+    /** one request row from its fields: the checks and tidying every way of raising a request goes through */
+    private async buildRequestRow(dto: CreatePurchaseRequestDto, userid: number, requestOnly = false, storeid?: number | null) {
         if (requestOnly) {
             const d: any = dto;
             dto = {
                 productid: d.productid, requestedname: d.requestedname, qty: d.qty, source: d.source, requesttype: d.requesttype, priority: d.priority,
                 neededby: d.neededby, customername: d.customername, customerphone: d.customerphone,
-                sourceref: d.sourceref, comments: d.comments,
+                sourceref: d.sourceref, comments: d.comments, storeid: d.storeid,
             } as any;
         }
         await assertVendorUsable(this.vendorRepository.manager, dto.vendorid, 'a new purchase request');
@@ -208,6 +225,9 @@ export class PurchaseService {
         }
         if(!dto.productid && (dto.orderid || ['Ordered', 'Received'].includes(dto.status))){
             throw new BadRequestException(UNLISTED_NOT_ORDERABLE);
+        }
+        if(!Number.isInteger(Number(dto.qty)) || Number(dto.qty) < 1){
+            throw new BadRequestException('The quantity must be a whole number, at least 1.');
         }
         const request:any = {
             ...dto,
@@ -228,9 +248,69 @@ export class PurchaseService {
             source: dto.source || 'Staff',
             requesttype: dto.requesttype || 'Ad Hoc',
             priority: dto.priority || 'Normal',
+            storeid: storeid !== undefined ? storeid : await this.resolveRequestStore(dto.storeid, userid, requestOnly),
             createdby:userid
         };
-        return this.requestRepository.save(request);
+        return request;
+    }
+
+    async createRequest(dto: CreatePurchaseRequestDto, userid: number, requestOnly = false) {
+        return this.requestRepository.save(await this.buildRequestRow(dto, userid, requestOnly));
+    }
+
+    /** one row per line, built from the shared fields and the line */
+    private lineDto(shared: any, line: any): CreatePurchaseRequestDto {
+        return {
+            requesttype: shared.requesttype, source: shared.source, priority: shared.priority, notes: shared.notes, vendorid: shared.vendorid,
+            customername: shared.customername, customerphone: shared.customerphone, neededby: shared.neededby, sourceref: shared.sourceref,
+            productid: line.productid, requestedname: line.requestedname, qty: line.qty, comments: lineComment(shared.comments, line.note),
+        } as any;
+    }
+
+    /**
+     * Several products asked for together. The shared fields (store, type, source, priority, needed-by, customer, vendor, reference) are copied onto each
+     * line's request, so every request stays complete on its own and orders, receiving and alerts work as before; the slip only groups them.
+     * Raised for one store, in one transaction. Request-only roles cannot set the vendor or the internal notes (as for a single request).
+     */
+    async createSlip(dto: CreatePurchaseRequestSlipDto, userid: number, requestOnly = false) {
+        const lines = cleanSlipLines(dto.lines as any);
+        const storeid = await this.resolveRequestStore(dto.storeid, userid, requestOnly);
+        const shared: any = requestOnly ? { ...dto, vendorid: undefined, notes: undefined } : dto;
+        const rows: any[] = [];
+        for (const line of lines) rows.push(await this.buildRequestRow(this.lineDto(shared, line), userid, requestOnly, storeid));
+        return this.manager.transaction(async (tm) => {
+            const [g] = await tm.query(`insert into purchase_request_group (store_id, created_by) values ($1, $2) returning id`, [storeid, userid]);
+            const saved = await tm.getRepository(PurchaseRequest).save(rows.map((r) => ({ ...r, groupid: +g.id })));
+            return { groupid: +g.id, storeid, requests: saved };
+        });
+    }
+
+    /** more products on a slip that is already raised, for as long as some of its lines are still open; the shared fields are copied from the slip's first line */
+    async addToSlip(groupid: number, dto: AddSlipLinesDto, userid: number, requestOnly: boolean, scope?: RequestScope) {
+        const existing = await this.requestRepository.find({ where: { groupid: +groupid, isActive: true } as any, order: { id: 'ASC' } });
+        if (!existing.length) throw new BadRequestException('Slip not found.');
+        if (scope && !existing.some((r) => canSeeRequest(r, scope.userId, scope.storeIds))) throw new BadRequestException('Slip not found.');
+        if (!existing.some((r) => r.status === 'Open')) throw new BadRequestException('Every line of this slip has been taken up: raise a new request instead.');
+        const first: any = existing[0];
+        const lines = cleanSlipLines(dto.lines as any);
+        // a product already on the slip gets its open line's quantity raised instead of a second line
+        const open = existing.filter((r) => r.status === 'Open');
+        const rows: any[] = [];
+        const bumped: any[] = [];
+        for (const line of lines) {
+            const same = line.productid ? open.find((r) => r.productid === line.productid) : open.find((r) => !r.productid && String(r.requestedname || '').toLowerCase() === String(line.requestedname).toLowerCase());
+            if (same) { same.qty += line.qty; bumped.push(same); continue; }
+            const shared = { requesttype: first.requesttype, source: first.source, priority: first.priority, notes: requestOnly ? undefined : first.notes, vendorid: requestOnly ? undefined : first.vendorid,
+                customername: first.customername, customerphone: first.customerphone, neededby: first.neededby, sourceref: first.sourceref, comments: first.comments };
+            const dtoLine: any = this.lineDto(shared, { ...line, note: line.note });
+            rows.push({ ...(await this.buildRequestRow(dtoLine, userid, requestOnly, first.storeid ?? null)), groupid: +groupid });
+        }
+        return this.manager.transaction(async (tm) => {
+            const repo = tm.getRepository(PurchaseRequest);
+            const added = rows.length ? await repo.save(rows) : [];
+            for (const b of bumped) await repo.update(b.id, { qty: b.qty, updatedby: userid } as any);
+            return { groupid: +groupid, added, raised: bumped.map((b) => b.id) };
+        });
     }
     
     async findOrderById(id:string){
@@ -245,18 +325,14 @@ export class PurchaseService {
         return order ? this.enrichOrder(order) : order;
     }
 
-    async findRequestById(id:number, ownerId?: number){
-          const qb = this.requestRepository.createQueryBuilder('req')
-          .leftJoinAndSelect("req.product", "product")
-          .leftJoinAndSelect("req.vendor", "vendor")
-          .leftJoinAndSelect("req.po", "po")
-          .select(['req','product','vendor.id','vendor.name','po.id','po.status'])
-          .where('req.id = :id', { id });
-          if (ownerId) qb.andWhere('req.createdby = :ownerId', { ownerId });
-          const row = await qb.getOne();
-          return row && ownerId ? this.forRequester([row])[0] : row;
+    async findRequestById(id:number, scope?: RequestScope){
+          const row = await this.requestQuery({}, undefined).andWhere('req.id = :id', { id }).getOne();
+          if (!row) return row;
+          if (scope && !canSeeRequest(row, scope.userId, scope.storeIds)) return null;
+          const [one] = await this.attachStores(scope ? forRequesterView([row], scope.userId) : [row]);
+          return one;
     }
-    
+
     async updateRequest(id: number | string, values: Partial<PurchaseRequest>, userid: number) {
         const v: any = values;
         if(v.orderedqty !== undefined){
@@ -278,6 +354,10 @@ export class PurchaseService {
         }
         if(v.requestedname !== undefined){
             v.requestedname = `${v.requestedname || ''}`.trim() || null;
+        }
+        if(v.storeid){
+            const allowed = await this.storesFor(userid, false);
+            if(!allowed.includes(+v.storeid)) throw new BadRequestException('That store is not one of this business\'s stores.');
         }
         return this.requestRepository.update(id, {...values, updatedby:userid});
     }

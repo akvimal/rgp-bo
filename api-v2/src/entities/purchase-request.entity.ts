@@ -29,6 +29,12 @@ export class PurchaseRequest extends BaseEntity {
   @Column("character varying", { name: "requested_name", nullable: true, length: 200 })
   requestedname: string | null;
 
+  @Column("integer", { name: "group_id", nullable: true })
+  groupid: number | null;
+
+  @Column("integer", { name: "store_id", nullable: true })
+  storeid: number | null;
+
   @Column("integer", { name: "order_id" })
   orderid: number;
 

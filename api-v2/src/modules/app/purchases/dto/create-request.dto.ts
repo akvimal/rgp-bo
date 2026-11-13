@@ -43,9 +43,9 @@ export class CreatePurchaseRequestDto {
     @MaxLength(1000)
     readonly notes: string;
 
-    @ApiProperty({ description: 'qty', example: 0 })
+    @ApiProperty({ description: 'qty', example: 1 })
     @IsNumber()
-    @Min(0)
+    @Min(1)
     readonly qty: number;
 
     @ApiProperty({ description: 'suggested qty', example: 0 })
@@ -77,6 +77,12 @@ export class CreatePurchaseRequestDto {
     @IsString()
     @MaxLength(200)
     readonly requestedname: string;
+
+    @ApiProperty({ description: 'the store that is asking (a store of the person or, for the buyer, of the business)', example: 0 })
+    @IsOptional()
+    @IsNumber()
+    @IsPositive()
+    readonly storeid: number;
 
     @ApiProperty({ description: 'order id', example: 0 })
     @IsOptional()

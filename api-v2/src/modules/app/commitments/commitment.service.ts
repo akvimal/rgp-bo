@@ -208,15 +208,17 @@ export class CommitmentService {
   async raiseRequests(id: number, user: any) {
     const c = await this.editable(id, user);
     const [head] = await this.manager.query(
-      `select cu.name, cu.mobile, to_char(c.needed_by, 'YYYY-MM-DD') as needed_by from customer_commitment c join customer cu on cu.id = c.customer_id where c.id = $1`, [id]);
+      `select cu.name, cu.mobile, c.store_id, to_char(c.needed_by, 'YYYY-MM-DD') as needed_by from customer_commitment c join customer cu on cu.id = c.customer_id where c.id = $1`, [id]);
     const lines = await this.manager.query(`select id, product_id, requested_name, qty from customer_commitment_line where commitment_id = $1 and active and request_id is null order by id`, [id]);
     if (!lines.length) throw new BadRequestException('Every line is already on a purchase request.');
     await this.manager.transaction(async (tm) => {
+      // the lines of one commitment are one slip, raised for the store that took the advance
+      const [g] = await tm.query(`insert into purchase_request_group (store_id, created_by, note) values ($1, $2, $3) returning id`, [head.store_id, user.id, `Customer commitment #${id}`]);
       for (const l of lines) {
         const [r] = await tm.query(
-          `insert into purchase_request (product_id, requested_name, request_type, source, priority, qty, status, customer_name, customer_phone, needed_by, source_ref, comments, created_by)
-           values ($1, $2, 'Customer', 'Customer commitment', 'High', $3, 'Open', $4, $5, $6, $7, $8, $9) returning id`,
-          [l.product_id, l.product_id ? null : l.requested_name, l.qty, head.name, head.mobile, head.needed_by, `commitment:${id}`, `Customer commitment #${id}, advance taken`, user.id]);
+          `insert into purchase_request (product_id, requested_name, request_type, source, priority, qty, status, customer_name, customer_phone, needed_by, source_ref, comments, created_by, store_id, group_id)
+           values ($1, $2, 'Customer', 'Customer commitment', 'High', $3, 'Open', $4, $5, $6, $7, $8, $9, $10, $11) returning id`,
+          [l.product_id, l.product_id ? null : l.requested_name, l.qty, head.name, head.mobile, head.needed_by, `commitment:${id}`, `Customer commitment #${id}, advance taken`, user.id, head.store_id, g.id]);
         await tm.query(`update customer_commitment_line set request_id = $2 where id = $1`, [l.id, r.id]);
       }
       await this.refreshStatus(tm, id);

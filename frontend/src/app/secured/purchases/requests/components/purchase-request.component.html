@@ -3,11 +3,23 @@
   <div class="col-12 page-toolbar justify-content-end">
     <button class="btn btn-primary" (click)="add()" data-testid="req-add">Add Request</button>
   </div>
+  <div class="col-12 mt-3 d-flex flex-wrap align-items-center gap-2" *ngIf="multiStore || slipFilter">
+    <ng-container *ngIf="multiStore">
+      <label class="form-label mb-0 small text-muted" for="req-store-filter">Store</label>
+      <select id="req-store-filter" class="form-select form-select-sm w-auto" [(ngModel)]="storeFilter" data-testid="req-store-filter">
+        <option value="">All stores</option>
+        <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
+        <option value="none" *isAuth="'purchases.add'">Not assigned to a store</option>
+      </select>
+    </ng-container>
+    <span class="badge bg-secondary" *ngIf="slipFilter" data-testid="req-slip-filter">Slip #{{slipFilter}} <a class="text-white ms-1" (click)="showSlip(null)" title="Show all"><i class="bi bi-x"></i></a></span>
+  </div>
   <div class="col-12 mt-3">
-    <p-table [value]="requests" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines">
+    <p-table [value]="shown" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines">
       <ng-template pTemplate="header">
         <tr>
           <th>Product</th>
+          <th *ngIf="multiStore">Store</th>
           <th *isAuth="'purchases.add'">Vendor</th>
           <th>Source</th>
           <th>Type</th>
@@ -23,11 +35,14 @@
         <tr>
           <td>
             <span *ngIf="request.product">{{request.product.title}}</span>
+            <a class="badge bg-light text-dark border ms-1 text-decoration-none" *ngIf="request.groupid && slipSize(request) > 1" (click)="showSlip(request.groupid)" title="Asked for together with other products: show them" data-testid="req-slip">slip #{{request.groupid}} &middot; {{slipSize(request)}}</a>
+            <a class="ms-1" *ngIf="request.groupid && request.status === 'Open'" (click)="addMore(request)" title="Add more products to this slip" data-testid="req-add-more"><i class="bi bi-plus-circle text-primary"></i></a>
             <ng-container *ngIf="!request.product">
               {{request.requestedname}}
               <span class="badge bg-warning text-dark ms-1" title="Not in the product list yet: link it to a product before it is ordered" data-testid="req-unlisted">Not in product list</span>
             </ng-container>
           </td>
+          <td *ngIf="multiStore" data-testid="req-store">{{request.store?.location || '-'}}</td>
           <td *isAuth="'purchases.add'">{{request.vendor?.name || '-'}}</td>
           <td>{{request.source}}</td>
           <td>{{request.requesttype}}</td>
@@ -63,6 +78,13 @@
       <div class="col-12" *ngIf="errorMessage">
         <div class="alert alert-danger mb-0">{{errorMessage}}</div>
       </div>
+      <div class="col-md-6 col-lg-4" *ngIf="!form.controls['id'].value && multiStore && !addingTo">
+        <label class="form-label">Store <span class="text-danger">*</span></label>
+        <select class="form-select" [(ngModel)]="storeid" [ngModelOptions]="{standalone: true}" data-testid="req-storeid">
+          <option *ngFor="let s of stores" [value]="s.id">{{s.location}}</option>
+        </select>
+      </div>
+      <div class="col-12" *ngIf="addingTo"><div class="alert alert-info py-2 mb-0" data-testid="req-adding-to">Adding products to slip #{{addingTo}}: the other details stay as they were.</div></div>
       <div class="col-md-12">
         <label class="form-label">Product <span class="text-danger">*</span></label>
         <ng-container *ngIf="!typed">
@@ -84,6 +106,22 @@
           Qty is required.
         </div>
       </div>
+      <div class="col-md-6 col-lg-4 d-flex align-items-end" *ngIf="!form.controls['id'].value">
+        <button type="button" class="btn btn-outline-primary" (click)="addLine()" data-testid="req-add-line"><i class="bi bi-plus-lg me-1"></i>Add to the list</button>
+      </div>
+      <div class="col-12" *ngIf="lines.length" data-testid="req-lines">
+        <table class="table table-sm table-bordered mb-0">
+          <thead><tr><th>Product</th><th class="text-end" style="width:6rem">Qty</th><th style="width:3rem"></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let l of lines; let i = index" data-testid="req-line">
+              <td>{{l.title}}<span class="badge bg-warning text-dark ms-1" *ngIf="!l.productid">Not in product list</span></td>
+              <td class="text-end"><input type="number" min="1" class="form-control form-control-sm text-end" [(ngModel)]="l.qty" [ngModelOptions]="{standalone: true}"></td>
+              <td class="text-center"><a (click)="removeLine(i)" title="Take off the list" data-testid="req-line-remove"><i class="bi bi-x-lg text-danger"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-container *ngIf="!addingTo">
       <div class="col-md-6 col-lg-4">
         <label class="form-label">Source <span class="text-danger">*</span></label>
         <select class="form-select" formControlName="source" [class.is-invalid]="form.controls['source'].touched && form.controls['source'].invalid">
@@ -140,6 +178,7 @@
         <label class="form-label">Notes</label>
         <textarea class="form-control" rows="2" formControlName="comments" placeholder="Brand, strength, anything the buyer should know" data-testid="req-notes"></textarea>
       </div>
+      </ng-container>
       <div class="col-12 text-center">
         <button class="btn btn-primary" type="submit" [disabled]="!form.valid">Save Request</button>
       </div>

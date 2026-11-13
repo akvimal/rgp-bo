@@ -35,6 +35,16 @@ export class PurchaseIntentService {
         return this.http.post(this.apiurl,{...request, id: null});
     }
 
+    /** several products asked for together: the fields are shared, `lines` is [{productid | requestedname, qty, note}] */
+    saveSlip(slip:any){
+        return this.http.post(`${this.apiurl}/slip`, slip);
+    }
+
+    /** more products for a slip that is already raised */
+    addToSlip(groupid:number, lines:any[]){
+        return this.http.post(`${this.apiurl}/slip/${groupid}/lines`, { lines });
+    }
+
     update(id:number, request:any){
         return this.http.put(`${this.apiurl}/${id}`,request);
     }
