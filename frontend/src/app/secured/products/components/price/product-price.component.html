@@ -27,6 +27,10 @@
     </div>
 </div>
 
+<div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+    <button type="button" class="btn btn-outline-primary btn-sm" (click)="openBulk()" [disabled]="!shown.length" data-testid="price-bulk-open"><i class="bi bi-tags me-1"></i>Bulk update prices</button>
+    <span class="small text-muted" data-testid="price-bulk-scope">{{bulkIds.length}} product{{bulkIds.length === 1 ? '' : 's'}} {{bulkScope}}<span *ngIf="bulkScope === 'on show'"> (tick rows to choose)</span></span>
+</div>
 <div class="alert alert-success py-2" *ngIf="message" data-testid="price-message">{{message}}</div>
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="price-error-list">{{error}}</div>
 
@@ -38,7 +42,8 @@
                 [rowsPerPageOptions]="[25,50,100]">
             <ng-template pTemplate="header">
                 <tr>
-                    <th style="width:34%" pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
+                    <th style="width:3%" class="text-center"><input type="checkbox" [checked]="allPicked" (change)="pickAll($any($event.target).checked)" aria-label="Tick all on show" data-testid="price-pick-all"></th>
+                    <th style="width:31%" pSortableColumn="title"><div class="th-bar"><span class="th-label">Product</span><p-columnFilter type="text" field="title" display="menu"></p-columnFilter><p-sortIcon field="title"></p-sortIcon></div></th>
                     <th style="width:9%" pSortableColumn="last_updated"><div class="th-bar"><span class="th-label">Updated</span><p-sortIcon field="last_updated"></p-sortIcon></div></th>
                     <th style="width:9%" class="text-end" pSortableColumn="ptr"><div class="th-bar"><span class="th-label">Cost with GST</span><p-sortIcon field="ptr"></p-sortIcon></div></th>
                     <th style="width:8%" class="text-end" pSortableColumn="price"><div class="th-bar"><span class="th-label">{{basis === 'incl' ? 'Price with GST' : 'Price'}}</span><p-sortIcon field="price"></p-sortIcon></div></th>
@@ -51,6 +56,7 @@
             </ng-template>
             <ng-template pTemplate="body" let-product>
                 <tr>
+                    <td class="text-center"><input type="checkbox" [checked]="picked.has(+product.id)" (change)="toggle(+product.id, $any($event.target).checked)" aria-label="Tick this product" data-testid="price-pick"></td>
                     <td>{{product.title}} ({{product.pack}})</td>
                     <td>{{product.last_updated | date : 'dd MMM yyyy'}}</td>
                     <td class="text-end">{{product.ptr | number : '1.2-2'}}</td>
@@ -77,11 +83,44 @@
                 </tr>
             </ng-template>
             <ng-template pTemplate="emptymessage">
-                <tr><td colspan="9" class="text-center text-muted py-4" data-testid="price-empty">{{loading ? 'Loading...' : 'No products match.'}}</td></tr>
+                <tr><td colspan="10" class="text-center text-muted py-4" data-testid="price-empty">{{loading ? 'Loading...' : 'No products match.'}}</td></tr>
             </ng-template>
         </p-table>
     </div>
 </div>
+
+<p-dialog header="Bulk update prices" [(visible)]="showBulk" [modal]="true" [style]="{width:'44rem', maxWidth:'95vw'}">
+    <div data-testid="price-bulk">
+        <p class="small text-muted mb-2">Sets the price of <b>{{bulkIds.length}}</b> product{{bulkIds.length === 1 ? '' : 's'}} ({{bulkScope}}) from the MRP on its latest purchase. A product whose price cannot be set is skipped and listed with the reason: nothing is forced past the pricing policy.</p>
+        <div class="form-check"><input class="form-check-input" type="radio" name="bulkmode" id="bm-mrp" value="MRP" [(ngModel)]="bulkMode" (ngModelChange)="bulkChanged()" data-testid="price-bulk-mrp"><label class="form-check-label" for="bm-mrp">Same as MRP</label></div>
+        <div class="form-check d-flex align-items-center gap-2">
+            <input class="form-check-input" type="radio" name="bulkmode" id="bm-pct" value="PCT_OFF" [(ngModel)]="bulkMode" (ngModelChange)="bulkChanged()" data-testid="price-bulk-pct-mode">
+            <label class="form-check-label" for="bm-pct">Percent off MRP</label>
+            <input type="number" min="0.1" max="99.9" step="0.5" class="form-control form-control-sm" style="width:6rem" [(ngModel)]="bulkPct" (ngModelChange)="bulkChanged()" [disabled]="bulkMode !== 'PCT_OFF'" data-testid="price-bulk-pct"><span>%</span>
+        </div>
+        <div class="alert alert-danger py-2 mt-2 mb-0" *ngIf="bulkError" data-testid="price-bulk-error">{{bulkError}}</div>
+
+        <div class="mt-3" *ngIf="bulkPreview" data-testid="price-bulk-preview">
+            <div class="alert alert-info py-2 mb-2"><b>{{bulkPreview.changed.length}}</b> will be set, <b>{{bulkPreview.skipped.length}}</b> will be skipped ({{bulkPreview.label}}). Nothing is saved yet.</div>
+            <ng-container *ngTemplateOutlet="skippedList; context: { $implicit: bulkPreview.skipped }"></ng-container>
+        </div>
+        <div class="mt-3" *ngIf="bulkDone" data-testid="price-bulk-done">
+            <div class="alert alert-success py-2 mb-2"><b>{{bulkDone.changed.length}}</b> price{{bulkDone.changed.length === 1 ? '' : 's'}} set ({{bulkDone.label}}), <b>{{bulkDone.skipped.length}}</b> skipped.</div>
+            <ng-container *ngTemplateOutlet="skippedList; context: { $implicit: bulkDone.skipped }"></ng-container>
+        </div>
+        <ng-template #skippedList let-skipped>
+            <div *ngIf="skipped.length" class="border rounded" style="max-height:16rem;overflow:auto" data-testid="price-bulk-skipped">
+                <table class="table table-sm mb-0"><thead><tr><th>Skipped</th><th>Why</th></tr></thead>
+                    <tbody><tr *ngFor="let s of skipped"><td>{{s.title}}</td><td class="small">{{s.reason}}</td></tr></tbody></table>
+            </div>
+        </ng-template>
+    </div>
+    <ng-template pTemplate="footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="showBulk = false" data-testid="price-bulk-close">{{bulkDone ? 'Close' : 'Cancel'}}</button>
+        <button type="button" class="btn btn-outline-primary" (click)="runBulk(true)" [disabled]="bulkBusy || !bulkIds.length" data-testid="price-bulk-preview-btn">Preview</button>
+        <button type="button" class="btn btn-primary" (click)="runBulk(false)" [disabled]="bulkBusy || !bulkPreview || !bulkPreview.changed.length" data-testid="price-bulk-apply">Set {{bulkPreview?.changed.length || 0}} price{{bulkPreview?.changed.length === 1 ? '' : 's'}}</button>
+    </ng-template>
+</p-dialog>
 
 <p-dialog [header]="'Set the price'" [(visible)]="showPriceChange" [modal]="true" [style]="{width:'64rem', maxWidth:'95vw'}">
     <app-product-price-change [productid]="productid" (added)="changed($event)" (cancelled)="showPriceChange = false"></app-product-price-change>

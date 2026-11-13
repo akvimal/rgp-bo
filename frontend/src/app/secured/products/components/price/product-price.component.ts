@@ -78,6 +78,48 @@ export class ProductPriceComponent implements OnInit {
         });
     }
 
+    // ── bulk update: the ticked rows (or every row on show when none is ticked) get the MRP, or a percentage off it ──
+    picked = new Set<number>();
+    showBulk = false;
+    bulkMode: 'MRP' | 'PCT_OFF' = 'MRP';
+    bulkPct: number | null = 5;
+    bulkBusy = false;
+    bulkError = '';
+    bulkPreview: any = null;   // what the server says would happen
+    bulkDone: any = null;      // what happened
+
+    toggle(id:number, on:boolean){ on ? this.picked.add(id) : this.picked.delete(id); }
+    get allPicked(): boolean { return this.shown.length > 0 && this.shown.every(p => this.picked.has(+p.id)); }
+    pickAll(on:boolean){ this.shown.forEach(p => on ? this.picked.add(+p.id) : this.picked.delete(+p.id)); }
+    /** the products a bulk update would touch: the ticked ones that are on show, otherwise everything on show */
+    get bulkIds(): number[] {
+        const onShow = this.shown.map(p => +p.id);
+        const ticked = onShow.filter(id => this.picked.has(id));
+        return ticked.length ? ticked : onShow;
+    }
+    get bulkScope(): string { return this.shown.some(p => this.picked.has(+p.id)) ? 'ticked' : 'on show'; }
+
+    openBulk(){
+        this.bulkError = ''; this.bulkPreview = null; this.bulkDone = null; this.message = '';
+        this.showBulk = true;
+    }
+    private bulkBody(preview:boolean){
+        return { productids: this.bulkIds, mode: this.bulkMode, pct: this.bulkMode === 'PCT_OFF' ? Number(this.bulkPct) : undefined, preview };
+    }
+    bulkChanged(){ this.bulkPreview = null; this.bulkError = ''; }
+    runBulk(preview:boolean){
+        this.bulkError = '';
+        if(this.bulkMode === 'PCT_OFF' && !(Number(this.bulkPct) > 0 && Number(this.bulkPct) < 100)){ this.bulkError = 'Enter a percentage above 0 and below 100.'; return; }
+        this.bulkBusy = true;
+        this.service.pricingBulkSet(this.bulkBody(preview)).subscribe((r:any) => {
+            this.bulkBusy = false;
+            if(preview){ this.bulkPreview = r; return; }
+            this.bulkDone = r; this.bulkPreview = null; this.picked.clear();
+            this.message = `Prices updated for ${r.changed.length} product${r.changed.length === 1 ? '' : 's'} (${r.label})${r.skipped.length ? `; ${r.skipped.length} skipped, see the list` : '.'}`;
+            this.filter(); this.loadStatuses();
+        }, (e:any) => { this.bulkBusy = false; this.bulkError = e?.error?.message || 'Could not update the prices.'; });
+    }
+
     changePrice(productid:number){
         this.productid=productid;
         this.showPriceChange = true;

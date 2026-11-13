@@ -6,6 +6,7 @@ import { User } from 'src/core/decorator/user.decorator';
 import { PermissionService } from '../roles/permission.service';
 import { ProductService } from './product.service';
 import { PricingService } from './pricing.service';
+import { bulkTarget } from './bulk-price';
 
 /**
  * The price policy: the review queue of prices that are out of policy, applying the next step, the class table, and exceptions.
@@ -101,6 +102,54 @@ export class PricingController {
       catch (e: any) { failed.push({ productid: u.productid, title: u.title, message: messageOf(e) }); }
     }
     return { applied, failed };
+  }
+
+  /**
+   * Sets many products' prices at once: the same as the MRP, or a percentage off it. A product whose price cannot be set (no MRP, would break the pricing
+   * policy, or the save is refused) is skipped, never forced, and comes back in `skipped` with the reason. `preview: true` only reports what would happen.
+   * A bulk update never overrides the policy: that needs a reason, so it stays a one-product action.
+   */
+  @Post('/bulk-set')
+  async bulkSet(@Body() body: any, @User() user: any) {
+    await this.assertPricing(user);
+    const mode = body?.mode === 'MRP' ? 'MRP' : body?.mode === 'PCT_OFF' ? 'PCT_OFF' : null;
+    if (!mode) throw new BadRequestException('Choose "same as MRP" or "% off MRP".');
+    const pct = mode === 'PCT_OFF' ? Number(body?.pct) : null;
+    if (mode === 'PCT_OFF' && !(pct! > 0 && pct! < 100)) throw new BadRequestException('Enter a percentage above 0 and below 100.');
+    const ids: number[] = Array.from(new Set<number>((Array.isArray(body?.productids) ? body.productids : []).map((n: any) => Number(n)).filter((n: number) => Number.isInteger(n) && n > 0)));
+    if (!ids.length) throw new BadRequestException('Pick at least one product.');
+    if (ids.length > 2000) throw new BadRequestException('Pick at most 2000 products at a time.');
+    const preview = body?.preview === true;
+    const label = mode === 'MRP' ? 'same as MRP' : `${pct}% off MRP`;
+
+    const changed: any[] = [];
+    const skipped: any[] = [];
+    for (const productid of ids) {
+      let title = `#${productid}`;
+      try {
+        const info = await this.pricing.productCheck(productid, null, user.id);
+        if (!info.known) { skipped.push({ productid, title, reason: 'No purchase to price from.' }); continue; }
+        title = `${info.title}${info.pack ? ` (${info.pack})` : ''}`;
+        const target = bulkTarget(mode, pct, info.mrp, info.saletax);
+        if (target === null) { skipped.push({ productid, title, reason: 'No MRP on its latest purchase.' }); continue; }
+        const verdict = await this.pricing.productCheck(productid, target, user.id);
+        const check = verdict.check;
+        if (check?.violations?.length) { skipped.push({ productid, title, reason: `Breaks the pricing policy: ${check.texts.join('; ')}.` }); continue; }
+        const price = check?.price ?? target;
+        if (info.curprice != null && Math.abs(Number(info.curprice) - price) < 0.005) { skipped.push({ productid, title, reason: 'Already at that price.' }); continue; }
+        if (!preview) {
+          await this.products.addPrice({ productid, saleprice: price, reason: 'Bulk', comments: `Bulk update: ${label}` } as any, user.id);
+        }
+        changed.push({ productid, title, from: info.curprice ?? null, to: price });
+      } catch (e: any) {
+        skipped.push({ productid, title, reason: messageOf(e) });
+      }
+    }
+    if (!preview && changed.length) {
+      await this.pricing.audited(user.id, 'price.bulk_set', 0, `Bulk price update (${label}): ${changed.length} set, ${skipped.length} skipped`,
+        { mode, pct, set: changed.length, skipped: skipped.length, productids: changed.map((c) => c.productid) });
+    }
+    return { preview, label, changed, skipped };
   }
 
   private async priceOne(productid: number, userid: number) {

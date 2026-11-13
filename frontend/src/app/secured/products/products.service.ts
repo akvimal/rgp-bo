@@ -19,6 +19,7 @@ export class ProductsService {
     pricingRules(){ return this.http.get<any>(`${environment.apiHost}/pricing/rules`); }
     pricingSaveRules(values:any){ return this.http.put<any>(`${environment.apiHost}/pricing/rules`, { values }); }
     pricingPriceNew(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/price-new`, { productid }); }
+    pricingBulkSet(body:{ productids:number[]; mode:'MRP'|'PCT_OFF'; pct?:number; preview?:boolean }){ return this.http.post<any>(`${environment.apiHost}/pricing/bulk-set`, body); }
     pricingPriceNewAll(){ return this.http.post<any>(`${environment.apiHost}/pricing/price-new-all`, {}); }
     pricingProductCheck(productid:number, price?:number){ return this.http.get<any>(`${environment.apiHost}/pricing/product/${productid}/check`, { params: price !== undefined ? { price: String(price) } : {} }); }
     pricingApply(productid:number){ return this.http.post<any>(`${environment.apiHost}/pricing/apply`, { productid }); }
