@@ -504,6 +504,10 @@
 .inv-table.inv-grid { table-layout: fixed; width: 100%; min-width: 61rem; }
 .inv-table.inv-grid td .form-control, .inv-table.inv-grid td .form-select { min-width: 0; }
 /* the little up and down arrows of a number box take room the digits need */
+/* totals under the lines of the invoice copy: right aligned, the net total set off */
+.inv-table .inv-foot td { background: #f6f9ff; font-variant-numeric: tabular-nums; border-color: #dde3ee; }
+.inv-table .inv-foot tr:first-child td { border-top: 2px solid #c9d2e3; }
+.inv-table .inv-foot .inv-foot-net td { font-size: 1rem; border-top: 1px solid #c9d2e3; }
 .inv-grid input[type=number]::-webkit-outer-spin-button, .inv-grid input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .inv-grid input[type=number] { -moz-appearance: textfield; }
 

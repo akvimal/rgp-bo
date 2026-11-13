@@ -220,14 +220,15 @@
 
             <div *ngIf="lines.length" class="d-flex flex-wrap align-items-center gap-2 mb-2" data-testid="inv-x-progress">
               <div class="flex-grow-1" style="min-width:14rem">
-                <div class="small mb-1"><b data-testid="inv-x-checked">{{verifiedCount}}</b> checked &middot; <b data-testid="inv-x-open">{{openCount}}</b> to check
+                <div class="small mb-1"><b data-testid="inv-x-checked">{{verifiedCount}}</b> verified &middot; <b data-testid="inv-x-open">{{openCount}}</b> to check<span *ngIf="tickedCount" data-testid="inv-x-ticked"> ({{tickedCount}} ticked, not yet verified)</span>
                   <span *ngIf="discardedCount"> &middot; {{discardedCount}} discarded</span></div>
                 <div class="progress" style="height:.5rem"><div class="progress-bar bg-success" [style.width.%]="(verifiedCount + discardedCount) * 100 / lines.length"></div></div>
               </div>
               <select class="form-select form-select-sm w-auto" [(ngModel)]="scanFilter" [ngModelOptions]="{standalone: true}" aria-label="Show lines" data-testid="inv-x-filter">
                 <option value="all">All lines</option><option value="open">To check</option><option value="verified">Checked</option><option value="discarded">Discarded</option>
               </select>
-              <button type="button" class="btn btn-outline-success btn-sm" *ngIf="form.value.id" [disabled]="!completeOpenCount || checkingAll" (click)="checkAll()" data-testid="inv-x-checkall">Check all complete lines ({{completeOpenCount}})</button>
+              <button type="button" class="btn btn-success btn-sm" *ngIf="form.value.id" [disabled]="!tickedCount || checkingAll" (click)="completeVerification()" title="Lock the ticked lines and mark them verified, on this page" data-testid="inv-x-complete">Complete {{tickedCount}} item{{tickedCount === 1 ? '' : 's'}} verification</button>
+              <button type="button" class="btn btn-outline-success btn-sm" *ngIf="form.value.id" [disabled]="!completeOpenCount || checkingAll" (click)="checkAll()" data-testid="inv-x-checkall">Verify all complete lines ({{completeOpenCount}})</button>
             </div>
             <div class="small text-muted mb-2" *ngIf="lines.length && !form.value.id" data-testid="inv-x-savefirst">Save the draft first, then check each line against the invoice copy. Nothing is lost if you leave and come back.</div>
             <div class="small mb-2" *ngIf="scanMessage" data-testid="inv-x-scanmsg">{{scanMessage}}</div>
@@ -244,7 +245,7 @@
                 <tbody>
                   <tr *ngFor="let l of shownLines; let i = index" (focusout)="lineBlur(l)" [class.table-success]="l.state === 'VERIFIED'" [class.text-muted]="l.state === 'DISCARDED'" [attr.data-testid]="'inv-x-row-' + i" [attr.data-state]="l.state">
                     <td class="text-center"><i *ngIf="l.state === 'VERIFIED'" class="bi bi-lock-fill text-success" title="Moved to the invoice items: read-only here" [attr.data-testid]="'inv-x-locked-' + i"></i>
-                      <input *ngIf="l.state !== 'VERIFIED'" type="checkbox" [checked]="false" (change)="toggleCheck(l, $event)" [disabled]="!l.lineid || l.busy || l.state === 'DISCARDED' || (l.state === 'OPEN' && !ready(l))" [attr.title]="!l.lineid ? 'Save the draft first' : (l.state === 'OPEN' && !ready(l) ? 'Complete the line first' : 'Agrees with the invoice copy')" [attr.data-testid]="'inv-x-check-' + i" aria-label="Checked against the invoice copy"></td>
+                      <input *ngIf="l.state !== 'VERIFIED'" type="checkbox" [checked]="!!l.ticked" (change)="toggleCheck(l, $event)" [disabled]="!l.lineid || l.busy || l.state === 'DISCARDED' || (l.state === 'OPEN' && !ready(l))" [attr.title]="!l.lineid ? 'Save the draft first' : (l.state === 'OPEN' && !ready(l) ? 'Complete the line first' : 'Tick when it agrees with the invoice copy, then complete the verification')" [attr.data-testid]="'inv-x-check-' + i" aria-label="Checked against the invoice copy"></td>
                     <td class="small">{{l.description}}
                       <div class="text-danger" *ngFor="let w of l.warnings">{{w}}</div>
                       <div class="text-warning" *ngIf="l.state === 'OPEN' && !ready(l)">Needs: {{missingFor(l)}}</div>
@@ -287,6 +288,16 @@
                     <td class="text-end">{{amountOf(l) | number:'1.2-2'}}</td>
                   </tr>
                 </tbody>
+                <tfoot class="inv-foot" data-testid="inv-x-totals">
+                  <tr><td colspan="11" class="text-end">Items value (before tax)</td><td class="text-end" data-testid="inv-x-goods">{{linesGoods | number:'1.2-2'}}</td></tr>
+                  <tr *ngIf="linesCashDiscount > 0"><td colspan="11" class="text-end">Less cash discount</td><td class="text-end" data-testid="inv-x-cdamt">-{{linesCashDiscount | number:'1.2-2'}}</td></tr>
+                  <tr><td colspan="11" class="text-end">GST</td><td class="text-end" data-testid="inv-x-gst">{{linesGst | number:'1.2-2'}}</td></tr>
+                  <tr class="fw-bold inv-foot-net"><td colspan="11" class="text-end">Net total</td><td class="text-end" data-testid="inv-x-net">{{linesNet | number:'1.2-2'}}</td></tr>
+                  <ng-container *ngIf="form.value.printedtotal">
+                    <tr><td colspan="11" class="text-end">Invoice total (vendor)</td><td class="text-end" data-testid="inv-x-printed">{{form.value.printedtotal | number:'1.2-2'}}</td></tr>
+                    <tr [class.text-success]="linesAgree" [class.text-danger]="!linesAgree"><td colspan="11" class="text-end">Difference</td><td class="text-end fw-bold" data-testid="inv-x-diff">{{linesDifference | number:'1.2-2'}}</td></tr>
+                  </ng-container>
+                </tfoot>
               </table>
               <div class="small" data-testid="inv-x-summary">
                 Lines with tax<span *ngIf="cashFactor < 1" data-testid="inv-x-cd"> and the cash discount</span> come to <b>{{linesNet | number:'1.2-2'}}</b><span *ngIf="form.value.printedtotal"> against the invoice total {{form.value.printedtotal | number:'1.2-2'}}:
@@ -304,8 +315,8 @@
         <div class="col-12 d-flex flex-wrap align-items-center gap-2">
           <button type="submit" class="btn btn-primary" [disabled]="headerNeeded.length > 0 || saving" data-testid="inv-f-save">{{id || form.value.id ? 'Save changes' : (lines.length ? 'Save draft' : 'Save and add items')}}</button>
           <button type="button" *ngIf="form.value.id && lines.length" class="btn" [ngClass]="openCount === 0 ? 'btn-success' : 'btn-outline-primary'" (click)="gotoEdit(form.value.id)"
-            [title]="openCount === 0 ? 'Every line is dealt with: review the items and complete the invoice' : 'The checked lines are already items of the invoice, available for sale'" data-testid="inv-f-items">
-            {{openCount === 0 ? 'Review the items and complete the invoice' : (verifiedCount ? 'View the ' + verifiedCount + ' checked item' + (verifiedCount === 1 ? '' : 's') + ' in the invoice' : 'Go to the invoice items')}}</button>
+            [title]="openCount === 0 ? 'Every line is dealt with: review the items and complete the invoice' : 'Go to the invoice items page. Only the verified lines are items of the invoice'" data-testid="inv-f-items">
+            Check invoice items</button>
           <span class="small text-success" *ngIf="savedNote" data-testid="inv-f-saved">{{savedNote}}</span>
           <button type="button" (click)="cancel()" class="btn btn-outline-secondary" data-testid="inv-f-cancel">Cancel</button>
           <span class="small text-muted" *ngIf="headerNeeded.length" data-testid="inv-f-hint">Still needed: {{headerNeeded.join(', ')}}.</span>

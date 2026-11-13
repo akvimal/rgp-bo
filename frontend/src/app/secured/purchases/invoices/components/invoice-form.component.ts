@@ -435,6 +435,8 @@ export class InvoiceFormComponent implements OnInit {
         (p:any) => {
           this.pickProduct(n.row, { ...p, props, taxpcnt: body.taxpcnt });
           this.newProduct = null;
+          // the dialog took the focus off the row, so the pick would never be saved by the row's own blur
+          if(n.row.lineid && n.row.state === 'OPEN') this.persist(n.row);
         },
         (err:any) => {
           n.saving = false;
@@ -535,21 +537,33 @@ export class InvoiceFormComponent implements OnInit {
       finally { l.busy = false; }
     }
 
-    /** ticking "Checked" says the line agrees with the invoice copy: it becomes a verified item of the invoice now */
-    async toggleCheck(l:any, ev:any){
-      const want = !!ev.target.checked;
-      l.busy = true; l.rowError = ''; this.scanMessage = '';
+    /** ticking "Checked" only marks the line as agreeing with the invoice copy; nothing moves until "Complete verification" */
+    toggleCheck(l:any, ev:any){
+      l.ticked = !!ev.target.checked;
+      this.scanMessage = '';
+    }
+
+    /** the lines ticked and ready to be verified */
+    get tickedLines(): any[] { return this.lines.filter(l => l.state === 'OPEN' && l.ticked && l.lineid && this.ready(l)); }
+    get tickedCount(): number { return this.tickedLines.length; }
+
+    /** the ticked lines become verified items of the invoice (read-only here); a line that cannot be verified stays ticked with its reason */
+    async completeVerification(){
+      if(this.checkingAll || !this.tickedCount) return;
+      this.checkingAll = true; this.scanMessage = '';
+      let done = 0, failed = 0;
       try {
-        if(want){
-          if(!(await this.persist(l))){ ev.target.checked = false; return; }
-          this.applyLine(l, await this.service.verifyScanLine(this.invoiceId(), l.lineid).toPromise());
-        } else {
-          this.applyLine(l, await this.service.unverifyScanLine(this.invoiceId(), l.lineid).toPromise());
+        for(const l of this.tickedLines){
+          l.busy = true; l.rowError = '';
+          try {
+            if(this.snapOf(l) !== l.snap && !(await this.persist(l))){ failed++; continue; }
+            this.applyLine(l, await this.service.verifyScanLine(this.invoiceId(), l.lineid).toPromise());
+            done++;
+          } catch(err:any){ failed++; l.rowError = this.fail(err, 'The line could not be verified.'); }
+          finally { l.busy = false; }
         }
-      } catch(err:any){
-        ev.target.checked = !want;
-        l.rowError = this.fail(err, want ? 'The line could not be checked.' : 'The line could not be unchecked.');
-      } finally { l.busy = false; }
+      } finally { this.checkingAll = false; }
+      this.scanMessage = `${done} line${done === 1 ? '' : 's'} verified and locked` + (failed ? `, ${failed} could not be verified` : '') + '.';
     }
 
     /** a clean copy: every open line that is complete is checked at once */
@@ -618,6 +632,11 @@ export class InvoiceFormComponent implements OnInit {
       return f > 0 && f < 1 ? f : 1;
     }
     get linesNet(): number { return Math.round(this.readyLines.reduce((t, l) => t + this.netOf(l), 0) * this.cashFactor * 100) / 100; }
+    /** the footer of the lines: goods before tax, the cash discount, the GST, and the net total that is compared with the vendor's invoice */
+    get linesGoods(): number { return Math.round(this.readyLines.reduce((t, l) => t + this.amountOf(l), 0) * 100) / 100; }
+    get linesCashDiscount(): number { return Math.round(this.linesGoods * (1 - this.cashFactor) * 100) / 100; }
+    get linesGst(): number { return Math.round((this.linesNet - (this.linesGoods - this.linesCashDiscount)) * 100) / 100; }
+    get linesDifference(): number { return Math.round((this.linesNet - (+this.form.getRawValue().printedtotal || 0)) * 100) / 100; }
     get linesAgree(): boolean {
       const printed = +this.form.getRawValue().printedtotal || 0;
       return !printed || Math.abs(this.linesNet - printed) <= 1;
@@ -688,8 +707,17 @@ export class InvoiceFormComponent implements OnInit {
       return out;
     }
 
-    submit(){
+    /** corrections made to saved lines (a product picked or added, a batch typed) that the row's blur has not saved yet */
+    private get unsavedLines(): any[] { return this.lines.filter(l => l.lineid && l.state === 'OPEN' && this.snapOf(l) !== l.snap); }
+
+    submit(flushed = false){
       if(this.headerNeeded.length || this.saving) return;
+      if(!flushed && this.unsavedLines.length){
+        // save the lines' own changes first, so Save never leaves a picked product behind
+        this.saving = true;
+        Promise.all(this.unsavedLines.map(l => this.persist(l))).then(() => { this.saving = false; this.submit(true); });
+        return;
+      }
       this.savedNote = '';
       this.errorMessage = '';
       const v = this.form.getRawValue();
