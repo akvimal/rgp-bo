@@ -13,6 +13,7 @@ import {
   BELOW_LIST_PCT, BIG_DISCOUNT_PCT, LATE_RETURN_DAYS, LATE_VOID_HOURS, LIST_LIMIT,
   addDays, billDiscountPct, groupReturns, isMonday, isOver, isValidDay, lastFullWeek, marked, pctOff, readEdit, summarise, weekRange,
 } from './review-rules';
+import { glanceOf } from './review-glance';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 
@@ -351,6 +352,7 @@ export class ReviewService {
       actual: { raw: actualRaw, rates: ratesOf(actualRaw) },
       usual: usualRaw ? { raw: usualRaw, rates: ratesOf(usualRaw), months: (usual as any).months } : { raw: null, rates: null, reason: (usual as any).reason },
       verdicts: verdictsOf(actualRaw, usualRaw),
+      glance: glanceOf({ summary, marked: marked(cur), verdicts: verdictsOf(actualRaw, usualRaw) as any, cash: (more as any)?.cash ?? null }),
       mtd,
       yearAgo: yearCompare(yearHistory, start, mtd),
       people: peers,

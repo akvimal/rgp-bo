@@ -157,25 +157,20 @@ test.describe('Weekly review comparison @p1', () => {
   test('REVIEW-6 the screen shows the comparison with usual, the rates and the month to date, not the week before @happy', async ({ browser, api }) => {
     const ctx = await browser.newContext();
     const { page } = await openAs(ctx, MGR, '/secure/review');
+    // the page opens on what to check first; the comparison tables are one tab over
+    await expect(page.getByTestId('review-glance')).toBeVisible();
+    await page.getByTestId('review-tab-numbers').click();
     await expect(page.getByTestId('review-summary')).toBeVisible();
     await expect(page.getByTestId('review-phases')).toContainText('This week has');
-    await expect(page.getByRole('heading', { name: 'This week against what is usual for these days' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'This week against what is normal for these days' })).toBeVisible();
     await expect(page.getByTestId('review-rates')).toBeVisible();
     for (const row of ['review-row-bills', 'review-row-sales', 'review-row-discounts', 'review-row-below', 'review-row-voids', 'review-row-edits', 'review-row-returns']) {
       await expect(page.getByTestId(row)).toBeVisible();
     }
-    await expect(page.getByTestId('review-mtd')).toBeVisible();
-    await expect(page.getByTestId('review-mtd-range')).toContainText('against');
-    // a year ago (or the note that there was nothing), and each person against the others
-    await expect(page.getByTestId('review-year').or(page.getByTestId('review-year-none'))).toBeVisible();
-    await expect(page.getByTestId('review-people')).toBeVisible();
-    await expect(page.getByTestId('review-people-note')).toContainText('well over');
     // margin and mix, and the week-level sections (each shown when the database has what it needs)
     await expect(page.getByTestId('review-mix')).toBeVisible();
     for (const row of ['review-row-margin', 'review-row-generic', 'review-row-named', 'review-row-newcust', 'review-row-unmet']) await expect(page.getByTestId(row)).toBeVisible();
     await expect(page.getByTestId('review-row-lookups')).toBeVisible();
-    await expect(page.getByTestId('review-people')).toContainText('Margin %');
-    await expect(page.getByTestId('review-cash-summary')).toBeVisible();
     // refill capture is shown when the database has regular chronic customers (the API says so for the same week)
     const shown = !!(await api.request('GET', '/review/week', undefined, MGR)).body?.refill;
     if (shown) { await expect(page.getByTestId('review-refill')).toBeVisible(); await expect(page.getByTestId('review-refill-note')).toContainText('On time'); }
@@ -183,11 +178,39 @@ test.describe('Weekly review comparison @p1', () => {
     // either the basis of "usual" or the reason there is none
     await expect(page.getByTestId('review-usual-basis').or(page.getByTestId('review-usual-none'))).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Week before', exact: true })).toHaveCount(0);       // the old comparison column is gone
+    // the month to date, a year ago and each person against the others are on the third tab
+    await page.getByTestId('review-tab-history').click();
+    await expect(page.getByTestId('review-mtd')).toBeVisible();
+    await expect(page.getByTestId('review-mtd-range')).toContainText('against');
+    await expect(page.getByTestId('review-year').or(page.getByTestId('review-year-none'))).toBeVisible();
+    await expect(page.getByTestId('review-people')).toBeVisible();
+    await expect(page.getByTestId('review-people-note')).toContainText('well over');
+    await expect(page.getByTestId('review-people')).toContainText('Margin %');
+    // the cash drawers are with what to check
+    await page.getByTestId('review-tab-check').click();
+    await expect(page.getByTestId('review-cash-summary')).toBeVisible();
+    await page.getByTestId('review-tab-numbers').click();
     // moving to an earlier week reloads the comparison
     const range = await page.getByTestId('review-week').innerText();
     await page.getByTestId('review-prev').click();
     await expect(page.getByTestId('review-week')).not.toHaveText(range);
     await expect(page.getByTestId('review-rates')).toBeVisible();
+    await ctx.close();
+  });
+
+  test('REVIEW-7 the page opens with the week at a glance: tiles, what to look at first, and the sign-off on the first tab @happy', async ({ browser, api }) => {
+    const wk = (await api.request('GET', '/review/week', undefined, MGR)).body;
+    expect(wk.glance.tiles.map((t: any) => t.key)).toEqual(expect.arrayContaining(['sales', 'bills', 'discounts', 'below', 'voids', 'edits', 'returns', 'cash']));
+    expect(wk.glance.quiet).toBe(wk.glance.flags.length === 0);
+    const ctx = await browser.newContext();
+    const { page } = await openAs(ctx, MGR, '/secure/review');
+    await expect(page.getByTestId('review-tiles')).toBeVisible();
+    for (const t of wk.glance.tiles) await expect(page.getByTestId('review-tile-' + t.key)).toBeVisible();
+    // flags are listed first, or the page says the week was quiet
+    if (wk.glance.flags.length) await expect(page.getByTestId('review-flags')).toBeVisible();
+    else await expect(page.getByTestId('review-quiet')).toBeVisible();
+    // the sign-off is on the first tab and never needs a note
+    if (wk.over) await expect(page.getByTestId('review-sign-status')).toBeVisible();
     await ctx.close();
   });
 });

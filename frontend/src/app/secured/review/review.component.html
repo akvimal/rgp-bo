@@ -4,8 +4,7 @@
 </div>
 
 <p class="small text-muted mb-2" data-testid="review-intro">
-  Once a week, look at what left the normal path: bills with a discount, items billed below the list price, bills discarded or edited after billing, and returns.
-  Ask about anything that does not look right, then sign the week.
+  Once a week: see what looks unusual, ask about it, then sign the week. Start with <b>Look at these first</b>; the tabs below hold the detail.
 </p>
 
 <div class="alert alert-danger py-2" *ngIf="error" data-testid="review-error">{{error}}</div>
@@ -29,71 +28,44 @@
     </div>
   </div>
 
-  <!-- the week beside what is usual for the same days of the month: the first ten days are the peak, so the week before is not a fair comparison -->
-  <h6 class="text-primary">This week against what is usual for these days</h6>
-  <p class="small text-muted mb-2" data-testid="review-phases">
-    This week has <span *ngIf="data.phases.mix.peak"><b>{{data.phases.mix.peak}}</b> peak day{{data.phases.mix.peak > 1 ? 's' : ''}} (1st to 10th)</span><span *ngIf="data.phases.mix.peak && (data.phases.mix.mid || data.phases.mix.tail)">, </span><span *ngIf="data.phases.mix.mid"><b>{{data.phases.mix.mid}}</b> middle day{{data.phases.mix.mid > 1 ? 's' : ''}} (11th to 20th)</span><span *ngIf="data.phases.mix.mid && data.phases.mix.tail">, </span><span *ngIf="data.phases.mix.tail"><b>{{data.phases.mix.tail}}</b> late day{{data.phases.mix.tail > 1 ? 's' : ''}} (21st on)</span>.
-    <span *ngIf="data.usual.raw" data-testid="review-usual-basis">Usual is the same days of the month over earlier months ({{data.usual.months.join(', ')}}).</span>
-    <span *ngIf="!data.usual.raw" class="text-warning-emphasis" data-testid="review-usual-none">{{data.usual.reason}} Only this week figures are shown.</span>
-  </p>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-summary">
-      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Usual for these days</th><th class="text-end">Against usual</th></tr></thead>
-      <tbody>
-        <tr data-testid="review-row-bills"><td>Bills</td><td class="text-end">{{data.actual.raw.bills}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.bills | number:'1.0-0') : ''}}</td><td class="text-end small"><span [ngClass]="badge(data.verdicts.bills, true)">{{label(data.verdicts.bills, true)}}</span> <span class="text-muted">{{change(data.actual.raw.bills, data.usual.raw?.bills)}}</span></td></tr>
-        <tr data-testid="review-row-sales"><td>Sales</td><td class="text-end">{{data.actual.raw.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.sales | number:'1.0-0') : ''}}</td><td class="text-end small"><span [ngClass]="badge(data.verdicts.sales, true)">{{label(data.verdicts.sales, true)}}</span> <span class="text-muted">{{change(data.actual.raw.sales, data.usual.raw?.sales)}}</span></td></tr>
-        <tr data-testid="review-row-avgbill"><td>Average bill</td><td class="text-end">{{data.actual.rates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.usual.rates ? (data.usual.rates.avgBill | number:'1.0-0') : ''}}</td><td class="text-end small text-muted">{{change(data.actual.rates.avgBill, data.usual.rates?.avgBill)}}</td></tr>
-      </tbody>
-    </table>
+  <div class="card mb-3" data-testid="review-glance">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <h6 class="text-primary mb-0">This week at a glance</h6>
+        <span class="ms-auto small" data-testid="review-sign-status">
+          <span *ngIf="data.signoffs.length" class="text-success"><i class="bi bi-check-circle"></i> Signed by {{data.signoffs[0].by}} on {{data.signoffs[0].on | date:'d MMM'}}</span>
+          <span *ngIf="!data.signoffs.length && data.over" class="text-muted">Not signed yet</span>
+          <a role="button" class="btn btn-sm btn-primary ms-2" *ngIf="data.canSign" (click)="goTo('review-signoff')" data-testid="review-goto-sign">Review and sign</a>
+        </span>
+      </div>
+      <div class="row g-2" data-testid="review-tiles">
+        <div class="col-6 col-md-4 col-xl" *ngFor="let t of data.glance.tiles">
+          <a role="button" class="d-block border rounded p-2 h-100 text-decoration-none text-reset" [ngClass]="tileClass(t.state)" (click)="goTo(t.anchor)" [attr.data-testid]="'review-tile-' + t.key" [attr.data-state]="t.state">
+            <div class="small text-muted">{{t.label}}</div>
+            <div class="fs-5 fw-semibold lh-sm">{{t.main}}</div>
+            <div class="small" style="min-height:1.25em" [class.text-muted]="t.state !== 'look'">{{t.note}}</div>
+          </a>
+        </div>
+      </div>
+      <div class="mt-3" *ngIf="data.glance.flags.length" data-testid="review-flags">
+        <div class="fw-semibold mb-1">Look at these first</div>
+        <ul class="mb-0 ps-3">
+          <li *ngFor="let f of data.glance.flags" [attr.data-testid]="'review-flag-' + f.key"><a role="button" (click)="goTo(f.anchor)">{{f.text}}</a></li>
+        </ul>
+      </div>
+      <div class="alert alert-success py-2 mb-0 mt-3" *ngIf="data.glance.quiet" data-testid="review-quiet"><i class="bi bi-check-circle me-1"></i>Nothing unusual {{data.over ? 'this week' : 'so far'}}.<span *ngIf="data.canSign"> You can sign.</span></div>
+      <div class="small text-muted mt-2" *ngIf="!data.glance.hasUsual" data-testid="review-no-usual">There is not enough history yet to say what is normal for these days, so only this week's figures are shown.</div>
+    </div>
   </div>
 
-  <h6 class="text-primary mt-3">Exceptions as rates</h6>
-  <p class="small text-muted mb-1">A busy week brings more of everything, so these are judged per bill, per item or per rupee, not as counts. A rate is marked only when it is clearly above usual <i>and</i> there are several more cases than usual.</p>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-rates">
-      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Rate</th><th class="text-end">Usual rate</th><th class="text-end">Against usual</th></tr></thead>
-      <tbody>
-        <tr data-testid="review-row-discounts"><td>Discount given, as % of sales</td><td class="text-end">{{data.summary.discountBills}} bill{{data.summary.discountBills === 1 ? '' : 's'}} <span class="small text-muted" *ngIf="data.summary.discountBills">({{data.summary.discountValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.discountPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.discountPct, '%')}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.discount)">{{label(data.verdicts.discount)}}</span></td></tr>
-        <tr data-testid="review-row-below"><td>Items billed below the list price, per 100 items</td><td class="text-end">{{data.summary.belowList}} <span class="small text-muted" *ngIf="data.summary.belowList">({{data.summary.belowListValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.belowPer100Lines)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.belowPer100Lines)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.below)">{{label(data.verdicts.below)}}</span></td></tr>
-        <tr data-testid="review-row-voids"><td>Held bills discarded, per 100 bills</td><td class="text-end">{{data.summary.voids}} <span class="small text-muted" *ngIf="data.summary.voids">({{data.summary.voidValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.voidsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.voidsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.voids)">{{label(data.verdicts.voids)}}</span></td></tr>
-        <tr data-testid="review-row-edits"><td>Bills edited after billing, per 100 bills</td><td class="text-end">{{data.summary.edits}} <span class="small text-muted" *ngIf="data.summary.editReduced">(total lowered by {{data.summary.editReduced | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.editsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.editsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.edits)">{{label(data.verdicts.edits)}}</span></td></tr>
-        <tr data-testid="review-row-returns"><td>Returns, per 100 bills</td><td class="text-end">{{data.summary.returns}} <span class="small text-muted" *ngIf="data.summary.returns">({{data.summary.returnValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.returnsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.returnsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.returns)">{{label(data.verdicts.returns)}}</span></td></tr>
-      </tbody>
-    </table>
-  </div>
+  <ul class="nav nav-tabs mb-3" data-testid="review-tabs">
+    <li class="nav-item"><a role="button" class="nav-link" [class.active]="tab === 'check'" (click)="setTab('check')" data-testid="review-tab-check">Check<span class="badge bg-warning text-dark ms-1" *ngIf="data.glance.flags.length">{{data.glance.flags.length}}</span></a></li>
+    <li class="nav-item"><a role="button" class="nav-link" [class.active]="tab === 'numbers'" (click)="setTab('numbers')" data-testid="review-tab-numbers">This week in numbers</a></li>
+    <li class="nav-item"><a role="button" class="nav-link" [class.active]="tab === 'history'" (click)="setTab('history')" data-testid="review-tab-history">Over time and people</a></li>
+  </ul>
 
-  <h6 class="text-primary mt-3">Month to date, against the same dates last month</h6>
-  <p class="small text-muted mb-1" data-testid="review-mtd-range">{{data.mtd.from | date:'d MMM'}} to {{data.mtd.to | date:'d MMM yyyy'}} against {{data.mtd.prevFrom | date:'d MMM'}} to {{data.mtd.prevTo | date:'d MMM yyyy'}}.</p>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-mtd">
-      <thead><tr><th></th><th class="text-end">This month</th><th class="text-end">Last month</th><th class="text-end">Change</th></tr></thead>
-      <tbody>
-        <tr><td>Bills</td><td class="text-end">{{data.mtd.current.bills}}</td><td class="text-end text-muted">{{data.mtd.previous.bills}}</td><td class="text-end small text-muted">{{change(data.mtd.current.bills, data.mtd.previous.bills)}}</td></tr>
-        <tr><td>Sales</td><td class="text-end">{{data.mtd.current.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.mtd.previous.sales | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.current.sales, data.mtd.previous.sales)}}</td></tr>
-        <tr><td>Average bill</td><td class="text-end">{{data.mtd.currentRates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.mtd.previousRates.avgBill | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.currentRates.avgBill, data.mtd.previousRates.avgBill)}}</td></tr>
-        <tr><td>Discount, as % of sales</td><td class="text-end">{{rate(data.mtd.currentRates.discountPct, '%')}}</td><td class="text-end text-muted">{{rate(data.mtd.previousRates.discountPct, '%')}}</td><td></td></tr>
-        <tr><td>Returns, per 100 bills</td><td class="text-end">{{rate(data.mtd.currentRates.returnsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.mtd.previousRates.returnsPer100Bills)}}</td><td></td></tr>
-      </tbody>
-    </table>
-  </div>
-  <h6 class="text-primary mt-3">Margin and mix</h6>
-  <p class="small text-muted mb-1" data-testid="review-mix-note">
-    Margin is what the items sold for against what they cost, before GST, on items whose purchase cost is known; returns are not taken off. Compared in percentage points with the same days of the month.
-  </p>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-mix">
-      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Usual for these days</th><th class="text-end">Against usual</th></tr></thead>
-      <tbody>
-        <tr data-testid="review-row-margin"><td>Margin</td><td class="text-end">{{rate(data.actual.rates.marginPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.marginPct, '%')}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.margin, 'below')">{{label(data.verdicts.margin)}}</span></td></tr>
-        <tr data-testid="review-row-generic"><td>Generic products, share of items billed</td><td class="text-end">{{rate(data.actual.rates.genericPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.genericPct, '%')}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.generic, 'none')">{{label(data.verdicts.generic)}}</span></td></tr>
-        <tr data-testid="review-row-named"><td>Bills with a named customer</td><td class="text-end">{{rate(data.actual.rates.namedPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.namedPct, '%')}}</td><td></td></tr>
-        <tr data-testid="review-row-newcust"><td>New customers (first bill in this week)</td><td class="text-end">{{data.actual.raw.newCust}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.newCust | number:'1.0-0') : ''}}</td><td></td></tr>
-        <tr data-testid="review-row-unmet"><td>Requests we could not meet, per 100 bills</td><td class="text-end">{{data.actual.raw.unmet}} of {{data.actual.raw.inquiries}} <span class="small text-muted">({{rate(data.actual.rates.unmetPer100Bills)}})</span></td><td class="text-end text-muted">{{rate(data.usual.rates?.unmetPer100Bills)}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.unmet, 'above')">{{label(data.verdicts.unmet)}}</span></td></tr>
-        <tr data-testid="review-row-lookups"><td>Brand checks at the counter with no match in stock, per 100 bills</td><td class="text-end">{{data.actual.raw.noMatch}} of {{data.actual.raw.lookups}} <span class="small text-muted">({{rate(data.actual.rates.noMatchPer100Bills)}})</span></td><td class="text-end text-muted">{{rate(data.usual.rates?.noMatchPer100Bills)}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.lookups, 'above')">{{label(data.verdicts.lookups)}}</span></td></tr>
-      </tbody>
-    </table>
-  </div>
-
+  <ng-container *ngIf="tab === 'check'">
+  <div id="review-cash">
   <ng-container *ngIf="data.more.cash">
     <h6 class="text-primary mt-3">Cash drawer</h6>
     <p class="small mb-1" data-testid="review-cash-summary">
@@ -118,6 +90,7 @@
     </div>
   </ng-container>
 
+  </div>
   <ng-container *ngIf="data.more.dues">
     <h6 class="text-primary mt-3">Pay later</h6>
     <p class="small mb-1" data-testid="review-dues">
@@ -126,6 +99,164 @@
     </p>
   </ng-container>
 
+  <details id="review-discounts" class="mb-3" [open]="data.discounts.length > 0" data-testid="review-list-discounts"><summary class="fw-semibold text-primary">Bills with a discount <span class="badge bg-secondary ms-1">{{data.discounts.length}}</span></summary>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-discounts">
+      <thead><tr><th>Bill</th><th>Date</th><th>Billed by</th><th class="text-end">Discount</th><th class="text-end">% of bill</th><th class="text-end">Bill total</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.discounts" [class.table-warning]="r.pct >= data.limits.bigDiscount" data-testid="review-discount-row">
+          <td>{{r.bill_no || r.id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM, HH:mm'}}</td><td>{{r.by_name}}</td>
+          <td class="text-end">{{r.disc | number:'1.2-2'}}</td><td class="text-end">{{r.pct}}%</td><td class="text-end">{{r.total | number:'1.2-2'}}</td>
+        </tr>
+        <tr *ngIf="!data.discounts.length"><td colspan="6" class="text-center text-muted py-2">No bill had a discount.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  </details>
+  <details id="review-below" class="mb-3" [open]="data.below.length > 0" data-testid="review-list-below"><summary class="fw-semibold text-primary">Items billed below the list price <span class="badge bg-secondary ms-1">{{data.below.length}}</span></summary>
+  <p class="small text-muted mb-1">Price per pack before GST against the price list on the day, {{data.limits.belowList}}% or more below.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-below">
+      <thead><tr><th>Bill</th><th>Date</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">List</th><th class="text-end">Billed</th><th class="text-end">% below</th><th class="text-end">Given away</th><th>Billed by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.below" data-testid="review-below-row">
+          <td>{{r.bill_no || r.sale_id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM'}}</td><td>{{r.title}}</td><td class="text-end">{{r.qty}}</td>
+          <td class="text-end">{{r.list | number:'1.2-2'}}</td><td class="text-end">{{r.billed | number:'1.2-2'}}</td><td class="text-end">{{r.pct}}%</td><td class="text-end">{{r.value | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
+        </tr>
+        <tr *ngIf="!data.below.length"><td colspan="9" class="text-center text-muted py-2">Everything was billed at the list price.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  </details>
+  <details id="review-voids" class="mb-3" [open]="data.voids.length > 0" data-testid="review-list-voids"><summary class="fw-semibold text-primary">Held bills discarded <span class="badge bg-secondary ms-1">{{data.voids.length}}</span></summary>
+  <p class="small text-muted mb-1">A bill that was started, put on hold and thrown away. A finished bill cannot be discarded; it can only be edited, below.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-voids">
+      <thead><tr><th>Bill</th><th>Started</th><th>Discarded</th><th class="text-end">After</th><th class="text-end">Total</th><th>Made by</th><th>Discarded by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.voids" [class.table-warning]="r.hours >= data.limits.lateVoidHours" data-testid="review-void-row">
+          <td>{{r.bill_no || r.id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM, HH:mm'}}</td><td class="text-nowrap">{{r.updated_on | date:'EEE d MMM, HH:mm'}}</td>
+          <td class="text-end">{{r.hours}} h</td><td class="text-end">{{r.total | number:'1.2-2'}}</td><td>{{r.created_name}}</td><td>{{r.voided_name}}</td>
+        </tr>
+        <tr *ngIf="!data.voids.length"><td colspan="7" class="text-center text-muted py-2">No held bill was discarded.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  </details>
+  <details id="review-edits" class="mb-3" [open]="data.edits.length > 0" data-testid="review-list-edits"><summary class="fw-semibold text-primary">Bills edited after billing <span class="badge bg-secondary ms-1">{{data.edits.length}}</span></summary>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-edits">
+      <thead><tr><th>Edited</th><th>Bill</th><th>Billed</th><th>What changed</th><th class="text-end">Total now</th><th>Edited by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.edits" [class.table-warning]="r.flagged" data-testid="review-edit-row">
+          <td class="text-nowrap">{{r.on | date:'EEE d MMM, HH:mm'}}</td><td>{{r.bill_no || r.sale_id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM'}}</td>
+          <td>{{describe(r.changes)}}</td><td class="text-end">{{r.total | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
+        </tr>
+        <tr *ngIf="!data.edits.length"><td colspan="6" class="text-center text-muted py-2">No bill was edited.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  </details>
+  <details id="review-returns" class="mb-3" [open]="data.returns.length > 0" data-testid="review-list-returns"><summary class="fw-semibold text-primary">Returns <span class="badge bg-secondary ms-1">{{data.returns.length}}</span></summary>
+  <div class="small text-muted mb-1" *ngIf="data.returns.length" data-testid="review-return-groups">
+    By reason: <span *ngFor="let g of data.returnsByReason; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
+    By person: <span *ngFor="let g of data.returnsByPerson; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-returns">
+      <thead><tr><th>Returned</th><th>Bill</th><th class="text-end">Days after</th><th>Product</th><th class="text-end">Qty</th><th>Reason</th><th class="text-end">Value</th><th>Entered by</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of data.returns" [class.table-warning]="r.daysafter >= data.limits.lateReturnDays" data-testid="review-return-row">
+          <td class="text-nowrap">{{r.created_on | date:'EEE d MMM'}}</td><td>{{r.bill_no}}</td><td class="text-end">{{r.daysafter}}</td><td>{{r.title}}</td><td class="text-end">{{r.qty}}</td>
+          <td>{{r.reason}}</td><td class="text-end">{{r.value | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
+        </tr>
+        <tr *ngIf="!data.returns.length"><td colspan="8" class="text-center text-muted py-2">No returns.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  </details>
+  <p class="small text-muted" *ngIf="data.discounts.length >= data.limits.listLimit || data.below.length >= data.limits.listLimit || data.voids.length >= data.limits.listLimit || data.edits.length >= data.limits.listLimit || data.returns.length >= data.limits.listLimit">
+    A list is cut at {{data.limits.listLimit}} rows.
+  </p>
+
+  <div id="review-signoff">
+  <h6 class="mt-4 text-primary">Sign-off</h6>
+  <div class="mb-2" data-testid="review-signoffs">
+    <div *ngFor="let s of data.signoffs" class="alert alert-success py-2 mb-2" data-testid="review-signed">
+      <b>{{s.store}}:</b> signed by {{s.by}} on {{s.on | date:'d MMM yyyy, HH:mm'}}<span *ngIf="s.note">. {{s.note}}</span>
+    </div>
+    <div *ngIf="data.pending.length && data.over" class="small text-muted" data-testid="review-pending">Not signed yet: {{data.pending.join(', ')}}.</div>
+  </div>
+  <div class="border rounded p-3 mb-4" *ngIf="data.canSign" data-testid="review-sign-form">
+    <label class="form-label" for="review-note">Note <span class="text-muted small">(optional)</span>: what you asked about, or "nothing to report"</label>
+    <input type="text" class="form-control mb-2" id="review-note" maxlength="300" [(ngModel)]="note" data-testid="review-note">
+    <button type="button" class="btn btn-primary" [disabled]="saving" (click)="sign()" data-testid="review-sign">I have reviewed this week</button>
+  </div>
+  <p class="small text-muted" *ngIf="!data.canSign && data.over && !data.store && data.pending.length && data.stores.length > 1">Choose one store to sign for it.</p>
+  <p class="small text-muted" *ngIf="!data.over">This week can be signed from {{data.week.next | date:'EEE d MMM'}}.</p>
+  </div>
+  </ng-container>
+
+  <ng-container *ngIf="tab === 'numbers'">
+  <div id="review-summary">
+  <!-- the week beside what is usual for the same days of the month: the first ten days are the peak, so the week before is not a fair comparison -->
+  <h6 class="text-primary">This week against what is normal for these days</h6>
+  <p class="small text-muted mb-2" data-testid="review-phases">
+    This week has <span *ngIf="data.phases.mix.peak"><b>{{data.phases.mix.peak}}</b> peak day{{data.phases.mix.peak > 1 ? 's' : ''}} (1st to 10th)</span><span *ngIf="data.phases.mix.peak && (data.phases.mix.mid || data.phases.mix.tail)">, </span><span *ngIf="data.phases.mix.mid"><b>{{data.phases.mix.mid}}</b> middle day{{data.phases.mix.mid > 1 ? 's' : ''}} (11th to 20th)</span><span *ngIf="data.phases.mix.mid && data.phases.mix.tail">, </span><span *ngIf="data.phases.mix.tail"><b>{{data.phases.mix.tail}}</b> late day{{data.phases.mix.tail > 1 ? 's' : ''}} (21st on)</span>.
+    <span *ngIf="data.usual.raw" data-testid="review-usual-basis">Normal is the same days of the month over earlier months ({{data.usual.months.join(', ')}}).</span>
+    <span *ngIf="!data.usual.raw" class="text-warning-emphasis" data-testid="review-usual-none">{{data.usual.reason}} Only this week figures are shown.</span>
+  </p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-summary">
+      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Normal for these days</th><th class="text-end">Compared with normal</th></tr></thead>
+      <tbody>
+        <tr data-testid="review-row-bills"><td>Bills</td><td class="text-end">{{data.actual.raw.bills}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.bills | number:'1.0-0') : ''}}</td><td class="text-end small"><span [ngClass]="badge(data.verdicts.bills, true)">{{label(data.verdicts.bills, true)}}</span> <span class="text-muted">{{change(data.actual.raw.bills, data.usual.raw?.bills)}}</span></td></tr>
+        <tr data-testid="review-row-sales"><td>Sales</td><td class="text-end">{{data.actual.raw.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.sales | number:'1.0-0') : ''}}</td><td class="text-end small"><span [ngClass]="badge(data.verdicts.sales, true)">{{label(data.verdicts.sales, true)}}</span> <span class="text-muted">{{change(data.actual.raw.sales, data.usual.raw?.sales)}}</span></td></tr>
+        <tr data-testid="review-row-avgbill"><td>Average bill</td><td class="text-end">{{data.actual.rates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.usual.rates ? (data.usual.rates.avgBill | number:'1.0-0') : ''}}</td><td class="text-end small text-muted">{{change(data.actual.rates.avgBill, data.usual.rates?.avgBill)}}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="text-primary mt-3">Exceptions as rates</h6>
+  <p class="small text-muted mb-1">A busy week brings more of everything, so these are judged per bill, per item or per rupee, not as counts. A rate is marked only when it is clearly above usual <i>and</i> there are several more cases than usual.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-rates">
+      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Rate</th><th class="text-end">Normal rate</th><th class="text-end">Compared with normal</th></tr></thead>
+      <tbody>
+        <tr data-testid="review-row-discounts"><td>Discount given, as % of sales</td><td class="text-end">{{data.summary.discountBills}} bill{{data.summary.discountBills === 1 ? '' : 's'}} <span class="small text-muted" *ngIf="data.summary.discountBills">({{data.summary.discountValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.discountPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.discountPct, '%')}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.discount)">{{label(data.verdicts.discount)}}</span></td></tr>
+        <tr data-testid="review-row-below"><td>Items billed below the list price, per 100 items</td><td class="text-end">{{data.summary.belowList}} <span class="small text-muted" *ngIf="data.summary.belowList">({{data.summary.belowListValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.belowPer100Lines)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.belowPer100Lines)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.below)">{{label(data.verdicts.below)}}</span></td></tr>
+        <tr data-testid="review-row-voids"><td>Held bills discarded, per 100 bills</td><td class="text-end">{{data.summary.voids}} <span class="small text-muted" *ngIf="data.summary.voids">({{data.summary.voidValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.voidsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.voidsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.voids)">{{label(data.verdicts.voids)}}</span></td></tr>
+        <tr data-testid="review-row-edits"><td>Bills edited after billing, per 100 bills</td><td class="text-end">{{data.summary.edits}} <span class="small text-muted" *ngIf="data.summary.editReduced">(total lowered by {{data.summary.editReduced | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.editsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.editsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.edits)">{{label(data.verdicts.edits)}}</span></td></tr>
+        <tr data-testid="review-row-returns"><td>Returns, per 100 bills</td><td class="text-end">{{data.summary.returns}} <span class="small text-muted" *ngIf="data.summary.returns">({{data.summary.returnValue | number:'1.0-0'}})</span></td><td class="text-end">{{rate(data.actual.rates.returnsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.returnsPer100Bills)}}</td><td class="text-end"><span [ngClass]="badge(data.verdicts.returns)">{{label(data.verdicts.returns)}}</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  </div>
+  <div id="review-mix">
+  <h6 class="text-primary mt-3">Margin and mix</h6>
+  <p class="small text-muted mb-1" data-testid="review-mix-note">
+    Margin is what the items sold for against what they cost, before GST, on items whose purchase cost is known; returns are not taken off. Compared in percentage points with the same days of the month.
+  </p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-mix">
+      <thead><tr><th></th><th class="text-end">This week</th><th class="text-end">Normal for these days</th><th class="text-end">Compared with normal</th></tr></thead>
+      <tbody>
+        <tr data-testid="review-row-margin"><td>Margin</td><td class="text-end">{{rate(data.actual.rates.marginPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.marginPct, '%')}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.margin, 'below')">{{label(data.verdicts.margin)}}</span></td></tr>
+        <tr data-testid="review-row-generic"><td>Generic products, share of items billed</td><td class="text-end">{{rate(data.actual.rates.genericPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.genericPct, '%')}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.generic, 'none')">{{label(data.verdicts.generic)}}</span></td></tr>
+        <tr data-testid="review-row-named"><td>Bills with a named customer</td><td class="text-end">{{rate(data.actual.rates.namedPct, '%')}}</td><td class="text-end text-muted">{{rate(data.usual.rates?.namedPct, '%')}}</td><td></td></tr>
+        <tr data-testid="review-row-newcust"><td>New customers (first bill in this week)</td><td class="text-end">{{data.actual.raw.newCust}}</td><td class="text-end text-muted">{{data.usual.raw ? (data.usual.raw.newCust | number:'1.0-0') : ''}}</td><td></td></tr>
+        <tr data-testid="review-row-unmet"><td>Requests we could not meet, per 100 bills</td><td class="text-end">{{data.actual.raw.unmet}} of {{data.actual.raw.inquiries}} <span class="small text-muted">({{rate(data.actual.rates.unmetPer100Bills)}})</span></td><td class="text-end text-muted">{{rate(data.usual.rates?.unmetPer100Bills)}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.unmet, 'above')">{{label(data.verdicts.unmet)}}</span></td></tr>
+        <tr data-testid="review-row-lookups"><td>Brand checks at the counter with no match in stock, per 100 bills</td><td class="text-end">{{data.actual.raw.noMatch}} of {{data.actual.raw.lookups}} <span class="small text-muted">({{rate(data.actual.rates.noMatchPer100Bills)}})</span></td><td class="text-end text-muted">{{rate(data.usual.rates?.noMatchPer100Bills)}}</td><td class="text-end"><span [ngClass]="badgeBad(data.verdicts.lookups, 'above')">{{label(data.verdicts.lookups)}}</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  </div>
   <ng-container *ngIf="data.more.lookups">
     <h6 class="text-primary mt-3">Brands checked at the counter</h6>
     <p class="small mb-1" data-testid="review-lookups">
@@ -157,7 +288,7 @@
     </p>
     <div class="table-responsive">
       <table class="table table-sm align-middle" data-testid="review-refill">
-        <thead><tr><th>Fell due</th><th class="text-end">Customers</th><th class="text-end">On time</th><th class="text-end">Back late</th><th class="text-end">Not back yet</th><th class="text-end">Lapsed</th><th class="text-end">Still in grace</th><th class="text-end">Capture</th><th class="text-end">Usual</th><th class="text-end">Against usual</th></tr></thead>
+        <thead><tr><th>Fell due</th><th class="text-end">Customers</th><th class="text-end">On time</th><th class="text-end">Back late</th><th class="text-end">Not back yet</th><th class="text-end">Lapsed</th><th class="text-end">Still in grace</th><th class="text-end">Capture</th><th class="text-end">Usual</th><th class="text-end">Compared with normal</th></tr></thead>
         <tbody>
           <tr data-testid="review-refill-prev">
             <td class="text-nowrap">The week before <span class="small text-muted">({{data.refill.prev.from | date:'d MMM'}} to {{data.refill.prev.to | date:'d MMM'}})</span></td>
@@ -185,6 +316,23 @@
     </p>
   </ng-container>
 
+  </ng-container>
+
+  <ng-container *ngIf="tab === 'history'">
+  <h6 class="text-primary mt-3">Month to date, against the same dates last month</h6>
+  <p class="small text-muted mb-1" data-testid="review-mtd-range">{{data.mtd.from | date:'d MMM'}} to {{data.mtd.to | date:'d MMM yyyy'}} against {{data.mtd.prevFrom | date:'d MMM'}} to {{data.mtd.prevTo | date:'d MMM yyyy'}}.</p>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle" data-testid="review-mtd">
+      <thead><tr><th></th><th class="text-end">This month</th><th class="text-end">Last month</th><th class="text-end">Change</th></tr></thead>
+      <tbody>
+        <tr><td>Bills</td><td class="text-end">{{data.mtd.current.bills}}</td><td class="text-end text-muted">{{data.mtd.previous.bills}}</td><td class="text-end small text-muted">{{change(data.mtd.current.bills, data.mtd.previous.bills)}}</td></tr>
+        <tr><td>Sales</td><td class="text-end">{{data.mtd.current.sales | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.mtd.previous.sales | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.current.sales, data.mtd.previous.sales)}}</td></tr>
+        <tr><td>Average bill</td><td class="text-end">{{data.mtd.currentRates.avgBill | number:'1.0-0'}}</td><td class="text-end text-muted">{{data.mtd.previousRates.avgBill | number:'1.0-0'}}</td><td class="text-end small text-muted">{{change(data.mtd.currentRates.avgBill, data.mtd.previousRates.avgBill)}}</td></tr>
+        <tr><td>Discount, as % of sales</td><td class="text-end">{{rate(data.mtd.currentRates.discountPct, '%')}}</td><td class="text-end text-muted">{{rate(data.mtd.previousRates.discountPct, '%')}}</td><td></td></tr>
+        <tr><td>Returns, per 100 bills</td><td class="text-end">{{rate(data.mtd.currentRates.returnsPer100Bills)}}</td><td class="text-end text-muted">{{rate(data.mtd.previousRates.returnsPer100Bills)}}</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
   <h6 class="text-primary mt-3">The same dates a year ago</h6>
   <ng-container *ngIf="data.yearAgo.available; else noYear">
     <p class="small text-muted mb-1" data-testid="review-year-range">
@@ -234,106 +382,6 @@
   </div>
   <p class="small text-muted" *ngIf="data.people.length">The figure in brackets is the rate of everyone else. <span class="table-warning px-1" data-testid="review-person-legend">Shaded</span> is above the others by the rule above.</p>
 
-  <p class="small text-muted" *ngIf="data.marked.bigDiscounts || data.marked.lateVoids || data.marked.flaggedEdits || data.marked.lateReturns" data-testid="review-marked">
-    To look at closely:
-    <span *ngIf="data.marked.bigDiscounts">{{data.marked.bigDiscounts}} bill discount{{data.marked.bigDiscounts > 1 ? 's' : ''}} of {{data.limits.bigDiscount}}% or more. </span>
-    <span *ngIf="data.marked.lateVoids">{{data.marked.lateVoids}} held bill{{data.marked.lateVoids > 1 ? 's' : ''}} discarded {{data.limits.lateVoidHours}} hours or more after it was made. </span>
-    <span *ngIf="data.marked.flaggedEdits">{{data.marked.flaggedEdits}} bill{{data.marked.flaggedEdits > 1 ? 's' : ''}} edited to a lower total, more discount or fewer items. </span>
-    <span *ngIf="data.marked.lateReturns">{{data.marked.lateReturns}} return{{data.marked.lateReturns > 1 ? 's' : ''}} {{data.limits.lateReturnDays}} days or more after the bill.</span>
-  </p>
-
-  <h6 class="mt-4 text-primary">Bills with a discount</h6>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-discounts">
-      <thead><tr><th>Bill</th><th>Date</th><th>Billed by</th><th class="text-end">Discount</th><th class="text-end">% of bill</th><th class="text-end">Bill total</th></tr></thead>
-      <tbody>
-        <tr *ngFor="let r of data.discounts" [class.table-warning]="r.pct >= data.limits.bigDiscount" data-testid="review-discount-row">
-          <td>{{r.bill_no || r.id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM, HH:mm'}}</td><td>{{r.by_name}}</td>
-          <td class="text-end">{{r.disc | number:'1.2-2'}}</td><td class="text-end">{{r.pct}}%</td><td class="text-end">{{r.total | number:'1.2-2'}}</td>
-        </tr>
-        <tr *ngIf="!data.discounts.length"><td colspan="6" class="text-center text-muted py-2">No bill had a discount.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h6 class="mt-4 text-primary">Items billed below the list price</h6>
-  <p class="small text-muted mb-1">Price per pack before GST against the price list on the day, {{data.limits.belowList}}% or more below.</p>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-below">
-      <thead><tr><th>Bill</th><th>Date</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">List</th><th class="text-end">Billed</th><th class="text-end">% below</th><th class="text-end">Given away</th><th>Billed by</th></tr></thead>
-      <tbody>
-        <tr *ngFor="let r of data.below" data-testid="review-below-row">
-          <td>{{r.bill_no || r.sale_id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM'}}</td><td>{{r.title}}</td><td class="text-end">{{r.qty}}</td>
-          <td class="text-end">{{r.list | number:'1.2-2'}}</td><td class="text-end">{{r.billed | number:'1.2-2'}}</td><td class="text-end">{{r.pct}}%</td><td class="text-end">{{r.value | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
-        </tr>
-        <tr *ngIf="!data.below.length"><td colspan="9" class="text-center text-muted py-2">Everything was billed at the list price.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h6 class="mt-4 text-primary">Held bills discarded</h6>
-  <p class="small text-muted mb-1">A bill that was started, put on hold and thrown away. A finished bill cannot be discarded; it can only be edited, below.</p>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-voids">
-      <thead><tr><th>Bill</th><th>Started</th><th>Discarded</th><th class="text-end">After</th><th class="text-end">Total</th><th>Made by</th><th>Discarded by</th></tr></thead>
-      <tbody>
-        <tr *ngFor="let r of data.voids" [class.table-warning]="r.hours >= data.limits.lateVoidHours" data-testid="review-void-row">
-          <td>{{r.bill_no || r.id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM, HH:mm'}}</td><td class="text-nowrap">{{r.updated_on | date:'EEE d MMM, HH:mm'}}</td>
-          <td class="text-end">{{r.hours}} h</td><td class="text-end">{{r.total | number:'1.2-2'}}</td><td>{{r.created_name}}</td><td>{{r.voided_name}}</td>
-        </tr>
-        <tr *ngIf="!data.voids.length"><td colspan="7" class="text-center text-muted py-2">No held bill was discarded.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h6 class="mt-4 text-primary">Bills edited after billing</h6>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-edits">
-      <thead><tr><th>Edited</th><th>Bill</th><th>Billed</th><th>What changed</th><th class="text-end">Total now</th><th>Edited by</th></tr></thead>
-      <tbody>
-        <tr *ngFor="let r of data.edits" [class.table-warning]="r.flagged" data-testid="review-edit-row">
-          <td class="text-nowrap">{{r.on | date:'EEE d MMM, HH:mm'}}</td><td>{{r.bill_no || r.sale_id}}</td><td class="text-nowrap">{{r.bill_date | date:'EEE d MMM'}}</td>
-          <td>{{describe(r.changes)}}</td><td class="text-end">{{r.total | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
-        </tr>
-        <tr *ngIf="!data.edits.length"><td colspan="6" class="text-center text-muted py-2">No bill was edited.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h6 class="mt-4 text-primary">Returns</h6>
-  <div class="small text-muted mb-1" *ngIf="data.returns.length" data-testid="review-return-groups">
-    By reason: <span *ngFor="let g of data.returnsByReason; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
-    By person: <span *ngFor="let g of data.returnsByPerson; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
-  </div>
-  <div class="table-responsive">
-    <table class="table table-sm align-middle" data-testid="review-returns">
-      <thead><tr><th>Returned</th><th>Bill</th><th class="text-end">Days after</th><th>Product</th><th class="text-end">Qty</th><th>Reason</th><th class="text-end">Value</th><th>Entered by</th></tr></thead>
-      <tbody>
-        <tr *ngFor="let r of data.returns" [class.table-warning]="r.daysafter >= data.limits.lateReturnDays" data-testid="review-return-row">
-          <td class="text-nowrap">{{r.created_on | date:'EEE d MMM'}}</td><td>{{r.bill_no}}</td><td class="text-end">{{r.daysafter}}</td><td>{{r.title}}</td><td class="text-end">{{r.qty}}</td>
-          <td>{{r.reason}}</td><td class="text-end">{{r.value | number:'1.2-2'}}</td><td>{{r.by_name}}</td>
-        </tr>
-        <tr *ngIf="!data.returns.length"><td colspan="8" class="text-center text-muted py-2">No returns.</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <p class="small text-muted" *ngIf="data.discounts.length >= data.limits.listLimit || data.below.length >= data.limits.listLimit || data.voids.length >= data.limits.listLimit || data.edits.length >= data.limits.listLimit || data.returns.length >= data.limits.listLimit">
-    A list is cut at {{data.limits.listLimit}} rows.
-  </p>
-
-  <h6 class="mt-4 text-primary">Sign-off</h6>
-  <div class="mb-2" data-testid="review-signoffs">
-    <div *ngFor="let s of data.signoffs" class="alert alert-success py-2 mb-2" data-testid="review-signed">
-      <b>{{s.store}}:</b> signed by {{s.by}} on {{s.on | date:'d MMM yyyy, HH:mm'}}<span *ngIf="s.note">. {{s.note}}</span>
-    </div>
-    <div *ngIf="data.pending.length && data.over" class="small text-muted" data-testid="review-pending">Not signed yet: {{data.pending.join(', ')}}.</div>
-  </div>
-  <div class="border rounded p-3 mb-4" *ngIf="data.canSign" data-testid="review-sign-form">
-    <label class="form-label" for="review-note">Note (what you asked about, or "nothing to report")</label>
-    <input type="text" class="form-control mb-2" id="review-note" maxlength="300" [(ngModel)]="note" data-testid="review-note">
-    <button type="button" class="btn btn-primary" [disabled]="saving" (click)="sign()" data-testid="review-sign">I have reviewed this week</button>
-  </div>
-  <p class="small text-muted" *ngIf="!data.canSign && data.over && !data.store && data.pending.length && data.stores.length > 1">Choose one store to sign for it.</p>
-  <p class="small text-muted" *ngIf="!data.over">This week can be signed from {{data.week.next | date:'EEE d MMM'}}.</p>
+  </ng-container>
 </ng-container>
 </div>

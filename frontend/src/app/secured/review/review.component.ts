@@ -49,6 +49,25 @@ export class ReviewComponent implements OnInit {
 
     get thisWeek(): boolean { return !!this.data && !this.data.over; }
 
+    // the page is in three tabs: what to check first (with the sign-off), the week's numbers, and the longer comparisons and people
+    tab: 'check' | 'numbers' | 'history' = 'check';
+    setTab(t: 'check' | 'numbers' | 'history') { this.tab = t; }
+
+    /** which tab holds what a tile or flag points at */
+    private tabOf(anchor: string): 'check' | 'numbers' | 'history' {
+        return anchor === 'review-summary' || anchor === 'review-mix' ? 'numbers' : 'check';
+    }
+
+    /** open the part of the page a tile or flag points at, and scroll to it */
+    goTo(anchor: string) {
+        this.tab = this.tabOf(anchor);
+        setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+
+    tileClass(state: string): string {
+        return state === 'look' ? 'border-warning bg-warning bg-opacity-10' : state === 'ok' ? 'border-success border-opacity-25' : '';
+    }
+
     /** the change from the usual figure, as a signed percentage ('' when there is nothing to compare with) */
     change(now: number | null | undefined, usual: number | null | undefined): string {
         if (now === null || now === undefined || usual === null || usual === undefined || usual <= 0) return '';
@@ -61,16 +80,16 @@ export class ReviewComponent implements OnInit {
 
     /** the words for a verdict: bills and sales are higher or lower, the exceptions above or below usual */
     label(v: string, volume = false): string {
-        if (v === 'above') return volume ? 'Higher than usual' : 'Above usual';
-        if (v === 'below') return volume ? 'Lower than usual' : 'Below usual';
-        return v === 'usual' ? 'As usual' : '';
+        if (v === 'above') return volume ? 'Higher than normal' : 'Above normal';
+        if (v === 'below') return volume ? 'Lower than normal' : 'Below normal';
+        return v === 'usual' ? 'As normal' : '';
     }
 
     /** refill capture: "above" is a bigger share not back in time than usual, which is the worry */
     refillLabel(v: string): string {
-        if (v === 'above') return 'More missed than usual';
-        if (v === 'below') return 'Fewer missed than usual';
-        return v === 'usual' ? 'As usual' : '';
+        if (v === 'above') return 'More missed than normal';
+        if (v === 'below') return 'Fewer missed than normal';
+        return v === 'usual' ? 'As normal' : '';
     }
 
     /** a measure where one side is the worry (margin below usual, unmet requests above usual): that side is a warning, the other only noted; 'none' notes both */
