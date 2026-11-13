@@ -130,4 +130,34 @@ test.describe('Purchase request slips @p1', () => {
     const again = (await api.request('GET', '/purchaserequests', undefined, BUYER)).body.find((r: any) => r.requestedname === extra);
     expect(again).toMatchObject({ groupid: rows[0].groupid, qty: 7, priority: rows[0].priority, storeid: rows[0].storeid });
   });
+
+  test('PRS-6 the list shows the date and time, newest first; a new request takes the vendor the product was last bought from @happy', async ({ app, api }) => {
+    const stamp = Date.now();
+    const first = `QA Dated A ${stamp}`, second = `QA Dated B ${stamp}`;
+    for (const n of [first, second]) {
+      expect((await api.request('POST', '/purchaserequests', { requestedname: n, qty: 1, source: 'Staff', requesttype: 'Ad Hoc', priority: 'Normal' }, BUYER)).status).toBeLessThan(300);
+      await new Promise((r) => setTimeout(r, 1100));
+    }
+    // a product that has been bought: the vendor of its newest completed invoice; a request-only role is not told
+    const last = (await api.request('GET', '/purchaserequests/last-vendor/214', undefined, BUYER)).body;
+    expect(last?.vendorid).toBeTruthy();
+    expect(last.name).toBeTruthy();
+    const none = await api.request('GET', '/purchaserequests/last-vendor/214', undefined, STAFF_A);
+    expect(none.body === null || none.body === '').toBe(true);
+
+    const { page } = await app.open(BUYER, '/secure/purchases/requests');
+    const rows = page.getByTestId('req-table').locator('tbody tr');
+    await expect(rows.first()).toContainText(second);                      // newest on top
+    await expect(rows.first().getByTestId('req-date')).toContainText(/\d{2} \w{3} \d{4}, \d{2}:\d{2} (AM|PM)/);
+    await expect(page.getByTestId('req-sort-date')).toBeVisible();
+    const idx = async (n: string) => (await rows.allInnerTexts()).findIndex((t) => t.includes(n));
+    expect(await idx(second)).toBeLessThan(await idx(first));
+
+    await page.getByTestId('req-add').click();
+    const dlg = page.locator('.p-dialog');
+    await dlg.locator('app-product-select input').fill('Vitamin B12 250');
+    await page.locator('.p-autocomplete-panel li').first().click();
+    await expect(page.getByTestId('req-last-vendor')).toBeVisible();
+    await expect(dlg.locator('select[formcontrolname=vendorid]')).toHaveValue(String(last.vendorid));
+  });
 });

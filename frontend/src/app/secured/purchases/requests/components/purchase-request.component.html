@@ -15,9 +15,10 @@
     <span class="badge bg-secondary" *ngIf="slipFilter" data-testid="req-slip-filter">Slip #{{slipFilter}} <a class="text-white ms-1" (click)="showSlip(null)" title="Show all"><i class="bi bi-x"></i></a></span>
   </div>
   <div class="col-12 mt-3">
-    <p-table [value]="shown" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines">
+    <p-table [value]="shown" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,25,50]" styleClass="p-datatable-gridlines" sortField="createdon" [sortOrder]="-1" data-testid="req-table">
       <ng-template pTemplate="header">
         <tr>
+          <th pSortableColumn="createdon" data-testid="req-sort-date" class="sortable text-nowrap">Requested on <p-sortIcon field="createdon"></p-sortIcon></th>
           <th>Product</th>
           <th *ngIf="multiStore">Store</th>
           <th *isAuth="'purchases.add'">Vendor</th>
@@ -33,6 +34,7 @@
       </ng-template>
       <ng-template pTemplate="body" let-request>
         <tr>
+          <td class="text-nowrap small" data-testid="req-date">{{request.createdon | date:'dd MMM yyyy, hh:mm a'}}</td>
           <td>
             <span *ngIf="request.product">{{request.product.title}}</span>
             <a class="badge bg-light text-dark border ms-1 text-decoration-none" *ngIf="request.groupid && slipSize(request) > 1" (click)="showSlip(request.groupid)" title="Asked for together with other products: show them" data-testid="req-slip">slip #{{request.groupid}} &middot; {{slipSize(request)}}</a>
@@ -155,6 +157,7 @@
           <option value="">Select</option>
           <option *ngFor="let vendor of vendors" [value]="vendor.id">{{vendor.name}}</option>
         </select>
+        <div class="form-text" *ngIf="lastVendorNote" data-testid="req-last-vendor">Filled in from the last purchase: {{lastVendorNote}}.</div>
       </div>
       <div class="col-md-6 col-lg-4">
         <label class="form-label">Needed By</label>

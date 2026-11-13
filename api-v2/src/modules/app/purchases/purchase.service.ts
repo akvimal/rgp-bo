@@ -29,6 +29,22 @@ export class PurchaseService {
             @InjectRepository(Vendor) private readonly vendorRepository: Repository<Vendor>,
             @InjectEntityManager() private manager: EntityManager) { }
 
+    /**
+     * The vendor a product was last bought from: the newest completed invoice that has it, skipping a vendor that is disabled or blocked (a request for
+     * one is refused). Null when it was never bought. Used to fill the vendor on a new request.
+     */
+    async lastVendorOf(productId: number) {
+        const [r] = await this.manager.query(
+            `select pi.vendor_id as vendorid, v.business_name as name, to_char(pi.invoice_date, 'YYYY-MM-DD') as invoicedate
+               from purchase_invoice_item pii
+               join purchase_invoice pi on pi.id = pii.invoice_id
+               join vendor v on v.id = pi.vendor_id
+              where pii.product_id = $1 and pii.active and not pii.archive and pi.active and not pi.archive and pi.status = 'COMPLETE'
+                and v.active and not v.blocked
+              order by pi.invoice_date desc, pi.id desc, pii.id desc limit 1`, [productId]);
+        return r ? { vendorid: +r.vendorid, name: String(r.name).trim(), invoicedate: r.invoicedate } : null;
+    }
+
     /** the stores a person works in (their assignments), primary first */
     async storesOfUser(userId: number): Promise<number[]> {
         const rows = await this.manager.query(

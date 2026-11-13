@@ -75,10 +75,17 @@ export class PurchaseRequestComponent {
     get multiStore(): boolean { return this.stores.length > 1; }
 
     /** the requests on show: all, or one store's, or one slip's */
+    // kept as one array until the list or a filter changes, so the grid's own sorting is not redone on every redraw
+    private shownKey = ''; private shownSource: any[] | null = null; private shownRows: any[] = [];
     get shown(): any[] {
-        return this.requests.filter(r =>
-            (!this.storeFilter || (this.storeFilter === 'none' ? !r.storeid : r.storeid === +this.storeFilter)) &&
-            (!this.slipFilter || r.groupid === this.slipFilter));
+        const key = `${this.storeFilter}|${this.slipFilter}`;
+        if (this.requests !== this.shownSource || key !== this.shownKey) {
+            this.shownSource = this.requests; this.shownKey = key;
+            this.shownRows = this.requests.filter(r =>
+                (!this.storeFilter || (this.storeFilter === 'none' ? !r.storeid : r.storeid === +this.storeFilter)) &&
+                (!this.slipFilter || r.groupid === this.slipFilter));
+        }
+        return this.shownRows;
     }
 
     /** how many of the requests on show belong to the same slip as this one */
@@ -94,6 +101,8 @@ export class PurchaseRequestComponent {
         this.displayForm = true;
         this.lines = [];
         this.addingTo = null;
+        this.autoVendor = null;
+        this.lastVendorNote = '';
         this.errorMessage = '';
         this.storeid = this.storeContext.effectiveStoreId() ?? (this.stores.length === 1 ? this.stores[0].id : '');
         this.selectedProduct = null;
@@ -196,9 +205,35 @@ export class PurchaseRequestComponent {
 
     removeLine(i:number){ this.lines.splice(i, 1); }
 
+    /** the vendor filled in from the product's last purchase (so it can be told from one the buyer picked), and what it says */
+    private autoVendor: number | null = null;
+    lastVendorNote = '';
+
     onProductSelect(event:any){
         this.selectedProduct = event;
         this.form.controls['productid'].setValue(event?.id ?? null);
+        this.defaultVendor(event?.id);
+    }
+
+    /**
+     * A new request starts with the vendor the product was last bought from. Nothing the buyer chose is overwritten: only an empty vendor is filled,
+     * or one that was filled this way for the first product on the list. People who cannot see the vendor field are not asked.
+     */
+    private defaultVendor(productid?: number){
+        this.lastVendorNote = '';
+        if(!productid || this.form.value.id) return;
+        this.requestService.lastVendor(productid).subscribe({
+            next: (v:any) => {
+                if(!v?.vendorid || this.form.value.productid !== productid) return;
+                const current = this.form.value.vendorid ? +this.form.value.vendorid : null;
+                if(!current || (current === this.autoVendor && this.lines.length === 0)){
+                    this.form.controls['vendorid'].setValue(v.vendorid);
+                    this.autoVendor = v.vendorid;
+                    this.lastVendorNote = `${v.name}, last bought ${v.invoicedate}`;
+                }
+            },
+            error: () => {}
+        });
     }
 
     /** a request that was typed for a product not in the list: it is linked to one (or one is created) before it can be ordered */

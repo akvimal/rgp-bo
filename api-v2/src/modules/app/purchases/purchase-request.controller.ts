@@ -23,6 +23,13 @@ export class PurchaseRequestController {
         return { userId: user.id, storeIds: await this.service.storesOfUser(user.id) };
     }
 
+    /** the vendor a product was last bought from (to fill a new request); the buying side only, a request-only role has no vendor field */
+    @Get('last-vendor/:productid')
+    async lastVendor(@Param('productid') productid: string, @User() currentUser: any) {
+      if (await this.scopeOf(currentUser)) return null;
+      return (await this.service.lastVendorOf(+productid)) ?? null;
+    }
+
     @Get('/:id')
     async findById(@Param('id') id: number, @User() currentUser: any) {
       return this.service.findRequestById(id, await this.scopeOf(currentUser));

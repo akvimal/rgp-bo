@@ -19,6 +19,11 @@ export class PurchaseIntentService {
         return this.http.post(`${this.apiurl}/filter`, criteria);
     }
 
+    /** the vendor a product was last bought from, or null */
+    lastVendor(productid:number){
+        return this.http.get<any>(`${this.apiurl}/last-vendor/${productid}`);
+    }
+
     findById(id:number){
         return this.http.get(`${this.apiurl}/${id}`);
     }
