@@ -52,6 +52,7 @@ export class SaleFormItemsComponent{
     private host:ElementRef){}
 
   selectProduct(selected:any) {
+    if(!(+selected?.sale_price > 0)) { return; } // no sale price: not added to the bill
     const item = this.helper.mapStockToSaleItem(selected, true);
     
     this.calculateTotalWithQtyChange(item);

@@ -17,7 +17,8 @@ import { StoreContextService } from "src/app/@core/store-context.service";
                         <div [ngStyle]="{backgroundColor:stock.balance < 1?'#ffc0c0':'inherit'}" data-testid="stock-option">
                             <div class="d-flex justify-content-between align-items-baseline gap-3">
                                 <span class="fw-bold text-truncate">{{stock.title}}</span>
-                                <span class="text-nowrap" data-testid="stock-option-price">&#8377;{{listPrice(stock) || 'None'}}
+                                <span class="text-nowrap" *ngIf="!hasPrice(stock)" data-testid="stock-no-price"><span class="badge bg-secondary" title="No sale price is set for this product, so it cannot be added to a bill">No price</span></span>
+                                <span class="text-nowrap" *ngIf="hasPrice(stock)" data-testid="stock-option-price">&#8377;{{listPrice(stock)}}
                                     <span class="badge bg-warning text-dark ms-1" *ngIf="isCapped(stock)" title="The stored price is above the MRP once GST is added, so the bill charges the MRP" data-testid="stock-option-capped">MRP cap</span></span>
                             </div>
                             <div class="d-flex justify-content-between align-items-baseline gap-3 small">
@@ -75,7 +76,13 @@ export class StockSelectComponent {
         return p.toFixed(2);
     }
 
+    hasPrice(stock:any): boolean {
+        return +stock.sale_price > 0;
+    }
+
     selected(stockitem:any){
+        // a product with no sale price is shown but never added to the bill
+        if (!this.hasPrice(stockitem)) { return; }
         this.stockSelected.emit(stockitem);
     }
 
