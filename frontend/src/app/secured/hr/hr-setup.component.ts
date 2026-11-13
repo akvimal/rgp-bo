@@ -45,7 +45,7 @@ export class HrSetupComponent implements OnInit, OnDestroy {
 
   panel: Panel | null = null;
   readonly saveIds: { [kind: string]: string } = { component: "hr-set-comp-save", position: "hr-pos-save", type: "hr-set-type-save", holiday: "hr-set-hol-save", copy: "hr-set-hol-copy-save", measure: "hr-set-metric-save" };
-  readonly removeIds: { [kind: string]: string } = { component: "hr-set-comp-remove", position: "hr-pos-remove", type: "hr-set-type-remove" };
+  readonly removeIds: { [kind: string]: string } = { component: "hr-set-comp-remove", position: "hr-pos-remove", type: "hr-set-type-remove", measure: "hr-set-metric-remove" };
   /** an error from saving, shown in the panel so it is not hidden behind it */
   perr = "";
   busy = false;
@@ -201,6 +201,7 @@ export class HrSetupComponent implements OnInit, OnDestroy {
       case "component": return this.removeComponent();
       case "position": return this.removePosition();
       case "type": return this.removeType();
+      case "measure": return this.removeMeasure();
     }
   }
 
@@ -346,6 +347,12 @@ export class HrSetupComponent implements OnInit, OnDestroy {
   addStep() { const last = this.mf.steps[this.mf.steps.length - 1]; this.mf.steps = [...this.mf.steps, { upto: (last ? +last.upto : 0) + 1, pct: 0 }]; }
   removeStep(i: number) { this.mf.steps = this.mf.steps.filter((_: any, k: number) => k !== i); }
   toggleType(t: string) { const a: string[] = this.mf.applies_types; this.mf.applies_types = a.includes(t) ? a.filter(x => x !== t) : [...a, t]; }
+
+  /** removed when it was never scored; one with scores behind it is made inactive so past months read the same */
+  private removeMeasure() {
+    const m = this.panel!.model; this.busy = true;
+    this.hr.delete(`kpi/metrics/${m.id}`).subscribe(r => this.saved(r.removed ? `${m.name} removed.` : `${m.name} has been scored, so it was made inactive instead.`)(), this.fail());
+  }
 
   private saveMeasure() {
     const f = this.mf; this.busy = true;

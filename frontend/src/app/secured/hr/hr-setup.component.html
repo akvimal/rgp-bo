@@ -155,7 +155,7 @@
       <div class="page-toolbar">
         <div class="page-toolbar-main">
           <input *ngIf="metrics.length > 6" class="form-control form-control-sm" style="width:14rem;max-width:100%" placeholder="Search measures" [(ngModel)]="q" aria-label="Search measures">
-          <div class="small text-muted">A measure is either measured by the system or rated by a manager each month, and can be limited to roles, staff types and designations.</div>
+          <div class="small text-muted">A measure is either measured by the system or rated by a manager each month, and can be limited to roles, staff types and designations. Edit to change one; Remove deletes a measure never scored, and switches off one that has scores so past months stay the same.</div>
         </div>
         <div class="page-toolbar-actions"><button class="btn btn-primary btn-sm" type="button" (click)="newMeasure()" data-testid="hr-set-metric-new">Add measure</button></div>
       </div>
@@ -227,7 +227,7 @@
     [title]="pn.title" [dirty]="panelDirty" [canSave]="panelCanSave" [busy]="busy" [error]="perr" [wide]="pn.kind === 'measure'"
     [saveLabel]="pn.kind === 'copy' ? 'Add ' + copyCount + ' holiday' + (copyCount === 1 ? '' : 's') : (pn.model.id || pn.model.isNew === false ? 'Save' : 'Add')"
     [saveTestId]="saveIds[pn.kind]"
-    [removable]="!!pn.model.id && pn.kind !== 'measure' && pn.kind !== 'holiday'"
+    [removable]="!!pn.model.id && pn.kind !== 'holiday'"
     [removeTestId]="removeIds[pn.kind]"
     [removeText]="'Remove ' + pn.model.name + '? If it is already in use it is made inactive instead.'"
     (save)="savePanel()" (remove)="removePanel()" (closed)="closePanel()">

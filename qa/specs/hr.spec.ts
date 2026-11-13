@@ -564,4 +564,15 @@ test.describe('HR @p1', () => {
     await expect(page.getByTestId('hr-message')).toContainText('removed');
     await expect.poll(names).not.toContain('QA Page Remove');
   });
+
+  test('HR-9 a KPI measure that was never scored can be removed; a missing one is not found @edge', async ({ api }) => {
+    const m = await api.request('POST', '/hr/kpi/metrics', { name: 'QA Remove me', max_points: 10 }, MGR);
+    expect(m.status).toBe(201);
+    const gone = await api.request('DELETE', `/hr/kpi/metrics/${m.body.id}`, undefined, MGR);
+    expect(gone.status).toBe(200);
+    expect(gone.body).toMatchObject({ removed: true, deactivated: false, uses: 0 });
+    const all = (await api.request('GET', '/hr/kpi/metrics', undefined, MGR)).body;
+    expect(all.some((x: any) => x.id === m.body.id)).toBe(false);
+    expect((await api.request('DELETE', `/hr/kpi/metrics/${m.body.id}`, undefined, MGR)).status).toBe(404);
+  });
 });

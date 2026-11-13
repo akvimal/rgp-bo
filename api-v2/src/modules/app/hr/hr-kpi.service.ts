@@ -61,6 +61,27 @@ export class HrKpiService {
     return { id };
   }
 
+  /**
+   * Removes a measure nobody was ever scored on. One that has ratings, or is in a finalised month's review, keeps its history: it is switched off instead,
+   * so the past months still read the same.
+   */
+  async removeMetric(id: number, by: any) {
+    const [m] = await this.manager.query(`select id, name from hr_kpi_metric where id = $1`, [id]);
+    if (!m) throw new NotFoundException('Measure not found.');
+    const [u] = await this.manager.query(
+      `select (select count(*)::int from hr_kpi_rating where metric_id = $1) as ratings,
+              (select count(*)::int from hr_kpi_review where scores @> $2::jsonb) as reviews`, [id, JSON.stringify([{ metric_id: id }])]);
+    const uses = (u.ratings || 0) + (u.reviews || 0);
+    if (uses > 0) {
+      await this.manager.query(`update hr_kpi_metric set active = false where id = $1`, [id]);
+      await this.audit.record({ userId: by.id, action: 'hr.kpi_metric_deactivated', entityType: 'hr_kpi_metric', entityId: id, summary: `KPI measure ${m.name} made inactive (scored ${u.ratings} times, in ${u.reviews} finalised reviews)`, details: { ratings: u.ratings, reviews: u.reviews } });
+      return { removed: false, deactivated: true, uses };
+    }
+    await this.manager.query(`delete from hr_kpi_metric where id = $1`, [id]);
+    await this.audit.record({ userId: by.id, action: 'hr.kpi_metric_removed', entityType: 'hr_kpi_metric', entityId: id, summary: `KPI measure ${m.name} removed (never scored)`, details: {} });
+    return { removed: true, deactivated: false, uses: 0 };
+  }
+
   /** roles that setup can be limited to */
   roles() {
     return this.manager.query(`select name from app_role where name <> 'Site Admin' order by name`);
