@@ -178,7 +178,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-purchases', group: 'buy', title: 'Purchase', route: '/secure/purchases',
     purpose: 'Buying: what to order, the invoices that come in, what you owe vendors, and the GST on purchases.',
-    tasks: ['Ordering: requests, what to reorder, and purchase orders.', 'Invoices: choose the purchase order first (or none), enter the vendor\'s invoice header, add its items, verify them and complete it. Editing a draft invoice has the same header as a new one.', 'Pay vendors, hold or release an invoice, see what is overdue.', 'Vendors: the vendor list and each one\'s balance.'],
+    tasks: ['Ordering: requests, what to reorder, and purchase orders.', 'Invoices: choose the purchase order first (or none), enter the vendor\'s invoice header, add its items, verify them and complete it. Editing a draft invoice has the same header as a new one.', 'Pay vendors, hold or release an invoice, see what is overdue.', 'GST: each month, import GSTR-2B from the portal, run the match and settle what differs, then lock the month (the page has a How this works help).', 'Vendors: the vendor list and each one\'s balance.'],
     who: 'Store heads, the purchaser and the owner.',
     watch: ['A rate that rose against the last purchase needs a reason, and a big rise needs a Store Head or Business Head.', 'A line in dispute is not counted until it is accepted or rejected.'], keywords: 'invoice vendor order challan payment grn',
   },

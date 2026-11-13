@@ -7,7 +7,18 @@ import { GstService } from "../gst.service";
 export class GstReconciliationComponent {
 
     period: string = this.currentPeriod();
+    /** the month picked on the calendar; `period` stays the 'YYYY-MM' text the API takes */
+    periodDate: Date = new Date(+this.period.slice(0, 4), +this.period.slice(5, 7) - 1, 1);
+    /** the years offered: the last six and the next one */
+    get yearRange(): string { const y = new Date().getFullYear(); return `${y - 6}:${y + 1}`; }
     periods: any[] = [];
+    /** the help card: open the first time, then as the person left it */
+    private readonly helpKey = 'gst-recon-help';
+    showHelp: boolean = (() => { try { return localStorage.getItem(this.helpKey) !== '0'; } catch { return true; } })();
+    toggleHelp() {
+        this.showHelp = !this.showHelp;
+        try { localStorage.setItem(this.helpKey, this.showHelp ? '1' : '0'); } catch { /* storage blocked: it is just not remembered */ }
+    }
     currentPeriodRow: any = null;
 
     summary: any = null;
@@ -44,6 +55,14 @@ export class GstReconciliationComponent {
 
     ngOnInit() {
         this.refreshPeriods();
+        this.refresh();
+    }
+
+    /** a month chosen on the calendar */
+    pickPeriod(d: Date) {
+        if (!d) return;
+        this.periodDate = new Date(d.getFullYear(), d.getMonth(), 1);
+        this.period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         this.refresh();
     }
 
