@@ -8,6 +8,7 @@ import { GstService } from './gst.service';
 import { effectiveHsn } from './gst-rate';
 import { HsnLine, closeProblem, findGaps, groupHsn, hsnIssues, isMonth, monthBounds, monthIsOver, monthLabel, netByRate, parseArn, payable, sumTotals, RateTotals } from './gst-register';
 import { halves, isInterState, splitBill } from './gst-tax';
+import { KIND_LABEL, ReportBill, ReportNote, SupplyKind, asKind, buildSalesReport, kindOf } from './gst-sales-report';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
@@ -111,6 +112,85 @@ export class GstRegisterService {
     };
   }
 
+  // ------------------------------------------------------------------ the monthly sales report
+  /**
+   * The month's supplies in filing order (gst-sales-report.ts). A closed month returns the report as it stood when it was closed. `reg1` is the register when
+   * the caller already has it.
+   */
+  async salesReport(user: any, monthRaw: any, storeId?: any, reg1?: any) {
+    const month = this.month(monthRaw);
+    const { businessId, reg } = await this.ctx(user);
+    if (!storeId) {
+      const [closed] = await this.manager.query(`select summary_snapshot->'report' as report from gst_filing_month where business_id = $1 and month = $2 and status = 'CLOSED'`, [businessId, month]);
+      if (closed?.report) return { month, snapshot: true, ...closed.report };
+    }
+    const r = reg1 || (await this.register(user, month, storeId));
+    const tax = r.invoices.filter((i: any) => i.kind === 'TAX');
+    const ids = tax.map((i: any) => +i.id);
+    const lines = ids.length ? await this.manager.query(
+      `select si.sale_id, si.total::float8 as total, coalesce(si.tax_pcnt, 0)::float8 as rate, p.gst_supply_kind as pk, k.kind as ck
+         from sale_item si join product p on p.id = si.product_id
+         left join gst_supply_kind_default k on lower(k.category) = lower(btrim(coalesce(p.category, '')))
+        where si.sale_id = any($1::int[]) and si.active and not si.archive and si.qty > 0`, [ids]) : [];
+    const byBill = new Map<number, ReportBill['lines']>();
+    for (const l of lines) byBill.set(+l.sale_id, [...(byBill.get(+l.sale_id) || []), { total: l.total, rate: l.rate, kind: kindOf(l.pk, l.ck) }]);
+    const bills: ReportBill[] = tax.map((i: any) => ({ docNo: i.doc_no, total: i.total, discount: i.discount, lines: byBill.get(+i.id) || [], buyerGstin: i.buyer_gstin, inter: !!i.inter_state }));
+
+    const { from, to } = monthBounds(month);
+    const kinds = await this.manager.query(
+      `select cn.note_no, p.gst_supply_kind as pk, k.kind as ck
+         from gst_credit_note cn join sale_item si on si.id = cn.sale_item_id join product p on p.id = si.product_id
+         left join gst_supply_kind_default k on lower(k.category) = lower(btrim(coalesce(p.category, '')))
+        where cn.business_id = $1 and cn.note_date >= $2::date and cn.note_date <= $3::date`, [businessId, from, to]);
+    const kindByNote = new Map<string, SupplyKind>(kinds.map((k: any) => [k.note_no, kindOf(k.pk, k.ck)]));
+    const notes: ReportNote[] = r.credit_notes.map((c: any) => ({
+      rate: c.rate, taxable: c.taxable, tax: c.tax, gross: c.gross, kind: kindByNote.get(c.note_no) || 'NIL_RATED', buyerGstin: c.buyer_gstin, inter: isInterState(c.place_of_supply, reg.state_code),
+    }));
+    const report = buildSalesReport({ bills, notes, cashReturns: { count: r.returns_cash.length, amount: r.totals.cash_returns_total }, cancelled: r.cancelled.map((c: any) => c.doc_no), gaps: r.gaps });
+    return { month, snapshot: false, registered: r.registered, label: r.label, ...report, cash_memos: { count: r.totals.cash_bills, total: r.totals.cash_total } };
+  }
+
+  /** the categories that sold at 0% in the month, with the kind the business has set for each (nil-rated until it says otherwise) */
+  async supplyKinds(user: any, monthRaw: any) {
+    const month = this.month(monthRaw);
+    const { businessId } = await this.ctx(user);
+    const { from, to } = monthBounds(month);
+    const rows = await this.manager.query(
+      `select coalesce(nullif(btrim(p.category), ''), '(no category)') as category, count(distinct p.id)::int as products, sum(si.total)::float8 as value,
+              max(k.kind) as kind, bool_or(k.confirmed_on is not null) as confirmed, count(distinct p.id) filter (where p.gst_supply_kind is not null)::int as overridden
+         from sale s join stores st on st.id = s.store_id join sale_item si on si.sale_id = s.id and si.active and not si.archive and si.qty > 0 join product p on p.id = si.product_id
+         left join gst_supply_kind_default k on lower(k.category) = lower(btrim(coalesce(p.category, '')))
+        where st.business_id = $1 and s.status = 'COMPLETE' and s.active and not s.archive and s.gst_invoice_no is not null and s.bill_date >= $2::date and s.bill_date < ($3::date + 1)
+          and coalesce(si.tax_pcnt, 0) = 0
+        group by 1 order by 3 desc`, [businessId, from, to]);
+    return { month, categories: rows.map((r: any) => ({ category: r.category, products: r.products, value: r2(r.value), kind: asKind(r.kind), effective: kindOf(null, r.kind), confirmed: !!r.confirmed, overridden: r.overridden })) };
+  }
+
+  /** the kind of 0% supply a category (or one product) is, as the CA said; null clears it */
+  async setSupplyKind(user: any, body: any) {
+    const { businessId } = await this.ctx(user);
+    const kind = body?.kind === null || body?.kind === '' || body?.kind === undefined ? null : asKind(body.kind);
+    if (body?.kind && !kind) throw new BadRequestException('The kind is nil-rated, exempt or non-GST.');
+    if (body?.product_id) {
+      const pid = Number(body.product_id);
+      const res = await this.manager.query(`update product set gst_supply_kind = $2 where id = $1 returning id, title`, [pid, kind]).then((r: any) => (Array.isArray(r[0]) ? r[0] : r));
+      if (!res.length) throw new BadRequestException('That product was not found.');
+      await this.audit.record({ userId: user.id, action: 'gst.product_supply_kind_set', entityType: 'product', entityId: pid, summary: `${res[0].title}: ${kind ? KIND_LABEL[kind] : 'follows its category'}`, details: { kind } });
+      return { ok: true };
+    }
+    const category = String(body?.category ?? '').trim().slice(0, 100);
+    if (!category) throw new BadRequestException('Choose the category.');
+    if (!kind) {
+      await this.manager.query(`delete from gst_supply_kind_default where lower(category) = lower($1)`, [category]);
+    } else {
+      await this.manager.query(
+        `insert into gst_supply_kind_default (category, kind, created_by, confirmed_by, confirmed_on) values ($1, $2, $3, $3, now())
+         on conflict (lower(category)) do update set kind = excluded.kind, confirmed_by = excluded.confirmed_by, confirmed_on = now()`, [category, kind, user.id]);
+    }
+    await this.audit.record({ userId: user.id, action: 'gst.category_supply_kind_set', entityType: 'gst_supply_kind_default', entityId: businessId, summary: `${category}: ${kind ? KIND_LABEL[kind] : 'no default (nil-rated)'}`, details: { category, kind } });
+    return { ok: true };
+  }
+
   // ------------------------------------------------------------------ the HSN summary
   async hsn(user: any, monthRaw: any) {
     const month = this.month(monthRaw);
@@ -152,6 +232,7 @@ export class GstRegisterService {
     const month = this.month(monthRaw);
     const { businessId, reg } = await this.ctx(user);
     const reg1 = await this.register(user, month);
+    const report = await this.salesReport(user, month, undefined, reg1);
     const hsn = await this.hsn(user, month);
     let itc: any = null;
     try { itc = await this.gst.summary(businessId, month); } catch { itc = null; }
@@ -162,7 +243,7 @@ export class GstRegisterService {
       `select to_char(filed_on, 'YYYY-MM-DD') as filed_on, arn, accepted_hsn, to_char(closed_on at time zone 'Asia/Kolkata', 'YYYY-MM-DD HH24:MI') as closed_on, status from gst_filing_month where business_id = $1 and month = $2`, [businessId, month]);
     return {
       month, label: monthLabel(month), registered: reg.reg_type === 'registered',
-      output_by_rate: reg1.totals.net_by_rate, output: reg1.totals.net,
+      report, output_by_rate: reg1.totals.net_by_rate, output: reg1.totals.net,
       itc: { claimable, on_hold: r2((itc?.itc_on_hold ?? 0)), carried_forward: r2(itc?.itc_carried_forward ?? 0), matched: itc?.matched?.count ?? 0, mismatch: itc?.mismatch?.count ?? 0, missing_in_2b: itc?.missing_in_2b?.count ?? 0, reconciled: !!itc },
       payable: p.payable, carry_forward: p.carry_forward,
       issues: { hsn: hsn.issues, gaps: reg1.gaps },
@@ -273,6 +354,48 @@ export class GstRegisterService {
     return ws;
   }
 
+  /** the monthly sales report as a sheet, blocks A to F in order */
+  private reportSheet(wb: ExcelJS.Workbook, rep: any) {
+    const ws = wb.addWorksheet('Monthly sales report');
+    ws.columns = [{ width: 30 }, { width: 14 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 14 }];
+    const title = (t: string) => { ws.addRow([]); const r = ws.addRow([t]); r.font = { bold: true }; };
+    const head = (cols: string[]) => { const r = ws.addRow(cols); r.font = { bold: true }; };
+    ws.addRow([`Sales report for ${rep.label}${rep.snapshot ? ' (as it stood when the month was closed)' : ''}`]).font = { bold: true, size: 13 };
+    const rateRow = (label: string, x: any) => ws.addRow([label, x.taxable, x.cgst, x.sgst, x.igst, x.tax, x.total]);
+
+    title('A. Outward supplies by rate'); head(['Rate', 'Taxable value', 'CGST', 'SGST', 'IGST', 'Tax', 'Total']);
+    rep.supplies.rows.forEach((x: any) => rateRow(`${x.rate}%`, x)); rateRow('Total', rep.supplies.total).font = { bold: true };
+
+    title('B. Returns (credit notes) and the net'); head(['Rate', 'Taxable value', 'CGST', 'SGST', 'IGST', 'Tax', 'Total']);
+    rep.returns.rows.forEach((x: any) => rateRow(`${x.rate}%`, x)); rateRow('Credit notes', rep.returns.total).font = { bold: true };
+    ws.addRow([`Returns of cash memos (${rep.returns.cash_returns.count})`, rep.returns.cash_returns.amount]);
+    rep.net.rows.forEach((x: any) => rateRow(`Net ${x.rate}%`, x)); rateRow('Net total', rep.net.total).font = { bold: true };
+
+    title('C. B2B and B2C, by place of supply and rate'); head(['Buyer, place', 'Rate', 'Taxable value', 'CGST', 'SGST', 'IGST', 'Tax']);
+    rep.buckets.forEach((x: any) => ws.addRow([`${x.buyer}, ${x.place === 'INTER' ? 'out of state' : 'in state'}`, `${x.rate}%`, x.taxable, x.cgst, x.sgst, x.igst, x.tax]));
+
+    title('D. Nil-rated, exempt and non-GST'); head(['Kind, buyer, place', 'Supplied', 'Returned', 'Net']);
+    rep.nil.forEach((x: any) => ws.addRow([`${x.label}, ${x.buyer}, ${x.place === 'INTER' ? 'out of state' : 'in state'}`, x.supplied, x.returned, x.net]));
+
+    title('E. Tie-out to the bills'); const t = rep.tie_out;
+    ws.addRow(['Bills total', t.bills_total]); ws.addRow(['Taxable value and tax', t.taxable_and_tax]); ws.addRow(['Round-off', t.round_off]);
+    ws.addRow([t.ok ? 'The round-off is within what rounding each bill can explain.' : `The difference is more than rounding explains (up to ${t.allowed}). Check the month's bills.`]);
+
+    title('F. Documents'); const d = rep.documents;
+    ws.addRow(['Tax invoices issued', d.issued]); ws.addRow(['From', d.first || '']); ws.addRow(['To', d.last || '']); ws.addRow(['Cancelled', d.cancelled]);
+    ws.addRow(['Numbers missing', d.gaps.join(', ')]);
+    if (rep.cash_memos?.count) ws.addRow([`Cash memos (not tax invoices): ${rep.cash_memos.count}`, rep.cash_memos.total]);
+    return ws;
+  }
+
+  async salesReportXlsx(user: any, month: any) {
+    const rep = await this.salesReport(user, month);
+    const wb = new ExcelJS.Workbook();
+    this.reportSheet(wb, rep);
+    await this.audit.record({ userId: user.id, action: 'gst.sales_report_exported', entityType: 'gst_filing_month', entityId: null, summary: `Monthly sales report for ${rep.label} exported`, details: { month: rep.month } });
+    return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), filename: `monthly-sales-report-${rep.month}.xlsx`, contentType: XLSX };
+  }
+
   async salesXlsx(user: any, month: any) {
     const reg = await this.register(user, month);
     const wb = new ExcelJS.Workbook();
@@ -308,6 +431,7 @@ export class GstRegisterService {
     if (sum.issues.gaps.length) kv('Gaps in the invoice numbers', sum.issues.gaps.join(', '));
     if (!sum.itc.reconciled) kv('Note', 'No GSTR-2B has been loaded for this month, so no input credit is counted.');
 
+    this.reportSheet(wb, sum.report);
     this.salesSheet(wb, reg);
 
     const hs = wb.addWorksheet('HSN summary');

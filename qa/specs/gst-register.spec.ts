@@ -156,6 +156,26 @@ test.describe('GST register and summary @p1', () => {
     expect(cur.invoices).toBeGreaterThan(0);
   });
 
+  test('GRG-8 the monthly sales report lists each rate, ties to the summary and the bills, and takes the CA kind for 0% @happy', async ({ api }) => {
+    const rep = (await api.request('GET', `/gst/sales-report?month=${month}`, undefined, MGR)).body;
+    const sum = (await api.request('GET', `/gst/monthly-summary?month=${month}`, undefined, MGR)).body;
+    expect(rep.supplies.rows.some((x: any) => x.rate === 5)).toBe(true);
+    expect(rep.net.total.tax).toBeCloseTo(sum.output.tax, 2);                      // the report and the payable line use the same figures
+    expect(sum.report.net.total.tax).toBeCloseTo(sum.output.tax, 2);
+    expect(rep.tie_out.ok).toBe(true);
+    expect(rep.documents.issued).toBeGreaterThan(0);
+    for (const b of rep.buckets) expect(['B2B', 'B2C']).toContain(b.buyer);
+    // the CA's answer for a category is kept and read back; it can be cleared
+    const kinds = (await api.request('GET', `/gst/supply-kinds?month=${month}`, undefined, MGR)).body;
+    expect(Array.isArray(kinds.categories)).toBe(true);
+    expect((await api.request('PUT', '/gst/supply-kinds', { category: 'QA Kind Category', kind: 'EXEMPT' }, MGR)).status).toBeLessThan(300);
+    expect((await api.request('PUT', '/gst/supply-kinds', { category: 'QA Kind Category', kind: 'bogus' }, MGR)).status).toBe(400);
+    expect((await api.request('PUT', '/gst/supply-kinds', { category: 'QA Kind Category', kind: null }, MGR)).status).toBeLessThan(300);
+    const x = await get(`/gst/sales-report/xlsx?month=${month}`);
+    expect(x.status).toBe(200);
+    expect(x.headers.get('content-disposition')).toContain(`monthly-sales-report-${month}.xlsx`);
+  });
+
   test('GRG-6 the Excel files open, and carry the sales and returns first @happy', async () => {
     for (const [path, name] of [[`/gst/sales-register/xlsx?month=${month}`, 'sales-and-returns'], [`/gst/pack?month=${month}`, 'gst-records-pack']]) {
       const res = await get(path);
@@ -176,8 +196,8 @@ test.describe('GST register and summary @p1', () => {
     expect((await api.request('POST', `/gst/months/${month}/reopen`, { reason: 'x' }, MGR)).status).toBe(400);
     expect((await api.request('POST', `/gst/months/${month}/reopen`, { reason: 'a proper reason' }, MGR)).status).toBe(400);      // not closed
     expect((await api.request('GET', `/gst/sales-register?month=bad`, undefined, MGR)).status).toBe(400);
-    for (const [m, p] of [['GET', `/gst/sales-register?month=${month}`], ['GET', `/gst/hsn-summary?month=${month}`], ['GET', `/gst/monthly-summary?month=${month}`], ['GET', '/gst/months'], ['POST', `/gst/months/${month}/close`]]) {
-      expect((await api.request(m, p, m === 'POST' ? {} : undefined, SALES)).status, `${m} ${p}`).toBe(403);
+    for (const [m, p] of [['GET', `/gst/sales-register?month=${month}`], ['GET', `/gst/hsn-summary?month=${month}`], ['GET', `/gst/monthly-summary?month=${month}`], ['GET', `/gst/sales-report?month=${month}`], ['PUT', '/gst/supply-kinds'], ['GET', '/gst/months'], ['POST', `/gst/months/${month}/close`]]) {
+      expect((await api.request(m, p, m === 'POST' || m === 'PUT' ? {} : undefined, SALES)).status, `${m} ${p}`).toBe(403);
     }
     expect((await get(`/gst/pack?month=${month}`)).status).toBe(200);          // the Business Head
     const sales = await fetch(`${API}/gst/pack?month=${month}`, { headers: { authorization: `Bearer ${(await (await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: SALES, password: PASS }) })).json()).token}` } });

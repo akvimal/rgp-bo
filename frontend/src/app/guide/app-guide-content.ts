@@ -211,7 +211,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-gst-filing', group: 'accounts', title: 'GST', route: '/secure/gst-filing',
     purpose: 'The monthly GST work: what was sold and bought, the totals for the return, and the rate changes.',
-    tasks: ['Check the month\'s sales and purchase registers.', 'Close the month once the figures are right.', 'Rate changes: see what a GST change does to stock and prices before it starts.', 'Fix products that have no HSN code.'],
+    tasks: ['Check the month\'s sales and purchase registers.', 'Monthly summary: the sales report in filing order (each rate with CGST and SGST, the returns, B2B and B2C, nil-rated, exempt and non-GST, and a check against the bills), with an Excel. Say once what kind of 0% supply each category is, as your CA advises.', 'Close the month once the figures are right.', 'Rate changes: see what a GST change does to stock and prices before it starts.', 'Fix products that have no HSN code.'],
     who: 'The owner and the accountant.', keywords: 'gst gstr hsn return filing rate change',
   },
   {

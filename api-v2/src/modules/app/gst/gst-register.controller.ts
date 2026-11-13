@@ -1,5 +1,5 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, ForbiddenException, Get, Param, Post, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
@@ -25,6 +25,10 @@ export class GstRegisterController {
 
   @Get('sales-register') async list(@Query('month') month: string, @Query('store') store: string, @User() u: any) { await this.assertAllowed(u); return this.register.register(u, month, store); }
   @Get('sales-register/xlsx') async xlsx(@Query('month') month: string, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertAllowed(u); return this.file(res, await this.register.salesXlsx(u, month)); }
+  @Get('sales-report') async report(@Query('month') month: string, @Query('store') store: string, @User() u: any) { await this.assertAllowed(u); return this.register.salesReport(u, month, store); }
+  @Get('sales-report/xlsx') async reportXlsx(@Query('month') month: string, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertAllowed(u); return this.file(res, await this.register.salesReportXlsx(u, month)); }
+  @Get('supply-kinds') async kinds(@Query('month') month: string, @User() u: any) { await this.assertAllowed(u); return this.register.supplyKinds(u, month); }
+  @Put('supply-kinds') async setKind(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.register.setSupplyKind(u, b); }
   @Get('hsn-summary') async hsn(@Query('month') month: string, @User() u: any) { await this.assertAllowed(u); return this.register.hsn(u, month); }
   @Get('monthly-summary') async summary(@Query('month') month: string, @User() u: any) { await this.assertAllowed(u); return this.register.summary(u, month); }
   @Get('pack') async pack(@Query('month') month: string, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertAllowed(u); return this.file(res, await this.register.pack(u, month)); }

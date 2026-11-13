@@ -28,14 +28,76 @@ import { GstApiService } from "./gst-api.service";
     <h6 class="text-primary mt-3">{{sum.label}}</h6>
     <div class="row g-4">
       <div class="col-lg-6">
-        <table class="table table-sm" data-testid="gsm-output">
-          <thead><tr><th>Output tax (tax invoices less credit notes)</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th><th class="text-end">Tax</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let r of sum.output_by_rate"><td>{{r.rate}}%</td><td class="text-end">{{r.taxable | number:'1.2-2'}}</td><td class="text-end">{{r.cgst | number:'1.2-2'}}</td><td class="text-end">{{r.sgst | number:'1.2-2'}}</td><td class="text-end">{{r.igst | number:'1.2-2'}}</td><td class="text-end">{{r.tax | number:'1.2-2'}}</td></tr>
-            <tr *ngIf="!sum.output_by_rate.length"><td colspan="6" class="text-muted">No tax invoices.</td></tr>
-            <tr class="fw-semibold"><td>Total</td><td class="text-end">{{sum.output.taxable | number:'1.2-2'}}</td><td class="text-end">{{sum.output.cgst | number:'1.2-2'}}</td><td class="text-end">{{sum.output.sgst | number:'1.2-2'}}</td><td class="text-end">{{sum.output.igst | number:'1.2-2'}}</td><td class="text-end">{{sum.output.tax | number:'1.2-2'}}</td></tr>
-          </tbody>
-        </table>
+        <ng-container *ngIf="sum.report as rp">
+        <div data-testid="gsm-report">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <div class="fw-semibold">Sales and returns <span class="badge bg-secondary ms-1" *ngIf="rp.snapshot">as it stood when the month was closed</span></div>
+            <button class="btn btn-sm btn-outline-secondary" type="button" (click)="downloadReport()" data-testid="gsm-report-xlsx">Excel</button>
+          </div>
+
+          <table class="table table-sm mb-3" data-testid="gsm-supplies">
+            <thead><tr><th>Supplies</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let r of rp.supplies.rows"><td>{{r.rate}}%</td><td class="text-end">{{r.taxable | number:'1.2-2'}}</td><td class="text-end">{{r.cgst | number:'1.2-2'}}</td><td class="text-end">{{r.sgst | number:'1.2-2'}}</td><td class="text-end">{{r.igst | number:'1.2-2'}}</td><td class="text-end">{{r.total | number:'1.2-2'}}</td></tr>
+              <tr *ngIf="!rp.supplies.rows.length"><td colspan="6" class="text-muted">No tax invoices.</td></tr>
+              <tr class="fw-semibold"><td>Total</td><td class="text-end">{{rp.supplies.total.taxable | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.cgst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.sgst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.igst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.total | number:'1.2-2'}}</td></tr>
+            </tbody>
+          </table>
+
+          <table class="table table-sm mb-3" data-testid="gsm-returns">
+            <thead><tr><th>Returns (credit notes)</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let r of rp.returns.rows"><td>{{r.rate}}%</td><td class="text-end">{{r.taxable | number:'1.2-2'}}</td><td class="text-end">{{r.cgst | number:'1.2-2'}}</td><td class="text-end">{{r.sgst | number:'1.2-2'}}</td><td class="text-end">{{r.igst | number:'1.2-2'}}</td><td class="text-end">{{r.total | number:'1.2-2'}}</td></tr>
+              <tr *ngIf="!rp.returns.rows.length"><td colspan="6" class="text-muted">No credit notes.</td></tr>
+              <tr *ngIf="rp.returns.cash_returns.count"><td colspan="5">Returns of cash memos ({{rp.returns.cash_returns.count}})</td><td class="text-end">{{rp.returns.cash_returns.amount | number:'1.2-2'}}</td></tr>
+              <tr class="fw-semibold table-light"><td>Net of returns</td><td class="text-end">{{rp.net.total.taxable | number:'1.2-2'}}</td><td class="text-end">{{rp.net.total.cgst | number:'1.2-2'}}</td><td class="text-end">{{rp.net.total.sgst | number:'1.2-2'}}</td><td class="text-end">{{rp.net.total.igst | number:'1.2-2'}}</td><td class="text-end">{{rp.net.total.total | number:'1.2-2'}}</td></tr>
+            </tbody>
+          </table>
+
+          <details class="mb-3" data-testid="gsm-buckets">
+            <summary class="small fw-semibold">B2B and B2C, in state and out of state</summary>
+            <table class="table table-sm mt-2">
+              <thead><tr><th>Buyer and place</th><th class="text-end">Rate</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th></tr></thead>
+              <tbody><tr *ngFor="let b of rp.buckets"><td>{{b.buyer}}, {{b.place === 'INTER' ? 'out of state' : 'in state'}}</td><td class="text-end">{{b.rate}}%</td><td class="text-end">{{b.taxable | number:'1.2-2'}}</td><td class="text-end">{{b.cgst | number:'1.2-2'}}</td><td class="text-end">{{b.sgst | number:'1.2-2'}}</td><td class="text-end">{{b.igst | number:'1.2-2'}}</td></tr></tbody>
+            </table>
+          </details>
+
+          <div class="mb-3" *ngIf="rp.nil.length" data-testid="gsm-nil">
+            <div class="small fw-semibold">Nil-rated, exempt and non-GST (the 0% supplies)</div>
+            <table class="table table-sm mt-1">
+              <thead><tr><th>Kind</th><th class="text-end">Supplied</th><th class="text-end">Returned</th><th class="text-end">Net</th></tr></thead>
+              <tbody><tr *ngFor="let n of rp.nil"><td>{{n.label}}, {{n.buyer}}, {{n.place === 'INTER' ? 'out of state' : 'in state'}}</td><td class="text-end">{{n.supplied | number:'1.2-2'}}</td><td class="text-end">{{n.returned | number:'1.2-2'}}</td><td class="text-end">{{n.net | number:'1.2-2'}}</td></tr></tbody>
+            </table>
+          </div>
+
+          <div class="small mb-2" data-testid="gsm-tie">
+            Bills total &#8377;{{rp.tie_out.bills_total | number:'1.2-2'}} = taxable value and tax &#8377;{{rp.tie_out.taxable_and_tax | number:'1.2-2'}} + round-off &#8377;{{rp.tie_out.round_off | number:'1.2-2'}}.
+            <span class="badge" [ngClass]="rp.tie_out.ok ? 'bg-success' : 'bg-warning text-dark'">{{rp.tie_out.ok ? 'matches' : 'check the bills'}}</span>
+          </div>
+          <div class="small text-muted mb-3" data-testid="gsm-docs">
+            {{rp.documents.issued}} tax invoice(s){{rp.documents.first ? ', ' + rp.documents.first + ' to ' + rp.documents.last : ''}}; {{rp.documents.cancelled}} cancelled.
+            <span *ngIf="rp.cash_memos?.count"> {{rp.cash_memos.count}} cash memo(s) (&#8377;{{rp.cash_memos.total | number:'1.2-2'}}) are not tax invoices.</span>
+          </div>
+        </div>
+
+        <div class="mb-3" *ngIf="kinds?.categories?.length" data-testid="gsm-kinds">
+          <div class="small fw-semibold">What kind of 0% supply is each category? <span class="text-muted fw-normal">(set once, as your CA says; kept as the default)</span></div>
+          <table class="table table-sm mt-1">
+            <thead><tr><th>Category</th><th class="text-end">Sales at 0%</th><th style="width:11rem">Kind</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let k of kinds.categories">
+                <td>{{k.category}} <span class="small text-muted">{{k.products}} product(s)</span></td>
+                <td class="text-end">{{k.value | number:'1.2-2'}}</td>
+                <td>
+                  <select class="form-select form-select-sm" [ngModel]="k.kind || ''" (ngModelChange)="setKind(k, $event)" [disabled]="!!sum.closed || k.category === '(no category)'" [attr.data-testid]="'gsm-kind-' + k.category">
+                    <option value="">Nil-rated (not set)</option><option value="NIL_RATED">Nil-rated</option><option value="EXEMPT">Exempt</option><option value="NON_GST">Non-GST</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        </ng-container>
         <table class="table table-sm w-auto" data-testid="gsm-result">
           <tbody>
             <tr><td>Output tax</td><td class="text-end">&#8377;{{sum.output.tax | number:'1.2-2'}}</td></tr>
@@ -95,6 +157,7 @@ export class GstSummaryComponent implements OnInit {
   month = "";
   sum: any = null;
   hsn: any = null;
+  kinds: any = null;
   filedOn = "";
   arn = "";
   acceptHsn = false;
@@ -119,9 +182,25 @@ export class GstSummaryComponent implements OnInit {
   }
 
   open(month: string) {
-    this.month = month; this.sum = null; this.hsn = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
+    this.month = month; this.sum = null; this.hsn = null; this.kinds = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
     this.api.monthlySummary(month).subscribe((s: any) => this.sum = s, (e) => this.fail(e, 'Could not load the summary.'));
     this.api.hsnSummary(month).subscribe((h: any) => this.hsn = h, () => {});
+    this.api.supplyKinds(month).subscribe((k: any) => this.kinds = k, () => {});
+  }
+
+  /** the CA's answer for a category: nil-rated, exempt or non-GST; kept as the default and used in the report straight away */
+  setKind(k: any, kind: string) {
+    this.error = this.message = '';
+    this.api.setSupplyKind({ category: k.category, kind: kind || null }).subscribe(() => {
+      this.api.salesReport(this.month).subscribe((r: any) => { if (this.sum) this.sum.report = r; }, () => {});
+      this.api.supplyKinds(this.month).subscribe((x: any) => this.kinds = x, () => {});
+    }, (e) => this.fail(e, 'Could not save the kind.'));
+  }
+
+  downloadReport() {
+    this.api.file('sales-report/xlsx', this.month).subscribe((b: Blob) => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `monthly-sales-report-${this.month}.xlsx`; a.click(); URL.revokeObjectURL(a.href);
+    }, (e) => this.fail(e, 'Could not download the report.'));
   }
 
   close() {

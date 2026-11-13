@@ -15,6 +15,9 @@ export class GstApiService {
 
     // register, HSN summary, monthly summary and closing a month
     salesRegister(month: string) { return this.http.get<any>(`${this.api}/sales-register`, { params: { month } }); }
+    salesReport(month: string) { return this.http.get<any>(`${this.api}/sales-report`, { params: { month } }); }
+    supplyKinds(month: string) { return this.http.get<any>(`${this.api}/supply-kinds`, { params: { month } }); }
+    setSupplyKind(body: any) { return this.http.put<any>(`${this.api}/supply-kinds`, body); }
     hsnSummary(month: string) { return this.http.get<any>(`${this.api}/hsn-summary`, { params: { month } }); }
     monthlySummary(month: string) { return this.http.get<any>(`${this.api}/monthly-summary`, { params: { month } }); }
     months() { return this.http.get<any>(`${this.api}/months`); }
