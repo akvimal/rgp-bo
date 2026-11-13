@@ -38,11 +38,39 @@ import { GstApiService } from "./gst-api.service";
           <table class="table table-sm mb-3" data-testid="gsm-supplies">
             <thead><tr><th>Supplies</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th><th class="text-end">Total</th></tr></thead>
             <tbody>
-              <tr *ngFor="let r of rp.supplies.rows"><td>{{r.rate}}%</td><td class="text-end">{{r.taxable | number:'1.2-2'}}</td><td class="text-end">{{r.cgst | number:'1.2-2'}}</td><td class="text-end">{{r.sgst | number:'1.2-2'}}</td><td class="text-end">{{r.igst | number:'1.2-2'}}</td><td class="text-end">{{r.total | number:'1.2-2'}}</td></tr>
+              <tr *ngFor="let r of rp.supplies.rows"><td><a href="#" class="text-decoration-underline" (click)="showItems(r.rate, $event)" [attr.data-testid]="'gsm-rate-' + r.rate" title="See every sale at this rate">{{r.rate}}%</a></td><td class="text-end">{{r.taxable | number:'1.2-2'}}</td><td class="text-end">{{r.cgst | number:'1.2-2'}}</td><td class="text-end">{{r.sgst | number:'1.2-2'}}</td><td class="text-end">{{r.igst | number:'1.2-2'}}</td><td class="text-end">{{r.total | number:'1.2-2'}}</td></tr>
               <tr *ngIf="!rp.supplies.rows.length"><td colspan="6" class="text-muted">No tax invoices.</td></tr>
-              <tr class="fw-semibold"><td>Total</td><td class="text-end">{{rp.supplies.total.taxable | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.cgst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.sgst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.igst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.total | number:'1.2-2'}}</td></tr>
+              <tr class="fw-semibold"><td><a href="#" class="text-decoration-underline" (click)="showItems(null, $event)" data-testid="gsm-rate-all" title="See every sale of the month">Total</a></td><td class="text-end">{{rp.supplies.total.taxable | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.cgst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.sgst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.igst | number:'1.2-2'}}</td><td class="text-end">{{rp.supplies.total.total | number:'1.2-2'}}</td></tr>
             </tbody>
           </table>
+
+          <div class="card card-body mb-3" *ngIf="itemsOpen" data-testid="gsm-items">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-semibold">{{itemsRate === null ? 'All sales' : 'Sales at ' + itemsRate + '% GST'}} <span class="small text-muted fw-normal" *ngIf="items">{{items.totals.lines}} line(s), {{items.totals.qty | number:'1.0-0'}} unit(s)</span></div>
+              <button class="btn btn-sm btn-outline-secondary" type="button" (click)="closeItems()" data-testid="gsm-items-close">Close</button>
+            </div>
+            <div class="small text-muted" *ngIf="itemsLoading">Loading...</div>
+            <ng-container *ngIf="items">
+              <input class="form-control form-control-sm mb-2" style="max-width:22rem" placeholder="Find a product, bill number or customer" [(ngModel)]="itemFilter" data-testid="gsm-items-find">
+              <div class="table-responsive" style="max-height:22rem">
+                <table class="table table-sm table-striped mb-1">
+                  <thead style="position:sticky;top:0" class="table-light"><tr><th>Bill</th><th>Date</th><th>Product</th><th>Batch</th><th class="text-end">Qty</th><th class="text-end">GST</th><th class="text-end">Line total</th><th class="text-end">Discount</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let i of filteredItems">
+                      <td class="text-nowrap">{{i.doc_no}}<span class="badge bg-secondary ms-1" *ngIf="i.type === 'Cash memo'">memo</span></td><td class="text-nowrap">{{i.date}}</td><td>{{i.product}}</td><td>{{i.batch}}</td>
+                      <td class="text-end">{{i.qty}}</td><td class="text-end">{{i.rate}}%</td><td class="text-end">{{i.gross | number:'1.2-2'}}</td>
+                      <td class="text-end">{{i.discount === null ? '' : (i.discount | number:'1.2-2')}}</td><td class="text-end">{{i.taxable === null ? '' : (i.taxable | number:'1.2-2')}}</td>
+                      <td class="text-end">{{i.cgst === null ? '' : (i.cgst | number:'1.2-2')}}</td><td class="text-end">{{i.sgst === null ? '' : (i.sgst | number:'1.2-2')}}</td><td class="text-end">{{i.igst === null ? '' : (i.igst | number:'1.2-2')}}</td>
+                    </tr>
+                    <tr *ngIf="!filteredItems.length"><td colspan="12" class="text-muted">Nothing found.</td></tr>
+                  </tbody>
+                  <tfoot class="fw-semibold"><tr><td colspan="4">Total of all {{items.totals.lines}} line(s)</td><td class="text-end">{{items.totals.qty | number:'1.0-0'}}</td><td></td><td class="text-end">{{items.totals.gross | number:'1.2-2'}}</td><td class="text-end">{{items.totals.discount | number:'1.2-2'}}</td><td class="text-end">{{items.totals.taxable | number:'1.2-2'}}</td><td class="text-end">{{items.totals.cgst | number:'1.2-2'}}</td><td class="text-end">{{items.totals.sgst | number:'1.2-2'}}</td><td class="text-end">{{items.totals.igst | number:'1.2-2'}}</td></tr></tfoot>
+                </table>
+              </div>
+              <div class="small text-warning" *ngIf="items.truncated">Only the first {{items.items.length}} lines are listed here. The Excel has every sale on its "Sales items" sheet.</div>
+              <div class="small text-muted">Each line carries its share of the bill's discount and tax, so the lines of a rate add up to the row above.</div>
+            </ng-container>
+          </div>
 
           <table class="table table-sm mb-3" data-testid="gsm-returns">
             <thead><tr><th>Returns (credit notes)</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th><th class="text-end">Total</th></tr></thead>
@@ -178,6 +206,12 @@ export class GstSummaryComponent implements OnInit {
   hsn: any = null;
   kinds: any = null;
   adj: any = null;
+  /** the sales behind a rate of the report, opened by a click on the rate */
+  itemsOpen = false;
+  itemsRate: number | null = null;
+  items: any = null;
+  itemsLoading = false;
+  itemFilter = '';
   readonly adjSections = [
     { key: 'write_offs', title: 'Stock written off (expired, near expiry, damaged)', note: 'The GST paid on this stock when it was bought may need reversing as input credit.' },
     { key: 'given_out', title: 'Goods given out without a sale (free samples, gifts, own use)', note: 'May count as a supply for GST. Valued at cost before GST, with the GST at the purchase rate and the MRP for reference; your CA decides the value and whether tax is due.' },
@@ -209,11 +243,26 @@ export class GstSummaryComponent implements OnInit {
   }
 
   open(month: string) {
-    this.month = month; this.sum = null; this.hsn = null; this.kinds = null; this.adj = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
+    this.month = month; this.sum = null; this.hsn = null; this.kinds = null; this.adj = null; this.itemsOpen = false; this.items = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
     this.api.monthlySummary(month).subscribe((s: any) => this.sum = s, (e) => this.fail(e, 'Could not load the summary.'));
     this.api.hsnSummary(month).subscribe((h: any) => this.hsn = h, () => {});
     this.api.supplyKinds(month).subscribe((k: any) => this.kinds = k, () => {});
     this.api.adjustments(month).subscribe((a: any) => this.adj = a, () => {});
+  }
+
+  /** every sale line at a GST rate (every rate when null) for the month in view */
+  showItems(rate: number | null, ev?: Event) {
+    ev?.preventDefault();
+    this.itemsOpen = true; this.itemsRate = rate; this.items = null; this.itemsLoading = true; this.itemFilter = '';
+    this.api.salesItems(this.month, rate).subscribe((r: any) => { this.items = r; this.itemsLoading = false; }, (e) => { this.itemsLoading = false; this.itemsOpen = false; this.fail(e, 'Could not load the sales.'); });
+  }
+
+  closeItems() { this.itemsOpen = false; this.items = null; }
+
+  get filteredItems(): any[] {
+    const q = this.itemFilter.trim().toLowerCase();
+    const all: any[] = this.items?.items || [];
+    return q ? all.filter((i) => `${i.product} ${i.doc_no} ${i.customer} ${i.batch ?? ''}`.toLowerCase().includes(q)) : all;
   }
 
   /** the CA's answer for a category: nil-rated, exempt or non-GST; kept as the default and used in the report straight away */

@@ -85,6 +85,15 @@ review", and as an Adjustments sheet in the report's Excel and the auditor's pac
   and the value at MRP beside it, with the same blocks in the Excel. Whether goods given out are a supply, and at which value, is the CA's decision
   (question 5); the report only gathers the figures. Nothing about stock or a return changes.
 
+## Sales behind each rate (2026-11-13)
+
+- Every rate in the Supplies table of the Monthly summary (and its Total) is a link that opens the sales lines at that rate for the month: bill, date, product,
+  batch, quantity, line total, discount, taxable value, CGST, SGST and IGST, with a search box and the totals. `GET gst/sales-items?month=&rate=` returns them
+  (the screen lists the first 2,000).
+- Each line carries its share of the bill's discount and tax, allocated in proportion to its gross with the last line of a rate taking the paisa left, so the
+  lines of a rate add up exactly to the report's row for it (`gst-sales-items.ts`, with a spec; QA test GRG-10).
+- The report's Excel and the auditor's pack carry a **Sales items** sheet with every line of the month, tax invoices and cash memos (a memo has no tax split).
+
 ## Phases still to do
 
 4. **Portal-ready export** of the return tables, once the CA has checked the layout.

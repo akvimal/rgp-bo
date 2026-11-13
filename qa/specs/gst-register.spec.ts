@@ -176,6 +176,22 @@ test.describe('GST register and summary @p1', () => {
     expect(x.headers.get('content-disposition')).toContain(`monthly-sales-report-${month}.xlsx`);
   });
 
+  test('GRG-10 the sales behind a rate add up to that rate in the report, and every sale is listed without one @happy', async ({ api }) => {
+    const rep = (await api.request('GET', `/gst/sales-report?month=${month}`, undefined, MGR)).body;
+    const row = rep.supplies.rows.find((x: any) => x.rate === 5);
+    expect(row).toBeTruthy();
+    const at5 = (await api.request('GET', `/gst/sales-items?month=${month}&rate=5`, undefined, MGR)).body;
+    expect(at5.items.length).toBeGreaterThan(0);
+    expect(at5.items.every((i: any) => i.rate === 5 && i.type === 'Tax invoice')).toBe(true);
+    expect(at5.totals.taxable).toBeCloseTo(row.taxable, 2);
+    expect(at5.totals.cgst).toBeCloseTo(row.cgst, 2);
+    expect(at5.totals.sgst).toBeCloseTo(row.sgst, 2);
+    const all = (await api.request('GET', `/gst/sales-items?month=${month}`, undefined, MGR)).body;
+    expect(all.totals.lines).toBeGreaterThanOrEqual(at5.totals.lines);
+    expect(all.totals.taxable).toBeGreaterThanOrEqual(at5.totals.taxable);
+    expect((await api.request('GET', `/gst/sales-items?month=${month}&rate=abc`, undefined, MGR)).status).toBe(400);
+  });
+
   test('GRG-9 the adjustments (write-offs, vendor returns, credits) are listed by rate, read-only @happy', async ({ api }) => {
     const a = (await api.request('GET', `/gst/adjustments?month=${month}`, undefined, MGR)).body;
     for (const k of ['write_offs', 'vendor_passes', 'vendor_returns', 'credits_applied']) {
@@ -207,7 +223,7 @@ test.describe('GST register and summary @p1', () => {
     expect((await api.request('POST', `/gst/months/${month}/reopen`, { reason: 'x' }, MGR)).status).toBe(400);
     expect((await api.request('POST', `/gst/months/${month}/reopen`, { reason: 'a proper reason' }, MGR)).status).toBe(400);      // not closed
     expect((await api.request('GET', `/gst/sales-register?month=bad`, undefined, MGR)).status).toBe(400);
-    for (const [m, p] of [['GET', `/gst/sales-register?month=${month}`], ['GET', `/gst/hsn-summary?month=${month}`], ['GET', `/gst/monthly-summary?month=${month}`], ['GET', `/gst/sales-report?month=${month}`], ['GET', `/gst/adjustments?month=${month}`], ['PUT', '/gst/supply-kinds'], ['GET', '/gst/months'], ['POST', `/gst/months/${month}/close`]]) {
+    for (const [m, p] of [['GET', `/gst/sales-register?month=${month}`], ['GET', `/gst/hsn-summary?month=${month}`], ['GET', `/gst/monthly-summary?month=${month}`], ['GET', `/gst/sales-report?month=${month}`], ['GET', `/gst/adjustments?month=${month}`], ['GET', `/gst/sales-items?month=${month}&rate=5`], ['PUT', '/gst/supply-kinds'], ['GET', '/gst/months'], ['POST', `/gst/months/${month}/close`]]) {
       expect((await api.request(m, p, m === 'POST' || m === 'PUT' ? {} : undefined, SALES)).status, `${m} ${p}`).toBe(403);
     }
     expect((await get(`/gst/pack?month=${month}`)).status).toBe(200);          // the Business Head

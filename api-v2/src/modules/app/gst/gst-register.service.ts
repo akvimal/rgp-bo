@@ -9,6 +9,7 @@ import { effectiveHsn } from './gst-rate';
 import { HsnLine, closeProblem, findGaps, groupHsn, hsnIssues, isMonth, monthBounds, monthIsOver, monthLabel, netByRate, parseArn, payable, sumTotals, RateTotals } from './gst-register';
 import { halves, isInterState, splitBill } from './gst-tax';
 import { AdjRow, buildAdjustments } from './gst-adjustments';
+import { ItemLine, ItemRow, itemRows, itemTotals } from './gst-sales-items';
 import { KIND_LABEL, ReportBill, ReportNote, SupplyKind, asKind, buildSalesReport, kindOf } from './gst-sales-report';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -446,6 +447,51 @@ export class GstRegisterService {
     return ws;
   }
 
+  // ------------------------------------------------------------------ the month's sales, line by line
+  /**
+   * Every line sold in the month with its share of the bill's discount and GST (gst-sales-items.ts), so the lines of a rate add up to the sales report's row for it.
+   * Tax invoices and cash memos. `rate` keeps only the tax-invoice lines at that GST rate (the link on a rate in the report); `limit` cuts a long list for the screen.
+   */
+  async salesItems(user: any, monthRaw: any, opts: { rate?: number | null; store?: any; limit?: number } = {}) {
+    const month = this.month(monthRaw);
+    const reg = await this.register(user, month, opts.store);
+    const ids = reg.invoices.map((i: any) => +i.id);
+    const lines = ids.length ? await this.manager.query(
+      `select si.sale_id, p.title, nullif(btrim(coalesce(nullif(btrim(p.hsn_code), ''), d.hsn)), '') as hsn, si.batch, si.qty::int as qty, si.price::float8 as price,
+              si.total::float8 as gross, coalesce(si.tax_pcnt, 0)::float8 as rate
+         from sale_item si join product p on p.id = si.product_id
+         left join category_hsn_default d on lower(d.category) = lower(btrim(coalesce(p.category, '')))
+        where si.sale_id = any($1::int[]) and si.active and not si.archive and si.qty > 0 order by si.sale_id, si.id`, [ids]) : [];
+    const byBill = new Map<number, ItemLine[]>();
+    for (const l of lines) byBill.set(+l.sale_id, [...(byBill.get(+l.sale_id) || []), { product: l.title, hsn: l.hsn, batch: l.batch, qty: l.qty, price: l.price, gross: l.gross, rate: l.rate }]);
+    let rows: ItemRow[] = reg.invoices.flatMap((i: any) => itemRows({
+      id: +i.id, docNo: i.doc_no, date: i.date, customer: i.customer, buyerGstin: i.buyer_gstin, store: i.store, inter: !!i.inter_state, discount: i.discount, kind: i.kind === 'TAX' ? 'TAX' : 'CASH', lines: byBill.get(+i.id) || [],
+    }));
+    if (opts.rate !== null && opts.rate !== undefined) rows = rows.filter((r) => r.type === 'Tax invoice' && r.rate === opts.rate);
+    const totals = itemTotals(rows);
+    const limit = opts.limit && opts.limit > 0 ? opts.limit : rows.length;
+    return { month, label: reg.label, rate: opts.rate ?? null, totals, truncated: rows.length > limit, items: rows.slice(0, limit) };
+  }
+
+  /** every sale of the month as a sheet: one row per line, tax invoices and cash memos */
+  private itemsSheet(wb: ExcelJS.Workbook, rows: ItemRow[]) {
+    const ws = wb.addWorksheet('Sales items');
+    ws.columns = [
+      { header: 'Type', key: 'type', width: 12 }, { header: 'Number', key: 'doc_no', width: 18 }, { header: 'Date', key: 'date', width: 12 }, { header: 'Customer', key: 'customer', width: 22 },
+      { header: 'Buyer GSTIN', key: 'buyer_gstin', width: 17 }, { header: 'Product', key: 'product', width: 36 }, { header: 'HSN', key: 'hsn', width: 10 }, { header: 'Batch', key: 'batch', width: 12 },
+      { header: 'Qty', key: 'qty', width: 7 }, { header: 'Price', key: 'price', width: 10 }, { header: 'GST %', key: 'rate', width: 7 }, { header: 'Line total', key: 'gross', width: 12 },
+      { header: 'Discount', key: 'discount', width: 10 }, { header: 'Taxable value', key: 'taxable', width: 13 }, { header: 'CGST', key: 'cgst', width: 10 }, { header: 'SGST', key: 'sgst', width: 10 },
+      { header: 'IGST', key: 'igst', width: 10 }, { header: 'Paid', key: 'net', width: 12 }, { header: 'Store', key: 'store', width: 16 },
+    ];
+    this.head(ws);
+    rows.forEach((r) => ws.addRow(r));
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 19 } };
+    const t = itemTotals(rows);
+    ws.addRow({});
+    ws.addRow({ type: 'Total', qty: t.qty, gross: t.gross, discount: t.discount, taxable: t.taxable, cgst: t.cgst, sgst: t.sgst, igst: t.igst, net: t.net }).font = { bold: true };
+    return ws;
+  }
+
   /** the month's adjustments as a sheet */
   private adjustmentsSheet(wb: ExcelJS.Workbook, adj: any) {
     const ws = wb.addWorksheet('Adjustments');
@@ -471,6 +517,7 @@ export class GstRegisterService {
     const wb = new ExcelJS.Workbook();
     this.reportSheet(wb, rep);
     this.adjustmentsSheet(wb, await this.adjustments(user, month));
+    this.itemsSheet(wb, (await this.salesItems(user, month)).items);
     await this.audit.record({ userId: user.id, action: 'gst.sales_report_exported', entityType: 'gst_filing_month', entityId: null, summary: `Monthly sales report for ${rep.label} exported`, details: { month: rep.month } });
     return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), filename: `monthly-sales-report-${rep.month}.xlsx`, contentType: XLSX };
   }
@@ -513,6 +560,7 @@ export class GstRegisterService {
     this.reportSheet(wb, sum.report);
     this.adjustmentsSheet(wb, await this.adjustments(user, month));
     this.salesSheet(wb, reg);
+    this.itemsSheet(wb, (await this.salesItems(user, month)).items);
 
     const hs = wb.addWorksheet('HSN summary');
     hs.columns = [{ header: 'HSN', key: 'hsn', width: 12 }, { header: 'Status', key: 'status', width: 14 }, { header: 'GST %', key: 'rate', width: 8 }, { header: 'Quantity', key: 'qty', width: 10 }, { header: 'Taxable value', key: 'taxable', width: 14 }, { header: 'Tax', key: 'tax', width: 12 }, { header: 'Products', key: 'products', width: 9 }];

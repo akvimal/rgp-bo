@@ -1,5 +1,5 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { User } from 'src/core/decorator/user.decorator';
@@ -27,6 +27,12 @@ export class GstRegisterController {
   @Get('sales-register/xlsx') async xlsx(@Query('month') month: string, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertAllowed(u); return this.file(res, await this.register.salesXlsx(u, month)); }
   @Get('sales-report') async report(@Query('month') month: string, @Query('store') store: string, @User() u: any) { await this.assertAllowed(u); return this.register.salesReport(u, month, store); }
   @Get('sales-report/xlsx') async reportXlsx(@Query('month') month: string, @User() u: any, @Res({ passthrough: true }) res: Response) { await this.assertAllowed(u); return this.file(res, await this.register.salesReportXlsx(u, month)); }
+  @Get('sales-items') async items(@Query('month') month: string, @Query('rate') rate: string, @Query('store') store: string, @User() u: any) {
+    await this.assertAllowed(u);
+    const r = rate === undefined || rate === '' ? null : Number(rate);
+    if (r !== null && !Number.isFinite(r)) throw new BadRequestException('The rate is a number.');
+    return this.register.salesItems(u, month, { rate: r, store, limit: 2000 });
+  }
   @Get('adjustments') async adjustments(@Query('month') month: string, @Query('store') store: string, @User() u: any) { await this.assertAllowed(u); return this.register.adjustments(u, month, store); }
   @Get('supply-kinds') async kinds(@Query('month') month: string, @User() u: any) { await this.assertAllowed(u); return this.register.supplyKinds(u, month); }
   @Put('supply-kinds') async setKind(@Body() b: any, @User() u: any) { await this.assertAllowed(u); return this.register.setSupplyKind(u, b); }
