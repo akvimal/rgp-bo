@@ -21,6 +21,7 @@ import { DepositRule, checkDepositRule, describeDepositRule, evaluateDeposit, pa
 import { ChecklistAssistant } from "./checklist-assistant";
 import { DEFAULT_TOLERANCE_MINUTES, minutesOf, suggestTemplate } from "./shift-template-rules";
 import { cashPosition } from "./cash-position";
+import { DIGITAL_PROVIDER, SHIFT_DIGITAL_SQL } from "../sales/digital-payment";
 import { ChecklistKind, CHECKLIST_KINDS, DEFAULT_CHECKLISTS, effectiveChecklist, isChecklistKind, normalizeChecklistItems, requiredChecklistKeys, validateChecklist } from "./shift-checklist";
 
 import { isOwnerRole, isManagerRole, NOT_A_PERSON } from 'src/core/roles';
@@ -928,12 +929,7 @@ export class StoreService {
     let closingDigital: any[] | null = null;
     if (body.closingdigital !== undefined) {
       const system = await this.manager.query(
-        `select provider, sum(amount)::float as amount from (
-           select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, digi_amount as amount
-             from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0
-           union all
-           select coalesce(nullif(btrim(provider), ''), 'OTHER'), -amount from customer_due_entry where shift_id = $1 and kind = 'PAYMENT' and pay_mode = 'DIGITAL') x
-          group by 1`, [id]);
+        `select provider, sum(amount)::float as amount from (${SHIFT_DIGITAL_SQL}) x group by 1`, [id, DIGITAL_PROVIDER]);
       const given = new Map<string, number>();
       for (const g of Array.isArray(body.closingdigital) ? body.closingdigital : []) {
         const n = Number(g?.counted);
@@ -1068,12 +1064,17 @@ export class StoreService {
               coalesce(sum(credit_amount), 0)::float as store_credit, coalesce(sum(staff_credit_amount), 0)::float as staff_credit, coalesce(sum(total), 0)::float as total
          from sale where shift_id = $1 and status = 'COMPLETE' and active = true`, [shiftId]);
     const digital = await this.manager.query(
-      `select provider, sum(bills)::int as bills, sum(amount)::float as amount from (
-         select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, 1 as bills, digi_amount as amount
-           from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0
-         union all
-         select coalesce(nullif(btrim(provider), ''), 'OTHER'), 0, -amount from customer_due_entry where shift_id = $1 and kind = 'PAYMENT' and pay_mode = 'DIGITAL') x
-        group by 1 order by 1`, [shiftId]);
+      `select provider, sum(bills)::int as bills, sum(amount)::float as amount from (${SHIFT_DIGITAL_SQL}) x
+        group by 1 order by 1`, [shiftId, DIGITAL_PROVIDER]);
+    // delivery charges with something to collect and no word on how they were paid: the close should be told, so the digital total is not short by them
+    const [chargeGap] = await this.manager.query(
+      `select count(*)::int as n, coalesce(sum(d.charges), 0)::float as amount
+         from sale_deliveries d join sale s on s.id = d."saleId"
+        where s.shift_id = $1 and s.status = 'COMPLETE' and s.active = true and coalesce(d.charges, 0) > 0 and d.charge_via is null`, [shiftId]);
+    const [chargeDigital] = await this.manager.query(
+      `select coalesce(sum(d.charges), 0)::float as amount
+         from sale_deliveries d join sale s on s.id = d."saleId"
+        where s.shift_id = $1 and s.status = 'COMPLETE' and s.active = true and d.charge_via = 'DIGITAL'`, [shiftId]);
     const [pendingDeliveries] = await this.manager.query(
       `select count(*)::int as n from sale s left join sale_deliveries d on d."saleId" = s.id
         where s.shift_id = $1 and s.status = 'COMPLETE' and s.active = true and s.delivery_type = 'Delivery' and coalesce(d.status, 'Pending') = 'Pending'`, [shiftId]);
@@ -1094,8 +1095,8 @@ export class StoreService {
       profile, accountableuserid: accountableId, accountable: accountable?.full_name || null,
       shift: { id: shift.id, name: shift.name, status: shift.status, storeid: shift.storeid, store: (shift as any).store?.location, assigneduserid: shift.assigneduserid,
                assigned: (shift as any).assigneduser?.fullname || null, openingcash: Number(shift.openingcash), expectedcash: stats.expectedcash, openedon: shift.openedon },
-      bills: t.bills, total: t.total, cash: t.cash, digital: t.digital, storeCredit: t.store_credit, staffCredit: t.staff_credit,
-      pendingDeliveries: pendingDeliveries?.n ?? 0, dueLeft: dues?.left_to_pay ?? 0, duesCollectedCash: dues?.collected_cash ?? 0, duesCollectedDigital: dues?.collected_digital ?? 0,
+      bills: t.bills, total: t.total, cash: t.cash, digital: t.digital + (chargeDigital?.amount ?? 0), deliveryChargesDigital: chargeDigital?.amount ?? 0, storeCredit: t.store_credit, staffCredit: t.staff_credit,
+      pendingDeliveries: pendingDeliveries?.n ?? 0, deliveryChargesUnsaid: chargeGap?.n ?? 0, deliveryChargesUnsaidAmount: chargeGap?.amount ?? 0, dueLeft: dues?.left_to_pay ?? 0, duesCollectedCash: dues?.collected_cash ?? 0, duesCollectedDigital: dues?.collected_digital ?? 0,
       digitalByProvider: digital, expenses, expensesTotal: expenses.reduce((s: number, e: any) => s + e.amount, 0),
       refunds: out.refunds, deposits: out.deposits, expected: stats.expectedcash,
       checklists: await this.shiftChecklists(shiftId),

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DIGITAL_PROVIDER, SHIFT_DIGITAL_SQL } from "../sales/digital-payment";
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { BUSINESS_OF_USER_SQL } from 'src/core/business-of-user';
@@ -107,8 +108,7 @@ export class ShiftDigestService {
          from sale sa left join app_user u on u.id = coalesce(sa.acting_user_id, sa.created_by)
         where sa.shift_id = $1 and sa.status = 'COMPLETE' and sa.active = true group by 1 order by sales desc, name`, [shiftId]);
     const digitalByProvider = await this.manager.query(
-      `select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, count(*)::int as bills, coalesce(sum(digi_amount), 0)::float as amount
-         from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0 group by 1 order by amount desc`, [shiftId]);
+      `select provider, sum(bills)::int as bills, coalesce(sum(amount), 0)::float as amount from (${SHIFT_DIGITAL_SQL}) x where amount > 0 group by 1 order by amount desc`, [shiftId, DIGITAL_PROVIDER]);
     const [dv] = await this.manager.query(
       `select count(*)::int as total, count(*) filter (where d.status = 'Delivered')::int as delivered, count(*) filter (where d.status = 'Failed')::int as failed,
               count(*) filter (where coalesce(d.status, 'Pending') = 'Pending')::int as pending

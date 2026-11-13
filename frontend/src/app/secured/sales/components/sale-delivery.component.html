@@ -306,6 +306,18 @@
     </div>
     <div class="row g-2" *ngIf="moreOpen">
       <div class="col-md-4"><label class="form-label small mb-0">Charge to customer</label><input class="form-control" type="number" min="0" [(ngModel)]="editingDelivery.charges"></div>
+      <div class="col-md-4" *ngIf="+editingDelivery.charges > 0">
+        <label class="form-label small mb-0">Charge paid by</label>
+        <select class="form-select" [(ngModel)]="editingDelivery.chargevia" data-testid="dm-chargevia">
+          <option value="">Not said yet</option><option value="CASH">Cash</option><option value="DIGITAL">UPI / card</option><option value="NONE">Not collected</option>
+        </select>
+      </div>
+      <ng-container *ngIf="+editingDelivery.charges > 0 && editingDelivery.chargevia === 'DIGITAL'">
+        <div class="col-md-2"><label class="form-label small mb-0">How</label>
+          <select class="form-select" [(ngModel)]="editingDelivery.chargemethod" data-testid="dm-chargemethod"><option value="UPI">UPI</option><option value="Card">Card</option><option value="Wallet">Wallet</option><option value="Other">Other</option></select></div>
+        <div class="col-md-2"><label class="form-label small mb-0">Ref (last 4)</label><input class="form-control" maxlength="40" [(ngModel)]="editingDelivery.chargeref" data-testid="dm-chargeref"></div>
+      </ng-container>
+      <div class="col-12 small text-muted" *ngIf="+editingDelivery.charges > 0 && editingDelivery.chargevia === 'DIGITAL'">Counted in the digital total of the shift this bill was made in, so it matches the terminal at close.</div>
       <div class="col-md-4">
         <label class="form-label small mb-0">Payment mode</label>
         <select class="form-select" [(ngModel)]="editingDelivery.paymentmode">

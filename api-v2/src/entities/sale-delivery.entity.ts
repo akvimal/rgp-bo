@@ -64,6 +64,14 @@ export class SaleDelivery extends BaseEntity {
   @Column("character varying", { name: "comments", nullable: true })
   comments: string | null;
 
+  // how the customer paid the delivery charge (migration 189): a digital charge counts in the digital takings of the shift of the sale
+  @Column("character varying", { name: "charge_via", nullable: true })
+  chargevia: string | null;
+  @Column("character varying", { name: "charge_method", nullable: true })
+  chargemethod: string | null;
+  @Column("character varying", { name: "charge_ref", nullable: true })
+  chargeref: string | null;
+
   // what the delivery cost and how it was paid (migration 179)
   @Column("character varying", { name: "cost_paid_via", nullable: true })
   costpaidvia: string | null;

@@ -27,6 +27,11 @@ import { AuthService } from "src/app/@core/auth/auth.service";
             <select class="form-select" [(ngModel)]="d.courierpartner"><option value="">Select partner</option><option *ngFor="let p of partners" [value]="p.name">{{p.name}}</option></select></div>
           <div class="col-6" *ngIf="d.deliverymethod !== 'Courier'"><label class="form-label">Delivered by</label><input class="form-control" maxlength="60" [(ngModel)]="d.deliveryby" data-testid="dmode-by"></div>
           <div class="col-6"><label class="form-label">Delivery charge (&#8377;)</label><input type="number" min="0" class="form-control" [(ngModel)]="d.charges" data-testid="dmode-charges"></div>
+          <div class="col-6" *ngIf="+d.charges > 0"><label class="form-label">Charge paid by</label>
+            <select class="form-select" [(ngModel)]="d.chargevia" data-testid="dmode-chargevia"><option value="">Choose</option><option value="CASH">Cash</option><option value="DIGITAL">UPI / card</option><option value="NONE">Not collected</option></select></div>
+          <div class="col-3" *ngIf="+d.charges > 0 && d.chargevia === 'DIGITAL'"><label class="form-label">How</label>
+            <select class="form-select" [(ngModel)]="d.chargemethod" data-testid="dmode-chargemethod"><option value="UPI">UPI</option><option value="Card">Card</option><option value="Wallet">Wallet</option><option value="Other">Other</option></select></div>
+          <div class="col-3" *ngIf="+d.charges > 0 && d.chargevia === 'DIGITAL'"><label class="form-label">Ref (last 4)</label><input class="form-control" maxlength="40" [(ngModel)]="d.chargeref" data-testid="dmode-chargeref"></div>
           <div class="col-12 form-check ms-2"><input class="form-check-input" type="checkbox" id="dmDelivered" [(ngModel)]="d.delivered" data-testid="dmode-delivered"><label class="form-check-label" for="dmDelivered">Already delivered</label></div>
           <div class="col-12 form-check ms-2" *ngIf="auth.gstLive"><input class="form-check-input" type="checkbox" id="dmOutside" [(ngModel)]="outsidestate" data-testid="dmode-outside"><label class="form-check-label" for="dmOutside">Delivered to another state</label>
             <div class="small text-muted">That changes the tax on the bill, so it cannot be done from here.</div></div>
@@ -61,7 +66,7 @@ export class SaleDeliveryModeComponent implements OnChanges {
 
   ngOnChanges(c: SimpleChanges) {
     if (c["sale"] && this.sale) {
-      this.d = { deliverymethod: "Staff Delivery", charges: 0, delivered: false };
+      this.d = { deliverymethod: "Staff Delivery", charges: 0, chargevia: "", chargemethod: "UPI", chargeref: "", delivered: false };
       this.reason = ""; this.outsidestate = false; this.error = ""; this.busy = false;
       if (!this.partners.length) this.http.get<any[]>(`${environment.apiHost}/delivery-partners`).subscribe(p => this.partners = p || [], () => this.partners = []);
     }

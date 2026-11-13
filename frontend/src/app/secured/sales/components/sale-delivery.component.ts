@@ -175,6 +175,8 @@ export class SaleDeliveryComponent {
             paymentmode: delivery.paymentmode || 'Prepaid',
             collectionstatus: delivery.collectionstatus || 'Pending',
             confirmed: !!delivery.confirmed,
+            chargevia: delivery.chargevia || '',
+            chargemethod: delivery.chargemethod || 'UPI',
             // times as they were typed (a datetime box cannot show the stored form), and the day to deliver defaults to today
             deliveredat: wallClock(delivery.deliveredat),
             confirmedat: wallClock(delivery.confirmedat),
@@ -185,7 +187,7 @@ export class SaleDeliveryComponent {
             && this.editingDelivery.receiverphone === (customer.mobile || '');
         this.deliveredByKind = deliveredByKind(this.editingDelivery);
         this.receiverOpen = false;
-        this.moreOpen = false;
+        this.moreOpen = +(delivery.charges || 0) > 0 && !delivery.chargevia; // a charge with no word on how it was paid opens the details
         this.confirmOpen = false;
         this.saveError = '';
         this.costChoice = { via: choiceOf(delivery), mode: delivery.costpaidmode || '', ref: delivery.costpaidref || '', linkKind: '', linkId: null, adopt: false };

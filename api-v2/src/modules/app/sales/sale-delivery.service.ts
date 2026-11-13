@@ -13,6 +13,7 @@ import {
 } from "./delivery-cost-rules";
 import { DeliveryRef, EntryRef, matchOf, matchesFor, suggestLinks } from "./delivery-cost-match";
 import { deliveryModeProblem } from "./delivery-mode-rule";
+import { cleanChargePayment, digitalChargeChanged } from "./delivery-charge-rule";
 
 @Injectable()
 export class SaleDeliveryService {
@@ -36,6 +37,8 @@ export class SaleDeliveryService {
     }
 
     private toEntityPayload(delivery:any) {
+        const charge = cleanChargePayment(delivery);
+        if(!charge.ok) throw new BadRequestException(charge.message);
         return {
             saleId: delivery.saleid,
             bookeddate: delivery.bookeddate || this.getToday(),
@@ -58,6 +61,8 @@ export class SaleDeliveryService {
             collectionstatus: delivery.collectionstatus || null,
             failurereason: delivery.failurereason || null,
             comments: delivery.comments || null,
+            // how the customer paid the charge: only when the request says (the other callers leave it as it was)
+            ...(charge.value || {}),
         };
     }
 
@@ -117,6 +122,7 @@ export class SaleDeliveryService {
                     deliverymethod: d.deliverymethod === 'Courier' ? 'Courier' : 'Staff Delivery',
                     courierpartner: d.deliverymethod === 'Courier' ? (String(d.courierpartner || '').trim() || null) : null,
                     charges: Math.max(0, Number(d.charges) || 0),
+                    chargevia: d.chargevia ?? '', chargemethod: d.chargemethod, chargeref: d.chargeref,
                     // paid when the bill was made: nothing to collect at the door
                     paymentmode: 'Paid at counter', collectionstatus: 'Collected',
                     status: delivered ? 'Delivered' : 'Pending',
@@ -228,6 +234,9 @@ export class SaleDeliveryService {
                 confirmedby: delivery.confirmedby || '',
                 confirmedat: delivery.confirmedat || null,
                 charges: delivery.charges ?? 0,
+                chargevia: delivery.chargevia || '',
+                chargemethod: delivery.chargemethod || '',
+                chargeref: delivery.chargeref || '',
                 actualcost: delivery.actualcost ?? 0,
                 status: delivery.status || 'Pending',
                 paymentmode: delivery.paymentmode || '',
@@ -427,6 +436,12 @@ export class SaleDeliveryService {
             payload.confirmed = true;
             payload.confirmedby = payload.confirmedby || me?.full_name || null;
             payload.confirmedbyuser = payload.confirmedby === me?.full_name ? user.id : (existing?.confirmedbyuser ?? null);
+        }
+        // a digital charge is already counted in the takings of the shift of the sale: once that shift is closed it cannot change quietly
+        if(payload.chargevia !== undefined || payload.charges !== undefined){
+            const [sh] = await this.manager.query(`select sh.status from sale s join store_shifts sh on sh.id = s.shift_id where s.id = $1`, [saleId]);
+            const after = { charges: payload.charges ?? existing?.charges ?? 0, chargevia: payload.chargevia !== undefined ? payload.chargevia : existing?.chargevia, chargemethod: payload.chargemethod !== undefined ? payload.chargemethod : existing?.chargemethod };
+            if(sh?.status === 'CLOSED' && digitalChargeChanged(existing, after)) throw new ConflictException('The shift this bill belongs to is closed and its digital takings were counted with this delivery charge. Ask the Store Head to change it.');
         }
         const asked = cleanCostRequest(dto.costpaid, payload.actualcost);
         if(!asked.ok) throw new BadRequestException(asked.message);

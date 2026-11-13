@@ -27,3 +27,18 @@ export async function checkDigitalPayment(manager: EntityManager, sale: any, sal
   }
   return { digimethod: method, digirefno: ref || null, digiprovider: DIGITAL_PROVIDER };
 }
+
+/**
+ * The digital takings of a shift, one row per provider: the digital part of each completed bill, the delivery charges customers paid digitally (the charge is
+ * outside the bill total, so it is not in digi_amount), less the digital payments taken against customer dues. Used by the close, the summary and the digest so
+ * they all show the same figure. $1 is the shift id and $2 the provider a delivery charge is counted under.
+ */
+export const SHIFT_DIGITAL_SQL = `
+         select coalesce(nullif(btrim(digi_provider), ''), 'OTHER') as provider, 1 as bills, digi_amount as amount
+           from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(digi_amount, 0) > 0
+         union all
+         select coalesce(nullif(btrim(s.digi_provider), ''), $2), 1, d.charges
+           from sale_deliveries d join sale s on s.id = d."saleId"
+          where s.shift_id = $1 and s.status = 'COMPLETE' and s.active = true and d.charge_via = 'DIGITAL' and coalesce(d.charges, 0) > 0
+         union all
+         select coalesce(nullif(btrim(provider), ''), 'OTHER'), 0, -amount from customer_due_entry where shift_id = $1 and kind = 'PAYMENT' and pay_mode = 'DIGITAL'`;

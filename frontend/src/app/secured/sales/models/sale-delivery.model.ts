@@ -9,6 +9,10 @@ export interface SaleDelivery {
     receiverphone?: string,
     receiveraddress?: string,
     charges?: number,
+    // how the customer paid the charge: CASH, DIGITAL or NONE; for DIGITAL the method (UPI, Card...) and the last digits of the transaction id
+    chargevia?: string,
+    chargemethod?: string,
+    chargeref?: string,
     actualcost?: number,
     deliverydate?: string,
     deliveryby?: string,
