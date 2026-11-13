@@ -2,6 +2,7 @@ import { AuthService } from "src/app/@core/auth/auth.service";
 import { Component, OnInit } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { HrService } from "./hr.service";
+import { PERSON_NAME_MESSAGE, isPersonName } from "src/app/shared/input-rules";
 
 /** Staff list, profile and salary revisions. */
 @Component({ selector: "app-hr-staff", templateUrl: "./hr-staff.component.html" })
@@ -120,6 +121,8 @@ export class HrStaffComponent implements OnInit {
   save() {
     this.message = this.error = "";
     const e = this.editing;
+    // a new staff member's name (no login) must be a real name (the API checks it too)
+    if (!e.id && !e.has_login && String(e.full_name ?? "").trim() && !isPersonName(e.full_name)) { this.error = PERSON_NAME_MESSAGE; return; }
     const body: any = {
       relationship: e.relationship || "EMPLOYEE", on_payroll: !!e.on_payroll, emp_code: e.emp_code, designation: e.designation, position_id: e.position_id || null, pharmacist_reg_no: e.pharmacist_reg_no || null, pharmacist_council: e.pharmacist_council || null, pharmacist_valid_to: e.pharmacist_valid_to || null, store_id: e.store_id, emp_type: e.emp_type, join_date: e.join_date, weekly_off: e.weekly_off,
       dob: e.dob || null, address: e.address, emergency_name: e.emergency_name, emergency_phone: e.emergency_phone,

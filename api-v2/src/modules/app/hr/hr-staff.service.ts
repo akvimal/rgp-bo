@@ -6,6 +6,7 @@ import { checkEngagement, ownerDefault, relationshipsFor } from './hr-engagement
 import { checkDecision, Decision, itemsToAdd, LEGAL_FORM_LABELS, LegalForm, payrollMode, pickRoleSuggestions, roleSuggestions, rolesToAdd, starterView, statutoryProgress, statutoryView } from './hr-starter';
 import { hasEarning, normaliseLines } from './hr-position';
 import { groupDesignations } from './hr-link';
+import { PERSON_NAME_MESSAGE, personNameProblem } from 'src/core/input-rules';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
@@ -135,6 +136,13 @@ export class HrStaffService {
     if (type !== 'PART_TIME' && (f.work_days || f.work_start)) throw new BadRequestException('Working days and hours are for part-time staff.');
   }
 
+  /** a staff member's typed name must be a real-looking name (letters, spaces and . ' - only) */
+  private checkName(name: string | null) {
+    if (!name) return;
+    const p = personNameProblem(name, 80, 'The name');
+    if ('error' in p) throw new BadRequestException(p.error || PERSON_NAME_MESSAGE);
+  }
+
   private validate(b: any, creating: boolean) {
     const out: any = {};
     if (creating) {
@@ -224,6 +232,7 @@ export class HrStaffService {
       who = u.full_name;
     } else {
       who = clean(b?.full_name, 80);
+      this.checkName(who);
       if (!who) throw new BadRequestException('Choose the login this staff member uses, or enter their name if they have none.');
     }
     const u = { full_name: who };
@@ -261,6 +270,7 @@ export class HrStaffService {
     else if (b.full_name !== undefined) {
       const nm = clean(b.full_name, 80);
       if (!nm) throw new BadRequestException('The name cannot be empty.');
+      if (nm !== String(cur.full_name ?? '').trim().replace(/\s+/g, ' ')) this.checkName(nm); // an old name left as it was still saves
       f.full_name = nm;
     }
     if (f.position_id !== undefined) {

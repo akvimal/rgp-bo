@@ -14,6 +14,7 @@ import { ASSIGNABLE_BY_SITE_ADMIN, BUILT_IN_ROLES, OWNER_ROLES } from "src/core/
 import { grants, isManagerOnly, mergeStores, overreach, permsOf, RESERVED_ROLES, roleBlock, sharesStore } from "src/core/role-rules";
 import { forgetUser } from "src/core/active-users";
 import { emailProblem, emailTakenMessage, removalBlock } from "src/core/user-rules";
+import { personNameProblem } from "src/core/input-rules";
 import { ModulesService } from "src/core/modules/modules.service";
 import { PlatformService } from "src/core/platform/platform.service";
 import { filterPermissions } from "src/core/modules/modules";
@@ -118,7 +119,15 @@ export class UserService {
     }
   }
 
+  /** a login's full name, when sent, must be a real-looking name */
+  private checkFullName(v: any) {
+    if (v === undefined || v === null || String(v).trim() === '') return;
+    const p = personNameProblem(v, 80, 'The name');
+    if ('error' in p) throw new BadRequestException(p.error);
+  }
+
   async createScoped(dto: CreateUserDto, currentUserId: number) {
+    this.checkFullName(dto.fullname);
     const caller = await this.getCaller(currentUserId);
     if (!dto.roleid) {
       throw new BadRequestException('Role is required');
@@ -180,6 +189,8 @@ export class UserService {
   async updateScoped(id: number, dto: any, currentUserId: number) {
     const caller = await this.getCaller(currentUserId);
     const target = await this.userRepository.findOne({ where: { id } });
+    // only a name typed or changed now is checked; an old login's name stays as it was when something else is edited
+    if (target && String(dto.fullname ?? '').trim() !== String(target.fullname ?? '').trim()) this.checkFullName(dto.fullname);
     if (!target) {
       throw new BadRequestException('User not found');
     }

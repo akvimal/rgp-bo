@@ -7,6 +7,7 @@ import { EntityManager, Repository } from "typeorm";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuditService } from "src/core/audit/audit.service";
 import { NIL_MOBILE, cleanEmail, cleanRelationship, cleanText, identityProblem, likelySamePerson, mergeProblem, normaliseMobile, sameWords, tidyName } from "./customer-rules";
+import { personNameProblem } from "src/core/input-rules";
 import { CustomerRelationshipService } from "./customer-relationship.service";
 import { CustomerPrivacyService } from "./customer-privacy.service";
 import { isMasked } from "./customer-privacy";
@@ -37,6 +38,11 @@ export class CustomerService {
 
         const name = tidyName(cleanText(dto.name ?? existing?.name, 80, 'The name'));
         if (!name || name.length < 2) throw new BadRequestException('The customer name is required.');
+        // the pattern applies to a name typed or changed now; an old record's name is left as it was when only something else is edited
+        if (!existing || !sameWords(existing.name, name)) {
+            const p = personNameProblem(name, 80, 'The name');
+            if ('error' in p) throw new BadRequestException(p.error);
+        }
         const mobile = dto.mobile === undefined ? (existing?.mobile ?? null) : normaliseMobile(dto.mobile);
         // the location (a free-text area name) says which person this is when there is no mobile number
         const locality = dto.locality === undefined ? (existing?.locality ?? null) : cleanText(dto.locality, 60, 'The location');

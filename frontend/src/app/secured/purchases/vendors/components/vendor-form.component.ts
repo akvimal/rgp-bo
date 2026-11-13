@@ -4,6 +4,7 @@ import { FormArray, FormControl, FormGroup, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { VendorsService } from "../vendors.service";
 import { GST_STATES, isValidGstin, stateName } from "../gst-util";
+import { PERSON_NAME_MESSAGE, personNameValidator } from "src/app/shared/input-rules";
 
 @Component({
     templateUrl: 'vendor-form.component.html'
@@ -39,11 +40,11 @@ export class VendorFormComponent{
         address: new FormControl(''),
         city: new FormControl(''),
         pincode: new FormControl('', Validators.pattern(/^([1-9][0-9]{5})?$/)),
-        contactname: new FormControl(''),
+        contactname: new FormControl('', personNameValidator(() => this.original?.contactname)),
         contactphone: new FormControl(''),
         mobile: new FormControl('', Validators.pattern(/^\s*(\+?91[\s-]?|0)?[6-9][0-9]{9}\s*$|^$/)),
         email: new FormControl('', Validators.email),
-        repname: new FormControl(''),
+        repname: new FormControl('', personNameValidator(() => this.original?.repname)),
         repphone: new FormControl('', Validators.pattern(/^\s*(\+?91[\s-]?|0)?[6-9][0-9]{9}\s*$|^$/)),
         paymenttermsdays: new FormControl(0, [Validators.min(0), Validators.max(365)]),
         takesback: new FormControl('NONE'),
@@ -63,6 +64,9 @@ export class VendorFormComponent{
       stats:any = null;
       vendorId:any = null;
       private originalGstn = '';
+      /** the contact and rep names as loaded: an old odd name still saves, a name typed or changed must be a real name */
+      original: any = null;
+      readonly nameMessage = PERSON_NAME_MESSAGE;
 
       constructor(private service:VendorsService, private router:Router,
         private route:ActivatedRoute, private props: PropsService){
@@ -100,6 +104,7 @@ export class VendorFormComponent{
             comments: data.comments,
           });
           this.originalGstn = (data.gstn || '').trim().toUpperCase();
+          this.original = { contactname: data.contactname, repname: data.repname };
           this.stats = data.stats || null;
           this.vendorId = id;
           (data.licenses || []).forEach((l:any) => this.addLicense(l));

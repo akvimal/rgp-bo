@@ -5,6 +5,7 @@ import { RolesService } from "../../roles/roles.service";
 import { BusinessesService } from "../../businesses/businesses.service";
 import { UsersService } from "../users.service";
 import { AuthService } from "src/app/@core/auth/auth.service";
+import { PERSON_NAME_MESSAGE, personNameValidator } from "src/app/shared/input-rules";
 import { blankStaffDetails, staffDetailsBody, staffDetailsModel } from "./staff-details-fields.component";
 
 const ADMIN_ROLE_NAMES = ['Site Admin', 'Business Head', 'Owner-operator'];
@@ -42,11 +43,14 @@ export class UserEditFormComponent {
     return this.isBusinessHead && !this.auth.moduleOn('hr') && !!role && role.name !== 'Counter' && role.name !== 'Business Head';
   }
 
+    /** the name as loaded: left unchanged it saves even if odd; a name typed or changed must be a real name */
+    loadedName: string | null = null;
+
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
         roleid: new FormControl('',Validators.required),
         businessid: new FormControl(''),
-        fullname: new FormControl('',Validators.required),
+        fullname: new FormControl('',[Validators.required, personNameValidator(() => this.loadedName)]),
         email: new FormControl('',Validators.required),
         phone: new FormControl(''),
         location: new FormControl(''),
@@ -66,6 +70,7 @@ export class UserEditFormComponent {
           this.form.controls['id'].setValue(id);
           this.form.controls['roleid'].setValue(data.roleid);
           this.form.controls['businessid'].setValue(data.businessid || '');
+          this.loadedName = data.fullname;
           this.form.controls['fullname'].setValue(data.fullname);
           this.form.controls['email'].setValue(data.email);
           this.form.controls['phone'].setValue(data.phone);

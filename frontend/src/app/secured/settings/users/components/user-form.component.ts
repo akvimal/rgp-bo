@@ -5,6 +5,7 @@ import { RolesService } from "../../roles/roles.service";
 import { BusinessesService } from "../../businesses/businesses.service";
 import { UsersService } from "../users.service";
 import { AuthService } from "src/app/@core/auth/auth.service";
+import { PERSON_NAME_MESSAGE, personNameValidator } from "src/app/shared/input-rules";
 import { blankStaffDetails, staffDetailsBody } from "./staff-details-fields.component";
 
 const ADMIN_ROLE_NAMES = ['Site Admin', 'Business Head', 'Owner-operator'];
@@ -47,7 +48,7 @@ export class UserFormComponent {
         id: new FormControl(''),
         roleid: new FormControl('',Validators.required),
         businessid: new FormControl(''),
-        fullname: new FormControl('',Validators.required),
+        fullname: new FormControl('',[Validators.required, personNameValidator()]),
         email: new FormControl('',Validators.required),
         password: new FormControl('',Validators.required),
         confirmpassword: new FormControl('',Validators.required),

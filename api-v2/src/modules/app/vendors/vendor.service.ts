@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { CreateVendorDto, VendorLicenseDto } from "./dto/create-vendor.dto";
+import { personNameProblem } from "src/core/input-rules";
 import { Vendor } from "src/entities/vendor.entity";
 import { AuditService } from "src/core/audit/audit.service";
 
@@ -46,6 +47,14 @@ export class VendorService {
         };
         for (const k of Object.keys(map)) {
             if ((dto as any)[k] !== undefined) out[map[k]] = (dto as any)[k];
+        }
+
+        // the contact and sales rep names are people's names; checked when typed or changed, so an old record still saves
+        for (const [k, label] of [['contactname', 'The contact name'], ['repname', 'The sales rep name']] as const) {
+            const v = (dto as any)[k];
+            if (v === undefined || v === null || String(v).trim() === '' || String(v).trim() === String((existing as any)?.[k] ?? '').trim()) continue;
+            const p = personNameProblem(v, 60, label);
+            if ('error' in p) throw new BadRequestException(p.error);
         }
 
         const storedG = this.norm(existing?.gstn);

@@ -72,7 +72,7 @@ describe('UserService.updateScoped email', () => {
     expect(free.users.update).toHaveBeenCalledWith(12, expect.objectContaining({ email: 'new@x.test' }));
     const odd = { ...staff, email: 'admin' };
     const same = setup({ caller: head, target: odd, targetRole: 'Sales Staff' });
-    await same.service.updateScoped(12, { email: 'admin', fullname: 'A' }, 10);
+    await same.service.updateScoped(12, { email: 'admin', fullname: 'Anand' }, 10);
     expect(same.users.update).toHaveBeenCalled();
   });
 });

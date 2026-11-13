@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { Customer } from "../customer.model";
 import { CustomersService } from "../customers.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
+import { PERSON_NAME_MESSAGE, personNameValidator } from "src/app/shared/input-rules";
 
 /** The mobile as the API will read it: spaces, dashes, +91, 91 and a leading 0 stripped. null when it is not a mobile. */
 export function normaliseMobile(value: any): string | null {
@@ -59,7 +60,7 @@ export class CustomerFormComponent implements AfterViewInit {
 
     form:FormGroup = new FormGroup({
         id: new FormControl(''),
-        name: new FormControl('',[requiredTrim, nameValidator]),
+        name: new FormControl('',[requiredTrim, nameValidator, personNameValidator(() => this.customer?.name)]),
         mobile: new FormControl('', mobileValidator),     // optional: with no number, the name and the location tell the customer apart
         altmobile: new FormControl('', mobileValidator),
         email: new FormControl('', Validators.email),
@@ -179,7 +180,7 @@ export class CustomerFormComponent implements AfterViewInit {
       const c = this.form.controls[name];
       if (!c.invalid || !(c.dirty || c.touched || this.attempted)) return '';
       const empty = !String(c.value ?? '').trim();
-      if (name === 'name') return empty ? 'Name is required.' : 'Enter the customer name (at least 2 letters).';
+      if (name === 'name') return empty ? 'Name is required.' : c.errors?.['personName'] ? PERSON_NAME_MESSAGE : 'Enter the customer name (at least 2 letters).';
       return empty ? '' : 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.';
     }
 

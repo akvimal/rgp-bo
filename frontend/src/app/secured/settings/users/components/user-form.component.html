@@ -21,7 +21,8 @@
         <div class="row g-3 mt-0">
           <div class="col-md-6 col-lg-3" *isAuth="'users.add$fullname'">
             <label for="fullname" class="form-label">Full Name</label>
-            <input type="text" class="form-control" id="fullname" data-testid="user-f-fullname" formControlName="fullname">
+            <input type="text" class="form-control" id="fullname" data-testid="user-f-fullname" formControlName="fullname" maxlength="80" [class.is-invalid]="form.controls['fullname'].errors?.['personName']">
+            <div class="invalid-feedback d-block" *ngIf="form.controls['fullname'].errors?.['personName']" data-testid="user-f-fullname-error">Enter a real name: letters, spaces and . ' - only.</div>
           </div>
           <div class="col-md-6 col-lg-3" *isAuth="'users.add$phone'">
             <label for="phone" class="form-label">Phone</label>

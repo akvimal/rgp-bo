@@ -80,7 +80,8 @@
         <div class="row g-3">
           <div class="col-md-6 col-lg-3">
             <label for="contactname" class="form-label">Contact name</label>
-            <input type="text" class="form-control" id="contactname" data-testid="vendor-f-contact" formControlName="contactname">
+            <input type="text" class="form-control" id="contactname" data-testid="vendor-f-contact" formControlName="contactname" maxlength="40" [class.is-invalid]="form.controls['contactname'].invalid">
+            <div class="invalid-feedback d-block" *ngIf="form.controls['contactname'].invalid" data-testid="vendor-f-contact-error">{{nameMessage}}</div>
           </div>
           <div class="col-md-6 col-lg-3">
             <label for="contactphone" class="form-label">Phone</label>
@@ -98,7 +99,8 @@
           </div>
           <div class="col-md-6 col-lg-3">
             <label for="repname" class="form-label">Sales representative</label>
-            <input type="text" class="form-control" id="repname" data-testid="vendor-f-rep-name" formControlName="repname">
+            <input type="text" class="form-control" id="repname" data-testid="vendor-f-rep-name" formControlName="repname" maxlength="60" [class.is-invalid]="form.controls['repname'].invalid">
+            <div class="invalid-feedback d-block" *ngIf="form.controls['repname'].invalid" data-testid="vendor-f-rep-error">{{nameMessage}}</div>
           </div>
           <div class="col-md-6 col-lg-3">
             <label for="repphone" class="form-label">Representative's mobile</label>
