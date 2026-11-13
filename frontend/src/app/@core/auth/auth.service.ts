@@ -259,6 +259,8 @@ export class AuthService {
     if (url === '/secure/help' || url.startsWith('/secure/help/')) return true;
     // the weekly knowledge check is each person's own
     if (url.split('?')[0] === '/secure/knowledge') return true;
+    // customer orders (advance-paid commitments) are taken at the till: whoever may use sales may open them (no role carries this path)
+    if (url === '/secure/commitments' || url.startsWith('/secure/commitments/')) return this.isActionAuthorized('sales');
     // the pharmacy guide is for everyone who works in a pharmacy business, whatever their role
     if (url.split('?')[0] === '/secure/pharmacy-guide') return this.packOn('pharmacy');
     const found = this.permissions.find((p:any) => {
