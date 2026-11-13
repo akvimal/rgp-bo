@@ -81,7 +81,7 @@ test.describe('Expenses: cash source and bank account @p1', () => {
     const report = (await api.request('GET', `/expenses/report?from=${today()}&to=${today()}&store=${sid}`, undefined, MGR)).body;
     expect(report.total).toBe(250);                                                              // once: the ledger row, not the ledger row and the drawer row
 
-    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { counteddenominations: [], allowZero: true }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: [], allowZero: true }, MGR);
   });
 
   test('EXPC-3 the drawer is only for an open shift of the store; cash "not from the till" touches no shift @edge', async ({ api }) => {
@@ -98,7 +98,7 @@ test.describe('Expenses: cash source and bank account @p1', () => {
     expect(out.status, JSON.stringify(out.body)).toBeLessThan(300);
     expect(await expectedCash(api, sid, shift.body.id)).toBe(before);                            // not from the till: the drawer is as it was
 
-    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { counteddenominations: [], allowZero: true }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: [], allowZero: true }, MGR);
     const closed = await api.request('POST', '/expenses', { expense_date: today(), store_id: sid, category_id: cat, amount: 60, pay_mode: 'CASH', cash_source: 'DRAWER', shift_id: shift.body.id }, MGR);
     expect(closed.status).toBe(400);                                                             // that shift has closed
   });

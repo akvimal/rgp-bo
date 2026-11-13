@@ -26,7 +26,7 @@ const me = async (api: any) => (await api.request('GET', '/auth/me', undefined, 
 const open = (api: any, storeid: number, extra: any = {}) =>
   api.request('POST', '/store-cash/shifts', { storeid, openingcash: 400, name: 'gate', openingchecklist: ['float_counted'], ...extra }, MGR);
 const close = (api: any, id: number, userId: number, extra: any = {}) =>
-  api.request('PUT', `/store-cash/shifts/${id}/close`, { countedcash: 400, closedoperatorid: userId, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'], ...extra }, MGR);
+  api.request('PUT', `/store-cash/shifts/${id}/close`, { cashvariancereason: 'qa variance', countedcash: 400, closedoperatorid: userId, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'], ...extra }, MGR);
 const sync = (api: any) => api.request('POST', '/compliance/sync', {}, MGR);
 
 test.describe.serial('Compliance gate @p1', () => {

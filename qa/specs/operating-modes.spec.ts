@@ -53,7 +53,7 @@ const setProfile = (api: any, id: number, body: any, as = MGR) => api.request('P
 const openShift = (api: any, storeId: number, as: string, body: any = {}) =>
   api.request('POST', '/store-cash/shifts', { storeid: storeId, openingdenominations: denoms(1000), name: 'om', ...body }, as);
 const closeShift = (api: any, id: number, as: string, body: any = {}) =>
-  api.request('PUT', `/store-cash/shifts/${id}/close`, { counteddenominations: denoms(1000), ...body }, as);
+  api.request('PUT', `/store-cash/shifts/${id}/close`, { cashvariancereason: 'qa variance', counteddenominations: denoms(1000), ...body }, as);
 
 function bill(total = 40) {
   const s = POOL[POOL.length - 4];

@@ -57,7 +57,7 @@ test.describe('Shift templates and the time of day @p1', () => {
     expect(withTpl.status, JSON.stringify(withTpl.body)).toBeLessThan(300);
     expect(withTpl.body.name).toBe('QA Late');
     expect(withTpl.body.starttime).toBe(late.starttime);                                           // the plan comes from the template
-    await api.request('PUT', `/store-cash/shifts/${withTpl.body.id}/close`, { counteddenominations: [], allowZero: true }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${withTpl.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: [], allowZero: true }, MGR);
 
     const sid2 = await freshStore(api);
     const bare = await openShift(api, { storeid: sid2, openingcash: 0, allowZero: true });
@@ -65,7 +65,7 @@ test.describe('Shift templates and the time of day @p1', () => {
     expect(bare.body.starttime).toBe('');                                                          // not an invented 09:00
     expect(bare.body.endtime).toBe('');
     expect(bare.body.openedon ?? bare.body.opened_on).toBeTruthy();                                // the real moment is what is recorded
-    await api.request('PUT', `/store-cash/shifts/${bare.body.id}/close`, { counteddenominations: [], allowZero: true }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${bare.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: [], allowZero: true }, MGR);
   });
 
   test('SHIFTT-3 the shift desk offers the shift that fits, picked for the person, and says the times are a plan @happy', async ({ app }) => {

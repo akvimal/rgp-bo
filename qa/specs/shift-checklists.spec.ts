@@ -79,7 +79,7 @@ test.describe('Shift checklists @p1', () => {
     try {
       const open = await api.request('POST', '/store-cash/shifts', { storeid: sid, openingcash: 300, name: 'ckl', openingchecklist: ['float_counted'] }, MGR);
       expect(open.status, JSON.stringify(open.body)).toBeLessThan(300);
-      const close = (keys: string[]) => api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { countedcash: 300, closedoperatorid: me, closetype: 'END_OF_DAY', closingchecklist: keys }, MGR);
+      const close = (keys: string[]) => api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 300, closedoperatorid: me, closetype: 'END_OF_DAY', closingchecklist: keys }, MGR);
 
       expect((await close(['drawer_counted'])).status).toBe(400);                                 // the standard list needs the cash secured too
       // this store drops "cash secured": it is no longer asked for

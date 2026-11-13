@@ -161,7 +161,7 @@ export async function salesHistory(m: Manifest) {
   const preOpen = await GET<any[]>('/store-cash/shifts', { token: bh0, query: { storeid: 1, status: 'OPEN' } }).catch(() => []);
   for (const sh of preOpen || []) {
     const amt = Number(sh.expectedcash ?? sh.openingcash ?? 0);
-    await PUT(`/store-cash/shifts/${sh.id}/close`, { counteddenominations: toDenoms(amt), allowZero: true }, { token: bh0 }).catch(() => {});
+    await PUT(`/store-cash/shifts/${sh.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: toDenoms(amt), allowZero: true }, { token: bh0 }).catch(() => {});
   }
 
   for (let s = 0; s < totalShifts; s++) {
@@ -236,7 +236,7 @@ export async function salesHistory(m: Manifest) {
       const rpt = await GET<any>(`/store-cash/shifts/${shiftId}/report`, { token: bh }).catch(() => null);
       const expected = Number(rpt?.shift?.expectedcash ?? rpt?.expectedcash ?? 0);
       const counted = Math.max(0, +(expected + faker.number.float({ min: -120, max: 80, fractionDigits: 2 })).toFixed(2));
-      await PUT(`/store-cash/shifts/${shiftId}/close`, { counteddenominations: toDenoms(counted), allowZero: true, notes: 'qa-seed close' }, { token: bh }).catch(() => {});
+      await PUT(`/store-cash/shifts/${shiftId}/close`, { cashvariancereason: 'qa variance', counteddenominations: toDenoms(counted), allowZero: true, notes: 'qa-seed close' }, { token: bh }).catch(() => {});
     }
     tick();
   }

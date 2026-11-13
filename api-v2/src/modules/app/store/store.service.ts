@@ -1,3 +1,4 @@
+import { varianceReasons } from "./shift-variance";
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { checkPhones } from 'src/core/phones';
 import { ComplianceService } from '../compliance/compliance.service';
@@ -927,6 +928,7 @@ export class StoreService {
 
     // Digital takings: what the system recorded per provider against what the terminal shows.
     let closingDigital: any[] | null = null;
+    const digitalReasons: Record<string, any> = {};
     if (body.closingdigital !== undefined) {
       const system = await this.manager.query(
         `select provider, sum(amount)::float as amount from (${SHIFT_DIGITAL_SQL}) x group by 1`, [id, DIGITAL_PROVIDER]);
@@ -935,6 +937,7 @@ export class StoreService {
         const n = Number(g?.counted);
         if (!g?.provider || !Number.isFinite(n) || n < 0) throw new BadRequestException('Digital totals must be zero or more.');
         given.set(String(g.provider), Math.round(n * 100) / 100);
+        digitalReasons[String(g.provider)] = g.reason;
       }
       for (const s of system) {
         if (!given.has(s.provider)) throw new BadRequestException(`Enter the ${s.provider} total from the terminal.`);
@@ -946,6 +949,12 @@ export class StoreService {
         return { provider: p, system: sys, counted, variance: Math.round((counted - sys) * 100) / 100 };
       });
     }
+
+    // a difference in the drawer, and in each digital total, is explained separately; nothing is changed until each has its reason
+    const expectedCash = (await this.getShiftStats(id)).expectedcash;
+    const why = varianceReasons(countedcash - expectedCash, body.cashvariancereason, closingDigital, digitalReasons);
+    if (why.problem) throw new BadRequestException(why.problem);
+    closingDigital = why.digital;
 
     // the close has passed every check: the reasons given for what was left undone are recorded now, and the shift is claimed with a conditional update so two
     // closes at once cannot both succeed (and a handover cannot open two next shifts)
@@ -960,6 +969,7 @@ export class StoreService {
       closetype: closeType,
       handovertouserid: handoverTo,
       closingdigital: closingDigital,
+      cashvariancereason: why.cashReason,
       closedoperatorid: closedOperatorId,
       accountableuserid: accountableUserId,
       closedon: new Date(),

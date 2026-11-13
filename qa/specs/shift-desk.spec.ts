@@ -69,8 +69,8 @@ test.describe('My shift page @p1', () => {
     expect(sm.expensesTotal).toBeGreaterThanOrEqual(25);
     expect(sm.expected).toBeCloseTo(before - 25, 1);
 
-    const close = (b: any) => api.request('PUT', `/store-cash/shifts/${shiftId}/close`, { counteddenominations: [{ d: 500, n: 2 }], closedoperatorid: cashier, ...b }, CASHIER);
-    const digital = [{ provider: 'Paytm', counted: pay.amount + 5 }];
+    const close = (b: any) => api.request('PUT', `/store-cash/shifts/${shiftId}/close`, { cashvariancereason: 'qa variance', counteddenominations: [{ d: 500, n: 2 }], closedoperatorid: cashier, ...b }, CASHIER);
+    const digital = [{ provider: 'Paytm', counted: pay.amount + 5, reason: 'qa terminal difference' }];
     expect((await close({ closetype: 'HANDOVER', closingchecklist: ['drawer_counted'], closingdigital: digital })).status).toBe(400);        // who takes over?
     expect((await close({ closetype: 'HANDOVER', handovertoid: cashier, closingchecklist: ['drawer_counted'], closingdigital: digital })).status).toBe(400);   // not oneself
     const staff = (await api.request('GET', `/store-cash/users?storeid=${storeId}`, undefined, CASHIER)).body.filter((u: any) => u.id !== cashier);
@@ -80,6 +80,10 @@ test.describe('My shift page @p1', () => {
     expect((await close({ closetype: 'HANDOVER', handovertoid: taker, closingchecklist: [], closingdigital: digital })).status).toBe(400);               // nothing ticked
     expect((await close({ closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted'], closingdigital: digital })).status).toBe(400);                 // lock-up items still needed at day end
     expect((await close({ closetype: 'HANDOVER', handovertoid: 99999999, closingchecklist: ['drawer_counted'], closingdigital: digital })).status).toBe(400);
+    // a digital difference is explained on its own: the cash reason does not cover it
+    const noDigitalReason = await close({ closetype: 'HANDOVER', handovertoid: taker, closingchecklist: ['drawer_counted'], closingdigital: [{ provider: 'Paytm', counted: pay.amount + 5 }] });
+    expect(noDigitalReason.status).toBe(400);
+    expect(JSON.stringify(noDigitalReason.body)).toMatch(/Paytm total differs/);
 
     // a handover needs only the drawer count; the next person's shift opens with the counted cash
     const done = await close({ closetype: 'HANDOVER', handovertoid: taker, closingchecklist: ['drawer_counted'], closingdigital: digital });
@@ -95,7 +99,7 @@ test.describe('My shift page @p1', () => {
 
     // the day ends later with the full checklist; then a shift is opened again for the other specs
     const nextId = done.body.nextshiftid as number;
-    const eod = (keys: string[]) => api.request('PUT', `/store-cash/shifts/${nextId}/close`, { countedcash: 1000, closedoperatorid: cashier, closetype: 'END_OF_DAY', closingchecklist: keys }, CASHIER);
+    const eod = (keys: string[]) => api.request('PUT', `/store-cash/shifts/${nextId}/close`, { cashvariancereason: 'qa variance', countedcash: 1000, closedoperatorid: cashier, closetype: 'END_OF_DAY', closingchecklist: keys }, CASHIER);
     expect((await eod(CLOSE_KEYS.slice(0, 1))).status).toBe(400);
     const ended = await eod(CLOSE_KEYS);
     expect(ended.status).toBeLessThan(300);

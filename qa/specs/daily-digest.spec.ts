@@ -50,7 +50,7 @@ async function closedShift(api: any, tag: string) {
   await q(`update stores set telegram_chat_id = $2, telegram_digest_enabled = true where id = $1`, [store, GROUP]);
   const open = await withReasons(api, 'POST', '/store-cash/shifts', { storeid: store, openingcash: 1000, name: 'Evening', starttime: '14:00', endtime: '22:00', openingdenominations: denoms(1000) });
   expect(open.status, JSON.stringify(open.body)).toBeLessThan(300);
-  const close = await withReasons(api, 'PUT', `/store-cash/shifts/${open.body.id}/close`, { counteddenominations: denoms(963) });
+  const close = await withReasons(api, 'PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: denoms(963) });
   expect(close.status, JSON.stringify(close.body)).toBeLessThan(300);
   return { store, shift: open.body.id as number };
 }

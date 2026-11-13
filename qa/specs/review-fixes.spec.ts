@@ -137,19 +137,19 @@ test.describe('Review fixes @p1', () => {
     const shift = await api.request('POST', '/store-cash/shifts', { storeid: sid, openingcash: 400, name: 'rf8', openingchecklist: ['float_counted'] }, MGR);
     expect(shift.status, JSON.stringify(shift.body)).toBeLessThan(300);
     await api.request('POST', '/compliance/sync', {}, MGR);
-    const refused = await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'] }, MGR);
+    const refused = await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'] }, MGR);
     const item = refused.body.required.find((i: any) => i.item_key === 'stock_count');
     // the reason is given but the drawer count is missing: refused, and no reason is recorded
-    const again = await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'], compliancereasons: { [item.id]: 'Shelves are being moved this week' } }, MGR);
+    const again = await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'], compliancereasons: { [item.id]: 'Shelves are being moved this week' } }, MGR);
     expect(again.status).toBe(400);
     expect(String(again.body.message)).toMatch(/drawer count/i);
     const ev = await api.request('GET', `/compliance/${item.id}/events`, undefined, MGR);
     expect(ev.body.map((e: any) => e.kind)).not.toContain('reason');
     // closed properly, the reason is recorded once
-    const ok = await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { countedcash: 400, closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'], compliancereasons: { [item.id]: 'Shelves are being moved this week' } }, MGR);
+    const ok = await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 400, closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'], compliancereasons: { [item.id]: 'Shelves are being moved this week' } }, MGR);
     expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
     expect((await api.request('GET', `/compliance/${item.id}/events`, undefined, MGR)).body.filter((e: any) => e.kind === 'reason').length).toBe(1);
     // closing it a second time is refused
-    expect((await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { countedcash: 400, closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'] }, MGR)).status).toBeGreaterThanOrEqual(400);
+    expect((await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 400, closedoperatorid: user.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'] }, MGR)).status).toBeGreaterThanOrEqual(400);
   });
 });

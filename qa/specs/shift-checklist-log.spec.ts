@@ -51,7 +51,7 @@ test.describe('Shift checklist record @p1', () => {
       // the checklist is reworded afterwards: what was recorded keeps its wording
       expect((await api.request('PUT', '/store-cash/checklists', { scope: 'store', storeid: sid, kind: 'OPENING', items: [{ key: 'float_counted', label: 'Float counted twice' }] }, MGR)).status).toBeLessThan(300);
 
-      const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, {
+      const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance',
         countedcash: 400, closedoperatorid: me.id, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'],
         closingchecklistat: { drawer_counted: new Date().toISOString() },
       }, MGR);

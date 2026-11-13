@@ -50,7 +50,7 @@ async function closedShift(api: any, tag: string) {
   await q(`update stores set telegram_chat_id = $2, telegram_digest_enabled = true where id = $1`, [store, GROUP]);
   const open = await withReasons(api, 'POST', '/store-cash/shifts', { storeid: store, openingcash: 1000, name: 'Evening', starttime: '14:00', endtime: '22:00', openingdenominations: denoms(1000) });
   expect(open.status, JSON.stringify(open.body)).toBeLessThan(300);
-  const close = await withReasons(api, 'PUT', `/store-cash/shifts/${open.body.id}/close`, { counteddenominations: denoms(963) });
+  const close = await withReasons(api, 'PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: denoms(963) });
   expect(close.status, JSON.stringify(close.body)).toBeLessThan(300);
   return { store, shift: open.body.id as number };
 }
@@ -107,7 +107,7 @@ test.describe('Shift close message @p1', () => {
     await fake.reset();
     const s2 = await withReasons(api, 'POST', '/store-cash/shifts', { storeid: store, openingcash: 500, name: 'Night', starttime: '22:00', endtime: '06:00', openingdenominations: denoms(500) });
     expect(s2.status, JSON.stringify(s2.body)).toBeLessThan(300);
-    expect((await withReasons(api, 'PUT', `/store-cash/shifts/${s2.body.id}/close`, { counteddenominations: denoms(500) })).status).toBeLessThan(300);
+    expect((await withReasons(api, 'PUT', `/store-cash/shifts/${s2.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: denoms(500) })).status).toBeLessThan(300);
     expect(await until(async () => (await sentTo(DM)).some((m) => /Night/.test(m.text)))).toBe(true);
     expect((await sentTo(GROUP)).filter((m) => /Night/.test(m.text))).toHaveLength(0);
     expect((await sentTo(DM)).find((m) => /Night/.test(m.text))!.text).toContain('Reconciled');

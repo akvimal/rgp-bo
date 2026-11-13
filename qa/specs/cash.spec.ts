@@ -36,7 +36,7 @@ async function closeOpenShifts(api: any, storeId: number) {
   const open = (await api.request('GET', `/store-cash/shifts?storeid=${storeId}&status=OPEN`)).body || [];
   for (const s of open) {
     const amt = Number(s.expectedcash ?? s.openingcash ?? 0);
-    await api.request('PUT', `/store-cash/shifts/${s.id}/close`, { counteddenominations: denoms(amt), allowZero: true });
+    await api.request('PUT', `/store-cash/shifts/${s.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: denoms(amt), allowZero: true });
   }
 }
 // only one open shift per store is allowed (issue #142), so close any prior one first
@@ -67,7 +67,7 @@ test.describe('Store Cash & Shifts @p0', () => {
     const open = await api.request('POST', '/store-cash/shifts', { storeid: sid, templateid: c.body.id, openingcash: 0, allowZero: true });
     expect([200, 201]).toContain(open.status);
     expect(open.body.name).toBe(name);
-    await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { counteddenominations: [], allowZero: true });
+    await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: [], allowZero: true });
   });
 
   test('CASH-2 opening a shift starts it OPEN with expected cash = the opening float @happy', async ({ api }) => {
@@ -174,7 +174,7 @@ test.describe('Store Cash & Shifts @p0', () => {
     const s = await openShift(api, store2(), { openingcash: 800, name: 'close-exact' });
     const id = s.body.id;
     const expected = Number(s.body.expectedcash);
-    const close = await api.request('PUT', `/store-cash/shifts/${id}/close`, { counteddenominations: denoms(expected) });
+    const close = await api.request('PUT', `/store-cash/shifts/${id}/close`, { cashvariancereason: 'qa variance', counteddenominations: denoms(expected) });
     expect([200, 201]).toContain(close.status);
     const after = await api.request('GET', `/store-cash/shifts?storeid=${store2()}&shiftid=${id}`);
     expect(Math.abs(Number(after.body[0].variance))).toBeLessThan(0.5);
@@ -187,7 +187,7 @@ test.describe('Store Cash & Shifts @p0', () => {
       const s = await openShift(api, store2(), { openingcash: 500, name: `close-${delta}` });
       const id = s.body.id;
       const expected = Number(s.body.expectedcash);
-      await api.request('PUT', `/store-cash/shifts/${id}/close`, { counteddenominations: denoms(expected + delta) });
+      await api.request('PUT', `/store-cash/shifts/${id}/close`, { cashvariancereason: 'qa variance', counteddenominations: denoms(expected + delta) });
       const after = await api.request('GET', `/store-cash/shifts?storeid=${store2()}&shiftid=${id}`);
       const v = Number(after.body[0].variance);
       expect(Math.sign(v)).toBe(Math.sign(delta));
@@ -195,10 +195,29 @@ test.describe('Store Cash & Shifts @p0', () => {
     }
   });
 
+  test('CASH-VR a drawer difference needs a reason; none is asked when it matches @negative', async ({ api }) => {
+    const s = await openShift(api, store2(), { openingcash: 600, name: 'close-reason' });
+    const id = s.body.id;
+    const expected = Number(s.body.expectedcash);
+    const noReason = await api.request('PUT', `/store-cash/shifts/${id}/close`, { counteddenominations: denoms(expected - 50) });
+    expect(noReason.status).toBe(400);
+    expect(JSON.stringify(noReason.body)).toMatch(/short by Rs 50/);
+    const tooShort = await api.request('PUT', `/store-cash/shifts/${id}/close`, { counteddenominations: denoms(expected - 50), cashvariancereason: 'x' });
+    expect(tooShort.status).toBe(400);
+    const ok = await api.request('PUT', `/store-cash/shifts/${id}/close`, { counteddenominations: denoms(expected - 50), cashvariancereason: 'Change given twice' });
+    expect([200, 201]).toContain(ok.status);
+    expect(ok.body.cashvariancereason).toBe('Change given twice');
+
+    const exact = await openShift(api, store2(), { openingcash: 600, name: 'close-no-reason' });
+    const done = await api.request('PUT', `/store-cash/shifts/${exact.body.id}/close`, { counteddenominations: denoms(Number(exact.body.expectedcash)), cashvariancereason: 'ignored when it matches' });
+    expect([200, 201]).toContain(done.status);
+    expect(done.body.cashvariancereason ?? null).toBeNull();
+  });
+
   test('CASH-13 closing with no drawer count is rejected @negative', async ({ api }) => {
     const s = await openShift(api, store2(), { openingcash: 700, name: 'close-empty' });
     const id = s.body.id;
-    const r = await api.request('PUT', `/store-cash/shifts/${id}/close`, { notes: 'no count' });
+    const r = await api.request('PUT', `/store-cash/shifts/${id}/close`, { cashvariancereason: 'qa variance', notes: 'no count' });
     expect(r.status).toBe(400);
     const after = await api.request('GET', `/store-cash/shifts?storeid=${store2()}&shiftid=${id}`);
     expect(after.body[0].status).toBe('OPEN'); // still open, not silently zeroed
@@ -229,10 +248,10 @@ test.describe('Store Cash & Shifts @p0', () => {
   test('CASH-15 closing an already-closed shift is guarded (issue #140) @edge', async ({ api }) => {
     const s = await openShift(api, store2(), { openingcash: 300, name: 'double-close' });
     const id = s.body.id;
-    const first = await api.request('PUT', `/store-cash/shifts/${id}/close`, { countedcash: 300 });
+    const first = await api.request('PUT', `/store-cash/shifts/${id}/close`, { cashvariancereason: 'qa variance', countedcash: 300 });
     expect([200, 201]).toContain(first.status);
     const before = await api.request('GET', `/store-cash/shifts?storeid=${store2()}&shiftid=${id}`);
-    const second = await api.request('PUT', `/store-cash/shifts/${id}/close`, { countedcash: 999 });
+    const second = await api.request('PUT', `/store-cash/shifts/${id}/close`, { cashvariancereason: 'qa variance', countedcash: 999 });
     expect(second.status).toBeGreaterThanOrEqual(400); // rejected - already closed
     const after = await api.request('GET', `/store-cash/shifts?storeid=${store2()}&shiftid=${id}`);
     expect(Number(after.body[0].countedcash)).toBe(300);              // original count untouched
@@ -255,7 +274,7 @@ test.describe('Store Cash & Shifts @p0', () => {
     }, email);
     expect([200, 201]).toContain(open.status);
     expect(Number(open.body.openingcash)).toBe(1000);
-    const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, {
+    const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance',
       counteddenominations: denoms(1000),
     }, email);
     expect([200, 201]).toContain(close.status);
@@ -275,14 +294,14 @@ test.describe('Store Cash & Shifts @p0', () => {
     // their own store: fine
     const ok = await api.request('POST', '/store-cash/shifts', { storeid: homeStore, name: 'home', openingcash: 500 }, email);
     expect([200, 201]).toContain(ok.status);
-    await api.request('PUT', `/store-cash/shifts/${ok.body.id}/close`, { countedcash: 500 }, email);
+    await api.request('PUT', `/store-cash/shifts/${ok.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 500 }, email);
     // a store they're not assigned to: rejected
     const blocked = await api.request('POST', '/store-cash/shifts', { storeid: otherStore, name: 'away', openingcash: 500 }, email);
     expect(blocked.status).toBeGreaterThanOrEqual(400);
     // Business Head is unaffected - oversees every store in the business
     const bhOpen = await api.request('POST', '/store-cash/shifts', { storeid: otherStore, name: 'bh-can', openingcash: 500 }, MGR);
     expect([200, 201]).toContain(bhOpen.status);
-    await api.request('PUT', `/store-cash/shifts/${bhOpen.body.id}/close`, { countedcash: 500 }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${bhOpen.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 500 }, MGR);
   });
 
   test('WS9-ZERO-FLOAT opening a shift with no float is rejected unless explicitly confirmed @negative', async ({ api }) => {
@@ -291,7 +310,7 @@ test.describe('Store Cash & Shifts @p0', () => {
     expect(blocked.status).toBe(400);
     const confirmed = await api.request('POST', '/store-cash/shifts', { storeid: sid, name: 'zero-ok', openingcash: 0, allowZero: true }, MGR);
     expect([200, 201]).toContain(confirmed.status);
-    await api.request('PUT', `/store-cash/shifts/${confirmed.body.id}/close`, { countedcash: 0, allowZero: true }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${confirmed.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 0, allowZero: true }, MGR);
   });
 
   test('WS9-DEPOSIT-REF a bank deposit\'s reference number round-trips through the ledger @happy', async ({ api }) => {
@@ -319,13 +338,13 @@ test.describe('Store Cash & Shifts @p0', () => {
     expect([200, 201]).toContain(open.status);
 
     // incomplete closing checklist: rejected, shift stays open
-    const badClose = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, {
+    const badClose = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance',
       countedcash: 500, closingchecklist: CLOSE_KEYS.slice(0, 1),
     }, MGR);
     expect(badClose.status).toBe(400);
 
     // complete: succeeds
-    const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, {
+    const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance',
       countedcash: 500, closingchecklist: CLOSE_KEYS,
     }, MGR);
     expect([200, 201]).toContain(close.status);
@@ -336,7 +355,7 @@ test.describe('Store Cash & Shifts @p0', () => {
     const sid = await freshStore(api);
     const open = await api.request('POST', '/store-cash/shifts', { storeid: sid, name: 'no-checklist', openingcash: 500 }, MGR);
     expect([200, 201]).toContain(open.status);
-    const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { countedcash: 500 }, MGR);
+    const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 500 }, MGR);
     expect([200, 201]).toContain(close.status);
   });
 
@@ -359,7 +378,7 @@ test.describe('Store Cash & Shifts @p0', () => {
     // close every open shift on store 1, try to sell, then always reopen one
     const open = (await api.request('GET', `/store-cash/shifts?storeid=${STORE1}&status=OPEN`)).body || [];
     for (const s of open) {
-      await api.request('PUT', `/store-cash/shifts/${s.id}/close`, {
+      await api.request('PUT', `/store-cash/shifts/${s.id}/close`, { cashvariancereason: 'qa variance',
         counteddenominations: denoms(Number(s.expectedcash ?? 0)), allowZero: true,
       });
     }

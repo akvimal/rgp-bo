@@ -70,7 +70,10 @@ export class StoreShift {
   handoverfromshiftid: number | null;
 
   @Column("jsonb", { name: "closing_digital", nullable: true })
-  closingdigital: Array<{ provider: string; system: number; counted: number; variance: number }> | null;
+  closingdigital: Array<{ provider: string; system: number; counted: number; variance: number; reason?: string | null }> | null;
+
+  @Column("character varying", { name: "cash_variance_reason", length: 300, nullable: true })
+  cashvariancereason: string | null;
 
   @Column("integer", { name: "closed_operator_id", nullable: true })
   closedoperatorid: number | null;

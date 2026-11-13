@@ -19,7 +19,7 @@ async function shiftOut(api: any, sid: number, counted: number) {
   const me = (await api.request('GET', '/auth/me', undefined, MGR)).body.id;
   const open = await api.request('POST', '/store-cash/shifts', { storeid: sid, openingcash: 500, name: 'aic' }, MGR);
   expect(open.status, JSON.stringify(open.body)).toBeLessThan(300);
-  const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { countedcash: counted, closedoperatorid: me, closetype: 'END_OF_DAY' }, MGR);
+  const close = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: counted, closedoperatorid: me, closetype: 'END_OF_DAY' }, MGR);
   expect(close.status, JSON.stringify(close.body)).toBeLessThan(300);
 }
 

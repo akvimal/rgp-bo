@@ -65,7 +65,7 @@ test.describe('Store cash and the vault @p1', () => {
     const k = await kpis(api, sid);
     expect(k).toMatchObject({ cash_balance: 4000, cash_in_drawers: 600, cash_in_vault: 3400 });
 
-    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { counteddenominations: [{ d: 100, n: 6 }], countedcash: 600, closetype: 'HANDOVER', allowZero: true }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: [{ d: 100, n: 6 }], countedcash: 600, closetype: 'HANDOVER', allowZero: true }, MGR);
   });
 
   test('CASHPOS-2 a store without a vault keeps the cash book as its balance @edge', async ({ api }) => {
@@ -78,6 +78,6 @@ test.describe('Store cash and the vault @p1', () => {
     expect(d.cashbook).toBe(700);
     expect(d.position.vaultstores).toBe(0);
     expect((await kpis(api, sid)).cash_balance).toBe(700);
-    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { counteddenominations: [], allowZero: true }, MGR);
+    await api.request('PUT', `/store-cash/shifts/${shift.body.id}/close`, { cashvariancereason: 'qa variance', counteddenominations: [], allowZero: true }, MGR);
   });
 });

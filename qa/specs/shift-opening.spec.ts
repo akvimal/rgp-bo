@@ -27,7 +27,7 @@ test.describe('Opening a shift @p1', () => {
     expect(c).toMatchObject({ storealreadyopen: true, reason: 'OPEN_SHIFT' });
 
     const me = (await api.request('GET', '/auth/me', undefined, MGR)).body.id;
-    const closed = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { countedcash: 500, closedoperatorid: me, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'] }, MGR);
+    const closed = await api.request('PUT', `/store-cash/shifts/${open.body.id}/close`, { cashvariancereason: 'qa variance', countedcash: 500, closedoperatorid: me, closetype: 'END_OF_DAY', closingchecklist: ['drawer_counted', 'cash_secured'] }, MGR);
     expect(closed.status, JSON.stringify(closed.body)).toBeLessThan(300);
     c = await ctx();
     expect(c).toMatchObject({ storealreadyopen: true, reason: 'EARLIER_TODAY' });                    // closed, but the store was opened today

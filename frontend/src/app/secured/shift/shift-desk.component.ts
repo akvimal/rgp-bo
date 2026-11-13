@@ -54,6 +54,9 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
   handoverTo: number | null = null;
   staff: any[] = [];
   digitalCounted: { [provider: string]: any } = {};
+  /** why the drawer, and each digital total, did not match: asked only where there is a difference */
+  cashReason = "";
+  digitalReason: { [provider: string]: string } = {};
 
   /** the cash going into the store's vault when the day ends, and the reason when the surplus stays in the drawer instead */
   dropRows: DenominationRow[] = [];
@@ -224,7 +227,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     this.fetchLists(() => {
       this.mode = "close"; this.denoms = []; this.denomTotal = 0;
       this.closeType = "END_OF_DAY"; this.handoverTo = null;
-      this.digitalCounted = {};
+      this.digitalCounted = {}; this.cashReason = ""; this.digitalReason = {};
       this.dropRows = []; this.dropTotal = 0; this.dropSkipReason = "";
       for (const d of this.summary?.digitalByProvider || []) this.digitalCounted[d.provider] = null;
       this.resetChecklist();
@@ -282,6 +285,18 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     const v = this.digitalCounted[d.provider];
     return v === null || v === undefined || v === "" ? null : Number(v) - d.amount;
   }
+  /** a difference of a paisa or more (money is held to two places) */
+  private differs(v: number | null): boolean { return v !== null && Math.abs(Math.round(v * 100)) >= 1; }
+  /** the drawer count is off the expected cash and needs its reason */
+  get cashNeedsReason(): boolean { return this.denoms.length > 0 && this.differs(this.variance); }
+  digitalNeedsReason(d: any): boolean { return this.differs(this.digitalVariance(d)); }
+  private reasonOk(v: string | undefined): boolean { return String(v ?? "").trim().length >= 3; }
+  /** the first difference that has no reason yet, in words ("" when none is missing) */
+  get missingReason(): string {
+    if (this.cashNeedsReason && !this.reasonOk(this.cashReason)) return "The drawer does not match the expected cash. Say why.";
+    const d = (this.summary?.digitalByProvider || []).find((x: any) => this.digitalNeedsReason(x) && !this.reasonOk(this.digitalReason[x.provider]));
+    return d ? `The ${d.provider} total does not match the system. Say why.` : "";
+  }
   get digitalReady(): boolean { return (this.summary?.digitalByProvider || []).every((d: any) => this.digitalCounted[d.provider] !== null && this.digitalCounted[d.provider] !== undefined && this.digitalCounted[d.provider] !== ""); }
 
   confirmClose() {
@@ -289,6 +304,7 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     if (!this.denoms.length || this.denomTotal <= 0) { this.error = "Enter the drawer count before closing."; return; }
     if (this.closeType === "HANDOVER" && !this.handoverTo) { this.error = "Choose who is taking over."; return; }
     if (!this.digitalReady) { this.error = "Enter each digital total from the terminal."; return; }
+    if (this.missingReason) { this.error = this.missingReason; return; }
     if (!this.checklistComplete) { this.error = "Complete the checklist before closing the shift."; return; }
     if (!this.vaultReady) { this.error = this.dropOverCount ? "The vault cash has more of a note than the drawer count." : "Put the surplus in the vault, or say why it stays in the drawer."; return; }
     this.busy = true; this.error = "";
@@ -296,7 +312,8 @@ export class ShiftDeskComponent implements OnInit, OnDestroy {
     this.cash.closeShift(this.openShift.id, {
       counteddenominations: this.denoms, closedoperatorid: this.operatorId, closingchecklist: this.checklist.map(c => c.key), closingchecklistat: this.tickTimes(),
       closetype: this.closeType, handovertoid: this.closeType === "HANDOVER" ? this.handoverTo : undefined,
-      closingdigital: (this.summary?.digitalByProvider || []).map((d: any) => ({ provider: d.provider, counted: Number(this.digitalCounted[d.provider]) })),
+      closingdigital: (this.summary?.digitalByProvider || []).map((d: any) => ({ provider: d.provider, counted: Number(this.digitalCounted[d.provider]), reason: this.digitalNeedsReason(d) ? (this.digitalReason[d.provider] || "").trim() : undefined })),
+      cashvariancereason: this.cashNeedsReason ? this.cashReason.trim() : undefined,
       ...(this.vaultOn && this.surplus > 0
         ? (this.dropTotal > 0 ? { vaultdrop: { denominations: this.dropRows } } : { vaultdropskipreason: this.dropSkipReason.trim() })
         : {}),
