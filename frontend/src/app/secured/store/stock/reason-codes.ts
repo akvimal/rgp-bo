@@ -13,6 +13,9 @@ export const REMOVE_REASONS: { value: string; label: string }[] = [
     { value: 'EXPIRED', label: 'Expired' },
     { value: 'RETURNED_TO_VENDOR', label: 'Sent back to the vendor' },
     { value: 'SHRINKAGE', label: 'Lost or missing' },
+    { value: 'SAMPLE', label: 'Free sample given' },
+    { value: 'GIFT', label: 'Gift or promotion' },
+    { value: 'OWN_USE', label: 'Own use (the shop or its staff)' },
     { value: 'CORRECTION', label: 'Correction (the book had too much)' },
     { value: 'OTHER', label: 'Other' },
 ];
@@ -63,4 +66,7 @@ export const adjustmentPlan = (direction: Direction | '', qty: any, balance: any
 };
 
 /** reasons that need a few words of explanation before saving */
-export const needsComment = (reason: string): boolean => reason === 'OTHER' || reason === 'CORRECTION';
+export const needsComment = (reason: string): boolean => reason === 'OTHER' || reason === 'CORRECTION' || isGivenOut(reason);
+
+/** stock given out without a sale: a sample, a gift or own use. Not a loss; reported for the GST return, so it says who it went to and why. */
+export const isGivenOut = (reason: string): boolean => reason === 'SAMPLE' || reason === 'GIFT' || reason === 'OWN_USE';

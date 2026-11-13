@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { FormControl, FormGroup } from "@angular/forms";
 import { StockService } from "../stock.service";
-import { AdjustmentPlan, Direction, adjustmentPlan, needsComment, reasonLabel, reasonsFor } from "../reason-codes";
+import { AdjustmentPlan, Direction, adjustmentPlan, isGivenOut, needsComment, reasonLabel, reasonsFor } from "../reason-codes";
 import { StoreContextService } from "src/app/@core/store-context.service";
 
 /**
@@ -61,6 +61,8 @@ export class StockAdjustFormComponent {
     get absQty():number { return Math.abs(this.plan.signed); }
     get reasonText():string { return reasonLabel(this.qtyAdjustForm.value.reason); }
     get commentRequired():boolean { return needsComment(this.qtyAdjustForm.value.reason); }
+    /** a sample, a gift or own use: not a loss, and it is reported for the GST return */
+    get givenOut():boolean { return isGivenOut(this.qtyAdjustForm.value.reason); }
 
     /** everything is in place: a direction, a sensible quantity, a reason that belongs to the direction, and a comment where one is needed */
     get ready():boolean {

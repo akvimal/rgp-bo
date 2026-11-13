@@ -98,6 +98,25 @@ import { GstApiService } from "./gst-api.service";
           </table>
         </div>
         </ng-container>
+
+        <div class="mb-3" *ngIf="adj?.any" data-testid="gsm-adjustments">
+          <div class="small fw-semibold">Adjustments to review <span class="text-muted fw-normal">(not sales, but they touch the return; whether any input credit is reversed is for your CA)</span></div>
+
+          <ng-container *ngFor="let sec of adjSections">
+            <div class="small mt-2" *ngIf="adj[sec.key].rows.length" [attr.data-testid]="'gsm-adj-' + sec.key">
+              <div class="fw-semibold">{{sec.title}}</div>
+              <table class="table table-sm mb-1">
+                <thead><tr><th>Source</th><th class="text-end">GST</th><th class="text-end">Units</th><th class="text-end">Value before GST</th><th class="text-end">GST paid</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let r of adj[sec.key].rows"><td>{{r.label}}<span *ngIf="r.reason_label"> - {{r.reason_label}}</span></td><td class="text-end">{{r.rate}}%</td><td class="text-end">{{r.qty | number:'1.0-0'}}</td><td class="text-end">{{r.taxable | number:'1.2-2'}}</td><td class="text-end">{{r.tax | number:'1.2-2'}}</td></tr>
+                  <tr class="fw-semibold"><td colspan="2">Total</td><td class="text-end">{{adj[sec.key].total.qty | number:'1.0-0'}}</td><td class="text-end">{{adj[sec.key].total.taxable | number:'1.2-2'}}</td><td class="text-end">{{adj[sec.key].total.tax | number:'1.2-2'}}</td></tr>
+                </tbody>
+              </table>
+              <div *ngIf="sec.key === 'given_out'">Value at MRP: &#8377;{{adj.given_out.total.mrp | number:'1.2-2'}}</div>
+              <div class="text-muted" *ngIf="sec.note">{{sec.note}}</div>
+            </div>
+          </ng-container>
+        </div>
         <table class="table table-sm w-auto" data-testid="gsm-result">
           <tbody>
             <tr><td>Output tax</td><td class="text-end">&#8377;{{sum.output.tax | number:'1.2-2'}}</td></tr>
@@ -158,6 +177,14 @@ export class GstSummaryComponent implements OnInit {
   sum: any = null;
   hsn: any = null;
   kinds: any = null;
+  adj: any = null;
+  readonly adjSections = [
+    { key: 'write_offs', title: 'Stock written off (expired, near expiry, damaged)', note: 'The GST paid on this stock when it was bought may need reversing as input credit.' },
+    { key: 'given_out', title: 'Goods given out without a sale (free samples, gifts, own use)', note: 'May count as a supply for GST. Valued at cost before GST, with the GST at the purchase rate and the MRP for reference; your CA decides the value and whether tax is due.' },
+    { key: 'vendor_passes', title: 'Returned to the vendor on an out-pass', note: '' },
+    { key: 'vendor_returns', title: 'Vendor returns made this month', note: 'A return the vendor has not yet credited lowers the input credit when the credit note comes.' },
+    { key: 'credits_applied', title: 'Vendor credits applied on purchase invoices this month', note: '' },
+  ];
   filedOn = "";
   arn = "";
   acceptHsn = false;
@@ -182,10 +209,11 @@ export class GstSummaryComponent implements OnInit {
   }
 
   open(month: string) {
-    this.month = month; this.sum = null; this.hsn = null; this.kinds = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
+    this.month = month; this.sum = null; this.hsn = null; this.kinds = null; this.adj = null; this.error = ''; this.acceptHsn = false; this.arn = ''; this.filedOn = ''; this.reason = '';
     this.api.monthlySummary(month).subscribe((s: any) => this.sum = s, (e) => this.fail(e, 'Could not load the summary.'));
     this.api.hsnSummary(month).subscribe((h: any) => this.hsn = h, () => {});
     this.api.supplyKinds(month).subscribe((k: any) => this.kinds = k, () => {});
+    this.api.adjustments(month).subscribe((a: any) => this.adj = a, () => {});
   }
 
   /** the CA's answer for a category: nil-rated, exempt or non-GST; kept as the default and used in the report straight away */

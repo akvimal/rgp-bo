@@ -50,7 +50,7 @@
             </div>
             <div class="col-12 p-0 mt-2">
                 <label class="adj-label" for="comments">Comments{{commentRequired ? ' (required for this reason)' : ' (optional)'}}</label>
-                <textarea class="form-control" id="comments" rows="2" [placeholder]="commentRequired ? 'Say in a few words what happened' : 'Anything worth remembering'"
+                <textarea class="form-control" id="comments" rows="2" [placeholder]="givenOut ? 'Who it went to and why, for example: Dr Rao clinic, new product sample' : commentRequired ? 'Say in a few words what happened' : 'Anything worth remembering'"
                     formControlName="comments" data-testid="adj-comments"></textarea>
             </div>
             <div class="col-12 p-0 mt-2" *ngIf="audits.length">

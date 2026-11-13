@@ -9,7 +9,7 @@ import { ProductQtyChange } from "src/entities/product-qtychange.entity";
 import { Setting } from "src/entities/setting.entity";
 import { StockCount } from "src/entities/stock-count.entity";
 import { approvalModeFor } from "src/core/approval-mode";
-import { isDiscard, reasonDirectionProblem, USER_REASON_CODES } from "./reason-codes";
+import { givenOutProblem, isDiscard, reasonDirectionProblem, USER_REASON_CODES } from "./reason-codes";
 import { AuditService } from "src/core/audit/audit.service";
 import { DEFAULT_ESCALATION_VALUE, escalatedProducts, maySettleEscalated } from "./count-rules";
 import { EXPIRING_DAYS, FAST_MOVERS, escalateAll, recountProblem } from "../stock-audits/audit-rules";
@@ -401,6 +401,8 @@ export class StockService {
         const reasoncode = dto.reasoncode || (dto as any).reason || null;
         const directionProblem = reasonDirectionProblem(reasoncode, dto.qty);
         if (directionProblem) throw new BadRequestException(directionProblem);
+        const noteProblem = givenOutProblem(reasoncode, (dto as any).comments);
+        if (noteProblem) throw new BadRequestException(noteProblem);
         // `reason` is NOT NULL in the DB; older callers always sent it, but a reasoncode-only
         // caller (any new integration) must still satisfy that constraint.
         const reason = (dto as any).reason || dto.reasoncode;
@@ -413,6 +415,10 @@ export class StockService {
     }
 
     async createStockAdjustments(items: CreateProductQtyChangeDto[], userid) {
+        for (const i of items) {
+            const p = givenOutProblem(i.reasoncode || (i as any).reason, (i as any).comments);
+            if (p) throw new BadRequestException(p);
+        }
         const payload = await Promise.all(items.map(async item => ({
             ...item,
             reason: (item as any).reason || item.reasoncode,
@@ -442,6 +448,8 @@ export class StockService {
         if (dto.qty !== undefined || dto.reasoncode || dto.reason) {
             const directionProblem = reasonDirectionProblem(reasoncode, qty);
             if (directionProblem) throw new BadRequestException(directionProblem);
+            const noteProblem = givenOutProblem(reasoncode, dto.comments ?? existing.comments);
+            if (noteProblem) throw new BadRequestException(noteProblem);
         }
         // a count line marked as a large difference is settled only by the Business Head, and only after the second count: changing it here is no way round that
         if (existing.escalated) await this.assertMaySettle(id, userid, String(dto.status || '').toUpperCase() === 'APPROVED');

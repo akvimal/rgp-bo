@@ -7,10 +7,23 @@
  * by the system itself (transfer postings, the legacy audit workflow) and are not offered in the
  * UI dropdown, but share the same column so reporting can filter across both.
  */
-export const USER_REASON_CODES = ['DAMAGED', 'EXPIRED', 'RETURNED_TO_VENDOR', 'SHRINKAGE', 'CORRECTION', 'OTHER', 'FOUND', 'NOT_ENTERED', 'CUSTOMER_RETURN'] as const;
+export const USER_REASON_CODES = ['DAMAGED', 'EXPIRED', 'RETURNED_TO_VENDOR', 'SHRINKAGE', 'CORRECTION', 'OTHER', 'FOUND', 'NOT_ENTERED', 'CUSTOMER_RETURN', 'SAMPLE', 'GIFT', 'OWN_USE'] as const;
+
+/**
+ * Stock given out without a sale: a free sample, a gift or promotion, and goods used by the shop or its staff. They are not losses, and they can matter to the GST
+ * return (docs/planning/GST_SALES_REPORT.md, phase 3), so each needs a few words on who it went to and why.
+ */
+export const GIVEN_OUT_REASON_CODES = ['SAMPLE', 'GIFT', 'OWN_USE'];
+export const isGivenOut = (code: any): boolean => GIVEN_OUT_REASON_CODES.includes(String(code || '').toUpperCase());
+
+/** why a given-out adjustment cannot be saved yet ('' when it can): it says who it went to and why */
+export function givenOutProblem(code: any, comments: any): string {
+  if (!isGivenOut(code)) return '';
+  return String(comments ?? '').trim().length >= 3 ? '' : 'Say who it went to and why (a few words in Comments).';
+}
 
 /** reasons that can only take stock out (a loss), and reasons that can only put stock in (a gain); CORRECTION and OTHER can go either way */
-export const REMOVE_ONLY_REASON_CODES = ['DAMAGED', 'EXPIRED', 'RETURNED_TO_VENDOR', 'SHRINKAGE'];
+export const REMOVE_ONLY_REASON_CODES = ['DAMAGED', 'EXPIRED', 'RETURNED_TO_VENDOR', 'SHRINKAGE', 'SAMPLE', 'GIFT', 'OWN_USE'];
 export const ADD_ONLY_REASON_CODES = ['FOUND', 'NOT_ENTERED', 'CUSTOMER_RETURN'];
 
 /** a reason that does not fit the direction of the change ('' when it fits): "Damaged" with stock added, or "Found in a count" with stock removed */

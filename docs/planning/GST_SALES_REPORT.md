@@ -63,9 +63,28 @@ These are the app's present treatments, for the CA to confirm or correct. Nothin
   (`GET/PUT gst/supply-kinds`).
 - The Monthly summary shows the report in place of the old output table; the auditor's pack opens with it.
 
+## Built in phase 2 (2026-11-13): adjustments, read-only
+
+`GET gst/adjustments?month=&store=` (`gst-adjustments.ts`, pure, with a spec), shown on the Monthly summary under the report as "Adjustments to
+review", and as an Adjustments sheet in the report's Excel and the auditor's pack. All by GST rate, as value before GST and the GST paid on it:
+
+- **Stock written off:** confirmed out-passes (expired, near expiry, damaged) by the day the goods left, out-passes recorded as disposed earlier, and
+  old write-offs a person confirmed as expiry. Goods returned to the vendor on an out-pass are kept apart, so nothing is counted twice.
+- **Vendor returns made in the month** (not yet credited, or credited on an invoice).
+- **Vendor credits applied** on purchase invoices in the month.
+- The GST paid on written-off stock is rolled up by rate as the figure a reversal of input credit would start from. The app only gathers the figures;
+  whether and when anything is reversed is the CA's decision (questions 3 and 4 above). Nothing here changes a return, a sale or stock.
+- Not covered: delivery charges.
+
+## Built in phase 3 (2026-11-13): stock-out reasons
+
+- Three new reasons on the Adjust stock screen, removal only: **Free sample given** (`SAMPLE`), **Gift or promotion** (`GIFT`) and **Own use (the shop or its staff)**
+  (`OWN_USE`). Not losses, so they are not flagged as discards. Each needs a few words on who it went to and why; the API refuses one without
+  (on create, bulk create and an edit that changes the quantity or reason). The existing approval value threshold applies as for any adjustment.
+- The Monthly summary's Adjustments section lists the approved ones by reason and GST rate: value at cost before GST, the GST at the purchase rate,
+  and the value at MRP beside it, with the same blocks in the Excel. Whether goods given out are a supply, and at which value, is the CA's decision
+  (question 5); the report only gathers the figures. Nothing about stock or a return changes.
+
 ## Phases still to do
 
-2. **Adjustments**, read-only: expired and damaged write-offs (disposal passes) with the GST paid on purchase by rate, vendor take-backs and
-   purchase returns, cancelled bills.
-3. **Stock-out reasons** for free samples, gifts and own use, so they can be reported.
 4. **Portal-ready export** of the return tables, once the CA has checked the layout.

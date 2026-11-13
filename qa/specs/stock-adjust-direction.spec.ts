@@ -50,6 +50,36 @@ test.describe('Adjust stock: remove or add @p1', () => {
     expect(JSON.stringify(edit.body)).toContain('adds stock');
   });
 
+  test('ADJD-4 a sample, gift or own use takes stock out, needs a note, and shows in the GST adjustments @negative', async ({ api }) => {
+    const b = await batch(api, `d${run}`);
+    for (const code of ['SAMPLE', 'GIFT', 'OWN_USE']) {
+      const noNote = await adjust(api, { itemid: b.itemid, qty: -1, reasoncode: code });
+      expect(noNote.status, code).toBe(400);
+      expect(JSON.stringify(noNote.body)).toContain('who it went to');
+      const gain = await adjust(api, { itemid: b.itemid, qty: 1, reasoncode: code, comments: 'qa' });
+      expect(gain.status, code).toBe(400);
+      expect(JSON.stringify(gain.body)).toContain('adds stock');
+    }
+    expect((await movesOf(api, b.itemid)).length, 'nothing was saved').toBe(0);
+
+    const ok = await adjust(api, { itemid: b.itemid, qty: -3, reasoncode: 'SAMPLE', comments: 'Dr Rao clinic, new product sample' });
+    expect(ok.status, JSON.stringify(ok.body)).toBeLessThan(300);
+    expect(ok.body.reasoncode).toBe('SAMPLE');
+    // editing a saved sample so that its note is blank is refused
+    const blank = await api.request('PUT', `/stock/adjust/qty/${ok.body.id}`, { reasoncode: 'GIFT', comments: ' ' }, MGR);
+    expect(blank.status).toBe(400);
+
+    if (String(ok.body.status).toUpperCase() === 'APPROVED') {
+      const month = new Date().toISOString().slice(0, 7);
+      const adj = (await api.request('GET', `/gst/adjustments?month=${month}`, undefined, MGR)).body;
+      const row = adj.given_out.rows.find((r: any) => r.source === 'SAMPLE' && r.rate === 12);
+      expect(row, JSON.stringify(adj.given_out)).toBeTruthy();
+      expect(row.qty).toBeGreaterThanOrEqual(3);
+      expect(row.mrp).toBeGreaterThan(row.taxable);                     // MRP 10 against cost 7 a unit
+      expect(adj.any).toBe(true);
+    }
+  });
+
   test('ADJD-2 the form says remove or add first, shows the effect in words, and saves a signed quantity, with real clicks @happy', async ({ api, app }) => {
     const b = await batch(api, `b${run}`);
     const { page } = await app.open(MGR, `/secure/store/stock/products/items/${b.productid}`);

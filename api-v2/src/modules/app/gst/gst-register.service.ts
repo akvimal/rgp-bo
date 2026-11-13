@@ -8,6 +8,7 @@ import { GstService } from './gst.service';
 import { effectiveHsn } from './gst-rate';
 import { HsnLine, closeProblem, findGaps, groupHsn, hsnIssues, isMonth, monthBounds, monthIsOver, monthLabel, netByRate, parseArn, payable, sumTotals, RateTotals } from './gst-register';
 import { halves, isInterState, splitBill } from './gst-tax';
+import { AdjRow, buildAdjustments } from './gst-adjustments';
 import { KIND_LABEL, ReportBill, ReportNote, SupplyKind, asKind, buildSalesReport, kindOf } from './gst-sales-report';
 
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -189,6 +190,63 @@ export class GstRegisterService {
     }
     await this.audit.record({ userId: user.id, action: 'gst.category_supply_kind_set', entityType: 'gst_supply_kind_default', entityId: businessId, summary: `${category}: ${kind ? KIND_LABEL[kind] : 'no default (nil-rated)'}`, details: { category, kind } });
     return { ok: true };
+  }
+
+  // ------------------------------------------------------------------ the month's adjustments (not sales)
+  /**
+   * What touches the return besides sales (gst-adjustments.ts): stock written off as expired, near expiry or damaged, goods returned to a vendor, and vendor credits
+   * applied on purchase invoices. Gathered by GST rate; whether any of it is reversed is for the CA. Read-only.
+   */
+  async adjustments(user: any, monthRaw: any, storeId?: any) {
+    const month = this.month(monthRaw);
+    const { businessId } = await this.ctx(user);
+    const { from, to } = monthBounds(month);
+    const store = Number(storeId) || null;
+    const a = [businessId, from, to, store];
+    const rows: AdjRow[] = [];
+    const push = (kind: AdjRow['kind'], list: any[]) => { for (const r of list) rows.push({ kind, source: r.source, reason: r.reason ?? null, rate: Number(r.rate) || 0, lines: r.lines, qty: Number(r.qty) || 0, taxable: Number(r.taxable) || 0, tax: Number(r.tax) || 0, mrp: Number(r.mrp) || 0 }); };
+
+    const passes = (method: string) => this.manager.query(
+      `select case when dp.legacy then 'LEGACY_PASS' else 'PASS' end as source, dp.reason, coalesce(pii.tax_pcnt, 0)::float8 as rate, count(*)::int as lines, sum(l.qty)::int as qty,
+              sum(l.cost_value)::float8 as taxable, sum(l.tax_value)::float8 as tax
+         from disposal_pass_line l join disposal_pass dp on dp.id = l.pass_id join purchase_invoice_item pii on pii.id = l.item_id
+        where dp.status = 'CONFIRMED' and ${method} and dp.business_id = $1 and dp.handed_on between $2::date and $3::date and ($4::int is null or dp.store_id = $4)
+        group by 1, 2, 3`, a);
+    push('WRITE_OFF', await passes(`dp.method <> 'VENDOR'`));
+    push('VENDOR_PASS', await passes(`dp.method = 'VENDOR'`));
+
+    push('WRITE_OFF', await this.manager.query(
+      `select 'TAGGED' as source, 'EXPIRED' as reason, coalesce(pii.tax_pcnt, 0)::float8 as rate, count(*)::int as lines, sum(-q.qty)::int as qty,
+              sum((-q.qty) * pii.ptr_value / greatest(coalesce(p.pack, 1), 1))::float8 as taxable,
+              sum((-q.qty) * pii.ptr_value / greatest(coalesce(p.pack, 1), 1) * coalesce(pii.tax_pcnt, 0) / 100)::float8 as tax
+         from product_qtychange q join purchase_invoice_item pii on pii.id = q.item_id join product p on p.id = pii.product_id join stores st on st.id = q.store_id
+        where q.expiry_tag = 'EXPIRY' and q.qty < 0 and q.disposal_pass_id is null and st.business_id = $1 and q.created_on::date between $2::date and $3::date and ($4::int is null or q.store_id = $4)
+        group by 1, 2, 3`, a));
+
+    // goods given out without a sale: approved removals under a sample, gift or own-use reason, valued like an out-pass line (cost before GST, the GST on it, the MRP)
+    push('GIVEN_OUT', await this.manager.query(
+      `select q.reason_code as source, coalesce(pii.tax_pcnt, 0)::float8 as rate, count(*)::int as lines, sum(-q.qty)::int as qty,
+              round(sum((-q.qty) * pii.ptr_value / greatest(coalesce(p.pack, 1), 1))::numeric, 2)::float8 as taxable,
+              round(sum((-q.qty) * pii.ptr_value / greatest(coalesce(p.pack, 1), 1) * coalesce(pii.tax_pcnt, 0) / 100)::numeric, 2)::float8 as tax,
+              round(sum((-q.qty) * pii.mrp_cost / greatest(coalesce(p.pack, 1), 1))::numeric, 2)::float8 as mrp
+         from product_qtychange q join purchase_invoice_item pii on pii.id = q.item_id join product p on p.id = pii.product_id join stores st on st.id = q.store_id
+        where q.active and not q.archive and q.qty < 0 and coalesce(q.status, 'APPROVED') = 'APPROVED' and q.reason_code in ('SAMPLE', 'GIFT', 'OWN_USE')
+          and st.business_id = $1 and q.created_on::date between $2::date and $3::date and ($4::int is null or q.store_id = $4)
+        group by 1, 2`, a));
+
+    push('VENDOR_RETURN', await this.manager.query(
+      `select r.status as source, coalesce(i.tax_pcnt, 0)::float8 as rate, count(*)::int as lines, sum(i.qty)::int as qty, sum(i.total)::float8 as taxable, sum(i.total * coalesce(i.tax_pcnt, 0) / 100)::float8 as tax
+         from vendor_return_item i join vendor_return r on r.id = i.return_id join stores st on st.id = r.store_id
+        where i.active and r.active and not r.archive and r.status <> 'CANCELLED' and r.return_date between $2::date and $3::date and st.business_id = $1 and ($4::int is null or r.store_id = $4)
+        group by 1, 2`, a));
+
+    push('CREDIT_APPLIED', await this.manager.query(
+      `select 'CREDIT' as source, coalesce(i.tax_pcnt, 0)::float8 as rate, count(*)::int as lines, sum(i.qty)::int as qty, sum(i.total)::float8 as taxable, sum(i.total * coalesce(i.tax_pcnt, 0) / 100)::float8 as tax
+         from purchase_invoice_credit c join vendor_return r on r.id = c.return_id join vendor_return_item i on i.return_id = r.id and i.active join stores st on st.id = r.store_id
+        where c.active and (c.created_on at time zone 'Asia/Kolkata')::date between $2::date and $3::date and st.business_id = $1 and ($4::int is null or r.store_id = $4)
+        group by 1, 2`, a));
+
+    return { month, label: monthLabel(month), ...buildAdjustments(rows) };
   }
 
   // ------------------------------------------------------------------ the HSN summary
@@ -388,10 +446,31 @@ export class GstRegisterService {
     return ws;
   }
 
+  /** the month's adjustments as a sheet */
+  private adjustmentsSheet(wb: ExcelJS.Workbook, adj: any) {
+    const ws = wb.addWorksheet('Adjustments');
+    ws.columns = [{ width: 38 }, { width: 14 }, { width: 8 }, { width: 8 }, { width: 8 }, { width: 14 }, { width: 14 }];
+    ws.addRow([`Adjustments for ${adj.label}: not sales, but they touch the return. Whether any input credit is reversed is for your CA.`]).font = { bold: true };
+    const block = (title: string, sec: any) => {
+      ws.addRow([]); ws.addRow([title]).font = { bold: true };
+      ws.addRow(['Source', 'Reason', 'GST %', 'Lines', 'Units', 'Value before GST', 'GST paid']).font = { bold: true };
+      sec.rows.forEach((r: any) => ws.addRow([r.label, r.reason_label || '', `${r.rate}%`, r.lines, r.qty, r.taxable, r.tax]));
+      ws.addRow(['Total', '', '', sec.total.lines, sec.total.qty, sec.total.taxable, sec.total.tax]).font = { bold: true };
+    };
+    block('Stock written off (expired, near expiry, damaged)', adj.write_offs);
+    block('Returned to the vendor on an out-pass', adj.vendor_passes);
+    block('Vendor returns made in the month', adj.vendor_returns);
+    block('Vendor credits applied on purchase invoices in the month', adj.credits_applied);
+    block('Goods given out without a sale (samples, gifts, own use): value at cost before GST; GST at the purchase rate. MRP in the total below.', adj.given_out);
+    ws.addRow(['Given out, value at MRP', '', '', '', '', adj.given_out.total.mrp]);
+    return ws;
+  }
+
   async salesReportXlsx(user: any, month: any) {
     const rep = await this.salesReport(user, month);
     const wb = new ExcelJS.Workbook();
     this.reportSheet(wb, rep);
+    this.adjustmentsSheet(wb, await this.adjustments(user, month));
     await this.audit.record({ userId: user.id, action: 'gst.sales_report_exported', entityType: 'gst_filing_month', entityId: null, summary: `Monthly sales report for ${rep.label} exported`, details: { month: rep.month } });
     return { buffer: Buffer.from(await wb.xlsx.writeBuffer()), filename: `monthly-sales-report-${rep.month}.xlsx`, contentType: XLSX };
   }
@@ -432,6 +511,7 @@ export class GstRegisterService {
     if (!sum.itc.reconciled) kv('Note', 'No GSTR-2B has been loaded for this month, so no input credit is counted.');
 
     this.reportSheet(wb, sum.report);
+    this.adjustmentsSheet(wb, await this.adjustments(user, month));
     this.salesSheet(wb, reg);
 
     const hs = wb.addWorksheet('HSN summary');

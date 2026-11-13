@@ -2,7 +2,7 @@ import { ADD_REASONS, REMOVE_REASONS, adjustmentPlan, directionOfQty, needsComme
 
 describe('stock adjustment reasons', () => {
   it('has its own reasons for each direction, with no loss reason on an addition', () => {
-    expect(REMOVE_REASONS.map((r) => r.value)).toEqual(['DAMAGED', 'EXPIRED', 'RETURNED_TO_VENDOR', 'SHRINKAGE', 'CORRECTION', 'OTHER']);
+    expect(REMOVE_REASONS.map((r) => r.value)).toEqual(['DAMAGED', 'EXPIRED', 'RETURNED_TO_VENDOR', 'SHRINKAGE', 'SAMPLE', 'GIFT', 'OWN_USE', 'CORRECTION', 'OTHER']);
     expect(ADD_REASONS.map((r) => r.value)).toEqual(['FOUND', 'NOT_ENTERED', 'CUSTOMER_RETURN', 'CORRECTION', 'OTHER']);
     expect(reasonsFor('')).toEqual([]);
     expect(reasonsFor('ADD').some((r) => r.value === 'DAMAGED')).toBe(false);
