@@ -20,8 +20,8 @@
       <ng-template pTemplate="header">
         <tr>
           <th style="width:2.5em"><input type="checkbox" [checked]="allSelected" (change)="selectAll($any($event.target).checked)" aria-label="Select all" data-testid="expiry-select-all"></th>
-          <th>Product</th><th>Batch</th><th>Expiry</th><th class="text-end">On books</th><th class="text-end" title="In an approved out-pass, not yet handed over">Held</th>
-          <th class="text-end">Value (cost)</th><th>Vendor</th><th>Takes back?</th><th></th>
+          <th pSortableColumn="title" data-testid="expiry-sort-product" class="sortable">Product <p-sortIcon field="title"></p-sortIcon></th><th>Batch</th><th pSortableColumn="expdate" data-testid="expiry-sort-expiry" class="sortable">Expiry <p-sortIcon field="expdate"></p-sortIcon></th><th class="text-end">On books</th><th class="text-end" title="In an approved out-pass, not yet handed over">Held</th>
+          <th class="text-end">Value (cost)</th><th pSortableColumn="vendor" data-testid="expiry-sort-vendor" class="sortable">Vendor <p-sortIcon field="vendor"></p-sortIcon></th><th>Takes back?</th><th></th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-i>

@@ -49,7 +49,16 @@ export class StockExpiryComponent implements OnInit, OnDestroy {
     }
 
     setBand(b: string) { this.band = b; this.picked = {}; }
-    get shown(): any[] { return (this.data?.items || []).filter((i: any) => i.band === this.band); }
+    // the rows of the band on show: kept as one array until the data or the band changes, so the grid's own sorting is not undone on every redraw
+    private shownSource: any = null; private shownBand = ''; private shownRows: any[] = [];
+    get shown(): any[] {
+        const src = this.data?.items;
+        if (src !== this.shownSource || this.band !== this.shownBand) {
+            this.shownSource = src; this.shownBand = this.band;
+            this.shownRows = (src || []).filter((i: any) => i.band === this.band);
+        }
+        return this.shownRows;
+    }
     get selectedItems(): any[] { return this.shown.filter((i: any) => this.picked[i.itemid] && i.sellable > 0); }
     get allSelected(): boolean { const s = this.shown.filter((i: any) => i.sellable > 0); return s.length > 0 && s.every((i: any) => this.picked[i.itemid]); }
     selectAll(on: boolean) { this.shown.forEach((i: any) => { if (i.sellable > 0) this.picked[i.itemid] = on; }); }

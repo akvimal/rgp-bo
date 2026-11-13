@@ -149,7 +149,7 @@
 </div>
 
 <!-- ── Manage delivery: the few things most deliveries need ─────────── -->
-<p-dialog [header]="'Manage Delivery — #' + (editingDelivery.sale?.billno || '')" [(visible)]="showEditor" [modal]="true" [style]="{ width: '44rem', maxWidth: '96vw' }" (onHide)="closeEditor()">
+<p-dialog [header]="editorTitle" [(visible)]="showEditor" [modal]="true" [style]="{ width: '44rem', maxWidth: '96vw' }" (onHide)="closeEditor()">
   <div *ngIf="editingDelivery.saleid" data-testid="delivery-editor">
 
     <!-- status, and the two quick answers -->

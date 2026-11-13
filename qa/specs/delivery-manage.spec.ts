@@ -164,4 +164,16 @@ test.describe('Manage Delivery screen @p1', () => {
     expect(await deliveryOf(api, a.saleid)).toMatchObject({ costpaidvia: 'UNPAID', costlinked: false, cashentryid: null });
     expect((await api.request('GET', `/store-cash/ledger?storeid=${a.storeid}`, undefined, COUNTER)).body.length, 'the expense is still there').toBe(entriesBefore);
   });
+
+  test('DM-HEAD the dialog title shows the bill with the customer name and mobile @happy', async ({ api, app }) => {
+    const b = await deliveryBill(api);
+    const d = await deliveryOf(api, b.saleid);
+    const customer = d.sale?.customer || {};
+    const { page } = await app.open(COUNTER, '/secure/sales/deliveries', { storeId: b.storeid, ...OPERATOR });
+    await manageRow(page, b.billno).click();
+    const title = page.locator('.p-dialog-title').filter({ hasText: 'Manage Delivery' });
+    await expect(title).toContainText(`#${b.billno}`);
+    if (customer.name) await expect(title).toContainText(String(customer.name).trim());
+    if (customer.mobile) await expect(title).toContainText(String(customer.mobile).trim());
+  });
 });

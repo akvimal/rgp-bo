@@ -95,4 +95,27 @@ test.describe('Expiry: alert, register tab, move @p1', () => {
     await expect(page.locator('p-dialog input[type=number]')).toHaveValue('7');                 // and the quantity that can go
     await expect(page.getByText('Available: 7')).toBeVisible();
   });
+
+  test('EXP-SORT the expiry grid sorts by product, expiry and vendor', async ({ app }) => {
+    const { page } = await app.open(MGR, '/secure/store/stock/expiry');
+    const rows = page.getByTestId('expiry-row');
+    await expect(page.getByTestId('expiry-table')).toBeVisible();
+    for (const band of ['EXPIRED', 'D30', 'D90', 'D180']) {
+      const tab = page.getByTestId(`expiry-band-${band}`);
+      if (await tab.count()) { await tab.click(); if (await rows.count() > 2) break; }
+    }
+    test.skip(await rows.count() < 3, 'no batches in any band to sort');
+    const col = async (n: number) => (await rows.evaluateAll((els, i) => els.map((e: any) => e.children[i].innerText.trim()), n));
+    await page.getByTestId('expiry-sort-product').click();
+    const asc = await col(1);
+    await page.getByTestId('expiry-sort-product').click();
+    const desc = await col(1);
+    expect(desc[0].toLowerCase() >= desc[desc.length - 1].toLowerCase()).toBe(true);
+    expect(asc[0].toLowerCase() <= asc[asc.length - 1].toLowerCase()).toBe(true);
+    await page.getByTestId('expiry-sort-vendor').click();
+    const v = (await col(7)).map((t) => t === '-' ? '' : t.toLowerCase());
+    expect(v[0] <= v[v.length - 1]).toBe(true);
+    await page.getByTestId('expiry-sort-expiry').click();
+    await expect(page.getByTestId('expiry-sort-expiry').locator('.p-sortable-column-icon')).toBeVisible();
+  });
 });

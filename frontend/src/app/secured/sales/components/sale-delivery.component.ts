@@ -13,6 +13,13 @@ export class SaleDeliveryComponent {
 
     deliveries:SaleDelivery[] = []
     editingDelivery:SaleDelivery = {}
+
+    /** the dialog's title: the bill, and whose it is (name and mobile), so the right delivery is being managed */
+    get editorTitle():string{
+        const sale:any = this.editingDelivery.sale || {};
+        const customer = sale.customer || {};
+        return ['Manage Delivery — #' + (sale.billno || ''), (customer.name || '').trim(), (customer.mobile || '').trim()].filter(Boolean).join(' · ');
+    }
     showEditor = false
     showNew = false
     useSaleCustomer = false
