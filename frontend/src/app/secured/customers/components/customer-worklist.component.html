@@ -53,6 +53,7 @@
     <div class="d-flex flex-wrap justify-content-between gap-2">
       <div>
         <span class="fw-semibold">{{r.name}}</span>
+        <span class="small text-muted ms-1" *ngIf="r.alsoOnNumber?.length" data-testid="wl-also">(also on this number: {{r.alsoOnNumber.join(', ')}})</span>
         <span class="badge bg-info text-dark ms-2" *ngIf="r.audience === 'due_back'">Due back</span>
         <span class="badge bg-warning text-dark ms-2" *ngIf="r.audience === 'at_risk'">At risk</span>
         <span class="badge bg-light text-dark border ms-2" *ngIf="r.audience === 'new_second_visit'">New</span>

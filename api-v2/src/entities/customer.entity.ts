@@ -58,6 +58,17 @@ export class Customer extends BaseEntity {
   @Column("boolean", { name: "review_optout", default: false })
   reviewOptOut: boolean;
 
+  /** the household (the account behind one mobile number) this person belongs to; set by a database trigger for every writer (migration 193) */
+  @Column("integer", { name: "household_id", nullable: true })
+  householdid: number | null;
+
+  /** optional: SELF, SPOUSE, CHILD, PARENT or OTHER */
+  @Column("character varying", { name: "relationship", length: 10, nullable: true })
+  relationship: string | null;
+
+  @Column("date", { name: "dob", nullable: true })
+  dob: string | null;
+
   @OneToMany(() => Sale, (sale) => sale.customer)
   sales: Sale[];
 

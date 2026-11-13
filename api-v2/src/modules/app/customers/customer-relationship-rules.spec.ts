@@ -1,4 +1,4 @@
-import { AUDIENCES, CustomerFacts, classify, contactable, dueLimit, quintile } from './customer-relationship-rules';
+import { AUDIENCES, CustomerFacts, classify, collapseByNumber, contactable, dueLimit, quintile } from './customer-relationship-rules';
 
 const facts = (id: number, over: Partial<CustomerFacts> = {}): CustomerFacts => ({
   id, visitsAll: 0, visits12: 0, spend12: 0, daysSinceLast: null, daysSinceFirst: null, daysSinceCreated: 10, usualGap: null, credit: 0, ...over,
@@ -78,5 +78,23 @@ describe('audiences and consent', () => {
 
   it('has due back and new-second-visit as service audiences and the rest promotional', () => {
     expect(AUDIENCES.filter((a) => !a.promo).map((a) => a.key)).toEqual(['due_back', 'new_second_visit']);
+  });
+});
+
+describe('one message per number', () => {
+  it('lists people who share a mobile once, the first of them, and says who else is on it', () => {
+    const out = collapseByNumber([
+      { name: 'Rama Devi', mobile: '9876543210' }, { name: 'Anil', mobile: '9123456780' }, { name: 'Rama Krishnan', mobile: '9876543210' }, { name: 'Sita', mobile: '9876543210' },
+    ]);
+    expect(out.map((o) => o.name)).toEqual(['Rama Devi', 'Anil']);
+    expect(out[0].alsoOnNumber).toEqual(['Rama Krishnan', 'Sita']);
+    expect(out[1].alsoOnNumber).toEqual([]);
+  });
+  it('never merges people with no number', () => {
+    const out = collapseByNumber([{ name: 'A', mobile: null }, { name: 'B', mobile: null }]);
+    expect(out.length).toBe(2);
+  });
+  it('keeps the order it was given', () => {
+    expect(collapseByNumber([{ name: 'Z', mobile: '9111111111' }, { name: 'A', mobile: '9222222222' }]).map((o) => o.name)).toEqual(['Z', 'A']);
   });
 });

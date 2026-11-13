@@ -21,6 +21,51 @@
       <span class="small text-muted">{{profile.reason}}<span *ngIf="profile.spend12"> · {{profile.spend12 | number:'1.0-0'}} spent in the last 12 months</span></span>
     </div>
 
+    <div class="small mb-3" *ngIf="household && household.people.length > 1" data-testid="cdv-household">
+      <span class="text-muted">Also on this number:</span>
+      <ng-container *ngFor="let p of household.people">
+        <a *ngIf="!p.me" class="ms-2" [routerLink]="['/secure/customers/cust/view', p.id]" data-testid="cdv-household-person">{{p.name}}<span class="text-muted" *ngIf="p.relationship"> ({{p.relationship | lowercase}})</span></a>
+      </ng-container>
+    </div>
+
+    <div class="small mb-3" *ngIf="customer.mobile && customer.mobile !== '0000000000'" data-testid="cdv-account">
+      <span class="text-muted">Account:</span>
+      <a href="javascript:void(0)" class="ms-2" (click)="openAcct('mobile')" data-testid="cdv-acct-mobile">Change number</a>
+      <a href="javascript:void(0)" class="ms-2" *ngIf="household && household.people.length > 1" (click)="openAcct('detach')" data-testid="cdv-acct-detach">Give own account</a>
+      <a href="javascript:void(0)" class="ms-2" (click)="openAcct('merge')" data-testid="cdv-acct-merge">Join another number</a>
+      <a href="javascript:void(0)" class="ms-2" (click)="openAcct('move')" data-testid="cdv-acct-move">Move a balance</a>
+      <div class="text-success mt-1" *ngIf="acctDone" data-testid="cdv-acct-done">{{acctDone}}</div>
+
+      <div class="border rounded p-2 mt-2" *ngIf="acct === 'mobile'">
+        <div class="mb-1">The number changes for everyone on this account. Consent is asked again for the new number. Searching the old number still finds them.</div>
+        <div class="text-muted mb-1" *ngIf="numbers?.history?.length">Earlier numbers: <span *ngFor="let n of numbers.history" class="me-2">{{n.mobile}}</span></div>
+        <input class="form-control form-control-sm d-inline-block w-auto" [(ngModel)]="acctMobile" placeholder="New mobile" maxlength="14" data-testid="cdv-acct-mobile-input">
+        <button class="btn btn-sm btn-primary ms-2" [disabled]="acctBusy || !acctMobile" (click)="changeAcctMobile()" data-testid="cdv-acct-mobile-go">Change number</button>
+      </div>
+
+      <div class="border rounded p-2 mt-2" *ngIf="acct === 'detach'">
+        <div class="mb-1">{{customer.name}} moves to an account of their own. Bills and history stay with them; what the family owes or holds stays with the family (a Store Head can move an amount afterwards).</div>
+        <input class="form-control form-control-sm d-inline-block w-auto" [(ngModel)]="acctMobile" placeholder="Their own mobile (or leave blank)" maxlength="14" data-testid="cdv-acct-detach-mobile">
+        <input class="form-control form-control-sm d-inline-block w-auto ms-2" [(ngModel)]="acctLocality" placeholder="Location (if no mobile)" maxlength="60">
+        <button class="btn btn-sm btn-primary ms-2" [disabled]="acctBusy" (click)="detachAcct()" data-testid="cdv-acct-detach-go">Give own account</button>
+      </div>
+
+      <div class="border rounded p-2 mt-2" *ngIf="acct === 'merge'">
+        <div class="mb-1">Everyone on the other number joins this account. Business Head only.</div>
+        <input class="form-control form-control-sm d-inline-block w-auto" [(ngModel)]="acctOther" placeholder="Other mobile" maxlength="14" data-testid="cdv-acct-merge-other">
+        <button class="btn btn-sm btn-primary ms-2" [disabled]="acctBusy || !acctOther" (click)="mergeAcct()" data-testid="cdv-acct-merge-go">Join</button>
+      </div>
+
+      <div class="border rounded p-2 mt-2" *ngIf="acct === 'move'">
+        <div class="mb-1">Move part of what this account owes, or of its store credit, to another account.</div>
+        <select class="form-select form-select-sm d-inline-block w-auto" [(ngModel)]="acctKind"><option value="DUE">Dues</option><option value="CREDIT">Store credit</option></select>
+        <input type="number" class="form-control form-control-sm d-inline-block w-auto ms-2" [(ngModel)]="acctAmount" placeholder="Amount" data-testid="cdv-acct-move-amount">
+        <input class="form-control form-control-sm d-inline-block w-auto ms-2" [(ngModel)]="acctOther" placeholder="To: mobile of the other account" maxlength="14" data-testid="cdv-acct-move-other">
+        <input class="form-control form-control-sm d-inline-block w-auto ms-2" [(ngModel)]="acctReason" placeholder="Why" maxlength="150" data-testid="cdv-acct-move-reason">
+        <button class="btn btn-sm btn-primary ms-2" [disabled]="acctBusy || !acctOther || !acctAmount" (click)="moveBalance()" data-testid="cdv-acct-move-go">Move</button>
+      </div>
+    </div>
+
     <dl class="row mb-0">
       <dt class="col-sm-3">Name</dt><dd class="col-sm-9" data-testid="cdv-name">{{customer.name}}</dd>
       <dt class="col-sm-3">Mobile</dt>

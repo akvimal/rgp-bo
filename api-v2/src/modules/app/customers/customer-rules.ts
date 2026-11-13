@@ -80,6 +80,28 @@ export function likelySamePerson(a: string, b: string): boolean {
   return Math.min(x.length, y.length) >= 6 && distance(x, y) <= 2;
 }
 
+export const RELATIONSHIPS = ['SELF', 'SPOUSE', 'CHILD', 'PARENT', 'OTHER'] as const;
+
+/** how a person on a shared number is related to the account holder: one of the set, or nothing; anything else is refused */
+export function cleanRelationship(v: any): { ok: true; value: string | null } | { ok: false; error: string } {
+  const t = typeof v === 'string' ? v.trim().toUpperCase() : '';
+  if (!t) return { ok: true, value: null };
+  if (!(RELATIONSHIPS as readonly string[]).includes(t)) return { ok: false, error: `Choose how they are related: ${RELATIONSHIPS.map((r) => r.toLowerCase()).join(', ')}.` };
+  return { ok: true, value: t };
+}
+
+/**
+ * Merging folds several records into one person. Records on the same number with clearly different names are usually family (a husband and a wife), whose bills,
+ * documents and refills must stay apart, so merging them needs the person to say they are the same person. Returns the reason to stop, or null.
+ */
+export function mergeProblem(keepName: string, otherNames: string[], confirmedSamePerson: boolean): string | null {
+  if (confirmedSamePerson) return null;
+  const different = otherNames.filter((n) => !likelySamePerson(keepName, n));
+  if (!different.length) return null;
+  const who = different.slice(0, 3).map((n) => String(n || '').trim() || '(no name)').join(', ');
+  return `${who} ${different.length === 1 ? 'has' : 'have'} a different name from ${String(keepName || '').trim() || '(no name)'}: they may be family on the same number, not the same person. Merging puts their bills, documents and refills together. Confirm that they are the same person to merge.`;
+}
+
 /**
  * Who a customer is when there is no mobile number: a name and a location together, so two people called the same can be told apart.
  * With a mobile number the name alone is enough (the number tells them apart). Returns why a customer cannot be kept, or null.

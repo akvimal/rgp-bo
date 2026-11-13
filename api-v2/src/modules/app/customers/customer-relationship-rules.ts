@@ -153,6 +153,24 @@ export const AUDIENCES: AudienceDef[] = [
     help: 'Everyone with a bill in the active period, for a general announcement.' },
 ];
 
+/**
+ * One message per number: people who share a mobile are one household, so a list to contact shows them once (the first, so the list's own order decides who:
+ * best spender first) and says who else is on the number. People with no number are never merged.
+ */
+export function collapseByNumber<T extends { mobile: string | null; name: string | null }>(items: T[]): (T & { alsoOnNumber: string[] })[] {
+  const first = new Map<string, T & { alsoOnNumber: string[] }>();
+  const out: (T & { alsoOnNumber: string[] })[] = [];
+  for (const it of items) {
+    const key = it.mobile ? String(it.mobile) : '';
+    const seen = key ? first.get(key) : undefined;
+    if (seen) { seen.alsoOnNumber.push(String(it.name || '').trim() || '(no name)'); continue; }
+    const row = { ...it, alsoOnNumber: [] as string[] };
+    if (key) first.set(key, row);
+    out.push(row);
+  }
+  return out;
+}
+
 /** Who may be contacted for an audience: never a stop-contact customer or one who said no; promotional ones also need a yes. */
 export function contactable(c: { mobile: string | null; doNotContact: boolean; consent: string | null }, promo: boolean): { ok: boolean; why: string } {
   if (!c.mobile || !/^[6-9][0-9]{9}$/.test(c.mobile)) return { ok: false, why: 'No mobile number' };

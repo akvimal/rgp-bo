@@ -5,7 +5,7 @@ import { isManagerRole, isOwnerRole } from 'src/core/roles';
 import { NIL_MOBILE } from './customer-rules';
 import { SNOOZE_REASONS, checkSnooze } from './customer-snooze';
 import { InviteFacts, reasonText, reviewInviteDecision, reviewMessage } from './customer-review-rules';
-import { AUDIENCES, AudienceDef, CustomerFacts, Profile, SEGMENTS, classify, contactable } from './customer-relationship-rules';
+import { AUDIENCES, AudienceDef, CustomerFacts, Profile, SEGMENTS, classify, collapseByNumber, contactable } from './customer-relationship-rules';
 
 export const CONTACT_CHANNELS = ['CALL', 'WHATSAPP', 'SMS', 'VISIT', 'OTHER'];
 export const CONTACT_OUTCOMES = ['SENT', 'REACHED', 'NO_ANSWER', 'CALLBACK', 'NOT_INTERESTED', 'WRONG_NUMBER', 'ASKED_TO_STOP'];
@@ -78,8 +78,8 @@ export class CustomerRelationshipService {
         select customer_id, d - lag(d) over (partition by customer_id order by d) as gap from v where d >= current_date - 730),
       rhythm as (
         select customer_id, percentile_cont(0.5) within group (order by gap) filter (where gap >= 7) as med from gaps group by customer_id),
-      cr as (select customer_id, sum(amount)::float as bal from customer_credit_entry group by customer_id),
-      lc as (select customer_id, max(created_on) as last_contact from customer_contact_log group by customer_id)
+      cr as (select household_id, sum(amount)::float as bal from customer_credit_entry where household_id is not null group by household_id),
+      lc as (select c2.household_id, max(l.created_on) as last_contact from customer_contact_log l join customer c2 on c2.id = l.customer_id where c2.household_id is not null group by c2.household_id)
       select c.id, c.name, c.mobile, c.locality, c.contact_consent as consent, c.do_not_contact, c.preferred_channel,
              coalesce(a.visits_all, 0) as visits_all, coalesce(a.visits12, 0) as visits12, coalesce(a.spend12, 0) as spend12,
              (current_date - a.last_d) as days_last, (current_date - a.first_d) as days_first,
@@ -88,8 +88,8 @@ export class CustomerRelationshipService {
         from customer c
         left join agg a on a.customer_id = c.id
         left join rhythm on rhythm.customer_id = c.id
-        left join cr on cr.customer_id = c.id
-        left join lc on lc.customer_id = c.id
+        left join cr on cr.household_id = c.household_id
+        left join lc on lc.household_id = c.household_id
        where c.active and not c.archive and c.mobile is distinct from $1`, [NIL_MOBILE]);
     return rows.map((r: any) => ({
       id: r.id, name: r.name, mobile: r.mobile, locality: r.locality, consent: r.consent, doNotContact: !!r.do_not_contact,
@@ -152,8 +152,10 @@ export class CustomerRelationshipService {
   private describe(a: AudienceDef, rows: Row[], profiles: Map<number, Profile>, cap: number) {
     const inAudience = rows.filter((r) => a.match(profiles.get(r.id)!, r));
     let reachable = 0, recent = 0;
+    const counted = new Set<string>();                       // one message per number: people sharing a mobile count once
     for (const r of inAudience) {
       if (!contactable(r, a.promo).ok) continue;
+      if (r.mobile) { if (counted.has(r.mobile)) continue; counted.add(r.mobile); }
       if (this.recentlyContacted(r, cap)) recent++; else reachable++;
     }
     return { key: a.key, label: a.label, help: a.help, promo: a.promo, customers: inAudience.length, reachable, recentlyContacted: recent };
@@ -204,9 +206,11 @@ export class CustomerRelationshipService {
         canContact: c.ok && !recent, why: recent ? (m.daysSinceContact === 0 ? 'Contacted today' : `Contacted ${m.daysSinceContact} day${m.daysSinceContact === 1 ? '' : 's'} ago`) : c.why,
       };
     });
+    // one message per number: people who share a mobile are listed once, with who else is on it
+    const byNumber = collapseByNumber(out);
     return {
       audience: { key: def.key, label: def.label, help: def.help, promo: def.promo },
-      contactCapDays, total: members.length, canContact: out.filter((m) => m.canContact).length, members: out,
+      contactCapDays, total: members.length, households: byNumber.length, canContact: byNumber.filter((m) => m.canContact).length, members: byNumber,
     };
   }
 
@@ -234,8 +238,8 @@ export class CustomerRelationshipService {
     }
     // customers who owe money on credit come first: they are few, and the reminder is about money
     const owing = await this.manager.query(
-      `select e.customer_id as id, sum(e.amount)::float8 as bal, min(e.entry_date) filter (where e.amount > 0) as since, current_date - min(e.entry_date) filter (where e.amount > 0) as days
-         from customer_due_entry e group by e.customer_id having sum(e.amount) >= 1 order by sum(e.amount) desc`);
+      `select min(e.customer_id) as id, sum(e.amount)::float8 as bal, min(e.entry_date) filter (where e.amount > 0) as since, current_date - min(e.entry_date) filter (where e.amount > 0) as days
+         from customer_due_entry e group by coalesce(e.household_id, -e.customer_id) having sum(e.amount) >= 1 order by sum(e.amount) desc`);
     const byId = new Map(rows.map((r) => [r.id, r]));
     const dues: any[] = [];
     for (const o of owing) {
@@ -252,7 +256,7 @@ export class CustomerRelationshipService {
     const owingIds = new Set(dues.map((d) => d.id));
     const rest = picked.filter((p) => !owingIds.has(p.id));
     picked.length = 0;
-    picked.push(...dues, ...rest);
+    picked.push(...collapseByNumber([...dues, ...rest]));       // one call or message per number, not one per person
     // a customer postponed to a later day is left off until then and listed apart, with the reason
     const postponed = await this.activeSnoozes();
     const shown = picked.filter((p) => !postponed.has(p.id));
@@ -376,7 +380,7 @@ export class CustomerRelationshipService {
               st.location as store_name, st.google_review_url,
               exists(select 1 from grievance g where g.customer_id = c.id and g.status in ('OPEN', 'IN_PROGRESS')) as open_grievance,
               exists(select 1 from sale_return_item ri join sale_item si on si.id = ri.sale_item_id where si.sale_id = s.id and ri.active) as has_return,
-              (select floor(extract(epoch from (now() - max(v.created_on))) / 86400)::int from review_invite v where v.customer_id = c.id) as last_invite_days
+              (select floor(extract(epoch from (now() - max(v.created_on))) / 86400)::int from review_invite v join customer c2 on c2.id = v.customer_id where c2.household_id = c.household_id) as last_invite_days
          from sale s left join customer c on c.id = s.customer_id join stores st on st.id = s.store_id
         where s.id = $1`, [saleId]);
     if (!r) return null;

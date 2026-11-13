@@ -22,7 +22,7 @@ export class CustomerDueService {
   }
 
   async get(customerId: number) {
-    const [c] = await this.manager.query(`select id, name, mobile, locality, credit_limit::float8 as credit_limit from customer where id = $1`, [customerId]);
+    const [c] = await this.manager.query(`select c.id, c.name, c.mobile, c.locality, coalesce(h.credit_limit, 0)::float8 as credit_limit from customer c left join household h on h.id = c.household_id where c.id = $1`, [customerId]);
     if (!c) throw new NotFoundException('Customer not found.');
     const rows = await dueRows(this.manager, customerId);
     const open = openDues(rows);
@@ -32,7 +32,7 @@ export class CustomerDueService {
       `select e.id, to_char(e.entry_date, 'YYYY-MM-DD') as entry_date, e.kind, e.amount::float8 as amount, e.note, e.sale_id, e.pay_mode, e.provider,
               to_char(e.due_date, 'YYYY-MM-DD') as due_date, s.location as store, u.full_name as by_name
          from customer_due_entry e left join stores s on s.id = e.store_id left join app_user u on u.id = e.created_by
-        where e.customer_id = $1 order by e.created_on desc, e.id desc limit 100`, [customerId]);
+        where (e.household_id = (select household_id from customer where id = $1) or e.customer_id = $1) order by e.created_on desc, e.id desc limit 100`, [customerId]);
     return { customer: { id: c.id, name: c.name, mobile: c.mobile, locality: c.locality }, limit, balance, available: Math.max(0, money(limit - balance)),
              overdue: overdueOf(open, isoToday()), open, entries };
   }
@@ -47,10 +47,12 @@ export class CustomerDueService {
     if (!isManagerRole(await this.roleName(user))) throw new ForbiddenException('Only a Store Head or Business Head sets a credit limit.');
     const limit = money(Number(body?.limit));
     if (!Number.isFinite(limit) || limit < 0 || limit > 10000000) throw new BadRequestException('Enter the limit in rupees (0 for no credit).');
-    const [c] = await this.manager.query(`select id, name, mobile, credit_limit::float8 as before from customer where id = $1`, [customerId]);
+    const [c] = await this.manager.query(`select c.id, c.name, c.mobile, coalesce(h.credit_limit, 0)::float8 as before, c.household_id from customer c left join household h on h.id = c.household_id where c.id = $1`, [customerId]);
     if (!c) throw new NotFoundException('Customer not found.');
     if (limit > 0 && (c.mobile === '0000000000' || !String(c.name || '').trim())) throw new BadRequestException('Credit needs a named customer: the walk-in placeholder cannot owe.');
-    await this.manager.query(`update customer set credit_limit = $2, updated_by = $3, updated_on = now() where id = $1`, [customerId, limit, user.id]);
+    // the limit is the household's
+    if (c.household_id) await this.manager.query(`update household set credit_limit = $2 where id = $1`, [c.household_id, limit]);
+    await this.manager.query(`update customer set updated_by = $2, updated_on = now() where id = $1`, [customerId, user.id]);
     await this.audit.record({ userId: user.id, action: 'customer.credit_limit_set', entityType: 'customer', entityId: customerId,
       summary: `${c.name}: credit limit ${c.before} -> ${limit}`, details: { before: c.before, limit } });
     return this.get(customerId);
@@ -69,7 +71,7 @@ export class CustomerDueService {
       await tm.query(`select id from customer where id = $1 for update`, [customerId]);
       const [c] = await tm.query(`select id, name from customer where id = $1`, [customerId]);
       if (!c) throw new NotFoundException('Customer not found.');
-      const [b] = await tm.query(`select coalesce(sum(amount), 0)::float8 as b from customer_due_entry where customer_id = $1`, [customerId]);
+      const [b] = await tm.query(`select coalesce(sum(amount), 0)::float8 as b from customer_due_entry where (household_id = (select household_id from customer where id = $1) or customer_id = $1)`, [customerId]);
       const owed = money(Number(b.b));
       if (owed <= 0) throw new BadRequestException(`${c.name} owes nothing.`);
       if (amount > owed + 0.005) throw new BadRequestException(`${c.name} owes ${owed.toFixed(2)}; you cannot collect more than that.`);
@@ -117,8 +119,8 @@ export class CustomerDueService {
   /** everyone who owes, the overdue first: for following up */
   async list() {
     const rows = await this.manager.query(
-      `select c.id, c.name, c.mobile, c.locality, c.credit_limit::float8 as credit_limit, sum(e.amount)::float8 as balance
-         from customer_due_entry e join customer c on c.id = e.customer_id group by c.id having sum(e.amount) > 0.004 order by c.name`);
+      `select min(c.id) as id, min(c.name) as name, min(c.mobile) as mobile, min(c.locality) as locality, coalesce(max(h.credit_limit), 0)::float8 as credit_limit, sum(e.amount)::float8 as balance
+         from customer_due_entry e join customer c on c.id = e.customer_id left join household h on h.id = e.household_id group by coalesce(e.household_id, -c.id) having sum(e.amount) > 0.004 order by c.name`);
     const today = isoToday();
     const out: any[] = [];
     for (const r of rows) {

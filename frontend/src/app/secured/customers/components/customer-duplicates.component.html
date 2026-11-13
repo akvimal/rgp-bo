@@ -2,18 +2,27 @@
   <div actions><a [routerLink]="['../list']" class="btn btn-outline-secondary">Back to customers</a></div>
 </app-page-header>
 <p class="small text-muted mt-2">
-  Customers who share a mobile number. A family often shares one, so only merge records that are the same person
-  (names that are spellings of each other are marked). Merging moves every bill and note to the customer you keep and
-  archives the others; nothing is deleted.
+  The same person entered twice on one number (names that are spellings of each other). Different names on one number are usually a family, not a duplicate,
+  so they are hidden here. Merging moves every bill and note to the customer you keep and archives the others; nothing is deleted.
 </p>
+<div class="form-check small mb-2" *ngIf="hiddenFamilies || showFamilies">
+  <input class="form-check-input" type="checkbox" id="dup-families" [(ngModel)]="showFamilies" data-testid="dup-families">
+  <label class="form-check-label" for="dup-families">Also show numbers with different names ({{hiddenFamilies}}): families, not duplicates</label>
+</div>
+<div class="alert alert-warning py-2" *ngIf="confirming" data-testid="dup-confirm">
+  <div>{{confirming.text}}</div>
+  <button type="button" class="btn btn-sm btn-warning mt-2" (click)="merge(confirming.g, true)" data-testid="dup-confirm-yes">They are the same person: merge</button>
+  <button type="button" class="btn btn-sm btn-outline-secondary mt-2 ms-2" (click)="confirming = null">Keep them apart</button>
+</div>
 <div *ngIf="message" class="alert alert-success py-2" data-testid="dup-message">{{message}}</div>
 <div *ngIf="error" class="alert alert-danger py-2" data-testid="dup-error">{{error}}</div>
-<div *ngIf="!loading && !groups.length" class="text-muted" data-testid="dup-empty">No duplicate mobiles.</div>
+<div *ngIf="!loading && !visibleGroups.length" class="text-muted" data-testid="dup-empty">No duplicate mobiles.<span *ngIf="hiddenFamilies"> {{hiddenFamilies}} number{{hiddenFamilies === 1 ? ' is' : 's are'}} shared by people with different names (families).</span></div>
 
-<div class="card mb-3" *ngFor="let g of groups" data-testid="dup-group" [attr.data-mobile]="g.mobile">
+<div class="card mb-3" *ngFor="let g of visibleGroups" data-testid="dup-group" [attr.data-mobile]="g.mobile">
   <div class="card-header py-2 d-flex flex-wrap align-items-center gap-2">
     <strong>{{g.mobile}}</strong>
     <span class="badge bg-warning text-dark" *ngIf="g.likelysame">looks like the same person</span>
+    <span class="badge bg-light text-dark border" *ngIf="g.family">different names: a family?</span>
     <span class="small text-muted">{{g.members.length}} records, {{g.bills}} bills</span>
     <button class="btn btn-sm btn-primary ms-auto" data-testid="dup-merge" [disabled]="!toMerge(g).length || working === g.mobile" (click)="merge(g)">
       Merge {{toMerge(g).length || ''}} into the kept record

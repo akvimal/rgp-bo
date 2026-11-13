@@ -53,7 +53,7 @@
   </div>
 
   <div *ngIf="result" data-testid="aud-result">
-    <p class="mb-1" data-testid="aud-counts"><strong>{{result.total}}</strong> in this audience, <strong>{{result.canContact}}</strong> can be contacted now.</p>
+    <p class="mb-1" data-testid="aud-counts"><strong>{{result.total}}</strong> in this audience<span *ngIf="result.households < result.total"> on <strong>{{result.households}}</strong> numbers (people sharing a number are listed once)</span>, <strong>{{result.canContact}}</strong> can be contacted now.</p>
     <p class="small text-muted mb-2" *ngIf="leftOut.length" data-testid="aud-leftout">
       Left out:
       <span *ngFor="let l of leftOut; let last = last">{{l.n}} ({{l.why}})<span *ngIf="!last">, </span></span>.
@@ -73,7 +73,7 @@
       </thead>
       <tbody>
         <tr *ngFor="let m of shown" [class.text-muted]="!m.canContact" [attr.data-testid]="'aud-row-' + m.id">
-          <td>{{m.name}}<span *ngIf="m.tier" class="badge ms-1" [ngClass]="m.tier === 'Gold' ? 'bg-warning text-dark' : 'bg-light text-muted border'">{{m.tier}}</span></td>
+          <td>{{m.name}}<span class="small text-muted ms-1" *ngIf="m.alsoOnNumber?.length" [title]="'Same number: ' + m.alsoOnNumber.join(', ')" data-testid="aud-also">+ {{m.alsoOnNumber.join(', ')}} on this number</span><span *ngIf="m.tier" class="badge ms-1" [ngClass]="m.tier === 'Gold' ? 'bg-warning text-dark' : 'bg-light text-muted border'">{{m.tier}}</span></td>
           <td>{{m.mobile || "no mobile"}}</td>
           <td>{{m.segment}}</td>
           <td class="small">{{m.reason}}</td>

@@ -1,5 +1,6 @@
 import { CustomerService } from "./customer.service";
 import { CustomerCreditService } from "./customer-credit.service";
+import { CustomerHouseholdService } from "./customer-household.service";
 import { CustomerPrivacyService } from "./customer-privacy.service";
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Query, UseGuards } from "@nestjs/common";
@@ -13,7 +14,7 @@ import { AuthGuard } from "src/modules/auth/auth.guard";
 @UseGuards(AuthGuard)
 export class CustomerController {
 
-    constructor(private customerService:CustomerService, private creditService:CustomerCreditService, private privacy:CustomerPrivacyService){}
+    constructor(private customerService:CustomerService, private creditService:CustomerCreditService, private privacy:CustomerPrivacyService, private households:CustomerHouseholdService){}
 
     @Post()
     async create(@Body() createCustomerDto: CreateCustomerDto, @User() currentUser: any) {
@@ -90,6 +91,27 @@ export class CustomerController {
     @Get(':id')
     async findOne(@Param('id') id: number, @User() currentUser: any) {
       return this.customerService.findById(id, currentUser);
+    }
+
+    @Post('households/merge')
+    async mergeHouseholds(@Body() body: any, @User() currentUser: any) { return this.households.merge(body, currentUser); }
+
+    @Post('households/transfer')
+    async transferBalance(@Body() body: any, @User() currentUser: any) { return this.households.transfer(body, currentUser); }
+
+    @Get(':id/household/numbers')
+    async householdNumbers(@Param('id', ParseIntPipe) id: number) { return this.households.history(id); }
+
+    @Post(':id/household/mobile')
+    async changeHouseholdMobile(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() currentUser: any) { return this.households.changeMobile(id, body, currentUser); }
+
+    @Post(':id/household/detach')
+    async detachFromHousehold(@Param('id', ParseIntPipe) id: number, @Body() body: any, @User() currentUser: any) { return this.households.detach(id, body, currentUser); }
+
+    /** the people on the same number as this customer */
+    @Get(':id/household')
+    async household(@Param('id') id: number) {
+      return this.customerService.household(+id);
     }
 
     @Get(':id/credit')

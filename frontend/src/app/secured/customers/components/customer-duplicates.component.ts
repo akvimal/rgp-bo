@@ -13,6 +13,10 @@ export class CustomerDuplicatesComponent implements OnInit {
     keep: { [mobile: string]: number } = {};
     picked: { [id: number]: boolean } = {};
     working = '';
+    /** different names on one number are usually a family, not a duplicate: hidden unless asked for */
+    showFamilies = false;
+    /** a merge the server stopped because the names differ: the person is asked whether they really are the same person */
+    confirming: { g: any, ids: number[], text: string } | null = null;
 
     constructor(private service: CustomersService) {}
 
@@ -29,22 +33,30 @@ export class CustomerDuplicatesComponent implements OnInit {
         }, err => { this.loading = false; this.error = this.msg(err, 'Could not load the duplicates.'); });
     }
 
+    get visibleGroups(): any[] { return this.showFamilies ? this.groups : this.groups.filter(g => !g.family); }
+    get hiddenFamilies(): number { return this.groups.filter(g => g.family).length; }
+
     toMerge(g: any): number[] {
         return g.members.filter((m: any) => m.id !== this.keep[g.mobile] && this.picked[m.id]).map((m: any) => m.id);
     }
 
-    merge(g: any) {
+    merge(g: any, confirmed = false) {
         const ids = this.toMerge(g);
         if (!ids.length) return;
         this.working = g.mobile;
         this.message = '';
         this.error = '';
-        this.service.merge(this.keep[g.mobile], ids).subscribe((r: any) => {
+        this.confirming = null;
+        this.service.merge(this.keep[g.mobile], ids, confirmed).subscribe((r: any) => {
             this.working = '';
             this.message = `${r.merged.length} record(s) merged into ${String(r.keep.name).trim()}: bills and history now sit on that customer.`;
             for (const id of ids) delete this.picked[id];
             this.load();
-        }, err => { this.working = ''; this.error = this.msg(err, 'Could not merge.'); });
+        }, err => {
+            this.working = '';
+            if (err?.status === 409) { this.confirming = { g, ids, text: this.msg(err, 'These look like different people.') }; return; }
+            this.error = this.msg(err, 'Could not merge.');
+        });
     }
 
     private msg(err: any, fallback: string): string {

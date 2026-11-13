@@ -13,7 +13,7 @@ async function namedCustomer(manager: EntityManager, customerId: any) {
 }
 
 export async function creditBalance(manager: EntityManager, customerId: number): Promise<number> {
-  const [r] = await manager.query(`select coalesce(sum(amount), 0)::float as b from customer_credit_entry where customer_id = $1`, [customerId]);
+  const [r] = await manager.query(`select coalesce(sum(amount), 0)::float as b from customer_credit_entry where (household_id = (select household_id from customer where id = $1) or customer_id = $1)`, [customerId]);
   return money(Number(r.b));
 }
 

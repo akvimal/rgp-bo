@@ -15,8 +15,8 @@ export class CustomerCreditService {
     const entries = await this.manager.query(
       `select e.id, e.entry_date, e.kind, e.amount::float as amount, e.note, e.sale_id, e.return_item_id, s.location as store, u.full_name as by_name
          from customer_credit_entry e left join stores s on s.id = e.store_id left join app_user u on u.id = e.created_by
-        where e.customer_id = $1 order by e.created_on desc, e.id desc limit 100`, [customerId]);
-    const [b] = await this.manager.query(`select coalesce(sum(amount), 0)::float as balance from customer_credit_entry where customer_id = $1`, [customerId]);
+        where (e.household_id = (select household_id from customer where id = $1) or e.customer_id = $1) order by e.created_on desc, e.id desc limit 100`, [customerId]);
+    const [b] = await this.manager.query(`select coalesce(sum(amount), 0)::float as balance from customer_credit_entry where (household_id = (select household_id from customer where id = $1) or customer_id = $1)`, [customerId]);
     return { customer: c, balance: Math.round(b.balance * 100) / 100, entries };
   }
 
@@ -32,7 +32,7 @@ export class CustomerCreditService {
     if (c.mobile === '0000000000' || !String(c.name || '').trim()) throw new BadRequestException('Store credit needs a named customer: the walk-in placeholder cannot hold credit.');
     await this.manager.transaction(async tm => {
       await tm.query(`select id from customer where id = $1 for update`, [customerId]);
-      const [b] = await tm.query(`select coalesce(sum(amount), 0)::float as balance from customer_credit_entry where customer_id = $1`, [customerId]);
+      const [b] = await tm.query(`select coalesce(sum(amount), 0)::float as balance from customer_credit_entry where (household_id = (select household_id from customer where id = $1) or customer_id = $1)`, [customerId]);
       if (b.balance + amount < -0.005) throw new BadRequestException(`The balance is ${b.balance.toFixed(2)}; it cannot go below zero.`);
       await tm.query(`insert into customer_credit_entry (customer_id, kind, amount, note, created_by) values ($1, 'ADJUSTMENT', $2, $3, $4)`, [customerId, amount, note.slice(0, 200), user.id]);
     });

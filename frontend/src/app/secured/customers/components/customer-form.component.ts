@@ -65,6 +65,7 @@ export class CustomerFormComponent implements AfterViewInit {
         email: new FormControl('', Validators.email),
         address: new FormControl(''),
         locality: new FormControl(''),
+        relationship: new FormControl(''),
         // area: new FormControl(''),
         srctype: new FormControl(''),
         srcdesc: new FormControl(''),
@@ -135,6 +136,7 @@ export class CustomerFormComponent implements AfterViewInit {
             this.form.controls['altmobile'].setValue(data.altmobile);
             this.form.controls['email'].setValue(data.email);
             this.form.controls['locality'].setValue(data.locality);
+            this.form.controls['relationship'].setValue(data.relationship || '');
             this.form.controls['address'].setValue(data.address);
             this.form.controls['srctype'].setValue(data.srctype);
             this.form.controls['srcdesc'].setValue(data.srcdesc);
@@ -251,6 +253,7 @@ export class CustomerFormComponent implements AfterViewInit {
         const obj: any = {
           name: v.name,
           locality: v.locality,
+          relationship: v.relationship || '',
           area: v.area,
           srctype: v.srctype,
           srcdesc: v.srcdesc,
@@ -302,7 +305,7 @@ export class CustomerFormComponent implements AfterViewInit {
             this.saving = false;
             this.saved.emit(data);
             if (addAnother && !id) {
-              this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', srctype: '', srcdesc: '', consent: '', preferredchannel: '', messagelanguage: '', donotcontact: false, reviewoptout: false });
+              this.form.reset({ id: '', name: '', mobile: '', altmobile: '', email: '', address: '', locality: '', relationship: '', srctype: '', srcdesc: '', consent: '', preferredchannel: '', messagelanguage: '', donotcontact: false, reviewoptout: false });
               this.sameNumber = [];
               this.confirmDuplicate = false;
               this.attempted = false;
@@ -328,6 +331,7 @@ export class CustomerFormComponent implements AfterViewInit {
         this.form.controls['mobile'].setValue(cust.mobile);
         this.form.controls['email'].setValue(cust.email);
         this.form.controls['locality'].setValue(cust.locality);
+        this.form.controls['relationship'].setValue(cust.relationship || '');
         this.form.controls['address'].setValue(cust.address);
         this.form.controls['area'].setValue(cust.area);
         this.form.controls['srctype'].setValue(cust.scrtype);

@@ -37,12 +37,24 @@ export class CustomersService {
         return this.http.get<any[]>(`${this.apiurl}/by-mobile/${encodeURIComponent(mobile)}`);
     }
 
+    /** the people on the same number as a customer */
+    household(id:number){
+        return this.http.get<any>(`${this.apiurl}/${id}/household`);
+    }
+
+    /** the numbers an account has had, and its number now */
+    householdNumbers(id:number){ return this.http.get<any>(`${this.apiurl}/${id}/household/numbers`); }
+    changeHouseholdMobile(id:number, mobile:string){ return this.http.post<any>(`${this.apiurl}/${id}/household/mobile`, { mobile }); }
+    detachFromHousehold(id:number, mobile:string, locality:string){ return this.http.post<any>(`${this.apiurl}/${id}/household/detach`, { mobile, locality }); }
+    mergeHouseholds(keepcustomerid:number, mergecustomerid:number){ return this.http.post<any>(`${this.apiurl}/households/merge`, { keepcustomerid, mergecustomerid }); }
+    transferBalance(body:any){ return this.http.post<any>(`${this.apiurl}/households/transfer`, body); }
+
     duplicates(){
         return this.http.get<any[]>(`${this.apiurl}/duplicates`);
     }
 
-    merge(keepid:number, mergeids:number[]){
-        return this.http.post<any>(`${this.apiurl}/merge`, { keepid, mergeids });
+    merge(keepid:number, mergeids:number[], confirmsameperson = false){
+        return this.http.post<any>(`${this.apiurl}/merge`, { keepid, mergeids, confirmsameperson });
     }
 
     findAllApi(){

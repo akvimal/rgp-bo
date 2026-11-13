@@ -6,7 +6,7 @@ import { Sale } from "src/entities/sale.entity";
 import { EntityManager, Repository } from "typeorm";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuditService } from "src/core/audit/audit.service";
-import { NIL_MOBILE, cleanEmail, cleanText, identityProblem, likelySamePerson, normaliseMobile, sameWords, tidyName } from "./customer-rules";
+import { NIL_MOBILE, cleanEmail, cleanRelationship, cleanText, identityProblem, likelySamePerson, mergeProblem, normaliseMobile, sameWords, tidyName } from "./customer-rules";
 import { CustomerRelationshipService } from "./customer-relationship.service";
 import { CustomerPrivacyService } from "./customer-privacy.service";
 import { isMasked } from "./customer-privacy";
@@ -82,6 +82,11 @@ export class CustomerService {
         }
         if (dto.email !== undefined) values.email = cleanEmail(dto.email);
         if (dto.locality !== undefined) values.locality = locality;
+        if (dto.relationship !== undefined) {
+            const rel = cleanRelationship(dto.relationship);
+            if (!rel.ok) throw new BadRequestException(rel.error);
+            values.relationship = rel.value;
+        }
         if (dto.address !== undefined) values.address = cleanText(dto.address, 200, 'The address');
         if (dto.area !== undefined) values.area = cleanText(dto.area, 60, 'The area');
         if (dto.srctype !== undefined) values.srctype = cleanText(dto.srctype, 30, 'The source');
@@ -175,15 +180,32 @@ export class CustomerService {
             let likely = false;
             for (let i = 0; i < members.length && !likely; i++)
                 for (let j = i + 1; j < members.length && !likely; j++) likely = likelySamePerson(members[i].name, members[j].name);
-            return { mobile, likelysame: likely, bills: members.reduce((t, m) => t + m.bills, 0), members };
+            // different names on one number are usually a family, not a duplicate: the screen shows them apart
+            return { mobile, likelysame: likely, family: !likely, bills: members.reduce((t, m) => t + m.bills, 0), members };
         });
         out.sort((a, b) => Number(b.likelysame) - Number(a.likelysame) || b.bills - a.bills);
         return out.slice(0, 300);
     }
 
+    /**
+     * The people on the same number as a customer (the household the number stands for): who they are, how they are related, and how much they have bought.
+     * Names and relationships only: no number is returned, so it is safe on a screen that masks them.
+     */
+    async household(customerId: number) {
+        const [me] = await this.manager.query(`select id, household_id from customer where id = $1`, [customerId]);
+        if (!me) throw new NotFoundException('Customer not found.');
+        if (!me.household_id) return { householdid: null, people: [] };
+        const people = await this.manager.query(
+            `select c.id, c.name, c.relationship, c.locality, count(s.id)::int as bills, max(s.bill_date) as lastvisit, (c.id = $2) as me
+               from customer c left join sale s on s.customer_id = c.id and s.status = 'COMPLETE'
+              where c.household_id = $1 and c.active and not c.archive
+              group by c.id order by (c.id = $2) desc, bills desc, c.id`, [me.household_id, customerId]);
+        return { householdid: me.household_id, people };
+    }
+
     /** Folds duplicate records into one: bills, documents, grievances, refill notes and transactions move to the kept
      *  customer, blanks on it are filled from the others, and the merged records are archived (never deleted). */
-    async merge(body: { keepid: number; mergeids: number[] }, user: any) {
+    async merge(body: { keepid: number; mergeids: number[]; confirmsameperson?: boolean }, user: any) {
         await this.assertBusinessHead(user);
         const keepid = Number(body?.keepid);
         const mergeids = [...new Set((body?.mergeids || []).map(Number))].filter((n) => n && n !== keepid);
@@ -194,6 +216,8 @@ export class CustomerService {
             if (rows.length !== mergeids.length + 1) throw new NotFoundException('One of the customers does not exist or is already merged.');
             if (rows.some((r: any) => r.mobile === NIL_MOBILE)) throw new BadRequestException('The NIL walk-in customer cannot be merged.');
             const keep = rows.find((r: any) => r.id === keepid);
+            const stop = mergeProblem(keep.name, rows.filter((r: any) => r.id !== keepid).map((r: any) => r.name), body?.confirmsameperson === true);
+            if (stop) throw new ConflictException(stop);
             const moved: Record<string, number> = {};
             for (const t of ['sale', 'customer_documents', 'customer_transaction', 'grievance', 'refill_followup']) {
                 const r = await tx.query(`update ${t} set customer_id = $1 where customer_id = any($2::int[])`, [keepid, mergeids]);
@@ -256,7 +280,8 @@ export class CustomerService {
         const rows = await this.manager.query(
             `select id from customer where active and not archive
                 and (name ilike '%' || $1 || '%'
-                  or ($2 <> '' and (mobile like '%' || $2 || '%' or alt_mobile like '%' || $2 || '%')))
+                  or ($2 <> '' and (mobile like '%' || $2 || '%' or alt_mobile like '%' || $2 || '%'
+                       or household_id in (select household_id from household_mobile_history where mobile like '%' || $2 || '%'))))
               order by id limit 200`, [text, digits.length >= 3 ? digits : '']);
         return { ids: rows.map((r: any) => r.id) };
     }

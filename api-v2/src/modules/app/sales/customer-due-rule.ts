@@ -57,19 +57,19 @@ export function dueDateProblem(raw: any, today: string): { value: string; error?
 async function namedCustomer(manager: EntityManager, customerId: any) {
   const id = Number(customerId || 0);
   if (!id) return null;
-  const [c] = await manager.query(`select id, name, mobile, credit_limit::float8 as credit_limit from customer where id = $1`, [id]);
+  const [c] = await manager.query(`select c.id, c.name, c.mobile, coalesce(h.credit_limit, 0)::float8 as credit_limit from customer c left join household h on h.id = c.household_id where c.id = $1`, [id]);
   return c && String(c.name ?? '').trim() && c.mobile !== '0000000000' ? c : null;
 }
 
 export async function dueBalance(manager: EntityManager, customerId: number): Promise<number> {
-  const [r] = await manager.query(`select coalesce(sum(amount), 0)::float8 as b from customer_due_entry where customer_id = $1`, [customerId]);
+  const [r] = await manager.query(`select coalesce(sum(amount), 0)::float8 as b from customer_due_entry where (household_id = (select household_id from customer where id = $1) or customer_id = $1)`, [customerId]);
   return money(Number(r.b));
 }
 
 export async function dueRows(manager: EntityManager, customerId: number): Promise<DueRow[]> {
   return manager.query(
     `select kind, amount::float8 as amount, sale_id, to_char(due_date, 'YYYY-MM-DD') as due_date, to_char(entry_date, 'YYYY-MM-DD') as entry_date
-       from customer_due_entry where customer_id = $1 order by entry_date, id`, [customerId]);
+       from customer_due_entry where (household_id = (select household_id from customer where id = $1) or customer_id = $1) order by entry_date, id`, [customerId]);
 }
 
 /**

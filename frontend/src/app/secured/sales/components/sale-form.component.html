@@ -16,6 +16,9 @@
                     <ng-container *ngIf="sale.customer.mobile.length === 10 || noMobileMode">
                         <input type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.name" placeholder="Customer name" maxlength="80" data-testid="sale-cust-name">
                         <input *ngIf="noMobileMode" type="text" class="form-control form-control-sm w-auto" style="width:12rem !important" [(ngModel)]="sale.customer.locality" placeholder="Location" maxlength="60" data-testid="sale-cust-locality">
+                        <select *ngIf="addingToNumber" class="form-select form-select-sm w-auto" [(ngModel)]="sale.customer.relationship" aria-label="How they are related" data-testid="sale-cust-relationship">
+                            <option value="">Related as...</option><option value="SELF">Account holder</option><option value="SPOUSE">Spouse</option><option value="CHILD">Child</option><option value="PARENT">Parent</option><option value="OTHER">Other</option>
+                        </select>
                         <input type="text" class="form-control form-control-sm w-auto" style="width:14rem !important" [(ngModel)]="sale.customer.email" placeholder="Email (optional)">
                         <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="!canSaveCustomer || savingCustomer" (click)="saveCustomer()"
                             title="Save this customer now: Pay later, a prescription to follow and their history need a customer on record" data-testid="sale-cust-save">
@@ -25,6 +28,7 @@
                     <a role="button" class="small" *ngIf="!noMobileMode && sale.customer.mobile.length !== 10" (click)="useNoMobile()" data-testid="sale-no-mobile">No mobile number?</a>
                     <a role="button" class="small" *ngIf="noMobileMode" (click)="useMobile()" data-testid="sale-use-mobile">Use a mobile number</a>
                 </div>
+                <div class="small text-muted mt-1" *ngIf="addingToNumber && !sale.customer.existing" data-testid="sale-add-person-hint">Adding another person on {{sale.customer.mobile}}: they share the number and have their own record.</div>
                 <div class="small text-danger mt-1" *ngIf="customerError && !sale.customer.existing" data-testid="sale-cust-error">{{customerError}}</div>
                 <div class="small text-muted mt-1" *ngIf="noMobileMode && !sale.customer.existing" data-testid="sale-no-mobile-hint">No mobile: enter the name and location, or find an existing customer by name. Refill reminders and messages need a number.</div>
                 <div class="d-flex align-items-center gap-2" *ngIf="sale.customer.existing">
@@ -32,6 +36,13 @@
                     <strong>{{sale.customer?.name}}</strong> <span class="text-muted">{{sale.customer?.mobile || 'no mobile'}}<ng-container *ngIf="sale.customer?.locality"> &middot; {{sale.customer.locality}}</ng-container></span>
                     <a role="button" class="ms-1" (click)="showPrevSalesCopy()" title="Earlier bills of this customer"><i class="bi bi-files text-success"></i></a>
                     <a role="button" (click)="resetCustomer()" title="Choose another customer"><i class="bi bi-x-square text-danger"></i></a>
+                </div>
+                <div class="small mt-1 d-flex flex-wrap align-items-center gap-2" *ngIf="household && sale.customer.existing" data-testid="sale-household">
+                    <span class="text-muted">{{household.people.length > 1 ? 'Who is this for?' : 'On this number:'}}</span>
+                    <ng-container *ngIf="household.people.length > 1">
+                        <button type="button" *ngFor="let p of household.people" class="btn btn-sm py-0" [ngClass]="p.id === sale.customer.id ? 'btn-primary' : 'btn-outline-secondary'" (click)="switchPerson(p)" [attr.data-testid]="'sale-person-' + p.id">{{p.name}}<span class="opacity-75" *ngIf="p.relationship"> ({{p.relationship | lowercase}})</span></button>
+                    </ng-container>
+                    <a role="button" (click)="addPersonOnNumber()" data-testid="sale-add-person">+ Someone else on this number</a>
                 </div>
             </div>
             <!-- The bill itself -->

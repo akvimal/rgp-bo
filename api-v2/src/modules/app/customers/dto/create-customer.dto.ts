@@ -11,6 +11,9 @@ export class CreateCustomerDto {
     @ApiProperty({ description: 'email', example: '' })
     readonly email: string;
     
+    @ApiProperty({ description: 'how this person is related to others on the same number: SELF, SPOUSE, CHILD, PARENT or OTHER', required: false })
+    readonly relationship?: string;
+
     @ApiProperty({ description: 'locality', example: '' })
     readonly locality: string;    
     @ApiProperty({ description: 'address', example: '' })

@@ -23,6 +23,10 @@ export class SaleFormComponent {
     customer: any = {existing:false,mobile:'',name:'',locality:''}
     /** a bill for someone with no mobile number: the name and location tell them apart */
     noMobileMode = false;
+    /** the people on the same number as the customer on the bill (a family often shares one): "Who is this for?" */
+    household: any = null;
+    /** a new person is being added to the number just chosen */
+    addingToNumber = false;
     /** the states of GST, for a delivery to another state */
     gstStates = GST_STATES;
     sale:Sale = {status:'NEW',items:[],digimethod:'UPI'}
@@ -107,6 +111,7 @@ export class SaleFormComponent {
               this.sale.customer = {...this.sale.customer, existing:true, mobile: this.sale.customer.mobile ?? ''};
             else
               this.sale.customer = this.customer;
+            this.loadHousehold();
 
             this.payment['cashamt'] = this.sale['cashamt'];
             this.payment['digimode'] = this.sale['digimethod'];
@@ -146,9 +151,11 @@ export class SaleFormComponent {
       this.customerService.save({name: String(c.name ?? '').trim(),
         mobile: this.noMobileMode ? '' : c.mobile,
         locality: this.noMobileMode ? String(c.locality ?? '').trim() : undefined,
-        email: c.email, confirmduplicate: true} as any).subscribe(data => {
+        email: c.email, relationship: this.addingToNumber ? (c.relationship || '') : undefined, confirmduplicate: true} as any).subscribe(data => {
           this.savingCustomer = false;
           this.sale.customer = {...data, existing: true, mobile: (data as any)?.mobile ?? ''};
+          this.addingToNumber = false;
+          this.loadHousehold();
         }, err => {
           this.savingCustomer = false;
           const m = err?.error?.message;
@@ -157,6 +164,8 @@ export class SaleFormComponent {
     }
 
     resetCustomer(){
+      this.household = null;
+      this.addingToNumber = false;
       this.customerError = '';
       this.sale.customer['existing'] = false;
       this.sale.customer['mobile'] = '';
@@ -167,12 +176,16 @@ export class SaleFormComponent {
     }
 
     useNoMobile(){
+      this.household = null;
+      this.addingToNumber = false;
       this.customerError = '';
       this.noMobileMode = true;
       this.sale.customer = {existing:false, mobile:'', name:'', locality:'', email:''};
     }
 
     useMobile(){
+      this.household = null;
+      this.addingToNumber = false;
       this.customerError = '';
       this.noMobileMode = false;
       this.sale.customer = {existing:false, mobile:'', name:'', locality:''};
@@ -239,11 +252,37 @@ export class SaleFormComponent {
       this.sale.docpending = false;
     }
 
+    /** the people on the same number as the customer now on the bill; only for a number that is shown in full (a masked one cannot be added to) */
+    loadHousehold(){
+      const c = this.sale.customer;
+      this.household = null;
+      if(!c?.existing || !c?.id || !/^[0-9]{10}$/.test(String(c.mobile ?? ''))) return;
+      this.customerService.household(c.id).subscribe((h:any) => this.household = h, () => this.household = null);
+    }
+
+    /** the bill is for another person on the same number: only who changes, so nothing of the previous person is saved onto them */
+    switchPerson(p:any){
+      if(p.id === this.sale.customer?.id) return;
+      this.customerError = '';
+      this.sale.customer = {id: p.id, name: p.name, mobile: this.sale.customer.mobile, locality: p.locality || undefined, relationship: p.relationship || undefined, existing: true};
+    }
+
+    /** someone not yet known on this number: the number stays, the name is typed, and they are saved into the same household */
+    addPersonOnNumber(){
+      const mobile = this.sale.customer?.mobile ?? '';
+      this.addingToNumber = true;
+      this.household = null;
+      this.customerError = '';
+      this.sale.customer = {existing:false, mobile, name:'', locality:'', email:'', relationship:''};
+    }
+
     selectCustomer(customer:any, copySales:boolean){
       this.noMobileMode = false;
+      this.addingToNumber = false;
       // the location is left as the list gave it (not defaulted to empty): saving the bill must never blank a customer's location
       this.sale.customer = {...customer, mobile: customer.mobile ?? ''};
       this.showCustomerView = copySales; 
+      this.loadHousehold();
     }
 
   onItemRemoved(id:any){

@@ -59,6 +59,12 @@
       <input type="text" id="locality" data-testid="cust-f-locality" class="form-control" [class.is-invalid]="noMobile && attempted && !form.controls['locality'].value" formControlName="locality" maxlength="60" placeholder="Area or locality">
     </div>
     <div class="col-md-6 col-lg-3">
+      <label for="relationship" class="form-label">Related to others on this number</label>
+      <select id="relationship" data-testid="cust-f-relationship" class="form-select" formControlName="relationship">
+        <option value="">Not said</option><option value="SELF">Account holder</option><option value="SPOUSE">Spouse</option><option value="CHILD">Child</option><option value="PARENT">Parent</option><option value="OTHER">Other</option>
+      </select>
+    </div>
+    <div class="col-md-6 col-lg-3">
       <label for="srctype" class="form-label">How did they find us?</label>
       <select id="srctype" data-testid="cust-f-srctype" class="form-select" formControlName="srctype">
         <option value="">Not recorded</option>
@@ -84,7 +90,7 @@
         <option value="YES">Yes, they agreed</option>
         <option value="NO">No, they declined</option>
       </select>
-      <div class="form-text">Ask at the counter and record the answer. Refill reminders do not need this; offers do.</div>
+      <div class="form-text">Ask at the counter and record the answer. Refill reminders do not need this; offers do. These contact answers are for the whole number: they apply to everyone who shares this mobile.</div>
     </div>
     <div class="col-md-6 col-lg-2">
       <label for="preferredchannel" class="form-label">Prefers</label>
