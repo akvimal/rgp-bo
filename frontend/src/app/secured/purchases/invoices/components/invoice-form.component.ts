@@ -139,6 +139,8 @@ export class InvoiceFormComponent implements OnInit {
           referenceno: data.referenceno || '', notes: data.notes || '', purchaseorderid: data.purchaseorderid || '', documentpath: data.documentpath || '',
           cashdiscount: data.cashdiscount ?? null, suppliergstin: data.suppliergstin || '', supplytype: data.supplytype || '', itceligibility: data.itceligibility || '', reversecharge: !!data.reversecharge
         });
+        // the order the invoice is against, with its lines, as on a new invoice
+        if(data.purchaseorderid){ this.poChoice = String(data.purchaseorderid); this.loadPoLines(data.purchaseorderid); }
         this.showMore = !!(data.referenceno || data.notes || data.cashdiscount);
         this.showChallan = !!(data.challanno || data.challanpath || data.challandate) || (!data.invoiceno && data.status !== 'NEW');      // opened when a challan is recorded, or the receipt awaits its invoice
         this.form.controls['vendorid'].disable();
@@ -207,6 +209,16 @@ export class InvoiceFormComponent implements OnInit {
           return { title: r.product.title, pack: r.product.pack, ordered, invoiced, remaining: Math.max(0, ordered - invoiced) };
         });
       }, () => { this.poLinesBusy = false; this.poLinesError = 'The lines of this order could not be loaded.'; });
+    }
+
+    /** the order on the form (a received invoice has the field switched off, so it is read from the control itself) */
+    get poId(): any { return this.form.controls['purchaseorderid'].value; }
+
+    /** an invoice being edited is moved to another order, or to none: its lines are shown the same way as when it was new */
+    editPoChanged(){
+      const v = this.poId;
+      this.poChoice = v ? String(v) : '';
+      if(v) this.loadPoLines(v); else { this.poLines = []; this.poLinesError = ''; }
     }
 
     get poLinesToCome(): number { return this.poLines.filter(l => l.remaining > 0).length; }
