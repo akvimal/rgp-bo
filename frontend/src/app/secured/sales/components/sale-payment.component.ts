@@ -12,10 +12,16 @@ export class SalePaymentComponent {
     @Input() total = 0;
     
     @Input() payment:{modechosen?:boolean,modemissing?:boolean,digimode?:string,digiamt?:number,
-        digirefno?:string,cashamt?:number,valid?:boolean,staffcredit?:boolean,staffcredituserid?:number|null,staffcreditfor?:string|null,familybuying?:boolean,latemode?:boolean,dueamt?:number|null,duedate?:string,usecredit?:boolean,creditbalance?:number}={};
+        digirefno?:string,cashamt?:number,valid?:boolean,staffcredit?:boolean,staffcredituserid?:number|null,staffcreditfor?:string|null,familybuying?:boolean,latemode?:boolean,dueamt?:number|null,duedate?:string,usecredit?:boolean,creditbalance?:number,usecommitment?:boolean,commitmentid?:number|null,commitmentheld?:number}={};
 
     /** the customer on the bill (a named customer may hold store credit) */
     @Input() customerId:number|null = null;
+
+    /** the store being billed from: only the commitments taken there can be collected */
+    @Input() storeId:number|null = null;
+
+    /** the customer's ordered goods that have arrived (customer commitments), with the advance held for each */
+    commitments:any[] = [];
 
     /** the customer's credit for bills left to pay later: limit, what is owed, what is left, anything overdue (null until fetched) */
     dueBrief:any = null;
@@ -95,10 +101,18 @@ export class SalePaymentComponent {
         if(changes['customerId']){
             this.payment.usecredit = false;
             this.payment.creditbalance = 0;
+            this.payment.usecommitment = false;
+            this.payment.commitmentid = null;
+            this.payment.commitmentheld = 0;
+            this.commitments = [];
             this.payment.latemode = false;
             this.dueBrief = null;
             if(this.customerId){
                 this.http.get<any>(`${environment.apiHost}/customer-dues/${this.customerId}/brief`).subscribe(b => this.dueBrief = b, () => this.dueBrief = null);
+            }
+            if(this.customerId){
+                const store = this.storeId ? `?storeid=${this.storeId}` : '';
+                this.http.get<any[]>(`${environment.apiHost}/commitments/ready/${this.customerId}${store}`).subscribe(c => this.commitments = c || [], () => this.commitments = []);
             }
             if(this.customerId){
                 this.http.get<any>(`${environment.apiHost}/customers/${this.customerId}/credit`).subscribe(c => this.payment.creditbalance = +(c?.balance || 0), () => this.payment.creditbalance = 0);
@@ -131,8 +145,34 @@ export class SalePaymentComponent {
     }
 
     /** what store credit takes off this bill */
-    get creditUse(): number {
+    get storeCreditUse(): number {
         return this.payment.usecredit ? Math.max(0, Math.min(+(this.payment.creditbalance || 0), this.total)) : 0;
+    }
+
+    /** what the advance held for a collected commitment takes off this bill (after store credit) */
+    get commitmentUse(): number {
+        if(!this.payment.usecommitment || !this.payment.commitmentid) return 0;
+        return Math.max(0, Math.min(+(this.payment.commitmentheld || 0), this.total - this.storeCreditUse));
+    }
+
+    /** everything paid from what the customer already holds with the store: store credit and the advance on a commitment */
+    get creditUse(): number {
+        return this.storeCreditUse + this.commitmentUse;
+    }
+
+    /** choosing which ready commitment this bill collects */
+    pickCommitment(id:any){
+        const c = this.commitments.find(x => +x.id === +id);
+        this.payment.commitmentid = c ? +c.id : null;
+        this.payment.commitmentheld = c ? +c.held : 0;
+        this.payment.usecommitment = !!c;
+        this.creditChange();
+    }
+
+    commitmentToggle(){
+        if(this.payment.usecommitment && !this.payment.commitmentid && this.commitments.length) this.pickCommitment(this.commitments[0].id);
+        if(!this.payment.usecommitment){ this.payment.commitmentid = null; this.payment.commitmentheld = 0; }
+        this.creditChange();
     }
 
     creditChange(){

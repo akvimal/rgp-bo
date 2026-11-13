@@ -61,3 +61,36 @@ describe('SalePaymentComponent: choosing how it is paid', () => {
     expect(seen).toEqual([true, false]);
   });
 });
+
+describe('SalePaymentComponent: collecting a customer order', () => {
+  it('takes the advance held off the bill, after store credit, and no more than the bill', () => {
+    const c = make(100, { usecredit: true, creditbalance: 30, usecommitment: true, commitmentid: 7, commitmentheld: 500 });
+    expect(c.storeCreditUse).toBe(30);
+    expect(c.commitmentUse).toBe(70);
+    expect(c.creditUse).toBe(100);
+    expect(c.modeMissing).toBeFalse();
+  });
+
+  it('leaves the rest of the bill to cash or digital when the advance is smaller', () => {
+    const c = make(300, { usecommitment: true, commitmentid: 7, commitmentheld: 120 });
+    expect(c.commitmentUse).toBe(120);
+    expect(c.modeMissing).toBeTrue();
+  });
+
+  it('uses nothing until an order is chosen', () => {
+    expect(make(100, { usecommitment: true, commitmentheld: 50 }).commitmentUse).toBe(0);
+    expect(make(100, { usecommitment: false, commitmentid: 7, commitmentheld: 50 }).commitmentUse).toBe(0);
+  });
+
+  it('choosing an order sets what it holds; unticking forgets it', () => {
+    const c = make(100);
+    c.commitments = [{ id: 7, held: 40, items: 'Tonic x1' }, { id: 8, held: 90, items: 'Syrup x2' }];
+    c.pickCommitment(8);
+    expect(c.payment.commitmentid).toBe(8);
+    expect(c.commitmentUse).toBe(90);
+    c.payment.usecommitment = false;
+    c.commitmentToggle();
+    expect(c.payment.commitmentid).toBeNull();
+    expect(c.commitmentUse).toBe(0);
+  });
+});

@@ -6,6 +6,7 @@ import { InjectRepository, InjectEntityManager } from "@nestjs/typeorm";
 import { recordStaffCredit } from "./staff-credit-rule";
 import { recordCustomerDue } from "./customer-due-rule";
 import { recordStoreCredit, settleReturn } from "./store-credit-rule";
+import { assertNotHeldForOthers, recordCommitmentTender, reverseCommitmentTender } from "../commitments/commitment-db";
 import { EntityManager } from "typeorm";
 import { loadStoreProfile } from "../store/store-profile";
 import { returnRules } from "./return-rule";
@@ -66,6 +67,9 @@ interface SalePayload {
   dueamt?: number;
   duedate?: string | null;
   creditamt?: number;
+  commitmentid?: number | null;
+  commitmentamt?: number;
+  staffcomments?: string | null;
   digiamt?: number;
   cashamt?: number;
   expreturndays?: number;
@@ -152,6 +156,7 @@ export class SaleService {
                 if (invoiceNo) { savedSale.gstinvoiceno = invoiceNo; }
                 await recordStaffCredit(transactionManager, savedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, savedSale, actingUserid || userid);
+                await recordCommitmentTender(transactionManager, savedSale, actingUserid || userid);
                 await recordCustomerDue(transactionManager, savedSale, actingUserid || userid);
                 // a business pack may write its own records for this bill (they stand or fall with it)
                 await this.hooks.saved({ manager: transactionManager, sale, saved: savedSale, items: sale.items || [], storeId: storeid, userId: userid, actingUserId: actingUserid });
@@ -301,7 +306,7 @@ export class SaleService {
         // be fully tendered (delivery sales collect payment via the delivery flow).
         if ((sale.status || '').toUpperCase() === 'COMPLETE') {
             const isCounter = String(sale['deliverytype'] || 'Counter').toLowerCase() !== 'delivery';
-            const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0) + Number(sale['creditamt'] || 0) + Number(sale['dueamt'] || 0);
+            const tendered = Number(sale['cashamt'] || 0) + Number(sale['digiamt'] || 0) + Number(sale['staffcreditamt'] || 0) + Number(sale['creditamt'] || 0) + Number(sale['commitmentamt'] || 0) + Number(sale['dueamt'] || 0);
             const total = Number(sale['total'] || 0);
             if (isCounter && Math.abs(tendered - total) > 0.5) {
                 throw new BadRequestException(`Payment (${tendered.toFixed(2)}) does not match the bill total (${total.toFixed(2)}).`);
@@ -336,6 +341,8 @@ export class SaleService {
                 }
             }
             const positiveLines = items.filter((i: any) => Number(i.qty || 0) > 0 && i.itemid);
+            // goods that arrived for a customer are held: this bill cannot sell what is left after the held units (unless it is the bill collecting them)
+            await assertNotHeldForOthers(transactionManager, storeid, items.map((i: any) => ({ productid: Number(i.productid || i.product_id || 0), qty: Number(i.qty || 0) })), Number(sale['commitmentid'] || 0) || null, ownSaleId);
             if (positiveLines.length) {
                 // available at this store = batch qty (only where it was received into this
                 // store) - sale_item qty sold at this store + approved adjustments/transfer
@@ -448,6 +455,7 @@ export class SaleService {
                 if (invoiceNo) { updatedSale.gstinvoiceno = invoiceNo; }
                 await recordStaffCredit(transactionManager, updatedSale, actingUserid || userid);
                 await recordStoreCredit(transactionManager, updatedSale, actingUserid || userid);
+                await recordCommitmentTender(transactionManager, updatedSale, actingUserid || userid);
                 await recordCustomerDue(transactionManager, updatedSale, actingUserid || userid);
                 await this.hooks.saved({ manager: transactionManager, sale, saved: updatedSale, items: sale.items || [], storeId: (updatedSale as any).storeid ?? null, userId: userid, actingUserId: actingUserid });
 
@@ -826,7 +834,7 @@ export class SaleService {
         return this.manager.transaction(async (tx) => {
             const [sale] = await tx.query(
                 `select s.id, s.status, s.shift_id, s.store_id, s.bill_no, s.cash_amount::float8 as cash, s.created_by, s.acting_user_id, s.customer_id, s.staff_credit_amount::float8 as staff_credit, s.staff_credit_user_id,
-                        s.credit_amount::float8 as store_credit, s.due_amount::float8 as due_amount, sh.status as shift_status
+                        s.credit_amount::float8 as store_credit, s.commitment_id, s.due_amount::float8 as due_amount, sh.status as shift_status
                    from sale s left join store_shifts sh on sh.id = s.shift_id where s.id = $1 for update of s`, [+id]);
             if (!sale) throw new BadRequestException('Bill not found.');
             const [{ n: returns }] = await tx.query(
@@ -873,6 +881,7 @@ export class SaleService {
                     `insert into customer_credit_entry (customer_id, kind, amount, sale_id, store_id, note, created_by) values ($1, 'ADJUSTMENT', $2, $3, $4, $5, $6)`,
                     [sale.customer_id, +sale.store_credit, sale.id, sale.store_id, `Void bill ${sale.bill_no || sale.id}`, user.id]);
             }
+            await reverseCommitmentTender(tx, sale, user.id);
             if (+sale.due_amount > 0 && sale.customer_id) {
                 await tx.query(
                     `insert into customer_due_entry (customer_id, kind, amount, sale_id, store_id, note, created_by) values ($1, 'ADJUSTMENT', $2, $3, $4, $5, $6)`,

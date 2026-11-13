@@ -21,6 +21,7 @@ import { PurchaseModule } from './modules/app/purchases/purchase.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { StockModule } from './modules/app/stock/stock.module';
 import { CustomerModule } from './modules/app/customers/customer.module';
+import { CommitmentModule } from './modules/app/commitments/commitment.module';
 import { SaleModule } from './modules/app/sales/sale.module';
 import { SaleReturnModule } from './modules/app/returns/salereturn.module';
 import { DocumentModule } from './modules/app/documents/document.module';
@@ -88,6 +89,7 @@ import { DbTimingService } from './core/performance/db-timing.service';
     PurchaseModule,
     StockModule,
     CustomerModule,
+    CommitmentModule,
     SaleModule,
     SaleReturnModule,
     DocumentModule,

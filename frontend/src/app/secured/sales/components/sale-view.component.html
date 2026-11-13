@@ -141,6 +141,7 @@
     </div>
   </ng-template>
 </div>
+<div class="alert alert-secondary non-print py-2 small" *ngIf="sale.staffcomments" data-testid="bill-staff-comments"><i class="bi bi-eye-slash"></i> <b>Staff comment</b> (not on the bill): {{sale.staffcomments}}</div>
 <div class="alert alert-danger non-print" *ngIf="sale.status === 'VOID'" data-testid="bill-voided">This bill was voided: it does not count as a sale.</div>
 <div class="card border-danger non-print mb-3" *ngIf="voiding" data-testid="bill-void-form">
   <div class="card-body">

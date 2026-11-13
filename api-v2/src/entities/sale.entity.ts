@@ -80,6 +80,16 @@ export class Sale extends BaseEntity {
   @Column("real", { name: "credit_amount", default: 0 })
   creditamt: number;
 
+  /** a comment for staff only: never printed on the bill or sent to the customer (migration 191); required when the bill is left to pay later */
+  @Column("character varying", { name: "staff_comments", length: 500, nullable: true })
+  staffcomments: string | null;
+
+  /** the customer commitment this bill collects, and the part of the bill paid from its advance (migration 190) */
+  @Column("integer", { name: "commitment_id", nullable: true })
+  commitmentid: number | null;
+  @Column("real", { name: "commitment_amount", default: 0 })
+  commitmentamt: number;
+
   @Column("double precision", { name: "digi_amount", precision: 53 })
   digiamt: number;
   @Column("double precision", { name: "cash_amount", precision: 53 })

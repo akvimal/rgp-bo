@@ -18,6 +18,7 @@ import { Business } from "src/entities/business.entity";
 import { AuditService } from "src/core/audit/audit.service";
 import { isManagerRole } from "src/core/roles";
 import { cleanRef, gstPeriodFor } from "./receipt-rules";
+import { allocateCommitmentReceipts } from "../commitments/commitment-db";
 import { agreesWithPrinted, invoiceGstHeader, invoiceNet, lineGst, payableFromPrinted, PRINTED_TOLERANCE, r2 } from "./purchase-totals";
 import { netAfterCredits } from "./vendor-return-rule";
 import { businessOfUser } from "src/core/business-of-user";
@@ -650,6 +651,8 @@ export class PurchaseInvoiceService {
                                            and pi.active and not pi.archive and pi.status = 'COMPLETE'), 0) as qty
                    from purchase_request r where r.id = any($1::int[])) got
           where pr.id = got.id and pr.active and pr.status in ('Ordered', 'Received')`, [requestids]);
+      // the customers who ordered it (customer commitments) are covered by what arrived, the oldest first, and told by an alert
+      await allocateCommitmentReceipts(this.manager, requestids);
     }
 
     private async removeRows(id:number){

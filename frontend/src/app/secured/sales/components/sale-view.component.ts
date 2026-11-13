@@ -182,7 +182,7 @@ export class SaleViewComponent {
         customer: data.customer ? { mobile: data.customer.mobile, name: data.customer.name, email: data.customer.email, address: data.customer.address } : null,
         total: data.total, disccode: data.disccode, discamount: +data.discamount || 0,
         digiamt: +data.digiamt || 0, digimethod: data.digimethod, cashamt: +data.cashamt || 0,
-        creditamt: +data.creditamt || 0, staffcreditamt: +data.staffcreditamt || 0
+        staffcomments: data.staffcomments || null, creditamt: +data.creditamt || 0, commitmentamt: +data.commitmentamt || 0, staffcreditamt: +data.staffcreditamt || 0
       };
       this.saleStaff = data?.actinguser?.fullname || data?.created?.fullname || '';
       this.itemsCount = items.length;
@@ -198,6 +198,7 @@ export class SaleViewComponent {
         this.sale.digiamt > 0 ? { label: this.sale.digimethod || 'Digital', amount: this.sale.digiamt } : null,
         this.sale.cashamt > 0 ? { label: 'Cash', amount: this.sale.cashamt } : null,
         this.sale.creditamt > 0 ? { label: 'Store credit', amount: this.sale.creditamt } : null,
+        this.sale.commitmentamt > 0 ? { label: 'Advance paid earlier', amount: this.sale.commitmentamt } : null,
         this.sale.staffcreditamt > 0 ? { label: 'Staff credit', amount: this.sale.staffcreditamt } : null,
       ].filter(Boolean) as any;
 

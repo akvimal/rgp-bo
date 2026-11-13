@@ -83,6 +83,7 @@ export async function checkCustomerDue(manager: EntityManager, sale: any, custom
   if (!(amount > 0)) return none;
   if (Number(sale?.staffcreditamt || 0) > 0) throw new BadRequestException('A bill on staff credit cannot also be left to pay later.');
   if (amount > money(Number(sale?.total || 0)) + 0.005) throw new BadRequestException('The amount left to pay later is more than the bill.');
+  if (String(sale?.staffcomments || '').trim().length < 3) throw new BadRequestException('A bill left to pay later needs a comment: who agreed it and what was promised.');
   const storeId = Number(billStoreId || sale?.storeid || 0);
   if (storeId) {
     const [st] = await manager.query(`select location, pay_later_allowed from stores where id = $1`, [storeId]);

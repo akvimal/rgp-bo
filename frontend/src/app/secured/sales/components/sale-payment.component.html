@@ -61,7 +61,17 @@
             <input class="form-check-input" type="checkbox" id="useStoreCredit" data-testid="pos-use-credit" [(ngModel)]="payment.usecredit" (change)="creditChange()">
             <label class="form-check-label" for="useStoreCredit">Use store credit (&#8377;{{payment.creditbalance | number:'1.2-2'}} available)</label>
         </div>
-        <span class="small text-muted" *ngIf="payment.usecredit" data-testid="pos-credit-use">&#8377;{{creditUse | number:'1.2-2'}} off this bill<span *ngIf="creditUse < total">; the rest by cash or digital</span></span>
+        <span class="small text-muted" *ngIf="payment.usecredit" data-testid="pos-credit-use">&#8377;{{storeCreditUse | number:'1.2-2'}} off this bill<span *ngIf="creditUse < total">; the rest by cash or digital</span></span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2" *ngIf="commitments.length && !payment.staffcredit" data-testid="pos-commitment-row">
+        <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="useCommitment" data-testid="pos-use-commitment" [(ngModel)]="payment.usecommitment" (change)="commitmentToggle()">
+            <label class="form-check-label" for="useCommitment">Customer's order has arrived: collect it</label>
+        </div>
+        <select class="form-select form-select-sm w-auto" *ngIf="payment.usecommitment && commitments.length > 1" [ngModel]="payment.commitmentid" (ngModelChange)="pickCommitment($event)" aria-label="Which order" data-testid="pos-commitment-pick">
+            <option *ngFor="let c of commitments" [ngValue]="c.id">#{{c.id}} {{c.items}} (&#8377;{{c.held | number:'1.2-2'}} paid)</option>
+        </select>
+        <span class="small text-muted" *ngIf="payment.usecommitment" data-testid="pos-commitment-use">&#8377;{{commitmentUse | number:'1.2-2'}} of the advance goes off this bill<span *ngIf="+payment.commitmentheld > commitmentUse"> (&#8377;{{+payment.commitmentheld - commitmentUse | number:'1.2-2'}} stays held)</span>. Add the ordered items to the bill.</span>
     </div>
 
     <!-- change to give -->

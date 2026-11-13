@@ -1071,6 +1071,12 @@ export class StoreService {
       `select count(*)::int as n, coalesce(sum(d.charges), 0)::float as amount
          from sale_deliveries d join sale s on s.id = d."saleId"
         where s.shift_id = $1 and s.status = 'COMPLETE' and s.active = true and coalesce(d.charges, 0) > 0 and d.charge_via is null`, [shiftId]);
+    const [adv] = await this.manager.query(
+      `select coalesce(sum(amount) filter (where mode = 'CASH' and kind in ('RECEIPT', 'REFUND')), 0)::float as cash,
+              coalesce(sum(amount) filter (where mode = 'DIGITAL' and kind in ('RECEIPT', 'REFUND')), 0)::float as digital
+         from customer_commitment_payment where shift_id = $1`, [shiftId]);
+    const [applied] = await this.manager.query(
+      `select coalesce(sum(commitment_amount), 0)::float as amount from sale where shift_id = $1 and status = 'COMPLETE' and active = true and coalesce(commitment_id, 0) > 0`, [shiftId]);
     const [chargeDigital] = await this.manager.query(
       `select coalesce(sum(d.charges), 0)::float as amount
          from sale_deliveries d join sale s on s.id = d."saleId"
@@ -1095,7 +1101,8 @@ export class StoreService {
       profile, accountableuserid: accountableId, accountable: accountable?.full_name || null,
       shift: { id: shift.id, name: shift.name, status: shift.status, storeid: shift.storeid, store: (shift as any).store?.location, assigneduserid: shift.assigneduserid,
                assigned: (shift as any).assigneduser?.fullname || null, openingcash: Number(shift.openingcash), expectedcash: stats.expectedcash, openedon: shift.openedon },
-      bills: t.bills, total: t.total, cash: t.cash, digital: t.digital + (chargeDigital?.amount ?? 0), deliveryChargesDigital: chargeDigital?.amount ?? 0, storeCredit: t.store_credit, staffCredit: t.staff_credit,
+      bills: t.bills, total: t.total, cash: t.cash, digital: t.digital + (chargeDigital?.amount ?? 0) + (adv?.digital ?? 0), deliveryChargesDigital: chargeDigital?.amount ?? 0,
+      commitmentAdvanceCash: adv?.cash ?? 0, commitmentAdvanceDigital: adv?.digital ?? 0, commitmentApplied: applied?.amount ?? 0, storeCredit: t.store_credit, staffCredit: t.staff_credit,
       pendingDeliveries: pendingDeliveries?.n ?? 0, deliveryChargesUnsaid: chargeGap?.n ?? 0, deliveryChargesUnsaidAmount: chargeGap?.amount ?? 0, dueLeft: dues?.left_to_pay ?? 0, duesCollectedCash: dues?.collected_cash ?? 0, duesCollectedDigital: dues?.collected_digital ?? 0,
       digitalByProvider: digital, expenses, expensesTotal: expenses.reduce((s: number, e: any) => s + e.amount, 0),
       refunds: out.refunds, deposits: out.deposits, expected: stats.expectedcash,

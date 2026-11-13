@@ -76,6 +76,22 @@ export class CreateSaleDto {
     @Min(0)
     readonly creditamt?: number;
 
+    @ApiProperty({ description: 'A comment for staff only; required when the bill is left to pay later', required: false })
+    @IsOptional()
+    @MaxLength(500)
+    readonly staffcomments?: string | null;
+
+    @ApiProperty({ description: 'The customer commitment this bill collects', required: false })
+    @IsOptional()
+    @IsNumber()
+    readonly commitmentid?: number | null;
+
+    @ApiProperty({ description: 'The part of the bill paid from the advance held for that commitment', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    readonly commitmentamt?: number;
+
     @ApiProperty({ description: 'The whole bill on a staff member\'s credit', required: false })
     @IsOptional()
     @IsNumber()

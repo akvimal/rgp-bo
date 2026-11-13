@@ -51,6 +51,7 @@ import { SaleService } from "../sales.service";
             <tr *ngIf="+f.digiamt > 0"><td>{{f.digimethod || 'Digital'}}<span class="small text-muted" *ngIf="f.digirefno"> &middot; ref {{f.digirefno}}</span></td><td class="text-end">{{f.digiamt | number:'1.2-2'}}</td></tr>
             <tr *ngIf="+f.staffcreditamt > 0"><td>Staff credit</td><td class="text-end">{{f.staffcreditamt | number:'1.2-2'}}</td></tr>
             <tr *ngIf="+f.creditamt > 0"><td>Store credit</td><td class="text-end">{{f.creditamt | number:'1.2-2'}}</td></tr>
+            <tr *ngIf="+f.commitmentamt > 0"><td>Advance paid earlier</td><td class="text-end">{{f.commitmentamt | number:'1.2-2'}}</td></tr>
             <tr *ngIf="+f.dueamt > 0"><td>To pay later<span class="small text-muted" *ngIf="f.duedate"> &middot; by {{f.duedate | date:'dd MMM yyyy'}}</span></td><td class="text-end">{{f.dueamt | number:'1.2-2'}}</td></tr>
             <tr class="fw-semibold"><td>Total</td><td class="text-end">{{f.total | number:'1.2-2'}}</td></tr>
           </tbody>

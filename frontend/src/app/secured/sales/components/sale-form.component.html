@@ -104,7 +104,11 @@
     <div class="card-body py-2">
         <div class="row g-3 align-items-center">
             <div class="col-lg-8">
-                <app-sale-payment [total]="sale.total||0" [customerId]="sale.customer?.existing ? sale.customer?.id : null" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
+                <app-sale-payment [total]="sale.total||0" [customerId]="sale.customer?.existing ? sale.customer?.id : null" [storeId]="billStoreId" [payment]="payment" (updated)="paymentinfo($event)"></app-sale-payment>
+                <div class="mt-2" data-testid="sale-comments-box">
+                    <label class="form-label small mb-0" for="saleComments">Comment <span class="text-muted">(staff only: not printed on the bill or sent to the customer)</span><span class="text-danger" *ngIf="commentRequired"> required for pay later</span></label>
+                    <input id="saleComments" class="form-control form-control-sm" maxlength="500" [(ngModel)]="sale.staffcomments" [class.is-invalid]="commentRequired && !commentOk" placeholder="e.g. owner agreed, will pay on Friday" data-testid="sale-comments">
+                </div>
             </div>
             <div class="col-lg-4 text-lg-end">
                 <div class="fs-5 text-muted" data-testid="sale-itemcount"><strong class="text-body">{{sale.items.length}}</strong> item{{sale.items.length === 1 ? '' : 's'}}<span class="fs-6" *ngIf="sale.saving"> &middot; saving {{sale.saving}}%</span></div>

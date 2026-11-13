@@ -388,12 +388,17 @@ export class SaleFormComponent {
         const total = +(this.sale.total || 0);
         // store credit takes its part off the bill first; cash and digital pay the rest
         const credit = this.payment['usecredit'] ? Math.max(0, Math.min(+(this.payment['creditbalance'] || 0), total)) : 0;
+        // the advance held for a customer's ordered goods that this bill collects comes off after store credit
+        const commit = this.advanceUse(total, credit);
         // what is left to pay later comes off next, then cash and digital pay the rest
-        const due = this.dueNow(total, credit);
-        const payable = total - credit - due;
+        const due = this.dueNow(total, credit + commit);
+        const payable = total - credit - commit - due;
         const digiamt = Math.max(0, Math.min(payable, +(this.payment.digiamt || 0)));
         const cashamt = payable - digiamt;
         this.sale['creditamt'] = this.payment['staffcredit'] ? 0 : credit;
+        const collecting = !this.payment['staffcredit'] && this.payment['usecommitment'] && this.payment['commitmentid'];
+        this.sale['commitmentid'] = collecting ? this.payment['commitmentid'] : null;
+        this.sale['commitmentamt'] = collecting ? commit : 0;
         this.sale['dueamt'] = this.payment['staffcredit'] ? 0 : due;
         this.sale['duedate'] = due > 0 ? (this.payment['duedate'] || null) : null;
 
@@ -562,10 +567,27 @@ export class SaleFormComponent {
 
     return (this.doctypes.length == 0 || 
       (this.isDocumentProvided() || (this.customerIdentified && this.sale.docpending)))
-      && customerValid && this.digitalValid() && !this.payment?.['modemissing'];
+      && customerValid && this.digitalValid() && !this.payment?.['modemissing'] && (!this.commentRequired || this.commentOk);
   }
 
   /** what is left for the customer to pay later: the whole of what store credit leaves, or the part typed (0 unless Pay later is chosen) */
+  /** what the advance held for the commitment being collected takes off the bill, after store credit */
+  private advanceUse(total:number, credit:number): number {
+    if(this.payment?.staffcredit || !this.payment?.['usecommitment'] || !this.payment?.['commitmentid']) return 0;
+    return Math.max(0, Math.min(+(this.payment['commitmentheld'] || 0), total - credit));
+  }
+
+  /** pay later needs a comment: who agreed it and what was promised */
+  get commentRequired(): boolean {
+    const total = +(this.sale.total || 0);
+    const credit = this.payment?.['usecredit'] ? Math.max(0, Math.min(+(this.payment?.['creditbalance'] || 0), total)) : 0;
+    return this.dueNow(total, credit + this.advanceUse(total, credit)) > 0;
+  }
+  get commentOk(): boolean { return String(this.sale.staffcomments || '').trim().length >= 3; }
+
+  /** the store being billed from (the payment box offers only the commitments taken there) */
+  get billStoreId(): number | null { return this.storeContext.selectedStoreId || null; }
+
   private dueNow(total:number, credit:number): number {
     if(!this.payment?.latemode || this.payment?.staffcredit) return 0;
     const rest = Math.max(0, total - credit);
@@ -578,10 +600,11 @@ export class SaleFormComponent {
     // the whole bill, on someone's credit; when a family member collects, who is asked for
     if(this.payment?.staffcredit) return !!this.payment.staffcredituserid && (!this.payment.familybuying || String(this.payment.staffcreditfor || '').trim().length > 2);
     const credit = this.payment?.['usecredit'] ? Math.max(0, Math.min(+(this.payment?.['creditbalance'] || 0), +(this.sale.total || 0))) : 0;
-    const later = this.dueNow(+(this.sale.total || 0), credit);
+    const commit = this.advanceUse(+(this.sale.total || 0), credit);
+    const later = this.dueNow(+(this.sale.total || 0), credit + commit);
     // paying later needs a customer chosen from the list and a day to pay by
     if(later > 0 && (!this.sale.customer?.existing || !this.payment.duedate)) return false;
-    if(!(Math.min(+(this.payment?.digiamt || 0), +(this.sale.total || 0) - credit - later) > 0)) return true;
+    if(!(Math.min(+(this.payment?.digiamt || 0), +(this.sale.total || 0) - credit - commit - later) > 0)) return true;
     const ref = String(this.payment?.digirefno || '').replace(/\s+/g, '');
     return !ref || /^[A-Za-z0-9][A-Za-z0-9\-_\/]{3,39}$/.test(ref);
   }

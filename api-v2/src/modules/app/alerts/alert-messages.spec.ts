@@ -40,6 +40,7 @@ describe('alert messages', () => {
       outage_kit: ['outage_kit_overdue', 'outage_kit_never'],
       stock_count_overdue: ['stock_count_overdue', 'stock_count_never'],
       customer_request_arrived: ['customer_request_arrived'],
+      customer_commitment: ['commitment_ready', 'commitment_hold_ending', 'commitment_hold_over', 'commitment_overdue'],
       negative_stock: ['negative_stock'],
       expired_stock: ['expired_stock'],
       disposal_unconfirmed: ['disposal_unconfirmed'],

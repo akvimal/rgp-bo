@@ -70,7 +70,7 @@ export const KINDS: AlertKind[] = [
                                where pii.request_id = pr.id and pi.status = 'COMPLETE' and pi.active and not pi.archive
                                order by pi.id desc limit 1) rcv on true
            left join stores st on st.id = rcv.store_id
-          where pr.active and not pr.archive and pr.status = 'Received' and pr.customer_name is not null
+          where pr.active and not pr.archive and pr.status = 'Received' and pr.customer_name is not null and coalesce(pr.source_ref, '') not like 'commitment:%'
             and ${BUSINESS_OF_USER_SQL} = $1`, [ctx.businessId]);
       return rows.map((r: any) => ({
         key: `request_arrived:${r.id}`,
@@ -79,6 +79,32 @@ export const KINDS: AlertKind[] = [
         params: { customer: String(r.customer_name).trim(), phone: r.customer_phone || '', product: r.product, qty: r.fulfilled_qty ?? 0, store: r.location ? String(r.location).trim() : 'the store' },
         link: '/secure/purchases/requests',
       }));
+    },
+  },
+  {
+    kind: 'customer_commitment',
+    label: 'Customer commitments',
+    description: "Orders taken at the counter and paid in advance: the goods have arrived and the customer is not told yet, the hold on arrived goods is ending or over, or the date the customer needs it by has passed with nothing received. Each clears when the customer is told, the order is collected, or it is cancelled.",
+    params: [{ key: 'days', label: 'Warn this many days before a hold ends', min: 0, max: 30, default: 2, unit: 'days' }],
+    defaultSeverity: 'info',
+    async evaluate(ctx, p) {
+      const rows = await ctx.manager.query(
+        `select c.id, c.store_id, s.location, cu.name, cu.mobile, c.status, to_char(c.hold_until, 'YYYY-MM-DD') as hold_until, to_char(c.needed_by, 'YYYY-MM-DD') as needed_by, c.notified_at,
+                (select string_agg(coalesce(pr.title, l.requested_name) || ' x' || l.qty, ', ' order by l.id) from customer_commitment_line l left join product pr on pr.id = l.product_id where l.commitment_id = c.id and l.active) as items,
+                (select coalesce(sum(x.amount), 0)::float from customer_commitment_payment x where x.commitment_id = c.id) as held
+           from customer_commitment c join customer cu on cu.id = c.customer_id join stores s on s.id = c.store_id
+          where s.business_id = $1 and c.status in ('OPEN', 'ORDERED', 'READY')`, [ctx.businessId]);
+      const out: Finding[] = [];
+      const warnBy = addDays(ctx.today, p.days ?? 2);
+      for (const r of rows) {
+        const base = { storeid: r.store_id ?? null, link: '/secure/commitments' };
+        const params = { customer: String(r.name).trim(), phone: r.mobile || '', items: r.items || '', store: r.location ? String(r.location).trim() : 'the store', date: r.hold_until || r.needed_by || '', held: Number(r.held || 0).toFixed(2) };
+        if (r.status === 'READY' && !r.notified_at) out.push({ ...base, key: `commit_ready:${r.id}`, code: 'commitment_ready', params });
+        if (r.status === 'READY' && r.hold_until && r.hold_until < ctx.today) out.push({ ...base, key: `commit_hold_over:${r.id}`, code: 'commitment_hold_over', params, severity: 'warning' });
+        else if (r.status === 'READY' && r.hold_until && r.hold_until <= warnBy) out.push({ ...base, key: `commit_hold_end:${r.id}`, code: 'commitment_hold_ending', params, severity: 'warning' });
+        if ((r.status === 'OPEN' || r.status === 'ORDERED') && r.needed_by && r.needed_by < ctx.today) out.push({ ...base, key: `commit_overdue:${r.id}`, code: 'commitment_overdue', params, severity: 'warning' });
+      }
+      return out;
     },
   },
   {
@@ -653,6 +679,7 @@ export const DEFAULT_RULES: { kind: string; name: string; severity: Severity; re
   { kind: 'customer_reveals_many', name: 'Many customers\' details shown', severity: 'warning' },
   { kind: 'customer_lookups_many', name: 'Heavy customer searching', severity: 'warning' },
   { kind: 'customer_request_arrived', name: 'Customer request arrived', severity: 'info', recipients: { roles: ['owners', 'managers', 'staff'], userids: [] } },
+  { kind: 'customer_commitment', name: 'Customer commitments', severity: 'info', recipients: { roles: ['owners', 'managers', 'staff'], userids: [] } },
   { kind: 'customer_data_taken', name: 'Customer lists downloaded or printed', severity: 'warning' },
   { kind: 'todo_due', name: 'To-dos coming due', severity: 'info' },
   { kind: 'feedback_reply', name: 'Reply to your report', severity: 'info' },

@@ -89,6 +89,22 @@ const CATALOGUE: Record<string, Record<Lang, Message>> = {
     en: { title: '{product} has arrived for {customer}', body: '{qty} received at {store}. Call {customer} {phone} and then close the request on the Requests page.' },
     ta: { title: '{customer} கேட்ட {product} வந்துவிட்டது', body: '{store} இல் {qty} பெறப்பட்டது. {customer} {phone} ஐ அழைத்து, பின்னர் கோரிக்கைகள் பக்கத்தில் கோரிக்கையை மூடவும்.' },
   },
+  commitment_ready: {
+    en: { title: '{items} has arrived for {customer}', body: 'Call {customer} {phone} to collect it at {store}. {held} is held in advance. Mark the customer as told on the Commitments page.' },
+    ta: { title: '{customer} ஆர்டர் செய்த {items} வந்துவிட்டது', body: '{store} இல் பெற்றுக்கொள்ள {customer} {phone} ஐ அழைக்கவும். முன்பணம் {held} வைக்கப்பட்டுள்ளது. வாடிக்கையாளருக்கு தெரிவித்ததை ஆர்டர்கள் பக்கத்தில் குறிக்கவும்.' },
+  },
+  commitment_hold_ending: {
+    en: { title: 'Hold on {items} for {customer} ends {date}', body: '{customer} {phone} has not collected it at {store}. Remind them, or cancel and pay back the {held} held.' },
+    ta: { title: '{customer} க்கான {items} வைப்பு {date} அன்று முடிகிறது', body: '{customer} {phone} {store} இல் இன்னும் பெறவில்லை. நினைவூட்டவும், அல்லது ரத்து செய்து வைக்கப்பட்ட {held} ஐ திருப்பிக் கொடுக்கவும்.' },
+  },
+  commitment_hold_over: {
+    en: { title: 'Hold on {items} for {customer} ended on {date}', body: 'The goods are free to sell again. Ask {customer} {phone} to collect, or cancel and pay back the {held} held at {store}.' },
+    ta: { title: '{customer} க்கான {items} வைப்பு {date} அன்று முடிந்தது', body: 'பொருட்கள் மீண்டும் விற்கலாம். {customer} {phone} ஐ பெற்றுக்கொள்ளச் சொல்லவும், அல்லது {store} இல் வைக்கப்பட்ட {held} ஐ ரத்து செய்து திருப்பிக் கொடுக்கவும்.' },
+  },
+  commitment_overdue: {
+    en: { title: '{items} for {customer} not received by {date}', body: 'The customer needed it by {date} and nothing has arrived at {store}. Chase the order, or tell {customer} {phone}. {held} is held in advance.' },
+    ta: { title: '{customer} க்கான {items} {date} க்குள் வரவில்லை', body: 'வாடிக்கையாளருக்கு {date} க்குள் தேவை; {store} இல் எதுவும் வரவில்லை. ஆர்டரை பின்தொடரவும் அல்லது {customer} {phone} க்கு தெரிவிக்கவும். முன்பணம் {held}.' },
+  },
   stock_count_never: {
     en: { title: 'No stock count has ever been completed: {store}', body: 'Book stock has never been checked against the shelf. Start a count.' },
     ta: { title: 'இதுவரை இருப்பு எண்ணிக்கை முடிக்கப்படவில்லை: {store}', body: 'புத்தக இருப்பு அலமாரியுடன் ஒருபோதும் சரிபார்க்கப்படவில்லை. எண்ணிக்கையைத் தொடங்கவும்.' },

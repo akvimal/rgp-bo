@@ -38,6 +38,7 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
     { key: 'sell', label: 'Sell', items: [
       item('nav-sales', 'Sales and billing', 'sales', 'bi-cash-coin', any('sales')),
       item('nav-customers', 'Customers', 'customers/cust/list', 'bi-people', any('customers.read')),
+      item('nav-commitments', 'Customer orders', 'commitments', 'bi-bag-heart', any('sales')),
       item('nav-refills', 'Refills', 'quality/refills', 'bi-telephone-outbound', () => a.has('refills.view') && !a.has('grievances.view')),
       item('nav-inquiries', 'Requests and inquiries', 'inquiries', 'bi-chat-left-text', any('inquiries.view')),
       item('nav-whatsapp', 'WhatsApp', 'whatsapp', 'bi-whatsapp', any('whatsapp.view')),
