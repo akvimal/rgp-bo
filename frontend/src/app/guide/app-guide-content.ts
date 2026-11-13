@@ -101,16 +101,23 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-sales', group: 'sell', title: 'Sales and billing', route: '/secure/sales',
     purpose: 'Billing at the counter, and everything about a sale after it: reports, deliveries and returns.',
-    tasks: ['New sale: add the customer by mobile number, add products, take payment, complete and print the bill.', 'Save a sale for later and come back to it from its tab.', 'Reports: find a bill, filter by staff or payment, check a digital payment.', 'Deliveries: follow orders handed over by delivery.', 'Returns: take back goods against a bill.'],
+    tasks: ['New sale: add the customer by mobile number, add products, take payment, complete and print the bill.', 'Save a sale for later and come back to it from its tab.', 'Pay later needs a comment; only staff see it.', 'Collect a customer order: once its goods have arrived, choose it in the payment box and the advance is applied to the bill.', 'Reports: find a bill, filter by staff or payment, check a digital payment.', 'Deliveries: follow orders handed over by delivery. Manage delivery shows the bill with the customer\'s name and mobile, and records how the delivery charge was paid (UPI or card counts in the shift\'s digital total).', 'Returns: take back goods against a bill.'],
     who: 'Counter staff, store heads and the owner.',
-    watch: ['Open your shift first.', 'A scheduled drug asks for the patient and prescriber; Schedule X will not complete without them.', 'The total is the lines added up and rounded once to the nearest rupee.'], keywords: 'bill pos billing sale return delivery',
+    watch: ['Open your shift first.', 'A scheduled drug asks for the patient and prescriber; Schedule X will not complete without them.', 'The total is the lines added up and rounded once to the nearest rupee.', 'A product with no price is marked in the lookup and cannot be billed: set its price first.'], keywords: 'bill pos billing sale return delivery',
   },
   {
     id: 'nav-customers', group: 'sell', title: 'Customers', route: '/secure/customers/cust/list',
     purpose: 'Your customers, their bills and documents, and who to contact today.',
-    tasks: ['Find or add a customer (the mobile number is the key).', 'Keep a prescription in their documents.', 'Contact today: the short daily list of regulars due back, people slipping away and prescriptions to collect.', 'Audiences and duplicates (for the people who run the shop).'],
+    tasks: ['Find or add a customer (the mobile number is the key). People who share a number are one household with one account: the till asks who the bill is for, and Account on the customer page changes the number or gives a person their own account.', 'Keep a prescription in their documents.', 'Contact today: the short daily list of regulars due back, people slipping away and prescriptions to collect.', 'Audiences and duplicates (for the people who run the shop).'],
     who: 'Counter staff, store heads and the owner.',
     watch: ['Phone numbers may be masked until you press Show; each reveal is counted and kept.', 'Never contact a customer who asked to stop.'], keywords: 'customer mobile contact worklist audience',
+  },
+  {
+    id: 'nav-commitments', group: 'sell', title: 'Customer orders', route: '/secure/commitments',
+    purpose: 'Goods a customer asks for that the shop does not have: ordered for them, with any advance kept for the order, until they collect.',
+    tasks: ['New order: choose the customer, add what they want (product, packs, agreed price) and take an advance if they pay one.', 'Link it to a purchase request from the order page so the goods are bought with the customer in mind.', 'When the invoice comes in, the order shows Arrived and staff are alerted to tell the customer; the goods are held for them for a few days.', 'Collect it at the till: choose the order in the payment box and the advance is applied to the bill.', 'Cancel an order: a Store Head or the owner refunds the advance or moves it to the customer\'s wallet.'],
+    who: 'Counter staff take orders and advances; Store Heads and the owner refund or move an advance.',
+    watch: ['An advance is counted in the shift it was taken in, so it tallies with that shift\'s drawer or terminal.', 'The customer must be on file: staff call them when the goods arrive.'], keywords: 'customer order advance special order commitment hold collect',
   },
   {
     id: 'nav-refills', group: 'sell', title: 'Refills', route: '/secure/quality/refills',
@@ -121,7 +128,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-price-changes', group: 'sell', title: 'Price changes', route: '/secure/price-changes',
     purpose: 'What changed in the shop\'s selling prices, for the counter, so you can tell a customer why a price moved.',
-    tasks: ['Choose the days (7 or 14 days, this month or last month, or your own dates).', 'Hide small moves with "Changed by at least %", or find one product by name.', 'Print the sheet and keep it beside the till.'],
+    tasks: ['Choose the days (7 or 14 days, this month or last month, or your own dates).', 'Hide small moves with "Changed by at least %", or find one product by name.', 'Print the sheet and keep it beside the till.', 'Only products in stock are listed: bought in the last year, not expired, with stock left.'],
     who: 'Everyone who serves at the counter. It shows selling prices only, never cost.', keywords: 'price change increase decrease mrp sheet print',
   },
   {
@@ -135,7 +142,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-products', group: 'stock', title: 'Products and prices', route: '/secure/products',
     purpose: 'The catalogue of what the shop sells, and the sale price of each product.',
-    tasks: ['Add a product: name, category, composition, schedule, whether it is chronic, HSN and pack.', 'Set or change a sale price: the rules say the lowest and highest price allowed and who must approve.', 'Needs a price: new products bought and not yet priced, each with a suggested price.', 'Data check: products whose pack size or details look wrong.'],
+    tasks: ['Add a product: name, category, composition, schedule, whether it is chronic, HSN and pack.', 'Set or change a sale price: the rules say the lowest and highest price allowed and who must approve.', 'Needs a price: new products bought and not yet priced, each with a suggested price.', 'Price list > Bulk update prices: tick products (or use everything shown) and set the price to the MRP or a percent off it. Preview first; any product whose price cannot be set is skipped and listed with the reason.', 'Data check: products whose pack size or details look wrong.'],
     who: 'Store heads and the owner; counter staff may see products.',
     watch: ['A price can never be above the MRP.', 'A big or sudden raise needs approval and is stepped.'], keywords: 'product price catalogue schedule hsn pricing policy',
   },
@@ -171,14 +178,14 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-purchases', group: 'buy', title: 'Purchase', route: '/secure/purchases',
     purpose: 'Buying: what to order, the invoices that come in, what you owe vendors, and the GST on purchases.',
-    tasks: ['Ordering: requests, what to reorder, and purchase orders.', 'Invoices: enter an invoice or delivery challan, add its items, verify them and complete it.', 'Pay vendors, hold or release an invoice, see what is overdue.', 'Vendors: the vendor list and each one\'s balance.'],
+    tasks: ['Ordering: requests, what to reorder, and purchase orders.', 'Invoices: choose the purchase order first (or none), enter the vendor\'s invoice header, add its items, verify them and complete it. Editing a draft invoice has the same header as a new one.', 'Pay vendors, hold or release an invoice, see what is overdue.', 'Vendors: the vendor list and each one\'s balance.'],
     who: 'Store heads, the purchaser and the owner.',
     watch: ['A rate that rose against the last purchase needs a reason, and a big rise needs a Store Head or Business Head.', 'A line in dispute is not counted until it is accepted or rejected.'], keywords: 'invoice vendor order challan payment grn',
   },
   {
     id: 'nav-purchase-requests', group: 'buy', title: 'Purchase requests', route: '/secure/purchases/my-requests',
     purpose: 'Ask for something to be bought and see what happened to it.',
-    tasks: ['Add a request: what and how many.', 'Follow it: open, ordered or declined.'],
+    tasks: ['Add a request: what and how many. To ask for several products at once, use Add to the list; they are saved as one slip.', 'Follow it: open, ordered or declined. The list shows when each was asked, newest first.'],
     who: 'Staff who may ask but not buy.', keywords: 'request ask product',
   },
   {
@@ -210,7 +217,7 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-finance', group: 'accounts', title: 'Finance', route: '/secure/finance',
     purpose: 'The shop\'s money against the bank, and the records it must keep.',
-    tasks: ['Import a bank statement from any bank.', 'Reconcile bank lines against payments and receipts.', 'Records: how long to keep accounts and drug records, and whether each month\'s records are complete.'],
+    tasks: ['Import a bank statement from any bank.', 'Reconcile bank lines against payments and receipts.', 'Accounts: add or edit a bank account. One with no statement lines, imports, signed-off months or expenses can be deleted; any other is switched off instead.', 'Records: how long to keep accounts and drug records, and whether each month\'s records are complete.'],
     who: 'The owner and the accountant.', keywords: 'bank reconcile statement records retention',
   },
 
@@ -267,8 +274,8 @@ export const PAGES: PageGuide[] = [
   },
   {
     id: 'nav-review', group: 'oversight', title: 'Weekly review', route: '/secure/review',
-    purpose: 'The week\'s exceptions in one place, to look at once a week.',
-    tasks: ['Prices below the list, discarded and edited bills, returns.', 'Mark the review done.'],
+    purpose: 'Once a week: see what looks unusual, ask about it, then sign the week.',
+    tasks: ['Start with the tiles and "Look at these first": each flagged item says what is unusual and jumps to its detail.', 'Check tab: cash drawers, pay later, and the lists of discounts, items below the list price, discarded and edited bills and returns.', 'This week in numbers and Over time and people: the comparisons with what is normal for these days, month to date, a year ago and each person.', 'Sign the week; a note is optional.'],
     who: 'The owner and store heads.', keywords: 'weekly review exception void edit',
   },
   {
