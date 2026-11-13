@@ -171,3 +171,14 @@ export const monthBounds = (month: string) => {
   const start = new Date(Date.UTC(y, m - 1, 1)), next = new Date(Date.UTC(y, m, 1));
   return { start: start.toISOString().slice(0, 10), next: next.toISOString().slice(0, 10) };
 };
+
+/** Why a bank account cannot be deleted (what refers to it), or null when nothing does. */
+export function accountInUse(use: { lines?: number; imports?: number; signoffs?: number; expenses?: number }): string | null {
+  const parts: string[] = [];
+  const add = (n: number | undefined, one: string, many: string) => { if (Number(n) > 0) parts.push(`${n} ${Number(n) === 1 ? one : many}`); };
+  add(use?.lines, 'statement line', 'statement lines');
+  add(use?.imports, 'imported statement', 'imported statements');
+  add(use?.signoffs, 'month signed off', 'months signed off');
+  add(use?.expenses, 'expense paid from it', 'expenses paid from it');
+  return parts.length ? `it has ${parts.join(', ')}` : null;
+}

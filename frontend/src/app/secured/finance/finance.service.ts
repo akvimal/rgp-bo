@@ -10,6 +10,7 @@ export class FinanceService {
 
     accounts() { return this.http.get<any>(`${this.api}/accounts`); }
     saveAccount(id: number | null, body: any) { return id ? this.http.put<any>(`${this.api}/accounts/${id}`, body) : this.http.post<any>(`${this.api}/accounts`, body); }
+    deleteAccount(id: number) { return this.http.delete<any>(`${this.api}/accounts/${id}`); }
     imports(id: number) { return this.http.get<any[]>(`${this.api}/accounts/${id}/imports`); }
 
     private form(file: File, mapping?: any) {

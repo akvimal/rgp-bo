@@ -210,4 +210,32 @@ test.describe('Finance @p1', () => {
     expect((await api.request('POST', '/finance/records/attest', { period: 'soon' }, MGR)).status).toBe(400);
     expect((await api.request('POST', '/finance/records/attest', { period: '2999-01' }, MGR)).status).toBe(400);
   });
+
+  test('FIN-DEL an account with nothing against it can be deleted; one with a statement cannot @edge', async ({ api, app }) => {
+    const empty = await newAccount(api);
+    const used = await newAccount(api);
+    const text = hdfc([{ d: March(1), narr: 'CASH DEPOSIT BY - A PERSON - AREA', cr: 1000 }]);
+    expect((await upload(`/finance/accounts/${used}/import`, text)).status).toBeLessThan(300);
+
+    const list = (await api.request('GET', '/finance/accounts', undefined, MGR)).body.accounts;
+    expect(list.find((a: any) => a.id === empty).deletable).toBe(true);
+    expect(list.find((a: any) => a.id === used).deletable).toBe(false);
+
+    const refused = await api.request('DELETE', `/finance/accounts/${used}`, undefined, MGR);
+    expect(refused.status).toBe(409);
+    expect(JSON.stringify(refused.body)).toContain('statement line');
+    expect((await api.request('DELETE', `/finance/accounts/${used}`, undefined, STORE_HEAD)).status).toBe(403);
+
+    // on the screen: Delete shows only on the account that can go
+    const { page } = await app.open(MGR, '/secure/finance');
+    await page.getByRole('tab', { name: /Accounts/ }).or(page.getByText('Accounts', { exact: true })).first().click();
+    const row = (id: number) => page.getByTestId('fin-account').filter({ hasText: (list.find((a: any) => a.id === id) as any).name });
+    await expect(row(used).getByTestId('fin-a-delete')).toHaveCount(0);
+    await row(empty).getByTestId('fin-a-delete').click();
+    await page.getByRole('button', { name: /^Delete/ }).last().click();
+    await expect(row(empty)).toHaveCount(0);
+    const after = (await api.request('GET', '/finance/accounts', undefined, MGR)).body.accounts;
+    expect(after.some((a: any) => a.id === empty)).toBe(false);
+    expect(after.some((a: any) => a.id === used)).toBe(true);
+  });
 });

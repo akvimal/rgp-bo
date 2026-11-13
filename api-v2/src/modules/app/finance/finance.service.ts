@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
@@ -7,9 +7,12 @@ import { BUSINESS_OF_USER_SQL, businessOfUser } from 'src/core/business-of-user'
 import { Mapping, Parsed } from './statement-parser';
 import { readStatement } from './statement-file';
 import {
-  TAGS, TAG_LABEL, REASONS, bridge, channel, classify, dedupeKeys, isExpenseTag, isIncomeTag, monthBounds, signoffProblems, vendorMatch, within, UserRule,
+  TAGS, TAG_LABEL, REASONS, accountInUse, bridge, channel, classify, dedupeKeys, isExpenseTag, isIncomeTag, monthBounds, signoffProblems, vendorMatch, within, UserRule,
 } from './finance-rules';
 
+/** true when nothing refers to the bank account `a`: no statement line, import, signed-off month or expense */
+const ACCOUNT_UNUSED_SQL = `(not exists (select 1 from bank_txn x where x.account_id = a.id) and not exists (select 1 from bank_import x where x.account_id = a.id)
+  and not exists (select 1 from bank_signoff x where x.account_id = a.id) and not exists (select 1 from expense x where x.bank_account_id = a.id))`;
 const istDay = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
 const text = (v: any, max: number): string | null => { const s = String(v ?? '').trim(); return s ? s.slice(0, max) : null; };
@@ -67,9 +70,26 @@ export class FinanceService {
               (select count(*)::int from bank_txn t where t.account_id = a.id) as lines,
               (select count(*)::int from bank_txn t where t.account_id = a.id and t.status = 'UNEXPLAINED') as unexplained,
               (select to_char(min(t.txn_date), 'YYYY-MM-DD') from bank_txn t where t.account_id = a.id) as first_line,
-              (select to_char(max(t.txn_date), 'YYYY-MM-DD') from bank_txn t where t.account_id = a.id) as last_line
+              (select to_char(max(t.txn_date), 'YYYY-MM-DD') from bank_txn t where t.account_id = a.id) as last_line,
+              ${ACCOUNT_UNUSED_SQL} as deletable
          from bank_account a left join stores s on s.id = a.store_id where a.business_id = $1 order by a.active desc, a.name`, [businessId]);
     return { accounts: rows, stores, tolerance: await this.tolerance(), tags: TAGS.map((t) => ({ tag: t, label: TAG_LABEL[t] })), reasons: REASONS };
+  }
+
+  /**
+   * Removes a bank account that nothing refers to: no statement line, no import, no month signed off and no expense paid from it. One that has any of
+   * these keeps its history: it is switched off (Edit > not in use) instead.
+   */
+  async deleteAccount(user: any, id: number) {
+    const a = await this.account(user, id);
+    const [use] = await this.manager.query(
+      `select (select count(*)::int from bank_txn where account_id = $1) as lines, (select count(*)::int from bank_import where account_id = $1) as imports,
+              (select count(*)::int from bank_signoff where account_id = $1) as signoffs, (select count(*)::int from expense where bank_account_id = $1) as expenses`, [id]);
+    const why = accountInUse(use);
+    if (why) throw new ConflictException(`${a.name} cannot be deleted: ${why}. Switch it off instead (Edit, then untick Active).`);
+    await this.manager.query(`delete from bank_account where id = $1 and business_id = $2`, [id, a.business_id]);
+    await this.audit.record({ userId: user.id, action: 'finance.account_deleted', entityType: 'bank_account', entityId: id, summary: `Bank account ${a.name} deleted (it had no transactions)`, details: { store_id: a.store_id } });
+    return { ok: true };
   }
 
   async saveAccount(user: any, id: number | null, b: any) {

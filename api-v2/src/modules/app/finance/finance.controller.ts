@@ -28,6 +28,7 @@ export class FinanceController {
   @Get('accounts') async accounts(@User() u: any) { await this.assertFinance(u); return this.finance.accounts(u); }
   @Post('accounts') async addAccount(@Body() b: any, @User() u: any) { await this.assertFinance(u); return this.finance.saveAccount(u, null, b); }
   @Put('accounts/:id') async saveAccount(@Param('id', ParseIntPipe) id: number, @Body() b: any, @User() u: any) { await this.assertFinance(u); return this.finance.saveAccount(u, id, b); }
+  @Delete('accounts/:id') async deleteAccount(@Param('id', ParseIntPipe) id: number, @User() u: any) { await this.assertFinance(u); return this.finance.deleteAccount(u, id); }
   @Get('accounts/:id/imports') async imports(@Param('id', ParseIntPipe) id: number, @User() u: any) { await this.assertFinance(u); return this.finance.imports(u, id); }
 
   @Post('accounts/:id/preview') @UseInterceptors(upload)

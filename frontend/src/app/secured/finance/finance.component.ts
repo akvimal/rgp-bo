@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { FinanceService } from "./finance.service";
 import { AuthService } from "src/app/@core/auth/auth.service";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 type Tab = 'overview' | 'lines' | 'reconcile' | 'accounts' | 'records';
 
@@ -62,7 +63,7 @@ export class FinanceComponent implements OnInit {
     // records
     rec: any = null;
 
-    constructor(private service: FinanceService, private auth: AuthService) {}
+    constructor(private service: FinanceService, private auth: AuthService, private confirm: ConfirmService) {}
 
     ngOnInit() {
         const now = new Date();
@@ -180,6 +181,13 @@ export class FinanceComponent implements OnInit {
     }
     addAccount() { this.acc = { id: null, name: '', bank_name: '', last4: '', store_id: null, opening_balance: null, opening_date: '', active: true }; }
     editAccount(a: any) { this.acc = { ...a }; }
+    /** only an account with no statement lines, imports, signed-off months or expenses (the server checks again) */
+    deleteAccount(a: any) {
+        this.error = '';
+        this.confirm.confirmDelete(a.name, () => {
+            this.service.deleteAccount(a.id).subscribe(() => { this.message = 'Account deleted.'; if (this.impAccount === a.id) this.impAccount = null; this.loadAccounts(); }, (e: any) => this.error = this.msg(e, 'Could not delete the account.'));
+        }, { entity: 'bank account', verb: 'Delete', consequence: 'It has no transactions, so nothing else changes.' });
+    }
     saveAccount() {
         this.error = '';
         this.service.saveAccount(this.acc.id, this.acc).subscribe(() => { this.message = 'Account saved.'; this.acc = null; this.loadAccounts(); }, (e: any) => this.error = this.msg(e, 'Could not save the account.'));

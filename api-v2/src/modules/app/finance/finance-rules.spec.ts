@@ -1,4 +1,4 @@
-import { bridge, channel, classify, counterpartyOf, dedupeKeys, kindOf, monthBounds, signoffProblems, vendorMatch, within } from './finance-rules';
+import { accountInUse, bridge, channel, classify, counterpartyOf, dedupeKeys, kindOf, monthBounds, signoffProblems, vendorMatch, within } from './finance-rules';
 
 describe('finance rules', () => {
   it('reads what a narration is', () => {
@@ -86,5 +86,15 @@ describe('finance rules', () => {
   it('finds the bounds of a month', () => {
     expect(monthBounds('2026-09-15')).toEqual({ start: '2026-09-01', next: '2026-10-01' });
     expect(monthBounds('2026-12')).toEqual({ start: '2026-12-01', next: '2027-01-01' });
+  });
+});
+
+describe('accountInUse', () => {
+  it('is null when nothing refers to the account', () => {
+    expect(accountInUse({ lines: 0, imports: 0, signoffs: 0, expenses: 0 })).toBeNull();
+    expect(accountInUse({})).toBeNull();
+  });
+  it('says what refers to it', () => {
+    expect(accountInUse({ lines: 12, imports: 1, signoffs: 0, expenses: 2 })).toBe('it has 12 statement lines, 1 imported statement, 2 expenses paid from it');
   });
 });

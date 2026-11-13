@@ -245,7 +245,7 @@
           <td>{{a.name}}<div class="small text-muted">{{a.bank_name}}<span *ngIf="a.last4"> &middot; &hellip;{{a.last4}}</span></div></td>
           <td>{{a.store ? a.store + ' only' : 'The whole business'}}</td><td>{{a.lines}}</td>
           <td class="small">{{a.first_line ? ((a.first_line | date:'dd MMM yy') + ' to ' + (a.last_line | date:'dd MMM yy')) : 'Nothing imported'}}</td>
-          <td>{{a.unexplained}}</td><td class="text-end"><a role="button" class="small" (click)="editAccount(a)">Edit</a></td>
+          <td>{{a.unexplained}}</td><td class="text-end text-nowrap"><a role="button" class="small" (click)="editAccount(a)">Edit</a><a role="button" class="small text-danger ms-2" *ngIf="a.deletable" (click)="deleteAccount(a)" title="Nothing has been imported or paid from this account: it can be removed" data-testid="fin-a-delete">Delete</a></td>
         </tr>
         <tr *ngIf="!accounts.length"><td colspan="6" class="text-center text-muted py-3">No bank accounts yet.</td></tr>
       </tbody>
