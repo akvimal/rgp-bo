@@ -9,6 +9,7 @@ import { DateUtilService } from "../../date-util.service";
 import { ProductUtilService } from "../../product-util.service";
 import { SaleService } from "../sales.service";
 import { canVoidBill, signedInUserId } from "../bill-void";
+import { nameWithSuffix } from "../bill-layout";
 import { WhatsappService } from "../../whatsapp/whatsapp.service";
 
 const LICENCE_LABELS: {[type:string]:string} = {
@@ -65,7 +66,7 @@ export class SaleViewComponent {
     words = '';
 
     /** who the bill is from: the store's own details, with the business's as the fallback */
-    from:any = { name: '', logo: '', website: '', grievancephone: '', showmrp: false, showsaving: true, showreturnnote: true, returnnote: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
+    from:any = { name: '', nameshown: '', layout: { showwords: false, namesuffix: 'NONE', socials: [], showrefill: true }, logo: '', website: '', grievancephone: '', showmrp: false, showsaving: true, showreturnnote: true, returnnote: '', address: '', phone: '', gstin: '', licences: [] as {label:string, numbers:string}[], branch: '' };
     payments:{label:string, amount:number}[] = [];
     gstRows:{rate:number, taxable:number, cgst:number, sgst:number, igst:number}[] = [];
     /** the supply crosses a state border: the tax is IGST, not CGST and SGST */
@@ -137,6 +138,9 @@ export class SaleViewComponent {
       this.from = {
         // the shop's own name; the registered (legal) name is not printed
         name: b.name || b.legalname || '',
+        // the business's own layout of the bill (Settings > Business > Bill print); a business that has set nothing prints the standard bill
+        layout: { showwords: b.layout?.showwords === true, namesuffix: b.layout?.namesuffix || 'NONE', socials: b.layout?.socials || [], showrefill: b.layout?.showrefill !== false },
+        nameshown: nameWithSuffix(b.name || b.legalname || '', b.layout?.namesuffix),
         logo: b.logo || '',
         website: b.website || '',
         grievancephone: b.grievancephone || '',

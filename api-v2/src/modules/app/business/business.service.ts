@@ -15,6 +15,7 @@ import { checkLogo } from "./business-logo";
 import { isOwnerRole } from 'src/core/roles';
 import { checkPhones } from 'src/core/phones';
 import { checkWebsite } from 'src/core/website';
+import { checkBillLayout, effectiveBillLayout } from 'src/core/bill-layout';
 @Injectable()
 export class BusinessService {
   constructor(
@@ -192,6 +193,11 @@ export class BusinessService {
         if (typeof body[key] !== "boolean") throw new BadRequestException("Choose yes or no for what the bill prints.");
         fields[key] = body[key];
       }
+    }
+    if (body.billlayout !== undefined) {
+      const l = checkBillLayout(body.billlayout);
+      if (!l.ok) throw new BadRequestException(l.error);
+      fields.billlayout = l.value;
     }
     if (body.website !== undefined) {
       const w = checkWebsite(body.website, "The website");

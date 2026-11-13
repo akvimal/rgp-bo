@@ -69,6 +69,10 @@ import { Store } from "./store.entity";
     @Column("boolean", { name: "bill_show_return_note", default: true })
     showreturnnote: boolean;
 
+    /** how the sale bill is laid out and what it prints (printer, amount in words, name sign, social handles, next refill); null: the standard bill (migration 192) */
+    @Column("jsonb", { name: "bill_layout", nullable: true })
+    billlayout: object | null;
+
     /** the "Change password" link on the sign-in page (on) */
     @Column("boolean", { name: "login_show_change_password", default: true })
     showchangepasswordlink: boolean;

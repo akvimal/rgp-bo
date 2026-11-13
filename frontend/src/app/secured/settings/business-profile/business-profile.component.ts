@@ -7,6 +7,8 @@ import { BusinessesService } from "../businesses/businesses.service";
 export class BusinessProfileComponent implements OnInit {
 
     form: any = { name: '', legalname: '', gstin: '', statecode: '', address: '', pincode: '', phone: '', grievancephone: '', website: '', showmrp: false, showsaving: true, showreturnnote: true, returnnote: '', showchangepasswordlink: true };
+    /** how the sale bill is laid out (Bill print); printer is A4 for now, other printers get their own profile later */
+    layout: any = { printer: 'A4', showwords: false, namesuffix: 'NONE', socials: [], showrefill: true };
     logo: string | null = null;        // the logo as shown (the saved one, or a new pick)
     logoChanged = false;
     logoError = '';
@@ -28,6 +30,8 @@ export class BusinessProfileComponent implements OnInit {
             showmrp: !!b.showmrp, showsaving: b.showsaving !== false, showreturnnote: b.showreturnnote !== false, returnnote: b.returnnote || '',
             showchangepasswordlink: b.showchangepasswordlink !== false,
         };
+        const l = b.billlayout || {};
+        this.layout = { printer: l.printer || 'A4', showwords: l.showwords === true, namesuffix: l.namesuffix || 'NONE', showrefill: l.showrefill !== false, socials: (l.socials || []).map((s: any) => ({ label: s.label || '', handle: s.handle || '' })) };
         this.logo = b.logo || null;
         this.logoChanged = false;
         this.loaded = true;
@@ -45,6 +49,7 @@ export class BusinessProfileComponent implements OnInit {
         this.saving = true;
         const body: any = { ...this.form, gstin: (this.form.gstin || '').trim().toUpperCase() };
         if (this.stateFromGstin) body.statecode = this.stateFromGstin;
+        body.billlayout = { ...this.layout, socials: this.layout.socials.filter((s: any) => (s.handle || '').trim() || (s.label || '').trim()) };
         if (this.logoChanged) body.logo = this.logo;
         this.service.updateMine(body).subscribe(
             (b: any) => { this.saving = false; this.fill(b); this.message = 'Business details saved.'; window.dispatchEvent(new CustomEvent('rgp-brand-changed', { detail: { logo: b.logo || null, name: b.name } })); },
@@ -75,6 +80,9 @@ export class BusinessProfileComponent implements OnInit {
         img.onerror = () => { URL.revokeObjectURL(url); this.logoError = 'That file could not be read as a picture.'; };
         img.src = url;
     }
+
+    addSocial() { if (this.layout.socials.length < 8) this.layout.socials.push({ label: '', handle: '' }); }
+    removeSocial(i: number) { this.layout.socials.splice(i, 1); }
 
     removeLogo() { this.logo = null; this.logoChanged = true; this.logoError = ''; }
 

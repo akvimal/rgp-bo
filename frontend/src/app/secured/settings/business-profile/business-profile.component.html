@@ -82,6 +82,37 @@
           </div>
           <div class="form-text">The MRP is off unless you choose it. Without it the grid shows the quantity, rate, GST and amount.</div>
         </div>
+        <div class="col-12" data-testid="biz-bill-print">
+          <div class="border rounded p-3">
+            <h6 class="mb-1">Bill print</h6>
+            <div class="form-text mb-2">How the sale bill is laid out. These settings are kept as one profile for the printer; other printers (a line printer) will get their own later.</div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Printer</label>
+                <select class="form-select" name="billprinter" [(ngModel)]="layout.printer" data-testid="biz-bill-printer"><option value="A4">A4 / laser or inkjet</option><option value="LINE" disabled>Line printer (not yet available)</option></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Sign after the business name</label>
+                <select class="form-select" name="billsuffix" [(ngModel)]="layout.namesuffix" data-testid="biz-bill-suffix"><option value="NONE">None</option><option value="R">&reg; registered</option><option value="TM">&trade; trade mark</option></select>
+                <div class="form-text">Printed after the name at the top of the bill.</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label d-block">Lines on the bill</label>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="biz-bill-words" name="billwords" [(ngModel)]="layout.showwords" data-testid="biz-bill-words"><label class="form-check-label" for="biz-bill-words">Amount in words</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="biz-bill-refill" name="billrefill" [(ngModel)]="layout.showrefill" data-testid="biz-bill-refill"><label class="form-check-label" for="biz-bill-refill">Next refill date</label></div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Social handles <span class="text-muted small">(printed under the website)</span></label>
+                <div class="row g-2 mb-1" *ngFor="let s of layout.socials; let i = index">
+                  <div class="col-5 col-md-3"><input class="form-control form-control-sm" [name]="'soclabel' + i" [(ngModel)]="s.label" maxlength="20" placeholder="Instagram" [attr.data-testid]="'biz-social-label-' + i"></div>
+                  <div class="col-7 col-md-5"><input class="form-control form-control-sm" [name]="'sochandle' + i" [(ngModel)]="s.handle" maxlength="60" placeholder="@yourshop" [attr.data-testid]="'biz-social-handle-' + i"></div>
+                  <div class="col-12 col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" (click)="removeSocial(i)" aria-label="Remove"><i class="bi bi-x-lg"></i></button></div>
+                </div>
+                <button type="button" class="btn btn-link btn-sm px-0" *ngIf="layout.socials.length < 8" (click)="addSocial()" data-testid="biz-social-add">+ Add a handle</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="col-md-6">
           <label class="form-label d-block">Sign-in page</label>
           <div class="form-check">
