@@ -29,6 +29,9 @@ export class StockExpiryComponent implements OnInit, OnDestroy {
     passError = '';
     passBusy = false;
 
+    /** moving stock to another store only makes sense when the business has more than one */
+    get multiStore(): boolean { return (this.storeContext.stores || []).length > 1; }
+
     constructor(private service: DisposalService, private storeContext: StoreContextService, private files: FileUploadService, private router: Router) {}
 
     ngOnInit() {

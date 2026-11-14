@@ -513,8 +513,9 @@ export class PurchaseInvoiceService {
 
       row.invoice_count += 1;
       row.total_outstanding += balance;
+      // an overdue invoice counts at its full invoice total, not at what is still unpaid on it
       if (inv.is_overdue) {
-        row.total_overdue += balance;
+        row.total_overdue += Number(inv.total || 0);
       }
       if (inv.payment_status === 'On Hold') {
         row.on_hold_count += 1;
