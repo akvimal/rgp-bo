@@ -14,6 +14,8 @@ import { CustomersModule } from "./customers/customers.module";
 import { DashboardComponent } from "./dashboard.component";
 import { StaffViewComponent } from "./dashboard-views/staff-view.component";
 import { OwnerInsightsComponent } from "./dashboard-views/owner-insights.component";
+import { HealthFindingsComponent } from "./dashboard-views/health-findings.component";
+import { SalesPatternsComponent } from "./dashboard-views/sales-patterns.component";
 import { PersonalViewComponent } from "./dashboard-views/personal-view.component";
 import { TeamRecognitionComponent } from "./recognition/team-recognition.component";
 import { DocumentsModule } from "./documents/documents.module";
@@ -189,6 +191,8 @@ import { FeedbackDialogComponent } from "./feedback/feedback-dialog.component";
       DashboardComponent,
       StaffViewComponent,
       OwnerInsightsComponent,
+      HealthFindingsComponent,
+      SalesPatternsComponent,
       PersonalViewComponent,
       TeamRecognitionComponent,
       ProfileComponent,

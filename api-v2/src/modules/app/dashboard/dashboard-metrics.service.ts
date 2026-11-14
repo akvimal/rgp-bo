@@ -6,6 +6,7 @@ import { ConfigService } from 'src/core/config/config.service';
 import { MANAGER_ROLES } from 'src/core/roles';
 import { DashboardService } from './dashboard.service';
 import { compareOf, deltaOf, marginOf, periodsFor } from './dashboard-tiles';
+import { patterns } from './sales-patterns';
 import { CHECKS, backlogScore, callsScore, ceilingScore, deadStockScore, repeatScore, cashScore, combine, complianceScore, customersScore, expectedSales, expiryScore, purchasingScore, salesScoreVs, serviceScore, stockOutScore, stockScore, suggestedTarget } from './dashboard-health';
 
 /** the placeholder customer used at the counter when no mobile number is given */
@@ -449,6 +450,35 @@ export class DashboardMetricsService {
          from sale s where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '90 days'
           and ($1::int[] is null or s.store_id = any($1::int[])) group by 1, 2 order by 1, 2`, [sc.stores]);
     return { cells: rows, days: 90 };
+  }
+
+  /**
+   * When sales happen: by hour, weekday, day of the month and month of the year, as averages per trading day (see sales-patterns.ts). Optionally for one
+   * product category. The hours and the weekday and day-of-month figures use the last 12 months; the season uses up to 36.
+   */
+  async patterns(user: any, storeid?: any, category?: string) {
+    const sc = await this.managed(user, storeid);
+    const cat = String(category || '').trim();
+    const todayIst = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+    // with a category the figures come from the lines of that category (value of the lines; a bill counts once)
+    const dayQ = cat
+      ? `select s.bill_date::date::text as d, count(distinct s.id)::int as bills, coalesce(sum(si.total), 0)::float8 as value
+           from sale s join sale_item si on si.sale_id = s.id and si.active and not si.archive join product p on p.id = si.product_id
+          where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '36 months'
+            and coalesce(nullif(trim(p.category), ''), 'Uncategorised') = $2 and ($1::int[] is null or s.store_id = any($1::int[])) group by 1`
+      : `select s.bill_date::date::text as d, count(*)::int as bills, coalesce(sum(s.total), 0)::float8 as value
+           from sale s where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '36 months'
+            and ($1::int[] is null or s.store_id = any($1::int[])) and $2::text is not null group by 1`;
+    const hourQ = cat
+      ? `select extract(hour from s.bill_date)::int as h, count(distinct s.id)::int as bills, coalesce(sum(si.total), 0)::float8 as value
+           from sale s join sale_item si on si.sale_id = s.id and si.active and not si.archive join product p on p.id = si.product_id
+          where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '365 days'
+            and coalesce(nullif(trim(p.category), ''), 'Uncategorised') = $2 and ($1::int[] is null or s.store_id = any($1::int[])) group by 1`
+      : `select extract(hour from s.bill_date)::int as h, count(*)::int as bills, coalesce(sum(s.total), 0)::float8 as value
+           from sale s where s.status = 'COMPLETE' and s.active and not s.archive and s.bill_date >= current_date - interval '365 days'
+            and ($1::int[] is null or s.store_id = any($1::int[])) and $2::text is not null group by 1`;
+    const [days, hours] = await Promise.all([this.manager.query(dayQ, [sc.stores, cat || '-']), this.manager.query(hourQ, [sc.stores, cat || '-'])]);
+    return { ...patterns(days, hours, todayIst), category: cat || null, asOf: new Date().toISOString() };
   }
 
   /** What is owed to vendors by how late it is, and who it is owed to. Owner and Store Head views (not the shift people). */

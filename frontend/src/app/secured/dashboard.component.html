@@ -107,6 +107,7 @@
 
 <!-- 1. How is the business doing overall? -->
 <section id="sec-health" class="mb-2">
+  <app-health-findings [storeid]="selectedStoreId" [canSnooze]="view === 'owner'"></app-health-findings>
   <app-owner-insights part="health" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights>
 </section>
 
@@ -165,6 +166,7 @@
   </div>
   <div class="row g-3 mb-3">
     <div class="col-12"><app-owner-insights part="hours" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
+    <div class="col-12"><app-sales-patterns [storeid]="selectedStoreId"></app-sales-patterns></div>
   </div>
 </section>
 

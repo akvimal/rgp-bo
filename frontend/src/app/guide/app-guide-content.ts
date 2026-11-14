@@ -72,9 +72,9 @@ export const PAGES: PageGuide[] = [
   {
     id: 'nav-dashboard', group: 'home', title: 'Dashboard', route: '/secure/dashboard',
     purpose: 'Today at a glance, for the work your role does: sales, cash, and what needs attention.',
-    tasks: ['See today\'s and this month\'s figures for your stores.', 'Open a number or an alert to go to the page behind it.', 'Change the period or the store where the page offers it.'],
+    tasks: ['See today\'s and this month\'s figures for your stores.', 'Read the Health card: the status comes from the worst open finding (Critical, Major or Minor), and Fix first lists the five to put right with the points each gains.', 'Open a finding to go to the page that fixes it; the Business Head can set a non-legal finding aside with a reason and an end date.', 'See when sales happen: by hour, weekday, day of the month and month of the year.', 'Open a number or an alert to go to the page behind it.', 'Change the period or the store where the page offers it.'],
     who: 'Everyone. What it shows depends on the role.',
-    watch: ['Figures cover only the stores you are placed in; the Business Head sees all of them.'], keywords: 'home overview sales today',
+    watch: ['Figures cover only the stores you are placed in; the Business Head sees all of them.', 'A Minor finding left open for 14 days counts as Major. Legal and statutory items (licences, registrations, GST filing, escalated register items) cannot be set aside.'], keywords: 'home overview sales today health findings critical major minor patterns hour weekday season',
   },
   {
     id: 'bell', group: 'home', title: 'Notifications (the bell)', route: '/secure/notifications', always: true,

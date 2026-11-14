@@ -14,9 +14,9 @@ import { DashboardService } from "../dashboard.service";
       <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
           <div>
-            <h2 class="h6 mb-1">Store health <span class="text-muted fw-normal small">weighted by your settings</span></h2>
+            <h2 class="h6 mb-1">Health measures <span class="text-muted fw-normal small">the ratio checks you tune in Setup; they raise a finding when they fall short</span></h2>
             <div *ngIf="health && health.score !== null" class="d-flex align-items-baseline gap-2">
-              <span class="display-6 fw-bold" data-testid="health-score">{{health.score}}</span>
+              <span class="fs-4 fw-bold" data-testid="health-score">{{health.score}}</span>
               <span class="badge" [ngClass]="statusClass" data-testid="health-status">{{statusText}}</span>
             </div>
             <div class="small text-warning" *ngIf="health?.held" data-testid="health-held">The total is high, but one check is weak, so the store stays at Watch until it is put right.</div>

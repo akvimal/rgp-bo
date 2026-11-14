@@ -60,6 +60,22 @@ export class DashboardService {
     return this.http.get(`${environment.apiHost}/dashboard/tiles`, { params: { ...this.scoped(storeid), compare } as any });
   }
 
+  getFindings(storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/findings`, { params: this.scoped(storeid) as any });
+  }
+
+  snoozeFinding(body: { key: string; until: string; reason: string }) {
+    return this.http.post(`${environment.apiHost}/dashboard/findings/snooze`, body);
+  }
+
+  unsnoozeFinding(key: string) {
+    return this.http.delete(`${environment.apiHost}/dashboard/findings/snooze`, { params: { key } });
+  }
+
+  getPatterns(storeid?: number | null, category?: string | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/metrics/patterns`, { params: { ...this.scoped(storeid), ...(category ? { category } : {}) } as any });
+  }
+
   getMetric(name: string, storeid?: number | null) {
     return this.http.get(`${environment.apiHost}/dashboard/metrics/${name}`, { params: this.scoped(storeid) as any });
   }
