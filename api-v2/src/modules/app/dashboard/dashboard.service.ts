@@ -10,6 +10,7 @@ import { businessOfUser } from 'src/core/business-of-user';
 import { DepositRule, evaluateDeposit } from '../store/deposit-rule';
 import { ConfigService } from 'src/core/config/config.service';
 import { viewForRole, widgetsFor, VIEW_OF_ROLE } from './dashboard-view';
+import { financePageFor, registryFor } from './dashboard-widgets';
 import { checkValue, defOf } from 'src/core/config/config-schema';
 import { aimFromUsual, againstUsual, capturePct, goalProgress, ringPct, usualOf } from './dashboard-mine';
 /** Customer record used at the counter when no mobile number is given (mobile '0000000000', name NIL). */
@@ -30,7 +31,8 @@ export class DashboardService {
     const view = viewForRole(role?.name);
     const businessId = await businessOfUser(this.manager, currentUser?.id || 0);
     const settings = businessId ? await this.config.valuesFor(businessId, 'views') : {};
-    return { view, widgets: widgetsFor(view), settings };
+    const widgets = widgetsFor(view);
+    return { view, widgets, registry: registryFor(widgets), financials: financePageFor(view), settings };
   }
 
   /**
@@ -52,7 +54,8 @@ export class DashboardService {
       settings[key] = v;
     }
     const view = viewForRole(role);
-    return { role, view, widgets: widgetsFor(view), settings };
+    const widgets = widgetsFor(view);
+    return { role, view, widgets, registry: registryFor(widgets), financials: financePageFor(view), settings };
   }
 
   /**

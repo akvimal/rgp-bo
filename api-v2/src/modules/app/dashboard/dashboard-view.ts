@@ -21,8 +21,8 @@ export const viewForRole = (roleName: string | null | undefined): DashView => VI
 
 /** the standard order of the page (6A): needs-you-now, hero, tiles, then the role's cards */
 export const WIDGETS: Record<DashView, string[]> = {
-  owner: ['needs', 'tiles', 'sales-trend', 'cash', 'purchasing', 'stock', 'customers', 'products', 'staff'],
-  manager: ['needs', 'tiles', 'sales-trend', 'cash', 'stock', 'customers', 'products', 'staff'],
+  owner: ['needs', 'health', 'tiles', 'sales-trend', 'patterns', 'money-matrix', 'cash', 'purchasing', 'stock', 'stock-value', 'gst-position', 'customers', 'products', 'staff'],
+  manager: ['needs', 'health', 'tiles', 'sales-trend', 'patterns', 'money-matrix', 'cash', 'stock', 'stock-value', 'customers', 'products', 'staff'],
   staff: ['needs', 'my-day', 'goals', 'badges', 'notes'],
   counter: ['needs', 'shift', 'goals', 'store-today'],
   personal: ['needs', 'attendance', 'leave', 'badges'],

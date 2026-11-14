@@ -20,6 +20,8 @@ import { FinanceMatrixComponent } from "./dashboard-views/finance-matrix.compone
 import { StockValueComponent } from "./dashboard-views/stock-value.component";
 import { GstPositionComponent } from "./dashboard-views/gst-position.component";
 import { CostRatiosComponent } from "./dashboard-views/cost-ratios.component";
+import { WidgetFrameComponent } from "./dashboard-views/widget-frame.component";
+import { FilterBarComponent } from "./dashboard-views/filter-bar.component";
 import { CashPositionComponent } from "./dashboard-views/cash-position.component";
 import { FinancialsComponent } from "./financials.component";
 import { PersonalViewComponent } from "./dashboard-views/personal-view.component";
@@ -204,6 +206,8 @@ import { FeedbackDialogComponent } from "./feedback/feedback-dialog.component";
       StockValueComponent,
       GstPositionComponent,
       CostRatiosComponent,
+      WidgetFrameComponent,
+      FilterBarComponent,
       CashPositionComponent,
       FinancialsComponent,
       PersonalViewComponent,

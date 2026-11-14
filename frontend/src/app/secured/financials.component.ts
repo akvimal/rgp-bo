@@ -33,17 +33,21 @@ import { StoreContextService } from "../@core/store-context.service";
           <div class="small text-muted mt-2">The digest goes to owners who connected Telegram, every Monday at 8:15. E-mail is not set up yet.</div>
         </div>
       </section>
-      <app-finance-matrix [storeid]="storeid" [showBridge]="true"></app-finance-matrix>
-      <app-cost-ratios [storeid]="storeid"></app-cost-ratios>
-      <app-cash-position [storeid]="storeid"></app-cash-position>
-      <app-stock-value [storeid]="storeid"></app-stock-value>
-      <app-gst-position [storeid]="storeid"></app-gst-position>
+      <ng-container *ngFor="let k of cards" [ngSwitch]="k">
+        <ng-container *ngSwitchCase="'money-matrix'"><app-filter-bar></app-filter-bar><app-finance-matrix [storeid]="storeid" [showBridge]="true"></app-finance-matrix></ng-container>
+        <app-cost-ratios *ngSwitchCase="'cost-ratios'" [storeid]="storeid"></app-cost-ratios>
+        <app-cash-position *ngSwitchCase="'cash-position'" [storeid]="storeid"></app-cash-position>
+        <app-stock-value *ngSwitchCase="'stock-value'" [storeid]="storeid"></app-stock-value>
+        <app-gst-position *ngSwitchCase="'gst-position'" [storeid]="storeid"></app-gst-position>
+      </ng-container>
     </div>`
 })
 export class FinancialsComponent implements OnInit, OnDestroy {
     storeid: number | null = null;
     storeLabel = 'all stores';
     owner = false;
+    /** the cards the server says this role holds on this page, in order */
+    cards: string[] = [];
     busy = false;
     message = '';
     isError = false;
@@ -88,7 +92,10 @@ export class FinancialsComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-        this.dashboard.getView().subscribe({ next: (v: any) => (this.owner = (v?.view || 'owner') === 'owner'), error: () => (this.owner = false) });
+        this.dashboard.getView().subscribe({
+            next: (v: any) => { this.owner = (v?.view || 'owner') === 'owner'; this.cards = v?.financials ?? ['money-matrix', 'cost-ratios', 'cash-position', 'stock-value']; },
+            error: () => { this.owner = false; this.cards = []; }
+        });
         this.apply(this.storeContext.selectedStoreId);
         this.sub = this.storeContext.selectedStoreId$.subscribe((id: any) => this.apply(id));
     }

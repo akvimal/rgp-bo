@@ -9,11 +9,9 @@ import { DashboardService } from "../dashboard.service";
     selector: 'app-stock-value',
     styles: [':host { display: block; } .bar { height: 1.1rem; background: #1c7ed6; border-radius: 2px; min-width: 2px; } .bar.danger { background: #e03131; }'],
     template: `
-    <section class="card mb-3" aria-label="Stock value" data-testid="stock-value">
-      <div class="card-body">
-        <h2 class="h6">Stock on the shelf <span class="text-muted fw-normal small">at purchase rate, before GST</span></h2>
-        <div class="small text-danger" *ngIf="error">{{error}}</div>
-        <div *ngIf="!data && !error" class="text-muted small">Counting the stock...</div>
+    <app-widget title="Stock on the shelf" testid="stock-value" drill="/secure/store/stock" [loading]="!data && !error" [error]="error" [empty]="!!data && data.total === 0 && !data.batches" emptyText="No stock on the shelf." (retry)="load()"
+      definition="Stock at purchase rate before GST, by expiry, category and store, with the value that has not sold in 90 days.">
+      <span sub>at purchase rate, before GST</span>
         <ng-container *ngIf="data">
           <div class="row g-2 mb-3" data-testid="stock-tiles">
             <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Stock at cost</div><div class="h5 mb-0">{{data.total | number:'1.0-0'}}</div><div class="small text-muted">{{data.totalMrp | number:'1.0-0'}} at MRP</div></div></div>
@@ -46,16 +44,16 @@ import { DashboardService } from "../dashboard.service";
           </div>
           <ul class="mb-0 mt-2" data-testid="stock-notes"><li *ngFor="let n of data.notes">{{n}}</li></ul>
         </ng-container>
-      </div>
-    </section>`
+    </app-widget>`
 })
 export class StockValueComponent implements OnChanges {
     @Input() storeid: number | null = null;
     data: any = null;
     error = '';
     constructor(private dashboard: DashboardService) {}
-    ngOnChanges(c: SimpleChanges) {
-        if (!c.storeid && this.data) return;
+    ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
+    load() {
+        this.error = '';
         this.dashboard.getStockValue(this.storeid).subscribe({
             next: (d: any) => { this.data = d; this.error = ''; },
             error: (e) => (this.error = e?.error?.message || 'The stock figures could not be loaded.')

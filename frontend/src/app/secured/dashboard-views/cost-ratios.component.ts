@@ -9,13 +9,10 @@ import { DashboardService } from "../dashboard.service";
     selector: 'app-cost-ratios',
     styles: [':host { display: block; } .spark { display: flex; align-items: flex-end; gap: 2px; height: 28px; } .spark i { display: block; width: 7px; background: #adb5bd; border-radius: 1px; } .spark i.last { background: #1c7ed6; } .spark i.high { background: #e03131; }'],
     template: `
-    <section class="card mb-3" aria-label="Cost ratios" data-testid="cost-ratios">
-      <div class="card-body">
-        <h2 class="h6">Costs as a share of sales <span class="text-muted fw-normal small">last 12 months, before GST</span></h2>
-        <div class="small text-danger" *ngIf="error">{{error}}</div>
-        <div *ngIf="!data && !error" class="text-muted small">Working out the ratios...</div>
+    <app-widget title="Costs as a share of sales" testid="cost-ratios" [loading]="!data && !error" [error]="error" [empty]="!!data && !data.groups.length" emptyText="No costs recorded in these months." (retry)="load()"
+      definition="Each cost group as a share of sales over 12 months, against its usual band: the mean of the earlier months plus or minus one standard deviation.">
+      <span sub>last 12 months, before GST</span>
         <ng-container *ngIf="data">
-          <div class="text-muted small" *ngIf="!data.groups.length">No costs recorded in these months.</div>
           <div class="table-responsive" *ngIf="data.groups.length"><table class="table table-sm align-middle mb-2">
             <thead><tr><th>Cost group</th><th class="text-end">{{monthName(data.latest)}}</th><th class="text-end">Usual</th><th></th><th>12 months</th></tr></thead>
             <tbody><tr *ngFor="let g of data.groups" [attr.data-testid]="'ratio-' + g.grp">
@@ -27,8 +24,7 @@ import { DashboardService } from "../dashboard.service";
             </tr></tbody></table></div>
           <ul class="mb-0 small" data-testid="ratio-notes"><li *ngFor="let n of data.notes">{{n}}</li></ul>
         </ng-container>
-      </div>
-    </section>`
+    </app-widget>`
 })
 export class CostRatiosComponent implements OnChanges {
     @Input() storeid: number | null = null;
@@ -36,8 +32,9 @@ export class CostRatiosComponent implements OnChanges {
     error = '';
     constructor(private dashboard: DashboardService) {}
 
-    ngOnChanges(c: SimpleChanges) {
-        if (!c.storeid && this.data) return;
+    ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
+    load() {
+        this.error = '';
         this.dashboard.getFinanceTrend(this.storeid).subscribe({
             next: (d: any) => { this.data = d; this.error = ''; },
             error: (e) => (this.error = e?.error?.message || 'The ratios could not be loaded.')

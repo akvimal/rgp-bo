@@ -94,8 +94,8 @@ export class DashboardService {
     return this.http.get(`${environment.apiHost}/dashboard/stock/value`, { params: this.scoped(storeid) as any });
   }
 
-  getFinanceGst(storeid?: number | null) {
-    return this.http.get(`${environment.apiHost}/dashboard/finance/gst`, { params: this.scoped(storeid) as any });
+  getFinanceGst(storeid?: number | null, month?: string) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/gst`, { params: { ...this.scoped(storeid), ...(month ? { month } : {}) } as any });
   }
 
   getFinanceTrend(storeid?: number | null) {

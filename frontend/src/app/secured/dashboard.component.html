@@ -107,7 +107,7 @@
 
 <!-- 1. How is the business doing overall? -->
 <section id="sec-health" class="mb-2">
-  <app-health-findings [storeid]="selectedStoreId" [canSnooze]="view === 'owner'"></app-health-findings>
+  <app-health-findings *ngIf="showWidget('health')" [storeid]="selectedStoreId" [canSnooze]="view === 'owner'"></app-health-findings>
   <app-owner-insights part="health" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights>
 </section>
 
@@ -166,10 +166,10 @@
   </div>
   <div class="row g-3 mb-3">
     <div class="col-12"><app-owner-insights part="hours" [storeid]="selectedStoreId" [canSetTargets]="view === 'owner'" [canSeePayables]="view === 'owner'"></app-owner-insights></div>
-    <div class="col-12"><app-sales-patterns [storeid]="selectedStoreId"></app-sales-patterns></div>
-    <div class="col-12"><app-finance-matrix [storeid]="selectedStoreId"></app-finance-matrix></div>
-    <div class="col-12"><app-stock-value [storeid]="selectedStoreId"></app-stock-value></div>
-    <div class="col-12" *ngIf="view === 'owner'"><app-gst-position [storeid]="selectedStoreId"></app-gst-position></div>
+    <div class="col-12" *ngIf="showWidget('patterns')"><app-sales-patterns [storeid]="selectedStoreId"></app-sales-patterns></div>
+    <div class="col-12" *ngIf="showWidget('money-matrix')"><app-filter-bar></app-filter-bar><app-finance-matrix [storeid]="selectedStoreId"></app-finance-matrix></div>
+    <div class="col-12" *ngIf="showWidget('stock-value')"><app-stock-value [storeid]="selectedStoreId"></app-stock-value></div>
+    <div class="col-12" *ngIf="showWidget('gst-position')"><app-gst-position [storeid]="selectedStoreId"></app-gst-position></div>
   </div>
 </section>
 

@@ -1,4 +1,6 @@
-import { Component, Input, OnChanges, SimpleChanges } from "@angular/core";
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from "@angular/core";
+import { Subscription } from "rxjs";
+import { DashboardFilterService, rangeOf } from "../dashboard-filter.service";
 import { DashboardService } from "../dashboard.service";
 
 /**
@@ -20,10 +22,6 @@ import { DashboardService } from "../dashboard.service";
           <div class="d-flex flex-wrap gap-2 align-items-center">
             <select class="form-select form-select-sm w-auto" [(ngModel)]="view" (ngModelChange)="load()" aria-label="What to show" data-testid="matrix-view">
               <option value="pnl">Sales, purchases and costs</option><option value="products">Product categories: sold and bought</option></select>
-            <select class="form-select form-select-sm w-auto" [(ngModel)]="period" (ngModelChange)="load()" aria-label="Period" data-testid="matrix-period">
-              <option value="fy">This financial year</option><option value="lastfy">Last financial year</option><option value="12m">Last 12 months</option><option value="6m">Last 6 months</option></select>
-            <select class="form-select form-select-sm w-auto" [(ngModel)]="compare" (ngModelChange)="load()" aria-label="Compare with" data-testid="matrix-compare">
-              <option value="none">No comparison</option><option value="prev">Compare with the period before</option><option value="yoy">Compare with last year</option></select>
             <button class="btn btn-sm btn-outline-secondary" (click)="download()" [disabled]="!data" data-testid="matrix-download">Download</button>
           </div>
         </div>
@@ -102,7 +100,7 @@ import { DashboardService } from "../dashboard.service";
       </div>
     </section>`
 })
-export class FinanceMatrixComponent implements OnChanges {
+export class FinanceMatrixComponent implements OnChanges, OnDestroy {
     @Input() storeid: number | null = null;
     /** the page for the financials shows the bridge from sales to profit; the owner only gets it (the server sends no profit to anyone else) */
     @Input() showBridge = false;
@@ -112,15 +110,20 @@ export class FinanceMatrixComponent implements OnChanges {
     error = '';
     fileError = '';
     view = 'pnl';
-    period = 'fy';
-    compare = 'none';
     closed: { [k: string]: boolean } = { CAPITAL_OWNER: true };
     drill: any = null;
     pick: { [k: string]: string } = {};
     pickGroup: { [k: string]: string } = {};
     private readonly names: { [k: string]: string } = { OPERATING_COST: 'Operating cost', PEOPLE: 'People', FINANCE_COST: 'Finance cost', CAPITAL_OWNER: 'Capital and owner (not in profit)' };
 
-    constructor(private dashboard: DashboardService) {}
+    private sub: Subscription;
+    private first = true;
+
+    /** the period and comparison come from the shared bar; a change reloads the card */
+    constructor(private dashboard: DashboardService, private filter: DashboardFilterService) {
+        this.sub = filter.filter$.subscribe(() => { if (this.first) { this.first = false; return; } this.load(); });
+    }
+    ngOnDestroy() { this.sub.unsubscribe(); }
 
     ngOnChanges(c: SimpleChanges) { if (c.storeid || !this.data) this.load(); }
 
@@ -152,21 +155,12 @@ export class FinanceMatrixComponent implements OnChanges {
     monthName(m: string) { return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m.slice(5, 7) - 1] + ' ' + m.slice(2, 4); }
     get label(): string { return this.data.months[0] === this.data.months[this.data.months.length - 1] ? this.monthName(this.data.months[0]) : this.monthName(this.data.months[0]) + ' to ' + this.monthName(this.data.months[this.data.months.length - 1]); }
 
-    /** the month range of the chosen period, from today's date in India */
-    private range(): { from: string; to: string } {
-        const now = new Date(Date.now() + 5.5 * 3600000);
-        const y = now.getUTCFullYear(), m = now.getUTCMonth() + 1;
-        const ym = (yy: number, mm: number) => { const t = yy * 12 + (mm - 1); return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; };
-        const fyStart = m >= 4 ? y : y - 1;
-        if (this.period === 'lastfy') return { from: `${fyStart - 1}-04`, to: `${fyStart}-03` };
-        if (this.period === '12m') return { from: ym(y, m - 11), to: ym(y, m) };
-        if (this.period === '6m') return { from: ym(y, m - 5), to: ym(y, m) };
-        return { from: `${fyStart}-04`, to: `${fyStart + 1}-03` };
-    }
+    /** the month range of the shared period, from today's date in India */
+    private range(): { from: string; to: string } { return rangeOf(this.filter.value.period); }
 
     load() {
         const r = this.range();
-        this.dashboard.getFinanceMatrix({ storeid: this.storeid, from: r.from, to: r.to, view: this.view, compare: this.compare }).subscribe({
+        this.dashboard.getFinanceMatrix({ storeid: this.storeid, from: r.from, to: r.to, view: this.view, compare: this.filter.value.compare }).subscribe({
             next: (d: any) => { this.data = d; this.error = ''; },
             error: (e) => (this.error = e?.error?.message || 'The figures could not be loaded.')
         });

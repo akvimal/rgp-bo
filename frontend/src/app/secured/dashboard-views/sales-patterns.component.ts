@@ -9,23 +9,19 @@ import { DashboardService } from "../dashboard.service";
     selector: 'app-sales-patterns',
     styles: [':host { display: block; } .chart-box { position: relative; width: 100%; min-width: 0; overflow: hidden; } .chart-box > * { display: block; }'],
     template: `
-    <section class="card mb-3" aria-label="Sales patterns" data-testid="sales-patterns">
-      <div class="card-body">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-          <h2 class="h6 mb-0">When sales happen <span class="text-muted fw-normal small" *ngIf="data">average per trading day, {{data.basis.tradingDays}} days from {{data.basis.from}}</span></h2>
-          <div class="d-flex gap-2 align-items-center">
-            <select class="form-select form-select-sm" style="max-width: 12rem" [(ngModel)]="category" (ngModelChange)="load()" aria-label="Product category" data-testid="patterns-category">
-              <option value="">All products</option>
-              <option *ngFor="let c of categories" [value]="c">{{c}}</option>
-            </select>
-            <button class="btn btn-sm btn-link text-nowrap" (click)="table = !table">{{table ? 'Show chart' : 'Show numbers'}}</button>
-          </div>
-        </div>
+    <app-widget title="When sales happen" testid="sales-patterns" [loading]="!data && !error" [error]="error" (retry)="load()"
+      definition="Average sales per trading day by hour, weekday, day of month and month of year. Bars with few days behind them are grey.">
+      <span sub *ngIf="data">average per trading day, {{data.basis.tradingDays}} days from {{data.basis.from}}</span>
+      <div actions class="d-flex gap-2 align-items-center">
+        <select class="form-select form-select-sm" style="max-width: 12rem" [(ngModel)]="category" (ngModelChange)="load()" aria-label="Product category" data-testid="patterns-category">
+          <option value="">All products</option>
+          <option *ngFor="let c of categories" [value]="c">{{c}}</option>
+        </select>
+        <button class="btn btn-sm btn-link text-nowrap" (click)="table = !table">{{table ? 'Show chart' : 'Show numbers'}}</button>
+      </div>
         <ul class="nav nav-tabs my-2" role="tablist">
           <li class="nav-item" *ngFor="let t of tabs"><a class="nav-link" href="javascript:void(0)" [class.active]="tab === t.key" (click)="tab = t.key" [attr.data-testid]="'patterns-tab-' + t.key">{{t.label}}</a></li>
         </ul>
-        <div class="small text-danger" *ngIf="error">{{error}}</div>
-        <div *ngIf="!data && !error" class="text-muted small">Reading the bills...</div>
         <ng-container *ngIf="data">
           <div *ngIf="!table && series.length" class="chart-box" style="height: 260px">
             <ngx-charts-bar-vertical [results]="series" [xAxis]="true" [yAxis]="true" [customColors]="colours" [scheme]="scheme" [showGridLines]="true"></ngx-charts-bar-vertical>
@@ -36,8 +32,7 @@ import { DashboardService } from "../dashboard.service";
             <tbody><tr *ngFor="let r of rows"><td>{{r.name}}</td><td class="text-end">{{r.days}}</td><td class="text-end">{{r.avg | number:'1.0-0'}}</td><td class="text-end">{{r.metric}}</td></tr></tbody></table></div>
           <ul class="mb-0 mt-2" data-testid="patterns-notes"><li *ngFor="let n of data.notes">{{n}}</li></ul>
         </ng-container>
-      </div>
-    </section>`
+    </app-widget>`
 })
 export class SalesPatternsComponent implements OnChanges {
     @Input() storeid: number | null = null;
