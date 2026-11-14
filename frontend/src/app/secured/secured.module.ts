@@ -16,6 +16,12 @@ import { StaffViewComponent } from "./dashboard-views/staff-view.component";
 import { OwnerInsightsComponent } from "./dashboard-views/owner-insights.component";
 import { HealthFindingsComponent } from "./dashboard-views/health-findings.component";
 import { SalesPatternsComponent } from "./dashboard-views/sales-patterns.component";
+import { FinanceMatrixComponent } from "./dashboard-views/finance-matrix.component";
+import { StockValueComponent } from "./dashboard-views/stock-value.component";
+import { GstPositionComponent } from "./dashboard-views/gst-position.component";
+import { CostRatiosComponent } from "./dashboard-views/cost-ratios.component";
+import { CashPositionComponent } from "./dashboard-views/cash-position.component";
+import { FinancialsComponent } from "./financials.component";
 import { PersonalViewComponent } from "./dashboard-views/personal-view.component";
 import { TeamRecognitionComponent } from "./recognition/team-recognition.component";
 import { DocumentsModule } from "./documents/documents.module";
@@ -30,6 +36,7 @@ import { SecuredComponent } from "./secured.component";
 const routes: Routes = [
   { path: '', component: SecuredComponent, children: [
     { path: 'dashboard', canActivate:[AuthGuard], component: DashboardComponent },
+    { path: 'financials', canActivate:[AuthGuard], component: FinancialsComponent },
     { path: 'profile', canActivate:[AuthGuard], component: ProfileComponent },
     { path: 'notifications', canActivate:[AuthGuard], component: NotificationsPageComponent },
     {
@@ -193,6 +200,12 @@ import { FeedbackDialogComponent } from "./feedback/feedback-dialog.component";
       OwnerInsightsComponent,
       HealthFindingsComponent,
       SalesPatternsComponent,
+      FinanceMatrixComponent,
+      StockValueComponent,
+      GstPositionComponent,
+      CostRatiosComponent,
+      CashPositionComponent,
+      FinancialsComponent,
       PersonalViewComponent,
       TeamRecognitionComponent,
       ProfileComponent,

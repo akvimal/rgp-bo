@@ -1,6 +1,6 @@
 # Dashboard round 2: standard views by role, financial dashboard, sales patterns, richer health score
 
-Status: **decisions taken 2026-11-14; F1 (findings engine) and F2 (sales patterns) built, uncommitted; F0 and F3 to F6 not built.** Decisions: accrual-style profit with a cash switch; the severity table as written (any Critical forces "Act now"); no cost of goods or profit for managers; the digest goes by both Telegram and e-mail (built with F6); start with F1 and F2.
+Status: **decisions taken 2026-11-14; F1 (findings engine) and F2 (sales patterns) built and pushed (a26127e45); F3 (money_flow view, category x month matrix, file-a-category) built 2026-11-15, uncommitted, migration 201 never run; F0 and F4 to F6 not built.** Decisions: accrual-style profit with a cash switch; the severity table as written (any Critical forces "Act now"); no cost of goods or profit for managers; the digest goes by both Telegram and e-mail (built with F6); start with F1 and F2.
 
 Built (F1): migration `200_health_findings.sql` (`health_finding_state`, `health_snapshot`); `dashboard-findings.ts` (pure: severity, ageing, scoring, status, fix-first, store matrix, snooze rules) and `dashboard-findings.service.ts` (providers: 15 alert kinds the business has on, the old ratio checks when they cross a threshold, overdue payables and over 60 days, drawer differences, digital payments not checked, stock expiring in 30 and 90 days, fast movers out of stock, owner logins without two-step sign-in); `GET /dashboard/findings`, `POST/DELETE /dashboard/findings/snooze`; `app-health-findings` card above the old measures card. Built (F2): `sales-patterns.ts`, `GET /dashboard/metrics/patterns?category=`, `app-sales-patterns` card. Not yet in the findings: scheduled-drug sale without prescription detail, bill-correction spikes, ITC at risk from 2B, backup status (no record of it is kept), per-store filtering of the stock and expiry findings (the stock view has no store).
  Builds on `DASHBOARD_AND_MENU_DESIGN.md` (views, anatomy 6A), `DASHBOARD_RECOGNITION_IMPLEMENTATION_PLAN.md` (health, compliance register), `FINANCE_STATEMENTS.md` (double-entry layer, deferred) and `GST_SALES_REPORT.md`.
@@ -186,3 +186,32 @@ Suggested order: **F1 and F2 first** (largest visible gain, little new data), th
 3. Who sees profit and cost of goods: owner only (as decided for margin), manager gets expenses and ratios only?
 4. Findings feed the **weekly digest and Monday message**: yes/no, and by Telegram, e-mail, or both?
 5. Start with F1 + F2, then F3 onward?
+
+## F3 as built (2026-11-15)
+
+- Migration 201: `flow_category` (expense category to class and group, seeded from `cost_group`) and the read-only `money_flow` view over sale lines, settled returns, purchase lines and approved expenses. Sales and purchases are before GST. Transfers are not in it. Bank lines are not in it yet (they mostly repeat a sale, purchase or expense).
+- `money-matrix.ts` (pure) and `DashboardFinanceService`: `GET /dashboard/finance/matrix`, `/finance/drill`, `/finance/unclassified`, `PUT /finance/category` (owner only, audited). Managers get no purchases, margin or profit.
+- Card "Money by category" on the dashboard: sections by class, month columns, share of sales, change against the period before or last year, click a figure for its entries, CSV download, a "Needs a category" panel.
+- Differences from the plan: figures are accrual-style only (the cash switch needs payment dates and is not built); "profit" is sales less purchases less running cost, not cost of goods sold, because the change in stock is not counted, and the card says so; business-level expenses carry no business id, so they are shown to the owner when no single store is chosen.
+
+## F4 as built (2026-11-15)
+
+- `stock-value.ts` (pure) and `DashboardStockService`: `GET /dashboard/stock/value` (at cost and at MRP; expiry ladder: expired, 30, 60, 90, 180 days, later, no date; by product category; by store for an owner with two or more stores; dead stock = no sale at that store in 90 days; days of cover and turns from the cost of sales in 90 days) and `GET /dashboard/finance/gst` (owner only; output tax less input tax from `money_flow`, an estimate, not the return).
+- Stock is worked out per store the way the Store screen does it (received at the store, less sold there, plus adjustments and transfers), not from `stock_view`. `stock_view` has no store, and `sql/prod-upgrade/fixes/01_stock_view_adjustment_sign.sql` says it did not deduct sales on installations that skipped that fix. The F1 expiry findings still read `stock_view`: check the fix is applied on the server, or move them to this query.
+- Cards "Stock on the shelf" and "GST this month, estimated" on the dashboard (the GST card for the owner view only).
+- Not built from the plan: excess stock (cover over N days), GMROI, working capital (needs customer dues), ITC at risk from 2B, vendor take-back flag, click-through from a ladder bar to its batches.
+
+## F5 as built (2026-11-15)
+
+- New page **Financial dashboard** (`/secure/financials`, Accounts menu, shown to anyone with `finance.view` or `expenses.approve`, so no role migration). It follows the store chosen in the header and holds: money by category (F3) with the owner-only **bridge from sales to estimated profit** (a CSS waterfall: sales, purchases, each cost group, profit); **costs as a share of sales** over 12 months with the usual band (mean and one standard deviation of earlier months, started from the month the cost first appears, at least four earlier months, the latest complete month judged); **cash by place** (drawers and vault from the dashboard summary, bank from the last balance of each account's statements); stock (F4) and the GST estimate (owner only; hides itself for others).
+- `GET /dashboard/finance/trend` and `/finance/cash`; `cost-ratios.ts` (pure, tested). Managers get the ratios (no purchases, no profit).
+- The bridge, tiles and profit row are hidden in the product category view, where there are no running costs and profit would mislead.
+- Not built: projected 30-day cash (estimate from payables due and average sales), working capital (needs customer dues), compare and period shared across the whole page (the matrix card keeps its own period).
+
+## F6 as built (2026-11-15)
+
+- **Daily roll-up** (migration 202): `metric_daily` and `metric_daily_state`. `DashboardRollupService` rebuilds it every night at 1:10 (all history the first time, then the last 100 days) in one transaction. The matrix reads it only for whole months older than three months and only while the roll-up reaches them (`rollupCut`, tested); everything newer, and everything when it has never been built, is read live from `money_flow`. So a missing or stale roll-up cannot change a figure. Owner button "Rebuild the daily roll-up" does a full rebuild.
+- **Monday digest** (`finance-digest.ts`, `DashboardDigestService`): health status with the change from last week, counts, fix-first list, last month's sales, running cost and estimated profit, costs above their usual share, stock problems. Sent through the Telegram outbox to owners at 8:15 on Mondays unless `app_setting` `dashboard.digest_telegram` is `off`; also preview and send-now on the Financial dashboard page. It carries profit, so owners only.
+- **E-mail is not built.** The app has no mail sender (no library, no SMTP settings). The digest is already produced as HTML for it. Needs a decision: which provider or SMTP account, and who may receive it.
+- **Accountant pack** (`DashboardAccountantService`): an Excel file (owner only, audited) with the summary by month, money by category, GST by month, payables by age, bank accounts and what still has no category. A separate read-only login for the accountant is not built.
+- Not built: targets per category, the double-entry journal on the same mapping, the digest being switched on and off from a settings screen (it is an `app_setting` row).

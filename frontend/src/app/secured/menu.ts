@@ -60,6 +60,7 @@ function allMenuGroups(a: MenuAccess): MenuGroup[] {
       item('nav-expenses', 'Expenses', 'expenses', 'bi-wallet2', any('expenses.view')),
       item('nav-digital-payments', 'Digital payments', 'digital-payments', 'bi-qr-code-scan', any('paymentrecon.view')),
       item('nav-gst-filing', 'GST', 'gst-filing', 'bi-receipt', any('gstfiling.view')),
+      item('nav-financials', 'Financial dashboard', 'financials', 'bi-graph-up', any('finance.view', 'expenses.approve')),
       item('nav-finance', 'Finance', 'finance', 'bi-bank', any('finance.view')),
     ] },
     { key: 'people', label: 'People', items: [

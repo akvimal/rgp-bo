@@ -1,20 +1,65 @@
-import { Body, Controller, Delete, Get, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Post, Put, Query, Res, StreamableFile, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { AuthGuard } from "src/modules/auth/auth.guard";
 import { User } from "src/core/decorator/user.decorator";
 import { DashboardService } from "./dashboard.service";
 import { DashboardMetricsService } from "./dashboard-metrics.service";
 import { DashboardFindingsService } from "./dashboard-findings.service";
+import { DashboardFinanceService } from "./dashboard-finance.service";
+import { DashboardStockService } from "./dashboard-stock.service";
+import { DashboardDigestService } from "./dashboard-digest.service";
+import { DashboardAccountantService } from "./dashboard-accountant.service";
 
 @ApiTags("Dashboard")
 @Controller("dashboard")
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class DashboardController {
-  constructor(private readonly service: DashboardService, private readonly metrics: DashboardMetricsService, private readonly findings: DashboardFindingsService) {}
+  constructor(private readonly service: DashboardService, private readonly metrics: DashboardMetricsService, private readonly findings: DashboardFindingsService, private readonly finance: DashboardFinanceService, private readonly stock: DashboardStockService, private readonly digest: DashboardDigestService, private readonly accountant: DashboardAccountantService) {}
 
   @Get("/health")
   health(@Query("storeid") storeid: string, @User() currentUser: any) { return this.metrics.health(currentUser, storeid); }
+
+  @Get("/stock/value")
+  stockValue(@Query("storeid") storeid: string, @User() currentUser: any) { return this.stock.value(currentUser, storeid); }
+
+  @Get("/finance/gst")
+  financeGst(@Query() q: any, @User() currentUser: any) { return this.stock.gst(currentUser, q); }
+
+  @Get("/finance/digest")
+  financeDigest(@User() currentUser: any) { return this.digest.preview(currentUser); }
+
+  @Post("/finance/digest/send")
+  financeDigestSend(@User() currentUser: any) { return this.digest.send(currentUser); }
+
+  @Post("/finance/rollup")
+  financeRollup(@Query("full") full: string, @User() currentUser: any) { return this.finance.rebuildRollup(currentUser, full === "1" || full === "true"); }
+
+  @Get("/finance/accountant-pack")
+  async accountantPack(@Query() q: any, @User() currentUser: any, @Res({ passthrough: true }) res: Response) {
+    const f = await this.accountant.pack(currentUser, q);
+    res.set({ "Content-Type": f.contentType, "Content-Disposition": `attachment; filename="${f.filename}"`, "Cache-Control": "no-store" });
+    return new StreamableFile(f.buffer);
+  }
+
+  @Get("/finance/trend")
+  financeTrend(@Query() q: any, @User() currentUser: any) { return this.finance.trend(currentUser, q); }
+
+  @Get("/finance/cash")
+  financeCash(@Query() q: any, @User() currentUser: any) { return this.finance.cash(currentUser, q); }
+
+  @Get("/finance/matrix")
+  financeMatrix(@Query() q: any, @User() currentUser: any) { return this.finance.matrix(currentUser, q); }
+
+  @Get("/finance/drill")
+  financeDrill(@Query() q: any, @User() currentUser: any) { return this.finance.drill(currentUser, q); }
+
+  @Get("/finance/unclassified")
+  financeUnclassified(@Query() q: any, @User() currentUser: any) { return this.finance.unclassified(currentUser, q); }
+
+  @Put("/finance/category")
+  financeFile(@Body() body: any, @User() currentUser: any) { return this.finance.file(currentUser, body); }
 
   @Get("/findings")
   findingsList(@Query("storeid") storeid: string, @User() currentUser: any) { return this.findings.findings(currentUser, storeid); }

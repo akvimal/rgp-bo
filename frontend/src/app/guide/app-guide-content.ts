@@ -215,6 +215,12 @@ export const PAGES: PageGuide[] = [
     who: 'The owner and the accountant.', keywords: 'gst gstr hsn return filing rate change',
   },
   {
+    id: 'nav-financials', group: 'accounts', title: 'Financial dashboard', route: '/secure/financials',
+    purpose: 'Where the money goes: sales, purchases and costs by category and month, cash, stock and tax in one page.',
+    tasks: ['Read the table of money by category for the year, a month or the last 12 months, and compare with the period before or last year.', 'Click a figure to see the bills, invoices or expenses behind it.', 'See the owner-only bridge from sales to estimated profit.', 'See which cost is above its usual share of sales.', 'See cash in the drawers, the vault and the bank, and the stock on the shelf by expiry.', 'File an expense category that has none, so it counts in the figures.'],
+    who: 'The owner sees everything; a Store Head sees sales and costs for their store, with no purchases or profit.', keywords: 'financial dashboard profit cost category month cash stock gst',
+  },
+  {
     id: 'nav-finance', group: 'accounts', title: 'Finance', route: '/secure/finance',
     purpose: 'The shop\'s money against the bank, and the records it must keep.',
     tasks: ['Import a bank statement from any bank.', 'Reconcile bank lines against payments and receipts.', 'Accounts: add or edit a bank account. One with no statement lines, imports, signed-off months or expenses can be deleted; any other is switched off instead.', 'Records: how long to keep accounts and drug records, and whether each month\'s records are complete.'],

@@ -72,6 +72,56 @@ export class DashboardService {
     return this.http.delete(`${environment.apiHost}/dashboard/findings/snooze`, { params: { key } });
   }
 
+  getFinanceMatrix(q: { storeid?: number | null; from: string; to: string; view: string; compare: string }) {
+    const { storeid, ...rest } = q;
+    return this.http.get(`${environment.apiHost}/dashboard/finance/matrix`, { params: { ...this.scoped(storeid), ...rest } as any });
+  }
+
+  getFinanceDrill(q: any) {
+    const { storeid, ...rest } = q;
+    return this.http.get(`${environment.apiHost}/dashboard/finance/drill`, { params: { ...this.scoped(storeid), ...rest } as any });
+  }
+
+  getFinanceUnclassified(storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/unclassified`, { params: this.scoped(storeid) as any });
+  }
+
+  fileFinanceCategory(body: { source: string; key: string; flow_class: string; grp: string }) {
+    return this.http.put(`${environment.apiHost}/dashboard/finance/category`, body);
+  }
+
+  getStockValue(storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/stock/value`, { params: this.scoped(storeid) as any });
+  }
+
+  getFinanceGst(storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/gst`, { params: this.scoped(storeid) as any });
+  }
+
+  getFinanceTrend(storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/trend`, { params: this.scoped(storeid) as any });
+  }
+
+  getFinanceCash(storeid?: number | null) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/cash`, { params: this.scoped(storeid) as any });
+  }
+
+  downloadAccountantPack(from: string, to: string) {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/accountant-pack`, { params: { from, to }, responseType: 'blob' });
+  }
+
+  getFinanceDigest() {
+    return this.http.get(`${environment.apiHost}/dashboard/finance/digest`);
+  }
+
+  sendFinanceDigest() {
+    return this.http.post(`${environment.apiHost}/dashboard/finance/digest/send`, {});
+  }
+
+  rebuildFinanceRollup(full: boolean) {
+    return this.http.post(`${environment.apiHost}/dashboard/finance/rollup`, {}, { params: { full: full ? '1' : '0' } });
+  }
+
   getPatterns(storeid?: number | null, category?: string | null) {
     return this.http.get(`${environment.apiHost}/dashboard/metrics/patterns`, { params: { ...this.scoped(storeid), ...(category ? { category } : {}) } as any });
   }
