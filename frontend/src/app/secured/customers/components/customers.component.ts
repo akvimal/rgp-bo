@@ -1,5 +1,7 @@
 import { AuthService } from "src/app/@core/auth/auth.service";
-import { Component } from "@angular/core";
+import { Component, OnDestroy } from "@angular/core";
+import { Subscription } from "rxjs";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
 import { Customer } from "../customer.model";
 import { CustomersService } from "../customers.service";
 import { ActivatedRoute } from "@angular/router";
@@ -8,7 +10,7 @@ import { ActivatedRoute } from "@angular/router";
     selector: 'app2-customers',
     templateUrl: 'customers.component.html'
 })
-export class CustomersComponent {
+export class CustomersComponent implements OnDestroy {
 
     customers:any[] = [];
     segments = ['OTC only', 'Chronic only', 'OTC + Chronic', 'Other', 'No purchases'];
@@ -24,7 +26,15 @@ export class CustomersComponent {
     message = '';
     error = '';
 
-    constructor(private service:CustomersService, public auth: AuthService, private route:ActivatedRoute){}
+    /** the customer open in the side panel, kept in the address (?peek=12) so Back closes it */
+    peekId: number | null = null;
+    private peekSub?: Subscription;
+
+    constructor(private service:CustomersService, public auth: AuthService, private route:ActivatedRoute, private peekAddress: PeekAddressService){}
+
+    openPeek(id:number){ this.peekAddress.open(id); }
+    closePeek(){ this.peekAddress.close(); }
+    ngOnDestroy(){ this.peekSub?.unsubscribe(); }
 
     /** whether this login reads every contact detail: only then are audiences (whole numbers, a CSV) offered */
     canRevealAll = false;
@@ -33,6 +43,7 @@ export class CustomersComponent {
     private searchTimer:any;
 
     ngOnInit(){
+        this.peekSub = this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null);
         const q = this.route.snapshot.queryParamMap;
         if(q.get('removed')){
             const name = q.get('name') || 'The customer';

@@ -103,8 +103,7 @@
         <span class="small text-success" *ngIf="modeMessage" data-testid="mode-message">{{modeMessage}}</span>
       </div>
 
-      <details class="mt-4" [open]="modeForm.mode === 'SMART'" data-testid="rules-advanced">
-      <summary class="fw-semibold text-primary">Advanced: smart groups</summary>
+      <app-section class="mt-4" title="Advanced: smart groups" [open]="modeForm.mode === 'SMART'" testid="rules-advanced">
       <p class="small text-muted mt-2 mb-0" *ngIf="modeForm.mode !== 'SMART'">These group limits are kept but not used while you price {{modeForm.mode === 'MRP' ? 'at the MRP' : 'with a discount off the MRP'}}.</p>
       <h6 class="mt-3 text-primary">Price limits by product group</h6>
       <p class="small text-muted mb-2">
@@ -144,8 +143,7 @@
           For example, a product with an MRP of 100.00 that costs you about {{groupExample(c).cost | number:'1.2-2'}}:
           the lowest price you may charge (GST included) is <b>{{groupExample(c).lowest | number:'1.2-2'}}</b>, which is {{groupExample(c).offPct}}% off the MRP<span *ngIf="groupExample(c).byFloor">. Here the least markup over cost sets the limit, not the discount</span>.
         </div>
-        <details class="mt-2">
-          <summary class="small text-primary">More options</summary>
+        <app-section class="mt-2" title="More options">
           <div class="row g-2 mt-1">
             <div class="col-12 col-md-6">
               <label class="form-label small mb-0">Least markup over your cost (%)</label>
@@ -158,10 +156,10 @@
               <div class="form-text mt-0">Only used to suggest a first price for a product that has none.</div>
             </div>
           </div>
-        </details>
+        </app-section>
         <button type="button" class="btn btn-outline-primary btn-sm mt-2" *ngIf="canedit" [disabled]="!classChanged(c)" (click)="saveClass(c)" [attr.data-testid]="'rules-save-' + c.class_key">Save this group</button>
       </div>
-      </details>
+      </app-section>
 
       <div *ngFor="let g of groups" class="mt-4">
         <h6 class="text-primary">{{g.title}}</h6>

@@ -4,6 +4,11 @@ import { RouterModule } from "@angular/router";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { AutoCompleteModule } from "primeng/autocomplete";
 import { MultiSelectModule } from 'primeng/multiselect';
+import { SidebarModule } from "primeng/sidebar";
+import { PeekComponent } from "./components/peek.component";
+import { SectionComponent } from "./components/section.component";
+import { DialogStandardDirective } from "./dialog-standard.directive";
+import { RowActionsComponent } from "./components/row-actions.component";
 import { CustomerSelectComponent } from "./components/customer-select.component";
 import { DenominationGridComponent } from "./components/denomination-grid.component";
 import { PageHeaderComponent } from "./components/page-header.component";
@@ -36,7 +41,11 @@ import { TermPipe } from "./label.service";
       NeedsStripComponent,
       DashHeaderComponent,
       InsightTableComponent,
-      BuyingBriefComponent
+      BuyingBriefComponent,
+      PeekComponent,
+      SectionComponent,
+      DialogStandardDirective,
+      RowActionsComponent
     ],
     imports: [
         FormsModule,
@@ -44,6 +53,7 @@ import { TermPipe } from "./label.service";
         CommonModule,
         AutoCompleteModule,
         MultiSelectModule,
+        SidebarModule,
         RouterModule
     ],
     exports: [IsAuthDirective,
@@ -58,7 +68,11 @@ import { TermPipe } from "./label.service";
       NeedsStripComponent,
       DashHeaderComponent,
       InsightTableComponent,
-      BuyingBriefComponent
+      BuyingBriefComponent,
+      PeekComponent,
+      SectionComponent,
+      DialogStandardDirective,
+      RowActionsComponent
     ]
   })
 export class SharedModule{}

@@ -1,6 +1,7 @@
 import { Component, HostListener, Injectable, OnDestroy, OnInit } from "@angular/core";
 import { ActivatedRoute, CanDeactivate, Router } from "@angular/router";
-import { forkJoin, Subscription } from "rxjs";
+import { forkJoin, Observable, Subscription } from "rxjs";
+import { ConfirmService } from "src/app/shared/confirm.service";
 import { HrService } from "./hr.service";
 
 /** The five areas of Setup, one tab each. The tab is kept in the address (?tab=holiday) so a link can open it. */
@@ -416,9 +417,10 @@ export class HrSetupComponent implements OnInit, OnDestroy {
 }
 
 /** Asks before leaving Setup with edits not saved. */
-@Injectable({ providedIn: "root" })
+@Injectable()
 export class HrSetupLeaveGuard implements CanDeactivate<HrSetupComponent> {
-  canDeactivate(c: HrSetupComponent): boolean {
-    return !c.hasUnsaved || window.confirm("You have changes on this page that are not saved. Leave without saving them?");
+  constructor(private confirm: ConfirmService) {}
+  canDeactivate(c: HrSetupComponent): boolean | Observable<boolean> {
+    return !c.hasUnsaved || this.confirm.confirmLeave();
   }
 }

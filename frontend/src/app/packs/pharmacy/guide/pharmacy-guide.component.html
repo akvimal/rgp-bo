@@ -92,11 +92,10 @@
 
         <!-- scenarios -->
         <div *ngIf="current.scenarios" data-testid="guide-scenarios">
-          <details *ngFor="let s of current.scenarios" class="border rounded p-3 mb-2" data-testid="guide-scenario">
-            <summary class="fw-semibold">{{s.situation}}</summary>
+          <app-section *ngFor="let s of current.scenarios" [title]="s.situation" testid="guide-scenario">
             <ol class="mt-2 mb-1"><li *ngFor="let d of s.doThis">{{d}}</li></ol>
             <div class="small text-muted" *ngIf="s.why"><strong>Why:</strong> {{s.why}}</div>
-          </details>
+          </app-section>
         </div>
 
         <!-- concepts -->

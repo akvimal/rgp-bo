@@ -123,6 +123,7 @@
               <div class="small text-muted" *ngIf="approval.enabled && p.approved" data-testid="inv-approved-by">approved by {{p.approved_by}}</div></td>
             <td class="text-center"><span *ngIf="p.status === 'COMPLETE'" class="badge" [ngClass]="gstClass(p.gst_status)" data-testid="inv-gst">{{gstLabel(p.gst_status)}}</span></td>
             <td class="text-end text-nowrap">
+              <button class="btn btn-outline-secondary btn-sm py-0" type="button" (click)="openPeek(p.id)" title="View the amounts, items and payments" data-testid="inv-view"><i class="bi bi-eye"></i></button>
               <div class="d-flex flex-wrap gap-1 justify-content-end" style="min-width:8rem">
               <a class="btn btn-primary btn-sm py-0" data-testid="inv-add-invoice" *ngIf="p.awaiting" [routerLink]="['../edit', p.id]" title="The vendor's invoice has come: enter its number, date and total">Add invoice no.</a>
               <button class="btn btn-primary btn-sm py-0" data-testid="inv-pay" *ngIf="canPay(p)" (click)="openPay(p)" title="Record a payment">Pay</button>
@@ -273,3 +274,5 @@
   </div>
 </p-dialog>
 </div>
+
+<app-invoice-peek [invoice]="peekInvoice" [canPay]="!!peekInvoice && canPay(peekInvoice)" (closed)="closePeek()" (pay)="closePeek(); openPay($event)"></app-invoice-peek>

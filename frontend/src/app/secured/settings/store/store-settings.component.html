@@ -281,8 +281,7 @@
               <div class="form-text">0 asks on every bill.</div>
             </div>
           </div>
-          <details class="mt-3" data-testid="store-profile-advanced">
-            <summary class="small text-muted">Advanced</summary>
+          <app-section class="mt-3" title="Advanced" testid="store-profile-advanced">
             <div class="row g-3 mt-1">
             <div class="col-12 col-lg-6">
               <label class="form-label">Approvals in this store</label>
@@ -291,7 +290,7 @@
               </select>
             </div>
             </div>
-          </details>
+          </app-section>
           <div class="mt-3 d-flex align-items-center gap-3">
             <button class="btn btn-primary" type="button" [disabled]="profileSaving" data-testid="store-profile-save" (click)="saveProfile()">{{ profileSaving ? 'Saving...' : 'Save' }}</button>
             <span class="text-success small" *ngIf="profileMessage" data-testid="store-profile-message">{{ profileMessage }}</span>

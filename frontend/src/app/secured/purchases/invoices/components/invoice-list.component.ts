@@ -1,4 +1,6 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { Subscription } from "rxjs";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
 import { ActivatedRoute, Router } from "@angular/router";
 import { combineLatest } from "rxjs";
 import { InvoiceService } from "../invoices.service";
@@ -19,7 +21,7 @@ const COMM_CHANNELS = ["WhatsApp", "SMS", "Email", "Call", "Other"];
 @Component({
     templateUrl: 'invoice-list.component.html'
 })
-export class InvoiceListComponent implements OnInit {
+export class InvoiceListComponent implements OnInit, OnDestroy {
 
     readonly modes = MODES;
     readonly pageSizes = [10, 25, 50, 100];
@@ -87,11 +89,27 @@ export class InvoiceListComponent implements OnInit {
     holdReason = '';
     holdError = '';
 
-    constructor(private service: InvoiceService, private route: ActivatedRoute, private router: Router, private vendorsService: VendorsService) {}
+    /** the invoice open in the side panel, kept in the address (?peek=12) so Back closes it */
+    peekId: number | null = null;
+    private peekSub?: Subscription;
+    /** what the list is filtered by, so opening a panel (which only adds ?peek=) does not reload the page or send it back to page one */
+    private lastKey = '';
+
+    constructor(private service: InvoiceService, private route: ActivatedRoute, private router: Router, private vendorsService: VendorsService, private peekAddress: PeekAddressService) {}
+
+    /** the row of the open panel, from the page shown (an invoice on another page shows no panel) */
+    get peekInvoice(): any { return this.peekId ? this.invoices.find((i: any) => i.id === this.peekId) || null : null; }
+    openPeek(id: number) { this.peekAddress.open(id); }
+    closePeek() { this.peekAddress.close(); }
+    ngOnDestroy() { this.peekSub?.unsubscribe(); }
 
     ngOnInit() {
+        this.peekSub = this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null);
         this.loadApproval();
         combineLatest([this.route.url, this.route.queryParamMap]).subscribe(([segments, q]) => {
+            const key = `${segments?.[0]?.path}|${q.get('vendor')}|${q.get('view')}`;
+            if (key === this.lastKey) return;
+            this.lastKey = key;
             this.isOutstanding = segments?.[0]?.path === 'outstanding';
             const v = q.get('vendor');
             this.vendorId = v && /^[0-9]+$/.test(v) ? +v : null;

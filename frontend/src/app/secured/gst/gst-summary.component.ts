@@ -82,13 +82,12 @@ import { GstApiService } from "./gst-api.service";
             </tbody>
           </table>
 
-          <details class="mb-3" data-testid="gsm-buckets">
-            <summary class="small fw-semibold">B2B and B2C, in state and out of state</summary>
+          <app-section class="mb-3" title="B2B and B2C, in state and out of state" testid="gsm-buckets">
             <table class="table table-sm mt-2">
               <thead><tr><th>Buyer and place</th><th class="text-end">Rate</th><th class="text-end">Taxable</th><th class="text-end">CGST</th><th class="text-end">SGST</th><th class="text-end">IGST</th></tr></thead>
               <tbody><tr *ngFor="let b of rp.buckets"><td>{{b.buyer}}, {{b.place === 'INTER' ? 'out of state' : 'in state'}}</td><td class="text-end">{{b.rate}}%</td><td class="text-end">{{b.taxable | number:'1.2-2'}}</td><td class="text-end">{{b.cgst | number:'1.2-2'}}</td><td class="text-end">{{b.sgst | number:'1.2-2'}}</td><td class="text-end">{{b.igst | number:'1.2-2'}}</td></tr></tbody>
             </table>
-          </details>
+          </app-section>
 
           <div class="mb-3" *ngIf="rp.nil.length" data-testid="gsm-nil">
             <div class="small fw-semibold">Nil-rated, exempt and non-GST (the 0% supplies)</div>

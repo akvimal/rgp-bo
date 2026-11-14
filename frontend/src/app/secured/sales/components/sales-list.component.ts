@@ -1,5 +1,6 @@
 import { ShiftContextService } from "src/app/@core/shift-context.service";
 import { Component, HostListener, OnDestroy } from "@angular/core";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
 import { DateUtilService } from "../../date-util.service";
 import { Sale } from "../models/sale.model";
 import { canVoidBill, signedInUserId } from "../bill-void";
@@ -55,13 +56,15 @@ export class SalesListComponent implements OnDestroy {
       private operatorContext: OperatorContextService,
       private storeContext: StoreContextService,
       private auth: AuthService,
-      private shiftContext: ShiftContextService
+      private shiftContext: ShiftContextService,
+      private peekAddress: PeekAddressService
     ){
       this.canViewDigital = this.auth.isActionAuthorized('paymentrecon.view');
       this.canVerifyDigital = this.auth.isActionAuthorized('paymentrecon.verify');
     }
 
     ngOnInit(){
+      this.subs.add(this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null));
       this.date = this.dateService.getFormatDate(new Date());
       this.staffFromDate = this.date;
       this.staffToDate = this.date;
@@ -315,7 +318,13 @@ export class SalesListComponent implements OnDestroy {
       }
 
       /** the bill shown in the side panel, and the row whose "more" menu is open */
-      detailSale:any = null;
+      peekId:number|null = null;
+      /**
+       * The panel's bill is kept in the address (?peek=ID), so Back closes it and a link reopens it. Setting it opens or closes the panel; reading it finds the
+       * bill among those loaded (the list shows one day, so a link to a bill of another day shows no panel until that day is chosen).
+       */
+      get detailSale():any { return this.peekId ? this.sales.find((s:any) => s.id === this.peekId) || null : null; }
+      set detailSale(s:any) { if(s && s.id) this.peekAddress.open(s.id); else this.peekAddress.close(); }
       menuId:number|null = null;
 
       @HostListener('document:click')

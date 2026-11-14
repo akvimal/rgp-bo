@@ -8,7 +8,7 @@ import { SaleService } from "../sales.service";
 @Component({
   selector: "app-sale-details",
   template: `
-    <p-sidebar [visible]="!!sale" (visibleChange)="!$event && close()" position="right" [style]="{width: '34rem', maxWidth: '100vw'}" [baseZIndex]="1000" styleClass="sale-details">
+    <app-peek [open]="!!sale" (closed)="close()" testid="bill-peek">
       <div *ngIf="sale" data-testid="bill-details">
         <div class="d-flex align-items-start justify-content-between mb-2">
           <div>
@@ -82,7 +82,7 @@ import { SaleService } from "../sales.service";
           </div>
         </ng-container>
       </div>
-    </p-sidebar>
+    </app-peek>
 
     <p-dialog [header]="docname || 'Document'" [(visible)]="showDoc" [modal]="true" [style]="{ width: '60rem' }" [dismissableMask]="true" [baseZIndex]="2000">
       <app-document-viewer *ngIf="showDoc" [path]="docpath" [name]="docname"></app-document-viewer>

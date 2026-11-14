@@ -3,6 +3,7 @@ import { Component, OnInit } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { HrService } from "./hr.service";
 import { PERSON_NAME_MESSAGE, isPersonName } from "src/app/shared/input-rules";
+import { ConfirmService } from "src/app/shared/confirm.service";
 
 /** Staff list, profile and salary revisions. */
 @Component({ selector: "app-hr-staff", templateUrl: "./hr-staff.component.html" })
@@ -24,7 +25,7 @@ export class HrStaffComponent implements OnInit {
   revising = false;
   rev: any = { effective_from: "", reason: "", amounts: {} };
 
-  constructor(private hr: HrService, private route: ActivatedRoute, public auth: AuthService) {}
+  constructor(private hr: HrService, private route: ActivatedRoute, public auth: AuthService, private confirm: ConfirmService) {}
 
   /** how the person relates to the business; which of owner or director is offered follows how the business is registered */
   relationships: string[] = ["EMPLOYEE"];
@@ -182,9 +183,10 @@ export class HrStaffComponent implements OnInit {
 
   /** a record added by mistake; the server refuses once there is history */
   remove() {
-    if (!confirm(`Delete ${this.editing.name || this.editing.full_name}? This record was added by mistake and nothing else depends on it. It cannot be undone.`)) return;
     this.error = "";
-    this.hr.delete(`staff/${this.editing.id}`).subscribe(() => { this.back(); this.message = "Staff record deleted."; }, e => this.error = this.hr.msg(e));
+    this.confirm.confirmDelete(this.editing.name || this.editing.full_name, () => {
+      this.hr.delete(`staff/${this.editing.id}`).subscribe(() => { this.back(); this.message = "Staff record deleted."; }, e => this.error = this.hr.msg(e));
+    }, { entity: 'staff record', verb: 'Delete', consequence: 'This record was added by mistake and nothing else depends on it.' });
   }
 
   rejoin() {

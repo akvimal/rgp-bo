@@ -292,7 +292,8 @@ test.describe('Customers page @p1', () => {
     const row = page.locator('tbody tr', { hasText: shown.name });
     await expect(row).toHaveCount(1);
     await expect(row.getByTestId('cust-delete')).toHaveCount(0);                     // the list only views: delete lives on the customer page
-    await row.getByTestId('cust-view').click();
+    await row.getByTestId('cust-view').click();                                      // View opens the side panel; the full page is one more click
+    await page.getByTestId('cpeek-full').click();
     await expect(page.getByTestId('cdv-name')).toContainText(shown.name);
     await page.getByTestId('cdv-delete').click();
     await page.getByRole('button', { name: 'Delete', exact: true }).last().click();

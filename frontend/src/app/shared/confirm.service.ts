@@ -1,5 +1,6 @@
 import { Injectable } from "@angular/core";
 import { ConfirmationService } from "primeng/api";
+import { Observable } from "rxjs";
 
 interface ConfirmDeleteOptions {
     /** What is being removed, e.g. "vendor", "role". Defaults to "record". */
@@ -52,6 +53,28 @@ export class ConfirmService {
             rejectLabel: 'Cancel',
             rejectButtonStyleClass: 'p-button-text',
             accept: () => onConfirm(),
+        });
+    }
+
+    /**
+     * Asks before leaving with changes that are not saved, as a yes or no the router can wait for (a route guard returns it). The same dialog as every other
+     * confirmation, not the browser's.
+     */
+    confirmLeave(message = 'You have changes on this page that are not saved. Leave without saving them?'): Observable<boolean> {
+        return new Observable<boolean>((sub) => {
+            let answered = false;
+            const done = (v: boolean) => { if (answered) return; answered = true; sub.next(v); sub.complete(); };
+            this.confirmation.confirm({
+                header: 'Unsaved changes',
+                message: this.escape(message),
+                icon: 'pi pi-exclamation-triangle',
+                acceptLabel: 'Leave',
+                rejectLabel: 'Stay',
+                acceptButtonStyleClass: 'p-button-danger',
+                rejectButtonStyleClass: 'p-button-text',
+                accept: () => done(true),
+                reject: () => done(false),
+            });
         });
     }
 

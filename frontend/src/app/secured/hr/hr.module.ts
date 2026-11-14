@@ -36,6 +36,7 @@ const routes: Routes = [
 
 /** Mini HR for the Business Head: staff, salary, leave, attendance, KPI and payroll. */
 @NgModule({
+  providers: [HrSetupLeaveGuard],
   declarations: [HrShellComponent, HrStaffComponent, HrAttendanceComponent, HrLeaveComponent, HrKpiComponent, HrPayrollComponent, HrBonusComponent, HrSetupComponent, HrSidePanelComponent, HrPeopleComponent, HrRolesComponent, HrStartComponent, HrAssistantComponent, HrCoachingComponent],
   imports: [CommonModule, FormsModule, SharedModule, RouterModule.forChild(routes)],
 })

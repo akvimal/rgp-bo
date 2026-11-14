@@ -54,7 +54,7 @@
                 </ng-template>
                 <ng-template pTemplate="body" let-vendor>
                     <tr data-testid="vendor-row" [class.table-secondary]="vendor.status === 'DISABLED'">
-                        <td>{{vendor.name}}
+                        <td><a href="javascript:void(0)" class="text-reset text-decoration-none fw-semibold" (click)="openPeek(vendor.id)" data-testid="vendor-name-link">{{vendor.name}}</a>
                             <span *ngIf="vendor.status === 'BLOCKED'" class="badge bg-danger ms-1" data-testid="vendor-status-blocked">Blocked</span>
                             <span *ngIf="vendor.status === 'DISABLED'" class="badge bg-secondary ms-1" data-testid="vendor-status-disabled">Disabled</span>
                             <div class="small text-muted" *ngIf="vendor.legalname && vendor.legalname !== vendor.name">{{vendor.legalname}}</div>
@@ -101,17 +101,12 @@
                             <div class="small text-muted" *ngIf="vendor.stats?.lastpayment">paid {{vendor.stats.lastpayment | date:'dd MMM'}}</div>
                         </td>
                         <td class="text-center text-nowrap">
-                            <div class="grid-actions">
-                                <a [routerLink]="['/secure/purchases/invoices/list']" [queryParams]="{vendor: vendor.id}" title="View invoices" data-testid="vendor-view-invoices"><i class="bi bi-receipt text-secondary"></i></a>
-                                <a [routerLink]="['../edit', vendor.id]" title="Edit"><i class="bi bi-pencil-square text-primary"></i></a>
-                                <a *ngIf="vendor.status === 'ACTIVE'" (click)="openBlock(vendor)" title="Block: no new orders or invoices" data-testid="vendor-block"><i class="bi bi-slash-circle text-warning"></i></a>
-                                <a *ngIf="vendor.status === 'BLOCKED'" (click)="unblock(vendor)" title="Unblock" data-testid="vendor-unblock"><i class="bi bi-unlock text-success"></i></a>
-                                <a *ngIf="vendor.status !== 'DISABLED'" (click)="disable(vendor)" title="Disable (retire)" data-testid="vendor-disable"><i class="bi bi-trash text-danger"></i></a>
-                                <a *ngIf="vendor.status === 'DISABLED'" (click)="enable(vendor)" title="Enable again" data-testid="vendor-enable"><i class="bi bi-arrow-counterclockwise text-success"></i></a>
-                            </div>
+                            <app-row-actions testid="vendor" [actions]="actionsOf(vendor)" (action)="act($event, vendor)"></app-row-actions>
                         </td>
                     </tr>
                 </ng-template>
             </p-table>
         </div>
     </div>
+
+<app-vendor-peek [vendor]="peekVendor" (closed)="closePeek()"></app-vendor-peek>

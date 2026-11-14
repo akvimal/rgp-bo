@@ -21,6 +21,7 @@ import { CustomerWorklistComponent } from "./components/customer-worklist.compon
 import { CustomerRelationshipComponent } from "./components/customer-relationship.component";
 import { CustomerPrivatePageComponent } from "./components/customer-private-page.component";
 import { CustomerDetailComponent } from "./components/customer-detail.component";
+import { CustomerPeekComponent } from "./components/customer-peek.component";
 import { DocumentsModule } from "src/app/secured/documents/documents.module";
 import { PharmacyUiModule } from "src/app/packs/pharmacy/pharmacy-ui.module";
 
@@ -39,6 +40,7 @@ const routes: Routes = [
     declarations: [
       CustomerFormComponent,
       CustomersComponent,
+      CustomerPeekComponent,
       CustomerOrdersComponent,
       CustomerDocumentsComponent,
       CustomerViewComponent,

@@ -1,12 +1,15 @@
-import { Component } from "@angular/core";
+import { Component, OnDestroy } from "@angular/core";
+import { Subscription } from "rxjs";
+import { PeekAddressService } from "src/app/shared/peek-address.service";
 import { VendorsService } from "../vendors.service";
 import { ConfirmService } from "src/app/shared/confirm.service";
 import { stateName } from "../gst-util";
+import { RowAction } from "src/app/shared/components/row-actions.component";
 
 @Component({
     templateUrl: 'vendor-list.component.html'
 })
-export class VendorListComponent {
+export class VendorListComponent implements OnDestroy {
 
     vendors:any;
     expiring:any[] = [];
@@ -30,11 +33,52 @@ export class VendorListComponent {
         WHOLESALE_20B_21B: 'wholesale licence', RETAIL_20_21: 'retail licence', MANUFACTURING: 'manufacturing licence', FSSAI: 'FSSAI', OTHER: 'licence',
     };
 
-    constructor(private service:VendorsService, private confirm:ConfirmService){}
+    /** the vendor open in the side panel, kept in the address (?peek=12) so Back closes it */
+    peekId: number | null = null;
+    private peekSub?: Subscription;
+
+    constructor(private service:VendorsService, private confirm:ConfirmService, private peekAddress: PeekAddressService){}
 
     ngOnInit(){
+        this.peekSub = this.peekAddress.peek$.subscribe(v => this.peekId = v && /^\d+$/.test(v) ? Number(v) : null);
         this.fetchList()
     }
+    ngOnDestroy(){ this.peekSub?.unsubscribe(); }
+
+    /** the row of the open panel, from the list as it stands (a vendor not in this view shows no panel) */
+    get peekVendor(): any { return this.peekId && Array.isArray(this.vendors) ? this.vendors.find((v:any) => v.id === this.peekId) || null : null; }
+    openPeek(id:number){ this.peekAddress.open(id); }
+
+    /** the row's actions in the standard order: view, edit, then the rest with the destructive one last */
+    private actionCache = new Map<string, RowAction[]>();
+    actionsOf(vendor:any): RowAction[] {
+        // the same array for the same vendor and status, so the template does not see a new value on every check
+        const key = `${vendor.id}|${vendor.status}`;
+        const hit = this.actionCache.get(key);
+        if(hit) return hit;
+        const made = this.buildActions(vendor);
+        this.actionCache.set(key, made);
+        return made;
+    }
+    private buildActions(vendor:any): RowAction[] {
+        return [
+            { key: 'view', label: 'View' },
+            { key: 'edit', label: 'Edit', link: ['../edit', vendor.id] },
+            { key: 'invoices', label: 'Invoices', icon: 'bi-receipt', link: ['/secure/purchases/invoices/list'], queryParams: { vendor: vendor.id } },
+            { key: 'block', label: 'Block: no new orders or invoices', icon: 'bi-slash-circle', hidden: vendor.status !== 'ACTIVE' },
+            { key: 'unblock', label: 'Unblock', icon: 'bi-unlock', hidden: vendor.status !== 'BLOCKED' },
+            { key: 'enable', label: 'Enable again', icon: 'bi-arrow-counterclockwise', hidden: vendor.status !== 'DISABLED' },
+            { key: 'disable', label: 'Disable (retire)', danger: true, hidden: vendor.status === 'DISABLED' },
+        ];
+    }
+    act(key:string, vendor:any){
+        if(key === 'view') this.openPeek(vendor.id);
+        else if(key === 'block') this.openBlock(vendor);
+        else if(key === 'unblock') this.unblock(vendor);
+        else if(key === 'enable') this.enable(vendor);
+        else if(key === 'disable') this.disable(vendor);
+    }
+    closePeek(){ this.peekAddress.close(); }
 
     pick(view:string){
         this.view = view;

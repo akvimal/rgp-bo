@@ -46,7 +46,7 @@ test('GUIDE-4 the counter situations open to steps to follow, and the words chap
   const { page } = await app.open(MGR, '/secure/pharmacy-guide?c=counter');
   const s = page.getByTestId('guide-scenario').first();
   await expect(s).toContainText('Schedule H medicine and has no prescription');
-  await s.locator('summary').click();
+  await s.getByTestId('guide-scenario-toggle').click();
   await expect(s).toContainText('not allowed to sell it without one');
 
   await page.getByTestId('guide-nav-concepts').click();

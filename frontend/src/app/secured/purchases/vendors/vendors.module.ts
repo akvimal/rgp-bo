@@ -6,6 +6,7 @@ import { AuthGuard } from "src/app/@core/auth/auth.guard";
 import { SharedModule } from "src/app/shared/shared.module";
 import { VendorFormComponent } from "./components/vendor-form.component";
 import { VendorListComponent } from "./components/vendor-list.component";
+import { VendorPeekComponent } from "./components/vendor-peek.component";
 import { VendorsComponent } from "./components/vendors.component";
 import {TableModule} from 'primeng/table';
 
@@ -22,6 +23,7 @@ const routes: Routes = [
     declarations: [
         VendorsComponent,
         VendorListComponent,
+        VendorPeekComponent,
         VendorFormComponent
     ],
     imports: [

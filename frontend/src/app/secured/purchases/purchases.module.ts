@@ -10,6 +10,7 @@ import { InvoicePaymentComponent } from "./invoices/components/invoice-payment.c
 import { InvoiceReturnsComponent } from "./invoices/components/invoice-returns.component";
 import { VendorReturnsComponent } from "./invoices/components/vendor-returns.component";
 import { InvoiceListComponent } from "./invoices/components/invoice-list.component";
+import { InvoicePeekComponent } from "./invoices/components/invoice-peek.component";
 import { PayablesComponent } from "./invoices/components/payables.component";
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import {DialogModule} from 'primeng/dialog';
@@ -86,6 +87,7 @@ const routes: Routes = [
       ProductStockHistoryComponent,
       ProductStockSummaryComponent,
       PurchaseHistoryComponent,
+      InvoicePeekComponent,
       InvoiceListComponent,
       PayablesComponent,
       GstReconciliationComponent,

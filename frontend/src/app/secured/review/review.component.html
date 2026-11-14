@@ -99,7 +99,7 @@
     </p>
   </ng-container>
 
-  <details id="review-discounts" class="mb-3" [open]="data.discounts.length > 0" data-testid="review-list-discounts"><summary class="fw-semibold text-primary">Bills with a discount <span class="badge bg-secondary ms-1">{{data.discounts.length}}</span></summary>
+  <app-section id="review-discounts" class="mb-3" title="Bills with a discount" [count]="data.discounts.length" [open]="data.discounts.length > 0" testid="review-list-discounts">
   <div class="table-responsive">
     <table class="table table-sm align-middle" data-testid="review-discounts">
       <thead><tr><th>Bill</th><th>Date</th><th>Billed by</th><th class="text-end">Discount</th><th class="text-end">% of bill</th><th class="text-end">Bill total</th></tr></thead>
@@ -113,8 +113,8 @@
     </table>
   </div>
 
-  </details>
-  <details id="review-below" class="mb-3" [open]="data.below.length > 0" data-testid="review-list-below"><summary class="fw-semibold text-primary">Items billed below the list price <span class="badge bg-secondary ms-1">{{data.below.length}}</span></summary>
+  </app-section>
+  <app-section id="review-below" class="mb-3" title="Items billed below the list price" [count]="data.below.length" [open]="data.below.length > 0" testid="review-list-below">
   <p class="small text-muted mb-1">Price per pack before GST against the price list on the day, {{data.limits.belowList}}% or more below.</p>
   <div class="table-responsive">
     <table class="table table-sm align-middle" data-testid="review-below">
@@ -129,8 +129,8 @@
     </table>
   </div>
 
-  </details>
-  <details id="review-voids" class="mb-3" [open]="data.voids.length > 0" data-testid="review-list-voids"><summary class="fw-semibold text-primary">Held bills discarded <span class="badge bg-secondary ms-1">{{data.voids.length}}</span></summary>
+  </app-section>
+  <app-section id="review-voids" class="mb-3" title="Held bills discarded" [count]="data.voids.length" [open]="data.voids.length > 0" testid="review-list-voids">
   <p class="small text-muted mb-1">A bill that was started, put on hold and thrown away. A finished bill cannot be discarded; it can only be edited, below.</p>
   <div class="table-responsive">
     <table class="table table-sm align-middle" data-testid="review-voids">
@@ -145,8 +145,8 @@
     </table>
   </div>
 
-  </details>
-  <details id="review-edits" class="mb-3" [open]="data.edits.length > 0" data-testid="review-list-edits"><summary class="fw-semibold text-primary">Bills edited after billing <span class="badge bg-secondary ms-1">{{data.edits.length}}</span></summary>
+  </app-section>
+  <app-section id="review-edits" class="mb-3" title="Bills edited after billing" [count]="data.edits.length" [open]="data.edits.length > 0" testid="review-list-edits">
   <div class="table-responsive">
     <table class="table table-sm align-middle" data-testid="review-edits">
       <thead><tr><th>Edited</th><th>Bill</th><th>Billed</th><th>What changed</th><th class="text-end">Total now</th><th>Edited by</th></tr></thead>
@@ -160,8 +160,8 @@
     </table>
   </div>
 
-  </details>
-  <details id="review-returns" class="mb-3" [open]="data.returns.length > 0" data-testid="review-list-returns"><summary class="fw-semibold text-primary">Returns <span class="badge bg-secondary ms-1">{{data.returns.length}}</span></summary>
+  </app-section>
+  <app-section id="review-returns" class="mb-3" title="Returns" [count]="data.returns.length" [open]="data.returns.length > 0" testid="review-list-returns">
   <div class="small text-muted mb-1" *ngIf="data.returns.length" data-testid="review-return-groups">
     By reason: <span *ngFor="let g of data.returnsByReason; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
     By person: <span *ngFor="let g of data.returnsByPerson; let last = last">{{g.name}} {{g.count}}{{last ? '' : ', '}}</span>.
@@ -178,7 +178,7 @@
       </tbody>
     </table>
   </div>
-  </details>
+  </app-section>
   <p class="small text-muted" *ngIf="data.discounts.length >= data.limits.listLimit || data.below.length >= data.limits.listLimit || data.voids.length >= data.limits.listLimit || data.edits.length >= data.limits.listLimit || data.returns.length >= data.limits.listLimit">
     A list is cut at {{data.limits.listLimit}} rows.
   </p>
