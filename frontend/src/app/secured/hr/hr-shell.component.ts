@@ -3,8 +3,8 @@ import { Component } from "@angular/core";
 @Component({
   selector: "app-hr-shell",
   template: `
-    <div class="pagetitle"><h1>HR</h1></div>
-    <ul class="nav nav-tabs mb-3">
+    <div class="page-head"><h1>HR</h1>
+    <ul class="nav nav-tabs">
       <li class="nav-item"><a class="nav-link" routerLink="staff" routerLinkActive="active" data-testid="hr-tab-staff">Staff</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="attendance" routerLinkActive="active" data-testid="hr-tab-attendance">Attendance</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="leave" routerLinkActive="active" data-testid="hr-tab-leave">Leave</a></li>
@@ -15,6 +15,7 @@ import { Component } from "@angular/core";
       <li class="nav-item"><a class="nav-link" routerLink="assistant" routerLinkActive="active" data-testid="hr-tab-assistant">Role assistant</a></li>
       <li class="nav-item"><a class="nav-link" routerLink="setup" routerLinkActive="active" data-testid="hr-tab-setup">Setup</a></li>
     </ul>
+    </div>
     <router-outlet></router-outlet>
   `
 })

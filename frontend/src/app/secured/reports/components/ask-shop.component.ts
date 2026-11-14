@@ -9,8 +9,7 @@ import { InsightsService } from "src/app/shared/insights.service";
   selector: "app2-ask-shop",
   template: `
     <div class="form-compact">
-      <div class="pagetitle"><h1>Reports</h1></div>
-      <app2-reports-tabs></app2-reports-tabs>
+      <div class="page-head"><h1>Reports</h1><app2-reports-tabs></app2-reports-tabs></div>
 
       <div class="card"><div class="card-body">
         <h5 class="card-title mb-1">Ask the shop</h5>

@@ -4,10 +4,10 @@ import { filter } from "rxjs/operators";
 
 @Component({
     template: `
-    <div class="pagetitle">
-        <h1 *ngIf="showPurchaseHeader">Purchase</h1>
+    <div class="page-head" *ngIf="showPurchaseHeader">
+        <h1>Purchase</h1>
+        <app-purchase-header></app-purchase-header>
     </div>
-    <app-purchase-header *ngIf="showPurchaseHeader"></app-purchase-header>
     <router-outlet></router-outlet>
     `
 })

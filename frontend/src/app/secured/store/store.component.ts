@@ -8,9 +8,30 @@ import { StockService } from "./stock/stock.service";
 
 @Component({
     template: `
-        <div class="pagetitle d-flex justify-content-between align-items-center">
+        <div class="page-head">
             <h1>Store</h1>
-            <div class="d-flex">
+            <nav class="page-menu navbar navbar-light bg-light non-print m-0 p-0">
+                <ul class="nav">
+                    <li class="nav-item" *isNavAuth>
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock">Stock</a>
+                    </li>
+                    <li class="nav-item" *isNavAuth>
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="shifts">Shifts</a>
+                    </li>
+                    <ng-container *ngIf="transfersOn">
+                        <li class="nav-item" *isNavAuth>
+                            <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="transfers" data-testid="store-tab-transfers">Transfers</a>
+                        </li>
+                    </ng-container>
+                    <li class="nav-item" *isNavAuth>
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
+                    </li>
+                    <li class="nav-item" *ngIf="vaultOn">
+                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="vault" data-testid="store-tab-vault">Vault</a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="page-head-actions">
                 <div class="tile expiry-tile" *ngIf="nearExpiryCount > 0" (click)="goToExpiry()" role="button">
                     <i class="bi bi-hourglass-split text-danger"></i>
                     {{nearExpiryCount}} item{{nearExpiryCount === 1 ? '' : 's'}} expiring within {{expiryDays}} days
@@ -21,31 +42,10 @@ import { StockService } from "./stock/stock.service";
                 </div>
             </div>
         </div>
-        <nav class="page-menu navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
-            <ul class="nav">
-                <li class="nav-item" *isNavAuth>
-                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="stock">Stock</a>
-                </li>
-                <li class="nav-item" *isNavAuth>
-                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="shifts">Shifts</a>
-                </li>
-                <ng-container *ngIf="transfersOn">
-                    <li class="nav-item" *isNavAuth>
-                        <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="transfers" data-testid="store-tab-transfers">Transfers</a>
-                    </li>
-                </ng-container>
-                <li class="nav-item" *isNavAuth>
-                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="cash">Cash</a>
-                </li>
-                <li class="nav-item" *ngIf="vaultOn">
-                    <a class="nav-link" [routerLinkActive]="['is-active']" routerLink="vault" data-testid="store-tab-vault">Vault</a>
-                </li>
-            </ul>
-        </nav>
         <router-outlet></router-outlet>
 `,
     styles: [`
-        .tile { cursor:pointer; font-size:.95em; padding:.35em .75em; border-radius:.35em; margin-left:.5em; }
+        .tile { cursor:pointer; font-size:.85em; padding:.2em .6em; border-radius:.35em; }
         .reorder-tile { border:1px solid #f0c36d; background:#fff8e6; }
         .reorder-tile:hover { background:#fdedc8; }
         .expiry-tile { border:1px solid #f0a3a3; background:#fff0f0; }

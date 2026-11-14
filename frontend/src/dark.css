@@ -32,7 +32,7 @@ html[data-theme="dark"] {
 html[data-theme="dark"] body { background: var(--dk-bg); color: var(--rgp-text); }
 html[data-theme="dark"] hr { border-color: var(--rgp-line); opacity: 1; }
 html[data-theme="dark"] h1, html[data-theme="dark"] h2, html[data-theme="dark"] h3, html[data-theme="dark"] h4, html[data-theme="dark"] h5, html[data-theme="dark"] h6,
-html[data-theme="dark"] .pagetitle h1, html[data-theme="dark"] .breadcrumb a { color: var(--rgp-navy); }
+html[data-theme="dark"] .pagetitle h1, html[data-theme="dark"] .page-head h1, html[data-theme="dark"] .breadcrumb a { color: var(--rgp-navy); }
 html[data-theme="dark"] code { color: #f0a6c8; }
 
 /* ---------------------------------------------------------------- frame: header, sidebar */

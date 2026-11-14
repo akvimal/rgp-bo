@@ -4,8 +4,8 @@ import { AuthService } from "../../@core/auth/auth.service";
 @Component({
   selector: "app-quality-shell",
   template: `
-    <div class="pagetitle"><h1>{{title}}</h1></div>
-    <ul class="nav nav-tabs mb-3">
+    <div class="page-head"><h1>{{title}}</h1>
+    <ul class="nav nav-tabs">
       <li class="nav-item" *isAuth="'grievances.view'">
         <a class="nav-link" routerLink="grievances" routerLinkActive="active" data-testid="tab-grievances">Grievances</a>
       </li>
@@ -25,6 +25,7 @@ import { AuthService } from "../../@core/auth/auth.service";
         <a class="nav-link" routerLink="audit" routerLinkActive="active" data-testid="tab-audit">Audit log</a>
       </li>
     </ul>
+    </div>
     <router-outlet></router-outlet>
   `
 })

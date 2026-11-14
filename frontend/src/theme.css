@@ -52,13 +52,38 @@ h1, h2, h3, h4, h5, h6,
 }
 
 #main h1, .pagetitle h1 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  margin: 0 0 .5rem;
+  margin: 0 0 .25rem;
   line-height: 1.25;
 }
 
-.pagetitle { margin-bottom: .75rem; }
+.pagetitle { margin-bottom: .5rem; }
+/* the page starts closer to the top bar: every page gives the room back to its content */
+#main { padding-top: .75rem !important; }
+
+/* ------------------------------------------------------------------ the page head
+   One row for a page: the title on the left, the page's tabs beside it, its actions on the right, one rule under it all. A page with
+   no tabs uses the same row (title and actions). Put tabs inside it as a nav (nav.page-menu, ul.nav-tabs); a quick status or a
+   selector goes in .page-head-actions. It wraps on a narrow screen: the title first, the tabs under it, scrolling sideways if long. */
+.page-head {
+  display: flex; flex-wrap: wrap; align-items: flex-end; column-gap: 1.5rem;
+  border-bottom: 1px solid var(--rgp-line); margin: 0 0 .75rem; min-height: 2.6rem;
+}
+.page-head > h1 { margin: 0; padding: .4rem 0; font-size: 1.25rem; white-space: nowrap; align-self: center; }
+.page-head > nav, .page-head > ul.nav, .page-head > app-purchase-header, .page-head > app2-reports-tabs { flex: 0 1 auto; min-width: 0; margin: 0 !important; border: 0 !important; display: block; }
+.page-head nav.navbar, .page-head nav.navbar.bg-light, .page-head nav.page-menu { border: 0 !important; margin: 0 !important; padding: 0 !important; }
+.page-head ul.nav { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; border: 0 !important; margin: 0 !important; scrollbar-width: none; }
+.page-head ul.nav::-webkit-scrollbar { display: none; }
+.page-head .nav-link, .page-head .page-menu a { white-space: nowrap; padding: .5rem .85rem; }
+.page-head > .page-head-actions { margin-left: auto; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; align-self: center; padding: .2rem 0; }
+@media (max-width: 575px) {
+  .page-head { column-gap: 0; }
+  .page-head > nav, .page-head > ul.nav, .page-head > app-purchase-header, .page-head > app2-reports-tabs { flex: 1 1 100%; }
+}
+/* a second tab row inside a page (for example the Stock sub-tabs under Store): smaller, so it reads as part of the page, not a second header */
+.sub-tabs.navbar, nav.sub-tabs { margin-bottom: .6rem !important; }
+.sub-tabs .nav-link { font-size: .85rem; padding: .35rem .75rem; }
 h4 { font-size: 1.2rem; }
 h5, .card-title { font-size: 1.05rem; }
 h6 { font-size: .95rem; }
@@ -70,9 +95,9 @@ small, .small { font-size: .8rem; }
 
 /* ------------------------------------------------------------------ page header and toolbar */
 /* title on the left, actions on the right (app-page-header) */
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .75rem; flex-wrap: wrap; }
+.page-header { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: .5rem; flex-wrap: wrap; }
 .page-header h1 { margin: 0; }
-.page-header .page-subtitle { margin: .15rem 0 0; color: var(--rgp-muted); font-size: .85rem; }
+.page-header .page-subtitle { margin: 0; color: var(--rgp-muted); font-size: .85rem; }
 .page-header-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .page-header-actions:empty { display: none; }
 .page-header-actions [actions] { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }

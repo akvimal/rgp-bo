@@ -6,8 +6,7 @@ import { InsightsService } from "src/app/shared/insights.service";
   selector: "app2-weekly-summary",
   template: `
     <div class="form-compact">
-      <div class="pagetitle"><h1>Reports</h1></div>
-      <app2-reports-tabs></app2-reports-tabs>
+      <div class="page-head"><h1>Reports</h1><app2-reports-tabs></app2-reports-tabs></div>
 
       <div class="alert alert-light border py-2 small" *ngIf="error" data-testid="ws-error">{{error}}</div>
 

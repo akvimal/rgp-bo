@@ -1,18 +1,6 @@
-<div class="pagetitle d-flex justify-content-between align-items-center">
+<div class="page-head">
   <h1>Sales</h1>
-  <div class="d-flex align-items-center gap-2">
-    <label class="small text-muted mb-0" for="sale-staff">Serving</label>
-    <strong class="small" *ngIf="selfOnly" data-testid="sale-self-operator">{{ selectedOperatorName || 'You' }}</strong>
-    <select id="sale-staff" class="form-select form-select-sm" style="width:auto" *ngIf="!selfOnly"
-      [class.is-invalid]="required && selectedOperatorId === null"
-      (change)="changeOperator($event)" data-testid="sale-operator"
-      aria-label="Who is serving">
-      <option value="" [selected]="selectedOperatorId === null">Select who is serving</option>
-      <option *ngFor="let op of operators" [value]="op.id" [selected]="op.id === selectedOperatorId">{{op.fullname || op.email}}</option>
-    </select>
-  </div>
-</div>
-<nav class="navbar navbar-light bg-light justify-content-between non-print m-0 p-0">
+  <nav class="navbar navbar-light bg-light non-print m-0 p-0">
     <ul class="nav page-menu">
       <li class="nav-item">
         <a class="nav-link" [routerLinkActive]="['is-active']" [routerLink]="['/secure/sales/pos']">POS</a>
@@ -28,3 +16,15 @@
         </li>
       </ul>
   </nav>
+  <div class="page-head-actions">
+    <label class="small text-muted mb-0" for="sale-staff">Serving</label>
+    <strong class="small" *ngIf="selfOnly" data-testid="sale-self-operator">{{ selectedOperatorName || 'You' }}</strong>
+    <select id="sale-staff" class="form-select form-select-sm" style="width:auto" *ngIf="!selfOnly"
+      [class.is-invalid]="required && selectedOperatorId === null"
+      (change)="changeOperator($event)" data-testid="sale-operator"
+      aria-label="Who is serving">
+      <option value="" [selected]="selectedOperatorId === null">Select who is serving</option>
+      <option *ngFor="let op of operators" [value]="op.id" [selected]="op.id === selectedOperatorId">{{op.fullname || op.email}}</option>
+    </select>
+  </div>
+</div>
