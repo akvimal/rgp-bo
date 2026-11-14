@@ -52,6 +52,16 @@ export class SaleService {
     }
 
     /** void a completed bill rung up by mistake, during its shift */
+    /** what the correction panel needs for a completed bill (and why it may not be corrected, when so) */
+    correctionInfo(id:number){
+        return this.http.get<any>(`${this.apiurl}/${id}/correction`);
+    }
+
+    /** without ack: the changes and warnings only; with ack and a reason: the correction is saved */
+    correctBill(id:number, body:any){
+        return this.http.put<any>(`${this.apiurl}/${id}/correction`, body);
+    }
+
     voidBill(id:number, reason:string){
         return this.http.post<any>(`${this.apiurl}/${id}/void`, { reason });
     }

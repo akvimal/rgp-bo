@@ -24,6 +24,7 @@ import { SaleHooks } from "src/core/sale-hooks/sale-hooks";
 import { WhatsAppService } from "../whatsapp/whatsapp.service";
 
 import { isManagerRole, NOT_A_PERSON } from 'src/core/roles';
+import { correctionProblem } from './sale-correction';
 @ApiTags('Sales')
 @Controller('sales')
 @ApiBearerAuth()
@@ -73,6 +74,11 @@ export class SaleController {
         if (profile && !profile.operatorrequired) return;
         const asked = Number(sale?.actinguserid) || 0;
         if (!asked || asked === currentUser.id) throw new BadRequestException('Choose who is serving before completing the bill.');
+        await this.assertWorksAt(asked, storeId);
+      }
+
+      /** the person named as serving must be active and work at the store (the business head and owner-operator work at every store) */
+      private async assertWorksAt(asked: number, storeId: number | null): Promise<void> {
         const [who] = await this.manager.query(
           `select r.name from app_user u join app_role r on r.id = u.role_id
             where u.id = $1 and u.active and not u.archive
@@ -378,6 +384,60 @@ export class SaleController {
       const result = await this.saleService.voidSale(id, body?.reason, currentUser, true, true);
       await this.audit.record({ userId: currentUser.id, action: 'sale.force_voided', entityType: 'sale', entityId: +id,
         summary: `Bill ${result.billno ?? id} force-voided: ${`${body?.reason}`.trim()}`, details: { reason: `${body?.reason}`.trim(), cashreversed: result.cashreversed } });
+      return result;
+    }
+
+    private async canVoidAny(currentUser: any): Promise<boolean> {
+      const [role] = await this.manager.query(
+        `select exists (select 1 from app_role r, json_array_elements(r.permissions) e, json_array_elements(e->'policies') p
+                         where r.id = $1 and e->>'resource' = 'sales' and p->>'action' = 'void') as can`, [currentUser.roleid]);
+      return !!role?.can;
+    }
+
+    /** what a correction screen needs: the bill's payment, who served, the prescription detail, who may be named, and whether it may be corrected now */
+    @Get(':id/correction')
+    async correctionInfo(@Param('id') id: string, @User() currentUser: any) {
+      const [s] = await this.manager.query(
+        `select s.id, s.status, s.shift_id, s.store_id, s.bill_no, s.gst_invoice_no, s.total::float8 as total, s.cash_amount::float8 as cash, s.digi_amount::float8 as digi, s.digi_method, s.digi_refno,
+                s.acting_user_id, s.created_by, s.more_props, sh.status as shift_status
+           from sale s left join store_shifts sh on sh.id = s.shift_id where s.id = $1`, [+id]);
+      if (!s) throw new NotFoundException('Bill not found.');
+      const [{ n: returns }] = await this.manager.query(`select count(*)::int as n from sale_return_item sri join sale_item si on si.id = sri.sale_item_id where si.sale_id = $1`, [+id]);
+      const canAny = await this.canVoidAny(currentUser);
+      const problem = correctionProblem({
+        status: s.status, shiftId: s.shift_id ? +s.shift_id : null, shiftStatus: s.shift_status, returns,
+        isOwn: [s.created_by, s.acting_user_id].some((u: any) => u && +u === +currentUser.id), canCorrectAny: canAny,
+      });
+      const servers = await this.manager.query(
+        `select u.id, u.full_name as fullname from app_user u join app_role r on r.id = u.role_id
+          where u.active and not u.archive and r.name <> all($2::text[])
+            and (r.name in ('Business Head', 'Owner-operator') or exists (select 1 from user_stores us where us.user_id = u.id and us.store_id = $1 and us.active and not us.archive))
+          order by u.full_name`, [s.store_id, NOT_A_PERSON]);
+      const kept = typeof s.more_props === 'string' ? JSON.parse(s.more_props || '{}') : (s.more_props || {});
+      const scheduled = await this.manager.query(
+        `select si.id, p.title, upper(p.more_props->>'schedule') as schedule from sale_item si join product p on p.id = si.product_id
+          where si.sale_id = $1 and si.status = 'Complete' and si.active and not si.archive and upper(p.more_props->>'schedule') in ('H', 'H1', 'X')`, [+id]);
+      return {
+        problem, billno: s.bill_no, total: s.total, cash: s.cash, digital: s.digi, digimethod: s.digi_method, digirefno: s.digi_refno,
+        servedby: s.acting_user_id ? +s.acting_user_id : null, servers, taxinvoice: !!s.gst_invoice_no,
+        scheduledetail: kept.scheduledetail ?? null, documents: kept.documents ?? [], scheduled: scheduled.map((x: any) => ({ id: +x.id, title: x.title, more_props: { schedule: x.schedule } })),
+      };
+    }
+
+    /**
+     * Correct a completed bill's payment, who served and prescription detail in its open shift: { cashamt, digiamt, digimethod, digirefno, actinguserid, scheduledetail, documents, reason, ack }.
+     * Without ack: returns the changes and the warnings and saves nothing. With ack and a reason: saves and audits.
+     */
+    @Put(':id/correction')
+    async correctBill(@Param('id') id: string, @Body() body: any, @User() currentUser: any) {
+      const [s] = await this.manager.query(`select store_id from sale where id = $1`, [+id]);
+      if (!s) throw new NotFoundException('Bill not found.');
+      if (body?.actinguserid) await this.assertWorksAt(Number(body.actinguserid), s.store_id ? +s.store_id : null);
+      const result = await this.saleService.correctSale(id, body, currentUser, await this.canVoidAny(currentUser), body?.ack === true);
+      if (result.saved) {
+        await this.audit.record({ userId: currentUser.id, action: 'sale.details_corrected', entityType: 'sale', entityId: +id,
+          summary: `Bill ${result.billno ?? id} corrected (${result.changes.join('; ')}): ${result.reason}`, details: { reason: result.reason, changes: result.changes } });
+      }
       return result;
     }
 

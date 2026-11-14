@@ -12,6 +12,8 @@ import { loadStoreProfile } from "../store/store-profile";
 import { returnRules } from "./return-rule";
 import { BatchMrp, overMrp, overMrpMessage } from "./mrp-guard";
 import { voidProblem, voidReasonProblem } from "./void-rule";
+import { cashAdjustment, changesOf, correctionProblem, correctionWarnings, paymentProblem, reasonProblem, Snapshot } from "./sale-correction";
+import { checkDigitalPayment } from "./digital-payment";
 import { staleGst, staleGstMessage, CurrentGst } from "./gst-guard";
 import { Repository } from "typeorm";
 import { CreateSaleItemDto } from "./dto/create-saleitem.dto";
@@ -823,6 +825,78 @@ export class SaleService {
         });
     } 
     
+    /**
+     * Corrects how a completed bill was paid (cash / digital), who served and its prescription detail, in the shift it was rung in. Lines and total never change.
+     * Without `ack` nothing is saved: the changes and the warnings to show are returned. With it, the change is made in one transaction: the bill, a cash line
+     * for the difference, the drug-register lines (written again), and a record of what was changed and why.
+     */
+    async correctSale(id: number | string, body: any, user: { id: number }, canCorrectAny: boolean, ack: boolean) {
+        const why = reasonProblem(body?.reason);
+        if (ack && why) throw new BadRequestException(why);
+        return this.manager.transaction(async (tx) => {
+            const [s] = await tx.query(
+                `select s.id, s.status, s.shift_id, s.store_id, s.bill_no, s.bill_date, s.customer_id, s.gst_invoice_no, s.cash_amount::float8 as cash, s.digi_amount::float8 as digi,
+                        s.digi_method, s.digi_refno, s.acting_user_id, s.created_by, s.more_props, sh.status as shift_status
+                   from sale s left join store_shifts sh on sh.id = s.shift_id where s.id = $1 for update of s`, [+id]);
+            if (!s) throw new BadRequestException('Bill not found.');
+            const [{ n: returns }] = await tx.query(`select count(*)::int as n from sale_return_item sri join sale_item si on si.id = sri.sale_item_id where si.sale_id = $1`, [+id]);
+            const problem = correctionProblem({
+                status: s.status, shiftId: s.shift_id ? +s.shift_id : null, shiftStatus: s.shift_status, returns,
+                isOwn: [s.created_by, s.acting_user_id].some((u: any) => u && +u === +user.id), canCorrectAny,
+            });
+            if (problem) throw new BadRequestException(problem);
+
+            const before: Snapshot = { cash: +s.cash || 0, digital: +s.digi || 0, method: s.digi_method || null, refno: s.digi_refno || null, servedBy: s.acting_user_id ? +s.acting_user_id : null };
+            const asked = (k: string, fallback: any) => (body?.[k] === undefined ? fallback : body[k]);
+            const cash = Number(asked('cashamt', before.cash)), digital = Number(asked('digiamt', before.digital));
+            const payProblem = paymentProblem({ cash: before.cash, digital: before.digital }, { cash, digital, method: asked('digimethod', before.method) });
+            if (payProblem) throw new BadRequestException(payProblem);
+            const none = { digimethod: null as string | null, digirefno: null as string | null, digiprovider: null as string | null };
+            const digi = digital > 0 ? (await checkDigitalPayment(tx, { status: 'COMPLETE', digiamt: digital, digimethod: asked('digimethod', before.method), digirefno: asked('digirefno', before.refno) })) ?? none : none;
+            const servedBy = body?.actinguserid === undefined ? before.servedBy : (Number(body.actinguserid) || null);
+            const kept = typeof s.more_props === 'string' ? JSON.parse(s.more_props || '{}') : (s.more_props || {});
+            const rxBefore = JSON.stringify(kept.scheduledetail ?? null);
+            const newDetail = body?.scheduledetail === undefined ? undefined : body.scheduledetail;
+            const rxAfter = newDetail === undefined ? rxBefore : JSON.stringify(newDetail ?? null);
+            const after: Snapshot = { cash, digital, method: digi.digimethod, refno: digi.digirefno, servedBy };
+            const names = new Map<number, string>((await tx.query(`select id, full_name from app_user where id = any($1::int[])`, [[before.servedBy, servedBy].filter((x) => !!x)]))
+                .map((u: any) => [+u.id, String(u.full_name)]));
+            before.servedByName = before.servedBy ? names.get(before.servedBy) ?? null : null;
+            after.servedByName = servedBy ? names.get(servedBy) ?? null : null;
+            before.rx = rxBefore; after.rx = rxAfter;
+            const changes = changesOf(before, after);
+            if (!changes.length) throw new BadRequestException('Nothing was changed.');
+            const adjust = cashAdjustment(before.cash, after.cash);
+            const warnings = correctionWarnings(changes, { cashMoves: !!adjust, digitalMoves: Math.abs(before.digital - after.digital) > 0.004, taxInvoice: !!s.gst_invoice_no });
+            if (!ack) return { saved: false, changes, warnings, billno: s.bill_no };
+
+            // the drug register first: it can refuse (a missing patient or prescriber) and must do so before anything is written
+            const items = await tx.query(
+                `select si.id, si.purchase_item_id as itemid, si.product_id as productid, si.batch, si.qty from sale_item si
+                  where si.sale_id = $1 and si.status = 'Complete' and si.active and not si.archive`, [+id]);
+            const storeId = s.store_id ? +s.store_id : null;
+            const props = { ...kept, ...(newDetail === undefined ? {} : { scheduledetail: newDetail }), ...(Array.isArray(body?.documents) ? { documents: body.documents } : {}) };
+            const rxChanged = rxAfter !== rxBefore;
+            if (rxChanged) await this.hooks.check({ manager: tx, sale: { status: 'COMPLETE', items, props }, storeId, userId: user.id });
+
+            await tx.query(
+                `update sale set cash_amount = $2, digi_amount = $3, digi_method = $4, digi_refno = $5, digi_provider = $6, acting_user_id = $7, more_props = $8::json, updated_by = $9, updated_on = now() where id = $1`,
+                [+id, cash, digital, digi.digimethod, digi.digirefno, digi.digiprovider, servedBy, JSON.stringify(props), user.id]);
+            if (adjust) {
+                await tx.save(StoreCashAccount, {
+                    transdate: new Date().toISOString().slice(0, 10), category: adjust.category,
+                    description: `Bill ${s.bill_no || s.id} payment corrected`, deposit: adjust.deposit, withdraw: adjust.withdraw,
+                    store: { id: s.store_id }, shift: { id: s.shift_id },
+                } as any);
+            }
+            if (rxChanged) {
+                await this.hooks.saved({ manager: tx, sale: { status: 'COMPLETE', items, props }, saved: { id: +id, storeid: storeId, status: 'COMPLETE', customerid: s.customer_id, billno: s.bill_no, billdate: s.bill_date },
+                    items, storeId, userId: user.id, actingUserId: servedBy });
+            }
+            return { saved: true, changes, warnings, billno: s.bill_no, shiftid: +s.shift_id, reason: `${body.reason}`.trim() };
+        });
+    }
+
     /**
      * Voids a completed bill rung up by mistake, while its shift is still open. Nothing is deleted: the bill stays with status VOID, who and why;
      * stock comes back (it is counted from completed bills), the shift's cash is corrected with a reversing line, the staff / store credit the bill

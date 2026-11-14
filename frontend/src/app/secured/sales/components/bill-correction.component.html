@@ -1,0 +1,85 @@
+<div class="card border-warning non-print mb-3" data-testid="bill-correction">
+  <div class="card-body">
+    <div class="fw-semibold mb-2">Correct this bill <span class="text-muted fw-normal" *ngIf="info">(bill {{info.billno}}, total {{info.total | number:'1.2-2'}})</span></div>
+    <div *ngIf="loading" class="small text-muted">Loading...</div>
+
+    <div class="alert alert-secondary py-2 small mb-0" *ngIf="info?.problem" data-testid="correction-problem">{{info.problem}}</div>
+
+    <ng-container *ngIf="info && !info.problem">
+      <!-- step 1: the details -->
+      <ng-container *ngIf="!review">
+        <div class="alert alert-warning py-2 small">
+          Use this only to fix a slip made while ringing the bill, in the shift it was rung in. The items and the total do not change.
+          To change what was sold, void the bill and ring it again.
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 fw-semibold">How it was paid <span class="text-muted fw-normal small">(together {{paid | number:'1.2-2'}})</span></div>
+          <div class="col-6 col-md-3">
+            <label class="form-label small mb-0" for="cor-cash">Cash</label>
+            <input id="cor-cash" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="cash" (ngModelChange)="onCash()" data-testid="correction-cash">
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label small mb-0" for="cor-digi">Digital</label>
+            <input id="cor-digi" class="form-control" type="number" min="0" step="0.01" [(ngModel)]="digital" (ngModelChange)="onDigital()" data-testid="correction-digital">
+          </div>
+          <div class="col-6 col-md-3" *ngIf="digital > 0">
+            <label class="form-label small mb-0" for="cor-method">Digital by</label>
+            <select id="cor-method" class="form-select" [(ngModel)]="method" data-testid="correction-method">
+              <option value="">Choose</option>
+              <option *ngFor="let m of methods" [value]="m">{{m}}</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-3" *ngIf="digital > 0">
+            <label class="form-label small mb-0" for="cor-ref">Last 4 digits of the transaction id</label>
+            <input id="cor-ref" class="form-control" maxlength="40" [(ngModel)]="refno" data-testid="correction-refno">
+          </div>
+          <div class="col-12 small">
+            <a role="button" class="me-3" (click)="allTo('cash')">All cash</a>
+            <a role="button" (click)="allTo('digital')">All digital</a>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-5">
+            <label class="form-label fw-semibold" for="cor-server">Who is serving</label>
+            <select id="cor-server" class="form-select" [(ngModel)]="servedBy" data-testid="correction-server">
+              <option [ngValue]="null">Not named</option>
+              <option *ngFor="let u of info.servers" [ngValue]="u.id">{{u.fullname}}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3" *ngIf="info.scheduled?.length" data-testid="correction-rx">
+          <div class="fw-semibold mb-1">Prescription and patient</div>
+          <app-schedule-detail [detail]="detail" [drugs]="info.scheduled" [customer]="customer" [enforce]="false" [later]="true" [documents]="docs"
+            (uploaded)="onUploaded($event)" (detached)="onDetached($event)"></app-schedule-detail>
+        </div>
+
+        <div class="text-danger small mb-2" *ngIf="error" data-testid="correction-error">{{error}}</div>
+        <button type="button" class="btn btn-primary" [disabled]="busy" (click)="doReview()" data-testid="correction-review">Review changes</button>
+        <button type="button" class="btn btn-outline-secondary ms-2" [disabled]="busy" (click)="closed.emit()">Cancel</button>
+      </ng-container>
+
+      <!-- step 2: what will change, the warnings and the reason -->
+      <ng-container *ngIf="review">
+        <div class="fw-semibold mb-1">This will change</div>
+        <ul class="mb-2" data-testid="correction-changes"><li *ngFor="let c of review.changes">{{c}}</li></ul>
+        <div class="alert alert-warning small py-2" data-testid="correction-warnings">
+          <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle"></i> Please note</div>
+          <ul class="mb-0 ps-3"><li *ngFor="let w of review.warnings">{{w}}</li></ul>
+        </div>
+        <label class="form-label fw-semibold" for="cor-reason">Why is it being corrected?</label>
+        <input id="cor-reason" class="form-control" maxlength="200" [(ngModel)]="reason" placeholder="e.g. customer paid by UPI, not cash" data-testid="correction-reason">
+        <div class="text-danger small mt-2" *ngIf="error" data-testid="correction-error">{{error}}</div>
+        <div class="mt-3">
+          <button type="button" class="btn btn-warning" [disabled]="busy" (click)="save()" data-testid="correction-save">Save correction</button>
+          <button type="button" class="btn btn-outline-secondary ms-2" [disabled]="busy" (click)="review = null; error = ''">Back</button>
+        </div>
+      </ng-container>
+    </ng-container>
+
+    <div *ngIf="!loading && (!info || info.problem) && error" class="text-danger small mt-2">{{error}}</div>
+    <button *ngIf="!loading && (!info || info.problem)" type="button" class="btn btn-outline-secondary btn-sm mt-2" (click)="closed.emit()">Close</button>
+  </div>
+</div>

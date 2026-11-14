@@ -12,6 +12,7 @@ import { SaleFormItemsComponent } from "./components/sale-form-items.component";
 import { SaleSuggestionsComponent } from "./components/sale-suggestions.component";
 import { SaleAlternativesComponent } from "./components/sale-alternatives.component";
 import { SaleViewComponent } from "./components/sale-view.component";
+import { BillCorrectionComponent } from "./components/bill-correction.component";
 import { SalesListComponent } from "./components/sales-list.component";
 import { SalesComponent } from "./components/sales.component";
 import { DialogModule } from 'primeng/dialog';
@@ -63,6 +64,7 @@ const routes: Routes = [
       SalesListComponent,
       SalesItemListComponent,
       SaleViewComponent,
+      BillCorrectionComponent,
       SalePaymentComponent,
       SaleFormComponent,
       SaleFormItemsComponent,

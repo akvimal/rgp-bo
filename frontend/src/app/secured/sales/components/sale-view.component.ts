@@ -84,7 +84,17 @@ export class SaleViewComponent {
     inviteBusy = false;
     inviteError = '';
     optedOut = false;
-    private saleIdNum = 0;
+    saleIdNum = 0;
+
+    /** the correction panel (payment, who served, prescription) is open; `corrected` shows once it was saved */
+    correcting = false;
+    corrected = false;
+
+    onCorrected(){
+      this.correcting = false; this.corrected = true;
+      // the bill is shown as it now stands
+      this.service.find(this.saleIdNum).subscribe((data:any) => this.setSale(data));
+    }
 
     voiding = false;
     voidReason = '';
@@ -118,6 +128,8 @@ export class SaleViewComponent {
     ngOnInit(){
       const saleId = this.route.snapshot.paramMap.get('id');
       this.saleIdNum = Number(saleId);
+      // the sales list sends people here to correct a bill
+      this.correcting = this.route.snapshot.queryParamMap.get('correct') === '1';
       this.customersService.reviewInvite(this.saleIdNum).subscribe(i => this.invite = i, () => this.invite = null);
       this.loadWhatsapp();
       this.service.billHeader(saleId).subscribe((h:any) => this.setHeader(h), () => {});

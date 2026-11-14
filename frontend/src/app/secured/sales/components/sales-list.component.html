@@ -116,6 +116,7 @@
                       <button type="button" class="dropdown-item" *ngIf="isActionAllowed('Return',s)" (click)="menuId = null; showReturn(s.id)" data-testid="bill-return"><i class="bi bi-arrow-return-left me-2"></i>Return</button>
                       <button type="button" class="dropdown-item" *ngIf="canMakeDelivery(s)" (click)="menuId = null; modeSale = s" data-testid="bill-delivery-mode">
                         <i class="bi me-2" [ngClass]="s.deliverytype === 'Delivery' ? 'bi-bag-check' : 'bi-truck'"></i>{{s.deliverytype === 'Delivery' ? 'Change to a counter sale' : 'Create a delivery'}}</button>
+                      <a class="dropdown-item" *ngIf="canVoid(s)" [routerLink]="['../pos/view', s.id]" [queryParams]="{correct: 1}" data-testid="bill-correct-row"><i class="bi bi-pencil-square me-2"></i>Correct payment, server or prescription</a>
                       <button type="button" class="dropdown-item text-danger" *ngIf="canVoid(s)" (click)="menuId = null; openVoid(s)" data-testid="bill-void-row"><i class="bi bi-x-octagon me-2"></i>Void: rung up by mistake</button>
                       <button type="button" class="dropdown-item text-danger" *ngIf="canForceVoid(s)" (click)="menuId = null; openVoid(s, true)" data-testid="bill-force-void-row"><i class="bi bi-trash3 me-2"></i>Force void (Business Head)</button>
                     </div>
