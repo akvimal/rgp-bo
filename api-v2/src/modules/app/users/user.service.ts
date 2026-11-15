@@ -1,4 +1,5 @@
 import { userError } from 'src/core/db-error';
+import { isListedRater } from '../hr/hr-kpi-raters';
 import { packsOf } from 'src/core/modules/modules';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -426,9 +427,14 @@ export class UserService {
     // GST: whether the business issues tax invoices and from when (the till then asks for the buyer's GSTIN)
     const [reg] = data.businessid ? await this.userRepository.manager.query(
       `select r.reg_type, to_char(r.go_live, 'YYYY-MM-DD') as go_live, b.state_code from gst_registration r join business b on b.id = r.business_id where r.business_id = $1`, [data.businessid]) : [];
+    // a person whose job role is named as a rater on a measure gets the rating screen even if their login role does not carry it
+    const permissions: any[] = filterPermissions(data.permissions, modules);
+    if (!permissions.some((p: any) => p.resource === 'kpirate') && (await isListedRater(this.userRepository.manager, Number(id)))) {
+      permissions.push({ resource: 'kpirate', path: '/secure/kpi/rate', policies: [{ action: 'rate' }] });
+    }
     return {id:data.user_id, fullname: data.fullname,
       lastlogin:data.lastlogin,rolename:data.rolename,
-      permissions:filterPermissions(data.permissions, modules), modules, platform: this.platform.summary(), businessid:data.businessid,
+      permissions, modules, platform: this.platform.summary(), businessid:data.businessid,
       businessname:data.businessname, businesslogo: data.businesslogo || null,
       // the kind of business and its packs: the app shows a pack's screens, fields and words only to a business that has it
       businesstype: data.businesstype || 'pharmacy', packs: packsOf(data.businesstype),

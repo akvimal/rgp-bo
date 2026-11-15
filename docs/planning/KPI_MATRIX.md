@@ -26,3 +26,14 @@ Status: **built 2026-11-15, uncommitted; migration 203 and the new SQL never run
 - Prescription details on scheduled-drug sales is a scored rating, not a gate (decided 2026-11-15: a regular customer may not bring the latest prescription and some will not bring one, so one such sale must not zero the month's incentive). The legal gates (expired medicine, licences and registers) and the prescription rating are manual until the system measures them (spreadsheet sheet "Gaps to build"). Those measures are not built: scheduled-drug prescription capture rate, expired batches sold, expired value on the shelf.
 - Incentive bands and the pay are not in the sets.
 - Legal items are described generally; check each against the licence conditions and the current rules.
+
+## Who rates a measure (built 2026-11-15, migration 207)
+A manual measure can name the **job roles** that may rate it ("Rated by" in Edit KPI measure, HR > Setup > KPI).
+- **No list:** as before, whoever holds the KPI rating permission by login role (Store Head, Business Head) rates it.
+- **A list:** only people whose job role (on their HR staff record) is in the list rate it. A Store Head not in the list cannot, even with the permission.
+- **The Business Head** can always rate any measure.
+- **A named job role gets the Rate staff screen** even if their login role does not carry the permission (the menu and the route open for them). They see only the
+  measures they may rate, with no scores or percentage; a manager sees the whole sheet, with the measures they may not rate locked.
+- Nobody rates themselves, and a finalised month or an approved payroll still locks ratings, as before.
+- Code: `api-v2/src/modules/app/hr/hr-kpi-raters.ts` (`mayRate` is pure and tested), `kpi-people.controller.ts`, `hr-kpi-engine.service.ts` (`rate`),
+  `users/user.service.ts` (`findBasicDetails` adds the permission). Spec: `qa/specs/kpi-raters.spec.ts`.

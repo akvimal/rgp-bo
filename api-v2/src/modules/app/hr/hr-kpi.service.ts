@@ -17,7 +17,7 @@ export class HrKpiService {
   metrics() {
     return this.manager.query(
       `select id, name, description, max_points::float as max_points, display_order, active, source, system_key, rule, min_activity, rating_scale,
-              applies_types, applies_designations, applies_roles, applies_positions, is_gate from hr_kpi_metric order by display_order, name`);
+              applies_types, applies_designations, applies_roles, applies_positions, is_gate, rater_positions from hr_kpi_metric order by display_order, name`);
   }
 
   async saveMetric(id: number | null, b: any, by: any) {
@@ -49,17 +49,19 @@ export class HrKpiService {
     await this.checkRoles(roles);
     const designations = list(b?.applies_designations);
     const positions = await this.checkPositions(b?.applies_positions);
-    const cols = [name, desc, max, Number(b.display_order) || 10, source, systemKey, rule ? JSON.stringify(rule) : null, minActivity, scale, types, designations, roles, positions, isGate];
+    // who may rate it: job roles, for a measure rated by hand (none given = whoever holds the KPI rating permission, as before)
+    const raters = source === 'MANUAL' ? await this.checkPositions(b?.rater_positions) : null;
+    const cols = [name, desc, max, Number(b.display_order) || 10, source, systemKey, rule ? JSON.stringify(rule) : null, minActivity, scale, types, designations, roles, positions, isGate, raters];
     if (id) {
       const [cur] = await this.manager.query(`select 1 from hr_kpi_metric where id = $1`, [id]);
       if (!cur) throw new NotFoundException('Measure not found.');
       await this.manager.query(
         `update hr_kpi_metric set name = $2, description = $3, max_points = $4, display_order = $5, source = $6, system_key = $7, rule = $8::jsonb, min_activity = $9, rating_scale = $10,
-                applies_types = $11, applies_designations = $12, applies_roles = $13, applies_positions = $14, is_gate = $15, active = $16 where id = $1`, [id, ...cols, b.active !== false]);
+                applies_types = $11, applies_designations = $12, applies_roles = $13, applies_positions = $14, is_gate = $15, rater_positions = $16, active = $17 where id = $1`, [id, ...cols, b.active !== false]);
     } else {
       const [r] = await this.manager.query(
-        `insert into hr_kpi_metric (name, description, max_points, display_order, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions, is_gate)
-         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,$14) returning id`, cols);
+        `insert into hr_kpi_metric (name, description, max_points, display_order, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions, is_gate, rater_positions)
+         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13,$14,$15) returning id`, cols);
       id = r.id;
     }
     await this.audit.record({ userId: by.id, action: 'hr.kpi_metric_saved', entityType: 'hr_kpi_metric', entityId: id, summary: `KPI ${isGate ? 'gate' : 'measure'} ${name} (${isGate ? 'no points' : max + ' points'}, ${source.toLowerCase()})`, details: {} });

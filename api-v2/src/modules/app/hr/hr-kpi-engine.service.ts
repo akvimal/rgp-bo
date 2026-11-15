@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { mayRate, raterProfile } from './hr-kpi-raters';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 import { AuditService } from 'src/core/audit/audit.service';
@@ -233,7 +234,7 @@ export class HrKpiEngine {
         where e.on_payroll and e.join_date < ($1::date + interval '1 month') and (e.exit_date is null or e.exit_date >= $1::date)
         order by coalesce(e.full_name, u.full_name)`, [start]);
     const metrics = await this.manager.query(
-      `select id, name, description, max_points::float as max, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions, is_gate
+      `select id, name, description, max_points::float as max, source, system_key, rule, min_activity, rating_scale, applies_types, applies_designations, applies_roles, applies_positions, is_gate, rater_positions
          from hr_kpi_metric where active order by display_order, name`);
     const ratings = await this.manager.query(
       `select employee_id, metric_id, rating::float as rating, override_points::float as override_points, override_reason, note from hr_kpi_rating where period = $1`, [period]);
@@ -256,7 +257,7 @@ export class HrKpiEngine {
           unit: MEASURE(m.system_key)?.unit || null, scale: m.rating_scale, rule: m.rule ?? null, direction: MEASURE(m.system_key)?.direction ?? null,
           rating: rt?.rating ?? null, note: rt?.note ?? null, override_points: rt?.override_points ?? null, override_reason: rt?.override_reason ?? null,
           state: 'SCORED', na_reason: null, raw: null, evidence: null, points: null, final_points: null,
-          gate: !!m.is_gate, passed: null,
+          gate: !!m.is_gate, passed: null, rater_positions: m.rater_positions ?? null,
         };
         if (m.is_gate) {
           // a gate carries no points: it is met or not. A system gate is a figure against a limit; a manual gate is confirmed by the manager (the top rating is a pass).
@@ -311,9 +312,14 @@ export class HrKpiEngine {
   /** a manager's rating of one manual measure; the Business Head can rate anyone, a Store Head their own stores' staff */
   async rate(b: any, by: any, scope: (e: any) => boolean) {
     if (!PERIOD.test(b?.period || '')) throw new BadRequestException('A month (YYYY-MM) is required.');
-    const [m] = await this.manager.query(`select id, name, source, rating_scale from hr_kpi_metric where id = $1 and active`, [Number(b?.metric_id)]);
+    const [m] = await this.manager.query(`select id, name, source, rating_scale, rater_positions from hr_kpi_metric where id = $1 and active`, [Number(b?.metric_id)]);
     if (!m) throw new BadRequestException('Choose a measure.');
     if (m.source !== 'MANUAL') throw new BadRequestException(`${m.name} is measured by the system; it cannot be rated by hand.`);
+    // a measure that names its raters is rated by those job roles (and the Business Head) only
+    if (!mayRate(await raterProfile(this.manager, by.id), m.rater_positions)) {
+      const names = await this.manager.query(`select name from hr_position where id = any($1::int[]) order by name`, [m.rater_positions || []]);
+      throw new ForbiddenException(names.length ? `${m.name} is rated by ${names.map((n: any) => n.name).join(', ')} only.` : `${m.name} is rated by a manager (the Store Head or the Business Head).`);
+    }
     const [d] = (await this.draft(b.period, e => e.id === Number(b?.employee_id)));
     if (!d) throw new NotFoundException('That staff member was not employed in that month.');
     if (!scope(d)) throw new ForbiddenException('You can rate staff of your own stores only.');

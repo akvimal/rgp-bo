@@ -155,7 +155,7 @@
       <div class="page-toolbar">
         <div class="page-toolbar-main">
           <input *ngIf="metrics.length > 6" class="form-control form-control-sm" style="width:14rem;max-width:100%" placeholder="Search measures" [(ngModel)]="q" aria-label="Search measures">
-          <div class="small text-muted">A measure is either measured by the system or rated by a manager each month, and can be limited to roles, staff types and designations. Edit to change one; Remove deletes a measure never scored, and switches off one that has scores so past months stay the same.</div>
+          <div class="small text-muted">A measure is either measured by the system or rated by a person each month (a manager, or the job roles you name on it), and can be limited to roles, staff types and designations. Edit to change one; Remove deletes a measure never scored, and switches off one that has scores so past months stay the same.</div>
         </div>
         <div class="page-toolbar-actions"><button class="btn btn-outline-secondary btn-sm me-1" type="button" (click)="previewStarter()" [disabled]="starterBusy" data-testid="hr-set-starter">Starter sets for a pharmacy</button><button class="btn btn-primary btn-sm" type="button" (click)="newMeasure()" data-testid="hr-set-metric-new">Add measure</button></div>
       </div>
@@ -330,13 +330,18 @@
         <div class="col-12 col-md-8"><label class="form-label">Name <span class="required">*</span></label><input class="form-control" [(ngModel)]="mf.name" maxlength="60" data-testid="hr-set-metric-name"></div>
         <div class="col-6 col-md-4" *ngIf="!mf.is_gate"><label class="form-label">Max points <span class="required">*</span></label><input type="number" min="1" class="form-control" [(ngModel)]="mf.max_points" data-testid="hr-set-metric-max"></div>
         <div class="col-6"><label class="form-label">Measured by</label>
-          <select class="form-select" [(ngModel)]="mf.source" data-testid="hr-set-metric-source"><option value="MANUAL">A manager's rating</option><option value="SYSTEM">The system</option></select></div>
+          <select class="form-select" [(ngModel)]="mf.source" data-testid="hr-set-metric-source"><option value="MANUAL">A person's rating</option><option value="SYSTEM">The system</option></select></div>
         <div class="col-6 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfactive" [(ngModel)]="mf.active"><label class="form-check-label" for="mfactive">Active</label></div></div>
         <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="mfgate" [(ngModel)]="mf.is_gate" (ngModelChange)="gateChanged()" data-testid="hr-set-metric-gate"><label class="form-check-label" for="mfgate">A gate: no points, and if it is not met the month's incentive is nil</label></div>
           <div class="form-text" *ngIf="mf.id" data-testid="hr-set-metric-gate-note">You can switch this on or off. It applies from the months not yet finalised; months already finalised keep their result.<span *ngIf="mf.source === 'SYSTEM'"> A system measure needs its {{mf.is_gate ? 'limit' : 'scoring'}} below.</span></div></div>
         <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" [rows]="descRows" style="min-height: 4.2rem; resize: vertical" [(ngModel)]="mf.description" maxlength="500" placeholder="What good looks like" data-testid="hr-set-metric-desc"></textarea><div class="form-text text-end">{{(mf.description || '').length}} / 500</div></div>
 
-        <div class="col-12 small text-muted" *ngIf="mf.source === 'MANUAL' && mf.is_gate">The manager confirms it each month as Met or Not met.</div>
+        <div class="col-12" *ngIf="mf.source === 'MANUAL'" data-testid="hr-set-metric-raters">
+          <label class="form-label">Rated by (job roles)</label>
+          <app-hr-roles [roles]="positionNames" [(value)]="mf.rater_names"></app-hr-roles>
+          <div class="form-text">Leave it empty for the usual: whoever may rate KPI by login role (Store Head, Business Head). Name job roles to hand this measure to them instead, for example the Pharmacist. The Business Head can always rate. A named job role sees the Rate staff screen with only the measures it may rate, and no scores.</div>
+        </div>
+        <div class="col-12 small text-muted" *ngIf="mf.source === 'MANUAL' && mf.is_gate">The rater confirms it each month as Met or Not met.</div>
         <ng-container *ngIf="mf.source === 'MANUAL' && !mf.is_gate">
           <div class="col-6"><label class="form-label">Rating scale (1 to)</label><input type="number" min="2" max="10" class="form-control" [(ngModel)]="mf.rating_scale" data-testid="hr-set-metric-scale"></div>
           <div class="col-12 small text-muted">A rating of {{mf.rating_scale}} earns all the points; each step below earns proportionally less.</div>

@@ -9,16 +9,19 @@ import { PermissionService } from '../roles/permission.service';
 import { HrKpiEngine } from './hr-kpi-engine.service';
 
 import { isOwnerRole } from 'src/core/roles';
+import { isListedRater, mayRate, raterProfile } from './hr-kpi-raters';
 const Needs = (resource: string, action: string) => SetMetadata('kpi.needs', [resource, action]);
 
 @Injectable()
 export class KpiPeopleGuard implements CanActivate {
-  constructor(private readonly permissions: PermissionService, private readonly reflector: Reflector) {}
+  constructor(private readonly permissions: PermissionService, private readonly reflector: Reflector, @InjectEntityManager() private readonly manager: EntityManager) {}
   async canActivate(ctx: ExecutionContext) {
     const [resource, action] = this.reflector.get<string[]>('kpi.needs', ctx.getHandler()) || ['kpirate', 'rate'];
     const req = ctx.switchToHttp().getRequest();
-    if (!(await this.permissions.can(req.user?.roleid, resource, action))) throw new ForbiddenException('You are not allowed to do that with KPI.');
-    return true;
+    if (await this.permissions.can(req.user?.roleid, resource, action)) return true;
+    // a person whose job role is named as a rater on a measure may open the rating screen even if their login role does not hold the permission
+    if (resource === 'kpirate' && (await isListedRater(this.manager, req.user?.id))) return true;
+    throw new ForbiddenException('You are not allowed to do that with KPI.');
   }
 }
 
@@ -44,11 +47,18 @@ export class KpiPeopleController {
   @Get('rate') @Needs('kpirate', 'rate')
   async month(@Query('period') period: string, @User() u: any) {
     const sc = await this.scope(u);
+    const prof = await raterProfile(this.manager, u.id);
+    // a manager (or the owner) sees the whole sheet; a person who may rate only the measures that name their job role sees just those, with no scores
+    const wide = prof.owner || prof.roleCan;
     const rows = await this.engine.draft(period, e => sc.covers(e));
-    return rows.map(d => ({
-      employee_id: d.employee_id, name: d.name, designation: d.designation, self: d.user_id === u.id, items: d.items, pending: d.pending,
-      percent: d.finalised ? d.review.percent : d.draft.percent, finalised: d.finalised, locked: d.locked,
-    }));
+    return rows.map(d => {
+      const items = d.items.map((i: any) => ({ ...i, can_rate: i.source === 'MANUAL' && mayRate(prof, i.rater_positions) }));
+      const mine = wide ? items : items.filter((i: any) => i.can_rate);
+      return {
+        employee_id: d.employee_id, name: d.name, designation: d.designation, self: d.user_id === u.id, items: mine, pending: wide ? d.pending : mine.filter((i: any) => i.rating === null).length,
+        percent: wide ? (d.finalised ? d.review.percent : d.draft.percent) : null, finalised: d.finalised, locked: d.locked,
+      };
+    }).filter(r => wide || r.items.length);
   }
 
   @Put('rate') @Needs('kpirate', 'rate')
