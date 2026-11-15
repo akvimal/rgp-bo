@@ -235,7 +235,7 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
       ], 'Rated from the checklists and a visit.'), 10),
       rated('Staff guidance and supervision', bullets('How you guide and run the team:', [
         'Coaches staff on honest advice and the rules',
-        'Rota kept and shifts handed over properly',
+        'Duty roster kept and shifts handed over properly',
       ]), 10),
       rated('Purchase and receiving', bullets('Care taken when goods are bought and received:', [
         'Invoices filed with the right GRN and reference',
