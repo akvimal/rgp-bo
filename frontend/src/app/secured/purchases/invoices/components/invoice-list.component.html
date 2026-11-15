@@ -35,7 +35,8 @@
               <td class="text-end">{{r.paid | number:'1.2-2'}}</td><td class="text-end">{{r.balance_now | number:'1.2-2'}}</td><td class="text-end">{{r.balance_after === null ? '-' : (r.balance_after | number:'1.2-2')}}</td>
               <td class="small"><span *ngIf="r.kind === 'TOTAL'">Payable is {{(r.difference || 0) > 0 ? 'less' : 'more'}} than the lines by {{(r.difference || 0) < 0 ? -(r.difference || 0) : r.difference | number:'1.2-2'}}</span>
                 <span *ngIf="r.kind === 'PAYMENTS'">The list counts {{r.paid | number:'1.2-2'}} as paid, the payment screen {{r.paid_active | number:'1.2-2'}} (a payment was removed). Not changed here.</span>
-                <span *ngIf="r.kind === 'PROBLEM'" class="text-danger">{{r.problem}}</span></td>
+                <span *ngIf="r.kind === 'PROBLEM'" class="text-danger">{{r.problem}}</span>
+                <div *ngIf="r.kind !== 'PAYMENTS' && r.paid !== r.paid_active" class="text-warning" data-testid="inv-totals-paid-note">The list counts {{r.paid | number:'1.2-2'}} as paid, the payment screen {{r.paid_active | number:'1.2-2'}} (a payment was removed).</div></td>
             </tr>
           </tbody>
         </table>
