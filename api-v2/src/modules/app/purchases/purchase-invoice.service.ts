@@ -950,10 +950,10 @@ export class PurchaseInvoiceService {
       }
 
       /**
-       * What the invoice's total should be: its live lines with GST (less any cash discount), less the credits the vendor has given, rounded to the rupee
-       * when asked, and the net total printed on the vendor's invoice once the lines agree with it. It is the one figure refreshTotal stores.
+       * What the invoice's total should be: its live lines with GST (less any cash discount), less the credits the vendor has given, to the paisa (rounded to the rupee only when asked),
+       * but when a net total was entered from the vendor's invoice (or the challan) that total is used as it is, never the lines. It is the one figure refreshTotal stores.
        */
-      async expectedTotal(invoiceid:number, round = true): Promise<number>{
+      async expectedTotal(invoiceid:number, round = false): Promise<number>{
         const { net: bought } = await this.netLive(invoiceid);
         // returns the vendor has credited on this invoice come off what was bought
         const [c] = await this.manager.query(`select coalesce(sum(amount), 0)::float8 as t from purchase_invoice_credit where invoice_id = $1 and active`, [invoiceid]);
@@ -964,14 +964,15 @@ export class PurchaseInvoiceService {
         // to the paisa, so a payment of "the invoice total" is exactly the invoice total and not the lines rounded to the rupee
         const [inv] = await this.manager.query(`select printed_total::float8 as printed from purchase_invoice where id = $1`, [invoiceid]);
         if(inv?.printed > 0){
+          // the net total entered is used as it is, whether or not the lines agree with it (completion checks that they do, within Rs 1)
           const billed = await this.billedNet(invoiceid);
-          if(agreesWithPrinted(inv.printed, billed)) total = payableFromPrinted(inv.printed, billed, bought, +(c?.t || 0));
+          total = payableFromPrinted(inv.printed, billed, bought, +(c?.t || 0));
         }
         return total;
       }
 
       /** sets the invoice total to what its live lines come to with GST (rounded to the rupee when asked) and refreshes the GST split */
-      async refreshTotal(invoiceid:number, userid:number, round = true){
+      async refreshTotal(invoiceid:number, userid:number, round = false){
         const total = await this.expectedTotal(invoiceid, round);
         await this.update([invoiceid], { total }, userid);
       }
