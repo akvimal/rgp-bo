@@ -713,7 +713,7 @@ export class InvoiceFormComponent implements OnInit {
       if(!hasInv && !hasChallan) out.push('invoice number, or challan number if the invoice has not come');
       if(hasInv && !v.invoicedate) out.push('invoice date');
       if(!hasInv && hasChallan && !(v.challandate || v.invoicedate)) out.push('challan date');
-      if(!this.id && hasInv && !(+v.printedtotal > 0)) out.push('invoice total');
+      if((hasInv || hasChallan) && !(+v.printedtotal > 0)) out.push(hasInv ? 'net total of the invoice' : 'challan total');
       if(!v.storeid) out.push('receiving store');
       if(this.gstinBad) out.push('a valid supplier GSTIN');
       return out;

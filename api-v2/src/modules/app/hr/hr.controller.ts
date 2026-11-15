@@ -106,6 +106,7 @@ export class HrController {
   @Post('kpi/templates/apply') applyTemplates(@Body() b: any, @User() u: any) { return this.kpi.applyTemplates(b, u); }
   @Get('kpi/bands') bands() { return this.kpi.bands(); }
   @Put('kpi/bands') saveBands(@Body() b: any, @User() u: any) { return this.kpi.saveBands(b, u); }
+  @Post('kpi/bands/reset') resetBands(@User() u: any) { return this.kpi.resetBands(u); }
   @Get('kpi/month') month(@Query('period') period: string) { return this.kpi.month(period); }
   @Post('kpi/score') score(@Body() b: any, @User() u: any) { return this.kpi.score(b, u); }
 

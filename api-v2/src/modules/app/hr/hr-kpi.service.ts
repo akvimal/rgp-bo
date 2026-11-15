@@ -198,6 +198,20 @@ export class HrKpiService {
     return { count: rows.length };
   }
 
+  /** every job role's and login role's own band set is removed and the default set goes back to Low 0%, Good 70% (5%), Excellent 90% (10%), so every role starts from it again */
+  async resetBands(by: any) {
+    const removed = await this.manager.transaction(async tm => {
+      const gone = await tm.query(`delete from hr_kpi_band where role_name is not null or position_id is not null returning id`);
+      await tm.query(`delete from hr_kpi_band where role_name is null and position_id is null`);
+      for (const [min, label, pct] of [[0, 'Low', 0], [70, 'Good', 5], [90, 'Excellent', 10]] as const) {
+        await tm.query(`insert into hr_kpi_band (role_name, position_id, min_percent, label, incentive_percent, incentive_amount) values (null, null, $1, $2, $3, null)`, [min, label, pct]);
+      }
+      return gone.length;
+    });
+    await this.audit.record({ userId: by.id, action: 'hr.kpi_bands_reset', entityType: 'hr_kpi_band', entityId: null, summary: `KPI bands reset for all roles (${removed} role bands removed, default set restored)`, details: { removed } });
+    return { removed, default: 3 };
+  }
+
   /** each person's KPI for the month: the live draft (system figures, ratings, overrides) and the frozen review if finalised */
   async month(period: string) {
     const rows = await this.engine.draft(period);

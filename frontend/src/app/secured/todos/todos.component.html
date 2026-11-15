@@ -133,7 +133,7 @@
     <h6 [class]="'mb-1 ' + tone">{{title}} <span class="badge bg-secondary ms-1">{{list.length}}</span></h6>
     <ul class="list-group">
       <li class="list-group-item d-flex align-items-start gap-2" *ngFor="let i of list" [attr.data-testid]="'todo-row-' + i.id">
-        <input type="checkbox" class="form-check-input mt-1" [disabled]="!i.cantick" (change)="$any($event.target).checked = false; tick(i)" [attr.aria-label]="'Done: ' + i.title" [attr.data-testid]="'todo-tick-' + i.id">
+        <input type="checkbox" class="form-check-input mt-1 flex-shrink-0" style="min-width: 1em" [disabled]="!i.cantick" (change)="$any($event.target).checked = false; tick(i)" [attr.aria-label]="'Done: ' + i.title" [attr.data-testid]="'todo-tick-' + i.id">
         <div class="flex-grow-1">
           <div>
             <span class="fw-semibold">{{i.title}}</span>
@@ -169,7 +169,7 @@
   <h6 class="mb-1 text-muted">Done lately</h6>
   <ul class="list-group">
     <li class="list-group-item d-flex align-items-center gap-2 text-muted" *ngFor="let i of doneItems" [attr.data-testid]="'todo-done-' + i.id">
-      <input type="checkbox" class="form-check-input" checked disabled>
+      <input type="checkbox" class="form-check-input flex-shrink-0" style="min-width: 1em" checked disabled>
       <div class="flex-grow-1"><s>{{i.title}}</s>
         <span class="small"> &middot; {{i.completedon | date:'d MMM, h:mm a'}}<span *ngIf="i.completedbyname"> by {{i.completedbyname}}</span></span>
         <span class="small" *ngIf="i.donenote" [attr.data-testid]="'todo-donenote-' + i.id"> &middot; {{i.donenote}}</span>

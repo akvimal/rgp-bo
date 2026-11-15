@@ -75,6 +75,19 @@ const CAPTURE = (max: number, minBills: number): TemplateMetric => ({ name: 'Bil
   `Judged only after ${minBills} bills in the month`,
 ]), max, source: 'SYSTEM', system_key: 'CUSTOMER_CAPTURE', rule: linear(90, 60), min_activity: minBills });
 
+const DELIVERY_PROCESS = (max: number): TemplateMetric => ({ name: 'Home deliveries completed', description: bullets('Bills you made for home delivery must go through delivery, not stop at the sale:', [
+  'Mark the bill as a delivery and book the delivery when you bill',
+  'The delivery must be recorded as delivered (or confirmed by the customer)',
+  'Full points at 95% of deliveries completed or more; none at 70% or less',
+  'Today\'s bills are not counted; judged only after 3 home deliveries in the month',
+]), max, source: 'SYSTEM', system_key: 'DELIVERY_PROCESS', rule: linear(95, 70), min_activity: 3 });
+const PURCHASE_PROCESS = (max: number): TemplateMetric => ({ name: 'Purchases made through an order', description: bullets('Buying must follow the steps: purchase request, then purchase order, then the purchase invoice:', [
+  'Every invoice is received against an approved purchase order raised from the request',
+  'A line that was not on the order counts the whole invoice as outside the process',
+  'Full points at 95% of invoices through an order or more; none at 70% or less',
+  'Judged only after 3 invoices in the month',
+]), max, source: 'SYSTEM', system_key: 'PURCHASE_PROCESS', rule: linear(95, 70), min_activity: 3 });
+
 export const KPI_TEMPLATES: PositionTemplate[] = [
   {
     position: 'Sales Staff',
@@ -87,8 +100,9 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
         'The total must be within Rs 1,000',
         'A bigger difference means no incentive this month, whatever the points',
       ]), max: 0, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: gateLimit(1000), min_activity: 1, gate: true },
-      CAPTURE(20, 30),
-      CASH_MEASURE(15),
+      CAPTURE(15, 30),
+      DELIVERY_PROCESS(10),
+      CASH_MEASURE(10),
       { name: 'Discarded bills', description: bullets('Pending bills you discarded instead of completing:', [
         'Up to 2: full points',
         'Up to 5: 60% of the points',
@@ -222,7 +236,7 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
       rated('Expiry and near-expiry control', bullets('How early you deal with stock nearing expiry:', [
         'Short-dated stock planned for sale, vendor return or an out-pass before it expires',
         'The value of expired stock kept at nil',
-      ], 'Rated by the manager from the expiry list.'), 15),
+      ], 'Rated by the manager from the expiry list.'), 10),
       rated('Stock planning and out-of-stock follow-up', bullets('Keeping the shelves supplied:', [
         'Fast movers kept in stock',
         'Out-of-stock requests recorded and followed up',
@@ -236,7 +250,8 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
       rated('Staff guidance and supervision', bullets('How you guide and run the team:', [
         'Coaches staff on honest advice and the rules',
         'Duty roster kept and shifts handed over properly',
-      ]), 10),
+      ]), 5),
+      PURCHASE_PROCESS(10),
       rated('Purchase and receiving', bullets('Care taken when goods are bought and received:', [
         'Invoices filed with the right GRN and reference',
         'Quality checked on receipt',

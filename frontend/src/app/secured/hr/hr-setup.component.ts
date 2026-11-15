@@ -66,7 +66,7 @@ export class HrSetupComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
   private msgTimer: any;
 
-  constructor(private hr: HrService, private route: ActivatedRoute, private router: Router) {}
+  constructor(private hr: HrService, private route: ActivatedRoute, private router: Router, private confirmSvc: ConfirmService) {}
 
   ngOnInit() {
     this.sub = this.route.queryParamMap.subscribe(p => {
@@ -453,6 +453,12 @@ export class HrSetupComponent implements OnInit, OnDestroy {
     const text = this.bandRole ? `Bands saved for ${this.bandLabel}.` : "Default bands saved.";
     this.hr.put("kpi/bands", { role_name: job ? null : (this.bandRole || null), position_id: job, bands: this.bands })
       .subscribe(() => { this.bandsSnap = this.snapOf(this.bands); if (then) then(); this.done(text)(); }, this.fail());
+  }
+  /** every job role's and login role's own bands are removed and the default set is restored */
+  resetAllBands() {
+    this.confirmSvc.confirmAction('Reset incentive bands for all roles', ['Every role\'s own bands are removed.', 'The default set returns to Low 0%, Good 70% (5%), Excellent 90% (10%).', 'Roles then use the default until you set their own again.'], 'Reset all', () => {
+      this.hr.post('kpi/bands/reset', {}).subscribe(() => { this.bandsSnap = ''; this.hr.get('kpi/bands').subscribe(r => { this.allBands = r; this.showBands(); this.done('Incentive bands reset for all roles.')(); }); }, this.fail());
+    });
   }
   startOwnBands() { this.bands = this.allBands.filter(b => !b.role_name && !b.position_id).map(b => ({ min_percent: b.min_percent, label: b.label, incentive_percent: b.incentive_percent, incentive_amount: b.incentive_amount ?? null })); }
 

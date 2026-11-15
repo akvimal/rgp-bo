@@ -881,6 +881,7 @@ export class PurchaseInvoiceService {
         if(values?.status === 'COMPLETE'){
           for(const id of ids) await this.assertReadyToComplete(id);
           for(const id of ids) await this.assertNoDisputes(id);
+          for(const id of ids) await this.assertNetTotalEntered(id, values);
           for(const id of ids) await this.assertPrintedAgrees(id);
           for(const id of ids) await this.assertPriceRules(id, userid);
         }
@@ -977,6 +978,19 @@ export class PurchaseInvoiceService {
         await this.update([invoiceid], { total }, userid);
       }
 
+      /**
+       * A completed invoice (the stock is in, the balance is owed) is changed by a Business Head only: its header, its lines, deleting it or its lines.
+       * Staff work on an invoice up to completing it. Pass invoice ids, or item ids (`itemIds`) to look the invoices up from the lines.
+       */
+      async assertEditable(userid:number, opts:{ invoiceIds?:number[]; itemIds?:number[] }){
+        const rows = await this.manager.query(
+          `select distinct i.id, i.invoice_no from purchase_invoice i
+            where i.status = 'COMPLETE' and i.active and not i.archive
+              and (i.id = any($1::int[]) or i.id in (select invoice_id from purchase_invoice_item where id = any($2::int[])))`,
+          [(opts.invoiceIds ?? []).map(Number).filter(Number.isFinite), (opts.itemIds ?? []).map(Number).filter(Number.isFinite)]);
+        if(rows.length) await this.needOwner(userid, `change invoice ${rows[0].invoice_no ?? '#' + rows[0].id}, which is already complete`);
+      }
+
       // ---------------------------------------------------------------- invoice totals check
       private async needOwner(userid:number, what:string){
         const [r] = await this.manager.query(`select r.name from app_user u join app_role r on r.id = u.role_id where u.id = $1`, [userid]);
@@ -1058,6 +1072,13 @@ export class PurchaseInvoiceService {
       }
 
       /** the lines must come to the net total entered from the vendor's invoice, within rounding, before the invoice is completed */
+      /** the net total of the invoice (or challan) must be entered before completing: it is what the balance owed is taken from */
+      private async assertNetTotalEntered(invoiceid:number, values:any){
+        if(Number(values?.printedtotal) > 0) return;
+        const [inv] = await this.manager.query(`select printed_total::float8 as printed from purchase_invoice where id = $1`, [invoiceid]);
+        if(!(inv?.printed > 0)) throw new BadRequestException('Enter the net total of the invoice (or the challan total) before completing. The balance owed is taken from it.');
+      }
+
       private async assertPrintedAgrees(invoiceid:number){
         const [inv] = await this.manager.query(`select printed_total::float8 as printed from purchase_invoice where id = $1`, [invoiceid]);
         if(!(inv?.printed > 0)) return;

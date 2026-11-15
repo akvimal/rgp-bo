@@ -59,6 +59,7 @@ export class PurchaseItemController {
 
     @Post()
     async createItem(@Body() createPurchaseInvoiceItemDto: CreatePurchaseInvoiceItemDto, @User() currentUser: any) {
+        await this.purchaseInvoiceService.assertEditable(currentUser.id, { invoiceIds: [+(createPurchaseInvoiceItemDto as any).invoiceid] });
         const item = await this.purchaseInvoiceService.createItem(createPurchaseInvoiceItemDto, currentUser.id);
 
         // A product with no price is not priced here: it appears under Products > Pricing policy > Needs a price once the invoice is completed,
@@ -69,7 +70,8 @@ export class PurchaseItemController {
     }
 
     @Put()
-    updateItems(@Body() input:UpdateInvoiceItemsDto, @User() currentUser: any) {
+    async updateItems(@Body() input:UpdateInvoiceItemsDto, @User() currentUser: any) {
+      await this.purchaseInvoiceService.assertEditable(currentUser.id, { itemIds: input.ids });
       return this.purchaseInvoiceService.updateItems(input.ids, input.values, currentUser.id);
     }
 
@@ -86,6 +88,7 @@ export class PurchaseItemController {
 
     @Delete()
     async remove(@Body() input:{invoiceid:number, ids:number[]}, @User() currentUser: any) {
+      await this.purchaseInvoiceService.assertEditable(currentUser.id, { itemIds: input.ids });
       await this.purchaseInvoiceService.removeItems(input.ids).then(async(data) => {
         await this.purchaseInvoiceService.refreshTotal(input.invoiceid, currentUser.id);
       })

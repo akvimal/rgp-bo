@@ -125,6 +125,7 @@ export class PurchaseInvoiceController {
     @Post()
     async create(@Body() dto: CreatePurchaseInvoiceDto, @User() currentUser: any) {
       if(dto.id){
+        await this.purchaseInvoiceService.assertEditable(currentUser.id, { invoiceIds: [dto.id] });
         const { draft, ...values } = dto as any;          // "draft" only matters when an invoice is first made
         return this.purchaseInvoiceService.update([dto.id], values, currentUser.id);
       }
@@ -135,12 +136,14 @@ export class PurchaseInvoiceController {
     }
 
     @Put()
-    updateItems(@Body() input:UpdateInvoicesDto, @User() currentUser: any) {
+    async updateItems(@Body() input:UpdateInvoicesDto, @User() currentUser: any) {
+      await this.purchaseInvoiceService.assertEditable(currentUser.id, { invoiceIds: input.ids });
       return this.purchaseInvoiceService.update(input.ids, input.values, currentUser.id);
     }
 
     @Put('/confirm')
     async confirm(@Body() input:UpdateInvoicesDto, @User() currentUser: any) {
+      await this.purchaseInvoiceService.assertEditable(currentUser.id, { invoiceIds: input.ids });
       const result = await this.purchaseInvoiceService.update(input.ids, input.values, currentUser.id);
       // the goods are in stock now: a new product gets its first price at once when the business prices at the MRP
       if(input.values?.status === 'COMPLETE'){
@@ -150,7 +153,8 @@ export class PurchaseInvoiceController {
     }
 
     @Delete(':id')
-    remove(@Param('id', ParseIntPipe) id: number, @User() currentUser: any) {
+    async remove(@Param('id', ParseIntPipe) id: number, @User() currentUser: any) {
+      await this.purchaseInvoiceService.assertEditable(currentUser.id, { invoiceIds: [id] });
       return this.purchaseInvoiceService.remove(id, currentUser.id);
     }
 }

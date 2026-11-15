@@ -22,8 +22,10 @@ export const SYSTEM_MEASURES = [
   { key: 'SUGGESTIONS_ADDED', label: 'Cross-sell / up-sell suggestions taken', unit: 'suggestions', direction: 'higher', hint: 'Suggestions shown at the counter that the person added to a bill in the month.' },
   { key: 'ABSENT_DAYS', label: 'Absent days', unit: 'days', direction: 'lower', hint: 'Marked absent in attendance (a half day counts as 0.5).' },
   { key: 'CUSTOMER_CAPTURE', label: 'Bills with a named customer', unit: '%', direction: 'higher', hint: "Share of the person's completed bills that carry a named customer (a mobile number, or a name and location). A bill with no customer, or the placeholder customer, does not count." },
+  { key: 'PURCHASE_PROCESS', label: 'Purchases made through an order', unit: '%', direction: 'higher', hint: "Share of the purchase invoices the person entered in the month that were received against a purchase order (itself raised from a purchase request), with no line outside the order." },
+  { key: 'DELIVERY_PROCESS', label: 'Home deliveries completed', unit: '%', direction: 'higher', hint: "Share of the person's completed bills marked for home delivery (at least a day old) that were recorded as delivered, with the customer's confirmation or the delivery person." },
 ];
-const MEASURE = (key: string) => SYSTEM_MEASURES.find(m => m.key === key);
+const MEASURE =(key: string) => SYSTEM_MEASURES.find(m => m.key === key);
 
 /** a list of role names from a request body: trimmed, de-duplicated, null when empty (= every role) */
 export function roleList(v: any): string[] | null {
@@ -140,6 +142,30 @@ export class HrKpiEngine {
       if (c.bills < minActivity || c.bills === 0) return { na: `Only ${c.bills} bills; ${Math.max(minActivity, 1)} needed` };
       const pct = r1(c.named * 100 / c.bills);
       return { raw: pct, evidence: `${c.named} of ${c.bills} bills had a named customer (${pct}%)` };
+    }
+    if (key === 'PURCHASE_PROCESS') {
+      // followed = the invoice carries a purchase order and none of its lines was received outside that order
+      const [p] = await this.manager.query(
+        `select count(*)::int as invoices,
+                count(*) filter (where btrim(coalesce(i.purchase_order_id, '')) <> ''
+                                   and not exists (select 1 from purchase_invoice_item l where l.invoice_id = i.id and l.active and not l.archive and l.off_po))::int as followed
+           from purchase_invoice i
+          where i.status = 'COMPLETE' and i.active and not i.archive and i.created_by = any($1::int[])
+            and i.invoice_date >= $2::date and i.invoice_date < ($2::date + interval '1 month')`, [uids, start]);
+      if (p.invoices < minActivity || p.invoices === 0) return { na: `Only ${p.invoices} purchase invoices; ${Math.max(minActivity, 1)} needed` };
+      const pct = r1(p.followed * 100 / p.invoices);
+      return { raw: pct, evidence: `${p.followed} of ${p.invoices} invoices came through a purchase order (${pct}%)` };
+    }
+    if (key === 'DELIVERY_PROCESS') {
+      const [d] = await this.manager.query(
+        `select count(*)::int as bills,
+                count(*) filter (where d.status = 'Delivered' or d.confirmed)::int as delivered
+           from sale s left join sale_deliveries d on d."saleId" = s.id and d.active and not d.archive
+          where s.status = 'COMPLETE' and s.delivery_type = 'Delivery' and coalesce(s.acting_user_id, s.created_by) = any($1::int[])
+            and s.bill_date >= $2::date and s.bill_date < ($2::date + interval '1 month') and s.bill_date < current_date`, [uids, start]);
+      if (d.bills < minActivity || d.bills === 0) return { na: `Only ${d.bills} home deliveries; ${Math.max(minActivity, 1)} needed` };
+      const pct = r1(d.delivered * 100 / d.bills);
+      return { raw: pct, evidence: `${d.delivered} of ${d.bills} home deliveries completed (${pct}%)` };
     }
     if (key === 'GRIEVANCES') {
       const [g] = await this.manager.query(
