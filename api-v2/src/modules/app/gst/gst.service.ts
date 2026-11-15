@@ -660,4 +660,17 @@ export class GstService {
             return tm.findOne(GstReturnPeriod, { where: { id: periodRow.id } });
         });
     }
+
+    /**
+     * Opens a month that was locked by mistake. Only the month's status changes: the credit figures and each invoice's reconciliation status stay as the
+     * lock set them, and locking again records them afresh from the current figures.
+     */
+    async unlockPeriod(businessidRaw: any, period: string, userid: number) {
+        const businessid = await this.resolveBusinessId(businessidRaw);
+        const row = await this.manager.findOne(GstReturnPeriod, { where: { businessid, period } as any });
+        if (!row || row.status !== 'LOCKED') throw new BadRequestException('This period is not locked.');
+        await this.manager.update(GstReturnPeriod, row.id, { status: 'OPEN', updatedby: userid } as any);
+        await this.audit.record({ userId: userid, action: 'gst.period_unlocked', entityType: 'gst_return_period', entityId: row.id, summary: `GST period ${period} unlocked`, details: { period } });
+        return this.manager.findOne(GstReturnPeriod, { where: { id: row.id } });
+    }
 }

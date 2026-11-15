@@ -169,6 +169,15 @@ export class GstReconciliationComponent {
         });
     }
 
+    unlockPeriod() {
+        this.message = '';
+        this.error = '';
+        this.service.unlockPeriod(this.period).subscribe({
+            next: () => { this.message = `Period ${this.period} unlocked.`; this.refresh(); },
+            error: (err) => { this.error = err?.error?.message || 'Unable to unlock the period.'; },
+        });
+    }
+
     openAction(row: any, action: string) {
         this.dialogRow = row;
         this.dialogAction = action;

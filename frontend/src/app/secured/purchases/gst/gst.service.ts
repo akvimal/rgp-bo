@@ -70,4 +70,8 @@ export class GstService {
     lockPeriod(period: string) {
         return this.http.post(`${this.apiurl}/periods/${period}/lock`, {});
     }
+
+    unlockPeriod(period: string) {
+        return this.http.post(`${this.apiurl}/periods/${period}/unlock`, {});
+    }
 }

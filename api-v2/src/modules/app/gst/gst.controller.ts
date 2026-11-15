@@ -101,4 +101,10 @@ export class GstController {
         await this.permissions.assertCanUseGst(currentUser.roleid, "lock");
         return this.service.lockPeriod(body?.businessid, period, currentUser.id);
     }
+
+    @Post("periods/:period/unlock")
+    async unlock(@Param("period") period: string, @Body() body: any, @User() currentUser: any) {
+        await this.permissions.assertCanUseGst(currentUser.roleid, "lock");
+        return this.service.unlockPeriod(body?.businessid, period, currentUser.id);
+    }
 }

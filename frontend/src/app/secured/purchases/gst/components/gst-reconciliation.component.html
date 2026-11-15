@@ -19,6 +19,7 @@
     </label>
     <button type="button" class="btn btn-primary btn-sm" (click)="runMatch()" data-testid="gst-run-match">Run Match</button>
     <button type="button" class="btn btn-outline-dark btn-sm" [disabled]="isLocked" (click)="lockPeriod()" data-testid="gst-lock">Lock Period</button>
+    <button *ngIf="isLocked" type="button" class="btn btn-outline-danger btn-sm" (click)="unlockPeriod()" title="Open this month again if it was locked by mistake" data-testid="gst-unlock">Unlock Period</button>
   </div>
 </div>
 
