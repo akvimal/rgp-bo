@@ -58,7 +58,15 @@ export class DashboardComponent implements OnDestroy {
     showWidget(key: string): boolean { return !this.widgets.length || this.widgets.includes(key); }
 
     /** what is waiting, from figures the server has already scoped to this person */
+    /** built again only when the summary or the compliance count changes: a new array on every check of the page makes the list under it rebuild every time */
+    private needsMemo: { summary: any; compliance: any; items: NeedsItem[] } | null = null;
     get needs(): NeedsItem[] {
+      if (!this.needsMemo || this.needsMemo.summary !== this.summary || this.needsMemo.compliance !== this.complianceNeeds) {
+        this.needsMemo = { summary: this.summary, compliance: this.complianceNeeds, items: this.buildNeeds() };
+      }
+      return this.needsMemo.items;
+    }
+    private buildNeeds(): NeedsItem[] {
       const k = this.summary?.kpis || {};
       return [
         { key: 'compliance', label: 'compliance items due or late', count: this.complianceNeeds, tone: 'bad', link: ['/secure/compliance'] },

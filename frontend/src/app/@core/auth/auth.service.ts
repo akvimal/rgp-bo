@@ -261,6 +261,8 @@ export class AuthService {
     if (url.split('?')[0] === '/secure/knowledge') return true;
     // customer orders (advance-paid commitments) are taken at the till: whoever may use sales may open them (no role carries this path)
     if (url === '/secure/commitments' || url.startsWith('/secure/commitments/')) return this.isActionAuthorized('sales');
+    // the financial dashboard (money by category, cost ratios, cash, stock value): the same people the menu shows it to; no role carries this path
+    if (url === '/secure/financials') return this.isActionAuthorized('finance.view') || this.isActionAuthorized('expenses.approve');
     // the pharmacy guide is for everyone who works in a pharmacy business, whatever their role
     if (url.split('?')[0] === '/secure/pharmacy-guide') return this.packOn('pharmacy');
     const found = this.permissions.find((p:any) => {

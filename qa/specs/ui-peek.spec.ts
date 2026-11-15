@@ -6,7 +6,8 @@
 import { test, expect } from '../fixtures/index.js';
 
 const MGR = 'businesshead@local.test';
-const stamp = Date.now();
+// a customer name takes letters, spaces and . ' - only (no digits), so the unique part is written in letters
+const stamp = String(Date.now()).replace(/\d/g,(d) => 'abcdefghij'[+d]);
 const mobile = () => '9' + String(Math.floor(Math.random() * 1e9)).padStart(9, '0');
 
 test('PK-UI-1 View on the customer list opens a panel and the list stays', async ({ app, api }) => {

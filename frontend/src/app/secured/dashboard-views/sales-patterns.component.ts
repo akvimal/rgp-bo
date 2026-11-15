@@ -68,8 +68,28 @@ export class SalesPatternsComponent implements OnChanges {
         return this.tab === 'hour' ? 'Sales value in each hour, divided by the trading days' : this.tab === 'weekday' ? 'Average sales on that weekday' : this.tab === 'dom' ? 'Index of that date against the average day (100)' : 'Index of that month against the average month (100), complete months only';
     }
 
-    /** one list of {name, days, avg, metric, value, thin} for whichever tab is open: the chart and the table both read it */
-    get rows(): any[] {
+    /**
+     * One list of {name, days, avg, metric, value, thin} for whichever tab is open: the chart and the table both read it. Worked out once for a given
+     * data and tab and handed back as the same arrays after that: the chart library treats a new array as new data and redraws (and restarts its
+     * animation), so building them again on every check of the page kept the browser busy without end.
+     */
+    private memo: { data: any; tab: string; rows: any[]; series: any[]; colours: any[] } | null = null;
+    private built() {
+        if (!this.memo || this.memo.data !== this.data || this.memo.tab !== this.tab) {
+            const rows = this.compute();
+            this.memo = {
+                data: this.data, tab: this.tab, rows,
+                series: rows.map((r) => ({ name: r.name, value: r.value })),
+                colours: rows.filter((r) => r.thin).map((r) => ({ name: r.name, value: '#ced4da' }))
+            };
+        }
+        return this.memo;
+    }
+    get rows(): any[] { return this.built().rows; }
+    get series(): any[] { return this.built().series; }
+    get colours(): any[] { return this.built().colours; }
+
+    private compute(): any[] {
         const d = this.data;
         if (!d) return [];
         if (this.tab === 'hour') return d.hour.filter((x: any) => x.value > 0 || (x.h >= 7 && x.h <= 22)).map((x: any) => ({ name: x.label, days: x.avgBills, avg: x.avgValue, metric: x.share + '%', value: x.avgValue, thin: false }));
@@ -77,6 +97,4 @@ export class SalesPatternsComponent implements OnChanges {
         if (this.tab === 'dom') return d.dom.map((x: any) => ({ name: String(x.day), days: x.days, avg: x.avgValue, metric: x.index, value: x.index, thin: x.thin }));
         return d.month.map((x: any) => ({ name: x.label, days: x.months, avg: x.avgValue, metric: x.index, value: x.index, thin: x.thin }));
     }
-    get series(): any[] { return this.rows.map((r) => ({ name: r.name, value: r.value })); }
-    get colours(): any[] { return this.rows.filter((r) => r.thin).map((r) => ({ name: r.name, value: '#ced4da' })); }
 }

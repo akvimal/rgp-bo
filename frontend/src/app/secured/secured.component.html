@@ -254,6 +254,12 @@
             <span>Finance</span>
           </a>
         </li>
+        <li class="nav-item" [routerLinkActive]="['is-active']" *ngIf="has('finance.view','expenses.approve')">
+          <a class="nav-link collapsed" routerLink="financials" data-testid="nav-financials" title="Financial dashboard" aria-label="Financial dashboard">
+            <i class="bi bi-graph-up"></i>
+            <span>Financial dashboard</span>
+          </a>
+        </li>
         <li class="nav-heading" *ngIf="has('hr.view','kpirate.rate','leaveapprove.decide')" data-testid="nav-section-people">People</li>
         <li class="nav-item" [routerLinkActive]="['is-active']" *isAuth="'leaveapprove.decide'">
           <a class="nav-link collapsed" routerLink="leave-approvals" data-testid="nav-leave-approvals" title="Leave requests" aria-label="Leave requests">

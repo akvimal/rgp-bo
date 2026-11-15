@@ -91,7 +91,7 @@ export class DashboardFinanceService {
               case m.source
                 when 'SALE' then 'Bill ' || coalesce(s.bill_no::text, s.id::text)
                 when 'RETURN' then 'Return on bill ' || coalesce(rs.bill_no::text, rs.id::text)
-                when 'PURCHASE' then 'Invoice ' || pi.invoice_no || ' (' || v.name || ')'
+                when 'PURCHASE' then 'Invoice ' || pi.invoice_no || ' (' || v.business_name || ')'
                 when 'EXPENSE' then coalesce(nullif(e.payee, ''), nullif(e.description, ''), 'Expense')
               end as what
          from money_flow m
