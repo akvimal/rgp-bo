@@ -174,7 +174,7 @@
         <thead><tr><th>Measure</th><th>How</th><th class="text-end">Max points</th><th>Applies to</th><th>Status</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let m of shownMetrics; trackBy: trackId" data-testid="hr-set-metric-row">
-            <td>{{m.name}}<div class="small text-muted" *ngIf="m.description">{{m.description}}</div></td>
+            <td>{{m.name}}<div class="small text-muted" style="white-space: pre-line" *ngIf="m.description">{{m.description}}</div></td>
             <td>{{howText(m)}}</td>
             <td class="text-end">{{m.is_gate ? 'Gate' : m.max_points}}</td>
             <td>{{m.applies_positions?.length ? positionSummary(m.applies_positions) : roleSummary(m.applies_roles)}}<span class="small text-muted d-block" *ngIf="m.applies_types?.length || m.applies_designations?.length">{{(m.applies_types || []).join(', ')}} {{(m.applies_designations || []).join(', ')}}</span></td>

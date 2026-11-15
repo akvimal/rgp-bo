@@ -35,10 +35,45 @@ const gateLimit = (limit: number) => ({ kind: 'gate', limit });
 
 const manualGate = (name: string, description: string): TemplateMetric => ({ name, description, max: 0, source: 'MANUAL', rating_scale: 2, gate: true });
 const rated = (name: string, description: string, max: number): TemplateMetric => ({ name, description, max, source: 'MANUAL', rating_scale: 5 });
+/** a description staff can read at a glance: one lead line, then bullet points, then (optionally) who confirms or rates it. The box allows 500 characters. */
+const bullets = (lead: string, items: string[], tail?: string) => [lead, ...items.map((i) => '• ' + i), ...(tail ? [tail] : [])].join('\n');
 
-const EXPIRED_GATE = manualGate('Gate: no expired or recalled medicine sold', 'Met when the monthly expiry check and customer complaints show no expired or recalled medicine sold. Confirmed pass or fail by the manager.');
+/** Each measure is described once and means one thing: gates are legal or safety duties, points are quality; the same duty never appears as both. */
+const EXPIRED_GATES: TemplateMetric[] = [
+  manualGate('Gate: no expired medicine sold to a customer', bullets('Pass only if all of these hold for the month:', [
+    'The monthly expiry check found no expired medicine on the shelves you handle',
+    'No customer complained of getting an expired medicine',
+    'Every medicine billed was still in date on the day of sale',
+  ], 'Confirmed pass or fail by the manager from the expiry check and the complaints list.')),
+  manualGate('Gate: no recalled or banned medicine sold', bullets('Pass only if all of these hold for the month:', [
+    'Every recall or stop-sale notice was acted on the same day: the batch was pulled off the shelf and set aside',
+    'No sale of a recalled batch appears after the notice date',
+    'No customer complaint about a recalled medicine',
+  ], 'Confirmed pass or fail by the manager from the recall notices and the complaints list.')),
+];
 /** scored, not a gate: a regular customer may not bring the latest prescription and some will not bring one, so one such sale must not wipe out the month's incentive */
-const SCHEDULED_RATED = (max: number): TemplateMetric => rated('Prescription details on scheduled-drug sales', 'How completely the scheduled-drug sales carry the prescription, patient and prescriber details and the register entry. Scored in proportion, not pass or fail, because a customer sometimes cannot bring a prescription. Rated by the manager from the drug register check.', max);
+const SCHEDULED_RATED = (max: number): TemplateMetric => rated('Prescription details on scheduled-drug sales', bullets('How completely each scheduled-drug (H, H1, X) sale is documented. Scored in proportion, not pass or fail, because a customer sometimes cannot bring a prescription:', [
+  'Prescription details noted, with the doctor',
+  'Patient name and address recorded',
+  'Register entry made for the sale',
+], 'Rated by the manager from the drug register check.'), max);
+
+const CASH_MEASURE = (max: number): TemplateMetric => ({ name: 'Cash short or excess', description: bullets('Total cash difference on the shifts you closed in the month (short and excess both count). Small differences cost a few points:', [
+  'Up to Rs 50: full points',
+  'Up to Rs 200: 60% of the points',
+  'Up to Rs 500: 30% of the points',
+  'Above Rs 500: no points',
+]), max, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: steps([[50, 100], [200, 60], [500, 30]]), min_activity: 1 });
+const GRIEVANCES = (max: number): TemplateMetric => ({ name: 'Grievances about them', description: bullets('Customer grievances raised about you in the month:', [
+  'None: full points',
+  'One: half the points',
+  'Two or more: no points',
+]), max, source: 'SYSTEM', system_key: 'GRIEVANCES', rule: steps([[0, 100], [1, 50]]) });
+const CAPTURE = (max: number, minBills: number): TemplateMetric => ({ name: 'Bills with a named customer', description: bullets('Share of your bills that carry a named customer. Capture the mobile number, or the name and location:', [
+  'Full points at 90% of bills or more',
+  'No points at 60% or less; in between earns part of the points',
+  `Judged only after ${minBills} bills in the month`,
+]), max, source: 'SYSTEM', system_key: 'CUSTOMER_CAPTURE', rule: linear(90, 60), min_activity: minBills });
 
 export const KPI_TEMPLATES: PositionTemplate[] = [
   {
@@ -46,18 +81,49 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
     loginRole: 'Sales Staff',
     summary: 'Billing, customer data, cash, courtesy and tidiness at the counter.',
     metrics: [
-      EXPIRED_GATE,
-      { name: 'Gate: cash difference within the limit', description: 'Met when the shifts the person closed are within Rs 1,000 short or excess in all for the month.', max: 0, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: gateLimit(1000), min_activity: 1, gate: true },
-      { name: 'Bills with a named customer', description: 'Share of the bills made that carry a named customer. Capture the mobile, or the name and location.', max: 20, source: 'SYSTEM', system_key: 'CUSTOMER_CAPTURE', rule: linear(90, 60), min_activity: 30 },
-      { name: 'Cash short or excess', description: 'Total difference on the shifts the person closed.', max: 15, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: steps([[50, 100], [200, 60], [500, 30]]), min_activity: 1 },
-      { name: 'Discarded bills', description: 'Pending bills the person discarded.', max: 10, source: 'SYSTEM', system_key: 'DISCARDED_BILLS', rule: steps([[2, 100], [5, 60], [10, 30]]), min_activity: 30 },
-      { name: 'Grievances about them', description: 'Customer grievances raised about the person.', max: 10, source: 'SYSTEM', system_key: 'GRIEVANCES', rule: steps([[0, 100], [1, 50]]) },
-      { name: 'Absent days', description: 'Days marked absent.', max: 10, source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: steps([[0, 100], [1, 60], [2, 30]]) },
-      { name: 'Cross-sell suggestions taken', description: 'Suggestions shown at the counter that the person added to a bill. Counted with the grievance and discard figures, so useful advice is rewarded and pushing is not.', max: 5, source: 'SYSTEM', system_key: 'SUGGESTIONS_ADDED', rule: linear(15, 0), min_activity: 20 },
+      ...EXPIRED_GATES,
+      { name: 'Gate: cash difference within the limit', description: bullets('Pass only if the cash difference stays small for the month:', [
+        'Add up the short and excess on every shift you closed',
+        'The total must be within Rs 1,000',
+        'A bigger difference means no incentive this month, whatever the points',
+      ]), max: 0, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: gateLimit(1000), min_activity: 1, gate: true },
+      CAPTURE(20, 30),
+      CASH_MEASURE(15),
+      { name: 'Discarded bills', description: bullets('Pending bills you discarded instead of completing:', [
+        'Up to 2: full points',
+        'Up to 5: 60% of the points',
+        'Up to 10: 30% of the points',
+        'More than 10: no points',
+        'Judged only after 30 bills in the month',
+      ]), max: 10, source: 'SYSTEM', system_key: 'DISCARDED_BILLS', rule: steps([[2, 100], [5, 60], [10, 30]]), min_activity: 30 },
+      GRIEVANCES(10),
+      { name: 'Absent days', description: bullets('Days marked absent in the attendance record:', [
+        'No absent day: full points',
+        'One day: 60% of the points',
+        'Two days: 30% of the points',
+        'Three or more: no points',
+      ]), max: 10, source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: steps([[0, 100], [1, 60], [2, 30]]) },
+      { name: 'Cross-sell suggestions taken', description: bullets('Suggestions shown at the counter that you added to a bill:', [
+        'Full points at 15 or more in the month; part points below that',
+        'Counted together with grievances and discarded bills, so helpful advice earns and pushing does not',
+        'Judged only after 20 bills in the month',
+      ]), max: 5, source: 'SYSTEM', system_key: 'SUGGESTIONS_ADDED', rule: linear(15, 0), min_activity: 20 },
       SCHEDULED_RATED(10),
-      rated('Counselling and honest advice', 'Explains how to take the medicine, offers a substitute honestly, suggests extras only when useful. Rated by the manager from observation and feedback.', 10),
-      rated('Cleanliness, hygiene, dress and safety', 'Counter and glass kept clean, mask and sanitiser used, dress appropriate. Rated from the shift checklist and spot checks.', 5),
-      rated('Shelf order and expiry-first billing', 'Products at their place, the earliest expiry billed first, short-dated stock reported. Rated from a shelf check.', 5),
+      rated('Counselling and honest advice', bullets('How well you guide the customer on the medicine:', [
+        'Asks who it is for and about any allergy',
+        'Explains how and when to take it and how to store it',
+        'Checks the customer understood',
+      ], 'Rated by the manager from observation and feedback.'), 10),
+      rated('Cleanliness, hygiene, dress and safety', bullets('Counter area kept clean and safe:', [
+        'Counter, glass and billing desk wiped and tidy',
+        'Mask and sanitiser used',
+        'Dress neat and appropriate',
+      ], 'Rated from the shift checklist and spot checks.'), 5),
+      rated('Shelf order and expiry-first billing', bullets('Your shelves in order and stock billed in the right sequence:', [
+        'Products at their place, labels facing front',
+        'Earliest expiry billed first',
+        'Shelf refilled from the back stock, oldest first',
+      ], 'Rated from a shelf check.'), 5),
     ],
   },
   {
@@ -65,16 +131,40 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
     loginRole: 'Sales Staff',
     summary: 'Weekend pharmacist: prescriptions and registers, counselling, expiry, with fewer bills so figures are judged on a lower minimum.',
     metrics: [
-      EXPIRED_GATE,
-      manualGate('Gate: registered pharmacist present for the assigned hours', 'Met when the pharmacist was present for the weekend hours assigned. Confirmed pass or fail by the Store Head.'),
-      rated('Prescription checking and register accuracy', 'Prescriptions checked, controlled and scheduled drugs recorded correctly, register matches the sales. Rated from the drug register check until the system measures it.', 25),
-      rated('Counselling and honest advice on substitutes', 'Counsels on use and side effects, offers the same-composition substitute honestly. Rated by the manager.', 20),
-      rated('Expiry check of the shelves', 'Expiry check done on the weekend, short-dated stock separated and reported.', 15),
-      { name: 'Bills with a named customer', description: 'Share of the bills made that carry a named customer.', max: 15, source: 'SYSTEM', system_key: 'CUSTOMER_CAPTURE', rule: linear(90, 60), min_activity: 10 },
-      { name: 'Grievances about them', description: 'Customer grievances raised about the person.', max: 10, source: 'SYSTEM', system_key: 'GRIEVANCES', rule: steps([[0, 100], [1, 50]]) },
-      { name: 'Discarded bills', description: 'Pending bills the person discarded.', max: 5, source: 'SYSTEM', system_key: 'DISCARDED_BILLS', rule: steps([[1, 100], [3, 60], [6, 30]]), min_activity: 10 },
-      { name: 'Cash short or excess', description: 'Total difference on the shifts the person closed.', max: 5, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: steps([[50, 100], [200, 60], [500, 30]]), min_activity: 1 },
-      rated('Cleanliness, hygiene and safety', 'Dispensing area clean, mask and sanitiser used.', 5),
+      ...EXPIRED_GATES,
+      manualGate('Gate: registered pharmacist present for the assigned hours', bullets('Pass only if:', [
+        'You were at the store for every weekend hour assigned',
+        'Your arrival and leaving times match the attendance record',
+      ], 'Confirmed pass or fail by the Store Head.')),
+      rated('Prescription checking and register accuracy', bullets('Your checking of prescriptions and the register:', [
+        'Each prescription checked for validity, dose and doctor details before dispensing',
+        'Controlled and scheduled drugs entered correctly in the register',
+        'Register quantities match the sales in the system',
+      ], 'Rated by the manager from the drug register check, until the system measures it.'), 25),
+      rated('Counselling and honest advice on substitutes', bullets('The clinical advice you give:', [
+        'Explains dose, side effects and interactions',
+        'Offers the same-composition substitute honestly, with the price difference',
+        'Sends the customer to a doctor when needed',
+      ], 'Rated by the manager.'), 20),
+      rated('Expiry check of the shelves', bullets('The weekend expiry check:', [
+        'Done on every shelf and in the fridge',
+        'Medicines expiring within 3 months separated',
+        'Findings reported to the Store Head',
+      ], 'Rated by the manager.'), 15),
+      CAPTURE(15, 10),
+      GRIEVANCES(10),
+      { name: 'Discarded bills', description: bullets('Pending bills you discarded instead of completing:', [
+        'Up to 1: full points',
+        'Up to 3: 60% of the points',
+        'Up to 6: 30% of the points',
+        'More than 6: no points',
+        'Judged only after 10 bills in the month',
+      ]), max: 5, source: 'SYSTEM', system_key: 'DISCARDED_BILLS', rule: steps([[1, 100], [3, 60], [6, 30]]), min_activity: 10 },
+      CASH_MEASURE(5),
+      rated('Cleanliness, hygiene and safety', bullets('Dispensing area kept clean and safe:', [
+        'Dispensing counter and trays cleaned between uses',
+        'Mask and sanitiser used',
+      ], 'Rated from the shift checklist and spot checks.'), 5),
     ],
   },
   {
@@ -82,20 +172,76 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
     loginRole: 'Store Head',
     summary: 'The store as a whole: audits on time, expiry and stock control, inquiries and complaints, cash, and a clean, compliant store.',
     metrics: [
-      manualGate('Gate: licences, registers and scheduled-drug rules in order', 'Met when the licences are valid, the registers are complete and the scheduled-drug rules were followed. Confirmed pass or fail by the Business Head from the compliance register.'),
-      manualGate('Gate: no expired stock left on the shelf', 'Met when the monthly expiry check found no expired stock still on the shelf. Confirmed pass or fail by the Business Head.'),
-      { name: 'Late or overdue stock audits', description: 'Stock audits assigned to the person that were finished late or are overdue.', max: 15, source: 'SYSTEM', system_key: 'AUDITS_LATE', rule: steps([[0, 100], [1, 50]]), min_activity: 1 },
-      { name: 'Stock audits completed', description: 'Routine stock audits the person completed.', max: 5, source: 'SYSTEM', system_key: 'AUDITS_DONE', rule: linear(1, 0) },
-      { name: 'Late or open inquiries', description: 'Customer inquiries assigned to the person closed late or still open past the due date.', max: 10, source: 'SYSTEM', system_key: 'INQUIRIES_LATE', rule: steps([[0, 100], [2, 50]]), min_activity: 1 },
-      { name: 'Customer inquiries closed', description: 'Customer inquiries the person closed.', max: 5, source: 'SYSTEM', system_key: 'INQUIRIES_CLOSED', rule: linear(5, 0), min_activity: 1 },
-      { name: 'Grievances about them', description: 'Customer grievances raised about the person.', max: 5, source: 'SYSTEM', system_key: 'GRIEVANCES', rule: steps([[0, 100], [1, 50]]) },
-      { name: 'Cash short or excess', description: 'Total difference on the shifts the person closed.', max: 5, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: steps([[50, 100], [200, 60], [500, 30]]), min_activity: 1 },
-      { name: 'Absent days', description: 'Days marked absent.', max: 5, source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: steps([[0, 100], [1, 60], [2, 30]]) },
-      rated('Expiry and near-expiry control', 'Short-dated stock planned, returned to the vendor or cleared with an out-pass before it expires; expired value kept at nil.', 15),
-      rated('Stock planning and out-of-stock follow-up', 'Fast movers in stock, out-of-stock requests and refill reminders recorded and acted on.', 10),
-      rated('Cleanliness, hygiene and safety of the store', 'Shift checklists done, store clean, temperature kept, devices reported when they fail. Rated from the checklists and a visit.', 10),
-      rated('Staff guidance and supervision', 'Guides the team on honest advice and rules, rota kept, shifts handed over.', 10),
-      rated('Purchase and receiving', 'Invoices filed with the right GRN and reference, quality checked on receipt, vendor returns raised.', 5),
+      manualGate('Gate: all store licences are valid and displayed', bullets('Pass only if all of these hold for the whole month:', [
+        'Drug licence, GST registration and shop licence are in date (none expired)',
+        'Renewals due next month are already applied for',
+        'Licences and the registered pharmacist certificate are displayed in the store',
+      ], 'Confirmed pass or fail by the Business Head from the compliance register.')),
+      manualGate('Gate: store registers are complete and up to date', bullets('Pass only if all of these hold for the month:', [
+        'Drug, stock and expiry registers and the cash book are written every day, with no blank days or missing pages',
+        'Entries match the bills and the stock in the system',
+        'Entries are signed or initialled by the person who made them',
+      ], 'Confirmed pass or fail by the Business Head from the compliance register.')),
+      manualGate('Gate: scheduled-drug rules are followed', bullets('Pass only if all of these hold for the month:', [
+        'Schedule H, H1 and X medicines are sold only against a valid prescription',
+        'Each such sale has the patient, doctor and prescription details on record',
+        'The stock of scheduled drugs matches the register on a spot count',
+      ], 'Confirmed pass or fail by the Business Head from the drug register check.')),
+      manualGate('Gate: no expired stock left on the shelf', bullets('Pass only if:', [
+        'The monthly expiry check found no expired stock on any shelf, in the fridge or on the counter display',
+        'Expired stock found was removed from sale the same day',
+      ], 'Confirmed pass or fail by the Business Head.')),
+      { name: 'Late or overdue stock audits', description: bullets('Stock audits assigned to you:', [
+        'None finished late or overdue: full points',
+        'One late or overdue: half the points',
+        'Two or more: no points',
+        'Judged only if an audit was due',
+      ]), max: 15, source: 'SYSTEM', system_key: 'AUDITS_LATE', rule: steps([[0, 100], [1, 50]]), min_activity: 1 },
+      { name: 'Stock audits completed', description: bullets('Routine stock audits you completed in the month:', [
+        'One or more completed: full points',
+        'None: no points',
+      ]), max: 5, source: 'SYSTEM', system_key: 'AUDITS_DONE', rule: linear(1, 0) },
+      { name: 'Late or open inquiries', description: bullets('Customer inquiries assigned to you, judged on timing:', [
+        'None closed late or left open past the due date: full points',
+        'One or two: half the points',
+        'Three or more: no points',
+        'Judged only if an inquiry was assigned',
+      ]), max: 10, source: 'SYSTEM', system_key: 'INQUIRIES_LATE', rule: steps([[0, 100], [2, 50]]), min_activity: 1 },
+      { name: 'Customer inquiries closed', description: bullets('Customer inquiries you closed in the month, judged on how many:', [
+        'Full points at 5 or more closed; part points below that',
+        'Judged only if an inquiry was assigned',
+      ]), max: 5, source: 'SYSTEM', system_key: 'INQUIRIES_CLOSED', rule: linear(5, 0), min_activity: 1 },
+      GRIEVANCES(5),
+      CASH_MEASURE(5),
+      { name: 'Absent days', description: bullets('Days marked absent in the attendance record:', [
+        'No absent day: full points',
+        'One day: 60% of the points',
+        'Two days: 30% of the points',
+        'Three or more: no points',
+      ]), max: 5, source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: steps([[0, 100], [1, 60], [2, 30]]) },
+      rated('Expiry and near-expiry control', bullets('How early you deal with stock nearing expiry:', [
+        'Short-dated stock planned for sale, vendor return or an out-pass before it expires',
+        'The value of expired stock kept at nil',
+      ], 'Rated by the manager from the expiry list.'), 15),
+      rated('Stock planning and out-of-stock follow-up', bullets('Keeping the shelves supplied:', [
+        'Fast movers kept in stock',
+        'Out-of-stock requests recorded and followed up',
+        'Refill reminders acted on',
+      ], 'Rated by the manager.'), 10),
+      rated('Cleanliness, hygiene and safety of the store', bullets('The whole store kept clean, safe and working:', [
+        'Shift checklists done every shift',
+        'Store clean and the temperature kept in range',
+        'Failed devices reported at once',
+      ], 'Rated from the checklists and a visit.'), 10),
+      rated('Staff guidance and supervision', bullets('How you guide and run the team:', [
+        'Coaches staff on honest advice and the rules',
+        'Rota kept and shifts handed over properly',
+      ]), 10),
+      rated('Purchase and receiving', bullets('Care taken when goods are bought and received:', [
+        'Invoices filed with the right GRN and reference',
+        'Quality checked on receipt',
+        'Vendor returns raised for faulty or short goods',
+      ], 'Rated by the manager.'), 5),
     ],
   },
 ];
