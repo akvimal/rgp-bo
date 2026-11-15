@@ -17,12 +17,12 @@ Status: **built 2026-11-15, uncommitted; migration 203 and the new SQL never run
 ## Points, in short
 | | Sales Staff | Pharmacist (weekends) | Store Head |
 |---|---|---|---|
-| Gates | no expired medicine sold; scheduled drugs with prescription details; cash within Rs 1,000 | expired; scheduled drugs; present for the assigned hours | licences, registers and rules in order; no expired stock on the shelf |
+| Gates | no expired medicine sold; cash within Rs 1,000 | expired; present for the assigned hours | licences, registers and rules in order; no expired stock on the shelf |
 | System points | named customer 20, cash 15, discarded bills 10, grievances 10, absent days 10, suggestions 5 | named customer 15, grievances 10, discarded bills 5, cash 5 | audits late 15, audits done 5, inquiries late 10, inquiries closed 5, grievances 5, cash 5, absent days 5 |
-| Rated points | counselling and honest advice 10, cleanliness and hygiene 10, shelf order and expiry-first 10 | prescription checking and registers 25, counselling 20, expiry check 15, cleanliness 5 | expiry control 15, stock planning 10, cleanliness 10, staff guidance 10, purchase and receiving 5 |
+| Rated points | prescription details on scheduled-drug sales 10, counselling and honest advice 10, cleanliness and hygiene 5, shelf order and expiry-first 5 | prescription checking and registers 25, counselling 20, expiry check 15, cleanliness 5 | expiry control 15, stock planning 10, cleanliness 10, staff guidance 10, purchase and receiving 5 |
 
 ## Limits to know
 - Targets and limits are starting values. Set them from the History of each measure after a few months.
-- The three legal gates and the prescription rating are manual until the system measures them (spreadsheet sheet "Gaps to build"). Those measures are not built: scheduled-drug prescription capture rate, expired batches sold, expired value on the shelf.
+- Prescription details on scheduled-drug sales is a scored rating, not a gate (decided 2026-11-15: a regular customer may not bring the latest prescription and some will not bring one, so one such sale must not zero the month's incentive). The legal gates (expired medicine, licences and registers) and the prescription rating are manual until the system measures them (spreadsheet sheet "Gaps to build"). Those measures are not built: scheduled-drug prescription capture rate, expired batches sold, expired value on the shelf.
 - Incentive bands and the pay are not in the sets.
 - Legal items are described generally; check each against the licence conditions and the current rules.

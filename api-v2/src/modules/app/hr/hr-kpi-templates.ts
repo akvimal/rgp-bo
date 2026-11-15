@@ -37,7 +37,8 @@ const manualGate = (name: string, description: string): TemplateMetric => ({ nam
 const rated = (name: string, description: string, max: number): TemplateMetric => ({ name, description, max, source: 'MANUAL', rating_scale: 5 });
 
 const EXPIRED_GATE = manualGate('Gate: no expired or recalled medicine sold', 'Met when the monthly expiry check and customer complaints show no expired or recalled medicine sold. Confirmed pass or fail by the manager.');
-const SCHEDULED_GATE = manualGate('Gate: scheduled drugs sold with prescription details and register entry', 'Met when every scheduled drug sold has the prescription, patient and prescriber details and its register entry. Confirmed pass or fail by the manager from the drug register check.');
+/** scored, not a gate: a regular customer may not bring the latest prescription and some will not bring one, so one such sale must not wipe out the month's incentive */
+const SCHEDULED_RATED = (max: number): TemplateMetric => rated('Prescription details on scheduled-drug sales', 'How completely the scheduled-drug sales carry the prescription, patient and prescriber details and the register entry. Scored in proportion, not pass or fail, because a customer sometimes cannot bring a prescription. Rated by the manager from the drug register check.', max);
 
 export const KPI_TEMPLATES: PositionTemplate[] = [
   {
@@ -46,7 +47,6 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
     summary: 'Billing, customer data, cash, courtesy and tidiness at the counter.',
     metrics: [
       EXPIRED_GATE,
-      SCHEDULED_GATE,
       { name: 'Gate: cash difference within the limit', description: 'Met when the shifts the person closed are within Rs 1,000 short or excess in all for the month.', max: 0, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: gateLimit(1000), min_activity: 1, gate: true },
       { name: 'Bills with a named customer', description: 'Share of the bills made that carry a named customer. Capture the mobile, or the name and location.', max: 20, source: 'SYSTEM', system_key: 'CUSTOMER_CAPTURE', rule: linear(90, 60), min_activity: 30 },
       { name: 'Cash short or excess', description: 'Total difference on the shifts the person closed.', max: 15, source: 'SYSTEM', system_key: 'CASH_VARIANCE', rule: steps([[50, 100], [200, 60], [500, 30]]), min_activity: 1 },
@@ -54,9 +54,10 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
       { name: 'Grievances about them', description: 'Customer grievances raised about the person.', max: 10, source: 'SYSTEM', system_key: 'GRIEVANCES', rule: steps([[0, 100], [1, 50]]) },
       { name: 'Absent days', description: 'Days marked absent.', max: 10, source: 'SYSTEM', system_key: 'ABSENT_DAYS', rule: steps([[0, 100], [1, 60], [2, 30]]) },
       { name: 'Cross-sell suggestions taken', description: 'Suggestions shown at the counter that the person added to a bill. Counted with the grievance and discard figures, so useful advice is rewarded and pushing is not.', max: 5, source: 'SYSTEM', system_key: 'SUGGESTIONS_ADDED', rule: linear(15, 0), min_activity: 20 },
+      SCHEDULED_RATED(10),
       rated('Counselling and honest advice', 'Explains how to take the medicine, offers a substitute honestly, suggests extras only when useful. Rated by the manager from observation and feedback.', 10),
-      rated('Cleanliness, hygiene, dress and safety', 'Counter and glass kept clean, mask and sanitiser used, dress appropriate. Rated from the shift checklist and spot checks.', 10),
-      rated('Shelf order and expiry-first billing', 'Products at their place, the earliest expiry billed first, short-dated stock reported. Rated from a shelf check.', 10),
+      rated('Cleanliness, hygiene, dress and safety', 'Counter and glass kept clean, mask and sanitiser used, dress appropriate. Rated from the shift checklist and spot checks.', 5),
+      rated('Shelf order and expiry-first billing', 'Products at their place, the earliest expiry billed first, short-dated stock reported. Rated from a shelf check.', 5),
     ],
   },
   {
@@ -65,7 +66,6 @@ export const KPI_TEMPLATES: PositionTemplate[] = [
     summary: 'Weekend pharmacist: prescriptions and registers, counselling, expiry, with fewer bills so figures are judged on a lower minimum.',
     metrics: [
       EXPIRED_GATE,
-      SCHEDULED_GATE,
       manualGate('Gate: registered pharmacist present for the assigned hours', 'Met when the pharmacist was present for the weekend hours assigned. Confirmed pass or fail by the Store Head.'),
       rated('Prescription checking and register accuracy', 'Prescriptions checked, controlled and scheduled drugs recorded correctly, register matches the sales. Rated from the drug register check until the system measures it.', 25),
       rated('Counselling and honest advice on substitutes', 'Counsels on use and side effects, offers the same-composition substitute honestly. Rated by the manager.', 20),

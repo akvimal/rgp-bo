@@ -36,6 +36,14 @@ describe('KPI starter sets', () => {
     const sales = KPI_TEMPLATES.find((t) => t.position === 'Sales Staff')!;
     expect(templateTotals(sales).system).toBeGreaterThanOrEqual(60);
   });
+  it('scores prescription details on scheduled-drug sales instead of making them a gate', () => {
+    // a regular customer may not bring the latest prescription, and some will not bring one: one such sale must not zero the month's incentive
+    for (const t of KPI_TEMPLATES) expect(t.metrics.filter((m) => m.gate && /scheduled drugs sold with prescription/i.test(m.name))).toHaveLength(0);
+    const sales = KPI_TEMPLATES.find((t) => t.position === 'Sales Staff')!;
+    const rx = sales.metrics.find((m) => m.name === 'Prescription details on scheduled-drug sales')!;
+    expect(rx.gate).toBeFalsy();
+    expect(rx.max).toBeGreaterThan(0);
+  });
   it('leaves absent days out of the weekend pharmacist set', () => {
     const p = KPI_TEMPLATES.find((t) => t.position === 'Pharmacist')!;
     expect(p.metrics.some((m) => m.system_key === 'ABSENT_DAYS')).toBe(false);
