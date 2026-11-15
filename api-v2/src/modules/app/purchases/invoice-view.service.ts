@@ -156,7 +156,7 @@ export class InvoiceViewService {
       `select count(*)::int as all_n,
               count(*) filter (where awaiting_approval)::int as appr_n, coalesce(round(sum(balance) filter (where awaiting_approval), 2), 0) as appr_amt,
               count(*) filter (where pending)::int as pending_n, coalesce(round(sum(balance) filter (where pending), 2), 0) as pending_amt,
-              count(*) filter (where overdue)::int as overdue_n, coalesce(round(sum(balance) filter (where overdue), 2), 0) as overdue_amt,
+              count(*) filter (where overdue)::int as overdue_n, coalesce(round(sum(total) filter (where overdue), 2), 0) as overdue_amt,
               count(*) filter (where due7)::int as due7_n, coalesce(round(sum(balance) filter (where due7), 2), 0) as due7_amt,
               count(*) filter (where on_hold)::int as hold_n, coalesce(round(sum(balance) filter (where on_hold), 2), 0) as hold_amt,
               count(*) filter (where is_paid)::int as paid_n, coalesce(round(sum(total) filter (where is_paid), 2), 0) as paid_amt,
